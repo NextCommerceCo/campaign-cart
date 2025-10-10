@@ -1,0 +1,91 @@
+{
+  "name": "@29next/campaign-cart",
+  "version": "0.2.0",
+  "description": "Modern TypeScript SDK for 29Next Campaign Cart integration with progressive enhancement via data attributes",
+  "type": "module",
+  "main": "dist/index.umd.js",
+  "module": "dist/index.es.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.es.js",
+      "require": "./dist/index.umd.js"
+    },
+    "./styles": "./dist/campaign-cart.css"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "dev:serve": "vite serve dev.html",
+    "dev:watch": "vite build --watch --mode development",
+    "build": "tsc && vite build && copy public\\loader.js dist\\",
+    "build:cf": "vite build && vite build -c vite.config.legacy.ts && npm run build:config && copy public\\loader.js dist\\",
+    "build:config": "node scripts/build-config.js",
+    "build:dev": "vite build --mode development --watch",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:e2e": "playwright test",
+    "test:coverage": "vitest --coverage",
+    "analyze": "cross-env ANALYZE=true npm run build",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write src/**/*.ts",
+    "type-check": "tsc --noEmit",
+    "validate:display": "ts-node scripts/validate-display-config.ts",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@amplitude/analytics-browser": "^2.23.7",
+    "@floating-ui/dom": "^1.5.3",
+    "zustand": "^4.4.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "@testing-library/dom": "^9.3.3",
+    "@testing-library/jest-dom": "^6.1.5",
+    "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "@vitest/coverage-v8": "^3.2.4",
+    "@vitest/ui": "^3.2.4",
+    "cross-env": "^10.0.0",
+    "eslint": "^8.54.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.1",
+    "happy-dom": "^18.0.1",
+    "prettier": "^3.1.0",
+    "rimraf": "^5.0.5",
+    "rollup-plugin-visualizer": "^6.0.3",
+    "terser": "^5.24.0",
+    "typescript": "^5.3.2",
+    "vite": "^6.3.5",
+    "vite-plugin-compression": "^0.5.1",
+    "vite-plugin-dts": "^4.5.4",
+    "vitest": "^3.2.4"
+  },
+  "keywords": [
+    "ecommerce",
+    "cart",
+    "checkout",
+    "nextcommerce",
+    "typescript",
+    "web-components",
+    "progressive-enhancement"
+  ],
+  "author": "NextCommerce",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NextCommerceCo/campaign-cart.git"
+  },
+  "bugs": {
+    "url": "https://github.com/NextCommerceCo/campaign-cart/issue"
+  },
+  "homepage": "https://github.com/NextCommerceCo/campaign-cart#readme"
+}

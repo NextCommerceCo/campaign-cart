@@ -1,0 +1,232 @@
+.next-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
+
+/* Base button processing state */
+.next-processing {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* Universal spinner wrapper */
+[next-slot="spinner"] {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2;
+  transition: opacity 0.2s ease;
+}
+
+/* Universal spinner */
+.spinner {
+  width: 100%;
+  height: 100%;
+  border: 2px solid rgba(128, 128, 128, 0.3);
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Color variants */
+.cc-light .spinner {
+  border-color: rgba(0, 0, 0, 0.1);
+  border-top-color: #000000;
+}
+
+.cc-dark .spinner {
+  border-color: rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+}
+
+/* Processing state */
+.next-processing [next-slot="content"] {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.next-processing [next-slot="spinner"] {
+  opacity: 1;
+}
+
+/* Buttons need relative positioning */
+[data-action="submit"] {
+  position: relative;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Express Checkout Button Styles */
+.payment-btn {
+  position: relative;
+}
+
+.payment-btn [next-slot="content"] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s ease;
+}
+
+.payment-btn.next-processing [next-slot="content"] {
+  opacity: 0;
+}
+
+.payment-btn.next-processing [next-slot="spinner"] {
+  opacity: 1;
+}
+
+/* Specific button spinner colors */
+.payment-btn.cc-paypal .spinner {
+  border-color: rgba(0, 0, 0, 0.1);
+  border-top-color: #003087;
+}
+
+.payment-btn.cc-apple-pay .spinner {
+  border-color: rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+}
+
+.payment-btn.cc-google-pay .spinner {
+  border-color: rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+}
+
+/* Form Input Validation Icons */
+.form-input {
+  position: relative;
+}
+
+.form-input input,
+.form-input select {
+  padding-right: 35px; /* Make room for icon */
+}
+
+/* Hide existing form icons when validation icons are shown - both error and success */
+[next-show-validation-icons] .form-group.addErrorIcon .form-input-icon,
+[next-show-validation-icons] .form-group.addTick .form-input-icon,
+[next-show-validation-icons] .form-input.addErrorIcon .form-input-icon,
+[next-show-validation-icons] .form-input.addTick .form-input-icon {
+  display: none !important;
+}
+
+/* Hide select dropdown arrows/chevrons when validation icons are shown */
+[next-show-validation-icons] .form-group.addErrorIcon select,
+[next-show-validation-icons] .form-group.addTick select,
+[next-show-validation-icons] .form-input.addErrorIcon select,
+[next-show-validation-icons] .form-input.addTick select {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  background-image: none !important;
+}
+
+/* Also hide any custom select icons or arrows */
+[next-show-validation-icons] .form-group.addErrorIcon .select-icon,
+[next-show-validation-icons] .form-group.addTick .select-icon,
+[next-show-validation-icons] .form-group.addErrorIcon .select-arrow,
+[next-show-validation-icons] .form-group.addTick .select-arrow,
+[next-show-validation-icons] .form-input.addErrorIcon .select-icon,
+[next-show-validation-icons] .form-input.addTick .select-icon,
+[next-show-validation-icons] .form-input.addErrorIcon .select-arrow,
+[next-show-validation-icons] .form-input.addTick .select-arrow {
+  display: none !important;
+}
+
+/* Hide any pseudo-element arrows on selects */
+[next-show-validation-icons] .form-group.addTick select::after,
+[next-show-validation-icons] .form-group.addErrorIcon select::after,
+[next-show-validation-icons] .form-input.addTick select::after,
+[next-show-validation-icons] .form-input.addErrorIcon select::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* Alternative: Just hide on error, keep on success */
+/* [next-show-validation-icons] .form-group.addErrorIcon .form-input-icon,
+[next-show-validation-icons] .form-group.addErrorIcon select {
+  display: none;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  background-image: none !important;
+} */
+
+/* Success checkmark icon - only show when:
+   1. Form has validation icons attribute
+   2. No error state
+   3. Input/select has actual value (not empty)
+   4. Not a checkbox field
+   5. For selects: not the first/default option selected */
+[next-show-validation-icons] .form-group.addTick:not(.has-error):not(.addErrorIcon):has(input:not([type="checkbox"]):not([type="radio"]):not(:placeholder-shown):not([value=""])) .form-input::after,
+[next-show-validation-icons] .form-group.addTick:not(.has-error):not(.addErrorIcon):has(select.no-error:not([value=""]):has(option:not(:first-child):checked)) .form-input::after,
+[next-show-validation-icons] .form-input.addTick:not(.addErrorIcon):has(input:not([type="checkbox"]):not([type="radio"]):not(:placeholder-shown):not([value=""]))::after,
+[next-show-validation-icons] .form-input.addTick:not(.addErrorIcon):has(select.no-error:not([value=""]):has(option:not(:first-child):checked))::after {
+  --icon-color: var(--system-colors--success, #074d31);
+  content: '';
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  /* Using mask to allow color customization via background-color - thin stroke version */
+  -webkit-mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="none" stroke="black" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M20 6L9 17l-5-5"/></svg>');
+  mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="none" stroke="black" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M20 6L9 17l-5-5"/></svg>');
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  background-color: var(--icon-color);
+  pointer-events: none;
+  animation: fadeIn 0.2s ease;
+}
+
+/* Error icon - only show when form has validation icons attribute */
+[next-show-validation-icons] .form-input.addErrorIcon::after,
+[next-show-validation-icons] .form-group.addErrorIcon .form-input::after {
+  --icon-color: var(--system-colors--destructive, #c51a00);
+  content: '';
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  /* Using mask to allow color customization via background-color - thin stroke version */
+  -webkit-mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="black" stroke-width="1.5"/><path stroke="black" stroke-width="1.5" stroke-linecap="round" d="M12 8v4M12 16h.01"/></svg>');
+  mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="black" stroke-width="1.5"/><path stroke="black" stroke-width="1.5" stroke-linecap="round" d="M12 8v4M12 16h.01"/></svg>');
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  background-color: var(--icon-color);
+  pointer-events: none;
+  animation: fadeIn 0.2s ease;
+}
+
+
+/* Animation for icons appearing */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+}
