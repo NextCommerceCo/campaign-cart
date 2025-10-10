@@ -1,6 +1,6 @@
 {
   "name": "@NextCommerce/campaign-cart",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Modern TypeScript SDK for NextCommerce Campaign Cart integration with progressive enhancement via data attributes",
   "type": "module",
   "main": "dist/index.umd.js",
