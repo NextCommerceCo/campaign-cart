@@ -27,7 +27,7 @@ export class EnhancedDebugUI {
     return `
       <div class="debug-bottom-bar">
         <div class="debug-logo-section">
-          ${this.get29NextLogo()}
+          ${this.getNextCommerceLogo()}
           <span class="debug-title">Debug Tools</span>
           <div class="debug-status">
             <div class="status-indicator active"></div>
@@ -191,7 +191,7 @@ export class EnhancedDebugUI {
     `;
   }
 
-  private static get29NextLogo(): string {
+  private static getNextCommerceLogo(): string {
     return `
       <svg class="debug-logo" width="32" height="32" viewBox="0 0 115.4 101.9" fill="none">
         <defs>

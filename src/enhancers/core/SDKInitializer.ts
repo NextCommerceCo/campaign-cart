@@ -18,7 +18,6 @@ import { EventBus } from '@/utils/events';
 import { ApiClient } from '@/api/client';
 import { CART_STORAGE_KEY } from '@/utils/storage';
 import { CountryService, Country, LocationData } from '@/utils/countryService';
-import * as AmplitudeAnalytics from '@/utils/analytics/amplitude';
 
 export class SDKInitializer {
   private static logger = createLogger('SDKInitializer');
@@ -38,11 +37,8 @@ export class SDKInitializer {
     }
 
     try {
-      this.logger.info('Initializing 29Next Campaign Cart SDK v2...');
+      this.logger.info('Initializing NextCommerce Campaign Cart SDK v2...');
       this.initStartTime = Date.now();
-      
-      // Track page view first
-      queueMicrotask(() => AmplitudeAnalytics.trackPageView());
 
       // Wait for DOM to be ready
       await this.waitForDOM();
@@ -84,23 +80,7 @@ export class SDKInitializer {
       this.initialized = true;
       const initTime = Date.now() - this.initStartTime;
       this.logger.info('SDK initialization complete ✅');
-      
-      // Track successful initialization
-      const configStore = useConfigStore.getState();
-      const stats = this.attributeScanner?.getStats();
-      queueMicrotask(() => {
-        AmplitudeAnalytics.trackSDKInitialized({
-          initializationTime: initTime,
-          campaignLoadTime: this.campaignLoadTime,
-          fromCache: this.campaignFromCache,
-          retryAttempts: this.retryAttempts,
-          elementsEnhanced: stats?.enhancedElements || 0,
-          debugMode: configStore.debug || false,
-          forcePackageId: (window as any)._nextForcePackageId || null,
-          forceShippingId: (window as any)._nextForceShippingId || null
-        });
-      });
-      
+
       this.retryAttempts = 0;
       
       // Emit initialization event
@@ -108,20 +88,7 @@ export class SDKInitializer {
       
     } catch (error) {
       this.logger.error('SDK initialization failed:', error);
-      
-      // Track initialization failure
-      let errorStage: 'config_load' | 'campaign_load' | 'dom_scan' | 'attribution' = 'config_load';
-      if (this.campaignLoadStartTime > 0) errorStage = 'campaign_load';
-      if (this.attributeScanner) errorStage = 'dom_scan';
-      
-      queueMicrotask(() => {
-        AmplitudeAnalytics.trackSDKInitializationFailed({
-          errorMessage: error instanceof Error ? error.message : String(error),
-          errorStage,
-          retryAttempt: this.retryAttempts
-        });
-      });
-      
+
       // Retry logic
       if (this.retryAttempts < this.maxRetries) {
         this.retryAttempts++;
@@ -428,24 +395,7 @@ export class SDKInitializer {
     await campaignStore.loadCampaign(configStore.apiKey);
     this.campaignLoadTime = Date.now() - this.campaignLoadStartTime;
     this.campaignFromCache = campaignStore.isFromCache || false;
-    
-    // Track campaign loaded event
-    if (campaignStore.data) {
-      queueMicrotask(() => {
-        const trackData: any = {
-          loadTime: this.campaignLoadTime,
-          fromCache: this.campaignFromCache,
-          packageCount: campaignStore.data?.packages?.length || 0,
-          shippingMethodsCount: campaignStore.data?.shipping_methods?.length || 0,
-          currency: campaignStore.data?.currency || 'USD'
-        };
-        if (campaignStore.cacheAge !== undefined) {
-          trackData.cacheAge = campaignStore.cacheAge;
-        }
-        AmplitudeAnalytics.trackCampaignLoaded(trackData);
-      });
-    }
-    
+
     this.logger.debug('Campaign data loaded');
     
     // Process forcePackageId parameter after campaign data is available
@@ -1135,16 +1085,6 @@ export class SDKInitializer {
         itemCount: cartStore.items.length,
         total: cartStore.total,
         isEmpty: cartStore.isEmpty
-      });
-      
-      // Track cart loaded event
-      queueMicrotask(() => {
-        AmplitudeAnalytics.trackCartLoaded({
-          itemsCount: cartStore.items.length,
-          cartValue: cartStore.total,
-          loadTime: rehydrationTime,
-          fromStorage: true
-        });
       });
     } else {
       this.logger.debug('No cart data to rehydrate');

@@ -175,7 +175,7 @@ export class NextAnalytics {
    * Initialize analytics providers
    */
   private async initializeProviders(config: any, storeName?: string): Promise<void> {
-    // NextCampaign Adapter (29Next's own analytics)
+    // NextCampaign Adapter (NextCommerce's own analytics)
     if (config.providers?.nextCampaign?.enabled) {
       const nextCampaignAdapter = new NextCampaignAdapter();
       await nextCampaignAdapter.initialize();

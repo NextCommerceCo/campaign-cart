@@ -1,5 +1,5 @@
 /**
- * API type definitions based on 29Next Campaigns API schema
+ * API type definitions based on NextCommerce Campaigns API schema
  */
 
 // Re-export from the OpenAPI spec we reviewed

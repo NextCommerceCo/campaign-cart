@@ -120,7 +120,7 @@ graph TB
     end
     
     subgraph "Campaign Data"
-        CampaignAPI[29Next API<br/>campaigns/?currency={code}]
+        CampaignAPI[NextCommerce API<br/>campaigns/?currency={code}]
         CampaignCache[sessionStorage Cache<br/>per currency, 10 min TTL]
         CampaignAPI -.->|Cache| CampaignCache
     end

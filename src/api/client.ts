@@ -1,10 +1,9 @@
 /**
- * API Client for 29Next Campaigns API
+ * API Client for NextCommerce Campaigns API
  */
 
 import type { Campaign, Cart, Order, CartBase, CreateOrder, AddUpsellLine } from '@/types/api';
 import { Logger, createLogger } from '@/utils/logger';
-import { trackAPICall } from '@/utils/analytics/amplitude';
 
 export class ApiClient {
   private baseURL = 'https://campaigns.apps.29next.com';
@@ -133,23 +132,7 @@ export class ApiClient {
         errorMessage = `Rate limited. Retry after ${retryAfter} seconds`;
         errorType = 'rate_limit';
         this.logger.warn(errorMessage);
-        
-        // Track API call failure
-        queueMicrotask(() => {
-          const trackData: any = {
-            endpoint,
-            method,
-            statusCode,
-            responseTime: duration,
-            requestType: this.getRequestType(endpoint),
-            success: false
-          };
-          if (errorMessage) trackData.errorMessage = errorMessage;
-          if (errorType) trackData.errorType = errorType;
-          if (retryAfter) trackData.retryAfter = retryAfter;
-          trackAPICall(trackData);
-        });
-        
+
         throw new Error(errorMessage);
       }
 
@@ -170,22 +153,7 @@ export class ApiClient {
         }
         
         this.logger.error(errorMessage, errorData);
-        
-        // Track API call failure
-        queueMicrotask(() => {
-          const trackData: any = {
-            endpoint,
-            method,
-            statusCode,
-            responseTime: duration,
-            requestType: this.getRequestType(endpoint),
-            success: false
-          };
-          if (errorMessage) trackData.errorMessage = errorMessage;
-          if (errorType) trackData.errorType = errorType;
-          trackAPICall(trackData);
-        });
-        
+
         // Create enhanced error with response data
         const error = new Error(errorMessage) as any;
         error.status = response.status;
@@ -195,40 +163,11 @@ export class ApiClient {
       }
 
       const data = await response.json();
-      
+
       this.logger.debug(`API Response: ${response.status}`, data);
-      
-      // Track successful API call
-      queueMicrotask(() => {
-        trackAPICall({
-          endpoint,
-          method,
-          statusCode,
-          responseTime: duration,
-          requestType: this.getRequestType(endpoint),
-          success: true
-        });
-      });
-      
+
       return data;
     } catch (error) {
-      // Track network errors if not already tracked
-      if (statusCode === 0) {
-        const duration = performance.now() - startTime;
-        queueMicrotask(() => {
-          trackAPICall({
-            endpoint,
-            method,
-            statusCode: 0,
-            responseTime: duration,
-            requestType: this.getRequestType(endpoint),
-            success: false,
-            errorMessage: error instanceof Error ? error.message : String(error),
-            errorType: 'network'
-          });
-        });
-      }
-      
       if (error instanceof Error) {
         this.logger.error('API request failed:', error.message);
       } else {

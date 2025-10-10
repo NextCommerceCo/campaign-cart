@@ -14,7 +14,7 @@ declare global {
 
 /**
  * NextCampaign Analytics adapter
- * Integrates with 29Next's campaign analytics platform
+ * Integrates with NextCommerce's campaign analytics platform
  */
 export class NextCampaignAdapter extends ProviderAdapter {
   private logger = createLogger('NextCampaignAdapter');

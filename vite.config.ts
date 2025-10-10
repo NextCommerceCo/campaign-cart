@@ -49,7 +49,15 @@ export default defineConfig({
     // TypeScript declarations
     dts({
       include: ['src/**/*'],
-      exclude: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
+      exclude: [
+        'src/**/*.test.ts',
+        'src/**/*.spec.ts',
+        'src/**/test/**',
+        'src/**/debug/**',
+        'src/utils/testMode.ts',
+        'src/utils/testDataHandler.ts',
+        'src/utils/debugOverlay.ts',
+      ],
       insertTypesEntry: true,
       copyDtsFiles: true,
       compilerOptions: {
@@ -98,7 +106,7 @@ export default defineConfig({
       name: 'build-additional-formats',
       async closeBundle() {
         const { build } = await import('vite');
-        
+
         // Build UMD bundle
         await build({
           configFile: false,
@@ -156,19 +164,19 @@ export default defineConfig({
   build: {
     // Increase chunk size warning limit slightly
     chunkSizeWarningLimit: 600,
-    
+
     // Enable compressed size reporting
     reportCompressedSize: true,
-    
+
     // CSS configuration
     cssMinify: true, // Use default minifier (or 'lightningcss' if you install it)
     cssCodeSplit: false,
-    
+
     // Module preload polyfill
     modulePreload: {
       polyfill: true,
     },
-    
+
     // Library configuration
     lib: {
       entry: {
@@ -185,13 +193,13 @@ export default defineConfig({
       },
       formats: ['es'],
     },
-    
+
     rollupOptions: {
       external: [
         // More specific external configuration
         /src\/config\.ts$/,
       ],
-      
+
       output: {
         // Choose either preserveModules OR manualChunks, not both
         // Option 1: Use manual chunks (recommended for better control)
@@ -207,12 +215,24 @@ export default defineConfig({
             }
             return 'vendor';
           }
-          
-          // Split utilities into separate chunk
-          if (id.includes('/utils/') || id.includes('/helpers/')) {
+
+          // Separate debug code into its own chunk (won't be loaded unless ?debug=true)
+          if (id.includes('/debug/') || id.includes('/testMode') || id.includes('TestOrderManager')) {
+            return 'debug';
+          }
+
+          // Split analytics into separate chunk for lazy loading
+          if (id.includes('/analytics/')) {
+            return 'analytics';
+          }
+
+          // Split utilities into separate chunk (excluding debug and analytics)
+          if ((id.includes('/utils/') || id.includes('/helpers/')) &&
+              !id.includes('/debug/') &&
+              !id.includes('/analytics/')) {
             return 'utils';
           }
-          
+
           // Split API layer
           if (id.includes('/api/')) {
             return 'api';
