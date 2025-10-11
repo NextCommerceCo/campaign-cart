@@ -3,7 +3,6 @@ title: CSS Classes Reference
 description: Reference for automatic CSS classes applied by Campaign Cart SDK
 ---
 
-# CSS Classes Reference
 
 Reference for automatic CSS classes applied by Campaign Cart SDK.
 

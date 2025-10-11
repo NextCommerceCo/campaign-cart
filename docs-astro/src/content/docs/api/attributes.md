@@ -3,7 +3,6 @@ title: Data Attributes Reference
 description: Complete reference for all Campaign Cart data attributes
 ---
 
-# Data Attributes Reference
 
 Complete reference for all Campaign Cart data attributes.
 

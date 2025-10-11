@@ -3,7 +3,6 @@ title: API Events Reference
 description: Complete reference for Campaign Cart SDK events and event listeners
 ---
 
-# API Events Reference
 
 Complete reference for Campaign Cart SDK events and event listeners.
 

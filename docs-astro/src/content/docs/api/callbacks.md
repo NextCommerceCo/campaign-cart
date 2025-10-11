@@ -3,7 +3,6 @@ title: Callbacks Reference
 description: Reference for Campaign Cart SDK callback functions and hooks
 ---
 
-# Callbacks Reference
 
 Reference for Campaign Cart SDK callback functions and hooks.
 

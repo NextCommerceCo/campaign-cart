@@ -5,8 +5,6 @@ description: How to install and configure Campaign Cart JS SDK on your website
 
 import { Steps, Code, Tabs, TabItem, Aside, Card, CardGrid } from '@astrojs/starlight/components';
 
-# Installation
-
 Campaign Cart JS SDK can be installed in multiple ways to fit your development workflow. Choose the method that works best for your project.
 
 ## Quick Installation
@@ -23,11 +21,13 @@ The fastest way to get started is with our CDN:
 
    Add these two lines to your HTML `<head>` section:
 
-   <Code code={`<!-- Campaign Cart Configuration -->
-<meta name="next-api-key" content="your-api-key-here">
+   ```html title="HTML Head Section"
+   <!-- Campaign Cart Configuration -->
+   <meta name="next-api-key" content="your-api-key-here">
 
-<!-- Campaign Cart SDK -->
-<script src="https://campaign-cart-v2.pages.dev/loader.js"></script>`} lang="html" title="HTML Head Section" />
+   <!-- Campaign Cart SDK -->
+   <script src="https://campaign-cart-v2.pages.dev/loader.js"></script>
+   ```
 
 3. **Start Building**
 
