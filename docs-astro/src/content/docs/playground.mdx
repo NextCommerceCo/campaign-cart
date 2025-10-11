@@ -1,302 +1,433 @@
 ---
 title: Interactive Playground
-description: Try Campaign Cart features with live, editable examples
+description: Live examples with Campaign Cart components
 ---
 
-import { Code, Tabs, TabItem, Card, CardGrid, Aside } from '@astrojs/starlight/components';
+import { Tabs, TabItem, Aside, Card, CardGrid } from '@astrojs/starlight/components';
+import InteractiveDemo from '../../components/InteractiveDemo.astro';
+import ProductSelector from '../../components/ProductSelector.astro';
+import AttributeTable from '../../components/AttributeTable.astro';
+import CartDisplay from '../../components/CartDisplay.astro';
+import DemoSection from '../../components/DemoSection.astro';
 
-Experiment with Campaign Cart features in real-time. All examples below are fully interactive - edit the code and see the results immediately.
+Experience Campaign Cart features with live, interactive examples. Everything on this page is fully functional - try clicking the products and buttons!
 
-<Aside type="tip">
-**Try it yourself!** Click on any example to open it in a new tab where you can edit and experiment with the code.
-</Aside>
+<InteractiveDemo />
 
-## Basic Examples
-
-### Simple Add to Cart
-
-The most basic implementation - a product with an add-to-cart button and cart display.
-
-<div class="playground-container">
-  <iframe 
-    src="https://codepen.io/campaignCart/embed/basic-add-to-cart?default-tab=html%2Cresult&theme-id=light" 
-    style="width: 100%; height: 400px; border: none;"
-    title="Basic Add to Cart Example"
-    loading="lazy">
-  </iframe>
-</div>
-
-**Key Features Demonstrated:**
-- `data-next-action="add-to-cart"` - Add items to cart
-- `data-next-display="cart.total"` - Show cart total
-- `data-next-display="cart.itemCount"` - Display item count
-- Automatic cart persistence
-
-[Edit this example on CodePen →](https://codepen.io/campaignCart/pen/basic-add-to-cart)
-
-### Product Selector with Dynamic Pricing
-
-Choose between different product options with real-time price updates.
-
-<div class="playground-container">
-  <iframe 
-    src="https://codepen.io/campaignCart/embed/product-selector?default-tab=html%2Cresult&theme-id=light" 
-    style="width: 100%; height: 500px; border: none;"
-    title="Product Selector Example"
-    loading="lazy">
-  </iframe>
-</div>
-
-**Key Features:**
-- `data-next-cart-selector` - Creates product selection group
-- `data-next-selector-card` - Individual product options
-- `data-next-selection-mode="swap"` - Replace cart contents
-- Dynamic price display per selection
-
-[Edit this example on CodePen →](https://codepen.io/campaignCart/pen/product-selector)
-
-### Quantity Controls
-
-Let customers choose how many items they want to purchase.
-
-<div class="playground-container">
-  <iframe 
-    src="https://codepen.io/campaignCart/embed/quantity-controls?default-tab=html%2Cresult&theme-id=light" 
-    style="width: 100%; height: 400px; border: none;"
-    title="Quantity Controls Example"
-    loading="lazy">
-  </iframe>
-</div>
-
-**Key Features:**
-- `data-next-quantity-controls` - Quantity selector wrapper
-- `data-next-quantity-decrease` & `data-next-quantity-increase` - +/- buttons  
-- `data-next-quantity-input` - Direct quantity input
-- Automatic total calculation
-
-[Edit this example on CodePen →](https://codepen.io/campaignCart/pen/quantity-controls)
-
-## Advanced Examples
-
-### Multi-Step Product Configuration
-
-Guide customers through a product configuration process with multiple steps.
-
-<div class="playground-container">
-  <iframe 
-    src="https://codepen.io/campaignCart/embed/multi-step-config?default-tab=html%2Cresult&theme-id=light" 
-    style="width: 100%; height: 600px; border: none;"
-    title="Multi-Step Configuration"
-    loading="lazy">
-  </iframe>
-</div>
-
-**Key Features:**
-- Step-by-step product configuration
-- Conditional display based on selections
-- Real-time price calculation
-- Progress indicators
-
-[Edit this example on CodePen →](https://codepen.io/campaignCart/pen/multi-step-config)
-
-### Upsell Flow
-
-Show additional offers after the main product is added to cart.
-
-<div class="playground-container">
-  <iframe 
-    src="https://codepen.io/campaignCart/embed/upsell-flow?default-tab=html%2Cresult&theme-id=light" 
-    style="width: 100%; height: 500px; border: none;"
-    title="Upsell Flow Example"
-    loading="lazy">
-  </iframe>
-</div>
-
-**Key Features:**
-- `data-next-upsell-trigger` - Show upsells after cart action
-- `data-next-accept-upsell` - Accept additional products
-- Modal or inline upsell display
-- Revenue optimization
-
-[Edit this example on CodePen →](https://codepen.io/campaignCart/pen/upsell-flow)
-
-### Subscription Products
-
-Handle recurring billing and subscription options.
-
-<div class="playground-container">
-  <iframe 
-    src="https://codepen.io/campaignCart/embed/subscription-products?default-tab=html%2Cresult&theme-id=light" 
-    style="width: 100%; height: 500px; border: none;"
-    title="Subscription Products"
-    loading="lazy">
-  </iframe>
-</div>
-
-**Key Features:**
-- Monthly/yearly billing toggles
-- Subscription pricing display
-- Trial period handling
-- Billing cycle selection
-
-[Edit this example on CodePen →](https://codepen.io/campaignCart/pen/subscription-products)
-
-## Real-World Templates
-
-### SaaS Landing Page
-
-Complete SaaS landing page with tiered pricing and feature comparison.
-
-<div class="playground-container">
-  <iframe 
-    src="https://codepen.io/campaignCart/embed/saas-landing?default-tab=result&theme-id=light" 
-    style="width: 100%; height: 700px; border: none;"
-    title="SaaS Landing Page"
-    loading="lazy">
-  </iframe>
-</div>
-
-[View full template →](https://codepen.io/campaignCart/pen/saas-landing) | [Download HTML →](/templates/saas-landing.html)
-
-### E-commerce Product Page
-
-Modern product page with image gallery, reviews, and related products.
-
-<div class="playground-container">
-  <iframe 
-    src="https://codepen.io/campaignCart/embed/ecommerce-product?default-tab=result&theme-id=light" 
-    style="width: 100%; height: 700px; border: none;"
-    title="E-commerce Product Page"
-    loading="lazy">
-  </iframe>
-</div>
-
-[View full template →](https://codepen.io/campaignCart/pen/ecommerce-product) | [Download HTML →](/templates/ecommerce-product.html)
-
-### Course Sales Funnel
-
-Educational platform with course bundles and payment plans.
-
-<div class="playground-container">
-  <iframe 
-    src="https://codepen.io/campaignCart/embed/course-funnel?default-tab=result&theme-id=light" 
-    style="width: 100%; height: 700px; border: none;"
-    title="Course Sales Funnel"
-    loading="lazy">
-  </iframe>
-</div>
-
-[View full template →](https://codepen.io/campaignCart/pen/course-funnel) | [Download HTML →](/templates/course-funnel.html)
-
-## Code Snippets Library
-
-Quick copy-paste snippets for common functionality:
+## Live Product Selection
 
 <Tabs>
-  <TabItem label="Add to Cart Button">
-    <Code code={`<button data-next-action="add-to-cart" 
-        data-next-package-id="your-product-id"
-        data-next-quantity="1">
-  Add to Cart
-</button>`} lang="html" />
+  <TabItem label="Demo" icon="rocket">
+    <DemoSection
+      title="Swap Mode Selection"
+      description="Click any product to instantly replace your cart selection. Perfect for single-product funnels!">
+      
+      <ProductSelector
+        selectorId="drone-demo"
+        selectionMode="swap"
+        products={[
+          {
+            packageId: "4",
+            quantity: "3",
+            selected: true,
+            bestDeal: true,
+            name: "3x Mega Bundle",
+            price: "$47.97",
+            retailPrice: "$119.97",
+            unitPrice: "$15.99",
+            savingsPercentage: "60%",
+            savingsAmount: "$72.00",
+            hasFreeShipping: true
+          },
+          {
+            packageId: "3",
+            quantity: "2",
+            name: "2x Value Pack",
+            price: "$35.98",
+            retailPrice: "$79.98",
+            unitPrice: "$17.99",
+            savingsPercentage: "55%",
+            savingsAmount: "$44.00"
+          },
+          {
+            packageId: "2",
+            quantity: "1",
+            name: "1x Starter",
+            price: "$19.99",
+            retailPrice: "$39.99",
+            unitPrice: "$19.99",
+            savingsPercentage: "50%",
+            savingsAmount: "$20.00"
+          }
+        ]}
+      />
+    </DemoSection>
   </TabItem>
   
-  <TabItem label="Cart Total Display">
-    <Code code={`<div class="cart-summary">
-  Items: <span data-next-display="cart.itemCount">0</span>
-  Total: <span data-next-display="cart.total">$0.00</span>
-</div>`} lang="html" />
-  </TabItem>
-  
-  <TabItem label="Product Selector">
-    <Code code={`<div data-next-cart-selector data-next-selection-mode="swap">
-  <div data-next-selector-card data-next-package-id="basic">
-    <h3>Basic Plan</h3>
-    <p data-next-display="package.price">$19/mo</p>
-  </div>
-  <div data-next-selector-card data-next-package-id="pro">
-    <h3>Pro Plan</h3>
-    <p data-next-display="package.price">$39/mo</p>
-  </div>
-</div>`} lang="html" />
-  </TabItem>
-  
-  <TabItem label="Conditional Display">
-    <Code code={`<!-- Show when cart has items -->
-<div data-next-show="cart.hasItems">
-  <button onclick="checkout()">Checkout</button>
-</div>
-
-<!-- Show when cart is empty -->
-<div data-next-show="cart.isEmpty">
-  <p>Your cart is empty</p>
-</div>`} lang="html" />
-  </TabItem>
-  
-  <TabItem label="Quantity Controls">
-    <Code code={`<div data-next-quantity-controls data-next-package-id="product-id">
-  <button data-next-quantity-decrease>-</button>
-  <input data-next-quantity-input type="number" value="1" min="1">
-  <button data-next-quantity-increase>+</button>
-</div>`} lang="html" />
+  <TabItem label="Code" icon="code">
+    ```html
+    <!-- Product Selector with Swap Mode -->
+    <div data-next-cart-selector 
+         data-next-selection-mode="swap"
+         data-next-selector-id="drone-demo">
+      
+      <!-- Product Card 1 - Best Deal -->
+      <div class="product-card"
+           data-next-selector-card 
+           data-next-package-id="4"
+           data-next-quantity="3"
+           data-next-selected="true">
+        
+        <div class="badge">Best Deal</div>
+        <h3 data-next-display="package.name">3x Mega Bundle</h3>
+        
+        <div class="pricing">
+          <span class="retail" data-next-display="package.price_retail">$119.97</span>
+          <span class="price" data-next-display="package.price_total">$47.97</span>
+        </div>
+        
+        <div class="unit-price">
+          <span data-next-display="package.price">$15.99</span>/each
+        </div>
+        
+        <div data-next-show="package.hasSavings">
+          <span class="savings-badge">
+            SAVE <span data-next-display="package.savingsPercentage">60%</span>
+          </span>
+          <p>You save <span data-next-display="package.savingsAmount">$72.00</span></p>
+        </div>
+      </div>
+      
+      <!-- Product Card 2 -->
+      <div class="product-card"
+           data-next-selector-card 
+           data-next-package-id="3"
+           data-next-quantity="2">
+        
+        <h3 data-next-display="package.name">2x Value Pack</h3>
+        
+        <div class="pricing">
+          <span class="retail" data-next-display="package.price_retail">$79.98</span>
+          <span class="price" data-next-display="package.price_total">$35.98</span>
+        </div>
+        
+        <div class="unit-price">
+          <span data-next-display="package.price">$17.99</span>/each
+        </div>
+        
+        <div data-next-show="package.hasSavings">
+          <span class="savings-badge">
+            SAVE <span data-next-display="package.savingsPercentage">55%</span>
+          </span>
+          <p>You save <span data-next-display="package.savingsAmount">$44.00</span></p>
+        </div>
+      </div>
+      
+      <!-- Product Card 3 -->
+      <div class="product-card"
+           data-next-selector-card 
+           data-next-package-id="2"
+           data-next-quantity="1">
+        
+        <h3 data-next-display="package.name">1x Starter</h3>
+        
+        <div class="pricing">
+          <span class="retail" data-next-display="package.price_retail">$39.99</span>
+          <span class="price" data-next-display="package.price_total">$19.99</span>
+        </div>
+        
+        <div class="unit-price">
+          <span data-next-display="package.price">$19.99</span>/each
+        </div>
+        
+        <div data-next-show="package.hasSavings">
+          <span class="savings-badge">
+            SAVE <span data-next-display="package.savingsPercentage">50%</span>
+          </span>
+          <p>You save <span data-next-display="package.savingsAmount">$20.00</span></p>
+        </div>
+      </div>
+    </div>
+    ```
   </TabItem>
 </Tabs>
 
-## Interactive Debugging
+## Live Attribute Display
 
-Test your implementations with our built-in debugging tools:
-
-<div class="demo-container">
-  <h4>🔧 Debug Mode</h4>
-  <p>Add <code>data-next-debug="true"</code> to any element to see what data is available:</p>
+<Tabs>
+  <TabItem label="Selection Attributes">
+    <AttributeTable 
+      selectorId="drone-demo"
+      attributes={[
+        { attribute: "selection.{selectorId}.name", description: "Package name", defaultValue: "3x Mega Bundle" },
+        { attribute: "selection.{selectorId}.packageId", defaultValue: "4" },
+        { attribute: "selection.{selectorId}.quantity", defaultValue: "3" },
+        { attribute: "selection.{selectorId}.totalUnits", description: "Total units", defaultValue: "3" },
+        { attribute: "selection.{selectorId}.price", description: "Unit price", defaultValue: "$15.99" },
+        { attribute: "selection.{selectorId}.total", description: "Total price", defaultValue: "$47.97" },
+        { attribute: "selection.{selectorId}.compareTotal", description: "Retail price", defaultValue: "$119.97" },
+        { attribute: "selection.{selectorId}.savingsAmount", defaultValue: "$72.00" },
+        { attribute: "selection.{selectorId}.savingsPercentage", defaultValue: "60%" },
+        { attribute: "selection.{selectorId}.hasSavings", defaultValue: "true" },
+        { attribute: "selection.{selectorId}.isBundle", defaultValue: "true" }
+      ]}
+    />
+    
+    <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-4">
+      <a href="/api/attributes#selection" class="text-indigo-600 dark:text-indigo-400 hover:underline">View all selection attributes →</a>
+    </p>
+  </TabItem>
   
-  <Code code={`<!-- Add debug attribute to see available data -->
-<div data-next-display="cart.total" data-next-debug="true">
-  $0.00
+  <TabItem label="Cart Attributes">
+    <AttributeTable 
+      attributes={[
+        { attribute: "cart.itemCount", description: "Number of items", defaultValue: "0" },
+        { attribute: "cart.subtotal", defaultValue: "$0.00" },
+        { attribute: "cart.total", description: "Cart total", defaultValue: "$0.00" },
+        { attribute: "cart.compareTotal", description: "Retail total", defaultValue: "$0.00" },
+        { attribute: "cart.savingsAmount", defaultValue: "$0.00" },
+        { attribute: "cart.savingsPercentage", defaultValue: "0%" },
+        { attribute: "cart.hasItems", defaultValue: "false" },
+        { attribute: "cart.isEmpty", defaultValue: "true" },
+        { attribute: "cart.hasDiscount", defaultValue: "false" },
+        { attribute: "cart.hasShipping", defaultValue: "false" }
+      ]}
+    />
+    
+    <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-4">
+      <a href="/api/attributes#cart" class="text-indigo-600 dark:text-indigo-400 hover:underline">View all cart attributes →</a>
+    </p>
+  </TabItem>
+</Tabs>
+
+## Shopping Cart
+
+<Tabs>
+  <TabItem label="Demo" icon="shopping-cart">
+    <CartDisplay />
+  </TabItem>
+  
+  <TabItem label="Code" icon="code">
+    ```html
+    <!-- Shopping Cart Display -->
+    <div class="cart">
+      <div class="cart-header">
+        <h3>🛒 Shopping Cart</h3>
+        <span class="badge" data-next-display="cart.itemCount">0</span>
+      </div>
+      
+      <!-- Show when cart has items -->
+      <div data-next-show="cart.hasItems">
+        <div class="cart-summary">
+          <div class="line-item">
+            <span>Subtotal:</span>
+            <span data-next-display="cart.subtotal">$0.00</span>
+          </div>
+          
+          <div class="line-item" data-next-show="cart.hasDiscount">
+            <span>Discount:</span>
+            <span class="discount" data-next-display="cart.discountAmount">-$0.00</span>
+          </div>
+          
+          <div class="line-item" data-next-show="cart.hasShipping">
+            <span>Shipping:</span>
+            <span data-next-display="cart.shipping">$0.00</span>
+          </div>
+          
+          <div class="line-item total">
+            <span>Total:</span>
+            <span data-next-display="cart.total">$0.00</span>
+          </div>
+        </div>
+        
+        <button class="btn-primary" data-next-action="checkout">
+          Proceed to Checkout
+        </button>
+        
+        <button class="btn-secondary" data-next-action="clear-cart">
+          Clear Cart
+        </button>
+      </div>
+      
+      <!-- Show when cart is empty -->
+      <div data-next-show="cart.isEmpty" class="empty-state">
+        <div class="icon">🛒</div>
+        <h4>Your cart is empty</h4>
+        <p>Select a product package above to get started!</p>
+      </div>
+    </div>
+    ```
+  </TabItem>
+</Tabs>
+
+## Selection Modes
+
+<Tabs>
+  <TabItem label="Swap Mode" icon="swap">
+    ```html
+    <!-- Click to replace current selection -->
+    <div data-next-cart-selector 
+         data-next-selection-mode="swap">
+      <div data-next-selector-card 
+           data-next-package-id="1">
+        Product Option 1
+      </div>
+      <div data-next-selector-card 
+           data-next-package-id="2">
+        Product Option 2
+      </div>
+    </div>
+    ```
+    
+    **Use when:** You want customers to choose ONE option from multiple choices (e.g., subscription tiers, product variants)
+  </TabItem>
+  
+  <TabItem label="Add Mode" icon="add-circle">
+    ```html
+    <!-- Click to add to existing cart -->
+    <div data-next-cart-selector 
+         data-next-selection-mode="add">
+      <div data-next-selector-card 
+           data-next-package-id="1">
+        Add Product 1
+      </div>
+      <div data-next-selector-card 
+           data-next-package-id="2">
+        Add Product 2
+      </div>
+    </div>
+    ```
+    
+    **Use when:** Customers can select multiple products (e.g., building a bundle, adding accessories)
+  </TabItem>
+  
+  <TabItem label="Toggle Mode" icon="switch">
+    ```html
+    <!-- Click to toggle in/out of cart -->
+    <div data-next-cart-selector 
+         data-next-selection-mode="toggle">
+      <div data-next-selector-card 
+           data-next-package-id="1">
+        Toggle Product 1
+      </div>
+      <div data-next-selector-card 
+           data-next-package-id="2">
+        Toggle Product 2
+      </div>
+    </div>
+    ```
+    
+    **Use when:** Building custom bundles where items can be added/removed freely
+  </TabItem>
+</Tabs>
+
+## Advanced Examples
+
+### Conditional Display
+
+Show/hide content based on cart state:
+
+```html
+<!-- Show when cart is empty -->
+<div data-next-show="cart.isEmpty">
+  Your cart is empty - select a product above!
 </div>
 
-<!-- Or enable global debug mode -->
-<meta name="next-debug" content="true">`} lang="html" />
-  
-  <p>This will show a debug panel with:</p>
-  <ul>
-    <li>Current cart contents</li>
-    <li>Available display values</li>
-    <li>Event timeline</li>
-    <li>API call logs</li>
-  </ul>
+<!-- Show when cart has items -->
+<div data-next-show="cart.hasItems">
+  <button data-next-action="checkout">
+    Checkout Now
+  </button>
 </div>
 
-## Performance Testing
+<!-- Show based on total -->
+<div data-next-show="cart.total > 50">
+  🎉 You qualify for free shipping!
+</div>
 
-Use these tools to test your implementation:
+<!-- Show when specific product selected -->
+<div data-next-show="selection.drone-demo.packageId == 4">
+  Best choice! You're getting our best deal!
+</div>
+```
+
+### Dynamic Pricing Display
+
+Display prices that update automatically:
+
+```html
+<!-- Show selected product details -->
+<div class="selected-product">
+  <h3 data-next-display="selection.product.name">Product Name</h3>
+  <p>
+    Price: <span data-next-display="selection.product.price">$0</span>
+    <s data-next-display="selection.product.comparePrice">$0</s>
+  </p>
+  <p>
+    You save: <span data-next-display="selection.product.savings">$0</span>
+    (<span data-next-display="selection.product.savingsPercent">0%</span>)
+  </p>
+</div>
+```
+
+### Multi-Step Forms
+
+Create checkout flows with form integration:
+
+```html
+<form data-next-form="checkout">
+  <!-- Step 1: Product Selection -->
+  <div data-next-step="1">
+    <h3>Choose Your Package</h3>
+    <!-- Product selector here -->
+    <button data-next-action="next-step">Continue</button>
+  </div>
+  
+  <!-- Step 2: Customer Info -->
+  <div data-next-step="2" data-next-show="step == 2">
+    <h3>Your Information</h3>
+    <input name="email" type="email" required>
+    <input name="phone" type="tel">
+    <button data-next-action="checkout">Complete Order</button>
+  </div>
+</form>
+```
+
+## Component Playground
 
 <CardGrid>
-  <Card title="Cart Stress Test" icon="rocket">
-    Test adding/removing many items quickly to verify performance.
-    [Run Stress Test →](/playground/stress-test)
+  <Card title="Buttons & Actions" icon="cursor">
+    Test different button actions and states
+    [Try Buttons →](/components/buttons/)
   </Card>
   
-  <Card title="Mobile Simulator" icon="device-mobile">
-    Test touch interactions and mobile-specific features.
-    [Open Mobile Sim →](/playground/mobile)
+  <Card title="Display Elements" icon="eye">
+    Dynamic content that updates automatically
+    [Try Display →](/components/display/)
   </Card>
   
-  <Card title="Network Simulator" icon="globe">
-    Test behavior under slow network conditions.
-    [Test Network →](/playground/network)
+  <Card title="Form Components" icon="pencil">
+    Input fields and form integration
+    [Try Forms →](/components/forms/)
   </Card>
   
-  <Card title="A11y Checker" icon="accessibility">
-    Verify accessibility compliance and screen reader support.
-    [Check A11y →](/playground/accessibility)
+  <Card title="Conditionals" icon="branch">
+    Show/hide content based on conditions
+    [Try Conditionals →](/components/conditionals/)
   </Card>
 </CardGrid>
 
----
+<Aside type="tip">
+**Pro tip:** Open your browser's developer console to see SDK events and debug information as you interact with the components.
+</Aside>
 
-## Need Help?
+## Copy & Customize
 
-- **Documentation**: [API Reference](/api/methods/) | [Configuration Guide](/config/api-setup/)
-- **Examples**: [View all templates](/examples/) | [Download starter kit](/starter-kit.zip)
-- **Support**: [Contact support](mailto:support@campaignCart.com) | [Community Discord](https://discord.gg/campaignCart)
+All examples on this page are ready to use. Simply:
+
+1. Copy the HTML code
+2. Replace the API key with yours
+3. Update product IDs to match your dashboard
+4. Customize the styling to match your brand
+
+Need help? Check our [API Reference](/api/methods/) or [contact support](https://support.campaigncart.com).

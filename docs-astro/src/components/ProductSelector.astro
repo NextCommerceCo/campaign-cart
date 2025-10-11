@@ -1,0 +1,46 @@
+---
+export interface Product {
+  packageId: string;
+  quantity?: string;
+  selected?: boolean;
+  bestDeal?: boolean;
+  name: string;
+  price: string;
+  retailPrice: string;
+  unitPrice?: string;
+  savingsPercentage?: string;
+  savingsAmount?: string;
+  hasFreeShipping?: boolean;
+}
+
+export interface Props {
+  products: Product[];
+  selectorId?: string;
+  selectionMode?: 'swap' | 'add' | 'toggle';
+  title?: string;
+  description?: string;
+}
+
+import ProductCard from './ProductCard.astro';
+
+const { 
+  products, 
+  selectorId = "product-selector",
+  selectionMode = "swap",
+  title,
+  description
+} = Astro.props;
+---
+
+<div class="my-4">
+  {title && <h3 class="text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">{title}</h3>}
+  {description && <p class="text-xs text-zinc-600 dark:text-zinc-400 mb-3">{description}</p>}
+  
+  <div data-next-cart-selector data-next-selection-mode={selectionMode} data-next-selector-id={selectorId}>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      {products.map((product) => (
+        <ProductCard {...product} />
+      ))}
+    </div>
+  </div>
+</div>

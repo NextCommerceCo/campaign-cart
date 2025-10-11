@@ -1,0 +1,170 @@
+---
+title: Your First Cart
+description: Build a working shopping cart in 10 lines of HTML
+---
+
+import { Card, CardGrid, Aside, Code, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+
+**Build a fully functional shopping cart with just HTML attributes - no JavaScript required.**
+
+## The Problem
+
+Traditional e-commerce implementations require hundreds of lines of JavaScript, state management libraries, and API integrations just to add items to a cart. You spend more time managing cart state than building your store. Most solutions force you to adopt their entire framework.
+
+## Core Principles
+
+- **HTML defines behavior:** Your markup is the entire implementation
+- **Progressive enhancement:** Works immediately, enhances with JavaScript
+- **Zero boilerplate:** No initialization, no configuration, just HTML
+
+## The 10-Line Cart
+
+```html
+<!-- 1. Load the SDK -->
+<script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart/dist/loader.js"></script>
+
+<!-- 2. Add to cart button -->
+<button data-next-action="add-to-cart" data-next-package="123">
+  Add to Cart
+</button>
+
+<!-- 3. Display cart count -->
+<span data-next-display="cart.quantity">0</span> items
+
+<!-- 4. Display cart total -->
+<span data-next-display="cart.total">$0.00</span>
+
+<!-- 5. View cart button -->
+<button data-next-action="toggle-cart">View Cart</button>
+```
+
+That's it. You have a working cart.
+
+## How It Works
+
+### HTML Attributes Drive Everything
+
+The SDK scans your HTML for `data-next-*` attributes and enhances them automatically. No JavaScript required from you.
+
+This means: You can build complex e-commerce flows in any CMS, any framework, or plain HTML.
+
+### Real-time Updates
+
+When someone clicks "Add to Cart", every `data-next-display` element updates automatically. No event listeners, no manual DOM updates.
+
+This means: Your UI stays in sync without any effort.
+
+### Persistent State
+
+Cart data persists across page loads, browser tabs, and even device restarts using intelligent storage strategies.
+
+This means: Customers never lose their cart, even if they close the browser.
+
+## Adding More Features
+
+<Steps>
+
+1. **Add quantity controls**
+   ```html
+   <input type="number" data-next-quantity="123" min="1" max="10">
+   ```
+
+2. **Show product price**
+   ```html
+   <span data-next-display="package[123].price">$0.00</span>
+   ```
+
+3. **Create a remove button**
+   ```html
+   <button data-next-action="remove-from-cart" data-next-package="123">
+     Remove
+   </button>
+   ```
+
+4. **Add conditional display**
+   ```html
+   <div data-next-if="cart.empty">
+     Your cart is empty
+   </div>
+   <div data-next-if="!cart.empty">
+     You have items in your cart!
+   </div>
+   ```
+
+</Steps>
+
+## Complete Example
+
+Here's a full product card with cart functionality:
+
+```html
+<div class="product-card">
+  <img src="product.jpg" alt="Product">
+  
+  <h3>Premium Widget</h3>
+  
+  <p data-next-display="package[123].price">$29.99</p>
+  
+  <div data-next-if="!cart.has[123]">
+    <button data-next-action="add-to-cart" data-next-package="123">
+      Add to Cart
+    </button>
+  </div>
+  
+  <div data-next-if="cart.has[123]">
+    <input type="number" 
+           data-next-quantity="123" 
+           min="1" 
+           max="10"
+           value="1">
+    <button data-next-action="remove-from-cart" data-next-package="123">
+      Remove
+    </button>
+  </div>
+</div>
+
+<!-- Cart summary -->
+<div class="cart-summary">
+  <p>Items: <span data-next-display="cart.quantity">0</span></p>
+  <p>Total: <span data-next-display="cart.total">$0.00</span></p>
+  <button data-next-action="checkout">Checkout</button>
+</div>
+```
+
+## Comparison
+
+In typical JavaScript-heavy solutions, you'd write:
+- Cart state management (50+ lines)
+- Event listeners for each button (20+ lines)
+- DOM update logic (30+ lines)
+- Storage persistence (20+ lines)
+- API integration (40+ lines)
+
+With Campaign Cart, you write: **Zero JavaScript**. Just HTML attributes.
+
+This means: You can focus on design and user experience, not implementation details.
+
+## Next Steps
+
+<CardGrid>
+  <Card title="Data Attributes" icon="document">
+    Learn all available `data-next-*` attributes
+    [View Reference →](/data-attributes)
+  </Card>
+  <Card title="Building Blocks" icon="puzzle">
+    Common patterns for cart, product, and checkout UI
+    [Explore Patterns →](/building-blocks)
+  </Card>
+  <Card title="Complete Flows" icon="rocket">
+    Full implementations of common e-commerce flows
+    [See Examples →](/complete-flows)
+  </Card>
+  <Card title="Live Playground" icon="laptop">
+    Try the SDK in an interactive environment
+    [Open Playground →](/playground)
+  </Card>
+</CardGrid>
+
+<Aside type="tip">
+**Pro tip:** Open your browser console and watch the SDK automatically handle state management, storage, and updates. Every action is logged for complete transparency.
+</Aside>

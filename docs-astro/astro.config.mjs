@@ -2,94 +2,141 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 
+import tailwindcss from '@tailwindcss/vite';
+
 // https://astro.build/config
 export default defineConfig({
-	integrations: [
-		starlight({
-			title: 'Campaign Cart JS SDK',
-			description: 'Build powerful e-commerce funnels with HTML attributes',
-			logo: {
-				src: './src/assets/campaign-cart-logo.svg',
-				replacesTitle: true,
-			},
-			social: [
-				{ icon: 'github', label: 'GitHub', href: 'https://github.com/NextCommerceCo/campaign-cart' },
-			],
-			editLink: {
-				baseUrl: 'https://github.com/NextCommerceCo/campaign-cart/edit/main/docs-astro/',
-			},
-			customCss: ['./src/styles/custom.css'],
-			sidebar: [
-				{
-					label: 'Getting Started',
-					items: [
-						{ label: 'Introduction', slug: 'introduction' },
-						{ label: 'Quick Start', slug: 'quick-start' },
-						{ label: 'Installation', slug: 'installation' },
-						{ label: 'Your First Product Page', slug: 'first-product-page' },
-					],
-				},
-				{
-					label: 'Interactive Examples',
-					badge: { text: 'Live', variant: 'success' },
-					items: [
-						{ label: 'Playground', slug: 'playground' },
-						{ label: 'Product Pages', slug: 'examples/product-pages' },
-						{ label: 'Cart Systems', slug: 'examples/cart-systems' },
-						{ label: 'Checkout Flows', slug: 'examples/checkout-flows' },
-						{ label: 'Upsell Funnels', slug: 'examples/upsell-funnels' },
-					],
-				},
-				{
-					label: 'Core Features',
-					items: [
-						{ label: 'Cart System', slug: 'features/cart-system' },
-						{ label: 'Product Selection', slug: 'features/product-selection' },
-						{ label: 'Dynamic Pricing', slug: 'features/dynamic-pricing' },
-						{ label: 'Upsells & Cross-sells', slug: 'features/upsells' },
-						{ label: 'Checkout Integration', slug: 'features/checkout' },
-					],
-				},
-				{
-					label: 'Components',
-					items: [
-						{ label: 'Buttons & Actions', slug: 'components/buttons' },
-						{ label: 'Display Elements', slug: 'components/display' },
-						{ label: 'Form Components', slug: 'components/forms' },
-						{ label: 'Quantity Controls', slug: 'components/quantity' },
-						{ label: 'Conditional Display', slug: 'components/conditionals' },
-					],
-				},
-				{
-					label: 'Configuration',
-					items: [
-						{ label: 'API Setup', slug: 'config/api-setup' },
-						{ label: 'Meta Tags', slug: 'config/meta-tags' },
-						{ label: 'URL Parameters', slug: 'config/url-parameters' },
-						{ label: 'Advanced Options', slug: 'config/advanced' },
-					],
-				},
-				{
-					label: 'API Reference',
-					items: [
-						{ label: 'Methods', slug: 'api/methods' },
-						{ label: 'Events', slug: 'api/events' },
-						{ label: 'Data Attributes', slug: 'api/attributes' },
-						{ label: 'CSS Classes', slug: 'api/css-classes' },
-						{ label: 'Callbacks', slug: 'api/callbacks' },
-					],
-				},
-				{
-					label: 'Guides',
-					items: [
-						{ label: 'Best Practices', slug: 'guides/best-practices' },
-						{ label: 'Performance', slug: 'guides/performance' },
-						{ label: 'Accessibility', slug: 'guides/accessibility' },
-						{ label: 'Migration Guide', slug: 'guides/migration' },
-						{ label: 'Troubleshooting', slug: 'guides/troubleshooting' },
-					],
-				},
-			],
-		}),
+  integrations: [
+      starlight({
+          title: 'Campaign Cart JS SDK',
+          description: 'Build powerful e-commerce funnels with HTML attributes',
+          logo: {
+              src: './src/assets/campaign-cart-logo.svg',
+              replacesTitle: true,
+          },
+          social: [
+              { icon: 'github', label: 'GitHub', href: 'https://github.com/NextCommerceCo/campaign-cart' },
+          ],
+          editLink: {
+              baseUrl: 'https://github.com/NextCommerceCo/campaign-cart/edit/main/docs-astro/',
+          },
+          customCss: [
+              // Path to Tailwind base styles:
+              './src/styles/global.css',
+              // Path to custom styles:
+              './src/styles/custom.css'
+          ],
+          sidebar: [
+              {
+                  label: 'Start Here',
+                  items: [
+                      { label: 'Quick Start', slug: 'getting-started' },
+                      { label: 'Installation', slug: 'getting-started/installation' },
+                      { label: 'Your First Cart', slug: 'getting-started/first-cart' },
+                      { label: 'Core Concepts', slug: 'getting-started/core-concepts' },
+                  ],
+              },
+              {
+                  label: 'Playground',
+                  badge: { text: 'Interactive', variant: 'success' },
+                  slug: 'playground',
+              },
+              {
+                  label: 'Data Attributes',
+                  badge: { text: 'Core', variant: 'note' },
+                  items: [
+                      { label: 'Complete Reference', slug: 'data-attributes' },
+                      { label: 'Actions', slug: 'data-attributes/actions' },
+                      { label: 'Display', slug: 'data-attributes/display' },
+                      { label: 'State & Conditionals', slug: 'data-attributes/state' },
+                      { label: 'Configuration', slug: 'data-attributes/configuration' },
+                  ],
+              },
+              {
+                  label: 'Building Blocks',
+                  items: [
+                      { label: 'Overview', slug: 'building-blocks' },
+                      { label: 'Add to Cart', slug: 'building-blocks/add-to-cart' },
+                      { label: 'Cart Display', slug: 'building-blocks/cart-display' },
+                      { label: 'Quantity Controls', slug: 'building-blocks/quantity-controls' },
+                      { label: 'Price Display', slug: 'building-blocks/price-display' },
+                      { label: 'Product Selection', slug: 'building-blocks/product-selection' },
+                      { label: 'Checkout Forms', slug: 'building-blocks/checkout-forms' },
+                  ],
+              },
+              {
+                  label: 'Complete Flows',
+                  items: [
+                      { label: 'Overview', slug: 'complete-flows' },
+                      { label: 'Product Page', slug: 'complete-flows/product-page' },
+                      { label: 'Cart Drawer', slug: 'complete-flows/cart-drawer' },
+                      { label: 'Checkout Flow', slug: 'complete-flows/checkout-flow' },
+                      { label: 'Upsell Funnel', slug: 'complete-flows/upsell-funnel' },
+                  ],
+              },
+              {
+                  label: 'JavaScript API',
+                  badge: 'Advanced',
+                  items: [
+                      { label: 'Overview', slug: 'javascript-api' },
+                      { label: 'Cart Methods', slug: 'javascript-api/cart-methods' },
+                      { label: 'Events', slug: 'javascript-api/events' },
+                      { label: 'Callbacks', slug: 'javascript-api/callbacks' },
+                      { label: 'Analytics', slug: 'javascript-api/analytics' },
+                  ],
+              },
+              {
+                  label: 'Configuration',
+                  items: [
+                      { label: 'Overview', slug: 'configuration' },
+                      { label: 'Configuration Reference', slug: 'configuration/configuration-reference' },
+                      { label: 'Meta Tags', slug: 'configuration/meta-tags' },
+                      { label: 'URL Parameters', slug: 'configuration/url-parameters' },
+                      { label: 'Profiles & A/B Testing', slug: 'configuration/profiles' },
+                      { label: 'Multi-Currency', slug: 'configuration/multi-currency' },
+                      { label: 'Debugging', slug: 'configuration/debugging' },
+                  ],
+              },
+              {
+                  label: 'Guides',
+                  collapsed: true,
+                  items: [
+                      {
+                          label: 'Migration',
+                          items: [
+                              { label: 'Overview', slug: 'guides/migration' },
+                              { label: 'From Shopify', slug: 'guides/migration/from-shopify' },
+                          ],
+                      },
+                      {
+                          label: 'Optimization',
+                          items: [
+                              { label: 'Performance', slug: 'guides/optimization/performance' },
+                              { label: 'Accessibility', slug: 'guides/optimization/accessibility' },
+                          ],
+                      },
+                      {
+                          label: 'Troubleshooting',
+                          items: [
+                              { label: 'Common Issues', slug: 'guides/troubleshooting/common-issues' },
+                          ],
+                      },
+                  ],
+              },
+              {
+                  label: 'Reference',
+                  collapsed: true,
+                  items: [
+                      { label: 'CSS Classes', slug: 'reference/css-classes' },
+                      { label: 'Error Codes', slug: 'reference/error-codes' },
+                      { label: 'Changelog', slug: 'reference/changelog' },
+                  ],
+              },
+          ],
+      }),
 	],
+
+  vite: {
+    plugins: [tailwindcss()],
+  },
 });

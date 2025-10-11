@@ -1,0 +1,87 @@
+---
+title: Quick Start
+description: Get Campaign Cart running in 2 minutes
+---
+
+import { Steps, Code, Aside, Card, CardGrid } from '@astrojs/starlight/components';
+
+Get Campaign Cart up and running on your site in just 2 minutes.
+
+## Installation in 3 Steps
+
+<Steps>
+
+1. **Get your API key**
+
+   Sign up at [Campaign Cart Dashboard](https://dashboard.campaigncart.com) and copy your API key from settings.
+
+2. **Add to your HTML**
+
+   Add this to your `<head>` tag:
+
+   ```html
+   <meta name="next-api-key" content="YOUR_API_KEY">
+   <script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart/dist/loader.js"></script>
+   ```
+
+3. **Add your first button**
+
+   ```html
+   <button data-next-action="add-to-cart" data-next-package-id="1">
+     Add to Cart
+   </button>
+   ```
+
+</Steps>
+
+That's it! 🎉 Your button will now add products to the cart when clicked.
+
+## Test Your Setup
+
+Open your browser's console and look for:
+```
+✅ Campaign Cart SDK initialized
+```
+
+Click your button - you should see the cart update. The SDK automatically:
+- Manages cart state
+- Persists data across page refreshes
+- Syncs with your Campaign Cart dashboard
+- Handles checkout when ready
+
+## What's Next?
+
+<CardGrid>
+  <Card title="Interactive Playground" icon="rocket">
+    See live examples and experiment with different components
+    [Try the Playground →](/playground)
+  </Card>
+  
+  <Card title="Your First Product Page" icon="document">
+    Build a complete product page with selection and cart
+    [Build Product Page →](/complete-flows/product-page)
+  </Card>
+  
+  <Card title="Data Attributes" icon="puzzle">
+    Explore all available data-next-* attributes
+    [View Attributes →](/data-attributes)
+  </Card>
+  
+  <Card title="JavaScript API" icon="code">
+    Use JavaScript methods for advanced functionality
+    [API Reference →](/javascript-api)
+  </Card>
+</CardGrid>
+
+<Aside type="tip">
+**Pro tip:** Check out our [Playground](/playground) to see live examples you can copy and customize for your site.
+</Aside>
+
+## Common Issues
+
+**Nothing happening?**
+- Check that your API key is correct
+- Verify the SDK loaded (check browser console)
+- Make sure you're using valid package IDs from your dashboard
+
+**Need help?** Visit our [Troubleshooting Guide](/guides/troubleshooting/common-issues) or [contact support](https://support.campaigncart.com).
