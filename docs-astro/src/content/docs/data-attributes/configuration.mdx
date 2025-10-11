@@ -1,8 +1,584 @@
 ---
-title: Configuration
-description: Documentation coming soon
+title: Configuration Attributes
+description: Configure SDK behavior and appearance through HTML attributes
+sidebar:
+  order: 5
 ---
 
-# Configuration
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
 
-Documentation coming soon.
+**Configuration attributes control formatting, behavior, and appearance without writing JavaScript.**
+
+## Formatting Attributes
+
+Control how values are displayed and formatted.
+
+### data-format
+
+Specify how numeric values should be formatted.
+
+```html
+<!-- Currency formatting (default for prices) -->
+<span data-next-display="cart.total" 
+      data-format="currency">
+  $99.99
+</span>
+
+<!-- Number only (no currency symbol) -->
+<span data-next-display="cart.total" 
+      data-format="number">
+  99.99
+</span>
+
+<!-- Integer (no decimals) -->
+<span data-next-display="cart.totalQuantity" 
+      data-format="integer">
+  5
+</span>
+
+<!-- Percentage -->
+<span data-next-display="package.123.discountPercent" 
+      data-format="percentage">
+  30%
+</span>
+
+<!-- Custom decimal places -->
+<span data-next-display="cart.tax" 
+      data-format="currency"
+      data-decimal-places="3">
+  $8.999
+</span>
+```
+
+| Format | Description | Example Output |
+|--------|-------------|----------------|
+| `currency` | With currency symbol | $99.99 |
+| `number` | Numeric only | 99.99 |
+| `integer` | No decimals | 100 |
+| `percentage` | Percentage format | 30% |
+| `auto` | Auto-detect format | Varies |
+
+### data-hide-zero-cents
+
+Hide decimal places when value has no cents.
+
+```html
+<!-- Shows $100 instead of $100.00 -->
+<span data-next-display="package.123.price"
+      data-format="currency"
+      data-hide-zero-cents="true">
+  $100
+</span>
+
+<!-- Shows $99.99 (cents visible) -->
+<span data-next-display="package.456.price"
+      data-format="currency"
+      data-hide-zero-cents="true">
+  $99.99
+</span>
+```
+
+### data-hide-if-zero
+
+Hide element completely when value is zero.
+
+```html
+<!-- Hidden when no discount -->
+<div data-next-display="cart.discount"
+     data-hide-if-zero="true">
+  <span>Discount: </span>
+  <span data-next-display="cart.discount">$0.00</span>
+</div>
+
+<!-- Hidden when no shipping cost -->
+<div data-next-display="cart.shipping"
+     data-hide-if-zero="true">
+  Shipping: <span>$0.00</span>
+</div>
+```
+
+### data-hide-if-false
+
+Hide element when boolean value is false.
+
+```html
+<div data-next-display="cart.hasDiscount"
+     data-hide-if-false="true">
+  Discount applied!
+</div>
+
+<div data-next-display="package.123.inStock"
+     data-hide-if-false="true">
+  In stock and ready to ship
+</div>
+```
+
+## Mathematical Operations
+
+Perform calculations on displayed values.
+
+### data-multiply-by
+
+Multiply the value before displaying.
+
+```html
+<!-- Convert cents to dollars -->
+<span data-next-display="package.123.priceInCents"
+      data-divide-by="100"
+      data-format="currency">
+  $9.99
+</span>
+
+<!-- Show annual price from monthly -->
+<span data-next-display="package.123.monthlyPrice"
+      data-multiply-by="12"
+      data-format="currency">
+  $1,188/year
+</span>
+
+<!-- Calculate percentage -->
+<span data-next-display="cart.discount"
+      data-divide-by="cart.subtotal"
+      data-multiply-by="100"
+      data-format="percentage">
+  10%
+</span>
+```
+
+### data-divide-by
+
+Divide the value before displaying.
+
+```html
+<!-- Show price per item -->
+<span data-next-display="cart.total"
+      data-divide-by="cart.totalQuantity"
+      data-format="currency">
+  $19.99/item
+</span>
+
+<!-- Convert to percentage -->
+<span data-next-display="package.123.savings"
+      data-divide-by="package.123.originalPrice"
+      data-multiply-by="100"
+      data-format="percentage">
+  30% off
+</span>
+```
+
+### data-add
+
+Add a value to the displayed number.
+
+```html
+<!-- Show price with tax -->
+<span data-next-display="package.123.price"
+      data-add="package.123.tax"
+      data-format="currency">
+  $109.99
+</span>
+```
+
+### data-subtract
+
+Subtract from the displayed value.
+
+```html
+<!-- Calculate savings -->
+<span data-next-display="package.123.originalPrice"
+      data-subtract="package.123.price"
+      data-format="currency">
+  Save $20.00
+</span>
+
+<!-- Amount needed for free shipping -->
+<span data-next-display="100"
+      data-subtract="cart.total"
+      data-format="currency"
+      data-hide-if-zero="true">
+  $25.00 away from free shipping
+</span>
+```
+
+## Timer Configuration
+
+Configure countdown timers and urgency elements.
+
+### Timer Attributes
+
+```html
+<!-- Basic timer (5 minutes) -->
+<div data-next-timer="true"
+     data-duration="300">
+  05:00
+</div>
+
+<!-- Timer with custom format -->
+<div data-next-timer="true"
+     data-duration="3600"
+     data-format="hh:mm:ss">
+  01:00:00
+</div>
+
+<!-- Timer with persistence -->
+<div data-next-timer="true"
+     data-duration="86400"
+     data-persistence-id="sale-timer"
+     data-format="dd:hh:mm:ss">
+  1d 00:00:00
+</div>
+
+<!-- Timer with expiry action -->
+<div data-next-timer="true"
+     data-duration="600"
+     data-on-expire="hide"
+     data-expire-message="Offer expired">
+  10:00
+</div>
+```
+
+| Attribute | Purpose | Values |
+|-----------|---------|--------|
+| `data-duration` | Timer duration in seconds | Number |
+| `data-format` | Display format | `mm:ss`, `hh:mm:ss`, `dd:hh:mm:ss`, `auto` |
+| `data-persistence-id` | Persist across refreshes | String ID |
+| `data-on-expire` | Action when timer ends | `hide`, `show-message`, `redirect` |
+| `data-expire-message` | Message to show | String |
+| `data-expire-url` | URL to redirect to | URL |
+
+## Selector Configuration
+
+Configure package selector behavior.
+
+### Selection Modes
+
+```html
+<!-- Swap mode - immediate cart update -->
+<div data-next-package-selector="true"
+     data-next-selection-mode="swap">
+  <button data-next-package-id="123">Option A</button>
+  <button data-next-package-id="456">Option B</button>
+</div>
+
+<!-- Select mode - requires add button -->
+<div data-next-package-selector="true"
+     data-next-selection-mode="select">
+  <label>
+    <input type="radio" name="package" data-next-package-id="123">
+    Option A
+  </label>
+  <label>
+    <input type="radio" name="package" data-next-package-id="456">
+    Option B
+  </label>
+  <button data-next-action="add-selected">Add to Cart</button>
+</div>
+
+<!-- Multi-select mode -->
+<div data-next-package-selector="true"
+     data-next-selection-mode="multi"
+     data-max-selections="3">
+  <label>
+    <input type="checkbox" data-next-package-id="123">
+    Add-on A
+  </label>
+  <label>
+    <input type="checkbox" data-next-package-id="456">
+    Add-on B
+  </label>
+  <label>
+    <input type="checkbox" data-next-package-id="789">
+    Add-on C
+  </label>
+</div>
+```
+
+| Mode | Description | Use Case |
+|------|-------------|----------|
+| `swap` | Immediate cart replacement | Single product selection |
+| `select` | Selection then action | Complex product configuration |
+| `multi` | Multiple selections | Add-ons and bundles |
+
+## Loading States
+
+Configure loading behavior during actions.
+
+```html
+<!-- Custom loading text -->
+<button data-next-action="add-to-cart"
+        data-next-package-id="123"
+        data-loading-text="Processing..."
+        data-loading-class="is-busy">
+  Add to Cart
+</button>
+
+<!-- Don't disable during loading -->
+<button data-next-action="add-to-cart"
+        data-next-package-id="123"
+        data-disable-on-loading="false">
+  Add to Cart
+</button>
+
+<!-- Custom spinner -->
+<button data-next-action="add-to-cart"
+        data-next-package-id="123"
+        data-loading-spinner="true"
+        data-spinner-class="custom-spinner">
+  Add to Cart
+</button>
+```
+
+## Action Configuration
+
+Configure how actions behave.
+
+### Debouncing
+
+Prevent rapid repeated actions.
+
+```html
+<!-- 500ms debounce (default 300ms) -->
+<button data-next-action="add-to-cart"
+        data-next-package-id="123"
+        data-debounce="500">
+  Add to Cart
+</button>
+
+<!-- No debounce -->
+<button data-next-quantity="increase"
+        data-next-package-id="123"
+        data-debounce="0">
+  +
+</button>
+```
+
+### Optimistic Updates
+
+Update UI immediately while action processes.
+
+```html
+<!-- Optimistic UI updates -->
+<button data-next-action="add-to-cart"
+        data-next-package-id="123"
+        data-optimistic="true">
+  Add to Cart
+</button>
+
+<!-- Pessimistic (wait for server) -->
+<button data-next-action="checkout"
+        data-optimistic="false">
+  Checkout
+</button>
+```
+
+### Success/Error Handling
+
+```html
+<!-- Custom success message -->
+<button data-next-action="add-to-cart"
+        data-next-package-id="123"
+        data-success-message="Item added!"
+        data-success-class="show-success">
+  Add to Cart
+</button>
+
+<!-- Custom error handling -->
+<button data-next-action="add-to-cart"
+        data-next-package-id="123"
+        data-error-message="Could not add item"
+        data-error-class="show-error">
+  Add to Cart
+</button>
+
+<!-- Redirect on success -->
+<button data-next-action="add-to-cart"
+        data-next-package-id="123"
+        data-success-url="/cart">
+  Add to Cart
+</button>
+```
+
+## Profile Configuration
+
+Configure profile-based behavior.
+
+```html
+<!-- Profile switcher with options -->
+<button data-next-profile="premium"
+        data-next-clear-cart="true"
+        data-next-preserve-quantities="false">
+  Switch to Premium
+</button>
+
+<!-- Profile selector dropdown -->
+<select data-next-profile-selector="true"
+        data-next-clear-cart="false">
+  <option value="">Regular</option>
+  <option value="premium">Premium Member</option>
+  <option value="vip">VIP</option>
+</select>
+
+<!-- Profile-specific text -->
+<button data-next-profile="vip"
+        data-active-text="VIP Active"
+        data-inactive-text="Activate VIP">
+  Activate VIP
+</button>
+```
+
+## Quantity Configuration
+
+Configure quantity controls and limits.
+
+```html
+<!-- Quantity with custom step -->
+<button data-next-quantity="increase"
+        data-next-package-id="123"
+        data-step="5">
+  +5
+</button>
+
+<!-- Quantity with limits -->
+<input type="number"
+       data-next-quantity="input"
+       data-next-package-id="123"
+       min="1"
+       max="10"
+       step="1"
+       data-enforce-limits="true">
+
+<!-- Quantity sync with package -->
+<div data-next-quantity-sync="123">
+  <button data-next-quantity="decrease">-</button>
+  <span data-next-display="package.123.quantity">1</span>
+  <button data-next-quantity="increase">+</button>
+</div>
+```
+
+## Upsell Configuration
+
+Configure upsell behavior and display.
+
+```html
+<!-- Direct upsell with timer -->
+<div data-next-upsell="offer"
+     data-next-package-id="123"
+     data-timer="30"
+     data-auto-skip="true">
+  <h3>Special Offer!</h3>
+  <button data-next-upsell-action="add">Yes, Add This</button>
+  <button data-next-upsell-action="skip">No Thanks</button>
+</div>
+
+<!-- Quantity upsell -->
+<div data-next-upsell="quantity"
+     data-next-package-id="123"
+     data-suggested-quantity="3">
+  <button data-next-upsell-quantity="decrease">-</button>
+  <span data-next-upsell-quantity="display">1</span>
+  <button data-next-upsell-quantity="increase">+</button>
+</div>
+
+<!-- Selection upsell -->
+<div data-next-upsell-selector="true"
+     data-required="true">
+  <label>
+    <input type="radio" data-next-upsell-option="456">
+    Upgrade to Premium
+  </label>
+  <label>
+    <input type="radio" data-next-upsell-option="789">
+    Upgrade to Ultimate
+  </label>
+</div>
+```
+
+## Meta Tag Configuration
+
+Page-level configuration via meta tags.
+
+```html
+<head>
+  <!-- API configuration -->
+  <meta name="next-api-key" content="your-api-key">
+  <meta name="next-debug" content="true">
+  
+  <!-- Page type -->
+  <meta name="next-page-type" content="product">
+  
+  <!-- Navigation control -->
+  <meta name="next-prevent-back-navigation" content="true">
+  
+  <!-- Upsell configuration -->
+  <meta name="next-upsell-accept-url" content="/success">
+  <meta name="next-upsell-decline-url" content="/cart">
+  
+  <!-- Timer configuration -->
+  <meta name="next-timer-duration" content="600">
+  <meta name="next-timer-persistence" content="session">
+</head>
+```
+
+## Common Configuration Patterns
+
+### Product Card with Full Configuration
+
+```html
+<div class="product-card">
+  <!-- Dynamic price with formatting -->
+  <span data-next-display="package.123.price"
+        data-format="currency"
+        data-hide-zero-cents="true">
+    $99
+  </span>
+  
+  <!-- Conditional discount display -->
+  <div data-next-show="package.123.hasDiscount">
+    <s data-next-display="package.123.originalPrice"
+       data-format="currency">$129</s>
+    <span data-next-display="package.123.discountPercent"
+          data-format="percentage">23% off</span>
+  </div>
+  
+  <!-- Configured action button -->
+  <button data-next-action="add-to-cart"
+          data-next-package-id="123"
+          data-loading-text="Adding..."
+          data-success-message="Added!"
+          data-optimistic="true"
+          data-debounce="300">
+    Add to Cart
+  </button>
+</div>
+```
+
+### Configured Checkout Flow
+
+```html
+<div class="checkout-container">
+  <!-- Minimum order amount -->
+  <div data-next-show="cart.total < 25">
+    <span>Add $</span>
+    <span data-next-display="25"
+          data-subtract="cart.total"
+          data-format="number">0</span>
+    <span> more for checkout</span>
+  </div>
+  
+  <!-- Checkout button with validation -->
+  <button data-next-action="checkout"
+          data-next-show="cart.total >= 25"
+          data-loading-text="Processing..."
+          data-optimistic="false"
+          data-validate="true">
+    Proceed to Checkout
+  </button>
+</div>
+```
+
+## Related Documentation
+
+- [Display Attributes](/docs/data-attributes/display/) - Dynamic data display
+- [Action Attributes](/docs/data-attributes/actions/) - Interactive elements
+- [State Attributes](/docs/data-attributes/state/) - Conditional logic
+- [Meta Tags](/docs/configuration/meta-tags/) - Page-level configuration

@@ -1,462 +1,928 @@
 ---
-title: API Methods Reference
-description: Complete JavaScript API reference for Campaign Cart SDK
+title: JavaScript API Methods
+description: Complete reference for all SDK methods available through window.next
+sidebar:
+  order: 1
 ---
 
-import { Code, Tabs, TabItem, Card, CardGrid, Aside } from '@astrojs/starlight/components';
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
 
-The Campaign Cart SDK exposes methods through the `window.next` object after initialization. Use these methods to programmatically control cart behavior, track events, and integrate with your application.
+**The Next Commerce JS SDK exposes methods through the `window.next` object after initialization.**
 
-<Aside type="tip">
-**Getting Started**: The SDK loads asynchronously. Use the initialization patterns below to ensure methods are available before calling them.
+<Aside type="caution">
+**Important**: Most cart methods require an options object with `packageId` property, not a direct package ID.
 </Aside>
 
-## Initialization
+## Getting Started
 
-### Check SDK Readiness
+### Initialization Detection
 
-<Tabs>
-  <TabItem label="Direct Check">
-    <Code code={`// Check if SDK is ready
+```javascript
+// Check if SDK is ready
 if (window.next) {
   // SDK is ready, use it directly
-  next.addItem({ packageId: 'product-123' });
+  next.addItem({ packageId: 123 });
 } else {
-  console.log('SDK not ready yet');
-}`} lang="javascript" />
-  </TabItem>
-  
-  <TabItem label="Queue Pattern">
-    <Code code={`// Queue for later execution
-window.nextReady = window.nextReady || [];
-window.nextReady.push(function() {
-  next.addItem({ packageId: 'product-123' });
-  console.log('SDK ready, action executed');
-});`} lang="javascript" />
-  </TabItem>
-  
-  <TabItem label="Event Listener">
-    <Code code={`// Listen for initialization event
+  // Queue for later execution
+  window.nextReady = window.nextReady || [];
+  window.nextReady.push(function() {
+    next.addItem({ packageId: 123 });
+  });
+}
+
+// Or listen for initialization event
 document.addEventListener('next:initialized', function(event) {
   console.log('SDK initialized at', new Date(event.detail.timestamp));
-  next.addItem({ packageId: 'product-123' });
-});`} lang="javascript" />
-  </TabItem>
-</Tabs>
+  next.addItem({ packageId: 123 });
+});
+```
 
 ## Cart Methods
 
-### `addItem(options)`
+### addItem
 
-Adds an item to the cart with specified options.
+Adds an item to the cart. **Requires an options object, not a direct package ID.**
 
-<Code code={`// Basic usage
-next.addItem({ 
-  packageId: 'product-123',
-  quantity: 1 
+```javascript
+// ✅ CORRECT - Pass an object with packageId property
+await next.addItem({ 
+  packageId: 123, 
+  quantity: 2 
 });
 
-// With all options
-next.addItem({
-  packageId: 'premium-plan',
-  quantity: 2,
-  couponCode: 'SAVE20',
-  customData: {
-    size: 'large',
-    color: 'blue'
-  }
-});
+// ✅ CORRECT - Quantity is optional (defaults to 1)
+await next.addItem({ packageId: 123 });
 
-// Returns promise
-next.addItem({ packageId: 'product-123' })
-  .then(result => {
-    console.log('Item added:', result);
-  })
-  .catch(error => {
-    console.error('Failed to add item:', error);
-  });`} lang="javascript" title="addItem Examples" />
+// ❌ WRONG - Don't pass packageId directly
+// next.addItem(123); // This won't work!
+```
 
 **Parameters:**
-- `packageId` (string, required) - Product/package identifier
-- `quantity` (number, optional) - Item quantity (default: 1)  
-- `couponCode` (string, optional) - Discount code to apply
-- `customData` (object, optional) - Additional item data
+- `options` (object): Required options object
+  - `options.packageId` (number): Package ID to add
+  - `options.quantity` (number, optional): Quantity to add (default: 1)
 
-### `removeItem(packageId, quantity?)`
+**Returns:** `Promise<void>`
 
-Removes items from the cart.
+### removeItem
 
-<Code code={`// Remove one item
-next.removeItem('product-123');
+Removes an item from the cart. **Requires an options object.**
 
-// Remove specific quantity
-next.removeItem('product-123', 2);
+```javascript
+// ✅ CORRECT
+await next.removeItem({ packageId: 123 });
 
-// Remove all items of this type
-next.removeItem('product-123', 'all');`} lang="javascript" />
+// ❌ WRONG
+// next.removeItem(123); // This won't work!
+```
 
-### `updateQuantity(packageId, newQuantity)`
+**Parameters:**
+- `options` (object): Required options object
+  - `options.packageId` (number): Package ID to remove
 
-Updates the quantity of an existing cart item.
+**Returns:** `Promise<void>`
 
-<Code code={`// Set exact quantity
-next.updateQuantity('product-123', 5);
+### updateQuantity
 
-// Increment quantity
-const currentQty = next.getCart().items
-  .find(item => item.packageId === 'product-123')?.quantity || 0;
-next.updateQuantity('product-123', currentQty + 1);`} lang="javascript" />
+Updates the quantity of an item in the cart. **Requires an options object.**
 
-### `clearCart()`
+```javascript
+// ✅ CORRECT
+await next.updateQuantity({ 
+  packageId: 123, 
+  quantity: 5 
+});
+
+// ❌ WRONG
+// next.updateQuantity(123, 5); // This won't work!
+```
+
+**Parameters:**
+- `options` (object): Required options object
+  - `options.packageId` (number): Package ID to update
+  - `options.quantity` (number): New quantity
+
+**Returns:** `Promise<void>`
+
+### clearCart
 
 Removes all items from the cart.
 
-<Code code={`// Clear entire cart
-next.clearCart();
+```javascript
+await next.clearCart();
+```
 
-// With confirmation
-if (confirm('Remove all items from cart?')) {
-  next.clearCart();
-}`} lang="javascript" />
+**Returns:** `Promise<void>`
 
-### `getCart()`
+### hasItemInCart
 
-Returns current cart state with all items and totals.
+Checks if an item is in the cart. **Requires an options object.**
 
-<Code code={`const cart = next.getCart();
+```javascript
+// ✅ CORRECT
+const hasItem = next.hasItemInCart({ packageId: 123 });
+console.log('Item in cart:', hasItem); // true or false
 
-console.log('Cart contents:', {
-  items: cart.items,
-  itemCount: cart.itemCount,
-  subtotal: cart.subtotal,
-  total: cart.total,
-  discounts: cart.discounts,
-  isEmpty: cart.isEmpty,
-  hasItems: cart.hasItems
-});
+// ❌ WRONG
+// next.hasItemInCart(123); // This won't work!
+```
 
-// Access specific cart data
-const itemCount = cart.itemCount;
-const totalPrice = cart.total;
-const firstItem = cart.items[0];`} lang="javascript" />
+**Parameters:**
+- `options` (object): Required options object
+  - `options.packageId` (number): Package ID to check
+
+**Returns:** `boolean`
+
+### getCartData
+
+Returns comprehensive cart data including enriched items, totals, campaign data, and applied coupons.
+
+```javascript
+const cartData = next.getCartData();
+console.log(cartData);
+// {
+//   cartLines: [...],
+//   cartTotals: { subtotal: {...}, total: {...}, ... },
+//   campaignData: {...},
+//   appliedCoupons: [...]
+// }
+```
+
+**Returns:**
+```typescript
+{
+  cartLines: EnrichedCartLine[];
+  cartTotals: CartTotals;
+  campaignData: Campaign | null;
+  appliedCoupons: AppliedCoupon[];
+}
+```
+
+### getCartTotals
+
+Returns cart totals and pricing information.
+
+```javascript
+const totals = next.getCartTotals();
+console.log('Total:', totals.total.formatted); // "$99.99"
+console.log('Subtotal:', totals.subtotal.formatted); // "$89.99"
+console.log('Shipping:', totals.shipping.formatted); // "$10.00"
+```
+
+**Returns:** `CartTotals` object with subtotal, shipping, tax, discounts, and total
+
+### getCartCount
+
+Returns the total number of items in the cart.
+
+```javascript
+const count = next.getCartCount();
+console.log('Items in cart:', count); // 3
+```
+
+**Returns:** `number`
 
 ## Campaign & Package Methods
 
-### `getCampaign()`
+### getCampaignData
 
-Returns current campaign information.
+Returns the loaded campaign data.
 
-<Code code={`const campaign = next.getCampaign();
+```javascript
+const campaign = next.getCampaignData();
+if (campaign) {
+  console.log('Campaign:', campaign.name);
+  console.log('Currency:', campaign.currency);
+  console.log('Packages:', campaign.packages);
+}
+```
 
-console.log('Campaign data:', {
-  id: campaign.id,
-  name: campaign.name,
-  currency: campaign.currency,
-  packages: campaign.packages
-});`} lang="javascript" />
+**Returns:** `Campaign | null`
 
-### `getPackage(packageId)`
+### getPackage
 
-Returns details for a specific package/product.
+Gets detailed information about a specific package.
 
-<Code code={`const package = next.getPackage('premium-plan');
+```javascript
+const package = next.getPackage(123);
+if (package) {
+  console.log('Package name:', package.display_name);
+  console.log('Price:', next.formatPrice(package.price));
+}
+```
 
-console.log('Package details:', {
-  id: package.id,
-  name: package.name,
-  price: package.price,
-  description: package.description,
-  features: package.features
-});`} lang="javascript" />
+**Parameters:**
+- `id` (number): Package ID
 
-### `getAllPackages()`
+**Returns:** `Package | null`
 
-Returns array of all available packages.
+## Profile Methods
 
-<Code code={`const packages = next.getAllPackages();
+Profile methods enable dynamic package ID mapping for different pricing tiers, promotions, and customer segments.
 
-packages.forEach(pkg => {
-  console.log(\`\${pkg.name}: \${pkg.price}\`);
+### setProfile
+
+Applies a pricing profile to swap package IDs.
+
+```javascript
+// Basic usage
+await next.setProfile('black_friday');
+
+// With options
+await next.setProfile('vip', {
+  clearCart: true,
+  preserveQuantities: false
 });
+```
 
-// Filter packages
-const premiumPackages = packages.filter(pkg => 
-  pkg.tags && pkg.tags.includes('premium')
-);`} lang="javascript" />
+### revertProfile
 
-## Profile & Pricing Methods
+Reverts to original packages.
 
-### `switchProfile(profileId)`
+```javascript
+await next.revertProfile();
+```
 
-Switches to a different pricing profile (for dynamic pricing).
+### getActiveProfile
 
-<Code code={`// Switch to VIP pricing
-next.switchProfile('vip-pricing');
+Gets the currently active profile ID.
 
-// Switch based on user data
-const userType = getUserType(); // your function
-if (userType === 'enterprise') {
-  next.switchProfile('enterprise-pricing');
-}`} lang="javascript" />
+```javascript
+const profile = next.getActiveProfile();
+console.log(profile); // "black_friday" or null
+```
 
-### `getCurrentProfile()`
+### getMappedPackageId
 
-Returns the active pricing profile.
+Gets the mapped package ID for the active profile.
 
-<Code code={`const profile = next.getCurrentProfile();
+```javascript
+const mappedId = next.getMappedPackageId(1);
+console.log(mappedId); // 101 (if profile maps 1 -> 101)
+```
 
-console.log('Active profile:', {
-  id: profile.id,
-  name: profile.name,
-  discountPercent: profile.discountPercent
-});`} lang="javascript" />
+### listProfiles
+
+Lists all configured profiles.
+
+```javascript
+const profiles = next.listProfiles();
+console.log(profiles); // ["regular", "black_friday", "vip"]
+```
 
 ## Coupon Methods
 
-### `applyCoupon(couponCode)`
+### applyCoupon
 
-Applies a discount coupon to the cart.
+Applies a coupon code to the cart.
 
-<Code code={`// Apply coupon
-next.applyCoupon('SAVE20')
-  .then(result => {
-    if (result.success) {
-      console.log('Coupon applied:', result.discount);
-    } else {
-      console.log('Coupon failed:', result.error);
-    }
-  });
+```javascript
+const result = await next.applyCoupon('SAVE20');
+if (result.success) {
+  console.log('Coupon applied:', result.message);
+  console.log('Discount amount:', result.data.amount);
+} else {
+  console.error('Coupon error:', result.message);
+}
+```
 
-// Check if coupon is valid before applying
-next.validateCoupon('SAVE20')
-  .then(isValid => {
-    if (isValid) {
-      next.applyCoupon('SAVE20');
-    }
-  });`} lang="javascript" />
+**Parameters:**
+- `code` (string): Coupon code to apply
 
-### `removeCoupon(couponCode?)`
+**Returns:**
+```typescript
+Promise<{
+  success: boolean;
+  message: string;
+  data?: { amount: number; formatted: string; }
+}>
+```
+
+### removeCoupon
 
 Removes a coupon from the cart.
 
-<Code code={`// Remove specific coupon
+```javascript
 next.removeCoupon('SAVE20');
+```
 
-// Remove all coupons
-next.removeCoupon();`} lang="javascript" />
+**Parameters:**
+- `code` (string): Coupon code to remove
 
-## Event & Analytics Methods
+**Returns:** `void`
 
-### `track(eventName, eventData?)`
+### getCoupons
 
-Tracks custom events for analytics.
+Returns all applied coupons.
 
-<Code code={`// Track custom event
-next.track('product_viewed', {
-  productId: 'premium-plan',
-  source: 'homepage'
+```javascript
+const coupons = next.getCoupons();
+coupons.forEach(coupon => {
+  console.log(`${coupon.code}: ${coupon.amount.formatted} off`);
 });
+```
 
-// Track conversion events
-next.track('lead_generated', {
-  email: 'user@example.com',
-  source: 'popup'
+**Returns:** `AppliedCoupon[]`
+
+### validateCoupon
+
+Validates a coupon without applying it.
+
+```javascript
+const validation = next.validateCoupon('TESTCODE');
+if (validation.valid) {
+  console.log('Coupon is valid');
+} else {
+  console.log('Invalid:', validation.message);
+}
+```
+
+**Parameters:**
+- `code` (string): Coupon code to validate
+
+**Returns:**
+```typescript
+{
+  valid: boolean;
+  message?: string;
+}
+```
+
+## Tracking & Analytics Methods
+
+### trackViewItemList
+
+Tracks when users view a list of products.
+
+```javascript
+// Basic tracking
+await next.trackViewItemList(['1', '2', '3']);
+
+// With list context
+await next.trackViewItemList(
+  ['1', '2', '3'], 
+  'homepage', 
+  'Featured Products'
+);
+```
+
+**Parameters:**
+- `packageIds` (Array<string|number>): Array of package IDs
+- `listId` (string, optional): Unique list identifier
+- `listName` (string, optional): Human-readable list name
+
+**Returns:** `Promise<void>`
+
+### trackViewItem
+
+Tracks when a single item is viewed.
+
+```javascript
+await next.trackViewItem('1');
+```
+
+**Parameters:**
+- `packageId` (string|number): Package ID viewed
+
+**Returns:** `Promise<void>`
+
+### trackAddToCart
+
+Tracks when an item is added to cart.
+
+```javascript
+await next.trackAddToCart('1', 2);
+```
+
+**Parameters:**
+- `packageId` (string|number): Package ID added
+- `quantity` (number, optional): Quantity added (default: 1)
+
+**Returns:** `Promise<void>`
+
+### trackRemoveFromCart
+
+Tracks when an item is removed from cart.
+
+```javascript
+await next.trackRemoveFromCart('1', 1);
+```
+
+**Parameters:**
+- `packageId` (string|number): Package ID removed
+- `quantity` (number, optional): Quantity removed (default: 1)
+
+**Returns:** `Promise<void>`
+
+### trackBeginCheckout
+
+Tracks when checkout process begins.
+
+```javascript
+await next.trackBeginCheckout();
+```
+
+**Returns:** `Promise<void>`
+
+### trackPurchase
+
+Tracks completed purchases.
+
+```javascript
+// Track with order data
+await next.trackPurchase(orderData);
+```
+
+**Parameters:**
+- `orderData` (any): Order data object
+
+**Returns:** `Promise<void>`
+
+### trackCustomEvent
+
+Tracks custom events with optional data.
+
+```javascript
+// Simple custom event
+await next.trackCustomEvent('video_played');
+
+// Custom event with data
+await next.trackCustomEvent('user_engagement', {
+  section: 'hero',
+  action: 'video_play',
+  duration: 30
 });
+```
 
-// Track with revenue data
-next.track('purchase_completed', {
-  value: 99.99,
-  currency: 'USD',
-  items: ['product-1', 'product-2']
-});`} lang="javascript" />
+**Parameters:**
+- `eventName` (string): Custom event name
+- `data` (Record<string, any>, optional): Additional event data
 
-### `setUserData(userData)`
+**Returns:** `Promise<void>`
 
-Sets user information for tracking and personalization.
+## Shipping Methods
 
-<Code code={`// Set user data
-next.setUserData({
-  email: 'user@example.com',
-  firstName: 'John',
-  lastName: 'Doe',
-  phone: '+1234567890',
-  customerId: 'cust_123'
-});
+### getShippingMethods
 
-// Update specific fields
-next.setUserData({
-  subscriptionStatus: 'premium'
-});`} lang="javascript" />
+Returns all available shipping methods from the campaign.
+
+```javascript
+const methods = next.getShippingMethods();
+console.log(methods);
+// [
+//   {ref_id: 1, code: "standard", price: "0.00"},
+//   {ref_id: 2, code: "express", price: "12.99"}
+// ]
+```
+
+**Returns:** `Array<{ref_id: number; code: string; price: string}>`
+
+### getSelectedShippingMethod
+
+Returns the currently selected shipping method.
+
+```javascript
+const selected = next.getSelectedShippingMethod();
+if (selected) {
+  console.log('Shipping:', selected.name, selected.price);
+}
+```
+
+**Returns:** `{id: number; name: string; price: number; code: string} | null`
+
+### setShippingMethod
+
+Sets the shipping method by ID.
+
+```javascript
+// Set standard shipping (ID 1)
+await next.setShippingMethod(1);
+
+// Set express shipping (ID 2)
+await next.setShippingMethod(2);
+```
+
+**Parameters:**
+- `methodId` (number): The ref_id of the shipping method from campaign data
+
+**Returns:** `Promise<void>`
+
+**Throws:** Error if shipping method ID is not found in campaign data
 
 ## Upsell Methods
 
-### `showUpsell(upsellId, options?)`
+### addUpsell
 
-Displays an upsell offer programmatically.
+Adds upsell items to a completed order. Only available after order completion.
 
-<Code code={`// Show basic upsell
-next.showUpsell('premium-upgrade');
+```javascript
+// Add single upsell
+const result = await next.addUpsell({ 
+  packageId: 123, 
+  quantity: 1 
+});
 
-// Show with custom options
-next.showUpsell('bundle-offer', {
-  modal: true,
-  autoShow: false,
-  customData: {
-    triggerSource: 'cart_page'
+// Add multiple upsells at once
+const result = await next.addUpsell({ 
+  items: [
+    { packageId: 123, quantity: 1 },
+    { packageId: 456, quantity: 2 }
+  ]
+});
+
+console.log('Upsells added:', result.addedLines);
+console.log('Total upsell value:', result.totalValue);
+```
+
+**Parameters:**
+- `options.packageId` (number, optional): Single package ID to add
+- `options.quantity` (number, optional): Quantity for single item (default: 1)
+- `options.items` (Array, optional): Multiple items to add
+  - `items[].packageId` (number): Package ID
+  - `items[].quantity` (number, optional): Quantity (default: 1)
+
+**Returns:**
+```typescript
+Promise<{
+  order: Order;
+  addedLines: OrderLine[];
+  totalValue: number;
+}>
+```
+
+**Throws:** Error if no order exists or order doesn't support upsells
+
+### canAddUpsells
+
+Checks if upsells can be added to the current order.
+
+```javascript
+if (next.canAddUpsells()) {
+  console.log('Order supports upsells');
+}
+```
+
+**Returns:** `boolean`
+
+## Behavioral Methods
+
+### fomo
+
+Starts FOMO (Fear of Missing Out) popup notifications showing recent purchases.
+
+```javascript
+// Start with default configuration
+await next.fomo();
+
+// Start with custom configuration
+await next.fomo({
+  items: [
+    { text: "Premium Package", image: "/images/product1.jpg" },
+    { text: "Starter Bundle", image: "/images/product2.jpg" }
+  ],
+  customers: {
+    US: ["John", "Sarah", "Mike", "Emma"],
+    GB: ["James", "Sophie", "Oliver", "Lily"]
+  },
+  maxMobileShows: 2,
+  displayDuration: 5000,
+  delayBetween: 12000,
+  initialDelay: 3000
+});
+```
+
+**Parameters:**
+- `config` (object, optional):
+  - `items` (Array): Custom product items to show
+  - `customers` (object): Customer names by country code
+  - `maxMobileShows` (number): Max popups on mobile (default: 2)
+  - `displayDuration` (number): How long to show each popup in ms (default: 5000)
+  - `delayBetween` (number): Delay between popups in ms (default: 12000)
+  - `initialDelay` (number): Initial delay before first popup in ms (default: 3000)
+
+**Returns:** `Promise<void>`
+
+### stopFomo
+
+Stops FOMO popup notifications.
+
+```javascript
+next.stopFomo();
+```
+
+**Returns:** `void`
+
+### exitIntent
+
+Shows exit intent popup when user tries to leave the page.
+
+```javascript
+await next.exitIntent({
+  image: 'https://example.com/special-offer.jpg',
+  action: async () => {
+    // Apply discount when popup is clicked
+    await next.applyCoupon('EXIT20');
+    // Close the popup
   }
-});`} lang="javascript" />
+});
+```
 
-### `acceptUpsell(upsellId, packageId?)`
+**Parameters:**
+- `options.image` (string): URL of the image to display
+- `options.action` (function, optional): Function to call when popup is clicked
 
-Accepts an upsell offer and adds items to cart.
+**Returns:** `Promise<void>`
 
-<Code code={`// Accept upsell
-next.acceptUpsell('premium-upgrade')
-  .then(result => {
-    console.log('Upsell accepted:', result);
-  });
+### disableExitIntent
 
-// Accept specific package from upsell
-next.acceptUpsell('bundle-offer', 'premium-bundle');`} lang="javascript" />
+Disables the exit intent popup.
+
+```javascript
+next.disableExitIntent();
+```
+
+**Returns:** `void`
+
+## Event Methods
+
+### on
+
+Subscribe to internal SDK events.
+
+```javascript
+// Listen for cart updates
+next.on('cart:updated', (cartState) => {
+  console.log('Cart updated:', cartState.items.length, 'items');
+});
+
+// Listen for item additions
+next.on('cart:item-added', (data) => {
+  console.log('Item added:', data.packageId);
+});
+```
+
+**Parameters:**
+- `event` (string): Event name from EventMap
+- `handler` (function): Event handler function
+
+**Returns:** `void`
+
+### off
+
+Unsubscribe from internal SDK events.
+
+```javascript
+const handler = (data) => console.log(data);
+next.on('cart:updated', handler);
+// Later...
+next.off('cart:updated', handler);
+```
+
+**Parameters:**
+- `event` (string): Event name
+- `handler` (function): Handler function to remove
+
+**Returns:** `void`
+
+### Available Events
+
+```javascript
+// Cart events
+next.on('cart:updated', (cartState) => { /* ... */ });
+next.on('cart:item-added', (data) => { /* ... */ });
+next.on('cart:item-removed', (data) => { /* ... */ });
+next.on('cart:quantity-changed', (data) => { /* ... */ });
+
+// Campaign events
+next.on('campaign:loaded', (campaign) => { /* ... */ });
+
+// Checkout events
+next.on('checkout:started', (data) => { /* ... */ });
+next.on('checkout:form-initialized', () => { /* ... */ });
+
+// Order events
+next.on('order:completed', (order) => { /* ... */ });
+
+// Payment events
+next.on('payment:tokenized', (data) => { /* ... */ });
+next.on('payment:error', (error) => { /* ... */ });
+
+// Coupon events
+next.on('coupon:applied', (coupon) => { /* ... */ });
+next.on('coupon:removed', (code) => { /* ... */ });
+
+// Upsell events
+next.on('upsell:added', (data) => { /* ... */ });
+next.on('upsell:skipped', (data) => { /* ... */ });
+next.on('upsell:viewed', (data) => { /* ... */ });
+next.on('upsell:accepted', (data) => { /* ... */ });
+
+// Other events
+next.on('error:occurred', (error) => { /* ... */ });
+next.on('config:updated', (config) => { /* ... */ });
+next.on('fomo:shown', (data) => { /* ... */ });
+next.on('route:changed', (route) => { /* ... */ });
+```
 
 ## Utility Methods
 
-### `formatCurrency(amount, currency?)`
+### formatPrice
 
-Formats monetary amounts according to campaign settings.
+Formats a price value according to campaign currency.
 
-<Code code={`// Format with default currency
-const formatted = next.formatCurrency(29.99);
-// Returns: "$29.99"
+```javascript
+const formatted = next.formatPrice(19.99); // "$19.99"
+const euros = next.formatPrice(19.99, 'EUR'); // "€19.99"
+```
 
-// Format with specific currency
-const euros = next.formatCurrency(29.99, 'EUR');
-// Returns: "€29.99"
+**Parameters:**
+- `amount` (number): Price amount to format
+- `currency` (string, optional): Currency code (uses campaign currency if not provided)
 
-// Use in display updates
-document.getElementById('price').textContent = 
-  next.formatCurrency(next.getCart().total);`} lang="javascript" />
+**Returns:** `string`
 
-### `redirect(url, options?)`
+### validateCheckout
 
-Performs redirects with cart data preservation.
+Validates if the cart is ready for checkout.
 
-<Code code={`// Simple redirect
-next.redirect('/checkout');
+```javascript
+const validation = next.validateCheckout();
+if (!validation.valid) {
+  console.error('Cannot checkout:', validation.errors);
+}
+```
 
-// Redirect with options
-next.redirect('/checkout', {
-  preserveCart: true,
-  newWindow: false,
-  delay: 1000
+**Returns:**
+```typescript
+{
+  valid: boolean;
+  errors?: string[];
+}
+```
+
+### registerCallback
+
+Register a callback for specific SDK operations (legacy compatibility).
+
+```javascript
+next.registerCallback('itemAdded', (data) => {
+  console.log('Item added:', data);
+  // data includes: cartLines, cartTotals, campaignData, appliedCoupons
 });
+```
 
-// Conditional redirect
-if (next.getCart().total > 100) {
-  next.redirect('/premium-checkout');
-} else {
-  next.redirect('/standard-checkout');
-}`} lang="javascript" />
+**Parameters:**
+- `type` (CallbackType): Type of callback. Available types:
+  - `'beforeRender'` - Before cart UI renders
+  - `'afterRender'` - After cart UI renders  
+  - `'beforeCheckout'` - Before checkout starts
+  - `'afterCheckout'` - After checkout completes
+  - `'beforeRedirect'` - Before order redirect
+  - `'itemAdded'` - After item added to cart
+  - `'itemRemoved'` - After item removed from cart
+  - `'cartCleared'` - After cart cleared
+- `callback` (function): Callback function that receives `CallbackData`
 
-### `generateCheckoutUrl(options?)`
+**Returns:** `void`
 
-Generates a checkout URL with current cart contents.
+## Debug API
 
-<Code code={`// Basic checkout URL
-const checkoutUrl = next.generateCheckoutUrl();
+The debug API provides powerful utilities for development and troubleshooting. Available only when debug mode is enabled with `?debugger=true`.
 
-// With custom options
-const customUrl = next.generateCheckoutUrl({
-  successUrl: 'https://mysite.com/success',
-  cancelUrl: 'https://mysite.com/cancel',
-  couponCode: 'SAVE10'
-});
+### Accessing Debug Mode
 
-console.log('Checkout URL:', customUrl);`} lang="javascript" />
+```javascript
+// Check if debug mode is available
+if (window.nextDebug) {
+  console.log('Debug mode available');
+}
+```
 
-## Debug Methods
+### Store Access
 
-### `enableDebug(level?)`
+Direct access to all internal stores:
 
-Enables debugging mode with console logging.
+```javascript
+// Cart store
+const cartState = nextDebug.stores.cart.getState();
+console.log('Cart items:', cartState.items);
 
-<Code code={`// Enable basic debugging
-next.enableDebug();
+// Campaign store
+const campaignState = nextDebug.stores.campaign.getState();
+console.log('Campaign data:', campaignState.data);
 
-// Enable with specific level
-next.enableDebug('verbose');
+// Config store
+const configState = nextDebug.stores.config.getState();
+console.log('API key:', configState.apiKey);
 
-// Available levels: 'basic', 'verbose', 'silent'`} lang="javascript" />
+// Checkout store
+const checkoutState = nextDebug.stores.checkout.getState();
 
-### `getDebugInfo()`
+// Order store
+const orderState = nextDebug.stores.order.getState();
 
-Returns comprehensive debug information.
+// Attribution store
+const attributionState = nextDebug.stores.attribution.getState();
+```
 
-<Code code={`const debugInfo = next.getDebugInfo();
+### Cart Debug Methods
 
-console.log('Debug info:', {
-  sdkVersion: debugInfo.version,
-  apiKey: debugInfo.apiKey,
-  cartState: debugInfo.cart,
-  eventHistory: debugInfo.events,
-  errors: debugInfo.errors
-});`} lang="javascript" />
+```javascript
+// Quick cart operations
+nextDebug.addToCart(123);        // Add single item
+nextDebug.addToCart(123, 3);     // Add with quantity
+nextDebug.removeFromCart(123);   // Remove item
+nextDebug.updateQuantity(123, 5); // Update quantity
+
+// Add test items (packages 2, 7, 9)
+nextDebug.addTestItems();
+```
 
 ## Error Handling
 
-All SDK methods return promises and should include error handling:
+### Standard Error Handling
 
-<Code code={`// Proper error handling
-next.addItem({ packageId: 'invalid-id' })
-  .then(result => {
-    console.log('Success:', result);
-  })
-  .catch(error => {
-    console.error('Error:', error.message);
-    
-    // Handle specific error types
-    if (error.code === 'PACKAGE_NOT_FOUND') {
-      alert('Product not available');
-    } else if (error.code === 'NETWORK_ERROR') {
-      alert('Please check your connection');
-    }
-  });
+```javascript
+try {
+  await next.addItem({ packageId: 123, quantity: 2 });
+  console.log('Item added successfully');
+} catch (error) {
+  console.error('Failed to add item:', error.message);
+}
+```
 
-// Global error handler
-document.addEventListener('next:error', function(event) {
-  console.error('SDK Error:', event.detail);
-});`} lang="javascript" />
+### Async Method Handling
 
-## Method Chaining
+```javascript
+// Most cart/coupon methods are async
+const result = await next.applyCoupon('INVALID_CODE');
+if (!result.success) {
+  console.error('Coupon error:', result.message);
+  // Show user-friendly message
+}
+```
 
-Many methods support chaining for cleaner code:
+### Event Error Handling
 
-<Code code={`// Chain multiple operations
-next.clearCart()
-  .addItem({ packageId: 'product-1' })
-  .addItem({ packageId: 'product-2' })
-  .applyCoupon('SAVE20')
-  .then(cart => {
-    console.log('Final cart:', cart);
-  });`} lang="javascript" />
+```javascript
+next.on('error:occurred', (error) => {
+  console.error('SDK error:', error);
+  // Handle errors gracefully
+});
+```
 
----
+## Best Practices
 
-## Quick Reference
+1. **Always wait for SDK initialization** before calling methods
+2. **Use async/await** for cleaner code with promises
+3. **Handle errors appropriately** - check success flags and catch exceptions
+4. **Subscribe to events** for reactive UI updates
+5. **Use debug mode** during development for troubleshooting
+6. **Batch operations** when possible for better performance
+7. **Validate inputs** before calling methods
+8. **Clean up event listeners** when no longer needed
 
-<div class="api-table">
+## Common Patterns
 
-| Method | Purpose | Returns |
-|--------|---------|---------|
-| `addItem(options)` | Add item to cart | Promise |
-| `removeItem(id, qty?)` | Remove item from cart | Promise |
-| `getCart()` | Get current cart state | Object |
-| `clearCart()` | Empty the cart | Promise |
-| `applyCoupon(code)` | Apply discount code | Promise |
-| `track(event, data?)` | Track analytics event | void |
-| `redirect(url, options?)` | Navigate with cart data | void |
-| `formatCurrency(amount)` | Format price display | string |
+### E-commerce Flow
 
-</div>
+```javascript
+window.nextReady.push(async function() {
+  // 1. Track product list view
+  await next.trackViewItemList(['1', '2', '3'], 'category', 'Best Sellers');
+  
+  // 2. Add item to cart
+  await next.addItem({ packageId: 1, quantity: 2 });
+  
+  // 3. Apply coupon
+  const couponResult = await next.applyCoupon('SAVE20');
+  if (couponResult.success) {
+    console.log('Discount applied');
+  }
+  
+  // 4. Track checkout start
+  await next.trackBeginCheckout();
+});
+```
 
-For complete examples and advanced usage, see our [Interactive Playground](/playground/) or browse the [API Events Reference](/api/events/).
+### Reactive Cart Updates
+
+```javascript
+// Update UI when cart changes
+next.on('cart:updated', (cartState) => {
+  document.querySelector('.cart-count').textContent = next.getCartCount();
+  document.querySelector('.cart-total').textContent = cartState.totals.total.formatted;
+});
+
+// React to specific actions
+next.on('cart:item-added', (data) => {
+  showNotification(`${data.packageName} added to cart`);
+});
+```
+
+## Related Documentation
+
+- [Events](/docs/javascript-api/events/) - Event system reference
+- [Callbacks](/docs/javascript-api/callbacks/) - Legacy callback patterns
+- [Cart Methods](/docs/javascript-api/cart-methods/) - Detailed cart operations
+- [Analytics](/docs/javascript-api/analytics/) - Tracking and analytics

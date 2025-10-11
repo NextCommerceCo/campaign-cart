@@ -1,8 +1,445 @@
 ---
-title: State
-description: Documentation coming soon
+title: State & Conditional Attributes
+description: Control element visibility and behavior based on cart and application state
+sidebar:
+  order: 4
 ---
 
-# State
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
 
-Documentation coming soon.
+**State attributes enable conditional logic and visibility control without JavaScript.**
+
+## The Problem
+
+Traditional approaches require JavaScript to show/hide elements, check cart state, and manage conditional UI. This leads to flash of unstyled content, JavaScript-dependent layouts, and complex state management code scattered across your application.
+
+## Core Principles
+
+- **Declarative Conditions:** Express logic directly in HTML
+- **CSS-Based Performance:** Uses classes for visibility, not DOM manipulation
+- **Real-Time Evaluation:** Conditions re-evaluate on every state change
+- **Layout Stability:** No content shifting or reflow
+
+## Conditional Display
+
+### data-next-show
+
+Show elements when conditions are true.
+
+```html
+<!-- Simple boolean conditions -->
+<div data-next-show="cart.hasItems">
+  Cart has items
+</div>
+
+<div data-next-show="cart.isEmpty">
+  Cart is empty
+</div>
+
+<!-- Comparison operators -->
+<div data-next-show="cart.total > 100">
+  Free shipping unlocked!
+</div>
+
+<div data-next-show="cart.totalQuantity >= 3">
+  Bulk discount applied
+</div>
+
+<!-- Complex expressions -->
+<div data-next-show="cart.total > 50 && cart.totalQuantity < 10">
+  Eligible for express checkout
+</div>
+
+<!-- Function calls -->
+<div data-next-show="cart.hasItem(123)">
+  Premium package selected
+</div>
+```
+
+### data-next-hide
+
+Hide elements when conditions are true (inverse of show).
+
+```html
+<!-- Hide when cart is empty -->
+<button data-next-hide="cart.isEmpty">
+  Proceed to Checkout
+</button>
+
+<!-- Hide when item in cart -->
+<button data-next-hide="cart.hasItem(123)">
+  Add Premium Package
+</button>
+
+<!-- Hide below threshold -->
+<div data-next-hide="cart.total < 25">
+  Checkout available
+</div>
+```
+
+## Profile Conditionals
+
+Show/hide content based on active customer profiles.
+
+### data-next-show-if-profile
+
+```html
+<!-- Show for specific profile -->
+<div data-next-show-if-profile="premium">
+  Premium member exclusive pricing
+</div>
+
+<!-- Show for multiple profiles -->
+<div data-next-show-if-profile="vip,premium,gold">
+  Member benefits apply
+</div>
+
+<!-- A/B testing -->
+<div data-next-show-if-profile="control">
+  Standard pricing: $99
+</div>
+
+<div data-next-show-if-profile="test">
+  Special offer: $89
+</div>
+```
+
+### data-next-hide-if-profile
+
+```html
+<!-- Hide from specific profiles -->
+<div data-next-hide-if-profile="premium">
+  Upgrade to premium for better prices
+</div>
+
+<!-- Hide upgrade prompts from members -->
+<div data-next-hide-if-profile="vip,premium">
+  <button>Become a Member</button>
+</div>
+```
+
+## State Classes
+
+The SDK automatically applies CSS classes based on element state.
+
+### Cart State Classes
+
+| Class | Applied When | Used On |
+|-------|-------------|---------|
+| `.next-in-cart` | Item is in cart | Action buttons |
+| `.next-cart-empty` | Cart has no items | Body element |
+| `.next-cart-has-items` | Cart has items | Body element |
+
+```css
+/* Style based on cart state */
+.next-in-cart {
+  background: green;
+  color: white;
+}
+
+.next-cart-empty .checkout-button {
+  opacity: 0.5;
+  pointer-events: none;
+}
+```
+
+### Action State Classes
+
+| Class | Applied When | Used On |
+|-------|-------------|---------|
+| `.next-loading` | Action in progress | Action elements |
+| `.next-disabled` | Element disabled | Interactive elements |
+| `.next-active` | Element is active | Toggle elements |
+
+```css
+/* Loading state */
+.next-loading {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* Disabled state */
+.next-disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+```
+
+### Selection State Classes
+
+| Class | Applied When | Used On |
+|-------|-------------|---------|
+| `.next-selected` | Option selected | Selector options |
+| `.next-selector-active` | Has active selection | Selector container |
+
+```css
+/* Selected option */
+.next-selected {
+  border: 2px solid blue;
+  background: #f0f8ff;
+}
+
+/* Active selector */
+.next-selector-active .default-message {
+  display: none;
+}
+```
+
+### Profile State Classes
+
+| Class | Applied When | Used On |
+|-------|-------------|---------|
+| `.next-profile-[id]` | Profile is active | Body element |
+| `.next-profile-active` | Any profile active | Profile elements |
+
+```css
+/* Profile-specific styles */
+.next-profile-premium .price {
+  color: gold;
+}
+
+.next-profile-test .cta-button {
+  background: orange;
+}
+```
+
+## Conditional Logic Syntax
+
+### Supported Operators
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `===` | Strict equality | `cart.total === 100` |
+| `!==` | Not equal | `profile.active !== 'premium'` |
+| `>` | Greater than | `cart.totalQuantity > 5` |
+| `<` | Less than | `cart.total < 50` |
+| `>=` | Greater or equal | `cart.items.length >= 3` |
+| `<=` | Less or equal | `cart.discount <= 10` |
+| `&&` | Logical AND | `cart.hasItems && cart.total > 100` |
+| `||` | Logical OR | `cart.isEmpty || cart.total < 25` |
+| `!` | Logical NOT | `!cart.hasItem(123)` |
+
+### Available Properties
+
+#### Cart Properties
+
+```html
+<!-- Boolean properties -->
+<div data-next-show="cart.isEmpty">...</div>
+<div data-next-show="cart.hasItems">...</div>
+<div data-next-show="cart.hasDiscount">...</div>
+<div data-next-show="cart.hasShipping">...</div>
+
+<!-- Numeric properties -->
+<div data-next-show="cart.total > 0">...</div>
+<div data-next-show="cart.subtotal > 0">...</div>
+<div data-next-show="cart.totalQuantity > 0">...</div>
+<div data-next-show="cart.itemCount > 0">...</div>
+<div data-next-show="cart.discount > 0">...</div>
+<div data-next-show="cart.shipping > 0">...</div>
+
+<!-- Functions -->
+<div data-next-show="cart.hasItem(123)">...</div>
+<div data-next-show="cart.hasPackage(123)">...</div>
+```
+
+#### Package Properties
+
+```html
+<!-- Check package properties -->
+<div data-next-show="package.123.inStock">...</div>
+<div data-next-show="package.123.hasDiscount">...</div>
+<div data-next-show="package.123.quantity > 0">...</div>
+<div data-next-show="package.123.price < 100">...</div>
+```
+
+#### Order Properties
+
+```html
+<!-- Order state checks -->
+<div data-next-show="order.exists">...</div>
+<div data-next-show="order.completed">...</div>
+<div data-next-show="order.total > 0">...</div>
+<div data-next-show="order.hasUpsells">...</div>
+```
+
+#### Profile Properties
+
+```html
+<!-- Profile checks -->
+<div data-next-show="profile.active === 'premium'">...</div>
+<div data-next-show="profile.is('vip')">...</div>
+<div data-next-show="profile.exists">...</div>
+```
+
+## Common Patterns
+
+### Progressive Checkout Button
+
+```html
+<!-- Disabled until minimum met -->
+<button 
+  data-next-action="checkout"
+  data-next-show="cart.total >= 25"
+  disabled>
+  Checkout (Minimum $25)
+</button>
+
+<!-- Alternative message -->
+<div data-next-show="cart.total < 25">
+  Add $<span data-next-display="25 - cart.total">0</span> more to checkout
+</div>
+```
+
+### Tiered Messaging
+
+```html
+<!-- Different messages based on cart value -->
+<div data-next-show="cart.total === 0">
+  Your cart is empty
+</div>
+
+<div data-next-show="cart.total > 0 && cart.total < 50">
+  Add $<span data-next-display="50 - cart.total">0</span> for free shipping
+</div>
+
+<div data-next-show="cart.total >= 50 && cart.total < 100">
+  Free shipping unlocked! Add $<span data-next-display="100 - cart.total">0</span> for a gift
+</div>
+
+<div data-next-show="cart.total >= 100">
+  Free shipping + gift included!
+</div>
+```
+
+### Smart Product Recommendations
+
+```html
+<!-- Show complementary products based on cart -->
+<div data-next-show="cart.hasItem(123) && !cart.hasItem(456)">
+  <h3>Complete your set</h3>
+  <button data-next-action="add-to-cart" data-next-package-id="456">
+    Add matching accessory
+  </button>
+</div>
+
+<!-- Show upgrade option -->
+<div data-next-show="cart.hasItem(123) && !cart.hasItem(789)">
+  <button data-next-action="swap" 
+          data-next-package-id="789"
+          data-next-remove-package-id="123">
+    Upgrade to Premium
+  </button>
+</div>
+```
+
+### Quantity-Based Offers
+
+```html
+<!-- Bulk discount tiers -->
+<div data-next-show="cart.totalQuantity >= 3 && cart.totalQuantity < 5">
+  10% bulk discount applied
+</div>
+
+<div data-next-show="cart.totalQuantity >= 5 && cart.totalQuantity < 10">
+  15% bulk discount applied
+</div>
+
+<div data-next-show="cart.totalQuantity >= 10">
+  20% bulk discount applied - Maximum savings!
+</div>
+```
+
+## Performance Considerations
+
+### Efficient Conditions
+
+✅ **Use simple conditions when possible**
+```html
+<div data-next-show="cart.hasItems">
+```
+
+✅ **Combine related conditions**
+```html
+<div data-next-show="cart.total > 50 && cart.totalQuantity > 2">
+```
+
+✅ **Use built-in properties**
+```html
+<div data-next-show="cart.isEmpty">
+```
+
+### Avoid Complex Nesting
+
+❌ **Don't nest conditions unnecessarily**
+```html
+<!-- Inefficient -->
+<div data-next-show="cart.hasItems">
+  <div data-next-show="cart.total > 0">
+    <div data-next-show="cart.totalQuantity > 0">
+```
+
+✅ **Combine into single condition**
+```html
+<!-- Efficient -->
+<div data-next-show="cart.hasItems && cart.total > 0">
+```
+
+## Debugging State
+
+With `?debugger=true`, the SDK shows:
+- Current evaluated values
+- Condition results
+- Applied state classes
+- Re-evaluation frequency
+
+```html
+<!-- Debug mode shows evaluation -->
+<div data-next-show="cart.total > 100"
+     data-debug-condition="cart.total > 100"
+     data-debug-result="false"
+     data-debug-values="cart.total=75">
+  Free shipping
+</div>
+```
+
+## Edge Cases
+
+### Null Safety
+
+The SDK safely handles null/undefined values:
+
+```html
+<!-- Safe even if package doesn't exist -->
+<div data-next-show="package.999.price > 0">
+  <!-- Won't show or cause errors -->
+</div>
+```
+
+### Race Conditions
+
+Conditions are evaluated after data loads:
+
+```html
+<!-- Won't flicker during load -->
+<div data-next-show="campaign.isLoaded && cart.total > 0">
+  Ready to checkout
+</div>
+```
+
+### Dynamic Updates
+
+Conditions re-evaluate when data changes:
+
+```javascript
+// Changing cart will update all conditions
+await next.addItem({ packageId: 123 });
+// All data-next-show/hide automatically update
+```
+
+## Related Documentation
+
+- [Display Attributes](/docs/data-attributes/display/) - Showing dynamic data
+- [Action Attributes](/docs/data-attributes/actions/) - Interactive elements
+- [CSS Classes](/docs/reference/css-classes/) - Styling state classes
+- [Events](/docs/javascript-api/events/) - Responding to state changes
