@@ -2266,7 +2266,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     // Check if we're in dev mode by looking for debug param
     const isDebug = new URLSearchParams(window.location.search).get('debug') === 'true';
-    const baseUrl = isDebug ? 'http://localhost:3000' : '';
+
+    // Use non-versioned CDN path for better caching across SDK versions
+    const baseUrl = isDebug
+      ? 'http://localhost:3000'
+      : 'https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart/dist';
 
     const style = document.createElement('style');
     style.id = styleId;
