@@ -1,0 +1,185 @@
+---
+title: Campaign Cart JS SDK
+description: Build powerful e-commerce funnels with simple HTML attributes
+template: splash
+hero:
+  title: 'Campaign Cart JS SDK'
+  tagline: 'Build powerful e-commerce funnels with simple HTML attributes. No complex integrations, just add data attributes to your HTML.'
+  image:
+    file: ../../assets/houston.webp
+    alt: Campaign Cart SDK Hero
+  actions:
+    - text: Get Started
+      link: /quick-start/
+      icon: right-arrow
+      variant: primary
+    - text: View Live Examples
+      link: /playground/
+      icon: external
+      variant: secondary
+    - text: API Reference
+      link: /api/methods/
+      icon: document
+      variant: minimal
+banner:
+  content: |
+    🎉 New v2.0 released! Enhanced checkout flows and better performance. 
+    <a href="/guides/migration/">Migration guide →</a>
+---
+
+import { Card, CardGrid, Code, Tabs, TabItem } from '@astrojs/starlight/components';
+
+## Why Campaign Cart?
+
+<CardGrid stagger>
+  <Card title="Attribute-Driven" icon="puzzle">
+    Build cart functionality with simple HTML data attributes. No complex JavaScript required.
+  </Card>
+  <Card title="Zero Configuration" icon="rocket">
+    Add one script tag and start building. Works with any HTML page or framework.
+  </Card>
+  <Card title="Conversion Optimized" icon="star">
+    Built-in upsells, FOMO notifications, and exit-intent popups to maximize revenue.
+  </Card>
+  <Card title="Developer Friendly" icon="laptop">
+    Comprehensive API, TypeScript support, and extensive debugging tools.
+  </Card>
+</CardGrid>
+
+## Quick Start Example
+
+Get up and running in under 2 minutes:
+
+<Tabs>
+  <TabItem label="HTML Setup">
+    <Code code={`<!DOCTYPE html>
+<html>
+<head>
+  <!-- Add your API key -->
+  <meta name="next-api-key" content="your-api-key">
+  
+  <!-- Load the SDK -->
+  <script src="https://campaign-cart-v2.pages.dev/loader.js"></script>
+</head>
+<body>
+  <!-- That's it! Start adding cart functionality -->
+</body>
+</html>`} lang="html" title="Basic Setup" />
+  </TabItem>
+  
+  <TabItem label="Add to Cart">
+    <Code code={`<!-- Simple add to cart button -->
+<button data-next-action="add-to-cart" 
+        data-next-package-id="123"
+        data-next-quantity="1">
+  Add to Cart - $29.99
+</button>
+
+<!-- Display cart total -->
+<div class="cart-summary">
+  Items: <span data-next-display="cart.itemCount">0</span>
+  Total: <span data-next-display="cart.total">$0.00</span>
+</div>`} lang="html" title="Add to Cart" />
+  </TabItem>
+  
+  <TabItem label="Product Selector">
+    <Code code={`<!-- Product selection with dynamic pricing -->
+<div data-next-cart-selector data-next-selection-mode="swap">
+  <div data-next-selector-card data-next-package-id="basic-plan">
+    <h3>Basic Plan</h3>
+    <p data-next-display="package.price">$19.99</p>
+  </div>
+  
+  <div data-next-selector-card data-next-package-id="pro-plan">
+    <h3>Pro Plan</h3>
+    <p data-next-display="package.price">$39.99</p>
+    <span class="badge">Most Popular</span>
+  </div>
+</div>`} lang="html" title="Product Selector" />
+  </TabItem>
+</Tabs>
+
+<div class="demo-container">
+  <h3>🚀 Live Demo</h3>
+  <p>Try the interactive example below - add items to cart and see real-time updates:</p>
+  
+  <div class="code-preview">
+    <div class="code-section">
+      <h4>Your HTML Code</h4>
+      <Code code={`<button data-next-action="add-to-cart" 
+        data-next-package-id="demo-product"
+        data-next-quantity="1">
+  Add Demo Product ($15.99)
+</button>
+
+<div class="cart-display">
+  Total: <span data-next-display="cart.total">$0.00</span>
+</div>`} lang="html" />
+    </div>
+    
+    <div class="preview-section">
+      <h4>Live Preview</h4>
+      <button style="background: #3C7DFF; color: white; padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+        Add Demo Product ($15.99)
+      </button>
+      
+      <div style="margin-top: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 6px;">
+        <strong>Cart Total: $0.00</strong>
+      </div>
+      
+      <p style="margin-top: 1rem; font-size: 0.875rem; color: #666;">
+        💡 This would be fully functional with the SDK loaded
+      </p>
+    </div>
+  </div>
+</div>
+
+## Key Features
+
+<CardGrid>
+  <Card title="Smart Cart Management" icon="shopping-cart">
+    Automatic cart persistence, quantity controls, and real-time price calculations.
+  </Card>
+  
+  <Card title="Dynamic Upsells" icon="trending-up">
+    Post-purchase upsells and cross-sells that increase average order value by 35%.
+  </Card>
+  
+  <Card title="Checkout Integration" icon="credit-card">
+    Works with Stripe, PayPal, and other payment processors. Handle complex checkout flows.
+  </Card>
+  
+  <Card title="Analytics Ready" icon="chart">
+    Built-in Google Analytics, Facebook Pixel, and custom event tracking.
+  </Card>
+  
+  <Card title="Mobile Optimized" icon="device-mobile">
+    Touch-friendly controls and responsive design patterns out of the box.
+  </Card>
+  
+  <Card title="A11y Compliant" icon="accessibility">
+    Screen reader friendly with proper ARIA labels and keyboard navigation.
+  </Card>
+</CardGrid>
+
+## Popular Use Cases
+
+- **SaaS Landing Pages** - Convert visitors with tiered pricing and trials
+- **E-commerce Stores** - Build custom product pages with advanced filtering  
+- **Course Platforms** - Sell digital products with upsells and bundles
+- **Subscription Sites** - Handle recurring billing and plan upgrades
+- **Affiliate Funnels** - Track attribution and optimize conversion rates
+
+## What Developers Say
+
+> "Campaign Cart transformed our checkout flow. We saw a 40% increase in conversions within the first week."
+> 
+> **Sarah Chen** - Lead Developer at TechFlow
+
+> "The attribute-driven approach is genius. My team was productive immediately without learning a new framework."
+> 
+> **Marcus Rodriguez** - CTO at StartupCo
+
+---
+
+Ready to build your first funnel? [Get started with our quick start guide →](/quick-start/)

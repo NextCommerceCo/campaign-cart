@@ -1,0 +1,127 @@
+---
+title: Quick Start Guide
+description: Get Campaign Cart JS SDK running in under 5 minutes
+---
+
+import { Steps, Code, Tabs, TabItem, Card, CardGrid, Aside } from '@astrojs/starlight/components';
+
+# Quick Start Guide
+
+Get Campaign Cart JS SDK up and running in under 5 minutes.
+
+<Aside type="tip">
+**New to Campaign Cart?** This SDK lets you build e-commerce functionality using simple HTML attributes. No complex JavaScript required!
+</Aside>
+
+## Prerequisites
+
+- Basic HTML knowledge
+- A web page (can be static HTML, WordPress, Shopify, etc.)
+- A Campaign Cart account and API key
+
+<Steps>
+
+1. **Get Your API Key**
+
+   Sign up at Campaign Cart Dashboard and get your API key from the settings page.
+
+2. **Add SDK to Your Page**
+
+   Add these two lines to your HTML head section:
+
+   ```html
+   <!-- Campaign Cart Configuration -->
+   <meta name="next-api-key" content="your-api-key-here">
+
+   <!-- Campaign Cart SDK -->
+   <script src="https://campaign-cart-v2.pages.dev/loader.js"></script>
+   ```
+
+3. **Create Your First Product**
+
+   Add a simple product with an add-to-cart button:
+
+   ```html
+   <div class="product">
+     <h2>Awesome Product</h2>
+     <p class="price">$29.99</p>
+     
+     <button data-next-action="add-to-cart" 
+             data-next-package-id="product-123"
+             data-next-quantity="1">
+       Add to Cart
+     </button>
+   </div>
+   ```
+
+4. **Add Cart Display**
+
+   Show cart contents and total to your customers:
+
+   ```html
+   <div class="cart-summary">
+     <h3>Your Cart</h3>
+     
+     <!-- Cart item count -->
+     <p>Items: <span data-next-display="cart.itemCount">0</span></p>
+     
+     <!-- Cart total -->
+     <p class="total">
+       Total: <span data-next-display="cart.total">$0.00</span>
+     </p>
+     
+     <!-- Checkout button (only show when cart has items) -->
+     <div data-next-show="cart.hasItems">
+       <button onclick="checkout()" class="checkout-btn">
+         Proceed to Checkout
+       </button>
+     </div>
+   </div>
+   ```
+
+5. **Test Your Implementation**
+
+   Open your page in a browser and:
+   - Click "Add to Cart" - you should see the cart count increase
+   - The cart total should update automatically
+   - Items should persist if you refresh the page
+
+</Steps>
+
+## Next Steps
+
+<CardGrid>
+  <Card title="Add Product Selection" icon="settings">
+    Learn how to create product selectors with multiple options and dynamic pricing.
+  </Card>
+  
+  <Card title="Configure Checkout" icon="credit-card">
+    Set up payment processing and checkout flows.
+  </Card>
+  
+  <Card title="Add Upsells" icon="trending-up">
+    Increase revenue with post-purchase upsells and cross-sells.
+  </Card>
+  
+  <Card title="View Live Examples" icon="external">
+    See working examples you can copy and customize.
+  </Card>
+</CardGrid>
+
+## Common Issues
+
+<Aside type="caution">
+**API Key Missing?** Make sure you've added the next-api-key meta tag with your actual API key from the dashboard.
+</Aside>
+
+**Nothing happening when clicking buttons?**
+- Check browser console for errors
+- Verify the SDK script is loading
+- Make sure your API key is correct
+- Check that you're using the correct package IDs
+
+**Cart not persisting?**
+- Cart data is stored in localStorage by default
+- Clear browser data if testing different configurations
+
+Need help? Check our Troubleshooting Guide or API Reference.

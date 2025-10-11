@@ -29,3 +29,5 @@ coverage/
 /clients
 
 .claude/
+
+docs-astro-demo/

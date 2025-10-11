@@ -1,0 +1,213 @@
+/* Campaign Cart Documentation Custom Styles */
+
+:root {
+  /* Brand Colors */
+  --sl-color-accent: #3C7DFF;
+  --sl-color-accent-high: #1E40FF;
+  --sl-color-accent-low: #E6F0FF;
+  
+  /* Custom spacing */
+  --content-max-width: 60rem;
+  
+  /* Interactive demo styles */
+  --demo-border: 1px solid var(--sl-color-gray-3);
+  --demo-bg: var(--sl-color-gray-1);
+  --demo-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode overrides */
+:root[data-theme='dark'] {
+  --sl-color-accent: #5B8FFF;
+  --sl-color-accent-high: #E6F0FF;
+  --sl-color-accent-low: #1E40FF;
+  --demo-bg: var(--sl-color-gray-6);
+  --demo-border: 1px solid var(--sl-color-gray-5);
+}
+
+/* Interactive Demo Container */
+.demo-container {
+  border: var(--demo-border);
+  border-radius: 12px;
+  background: var(--demo-bg);
+  padding: 2rem;
+  margin: 2rem 0;
+  box-shadow: var(--demo-shadow);
+  position: relative;
+}
+
+.demo-container::before {
+  content: '🚀 Live Demo';
+  position: absolute;
+  top: -12px;
+  left: 1rem;
+  background: var(--sl-color-accent);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* Code examples with live preview */
+.code-preview {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 2rem 0;
+  border: var(--demo-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.code-preview .code-section {
+  padding: 1.5rem;
+  background: var(--sl-color-gray-1);
+}
+
+.code-preview .preview-section {
+  padding: 1.5rem;
+  background: white;
+  border-left: var(--demo-border);
+}
+
+:root[data-theme='dark'] .code-preview .preview-section {
+  background: var(--sl-color-gray-6);
+}
+
+/* Interactive playground styles */
+.playground-container {
+  min-height: 60vh;
+  border: var(--demo-border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 2rem 0;
+}
+
+.playground-container iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* Feature cards with hover effects */
+.feature-card {
+  border: var(--demo-border);
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: all 0.2s ease;
+  background: var(--demo-bg);
+}
+
+.feature-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--demo-shadow);
+  border-color: var(--sl-color-accent);
+}
+
+/* Hero section enhancements */
+.hero-section {
+  text-align: center;
+  padding: 4rem 0;
+}
+
+.hero-demo {
+  max-width: 800px;
+  margin: 3rem auto;
+  border: var(--demo-border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+/* API documentation tables */
+.api-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 2rem 0;
+}
+
+.api-table th,
+.api-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--sl-color-gray-3);
+}
+
+.api-table th {
+  background: var(--sl-color-gray-1);
+  font-weight: 600;
+}
+
+.api-table code {
+  background: var(--sl-color-gray-2);
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  font-size: 0.875em;
+}
+
+/* Badge styles for new features */
+.new-badge {
+  background: linear-gradient(135deg, #10B981, #059669);
+  color: white;
+  padding: 0.125rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .code-preview {
+    grid-template-columns: 1fr;
+  }
+  
+  .demo-container {
+    padding: 1rem;
+  }
+  
+  .hero-demo {
+    margin: 2rem auto;
+  }
+}
+
+/* Syntax highlighting enhancements */
+pre {
+  border-radius: 8px !important;
+  border: var(--demo-border) !important;
+}
+
+/* Custom scrollbars for code blocks */
+pre::-webkit-scrollbar {
+  height: 8px;
+}
+
+pre::-webkit-scrollbar-track {
+  background: var(--sl-color-gray-2);
+  border-radius: 4px;
+}
+
+pre::-webkit-scrollbar-thumb {
+  background: var(--sl-color-gray-4);
+  border-radius: 4px;
+}
+
+pre::-webkit-scrollbar-thumb:hover {
+  background: var(--sl-color-gray-5);
+}
+
+/* Loading states for interactive demos */
+.demo-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: var(--sl-color-gray-5);
+  font-style: italic;
+}
+
+.demo-loading::before {
+  content: '⏳';
+  margin-right: 0.5rem;
+}
