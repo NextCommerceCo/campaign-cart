@@ -1601,8 +1601,57 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       
       const autocomplete = new window.google.maps.places.Autocomplete(input, options);
       this.autocompleteInstances.set(fieldKey, autocomplete);
-      
+
       this.logger.debug(`Autocomplete created for ${fieldKey}, restricted to: ${countryValue}`);
+
+      // Add close button to autocomplete container after it's created
+      const addCloseButton = () => {
+        const pacContainer = document.querySelector('.pac-container:not([data-close-added])') as HTMLElement;
+        if (pacContainer) {
+          pacContainer.setAttribute('data-close-added', 'true');
+
+          // Create close button
+          const closeButton = document.createElement('button');
+          closeButton.type = 'button';
+          closeButton.className = 'pac-close-button';
+          closeButton.innerHTML = '×';
+          closeButton.setAttribute('aria-label', 'Close suggestions');
+          closeButton.style.cssText = `
+            position: absolute;
+            top: 0.4rem;
+            right: 0.75rem;
+            background: none;
+            border: none;
+            font-size: 20px;
+            line-height: 24px;
+            color: #6b7280;
+            cursor: pointer;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+            width: 24px;
+            height: 24px;
+          `;
+
+          closeButton.addEventListener('mouseenter', () => {
+            closeButton.style.backgroundColor = '#f3f4f6';
+          });
+
+          closeButton.addEventListener('mouseleave', () => {
+            closeButton.style.backgroundColor = 'transparent';
+          });
+
+          closeButton.addEventListener('click', () => {
+            pacContainer.style.display = 'none';
+            input.blur();
+          });
+
+          pacContainer.appendChild(closeButton);
+        }
+      };
 
       // Handle place selection
       autocomplete.addListener('place_changed', async () => {
@@ -1613,6 +1662,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         }
 
         await this.fillAddressFromAutocomplete(place, type);
+      });
+
+      // Add close button when dropdown opens
+      input.addEventListener('focus', () => {
+        setTimeout(addCloseButton, 100);
       });
 
       // Prevent form submission on Enter

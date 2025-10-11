@@ -227,3 +227,86 @@
     transform: translateY(-50%) scale(1);
   }
 }
+
+/* ============================================
+   Google Places Autocomplete Customization
+   ============================================ */
+
+/* Main container - appears outside the form element */
+.pac-container {
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e5e7eb;
+  margin-top: 4px;
+  padding: 12px;
+  background-color: var(--brand--color--surface, #ffffff);
+  font-family: inherit;
+  z-index: 9999;
+}
+
+.pac-container.pac-logo {
+  padding: 0.5rem !important;
+}
+
+/* Add header bar with "Suggestions" text */
+.pac-container::before {
+  content: 'Suggestions';
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  margin: 0rem -0.75rem !important;
+  padding: 0rem 0.75rem !important;
+  text-transform: uppercase;
+  padding-bottom: 0.5rem !important;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  border-bottom: 1px solid #e5e7eb;
+  line-height: 24px;
+}
+
+/* Individual suggestion items */
+.pac-item {
+  margin: 0rem -0.75rem !important;
+  background-color: var(--brand--color--background, #ffffff);
+  border: none !important;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Hover state */
+.pac-item:hover,
+.pac-item.pac-item-selected {
+  background-color: #f9fafb;
+}
+
+/* Main address text */
+.pac-item-query {
+  font-size: 14px;
+  font-weight: 400;
+  color: #111827;
+}
+
+/* Matched text - what user typed */
+.pac-matched {
+  font-weight: 700;
+  color: #111827;
+}
+
+/* Hide the default place icon */
+.pac-icon {
+  display: none;
+}
+
+/* Google logo styling */
+.pac-logo::after,
+.hdpi.pac-logo::after {
+  opacity: 0.6 !important;
+  display: inline-block !important;
+  background-size: contain !important;
+  margin-top: 0.75rem;
+  width: 120px !important;
+  height: 14px !important;
+  filter: grayscale(1);
+}
