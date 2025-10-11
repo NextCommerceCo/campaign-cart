@@ -1,13 +1,16 @@
 /**
  * NextCommerce Campaign Cart SDK v2
- * 
+ *
  * Modern TypeScript SDK for seamless e-commerce integration via data attributes.
  * Provides progressive enhancement without disrupting existing HTML/CSS.
- * 
+ *
  * @version 0.2.0
  * @author NextCommerce
  * @license MIT
  */
+
+// Import styles
+import './styles';
 
 export { NextCommerce } from './core/NextCommerce';
 export { SDKInitializer } from './enhancers/core/SDKInitializer';
@@ -108,9 +111,7 @@ if (typeof window !== 'undefined') {
         // Profile management (if profiles are configured)
         import('./core/ProfileManager');
         import('./enhancers/profile/ProfileSwitcherEnhancer');
-        
-        // Checkout services (heavier modules)
-        // import('./enhancers/checkout/services/AddressService');
+
       }, { timeout: 5000 });
     } else {
       // Fallback for browsers without requestIdleCallback

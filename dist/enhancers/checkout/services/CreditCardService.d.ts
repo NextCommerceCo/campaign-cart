@@ -1,3 +1,4 @@
+import { SpreedlyConfig } from '../../../types/global';
 declare global {
     interface Window {
         Spreedly: any;
@@ -33,6 +34,7 @@ export interface CreditCardValidationState {
 export declare class CreditCardService {
     private logger;
     private environmentKey;
+    private config?;
     private isReady;
     private validationState;
     private onReadyCallback?;
@@ -49,7 +51,7 @@ export declare class CreditCardService {
     private fieldHasValue;
     private originalPlaceholders;
     private labelBehavior;
-    constructor(environmentKey: string);
+    constructor(environmentKey: string, config?: SpreedlyConfig);
     initialize(): Promise<void>;
     tokenizeCard(cardData: CreditCardData): Promise<string>;
     validateCreditCard(cardData: CreditCardData): {

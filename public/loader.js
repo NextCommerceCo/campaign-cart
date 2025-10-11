@@ -86,6 +86,15 @@
     }
   }
   
+  // Preconnect to Spreedly for faster checkout loading
+  if (!isDebug) {
+    const spreedlyPreconnect = document.createElement('link');
+    spreedlyPreconnect.rel = 'preconnect';
+    spreedlyPreconnect.href = 'https://core.spreedly.com';
+    spreedlyPreconnect.crossOrigin = 'anonymous';
+    document.head.appendChild(spreedlyPreconnect);
+  }
+
   // Preload the SDK module
   const link = document.createElement('link');
   link.rel = 'modulepreload';

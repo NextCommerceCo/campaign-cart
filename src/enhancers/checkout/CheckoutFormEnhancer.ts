@@ -22,6 +22,8 @@ import { ExpressCheckoutProcessor } from './processors/ExpressCheckoutProcessor'
 import { OrderManager } from './managers/OrderManager';
 import { nextAnalytics, EcommerceEvents } from '@/utils/analytics/index';
 import { userDataStorage } from '@/utils/analytics/userDataStorage';
+import intlTelInput from 'intl-tel-input';
+import 'intl-tel-input/build/css/intlTelInput.css';
 
 // Consolidated constants
 const FIELD_SELECTORS = ['[data-next-checkout-field]', '[os-checkout-field]'] as const;
@@ -129,13 +131,16 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
   public async initialize(): Promise<void> {
     this.validateElement();
-    
+
     if (!(this.element instanceof HTMLFormElement)) {
       throw new Error('CheckoutFormEnhancer must be applied to a form element');
     }
-    
+
     this.form = this.element;
     this.form.noValidate = true;
+
+    // Inject intl-tel-input CSS variables for flag/globe images
+    this.injectIntlTelInputStyles();
 
     // Check if this is a multi-step checkout
     this.detectMultiStepCheckout();
@@ -173,8 +178,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       this.orderManager
     );
     
-    // Check for phone input library
-    this.isIntlTelInputAvailable = !!(window as any).intlTelInput && !!(window as any).intlTelInputUtils;
+    // intl-tel-input is now bundled with the SDK - always available
+    this.isIntlTelInputAvailable = true;
     
     // Initialize validator
     this.validator = new CheckoutValidator(
@@ -220,17 +225,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     
     // Set up phone validation callback for validator after phone inputs are initialized
     this.validator.setPhoneValidator((phoneNumber: string, type: 'shipping' | 'billing' = 'shipping') => {
-      if (!this.isIntlTelInputAvailable) {
-        // Fallback to basic validation
-        return /^[\d\s\-\+\(\)]+$/.test(phoneNumber);
-      }
-      
       const instance = this.phoneInputs.get(type);
       if (instance) {
         return instance.isValidNumber();
       }
-      
-      // If no instance found, use basic validation
+
+      // Fallback to basic validation if instance not found
       return /^[\d\s\-\+\(\)]+$/.test(phoneNumber);
     });
     
@@ -465,19 +465,44 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const monthField = this.fields.get('cc-month') || this.fields.get('exp-month');
     const yearField = this.fields.get('cc-year') || this.fields.get('exp-year');
 
+          // Month names for display
+      const monthNames = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ];
+
+
     if (monthField instanceof HTMLSelectElement) {
-      monthField.innerHTML = '<option value="">Month</option>';
+      monthField.innerHTML = '';
+      // Create placeholder for month
+      const monthPlaceholder = document.createElement('option');
+      monthPlaceholder.value = '';
+      monthPlaceholder.textContent = 'Month';
+      monthPlaceholder.disabled = true;
+      monthPlaceholder.selected = true;
+      monthPlaceholder.hidden = true; // Hide from dropdown list
+      monthField.appendChild(monthPlaceholder);
+
       for (let i = 1; i <= 12; i++) {
         const month = i.toString().padStart(2, '0');
         const option = document.createElement('option');
         option.value = month;
-        option.textContent = month;
+        option.textContent = `(${month}) ${monthNames[i - 1]}`;
         monthField.appendChild(option);
       }
     }
 
     if (yearField instanceof HTMLSelectElement) {
-      yearField.innerHTML = '<option value="">Year</option>';
+      yearField.innerHTML = '';
+      // Create placeholder for year
+      const yearPlaceholder = document.createElement('option');
+      yearPlaceholder.value = '';
+      yearPlaceholder.textContent = 'Year';
+      yearPlaceholder.disabled = true;
+      yearPlaceholder.selected = true;
+      yearPlaceholder.hidden = true; // Hide from dropdown list
+      yearField.appendChild(yearPlaceholder);
+
       const currentYear = new Date().getFullYear();
       for (let i = 0; i < 20; i++) {
         const year = currentYear + i;
@@ -1183,6 +1208,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     countrySelect.innerHTML = '';
     if (firstOption && !firstOption.value) {
       firstOption.disabled = true;
+      firstOption.hidden = true; // Hide from dropdown list
       countrySelect.appendChild(firstOption);
     }
     
@@ -1204,11 +1230,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private populateBillingCountryDropdown(): void {
     const billingCountryField = this.billingFields.get('billing-country');
     if (!(billingCountryField instanceof HTMLSelectElement)) return;
-    
+
     const firstOption = billingCountryField.options[0];
     billingCountryField.innerHTML = '';
     if (firstOption && !firstOption.value) {
       firstOption.disabled = true;
+      firstOption.hidden = true; // Hide from dropdown list
       billingCountryField.appendChild(firstOption);
     }
     
@@ -1322,8 +1349,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       const placeholderOption = document.createElement('option');
       placeholderOption.value = '';
       placeholderOption.textContent = `Select ${countryData.countryConfig.stateLabel}`;
-      placeholderOption.disabled = false; // Keep it selectable but invalid for validation
+      placeholderOption.disabled = true;
       placeholderOption.selected = true;
+      placeholderOption.hidden = true; // Hide from dropdown list but show when selected
       provinceField.appendChild(placeholderOption);
       
       countryData.states.forEach((state: any) => {
@@ -1573,8 +1601,57 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       
       const autocomplete = new window.google.maps.places.Autocomplete(input, options);
       this.autocompleteInstances.set(fieldKey, autocomplete);
-      
+
       this.logger.debug(`Autocomplete created for ${fieldKey}, restricted to: ${countryValue}`);
+
+      // Add close button to autocomplete container after it's created
+      const addCloseButton = () => {
+        const pacContainer = document.querySelector('.pac-container:not([data-close-added])') as HTMLElement;
+        if (pacContainer) {
+          pacContainer.setAttribute('data-close-added', 'true');
+
+          // Create close button
+          const closeButton = document.createElement('button');
+          closeButton.type = 'button';
+          closeButton.className = 'pac-close-button';
+          closeButton.innerHTML = '×';
+          closeButton.setAttribute('aria-label', 'Close suggestions');
+          closeButton.style.cssText = `
+            position: absolute;
+            top: 0.4rem;
+            right: 0.75rem;
+            background: none;
+            border: none;
+            font-size: 20px;
+            line-height: 24px;
+            color: #6b7280;
+            cursor: pointer;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+            width: 24px;
+            height: 24px;
+          `;
+
+          closeButton.addEventListener('mouseenter', () => {
+            closeButton.style.backgroundColor = '#f3f4f6';
+          });
+
+          closeButton.addEventListener('mouseleave', () => {
+            closeButton.style.backgroundColor = 'transparent';
+          });
+
+          closeButton.addEventListener('click', () => {
+            pacContainer.style.display = 'none';
+            input.blur();
+          });
+
+          pacContainer.appendChild(closeButton);
+        }
+      };
 
       // Handle place selection
       autocomplete.addListener('place_changed', async () => {
@@ -1585,6 +1662,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         }
 
         await this.fillAddressFromAutocomplete(place, type);
+      });
+
+      // Add close button when dropdown opens
+      input.addEventListener('focus', () => {
+        setTimeout(addCloseButton, 100);
       });
 
       // Prevent form submission on Enter
@@ -2172,6 +2254,33 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // PHONE INPUT MANAGEMENT
   // ============================================================================
 
+  /**
+   * Inject CSS variables for intl-tel-input flag and globe images
+   * This ensures the bundled images are properly loaded
+   */
+  private injectIntlTelInputStyles(): void {
+    const styleId = 'intl-tel-input-paths';
+
+    // Don't inject if already exists
+    if (document.getElementById(styleId)) return;
+
+    // Check if we're in dev mode by looking for debug param
+    const isDebug = new URLSearchParams(window.location.search).get('debug') === 'true';
+    const baseUrl = isDebug ? 'http://localhost:3000' : '';
+
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = `
+      .iti {
+        --iti-path-flags-1x: url('${baseUrl}/intl-tel-input/img/flags.webp');
+        --iti-path-flags-2x: url('${baseUrl}/intl-tel-input/img/flags@2x.webp');
+        --iti-path-globe-1x: url('${baseUrl}/intl-tel-input/img/globe.webp');
+        --iti-path-globe-2x: url('${baseUrl}/intl-tel-input/img/globe@2x.webp');
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   private initializePhoneInputs(): void {
     if (!this.isIntlTelInputAvailable) return;
 
@@ -2207,14 +2316,15 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
                         phoneField.hasAttribute('required');
       phoneField.placeholder = isRequired ? 'Phone*' : 'Phone (Optional)';
       
-      const instance = (window as any).intlTelInput(phoneField, {
+      const instance = intlTelInput(phoneField, {
         separateDialCode: false,
         nationalMode: true,
         autoPlaceholder: 'off',  // Turn off auto placeholder to use our custom one
-        utilsScript: 'https://cdn.jsdelivr.net/npm/intl-tel-input@18.2.1/build/js/utils.js',
-        preferredCountries: ['us', 'ca', 'gb', 'au'],
-        allowDropdown: false,
-        initialCountry: initialCountry,
+        loadUtils: () => import('intl-tel-input/utils'), // Enable formatting/validation
+        countryOrder: ['us', 'ca', 'gb', 'au'],
+        allowDropdown: false,  // Disable dropdown
+        showFlags: true,       // Display flag on the right (since allowDropdown is false)
+        initialCountry: initialCountry.toLowerCase() as any,
         formatOnDisplay: true
       });
 
@@ -2222,32 +2332,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
       // Auto-format as user types
       phoneField.addEventListener('input', () => {
-        if (instance && (window as any).intlTelInputUtils) {
-          const currentValue = phoneField.value;
-          const countryData = instance.getSelectedCountryData();
-          
-          // Format the number as the user types
-          if (currentValue && countryData.iso2) {
-            const formattedNumber = (window as any).intlTelInputUtils.formatNumber(
-              currentValue,
-              countryData.iso2,
-              (window as any).intlTelInputUtils.numberFormat.NATIONAL
-            );
-            
-            // Only update if the formatted number is different to avoid cursor jumping
-            if (formattedNumber !== currentValue) {
-              const cursorPosition = phoneField.selectionStart || 0;
-              const oldLength = currentValue.length;
-              const newLength = formattedNumber.length;
-              
-              phoneField.value = formattedNumber;
-              
-              // Adjust cursor position after formatting
-              const newCursorPosition = cursorPosition + (newLength - oldLength);
-              phoneField.setSelectionRange(newCursorPosition, newCursorPosition);
-            }
-          }
-          
+        if (instance) {
           // Get the full international number for storage
           const fullNumber = instance.getNumber();
           if (type === 'shipping') {
@@ -2262,32 +2347,15 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         }
       });
       
-      // Format on blur to ensure proper formatting when user leaves the field
-      phoneField.addEventListener('blur', () => {
-        if (instance && (window as any).intlTelInputUtils) {
-          const countryData = instance.getSelectedCountryData();
-          const currentValue = phoneField.value;
-          
-          if (currentValue && countryData.iso2) {
-            const formattedNumber = (window as any).intlTelInputUtils.formatNumber(
-              currentValue,
-              countryData.iso2,
-              (window as any).intlTelInputUtils.numberFormat.NATIONAL
-            );
-            phoneField.value = formattedNumber;
-          }
-        }
-      });
-      
       // Listen for country changes to update phone country
       if (countryField instanceof HTMLSelectElement) {
         const updatePhoneCountry = () => {
           const countryCode = countryField.value;
           if (countryCode && instance) {
-            instance.setCountry(countryCode.toLowerCase());
+            instance.setCountry(countryCode.toLowerCase() as any);
           }
         };
-        
+
         // Listen for country changes
         countryField.addEventListener('change', updatePhoneCountry);
       }
@@ -2305,7 +2373,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     try {
       this.addClass('next-loading-spreedly');
       
-      this.creditCardService = new CreditCardService(environmentKey);
+      // Get Spreedly configuration from config store
+      const config = useConfigStore.getState();
+      const spreedlyConfig = config.paymentConfig?.spreedly;
+
+      this.creditCardService = new CreditCardService(environmentKey, spreedlyConfig);
+      
       
       this.creditCardService.setOnReady(() => {
         this.removeClass('next-loading-spreedly');
@@ -3621,8 +3694,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       const placeholderOption = document.createElement('option');
       placeholderOption.value = '';
       placeholderOption.textContent = `Select ${countryData.countryConfig.stateLabel}`;
-      placeholderOption.disabled = false; // Keep it selectable but invalid for validation
+      placeholderOption.disabled = true;
       placeholderOption.selected = true;
+      placeholderOption.hidden = true; // Hide from dropdown list but show when selected
       billingProvinceField.appendChild(placeholderOption);
       
       countryData.states.forEach((state: any) => {
