@@ -510,6 +510,245 @@ The UI updates immediately while the action processes.
 </form>
 ```
 
+## Specialized Attributes
+
+### Timer Controls
+
+Create countdown timers and expiration behaviors:
+
+```html
+<!-- Timer container -->
+<div data-next-timer="3600" data-persistence-id="offer-timer">
+  <!-- Timer display -->
+  <span data-next-timer-display>60:00</span>
+</div>
+
+<!-- Elements to show when timer expires -->
+<div data-next-timer-expired data-persistence-id="offer-timer">
+  <p>Offer has expired!</p>
+</div>
+```
+
+**Timer Attributes:**
+- `data-next-timer` - Timer duration in seconds
+- `data-persistence-id` - Unique ID for timer persistence
+- `data-next-timer-display` - Element to show countdown
+- `data-next-timer-expired` - Elements to show when expired
+
+### Checkout Form Fields
+
+Mark form fields for automatic checkout processing:
+
+```html
+<form data-next-checkout>
+  <!-- Customer information -->
+  <input type="email" data-next-checkout-field="email" required>
+  <input type="text" data-next-checkout-field="fname" placeholder="First Name">
+  <input type="text" data-next-checkout-field="lname" placeholder="Last Name">
+  <input type="tel" data-next-checkout-field="phone" placeholder="Phone">
+  
+  <!-- Billing address -->
+  <input type="text" data-next-checkout-field="billing-address1" placeholder="Address">
+  <input type="text" data-next-checkout-field="billing-city" placeholder="City">
+  <input type="text" data-next-checkout-field="billing-zip" placeholder="ZIP">
+  
+  <!-- Payment method selection -->
+  <select data-next-checkout-payment="method">
+    <option value="credit_card">Credit Card</option>
+    <option value="paypal">PayPal</option>
+  </select>
+  
+  <!-- Credit card fields -->
+  <input type="text" data-next-checkout-field="cc-number" placeholder="Card Number">
+  <select data-next-checkout-field="cc-month">
+    <option value="01">01</option>
+    <option value="02">02</option>
+    <!-- ... -->
+  </select>
+  <select data-next-checkout-field="cc-year">
+    <option value="2024">2024</option>
+    <option value="2025">2025</option>
+    <!-- ... -->
+  </select>
+  <input type="text" data-next-checkout-field="cvv" placeholder="CVV">
+  
+  <!-- Marketing consent -->
+  <input type="checkbox" data-next-checkout-field="accepts_marketing">
+  
+  <button type="submit" data-next-checkout-submit>Complete Order</button>
+</form>
+```
+
+**Checkout Field Types:**
+- `email` - Customer email address
+- `fname`, `lname` - Customer name
+- `phone` - Customer phone number
+- `billing-address1`, `billing-city`, `billing-zip` - Billing address
+- `cc-number`, `cc-month`, `cc-year`, `cvv` - Credit card details
+- `accepts_marketing` - Marketing consent checkbox
+
+### Express Checkout
+
+Enable express checkout buttons (Apple Pay, Google Pay, etc.):
+
+```html
+<!-- Auto-detect and show available methods -->
+<div data-next-express-checkout="auto">
+  <!-- SDK automatically inserts available express checkout buttons -->
+</div>
+
+<!-- Container with custom button placement -->
+<div data-next-express-checkout="container">
+  <h3>Express Checkout</h3>
+  <div data-next-express-checkout="buttons">
+    <!-- Express checkout buttons inserted here -->
+  </div>
+</div>
+
+<!-- Specific express method -->
+<button data-next-express-checkout="apple-pay">
+  Apple Pay
+</button>
+
+<button data-next-express-checkout="google-pay">
+  Google Pay
+</button>
+
+<button data-next-express-checkout="paypal">
+  PayPal Express
+</button>
+```
+
+**Express Checkout Values:**
+- `auto` - Show all available methods
+- `container` - Container for button placement
+- `buttons` - Target element for button injection
+- `apple-pay` - Apple Pay button
+- `google-pay` - Google Pay button
+- `paypal` - PayPal Express button
+
+### Remove Item Controls
+
+Remove specific items from cart:
+
+```html
+<!-- Simple remove button -->
+<button data-next-remove-item data-package-id="123">
+  Remove
+</button>
+
+<!-- Remove with confirmation -->
+<button 
+  data-next-remove-item 
+  data-package-id="123"
+  data-confirm="true"
+  data-confirm-message="Remove this item from your cart?">
+  × Remove
+</button>
+
+<!-- Remove all instances of an item -->
+<button 
+  data-next-remove-item 
+  data-package-id="123"
+  data-remove-all="true">
+  Remove All
+</button>
+```
+
+**Remove Item Attributes:**
+- `data-package-id` - Package ID to remove
+- `data-confirm` - Show confirmation dialog
+- `data-confirm-message` - Custom confirmation text
+- `data-remove-all` - Remove all instances vs. single item
+
+### Checkout Review Fields
+
+Display checkout information for review:
+
+```html
+<div class="checkout-review">
+  <!-- Customer info review -->
+  <div data-next-checkout-review="email">customer@example.com</div>
+  <div data-next-checkout-review="fname">John</div>
+  <div data-next-checkout-review="lname">Doe</div>
+  
+  <!-- Address review -->
+  <div data-next-checkout-review="billing-address1">123 Main St</div>
+  <div data-next-checkout-review="billing-city">Anytown</div>
+  
+  <!-- Payment method review -->
+  <div data-next-checkout-review="payment-method">Credit Card</div>
+</div>
+```
+
+## Advanced Action Patterns
+
+### Multi-Step Checkout
+
+```html
+<!-- Step 1: Customer Info -->
+<form data-next-checkout data-next-checkout-step="customer">
+  <input type="email" data-next-checkout-field="email" required>
+  <input type="text" data-next-checkout-field="fname" required>
+  <input type="text" data-next-checkout-field="lname" required>
+  <button type="submit">Continue to Shipping</button>
+</form>
+
+<!-- Step 2: Shipping -->
+<form data-next-checkout data-next-checkout-step="shipping">
+  <input type="text" data-next-checkout-field="shipping-address1" required>
+  <input type="text" data-next-checkout-field="shipping-city" required>
+  <button type="submit">Continue to Payment</button>
+</form>
+
+<!-- Step 3: Payment -->
+<form data-next-checkout data-next-checkout-step="payment">
+  <input type="text" data-next-checkout-field="cc-number" required>
+  <select data-next-checkout-field="cc-month" required>...</select>
+  <button type="submit">Complete Order</button>
+</form>
+```
+
+### Timer-Based Offers
+
+```html
+<div class="limited-offer" data-next-timer="1800" data-persistence-id="flash-sale">
+  <h2>Flash Sale - <span data-next-timer-display>30:00</span> Left!</h2>
+  
+  <div data-next-hide="timer.expired">
+    <button data-next-action="add-to-cart" data-next-package-id="special-123">
+      Get 50% Off - Limited Time!
+    </button>
+  </div>
+  
+  <div data-next-timer-expired data-persistence-id="flash-sale">
+    <p>Sorry, this offer has expired.</p>
+    <button data-next-action="add-to-cart" data-next-package-id="regular-123">
+      Buy at Regular Price
+    </button>
+  </div>
+</div>
+```
+
+### Conditional Express Checkout
+
+```html
+<!-- Show express checkout based on cart value -->
+<div data-next-show="cart.total.raw > 50" class="express-options">
+  <h3>Quick Checkout Options</h3>
+  <div data-next-express-checkout="auto"></div>
+</div>
+
+<!-- Show specific methods based on region -->
+<div data-next-show="region.country == 'US'">
+  <button data-next-express-checkout="apple-pay">Apple Pay</button>
+</div>
+
+<div data-next-show="region.country == 'CA'">
+  <button data-next-express-checkout="google-pay">Google Pay</button>
+</div>
+```
+
 ## Related Documentation
 
 - [Display Attributes](/docs/data-attributes/display/) - Show dynamic data

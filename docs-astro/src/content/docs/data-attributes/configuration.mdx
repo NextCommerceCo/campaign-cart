@@ -576,6 +576,463 @@ Page-level configuration via meta tags.
 </div>
 ```
 
+## Utility Attributes
+
+General utility attributes for common scenarios.
+
+### Text Transformation
+
+```html
+<!-- Uppercase text -->
+<span data-next-display="package.123.name"
+      data-text-transform="uppercase">
+  PRODUCT NAME
+</span>
+
+<!-- Lowercase text -->
+<span data-next-display="cart.customer.email"
+      data-text-transform="lowercase">
+  user@example.com
+</span>
+
+<!-- Title case -->
+<span data-next-display="package.123.category"
+      data-text-transform="title">
+  Product Category
+</span>
+
+<!-- Sentence case -->
+<span data-next-display="package.123.description"
+      data-text-transform="sentence">
+  Product description here.
+</span>
+```
+
+### String Manipulation
+
+```html
+<!-- Truncate text -->
+<p data-next-display="package.123.description"
+   data-truncate="150"
+   data-truncate-suffix="...">
+  Long description text will be cut off at 150 characters...
+</p>
+
+<!-- Extract first word -->
+<span data-next-display="cart.customer.name"
+      data-extract="first-word">
+  John
+</span>
+
+<!-- Extract last word -->
+<span data-next-display="cart.customer.name"
+      data-extract="last-word">
+  Smith
+</span>
+
+<!-- Extract initials -->
+<span data-next-display="cart.customer.name"
+      data-extract="initials">
+  J.S.
+</span>
+
+<!-- Replace text -->
+<span data-next-display="package.123.status"
+      data-replace="in_stock:In Stock,out_of_stock:Out of Stock">
+  In Stock
+</span>
+```
+
+### Date and Time Utilities
+
+```html
+<!-- Format date -->
+<span data-next-display="order.createdAt"
+      data-date-format="MM/dd/yyyy">
+  12/25/2023
+</span>
+
+<!-- Relative time -->
+<span data-next-display="order.createdAt"
+      data-date-format="relative">
+  2 hours ago
+</span>
+
+<!-- Time only -->
+<span data-next-display="order.createdAt"
+      data-date-format="HH:mm">
+  14:30
+</span>
+
+<!-- Add days to date -->
+<span data-next-display="order.createdAt"
+      data-add-days="7"
+      data-date-format="MM/dd/yyyy">
+  01/01/2024
+</span>
+
+<!-- Countdown to date -->
+<span data-next-countdown="order.estimatedDelivery"
+      data-format="dd:hh:mm:ss">
+  3d 12:45:30
+</span>
+```
+
+### URL and Link Utilities
+
+```html
+<!-- Convert text to URL -->
+<a data-next-display="package.123.name"
+   data-url-base="/products/"
+   data-url-transform="slug"
+   href="/products/awesome-product">
+  Awesome Product
+</a>
+
+<!-- Generate share URL -->
+<a data-next-share="facebook"
+   data-share-url="window.location.href"
+   data-share-title="package.123.name"
+   href="https://facebook.com/sharer/...">
+  Share on Facebook
+</a>
+
+<!-- Email link -->
+<a data-next-display="cart.customer.email"
+   data-link-type="email"
+   data-email-subject="Your Order Confirmation"
+   href="mailto:user@example.com?subject=Your Order Confirmation">
+  user@example.com
+</a>
+
+<!-- Phone link -->
+<a data-next-display="cart.customer.phone"
+   data-link-type="tel"
+   href="tel:+1234567890">
+  (123) 456-7890
+</a>
+```
+
+### CSS Class Utilities
+
+```html
+<!-- Dynamic classes based on values -->
+<div data-next-display="package.123.stock"
+     data-class-map="0:out-of-stock,1-5:low-stock,6+:in-stock"
+     class="in-stock">
+  Stock Level: <span>10</span>
+</div>
+
+<!-- Toggle classes -->
+<button data-next-action="add-to-cart"
+        data-next-package-id="123"
+        data-toggle-class="added"
+        data-toggle-duration="2000">
+  Add to Cart
+</button>
+
+<!-- Conditional classes -->
+<div data-next-show="cart.hasItems"
+     data-show-class="has-items"
+     data-hide-class="empty-cart">
+  Cart content
+</div>
+
+<!-- Progress classes -->
+<div data-next-display="cart.total"
+     data-progress-target="100"
+     data-progress-class="progress-{percentage}">
+  <!-- Adds class like "progress-75" for 75% progress -->
+</div>
+```
+
+### Animation and Transition Utilities
+
+```html
+<!-- Fade in on change -->
+<span data-next-display="cart.total"
+      data-animate="fade"
+      data-animation-duration="300">
+  $99.99
+</span>
+
+<!-- Slide animation -->
+<div data-next-show="cart.hasItems"
+     data-animate="slide"
+     data-slide-direction="down">
+  Cart items
+</div>
+
+<!-- Count up animation -->
+<span data-next-display="cart.count"
+      data-animate="count-up"
+      data-count-duration="500">
+  5
+</span>
+
+<!-- Pulse on change -->
+<button data-next-action="add-to-cart"
+        data-next-package-id="123"
+        data-animate="pulse"
+        data-trigger="success">
+  Add to Cart
+</button>
+```
+
+### Validation and Input Utilities
+
+```html
+<!-- Input validation -->
+<input type="email"
+       data-next-validate="email"
+       data-validate-message="Please enter a valid email"
+       data-validate-class="invalid">
+
+<!-- Real-time formatting -->
+<input type="tel"
+       data-format-input="phone"
+       data-format-pattern="(000) 000-0000"
+       placeholder="(123) 456-7890">
+
+<!-- Auto-complete -->
+<input type="text"
+       data-next-autocomplete="cart.customer.cities"
+       data-autocomplete-limit="5">
+
+<!-- Input masking -->
+<input type="text"
+       data-input-mask="0000-0000-0000-0000"
+       data-mask-placeholder="_"
+       placeholder="0000-0000-0000-0000">
+```
+
+### Performance Utilities
+
+```html
+<!-- Lazy load image -->
+<img data-next-display="package.123.image"
+     data-lazy="true"
+     data-lazy-threshold="100"
+     data-lazy-placeholder="/placeholder.jpg"
+     alt="Product image">
+
+<!-- Preload critical data -->
+<div data-preload="cart,packages"
+     data-preload-priority="high">
+  Critical content
+</div>
+
+<!-- Debounced input -->
+<input type="search"
+       data-next-search="packages"
+       data-debounce="300"
+       data-min-length="3">
+
+<!-- Virtual scrolling -->
+<div data-next-cart-items
+     data-virtual-scroll="true"
+     data-item-height="80"
+     data-buffer-size="5">
+</div>
+```
+
+### Accessibility Utilities
+
+```html
+<!-- Screen reader only text -->
+<span data-next-display="cart.count"
+      data-screen-reader-text="items in cart">
+  5 <span class="sr-only">items in cart</span>
+</span>
+
+<!-- ARIA attributes -->
+<button data-next-action="add-to-cart"
+        data-next-package-id="123"
+        data-aria-label="Add {package.123.name} to cart"
+        data-aria-describedby="product-description">
+  Add to Cart
+</button>
+
+<!-- Live region announcements -->
+<div data-next-display="cart.count"
+     data-announce-changes="true"
+     data-announcement-text="{value} items in cart">
+  5
+</div>
+
+<!-- Focus management -->
+<button data-next-action="add-to-cart"
+        data-next-package-id="123"
+        data-focus-target="#cart-summary"
+        data-focus-delay="500">
+  Add to Cart
+</button>
+```
+
+### Storage Utilities
+
+```html
+<!-- Remember user preferences -->
+<select data-next-remember="currency-preference"
+        data-storage="localStorage">
+  <option value="USD">USD</option>
+  <option value="EUR">EUR</option>
+</select>
+
+<!-- Session storage -->
+<input type="text"
+       data-next-remember="search-query"
+       data-storage="sessionStorage"
+       data-remember-key="last-search">
+
+<!-- Clear storage -->
+<button data-next-action="clear-storage"
+        data-storage-keys="cart-data,user-preferences">
+  Reset All Data
+</button>
+```
+
+### Development Utilities
+
+```html
+<!-- Debug information -->
+<div data-debug="true"
+     data-debug-show="cart"
+     data-debug-format="json">
+  <!-- Shows cart data in debug mode -->
+</div>
+
+<!-- Performance monitoring -->
+<div data-monitor="render-time"
+     data-monitor-threshold="100"
+     data-monitor-alert="console">
+  Content to monitor
+</div>
+
+<!-- Feature flags -->
+<div data-feature-flag="new-checkout"
+     data-fallback="hide">
+  New checkout flow content
+</div>
+
+<!-- A/B testing -->
+<div data-ab-test="checkout-flow"
+     data-variant="a"
+     data-probability="50">
+  Variant A content
+</div>
+```
+
+## Advanced Configuration Patterns
+
+### Multi-Step Form Configuration
+
+```html
+<form data-next-multi-step="true"
+      data-step-validation="true"
+      data-save-progress="true">
+  
+  <!-- Step 1 -->
+  <div data-step="1" 
+       data-step-title="Contact Information"
+       data-next-show="form.currentStep === 1">
+    <input type="email" 
+           name="email" 
+           data-validate="email" 
+           required>
+    <button data-next-step="next"
+            data-validate-current="true">
+      Next
+    </button>
+  </div>
+  
+  <!-- Step 2 -->
+  <div data-step="2" 
+       data-step-title="Shipping Address"
+       data-next-show="form.currentStep === 2">
+    <input type="text" 
+           name="address" 
+           data-validate="required"
+           data-autocomplete="address">
+    <button data-next-step="previous">Back</button>
+    <button data-next-step="next">Next</button>
+  </div>
+  
+  <!-- Step 3 -->
+  <div data-step="3" 
+       data-step-title="Review & Submit"
+       data-next-show="form.currentStep === 3">
+    <button data-next-action="checkout"
+            data-validate-all="true">
+      Complete Order
+    </button>
+  </div>
+</form>
+```
+
+### Dynamic Pricing Configuration
+
+```html
+<div class="pricing-calculator">
+  <!-- Base price -->
+  <div data-next-display="package.123.basePrice"
+       data-format="currency"
+       data-id="base-price">
+    $99.99
+  </div>
+  
+  <!-- Add-ons -->
+  <div data-calculate="true"
+       data-base="base-price"
+       data-add="selected-addons"
+       data-format="currency">
+    $129.99
+  </div>
+  
+  <!-- Quantity discount -->
+  <div data-quantity-discount="true"
+       data-breaks="5:0.1,10:0.15,20:0.2"
+       data-apply-to="calculated-total">
+    Bulk discount applied
+  </div>
+  
+  <!-- Final total -->
+  <div data-next-display="calculated-total"
+       data-add="shipping"
+       data-add="tax"
+       data-format="currency"
+       data-animate="count-up">
+    $156.78
+  </div>
+</div>
+```
+
+### Smart Recommendations
+
+```html
+<div data-recommendations="true"
+     data-based-on="cart.items"
+     data-algorithm="collaborative"
+     data-limit="4"
+     data-exclude="cart.packageIds">
+  
+  <template data-recommendation-template>
+    <div class="recommendation-item">
+      <img data-src="{item.image}" 
+           data-lazy="true"
+           alt="{item.name}">
+      <h4>{item.name}</h4>
+      <span data-format="currency">{item.price}</span>
+      <button data-next-action="add-to-cart"
+              data-next-package-id="{item.id}"
+              data-track="recommendation-click">
+        Add to Cart
+      </button>
+    </div>
+  </template>
+</div>
+```
+
 ## Related Documentation
 
 - [Display Attributes](/docs/data-attributes/display/) - Dynamic data display

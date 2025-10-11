@@ -1,8 +1,467 @@
 ---
 title: Migration Guide
-description: Migrating from other e-commerce platforms
+description: Complete guide to migrating from other e-commerce platforms and SDK versions to Next Commerce.
 ---
 
 # Migration Guide
 
-Documentation coming soon.
+Migrate to Next Commerce from any e-commerce platform or SDK version with confidence. This guide covers platform migrations, version upgrades, and best practices for a smooth transition.
+
+## Platform Migration Overview
+
+Next Commerce provides a seamless path to migrate from existing e-commerce solutions without disrupting your business operations. Our HTML-first approach means minimal code changes and maximum compatibility.
+
+### Supported Migration Paths
+
+- **Shopify/Shopify Plus** - [Detailed Shopify Migration Guide](./from-shopify/)
+- **WooCommerce** - WordPress-based stores
+- **Magento/Adobe Commerce** - Enterprise and community editions
+- **BigCommerce** - SaaS and enterprise solutions
+- **Custom Solutions** - Proprietary or bespoke e-commerce systems
+- **Other JavaScript SDKs** - Klaviyo, Gorgias, etc.
+
+## Migration Strategy
+
+### Phase 1: Assessment & Planning
+
+#### Current State Analysis
+```markdown
+1. **Platform Audit**
+   - Current e-commerce platform
+   - Custom integrations and plugins
+   - Payment gateway configuration
+   - Analytics and tracking setup
+
+2. **Data Requirements**
+   - Product catalog structure
+   - Customer data and segments
+   - Order history and analytics
+   - Marketing automation setup
+
+3. **Technical Dependencies**
+   - Current JavaScript frameworks
+   - Third-party integrations
+   - Custom styling and themes
+   - Performance requirements
+```
+
+#### Migration Timeline
+```markdown
+Week 1-2: Platform assessment and planning
+Week 3-4: Next Commerce setup and configuration
+Week 5-6: Frontend integration and testing
+Week 7-8: Data migration and analytics setup
+Week 9-10: User acceptance testing and optimization
+Week 11-12: Go-live and monitoring
+```
+
+### Phase 2: Next Commerce Setup
+
+#### Campaign Configuration
+```javascript
+// Basic campaign setup
+window.nextConfig = {
+  apiKey: 'your-new-api-key',
+  
+  // Migrate payment settings
+  paymentConfig: {
+    expressCheckout: {
+      requireValidation: true,
+      requiredFields: ['email', 'fname', 'lname']
+    }
+  },
+  
+  // Configure analytics migration
+  analytics: {
+    enabled: true,
+    mode: 'auto',
+    providers: {
+      // Migrate existing analytics
+      gtm: {
+        enabled: true,
+        settings: { containerId: "GTM-XXXXXXX" }
+      }
+    }
+  }
+};
+```
+
+#### Product Data Migration
+```markdown
+1. **Package Creation**
+   - Export product catalog from current platform
+   - Create Next Commerce packages with matching SKUs
+   - Configure pricing and variants
+   - Set up shipping and tax rules
+
+2. **Image and Asset Migration**
+   - Migrate product images and videos
+   - Update image URLs in package configuration
+   - Optimize assets for performance
+
+3. **Metadata Preservation**
+   - Product descriptions and SEO data
+   - Category and tag assignments
+   - Custom fields and attributes
+```
+
+### Phase 3: Frontend Integration
+
+#### Progressive Migration Approach
+
+Replace platform-specific code gradually:
+
+```html
+<!-- Before: Platform-specific cart -->
+<div id="shopify-cart">
+  <!-- Platform-specific markup -->
+</div>
+
+<!-- After: Next Commerce implementation -->
+<div class="cart-container">
+  <div data-next-display="cart.total">$0.00</div>
+  <div data-next-cart-items 
+       data-item-template-id="cart-item-template">
+  </div>
+</div>
+```
+
+#### Common Migration Patterns
+
+**Cart Functionality**
+```html
+<!-- Migrate cart display -->
+<div data-next-display="cart.count">0</div>
+<div data-next-display="cart.total">$0.00</div>
+
+<!-- Migrate add-to-cart buttons -->
+<button data-next-action="add-to-cart" 
+        data-next-package-id="1">
+  Add to Cart
+</button>
+
+<!-- Migrate checkout triggers -->
+<button data-next-action="checkout">
+  Proceed to Checkout
+</button>
+```
+
+**Product Information**
+```html
+<!-- Replace platform product displays -->
+<div data-next-display="packages[0].name">Product Name</div>
+<div data-next-display="packages[0].price">$29.99</div>
+<img data-next-display="packages[0].image" alt="Product">
+```
+
+## Data Preservation
+
+### Customer Data Migration
+
+#### Email List Preservation
+```javascript
+// Preserve customer emails during migration
+window.nextReady.push(function() {
+  // Import existing customer data
+  const existingCustomers = getExistingCustomerList();
+  
+  // Track existing customers for analytics continuity
+  existingCustomers.forEach(customer => {
+    next.identifyCustomer({
+      email: customer.email,
+      firstName: customer.firstName,
+      lastName: customer.lastName,
+      segment: 'migrated_customer'
+    });
+  });
+});
+```
+
+#### Order History Integration
+```javascript
+// Maintain order history context
+function preserveOrderHistory(customerId) {
+  const orderHistory = getPlatformOrderHistory(customerId);
+  
+  // Set customer lifetime value
+  next.setCustomerAttribute('lifetime_value', orderHistory.totalSpent);
+  next.setCustomerAttribute('order_count', orderHistory.orderCount);
+  next.setCustomerAttribute('last_order_date', orderHistory.lastOrderDate);
+}
+```
+
+### Analytics Continuity
+
+#### Google Analytics Migration
+```javascript
+// Preserve GA tracking during migration
+window.nextConfig = {
+  analytics: {
+    providers: {
+      gtm: {
+        enabled: true,
+        settings: {
+          containerId: "GTM-EXISTING", // Keep existing container
+          preserveHistory: true        // Maintain historical data
+        }
+      }
+    }
+  }
+};
+```
+
+#### Custom Event Mapping
+```javascript
+// Map platform events to Next Commerce events
+const eventMappings = {
+  'shopify_add_to_cart': 'cart:item-added',
+  'shopify_checkout_started': 'checkout:started',
+  'shopify_purchase': 'order:completed'
+};
+
+// Preserve existing event structure
+next.on('cart:item-added', function(data) {
+  // Fire legacy event for existing integrations
+  gtag('event', 'add_to_cart', {
+    currency: 'USD',
+    value: data.price,
+    items: [{
+      item_id: data.sku,
+      item_name: data.name,
+      price: data.price,
+      quantity: data.quantity
+    }]
+  });
+});
+```
+
+## Testing Strategy
+
+### Pre-Migration Testing
+
+#### Functionality Verification
+```markdown
+1. **Cart Operations**
+   - [ ] Add items to cart
+   - [ ] Update quantities
+   - [ ] Remove items
+   - [ ] Cart persistence
+
+2. **Checkout Process**
+   - [ ] Guest checkout
+   - [ ] Customer checkout
+   - [ ] Payment processing
+   - [ ] Order confirmation
+
+3. **Analytics Tracking**
+   - [ ] Page views
+   - [ ] Add to cart events
+   - [ ] Checkout events
+   - [ ] Purchase events
+```
+
+#### Performance Comparison
+```javascript
+// Monitor performance during migration
+window.nextReady.push(function() {
+  const startTime = performance.now();
+  
+  next.on('cart:loaded', function() {
+    const loadTime = performance.now() - startTime;
+    console.log(`Cart load time: ${loadTime}ms`);
+    
+    // Compare with previous platform benchmarks
+    reportPerformanceMetrics('cart_load', loadTime);
+  });
+});
+```
+
+### A/B Testing Migration
+
+#### Traffic Splitting
+```javascript
+// Gradually migrate users to new system
+function initMigrationTest() {
+  const migrationPercent = 20; // Start with 20% of traffic
+  const shouldMigrate = Math.random() * 100 < migrationPercent;
+  
+  if (shouldMigrate) {
+    // Load Next Commerce
+    loadNextCommerce();
+    
+    // Track migration cohort
+    gtag('event', 'migration_test', {
+      custom_parameter_1: 'next_commerce',
+      custom_parameter_2: 'v1'
+    });
+  } else {
+    // Keep existing platform
+    loadExistingPlatform();
+  }
+}
+```
+
+## Post-Migration Optimization
+
+### Performance Monitoring
+
+#### Core Web Vitals Tracking
+```javascript
+// Monitor performance after migration
+function trackWebVitals() {
+  // Track Largest Contentful Paint
+  new PerformanceObserver((entryList) => {
+    const entries = entryList.getEntries();
+    const lastEntry = entries[entries.length - 1];
+    
+    gtag('event', 'web_vitals', {
+      metric_name: 'LCP',
+      metric_value: Math.round(lastEntry.startTime),
+      metric_rating: lastEntry.startTime > 2500 ? 'poor' : 'good'
+    });
+  }).observe({ entryTypes: ['largest-contentful-paint'] });
+}
+
+window.nextReady.push(trackWebVitals);
+```
+
+### Conversion Rate Analysis
+
+#### Before/After Comparison
+```javascript
+// Track conversion improvements post-migration
+next.on('order:completed', function(orderData) {
+  // Compare conversion rates
+  const migrationDate = new Date('2024-01-01');
+  const isMigratedOrder = new Date() > migrationDate;
+  
+  gtag('event', 'purchase', {
+    transaction_id: orderData.refId,
+    value: orderData.total,
+    currency: 'USD',
+    custom_parameter_1: isMigratedOrder ? 'post_migration' : 'pre_migration'
+  });
+});
+```
+
+## Rollback Planning
+
+### Emergency Rollback Procedure
+
+#### DNS Rollback
+```markdown
+1. **Immediate Rollback (DNS)**
+   - Switch DNS back to previous platform
+   - Estimated time: 5-10 minutes
+   - Impact: Full platform revert
+
+2. **Partial Rollback (Feature Flags)**
+   - Disable Next Commerce features
+   - Keep existing analytics
+   - Estimated time: 1-2 minutes
+```
+
+#### Code Rollback
+```javascript
+// Feature flag for emergency rollback
+const ENABLE_NEXT_COMMERCE = window.location.search.includes('next=false') ? false : true;
+
+if (ENABLE_NEXT_COMMERCE) {
+  // Load Next Commerce
+  loadNextCommerce();
+} else {
+  // Fallback to previous platform
+  loadPreviousPlatform();
+}
+```
+
+## Common Migration Challenges
+
+### Challenge 1: Custom Styling Conflicts
+
+**Problem**: Existing CSS conflicts with Next Commerce classes
+**Solution**:
+```css
+/* Namespace existing styles */
+.legacy-cart {
+  /* Existing cart styles */
+}
+
+/* Next Commerce styles */
+.next-cart {
+  /* New cart styles */
+}
+```
+
+### Challenge 2: Analytics Data Gaps
+
+**Problem**: Temporary analytics disruption during migration
+**Solution**:
+```javascript
+// Dual tracking during migration
+next.on('cart:item-added', function(data) {
+  // Next Commerce analytics
+  next.track('add_to_cart', data);
+  
+  // Legacy analytics (temporary)
+  if (window.legacyAnalytics) {
+    legacyAnalytics.track('add_to_cart', data);
+  }
+});
+```
+
+### Challenge 3: Third-Party Integration Compatibility
+
+**Problem**: Existing integrations may not work immediately
+**Solution**:
+```javascript
+// Integration adapter pattern
+const IntegrationAdapter = {
+  klaviyo: function(eventName, data) {
+    // Adapt Next Commerce data for Klaviyo
+    if (window._learnq) {
+      _learnq.push(['track', eventName, adaptDataForKlaviyo(data)]);
+    }
+  },
+  
+  gorgias: function(eventName, data) {
+    // Adapt for Gorgias
+    if (window.Gorgias) {
+      Gorgias.track(eventName, adaptDataForGorgias(data));
+    }
+  }
+};
+
+// Use adapter for compatibility
+next.on('cart:item-added', function(data) {
+  IntegrationAdapter.klaviyo('Added to Cart', data);
+  IntegrationAdapter.gorgias('cart_add', data);
+});
+```
+
+## Getting Migration Support
+
+### Pre-Migration Consultation
+
+1. **Technical Assessment** - Review current setup and requirements
+2. **Migration Planning** - Create detailed migration timeline
+3. **Risk Assessment** - Identify potential issues and mitigation strategies
+
+### Migration Assistance
+
+1. **Implementation Support** - Guided setup and configuration
+2. **Testing Support** - Comprehensive testing procedures
+3. **Go-Live Support** - Real-time monitoring during launch
+
+### Post-Migration Support
+
+1. **Performance Optimization** - Fine-tune for optimal performance
+2. **Feature Enhancement** - Implement advanced features
+3. **Ongoing Monitoring** - Continued performance and conversion tracking
+
+## Related Documentation
+
+- [Shopify Migration Guide](./from-shopify/) - Detailed Shopify-specific instructions
+- [Performance Optimization](../optimization/performance/) - Post-migration optimization
+- [Troubleshooting](../troubleshooting/) - Common issues and solutions
+- [Configuration](../../configuration/) - Advanced configuration options

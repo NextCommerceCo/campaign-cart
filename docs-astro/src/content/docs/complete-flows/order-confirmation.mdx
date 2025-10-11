@@ -1,0 +1,609 @@
+---
+title: Order Confirmation
+description: Complete order confirmation page with customer details, order summary, and dynamic order item rendering.
+---
+
+# Order Confirmation
+
+Build comprehensive order confirmation pages that automatically display order details, customer information, and payment summary. The SDK automatically loads order data from URL parameters and provides complete template systems for displaying order items.
+
+## Quick Start
+
+The SDK automatically detects order confirmation pages when the URL contains `?ref_id=ORDER_ID`:
+
+```
+https://example.com/confirmation?ref_id=ORDER_12345
+```
+
+When detected, order data loads automatically and all order attributes become available.
+
+## Basic Order Information
+
+### Order Status and Details
+
+```html
+<div class="order-header">
+  <!-- Loading state -->
+  <div data-next-show="order.isLoading" class="loading">
+    <p>Loading your order...</p>
+  </div>
+  
+  <!-- Error state -->
+  <div data-next-show="order.hasError" class="error">
+    <h2>Order Not Found</h2>
+    <p>Error: <span data-next-display="order.errorMessage">Unknown error</span></p>
+  </div>
+  
+  <!-- Order found -->
+  <div data-next-show="order.exists" data-next-hide="order.isLoading">
+    <h1>Thank You for Your Order!</h1>
+    
+    <!-- Test order warning -->
+    <div class="test-banner" data-next-show="order.isTest">
+      <p data-next-display="order.testBadge">🧪 TEST ORDER</p>
+    </div>
+    
+    <div class="order-info">
+      <p>Order #<span data-next-display="order.number">-</span></p>
+      <p>Reference: <span data-next-display="order.refId">-</span></p>
+      <p>Placed on <span data-next-display="order.createdAt">-</span></p>
+      <p>Status: <span data-next-display="order.status">Processing</span></p>
+    </div>
+  </div>
+</div>
+```
+
+### Customer Information
+
+```html
+<div class="customer-info" data-next-show="order.exists">
+  <h3>Customer Information</h3>
+  <div class="customer-details">
+    <p><strong>Name:</strong> <span data-next-display="order.customer.name">-</span></p>
+    <p><strong>Email:</strong> <span data-next-display="order.customer.email">-</span></p>
+    <p data-next-show="order.customer.phone">
+      <strong>Phone:</strong> <span data-next-display="order.customer.phone">-</span>
+    </p>
+    <p data-next-show="order.customer.acceptsMarketing">
+      ✓ Subscribed to marketing emails
+    </p>
+  </div>
+</div>
+```
+
+## Order Financial Summary
+
+### Complete Pricing Breakdown
+
+```html
+<div class="order-summary" data-next-show="order.exists">
+  <h3>Order Summary</h3>
+  <div class="totals">
+    <!-- Line items subtotal -->
+    <div class="line-item">
+      <span>Subtotal:</span>
+      <span data-next-display="order.subtotal">$0.00</span>
+    </div>
+    
+    <!-- Shipping (if charged) -->
+    <div class="line-item" data-next-show="order.hasShipping">
+      <span>Shipping:</span>
+      <span data-next-display="order.shipping">$0.00</span>
+    </div>
+    
+    <!-- Tax (if charged) -->
+    <div class="line-item" data-next-show="order.hasTax">
+      <span>Tax:</span>
+      <span data-next-display="order.tax">$0.00</span>
+    </div>
+    
+    <!-- Discounts (if applied) -->
+    <div class="line-item" data-next-show="order.hasDiscounts">
+      <span>Discount:</span>
+      <span>-<span data-next-display="order.discounts">$0.00</span></span>
+    </div>
+    
+    <!-- Savings highlight -->
+    <div class="line-item savings" data-next-show="order.hasSavings">
+      <span>You saved:</span>
+      <span>
+        <span data-next-display="order.savingsAmount">$0.00</span>
+        (<span data-next-display="order.savingsPercentage">0</span>%)
+      </span>
+    </div>
+    
+    <!-- Grand total -->
+    <div class="line-item total">
+      <span><strong>Total:</strong></span>
+      <span><strong data-next-display="order.total">$0.00</strong></span>
+    </div>
+  </div>
+  
+  <div class="payment-info">
+    <p><strong>Payment Method:</strong> <span data-next-display="order.paymentMethod">-</span></p>
+  </div>
+</div>
+```
+
+### Understanding Order Totals
+
+The SDK provides different total types for complete transparency:
+
+```html
+<div class="total-breakdown">
+  <!-- Products only (excludes shipping and tax) -->
+  <p>Subtotal: <span data-next-display="order.subtotal">$53.99</span></p>
+  
+  <!-- Total excluding tax but INCLUDING shipping -->
+  <p>Pre-tax Total: <span data-next-display="order.total_excl_tax">$63.98</span></p>
+  
+  <!-- Grand total (includes everything) -->
+  <p>Final Total: <span data-next-display="order.total">$69.10</span></p>
+</div>
+```
+
+## Dynamic Order Items
+
+### Order Items Renderer
+
+The `data-next-order-items` attribute automatically renders all order line items:
+
+```html
+<!-- Template definition -->
+<template id="order-item-template">
+  <div class="order-item" data-order-line-id="{item.id}">
+    <div class="item-image">
+      <img src="{item.image}" alt="{item.name}">
+      <div class="quantity-badge">{item.quantity}</div>
+    </div>
+    
+    <div class="item-details">
+      <h4 class="item-name">{item.name}</h4>
+      <div class="item-sku">SKU: {item.sku}</div>
+      <div class="item-variant {item.showVariant}">{item.variantAttributesFormatted}</div>
+      
+      <!-- Upsell indicator -->
+      <div class="upsell-badge {item.showUpsell}">{item.upsellBadge}</div>
+    </div>
+    
+    <div class="item-pricing">
+      <!-- Original pricing -->
+      <div class="original-pricing {item.showDiscount}">
+        <div class="unit-price"><s>{item.priceExclTaxExclDiscounts}</s> each</div>
+        <div class="line-total"><s>{item.lineTotalExclTaxExclDiscounts}</s></div>
+      </div>
+      
+      <!-- Final pricing -->
+      <div class="final-pricing">
+        <div class="unit-price">{item.priceExclTax} each</div>
+        <div class="line-total">{item.lineTotal}</div>
+      </div>
+      
+      <!-- Tax information -->
+      <div class="tax-info {item.showTax}">
+        Tax: {item.lineTax}
+      </div>
+      
+      <!-- Discount amount -->
+      <div class="discount-info {item.showDiscount}">
+        You saved: {item.lineDiscount}
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- Order items container -->
+<div data-next-order-items 
+     data-item-template-id="order-item-template"
+     data-empty-template='<div class="empty">No items found in order</div>'
+     class="order-items-list">
+</div>
+```
+
+### Available Template Variables
+
+#### Basic Item Properties
+- `{item.id}` - Order line ID
+- `{item.name}` - Product name/title
+- `{item.sku}` - Product SKU
+- `{item.quantity}` - Quantity ordered
+- `{item.image}` - Product image URL
+- `{item.description}` - Product description
+- `{item.variant}` - Variant title (e.g., "Size: Large")
+
+#### Pricing Variables (Formatted)
+- `{item.price}` - Unit price including tax
+- `{item.priceExclTax}` - Unit price excluding tax
+- `{item.lineTotal}` - Line total including tax
+- `{item.lineTotalExclTax}` - Line total excluding tax
+- `{item.lineTax}` - Total tax for line
+
+#### Original Pricing (Before Discounts)
+- `{item.priceExclDiscounts}` - Original unit price (including tax)
+- `{item.priceExclTaxExclDiscounts}` - Original unit price (excluding tax)
+- `{item.lineTotalExclDiscounts}` - Original line total (including tax)
+- `{item.lineTotalExclTaxExclDiscounts}` - Original line total (excluding tax)
+- `{item.unitDiscount}` - Discount per unit
+- `{item.lineDiscount}` - Total discount for line
+
+#### Status Flags
+- `{item.isUpsell}` - "true" or "false" if item is an upsell
+- `{item.upsellBadge}` - "UPSELL" text or empty
+- `{item.hasImage}` - "true" or "false"
+- `{item.hasDescription}` - "true" or "false"
+- `{item.hasVariant}` - "true" or "false"
+- `{item.hasTax}` - "true" or "false"
+- `{item.hasDiscount}` - "true" or "false"
+
+#### Conditional Display Classes
+- `{item.showUpsell}` - "show" or "hide" for upsell badge
+- `{item.showImage}` - "show" or "hide" based on image availability
+- `{item.showDescription}` - "show" or "hide" if has description
+- `{item.showVariant}` - "show" or "hide" if has variant
+- `{item.showTax}` - "show" or "hide" if has tax
+- `{item.showDiscount}` - "show" or "hide" if has discount
+
+## Shipping & Billing Information
+
+### Addresses
+
+```html
+<div class="addresses" data-next-show="order.exists">
+  <div class="shipping-address">
+    <h3>Shipping Address</h3>
+    <address>
+      <span data-next-display="order.shippingAddress.name">-</span><br>
+      <span data-next-display="order.shippingAddress.line1">-</span><br>
+      <span data-next-show="order.shippingAddress.line2">
+        <span data-next-display="order.shippingAddress.line2">-</span><br>
+      </span>
+      <span data-next-display="order.shippingAddress.city">-</span>, 
+      <span data-next-display="order.shippingAddress.state">-</span> 
+      <span data-next-display="order.shippingAddress.zip">-</span><br>
+      <span data-next-display="order.shippingAddress.country">-</span>
+    </address>
+    <p><strong>Method:</strong> <span data-next-display="order.shippingMethod">-</span></p>
+  </div>
+  
+  <div class="billing-address">
+    <h3>Billing Address</h3>
+    <address data-next-display="order.billingAddress.full">-</address>
+  </div>
+</div>
+```
+
+### Alternative Address Display
+
+```html
+<!-- Using individual fields -->
+<div class="shipping-info">
+  <h3>Shipping Details</h3>
+  <div class="address-grid">
+    <div class="recipient">
+      <strong data-next-display="order.shippingAddress.name">-</strong>
+    </div>
+    <div class="street">
+      <span data-next-display="order.shippingAddress.line1">-</span>
+      <span data-next-show="order.shippingAddress.line2">
+        <br><span data-next-display="order.shippingAddress.line2">-</span>
+      </span>
+    </div>
+    <div class="location">
+      <span data-next-display="order.shippingAddress.city">-</span>, 
+      <span data-next-display="order.shippingAddress.state">-</span> 
+      <span data-next-display="order.shippingAddress.postcode">-</span>
+    </div>
+    <div class="country">
+      <span data-next-display="order.shippingAddress.country">-</span>
+    </div>
+    <div class="phone" data-next-show="order.shippingAddress.phone">
+      Phone: <span data-next-display="order.shippingAddress.phone">-</span>
+    </div>
+  </div>
+</div>
+```
+
+## Order Items Overview
+
+### Simple Item List
+
+```html
+<div class="order-items-overview" data-next-show="order.hasItems">
+  <h3>Order Items (<span data-next-display="order.lines.count">0</span>)</h3>
+  
+  <!-- Quick summary -->
+  <div class="items-summary">
+    <p>Total Quantity: <span data-next-display="order.lines.totalQuantity">0</span></p>
+    <p data-next-show="order.hasUpsells">
+      Includes <span data-next-display="order.lines.upsellCount">0</span> upsell item(s)
+    </p>
+  </div>
+  
+  <!-- Main product highlight -->
+  <div class="main-product">
+    <h4>Primary Item</h4>
+    <p><strong data-next-display="order.lines.mainProduct">-</strong></p>
+    <p>SKU: <span data-next-display="order.lines.mainProductSku">-</span></p>
+  </div>
+</div>
+```
+
+### Access Specific Items
+
+```html
+<!-- Individual item access -->
+<div class="item-details">
+  <h4>First Item</h4>
+  <p>Name: <span data-next-display="order.lines[0].title">-</span></p>
+  <p>SKU: <span data-next-display="order.lines[0].sku">-</span></p>
+  <p>Quantity: <span data-next-display="order.lines[0].quantity">0</span></p>
+  <p>Price: <span data-next-display="order.lines[0].price">$0.00</span></p>
+  <p>Total: <span data-next-display="order.lines[0].total">$0.00</span></p>
+</div>
+```
+
+## Attribution & Tracking
+
+### Campaign Attribution
+
+```html
+<div class="attribution" data-next-show="order.attribution.hasTracking">
+  <h3>Campaign Information</h3>
+  <div class="tracking-details">
+    <p data-next-show="order.attribution.utm_source">
+      <strong>Source:</strong> <span data-next-display="order.attribution.utm_source">-</span>
+    </p>
+    <p data-next-show="order.attribution.utm_medium">
+      <strong>Medium:</strong> <span data-next-display="order.attribution.utm_medium">-</span>
+    </p>
+    <p data-next-show="order.attribution.utm_campaign">
+      <strong>Campaign:</strong> <span data-next-display="order.attribution.utm_campaign">-</span>
+    </p>
+    <p data-next-show="order.attribution.affiliate">
+      <strong>Affiliate:</strong> <span data-next-display="order.attribution.affiliate">-</span>
+    </p>
+    <p data-next-show="order.attribution.gclid">
+      <strong>Google Click ID:</strong> <span data-next-display="order.attribution.gclid">-</span>
+    </p>
+    <p data-next-show="order.attribution.funnel">
+      <strong>Funnel:</strong> <span data-next-display="order.attribution.funnel">-</span>
+    </p>
+  </div>
+</div>
+```
+
+## Order Actions
+
+### Order Status Link
+
+```html
+<div class="order-actions" data-next-show="order.exists">
+  <a data-next-display="order.statusUrl" class="btn btn-primary">
+    View Order Status
+  </a>
+  
+  <!-- Alternative using order.order_status_url -->
+  <a data-next-display="order.order_status_url" class="btn btn-secondary">
+    Track Your Order
+  </a>
+</div>
+```
+
+### Upsell Opportunities
+
+```html
+<!-- Show upsells for recent orders -->
+<div class="upsell-section" data-next-show="order.supportsUpsells">
+  <h3>Don't Miss Out!</h3>
+  <p>Your order was placed recently. You can still add these special items:</p>
+  
+  <div class="upsell-offers">
+    <a href="/upsell?ref_id={order.refId}" class="btn btn-upsell">
+      View Special Offers
+    </a>
+  </div>
+  
+  <p class="upsell-timer" data-next-show="order.isRecent">
+    ⏰ Limited time - add items to this order while you can!
+  </p>
+</div>
+
+<!-- Hide upsells for older orders -->
+<div class="order-complete" data-next-show="order.isExpired">
+  <p>✅ Your order is complete and being processed.</p>
+</div>
+```
+
+## Order Status Indicators
+
+### Visual Status Display
+
+```html
+<div class="order-status" data-next-show="order.exists">
+  <!-- Order timing indicators -->
+  <div class="status-badges">
+    <span class="badge recent" data-next-show="order.isRecent">
+      🕐 Recent Order
+    </span>
+    <span class="badge test" data-next-show="order.isTest">
+      🧪 Test Order
+    </span>
+    <span class="badge upsell-available" data-next-show="order.supportsUpsells">
+      ➕ Upsells Available
+    </span>
+  </div>
+  
+  <!-- Status timeline -->
+  <div class="status-timeline">
+    <div class="status-step completed">
+      <span class="step-icon">✓</span>
+      <span class="step-label">Order Placed</span>
+      <span class="step-time" data-next-display="order.createdAt">-</span>
+    </div>
+    <div class="status-step processing">
+      <span class="step-icon">⏳</span>
+      <span class="step-label">Processing</span>
+    </div>
+    <div class="status-step pending">
+      <span class="step-icon">📦</span>
+      <span class="step-label">Shipped</span>
+    </div>
+    <div class="status-step pending">
+      <span class="step-icon">🏠</span>
+      <span class="step-label">Delivered</span>
+    </div>
+  </div>
+</div>
+```
+
+## Complete Order Confirmation Example
+
+```html
+<div class="order-confirmation-page">
+  <!-- Loading state -->
+  <div data-next-show="order.isLoading" class="loading-container">
+    <div class="spinner"></div>
+    <p>Loading your order details...</p>
+  </div>
+  
+  <!-- Error state -->
+  <div data-next-show="order.hasError" class="error-container">
+    <h2>⚠️ Order Not Found</h2>
+    <p>We couldn't find an order with this reference ID.</p>
+    <p class="error-details">
+      Error: <span data-next-display="order.errorMessage">Unknown error</span>
+    </p>
+    <p>Please check your email for the order confirmation or contact support.</p>
+  </div>
+  
+  <!-- Success state -->
+  <div data-next-show="order.exists" data-next-hide="order.isLoading" class="order-success">
+    <!-- Header -->
+    <div class="confirmation-header">
+      <h1>🎉 Thank You for Your Order!</h1>
+      
+      <!-- Test order warning -->
+      <div class="test-warning" data-next-show="order.isTest">
+        <p data-next-display="order.testBadge">🧪 TEST ORDER - No charges made</p>
+      </div>
+      
+      <!-- Order identification -->
+      <div class="order-id">
+        <h2>Order #<span data-next-display="order.number">-</span></h2>
+        <p>Reference ID: <span data-next-display="order.refId">-</span></p>
+        <p>Order Date: <span data-next-display="order.createdAt">-</span></p>
+      </div>
+    </div>
+    
+    <!-- Order items -->
+    <div class="order-content">
+      <div class="order-items-section">
+        <h3>Your Order</h3>
+        <div data-next-order-items 
+             data-item-template-id="confirmation-item-template"
+             class="order-items-confirmation">
+        </div>
+      </div>
+      
+      <!-- Customer & shipping info -->
+      <div class="order-details">
+        <div class="customer-section">
+          <h3>Customer Information</h3>
+          <p><span data-next-display="order.customer.name">-</span></p>
+          <p><span data-next-display="order.customer.email">-</span></p>
+        </div>
+        
+        <div class="shipping-section">
+          <h3>Shipping Address</h3>
+          <address data-next-display="order.shippingAddress.full">-</address>
+          <p>Method: <span data-next-display="order.shippingMethod">-</span></p>
+        </div>
+        
+        <div class="billing-section">
+          <h3>Payment</h3>
+          <p>Method: <span data-next-display="order.paymentMethod">-</span></p>
+        </div>
+      </div>
+      
+      <!-- Order summary -->
+      <div class="order-summary-section">
+        <h3>Order Summary</h3>
+        <div class="summary-totals">
+          <div class="total-line">
+            <span>Subtotal:</span>
+            <span data-next-display="order.subtotal">$0.00</span>
+          </div>
+          <div class="total-line" data-next-show="order.hasShipping">
+            <span>Shipping:</span>
+            <span data-next-display="order.shipping">$0.00</span>
+          </div>
+          <div class="total-line" data-next-show="order.hasTax">
+            <span>Tax:</span>
+            <span data-next-display="order.tax">$0.00</span>
+          </div>
+          <div class="total-line" data-next-show="order.hasDiscounts">
+            <span>Discount:</span>
+            <span class="discount">-<span data-next-display="order.discounts">$0.00</span></span>
+          </div>
+          <div class="total-line final-total">
+            <span><strong>Total:</strong></span>
+            <span><strong data-next-display="order.total">$0.00</strong></span>
+          </div>
+        </div>
+        
+        <!-- Savings highlight -->
+        <div class="savings-highlight" data-next-show="order.hasSavings">
+          <p class="savings-message">
+            🎉 You saved <span data-next-display="order.savingsAmount">$0</span> 
+            (<span data-next-display="order.savingsPercentage">0%</span>) on this order!
+          </p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Action buttons -->
+    <div class="order-actions">
+      <a data-next-display="order.statusUrl" class="btn btn-primary">
+        Track Your Order
+      </a>
+      
+      <!-- Upsell opportunity -->
+      <div class="upsell-prompt" data-next-show="order.supportsUpsells">
+        <h4>Want to add more to this order?</h4>
+        <p>You can still add items while your order is being processed.</p>
+        <a href="/upsell?ref_id={order.refId}" class="btn btn-secondary">
+          View Additional Items
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Item template for order confirmation -->
+<template id="confirmation-item-template">
+  <div class="confirmation-item">
+    <div class="item-image">
+      <img src="{item.image}" alt="{item.name}">
+      <div class="quantity-badge">{item.quantity}</div>
+    </div>
+    <div class="item-info">
+      <h4>{item.name}</h4>
+      <p class="item-sku">SKU: {item.sku}</p>
+      <div class="item-pricing">
+        <span class="item-price">{item.price} each</span>
+        <span class="item-total">{item.total}</span>
+      </div>
+    </div>
+  </div>
+</template>
+```
+
+## Best Practices
+
+1. **Always Handle Loading States** - Show spinners while order loads
+2. **Provide Clear Error Messages** - Help users when orders aren't found
+3. **Highlight Test Orders** - Clearly indicate test transactions
+4. **Show Complete Information** - Include all relevant order details
+5. **Enable Order Tracking** - Provide links to order status pages
+6. **Optimize for Mobile** - Ensure confirmation pages work on all devices
+7. **Include Next Steps** - Guide customers on what happens next
