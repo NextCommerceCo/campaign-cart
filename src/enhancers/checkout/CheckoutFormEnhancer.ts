@@ -465,13 +465,20 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const monthField = this.fields.get('cc-month') || this.fields.get('exp-month');
     const yearField = this.fields.get('cc-year') || this.fields.get('exp-year');
 
+          // Month names for display
+      const monthNames = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ];
+
+
     if (monthField instanceof HTMLSelectElement) {
       monthField.innerHTML = '<option value="">Month</option>';
       for (let i = 1; i <= 12; i++) {
         const month = i.toString().padStart(2, '0');
         const option = document.createElement('option');
         option.value = month;
-        option.textContent = month;
+        option.textContent = `(${month}) ${monthNames[i - 1]}`;
         monthField.appendChild(option);
       }
     }
@@ -2291,7 +2298,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     try {
       this.addClass('next-loading-spreedly');
       
-      this.creditCardService = new CreditCardService(environmentKey);
+      // Get Spreedly configuration from config store
+      const config = useConfigStore.getState();
+      const spreedlyConfig = config.paymentConfig?.spreedly;
+
+      this.creditCardService = new CreditCardService(environmentKey, spreedlyConfig);
+      
       
       this.creditCardService.setOnReady(() => {
         this.removeClass('next-loading-spreedly');

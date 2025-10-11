@@ -6,11 +6,15 @@
 export interface EventMap {
   'cart:updated': CartState;
   'cart:item-added': { packageId: number; quantity?: number; source?: string };
-  'cart:item-removed': { packageId: number; };
-  'cart:quantity-changed': { packageId: number; quantity: number; oldQuantity: number };
-  'cart:package-swapped': { 
-    previousPackageId: number; 
-    newPackageId: number; 
+  'cart:item-removed': { packageId: number };
+  'cart:quantity-changed': {
+    packageId: number;
+    quantity: number;
+    oldQuantity: number;
+  };
+  'cart:package-swapped': {
+    previousPackageId: number;
+    newPackageId: number;
     previousItem?: CartItem;
     newItem?: CartItem;
     priceDifference: number;
@@ -24,87 +28,142 @@ export interface EventMap {
   'order:completed': OrderData;
   'order:redirect-missing': { order: any };
   'error:occurred': ErrorData;
-  'currency:fallback': { requested: string; actual: string; reason: 'cached' | 'api' };
+  'currency:fallback': {
+    requested: string;
+    actual: string;
+    reason: 'cached' | 'api';
+  };
   'timer:expired': { persistenceId: string };
   'config:updated': ConfigState;
   'coupon:applied': { coupon: AppliedCoupon } | { code: string };
   'coupon:removed': { code: string };
   'coupon:validation-failed': { code: string; message: string };
-  'selector:item-selected': { selectorId: string; packageId: number; previousPackageId: number | undefined; mode: string; pendingAction: boolean | undefined; item?: SelectorItem };
-  'selector:action-completed': { selectorId: string; packageId: number; previousPackageId: number | undefined; mode: string };
-  'selector:selection-changed': { selectorId: string; packageId?: number; quantity?: number; item?: SelectorItem };
+  'selector:item-selected': {
+    selectorId: string;
+    packageId: number;
+    previousPackageId: number | undefined;
+    mode: string;
+    pendingAction: boolean | undefined;
+    item?: SelectorItem;
+  };
+  'selector:action-completed': {
+    selectorId: string;
+    packageId: number;
+    previousPackageId: number | undefined;
+    mode: string;
+  };
+  'selector:selection-changed': {
+    selectorId: string;
+    packageId?: number;
+    quantity?: number;
+    item?: SelectorItem;
+  };
   'shipping:method-selected': { shippingId: string; selectorId: string };
   'shipping:method-changed': { methodId: number; method: any };
-  
+
   // Action Events
   'action:success': { action: string; data?: any };
   'action:failed': { action: string; error: Error };
-  
+
   // Upsell Events
-  'upsell:accepted': { packageId: number; quantity: number; orderId: string; value?: number };
+  'upsell:accepted': {
+    packageId: number;
+    quantity: number;
+    orderId: string;
+    value?: number;
+  };
   'upsell-selector:item-selected': { selectorId: string; packageId: number };
-  'upsell:quantity-changed': { selectorId?: string | undefined; quantity: number; packageId?: number | undefined };
+  'upsell:quantity-changed': {
+    selectorId?: string | undefined;
+    quantity: number;
+    packageId?: number | undefined;
+  };
   'upsell:option-selected': { selectorId: string; packageId: number };
-  
+
   // Message Events
   'message:displayed': { message: string; type: string };
-  
+
   // Payment Events
   'payment:tokenized': { token: string; pmData: any; paymentMethod: string };
   'payment:error': { errors: string[] };
   'checkout:express-completed': { method: string; success: boolean };
   'checkout:express-failed': { method: string; error: string };
-  
+
   // Express Checkout Events
-  'express-checkout:initialized': { method: 'paypal' | 'apple_pay' | 'google_pay'; element: HTMLElement };
-  'express-checkout:error': { method: 'paypal' | 'apple_pay' | 'google_pay'; error: string };
-  'express-checkout:started': { method: 'paypal' | 'apple_pay' | 'google_pay'; cartTotal: { value: number; formatted: string }; itemCount: number };
-  'express-checkout:failed': { method: 'paypal' | 'apple_pay' | 'google_pay'; error: string };
-  'express-checkout:completed': { method: 'paypal' | 'apple_pay' | 'google_pay'; order: any };
+  'express-checkout:initialized': {
+    method: 'paypal' | 'apple_pay' | 'google_pay';
+    element: HTMLElement;
+  };
+  'express-checkout:error': {
+    method: 'paypal' | 'apple_pay' | 'google_pay';
+    error: string;
+  };
+  'express-checkout:started': {
+    method: 'paypal' | 'apple_pay' | 'google_pay';
+    cartTotal: { value: number; formatted: string };
+    itemCount: number;
+  };
+  'express-checkout:failed': {
+    method: 'paypal' | 'apple_pay' | 'google_pay';
+    error: string;
+  };
+  'express-checkout:completed': {
+    method: 'paypal' | 'apple_pay' | 'google_pay';
+    order: any;
+  };
   'express-checkout:redirect-missing': { order: any };
-  
+
   // Address Autocomplete Events
-  'address:autocomplete-filled': { type: 'shipping' | 'billing'; components: Record<string, { long: string; short: string }> };
+  'address:autocomplete-filled': {
+    type: 'shipping' | 'billing';
+    components: Record<string, { long: string; short: string }>;
+  };
   'address:location-fields-shown': {};
   'checkout:location-fields-shown': {};
   'checkout:billing-location-fields-shown': {};
-  
+
   // Upsell Events
   'upsell:initialized': { packageId: number; element: HTMLElement };
   'upsell:adding': { packageId: number };
-  'upsell:added': { packageId: number; quantity: number; order: any; value?: number; willRedirect?: boolean };
+  'upsell:added': {
+    packageId: number;
+    quantity: number;
+    order: any;
+    value?: number;
+    willRedirect?: boolean;
+  };
   'upsell:error': { packageId: number; error: string };
-  
+
   // Accordion Events
   'accordion:toggled': { id: string; isOpen: boolean; element: HTMLElement };
   'accordion:opened': { id: string; element: HTMLElement };
   'accordion:closed': { id: string; element: HTMLElement };
   'upsell:skipped': { packageId?: number; orderId?: string };
   'upsell:viewed': { packageId?: number; pagePath?: string; orderId?: string };
-  
+
   // Exit Intent Events (simplified)
   'exit-intent:shown': { imageUrl?: string; template?: string };
   'exit-intent:clicked': { imageUrl?: string; template?: string };
   'exit-intent:dismissed': { imageUrl?: string; template?: string };
   'exit-intent:closed': { imageUrl?: string; template?: string };
   'exit-intent:action': { action: string; couponCode?: string };
-  
+
   // FOMO Events
   'fomo:shown': { customer: string; product: string; image: string };
-  
+
   // SDK Events
   'sdk:url-parameters-processed': {};
-  
+
   // Profile Events
-  'profile:applied': { 
-    profileId: string; 
-    previousProfileId?: string | null; 
+  'profile:applied': {
+    profileId: string;
+    previousProfileId?: string | null;
     itemsSwapped: number;
     originalItems?: number;
     cleared?: boolean;
     profile?: any;
   };
-  'profile:reverted': { 
+  'profile:reverted': {
     previousProfileId?: string | null;
     itemsRestored: number;
   };
@@ -146,7 +205,9 @@ export interface CartItem {
   productName?: string | undefined;
   variantId?: number | undefined;
   variantName?: string | undefined;
-  variantAttributes?: Array<{ code: string; name: string; value: string }> | undefined;
+  variantAttributes?:
+    | Array<{ code: string; name: string; value: string }>
+    | undefined;
   variantSku?: string | undefined;
   // Grouping support
   groupedItemIds?: number[] | undefined; // IDs of items grouped together
@@ -284,7 +345,7 @@ export interface ConfigState {
   paymentConfig: PaymentConfig;
   googleMapsConfig: GoogleMapsConfig;
   addressConfig: AddressConfig;
-  
+
   // Location and currency detection
   detectedCountry?: string;
   detectedCurrency?: string;
@@ -292,7 +353,7 @@ export interface ConfigState {
   locationData?: any;
   currencyBehavior?: 'auto' | 'manual'; // auto: change currency when country changes, manual: never auto-change
   currencyFallbackOccurred?: boolean; // Track if currency fallback happened
-  
+
   // Additional configuration properties for complete type coverage
   autoInit: boolean | undefined;
   rateLimit: number | undefined;
@@ -300,21 +361,21 @@ export interface ConfigState {
   retryAttempts: number | undefined;
   timeout: number | undefined;
   testMode: boolean | undefined;
-  
+
   // API and performance settings
   maxRetries: number | undefined;
   requestTimeout: number | undefined;
   enableAnalytics: boolean | undefined;
   enableDebugMode: boolean | undefined;
-  
+
   // Environment and deployment settings
   environment: 'development' | 'staging' | 'production' | undefined;
   version?: string | undefined;
   buildTimestamp?: string | undefined;
-  
+
   // Discount system
   discounts: Record<string, DiscountDefinition>;
-  
+
   // Attribution configuration
   utmTransfer?: {
     enabled: boolean;
@@ -322,10 +383,10 @@ export interface ConfigState {
     excludedDomains?: string[];
     paramsToCopy?: string[];
   };
-  
+
   // Tracking configuration (legacy)
   tracking?: 'auto' | 'manual' | 'disabled';
-  
+
   // New analytics configuration
   analytics?: {
     enabled: boolean;
@@ -360,26 +421,85 @@ export interface ConfigState {
       };
     };
   };
-  
+
   // Error monitoring configuration - removed
   // Error tracking can be added externally via HTML/scripts
-  
+
   // Profile configuration
-  profiles?: Record<string, {
-    name: string;
-    description?: string;
-    packageMappings: Record<number, number>;
-  }>;
+  profiles?: Record<
+    string,
+    {
+      name: string;
+      description?: string;
+      packageMappings: Record<number, number>;
+    }
+  >;
   defaultProfile?: string;
   activeProfile?: string;
 }
 
 export type PageType = 'product' | 'cart' | 'checkout' | 'upsell' | 'receipt';
 
-export interface PaymentConfig {
-  spreedly?: {
-    fieldType?: { number?: string; cvv?: string };
+// Spreedly iFrame configuration interface
+export interface SpreedlyConfig {
+  // Field type configuration - controls keyboard display on mobile
+  fieldType?: {
+    number?: 'number' | 'text' | 'tel';
+    cvv?: 'number' | 'text' | 'tel';
   };
+
+  // Number format configuration
+  numberFormat?: 'prettyFormat' | 'plainFormat' | 'maskedFormat';
+
+  // Label configuration for accessibility
+  labels?: {
+    number?: string;
+    cvv?: string;
+  };
+
+  // Title attribute for accessibility
+  titles?: {
+    number?: string;
+    cvv?: string;
+  };
+
+  // Placeholder text
+  placeholders?: {
+    number?: string;
+    cvv?: string;
+  };
+
+  // CSS styling for iFrame fields
+  styles?: {
+    number?: string;
+    cvv?: string;
+    placeholder?: string;
+  };
+
+  // Security parameters - REQUIRED for authentication
+  nonce?: string; // Unique per session (e.g., UUID)
+  timestamp?: string; // Epoch time
+  certificateToken?: string; // Spreedly certificate token
+  signature?: string; // Server-generated signature
+
+  // Fraud detection
+  fraud?: boolean | { siteId: string }; // Enable fraud detection or specify BYOC fraud site ID
+
+  // Other options
+  enableAutoComplete?: boolean; // Toggle autocomplete functionality
+  requiredAttributes?: {
+    number?: boolean;
+    cvv?: boolean;
+  };
+
+  // Validation parameters
+  allowBlankName?: boolean; // Skip name validation
+  allowExpiredDate?: boolean; // Allow expired dates
+}
+
+export interface PaymentConfig {
+  spreedly?: SpreedlyConfig;
+
   expressCheckout?: {
     enabled: boolean;
     methods: {
@@ -393,9 +513,9 @@ export interface PaymentConfig {
 }
 
 // Callback types
-export type CallbackType = 
+export type CallbackType =
   | 'beforeRender'
-  | 'afterRender' 
+  | 'afterRender'
   | 'beforeCheckout'
   | 'afterCheckout'
   | 'beforeRedirect'
@@ -446,7 +566,12 @@ export interface ShippingMethod {
 
 export interface CheckoutData {
   formData: Record<string, any>;
-  paymentMethod: 'card_token' | 'paypal' | 'apple_pay' | 'google_pay' | 'credit-card';
+  paymentMethod:
+    | 'card_token'
+    | 'paypal'
+    | 'apple_pay'
+    | 'google_pay'
+    | 'credit-card';
   isProcessing?: boolean;
   step?: number;
 }
@@ -467,4 +592,3 @@ export interface ErrorData {
   code?: string;
   details?: any;
 }
-
