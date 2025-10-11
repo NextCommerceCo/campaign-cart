@@ -42,6 +42,7 @@
   },
   "dependencies": {
     "@floating-ui/dom": "^1.5.3",
+    "intl-tel-input": "^25.11.3",
     "zustand": "^4.4.7"
   },
   "devDependencies": {

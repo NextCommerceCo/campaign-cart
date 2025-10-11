@@ -161,6 +161,8 @@ export default defineConfig({
     },
   },
 
+  assetsInclude: ['**/*.webp', '**/*.png'],
+
   build: {
     // Increase chunk size warning limit slightly
     chunkSizeWarningLimit: 600,
