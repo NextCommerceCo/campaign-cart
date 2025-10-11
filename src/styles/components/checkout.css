@@ -106,10 +106,7 @@
   position: relative;
 }
 
-.form-input input,
-.form-input select {
-  padding-right: 35px; /* Make room for icon */
-}
+
 
 /* Hide existing form icons when validation icons are shown - both error and success */
 [next-show-validation-icons] .form-group.addErrorIcon .form-input-icon,

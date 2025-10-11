@@ -743,16 +743,17 @@ export class AddressService {
    */
 
   public populateCountryDropdown(
-    countrySelect: HTMLSelectElement, 
-    countries: Country[], 
+    countrySelect: HTMLSelectElement,
+    countries: Country[],
     defaultCountry?: string
   ): void {
     // Clear existing options except the first one (usually "Select Country")
     const firstOption = countrySelect.options[0];
     countrySelect.innerHTML = '';
     if (firstOption && !firstOption.value) {
-      // Make the placeholder option disabled and unselectable
+      // Make the placeholder option disabled and hidden from dropdown
       firstOption.disabled = true;
+      firstOption.hidden = true; // Hide from dropdown list
       firstOption.setAttribute('disabled', 'disabled');
       countrySelect.appendChild(firstOption);
     }
@@ -779,12 +780,13 @@ export class AddressService {
   public populateBillingCountryDropdown(): void {
     const billingCountryField = this.billingFields.get('billing-country');
     if (!(billingCountryField instanceof HTMLSelectElement)) return;
-    
+
     // Clear existing options except the first one
     const firstOption = billingCountryField.options[0];
     billingCountryField.innerHTML = '';
     if (firstOption && !firstOption.value) {
       firstOption.disabled = true;
+      firstOption.hidden = true; // Hide from dropdown list
       firstOption.setAttribute('disabled', 'disabled');
       billingCountryField.appendChild(firstOption);
     }
@@ -854,6 +856,7 @@ export class AddressService {
       placeholderOption.textContent = `Select ${countryData.countryConfig.stateLabel}`;
       placeholderOption.disabled = true;
       placeholderOption.selected = true;
+      placeholderOption.hidden = true; // Hide from dropdown list
       placeholderOption.setAttribute('disabled', 'disabled');
       provinceField.appendChild(placeholderOption);
       
@@ -932,6 +935,7 @@ export class AddressService {
       placeholderOption.textContent = `Select ${countryData.countryConfig.stateLabel}`;
       placeholderOption.disabled = true;
       placeholderOption.selected = true;
+      placeholderOption.hidden = true; // Hide from dropdown list
       billingProvinceField.appendChild(placeholderOption);
       
       countryData.states.forEach((state: any) => {

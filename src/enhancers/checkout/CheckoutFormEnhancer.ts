@@ -473,7 +473,16 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
 
     if (monthField instanceof HTMLSelectElement) {
-      monthField.innerHTML = '<option value="">Month</option>';
+      monthField.innerHTML = '';
+      // Create placeholder for month
+      const monthPlaceholder = document.createElement('option');
+      monthPlaceholder.value = '';
+      monthPlaceholder.textContent = 'Month';
+      monthPlaceholder.disabled = true;
+      monthPlaceholder.selected = true;
+      monthPlaceholder.hidden = true; // Hide from dropdown list
+      monthField.appendChild(monthPlaceholder);
+
       for (let i = 1; i <= 12; i++) {
         const month = i.toString().padStart(2, '0');
         const option = document.createElement('option');
@@ -484,7 +493,16 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     }
 
     if (yearField instanceof HTMLSelectElement) {
-      yearField.innerHTML = '<option value="">Year</option>';
+      yearField.innerHTML = '';
+      // Create placeholder for year
+      const yearPlaceholder = document.createElement('option');
+      yearPlaceholder.value = '';
+      yearPlaceholder.textContent = 'Year';
+      yearPlaceholder.disabled = true;
+      yearPlaceholder.selected = true;
+      yearPlaceholder.hidden = true; // Hide from dropdown list
+      yearField.appendChild(yearPlaceholder);
+
       const currentYear = new Date().getFullYear();
       for (let i = 0; i < 20; i++) {
         const year = currentYear + i;
@@ -1190,6 +1208,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     countrySelect.innerHTML = '';
     if (firstOption && !firstOption.value) {
       firstOption.disabled = true;
+      firstOption.hidden = true; // Hide from dropdown list
       countrySelect.appendChild(firstOption);
     }
     
@@ -1211,11 +1230,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private populateBillingCountryDropdown(): void {
     const billingCountryField = this.billingFields.get('billing-country');
     if (!(billingCountryField instanceof HTMLSelectElement)) return;
-    
+
     const firstOption = billingCountryField.options[0];
     billingCountryField.innerHTML = '';
     if (firstOption && !firstOption.value) {
       firstOption.disabled = true;
+      firstOption.hidden = true; // Hide from dropdown list
       billingCountryField.appendChild(firstOption);
     }
     
@@ -1329,8 +1349,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       const placeholderOption = document.createElement('option');
       placeholderOption.value = '';
       placeholderOption.textContent = `Select ${countryData.countryConfig.stateLabel}`;
-      placeholderOption.disabled = false; // Keep it selectable but invalid for validation
+      placeholderOption.disabled = true;
       placeholderOption.selected = true;
+      placeholderOption.hidden = true; // Hide from dropdown list but show when selected
       provinceField.appendChild(placeholderOption);
       
       countryData.states.forEach((state: any) => {
@@ -3619,8 +3640,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       const placeholderOption = document.createElement('option');
       placeholderOption.value = '';
       placeholderOption.textContent = `Select ${countryData.countryConfig.stateLabel}`;
-      placeholderOption.disabled = false; // Keep it selectable but invalid for validation
+      placeholderOption.disabled = true;
       placeholderOption.selected = true;
+      placeholderOption.hidden = true; // Hide from dropdown list but show when selected
       billingProvinceField.appendChild(placeholderOption);
       
       countryData.states.forEach((state: any) => {
