@@ -1,8 +1,411 @@
 ---
 title: Cart Methods
-description: Documentation coming soon
+description: Programmatic API for cart manipulation
+sidebar:
+  order: 1
 ---
 
-# Cart Methods
+import { Tabs, TabItem, Aside, Code } from '@astrojs/starlight/components';
 
-Documentation coming soon.
+**The `next` object provides complete programmatic control over the shopping cart.**
+
+## Initialization
+
+```javascript
+// Check if SDK is ready
+if (window.next) {
+  // SDK ready, use it directly
+  next.addItem({ packageId: 123 });
+} else {
+  // Queue for later execution
+  window.nextReady = window.nextReady || [];
+  window.nextReady.push(function() {
+    next.addItem({ packageId: 123 });
+  });
+}
+```
+
+## Adding Items
+
+### addItem
+
+Adds an item to the cart. **Requires an options object.**
+
+```javascript
+// ✅ CORRECT - Pass an object with packageId
+await next.addItem({ 
+  packageId: 123, 
+  quantity: 2 
+});
+
+// ✅ Quantity is optional (defaults to 1)
+await next.addItem({ packageId: 123 });
+
+// ❌ WRONG - Don't pass packageId directly
+// next.addItem(123); // This won't work!
+```
+
+**Parameters:**
+- `options.packageId` (number): Package ID to add
+- `options.quantity` (number, optional): Quantity to add (default: 1)
+
+**Returns:** `Promise<void>`
+
+## Removing Items
+
+### removeItem
+
+Removes an item from the cart completely.
+
+```javascript
+await next.removeItem({ packageId: 123 });
+```
+
+**Parameters:**
+- `options.packageId` (number): Package ID to remove
+
+**Returns:** `Promise<void>`
+
+### clearCart
+
+Empties the entire cart.
+
+```javascript
+await next.clearCart();
+```
+
+**Returns:** `Promise<void>`
+
+## Updating Quantities
+
+### updateQuantity
+
+Sets the quantity for a specific item.
+
+```javascript
+await next.updateQuantity({ 
+  packageId: 123, 
+  quantity: 5 
+});
+
+// Set to 0 to remove
+await next.updateQuantity({ 
+  packageId: 123, 
+  quantity: 0 
+});
+```
+
+**Parameters:**
+- `options.packageId` (number): Package ID to update
+- `options.quantity` (number): New quantity
+
+**Returns:** `Promise<void>`
+
+## Swapping Items
+
+### swapCart
+
+Replace entire cart contents in one operation.
+
+```javascript
+await next.swapCart([
+  { packageId: 123, quantity: 1 },
+  { packageId: 456, quantity: 2 },
+  { packageId: 789, quantity: 1 }
+]);
+```
+
+**Parameters:**
+- `items` (Array): New cart items
+  - `packageId` (number): Package ID
+  - `quantity` (number): Quantity
+
+**Returns:** `Promise<void>`
+
+This is useful for:
+- Restoring saved carts
+- Applying preset bundles
+- Bulk cart operations
+
+## Checking Cart State
+
+### hasItemInCart
+
+Check if a specific item is in the cart.
+
+```javascript
+const hasItem = next.hasItemInCart({ packageId: 123 });
+if (hasItem) {
+  console.log('Item is in cart');
+}
+```
+
+**Parameters:**
+- `options.packageId` (number): Package ID to check
+
+**Returns:** `boolean`
+
+### getCartCount
+
+Get total number of items in cart.
+
+```javascript
+const count = next.getCartCount();
+console.log(`Cart has ${count} items`);
+```
+
+**Returns:** `number`
+
+### getCartData
+
+Get comprehensive cart information.
+
+```javascript
+const cartData = next.getCartData();
+console.log(cartData);
+// {
+//   cartLines: [...],      // Enriched items with product data
+//   cartTotals: {...},      // Pricing breakdown
+//   campaignData: {...},    // Campaign configuration
+//   appliedCoupons: [...]   // Active discounts
+// }
+```
+
+**Returns:**
+```typescript
+{
+  cartLines: EnrichedCartLine[];
+  cartTotals: CartTotals;
+  campaignData: Campaign | null;
+  appliedCoupons: AppliedCoupon[];
+}
+```
+
+### getCartTotals
+
+Get just the pricing information.
+
+```javascript
+const totals = next.getCartTotals();
+console.log('Subtotal:', totals.subtotal.formatted); // "$89.99"
+console.log('Shipping:', totals.shipping.formatted); // "$10.00"
+console.log('Tax:', totals.tax.formatted);           // "$8.00"
+console.log('Discount:', totals.discount.formatted); // "-$10.00"
+console.log('Total:', totals.total.formatted);       // "$97.99"
+```
+
+**Returns:** 
+```typescript
+{
+  subtotal: { raw: number, formatted: string },
+  shipping: { raw: number, formatted: string },
+  tax: { raw: number, formatted: string },
+  discount: { raw: number, formatted: string },
+  total: { raw: number, formatted: string }
+}
+```
+
+## Common Patterns
+
+### Add to Cart with Options
+
+```javascript
+// Clear cart and add new item
+await next.clearCart();
+await next.addItem({ packageId: 123, quantity: 1 });
+
+// Or use data attributes for the same effect
+```html
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  data-next-clear-cart="true">
+  Buy Now
+</button>
+```
+
+### Toggle Item in Cart
+
+```javascript
+async function toggleItem(packageId) {
+  if (next.hasItemInCart({ packageId })) {
+    await next.removeItem({ packageId });
+  } else {
+    await next.addItem({ packageId });
+  }
+}
+
+// Usage
+await toggleItem(123);
+```
+
+### Quantity Increment/Decrement
+
+```javascript
+async function incrementQuantity(packageId, step = 1) {
+  const cart = next.getCartData();
+  const currentItem = cart.cartLines.find(
+    line => line.packageId === packageId
+  );
+  
+  if (currentItem) {
+    await next.updateQuantity({
+      packageId,
+      quantity: currentItem.quantity + step
+    });
+  } else {
+    await next.addItem({ packageId, quantity: step });
+  }
+}
+
+// Increment by 1
+await incrementQuantity(123);
+
+// Increment by 5
+await incrementQuantity(123, 5);
+
+// Decrement by 1
+await incrementQuantity(123, -1);
+```
+
+### Reactive Cart Updates
+
+```javascript
+// Listen for cart changes
+next.on('cart:updated', (cartState) => {
+  // Update UI
+  document.querySelector('.cart-count').textContent = 
+    next.getCartCount();
+  
+  document.querySelector('.cart-total').textContent = 
+    cartState.totals.total.formatted;
+  
+  // Show/hide empty cart message
+  const emptyMessage = document.querySelector('.empty-cart');
+  if (cartState.isEmpty) {
+    emptyMessage.style.display = 'block';
+  } else {
+    emptyMessage.style.display = 'none';
+  }
+});
+
+// React to specific actions
+next.on('cart:item-added', (data) => {
+  showNotification(`Added ${data.item.title} to cart`);
+});
+
+next.on('cart:item-removed', (data) => {
+  showNotification(`Removed item from cart`);
+});
+```
+
+### Batch Operations
+
+```javascript
+async function addMultipleItems(items) {
+  // Add items sequentially
+  for (const item of items) {
+    await next.addItem(item);
+  }
+  
+  // Or replace entire cart at once
+  await next.swapCart(items);
+}
+
+// Usage
+await addMultipleItems([
+  { packageId: 123, quantity: 1 },
+  { packageId: 456, quantity: 2 },
+  { packageId: 789, quantity: 1 }
+]);
+```
+
+### Save and Restore Cart
+
+```javascript
+// Save cart state
+function saveCartState() {
+  const cartData = next.getCartData();
+  const cartItems = cartData.cartLines.map(line => ({
+    packageId: line.packageId,
+    quantity: line.quantity
+  }));
+  
+  localStorage.setItem('savedCart', JSON.stringify(cartItems));
+}
+
+// Restore cart state
+async function restoreCartState() {
+  const saved = localStorage.getItem('savedCart');
+  if (saved) {
+    const items = JSON.parse(saved);
+    await next.swapCart(items);
+    localStorage.removeItem('savedCart');
+  }
+}
+
+// Usage
+saveCartState(); // Before checkout
+await restoreCartState(); // On return
+```
+
+## Error Handling
+
+```javascript
+try {
+  await next.addItem({ packageId: 999999 });
+} catch (error) {
+  console.error('Failed to add item:', error.message);
+  // Show user-friendly error
+  showError('Unable to add item to cart. Please try again.');
+}
+
+// Listen for global errors
+next.on('error:occurred', (error) => {
+  console.error('Cart error:', error);
+  // Log to error tracking service
+});
+```
+
+## TypeScript Support
+
+```typescript
+import type { CartItem, CartTotals, Campaign } from '@next-commerce/sdk';
+
+// Type-safe cart operations
+async function addProduct(packageId: number, quantity: number = 1): Promise<void> {
+  await next.addItem({ packageId, quantity });
+}
+
+// Type-safe cart data
+function displayCart(): void {
+  const data = next.getCartData();
+  const totals: CartTotals = data.cartTotals;
+  console.log(totals.total.formatted);
+}
+```
+
+## Performance Tips
+
+1. **Batch updates when possible** - Use `swapCart` for multiple changes
+2. **Use events for UI updates** - Don't poll for cart state
+3. **Cache cart data** - Store `getCartData()` result if using multiple times
+4. **Debounce quantity updates** - Wait for user to finish typing
+
+```javascript
+// Debounced quantity update
+let updateTimer;
+function debounceQuantityUpdate(packageId, quantity) {
+  clearTimeout(updateTimer);
+  updateTimer = setTimeout(async () => {
+    await next.updateQuantity({ packageId, quantity });
+  }, 500);
+}
+```
+
+## Related Documentation
+
+- [Events](/docs/javascript-api/events/) - React to cart changes
+- [Data Attributes](/docs/data-attributes/actions/) - HTML-based cart control
+- [Coupon Methods](/docs/javascript-api/cart-methods/#coupon-methods) - Apply discounts
+- [Shipping Methods](/docs/javascript-api/cart-methods/#shipping-methods) - Set delivery options

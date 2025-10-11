@@ -1,8 +1,518 @@
 ---
-title: Actions
-description: Documentation coming soon
+title: Action Attributes
+description: Turn any HTML element into an interactive cart control
+sidebar:
+  order: 2
 ---
 
-# Actions
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
 
-Documentation coming soon.
+**Action attributes transform static HTML elements into powerful e-commerce controls without writing JavaScript.**
+
+## The Problem
+
+Most e-commerce libraries require you to write event handlers, manage loading states, handle errors, and update UI manually for every button. You end up with hundreds of lines of boilerplate code just to add items to a cart. Worse, this code is duplicated across every product page, creating maintenance nightmares.
+
+## Core Principles
+
+- **Any Element Can Be Interactive:** Not just buttons - images, divs, links all work
+- **Automatic State Management:** Loading, disabled, and success states handled for you
+- **Error Recovery Built-in:** Network failures and conflicts handled gracefully
+- **Composable Actions:** Combine multiple actions on a single element
+
+## Primary Actions
+
+### Add to Cart
+
+The most fundamental e-commerce action. Any element can become an add-to-cart control.
+
+```html
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123">
+  Add to Cart
+</button>
+```
+
+**Advanced Options:**
+
+```html
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  data-next-quantity="2"
+  data-next-clear-cart="true"
+  data-next-url="/checkout"
+  data-add-text="Add to Cart"
+  data-remove-text="In Cart - Remove?"
+  data-loading-text="Adding...">
+  Add to Cart
+</button>
+```
+
+| Attribute | Purpose | Default |
+|-----------|---------|---------|
+| `data-next-package-id` | Package to add | Required |
+| `data-next-quantity` | Quantity to add | 1 |
+| `data-next-clear-cart` | Clear cart first | false |
+| `data-next-url` | Redirect after adding | none |
+| `data-add-text` | Text when not in cart | Element's text |
+| `data-remove-text` | Text when in cart | Element's text |
+| `data-loading-text` | Text while processing | "Loading..." |
+
+### Toggle Cart Item
+
+Toggle between adding and removing an item - perfect for wishlist-style interfaces.
+
+```html
+<div 
+  data-next-toggle="cart"
+  data-next-package-id="123"
+  class="product-card">
+  <img src="product.jpg" alt="Product">
+  <span class="toggle-indicator">♥</span>
+</div>
+```
+
+The SDK automatically:
+- Adds `next-in-cart` class when item is in cart
+- Toggles between add and remove operations
+- Updates ARIA states for screen readers
+
+### Remove from Cart
+
+Explicitly remove an item from the cart.
+
+```html
+<button 
+  data-next-action="remove"
+  data-next-package-id="123">
+  Remove
+</button>
+```
+
+### Clear Cart
+
+Empty the entire cart - useful for "Start Over" functionality.
+
+```html
+<button data-next-action="clear-cart">
+  Empty Cart
+</button>
+```
+
+### Swap Package
+
+Replace one package with another - perfect for variant selection.
+
+```html
+<button 
+  data-next-action="swap"
+  data-next-package-id="456"
+  data-next-remove-package-id="123">
+  Switch to Premium
+</button>
+```
+
+## Quantity Actions
+
+### Quantity Controls
+
+Create increment/decrement controls without JavaScript.
+
+```html
+<div class="quantity-control">
+  <button 
+    data-next-quantity="decrease"
+    data-next-package-id="123">
+    -
+  </button>
+  
+  <input 
+    type="number"
+    data-next-quantity="input"
+    data-next-package-id="123"
+    value="1"
+    min="1"
+    max="10">
+  
+  <button 
+    data-next-quantity="increase"
+    data-next-package-id="123">
+    +
+  </button>
+</div>
+```
+
+| Value | Behavior |
+|-------|----------|
+| `increase` | Increment by step (default 1) |
+| `decrease` | Decrement by step (default 1) |
+| `input` | Direct quantity input |
+| `set` | Set to specific value |
+
+**With Custom Steps:**
+
+```html
+<button 
+  data-next-quantity="increase"
+  data-next-package-id="123"
+  data-step="5">
+  Add 5 More
+</button>
+```
+
+## Selector Actions
+
+### Package Selector
+
+Create product variant selectors that update the cart automatically.
+
+```html
+<div data-next-package-selector="true">
+  <label>
+    <input 
+      type="radio" 
+      name="package"
+      data-next-package-id="123"
+      data-next-selected="true">
+    Basic - $99
+  </label>
+  
+  <label>
+    <input 
+      type="radio" 
+      name="package"
+      data-next-package-id="456">
+    Pro - $199
+  </label>
+  
+  <label>
+    <input 
+      type="radio" 
+      name="package"
+      data-next-package-id="789">
+    Enterprise - $499
+  </label>
+</div>
+```
+
+**Button-Based Selector:**
+
+```html
+<div data-next-package-selector="true" data-next-selection-mode="swap">
+  <button data-next-package-id="123" data-next-selected="true">
+    1 Month
+  </button>
+  <button data-next-package-id="456">
+    3 Months (Save 10%)
+  </button>
+  <button data-next-package-id="789">
+    12 Months (Save 25%)
+  </button>
+</div>
+```
+
+## Checkout Actions
+
+### Direct Checkout
+
+Skip the cart page and go straight to checkout.
+
+```html
+<button 
+  data-next-action="checkout"
+  data-next-package-id="123"
+  data-next-quantity="1"
+  data-next-clear-cart="true">
+  Buy Now
+</button>
+```
+
+### Express Checkout
+
+Trigger express checkout methods (Apple Pay, Google Pay, etc.).
+
+```html
+<div data-next-express-checkout="auto">
+  <!-- SDK inserts appropriate express buttons -->
+</div>
+
+<!-- Or specific method -->
+<button data-next-express-checkout="apple-pay">
+  Apple Pay
+</button>
+```
+
+## Upsell Actions
+
+### Accept Upsell
+
+For post-purchase upsell flows.
+
+```html
+<button 
+  data-next-action="accept-upsell"
+  data-next-package-id="123"
+  data-next-is-upsell="true">
+  Yes, Add This Special Offer
+</button>
+```
+
+### Skip Upsell
+
+Track upsell rejections for analytics.
+
+```html
+<button 
+  data-next-action="skip-upsell"
+  data-next-package-id="123">
+  No Thanks, Continue
+</button>
+```
+
+## Conditional Actions
+
+### Profile-Based Actions
+
+Show different actions based on customer profiles.
+
+```html
+<!-- For A/B Testing -->
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  data-next-show-if-profile="control">
+  Add to Cart - $99
+</button>
+
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="456"
+  data-next-show-if-profile="test">
+  Add to Cart - $89 (Special Price)
+</button>
+```
+
+### State-Based Actions
+
+Actions that only work in certain states.
+
+```html
+<!-- Only works if cart is empty -->
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  data-next-show="cart.isEmpty">
+  Start Shopping
+</button>
+
+<!-- Only works if specific item NOT in cart -->
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="789"
+  data-next-hide="cart.hasItem(789)">
+  Add Insurance
+</button>
+```
+
+## Action Composition
+
+### Multiple Actions
+
+Execute multiple actions in sequence.
+
+```html
+<button 
+  data-next-clear-cart="true"
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  data-next-quantity="1"
+  data-next-url="/checkout">
+  Buy Now
+</button>
+```
+
+**Execution order:**
+1. Clear existing cart
+2. Add package 123 with quantity 1
+3. Redirect to /checkout
+
+### Conditional Chains
+
+```html
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  data-next-success-action="show-upsell"
+  data-next-error-action="show-error">
+  Add to Cart
+</button>
+```
+
+## Loading States
+
+The SDK automatically manages loading states during actions.
+
+```html
+<button data-next-action="add-to-cart" data-next-package-id="123">
+  Add to Cart
+</button>
+
+<!-- During action execution, becomes: -->
+<button 
+  data-next-action="add-to-cart" 
+  data-next-package-id="123"
+  class="next-loading"
+  disabled>
+  <span class="spinner"></span> Adding...
+</button>
+```
+
+**Custom Loading Behavior:**
+
+```html
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  data-loading-text="Processing..."
+  data-loading-class="is-busy"
+  data-disable-on-loading="false">
+  Add to Cart
+</button>
+```
+
+## Error Handling
+
+Actions automatically handle common errors.
+
+```html
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  data-error-message="Could not add item. Please try again.">
+  Add to Cart
+</button>
+
+<!-- On error, shows: -->
+<div class="next-error-message">
+  Could not add item. Please try again.
+</div>
+```
+
+**Custom Error Handling:**
+
+```javascript
+// Listen for action errors
+window.addEventListener('action:failed', (event) => {
+  console.error('Action failed:', event.detail);
+  // Custom error UI
+});
+```
+
+## Accessibility
+
+All actions are automatically accessible.
+
+```html
+<button data-next-action="add-to-cart" data-next-package-id="123">
+  Add to Cart
+</button>
+
+<!-- SDK adds appropriate ARIA attributes: -->
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  aria-label="Add product to cart"
+  aria-pressed="false"
+  aria-busy="false">
+  Add to Cart
+</button>
+```
+
+## Performance Considerations
+
+### Debouncing
+
+Actions are automatically debounced to prevent double-submissions.
+
+```html
+<!-- Rapid clicks only trigger once -->
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  data-debounce="300">
+  Add to Cart
+</button>
+```
+
+### Optimistic Updates
+
+The UI updates immediately while the action processes.
+
+```html
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  data-optimistic="true">
+  Add to Cart
+</button>
+```
+
+## Common Patterns
+
+### Product Card with Actions
+
+```html
+<div class="product-card">
+  <img src="product.jpg" alt="Product">
+  <h3>Premium Package</h3>
+  <p data-next-display="package.123.price" data-format="currency">$99</p>
+  
+  <div class="actions">
+    <button 
+      data-next-action="add-to-cart"
+      data-next-package-id="123"
+      data-add-text="Add to Cart"
+      data-remove-text="Remove from Cart">
+      Add to Cart
+    </button>
+    
+    <button 
+      data-next-action="add-to-cart"
+      data-next-package-id="123"
+      data-next-clear-cart="true"
+      data-next-url="/checkout">
+      Buy Now
+    </button>
+  </div>
+</div>
+```
+
+### Quick Add Form
+
+```html
+<form data-next-action="add-to-cart">
+  <select data-next-package-selector="true">
+    <option data-next-package-id="123">Small - $99</option>
+    <option data-next-package-id="456">Medium - $149</option>
+    <option data-next-package-id="789">Large - $199</option>
+  </select>
+  
+  <input 
+    type="number"
+    data-next-quantity="input"
+    value="1"
+    min="1"
+    max="10">
+  
+  <button type="submit">Add to Cart</button>
+</form>
+```
+
+## Related Documentation
+
+- [Display Attributes](/docs/data-attributes/display/) - Show dynamic data
+- [State Attributes](/docs/data-attributes/state/) - Conditional visibility
+- [Events](/docs/javascript-api/events/) - Respond to action events
+- [Cart Methods](/docs/javascript-api/cart-methods/) - Programmatic cart control

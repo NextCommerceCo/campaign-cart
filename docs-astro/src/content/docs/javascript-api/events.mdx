@@ -1,8 +1,761 @@
 ---
-title: Events
-description: Documentation coming soon
+title: Events Reference
+description: Complete list of events emitted by the Campaign Cart SDK
+sidebar:
+  order: 2
 ---
 
-# Events
+import { Tabs, TabItem, Aside, Code } from '@astrojs/starlight/components';
 
-Documentation coming soon.
+**The SDK emits events for every significant action, allowing you to build reactive experiences.**
+
+## Event System Overview
+
+The SDK uses a type-safe event system with 79 distinct event types. Events are emitted through both the SDK's EventBus and the browser's native event system.
+
+```javascript
+// Using the SDK's event system
+next.on('cart:updated', (data) => {
+  console.log('New total:', data.totals.total);
+});
+
+// Using native browser events
+window.addEventListener('cart:updated', (event) => {
+  console.log('New total:', event.detail.totals.total);
+});
+```
+
+## Cart Events
+
+### cart:updated
+
+Fired whenever the cart state changes.
+
+```javascript
+next.on('cart:updated', (data) => {
+  // data structure:
+  {
+    items: CartItem[],
+    totals: {
+      subtotal: number,
+      shipping: number,
+      tax: number,
+      discount: number,
+      total: number
+    },
+    totalQuantity: number,
+    isEmpty: boolean
+  }
+});
+```
+
+### cart:item-added
+
+Fired when an item is added to cart.
+
+```javascript
+next.on('cart:item-added', (data) => {
+  // data structure:
+  {
+    item: {
+      packageId: number,
+      quantity: number,
+      price: number,
+      title: string
+    }
+  }
+});
+```
+
+### cart:item-removed
+
+Fired when an item is removed from cart.
+
+```javascript
+next.on('cart:item-removed', (data) => {
+  // data structure:
+  {
+    packageId: number
+  }
+});
+```
+
+### cart:quantity-changed
+
+Fired when an item quantity changes.
+
+```javascript
+next.on('cart:quantity-changed', (data) => {
+  // data structure:
+  {
+    packageId: number,
+    oldQuantity: number,
+    newQuantity: number
+  }
+});
+```
+
+### cart:package-swapped
+
+Fired when one package is swapped for another.
+
+```javascript
+next.on('cart:package-swapped', (data) => {
+  // data structure:
+  {
+    removedPackageId: number,
+    addedPackageId: number,
+    quantity: number
+  }
+});
+```
+
+### cart:cleared
+
+Fired when the cart is emptied.
+
+```javascript
+next.on('cart:cleared', () => {
+  console.log('Cart has been cleared');
+});
+```
+
+## Checkout Events
+
+### checkout:started
+
+Fired when checkout begins.
+
+```javascript
+next.on('checkout:started', (data) => {
+  // data structure:
+  {
+    cart: CartState,
+    method: 'standard' | 'express'
+  }
+});
+```
+
+### checkout:form-initialized
+
+Fired when checkout form is ready.
+
+```javascript
+next.on('checkout:form-initialized', (data) => {
+  // data structure:
+  {
+    fields: string[],
+    paymentMethod: string,
+    testMode: boolean
+  }
+});
+```
+
+### checkout:step-changed
+
+Fired when moving between checkout steps.
+
+```javascript
+next.on('checkout:step-changed', (data) => {
+  // data structure:
+  {
+    previousStep: number,
+    currentStep: number,
+    totalSteps: number
+  }
+});
+```
+
+### checkout:express-started
+
+Fired when express checkout is initiated.
+
+```javascript
+next.on('checkout:express-started', (data) => {
+  // data structure:
+  {
+    method: 'apple_pay' | 'google_pay' | 'paypal'
+  }
+});
+```
+
+### checkout:express-completed
+
+Fired when express checkout completes.
+
+```javascript
+next.on('checkout:express-completed', (data) => {
+  // data structure:
+  {
+    method: string,
+    paymentToken: string,
+    shippingAddress?: Address,
+    billingAddress?: Address
+  }
+});
+```
+
+## Payment Events
+
+### payment:tokenized
+
+Fired when payment is tokenized successfully.
+
+```javascript
+next.on('payment:tokenized', (data) => {
+  // data structure:
+  {
+    token: string,
+    method: string,
+    last4?: string,
+    brand?: string
+  }
+});
+```
+
+### payment:error
+
+Fired when payment processing fails.
+
+```javascript
+next.on('payment:error', (data) => {
+  // data structure:
+  {
+    error: string,
+    code?: string,
+    field?: string,
+    recoverable: boolean
+  }
+});
+```
+
+## Order Events
+
+### order:created
+
+Fired when an order is successfully created.
+
+```javascript
+next.on('order:created', (data) => {
+  // data structure:
+  {
+    order: {
+      refId: string,
+      total: number,
+      items: OrderItem[],
+      customer: Customer,
+      createdAt: string
+    }
+  }
+});
+```
+
+### order:loaded
+
+Fired when an existing order is loaded.
+
+```javascript
+next.on('order:loaded', (data) => {
+  // data structure:
+  {
+    order: Order,
+    refId: string,
+    supportsUpsells: boolean
+  }
+});
+```
+
+## Upsell Events
+
+### upsell:viewed
+
+Fired when an upsell offer is displayed.
+
+```javascript
+next.on('upsell:viewed', (data) => {
+  // data structure:
+  {
+    packageId: number,
+    price: number,
+    position: number,
+    pagePath?: string
+  }
+});
+```
+
+### upsell:accepted
+
+Fired when an upsell is accepted.
+
+```javascript
+next.on('upsell:accepted', (data) => {
+  // data structure:
+  {
+    packageId: number,
+    quantity: number,
+    value: number,
+    order: Order
+  }
+});
+```
+
+### upsell:skipped
+
+Fired when an upsell is declined.
+
+```javascript
+next.on('upsell:skipped', (data) => {
+  // data structure:
+  {
+    packageId: number,
+    reason?: string,
+    pagePath?: string
+  }
+});
+```
+
+### upsell:added
+
+Fired when an upsell is successfully added to order.
+
+```javascript
+next.on('upsell:added', (data) => {
+  // data structure:
+  {
+    packageId: number,
+    quantity: number,
+    order: Order,
+    value: number
+  }
+});
+```
+
+## Campaign Events
+
+### campaign:loaded
+
+Fired when campaign data is loaded.
+
+```javascript
+next.on('campaign:loaded', (data) => {
+  // data structure:
+  {
+    campaignId: string,
+    name: string,
+    currency: string,
+    packages: Package[],
+    fromCache: boolean
+  }
+});
+```
+
+### config:updated
+
+Fired when configuration changes.
+
+```javascript
+next.on('config:updated', (data) => {
+  // data structure:
+  {
+    changes: string[],
+    config: ConfigState
+  }
+});
+```
+
+## Profile Events
+
+### profile:applied
+
+Fired when a profile is activated.
+
+```javascript
+next.on('profile:applied', (data) => {
+  // data structure:
+  {
+    profileId: string,
+    mappings: Record<number, number>,
+    previousProfileId?: string
+  }
+});
+```
+
+### profile:reverted
+
+Fired when reverting to original profile.
+
+```javascript
+next.on('profile:reverted', (data) => {
+  // data structure:
+  {
+    previousProfileId: string,
+    originalCart: CartItem[]
+  }
+});
+```
+
+### profile:switched
+
+Fired when switching between profiles.
+
+```javascript
+next.on('profile:switched', (data) => {
+  // data structure:
+  {
+    fromProfileId: string,
+    toProfileId: string,
+    cartUpdated: boolean
+  }
+});
+```
+
+## UI Events
+
+### accordion:toggled
+
+Fired when accordion state changes.
+
+```javascript
+next.on('accordion:toggled', (data) => {
+  // data structure:
+  {
+    id: string,
+    expanded: boolean
+  }
+});
+```
+
+### fomo:shown
+
+Fired when FOMO popup appears.
+
+```javascript
+next.on('fomo:shown', (data) => {
+  // data structure:
+  {
+    message: string,
+    position: string,
+    displayCount: number
+  }
+});
+```
+
+### exit-intent:shown
+
+Fired when exit intent popup appears.
+
+```javascript
+next.on('exit-intent:shown', (data) => {
+  // data structure:
+  {
+    triggerType: 'mouse' | 'scroll' | 'timer',
+    displayCount: number
+  }
+});
+```
+
+### exit-intent:clicked
+
+Fired when exit intent popup is clicked.
+
+```javascript
+next.on('exit-intent:clicked', (data) => {
+  // data structure:
+  {
+    action: string,
+    dismissed: boolean
+  }
+});
+```
+
+## Coupon Events
+
+### coupon:applied
+
+Fired when a coupon is successfully applied.
+
+```javascript
+next.on('coupon:applied', (data) => {
+  // data structure:
+  {
+    code: string,
+    discountAmount: number,
+    discountType: 'percentage' | 'fixed'
+  }
+});
+```
+
+### coupon:removed
+
+Fired when a coupon is removed.
+
+```javascript
+next.on('coupon:removed', (data) => {
+  // data structure:
+  {
+    code: string
+  }
+});
+```
+
+### coupon:validation-failed
+
+Fired when coupon validation fails.
+
+```javascript
+next.on('coupon:validation-failed', (data) => {
+  // data structure:
+  {
+    code: string,
+    reason: string
+  }
+});
+```
+
+## Shipping Events
+
+### shipping:method-changed
+
+Fired when shipping method changes.
+
+```javascript
+next.on('shipping:method-changed', (data) => {
+  // data structure:
+  {
+    methodId: number,
+    name: string,
+    price: number,
+    estimatedDays?: number
+  }
+});
+```
+
+## System Events
+
+### sdk:url-parameters-processed
+
+Fired after URL parameters are processed during initialization.
+
+```javascript
+next.on('sdk:url-parameters-processed', (data) => {
+  // data structure:
+  {
+    parameters: Record<string, string>
+  }
+});
+```
+
+### next:ready
+
+Fired when SDK is fully initialized.
+
+```javascript
+window.addEventListener('next:ready', (event) => {
+  // event.detail structure:
+  {
+    version: string,
+    mode: 'development' | 'production',
+    loadTime: number
+  }
+});
+```
+
+### next:initialized
+
+Fired after DOM enhancement is complete.
+
+```javascript
+window.addEventListener('next:initialized', (event) => {
+  // event.detail structure:
+  {
+    version: string,
+    timestamp: number,
+    stats: {
+      elementsEnhanced: number,
+      enhancersLoaded: number
+    }
+  }
+});
+```
+
+## Error Events
+
+### error:occurred
+
+Fired when any error occurs.
+
+```javascript
+next.on('error:occurred', (data) => {
+  // data structure:
+  {
+    error: Error,
+    context: string,
+    recoverable: boolean,
+    userMessage?: string
+  }
+});
+```
+
+### action:failed
+
+Fired when an action fails.
+
+```javascript
+next.on('action:failed', (data) => {
+  // data structure:
+  {
+    action: string,
+    reason: string,
+    element?: HTMLElement
+  }
+});
+```
+
+## Event Patterns
+
+### Global Event Listening
+
+```javascript
+// Listen to ALL events for debugging
+const eventLog = [];
+const allEvents = [
+  'cart:updated', 'cart:item-added', 'cart:item-removed',
+  'checkout:started', 'order:created', 'upsell:viewed'
+  // ... add all events you want to track
+];
+
+allEvents.forEach(eventName => {
+  next.on(eventName, (data) => {
+    eventLog.push({
+      event: eventName,
+      data: data,
+      timestamp: Date.now()
+    });
+    console.log(`[${eventName}]`, data);
+  });
+});
+```
+
+### Event Chaining
+
+```javascript
+// React to a sequence of events
+let checkoutStartTime;
+
+next.on('checkout:started', () => {
+  checkoutStartTime = Date.now();
+});
+
+next.on('order:created', (data) => {
+  const checkoutDuration = Date.now() - checkoutStartTime;
+  console.log(`Checkout completed in ${checkoutDuration}ms`);
+  
+  // Track conversion
+  gtag('event', 'purchase', {
+    value: data.order.total,
+    duration: checkoutDuration
+  });
+});
+```
+
+### Conditional Event Handling
+
+```javascript
+// Only react to specific conditions
+next.on('cart:updated', (data) => {
+  if (data.totals.total > 100) {
+    // Show free shipping message
+    document.querySelector('.free-shipping-banner')?.classList.add('visible');
+  }
+  
+  if (data.totalQuantity >= 5) {
+    // Show bulk discount
+    document.querySelector('.bulk-discount')?.classList.add('visible');
+  }
+});
+```
+
+### Event Cleanup
+
+```javascript
+// Remove event listeners when needed
+const handler = (data) => console.log(data);
+
+// Add listener
+next.on('cart:updated', handler);
+
+// Remove specific listener
+next.off('cart:updated', handler);
+
+// Or use native events
+const nativeHandler = (e) => console.log(e.detail);
+window.addEventListener('cart:updated', nativeHandler);
+window.removeEventListener('cart:updated', nativeHandler);
+```
+
+## Analytics Integration
+
+```javascript
+// Send events to your analytics platform
+next.on('cart:item-added', (data) => {
+  // Google Analytics
+  gtag('event', 'add_to_cart', {
+    currency: 'USD',
+    value: data.item.price,
+    items: [{
+      item_id: data.item.packageId,
+      item_name: data.item.title,
+      price: data.item.price,
+      quantity: data.item.quantity
+    }]
+  });
+  
+  // Facebook Pixel
+  fbq('track', 'AddToCart', {
+    content_ids: [data.item.packageId],
+    content_type: 'product',
+    value: data.item.price,
+    currency: 'USD'
+  });
+});
+```
+
+## Debugging Events
+
+Enable debug mode to see all events in the console:
+
+```javascript
+// Enable debug mode
+next.setDebugMode(true);
+
+// Or via URL
+// Add ?debugger=true to your URL
+
+// All events will be logged with full payloads
+```
+
+## TypeScript Support
+
+```typescript
+import type { EventMap } from '@next-commerce/sdk';
+
+// Type-safe event handling
+next.on<'cart:updated'>('cart:updated', (data) => {
+  // data is fully typed
+  console.log(data.totals.total); // number
+});
+
+// Custom event handler with types
+function handleCartUpdate(data: EventMap['cart:updated']) {
+  console.log(data.totals.total);
+}
+
+next.on('cart:updated', handleCartUpdate);
+```
+
+## Related Documentation
+
+- [Callbacks](/docs/javascript-api/callbacks/) - Lifecycle hooks for extending behavior
+- [Analytics](/docs/javascript-api/analytics/) - Built-in analytics tracking
+- [Data Attributes](/docs/data-attributes/) - HTML attributes that trigger events
+- [Cart Methods](/docs/javascript-api/cart-methods/) - Programmatic event triggers
