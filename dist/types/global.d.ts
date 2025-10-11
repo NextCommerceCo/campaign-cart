@@ -523,13 +523,46 @@ export interface ConfigState {
     activeProfile?: string;
 }
 export type PageType = 'product' | 'cart' | 'checkout' | 'upsell' | 'receipt';
-export interface PaymentConfig {
-    spreedly?: {
-        fieldType?: {
-            number?: string;
-            cvv?: string;
-        };
+export interface SpreedlyConfig {
+    fieldType?: {
+        number?: 'number' | 'text' | 'tel';
+        cvv?: 'number' | 'text' | 'tel';
     };
+    numberFormat?: 'prettyFormat' | 'plainFormat' | 'maskedFormat';
+    labels?: {
+        number?: string;
+        cvv?: string;
+    };
+    titles?: {
+        number?: string;
+        cvv?: string;
+    };
+    placeholders?: {
+        number?: string;
+        cvv?: string;
+    };
+    styles?: {
+        number?: string;
+        cvv?: string;
+        placeholder?: string;
+    };
+    nonce?: string;
+    timestamp?: string;
+    certificateToken?: string;
+    signature?: string;
+    fraud?: boolean | {
+        siteId: string;
+    };
+    enableAutoComplete?: boolean;
+    requiredAttributes?: {
+        number?: boolean;
+        cvv?: boolean;
+    };
+    allowBlankName?: boolean;
+    allowExpiredDate?: boolean;
+}
+export interface PaymentConfig {
+    spreedly?: SpreedlyConfig;
     expressCheckout?: {
         enabled: boolean;
         methods: {
