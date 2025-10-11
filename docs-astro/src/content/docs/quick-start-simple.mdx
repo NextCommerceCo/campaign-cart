@@ -1,0 +1,160 @@
+---
+title: Quick Start
+description: Add Campaign Cart to your site in 2 minutes
+---
+
+import { Steps, Tabs, TabItem, Card, CardGrid, Aside } from '@astrojs/starlight/components';
+
+Get Campaign Cart working on your site in just 2 minutes. No complex setup, just add the SDK and start selling.
+
+## Setup in 3 Steps
+
+<Steps>
+
+1. **Add the SDK to your HTML**
+
+   Add this script tag to your HTML `<head>`:
+
+   ```html
+   <script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.3.1/dist/loader.js" type="module"></script>
+   ```
+
+2. **Configure your API key**
+
+   Add your API key (get it from the [dashboard](https://dashboard.campaigncart.com)):
+
+   ```html
+   <script>
+     window.nextConfig = {
+       apiKey: "your-api-key-here"
+     };
+   </script>
+   ```
+
+3. **Add your first button**
+
+   Add a product to cart with this simple button:
+
+   ```html
+   <button 
+     data-next-action="add-to-cart" 
+     data-next-package-id="1">
+     Add to Cart - $99
+   </button>
+   ```
+
+</Steps>
+
+## Complete Example
+
+Here's a minimal working page:
+
+```html title="index.html"
+<!DOCTYPE html>
+<html>
+<head>
+  <title>My Store</title>
+  
+  <!-- Campaign Cart Configuration -->
+  <script>
+    window.nextConfig = {
+      apiKey: "your-api-key-here"
+    };
+  </script>
+  
+  <!-- Campaign Cart SDK -->
+  <script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.3.1/dist/loader.js" type="module"></script>
+</head>
+<body>
+  <h1>Premium Product</h1>
+  <p>Amazing product description here.</p>
+  
+  <!-- Add to Cart Button -->
+  <button 
+    data-next-action="add-to-cart" 
+    data-next-package-id="1">
+    Add to Cart - $99
+  </button>
+  
+  <!-- Checkout Button -->
+  <button data-next-action="checkout">
+    Proceed to Checkout
+  </button>
+</body>
+</html>
+```
+
+## That's It! 🎉
+
+Your page now has:
+- ✅ Add to cart functionality
+- ✅ Cart management
+- ✅ Checkout integration
+- ✅ Analytics tracking (automatic)
+
+## What's Next?
+
+<CardGrid>
+  <Card title="Display Dynamic Prices" icon="document">
+    Show real-time prices that update with currency changes
+    [Learn more →](/components/display/)
+  </Card>
+  
+  <Card title="Add Product Selection" icon="list">
+    Let customers choose between different options
+    [Learn more →](/features/product-selection/)
+  </Card>
+  
+  <Card title="Show Cart Contents" icon="shopping-cart">
+    Display what's in the cart with totals
+    [Learn more →](/features/cart-system/)
+  </Card>
+  
+  <Card title="Style Your Buttons" icon="paint-brush">
+    Make everything match your brand
+    [Learn more →](/guides/styling/)
+  </Card>
+</CardGrid>
+
+## Common Patterns
+
+### Display Dynamic Price
+
+```html
+<span data-next-display="package.price" data-next-package-id="1">
+  Loading...
+</span>
+```
+
+### Show Cart Count
+
+```html
+<span data-next-display="cart.itemCount">0</span> items
+```
+
+### Conditional Display
+
+```html
+<!-- Show when cart has items -->
+<div data-next-show="cart.hasItems">
+  Your cart has items! 
+  <button data-next-action="checkout">Checkout Now</button>
+</div>
+
+<!-- Show when cart is empty -->
+<div data-next-show="cart.isEmpty">
+  Your cart is empty
+</div>
+```
+
+## Testing Your Setup
+
+<Aside type="tip">
+Open your browser's console and look for "Campaign Cart SDK initialized" to confirm everything is working.
+</Aside>
+
+1. Click your "Add to Cart" button
+2. Check the browser console for any errors
+3. Click "Proceed to Checkout" to test the checkout flow
+
+Need help? Check our [troubleshooting guide](/guides/troubleshooting/) or [contact support](https://support.campaigncart.com).

@@ -1,125 +1,351 @@
 ---
-title: Quick Start Guide
-description: Get Campaign Cart JS SDK running in under 5 minutes
+title: Quick Start
+description: Add Campaign Cart to your site in 2 minutes - with live demo
 ---
 
-import { Steps, Code, Tabs, TabItem, Card, CardGrid, Aside } from '@astrojs/starlight/components';
+import { Steps, Tabs, TabItem, Card, CardGrid, Aside } from '@astrojs/starlight/components';
+import InteractiveDemo from '../../components/InteractiveDemo.astro';
+import SDKSetup from '../../components/SDKSetup.astro';
 
-Get Campaign Cart JS SDK up and running in under 5 minutes.
+<InteractiveDemo />
+
+<style>{`
+  .demo-section {
+    background: var(--sl-color-gray-6);
+    border: 2px solid var(--sl-color-gray-5);
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+  }
+  .demo-button {
+    background: var(--sl-color-accent);
+    color: var(--sl-color-bg);
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+    margin-right: 10px;
+    margin-bottom: 10px;
+    transition: opacity 0.2s;
+  }
+  .demo-button:hover {
+    opacity: 0.8;
+  }
+  .cart-display {
+    background: var(--sl-color-gray-6);
+    padding: 15px;
+    border-radius: 6px;
+    margin: 15px 0;
+    border: 1px solid var(--sl-color-gray-5);
+  }
+  .price-badge {
+    display: inline-block;
+    background: var(--sl-color-green);
+    color: var(--sl-color-black);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+`}</style>
+
+Get Campaign Cart working on your site in just 2 minutes. This page has a **live demo** - try the buttons below!
+
+## Try It Now - Interactive Demo
+
+<div class="demo-section">
+  <h3>📦 Product Selection</h3>
+  <p>Click to select a product:</p>
+  
+  <div data-next-cart-selector data-next-selection-mode="swap" style="display: flex; gap: 10px; flex-wrap: wrap;">
+    <button class="demo-button" data-next-selector-card data-next-package-id="1">
+      Basic Plan - $99
+    </button>
+    <button class="demo-button" data-next-selector-card data-next-package-id="2">
+      Pro Plan - $199
+    </button>
+    <button class="demo-button" data-next-selector-card data-next-package-id="3">
+      Enterprise - $499
+    </button>
+  </div>
+  
+  <div class="cart-display">
+    <strong>Selected:</strong> 
+    <span data-next-display="selection.name">No product selected</span>
+    <span class="price-badge" data-next-display="selection.price">$0</span>
+  </div>
+  
+  <button class="demo-button" data-next-action="add-to-cart" data-next-package-id="selected">
+    Add Selected to Cart
+  </button>
+</div>
+
+<div class="demo-section">
+  <h3>🛒 Your Cart</h3>
+  
+  <div class="cart-display">
+    <div>
+      <strong>Items:</strong> <span data-next-display="cart.itemCount">0</span>
+    </div>
+    <div>
+      <strong>Total:</strong> <span data-next-display="cart.total">$0.00</span>
+    </div>
+  </div>
+  
+  <div data-next-show="cart.hasItems">
+    <button class="demo-button" data-next-action="checkout">
+      Proceed to Checkout
+    </button>
+    <button class="demo-button" data-next-action="clear-cart" style="background: #ef4444;">
+      Clear Cart
+    </button>
+  </div>
+  
+  <div data-next-show="cart.isEmpty">
+    <p style="color: #6b7280;">Cart is empty - select a product above!</p>
+  </div>
+</div>
 
 <Aside type="tip">
-**New to Campaign Cart?** This SDK lets you build e-commerce functionality using simple HTML attributes. No complex JavaScript required!
+**This is a real working demo!** The buttons above use our demo API key. In your own implementation, you'll use your API key from the dashboard.
 </Aside>
 
-## Prerequisites
+## Installation Steps
 
-- Basic HTML knowledge
-- A web page (can be static HTML, WordPress, Shopify, etc.)
-- A Campaign Cart account and API key
+Now let's set this up on your site:
 
 <Steps>
 
-1. **Get Your API Key**
+1. **Get your API key**
 
-   Sign up at Campaign Cart Dashboard and get your API key from the settings page.
+   Sign up at [Campaign Cart Dashboard](https://dashboard.campaigncart.com) and copy your API key from settings.
 
-2. **Add SDK to Your Page**
+2. **Add to your HTML**
 
-   Add these two lines to your HTML head section:
+   Add this to your `<head>` tag:
 
-   ```html
-   <!-- Campaign Cart Configuration -->
-   <meta name="next-api-key" content="your-api-key-here">
+   <SDKSetup />
 
-   <!-- Campaign Cart SDK -->
-   <script src="https://campaign-cart-v2.pages.dev/loader.js"></script>
-   ```
+3. **Add your first button**
 
-3. **Create Your First Product**
-
-   Add a simple product with an add-to-cart button:
+   Add a button anywhere on your page:
 
    ```html
-   <div class="product">
-     <h2>Awesome Product</h2>
-     <p class="price">$29.99</p>
-     
-     <button data-next-action="add-to-cart" 
-             data-next-package-id="product-123"
-             data-next-quantity="1">
-       Add to Cart
-     </button>
-   </div>
+   <button data-next-action="add-to-cart" data-next-package-id="1">
+     Add to Cart - $99
+   </button>
    ```
-
-4. **Add Cart Display**
-
-   Show cart contents and total to your customers:
-
-   ```html
-   <div class="cart-summary">
-     <h3>Your Cart</h3>
-     
-     <!-- Cart item count -->
-     <p>Items: <span data-next-display="cart.itemCount">0</span></p>
-     
-     <!-- Cart total -->
-     <p class="total">
-       Total: <span data-next-display="cart.total">$0.00</span>
-     </p>
-     
-     <!-- Checkout button (only show when cart has items) -->
-     <div data-next-show="cart.hasItems">
-       <button onclick="checkout()" class="checkout-btn">
-         Proceed to Checkout
-       </button>
-     </div>
-   </div>
-   ```
-
-5. **Test Your Implementation**
-
-   Open your page in a browser and:
-   - Click "Add to Cart" - you should see the cart count increase
-   - The cart total should update automatically
-   - Items should persist if you refresh the page
 
 </Steps>
 
-## Next Steps
+## Complete Working Example
+
+Copy this complete HTML file to get started:
+
+```html title="index.html"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Store</title>
+  
+  <!-- Campaign Cart Configuration -->
+  <script>
+    window.nextConfig = {
+      apiKey: "your-api-key-here",  // Replace with your API key
+      debug: true  // Shows helpful console messages
+    };
+  </script>
+  
+  <!-- Campaign Cart SDK -->
+  <script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.3.1/dist/loader.js" type="module"></script>
+  
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    button {
+      background: #3b82f6;
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+    .product {
+      border: 2px solid #e2e8f0;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .cart-info {
+      background: #f3f4f6;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <!-- Product -->
+  <div class="product">
+    <h2>Premium Course</h2>
+    <p>Master web development with our comprehensive course.</p>
+    <p>Price: <strong data-next-display="package.price" data-next-package-id="1">$99</strong></p>
+    
+    <button data-next-action="add-to-cart" data-next-package-id="1">
+      Add to Cart
+    </button>
+  </div>
+  
+  <!-- Cart Display -->
+  <div class="cart-info">
+    <h3>Shopping Cart</h3>
+    <p>
+      Items: <span data-next-display="cart.itemCount">0</span>
+      • Total: <span data-next-display="cart.total">$0.00</span>
+    </p>
+    
+    <!-- Show when cart has items -->
+    <div data-next-show="cart.hasItems">
+      <button data-next-action="checkout">Checkout</button>
+      <button data-next-action="clear-cart">Clear Cart</button>
+    </div>
+    
+    <!-- Show when cart is empty -->
+    <div data-next-show="cart.isEmpty">
+      <p>Your cart is empty</p>
+    </div>
+  </div>
+</body>
+</html>
+```
+
+## Core Concepts
+
+### Data Attributes
+
+Campaign Cart uses HTML data attributes to add functionality:
+
+| Attribute | Purpose | Example |
+|-----------|---------|---------|
+| `data-next-action` | Triggers actions | `"add-to-cart"`, `"checkout"`, `"clear-cart"` |
+| `data-next-display` | Shows dynamic data | `"cart.total"`, `"package.price"` |
+| `data-next-show` | Conditional visibility | `"cart.hasItems"`, `"cart.isEmpty"` |
+| `data-next-package-id` | Product identifier | `"1"`, `"2"`, `"selected"` |
+
+### Basic Configuration
+
+The simplest configuration only needs an API key:
+
+```javascript
+window.nextConfig = {
+  apiKey: "your-api-key-here"
+};
+```
+
+For more options, see the [Configuration Reference](/config/configuration-reference/).
+
+## Common Patterns
+
+### Dynamic Price Display
+```html
+<span data-next-display="package.price" data-next-package-id="1">
+  Loading...
+</span>
+```
+
+### Cart Count Badge
+```html
+<div class="badge">
+  <span data-next-display="cart.itemCount">0</span>
+</div>
+```
+
+### Product Selector
+```html
+<div data-next-cart-selector>
+  <div data-next-selector-card data-next-package-id="1">
+    <h3>Basic - $99</h3>
+    <button>Select</button>
+  </div>
+  <div data-next-selector-card data-next-package-id="2">
+    <h3>Pro - $199</h3>
+    <button>Select</button>
+  </div>
+</div>
+```
+
+### Quantity Controls
+```html
+<div data-next-quantity-controls data-next-package-id="1">
+  <button data-next-quantity-decrease>-</button>
+  <input data-next-quantity-input type="number" value="1">
+  <button data-next-quantity-increase>+</button>
+</div>
+```
+
+## Testing Your Integration
+
+1. **Open Browser Console** - Look for "Campaign Cart SDK initialized"
+2. **Click Add to Cart** - Watch the cart count update
+3. **Try Checkout** - Should redirect to checkout page
+4. **Check Network Tab** - Verify API calls are working
+
+<Aside type="caution">
+**Checkout not working?** Make sure you've set up products in your Campaign Cart dashboard first.
+</Aside>
+
+## What's Next?
 
 <CardGrid>
-  <Card title="Add Product Selection" icon="settings">
-    Learn how to create product selectors with multiple options and dynamic pricing.
+  <Card title="Build a Product Page" icon="document">
+    Create a complete product page with all features
+    [Tutorial →](/first-product-page/)
   </Card>
   
-  <Card title="Configure Checkout" icon="credit-card">
-    Set up payment processing and checkout flows.
+  <Card title="Configuration Options" icon="setting">
+    Learn about all configuration options
+    [Config Reference →](/config/configuration-reference/)
   </Card>
   
-  <Card title="Add Upsells" icon="trending-up">
-    Increase revenue with post-purchase upsells and cross-sells.
+  <Card title="Components Guide" icon="puzzle">
+    Explore all available components
+    [Components →](/components/buttons/)
   </Card>
   
-  <Card title="View Live Examples" icon="external">
-    See working examples you can copy and customize.
+  <Card title="Interactive Playground" icon="rocket">
+    Try more advanced examples
+    [Playground →](/playground/)
   </Card>
 </CardGrid>
 
-## Common Issues
+## Frequently Asked Questions
 
-<Aside type="caution">
-**API Key Missing?** Make sure you've added the next-api-key meta tag with your actual API key from the dashboard.
-</Aside>
+**Q: Do I need a backend server?**  
+No! Campaign Cart runs entirely in the browser. Just add the SDK to your HTML.
 
-**Nothing happening when clicking buttons?**
-- Check browser console for errors
-- Verify the SDK script is loading
-- Make sure your API key is correct
-- Check that you're using the correct package IDs
+**Q: How do I create products?**  
+Products are created and managed in your [Campaign Cart dashboard](https://dashboard.campaigncart.com).
 
-**Cart not persisting?**
-- Cart data is stored in localStorage by default
-- Clear browser data if testing different configurations
+**Q: Can I customize the checkout page?**  
+Yes! The checkout page can be fully customized in your dashboard settings.
 
-Need help? Check our Troubleshooting Guide or API Reference.
+**Q: Is it secure?**  
+Yes. All payment processing happens on PCI-compliant servers. Your site never handles sensitive payment data.
+
+**Q: How do I test without real payments?**  
+Use test mode in your dashboard. You can also use our demo API key for initial testing.
+
+---
+
+Need help? Visit our [troubleshooting guide](/guides/troubleshooting/) or [contact support](https://support.campaigncart.com).

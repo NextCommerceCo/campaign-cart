@@ -1,0 +1,63 @@
+---
+/**
+ * Interactive Demo Component
+ * Loads the Campaign Cart SDK for live demos
+ */
+import SDK_CONFIG from '../config/sdk-config';
+
+export interface Props {
+  showStatus?: boolean;
+}
+
+const { showStatus = true } = Astro.props;
+---
+
+{/* Load Campaign Cart SDK for interactive demo */}
+<script define:vars={{ SDK_CONFIG }}>
+  // Demo configuration - uses test API key
+  window.nextConfig = {
+    apiKey: SDK_CONFIG.demoApiKey,
+    debug: true
+  };
+  
+  // Load SDK
+  const script = document.createElement('script');
+  script.src = SDK_CONFIG.cdn.latest;
+  script.type = 'module';
+  document.head.appendChild(script);
+  
+  // Show initialization status
+  if (document.getElementById('sdk-status')) {
+    script.onload = () => {
+      document.addEventListener('next:initialized', () => {
+        const status = document.getElementById('sdk-status');
+        if (status) {
+          status.innerHTML = '✅ SDK loaded and ready!';
+          status.style.color = '#10b981';
+        }
+      });
+    };
+  }
+</script>
+
+{showStatus && (
+  <div class="demo-status">
+    <strong>🚀 Live Demo Status:</strong> <span id="sdk-status">Loading SDK...</span>
+  </div>
+)}
+
+<style>
+  .demo-status {
+    background: var(--sl-color-gray-6);
+    border: 2px solid var(--sl-color-gray-5);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin: 1.5rem 0;
+    font-size: 0.95rem;
+  }
+  
+  #sdk-status {
+    color: var(--sl-color-text-accent);
+    font-weight: 500;
+  }
+</style>
