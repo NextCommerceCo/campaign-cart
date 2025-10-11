@@ -1,27 +1,44 @@
 ---
-title: Events Reference
-description: Complete list of events emitted by the Campaign Cart SDK
+title: Events
+description: Complete reference for all SDK events and event handling
 sidebar:
   order: 2
 ---
 
-import { Tabs, TabItem, Aside, Code } from '@astrojs/starlight/components';
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
 
-**The SDK emits events for every significant action, allowing you to build reactive experiences.**
+**The Next Commerce JS SDK emits 34 internal events that you can listen to for tracking and custom functionality.**
 
-## Event System Overview
+<Aside type="tip">
+The SDK has two types of events: DOM events for SDK lifecycle and internal events for cart/checkout operations. Use `document.addEventListener` for DOM events and `next.on()` for internal events.
+</Aside>
 
-The SDK uses a type-safe event system with 79 distinct event types. Events are emitted through both the SDK's EventBus and the browser's native event system.
+## Event Categories
+
+- **Cart Events** - Track cart state changes
+- **Checkout Events** - Monitor checkout process  
+- **Payment Events** - Handle payment states
+- **Order Events** - Track order completion
+- **Campaign Events** - Campaign data loading
+- **Coupon Events** - Discount code usage
+- **Upsell Events** - Post-purchase upsell tracking
+- **User Events** - User authentication
+- **Behavioral Events** - FOMO, exit intent
+- **Profile Events** - Profile management and switching
+- **System Events** - SDK state, errors, routing
+
+## SDK Initialization
+
+### next:initialized
+
+Fired when SDK is fully loaded and ready (DOM event):
 
 ```javascript
-// Using the SDK's event system
-next.on('cart:updated', (data) => {
-  console.log('New total:', data.totals.total);
-});
-
-// Using native browser events
-window.addEventListener('cart:updated', (event) => {
-  console.log('New total:', event.detail.totals.total);
+// Listen on document for initialization
+document.addEventListener('next:initialized', function(event) {
+  console.log('SDK is ready at:', event.detail.timestamp);
+  console.log('Version:', event.detail.version);
+  // Safe to use SDK methods here
 });
 ```
 
@@ -29,169 +46,94 @@ window.addEventListener('cart:updated', (event) => {
 
 ### cart:updated
 
-Fired whenever the cart state changes.
+Fired whenever cart contents change (most common event):
 
 ```javascript
-next.on('cart:updated', (data) => {
-  // data structure:
-  {
-    items: CartItem[],
-    totals: {
-      subtotal: number,
-      shipping: number,
-      tax: number,
-      discount: number,
-      total: number
-    },
-    totalQuantity: number,
-    isEmpty: boolean
-  }
+next.on('cart:updated', (cartState) => {
+  console.log('Cart updated:', cartState);
+  // cartState includes: items, totals, enrichedItems, etc.
+  console.log('Total items:', cartState.totalQuantity);
+  console.log('Cart total:', cartState.totals.total.formatted);
 });
 ```
 
 ### cart:item-added
 
-Fired when an item is added to cart.
+Fired when item is added to cart:
 
 ```javascript
 next.on('cart:item-added', (data) => {
-  // data structure:
-  {
-    item: {
-      packageId: number,
-      quantity: number,
-      price: number,
-      title: string
-    }
-  }
+  console.log('Item added:', data);
+  // data includes: packageId, quantity, item details
 });
 ```
 
 ### cart:item-removed
 
-Fired when an item is removed from cart.
+Fired when item is removed from cart:
 
 ```javascript
 next.on('cart:item-removed', (data) => {
-  // data structure:
-  {
-    packageId: number
-  }
+  console.log('Item removed:', data);
+  // data includes: packageId, item details that were removed
 });
 ```
 
 ### cart:quantity-changed
 
-Fired when an item quantity changes.
+Fired when item quantity is updated:
 
 ```javascript
 next.on('cart:quantity-changed', (data) => {
-  // data structure:
-  {
-    packageId: number,
-    oldQuantity: number,
-    newQuantity: number
-  }
+  console.log('Quantity changed:', data);
+  // data includes: packageId, oldQuantity, newQuantity
 });
 ```
 
 ### cart:package-swapped
 
-Fired when one package is swapped for another.
+Fired when a package is swapped for another:
 
 ```javascript
 next.on('cart:package-swapped', (data) => {
-  // data structure:
-  {
-    removedPackageId: number,
-    addedPackageId: number,
-    quantity: number
-  }
+  console.log('Package swapped:', data);
+  // data includes: previousPackageId, newPackageId, 
+  // previousItem, newItem, priceDifference, source
 });
 ```
 
-### cart:cleared
-
-Fired when the cart is emptied.
-
-```javascript
-next.on('cart:cleared', () => {
-  console.log('Cart has been cleared');
-});
-```
-
-## Checkout Events
+## Checkout & Order Events
 
 ### checkout:started
 
-Fired when checkout begins.
+Fired when checkout process begins:
 
 ```javascript
 next.on('checkout:started', (data) => {
-  // data structure:
-  {
-    cart: CartState,
-    method: 'standard' | 'express'
-  }
+  console.log('Checkout started:', data);
+  // data includes: cart items, totals
 });
 ```
 
 ### checkout:form-initialized
 
-Fired when checkout form is ready.
+Fired when checkout form is ready:
 
 ```javascript
-next.on('checkout:form-initialized', (data) => {
-  // data structure:
-  {
-    fields: string[],
-    paymentMethod: string,
-    testMode: boolean
-  }
+next.on('checkout:form-initialized', () => {
+  console.log('Checkout form ready');
+  // Form is now initialized and ready for input
 });
 ```
 
-### checkout:step-changed
+### order:completed
 
-Fired when moving between checkout steps.
-
-```javascript
-next.on('checkout:step-changed', (data) => {
-  // data structure:
-  {
-    previousStep: number,
-    currentStep: number,
-    totalSteps: number
-  }
-});
-```
-
-### checkout:express-started
-
-Fired when express checkout is initiated.
+Fired when order is successfully completed:
 
 ```javascript
-next.on('checkout:express-started', (data) => {
-  // data structure:
-  {
-    method: 'apple_pay' | 'google_pay' | 'paypal'
-  }
-});
-```
-
-### checkout:express-completed
-
-Fired when express checkout completes.
-
-```javascript
-next.on('checkout:express-completed', (data) => {
-  // data structure:
-  {
-    method: string,
-    paymentToken: string,
-    shippingAddress?: Address,
-    billingAddress?: Address
-  }
+next.on('order:completed', (order) => {
+  console.log('Order completed:', order);
+  // order includes: ref_id, total, lines, customer info
 });
 ```
 
@@ -199,272 +141,58 @@ next.on('checkout:express-completed', (data) => {
 
 ### payment:tokenized
 
-Fired when payment is tokenized successfully.
+Fired when payment is successfully tokenized:
 
 ```javascript
 next.on('payment:tokenized', (data) => {
-  // data structure:
-  {
-    token: string,
-    method: string,
-    last4?: string,
-    brand?: string
-  }
+  console.log('Payment tokenized:', data);
+  // data includes: token info, payment method
 });
 ```
 
 ### payment:error
 
-Fired when payment processing fails.
+Fired when payment processing fails:
 
 ```javascript
-next.on('payment:error', (data) => {
-  // data structure:
-  {
-    error: string,
-    code?: string,
-    field?: string,
-    recoverable: boolean
-  }
+next.on('payment:error', (error) => {
+  console.error('Payment failed:', error);
+  // error includes: message, code, details
 });
 ```
 
-## Order Events
+### express-checkout:started
 
-### order:created
-
-Fired when an order is successfully created.
+Fired when express checkout (PayPal, Apple Pay, etc.) begins:
 
 ```javascript
-next.on('order:created', (data) => {
-  // data structure:
-  {
-    order: {
-      refId: string,
-      total: number,
-      items: OrderItem[],
-      customer: Customer,
-      createdAt: string
-    }
-  }
+next.on('express-checkout:started', (data) => {
+  console.log('Express checkout started:', data);
+  // data includes: method type (paypal, apple, google)
 });
 ```
 
-### order:loaded
-
-Fired when an existing order is loaded.
-
-```javascript
-next.on('order:loaded', (data) => {
-  // data structure:
-  {
-    order: Order,
-    refId: string,
-    supportsUpsells: boolean
-  }
-});
-```
-
-## Upsell Events
-
-### upsell:viewed
-
-Fired when an upsell offer is displayed.
-
-```javascript
-next.on('upsell:viewed', (data) => {
-  // data structure:
-  {
-    packageId: number,
-    price: number,
-    position: number,
-    pagePath?: string
-  }
-});
-```
-
-### upsell:accepted
-
-Fired when an upsell is accepted.
-
-```javascript
-next.on('upsell:accepted', (data) => {
-  // data structure:
-  {
-    packageId: number,
-    quantity: number,
-    value: number,
-    order: Order
-  }
-});
-```
-
-### upsell:skipped
-
-Fired when an upsell is declined.
-
-```javascript
-next.on('upsell:skipped', (data) => {
-  // data structure:
-  {
-    packageId: number,
-    reason?: string,
-    pagePath?: string
-  }
-});
-```
-
-### upsell:added
-
-Fired when an upsell is successfully added to order.
-
-```javascript
-next.on('upsell:added', (data) => {
-  // data structure:
-  {
-    packageId: number,
-    quantity: number,
-    order: Order,
-    value: number
-  }
-});
-```
-
-## Campaign Events
+## Campaign & Configuration Events
 
 ### campaign:loaded
 
-Fired when campaign data is loaded.
+Fired when campaign data is loaded:
 
 ```javascript
-next.on('campaign:loaded', (data) => {
-  // data structure:
-  {
-    campaignId: string,
-    name: string,
-    currency: string,
-    packages: Package[],
-    fromCache: boolean
-  }
+next.on('campaign:loaded', (campaign) => {
+  console.log('Campaign loaded:', campaign);
+  // campaign includes: packages, settings, currency, etc.
 });
 ```
 
 ### config:updated
 
-Fired when configuration changes.
+Fired when SDK configuration changes:
 
 ```javascript
-next.on('config:updated', (data) => {
-  // data structure:
-  {
-    changes: string[],
-    config: ConfigState
-  }
-});
-```
-
-## Profile Events
-
-### profile:applied
-
-Fired when a profile is activated.
-
-```javascript
-next.on('profile:applied', (data) => {
-  // data structure:
-  {
-    profileId: string,
-    mappings: Record<number, number>,
-    previousProfileId?: string
-  }
-});
-```
-
-### profile:reverted
-
-Fired when reverting to original profile.
-
-```javascript
-next.on('profile:reverted', (data) => {
-  // data structure:
-  {
-    previousProfileId: string,
-    originalCart: CartItem[]
-  }
-});
-```
-
-### profile:switched
-
-Fired when switching between profiles.
-
-```javascript
-next.on('profile:switched', (data) => {
-  // data structure:
-  {
-    fromProfileId: string,
-    toProfileId: string,
-    cartUpdated: boolean
-  }
-});
-```
-
-## UI Events
-
-### accordion:toggled
-
-Fired when accordion state changes.
-
-```javascript
-next.on('accordion:toggled', (data) => {
-  // data structure:
-  {
-    id: string,
-    expanded: boolean
-  }
-});
-```
-
-### fomo:shown
-
-Fired when FOMO popup appears.
-
-```javascript
-next.on('fomo:shown', (data) => {
-  // data structure:
-  {
-    message: string,
-    position: string,
-    displayCount: number
-  }
-});
-```
-
-### exit-intent:shown
-
-Fired when exit intent popup appears.
-
-```javascript
-next.on('exit-intent:shown', (data) => {
-  // data structure:
-  {
-    triggerType: 'mouse' | 'scroll' | 'timer',
-    displayCount: number
-  }
-});
-```
-
-### exit-intent:clicked
-
-Fired when exit intent popup is clicked.
-
-```javascript
-next.on('exit-intent:clicked', (data) => {
-  // data structure:
-  {
-    action: string,
-    dismissed: boolean
-  }
+next.on('config:updated', (config) => {
+  console.log('Config updated:', config);
+  // config includes: all SDK settings
 });
 ```
 
@@ -472,290 +200,560 @@ next.on('exit-intent:clicked', (data) => {
 
 ### coupon:applied
 
-Fired when a coupon is successfully applied.
+Fired when coupon is successfully applied:
 
 ```javascript
-next.on('coupon:applied', (data) => {
-  // data structure:
-  {
-    code: string,
-    discountAmount: number,
-    discountType: 'percentage' | 'fixed'
-  }
+next.on('coupon:applied', (coupon) => {
+  console.log('Coupon applied:', coupon);
+  // coupon includes: code, discount amount, type
 });
 ```
 
 ### coupon:removed
 
-Fired when a coupon is removed.
+Fired when coupon is removed:
 
 ```javascript
-next.on('coupon:removed', (data) => {
-  // data structure:
-  {
-    code: string
-  }
+next.on('coupon:removed', (code) => {
+  console.log('Coupon removed:', code);
+  // code is the removed coupon code string
 });
 ```
 
-### coupon:validation-failed
+## Upsell Events
 
-Fired when coupon validation fails.
+### upsell:viewed
+
+Fired when upsell offer is displayed:
 
 ```javascript
-next.on('coupon:validation-failed', (data) => {
-  // data structure:
-  {
-    code: string,
-    reason: string
-  }
+next.on('upsell:viewed', (data) => {
+  console.log('Upsell viewed:', data);
+  // data includes: packageId, offer details
 });
 ```
 
-## Shipping Events
+### upsell:accepted
 
-### shipping:method-changed
-
-Fired when shipping method changes.
+Fired when user accepts an upsell:
 
 ```javascript
-next.on('shipping:method-changed', (data) => {
-  // data structure:
-  {
-    methodId: number,
-    name: string,
-    price: number,
-    estimatedDays?: number
-  }
+next.on('upsell:accepted', (data) => {
+  console.log('Upsell accepted:', data);
+  // data includes: packageId, quantity, value
+});
+```
+
+### upsell:added
+
+Fired when upsell is successfully added to order:
+
+```javascript
+next.on('upsell:added', (data) => {
+  console.log('Upsell added:', data);
+  // data includes: packageId, order, value
+});
+```
+
+### upsell:skipped
+
+Fired when user skips/declines an upsell:
+
+```javascript
+next.on('upsell:skipped', (data) => {
+  console.log('Upsell skipped:', data);
+  // data includes: packageId, reason
+});
+```
+
+## User Events
+
+### user:logged-in
+
+Fired when user logs in:
+
+```javascript
+next.on('user:logged-in', (data) => {
+  console.log('User logged in:', data);
+  // data includes: user info, email
+});
+```
+
+### user:logged-out
+
+Fired when user logs out:
+
+```javascript
+next.on('user:logged-out', (data) => {
+  console.log('User logged out:', data);
+});
+```
+
+## Behavioral Events
+
+### fomo:shown
+
+Fired when FOMO notification appears:
+
+```javascript
+next.on('fomo:shown', (data) => {
+  console.log('FOMO shown:', data);
+  // data includes: customer name, product, location
+});
+```
+
+### exit-intent:clicked
+
+Fired when user clicks on exit intent popup:
+
+```javascript
+next.on('exit-intent:clicked', (data) => {
+  console.log('Exit intent clicked:', data);
+  // data includes: imageUrl, template
+});
+```
+
+### exit-intent:dismissed
+
+Fired when exit intent popup is dismissed:
+
+```javascript
+next.on('exit-intent:dismissed', (data) => {
+  console.log('Exit intent dismissed:', data);
+  // data includes: imageUrl, template
+});
+```
+
+### exit-intent:closed
+
+Fired when exit intent popup is closed:
+
+```javascript
+next.on('exit-intent:closed', (data) => {
+  console.log('Exit intent closed:', data);
+  // data includes: imageUrl, template
+});
+```
+
+### exit-intent:action
+
+Fired when user takes an action on exit intent popup:
+
+```javascript
+next.on('exit-intent:action', (data) => {
+  console.log('Exit intent action:', data);
+  // data includes: action, couponCode
+});
+```
+
+## Profile Events
+
+### profile:applied
+
+Fired when a profile is applied to the cart:
+
+```javascript
+next.on('profile:applied', (data) => {
+  console.log('Profile applied:', data);
+  // data includes: profileId, previousProfileId, 
+  // itemsSwapped, originalItems, cleared, profile
+});
+```
+
+### profile:reverted
+
+Fired when profile changes are reverted:
+
+```javascript
+next.on('profile:reverted', (data) => {
+  console.log('Profile reverted:', data);
+  // data includes: previousProfileId, itemsRestored
+});
+```
+
+### profile:switched
+
+Fired when switching between profiles:
+
+```javascript
+next.on('profile:switched', (data) => {
+  console.log('Profile switched:', data);
+  // data includes: fromProfileId, toProfileId, itemsAffected
+});
+```
+
+### profile:registered
+
+Fired when a new profile is registered:
+
+```javascript
+next.on('profile:registered', (data) => {
+  console.log('Profile registered:', data);
+  // data includes: profileId, mappingsCount
 });
 ```
 
 ## System Events
 
-### sdk:url-parameters-processed
+### route:changed
 
-Fired after URL parameters are processed during initialization.
+Fired when SDK detects route/page change:
 
 ```javascript
-next.on('sdk:url-parameters-processed', (data) => {
-  // data structure:
-  {
-    parameters: Record<string, string>
-  }
+next.on('route:changed', (route) => {
+  console.log('Route changed:', route);
+  // route includes: path, params
 });
 ```
 
-### next:ready
+### sdk:route-invalidated
 
-Fired when SDK is fully initialized.
+Fired when SDK route context is invalidated:
 
 ```javascript
-window.addEventListener('next:ready', (event) => {
-  // event.detail structure:
-  {
-    version: string,
-    mode: 'development' | 'production',
-    loadTime: number
-  }
+next.on('sdk:route-invalidated', (data) => {
+  console.log('Route invalidated:', data);
 });
 ```
 
-### next:initialized
+### page:viewed
 
-Fired after DOM enhancement is complete.
+Fired when page view is tracked:
 
 ```javascript
-window.addEventListener('next:initialized', (event) => {
-  // event.detail structure:
-  {
-    version: string,
-    timestamp: number,
-    stats: {
-      elementsEnhanced: number,
-      enhancersLoaded: number
-    }
-  }
+next.on('page:viewed', (data) => {
+  console.log('Page viewed:', data);
+  // data includes: page info, timestamp
 });
 ```
-
-## Error Events
 
 ### error:occurred
 
-Fired when any error occurs.
+Fired when SDK encounters an error:
 
 ```javascript
-next.on('error:occurred', (data) => {
-  // data structure:
-  {
-    error: Error,
-    context: string,
-    recoverable: boolean,
-    userMessage?: string
-  }
+next.on('error:occurred', (error) => {
+  console.error('SDK error:', error);
+  // error includes: message, stack, context
 });
 ```
 
-### action:failed
+## Complete Event List
 
-Fired when an action fails.
+All 34 available events organized by category:
 
-```javascript
-next.on('action:failed', (data) => {
-  // data structure:
-  {
-    action: string,
-    reason: string,
-    element?: HTMLElement
-  }
-});
-```
+### Cart (5 events)
+- `cart:updated` - Cart state changed
+- `cart:item-added` - Item added to cart
+- `cart:item-removed` - Item removed from cart
+- `cart:quantity-changed` - Item quantity changed
+- `cart:package-swapped` - Package swapped for another
 
-## Event Patterns
+### Checkout & Order (3 events)
+- `checkout:started` - Checkout process began
+- `checkout:form-initialized` - Checkout form ready
+- `order:completed` - Order successfully completed
 
-### Global Event Listening
+### Payment (3 events)
+- `payment:tokenized` - Payment token created
+- `payment:error` - Payment processing failed
+- `express-checkout:started` - Express checkout initiated
 
-```javascript
-// Listen to ALL events for debugging
-const eventLog = [];
-const allEvents = [
-  'cart:updated', 'cart:item-added', 'cart:item-removed',
-  'checkout:started', 'order:created', 'upsell:viewed'
-  // ... add all events you want to track
-];
+### Campaign & Config (2 events)
+- `campaign:loaded` - Campaign data loaded
+- `config:updated` - Configuration changed
 
-allEvents.forEach(eventName => {
-  next.on(eventName, (data) => {
-    eventLog.push({
-      event: eventName,
-      data: data,
-      timestamp: Date.now()
-    });
-    console.log(`[${eventName}]`, data);
-  });
-});
-```
+### Coupons (2 events)
+- `coupon:applied` - Discount code applied
+- `coupon:removed` - Discount code removed
 
-### Event Chaining
+### Upsells (4 events)
+- `upsell:viewed` - Upsell offer shown
+- `upsell:accepted` - Upsell accepted by user
+- `upsell:added` - Upsell added to order
+- `upsell:skipped` - Upsell declined/skipped
 
-```javascript
-// React to a sequence of events
-let checkoutStartTime;
+### User (2 events)
+- `user:logged-in` - User authenticated
+- `user:logged-out` - User logged out
 
-next.on('checkout:started', () => {
-  checkoutStartTime = Date.now();
-});
+### Behavioral (5 events)
+- `fomo:shown` - FOMO popup displayed
+- `exit-intent:clicked` - Exit intent popup clicked
+- `exit-intent:dismissed` - Exit intent popup dismissed
+- `exit-intent:closed` - Exit intent popup closed
+- `exit-intent:action` - Exit intent action taken
 
-next.on('order:created', (data) => {
-  const checkoutDuration = Date.now() - checkoutStartTime;
-  console.log(`Checkout completed in ${checkoutDuration}ms`);
-  
-  // Track conversion
-  gtag('event', 'purchase', {
-    value: data.order.total,
-    duration: checkoutDuration
-  });
-});
-```
+### Profile (4 events)
+- `profile:applied` - Profile applied to cart
+- `profile:reverted` - Profile changes reverted
+- `profile:switched` - Switched between profiles
+- `profile:registered` - New profile registered
 
-### Conditional Event Handling
+### System (4 events)
+- `route:changed` - Page/route changed
+- `sdk:route-invalidated` - Route context reset
+- `page:viewed` - Page view tracked
+- `error:occurred` - Error encountered
+
+## Event Handling Patterns
+
+### Basic Event Listening
 
 ```javascript
-// Only react to specific conditions
+// Subscribe to events
 next.on('cart:updated', (data) => {
-  if (data.totals.total > 100) {
-    // Show free shipping message
-    document.querySelector('.free-shipping-banner')?.classList.add('visible');
-  }
-  
-  if (data.totalQuantity >= 5) {
-    // Show bulk discount
-    document.querySelector('.bulk-discount')?.classList.add('visible');
-  }
+  console.log('Cart updated:', data);
+});
+
+// Multiple events
+['cart:item-added', 'cart:item-removed'].forEach(event => {
+  next.on(event, (data) => {
+    console.log(`Event ${event}:`, data);
+  });
 });
 ```
 
-### Event Cleanup
+### Removing Listeners
 
 ```javascript
-// Remove event listeners when needed
 const handler = (data) => console.log(data);
 
 // Add listener
 next.on('cart:updated', handler);
 
-// Remove specific listener
+// Remove listener
 next.off('cart:updated', handler);
-
-// Or use native events
-const nativeHandler = (e) => console.log(e.detail);
-window.addEventListener('cart:updated', nativeHandler);
-window.removeEventListener('cart:updated', nativeHandler);
 ```
 
-## Analytics Integration
+### Error Handling in Events
 
 ```javascript
-// Send events to your analytics platform
+next.on('cart:updated', (data) => {
+  try {
+    // Your code here
+    updateUI(data);
+  } catch (error) {
+    console.error('Error in event handler:', error);
+  }
+});
+```
+
+### DOM Events vs SDK Events
+
+```javascript
+// DOM events (for SDK lifecycle)
+document.addEventListener('next:initialized', (event) => {
+  console.log('SDK ready via DOM event');
+});
+
+// SDK events (for cart, checkout, etc.)
+next.on('cart:updated', (data) => {
+  console.log('Cart updated via SDK event');
+});
+```
+
+## Custom Event Integration
+
+### Google Analytics
+
+```javascript
 next.on('cart:item-added', (data) => {
-  // Google Analytics
-  gtag('event', 'add_to_cart', {
-    currency: 'USD',
-    value: data.item.price,
-    items: [{
-      item_id: data.item.packageId,
-      item_name: data.item.title,
-      price: data.item.price,
-      quantity: data.item.quantity
-    }]
+  if (typeof gtag !== 'undefined') {
+    gtag('event', 'add_to_cart', {
+      value: data.item.price,
+      currency: 'USD',
+      items: [data.item]
+    });
+  }
+});
+
+next.on('order:completed', (order) => {
+  if (typeof gtag !== 'undefined') {
+    gtag('event', 'purchase', {
+      transaction_id: order.ref_id,
+      value: order.total,
+      currency: order.currency,
+      items: order.lines
+    });
+  }
+});
+```
+
+### Facebook Pixel
+
+```javascript
+next.on('cart:item-added', (data) => {
+  if (typeof fbq !== 'undefined') {
+    fbq('track', 'AddToCart', {
+      content_ids: [data.packageId],
+      content_type: 'product',
+      value: data.item.price,
+      currency: 'USD'
+    });
+  }
+});
+
+next.on('checkout:started', (data) => {
+  if (typeof fbq !== 'undefined') {
+    fbq('track', 'InitiateCheckout', {
+      value: data.total,
+      currency: 'USD',
+      num_items: data.itemCount
+    });
+  }
+});
+```
+
+### Custom Analytics
+
+```javascript
+// Track all cart changes
+next.on('cart:updated', (data) => {
+  fetch('/api/track', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      event: 'cart_updated',
+      properties: data
+    })
   });
-  
-  // Facebook Pixel
-  fbq('track', 'AddToCart', {
-    content_ids: [data.item.packageId],
-    content_type: 'product',
-    value: data.item.price,
-    currency: 'USD'
+});
+
+// Track conversions
+next.on('order:completed', async (order) => {
+  await fetch('/api/conversions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(order)
   });
 });
 ```
 
 ## Debugging Events
 
-Enable debug mode to see all events in the console:
+### List All Available Events
 
 ```javascript
-// Enable debug mode
-next.setDebugMode(true);
-
-// Or via URL
-// Add ?debugger=true to your URL
-
-// All events will be logged with full payloads
+// Get all registered events from the EventBus
+if (window.next && window.next.eventBus) {
+  const listeners = window.next.eventBus.listeners;
+  const events = Array.from(listeners.keys()).sort();
+  
+  console.log('Available events:', events.length);
+  events.forEach((event, i) => {
+    const count = listeners.get(event).size;
+    console.log(`${i + 1}. ${event} (${count} listeners)`);
+  });
+}
 ```
 
-## TypeScript Support
+### Monitor All Events
 
-```typescript
-import type { EventMap } from '@next-commerce/sdk';
+```javascript
+// Log all events for debugging
+if (window.location.search.includes('debug=true')) {
+  const allEvents = [
+    // Cart
+    'cart:updated', 'cart:item-added', 'cart:item-removed', 
+    'cart:quantity-changed', 'cart:package-swapped',
+    // Checkout & Order
+    'checkout:started', 'checkout:form-initialized', 'order:completed',
+    // Payment
+    'payment:tokenized', 'payment:error', 'express-checkout:started',
+    // Campaign & Config
+    'campaign:loaded', 'config:updated',
+    // Coupons
+    'coupon:applied', 'coupon:removed',
+    // Upsells
+    'upsell:viewed', 'upsell:accepted', 'upsell:added', 'upsell:skipped',
+    // User
+    'user:logged-in', 'user:logged-out',
+    // Behavioral
+    'fomo:shown', 'exit-intent:clicked', 'exit-intent:dismissed', 
+    'exit-intent:closed', 'exit-intent:action',
+    // Profile
+    'profile:applied', 'profile:reverted', 'profile:switched', 
+    'profile:registered',
+    // System
+    'route:changed', 'sdk:route-invalidated', 'page:viewed', 
+    'error:occurred'
+  ];
+  
+  allEvents.forEach(event => {
+    next.on(event, (data) => {
+      console.log(`[Event] ${event}:`, data);
+    });
+  });
+}
+```
 
-// Type-safe event handling
-next.on<'cart:updated'>('cart:updated', (data) => {
-  // data is fully typed
-  console.log(data.totals.total); // number
+## Best Practices
+
+1. **Always check data**: Validate event data before using
+2. **Handle errors**: Wrap handlers in try-catch
+3. **Clean up**: Remove listeners when no longer needed
+4. **Don't block**: Keep handlers fast and async
+5. **Test events**: Verify events fire as expected
+6. **Batch operations**: Group related operations for performance
+7. **Use appropriate events**: Choose the most specific event for your use case
+
+## Common Use Cases
+
+### Cart Abandonment Tracking
+
+```javascript
+let cartTimer;
+const ABANDONMENT_DELAY = 30 * 60 * 1000; // 30 minutes
+
+next.on('cart:updated', (data) => {
+  clearTimeout(cartTimer);
+  
+  if (data.totalQuantity > 0) {
+    cartTimer = setTimeout(() => {
+      // Track abandonment
+      fetch('/api/cart-abandoned', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      });
+    }, ABANDONMENT_DELAY);
+  }
 });
 
-// Custom event handler with types
-function handleCartUpdate(data: EventMap['cart:updated']) {
-  console.log(data.totals.total);
-}
+next.on('order:completed', () => {
+  clearTimeout(cartTimer);
+});
+```
 
-next.on('cart:updated', handleCartUpdate);
+### Dynamic UI Updates
+
+```javascript
+// Update cart count in header
+next.on('cart:updated', (data) => {
+  const badge = document.querySelector('.cart-badge');
+  if (badge) {
+    badge.textContent = data.totalQuantity || '';
+    badge.style.display = data.totalQuantity > 0 ? 'block' : 'none';
+  }
+});
+
+// Show success notifications
+next.on('cart:item-added', (data) => {
+  showNotification(`${data.item.name} added to cart!`, 'success');
+});
+
+// Update checkout button state
+next.on('cart:updated', (data) => {
+  const checkoutBtn = document.querySelector('.checkout-button');
+  if (checkoutBtn) {
+    checkoutBtn.disabled = data.totalQuantity === 0;
+  }
+});
 ```
 
 ## Related Documentation
 
-- [Callbacks](/docs/javascript-api/callbacks/) - Lifecycle hooks for extending behavior
-- [Analytics](/docs/javascript-api/analytics/) - Built-in analytics tracking
-- [Data Attributes](/docs/data-attributes/) - HTML attributes that trigger events
-- [Cart Methods](/docs/javascript-api/cart-methods/) - Programmatic event triggers
+- [JavaScript API Methods](/docs/javascript-api/) - Using SDK methods
+- [Callbacks](/docs/javascript-api/callbacks/) - Legacy callback patterns
+- [Analytics](/docs/javascript-api/analytics/) - Tracking and analytics
+- [Data Attributes](/docs/data-attributes/) - HTML-based event triggers
