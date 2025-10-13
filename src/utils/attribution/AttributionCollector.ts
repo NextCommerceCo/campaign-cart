@@ -176,11 +176,39 @@ export class AttributionCollector {
   }
   
   /**
-   * Get funnel name from meta tag or campaign
-   * Once a funnel is set, it persists and won't be overwritten
+   * Get funnel name from URL parameters, persisted storage, or meta tags
+   * Priority: URL params ALWAYS override > persisted storage > meta tags
+   * URL parameters will override any existing persisted funnel values
    */
   private getFunnelName(): string {
-    // First check if we already have a persisted funnel name
+    // First check URL parameters for funnel - URL params ALWAYS override persisted data
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('funnel')) {
+      const urlFunnel = urlParams.get('funnel') || '';
+      if (urlFunnel) {
+        // Check if we're overriding an existing funnel
+        const existingFunnel = sessionStorage.getItem('next_funnel_name') ||
+                              localStorage.getItem('next_funnel_name');
+
+        if (existingFunnel && existingFunnel !== urlFunnel) {
+          logger.info(`🔄 Funnel override: "${existingFunnel}" -> "${urlFunnel}" (from URL parameter)`);
+        } else {
+          logger.debug(`Funnel found in URL parameter: ${urlFunnel}`);
+        }
+
+        // Persist the funnel name immediately (this will override any existing value)
+        try {
+          sessionStorage.setItem('next_funnel_name', urlFunnel);
+          localStorage.setItem('next_funnel_name', urlFunnel);
+          logger.info(`Persisted funnel name from URL: ${urlFunnel}`);
+        } catch (error) {
+          console.error('[AttributionCollector] Error persisting funnel from URL:', error);
+        }
+        return urlFunnel;
+      }
+    }
+
+    // Check if we already have a persisted funnel name
     try {
       // Check sessionStorage first (current session)
       const sessionFunnel = sessionStorage.getItem('next_funnel_name');
@@ -188,7 +216,7 @@ export class AttributionCollector {
         logger.debug(`Using persisted funnel from session: ${sessionFunnel}`);
         return sessionFunnel;
       }
-      
+
       // Check localStorage (cross-session)
       const localFunnel = localStorage.getItem('next_funnel_name');
       if (localFunnel) {
@@ -197,7 +225,7 @@ export class AttributionCollector {
         sessionStorage.setItem('next_funnel_name', localFunnel);
         return localFunnel;
       }
-      
+
       // Check persisted attribution data
       const persistedData = localStorage.getItem('next-attribution');
       if (persistedData) {
@@ -213,16 +241,16 @@ export class AttributionCollector {
     } catch (error) {
       console.error('[AttributionCollector] Error reading persisted funnel:', error);
     }
-    
+
     // No persisted funnel found, check for meta tag
     const funnelMetaTag = document.querySelector(
       'meta[name="os-tracking-tag"][data-tag-name="funnel_name"], ' +
       'meta[name="data-next-tracking-tag"][data-tag-name="funnel_name"], ' +
       'meta[name="next-funnel"]'
     );
-    
+
     if (funnelMetaTag) {
-      const value = funnelMetaTag.getAttribute('data-tag-value') || 
+      const value = funnelMetaTag.getAttribute('data-tag-value') ||
                     funnelMetaTag.getAttribute('content');
       if (value) {
         logger.debug(`New funnel found from meta tag: ${value}`);
@@ -237,7 +265,7 @@ export class AttributionCollector {
         return value;
       }
     }
-    
+
     // Return empty - will be set when campaign loads or from meta tag
     return '';
   }
