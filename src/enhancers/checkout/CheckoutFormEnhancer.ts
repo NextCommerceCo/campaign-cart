@@ -2266,7 +2266,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     // Check if we're in dev mode by looking for debug param
     const isDebug = new URLSearchParams(window.location.search).get('debug') === 'true';
-    const baseUrl = isDebug ? 'http://localhost:3000' : '';
+
+    // Use non-versioned CDN path for better caching across SDK versions
+    const baseUrl = isDebug
+      ? 'http://localhost:3000'
+      : 'https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart/dist';
 
     const style = document.createElement('style');
     style.id = styleId;
@@ -3430,6 +3434,26 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const checkoutStore = useCheckoutStore.getState();
 
     if (fieldName.startsWith('billing-')) {
+      // Handle billing postal code formatting
+      if (fieldName === 'billing-postal' && target instanceof HTMLInputElement) {
+        const billingCountryField = this.billingFields.get('billing-country');
+        const countryCode = billingCountryField instanceof HTMLSelectElement ? billingCountryField.value : '';
+
+        if (countryCode) {
+          const countryConfig = this.countryConfigs.get(countryCode);
+          if (countryConfig) {
+            const formatted = this.countryService.formatPostalCode(target.value, countryConfig);
+            if (formatted !== target.value) {
+              const cursorPos = target.selectionStart || 0;
+              const lengthDiff = formatted.length - target.value.length;
+              target.value = formatted;
+              // Restore cursor position after formatting
+              target.setSelectionRange(cursorPos + lengthDiff, cursorPos + lengthDiff);
+            }
+          }
+        }
+      }
+
       // Billing fields are always strings (no checkboxes in billing)
       this.handleBillingFieldChange(fieldName, target.value, checkoutStore);
 
@@ -3441,6 +3465,26 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         // Currency is location-based only, not affected by billing or shipping country
       }
     } else {
+      // Handle shipping postal code formatting
+      if (fieldName === 'postal' && target instanceof HTMLInputElement) {
+        const countryField = this.fields.get('country');
+        const countryCode = countryField instanceof HTMLSelectElement ? countryField.value : '';
+
+        if (countryCode) {
+          const countryConfig = this.countryConfigs.get(countryCode);
+          if (countryConfig) {
+            const formatted = this.countryService.formatPostalCode(target.value, countryConfig);
+            if (formatted !== target.value) {
+              const cursorPos = target.selectionStart || 0;
+              const lengthDiff = formatted.length - target.value.length;
+              target.value = formatted;
+              // Restore cursor position after formatting
+              target.setSelectionRange(cursorPos + lengthDiff, cursorPos + lengthDiff);
+            }
+          }
+        }
+      }
+
       // Get the correct value based on input type
       const fieldValue = (target instanceof HTMLInputElement && (target.type === 'checkbox' || target.type === 'radio'))
         ? target.checked

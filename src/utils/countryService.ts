@@ -14,6 +14,7 @@ export interface CountryConfig {
   postcodeMinLength: number;
   postcodeMaxLength: number;
   postcodeExample: string | null;
+  postcodeFormat: string | null;
   currencyCode: string;
   currencySymbol: string;
 }
@@ -178,7 +179,7 @@ export class CountryService {
     if (!postalCode) return false;
 
     // Check length constraints
-    if (postalCode.length < countryConfig.postcodeMinLength || 
+    if (postalCode.length < countryConfig.postcodeMinLength ||
         postalCode.length > countryConfig.postcodeMaxLength) {
       return false;
     }
@@ -195,6 +196,60 @@ export class CountryService {
     }
 
     return true;
+  }
+
+  /**
+   * Format postal code based on country configuration
+   * Applies formatting pattern from CDN (e.g., "XXX XXX" for Canadian postal codes)
+   */
+  public formatPostalCode(postalCode: string, countryConfig: CountryConfig): string {
+    if (!postalCode) {
+      return postalCode;
+    }
+
+    // Check if postal code contains letters (alphanumeric postal codes should be uppercase)
+    const hasLetters = /[a-zA-Z]/.test(postalCode);
+
+    // If no format pattern from CDN, apply basic uppercase conversion for alphanumeric codes
+    if (!countryConfig.postcodeFormat) {
+      if (hasLetters) {
+        return postalCode.toUpperCase();
+      }
+      return postalCode;
+    }
+
+    // Remove all spaces and special characters for processing
+    const cleanCode = postalCode.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+
+    if (!cleanCode) {
+      return postalCode;
+    }
+
+    const format = countryConfig.postcodeFormat;
+    let formatted = '';
+    let charIndex = 0;
+
+    // Process each character in the format pattern
+    for (let i = 0; i < format.length && charIndex < cleanCode.length; i++) {
+      const formatChar = format[i];
+
+      if (formatChar === 'N' || formatChar === 'X' || formatChar === '#' || formatChar === '9' || formatChar === 'A') {
+        // Format character placeholders - insert actual character from postal code
+        // N = any alphanumeric, X = any char, # = digit, 9 = digit, A = letter
+        formatted += cleanCode[charIndex];
+        charIndex++;
+      } else {
+        // Literal character (space, dash, etc.) - insert as is
+        formatted += formatChar;
+      }
+    }
+
+    // If there are remaining characters after format is complete, append them
+    if (charIndex < cleanCode.length) {
+      formatted += cleanCode.substring(charIndex);
+    }
+
+    return formatted;
   }
 
   /**
@@ -294,6 +349,7 @@ export class CountryService {
         postcodeMinLength: 5,
         postcodeMaxLength: 10,
         postcodeExample: '12345 or 12345-6789',
+        postcodeFormat: null,
         currencyCode: 'USD',
         currencySymbol: '$'
       },
@@ -305,6 +361,7 @@ export class CountryService {
         postcodeMinLength: 6,
         postcodeMaxLength: 7,
         postcodeExample: 'K1A 0B1',
+        postcodeFormat: null,
         currencyCode: 'CAD',
         currencySymbol: '$'
       },
@@ -316,6 +373,7 @@ export class CountryService {
         postcodeMinLength: 5,
         postcodeMaxLength: 8,
         postcodeExample: 'SW1A 1AA',
+        postcodeFormat: null,
         currencyCode: 'GBP',
         currencySymbol: '£'
       }
@@ -329,6 +387,7 @@ export class CountryService {
       postcodeMinLength: 2,
       postcodeMaxLength: 20,
       postcodeExample: null,
+      postcodeFormat: null,
       currencyCode: 'USD',
       currencySymbol: '$'
     };

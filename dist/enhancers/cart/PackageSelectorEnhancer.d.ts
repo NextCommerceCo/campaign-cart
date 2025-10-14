@@ -6,10 +6,13 @@ export declare class PackageSelectorEnhancer extends BaseEnhancer {
     private items;
     private selectedItem;
     private clickHandlers;
+    private quantityHandlers;
     private mutationObserver;
     initialize(): Promise<void>;
     private initializeSelectorCards;
     private registerCard;
+    private setupQuantityControls;
+    private handleQuantityChange;
     private setupMutationObserver;
     private handlePackageIdChange;
     private updateItemPackageData;

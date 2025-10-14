@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quantity Package Swapper Example</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    .selector-card {
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    .quantity-controls {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin: 15px 0;
+    }
+    .quantity-controls button {
+      width: 40px;
+      height: 40px;
+      border: 1px solid #333;
+      background: white;
+      border-radius: 4px;
+      font-size: 20px;
+      cursor: pointer;
+    }
+    .quantity-controls button:hover:not(:disabled) {
+      background: #f0f0f0;
+    }
+    .quantity-controls button:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+    .quantity-display {
+      font-size: 24px;
+      font-weight: bold;
+      min-width: 40px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Quantity Package Swapper</h1>
+
+  <!-- Quantity Selector (uses custom data-qty-* attributes) -->
+  <div data-qty-selector="limos-card">
+    <div class="selector-card"
+         data-qty-card
+         data-next-package-id="2"
+         data-qty-current="1"
+         data-qty-min="1"
+         data-qty-max="4">
+
+      <!-- SDK display attributes still work -->
+      <h2 data-next-display="package.name">Loading...</h2>
+      <p>Price: <span data-next-display="package.finalPrice">$0</span></p>
+
+      <!-- Custom quantity controls -->
+      <div class="quantity-controls">
+        <button data-qty-decrease type="button">−</button>
+        <span class="quantity-display" data-qty-display>1</span>
+        <button data-qty-increase type="button">+</button>
+      </div>
+
+      <p><strong>Total:</strong> <span data-next-display="package.finalPriceTotal">$0</span></p>
+    </div>
+  </div>
+
+  <!-- Campaign Cart SDK -->
+  <script src="https://cdn.nextcommerce.com/sdk.js"
+          data-campaign-id="YOUR_CAMPAIGN_ID"></script>
+
+  <!-- Quantity Package Swapper Script -->
+  <script src="quantity-package-swapper.js"></script>
+
+</body>
+</html>

@@ -18,6 +18,7 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
   private items: SelectorItem[] = [];
   private selectedItem: SelectorItem | null = null;
   private clickHandlers = new Map<HTMLElement, (event: Event) => void>();
+  private quantityHandlers = new Map<HTMLElement, (event: Event) => void>();
   private mutationObserver: MutationObserver | null = null;
 
   public async initialize(): Promise<void> {
@@ -156,13 +157,130 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
 
     // Add selector classes for styling
     cardElement.classList.add('next-selector-card');
-    
+
+    // Set up quantity controls if present
+    this.setupQuantityControls(item);
+
     this.logger.debug(`Registered selector card:`, {
       packageId,
       quantity,
       isPreSelected,
       shippingId
     });
+  }
+
+  private setupQuantityControls(item: SelectorItem): void {
+    const cardElement = item.element;
+
+    // Look for quantity controls within this card
+    const increaseBtn = cardElement.querySelector('[data-next-quantity-increase]') as HTMLElement;
+    const decreaseBtn = cardElement.querySelector('[data-next-quantity-decrease]') as HTMLElement;
+    const displayElement = cardElement.querySelector('[data-next-quantity-display]') as HTMLElement;
+
+    // If no controls found, skip
+    if (!increaseBtn && !decreaseBtn) {
+      return;
+    }
+
+    // Get min/max quantity limits
+    const minQuantity = parseInt(cardElement.getAttribute('data-next-min-quantity') || '1', 10);
+    const maxQuantity = parseInt(cardElement.getAttribute('data-next-max-quantity') || '999', 10);
+
+    // Update display if present
+    const updateDisplay = () => {
+      if (displayElement) {
+        displayElement.textContent = item.quantity.toString();
+      }
+      // Also update the data attribute
+      cardElement.setAttribute('data-next-quantity', item.quantity.toString());
+
+      // Disable/enable buttons based on limits
+      if (decreaseBtn) {
+        decreaseBtn.toggleAttribute('disabled', item.quantity <= minQuantity);
+        decreaseBtn.classList.toggle('next-disabled', item.quantity <= minQuantity);
+      }
+      if (increaseBtn) {
+        increaseBtn.toggleAttribute('disabled', item.quantity >= maxQuantity);
+        increaseBtn.classList.toggle('next-disabled', item.quantity >= maxQuantity);
+      }
+    };
+
+    // Set up increase handler
+    if (increaseBtn) {
+      const increaseHandler = (event: Event) => {
+        event.stopPropagation(); // Prevent card click
+        event.preventDefault();
+
+        if (item.quantity < maxQuantity) {
+          item.quantity++;
+          updateDisplay();
+          this.handleQuantityChange(item);
+        }
+      };
+      this.quantityHandlers.set(increaseBtn, increaseHandler);
+      increaseBtn.addEventListener('click', increaseHandler);
+    }
+
+    // Set up decrease handler
+    if (decreaseBtn) {
+      const decreaseHandler = (event: Event) => {
+        event.stopPropagation(); // Prevent card click
+        event.preventDefault();
+
+        if (item.quantity > minQuantity) {
+          item.quantity--;
+          updateDisplay();
+          this.handleQuantityChange(item);
+        }
+      };
+      this.quantityHandlers.set(decreaseBtn, decreaseHandler);
+      decreaseBtn.addEventListener('click', decreaseHandler);
+    }
+
+    // Initial display update
+    updateDisplay();
+
+    this.logger.debug(`Set up quantity controls for package ${item.packageId}:`, {
+      minQuantity,
+      maxQuantity,
+      currentQuantity: item.quantity
+    });
+  }
+
+  private async handleQuantityChange(item: SelectorItem): Promise<void> {
+    try {
+      this.logger.debug(`Quantity changed for package ${item.packageId}:`, item.quantity);
+
+      // Emit event
+      this.emit('selector:quantity-changed', {
+        selectorId: this.selectorId,
+        packageId: item.packageId,
+        quantity: item.quantity
+      });
+
+      // If this item is selected and we're in swap mode, update the cart
+      if (this.selectedItem === item && this.mode === 'swap') {
+        const cartStore = useCartStore.getState();
+
+        // In swap mode, the selected item should always be in the cart
+        if (cartStore.hasItem(item.packageId)) {
+          // Update quantity in cart
+          await cartStore.updateQuantity(item.packageId, item.quantity);
+          this.logger.debug(`Updated cart quantity for package ${item.packageId} to ${item.quantity}`);
+        } else {
+          // Item not in cart yet - add it
+          await cartStore.addItem({
+            packageId: item.packageId,
+            quantity: item.quantity,
+            isUpsell: false
+          });
+          this.logger.debug(`Added package ${item.packageId} to cart with quantity ${item.quantity}`);
+        }
+      }
+
+    } catch (error) {
+      this.handleError(error, 'handleQuantityChange');
+    }
   }
 
   private setupMutationObserver(): void {
@@ -298,23 +416,36 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
       const itemIndex = this.items.findIndex(item => item.element === cardElement);
       if (itemIndex !== -1) {
         const removedItem = this.items[itemIndex];
-        
+
         // Remove click handler
         const handler = this.clickHandlers.get(cardElement);
         if (handler) {
           cardElement.removeEventListener('click', handler);
           this.clickHandlers.delete(cardElement);
         }
-        
+
+        // Remove quantity handlers
+        const increaseBtn = cardElement.querySelector('[data-next-quantity-increase]') as HTMLElement;
+        const decreaseBtn = cardElement.querySelector('[data-next-quantity-decrease]') as HTMLElement;
+        [increaseBtn, decreaseBtn].forEach(btn => {
+          if (btn) {
+            const qtyHandler = this.quantityHandlers.get(btn);
+            if (qtyHandler) {
+              btn.removeEventListener('click', qtyHandler);
+              this.quantityHandlers.delete(btn);
+            }
+          }
+        });
+
         // Remove from items array
         this.items.splice(itemIndex, 1);
-        
+
         // If this was the selected item, clear selection
         if (this.selectedItem === removedItem) {
           this.selectedItem = null;
           this.element.removeAttribute('data-selected-package');
         }
-        
+
         this.logger.debug('Removed selector card:', {
           packageId: removedItem?.packageId
         });
@@ -479,13 +610,44 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
       this.items.forEach(item => {
         // Check if this selector item matches any cart item
         // Cart items may have originalPackageId if they were mapped through a profile
-        const isInCart = cartState.items.some(cartItem =>
+        const cartItem = cartState.items.find(cartItem =>
           cartItem.originalPackageId === item.packageId ||
           cartItem.packageId === item.packageId
         );
 
+        const isInCart = !!cartItem;
         item.element.classList.toggle('next-in-cart', isInCart);
         item.element.setAttribute('data-next-in-cart', isInCart.toString());
+
+        // Sync quantity from cart if item is in cart
+        if (cartItem && item.quantity !== cartItem.quantity) {
+          item.quantity = cartItem.quantity;
+
+          // Update the display elements
+          const displayElement = item.element.querySelector('[data-next-quantity-display]') as HTMLElement;
+          if (displayElement) {
+            displayElement.textContent = item.quantity.toString();
+          }
+          item.element.setAttribute('data-next-quantity', item.quantity.toString());
+
+          // Update button states
+          const minQuantity = parseInt(item.element.getAttribute('data-next-min-quantity') || '1', 10);
+          const maxQuantity = parseInt(item.element.getAttribute('data-next-max-quantity') || '999', 10);
+
+          const decreaseBtn = item.element.querySelector('[data-next-quantity-decrease]') as HTMLElement;
+          const increaseBtn = item.element.querySelector('[data-next-quantity-increase]') as HTMLElement;
+
+          if (decreaseBtn) {
+            decreaseBtn.toggleAttribute('disabled', item.quantity <= minQuantity);
+            decreaseBtn.classList.toggle('next-disabled', item.quantity <= minQuantity);
+          }
+          if (increaseBtn) {
+            increaseBtn.toggleAttribute('disabled', item.quantity >= maxQuantity);
+            increaseBtn.classList.toggle('next-disabled', item.quantity >= maxQuantity);
+          }
+
+          this.logger.debug(`Synced quantity from cart for package ${item.packageId}: ${item.quantity}`);
+        }
       });
 
       // Find which item should be selected based on cart contents
@@ -568,7 +730,13 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
       element.removeEventListener('click', handler);
     });
     this.clickHandlers.clear();
-    
+
+    // Remove all quantity handlers
+    this.quantityHandlers.forEach((handler, element) => {
+      element.removeEventListener('click', handler);
+    });
+    this.quantityHandlers.clear();
+
     // Stop mutation observer
     if (this.mutationObserver) {
       this.mutationObserver.disconnect();
