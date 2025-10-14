@@ -76,6 +76,11 @@ export interface EventMap {
         quantity?: number;
         item?: SelectorItem;
     };
+    'selector:quantity-changed': {
+        selectorId: string;
+        packageId: number;
+        quantity: number;
+    };
     'shipping:method-selected': {
         shippingId: string;
         selectorId: string;

@@ -235,6 +235,7 @@ export class SDKInitializer {
               postcodeMinLength: 5,
               postcodeMaxLength: 10,
               postcodeExample: '12345',
+              postcodeFormat: null,
               currencyCode: 'USD',
               currencySymbol: '$'
             },

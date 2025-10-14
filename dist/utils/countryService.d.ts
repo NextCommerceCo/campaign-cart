@@ -7,6 +7,7 @@ export interface CountryConfig {
     postcodeMinLength: number;
     postcodeMaxLength: number;
     postcodeExample: string | null;
+    postcodeFormat: string | null;
     currencyCode: string;
     currencySymbol: string;
 }
@@ -46,6 +47,7 @@ export declare class CountryService {
     getCountryStates(countryCode: string): Promise<CountryStatesData>;
     getCountryConfig(countryCode: string): Promise<CountryConfig>;
     validatePostalCode(postalCode: string, _countryCode: string, countryConfig: CountryConfig): boolean;
+    formatPostalCode(postalCode: string, countryConfig: CountryConfig): string;
     clearCache(): void;
     clearCountryCache(countryCode: string): void;
     private getFromCache;
