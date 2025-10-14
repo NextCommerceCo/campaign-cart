@@ -129,6 +129,97 @@ Display data based on currently selected package in a selector. Updates when sel
 </div>
 ```
 
+## Quantity Controls
+
+Add quantity increase/decrease controls to selector cards to allow users to adjust quantities.
+
+### Basic Quantity Controls
+
+```html
+<div data-next-selector-card
+     data-next-package-id="2"
+     data-next-quantity="1"
+     data-next-min-quantity="1"
+     data-next-max-quantity="10">
+
+  <!-- Package content -->
+  <h3 data-next-display="package.name">Product Name</h3>
+  <p data-next-display="package.finalPriceTotal">$19.99</p>
+
+  <!-- Quantity controls -->
+  <div class="quantity-controls">
+    <button data-next-quantity-decrease type="button">−</button>
+    <span data-next-quantity-display>1</span>
+    <button data-next-quantity-increase type="button">+</button>
+  </div>
+
+  <!-- Show total based on selector quantity -->
+  <p class="total-price">
+    Total: <span data-next-display="selection.{selectorId}.total">$19.99</span>
+  </p>
+</div>
+```
+
+### Quantity Control Attributes
+
+- `data-next-quantity-increase` - Button to increase quantity
+- `data-next-quantity-decrease` - Button to decrease quantity (disabled at minimum)
+- `data-next-quantity-display` - Element to display current quantity
+- `data-next-min-quantity` - Minimum allowed quantity (default: 1)
+- `data-next-max-quantity` - Maximum allowed quantity (default: 999)
+
+### Complete Example with Quantity Controls
+
+```html
+<div data-next-cart-selector
+     data-next-selector-id="limos-card"
+     data-next-selection-mode="swap">
+
+  <div data-next-selector-card
+       data-next-package-id="2"
+       data-next-quantity="1"
+       data-next-min-quantity="1"
+       data-next-max-quantity="10"
+       data-next-selected="true">
+
+    <div class="package-content">
+      <img data-next-display="package.image" alt="" />
+      <h3 data-next-display="package.name">Premium Package</h3>
+
+      <!-- Show unit price -->
+      <p class="unit-price">
+        <span data-next-display="package.finalPrice">$19.99</span> each
+      </p>
+
+      <!-- Quantity controls -->
+      <div class="quantity-controls">
+        <button data-next-quantity-decrease class="qty-btn">−</button>
+        <span data-next-quantity-display class="qty-value">1</span>
+        <button data-next-quantity-increase class="qty-btn">+</button>
+      </div>
+
+      <!-- Show total price (unit price × quantity) -->
+      <p class="total-price">
+        Total: <span data-next-display="selection.limos-card.total">$19.99</span>
+      </p>
+
+      <!-- Show savings based on total -->
+      <p class="savings" data-next-show="selection.limos-card.hasSavings">
+        You Save: <span data-next-display="selection.limos-card.savingsAmount">$0</span>
+      </p>
+    </div>
+  </div>
+</div>
+```
+
+### Behavior Notes
+
+1. **Auto-disable**: Decrease button automatically gets `disabled` attribute and `next-disabled` class when at minimum quantity
+2. **Auto-disable**: Increase button automatically gets `disabled` attribute and `next-disabled` class when at maximum quantity
+3. **Cart Sync**: In `swap` mode, quantity changes automatically update the cart
+4. **Display Updates**: All `selection.{selectorId}.total` elements update when quantity changes
+5. **Event Prevention**: Quantity button clicks don't trigger card selection
+
 ## Best Practices
 
 1. **Unique IDs**: Use descriptive selector IDs
@@ -136,3 +227,4 @@ Display data based on currently selected package in a selector. Updates when sel
 3. **Conditional UI**: Hide/show based on selection
 4. **Price Updates**: Show real-time pricing
 5. **Validation**: Ensure selection before actions
+6. **Quantity Limits**: Set appropriate min/max quantities for your use case
