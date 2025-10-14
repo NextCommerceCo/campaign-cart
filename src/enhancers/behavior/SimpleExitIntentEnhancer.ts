@@ -145,11 +145,17 @@ export class ExitIntentEnhancer extends BaseEnhancer {
     // Desktop: mouse leave detection (always enabled on desktop)
     if (!this.isMobileDevice()) {
       this.mouseLeaveHandler = (e: MouseEvent) => {
-        if (this.shouldTrigger() && e.clientY <= 10) {
+        // Check if mouse truly left the page by verifying relatedTarget
+        // This works reliably across Safari, Firefox, Edge, and Chrome
+        const relatedTarget = e.relatedTarget as Node | null;
+        if (this.shouldTrigger() &&
+            (!relatedTarget || relatedTarget.nodeName === 'HTML') &&
+            e.clientY <= 10) {
           this.triggerExitIntent();
         }
       };
-      document.addEventListener('mouseleave', this.mouseLeaveHandler);
+      // Use mouseout on documentElement for better cross-browser support
+      document.documentElement.addEventListener('mouseout', this.mouseLeaveHandler);
     }
 
     // Mobile: scroll detection (only if explicitly enabled)
@@ -612,7 +618,7 @@ export class ExitIntentEnhancer extends BaseEnhancer {
 
   protected override cleanupEventListeners(): void {
     if (this.mouseLeaveHandler) {
-      document.removeEventListener('mouseleave', this.mouseLeaveHandler);
+      document.documentElement.removeEventListener('mouseout', this.mouseLeaveHandler);
       this.mouseLeaveHandler = null;
     }
 
