@@ -1,0 +1,433 @@
+---
+title: Interactive Playground
+description: Live examples with Campaign Cart components
+---
+
+import { Tabs, TabItem, Aside, Card, CardGrid } from '@astrojs/starlight/components';
+import InteractiveDemo from '../../components/InteractiveDemo.astro';
+import ProductSelector from '../../components/ProductSelector.astro';
+import AttributeTable from '../../components/AttributeTable.astro';
+import CartDisplay from '../../components/CartDisplay.astro';
+import DemoSection from '../../components/DemoSection.astro';
+
+Experience Campaign Cart features with live, interactive examples. Everything on this page is fully functional - try clicking the products and buttons!
+
+<InteractiveDemo />
+
+## Live Product Selection
+
+<Tabs>
+  <TabItem label="Demo" icon="rocket">
+    <DemoSection
+      title="Swap Mode Selection"
+      description="Click any product to instantly replace your cart selection. Perfect for single-product funnels!">
+      
+      <ProductSelector
+        selectorId="drone-demo"
+        selectionMode="swap"
+        products={[
+          {
+            packageId: "4",
+            quantity: "3",
+            selected: true,
+            bestDeal: true,
+            name: "3x Mega Bundle",
+            price: "$47.97",
+            retailPrice: "$119.97",
+            unitPrice: "$15.99",
+            savingsPercentage: "60%",
+            savingsAmount: "$72.00",
+            hasFreeShipping: true
+          },
+          {
+            packageId: "3",
+            quantity: "2",
+            name: "2x Value Pack",
+            price: "$35.98",
+            retailPrice: "$79.98",
+            unitPrice: "$17.99",
+            savingsPercentage: "55%",
+            savingsAmount: "$44.00"
+          },
+          {
+            packageId: "2",
+            quantity: "1",
+            name: "1x Starter",
+            price: "$19.99",
+            retailPrice: "$39.99",
+            unitPrice: "$19.99",
+            savingsPercentage: "50%",
+            savingsAmount: "$20.00"
+          }
+        ]}
+      />
+    </DemoSection>
+  </TabItem>
+  
+  <TabItem label="Code" icon="code">
+    ```html
+    <!-- Product Selector with Swap Mode -->
+    <div data-next-cart-selector 
+         data-next-selection-mode="swap"
+         data-next-selector-id="drone-demo">
+      
+      <!-- Product Card 1 - Best Deal -->
+      <div class="product-card"
+           data-next-selector-card 
+           data-next-package-id="4"
+           data-next-quantity="3"
+           data-next-selected="true">
+        
+        <div class="badge">Best Deal</div>
+        <h3 data-next-display="package.name">3x Mega Bundle</h3>
+        
+        <div class="pricing">
+          <span class="retail" data-next-display="package.price_retail">$119.97</span>
+          <span class="price" data-next-display="package.price_total">$47.97</span>
+        </div>
+        
+        <div class="unit-price">
+          <span data-next-display="package.price">$15.99</span>/each
+        </div>
+        
+        <div data-next-show="package.hasSavings">
+          <span class="savings-badge">
+            SAVE <span data-next-display="package.savingsPercentage">60%</span>
+          </span>
+          <p>You save <span data-next-display="package.savingsAmount">$72.00</span></p>
+        </div>
+      </div>
+      
+      <!-- Product Card 2 -->
+      <div class="product-card"
+           data-next-selector-card 
+           data-next-package-id="3"
+           data-next-quantity="2">
+        
+        <h3 data-next-display="package.name">2x Value Pack</h3>
+        
+        <div class="pricing">
+          <span class="retail" data-next-display="package.price_retail">$79.98</span>
+          <span class="price" data-next-display="package.price_total">$35.98</span>
+        </div>
+        
+        <div class="unit-price">
+          <span data-next-display="package.price">$17.99</span>/each
+        </div>
+        
+        <div data-next-show="package.hasSavings">
+          <span class="savings-badge">
+            SAVE <span data-next-display="package.savingsPercentage">55%</span>
+          </span>
+          <p>You save <span data-next-display="package.savingsAmount">$44.00</span></p>
+        </div>
+      </div>
+      
+      <!-- Product Card 3 -->
+      <div class="product-card"
+           data-next-selector-card 
+           data-next-package-id="2"
+           data-next-quantity="1">
+        
+        <h3 data-next-display="package.name">1x Starter</h3>
+        
+        <div class="pricing">
+          <span class="retail" data-next-display="package.price_retail">$39.99</span>
+          <span class="price" data-next-display="package.price_total">$19.99</span>
+        </div>
+        
+        <div class="unit-price">
+          <span data-next-display="package.price">$19.99</span>/each
+        </div>
+        
+        <div data-next-show="package.hasSavings">
+          <span class="savings-badge">
+            SAVE <span data-next-display="package.savingsPercentage">50%</span>
+          </span>
+          <p>You save <span data-next-display="package.savingsAmount">$20.00</span></p>
+        </div>
+      </div>
+    </div>
+    ```
+  </TabItem>
+</Tabs>
+
+## Live Attribute Display
+
+<Tabs>
+  <TabItem label="Selection Attributes">
+    <AttributeTable 
+      selectorId="drone-demo"
+      attributes={[
+        { attribute: "selection.{selectorId}.name", description: "Package name", defaultValue: "3x Mega Bundle" },
+        { attribute: "selection.{selectorId}.packageId", defaultValue: "4" },
+        { attribute: "selection.{selectorId}.quantity", defaultValue: "3" },
+        { attribute: "selection.{selectorId}.totalUnits", description: "Total units", defaultValue: "3" },
+        { attribute: "selection.{selectorId}.price", description: "Unit price", defaultValue: "$15.99" },
+        { attribute: "selection.{selectorId}.total", description: "Total price", defaultValue: "$47.97" },
+        { attribute: "selection.{selectorId}.compareTotal", description: "Retail price", defaultValue: "$119.97" },
+        { attribute: "selection.{selectorId}.savingsAmount", defaultValue: "$72.00" },
+        { attribute: "selection.{selectorId}.savingsPercentage", defaultValue: "60%" },
+        { attribute: "selection.{selectorId}.hasSavings", defaultValue: "true" },
+        { attribute: "selection.{selectorId}.isBundle", defaultValue: "true" }
+      ]}
+    />
+    
+    <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-4">
+      <a href="/api/attributes#selection" class="text-indigo-600 dark:text-indigo-400 hover:underline">View all selection attributes →</a>
+    </p>
+  </TabItem>
+  
+  <TabItem label="Cart Attributes">
+    <AttributeTable 
+      attributes={[
+        { attribute: "cart.itemCount", description: "Number of items", defaultValue: "0" },
+        { attribute: "cart.subtotal", defaultValue: "$0.00" },
+        { attribute: "cart.total", description: "Cart total", defaultValue: "$0.00" },
+        { attribute: "cart.compareTotal", description: "Retail total", defaultValue: "$0.00" },
+        { attribute: "cart.savingsAmount", defaultValue: "$0.00" },
+        { attribute: "cart.savingsPercentage", defaultValue: "0%" },
+        { attribute: "cart.hasItems", defaultValue: "false" },
+        { attribute: "cart.isEmpty", defaultValue: "true" },
+        { attribute: "cart.hasDiscount", defaultValue: "false" },
+        { attribute: "cart.hasShipping", defaultValue: "false" }
+      ]}
+    />
+    
+    <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-4">
+      <a href="/api/attributes#cart" class="text-indigo-600 dark:text-indigo-400 hover:underline">View all cart attributes →</a>
+    </p>
+  </TabItem>
+</Tabs>
+
+## Shopping Cart
+
+<Tabs>
+  <TabItem label="Demo" icon="shopping-cart">
+    <CartDisplay />
+  </TabItem>
+  
+  <TabItem label="Code" icon="code">
+    ```html
+    <!-- Shopping Cart Display -->
+    <div class="cart">
+      <div class="cart-header">
+        <h3>🛒 Shopping Cart</h3>
+        <span class="badge" data-next-display="cart.itemCount">0</span>
+      </div>
+      
+      <!-- Show when cart has items -->
+      <div data-next-show="cart.hasItems">
+        <div class="cart-summary">
+          <div class="line-item">
+            <span>Subtotal:</span>
+            <span data-next-display="cart.subtotal">$0.00</span>
+          </div>
+          
+          <div class="line-item" data-next-show="cart.hasDiscount">
+            <span>Discount:</span>
+            <span class="discount" data-next-display="cart.discountAmount">-$0.00</span>
+          </div>
+          
+          <div class="line-item" data-next-show="cart.hasShipping">
+            <span>Shipping:</span>
+            <span data-next-display="cart.shipping">$0.00</span>
+          </div>
+          
+          <div class="line-item total">
+            <span>Total:</span>
+            <span data-next-display="cart.total">$0.00</span>
+          </div>
+        </div>
+        
+        <button class="btn-primary" data-next-action="checkout">
+          Proceed to Checkout
+        </button>
+        
+        <button class="btn-secondary" data-next-action="clear-cart">
+          Clear Cart
+        </button>
+      </div>
+      
+      <!-- Show when cart is empty -->
+      <div data-next-show="cart.isEmpty" class="empty-state">
+        <div class="icon">🛒</div>
+        <h4>Your cart is empty</h4>
+        <p>Select a product package above to get started!</p>
+      </div>
+    </div>
+    ```
+  </TabItem>
+</Tabs>
+
+## Selection Modes
+
+<Tabs>
+  <TabItem label="Swap Mode" icon="swap">
+    ```html
+    <!-- Click to replace current selection -->
+    <div data-next-cart-selector 
+         data-next-selection-mode="swap">
+      <div data-next-selector-card 
+           data-next-package-id="1">
+        Product Option 1
+      </div>
+      <div data-next-selector-card 
+           data-next-package-id="2">
+        Product Option 2
+      </div>
+    </div>
+    ```
+    
+    **Use when:** You want customers to choose ONE option from multiple choices (e.g., subscription tiers, product variants)
+  </TabItem>
+  
+  <TabItem label="Add Mode" icon="add-circle">
+    ```html
+    <!-- Click to add to existing cart -->
+    <div data-next-cart-selector 
+         data-next-selection-mode="add">
+      <div data-next-selector-card 
+           data-next-package-id="1">
+        Add Product 1
+      </div>
+      <div data-next-selector-card 
+           data-next-package-id="2">
+        Add Product 2
+      </div>
+    </div>
+    ```
+    
+    **Use when:** Customers can select multiple products (e.g., building a bundle, adding accessories)
+  </TabItem>
+  
+  <TabItem label="Toggle Mode" icon="switch">
+    ```html
+    <!-- Click to toggle in/out of cart -->
+    <div data-next-cart-selector 
+         data-next-selection-mode="toggle">
+      <div data-next-selector-card 
+           data-next-package-id="1">
+        Toggle Product 1
+      </div>
+      <div data-next-selector-card 
+           data-next-package-id="2">
+        Toggle Product 2
+      </div>
+    </div>
+    ```
+    
+    **Use when:** Building custom bundles where items can be added/removed freely
+  </TabItem>
+</Tabs>
+
+## Advanced Examples
+
+### Conditional Display
+
+Show/hide content based on cart state:
+
+```html
+<!-- Show when cart is empty -->
+<div data-next-show="cart.isEmpty">
+  Your cart is empty - select a product above!
+</div>
+
+<!-- Show when cart has items -->
+<div data-next-show="cart.hasItems">
+  <button data-next-action="checkout">
+    Checkout Now
+  </button>
+</div>
+
+<!-- Show based on total -->
+<div data-next-show="cart.total > 50">
+  🎉 You qualify for free shipping!
+</div>
+
+<!-- Show when specific product selected -->
+<div data-next-show="selection.drone-demo.packageId == 4">
+  Best choice! You're getting our best deal!
+</div>
+```
+
+### Dynamic Pricing Display
+
+Display prices that update automatically:
+
+```html
+<!-- Show selected product details -->
+<div class="selected-product">
+  <h3 data-next-display="selection.product.name">Product Name</h3>
+  <p>
+    Price: <span data-next-display="selection.product.price">$0</span>
+    <s data-next-display="selection.product.comparePrice">$0</s>
+  </p>
+  <p>
+    You save: <span data-next-display="selection.product.savings">$0</span>
+    (<span data-next-display="selection.product.savingsPercent">0%</span>)
+  </p>
+</div>
+```
+
+### Multi-Step Forms
+
+Create checkout flows with form integration:
+
+```html
+<form data-next-form="checkout">
+  <!-- Step 1: Product Selection -->
+  <div data-next-step="1">
+    <h3>Choose Your Package</h3>
+    <!-- Product selector here -->
+    <button data-next-action="next-step">Continue</button>
+  </div>
+  
+  <!-- Step 2: Customer Info -->
+  <div data-next-step="2" data-next-show="step == 2">
+    <h3>Your Information</h3>
+    <input name="email" type="email" required>
+    <input name="phone" type="tel">
+    <button data-next-action="checkout">Complete Order</button>
+  </div>
+</form>
+```
+
+## Component Playground
+
+<CardGrid>
+  <Card title="Buttons & Actions" icon="cursor">
+    Test different button actions and states
+    [Try Buttons →](/components/buttons/)
+  </Card>
+  
+  <Card title="Display Elements" icon="eye">
+    Dynamic content that updates automatically
+    [Try Display →](/components/display/)
+  </Card>
+  
+  <Card title="Form Components" icon="pencil">
+    Input fields and form integration
+    [Try Forms →](/components/forms/)
+  </Card>
+  
+  <Card title="Conditionals" icon="branch">
+    Show/hide content based on conditions
+    [Try Conditionals →](/components/conditionals/)
+  </Card>
+</CardGrid>
+
+<Aside type="tip">
+**Pro tip:** Open your browser's developer console to see SDK events and debug information as you interact with the components.
+</Aside>
+
+## Copy & Customize
+
+All examples on this page are ready to use. Simply:
+
+1. Copy the HTML code
+2. Replace the API key with yours
+3. Update product IDs to match your dashboard
+4. Customize the styling to match your brand
+
+Need help? Check our [API Reference](/api/methods/) or [contact support](https://support.campaigncart.com).

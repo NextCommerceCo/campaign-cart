@@ -1,0 +1,77 @@
+---
+export interface Props {
+  packageId: string;
+  quantity?: string;
+  selected?: boolean;
+  bestDeal?: boolean;
+  name: string;
+  price: string;
+  retailPrice: string;
+  unitPrice?: string;
+  savingsPercentage?: string;
+  savingsAmount?: string;
+  hasFreeShipping?: boolean;
+}
+
+const { 
+  packageId, 
+  quantity = "1",
+  selected = false,
+  bestDeal = false,
+  name,
+  price,
+  retailPrice,
+  unitPrice,
+  savingsPercentage,
+  savingsAmount,
+  hasFreeShipping = false
+} = Astro.props;
+---
+
+<div 
+  class="relative bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md p-4 cursor-pointer transition-colors duration-150 hover:border-zinc-300 dark:hover:border-zinc-700 [&.next-selected]:border-indigo-500 dark:[&.next-selected]:border-indigo-500"
+  data-next-selector-card 
+  data-next-package-id={packageId}
+  data-next-quantity={quantity}>
+  
+  <input 
+    type="radio" 
+    class="absolute top-4 right-4 w-3.5 h-3.5 text-indigo-600 border-zinc-300 focus:ring-0 cursor-pointer"
+    checked={selected}
+    readOnly
+  />
+  
+  <div class="pr-8">
+    <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100 h-5" data-next-display="package.name">{name}</div>
+    
+    <div class="flex items-baseline gap-2 mt-2">
+      <span class="text-sm font-semibold text-zinc-900 dark:text-zinc-100" data-next-display="package.price_total">{price}</span>
+      <span class="text-sm text-zinc-500 dark:text-zinc-400 line-through" data-next-display="package.price_retail">{retailPrice}</span>
+    </div>
+    
+    <div class="text-xs text-zinc-500 dark:text-zinc-400 mt-1 h-4">
+      <span data-next-display="package.savingsPercentage">{savingsPercentage || '0%'}</span> off
+      {quantity && <span> • {quantity}x {parseInt(quantity) === 1 ? 'unit' : 'units'}</span>}
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'class') {
+          const card = mutation.target as HTMLElement;
+          const radio = card.querySelector('input[type="radio"]') as HTMLInputElement;
+          if (radio) {
+            radio.checked = card.classList.contains('next-selected');
+          }
+        }
+      });
+    });
+
+    document.querySelectorAll('[data-next-selector-card]').forEach((card) => {
+      observer.observe(card, { attributes: true, attributeFilter: ['class'] });
+    });
+  });
+</script>

@@ -1,0 +1,323 @@
+---
+title: Cart Display
+description: Display cart totals, quantities, and dynamic cart items with customizable templates.
+---
+
+Display shopping cart information including totals, quantities, and individual cart items. The cart system automatically updates when items are added, removed, or quantities change.
+
+## Basic Cart Information
+
+### Cart Status
+
+Display basic cart metrics and status:
+
+```html
+<!-- Cart item counts -->
+<span data-next-display="cart.itemCount">0</span> items
+<span data-next-display="cart.quantity">0</span> total quantity
+
+<!-- Cart state -->
+<div data-next-show="cart.isEmpty">
+  Your cart is empty
+</div>
+<div data-next-show="cart.hasItems">
+  <span data-next-display="cart.itemCount">0</span> items in your cart
+</div>
+```
+
+### Cart Totals
+
+Display formatted pricing information:
+
+```html
+<div class="cart-summary">
+  <div class="subtotal">
+    Subtotal: <span data-next-display="cart.subtotal">$0.00</span>
+  </div>
+  
+  <div class="shipping" data-next-show="cart.shipping > 0">
+    Shipping: <span data-next-display="cart.shipping">$0.00</span>
+  </div>
+  
+  <div class="discount" data-next-show="cart.hasCoupon">
+    Discount (<span data-next-display="cart.discountCode">-</span>): 
+    -<span data-next-display="cart.discounts">$0.00</span>
+  </div>
+  
+  <div class="total">
+    <strong>Total: <span data-next-display="cart.total">$0.00</span></strong>
+  </div>
+</div>
+```
+
+### Savings Display
+
+Highlight customer savings:
+
+```html
+<div class="savings" data-next-show="cart.hasSavings">
+  <div class="savings-badge">
+    You're saving <span data-next-display="cart.totalSavingsAmount">$0</span>
+    (<span data-next-display="cart.totalSavingsPercentage">0%</span>)!
+  </div>
+  
+  <div class="compare-total">
+    Compare at: <span data-next-display="cart.compareTotal">$0.00</span>
+  </div>
+</div>
+```
+
+## Dynamic Cart Items
+
+The `data-next-cart-items` attribute renders individual cart items using customizable templates.
+
+### Basic Setup
+
+```html
+<!-- Simple cart items list -->
+<div data-next-cart-items class="cart-items">
+  <div class="cart-item">
+    <span data-next-display="{item.name}">Product Name</span>
+    <span data-next-display="{item.quantity}">1</span>x
+    <span data-next-display="{item.finalPrice}">$0.00</span>
+  </div>
+</div>
+```
+
+### Template by ID
+
+Define reusable templates for complex layouts:
+
+```html
+<!-- Template definition -->
+<template id="cart-item-template">
+  <div class="cart-item" data-cart-item-id="{item.id}">
+    <div class="item-image">
+      <img src="{item.image}" alt="{item.name}">
+      <div class="quantity-badge">{item.quantity}</div>
+    </div>
+    
+    <div class="item-details">
+      <h4 class="item-name">{item.name}</h4>
+      <div class="item-sku">SKU: {item.variantSku}</div>
+      <div class="item-attributes">{item.variantAttributesFormatted}</div>
+      <div class="item-frequency">{item.frequency}</div>
+    </div>
+    
+    <div class="item-pricing">
+      <!-- Show original price if discounted -->
+      <div class="original-price {item.showOriginalPrice}">
+        <s>{item.price}</s>
+      </div>
+      <!-- Final price (with discounts applied) -->
+      <div class="current-price">{item.finalPrice}</div>
+      <!-- Discount amount -->
+      <div class="discount-amount {item.showDiscount}">
+        Save {item.discountAmount}
+      </div>
+      <!-- Retail comparison -->
+      <div class="compare-price {item.showCompare}">
+        Compare at {item.comparePrice}
+      </div>
+    </div>
+    
+    <div class="item-actions">
+      <div class="quantity-controls">
+        <button data-next-quantity="decrease" data-package-id="{item.packageId}">-</button>
+        <span class="quantity">{item.quantity}</span>
+        <button data-next-quantity="increase" data-package-id="{item.packageId}">+</button>
+      </div>
+      <button data-next-remove-item data-package-id="{item.packageId}">
+        Remove
+      </button>
+    </div>
+    
+    <div class="item-total">
+      <div class="line-total">{item.finalLineTotal}</div>
+    </div>
+  </div>
+</template>
+
+<!-- Cart items container -->
+<div data-next-cart-items 
+     data-item-template-id="cart-item-template"
+     data-empty-template='<div class="empty-cart">Your cart is empty</div>'
+     class="cart-items-list">
+</div>
+```
+
+### Available Template Variables
+
+#### Product Information
+- `{item.id}` - Unique cart item ID
+- `{item.packageId}` - Package/product ID for actions
+- `{item.name}` - Product name
+- `{item.productName}` - Base product name
+- `{item.variantName}` - Full variant name
+- `{item.sku}` - Product SKU
+- `{item.variantSku}` - Variant-specific SKU
+- `{item.image}` - Product image URL
+- `{item.frequency}` - Purchase frequency ("One time", "Every month")
+
+#### Variant Attributes
+- `{item.variantAttributesFormatted}` - "Color: Blue, Size: Large"
+- `{item.variantAttributesList}` - HTML formatted attributes
+- `{item.variantColor}` - Individual color attribute
+- `{item.variantSize}` - Individual size attribute
+
+#### Pricing (Formatted)
+- `{item.price}` - Original package price
+- `{item.unitPrice}` - Per-unit price
+- `{item.finalPrice}` - Final price (with discounts)
+- `{item.lineTotal}` - Original line total
+- `{item.finalLineTotal}` - Final line total (with discounts)
+- `{item.comparePrice}` - Retail comparison price
+- `{item.discountAmount}` - Coupon discount amount
+- `{item.savingsAmount}` - Retail savings amount
+
+#### Quantity & Actions
+- `{item.quantity}` - Quantity in cart
+- `{item.packageQty}` - Units per package
+
+#### Conditional Classes
+- `{item.showOriginalPrice}` - "show" or "hide" if discounted
+- `{item.showDiscount}` - "show" or "hide" if has coupon
+- `{item.showCompare}` - "show" or "hide" if has retail price
+- `{item.showSavings}` - "show" or "hide" if has savings
+
+### Mini Cart Example
+
+A compact cart display for headers or sidebars:
+
+```html
+<div class="mini-cart">
+  <div class="cart-toggle">
+    Cart (<span data-next-display="cart.itemCount">0</span>)
+    <span data-next-display="cart.total">$0.00</span>
+  </div>
+  
+  <div class="cart-dropdown" data-next-show="cart.hasItems">
+    <div data-next-cart-items 
+         data-item-template='<div class="mini-item">
+           <img src="{item.image}" alt="{item.name}">
+           <div>
+             <div>{item.name}</div>
+             <div>{item.quantity}x {item.finalPrice}</div>
+           </div>
+         </div>'
+         class="mini-cart-items">
+    </div>
+    
+    <div class="mini-cart-total">
+      Total: <span data-next-display="cart.total">$0.00</span>
+    </div>
+    
+    <button data-next-action="checkout" class="mini-checkout-btn">
+      Checkout
+    </button>
+  </div>
+</div>
+```
+
+## Free Shipping Progress
+
+Encourage higher order values with shipping thresholds:
+
+```html
+<div class="shipping-progress">
+  <div data-next-show="cart.total.raw < 100">
+    <p>
+      Add <span data-next-display="100 - cart.total.raw">$0</span> more for FREE shipping!
+    </p>
+    <div class="progress-bar">
+      <div class="progress" 
+           data-next-style="width: {cart.total.raw / 100 * 100}%">
+      </div>
+    </div>
+  </div>
+  
+  <div data-next-show="cart.total.raw >= 100" class="free-shipping-achieved">
+    ✓ You qualify for FREE shipping!
+  </div>
+</div>
+```
+
+## Cart Conditionals
+
+Show different content based on cart state:
+
+```html
+<!-- Empty cart state -->
+<div data-next-show="cart.isEmpty" class="empty-cart">
+  <h3>Your cart is empty</h3>
+  <p>Browse our products to get started!</p>
+  <a href="/shop" class="continue-shopping">Start Shopping</a>
+</div>
+
+<!-- Cart with items -->
+<div data-next-show="cart.hasItems" class="cart-contents">
+  <!-- Cart items and totals here -->
+</div>
+
+<!-- High-value cart perks -->
+<div data-next-show="cart.total.raw > 200" class="vip-perks">
+  <h4>🎉 VIP Customer Benefits</h4>
+  <ul>
+    <li>Priority processing</li>
+    <li>Extended warranty</li>
+    <li>Dedicated support</li>
+  </ul>
+</div>
+```
+
+## Advanced Features
+
+### Item Grouping
+
+Group identical items together:
+
+```html
+<div data-next-cart-items 
+     data-group-items
+     data-item-template-id="grouped-template"
+     class="grouped-cart-items">
+</div>
+```
+
+### Custom Empty State
+
+```html
+<div data-next-cart-items 
+     data-empty-template='<div class="custom-empty">
+       <img src="/empty-cart.svg" alt="Empty cart">
+       <h3>Nothing here yet</h3>
+       <p>Discover our amazing products!</p>
+       <a href="/shop">Browse Products</a>
+     </div>'
+     class="cart-items">
+</div>
+```
+
+### Inline Template
+
+For simple layouts, use inline templates:
+
+```html
+<div data-next-cart-items 
+     data-item-template='<div class="simple-item">
+       {item.name} - {item.quantity}x {item.finalPrice}
+       <button data-next-remove-item data-package-id="{item.packageId}">×</button>
+     </div>'
+     class="simple-cart">
+</div>
+```
+
+## Best Practices
+
+1. **Always handle empty state** - Provide clear guidance when cart is empty
+2. **Show pricing clearly** - Use `finalPrice` and `finalLineTotal` for accurate totals
+3. **Include remove/edit actions** - Let users modify their cart easily
+4. **Highlight savings** - Use conditional classes to show discounts and savings
+5. **Mobile optimization** - Consider responsive layouts for cart items
+6. **Loading states** - Handle cart updates gracefully
+7. **Error handling** - Provide feedback when cart operations fail

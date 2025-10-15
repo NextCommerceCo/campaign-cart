@@ -1,0 +1,403 @@
+---
+title: Configuration Reference
+description: Complete reference for window.nextConfig options
+---
+
+import { Tabs, TabItem, Aside, Code } from '@astrojs/starlight/components';
+
+The Campaign Cart SDK is configured through the `window.nextConfig` object. This must be defined before loading the SDK.
+
+## Basic Configuration
+
+The minimal configuration only requires an API key:
+
+```javascript
+window.nextConfig = {
+  apiKey: "your-api-key-here"
+};
+```
+
+## Complete Configuration Reference
+
+Here's the full configuration object with all available options:
+
+```javascript
+window.nextConfig = {
+  // Required: Your Campaign Cart API key
+  apiKey: "your-api-key-here",
+  
+  // Enable debug mode for console logging
+  debug: false,
+  
+  // Currency behavior when country changes
+  currencyBehavior: 'auto', // 'auto' | 'manual'
+  
+  // Payment and checkout configuration
+  paymentConfig: {
+    expressCheckout: {
+      requireValidation: true,
+      requiredFields: ['email', 'fname', 'lname']
+    }
+  },
+  
+  // Address and country configuration
+  addressConfig: {
+    defaultCountry: "US",
+    showCountries: ["US", "CA", "GB", "AU", "DE", "FR"],
+    dontShowStates: ["AS", "GU", "PR", "VI"]
+  },
+  
+  // Discount codes configuration
+  discounts: {
+    DEMO10: {
+      code: "SAVE10",
+      type: "percentage", // 'percentage' | 'fixed'
+      value: 10,
+      scope: "package", // 'package' | 'order'
+      packageIds: [2, 3], // Optional: specific package IDs
+      description: "10% off entire order",
+      combinable: true
+    }
+  },
+  
+  // Google Maps integration
+  googleMaps: {
+    apiKey: "your-google-maps-api-key",
+    region: "US",
+    enableAutocomplete: true
+  },
+  
+  // Tracking mode
+  tracking: "auto", // 'auto' | 'manual' | 'disabled'
+  
+  // Analytics providers configuration
+  analytics: {
+    enabled: true,
+    mode: 'auto', // 'auto' | 'manual' | 'disabled'
+    providers: {
+      nextCampaign: {
+        enabled: true
+      },
+      gtm: {
+        enabled: false,
+        settings: {
+          containerId: "GTM-XXXXXX",
+          dataLayerName: "dataLayer"
+        }
+      },
+      facebook: {
+        enabled: false,
+        settings: {
+          pixelId: "YOUR_PIXEL_ID"
+        }
+      },
+      rudderstack: {
+        enabled: false,
+        settings: {
+          // RudderStack SDK handles configuration
+        }
+      },
+      custom: {
+        enabled: false,
+        settings: {
+          endpoint: "https://your-analytics.com/track",
+          apiKey: "your-analytics-api-key"
+        }
+      }
+    }
+  },
+  
+  // UTM parameter transfer
+  utmTransfer: {
+    enabled: true,
+    applyToExternalLinks: false,
+    debug: false,
+    excludedDomains: ['example.com'],
+    paramsToCopy: ['utm_source', 'utm_medium', 'utm_campaign']
+  }
+};
+```
+
+## Configuration Options
+
+### Core Settings
+
+#### `apiKey` (required)
+- **Type:** `string`
+- **Description:** Your Campaign Cart API key from the dashboard
+- **Example:** `"kLGpgEfCX3iUZG16hpI5zrCH9qxcOdahDY1im6ud"`
+
+#### `debug`
+- **Type:** `boolean`
+- **Default:** `false`
+- **Description:** Enables detailed console logging for troubleshooting
+
+#### `currencyBehavior`
+- **Type:** `'auto' | 'manual'`
+- **Default:** `'auto'`
+- **Description:** 
+  - `'auto'`: Currency changes automatically when country changes
+  - `'manual'`: Currency never changes automatically
+
+### Payment Configuration
+
+#### `paymentConfig.expressCheckout`
+Configure express checkout behavior:
+
+```javascript
+paymentConfig: {
+  expressCheckout: {
+    requireValidation: true,
+    requiredFields: ['email', 'fname', 'lname', 'phone']
+  }
+}
+```
+
+### Address Configuration
+
+#### `addressConfig`
+Control country and state display:
+
+```javascript
+addressConfig: {
+  defaultCountry: "US",
+  showCountries: ["US", "CA", "GB", "AU"], // Whitelist countries
+  dontShowStates: ["AS", "GU", "PR", "VI"] // Hide specific states
+}
+```
+
+### Discount Configuration
+
+#### `discounts`
+Define available discount codes:
+
+```javascript
+discounts: {
+  SUMMER20: {
+    code: "SUMMER20",
+    type: "percentage",
+    value: 20,
+    scope: "order", // Applies to entire order
+    description: "Summer sale - 20% off",
+    combinable: false,
+    minPurchase: 50, // Optional minimum
+    expiresAt: "2024-08-31" // Optional expiry
+  },
+  FLAT10: {
+    code: "FLAT10",
+    type: "fixed",
+    value: 10,
+    scope: "package",
+    packageIds: [1, 2], // Only these packages
+    description: "$10 off select items"
+  }
+}
+```
+
+### Google Maps Integration
+
+#### `googleMaps`
+Enable address autocomplete:
+
+```javascript
+googleMaps: {
+  apiKey: "your-google-maps-api-key",
+  region: "US", // Bias results to region
+  enableAutocomplete: true,
+  libraries: ["places"], // Additional libraries
+  language: "en" // Force language
+}
+```
+
+### Analytics Configuration
+
+#### `analytics.providers`
+Configure multiple analytics providers:
+
+<Tabs>
+  <TabItem label="Google Tag Manager">
+    ```javascript
+    gtm: {
+      enabled: true,
+      settings: {
+        containerId: "GTM-XXXXXX",
+        dataLayerName: "dataLayer",
+        events: {
+          pageView: true,
+          addToCart: true,
+          checkout: true,
+          purchase: true
+        }
+      }
+    }
+    ```
+  </TabItem>
+  
+  <TabItem label="Facebook Pixel">
+    ```javascript
+    facebook: {
+      enabled: true,
+      settings: {
+        pixelId: "1234567890",
+        advancedMatching: true,
+        autoConfig: true
+      }
+    }
+    ```
+  </TabItem>
+  
+  <TabItem label="Custom Analytics">
+    ```javascript
+    custom: {
+      enabled: true,
+      settings: {
+        endpoint: "https://analytics.example.com/track",
+        apiKey: "your-api-key",
+        headers: {
+          "X-Custom-Header": "value"
+        }
+      }
+    }
+    ```
+  </TabItem>
+</Tabs>
+
+### UTM Parameter Transfer
+
+#### `utmTransfer`
+Preserve UTM parameters across navigation:
+
+```javascript
+utmTransfer: {
+  enabled: true,
+  applyToExternalLinks: true, // Add to external links too
+  debug: false,
+  excludedDomains: ['paypal.com', 'stripe.com'],
+  paramsToCopy: [
+    'utm_source',
+    'utm_medium', 
+    'utm_campaign',
+    'utm_content',
+    'utm_term',
+    'gclid', // Google Ads
+    'fbclid' // Facebook
+  ]
+}
+```
+
+## Environment-Specific Configurations
+
+<Tabs>
+  <TabItem label="Development">
+    ```javascript
+    window.nextConfig = {
+      apiKey: "dev-api-key",
+      debug: true,
+      analytics: {
+        enabled: false // Disable in dev
+      }
+    };
+    ```
+  </TabItem>
+  
+  <TabItem label="Staging">
+    ```javascript
+    window.nextConfig = {
+      apiKey: "staging-api-key",
+      debug: true,
+      analytics: {
+        enabled: true,
+        mode: 'manual' // Manual tracking only
+      }
+    };
+    ```
+  </TabItem>
+  
+  <TabItem label="Production">
+    ```javascript
+    window.nextConfig = {
+      apiKey: "production-api-key",
+      debug: false,
+      analytics: {
+        enabled: true,
+        mode: 'auto'
+      },
+      tracking: 'auto'
+    };
+    ```
+  </TabItem>
+</Tabs>
+
+## Demo Configuration
+
+For testing and playground environments, you can use our demo configuration:
+
+```javascript
+window.nextConfig = {
+  apiKey: "kLGpgEfCX3iUZG16hpI5zrCH9qxcOdahDY1im6ud", // Demo API key
+  debug: true,
+  // This key only works with our demo products
+  // Get your own at dashboard.campaigncart.com
+};
+```
+
+<Aside type="caution">
+The demo API key only works with our test products and has rate limits. Always use your own API key in production.
+</Aside>
+
+## Loading Order
+
+The configuration must be set before loading the SDK:
+
+```html
+<!-- 1. First: Set configuration -->
+<script>
+  window.nextConfig = {
+    apiKey: "your-api-key"
+  };
+</script>
+
+<!-- 2. Then: Load the SDK -->
+<script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.3.1/dist/loader.js" type="module"></script>
+```
+
+## Validation
+
+The SDK validates your configuration on load. Check the console for any configuration errors:
+
+```javascript
+// Listen for initialization
+document.addEventListener('next:initialized', function(event) {
+  console.log('SDK initialized with config:', event.detail.config);
+});
+
+// Listen for errors
+document.addEventListener('next:error', function(event) {
+  console.error('SDK error:', event.detail);
+});
+```
+
+## Dynamic Configuration
+
+You can modify some settings after initialization:
+
+```javascript
+// Change debug mode
+next.setDebug(true);
+
+// Update discount codes
+next.updateDiscounts({
+  NEWCODE: { 
+    code: "NEWCODE", 
+    type: "percentage", 
+    value: 15 
+  }
+});
+
+// Change tracking mode
+next.setTracking('manual');
+```
+
+---
+
+Need help with configuration? Check our [troubleshooting guide](/guides/troubleshooting/) or [contact support](https://support.campaigncart.com).

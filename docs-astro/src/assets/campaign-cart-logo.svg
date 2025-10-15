@@ -1,0 +1,20 @@
+<svg width="100%" height="100%" viewBox="0 0 115.4 101.9" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .logo-path {
+      fill: #000000;
+      stroke: #000000;
+      stroke-width: 2.5px;
+    }
+    @media (prefers-color-scheme: dark) {
+      .logo-path {
+        fill: #ffffff;
+        stroke: #ffffff;
+      }
+    }
+    :root[data-theme="dark"] .logo-path {
+      fill: #ffffff;
+      stroke: #ffffff;
+    }
+  </style>
+  <path class="logo-path" d="M83.5,58.3l-1.9-1.3L27.2,21.2c-.7-.4-1.4-.6-2-.6-2,0-3.6,1.6-3.6,3.6v53.4c0,2,1.6,3.6,3.6,3.6h3.8v12.3h-3.8c-8.8,0-15.8-7.1-15.8-15.8V24.3c0-8.8,7.1-15.8,15.8-15.8,3.1,0,6.2.9,8.7,2.6h0l49,33.4.5.4v13.5ZM90.2,8.4c8.8,0,15.8,7.1,15.8,15.8v53.4c0,8.8-7.1,15.8-15.8,15.8s-6.2-.9-8.7-2.6h0l-49-33.4-.5-.4v-13.5l1.9,1.3,54.3,35.7c.7.4,1.4.7,2,.7,2,0,3.6-1.6,3.6-3.6V24.3c0-2-1.6-3.6-3.6-3.6h-3.8v-12.3h3.8Z"/>
+</svg>

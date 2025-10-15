@@ -1,0 +1,423 @@
+---
+title: Display Attributes
+description: Show dynamic data that updates automatically
+sidebar:
+  order: 3
+---
+
+import { Tabs, TabItem, Aside, Code } from '@astrojs/starlight/components';
+
+**Display attributes bind HTML elements to live data that updates automatically when state changes.**
+
+## data-next-display
+
+The primary attribute for showing dynamic values from cart, campaign, and order data.
+
+### Basic Usage
+
+```html
+<!-- Cart totals -->
+<span data-next-display="cart.total">$0.00</span>
+<span data-next-display="cart.subtotal">$0.00</span>
+<span data-next-display="cart.shipping">$0.00</span>
+<span data-next-display="cart.tax">$0.00</span>
+<span data-next-display="cart.discount">$0.00</span>
+
+<!-- Cart quantities -->
+<span data-next-display="cart.totalQuantity">0</span>
+<span data-next-display="cart.itemCount">0</span>
+
+<!-- Package data -->
+<span data-next-display="package.123.price">$0.00</span>
+<span data-next-display="package.123.name">Loading...</span>
+<span data-next-display="package.123.description">Loading...</span>
+```
+
+### Display Paths
+
+| Path | Description | Example Output |
+|------|-------------|----------------|
+| `cart.total` | Total cart value | "$99.99" |
+| `cart.subtotal` | Subtotal before shipping/tax | "$89.99" |
+| `cart.shipping` | Shipping cost | "$10.00" |
+| `cart.tax` | Tax amount | "$8.00" |
+| `cart.discount` | Discount amount | "-$10.00" |
+| `cart.totalQuantity` | Total items in cart | "5" |
+| `cart.itemCount` | Unique items in cart | "3" |
+| `cart.isEmpty` | Cart empty state | "true" or "false" |
+| `package.[id].price` | Package price | "$29.99" |
+| `package.[id].name` | Package display name | "Premium Bundle" |
+| `package.[id].description` | Package description | "Includes everything..." |
+| `package.[id].savings` | Discount amount | "$10.00" |
+| `package.[id].quantity` | Quantity in cart | "2" |
+| `campaign.name` | Campaign name | "Summer Sale" |
+| `campaign.currency` | Active currency | "USD" |
+| `order.total` | Order total | "$99.99" |
+| `order.refId` | Order reference | "ORD-12345" |
+| `profile.active` | Active profile | "premium" |
+
+### Formatting Options
+
+Use `data-format` to control how values are displayed:
+
+```html
+<!-- Currency formatting (default) -->
+<span data-next-display="cart.total" 
+      data-format="currency">
+  $0.00
+</span>
+
+<!-- Number only -->
+<span data-next-display="cart.total" 
+      data-format="number">
+  0.00
+</span>
+
+<!-- Integer (no decimals) -->
+<span data-next-display="cart.totalQuantity" 
+      data-format="integer">
+  0
+</span>
+
+<!-- Percentage -->
+<span data-next-display="cart.discountPercent" 
+      data-format="percentage">
+  0%
+</span>
+
+<!-- Hide zero cents -->
+<span data-next-display="package.123.price" 
+      data-format="currency"
+      data-hide-zero-cents="true">
+  $100
+</span>
+```
+
+### Mathematical Operations
+
+```html
+<!-- Divide by value -->
+<span data-next-display="cart.total" 
+      data-divide-by="100">
+  0.99
+</span>
+
+<!-- Multiply by value -->
+<span data-next-display="cart.itemCount" 
+      data-multiply-by="10">
+  30
+</span>
+
+<!-- Calculate savings -->
+<span data-next-display="package.123.originalPrice" 
+      data-subtract="package.123.price">
+  $20.00
+</span>
+```
+
+## Conditional Display
+
+### data-next-show
+
+Show element when condition is true:
+
+```html
+<!-- Show when cart has items -->
+<div data-next-show="cart.isEmpty === false">
+  Your cart has items!
+</div>
+
+<!-- Show when specific item is in cart -->
+<div data-next-show="cart.hasItem(123)">
+  Premium package selected
+</div>
+
+<!-- Show when total exceeds threshold -->
+<div data-next-show="cart.total > 100">
+  Free shipping unlocked!
+</div>
+
+<!-- Complex conditions -->
+<div data-next-show="cart.totalQuantity >= 3 && cart.total > 50">
+  Bulk discount applied!
+</div>
+```
+
+### data-next-hide
+
+Hide element when condition is true (inverse of show):
+
+```html
+<!-- Hide when cart is empty -->
+<button data-next-hide="cart.isEmpty">
+  Proceed to Checkout
+</button>
+
+<!-- Hide when item already in cart -->
+<button data-next-hide="cart.hasItem(123)">
+  Add to Cart
+</button>
+
+<!-- Hide below minimum order -->
+<div data-next-hide="cart.total < 25">
+  Checkout available
+</div>
+```
+
+### data-hide-if-zero
+
+Hide element when displayed value is zero:
+
+```html
+<!-- Hide if no discount -->
+<div data-next-display="cart.discount"
+     data-hide-if-zero="true">
+  Discount: <span>$0.00</span>
+</div>
+
+<!-- Hide if no shipping -->
+<div data-next-display="cart.shipping"
+     data-hide-if-zero="true">
+  Shipping: <span>$0.00</span>
+</div>
+```
+
+### data-hide-if-false
+
+Hide element when value is false:
+
+```html
+<div data-next-display="cart.hasDiscount"
+     data-hide-if-false="true">
+  Discount applied!
+</div>
+```
+
+## Profile-Based Display
+
+Show/hide content based on active profile:
+
+```html
+<!-- Show for specific profile -->
+<div data-next-show-if-profile="premium">
+  Premium member pricing
+</div>
+
+<!-- Hide for specific profile -->
+<div data-next-hide-if-profile="premium">
+  Upgrade to premium for better prices
+</div>
+
+<!-- Multiple profiles -->
+<div data-next-show-if-profile="vip,premium,gold">
+  Member exclusive content
+</div>
+```
+
+## Timer Display
+
+### data-next-timer
+
+Display countdown timers:
+
+```html
+<!-- Basic timer (5 minutes) -->
+<div data-next-timer="true"
+     data-duration="300">
+  05:00
+</div>
+
+<!-- Timer with persistence -->
+<div data-next-timer="true"
+     data-duration="3600"
+     data-persistence-id="sale-timer"
+     data-format="hh:mm:ss">
+  01:00:00
+</div>
+
+<!-- Timer with custom display -->
+<div data-next-timer="true"
+     data-duration="86400"
+     data-format="dd:hh:mm:ss">
+  1d 00:00:00
+</div>
+```
+
+Timer format options:
+- `mm:ss` - Minutes and seconds
+- `hh:mm:ss` - Hours, minutes, seconds
+- `dd:hh:mm:ss` - Days, hours, minutes, seconds
+- `auto` - Automatic formatting based on duration
+
+## Complex Display Patterns
+
+### Cart Summary
+
+```html
+<div class="cart-summary">
+  <!-- Cart count badge -->
+  <span data-next-display="cart.totalQuantity" 
+        data-hide-if-zero="true"
+        class="badge">0</span>
+  
+  <!-- Empty cart message -->
+  <div data-next-show="cart.isEmpty">
+    Your cart is empty
+  </div>
+  
+  <!-- Cart items -->
+  <div data-next-hide="cart.isEmpty">
+    <div>Items: <span data-next-display="cart.itemCount">0</span></div>
+    <div>Subtotal: <span data-next-display="cart.subtotal">$0.00</span></div>
+    
+    <!-- Conditional shipping -->
+    <div data-next-display="cart.shipping"
+         data-hide-if-zero="true">
+      Shipping: <span>$0.00</span>
+    </div>
+    
+    <!-- Conditional discount -->
+    <div data-next-display="cart.discount"
+         data-hide-if-zero="true">
+      Discount: <span>$0.00</span>
+    </div>
+    
+    <div>Total: <span data-next-display="cart.total">$0.00</span></div>
+  </div>
+</div>
+```
+
+### Product Card with Dynamic Pricing
+
+```html
+<div class="product-card" data-package-id="123">
+  <!-- Dynamic price -->
+  <div class="price">
+    <span data-next-display="package.123.price"
+          data-format="currency"
+          data-hide-zero-cents="true">$0</span>
+  </div>
+  
+  <!-- Original price with strikethrough -->
+  <div data-next-show="package.123.hasDiscount">
+    <s data-next-display="package.123.originalPrice">$0.00</s>
+    <span data-next-display="package.123.savings">Save $0</span>
+  </div>
+  
+  <!-- Stock status -->
+  <div data-next-show="package.123.inStock === false"
+       class="out-of-stock">
+    Out of Stock
+  </div>
+  
+  <!-- In cart indicator -->
+  <div data-next-show="cart.hasItem(123)">
+    <span data-next-display="package.123.quantity">0</span> in cart
+  </div>
+</div>
+```
+
+### Order Confirmation
+
+```html
+<div data-next-show="order.exists">
+  <h2>Order Confirmed!</h2>
+  <p>Order ID: <span data-next-display="order.refId">-</span></p>
+  <p>Total: <span data-next-display="order.total">$0.00</span></p>
+  
+  <!-- Order items -->
+  <div data-next-order-items="true">
+    <!-- SDK will populate this -->
+  </div>
+</div>
+```
+
+## Performance Tips
+
+### Efficient Selectors
+
+```html
+<!-- ✅ Specific paths are faster -->
+<span data-next-display="cart.total">$0</span>
+
+<!-- ❌ Avoid deep nesting -->
+<span data-next-display="cart.items[0].product.variations[0].price">$0</span>
+```
+
+### Reduce Recalculations
+
+```html
+<!-- ✅ Single display element -->
+<div data-next-display="cart.summary"
+     data-template="{itemCount} items - {total}">
+  0 items - $0.00
+</div>
+
+<!-- ❌ Multiple elements that update together -->
+<span data-next-display="cart.itemCount">0</span> items - 
+<span data-next-display="cart.total">$0.00</span>
+```
+
+### Conditional Rendering
+
+```html
+<!-- ✅ Hide parent container -->
+<div data-next-show="cart.hasDiscount">
+  <h3>Discounts Applied</h3>
+  <span data-next-display="cart.discount">$0.00</span>
+</div>
+
+<!-- ❌ Hide multiple children individually -->
+<div>
+  <h3 data-next-show="cart.hasDiscount">Discounts Applied</h3>
+  <span data-next-show="cart.hasDiscount"
+        data-next-display="cart.discount">$0.00</span>
+</div>
+```
+
+## Fallback Content
+
+Always provide fallback content for progressive enhancement:
+
+```html
+<!-- Fallback for prices -->
+<span data-next-display="package.123.price">
+  Starting at $29.99
+</span>
+
+<!-- Fallback for availability -->
+<span data-next-display="package.123.inStock">
+  Check availability
+</span>
+
+<!-- Fallback for loading states -->
+<span data-next-display="campaign.name">
+  Loading campaign...
+</span>
+```
+
+## Debugging Display
+
+Enable debug mode to see:
+- Which elements are bound to data
+- Update frequency and performance
+- Data path resolution
+- Formatting applied
+
+```html
+<!-- With ?debugger=true, shows -->
+<span data-next-display="cart.total"
+      class="next-display-bound"
+      data-display-path="cart.total"
+      data-display-value="99.99"
+      data-display-formatted="$99.99">
+  $99.99
+</span>
+```
+
+## Related Documentation
+
+- [Actions](/docs/data-attributes/actions/) - Interactive elements
+- [State Management](/docs/data-attributes/state/) - Conditional logic
+- [Events](/docs/javascript-api/events/) - React to data changes
+- [Cart Display](/docs/building-blocks/cart-display/) - Complete cart UI patterns

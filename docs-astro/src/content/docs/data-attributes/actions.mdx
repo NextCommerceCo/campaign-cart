@@ -1,0 +1,753 @@
+---
+title: Action Attributes
+description: Turn any HTML element into an interactive cart control
+sidebar:
+  order: 2
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+**Action attributes transform static HTML elements into powerful e-commerce controls without writing JavaScript.**
+
+## Core Principles
+
+- **Any Element Can Be Interactive:** Not just buttons - images, divs, links all work
+- **Automatic State Management:** Loading, disabled, and success states handled for you
+- **Error Recovery Built-in:** Network failures and conflicts handled gracefully
+- **Composable Actions:** Combine multiple actions on a single element
+
+## Primary Actions
+
+### Add to Cart
+
+The most fundamental e-commerce action. Any element can become an add-to-cart control.
+
+```html
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123">
+  Add to Cart
+</button>
+```
+
+**Advanced Options:**
+
+```html
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  data-next-quantity="2"
+  data-next-clear-cart="true"
+  data-next-url="/checkout"
+  data-add-text="Add to Cart"
+  data-remove-text="In Cart - Remove?"
+  data-loading-text="Adding...">
+  Add to Cart
+</button>
+```
+
+| Attribute | Purpose | Default |
+|-----------|---------|---------|
+| `data-next-package-id` | Package to add | Required |
+| `data-next-quantity` | Quantity to add | 1 |
+| `data-next-clear-cart` | Clear cart first | false |
+| `data-next-url` | Redirect after adding | none |
+| `data-add-text` | Text when not in cart | Element's text |
+| `data-remove-text` | Text when in cart | Element's text |
+| `data-loading-text` | Text while processing | "Loading..." |
+
+### Toggle Cart Item
+
+Toggle between adding and removing an item - perfect for wishlist-style interfaces.
+
+```html
+<div 
+  data-next-toggle="cart"
+  data-next-package-id="123"
+  class="product-card">
+  <img src="product.jpg" alt="Product">
+  <span class="toggle-indicator">♥</span>
+</div>
+```
+
+The SDK automatically:
+- Adds `next-in-cart` class when item is in cart
+- Toggles between add and remove operations
+- Updates ARIA states for screen readers
+
+### Remove from Cart
+
+Explicitly remove an item from the cart.
+
+```html
+<button 
+  data-next-action="remove"
+  data-next-package-id="123">
+  Remove
+</button>
+```
+
+### Clear Cart
+
+Empty the entire cart - useful for "Start Over" functionality.
+
+```html
+<button data-next-action="clear-cart">
+  Empty Cart
+</button>
+```
+
+### Swap Package
+
+Replace one package with another - perfect for variant selection.
+
+```html
+<button 
+  data-next-action="swap"
+  data-next-package-id="456"
+  data-next-remove-package-id="123">
+  Switch to Premium
+</button>
+```
+
+## Quantity Actions
+
+### Quantity Controls
+
+Create increment/decrement controls without JavaScript.
+
+```html
+<div class="quantity-control">
+  <button 
+    data-next-quantity="decrease"
+    data-next-package-id="123">
+    -
+  </button>
+  
+  <input 
+    type="number"
+    data-next-quantity="input"
+    data-next-package-id="123"
+    value="1"
+    min="1"
+    max="10">
+  
+  <button 
+    data-next-quantity="increase"
+    data-next-package-id="123">
+    +
+  </button>
+</div>
+```
+
+| Value | Behavior |
+|-------|----------|
+| `increase` | Increment by step (default 1) |
+| `decrease` | Decrement by step (default 1) |
+| `input` | Direct quantity input |
+| `set` | Set to specific value |
+
+**With Custom Steps:**
+
+```html
+<button 
+  data-next-quantity="increase"
+  data-next-package-id="123"
+  data-step="5">
+  Add 5 More
+</button>
+```
+
+## Selector Actions
+
+### Package Selector
+
+Create product variant selectors that update the cart automatically.
+
+```html
+<div data-next-package-selector="true">
+  <label>
+    <input 
+      type="radio" 
+      name="package"
+      data-next-package-id="123"
+      data-next-selected="true">
+    Basic - $99
+  </label>
+  
+  <label>
+    <input 
+      type="radio" 
+      name="package"
+      data-next-package-id="456">
+    Pro - $199
+  </label>
+  
+  <label>
+    <input 
+      type="radio" 
+      name="package"
+      data-next-package-id="789">
+    Enterprise - $499
+  </label>
+</div>
+```
+
+**Button-Based Selector:**
+
+```html
+<div data-next-package-selector="true" data-next-selection-mode="swap">
+  <button data-next-package-id="123" data-next-selected="true">
+    1 Month
+  </button>
+  <button data-next-package-id="456">
+    3 Months (Save 10%)
+  </button>
+  <button data-next-package-id="789">
+    12 Months (Save 25%)
+  </button>
+</div>
+```
+
+## Checkout Actions
+
+### Direct Checkout
+
+Skip the cart page and go straight to checkout.
+
+```html
+<button 
+  data-next-action="checkout"
+  data-next-package-id="123"
+  data-next-quantity="1"
+  data-next-clear-cart="true">
+  Buy Now
+</button>
+```
+
+### Express Checkout
+
+Trigger express checkout methods (Apple Pay, Google Pay, etc.).
+
+```html
+<div data-next-express-checkout="auto">
+  <!-- SDK inserts appropriate express buttons -->
+</div>
+
+<!-- Or specific method -->
+<button data-next-express-checkout="apple-pay">
+  Apple Pay
+</button>
+```
+
+## Upsell Actions
+
+### Accept Upsell
+
+For post-purchase upsell flows.
+
+```html
+<button 
+  data-next-action="accept-upsell"
+  data-next-package-id="123"
+  data-next-is-upsell="true">
+  Yes, Add This Special Offer
+</button>
+```
+
+### Skip Upsell
+
+Track upsell rejections for analytics.
+
+```html
+<button 
+  data-next-action="skip-upsell"
+  data-next-package-id="123">
+  No Thanks, Continue
+</button>
+```
+
+## Conditional Actions
+
+### Profile-Based Actions
+
+Show different actions based on customer profiles.
+
+```html
+<!-- For A/B Testing -->
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  data-next-show-if-profile="control">
+  Add to Cart - $99
+</button>
+
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="456"
+  data-next-show-if-profile="test">
+  Add to Cart - $89 (Special Price)
+</button>
+```
+
+### State-Based Actions
+
+Actions that only work in certain states.
+
+```html
+<!-- Only works if cart is empty -->
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  data-next-show="cart.isEmpty">
+  Start Shopping
+</button>
+
+<!-- Only works if specific item NOT in cart -->
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="789"
+  data-next-hide="cart.hasItem(789)">
+  Add Insurance
+</button>
+```
+
+## Action Composition
+
+### Multiple Actions
+
+Execute multiple actions in sequence.
+
+```html
+<button 
+  data-next-clear-cart="true"
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  data-next-quantity="1"
+  data-next-url="/checkout">
+  Buy Now
+</button>
+```
+
+**Execution order:**
+1. Clear existing cart
+2. Add package 123 with quantity 1
+3. Redirect to /checkout
+
+### Conditional Chains
+
+```html
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  data-next-success-action="show-upsell"
+  data-next-error-action="show-error">
+  Add to Cart
+</button>
+```
+
+## Loading States
+
+The SDK automatically manages loading states during actions.
+
+```html
+<button data-next-action="add-to-cart" data-next-package-id="123">
+  Add to Cart
+</button>
+
+<!-- During action execution, becomes: -->
+<button 
+  data-next-action="add-to-cart" 
+  data-next-package-id="123"
+  class="next-loading"
+  disabled>
+  <span class="spinner"></span> Adding...
+</button>
+```
+
+**Custom Loading Behavior:**
+
+```html
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  data-loading-text="Processing..."
+  data-loading-class="is-busy"
+  data-disable-on-loading="false">
+  Add to Cart
+</button>
+```
+
+## Error Handling
+
+Actions automatically handle common errors.
+
+```html
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  data-error-message="Could not add item. Please try again.">
+  Add to Cart
+</button>
+
+<!-- On error, shows: -->
+<div class="next-error-message">
+  Could not add item. Please try again.
+</div>
+```
+
+**Custom Error Handling:**
+
+```javascript
+// Listen for action errors
+window.addEventListener('action:failed', (event) => {
+  console.error('Action failed:', event.detail);
+  // Custom error UI
+});
+```
+
+## Accessibility
+
+All actions are automatically accessible.
+
+```html
+<button data-next-action="add-to-cart" data-next-package-id="123">
+  Add to Cart
+</button>
+
+<!-- SDK adds appropriate ARIA attributes: -->
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  aria-label="Add product to cart"
+  aria-pressed="false"
+  aria-busy="false">
+  Add to Cart
+</button>
+```
+
+## Performance Considerations
+
+### Debouncing
+
+Actions are automatically debounced to prevent double-submissions.
+
+```html
+<!-- Rapid clicks only trigger once -->
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  data-debounce="300">
+  Add to Cart
+</button>
+```
+
+### Optimistic Updates
+
+The UI updates immediately while the action processes.
+
+```html
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  data-optimistic="true">
+  Add to Cart
+</button>
+```
+
+## Common Patterns
+
+### Product Card with Actions
+
+```html
+<div class="product-card">
+  <img src="product.jpg" alt="Product">
+  <h3>Premium Package</h3>
+  <p data-next-display="package.123.price" data-format="currency">$99</p>
+  
+  <div class="actions">
+    <button 
+      data-next-action="add-to-cart"
+      data-next-package-id="123"
+      data-add-text="Add to Cart"
+      data-remove-text="Remove from Cart">
+      Add to Cart
+    </button>
+    
+    <button 
+      data-next-action="add-to-cart"
+      data-next-package-id="123"
+      data-next-clear-cart="true"
+      data-next-url="/checkout">
+      Buy Now
+    </button>
+  </div>
+</div>
+```
+
+### Quick Add Form
+
+```html
+<form data-next-action="add-to-cart">
+  <select data-next-package-selector="true">
+    <option data-next-package-id="123">Small - $99</option>
+    <option data-next-package-id="456">Medium - $149</option>
+    <option data-next-package-id="789">Large - $199</option>
+  </select>
+  
+  <input 
+    type="number"
+    data-next-quantity="input"
+    value="1"
+    min="1"
+    max="10">
+  
+  <button type="submit">Add to Cart</button>
+</form>
+```
+
+## Specialized Attributes
+
+### Timer Controls
+
+Create countdown timers and expiration behaviors:
+
+```html
+<!-- Timer container -->
+<div data-next-timer="3600" data-persistence-id="offer-timer">
+  <!-- Timer display -->
+  <span data-next-timer-display>60:00</span>
+</div>
+
+<!-- Elements to show when timer expires -->
+<div data-next-timer-expired data-persistence-id="offer-timer">
+  <p>Offer has expired!</p>
+</div>
+```
+
+**Timer Attributes:**
+- `data-next-timer` - Timer duration in seconds
+- `data-persistence-id` - Unique ID for timer persistence
+- `data-next-timer-display` - Element to show countdown
+- `data-next-timer-expired` - Elements to show when expired
+
+### Checkout Form Fields
+
+Mark form fields for automatic checkout processing:
+
+```html
+<form data-next-checkout>
+  <!-- Customer information -->
+  <input type="email" data-next-checkout-field="email" required>
+  <input type="text" data-next-checkout-field="fname" placeholder="First Name">
+  <input type="text" data-next-checkout-field="lname" placeholder="Last Name">
+  <input type="tel" data-next-checkout-field="phone" placeholder="Phone">
+  
+  <!-- Billing address -->
+  <input type="text" data-next-checkout-field="billing-address1" placeholder="Address">
+  <input type="text" data-next-checkout-field="billing-city" placeholder="City">
+  <input type="text" data-next-checkout-field="billing-zip" placeholder="ZIP">
+  
+  <!-- Payment method selection -->
+  <select data-next-checkout-payment="method">
+    <option value="credit_card">Credit Card</option>
+    <option value="paypal">PayPal</option>
+  </select>
+  
+  <!-- Credit card fields -->
+  <input type="text" data-next-checkout-field="cc-number" placeholder="Card Number">
+  <select data-next-checkout-field="cc-month">
+    <option value="01">01</option>
+    <option value="02">02</option>
+    <!-- ... -->
+  </select>
+  <select data-next-checkout-field="cc-year">
+    <option value="2024">2024</option>
+    <option value="2025">2025</option>
+    <!-- ... -->
+  </select>
+  <input type="text" data-next-checkout-field="cvv" placeholder="CVV">
+  
+  <!-- Marketing consent -->
+  <input type="checkbox" data-next-checkout-field="accepts_marketing">
+  
+  <button type="submit" data-next-checkout-submit>Complete Order</button>
+</form>
+```
+
+**Checkout Field Types:**
+- `email` - Customer email address
+- `fname`, `lname` - Customer name
+- `phone` - Customer phone number
+- `billing-address1`, `billing-city`, `billing-zip` - Billing address
+- `cc-number`, `cc-month`, `cc-year`, `cvv` - Credit card details
+- `accepts_marketing` - Marketing consent checkbox
+
+### Express Checkout
+
+Enable express checkout buttons (Apple Pay, Google Pay, etc.):
+
+```html
+<!-- Auto-detect and show available methods -->
+<div data-next-express-checkout="auto">
+  <!-- SDK automatically inserts available express checkout buttons -->
+</div>
+
+<!-- Container with custom button placement -->
+<div data-next-express-checkout="container">
+  <h3>Express Checkout</h3>
+  <div data-next-express-checkout="buttons">
+    <!-- Express checkout buttons inserted here -->
+  </div>
+</div>
+
+<!-- Specific express method -->
+<button data-next-express-checkout="apple-pay">
+  Apple Pay
+</button>
+
+<button data-next-express-checkout="google-pay">
+  Google Pay
+</button>
+
+<button data-next-express-checkout="paypal">
+  PayPal Express
+</button>
+```
+
+**Express Checkout Values:**
+- `auto` - Show all available methods
+- `container` - Container for button placement
+- `buttons` - Target element for button injection
+- `apple-pay` - Apple Pay button
+- `google-pay` - Google Pay button
+- `paypal` - PayPal Express button
+
+### Remove Item Controls
+
+Remove specific items from cart:
+
+```html
+<!-- Simple remove button -->
+<button data-next-remove-item data-package-id="123">
+  Remove
+</button>
+
+<!-- Remove with confirmation -->
+<button 
+  data-next-remove-item 
+  data-package-id="123"
+  data-confirm="true"
+  data-confirm-message="Remove this item from your cart?">
+  × Remove
+</button>
+
+<!-- Remove all instances of an item -->
+<button 
+  data-next-remove-item 
+  data-package-id="123"
+  data-remove-all="true">
+  Remove All
+</button>
+```
+
+**Remove Item Attributes:**
+- `data-package-id` - Package ID to remove
+- `data-confirm` - Show confirmation dialog
+- `data-confirm-message` - Custom confirmation text
+- `data-remove-all` - Remove all instances vs. single item
+
+### Checkout Review Fields
+
+Display checkout information for review:
+
+```html
+<div class="checkout-review">
+  <!-- Customer info review -->
+  <div data-next-checkout-review="email">customer@example.com</div>
+  <div data-next-checkout-review="fname">John</div>
+  <div data-next-checkout-review="lname">Doe</div>
+  
+  <!-- Address review -->
+  <div data-next-checkout-review="billing-address1">123 Main St</div>
+  <div data-next-checkout-review="billing-city">Anytown</div>
+  
+  <!-- Payment method review -->
+  <div data-next-checkout-review="payment-method">Credit Card</div>
+</div>
+```
+
+## Advanced Action Patterns
+
+### Multi-Step Checkout
+
+```html
+<!-- Step 1: Customer Info -->
+<form data-next-checkout data-next-checkout-step="customer">
+  <input type="email" data-next-checkout-field="email" required>
+  <input type="text" data-next-checkout-field="fname" required>
+  <input type="text" data-next-checkout-field="lname" required>
+  <button type="submit">Continue to Shipping</button>
+</form>
+
+<!-- Step 2: Shipping -->
+<form data-next-checkout data-next-checkout-step="shipping">
+  <input type="text" data-next-checkout-field="shipping-address1" required>
+  <input type="text" data-next-checkout-field="shipping-city" required>
+  <button type="submit">Continue to Payment</button>
+</form>
+
+<!-- Step 3: Payment -->
+<form data-next-checkout data-next-checkout-step="payment">
+  <input type="text" data-next-checkout-field="cc-number" required>
+  <select data-next-checkout-field="cc-month" required>...</select>
+  <button type="submit">Complete Order</button>
+</form>
+```
+
+### Timer-Based Offers
+
+```html
+<div class="limited-offer" data-next-timer="1800" data-persistence-id="flash-sale">
+  <h2>Flash Sale - <span data-next-timer-display>30:00</span> Left!</h2>
+  
+  <div data-next-hide="timer.expired">
+    <button data-next-action="add-to-cart" data-next-package-id="special-123">
+      Get 50% Off - Limited Time!
+    </button>
+  </div>
+  
+  <div data-next-timer-expired data-persistence-id="flash-sale">
+    <p>Sorry, this offer has expired.</p>
+    <button data-next-action="add-to-cart" data-next-package-id="regular-123">
+      Buy at Regular Price
+    </button>
+  </div>
+</div>
+```
+
+### Conditional Express Checkout
+
+```html
+<!-- Show express checkout based on cart value -->
+<div data-next-show="cart.total.raw > 50" class="express-options">
+  <h3>Quick Checkout Options</h3>
+  <div data-next-express-checkout="auto"></div>
+</div>
+
+<!-- Show specific methods based on region -->
+<div data-next-show="region.country == 'US'">
+  <button data-next-express-checkout="apple-pay">Apple Pay</button>
+</div>
+
+<div data-next-show="region.country == 'CA'">
+  <button data-next-express-checkout="google-pay">Google Pay</button>
+</div>
+```
+
+## Related Documentation
+
+- [Display Attributes](/docs/data-attributes/display/) - Show dynamic data
+- [State Attributes](/docs/data-attributes/state/) - Conditional visibility
+- [Events](/docs/javascript-api/events/) - Respond to action events
+- [Cart Methods](/docs/javascript-api/cart-methods/) - Programmatic cart control

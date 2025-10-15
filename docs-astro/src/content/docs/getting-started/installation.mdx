@@ -1,0 +1,273 @@
+---
+title: Installation
+description: How to install and configure Campaign Cart JS SDK on your website
+---
+
+import { Steps, Code, Tabs, TabItem, Aside, Card, CardGrid } from '@astrojs/starlight/components';
+import { Image } from 'astro:assets';
+import getApiKeyImage from '../../../assets/get-api-key.png';
+
+Campaign Cart JS SDK can be installed in multiple ways to fit your development workflow. Choose the method that works best for your project.
+
+## Quick Installation
+
+The fastest way to get started is with our CDN:
+
+<Steps>
+
+1. **Get Your API Key**
+
+   Go to Next Commerce Dashboard, open the Campaigns app, select your campaign, click on Integration, and copy your API key.
+
+   <Image src={getApiKeyImage} alt="Getting your API key from the Campaign Integration dialog" />
+
+2. **Add SDK Script**
+
+   Add these two lines to your HTML `<head>` section:
+
+   ```html title="HTML Head Section"
+   <!-- Campaign Cart Configuration -->
+   <meta name="next-api-key" content="your-api-key-here">
+
+   <!-- Campaign Cart SDK -->
+   <script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.3.1/dist/loader.js" type="module"></script>
+   ```
+
+3. **Start Building**
+
+   You can now use Campaign Cart attributes in your HTML!
+
+</Steps>
+
+<Aside type="tip">
+Replace `your-api-key-here` with your actual API key from the dashboard.
+</Aside>
+
+## Installation Methods
+
+<Tabs>
+  <TabItem label="CDN (Recommended)">
+    <Code code={`<!-- Latest version -->
+<script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.3.1/dist/loader.js" type="module"></script>
+
+<!-- Specific version (recommended for production) -->
+<script src="https://campaign-cart-v2.pages.dev/v2.1.0/loader.js"></script>
+
+<!-- With integrity check -->
+<script 
+  src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.3.1/dist/loader.js"
+  integrity="sha384-..."
+  crossorigin="anonymous">
+</script>`} lang="html" />
+  </TabItem>
+
+  <TabItem label="NPM Package">
+    <Code code={`# Install via npm
+npm install @campaigncart/js-sdk
+
+# Install via yarn  
+yarn add @campaigncart/js-sdk
+
+# Install via pnpm
+pnpm add @campaigncart/js-sdk`} lang="bash" />
+    
+    Then import in your JavaScript:
+    
+    <Code code={`// ES6 import
+import CampaignCart from '@campaigncart/js-sdk';
+
+// Initialize with your API key
+CampaignCart.init({
+  apiKey: 'your-api-key-here'
+});
+
+// CommonJS require
+const CampaignCart = require('@campaigncart/js-sdk');`} lang="javascript" />
+  </TabItem>
+
+  <TabItem label="Self-Hosted">
+    <Code code={`# Download the SDK
+curl -o campaign-cart.js https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.3.1/dist/loader.js
+
+# Host on your server
+<script src="/js/campaign-cart.js"></script>`} lang="bash" />
+  </TabItem>
+
+  <TabItem label="WordPress Plugin">
+    <Code code={`// Install via WordPress admin
+1. Go to Plugins > Add New
+2. Search for "Campaign Cart"
+3. Install and activate
+
+// Or upload manually
+1. Download from wordpress.org/plugins/campaign-cart
+2. Upload to /wp-content/plugins/
+3. Activate in WordPress admin`} lang="text" />
+  </TabItem>
+</Tabs>
+
+## Configuration Options
+
+### Meta Tag Configuration
+
+Configure the SDK using meta tags in your HTML head:
+
+<Code code={`<!-- Required: Your API key -->
+<meta name="next-api-key" content="your-api-key">
+
+<!-- Optional: Page type for analytics -->
+<meta name="next-page-type" content="product">
+
+<!-- Optional: Enable debug mode -->
+<meta name="next-debug" content="true">
+
+<!-- Optional: Custom domain for API calls -->
+<meta name="next-api-domain" content="api.yoursite.com">
+
+<!-- Optional: Currency override -->
+<meta name="next-currency" content="EUR">
+
+<!-- Optional: Language/locale -->
+<meta name="next-locale" content="en-US">`} lang="html" title="Meta Tag Configuration" />
+
+### JavaScript Configuration
+
+For more advanced configuration, use JavaScript:
+
+<Code code={`// Configure before SDK loads
+window.nextConfig = {
+  apiKey: 'your-api-key',
+  debug: true,
+  currency: 'USD',
+  locale: 'en-US',
+  apiDomain: 'api.yoursite.com',
+  features: {
+    analytics: true,
+    upsells: true,
+    exitIntent: false
+  }
+};
+
+// Or configure after initialization
+document.addEventListener('next:initialized', function() {
+  next.configure({
+    debug: false,
+    autoTrack: true
+  });
+});`} lang="javascript" title="JavaScript Configuration" />
+
+## Environment Setup
+
+### Development Environment
+
+<Code code={`<!-- Development with debug enabled -->
+<meta name="next-api-key" content="dev_your-api-key">
+<meta name="next-debug" content="true">
+<meta name="next-env" content="development">
+
+<script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.3.1/dist/loader.js" type="module"></script>`} lang="html" title="Development Setup" />
+
+### Production Environment
+
+<Code code={`<!-- Production with specific version -->
+<meta name="next-api-key" content="live_your-api-key">
+<meta name="next-env" content="production">
+
+<script 
+  src="https://campaign-cart-v2.pages.dev/v2.1.0/loader.js"
+  async>
+</script>`} lang="html" title="Production Setup" />
+
+### Staging Environment
+
+<Code code={`<!-- Staging environment -->
+<meta name="next-api-key" content="staging_your-api-key">
+<meta name="next-debug" content="true">
+<meta name="next-env" content="staging">
+
+<script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.3.1/dist/loader.js" type="module"></script>`} lang="html" title="Staging Setup" />
+
+## Verification
+
+### Check Installation
+
+Verify the SDK loaded correctly:
+
+<Code code={`// Open browser console and run:
+console.log(window.next ? 'SDK Loaded' : 'SDK Not Found');
+
+// Check SDK version
+if (window.next) {
+  console.log('SDK Version:', next.version);
+}
+
+// Check configuration
+if (window.next) {
+  console.log('Config:', next.getConfig());
+}`} lang="javascript" title="Installation Check" />
+
+### Debug Mode
+
+Enable debug mode to see detailed logs:
+
+<Code code={`<!-- Enable via meta tag -->
+<meta name="next-debug" content="true">
+
+<!-- Or enable via JavaScript -->
+<script>
+  window.nextConfig = { debug: true };
+</script>
+
+<!-- Or enable after load -->
+<script>
+  document.addEventListener('next:initialized', function() {
+    next.enableDebug();
+  });
+</script>`} lang="html" title="Debug Mode" />
+
+## Troubleshooting
+
+### Common Issues
+
+**SDK Not Loading**
+- Check for JavaScript errors in console
+- Verify API key is correct
+- Ensure script URL is accessible
+
+**Attributes Not Working**  
+- Confirm SDK has initialized (`next:initialized` event)
+- Check element has correct `data-next-*` attributes
+- Verify package IDs exist in your campaign
+
+**Performance Issues**
+- Load SDK asynchronously with `async` attribute
+- Consider loading SDK after critical page content
+- Use specific version URLs for better caching
+
+### Getting Help
+
+<CardGrid>
+  <Card title="Documentation" icon="book-open">
+    Browse our complete guides and API reference.
+    [View Docs →](/api/methods/)
+  </Card>
+
+  <Card title="Support" icon="chat-bubble-left-ellipsis">
+    Contact our support team for help.
+    [Get Support →](mailto:support@campaigncart.com)
+  </Card>
+
+  <Card title="Community" icon="user-group">
+    Join our Discord community.
+    [Join Discord →](https://discord.gg/campaigncart)
+  </Card>
+
+  <Card title="Examples" icon="code-bracket">
+    See working examples and templates.
+    [View Examples →](/playground/)
+  </Card>
+</CardGrid>
+
+---
+
+Next: [Create your first product page →](/first-product-page/)

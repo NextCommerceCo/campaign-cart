@@ -1,0 +1,420 @@
+---
+title: Your First Cart
+description: Step-by-step tutorial to build a complete shopping cart
+---
+
+import { Card, CardGrid, Aside, Code, Steps } from '@astrojs/starlight/components';
+
+Build a complete shopping cart from scratch. This tutorial teaches core concepts while you build a real, working implementation.
+
+## What You'll Build
+
+By the end of this tutorial, you'll have:
+- Product display with dynamic pricing
+- Add to cart functionality
+- Quantity controls
+- Cart summary with totals
+- Remove from cart
+- Conditional UI (show/hide based on cart state)
+
+## Prerequisites
+
+Before starting, make sure you have:
+- Completed the [Installation guide](/getting-started/installation)
+- Your API key configured in the HTML `<head>`
+- The Campaign Cart SDK loaded
+
+## Step 1: Display a Product
+
+Start with basic product markup. The SDK will automatically populate the price.
+
+```html
+<div class="product">
+  <h2>Premium Widget</h2>
+  <p>High-quality widget for all your needs.</p>
+
+  <!-- SDK automatically displays the price from your dashboard -->
+  <p class="price">
+    <span data-next-display="package[123].price">$0.00</span>
+  </p>
+</div>
+```
+
+### How it works
+
+`data-next-display="package[123].price"` tells the SDK:
+- Look up package ID `123` in your campaign
+- Get its price
+- Display it in this element
+
+The SDK updates this automatically if prices change in your dashboard.
+
+## Step 2: Add to Cart Button
+
+Add a button that puts the product in the cart.
+
+```html
+<div class="product">
+  <h2>Premium Widget</h2>
+  <p>High-quality widget for all your needs.</p>
+  <p class="price">
+    <span data-next-display="package[123].price">$0.00</span>
+  </p>
+
+  <!-- Add to cart button -->
+  <button
+    data-next-action="add-to-cart"
+    data-next-package-id="123">
+    Add to Cart
+  </button>
+</div>
+```
+
+### How it works
+
+- `data-next-action="add-to-cart"` - Tells SDK this button adds to cart
+- `data-next-package-id="123"` - Specifies which product to add
+
+Click the button and the product is added to the cart. The SDK handles all state management automatically.
+
+## Step 3: Show Cart Summary
+
+Display the cart contents so users can see what they've added.
+
+```html
+<!-- Cart Summary -->
+<div class="cart-summary">
+  <h3>Your Cart</h3>
+
+  <p>
+    Items: <strong data-next-display="cart.itemCount">0</strong>
+  </p>
+
+  <p>
+    Total: <strong data-next-display="cart.total">$0.00</strong>
+  </p>
+</div>
+```
+
+### How it works
+
+The SDK automatically updates these displays:
+- `cart.itemCount` - Total number of items in cart
+- `cart.total` - Total price (formatted with currency)
+
+When you click "Add to Cart", these values update instantly.
+
+## Step 4: Add Quantity Controls
+
+Let users change how many of each product they want.
+
+```html
+<div class="product">
+  <h2>Premium Widget</h2>
+  <p class="price">
+    <span data-next-display="package[123].price">$0.00</span>
+  </p>
+
+  <!-- Quantity selector -->
+  <label>
+    Quantity:
+    <input
+      type="number"
+      data-next-quantity="123"
+      min="1"
+      max="99"
+      value="1">
+  </label>
+
+  <button
+    data-next-action="add-to-cart"
+    data-next-package-id="123">
+    Add to Cart
+  </button>
+</div>
+```
+
+### How it works
+
+`data-next-quantity="123"` binds this input to package 123:
+- When adding to cart, SDK reads this value
+- If product is already in cart, SDK syncs this with cart quantity
+- User changes update the cart automatically
+
+## Step 5: Remove from Cart
+
+Add a button to remove items from the cart.
+
+```html
+<button
+  data-next-action="remove-from-cart"
+  data-next-package-id="123">
+  Remove from Cart
+</button>
+```
+
+### How it works
+
+`data-next-action="remove-from-cart"` removes the specified package from cart. The cart summary updates automatically.
+
+## Step 6: Conditional Display
+
+Show different UI based on whether the item is in the cart.
+
+```html
+<div class="product">
+  <h2>Premium Widget</h2>
+  <p class="price">
+    <span data-next-display="package[123].price">$0.00</span>
+  </p>
+
+  <!-- Show when NOT in cart -->
+  <div data-next-if="!cart.has[123]">
+    <label>
+      Quantity:
+      <input type="number" data-next-quantity="123" min="1" value="1">
+    </label>
+    <button data-next-action="add-to-cart" data-next-package-id="123">
+      Add to Cart
+    </button>
+  </div>
+
+  <!-- Show when IN cart -->
+  <div data-next-if="cart.has[123]">
+    <p>✓ In your cart</p>
+    <label>
+      Quantity:
+      <input type="number" data-next-quantity="123" min="1">
+    </label>
+    <button data-next-action="remove-from-cart" data-next-package-id="123">
+      Remove
+    </button>
+  </div>
+</div>
+```
+
+### How it works
+
+- `data-next-if="!cart.has[123]"` - Shows only when package 123 is NOT in cart
+- `data-next-if="cart.has[123]"` - Shows only when package 123 IS in cart
+
+The SDK automatically shows/hides these sections when the cart changes.
+
+## Step 7: Add Checkout Button
+
+Let users proceed to checkout when they're ready.
+
+```html
+<div class="cart-summary">
+  <h3>Your Cart</h3>
+  <p>Items: <strong data-next-display="cart.itemCount">0</strong></p>
+  <p>Total: <strong data-next-display="cart.total">$0.00</strong></p>
+
+  <!-- Only show checkout if cart has items -->
+  <div data-next-if="!cart.empty">
+    <button data-next-action="checkout">
+      Proceed to Checkout
+    </button>
+  </div>
+
+  <div data-next-if="cart.empty">
+    <p>Your cart is empty</p>
+  </div>
+</div>
+```
+
+### How it works
+
+- `data-next-action="checkout"` - Initiates checkout flow
+- `data-next-if="!cart.empty"` - Only shows when cart has items
+- `data-next-if="cart.empty"` - Shows when cart is empty
+
+## Complete Code
+
+Here's the full implementation combining all steps:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Shopping Cart</title>
+
+  <meta name="next-api-key" content="YOUR_API_KEY">
+  <script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.3.1/dist/loader.js" type="module"></script>
+
+  <style>
+    body { font-family: system-ui; max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .container { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+    .product { border: 1px solid #ddd; padding: 20px; margin-bottom: 20px; border-radius: 8px; }
+    .price { font-size: 24px; font-weight: bold; color: #2c3e50; }
+    .cart-summary { background: #f8f9fa; padding: 20px; border-radius: 8px; position: sticky; top: 20px; }
+    button { background: #3498db; color: white; border: none; padding: 12px 24px;
+             border-radius: 6px; cursor: pointer; font-size: 16px; margin: 5px 0; }
+    button:hover { background: #2980b9; }
+    button[data-next-action="remove-from-cart"] { background: #e74c3c; }
+    button[data-next-action="remove-from-cart"]:hover { background: #c0392b; }
+    input[type="number"] { padding: 8px; font-size: 16px; width: 60px; }
+    label { display: block; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>My Store</h1>
+
+  <div class="container">
+    <!-- Products Column -->
+    <div class="products">
+      <!-- Product 1 -->
+      <div class="product">
+        <h2>Premium Widget</h2>
+        <p>High-quality widget for all your needs.</p>
+        <p class="price">
+          <span data-next-display="package[123].price">$0.00</span>
+        </p>
+
+        <div data-next-if="!cart.has[123]">
+          <label>
+            Quantity:
+            <input type="number" data-next-quantity="123" min="1" max="99" value="1">
+          </label>
+          <button data-next-action="add-to-cart" data-next-package-id="123">
+            Add to Cart
+          </button>
+        </div>
+
+        <div data-next-if="cart.has[123]">
+          <p style="color: #27ae60; font-weight: bold;">✓ In your cart</p>
+          <label>
+            Quantity:
+            <input type="number" data-next-quantity="123" min="1" max="99">
+          </label>
+          <button data-next-action="remove-from-cart" data-next-package-id="123">
+            Remove from Cart
+          </button>
+        </div>
+      </div>
+
+      <!-- Product 2 -->
+      <div class="product">
+        <h2>Deluxe Widget</h2>
+        <p>Even better widget with premium features.</p>
+        <p class="price">
+          <span data-next-display="package[456].price">$0.00</span>
+        </p>
+
+        <div data-next-if="!cart.has[456]">
+          <label>
+            Quantity:
+            <input type="number" data-next-quantity="456" min="1" max="99" value="1">
+          </label>
+          <button data-next-action="add-to-cart" data-next-package-id="456">
+            Add to Cart
+          </button>
+        </div>
+
+        <div data-next-if="cart.has[456]">
+          <p style="color: #27ae60; font-weight: bold;">✓ In your cart</p>
+          <label>
+            Quantity:
+            <input type="number" data-next-quantity="456" min="1" max="99">
+          </label>
+          <button data-next-action="remove-from-cart" data-next-package-id="456">
+            Remove from Cart
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cart Summary Column -->
+    <div>
+      <div class="cart-summary">
+        <h3>Shopping Cart</h3>
+
+        <div data-next-if="cart.empty">
+          <p>Your cart is empty</p>
+        </div>
+
+        <div data-next-if="!cart.empty">
+          <p>
+            <strong>Items:</strong>
+            <span data-next-display="cart.itemCount">0</span>
+          </p>
+          <p>
+            <strong>Subtotal:</strong>
+            <span data-next-display="cart.subtotal">$0.00</span>
+          </p>
+          <p>
+            <strong>Total:</strong>
+            <span data-next-display="cart.total" style="font-size: 20px;">$0.00</span>
+          </p>
+          <button data-next-action="checkout" style="width: 100%; background: #27ae60;">
+            Proceed to Checkout
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+```
+
+## Key Concepts Learned
+
+### Data Attributes
+
+| Attribute | Purpose |
+|-----------|---------|
+| `data-next-action` | Trigger actions (add-to-cart, remove-from-cart, checkout) |
+| `data-next-package-id` | Identify which product |
+| `data-next-quantity` | Control product quantity |
+| `data-next-display` | Display dynamic values |
+| `data-next-if` | Conditional show/hide |
+
+### Display Values
+
+| Value | Shows |
+|-------|-------|
+| `cart.itemCount` | Total number of items |
+| `cart.total` | Total price with currency |
+| `cart.subtotal` | Subtotal before discounts/tax |
+| `cart.empty` | Boolean - true if cart is empty |
+| `cart.has[ID]` | Boolean - true if package ID is in cart |
+| `package[ID].price` | Price of specific package |
+
+### Actions
+
+| Action | Effect |
+|--------|--------|
+| `add-to-cart` | Adds product to cart |
+| `remove-from-cart` | Removes product from cart |
+| `checkout` | Proceeds to checkout flow |
+| `update-quantity` | Updates quantity (automatic with inputs) |
+
+## Next Steps
+
+<CardGrid>
+  <Card title="Core Concepts" icon="book-open">
+    Deep dive into how the SDK works
+    [Learn More →](/getting-started/core-concepts)
+  </Card>
+
+  <Card title="Data Attributes Reference" icon="document">
+    Complete list of all available attributes
+    [View Reference →](/data-attributes)
+  </Card>
+
+  <Card title="Building Blocks" icon="puzzle">
+    Pre-built patterns for common UI components
+    [Explore Patterns →](/building-blocks)
+  </Card>
+
+  <Card title="Complete Flows" icon="rocket">
+    Full implementations of product pages, checkouts, and more
+    [See Examples →](/complete-flows)
+  </Card>
+</CardGrid>
+
+<Aside type="tip">
+**Try it yourself:** Copy the complete code above, replace `YOUR_API_KEY` with your actual key, and open it in a browser. Add products to cart and watch everything update in real-time!
+</Aside>

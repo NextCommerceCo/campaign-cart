@@ -1,0 +1,315 @@
+---
+title: Data Attributes Reference
+description: Complete catalog of every data-next-* attribute that controls SDK behavior
+sidebar:
+  order: 1
+---
+
+import { Steps, Aside } from '@astrojs/starlight/components';
+
+**Data attributes are the API through which your HTML communicates with the Campaign Cart SDK.**
+
+## Core Principles
+
+- **HTML as the Source of Truth:** Behavior is defined in markup, not JavaScript files
+- **Progressive Enhancement:** Elements work without JavaScript, transform with it
+- **Composable Patterns:** Combine attributes to create complex behaviors
+- **State Management:** The SDK automatically tracks and updates element states
+
+## Attribute Categories
+
+### Display Attributes
+
+These attributes bind elements to dynamic data that updates automatically when state changes.
+
+| Attribute | Purpose | Example |
+|-----------|---------|---------|
+| `data-next-display` | Display dynamic data | `data-next-display="cart.total"` |
+| `data-next-show` | Conditionally show element | `data-next-show="cart.isEmpty === false"` |
+| `data-next-hide` | Conditionally hide element | `data-next-hide="cart.total < 100"` |
+| `data-next-timer` | Countdown timer display | `data-next-timer="true" data-duration="300"` |
+
+This means: Your UI stays synchronized with cart state without writing any JavaScript.
+
+### Action Attributes
+
+These attributes turn any element into an interactive component.
+
+| Attribute | Purpose | Example |
+|-----------|---------|---------|
+| `data-next-action` | Define element action | `data-next-action="add-to-cart"` |
+| `data-next-package-id` | Target package for action | `data-next-package-id="123"` |
+| `data-next-quantity` | Quantity for action | `data-next-quantity="2"` |
+| `data-next-toggle` | Toggle cart state | `data-next-toggle="cart"` |
+| `data-next-clear-cart` | Clear cart before action | `data-next-clear-cart="true"` |
+| `data-next-url` | Redirect after action | `data-next-url="/checkout"` |
+
+This means: Any element can trigger cart operations - buttons, images, links, or custom components.
+
+### Configuration Attributes
+
+These attributes configure component behavior and appearance.
+
+| Attribute | Purpose | Example |
+|-----------|---------|---------|
+| `data-format` | Number/price formatting | `data-format="currency"` |
+| `data-hide-if-zero` | Hide when value is zero | `data-hide-if-zero="true"` |
+| `data-hide-zero-cents` | Hide .00 in prices | `data-hide-zero-cents="true"` |
+| `data-divide-by` | Mathematical division | `data-divide-by="100"` |
+| `data-multiply-by` | Mathematical multiplication | `data-multiply-by="1.2"` |
+
+### State Attributes
+
+These attributes reflect current state and enable conditional logic.
+
+| Attribute | Purpose | Example |
+|-----------|---------|---------|
+| `data-next-selected` | Pre-selected state | `data-next-selected="true"` |
+| `data-next-in-cart` | Item is in cart | Automatically managed |
+| `data-next-loading` | Loading state | Automatically managed |
+| `data-next-disabled` | Disabled state | Automatically managed |
+
+## Common Patterns
+
+### Add to Cart Button
+
+```html
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  data-next-quantity="1"
+  data-add-text="Add to Cart"
+  data-remove-text="Remove from Cart">
+  Add to Cart
+</button>
+```
+
+The SDK automatically:
+- Toggles button text based on cart state
+- Adds loading states during operations
+- Updates aria-labels for accessibility
+- Prevents double-clicks
+
+### Dynamic Price Display
+
+```html
+<span 
+  data-next-display="package.123.price"
+  data-format="currency"
+  data-hide-zero-cents="true">
+  $0.00
+</span>
+```
+
+The SDK automatically:
+- Fetches current price from campaign data
+- Formats according to user's locale
+- Updates when currency changes
+- Falls back to default content if data unavailable
+
+### Conditional Content
+
+```html
+<div data-next-show="cart.isEmpty === false">
+  Your cart has <span data-next-display="cart.totalQuantity">0</span> items
+</div>
+
+<div data-next-hide="cart.isEmpty === false">
+  Your cart is empty
+</div>
+```
+
+The SDK automatically:
+- Evaluates conditions on every state change
+- Uses CSS classes for performance (no DOM manipulation)
+- Maintains layout stability (no content shifting)
+
+### Package Selector
+
+```html
+<div data-next-package-selector="true">
+  <button data-next-package-id="123" data-next-selected="true">
+    Option A - $99
+  </button>
+  <button data-next-package-id="456">
+    Option B - $149
+  </button>
+  <button data-next-package-id="789">
+    Option C - $199
+  </button>
+</div>
+```
+
+The SDK automatically:
+- Manages selection state across options
+- Updates cart when selection changes
+- Applies active/selected classes
+- Handles keyboard navigation
+
+## Advanced Patterns
+
+### Quantity Controls with Sync
+
+```html
+<div data-next-cart-items="true">
+  <div data-next-package-id="123">
+    <button data-next-quantity="decrease">-</button>
+    <input 
+      type="number" 
+      data-next-quantity="input"
+      data-next-package-sync="123"
+      min="0"
+      max="10">
+    <button data-next-quantity="increase">+</button>
+  </div>
+</div>
+```
+
+This creates a complete quantity control that:
+- Syncs with cart state
+- Respects min/max limits
+- Updates on external changes
+- Handles keyboard input
+
+### Timer with Persistence
+
+```html
+<div 
+  data-next-timer="true"
+  data-duration="300"
+  data-persistence-id="flash-sale"
+  data-format="mm:ss">
+  05:00
+</div>
+```
+
+This creates a countdown timer that:
+- Persists across page refreshes
+- Formats time as minutes:seconds
+- Emits events at milestones
+- Auto-hides when complete
+
+### Profile-Based Display
+
+```html
+<div data-next-show-if-profile="premium">
+  Premium member exclusive content
+</div>
+
+<div data-next-hide-if-profile="premium">
+  <button data-next-action="upgrade">
+    Upgrade to Premium
+  </button>
+</div>
+```
+
+This enables:
+- A/B testing without code changes
+- Customer segment targeting
+- Dynamic content based on user profiles
+
+## Performance Implications
+
+### Efficient Patterns
+
+✅ **Use specific display paths**
+```html
+<span data-next-display="cart.total">$0</span>
+```
+
+✅ **Combine conditions in single attribute**
+```html
+<div data-next-show="cart.total > 100 && cart.items.length > 0">
+```
+
+✅ **Let SDK manage state classes**
+```html
+<button data-next-action="add-to-cart">Add</button>
+<!-- SDK adds: next-loading, next-in-cart, next-disabled -->
+```
+
+### Patterns to Avoid
+
+❌ **Don't nest conditional displays unnecessarily**
+```html
+<!-- Bad: Double evaluation -->
+<div data-next-show="cart.hasItems">
+  <div data-next-show="cart.total > 0">
+</div>
+```
+
+❌ **Don't duplicate package IDs in nested elements**
+```html
+<!-- Bad: Redundant processing -->
+<div data-next-package-id="123">
+  <button data-next-package-id="123">
+</div>
+```
+
+## Debugging Attributes
+
+Enable debug mode with `?debugger=true` to see:
+- Which elements have been enhanced
+- Current attribute values
+- State changes in real-time
+- Performance metrics
+
+```html
+<!-- Debug mode shows enhancement state -->
+<div 
+  data-next-display="cart.total"
+  class="next-enhanced next-display-ready"
+  data-enhancer-id="display-1">
+  $99.00
+</div>
+```
+
+## Edge Cases
+
+### Multiple Actions on Single Element
+
+```html
+<!-- SDK processes in order -->
+<button 
+  data-next-clear-cart="true"
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  data-next-url="/checkout">
+  Buy Now
+</button>
+```
+
+Execution order:
+1. Clear cart
+2. Add package to cart
+3. Redirect to checkout
+
+### Dynamic Attribute Updates
+
+The SDK observes attribute changes:
+
+```javascript
+// This will trigger SDK re-enhancement
+element.setAttribute('data-next-package-id', '456');
+```
+
+### Fallback Content
+
+Always provide fallback content for progressive enhancement:
+
+```html
+<!-- Shows "$0.00" if JavaScript disabled -->
+<span data-next-display="cart.total">$0.00</span>
+
+<!-- Shows static message if SDK fails -->
+<div data-next-timer="true" data-duration="300">
+  Limited time offer!
+</div>
+```
+
+## Related Documentation
+
+- [Events](/docs/javascript-api/events/) - Responding to SDK events
+- [CSS Classes](/docs/reference/css-classes/) - Styling enhanced elements
+- [Display Elements](/docs/building-blocks/cart-display/) - Deep dive on display attributes
+- [Actions](/docs/data-attributes/actions/) - Complete action attribute reference

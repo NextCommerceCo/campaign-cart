@@ -1,0 +1,57 @@
+---
+/**
+ * SDK Setup Component
+ * Automatically renders the latest SDK setup code
+ */
+import SDK_CONFIG from '../config/sdk-config';
+
+export interface Props {
+  apiKey?: string;
+  showConfig?: boolean;
+  version?: string;
+  type?: 'minimal' | 'full' | 'demo';
+}
+
+const { 
+  apiKey = 'your-api-key-here', 
+  showConfig = true,
+  version,
+  type = 'full'
+} = Astro.props;
+
+// Get the appropriate setup based on type
+let setupCode = '';
+
+if (type === 'minimal') {
+  setupCode = SDK_CONFIG.getScriptTag({ version });
+} else if (type === 'demo') {
+  setupCode = SDK_CONFIG.getSetupCode(SDK_CONFIG.demoApiKey);
+} else {
+  setupCode = showConfig 
+    ? SDK_CONFIG.getSetupCode(apiKey)
+    : SDK_CONFIG.getScriptTag({ version });
+}
+---
+
+<div class="sdk-setup">
+  <pre><code class="language-html">{setupCode}</code></pre>
+</div>
+
+<style>
+  .sdk-setup {
+    margin: 1rem 0;
+  }
+  
+  .sdk-setup pre {
+    background: var(--sl-color-gray-6);
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    overflow-x: auto;
+  }
+  
+  .sdk-setup code {
+    color: var(--sl-color-text);
+    font-size: 0.875rem;
+  }
+</style>

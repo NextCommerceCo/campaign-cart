@@ -1,0 +1,589 @@
+---
+title: CSS Classes
+description: Complete reference for all SDK-generated CSS classes
+sidebar:
+  order: 1
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+**The Next Commerce JS SDK automatically applies CSS classes to elements based on their state, enabling purely CSS-based UI updates.**
+
+<Aside type="tip">
+These classes are applied automatically by the SDK. You don't need to add them manually - just use them in your CSS for styling different states.
+</Aside>
+
+## State Classes
+
+### Cart Item States
+
+#### .next-in-cart
+
+Applied to elements when their package is in the cart:
+
+```html
+<!-- This button gets .next-in-cart when package 5 is in cart -->
+<button data-next-toggle data-next-package-id="5" class="next-in-cart">
+  Remove from Cart
+</button>
+
+<!-- Parent containers also get the class -->
+<div data-next-package-id="5" class="product-card next-in-cart">
+  <!-- All children can use this for styling -->
+</div>
+```
+
+#### .next-active
+
+Applied to toggle buttons when active:
+
+```html
+<button data-next-toggle data-next-package-id="5" class="next-active">
+  ✓ Added
+</button>
+```
+
+### Selection States
+
+#### .next-selected
+
+Applied to selected selector cards:
+
+```html
+<div data-next-selector-card data-next-package-id="2" class="next-selected">
+  Selected Option
+</div>
+```
+
+#### .next-selector-active
+
+Applied to selector container when it has a selection:
+
+```html
+<div data-next-cart-selector class="next-selector-active">
+  <!-- Has active selection -->
+</div>
+```
+
+### Button States
+
+#### .next-disabled
+
+Applied to disabled action buttons:
+
+```html
+<!-- Disabled until selection made -->
+<button data-next-action="add-to-cart" 
+        data-next-selector-id="main" 
+        class="next-disabled">
+  Add to Cart
+</button>
+```
+
+### Loading States
+
+#### .next-loading
+
+Applied to elements during async operations:
+
+```html
+<button data-next-action="add-to-cart" class="next-loading">
+  <span class="spinner"></span> Adding...
+</button>
+```
+
+## Page-Level Classes
+
+### .next-display-ready
+
+Applied to `<html>` when SDK is initialized:
+
+```html
+<html class="next-display-ready">
+  <!-- SDK is loaded and ready -->
+</html>
+```
+
+Usage:
+```css
+/* Hide content until ready */
+html:not(.next-display-ready) [data-next-display] {
+  visibility: hidden;
+}
+
+/* Show loading state */
+html:not(.next-display-ready) .loading-skeleton {
+  display: block;
+}
+```
+
+### .next-cart-empty / .next-cart-has-items
+
+Applied to `<body>` based on cart state:
+
+```html
+<!-- When cart is empty -->
+<body class="next-cart-empty">
+  <!-- Show empty cart messaging -->
+</body>
+
+<!-- When cart has items -->
+<body class="next-cart-has-items">
+  <!-- Show cart contents -->
+</body>
+```
+
+### Profile Classes
+
+Applied to `<body>` when profiles are active:
+
+```html
+<!-- Active profile ID as class -->
+<body class="next-profile-premium">
+  <!-- Premium profile active -->
+</body>
+
+<!-- Generic profile active class -->
+<body class="next-profile-active">
+  <!-- Any profile is active -->
+</body>
+```
+
+## Loading State Classes
+
+Elements with `data-next-await` get special treatment:
+
+```css
+/* Before SDK ready */
+html:not(.next-display-ready) [data-next-await] {
+  /* Shows loading skeleton */
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  animation: shimmer 1.5s infinite;
+}
+
+/* After SDK ready */
+html.next-display-ready [data-next-await] {
+  /* Normal display */
+  animation: none;
+}
+```
+
+## Styling Examples
+
+### Toggle Button States
+
+```css
+/* Default state */
+button[data-next-toggle] {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+/* When item is in cart */
+button[data-next-toggle].next-in-cart {
+  background: #28a745;
+}
+
+/* Active state */
+button[data-next-toggle].next-active {
+  background: #dc3545;
+}
+
+/* Loading state */
+button[data-next-toggle].next-loading {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* Disabled state */
+button.next-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+```
+
+### Product Card States
+
+```css
+/* Product card container */
+.product-card {
+  border: 2px solid #ddd;
+  padding: 20px;
+  transition: all 0.3s ease;
+}
+
+/* When product is in cart */
+.product-card.next-in-cart {
+  border-color: #28a745;
+  background: #f8fff9;
+  box-shadow: 0 0 10px rgba(40, 167, 69, 0.2);
+}
+
+/* Style children based on parent state */
+.product-card.next-in-cart .add-button {
+  display: none;
+}
+
+.product-card.next-in-cart .remove-button {
+  display: block;
+}
+
+.product-card.next-in-cart .in-cart-badge {
+  display: inline-block;
+  background: #28a745;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+```
+
+### Selector Card States
+
+```css
+/* Selector cards */
+[data-next-selector-card] {
+  border: 2px solid #ddd;
+  padding: 15px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+/* Hover state */
+[data-next-selector-card]:hover {
+  border-color: #007bff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Selected state */
+[data-next-selector-card].next-selected {
+  border-color: #007bff;
+  background: #e7f3ff;
+}
+
+/* Selected indicator */
+[data-next-selector-card].next-selected::after {
+  content: '✓';
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 24px;
+  height: 24px;
+  background: #007bff;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+```
+
+### Cart State Styling
+
+```css
+/* Empty cart state */
+body.next-cart-empty .checkout-button {
+  display: none;
+}
+
+body.next-cart-empty .empty-cart-message {
+  display: block;
+  text-align: center;
+  padding: 40px;
+  color: #666;
+}
+
+/* Cart with items */
+body.next-cart-has-items .checkout-button {
+  display: block;
+  background: #28a745;
+}
+
+body.next-cart-has-items .empty-cart-message {
+  display: none;
+}
+
+/* Cart count badge */
+body.next-cart-has-items .cart-count::after {
+  content: attr(data-count);
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: red;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+```
+
+### Loading Skeleton Animation
+
+```css
+/* Loading skeleton for data attributes */
+[data-next-await] {
+  position: relative;
+  overflow: hidden;
+}
+
+[data-next-await]::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg, 
+    rgba(255,255,255,0) 0%, 
+    rgba(255,255,255,0.4) 50%, 
+    rgba(255,255,255,0) 100%
+  );
+  animation: shimmer 1.5s infinite;
+  z-index: 1;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Hide skeleton when ready */
+html.next-display-ready [data-next-await]::before {
+  display: none;
+}
+```
+
+## Advanced Patterns
+
+### Multi-State Styling
+
+```css
+/* Combine multiple states */
+.product-card.next-in-cart [data-next-toggle].next-active {
+  background: #dc3545;
+  color: white;
+  transform: scale(0.95);
+}
+
+/* Different styles for different pages */
+html[data-page-type="checkout"] .next-in-cart {
+  border-color: #ffc107;
+  background: #fffbf0;
+}
+
+/* Profile-specific styling */
+body.next-profile-premium .price {
+  color: gold;
+  font-weight: bold;
+}
+
+body.next-profile-vip .product-card {
+  border: 2px solid gold;
+}
+```
+
+### Animation on State Change
+
+```css
+/* Animate when item added to cart */
+@keyframes addedToCart {
+  0% { 
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(40, 167, 69, 0);
+  }
+  50% { 
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(40, 167, 69, 0.5);
+  }
+  100% { 
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(40, 167, 69, 0);
+  }
+}
+
+.product-card {
+  animation: none;
+}
+
+.product-card.next-in-cart {
+  animation: addedToCart 0.5s ease;
+}
+
+/* Pulse animation for active buttons */
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+button.next-active {
+  animation: pulse 2s infinite;
+}
+```
+
+### Responsive State Styling
+
+```css
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  [data-next-selector-card].next-selected {
+    border-width: 3px;
+  }
+  
+  button[data-next-toggle].next-active {
+    font-size: 14px;
+    padding: 12px 16px;
+  }
+  
+  .product-card.next-in-cart {
+    border-width: 3px;
+  }
+}
+
+/* Tablet adjustments */
+@media (min-width: 769px) and (max-width: 1024px) {
+  [data-next-selector-card] {
+    padding: 20px;
+  }
+}
+```
+
+### Dark Mode Support
+
+```css
+/* Light mode (default) */
+.product-card.next-in-cart {
+  background: #f8fff9;
+  border-color: #28a745;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .product-card.next-in-cart {
+    background: #1a3a1a;
+    border-color: #5cb85c;
+  }
+  
+  [data-next-selector-card].next-selected {
+    background: #1a2332;
+    border-color: #4a90e2;
+  }
+}
+
+/* Or with class-based dark mode */
+html.dark-mode .product-card.next-in-cart {
+  background: #1a3a1a;
+  border-color: #5cb85c;
+}
+```
+
+## Performance Considerations
+
+### Use CSS Transforms
+
+```css
+/* ✅ Good - Uses transform for animations */
+[data-next-selector-card]:hover {
+  transform: translateY(-2px);
+}
+
+/* ❌ Avoid - Triggers layout recalculation */
+[data-next-selector-card]:hover {
+  margin-top: -2px;
+}
+```
+
+### Hardware Acceleration
+
+```css
+/* Enable hardware acceleration for smooth animations */
+.product-card {
+  will-change: transform, box-shadow;
+  transform: translateZ(0); /* Force GPU acceleration */
+}
+```
+
+### Efficient Selectors
+
+```css
+/* ✅ Good - Specific and efficient */
+.product-card.next-in-cart .price {
+  color: green;
+}
+
+/* ❌ Avoid - Too broad and inefficient */
+* .next-in-cart * {
+  color: green;
+}
+```
+
+## Class Reference Table
+
+| Class | Applied To | When | Use For |
+|-------|------------|------|---------|
+| `.next-in-cart` | Elements with package ID | Package is in cart | Styling in-cart state |
+| `.next-active` | Toggle buttons | Toggle is active | Active button state |
+| `.next-selected` | Selector cards | Card is selected | Selected option styling |
+| `.next-selector-active` | Selector container | Has selection | Container with selection |
+| `.next-disabled` | Action buttons | Action unavailable | Disabled state |
+| `.next-loading` | Action elements | Loading/processing | Loading indicators |
+| `.next-display-ready` | `<html>` | SDK initialized | Hide/show on ready |
+| `.next-cart-empty` | `<body>` | Cart is empty | Empty cart UI |
+| `.next-cart-has-items` | `<body>` | Cart has items | Cart with items UI |
+| `.next-profile-[id]` | `<body>` | Profile is active | Profile-specific styles |
+| `.next-profile-active` | `<body>` | Any profile active | Generic profile styles |
+
+## Best Practices
+
+1. **Use CSS Classes for Styling**: Style based on SDK classes, not data attributes
+2. **Smooth Transitions**: Add CSS transitions for state changes
+3. **Clear Visual Feedback**: Make state changes obvious to users
+4. **Accessibility**: Ensure state changes are perceivable by all users
+5. **Performance**: Use CSS transforms over layout changes
+6. **Mobile First**: Design responsive states starting with mobile
+7. **Dark Mode Support**: Consider both light and dark themes
+8. **Semantic Classes**: Combine SDK classes with your own for clarity
+
+## Debugging Classes
+
+Enable debug mode to see all applied classes:
+
+```javascript
+// Add ?debugger=true to URL
+// Or in console:
+document.body.classList.add('next-debug-mode');
+```
+
+```css
+/* Show all SDK classes in debug mode */
+body.next-debug-mode [class*="next-"]::before {
+  content: attr(class);
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: red;
+  color: white;
+  font-size: 10px;
+  padding: 2px 4px;
+  z-index: 9999;
+}
+```
+
+## Related Documentation
+
+- [Data Attributes](/docs/data-attributes/) - HTML attributes that trigger classes
+- [State Attributes](/docs/data-attributes/state/) - Conditional visibility
+- [Events](/docs/javascript-api/events/) - JavaScript events for state changes
+- [Configuration Attributes](/docs/data-attributes/configuration/) - Behavioral configuration

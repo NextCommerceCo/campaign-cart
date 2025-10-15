@@ -1,0 +1,547 @@
+---
+title: Configuration
+description: Complete guide to SDK configuration including API keys, payment settings, analytics, and advanced features.
+---
+
+The Next Commerce SDK is configured through the `window.nextConfig` object, which should be defined before the SDK loads. This comprehensive guide covers all available configuration options.
+
+## Basic Setup
+
+Configure the SDK by setting `window.nextConfig` before loading the SDK:
+
+```html
+<script>
+window.nextConfig = {
+  apiKey: 'your-api-key-here',
+  // Additional configuration...
+};
+</script>
+
+<!-- Load SDK after configuration -->
+<script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@latest/dist/index.js"></script>
+```
+
+## Core Configuration
+
+### API Key (Required)
+
+Your campaign API key is required for the SDK to function:
+
+```javascript
+window.nextConfig = {
+  apiKey: 'kLGpgEfCX3iUZG16hpI5zrCH9qxcOdahDY1im6ud'
+};
+```
+
+### Debug Mode
+
+Enable debug mode for development and troubleshooting:
+
+```javascript
+window.nextConfig = {
+  apiKey: 'your-api-key',
+  debug: true  // Enables detailed logging and debug utilities
+};
+```
+
+Debug mode provides:
+- Detailed console logging
+- Visual element highlighting
+- Performance metrics
+- Error tracking
+- Debug utilities via `window.nextDebug`
+
+## Payment Configuration
+
+Configure payment processing and express checkout options:
+
+```javascript
+window.nextConfig = {
+  apiKey: 'your-api-key',
+  paymentConfig: {
+    expressCheckout: {
+      // Require form validation before express checkout
+      requireValidation: true,
+      requiredFields: ['email', 'fname', 'lname'],
+      
+      // Optional: Custom button styling
+      buttonStyle: {
+        color: 'gold',     // 'gold' | 'blue' | 'silver' | 'white' | 'black'
+        shape: 'rect',     // 'pill' | 'rect'
+        height: 44
+      }
+    },
+    
+    // Spreedly configuration (if using custom gateway)
+    spreedly: {
+      environmentKey: 'your-spreedly-env-key',
+      // Additional Spreedly options
+    }
+  }
+};
+```
+
+### Express Checkout Options
+
+- **requireValidation**: Set to `true` to validate required fields before express checkout
+- **requiredFields**: Array of field names that must be completed
+- **buttonStyle**: Customize appearance of express checkout buttons
+
+## Address & Location Configuration
+
+Configure address handling and country restrictions:
+
+```javascript
+window.nextConfig = {
+  apiKey: 'your-api-key',
+  addressConfig: {
+    defaultCountry: "US",
+    showCountries: ["US", "CA", "GB", "AU", "BR"],
+    dontShowStates: ["AS", "GU", "PR", "VI"],  // Hide these US territories
+    
+    // Address validation
+    requirePostalCode: true,
+    validateAddresses: true
+  },
+  
+  // Google Maps integration for address autocomplete
+  googleMaps: {
+    apiKey: "your-google-maps-api-key",
+    region: "US",
+    enableAutocomplete: true,
+    
+    // Restrict autocomplete to specific countries
+    restrictToCountries: ["US", "CA"]
+  }
+};
+```
+
+## Discount System
+
+Define discount codes and promotion rules:
+
+```javascript
+window.nextConfig = {
+  apiKey: 'your-api-key',
+  discounts: {
+    // Percentage discount
+    SAVE10: {
+      code: "SAVE10",
+      type: "percentage",
+      value: 10,
+      scope: "order",               // 'order' | 'item'
+      description: "10% off entire order",
+      combinable: true,             // Can combine with other discounts
+      minOrderAmount: 50,           // Minimum order requirement
+      expiresAt: "2024-12-31"      // Expiration date
+    },
+    
+    // Fixed amount discount
+    SAVE20: {
+      code: "SAVE20",
+      type: "fixed",
+      value: 20,
+      scope: "order",
+      description: "$20 off your order",
+      combinable: false
+    },
+    
+    // Free shipping
+    FREESHIP: {
+      code: "FREESHIP",
+      type: "shipping",
+      value: 0,
+      description: "Free shipping",
+      minOrderAmount: 75
+    }
+  }
+};
+```
+
+### Discount Types
+
+- **percentage**: Percentage off (e.g., 10% = value: 10)
+- **fixed**: Fixed dollar amount off
+- **shipping**: Free or discounted shipping
+
+## Analytics Configuration
+
+Configure analytics tracking and integrations:
+
+```javascript
+window.nextConfig = {
+  apiKey: 'your-api-key',
+  analytics: {
+    enabled: true,
+    mode: 'auto',    // 'auto' | 'manual' | 'disabled'
+    
+    providers: {
+      // Next Commerce analytics (recommended)
+      nextCampaign: {
+        enabled: true
+      },
+      
+      // Google Tag Manager
+      gtm: {
+        enabled: true,
+        settings: {
+          containerId: "GTM-XXXXXXX",
+          dataLayerName: "dataLayer"
+        }
+      },
+      
+      // Facebook Pixel
+      facebook: {
+        enabled: true,
+        settings: {
+          pixelId: "1234567890123456"
+        }
+      },
+      
+      // RudderStack
+      rudderstack: {
+        enabled: true,
+        settings: {
+          writeKey: "your-rudderstack-write-key",
+          dataPlaneUrl: "https://your-data-plane.com"
+        }
+      },
+      
+      // Custom analytics endpoint
+      custom: {
+        enabled: true,
+        settings: {
+          endpoint: "https://your-analytics.com/track",
+          apiKey: "your-api-key"
+        }
+      }
+    }
+  }
+};
+```
+
+### Analytics Modes
+
+- **auto**: Automatically track standard e-commerce events
+- **manual**: Only track events you explicitly trigger
+- **disabled**: No automatic tracking (you can still use manual tracking)
+
+## Profile System
+
+Configure dynamic package mapping for pricing tiers and promotions:
+
+```javascript
+window.nextConfig = {
+  apiKey: 'your-api-key',
+  profiles: {
+    // Regular pricing (default)
+    regular: {
+      name: "Regular Pricing",
+      description: "Standard retail prices"
+    },
+    
+    // Sale pricing
+    sale_20: {
+      name: "20% Off Sale",
+      description: "Limited time discount",
+      packageMappings: {
+        1: 101,  // Package 1 → Sale Package 101
+        2: 102,  // Package 2 → Sale Package 102
+        3: 103   // Package 3 → Sale Package 103
+      }
+    },
+    
+    // VIP member pricing
+    vip: {
+      name: "VIP Member Pricing",
+      description: "Exclusive member discounts",
+      packageMappings: {
+        1: 201,
+        2: 202,
+        3: 203
+      }
+    }
+  },
+  
+  // Optional: Set default profile
+  defaultProfile: "regular"
+};
+```
+
+## UTM Transfer Configuration
+
+Automatically transfer UTM parameters across your funnel:
+
+```javascript
+window.nextConfig = {
+  apiKey: 'your-api-key',
+  utmTransfer: {
+    enabled: true,
+    applyToExternalLinks: false,
+    debug: true,
+    
+    // Optional: Limit which domains get UTM parameters
+    excludedDomains: ['google.com', 'facebook.com'],
+    
+    // Optional: Specify which parameters to transfer
+    paramsToCopy: [
+      'utm_source', 
+      'utm_medium', 
+      'utm_campaign', 
+      'utm_term', 
+      'utm_content',
+      'gclid',      // Google Click ID
+      'fbclid'      // Facebook Click ID
+    ]
+  }
+};
+```
+
+## Advanced Configuration
+
+### Custom Tracking
+
+Override default tracking behavior:
+
+```javascript
+window.nextConfig = {
+  apiKey: 'your-api-key',
+  tracking: 'auto',  // 'auto' | 'manual' | 'disabled'
+  
+  // Custom tracking configuration
+  trackingConfig: {
+    trackPageViews: true,
+    trackCartEvents: true,
+    trackCheckoutEvents: true,
+    trackPurchaseEvents: true,
+    
+    // Custom event mapping
+    eventMapping: {
+      'cart:item-added': 'custom_add_to_cart',
+      'order:completed': 'custom_purchase'
+    }
+  }
+};
+```
+
+### Error Handling
+
+Configure error handling and reporting:
+
+```javascript
+window.nextConfig = {
+  apiKey: 'your-api-key',
+  errorHandling: {
+    enabled: true,
+    logToConsole: true,
+    
+    // Optional: Send errors to external service
+    reportErrors: true,
+    errorReportingEndpoint: 'https://your-error-service.com/report'
+  }
+};
+```
+
+### Performance Options
+
+Optimize SDK performance:
+
+```javascript
+window.nextConfig = {
+  apiKey: 'your-api-key',
+  performance: {
+    // Preload campaign data
+    preloadCampaign: true,
+    
+    // Cache duration (in minutes)
+    cacheExpiry: 60,
+    
+    // Lazy load non-critical features
+    lazyLoad: ['analytics', 'expressCheckout'],
+    
+    // Debounce cart updates (in milliseconds)
+    debounceCartUpdates: 300
+  }
+};
+```
+
+### Multi-Currency Support
+
+Configure currency handling:
+
+```javascript
+window.nextConfig = {
+  apiKey: 'your-api-key',
+  currency: {
+    default: 'USD',
+    supported: ['USD', 'EUR', 'GBP', 'CAD'],
+    
+    // Auto-detect currency from user location
+    autoDetect: true,
+    
+    // Currency conversion API
+    conversionApi: {
+      provider: 'fixer',  // 'fixer' | 'currencylayer' | 'custom'
+      apiKey: 'your-currency-api-key'
+    }
+  }
+};
+```
+
+## Environment-Specific Configuration
+
+### Development Configuration
+
+```javascript
+// Development environment
+window.nextConfig = {
+  apiKey: 'dev-api-key',
+  debug: true,
+  analytics: {
+    enabled: false  // Disable analytics in development
+  },
+  paymentConfig: {
+    testMode: true  // Use test payment methods
+  }
+};
+```
+
+### Production Configuration
+
+```javascript
+// Production environment
+window.nextConfig = {
+  apiKey: 'prod-api-key',
+  debug: false,
+  analytics: {
+    enabled: true,
+    providers: {
+      gtm: { enabled: true, settings: { containerId: "GTM-PROD" }},
+      facebook: { enabled: true, settings: { pixelId: "prod-pixel-id" }}
+    }
+  },
+  performance: {
+    preloadCampaign: true,
+    lazyLoad: ['analytics']
+  }
+};
+```
+
+## Configuration Validation
+
+The SDK automatically validates your configuration and provides warnings for common issues:
+
+```javascript
+// Check configuration after SDK loads
+window.nextReady.push(function() {
+  // Validate configuration
+  const validation = next.validateConfig();
+  
+  if (validation.errors.length > 0) {
+    console.error('Configuration errors:', validation.errors);
+  }
+  
+  if (validation.warnings.length > 0) {
+    console.warn('Configuration warnings:', validation.warnings);
+  }
+});
+```
+
+## Complete Example
+
+Here's a comprehensive configuration example:
+
+```javascript
+window.nextConfig = {
+  // Required
+  apiKey: 'your-api-key-here',
+  
+  // Development settings
+  debug: false,
+  
+  // Payment configuration
+  paymentConfig: {
+    expressCheckout: {
+      requireValidation: true,
+      requiredFields: ['email', 'fname', 'lname']
+    }
+  },
+  
+  // Address configuration
+  addressConfig: {
+    defaultCountry: "US",
+    showCountries: ["US", "CA", "GB"],
+    requirePostalCode: true
+  },
+  
+  // Google Maps for address autocomplete
+  googleMaps: {
+    apiKey: "your-google-maps-api-key",
+    region: "US",
+    enableAutocomplete: true
+  },
+  
+  // Discount codes
+  discounts: {
+    WELCOME10: {
+      code: "WELCOME10",
+      type: "percentage",
+      value: 10,
+      scope: "order",
+      description: "Welcome discount"
+    }
+  },
+  
+  // Analytics
+  analytics: {
+    enabled: true,
+    mode: 'auto',
+    providers: {
+      gtm: {
+        enabled: true,
+        settings: { containerId: "GTM-XXXXXXX" }
+      },
+      facebook: {
+        enabled: true,
+        settings: { pixelId: "1234567890123456" }
+      }
+    }
+  },
+  
+  // Profile system for dynamic pricing
+  profiles: {
+    regular: { name: "Regular Pricing" },
+    sale: {
+      name: "Sale Pricing",
+      packageMappings: { 1: 101, 2: 102 }
+    }
+  },
+  
+  // UTM parameter transfer
+  utmTransfer: {
+    enabled: true,
+    applyToExternalLinks: false
+  },
+  
+  // Performance optimization
+  performance: {
+    preloadCampaign: true,
+    cacheExpiry: 60,
+    lazyLoad: ['analytics']
+  }
+};
+```
+
+## Configuration Tips
+
+1. **Start Simple**: Begin with just the API key and add features as needed
+2. **Test Thoroughly**: Use debug mode to verify configuration
+3. **Environment Variables**: Use different configs for dev/staging/production
+4. **Validate Early**: Check configuration immediately after SDK loads
+5. **Document Changes**: Keep track of configuration changes for your team
+
+## Related Documentation
+
+- [Profiles](./profiles/) - Dynamic package mapping system
+- [Analytics](../javascript-api/analytics/) - Analytics configuration and tracking
+- [Installation](../getting-started/) - Basic setup guide

@@ -1,0 +1,50 @@
+---
+export interface AttributeItem {
+  attribute: string;
+  description?: string;
+  defaultValue?: string;
+}
+
+export interface Props {
+  attributes: AttributeItem[];
+  selectorId?: string;
+}
+
+const { attributes, selectorId } = Astro.props;
+---
+
+<div class="not-content">
+  <table class="w-full">
+    <thead>
+      <tr class="border-b border-zinc-200 dark:border-zinc-700">
+        <th class="text-left pb-2 text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Attribute</th>
+        <th class="text-right pb-2 text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Live Value</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800/50">
+      {attributes.map((item) => {
+        const fullAttribute = selectorId && item.attribute.includes('{selectorId}') 
+          ? item.attribute.replace('{selectorId}', selectorId)
+          : item.attribute;
+        
+        return (
+          <tr>
+            <td class="py-2.5 pr-4">
+              <code class="text-xs font-mono bg-zinc-100 dark:bg-zinc-800/50 px-1.5 py-0.5 rounded text-zinc-600 dark:text-zinc-400">
+                {item.attribute}
+              </code>
+              {item.description && (
+                <span class="text-xs text-zinc-500 dark:text-zinc-400 ml-2">{item.description}</span>
+              )}
+            </td>
+            <td class="py-2.5 text-right">
+              <span class="text-sm font-mono text-zinc-900 dark:text-zinc-100" data-next-display={fullAttribute}>
+                {item.defaultValue || '—'}
+              </span>
+            </td>
+          </tr>
+        );
+      })}
+    </tbody>
+  </table>
+</div>

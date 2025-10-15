@@ -1,0 +1,543 @@
+---
+title: Add to Cart Buttons
+description: Every pattern for adding items to cart
+sidebar:
+  order: 1
+---
+
+import { Tabs, TabItem, Aside, Steps } from '@astrojs/starlight/components';
+
+**Add-to-cart buttons are the most fundamental e-commerce interaction. Here's every pattern you'll need.**
+
+## Basic Add to Cart
+
+The simplest implementation:
+
+```html
+<button data-next-action="add-to-cart" data-next-package-id="123">
+  Add to Cart
+</button>
+```
+
+The SDK automatically:
+- Adds loading states during the operation
+- Disables the button to prevent double-clicks
+- Updates cart totals everywhere
+- Emits events for analytics
+
+## Toggle Button (Add/Remove)
+
+Button that switches between add and remove:
+
+```html
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  data-add-text="Add to Cart"
+  data-remove-text="Remove from Cart">
+  Add to Cart
+</button>
+```
+
+The button automatically:
+- Changes text based on cart state
+- Switches action between add and remove
+- Updates aria-label for accessibility
+
+## Buy Now Button
+
+Clear cart and redirect to checkout:
+
+```html
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  data-next-clear-cart="true"
+  data-next-url="/checkout">
+  Buy Now
+</button>
+```
+
+## Quantity Selection
+
+### With Input Field
+
+```html
+<div class="add-to-cart-group">
+  <input 
+    type="number" 
+    id="quantity-123"
+    value="1"
+    min="1"
+    max="10">
+  
+  <button 
+    data-next-action="add-to-cart"
+    data-next-package-id="123"
+    data-next-quantity-selector="#quantity-123">
+    Add to Cart
+  </button>
+</div>
+```
+
+### With Select Dropdown
+
+```html
+<div class="add-to-cart-group">
+  <select id="qty-select-123">
+    <option value="1">1</option>
+    <option value="2">2</option>
+    <option value="3">3</option>
+    <option value="5">5</option>
+    <option value="10">10</option>
+  </select>
+  
+  <button 
+    data-next-action="add-to-cart"
+    data-next-package-id="123"
+    data-next-quantity-selector="#qty-select-123">
+    Add to Cart
+  </button>
+</div>
+```
+
+### With Plus/Minus Controls
+
+```html
+<div class="quantity-add-group">
+  <div class="quantity-control">
+    <button data-quantity-adjust="-1" data-target="#qty-123">-</button>
+    <input type="number" id="qty-123" value="1" min="1" max="10">
+    <button data-quantity-adjust="+1" data-target="#qty-123">+</button>
+  </div>
+  
+  <button 
+    data-next-action="add-to-cart"
+    data-next-package-id="123"
+    data-next-quantity-selector="#qty-123">
+    Add <span data-sync-with="#qty-123">1</span> to Cart
+  </button>
+</div>
+```
+
+## Variant Selection
+
+### Size and Color Selection
+
+```html
+<div class="product-options">
+  <!-- Size selector -->
+  <div class="size-options" data-variant-group="size">
+    <button data-variant="small" data-package-id="123">Small</button>
+    <button data-variant="medium" data-package-id="124">Medium</button>
+    <button data-variant="large" data-package-id="125">Large</button>
+  </div>
+  
+  <!-- Color selector -->
+  <div class="color-options" data-variant-group="color">
+    <button data-variant="red" data-modifier="+0">Red</button>
+    <button data-variant="blue" data-modifier="+10">Blue</button>
+    <button data-variant="green" data-modifier="+10">Green</button>
+  </div>
+  
+  <!-- Add to cart (package ID updates based on selection) -->
+  <button 
+    data-next-action="add-to-cart"
+    data-next-package-id="123"
+    data-dynamic-package="true">
+    Add to Cart
+  </button>
+</div>
+```
+
+### Package Tier Selection
+
+```html
+<div class="package-selector" data-next-package-selector="true">
+  <label>
+    <input type="radio" name="package" value="123" checked>
+    <div class="package-option">
+      <span>1 Month</span>
+      <span data-next-display="package.123.price">$29.99</span>
+    </div>
+  </label>
+  
+  <label>
+    <input type="radio" name="package" value="124">
+    <div class="package-option">
+      <span>3 Months</span>
+      <span data-next-display="package.124.price">$79.99</span>
+      <span class="savings">Save 10%</span>
+    </div>
+  </label>
+  
+  <label>
+    <input type="radio" name="package" value="125">
+    <div class="package-option">
+      <span>12 Months</span>
+      <span data-next-display="package.125.price">$249.99</span>
+      <span class="savings">Save 30%</span>
+    </div>
+  </label>
+  
+  <button data-next-action="add-selected">
+    Add to Cart
+  </button>
+</div>
+```
+
+## Loading States
+
+### Default Loading State
+
+```html
+<button data-next-action="add-to-cart" data-next-package-id="123">
+  <span class="button-text">Add to Cart</span>
+  <span class="button-loading" style="display:none">Adding...</span>
+</button>
+```
+
+### Custom Loading Animation
+
+```html
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  data-loading-class="is-loading"
+  data-loading-text="Adding to cart...">
+  Add to Cart
+</button>
+
+<style>
+.is-loading {
+  position: relative;
+  color: transparent;
+}
+.is-loading::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  margin: auto;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  border-top-color: currentColor;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+</style>
+```
+
+## Success Feedback
+
+### With Animation
+
+```html
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  data-success-class="success"
+  data-success-text="Added ✓"
+  data-success-duration="2000">
+  Add to Cart
+</button>
+
+<style>
+.success {
+  background-color: #10b981;
+  color: white;
+  animation: pulse 0.5s;
+}
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+</style>
+```
+
+### With Toast Notification
+
+```html
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  data-show-toast="true"
+  data-toast-message="Added to cart!">
+  Add to Cart
+</button>
+
+<!-- Toast container -->
+<div id="toast-container" class="toast-container"></div>
+```
+
+## Stock Management
+
+### Out of Stock
+
+```html
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  data-next-show="package.123.inStock"
+  data-next-hide="package.123.inStock === false">
+  Add to Cart
+</button>
+
+<button 
+  disabled
+  data-next-show="package.123.inStock === false">
+  Out of Stock
+</button>
+```
+
+### Limited Stock Warning
+
+```html
+<div class="product-actions">
+  <div data-next-show="package.123.stock <= 5" class="stock-warning">
+    Only <span data-next-display="package.123.stock">5</span> left!
+  </div>
+  
+  <button 
+    data-next-action="add-to-cart"
+    data-next-package-id="123"
+    data-max-quantity="package.123.stock">
+    Add to Cart
+  </button>
+</div>
+```
+
+## Complex Product Cards
+
+### Complete Product Card
+
+```html
+<div class="product-card" data-package-id="123">
+  <!-- Product image -->
+  <img src="product.jpg" alt="Product">
+  
+  <!-- Product info -->
+  <h3 data-next-display="package.123.name">Product Name</h3>
+  
+  <!-- Price display -->
+  <div class="price-group">
+    <span data-next-display="package.123.price" 
+          data-format="currency">$29.99</span>
+    <s data-next-show="package.123.comparePrice"
+       data-next-display="package.123.comparePrice">$39.99</s>
+  </div>
+  
+  <!-- Stock status -->
+  <div data-next-show="package.123.stock <= 10" class="stock-status">
+    <span data-next-display="package.123.stock">10</span> left
+  </div>
+  
+  <!-- Add to cart group -->
+  <div class="add-to-cart-group">
+    <!-- Quantity selector -->
+    <select id="qty-123">
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+    </select>
+    
+    <!-- Add to cart button -->
+    <button 
+      data-next-action="add-to-cart"
+      data-next-package-id="123"
+      data-next-quantity-selector="#qty-123"
+      data-add-text="Add to Cart"
+      data-remove-text="In Cart"
+      data-loading-text="Adding...">
+      Add to Cart
+    </button>
+  </div>
+  
+  <!-- In cart indicator -->
+  <div data-next-show="cart.hasItem(123)" class="in-cart-indicator">
+    ✓ <span data-next-display="cart.item(123).quantity">1</span> in cart
+  </div>
+</div>
+```
+
+### Grid of Products
+
+```html
+<div class="product-grid">
+  <!-- Product 1 -->
+  <div class="product-item">
+    <img src="product1.jpg" alt="Product 1">
+    <h4>Product 1</h4>
+    <p data-next-display="package.101.price">$19.99</p>
+    <button data-next-action="add-to-cart" data-next-package-id="101">
+      Add
+    </button>
+  </div>
+  
+  <!-- Product 2 -->
+  <div class="product-item">
+    <img src="product2.jpg" alt="Product 2">
+    <h4>Product 2</h4>
+    <p data-next-display="package.102.price">$29.99</p>
+    <button data-next-action="add-to-cart" data-next-package-id="102">
+      Add
+    </button>
+  </div>
+  
+  <!-- Product 3 -->
+  <div class="product-item">
+    <img src="product3.jpg" alt="Product 3">
+    <h4>Product 3</h4>
+    <p data-next-display="package.103.price">$39.99</p>
+    <button data-next-action="add-to-cart" data-next-package-id="103">
+      Add
+    </button>
+  </div>
+</div>
+```
+
+## Accessibility
+
+### ARIA Labels
+
+```html
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  aria-label="Add Premium Package to cart"
+  data-aria-label-added="Premium Package in cart, click to remove"
+  data-aria-label-loading="Adding Premium Package to cart">
+  Add to Cart
+</button>
+```
+
+### Keyboard Support
+
+```html
+<div class="product-actions" role="group" aria-label="Product purchase options">
+  <label for="qty-123">Quantity:</label>
+  <input 
+    type="number" 
+    id="qty-123"
+    value="1"
+    min="1"
+    max="10"
+    aria-describedby="qty-help-123">
+  <span id="qty-help-123" class="sr-only">
+    Choose quantity between 1 and 10
+  </span>
+  
+  <button 
+    data-next-action="add-to-cart"
+    data-next-package-id="123"
+    data-next-quantity-selector="#qty-123"
+    aria-live="polite">
+    Add to Cart
+  </button>
+</div>
+```
+
+## Error Handling
+
+### With Error Message
+
+```html
+<div class="add-to-cart-wrapper">
+  <button 
+    data-next-action="add-to-cart"
+    data-next-package-id="123"
+    data-error-container="#error-123">
+    Add to Cart
+  </button>
+  
+  <div id="error-123" class="error-message" style="display:none"></div>
+</div>
+```
+
+### With Retry
+
+```html
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  data-retry-on-error="true"
+  data-max-retries="3">
+  Add to Cart
+</button>
+```
+
+## Analytics Integration
+
+```html
+<button 
+  data-next-action="add-to-cart"
+  data-next-package-id="123"
+  data-track-event="true"
+  data-event-category="ecommerce"
+  data-event-action="add_to_cart"
+  data-event-label="Premium Package"
+  data-event-value="29.99">
+  Add to Cart
+</button>
+```
+
+## Common Patterns
+
+### Quick Add from List
+
+```html
+<ul class="product-list">
+  <li>
+    <span>Product A - $19.99</span>
+    <button data-next-action="add-to-cart" data-next-package-id="201">+</button>
+  </li>
+  <li>
+    <span>Product B - $29.99</span>
+    <button data-next-action="add-to-cart" data-next-package-id="202">+</button>
+  </li>
+  <li>
+    <span>Product C - $39.99</span>
+    <button data-next-action="add-to-cart" data-next-package-id="203">+</button>
+  </li>
+</ul>
+```
+
+### Sticky Add to Cart
+
+```html
+<div class="sticky-add-to-cart">
+  <div class="product-summary">
+    <span data-next-display="package.123.name">Product</span>
+    <span data-next-display="package.123.price">$29.99</span>
+  </div>
+  <button data-next-action="add-to-cart" data-next-package-id="123">
+    Add to Cart
+  </button>
+</div>
+
+<style>
+.sticky-add-to-cart {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-top: 1px solid #e5e7eb;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 100;
+}
+</style>
+```
+
+## Related Documentation
+
+- [Cart Display](/docs/building-blocks/cart-display/) - Showing cart contents
+- [Quantity Controls](/docs/building-blocks/quantity-controls/) - Managing quantities
+- [Product Selection](/docs/building-blocks/product-selection/) - Variant selection
+- [Events](/docs/javascript-api/events/) - React to add-to-cart events

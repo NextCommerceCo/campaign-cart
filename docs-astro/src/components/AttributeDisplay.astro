@@ -1,0 +1,189 @@
+---
+export interface Props {
+  selectorId?: string;
+}
+
+const { selectorId = "drone-demo" } = Astro.props;
+---
+
+<div class="attribute-display my-4">
+  <div class="tabs">
+    <div class="tab-list border-b border-zinc-200 dark:border-zinc-800 flex gap-6">
+      <button class="tab-button active text-sm font-medium pb-2 border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400" data-tab="selection">
+        Selection Attributes
+      </button>
+      <button class="tab-button text-sm font-medium pb-2 border-b-2 border-transparent text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200" data-tab="cart">
+        Cart Attributes
+      </button>
+    </div>
+    
+    <!-- Selection Attributes Tab -->
+    <div class="tab-content" data-tab-content="selection">
+      <div class="py-4 space-y-3">
+        <!-- Basic Properties -->
+        <div class="space-y-2">
+          <h5 class="text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-500 mb-2">Basic Properties</h5>
+          
+          <div class="flex justify-between items-center py-1.5 border-b border-zinc-100 dark:border-zinc-800/50">
+            <code class="text-xs text-zinc-600 dark:text-zinc-400">selection.{selectorId}.name</code>
+            <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100" data-next-display={`selection.${selectorId}.name`}>3x Mega Bundle</span>
+          </div>
+          
+          <div class="flex justify-between items-center py-1.5 border-b border-zinc-100 dark:border-zinc-800/50">
+            <code class="text-xs text-zinc-600 dark:text-zinc-400">selection.{selectorId}.packageId</code>
+            <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100" data-next-display={`selection.${selectorId}.packageId`}>4</span>
+          </div>
+          
+          <div class="flex justify-between items-center py-1.5 border-b border-zinc-100 dark:border-zinc-800/50">
+            <code class="text-xs text-zinc-600 dark:text-zinc-400">selection.{selectorId}.quantity</code>
+            <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100" data-next-display={`selection.${selectorId}.quantity`}>3</span>
+          </div>
+          
+          <div class="flex justify-between items-center py-1.5 border-b border-zinc-100 dark:border-zinc-800/50">
+            <code class="text-xs text-zinc-600 dark:text-zinc-400">selection.{selectorId}.totalUnits</code>
+            <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100" data-next-display={`selection.${selectorId}.totalUnits`}>3</span>
+          </div>
+        </div>
+        
+        <!-- Pricing -->
+        <div class="space-y-2">
+          <h5 class="text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-500 mb-2 mt-4">Pricing</h5>
+          
+          <div class="flex justify-between items-center py-1.5 border-b border-zinc-100 dark:border-zinc-800/50">
+            <code class="text-xs text-zinc-600 dark:text-zinc-400">selection.{selectorId}.price</code>
+            <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100" data-next-display={`selection.${selectorId}.price`}>$15.99</span>
+          </div>
+          
+          <div class="flex justify-between items-center py-1.5 border-b border-zinc-100 dark:border-zinc-800/50">
+            <code class="text-xs text-zinc-600 dark:text-zinc-400">selection.{selectorId}.total</code>
+            <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100" data-next-display={`selection.${selectorId}.total`}>$47.97</span>
+          </div>
+          
+          <div class="flex justify-between items-center py-1.5 border-b border-zinc-100 dark:border-zinc-800/50">
+            <code class="text-xs text-zinc-600 dark:text-zinc-400">selection.{selectorId}.compareTotal</code>
+            <span class="text-sm font-medium line-through text-zinc-500" data-next-display={`selection.${selectorId}.compareTotal`}>$119.97</span>
+          </div>
+          
+          <div class="flex justify-between items-center py-1.5 border-b border-zinc-100 dark:border-zinc-800/50">
+            <code class="text-xs text-zinc-600 dark:text-zinc-400">selection.{selectorId}.savingsAmount</code>
+            <span class="text-sm font-medium text-green-600 dark:text-green-500" data-next-display={`selection.${selectorId}.savingsAmount`}>$72.00</span>
+          </div>
+          
+          <div class="flex justify-between items-center py-1.5 border-b border-zinc-100 dark:border-zinc-800/50">
+            <code class="text-xs text-zinc-600 dark:text-zinc-400">selection.{selectorId}.savingsPercentage</code>
+            <span class="text-sm font-medium text-green-600 dark:text-green-500" data-next-display={`selection.${selectorId}.savingsPercentage`}>60%</span>
+          </div>
+        </div>
+        
+        <div class="mt-4 pt-3 border-t border-zinc-200 dark:border-zinc-800">
+          <a href="/api/attributes#selection" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">
+            View all selection attributes →
+          </a>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Cart Attributes Tab -->
+    <div class="tab-content hidden" data-tab-content="cart">
+      <div class="py-4 space-y-3">
+        <!-- Cart Totals -->
+        <div class="space-y-2">
+          <h5 class="text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-500 mb-2">Cart Totals</h5>
+          
+          <div class="flex justify-between items-center py-1.5 border-b border-zinc-100 dark:border-zinc-800/50">
+            <code class="text-xs text-zinc-600 dark:text-zinc-400">cart.itemCount</code>
+            <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100" data-next-display="cart.itemCount">0</span>
+          </div>
+          
+          <div class="flex justify-between items-center py-1.5 border-b border-zinc-100 dark:border-zinc-800/50">
+            <code class="text-xs text-zinc-600 dark:text-zinc-400">cart.subtotal</code>
+            <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100" data-next-display="cart.subtotal">$0.00</span>
+          </div>
+          
+          <div class="flex justify-between items-center py-1.5 border-b border-zinc-100 dark:border-zinc-800/50">
+            <code class="text-xs text-zinc-600 dark:text-zinc-400">cart.total</code>
+            <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100" data-next-display="cart.total">$0.00</span>
+          </div>
+          
+          <div class="flex justify-between items-center py-1.5 border-b border-zinc-100 dark:border-zinc-800/50">
+            <code class="text-xs text-zinc-600 dark:text-zinc-400">cart.compareTotal</code>
+            <span class="text-sm font-medium line-through text-zinc-500" data-next-display="cart.compareTotal">$0.00</span>
+          </div>
+          
+          <div class="flex justify-between items-center py-1.5 border-b border-zinc-100 dark:border-zinc-800/50">
+            <code class="text-xs text-zinc-600 dark:text-zinc-400">cart.savingsAmount</code>
+            <span class="text-sm font-medium text-green-600 dark:text-green-500" data-next-display="cart.savingsAmount">$0.00</span>
+          </div>
+          
+          <div class="flex justify-between items-center py-1.5 border-b border-zinc-100 dark:border-zinc-800/50">
+            <code class="text-xs text-zinc-600 dark:text-zinc-400">cart.savingsPercentage</code>
+            <span class="text-sm font-medium text-green-600 dark:text-green-500" data-next-display="cart.savingsPercentage">0%</span>
+          </div>
+        </div>
+        
+        <!-- Cart States -->
+        <div class="space-y-2">
+          <h5 class="text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-500 mb-2 mt-4">Cart States</h5>
+          
+          <div class="flex justify-between items-center py-1.5 border-b border-zinc-100 dark:border-zinc-800/50">
+            <code class="text-xs text-zinc-600 dark:text-zinc-400">cart.hasItems</code>
+            <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100" data-next-display="cart.hasItems">false</span>
+          </div>
+          
+          <div class="flex justify-between items-center py-1.5 border-b border-zinc-100 dark:border-zinc-800/50">
+            <code class="text-xs text-zinc-600 dark:text-zinc-400">cart.isEmpty</code>
+            <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100" data-next-display="cart.isEmpty">true</span>
+          </div>
+          
+          <div class="flex justify-between items-center py-1.5 border-b border-zinc-100 dark:border-zinc-800/50">
+            <code class="text-xs text-zinc-600 dark:text-zinc-400">cart.hasDiscount</code>
+            <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100" data-next-display="cart.hasDiscount">false</span>
+          </div>
+          
+          <div class="flex justify-between items-center py-1.5 border-b border-zinc-100 dark:border-zinc-800/50">
+            <code class="text-xs text-zinc-600 dark:text-zinc-400">cart.hasShipping</code>
+            <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100" data-next-display="cart.hasShipping">false</span>
+          </div>
+        </div>
+        
+        <div class="mt-4 pt-3 border-t border-zinc-200 dark:border-zinc-800">
+          <a href="/api/attributes#cart" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">
+            View all cart attributes →
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Tab switching logic
+  document.addEventListener('DOMContentLoaded', () => {
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    tabButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const targetTab = button.getAttribute('data-tab');
+        
+        // Update button states
+        tabButtons.forEach(btn => {
+          btn.classList.remove('active', 'border-indigo-500', 'text-indigo-600', 'dark:text-indigo-400');
+          btn.classList.add('border-transparent', 'text-zinc-600', 'dark:text-zinc-400');
+        });
+        
+        button.classList.add('active', 'border-indigo-500', 'text-indigo-600', 'dark:text-indigo-400');
+        button.classList.remove('border-transparent', 'text-zinc-600', 'dark:text-zinc-400');
+        
+        // Update content visibility
+        tabContents.forEach(content => {
+          if (content.getAttribute('data-tab-content') === targetTab) {
+            content.classList.remove('hidden');
+          } else {
+            content.classList.add('hidden');
+          }
+        });
+      });
+    });
+  });
+</script>
