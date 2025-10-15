@@ -24,6 +24,22 @@
   --demo-border: 1px solid var(--sl-color-gray-5);
 }
 
+/* Sidebar active menu item - softer in dark mode */
+:root[data-theme='dark'] :where(.astro-3ii7xxms)[aria-current=page],
+:root[data-theme='dark'] :where(.astro-3ii7xxms)[aria-current=page]:hover,
+:root[data-theme='dark'] :where(.astro-3ii7xxms)[aria-current=page]:focus {
+  background-color: rgba(91, 143, 255, 0.15);
+  color: #a8c5ff;
+  border-left: 2px solid var(--sl-color-accent);
+  padding-left: calc(1rem - 2px);
+}
+
+/* Sidebar hover states - subtle in dark mode */
+:root[data-theme='dark'] .astro-3ii7xxms a:hover,
+:root[data-theme='dark'] .astro-3ii7xxms button:hover {
+  background-color: rgba(91, 143, 255, 0.08);
+}
+
 /* Interactive Demo Container */
 .demo-container {
   border: var(--demo-border);
