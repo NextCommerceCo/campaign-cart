@@ -4,84 +4,124 @@ description: Get Campaign Cart running in 2 minutes
 ---
 
 import { Steps, Code, Aside, Card, CardGrid } from '@astrojs/starlight/components';
+import { Image } from 'astro:assets';
+import getApiKeyImage from '../../../assets/get-api-key.png';
 
-Get Campaign Cart up and running on your site in just 2 minutes.
+Get a working shopping cart running on your site in 2 minutes with this copy-paste example.
 
-## Installation in 3 Steps
+## Complete Working Example
+
+Copy this entire HTML file and open it in your browser:
+
+```html title="cart-demo.html"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Campaign Cart Quick Start</title>
+
+  <!-- Your API key -->
+  <meta name="next-api-key" content="YOUR_API_KEY_HERE">
+
+  <!-- Campaign Cart SDK -->
+  <script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.3.1/dist/loader.js" type="module"></script>
+
+  <style>
+    body { font-family: system-ui; max-width: 800px; margin: 40px auto; padding: 20px; }
+    .product { border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin: 20px 0; }
+    .cart { background: #f8f9fa; padding: 20px; border-radius: 8px; position: sticky; top: 20px; }
+    button { background: #0066cc; color: white; border: none; padding: 12px 24px;
+             border-radius: 6px; cursor: pointer; font-size: 16px; }
+    button:hover { background: #0052a3; }
+    .price { font-size: 24px; font-weight: bold; color: #333; }
+  </style>
+</head>
+<body>
+  <h1>My Store</h1>
+
+  <!-- Product -->
+  <div class="product">
+    <h2>Premium Widget</h2>
+    <p>The best widget you'll ever own.</p>
+    <p class="price" data-next-display="package[123].price">$29.99</p>
+    <button data-next-action="add-to-cart" data-next-package-id="123">
+      Add to Cart
+    </button>
+  </div>
+
+  <!-- Cart Summary -->
+  <div class="cart">
+    <h3>Shopping Cart</h3>
+    <p>Items: <strong data-next-display="cart.itemCount">0</strong></p>
+    <p>Total: <strong data-next-display="cart.total">$0.00</strong></p>
+    <button data-next-action="checkout">Proceed to Checkout</button>
+  </div>
+</body>
+</html>
+```
 
 <Steps>
 
 1. **Get your API key**
 
-   Sign up at [Campaign Cart Dashboard](https://dashboard.campaigncart.com) and copy your API key from settings.
+   Go to Next Commerce Dashboard, open the Campaigns app, select your campaign, click on Integration, and copy your API key.
 
-2. **Add to your HTML**
+   <Image src={getApiKeyImage} alt="Getting your API key from the Campaign Integration dialog" />
 
-   Add this to your `<head>` tag:
+2. **Replace YOUR_API_KEY_HERE**
 
-   ```html
-   <meta name="next-api-key" content="YOUR_API_KEY">
-   <script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart/dist/loader.js"></script>
-   ```
+   In the HTML above, replace `YOUR_API_KEY_HERE` with your actual API key.
 
-3. **Add your first button**
+3. **Open in browser**
 
-   ```html
-   <button data-next-action="add-to-cart" data-next-package-id="1">
-     Add to Cart
-   </button>
-   ```
+   Save the file and open it in your browser. Click "Add to Cart" and watch the cart update automatically.
 
 </Steps>
 
-That's it! 🎉 Your button will now add products to the cart when clicked.
+## What Just Happened?
 
-## Test Your Setup
+When you clicked "Add to Cart":
+- ✅ Product was added to cart state
+- ✅ Cart count updated automatically
+- ✅ Cart total calculated and displayed
+- ✅ Data persisted to storage
+- ✅ Everything synced with your dashboard
 
-Open your browser's console and look for:
-```
-✅ Campaign Cart SDK initialized
-```
+**Zero JavaScript written by you.** Just HTML attributes.
 
-Click your button - you should see the cart update. The SDK automatically:
-- Manages cart state
-- Persists data across page refreshes
-- Syncs with your Campaign Cart dashboard
-- Handles checkout when ready
+## Key Attributes Used
 
-## What's Next?
+| Attribute | Purpose | Example |
+|-----------|---------|---------|
+| `data-next-action` | Trigger actions (add, remove, checkout) | `data-next-action="add-to-cart"` |
+| `data-next-package-id` | Identify which product | `data-next-package-id="123"` |
+| `data-next-display` | Show dynamic values | `data-next-display="cart.total"` |
+
+## Next Steps
 
 <CardGrid>
-  <Card title="Interactive Playground" icon="rocket">
-    See live examples and experiment with different components
-    [Try the Playground →](/playground)
+  <Card title="Your First Cart" icon="rocket">
+    Follow a complete tutorial to build a real cart
+    [Start Tutorial →](/getting-started/first-cart)
   </Card>
-  
-  <Card title="Your First Product Page" icon="document">
-    Build a complete product page with selection and cart
-    [Build Product Page →](/complete-flows/product-page)
+
+  <Card title="Core Concepts" icon="book-open">
+    Understand how Campaign Cart works
+    [Learn Concepts →](/getting-started/core-concepts)
   </Card>
-  
+
+  <Card title="Live Playground" icon="laptop">
+    Try interactive examples in your browser
+    [Open Playground →](/playground)
+  </Card>
+
   <Card title="Data Attributes" icon="puzzle">
-    Explore all available data-next-* attributes
-    [View Attributes →](/data-attributes)
-  </Card>
-  
-  <Card title="JavaScript API" icon="code">
-    Use JavaScript methods for advanced functionality
-    [API Reference →](/javascript-api)
+    Explore all available attributes
+    [View Reference →](/data-attributes)
   </Card>
 </CardGrid>
 
 <Aside type="tip">
-**Pro tip:** Check out our [Playground](/playground) to see live examples you can copy and customize for your site.
+Open your browser console to see SDK logs. Every action is logged with full transparency.
 </Aside>
-
-## Common Issues
-
-**Nothing happening?**
-- Check that your API key is correct
-- Verify the SDK loaded (check browser console)
-- Make sure you're using valid package IDs from your dashboard
-
-**Need help?** Visit our [Troubleshooting Guide](/guides/troubleshooting/common-issues) or [contact support](https://support.campaigncart.com).

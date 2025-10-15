@@ -98,32 +98,6 @@ export default defineConfig({
                   ],
               },
               {
-                  label: 'Guides',
-                  collapsed: true,
-                  items: [
-                      {
-                          label: 'Migration',
-                          items: [
-                              { label: 'Overview', slug: 'guides/migration' },
-                              { label: 'From Shopify', slug: 'guides/migration/from-shopify' },
-                          ],
-                      },
-                      {
-                          label: 'Optimization',
-                          items: [
-                              { label: 'Performance', slug: 'guides/optimization/performance' },
-                              { label: 'Accessibility', slug: 'guides/optimization/accessibility' },
-                          ],
-                      },
-                      {
-                          label: 'Troubleshooting',
-                          items: [
-                              { label: 'Common Issues', slug: 'guides/troubleshooting/common-issues' },
-                          ],
-                      },
-                  ],
-              },
-              {
                   label: 'Reference',
                   collapsed: true,
                   items: [

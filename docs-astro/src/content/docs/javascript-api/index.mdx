@@ -367,7 +367,7 @@ await next.trackViewItemList(
 ```
 
 **Parameters:**
-- `packageIds` (Array<string|number>): Array of package IDs
+- `packageIds` (`Array<string|number>`): Array of package IDs
 - `listId` (string, optional): Unique list identifier
 - `listName` (string, optional): Human-readable list name
 
@@ -382,7 +382,7 @@ await next.trackViewItem('1');
 ```
 
 **Parameters:**
-- `packageId` (string|number): Package ID viewed
+- `packageId` (`string|number`): Package ID viewed
 
 **Returns:** `Promise<void>`
 
@@ -395,7 +395,7 @@ await next.trackAddToCart('1', 2);
 ```
 
 **Parameters:**
-- `packageId` (string|number): Package ID added
+- `packageId` (`string|number`): Package ID added
 - `quantity` (number, optional): Quantity added (default: 1)
 
 **Returns:** `Promise<void>`
@@ -409,7 +409,7 @@ await next.trackRemoveFromCart('1', 1);
 ```
 
 **Parameters:**
-- `packageId` (string|number): Package ID removed
+- `packageId` (`string|number`): Package ID removed
 - `quantity` (number, optional): Quantity removed (default: 1)
 
 **Returns:** `Promise<void>`
@@ -456,7 +456,7 @@ await next.trackCustomEvent('user_engagement', {
 
 **Parameters:**
 - `eventName` (string): Custom event name
-- `data` (Record<string, any>, optional): Additional event data
+- `data` (`Record<string, any>`, optional): Additional event data
 
 **Returns:** `Promise<void>`
 

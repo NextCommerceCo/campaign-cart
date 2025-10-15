@@ -4,6 +4,8 @@ description: How to install and configure Campaign Cart JS SDK on your website
 ---
 
 import { Steps, Code, Tabs, TabItem, Aside, Card, CardGrid } from '@astrojs/starlight/components';
+import { Image } from 'astro:assets';
+import getApiKeyImage from '../../../assets/get-api-key.png';
 
 Campaign Cart JS SDK can be installed in multiple ways to fit your development workflow. Choose the method that works best for your project.
 
@@ -15,7 +17,9 @@ The fastest way to get started is with our CDN:
 
 1. **Get Your API Key**
 
-   Sign up at [Campaign Cart Dashboard](https://dashboard.campaigncart.com) and copy your API key from the settings page.
+   Go to Next Commerce Dashboard, open the Campaigns app, select your campaign, click on Integration, and copy your API key.
+
+   <Image src={getApiKeyImage} alt="Getting your API key from the Campaign Integration dialog" />
 
 2. **Add SDK Script**
 
@@ -151,63 +155,6 @@ document.addEventListener('next:initialized', function() {
     autoTrack: true
   });
 });`} lang="javascript" title="JavaScript Configuration" />
-
-## Framework-Specific Setup
-
-<CardGrid>
-  <Card title="React" icon="external">
-    ```jsx
-    // useEffect hook for initialization
-    useEffect(() => {
-      if (window.next) {
-        // SDK already loaded
-      } else {
-        // Wait for SDK
-        window.nextReady = window.nextReady || [];
-        window.nextReady.push(() => {
-          // SDK ready
-        });
-      }
-    }, []);
-    ```
-  </Card>
-
-  <Card title="Vue.js" icon="external">
-    ```javascript
-    // In mounted lifecycle
-    mounted() {
-      this.$nextTick(() => {
-        if (window.next) {
-          // SDK ready
-        }
-      });
-    }
-    ```
-  </Card>
-
-  <Card title="Angular" icon="external">
-    ```typescript
-    // In ngOnInit
-    ngOnInit() {
-      if (typeof window !== 'undefined' && window.next) {
-        // SDK ready
-      }
-    }
-    ```
-  </Card>
-
-  <Card title="Next.js" icon="external">
-    ```jsx
-    // In _app.js or specific pages
-    import Script from 'next/script'
-    
-    <Script 
-      src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.3.1/dist/loader.js"
-      strategy="afterInteractive"
-    />
-    ```
-  </Card>
-</CardGrid>
 
 ## Environment Setup
 
