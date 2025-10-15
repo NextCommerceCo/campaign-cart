@@ -38,12 +38,12 @@ export default defineConfig({
               },
               {
                   label: 'Playground',
-                  badge: { text: 'Interactive', variant: 'success' },
+                  badge: 'Interactive',
                   slug: 'playground',
               },
               {
                   label: 'Data Attributes',
-                  badge: { text: 'Core', variant: 'note' },
+                  badge: 'Core',
                   items: [
                       { label: 'Complete Reference', slug: 'data-attributes' },
                       { label: 'Actions', slug: 'data-attributes/actions' },

@@ -1,0 +1,7 @@
+name = "campaign-cart-docs"
+compatibility_date = "2025-01-15"
+
+pages_build_output_dir = "./dist"
+
+# Cloudflare Pages configuration
+# The static site will be deployed from the dist directory after Astro builds

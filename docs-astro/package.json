@@ -7,7 +7,9 @@
     "start": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "deploy": "astro build && wrangler pages deploy",
+    "deploy:preview": "astro build && wrangler pages deploy --branch=preview"
   },
   "dependencies": {
     "@astrojs/starlight": "^0.36.0",
@@ -16,5 +18,8 @@
     "astro": "^5.6.1",
     "sharp": "^0.34.2",
     "tailwindcss": "^4.1.14"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
   }
 }
