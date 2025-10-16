@@ -4,16 +4,9 @@ window.nextConfig = {
     paymentConfig: {
       expressCheckout: {
         enabled: true,
-        // methods: {
-        //   paypal: true,
-        //   applePay: true,
-        //   googlePay: true
-        // },
-        // Optional: Require form validation for express payment methods in combo form
-        // By default (false), express payments skip all validation for quick checkout
-        // Set to true if you need to collect customer information before express checkout
         requireValidation: false,
-        requiredFields: ['email', 'fname', 'lname']
+        requiredFields: ['email', 'fname', 'lname'],
+        methodOrder: ['paypal', 'apple_pay', 'google_pay']
       }
     },
     addressConfig: {

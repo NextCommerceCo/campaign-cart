@@ -512,6 +512,7 @@ export interface PaymentConfig {
       applePay?: boolean;
       googlePay?: boolean;
     };
+    methodOrder?: ('paypal' | 'apple_pay' | 'google_pay')[]; // Order in which payment methods should be displayed
     requireValidation?: boolean; // If true, express payment methods in combo form will require form validation
     requiredFields?: string[]; // List of fields required for express checkout (e.g., ['email', 'fname', 'lname'])
   };
