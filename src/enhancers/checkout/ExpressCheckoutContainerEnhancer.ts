@@ -137,10 +137,25 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
       // Use campaign data
       this.showContainer();
       this.clearButtons();
-      
+
+      // Get methodOrder from config if available
+      const methodOrder = this.paymentConfig?.expressCheckout?.methodOrder;
+
+      // Create a map of available methods from campaign for quick lookup
+      const availableMethodsMap = new Map(
+        this.availableExpressMethods.map(m => [m.code, m])
+      );
+
+      // Determine order: use config methodOrder if available, otherwise use campaign order
+      const orderedMethods = methodOrder
+        ? methodOrder
+            .filter(code => availableMethodsMap.has(code))
+            .map(code => availableMethodsMap.get(code)!)
+        : this.availableExpressMethods;
+
       // Create buttons based on available express methods from campaign
       // BUT only if the device actually supports them
-      for (const method of this.availableExpressMethods) {
+      for (const method of orderedMethods) {
         switch (method.code) {
           case 'paypal':
             if (isPayPalAvailable()) {
@@ -167,61 +182,75 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
             this.logger.warn(`Unknown express payment method: ${method.code}`);
         }
       }
-      
+
       const actuallyAvailable = this.buttonInstances.size > 0;
       this.logger.debug('Express checkout buttons updated from campaign data', {
         requestedMethods: this.availableExpressMethods.map(m => m.code),
+        methodOrder: methodOrder || 'campaign order',
         actuallyShown: Array.from(this.buttonInstances.keys()),
         hasVisibleButtons: actuallyAvailable
       });
-      
+
       // Hide container if no buttons were actually created
       if (!actuallyAvailable) {
         this.hideContainer();
       }
     } else if (this.paymentConfig?.expressCheckout) {
       // Fall back to config-based setup
-      const { enabled, methods } = this.paymentConfig.expressCheckout;
-      
+      const { enabled, methods, methodOrder } = this.paymentConfig.expressCheckout;
+
       if (!enabled) {
         this.hideContainer();
         return;
       }
-      
+
       // Check if any method is enabled
       const hasEnabledMethods = Object.values(methods || {}).some(enabled => enabled);
-      
+
       if (!hasEnabledMethods) {
         this.hideContainer();
         return;
       }
-      
+
       // Show container
       this.showContainer();
-      
+
       // Clear existing buttons
       this.clearButtons();
-      
-      // Create buttons for enabled methods
+
+      // Determine order of methods
+      const order = methodOrder || ['paypal', 'apple_pay', 'google_pay'];
+
+      // Create buttons in the specified order
       // BUT only if the device actually supports them
-      if (methods.paypal && isPayPalAvailable()) {
-        this.createPayPalButton();
-      } else if (methods.paypal) {
-        this.logger.debug('PayPal enabled in config but not available on device');
+      for (const method of order) {
+        switch (method) {
+          case 'paypal':
+            if (methods.paypal && isPayPalAvailable()) {
+              this.createPayPalButton();
+            } else if (methods.paypal) {
+              this.logger.debug('PayPal enabled in config but not available on device');
+            }
+            break;
+          case 'apple_pay':
+            if (methods.applePay && isApplePayAvailable()) {
+              this.createApplePayButton();
+            } else if (methods.applePay) {
+              this.logger.debug('Apple Pay enabled in config but not available on device/browser');
+            }
+            break;
+          case 'google_pay':
+            if (methods.googlePay && isGooglePayAvailable()) {
+              this.createGooglePayButton();
+            } else if (methods.googlePay) {
+              this.logger.debug('Google Pay enabled in config but not available on device/browser');
+            }
+            break;
+          default:
+            this.logger.warn(`Unknown payment method in methodOrder: ${method}`);
+        }
       }
-      
-      if (methods.applePay && isApplePayAvailable()) {
-        this.createApplePayButton();
-      } else if (methods.applePay) {
-        this.logger.debug('Apple Pay enabled in config but not available on device/browser');
-      }
-      
-      if (methods.googlePay && isGooglePayAvailable()) {
-        this.createGooglePayButton();
-      } else if (methods.googlePay) {
-        this.logger.debug('Google Pay enabled in config but not available on device/browser');
-      }
-      
+
       const actuallyAvailable = this.buttonInstances.size > 0;
       this.logger.debug('Express checkout buttons updated from config', {
         requestedMethods: {
@@ -229,10 +258,11 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
           applePay: methods.applePay,
           googlePay: methods.googlePay
         },
+        methodOrder: order,
         actuallyShown: Array.from(this.buttonInstances.keys()),
         hasVisibleButtons: actuallyAvailable
       });
-      
+
       // Hide container if no buttons were actually created
       if (!actuallyAvailable) {
         this.hideContainer();
@@ -356,104 +386,81 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
   }
   
   private async createPayPalButton(): Promise<void> {
-    const button = this.createButton('paypal', 'cc-paypal', PAYPAL_SVG);
-    button.style.backgroundColor = 'hsla(42.121212121212125, 100.00%, 61.18%, 1.00)';
+    const button = this.createButton('paypal', 'cc-paypal', 'paypal-btn', PAYPAL_SVG);
     this.buttonInstances.set('paypal', button);
     this.buttonsContainer!.appendChild(button);
-    
+
     // Add click handler
     const handler = (event: Event) => this.handleButtonClick('paypal', event);
     this.buttonClickHandlers.set('paypal', handler);
     button.addEventListener('click', handler);
-    
+
     // Emit initialized event
     this.emit('express-checkout:initialized', {
       method: 'paypal',
       element: button
     });
-    
+
     this.logger.debug('PayPal express checkout button created');
   }
   
   private async createApplePayButton(): Promise<void> {
-    const button = this.createButton('apple_pay', 'cc-apple-pay', APPLE_PAY_SVG);
-    button.style.color = 'hsla(0, 0.00%, 100.00%, 1.00)';
+    const button = this.createButton('apple_pay', 'cc-apple-pay', 'payment-btn__logo', APPLE_PAY_SVG);
     this.buttonInstances.set('apple_pay', button);
     this.buttonsContainer!.appendChild(button);
-    
+
     // Add click handler
     const handler = (event: Event) => this.handleButtonClick('apple_pay', event);
     this.buttonClickHandlers.set('apple_pay', handler);
     button.addEventListener('click', handler);
-    
+
     // Emit initialized event
     this.emit('express-checkout:initialized', {
       method: 'apple_pay',
       element: button
     });
-    
+
     this.logger.debug('Apple Pay express checkout button created');
   }
   
   private async createGooglePayButton(): Promise<void> {
-    const button = this.createButton('google_pay', 'cc-google-pay', GOOGLE_PAY_SVG);
+    const button = this.createButton('google_pay', 'cc-google-pay', 'payment-btn__logo', GOOGLE_PAY_SVG);
     this.buttonInstances.set('google_pay', button);
     this.buttonsContainer!.appendChild(button);
-    
+
     // Add click handler
     const handler = (event: Event) => this.handleButtonClick('google_pay', event);
     this.buttonClickHandlers.set('google_pay', handler);
     button.addEventListener('click', handler);
-    
+
     // Emit initialized event
     this.emit('express-checkout:initialized', {
       method: 'google_pay',
       element: button
     });
-    
+
     this.logger.debug('Google Pay express checkout button created');
   }
   
-  private createButton(method: string, className: string, svgContent: string): HTMLElement {
+  private createButton(method: string, className: string, logoClass: string, svgContent: string): HTMLElement {
     const button = document.createElement('button');
-    button.className = `payment-btn ${className}`;
     button.setAttribute('data-next-express-checkout', method);
     button.setAttribute('data-action', 'submit');
-    
-    
-    // Apply inline styles from the template
-    button.style.position = 'relative';
-    button.style.display = 'flex';
-    button.style.width = '100%';
-    button.style.height = '2.75rem';
-    button.style.justifyContent = 'center';
-    button.style.alignItems = 'center';
-    button.style.borderRadius = '4px';
-    button.style.backgroundColor = 'hsla(0, 0.00%, 0.00%, 1.00)';
-    button.style.border = 'none';
-    button.style.cursor = 'pointer';
-    
-    // Content wrapper for logo
-    const contentDiv = document.createElement('div');
-    contentDiv.setAttribute('next-slot', 'content');
-    
-    // Logo container
+    button.className = `payment-btn ${className}`;
+
+    // Logo container (direct child of button)
     const logoDiv = document.createElement('div');
-    if (method === 'apple_pay' || method === 'google_pay') {
-      logoDiv.className = 'payment-btn__logo';
-      logoDiv.style.height = '1.5rem';
-    }
+    logoDiv.className = logoClass;
     logoDiv.innerHTML = svgContent;
-    contentDiv.appendChild(logoDiv);
-    button.appendChild(contentDiv);
-    
-    // Spinner container
+    button.appendChild(logoDiv);
+
+    // Spinner container (direct child of button)
     const spinnerDiv = document.createElement('div');
-    spinnerDiv.className = 'payment-btn-spinner';
     spinnerDiv.setAttribute('next-slot', 'spinner');
+    spinnerDiv.className = 'payment-btn-spinner';
     spinnerDiv.innerHTML = '<div class="spinner"></div>';
     button.appendChild(spinnerDiv);
-    
+
     return button;
   }
   

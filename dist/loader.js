@@ -95,6 +95,15 @@
     document.head.appendChild(spreedlyPreconnect);
   }
 
+  // Load CSS stylesheet
+  if (!isDebug) {
+    const cssLink = document.createElement('link');
+    cssLink.rel = 'stylesheet';
+    cssLink.type = 'text/css';
+    cssLink.href = `${PROD_HOST}/campaign-cart.css`;
+    document.head.appendChild(cssLink);
+  }
+
   // Preload the SDK module
   const link = document.createElement('link');
   link.rel = 'modulepreload';

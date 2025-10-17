@@ -12,6 +12,7 @@ import { useCartStore } from '../../stores/cartStore';
 import { useConfigStore } from '../../stores/configStore';
 import { XrayManager } from './XrayStyles';
 import { selectorContainer } from './SelectorContainer';
+import { upsellSelector } from './UpsellSelector';
 import {
   CartPanel,
   OrderPanel,
@@ -118,15 +119,19 @@ export class DebugOverlay {
   public initialize(): void {
     const urlParams = new URLSearchParams(window.location.search);
     const isDebugMode = urlParams.get('debugger') === 'true';
-    
+
     if (isDebugMode) {
       this.show();
       this.logger.info('Debug overlay initialized');
-      
-      // Initialize selector container with both currency and country selectors
+
+      // Initialize selector container with currency, country, and locale selectors
       selectorContainer.initialize();
       this.logger.info('Selector container initialized');
-      
+
+      // Initialize upsell selector (overlays directly on upsell elements)
+      upsellSelector.initialize();
+      this.logger.info('Upsell selector initialized');
+
       // Test components in development
       if (import.meta.env && import.meta.env.DEV) {
 
@@ -160,14 +165,17 @@ export class DebugOverlay {
 
     this.visible = false;
     this.stopAutoUpdate();
-    
+
     // Remove body height adjustment
     document.body.classList.remove('debug-body-expanded');
     document.documentElement.classList.remove('debug-body-expanded');
-    
+
     // Destroy selector container
     selectorContainer.destroy();
-    
+
+    // Destroy upsell selector
+    upsellSelector.destroy();
+
     if (this.container) {
       this.container.remove();
       this.container = null;

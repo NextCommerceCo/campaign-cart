@@ -5,6 +5,7 @@ declare const config: {
         expressCheckout: {
             requireValidation: boolean;
             requiredFields: string[];
+            methodOrder: string[];
         };
     };
     addressConfig: {

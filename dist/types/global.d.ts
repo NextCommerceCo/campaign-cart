@@ -575,6 +575,7 @@ export interface PaymentConfig {
             applePay?: boolean;
             googlePay?: boolean;
         };
+        methodOrder?: ('paypal' | 'apple_pay' | 'google_pay')[];
         requireValidation?: boolean;
         requiredFields?: string[];
     };
