@@ -118,7 +118,7 @@ export class UpsellSelector {
     if (!selectorId) {
       const nestedSelector = firstElement.querySelector('[data-next-selector-id]');
       if (nestedSelector) {
-        selectorId = nestedSelector.getAttribute('data-next-selector-id') || undefined;
+        selectorId = nestedSelector.getAttribute('data-next-selector-id') || null;
         this.logger.debug('Found nested selector:', { selectorId });
       }
     }

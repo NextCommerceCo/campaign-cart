@@ -310,3 +310,37 @@
   height: 14px !important;
   filter: grayscale(1);
 }
+
+
+.iti__flag-container {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width:3rem!important;
+    right: 0 !important;
+    left: auto !important;
+    padding: 1px;
+}
+.iti--allow-dropdown input, .iti--allow-dropdown input[type=text], .iti--allow-dropdown input[type=tel], .iti--separate-dial-code input, .iti--separate-dial-code input[type=text], .iti--separate-dial-code input[type=tel] {
+    padding-right: 52px!important;
+    padding-left: 12px!important;
+    margin-left: 0!important;
+}
+
+  .iti__country-container {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 3rem !important;
+    right: 0 !important;
+    left: auto !important;
+    padding: 1px;
+  }
+
+  .iti:not(.iti--allow-dropdown) input,
+  .iti:not(.iti--allow-dropdown) input[type=text],
+  .iti:not(.iti--allow-dropdown) input[type=tel] {
+    padding-right: 52px !important;
+    padding-left: 12px !important;
+    margin-left: 0 !important;
+  }
