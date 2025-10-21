@@ -1,0 +1,791 @@
+---
+title: Order Data Attributes
+description: Display order confirmation data on thank you pages with order.* attributes
+sidebar:
+  order: 6
+---
+
+**Order attributes display order confirmation data on thank you pages and post-purchase flows.**
+
+The order data is automatically loaded when the URL contains `?ref_id=ORDER_ID` and provides access to complete order information including customer details, line items, pricing, addresses, and attribution data.
+
+## Auto-Loading from URL
+
+Orders automatically load when the URL contains the `ref_id` parameter:
+
+```
+https://example.com/confirmation?ref_id=ORDER_123
+```
+
+The SDK detects this parameter and loads the complete order data, making all `order.*` attributes available for display.
+
+## Loading States
+
+Order data has three states that should be handled in your confirmation page:
+
+```html
+<!-- Loading state -->
+<div data-next-show="order.isLoading">
+  <p>Loading your order...</p>
+</div>
+
+<!-- Error state -->
+<div data-next-show="order.hasError">
+  <p>Unable to load order</p>
+  <p data-next-display="order.errorMessage">Error details</p>
+</div>
+
+<!-- Success state -->
+<div data-next-show="order.exists" data-next-hide="order.isLoading">
+  <!-- Order content here -->
+</div>
+```
+
+The SDK automatically adds CSS classes to help with styling:
+- `.next-loading` - Applied when order is loading
+- `.next-loaded` - Applied when order loaded successfully
+- `.next-error` - Applied when error occurred
+
+## Basic Order Properties
+
+Display order identification, status, and metadata.
+
+```html
+<!-- Order identification -->
+<span data-next-display="order.id">12345</span>
+<span data-next-display="order.number">ORD-001</span>
+<span data-next-display="order.ref_id">abc123xyz</span>
+<span data-next-display="order.refId">abc123xyz</span>
+
+<!-- Order status and metadata -->
+<span data-next-display="order.status">Processing</span>
+<span data-next-display="order.created_at">2024-01-15</span>
+<span data-next-display="order.createdAt">2024-01-15</span>
+<span data-next-display="order.currency">USD</span>
+
+<!-- Order status URL -->
+<a data-next-display="order.order_status_url">View Order Status</a>
+<a data-next-display="order.statusUrl">View Order Status</a>
+```
+
+### Test Order Badge
+
+Display a badge when the order is a test transaction:
+
+```html
+<!-- Test order indicator -->
+<span data-next-display="order.testBadge">🧪 TEST ORDER</span>
+
+<!-- Conditional test order warning -->
+<div data-next-show="order.isTest">
+  <p>This is a test order</p>
+</div>
+```
+
+| Property | Description | Type |
+|----------|-------------|------|
+| `order.id` | Order ID number | String/Number |
+| `order.number` | Human-readable order number | String/Number |
+| `order.ref_id` | Reference ID (snake_case) | String |
+| `order.refId` | Reference ID (camelCase) | String |
+| `order.status` | Order status | String |
+| `order.is_test` | Test order flag (snake_case) | Boolean |
+| `order.isTest` | Test order flag (camelCase) | Boolean |
+| `order.testBadge` | "🧪 TEST ORDER" text or empty | String |
+| `order.order_status_url` | Order status URL (snake_case) | String (URL) |
+| `order.statusUrl` | Order status URL (camelCase) | String (URL) |
+| `order.created_at` | Order creation date (snake_case) | String |
+| `order.createdAt` | Order creation date (camelCase) | String |
+| `order.currency` | Currency code | String |
+| `order.supports_upsells` | Supports upsells (snake_case) | Boolean |
+| `order.supportsUpsells` | Supports upsells (camelCase) | Boolean |
+
+## Order Financial Data
+
+Display order totals, taxes, shipping, and discounts.
+
+### Understanding Order Totals
+
+Order totals have specific meanings:
+
+- **`order.subtotal`** - Line items only (excludes shipping and tax)
+- **`order.total_excl_tax`** - Total excluding tax but INCLUDING shipping
+- **`order.total`** - Grand total including everything (products + shipping + tax)
+
+```html
+<!-- Main totals -->
+<div>Subtotal: <span data-next-display="order.subtotal">$0.00</span></div>
+<div>Shipping: <span data-next-display="order.shipping">$0.00</span></div>
+<div>Tax: <span data-next-display="order.tax">$0.00</span></div>
+<div>Total: <span data-next-display="order.total">$0.00</span></div>
+```
+
+### Complete Order Summary Example
+
+```html
+<div class="order-summary">
+  <!-- Line items subtotal -->
+  <div class="line-item">
+    <span>Subtotal:</span>
+    <span data-next-display="order.subtotal">$0.00</span>
+  </div>
+
+  <!-- Shipping -->
+  <div class="line-item" data-next-show="order.hasShipping">
+    <span>Shipping:</span>
+    <span data-next-display="order.shipping">$0.00</span>
+  </div>
+
+  <!-- Tax -->
+  <div class="line-item" data-next-show="order.hasTax">
+    <span>Tax:</span>
+    <span data-next-display="order.tax">$0.00</span>
+  </div>
+
+  <!-- Discounts -->
+  <div class="line-item" data-next-show="order.hasDiscounts">
+    <span>Discount:</span>
+    <span>-<span data-next-display="order.discounts">$0.00</span></span>
+  </div>
+
+  <!-- Savings -->
+  <div class="line-item" data-next-show="order.hasSavings">
+    <span>You saved:</span>
+    <span>
+      <span data-next-display="order.savingsAmount">$0.00</span>
+      (<span data-next-display="order.savingsPercentage">0</span>%)
+    </span>
+  </div>
+
+  <!-- Grand total -->
+  <div class="line-item total">
+    <span>Total:</span>
+    <span data-next-display="order.total">$0.00</span>
+  </div>
+</div>
+```
+
+### Financial Attributes Reference
+
+| Property | Description | Type |
+|----------|-------------|------|
+| `order.total_incl_tax` | Grand total including tax and shipping | Currency |
+| `order.total` | Grand total (alias) | Currency |
+| `order.subtotal` | Line items only | Currency |
+| `order.subtotalExclShipping` | Line items only (alias) | Currency |
+| `order.total_excl_tax` | Total excluding tax (includes shipping) | Currency |
+| `order.total_tax` | Tax amount (snake_case) | Currency |
+| `order.tax` | Tax amount (alias) | Currency |
+| `order.shipping_incl_tax` | Shipping including tax (snake_case) | Currency |
+| `order.shipping` | Shipping including tax (alias) | Currency |
+| `order.shipping_excl_tax` | Shipping excluding tax (snake_case) | Currency |
+| `order.shippingExclTax` | Shipping excluding tax (camelCase) | Currency |
+| `order.shipping_tax` | Shipping tax amount (snake_case) | Currency |
+| `order.shippingTax` | Shipping tax amount (camelCase) | Currency |
+| `order.total_discounts` | Total discounts (snake_case) | Currency |
+| `order.discounts` | Total discounts (alias) | Currency |
+| `order.savingsAmount` | Calculated savings amount | Currency |
+| `order.savingsPercentage` | Savings percentage | Number |
+| `order.payment_method` | Payment method (snake_case) | String |
+| `order.paymentMethod` | Payment method (camelCase) | String |
+| `order.shipping_method` | Shipping method (snake_case) | String |
+| `order.shippingMethod` | Shipping method (camelCase) | String |
+
+### Raw Values for Calculations
+
+Use the `.raw` suffix to get numeric values for mathematical operations:
+
+```html
+<!-- Calculate shipping percentage -->
+<span data-next-display="order.shipping.raw"
+      data-divide-by="order.total.raw"
+      data-multiply-by="100"
+      data-format="number">0</span>%
+```
+
+| Property | Description | Type |
+|----------|-------------|------|
+| `order.total.raw` | Total as number | Number |
+| `order.subtotal.raw` | Subtotal as number | Number |
+| `order.tax.raw` | Tax as number | Number |
+| `order.shipping.raw` | Shipping as number | Number |
+| `order.discounts.raw` | Discounts as number | Number |
+
+## Customer Information
+
+Display customer contact details and preferences.
+
+```html
+<!-- Basic customer info -->
+<div class="customer-info">
+  <p><span data-next-display="order.customer.name">John Doe</span></p>
+  <p><span data-next-display="order.customer.email">john@example.com</span></p>
+  <p data-next-show="order.customer.phone">
+    Phone: <span data-next-display="order.customer.phone">555-123-4567</span>
+  </p>
+</div>
+
+<!-- Marketing opt-in status -->
+<div data-next-show="order.customer.acceptsMarketing">
+  ✓ Subscribed to marketing emails
+</div>
+```
+
+### Customer Attributes Reference
+
+| Property | Description | Type |
+|----------|-------------|------|
+| `order.customer.name` | Full customer name | String |
+| `order.customer.firstName` | First name only | String |
+| `order.customer.lastName` | Last name only | String |
+| `order.customer.email` | Customer email | String |
+| `order.customer.phone` | Customer phone | String |
+| `order.customer.acceptsMarketing` | Marketing opt-in | Boolean |
+| `order.customer.language` | Customer language | String |
+| `order.customer.ip` | Customer IP address | String |
+
+### User Aliases
+
+`order.user.*` is an alias for `order.customer.*` and provides the same properties:
+
+```html
+<!-- These are equivalent -->
+<span data-next-display="order.customer.name">John Doe</span>
+<span data-next-display="order.user.name">John Doe</span>
+```
+
+| Property | Description | Type |
+|----------|-------------|------|
+| `order.user.name` | Full name (alias) | String |
+| `order.user.firstName` | First name (alias) | String |
+| `order.user.lastName` | Last name (alias) | String |
+| `order.user.email` | Email (alias) | String |
+| `order.user.phone` | Phone (alias) | String |
+
+## Address Information
+
+Display shipping and billing addresses.
+
+### Shipping Address
+
+```html
+<div class="shipping-address">
+  <h3>Shipping Address</h3>
+  <address>
+    <span data-next-display="order.shippingAddress.name">-</span><br>
+    <span data-next-display="order.shippingAddress.line1">-</span><br>
+    <span data-next-show="order.shippingAddress.line2">
+      <span data-next-display="order.shippingAddress.line2">-</span><br>
+    </span>
+    <span data-next-display="order.shippingAddress.city">-</span>,
+    <span data-next-display="order.shippingAddress.state">-</span>
+    <span data-next-display="order.shippingAddress.zip">-</span><br>
+    <span data-next-display="order.shippingAddress.country">-</span>
+  </address>
+</div>
+```
+
+### Full Formatted Address
+
+Use the `.full` property to get a pre-formatted address string:
+
+```html
+<address data-next-display="order.shippingAddress.full">
+  123 Main St, Springfield, IL 62701, USA
+</address>
+```
+
+### Shipping Address Attributes
+
+| Property | Description | Type |
+|----------|-------------|------|
+| `order.shippingAddress.full` | Full formatted address | String |
+| `order.shippingAddress.name` | Recipient name | String |
+| `order.shippingAddress.line1` | Address line 1 | String |
+| `order.shippingAddress.line2` | Address line 2 | String |
+| `order.shippingAddress.city` | City | String |
+| `order.shippingAddress.state` | State/Province | String |
+| `order.shippingAddress.zip` | ZIP code | String |
+| `order.shippingAddress.postcode` | Postcode (alias) | String |
+| `order.shippingAddress.country` | Country | String |
+| `order.shippingAddress.phone` | Phone number | String |
+
+### Billing Address Attributes
+
+Billing address has identical properties to shipping address:
+
+```html
+<div class="billing-address">
+  <h3>Billing Address</h3>
+  <address data-next-display="order.billingAddress.full">-</address>
+</div>
+```
+
+| Property | Description | Type |
+|----------|-------------|------|
+| `order.billingAddress.full` | Full formatted address | String |
+| `order.billingAddress.name` | Recipient name | String |
+| `order.billingAddress.line1` | Address line 1 | String |
+| `order.billingAddress.line2` | Address line 2 | String |
+| `order.billingAddress.city` | City | String |
+| `order.billingAddress.state` | State/Province | String |
+| `order.billingAddress.zip` | ZIP code | String |
+| `order.billingAddress.postcode` | Postcode (alias) | String |
+| `order.billingAddress.country` | Country | String |
+| `order.billingAddress.phone` | Phone number | String |
+
+## Line Items
+
+Display order items and product details.
+
+### Aggregate Line Item Data
+
+```html
+<!-- Total counts -->
+<p>Items: <span data-next-display="order.lines.count">0</span></p>
+<p>Quantity: <span data-next-display="order.lines.totalQuantity">0</span></p>
+
+<!-- Main product -->
+<h4 data-next-display="order.lines.mainProduct">Product Name</h4>
+<p>SKU: <span data-next-display="order.lines.mainProductSku">-</span></p>
+
+<!-- Upsell count -->
+<p data-next-show="order.hasUpsells">
+  Includes <span data-next-display="order.lines.upsellCount">0</span> bonus item(s)
+</p>
+```
+
+| Property | Description | Type |
+|----------|-------------|------|
+| `order.lines.count` | Number of line items | Number |
+| `order.lines.totalQuantity` | Total quantity of all items | Number |
+| `order.lines.upsellCount` | Number of upsell items | Number |
+| `order.lines.mainProduct` | Main product title (first item) | String |
+| `order.lines.mainProductSku` | Main product SKU (first item) | String |
+| `order.items.count` | Line item count (alias) | Number |
+| `order.items.totalQuantity` | Total quantity (alias) | Number |
+
+### Accessing Individual Line Items
+
+Access specific line items using array index notation:
+
+```html
+<!-- First item (index 0) -->
+<div class="order-item">
+  <h4 data-next-display="order.lines[0].title">Product Name</h4>
+  <p>SKU: <span data-next-display="order.lines[0].sku">-</span></p>
+  <p>Quantity: <span data-next-display="order.lines[0].quantity">1</span></p>
+  <p>Price: <span data-next-display="order.lines[0].price">$0.00</span></p>
+  <p>Total: <span data-next-display="order.lines[0].total">$0.00</span></p>
+</div>
+
+<!-- Second item (index 1) -->
+<div class="order-item">
+  <h4 data-next-display="order.lines[1].title">Product Name</h4>
+</div>
+```
+
+### Line Item Attributes
+
+| Property | Description | Type |
+|----------|-------------|------|
+| `order.lines[n].title` | Product title | String |
+| `order.lines[n].product_title` | Product title (snake_case) | String |
+| `order.lines[n].sku` | Product SKU | String |
+| `order.lines[n].product_sku` | Product SKU (snake_case) | String |
+| `order.lines[n].quantity` | Quantity ordered | Number |
+| `order.lines[n].image` | Product image URL | String (URL) |
+| `order.lines[n].price` | Unit price including tax | Currency |
+| `order.lines[n].priceExclTax` | Unit price excluding tax | Currency |
+| `order.lines[n].priceExclTaxExclDiscounts` | Original price before discounts | Currency |
+| `order.lines[n].priceInclTaxExclDiscounts` | Original price with tax before discounts | Currency |
+| `order.lines[n].total` | Line total including tax | Currency |
+| `order.lines[n].totalExclTax` | Line total excluding tax | Currency |
+| `order.lines[n].isUpsell` | Is upsell item | Boolean |
+
+### Line Item Raw Values
+
+Use `.raw` for numeric calculations:
+
+| Property | Description | Type |
+|----------|-------------|------|
+| `order.lines[n].price.raw` | Unit price as number | Number |
+| `order.lines[n].priceExclTax.raw` | Unit price excl tax as number | Number |
+| `order.lines[n].priceExclTaxExclDiscounts.raw` | Original price as number | Number |
+| `order.lines[n].priceInclTaxExclDiscounts.raw` | Original price with tax as number | Number |
+| `order.lines[n].total.raw` | Line total as number | Number |
+| `order.lines[n].totalExclTax.raw` | Line total excl tax as number | Number |
+
+## Order Items Renderer
+
+The `data-next-order-items` attribute automatically renders all line items using customizable templates.
+
+### Basic Usage
+
+```html
+<div data-next-order-items class="order-items-list">
+  <div class="order-item">
+    <h4>{item.name}</h4>
+    <span>Qty: {item.quantity}</span>
+    <span>{item.lineTotal}</span>
+  </div>
+</div>
+```
+
+### Template Configuration
+
+Templates can be defined in multiple ways:
+
+#### Template by ID
+
+```html
+<!-- Define template -->
+<template id="order-item-template">
+  <div class="order-item">
+    <img src="{item.image}" alt="{item.name}">
+    <h4>{item.name}</h4>
+    <span>Qty: {item.quantity}</span>
+    <span>{item.lineTotal}</span>
+  </div>
+</template>
+
+<!-- Reference template -->
+<div data-next-order-items
+     data-item-template-id="order-item-template">
+</div>
+```
+
+#### Inline Template
+
+```html
+<div data-next-order-items
+     data-item-template='<div class="item">{item.name} x{item.quantity}: {item.lineTotal}</div>'>
+</div>
+```
+
+### Template Variables
+
+#### Basic Properties
+
+| Variable | Description | Type |
+|----------|-------------|------|
+| `{item.id}` | Order line ID | String |
+| `{item.name}` | Product name | String |
+| `{item.title}` | Product title (alias) | String |
+| `{item.sku}` | Product SKU | String |
+| `{item.quantity}` | Quantity ordered | Number |
+| `{item.description}` | Product description | String |
+| `{item.variant}` | Variant title | String |
+| `{item.image}` | Product image URL | String |
+
+#### Pricing Variables
+
+| Variable | Description | Type |
+|----------|-------------|------|
+| `{item.price}` | Unit price including tax | Currency |
+| `{item.priceExclTax}` | Unit price excluding tax | Currency |
+| `{item.unitTax}` | Tax per unit | Currency |
+| `{item.lineTotal}` | Line total including tax | Currency |
+| `{item.lineTotalExclTax}` | Line total excluding tax | Currency |
+| `{item.lineTax}` | Total tax for line | Currency |
+
+#### Original Pricing (Before Discounts)
+
+| Variable | Description | Type |
+|----------|-------------|------|
+| `{item.priceExclDiscounts}` | Original unit price (incl tax) | Currency |
+| `{item.priceExclTaxExclDiscounts}` | Original unit price (excl tax) | Currency |
+| `{item.lineTotalExclDiscounts}` | Original line total (incl tax) | Currency |
+| `{item.lineTotalExclTaxExclDiscounts}` | Original line total (excl tax) | Currency |
+| `{item.unitDiscount}` | Discount per unit | Currency |
+| `{item.lineDiscount}` | Total line discount | Currency |
+
+#### Status Flags
+
+| Variable | Description | Value |
+|----------|-------------|-------|
+| `{item.isUpsell}` | Is upsell item | "true" or "false" |
+| `{item.upsellBadge}` | Upsell badge text | "UPSELL" or "" |
+| `{item.hasImage}` | Has image | "true" or "false" |
+| `{item.hasDescription}` | Has description | "true" or "false" |
+| `{item.hasVariant}` | Has variant | "true" or "false" |
+| `{item.hasTax}` | Has tax | "true" or "false" |
+| `{item.hasDiscount}` | Has discount | "true" or "false" |
+
+#### Conditional Display Classes
+
+| Variable | Description | Value |
+|----------|-------------|-------|
+| `{item.showUpsell}` | Show upsell badge | "show" or "hide" |
+| `{item.showImage}` | Show image | "show" or "hide" |
+| `{item.showDescription}` | Show description | "show" or "hide" |
+| `{item.showVariant}` | Show variant | "show" or "hide" |
+| `{item.showTax}` | Show tax | "show" or "hide" |
+| `{item.showDiscount}` | Show discount | "show" or "hide" |
+
+### Complete Renderer Example
+
+```html
+<!-- Template definition -->
+<template id="order-item-template">
+  <div class="order-item" data-order-line-id="{item.id}">
+    <div class="order-item__image {item.showImage}">
+      <img src="{item.image}" alt="{item.name}">
+    </div>
+
+    <div class="order-item__details">
+      <h4 class="order-item__name">
+        {item.name}
+        <span class="upsell-badge {item.showUpsell}">{item.upsellBadge}</span>
+      </h4>
+      <div class="order-item__sku">SKU: {item.sku}</div>
+      <div class="order-item__variant {item.showVariant}">{item.variant}</div>
+    </div>
+
+    <div class="order-item__quantity">
+      Qty: {item.quantity}
+    </div>
+
+    <div class="order-item__pricing">
+      <div class="price">
+        <span class="original {item.showDiscount}">
+          {item.priceExclTaxExclDiscounts}
+        </span>
+        <span class="current">{item.priceExclTax}</span>
+      </div>
+      <div class="total">{item.lineTotal}</div>
+      <div class="discount {item.showDiscount}">
+        Saved: {item.lineDiscount}
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- Order items container -->
+<div data-next-order-items
+     data-item-template-id="order-item-template"
+     data-empty-template='<p>No items in this order</p>'>
+</div>
+```
+
+### Empty State
+
+Display a message when the order has no items:
+
+```html
+<div data-next-order-items
+     data-item-template-id="order-item-template"
+     data-empty-template="<p>No items found</p>">
+</div>
+```
+
+## Attribution & UTM Tracking
+
+Display marketing attribution and campaign tracking data.
+
+```html
+<!-- UTM parameters -->
+<div data-next-show="order.attribution.hasTracking">
+  <h3>Campaign Information</h3>
+
+  <p data-next-show="order.attribution.utm_source">
+    Source: <span data-next-display="order.attribution.utm_source">-</span>
+  </p>
+
+  <p data-next-show="order.attribution.utm_medium">
+    Medium: <span data-next-display="order.attribution.utm_medium">-</span>
+  </p>
+
+  <p data-next-show="order.attribution.utm_campaign">
+    Campaign: <span data-next-display="order.attribution.utm_campaign">-</span>
+  </p>
+
+  <p data-next-show="order.attribution.affiliate">
+    Affiliate: <span data-next-display="order.attribution.affiliate">-</span>
+  </p>
+</div>
+```
+
+### Attribution Attributes
+
+| Property | Description | Type |
+|----------|-------------|------|
+| `order.attribution.utm_source` | UTM source (snake_case) | String |
+| `order.attribution.source` | UTM source (alias) | String |
+| `order.attribution.utm_medium` | UTM medium (snake_case) | String |
+| `order.attribution.medium` | UTM medium (alias) | String |
+| `order.attribution.utm_campaign` | UTM campaign (snake_case) | String |
+| `order.attribution.campaign` | UTM campaign (alias) | String |
+| `order.attribution.utm_term` | UTM term (snake_case) | String |
+| `order.attribution.term` | UTM term (alias) | String |
+| `order.attribution.utm_content` | UTM content (snake_case) | String |
+| `order.attribution.content` | UTM content (alias) | String |
+| `order.attribution.gclid` | Google Click ID | String |
+| `order.attribution.funnel` | Funnel name | String |
+| `order.attribution.affiliate` | Affiliate code | String |
+| `order.attribution.hasTracking` | Has any tracking data | Boolean |
+
+## Boolean Properties
+
+Use boolean properties with `data-next-show` and `data-next-hide` for conditional display.
+
+### State Properties
+
+```html
+<!-- Order loading/error states -->
+<div data-next-show="order.exists">Order loaded successfully</div>
+<div data-next-show="order.isLoading">Loading order...</div>
+<div data-next-show="order.hasError">Error loading order</div>
+```
+
+### Content Properties
+
+```html
+<!-- Order content flags -->
+<div data-next-show="order.hasItems">Order has items</div>
+<div data-next-show="order.isEmpty">Order is empty</div>
+<div data-next-show="order.hasShipping">Shipping was charged</div>
+<div data-next-show="order.hasTax">Tax was charged</div>
+<div data-next-show="order.hasDiscounts">Discounts applied</div>
+<div data-next-show="order.hasSavings">Customer saved money</div>
+<div data-next-show="order.hasUpsells">Order includes upsells</div>
+```
+
+### Timing Properties
+
+```html
+<!-- Order timing -->
+<div data-next-show="order.isRecent">Order placed recently</div>
+<div data-next-show="order.isNewOrder">New order (< 15 min)</div>
+<div data-next-show="order.supportsUpsells">Can add more items</div>
+```
+
+### Boolean Properties Reference
+
+| Property | Description | Type |
+|----------|-------------|------|
+| `order.exists` | Order loaded successfully | Boolean |
+| `order.isLoading` | Order is loading | Boolean |
+| `order.hasError` | Error occurred | Boolean |
+| `order.isTest` | Is test order | Boolean |
+| `order.hasItems` | Order has line items | Boolean |
+| `order.isEmpty` | Order is empty | Boolean |
+| `order.hasShipping` | Shipping charged | Boolean |
+| `order.hasTax` | Tax charged | Boolean |
+| `order.hasDiscounts` | Discounts applied | Boolean |
+| `order.hasSavings` | Has savings amount | Boolean |
+| `order.hasUpsells` | Has upsell items | Boolean |
+| `order.supportsUpsells` | Can add more items | Boolean |
+| `order.isRecent` | Placed < 15 minutes ago | Boolean |
+| `order.isExpired` | Placed > 15 minutes ago | Boolean |
+| `order.isNewOrder` | New order (< 15 min) | Boolean |
+
+## Error Handling
+
+Display error messages when orders fail to load:
+
+```html
+<div data-next-show="order.hasError" class="error-message">
+  <h2>Unable to Load Order</h2>
+  <p data-next-display="order.errorMessage">Error details</p>
+  <p>Please check your email for order confirmation.</p>
+</div>
+```
+
+## Complete Confirmation Page Example
+
+```html
+<div class="order-confirmation">
+  <!-- Loading state -->
+  <div data-next-show="order.isLoading">
+    <p>Loading your order...</p>
+  </div>
+
+  <!-- Error state -->
+  <div data-next-show="order.hasError">
+    <h2>Order Not Found</h2>
+    <p data-next-display="order.errorMessage">-</p>
+  </div>
+
+  <!-- Order content -->
+  <div data-next-show="order.exists" data-next-hide="order.isLoading">
+    <h1>Thank You for Your Order!</h1>
+
+    <!-- Test order warning -->
+    <div data-next-show="order.isTest">
+      <p data-next-display="order.testBadge"></p>
+    </div>
+
+    <!-- Order header -->
+    <div class="order-header">
+      <p>Order #<span data-next-display="order.number">-</span></p>
+      <p>Reference: <span data-next-display="order.refId">-</span></p>
+      <p>Placed on <span data-next-display="order.createdAt">-</span></p>
+    </div>
+
+    <!-- Customer info -->
+    <div class="customer-info">
+      <h3>Customer Information</h3>
+      <p><span data-next-display="order.customer.name">-</span></p>
+      <p><span data-next-display="order.customer.email">-</span></p>
+    </div>
+
+    <!-- Addresses -->
+    <div class="addresses">
+      <div class="shipping-address">
+        <h3>Shipping Address</h3>
+        <address data-next-display="order.shippingAddress.full">-</address>
+      </div>
+
+      <div class="billing-address">
+        <h3>Billing Address</h3>
+        <address data-next-display="order.billingAddress.full">-</address>
+      </div>
+    </div>
+
+    <!-- Order items -->
+    <div class="order-items">
+      <h3>Order Items</h3>
+      <div data-next-order-items>
+        <div class="item">
+          <h4>{item.name}</h4>
+          <span>Qty: {item.quantity}</span>
+          <span>{item.lineTotal}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Order summary -->
+    <div class="order-summary">
+      <h3>Order Summary</h3>
+      <div class="line-item">
+        <span>Subtotal:</span>
+        <span data-next-display="order.subtotal">$0.00</span>
+      </div>
+      <div class="line-item" data-next-show="order.hasShipping">
+        <span>Shipping:</span>
+        <span data-next-display="order.shipping">$0.00</span>
+      </div>
+      <div class="line-item" data-next-show="order.hasTax">
+        <span>Tax:</span>
+        <span data-next-display="order.tax">$0.00</span>
+      </div>
+      <div class="line-item total">
+        <span>Total:</span>
+        <span data-next-display="order.total">$0.00</span>
+      </div>
+    </div>
+
+    <!-- Order status link -->
+    <a data-next-display="order.statusUrl" class="btn">
+      View Order Status
+    </a>
+  </div>
+</div>
+```
+
+## Related Documentation
+
+- [Display Attributes](/data-attributes/display/) - Display dynamic data
+- [State Attributes](/data-attributes/state/) - Conditional display logic
+- [Configuration Attributes](/data-attributes/configuration/) - Formatting options

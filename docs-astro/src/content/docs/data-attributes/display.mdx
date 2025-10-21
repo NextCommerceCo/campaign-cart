@@ -332,6 +332,330 @@ Timer format options:
 </div>
 ```
 
+## Cart Items Template Variables
+
+The `data-next-cart-items` renderer uses template variables to display cart item data. All variables use the `{item.*}` syntax.
+
+### Basic Item Properties
+
+```html
+<div data-next-cart-items>
+  <div class="cart-item">
+    <h4>{item.name}</h4>
+    <p>SKU: {item.sku}</p>
+    <p>Quantity: {item.quantity}</p>
+    <img src="{item.image}" alt="{item.name}">
+  </div>
+</div>
+```
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `{item.id}` | Unique cart item ID | Auto-generated |
+| `{item.packageId}` | Package ID | "123" |
+| `{item.name}` | Product name | "Grounded Sheets" |
+| `{item.title}` | Product title (alias) | "Grounded Sheets" |
+| `{item.quantity}` | Quantity in cart | "2" |
+| `{item.image}` | Product image URL | "https://..." |
+| `{item.sku}` | Product SKU | "GRS-001" |
+| `{item.frequency}` | Purchase frequency | "One time" or "Every month" |
+
+### Variant Properties
+
+Display product variant information:
+
+```html
+<div data-next-cart-items>
+  <div class="cart-item">
+    <h4>{item.productName}</h4>
+    <p class="variant">{item.variantName}</p>
+    <p class="attributes">{item.variantAttributesFormatted}</p>
+
+    <!-- Individual variant attributes -->
+    <span class="color">Color: {item.variantColor}</span>
+    <span class="size">Size: {item.variantSize}</span>
+  </div>
+</div>
+```
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `{item.productId}` | Base product ID | Auto-generated |
+| `{item.productName}` | Base product name | "Grounded Sheets" |
+| `{item.variantId}` | Variant ID | Auto-generated |
+| `{item.variantName}` | Full variant name | "Grounded Sheets - Obsidian Grey / Twin" |
+| `{item.variantSku}` | Variant SKU | "BE-GRS-TWN-GR" |
+| `{item.variantAttributes}` | Raw array of variant attributes | For JSON output |
+| `{item.variantAttributesFormatted}` | Formatted attributes | "Color: Obsidian Grey, Size: Twin" |
+| `{item.variantAttributesList}` | HTML formatted attributes | `<span>Color: Grey</span>` |
+| `{item.variantColor}` | Color value (dynamic) | "Obsidian Grey" |
+| `{item.variantSize}` | Size value (dynamic) | "Twin" |
+| `{item.variant.color}` | Color (dot notation) | "Obsidian Grey" |
+| `{item.variant.size}` | Size (dot notation) | "Twin" |
+| `{item.variant_color}` | Color (underscore) | "Obsidian Grey" |
+| `{item.variant_size}` | Size (underscore) | "Twin" |
+
+Individual variant attributes are dynamically generated for all variant attribute codes.
+
+### Pricing Variables
+
+```html
+<div data-next-cart-items>
+  <div class="cart-item">
+    <p class="price">{item.price}</p>
+    <p class="unit-price">{item.unitPrice} each</p>
+    <p class="line-total">Total: {item.lineTotal}</p>
+
+    <!-- Show original price if on sale -->
+    <s class="{item.showCompare}">{item.comparePrice}</s>
+  </div>
+</div>
+```
+
+| Variable | Description | Type |
+|----------|-------------|------|
+| `{item.price}` | Package price | Currency |
+| `{item.unitPrice}` | Price per unit | Currency |
+| `{item.comparePrice}` | Original price before discount | Currency |
+| `{item.unitComparePrice}` | Original unit price | Currency |
+| `{item.lineTotal}` | Line total (price × quantity) | Currency |
+| `{item.lineCompare}` | Original line total | Currency |
+| `{item.recurringPrice}` | Subscription price | Currency |
+
+### Savings Variables
+
+```html
+<div data-next-cart-items>
+  <div class="cart-item {item.showSavings}">
+    <p class="savings">
+      Save {item.savingsAmount} ({item.savingsPct}%)
+    </p>
+  </div>
+</div>
+```
+
+| Variable | Description | Type |
+|----------|-------------|------|
+| `{item.savingsAmount}` | Total savings | Currency |
+| `{item.unitSavings}` | Per-unit savings | Currency |
+| `{item.savingsPct}` | Savings percentage | Percentage |
+| `{item.packageSavings}` | Package-level savings | Currency |
+| `{item.packageSavingsPct}` | Package savings % | Percentage |
+
+### Package Details
+
+```html
+<div data-next-cart-items>
+  <div class="cart-item">
+    <p>Package Price: {item.packagePrice}</p>
+    <p>Package Total: {item.packagePriceTotal}</p>
+    <p>Package Retail: {item.packageRetailPrice}</p>
+    <p>Units in Package: {item.packageQty}</p>
+  </div>
+</div>
+```
+
+| Variable | Description | Type |
+|----------|-------------|------|
+| `{item.packagePrice}` | Base package price | Currency |
+| `{item.packagePriceTotal}` | Package total price | Currency |
+| `{item.packageRetailPrice}` | Package retail price | Currency |
+| `{item.packageRetailTotal}` | Package retail total | Currency |
+| `{item.packageQty}` | Quantity in package | Number |
+
+### Coupon Discount Variables
+
+```html
+<div data-next-cart-items>
+  <div class="cart-item {item.showDiscount}">
+    <p>Price: <s>{item.price}</s> {item.discountedPrice}</p>
+    <p class="discount">Coupon: -{item.discountAmount}</p>
+    <p class="final">Final: {item.finalPrice}</p>
+  </div>
+</div>
+```
+
+| Variable | Description | Type |
+|----------|-------------|------|
+| `{item.discountAmount}` | Coupon discount amount | Currency |
+| `{item.discountedPrice}` | Price after coupon | Currency |
+| `{item.discountedLineTotal}` | Line total after coupon | Currency |
+| `{item.hasDiscount}` | Has coupon discount | "true" or "false" |
+| `{item.finalPrice}` | Final display price | Currency |
+| `{item.finalLineTotal}` | Final line total | Currency |
+
+### Conditional Display Classes
+
+Use these to show/hide elements conditionally:
+
+```html
+<div data-next-cart-items>
+  <div class="cart-item">
+    <!-- Shows "show" or "hide" class -->
+    <span class="{item.showCompare}">{item.comparePrice}</span>
+    <span class="{item.showSavings}">Save {item.savingsAmount}</span>
+    <span class="{item.showDiscount}">Coupon applied!</span>
+    <span class="{item.showRecurring}">{item.frequency}</span>
+  </div>
+</div>
+```
+
+| Variable | Returns | Description |
+|----------|---------|-------------|
+| `{item.showCompare}` | "show" or "hide" | Show compare price if has savings |
+| `{item.showSavings}` | "show" or "hide" | Show savings badge |
+| `{item.showRecurring}` | "show" or "hide" | Show subscription info |
+| `{item.showUnitPrice}` | "show" or "hide" | Show unit price for multi-packs |
+| `{item.showDiscount}` | "show" or "hide" | Show coupon discount |
+| `{item.showOriginalPrice}` | "show" or "hide" | Show strikethrough price |
+| `{item.hasSavings}` | "true" or "false" | Boolean for conditionals |
+| `{item.isRecurring}` | "true" or "false" | Is subscription product |
+
+### Cart Template Configuration
+
+Configure cart items renderer with these attributes:
+
+```html
+<!-- Template by ID -->
+<template id="cart-item-template">
+  <div class="item">{item.name} - {item.price}</div>
+</template>
+<div data-next-cart-items
+     data-item-template-id="cart-item-template">
+</div>
+
+<!-- Empty cart message -->
+<div data-next-cart-items
+     data-empty-template='<p>Your cart is empty</p>'>
+</div>
+
+<!-- Group identical items -->
+<div data-next-cart-items
+     data-group-items>
+</div>
+
+<!-- Custom titles for packages -->
+<div data-next-cart-items
+     data-title-map='{"2": "Premium Package", "3": "Starter Kit"}'>
+</div>
+```
+
+| Attribute | Description | Example |
+|-----------|-------------|---------|
+| `data-item-template-id` | Reference template by ID | `"cart-item-template"` |
+| `data-item-template-selector` | Reference by CSS selector | `"#custom-template"` |
+| `data-item-template` | Inline template string | `'<div>{item.name}</div>'` |
+| `data-empty-template` | Template when cart is empty | `'<p>No items</p>'` |
+| `data-title-map` | Map package IDs to titles (JSON) | `'{"2": "Premium"}'` |
+| `data-group-items` | Group identical items together | Flag attribute |
+
+### Raw Values for Calculations
+
+Use `.raw` suffix for numeric calculations:
+
+```html
+<div data-next-cart-items>
+  <div class="cart-item">
+    <!-- Calculate 10% of line total -->
+    <p>Tax: ${item.lineTotal.raw * 0.1}</p>
+  </div>
+</div>
+```
+
+| Variable | Description |
+|----------|-------------|
+| `{item.price.raw}` | Numeric price value |
+| `{item.unitPrice.raw}` | Numeric unit price |
+| `{item.lineTotal.raw}` | Numeric line total |
+| `{item.savingsAmount.raw}` | Numeric savings |
+| `{item.savingsPct.raw}` | Numeric savings percentage |
+| `{item.discountAmount.raw}` | Numeric discount |
+| `{item.discountedPrice.raw}` | Numeric discounted price |
+| `{item.discountedLineTotal.raw}` | Numeric discounted line total |
+| `{item.finalPrice.raw}` | Numeric final price |
+| `{item.finalLineTotal.raw}` | Numeric final line total |
+
+## Package Subscription Fields
+
+Display subscription and recurring billing information for packages.
+
+### Package ID Fields
+
+```html
+<!-- Package reference ID -->
+<span data-next-display="package.123.ref_id">Internal ID</span>
+
+<!-- External package ID -->
+<span data-next-display="package.123.external_id">External ID</span>
+```
+
+| Property | Description | Type |
+|----------|-------------|------|
+| `package.ref_id` | Internal reference ID | Number |
+| `package.external_id` | External system ID | Number |
+
+### Recurring Properties
+
+```html
+<!-- Show subscription info -->
+<div data-next-show="package.123.is_recurring">
+  <p>Subscription Product</p>
+  <p>Delivered every <span data-next-display="package.123.interval">month</span></p>
+</div>
+
+<!-- One-time purchase -->
+<div data-next-show="package.123.isOneTime">
+  <p>One-time purchase</p>
+</div>
+```
+
+| Property | Description | Type | Values |
+|----------|-------------|------|--------|
+| `package.is_recurring` | Is subscription product | Boolean | true/false |
+| `package.interval` | Billing interval | String | "day", "month", null |
+| `package.interval_count` | Interval count | Number | 1, 2, 3, etc. |
+| `package.isRecurring` | Is subscription (alias) | Boolean | true/false |
+| `package.isOneTime` | Is one-time purchase | Boolean | true/false |
+
+### Recurring Pricing
+
+```html
+<!-- Recurring price -->
+<span data-next-display="package.123.price_recurring">$29.99/month</span>
+
+<!-- Total recurring price -->
+<span data-next-display="package.123.price_recurring_total">$89.97</span>
+```
+
+| Property | Description | Type |
+|----------|-------------|------|
+| `package.price_recurring` | Recurring price per billing cycle | Currency |
+| `package.price_recurring_total` | Total recurring price for all units | Currency |
+
+### Subscription Display Example
+
+```html
+<div class="product-card" data-package-id="123">
+  <h3 data-next-display="package.123.name">Product Name</h3>
+
+  <!-- One-time price -->
+  <div data-next-show="package.123.isOneTime">
+    <p class="price" data-next-display="package.123.price">$99.00</p>
+    <p>One-time purchase</p>
+  </div>
+
+  <!-- Subscription price -->
+  <div data-next-show="package.123.isRecurring">
+    <p class="price" data-next-display="package.123.price_recurring">$29.99</p>
+    <p>
+      Billed every
+      <span data-next-display="package.123.interval_count">1</span>
+      <span data-next-display="package.123.interval">month</span>
+    </p>
+  </div>
+</div>
+```
+
 ## Performance Tips
 
 ### Efficient Selectors

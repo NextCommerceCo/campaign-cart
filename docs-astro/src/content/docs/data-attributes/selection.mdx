@@ -1,0 +1,449 @@
+---
+title: Selection Attributes
+description: Display data based on currently selected package in product selectors
+sidebar:
+  order: 9
+---
+
+**Selection attributes display data based on the currently selected package in a selector and update automatically when the selection changes.**
+
+Use selection attributes to show real-time pricing, savings, and product information as customers interact with your product selectors.
+
+## Selection Data Path
+
+Selection data is accessed using the pattern:
+
+```
+selection.{selectorId}.{property}
+```
+
+Where `{selectorId}` is the unique identifier specified in the `data-next-selector-id` attribute on the selector container.
+
+## Basic Selection Properties
+
+Display information about the currently selected package:
+
+```html
+<!-- Selected package name -->
+<span data-next-display="selection.main-product.name">Product Name</span>
+
+<!-- Selected package ID -->
+<span data-next-display="selection.main-product.packageId">123</span>
+
+<!-- Selected quantity -->
+<span data-next-display="selection.main-product.quantity">1</span>
+
+<!-- Has selection (boolean) -->
+<div data-next-show="selection.main-product.hasSelection">
+  Something is selected
+</div>
+```
+
+| Property | Description | Type |
+|----------|-------------|------|
+| `selection.{selectorId}.name` | Selected package name | String |
+| `selection.{selectorId}.packageId` | Selected package ID | Number |
+| `selection.{selectorId}.quantity` | Selected quantity | Number |
+| `selection.{selectorId}.hasSelection` | Whether something is selected | Boolean |
+
+## Selection Pricing
+
+Display pricing information for the selected package:
+
+```html
+<!-- Unit price -->
+<span data-next-display="selection.main-product.price">$99.00</span>
+
+<!-- Total price (price × quantity) -->
+<span data-next-display="selection.main-product.total">$99.00</span>
+
+<!-- Compare at price total -->
+<span data-next-display="selection.main-product.compareTotal">$149.00</span>
+
+<!-- Unit price  -->
+<span data-next-display="selection.main-product.unitPrice">$99.00</span>
+```
+
+| Property | Description | Type |
+|----------|-------------|------|
+| `selection.{selectorId}.price` | Unit price of selection | Currency |
+| `selection.{selectorId}.total` | Total price (price × quantity) | Currency |
+| `selection.{selectorId}.compareTotal` | Compare at price total | Currency |
+| `selection.{selectorId}.unitPrice` | Price per unit | Currency |
+
+## Selection Calculated Fields
+
+Display savings and bundle information:
+
+```html
+<!-- Total savings amount -->
+<span data-next-display="selection.main-product.savingsAmount">$50.00</span>
+
+<!-- Savings percentage -->
+<span data-next-display="selection.main-product.savingsPercentage">33</span>%
+
+<!-- Has savings (boolean) -->
+<div data-next-show="selection.main-product.hasSavings">
+  You save money with this selection!
+</div>
+
+<!-- Is bundle/multi-pack (boolean) -->
+<div data-next-show="selection.main-product.isBundle">
+  Multi-pack deal
+</div>
+
+<!-- Total units in selection -->
+<span data-next-display="selection.main-product.totalUnits">3</span> units
+```
+
+| Property | Description | Type |
+|----------|-------------|------|
+| `selection.{selectorId}.savingsAmount` | Total savings amount | Currency |
+| `selection.{selectorId}.savingsPercentage` | Savings percentage | Number |
+| `selection.{selectorId}.hasSavings` | Has savings | Boolean |
+| `selection.{selectorId}.isBundle` | Is multi-pack bundle | Boolean |
+| `selection.{selectorId}.totalUnits` | Total units in selection | Number |
+
+## Mathematical Expressions
+
+Perform calculations with selection data:
+
+```html
+<!-- 10% of total -->
+<span data-next-display="selection.main-product.total * 0.1">$9.90</span>
+
+<!-- Price plus $5 -->
+<span data-next-display="selection.main-product.price + 5">$104.00</span>
+
+<!-- Total minus $10 discount -->
+<span data-next-display="selection.main-product.total - 10">$89.00</span>
+
+<!-- Half of total -->
+<span data-next-display="selection.main-product.total / 2">$49.50</span>
+```
+
+Supported operators: `*` (multiply), `/` (divide), `+` (add), `-` (subtract)
+
+## Selector Container
+
+Create a product selector using the `data-next-cart-selector` attribute:
+
+```html
+<div data-next-cart-selector data-next-selector-id="main-product">
+  <!-- Selector cards go here -->
+</div>
+```
+
+### Selector Container Attributes
+
+| Attribute | Required | Description | Example |
+|-----------|----------|-------------|---------|
+| `data-next-cart-selector` | Yes | Marks element as a selector container | `data-next-cart-selector` |
+| `data-next-selector-id` | Yes | Unique identifier for the selector | `data-next-selector-id="main-product"` |
+| `data-next-selection-mode` | No | Selection mode (swap, select, multi) | `data-next-selection-mode="swap"` |
+
+## Selector Cards
+
+Create selectable options within the selector:
+
+```html
+<div data-next-cart-selector data-next-selector-id="main-product">
+  <!-- Option 1 -->
+  <div data-next-selector-card data-next-package-id="1">
+    1 Pack - $99
+  </div>
+
+  <!-- Option 2 -->
+  <div data-next-selector-card data-next-package-id="2">
+    3 Pack - $249
+  </div>
+
+  <!-- Option 3 -->
+  <div data-next-selector-card data-next-package-id="3">
+    5 Pack - $399
+  </div>
+</div>
+```
+
+### Selector Card Attributes
+
+| Attribute | Required | Description |
+|-----------|----------|-------------|
+| `data-next-selector-card` | Yes | Marks element as a selectable card |
+| `data-next-package-id` | Yes | Package ID to select when clicked |
+| `data-next-selected` | No | Pre-select this card (true/false) |
+| `data-next-quantity` | No | Initial quantity for this card |
+| `data-next-min-quantity` | No | Minimum quantity allowed (default: 1) |
+| `data-next-max-quantity` | No | Maximum quantity allowed (default: 999) |
+
+## Quantity Controls
+
+Add quantity adjustment controls to selector cards:
+
+```html
+<div data-next-selector-card
+     data-next-package-id="2"
+     data-next-quantity="1"
+     data-next-min-quantity="1"
+     data-next-max-quantity="10">
+
+  <h3>Premium Package</h3>
+  <p>$19.99 each</p>
+
+  <!-- Quantity controls -->
+  <div class="quantity-controls">
+    <button data-next-quantity-decrease type="button">−</button>
+    <span data-next-quantity-display>1</span>
+    <button data-next-quantity-increase type="button">+</button>
+  </div>
+
+  <!-- Total updates with quantity -->
+  <p class="total">
+    Total: <span data-next-display="selection.main-product.total">$19.99</span>
+  </p>
+</div>
+```
+
+### Quantity Control Attributes
+
+| Attribute | Description | Behavior |
+|-----------|-------------|----------|
+| `data-next-quantity-increase` | Increase quantity button | Auto-disables at max quantity |
+| `data-next-quantity-decrease` | Decrease quantity button | Auto-disables at min quantity |
+| `data-next-quantity-display` | Display current quantity | Updates automatically |
+| `data-next-min-quantity` | Minimum allowed quantity | Default: 1 |
+| `data-next-max-quantity` | Maximum allowed quantity | Default: 999 |
+
+### Automatic Behavior
+
+- **Auto-disable**: Decrease button gets `disabled` attribute and `next-disabled` class at minimum
+- **Auto-disable**: Increase button gets `disabled` attribute and `next-disabled` class at maximum
+- **Cart sync**: In `swap` mode, quantity changes update the cart automatically
+- **Display updates**: All `selection.{selectorId}.total` elements update with quantity
+- **Event prevention**: Quantity button clicks don't trigger card selection
+
+## Complete Example
+
+Product selector with selection display and quantity controls:
+
+```html
+<!-- Selector -->
+<div data-next-cart-selector
+     data-next-selector-id="main-product"
+     data-next-selection-mode="swap">
+
+  <div data-next-selector-card
+       data-next-package-id="1"
+       data-next-quantity="1"
+       data-next-min-quantity="1"
+       data-next-max-quantity="10"
+       data-next-selected="true">
+
+    <div class="package-content">
+      <h3>1 Pack</h3>
+      <p class="unit-price">$99.00 each</p>
+
+      <!-- Quantity controls -->
+      <div class="quantity-controls">
+        <button data-next-quantity-decrease>−</button>
+        <span data-next-quantity-display>1</span>
+        <button data-next-quantity-increase>+</button>
+      </div>
+
+      <!-- Total updates with quantity -->
+      <p class="total-price">
+        Total: <span data-next-display="selection.main-product.total">$99.00</span>
+      </p>
+    </div>
+  </div>
+
+  <div data-next-selector-card
+       data-next-package-id="2"
+       data-next-quantity="1">
+    <h3>3 Pack</h3>
+    <p>$249.00</p>
+  </div>
+
+  <div data-next-selector-card
+       data-next-package-id="3"
+       data-next-quantity="1">
+    <h3>5 Pack</h3>
+    <p>$399.00</p>
+  </div>
+</div>
+
+<!-- Selection Display -->
+<div class="selection-info">
+  <h4>Your Selection</h4>
+
+  <!-- Show when nothing selected -->
+  <p data-next-hide="selection.main-product.hasSelection">
+    Please select a package
+  </p>
+
+  <!-- Show when selected -->
+  <div data-next-show="selection.main-product.hasSelection">
+    <p>Selected: <span data-next-display="selection.main-product.name">-</span></p>
+    <p>Quantity: <span data-next-display="selection.main-product.totalUnits">0</span> units</p>
+    <p>Price: <span data-next-display="selection.main-product.total">$0</span></p>
+
+    <!-- Show savings if applicable -->
+    <div data-next-show="selection.main-product.hasSavings">
+      <p>You save: <span data-next-display="selection.main-product.savingsAmount">$0</span>
+         (<span data-next-display="selection.main-product.savingsPercentage">0</span>%)
+      </p>
+    </div>
+  </div>
+
+  <!-- Add to cart button (only show when selected) -->
+  <button data-next-action="add-to-cart"
+          data-next-selector-id="main-product"
+          data-next-hide="!selection.main-product.hasSelection">
+    Add to Cart
+  </button>
+</div>
+```
+
+## Dynamic Pricing Display
+
+Show different messages based on selection price:
+
+```html
+<div data-next-cart-selector data-next-selector-id="warranty">
+  <!-- Warranty options here -->
+</div>
+
+<div class="pricing-message">
+  <p data-next-show="selection.warranty.total < 20">
+    Basic protection for under $20
+  </p>
+  <p data-next-show="selection.warranty.total >= 20 && selection.warranty.total < 50">
+    Premium protection
+  </p>
+  <p data-next-show="selection.warranty.total >= 50">
+    Ultimate protection package
+  </p>
+</div>
+```
+
+## Multiple Selectors
+
+Use multiple selectors on one page and combine their totals:
+
+```html
+<!-- Product selector -->
+<div data-next-cart-selector data-next-selector-id="product">
+  <div data-next-selector-card data-next-package-id="1">
+    Main Product - $99
+  </div>
+  <div data-next-selector-card data-next-package-id="2">
+    Premium Product - $149
+  </div>
+</div>
+
+<!-- Accessory selector -->
+<div data-next-cart-selector data-next-selector-id="accessory">
+  <div data-next-selector-card data-next-package-id="10">
+    Basic Accessory - $19
+  </div>
+  <div data-next-selector-card data-next-package-id="11">
+    Premium Accessory - $39
+  </div>
+</div>
+
+<!-- Combined total -->
+<div class="order-summary">
+  <p>Product: <span data-next-display="selection.product.total">$0</span></p>
+  <p>Accessory: <span data-next-display="selection.accessory.total">$0</span></p>
+  <hr>
+  <p>Total: $<span data-next-display="selection.product.total.raw + selection.accessory.total.raw">0</span></p>
+</div>
+```
+
+## Conditional Display
+
+Show/hide content based on selection state:
+
+```html
+<!-- Hide when nothing selected -->
+<div data-next-hide="selection.main-product.hasSelection">
+  <p>Choose a package to see pricing</p>
+</div>
+
+<!-- Show when selected -->
+<div data-next-show="selection.main-product.hasSelection">
+  <p>You selected: <span data-next-display="selection.main-product.name"></span></p>
+</div>
+
+<!-- Show only if has savings -->
+<div data-next-show="selection.main-product.hasSavings">
+  <span class="badge">SAVE <span data-next-display="selection.main-product.savingsPercentage"></span>%</span>
+</div>
+
+<!-- Show only for bundles -->
+<div data-next-show="selection.main-product.isBundle">
+  <span class="badge">BUNDLE DEAL</span>
+</div>
+```
+
+## Selection Properties Reference
+
+### Basic Properties
+
+| Property | Description | Type | Example Value |
+|----------|-------------|------|---------------|
+| `name` | Package name | String | "Premium Package" |
+| `packageId` | Package ID | Number | 123 |
+| `quantity` | Selected quantity | Number | 2 |
+| `hasSelection` | Selection exists | Boolean | true |
+
+### Pricing Properties
+
+| Property | Description | Type | Example Value |
+|----------|-------------|------|---------------|
+| `price` | Unit price | Currency | "$99.00" |
+| `total` | Total price | Currency | "$198.00" |
+| `compareTotal` | Compare total | Currency | "$298.00" |
+| `unitPrice` | Price per unit | Currency | "$99.00" |
+
+### Calculated Properties
+
+| Property | Description | Type | Example Value |
+|----------|-------------|------|---------------|
+| `savingsAmount` | Total savings | Currency | "$100.00" |
+| `savingsPercentage` | Savings % | Number | 33 |
+| `hasSavings` | Has savings | Boolean | true |
+| `isBundle` | Is bundle | Boolean | true |
+| `totalUnits` | Total units | Number | 6 |
+
+## Best Practices
+
+1. **Use unique selector IDs**
+   - Choose descriptive, unique IDs for each selector
+   - Example: `main-product`, `warranty`, `accessory`
+
+2. **Show selection feedback**
+   - Display selected package details
+   - Show pricing updates in real-time
+
+3. **Use conditional display**
+   - Hide/show elements based on `hasSelection`
+   - Guide users through the selection process
+
+4. **Display price updates**
+   - Show real-time pricing as quantity changes
+   - Highlight savings when applicable
+
+5. **Validate before actions**
+   - Hide "Add to Cart" button until selection is made
+   - Use `data-next-hide="!selection.{selectorId}.hasSelection"`
+
+6. **Set appropriate quantity limits**
+   - Use `data-next-min-quantity` and `data-next-max-quantity`
+   - Match limits to your inventory/business rules
+
+## Related Documentation
+
+- [Display Attributes](/data-attributes/display/) - Display dynamic data
+- [Action Attributes](/data-attributes/actions/) - Add to cart actions
+- [State Attributes](/data-attributes/state/) - Conditional display

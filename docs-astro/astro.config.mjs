@@ -50,6 +50,10 @@ export default defineConfig({
                       { label: 'Display', slug: 'data-attributes/display' },
                       { label: 'State & Conditionals', slug: 'data-attributes/state' },
                       { label: 'Configuration', slug: 'data-attributes/configuration' },
+                      { label: 'Order Data', slug: 'data-attributes/order-data' },
+                      { label: 'URL Parameters', slug: 'data-attributes/url-parameters' },
+                      { label: 'Checkout Review', slug: 'data-attributes/checkout-review' },
+                      { label: 'Selection Attributes', slug: 'data-attributes/selection' },
                   ],
               },
               {

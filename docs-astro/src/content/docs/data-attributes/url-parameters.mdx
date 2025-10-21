@@ -1,0 +1,450 @@
+---
+title: URL Parameters
+description: Control element visibility and behavior using URL query parameters
+sidebar:
+  order: 7
+---
+
+**URL parameters provide a powerful way to control element visibility and behavior based on query string values.**
+
+Parameters are automatically captured when the SDK initializes and persist throughout the user's session, even when navigating between pages. This makes them perfect for feature flags, A/B testing, marketing campaigns, and development/testing scenarios.
+
+## How It Works
+
+The URL parameter system follows this lifecycle:
+
+1. **Parameter Capture** - When the SDK initializes, all URL parameters are automatically captured and stored in sessionStorage
+2. **Session Persistence** - Parameters remain available throughout the user's session, even when navigating to pages without those parameters
+3. **Parameter Override** - If a user visits a new page with different parameter values, the new values override the stored ones
+4. **Conditional Display** - Use `data-next-show` and `data-next-hide` attributes to control element visibility based on parameter values
+
+## Basic Usage
+
+### Hiding Elements
+
+Hide elements when specific URL parameters are present:
+
+```html
+<!-- Hide when ?seen=n is in the URL -->
+<div data-next-hide="param.seen == 'n'">
+  As seen on TV section
+</div>
+
+<!-- Hide timer when ?timer=n -->
+<div data-next-hide="param.timer == 'n'">
+  <div data-next-timer="countdown">00:00:00</div>
+</div>
+
+<!-- Hide reviews when ?reviews=n -->
+<div data-next-hide="param.reviews == 'n'">
+  Customer testimonials...
+</div>
+```
+
+### Showing Elements
+
+Show elements only when specific URL parameters match:
+
+```html
+<!-- Show message only when ?debug=true -->
+<div data-next-show="param.debug == 'true'">
+  Debug mode is enabled
+</div>
+
+<!-- Show alternate content when banner is disabled -->
+<div data-next-show="param.banner == 'n'">
+  Simple header without promotional banner
+</div>
+```
+
+## Parameter Syntax
+
+Access URL parameters using the `param.` prefix:
+
+```html
+<!-- URL: ?mode=advanced -->
+<div data-next-show="param.mode == 'advanced'">
+  Advanced options
+</div>
+```
+
+The parameter name after `param.` must match the URL query parameter name exactly (case-sensitive).
+
+## Supported Conditions
+
+### Equality Checks
+
+```html
+<!-- Exact match -->
+<div data-next-show="param.mode == 'advanced'">
+  Advanced options
+</div>
+
+<!-- Not equal -->
+<div data-next-hide="param.theme != 'dark'">
+  Dark theme styles
+</div>
+```
+
+### Existence Checks
+
+Check if a parameter exists regardless of its value:
+
+```html
+<!-- Show if parameter exists (any value) -->
+<div data-next-show="param.preview">
+  Preview mode active
+</div>
+
+<!-- Hide if parameter doesn't exist -->
+<div data-next-hide="!param.authenticated">
+  Login required message
+</div>
+```
+
+### Numeric Comparisons
+
+Compare parameter values numerically:
+
+```html
+<!-- Greater than -->
+<div data-next-show="param.quantity > 5">
+  Bulk discount available!
+</div>
+
+<!-- Less than -->
+<div data-next-hide="param.age < 18">
+  Age-restricted content
+</div>
+```
+
+### Combined Conditions
+
+Combine URL parameters with other data properties using logical operators:
+
+```html
+<!-- Show only if parameter is set AND cart has items -->
+<div data-next-show="param.upsell == 'true' && cart.hasItems">
+  Special upsell offer for existing customers!
+</div>
+
+<!-- Multiple conditions -->
+<div data-next-show="param.member == 'gold' && profile.active == 'premium'">
+  Gold + Premium member exclusive content
+</div>
+```
+
+## Common Use Cases
+
+### Feature Flags
+
+Control which features are visible to users:
+
+```html
+<!-- Exit intent popup -->
+<div data-next-hide="param.exit == 'n'">
+  <div data-next-exit-intent>
+    Special offer before you leave!
+  </div>
+</div>
+
+<!-- Loading animations -->
+<div data-next-hide="param.loading == 'n'">
+  <div class="loading-bar">Loading...</div>
+</div>
+
+<!-- Promotional banners -->
+<div data-next-hide="param.banner == 'n'">
+  Promotional banner content
+</div>
+```
+
+Common feature flag parameters:
+- `?exit=n` - Disable exit intent popups
+- `?timer=n` - Disable countdown timers
+- `?reviews=n` - Hide reviews/testimonials
+- `?loading=n` - Hide loading animations
+- `?banner=n` - Remove promotional banners
+- `?seen=n` - Hide "As seen on" sections
+
+### A/B Testing
+
+Show different variations based on URL parameters:
+
+```html
+<!-- Version A -->
+<div data-next-show="param.variant == 'a'">
+  <button>Buy Now</button>
+</div>
+
+<!-- Version B -->
+<div data-next-show="param.variant == 'b'">
+  <button>Get Started Today</button>
+</div>
+```
+
+Access different variants using `?variant=a` or `?variant=b` in the URL.
+
+### Development & Testing
+
+Show debug information or test indicators:
+
+```html
+<!-- Debug panel -->
+<div data-next-show="param.debug == 'true'">
+  <pre>Cart State: <span data-next-display="cart.debug"></span></pre>
+</div>
+
+<!-- Test mode indicator -->
+<div data-next-show="param.test == 'true'"
+     style="background: yellow; padding: 10px;">
+  TEST MODE - Orders will not be processed
+</div>
+```
+
+Use `?debug=true` or `?test=true` to enable development features.
+
+### Marketing Campaigns
+
+Customize content based on campaign parameters:
+
+```html
+<!-- Campaign-specific banner -->
+<div data-next-show="param.campaign == 'summer2024'">
+  Summer Sale - 50% Off Everything!
+</div>
+
+<!-- VIP pricing -->
+<div data-next-hide="param.special == 'vip'">
+  Regular pricing section
+</div>
+<div data-next-show="param.special == 'vip'">
+  VIP exclusive pricing!
+</div>
+```
+
+Track campaigns with URLs like:
+- `?campaign=summer2024`
+- `?special=vip`
+- `?member=gold`
+
+## Session Persistence
+
+Parameters persist throughout the entire session:
+
+```
+Page 1: ?banner=n&theme=dark
+  → Stores: banner=n, theme=dark
+
+Page 2: ?theme=light
+  → Updates: theme=light
+  → Keeps: banner=n
+
+Page 3: (no parameters)
+  → Uses stored: banner=n, theme=light
+```
+
+### Parameter Priority
+
+When the same parameter appears multiple times:
+
+1. **URL parameters on current page** - Highest priority
+2. **Previously stored session parameters** - Used as fallback
+3. **New values override old values** - Most recent wins
+
+## JavaScript API
+
+Manage URL parameters programmatically without modifying the URL.
+
+### Setting Parameters
+
+```javascript
+// Set a single parameter
+next.setParam('banner', 'n');
+
+// Set multiple parameters at once
+next.setParams({
+  timer: 'n',
+  reviews: 'n'
+});
+```
+
+### Getting Parameters
+
+```javascript
+// Check if parameter exists
+if (next.hasParam('debug')) {
+  // Parameter exists
+}
+
+// Get parameter value
+const debugValue = next.getParam('debug');
+console.log('Debug mode:', debugValue);
+
+// Get all parameters
+const params = next.getAllParams();
+console.log('Current parameters:', params);
+```
+
+### Clearing Parameters
+
+```javascript
+// Clear a specific parameter
+next.clearParam('timer');
+```
+
+### JavaScript API Reference
+
+| Method | Description | Example |
+|--------|-------------|---------|
+| `next.setParam(name, value)` | Set single parameter | `next.setParam('banner', 'n')` |
+| `next.setParams(object)` | Set multiple parameters | `next.setParams({ timer: 'n' })` |
+| `next.hasParam(name)` | Check if parameter exists | `next.hasParam('debug')` |
+| `next.getParam(name)` | Get parameter value | `next.getParam('debug')` |
+| `next.clearParam(name)` | Clear parameter | `next.clearParam('timer')` |
+| `next.getAllParams()` | Get all parameters | `next.getAllParams()` |
+
+## Debugging
+
+### View Current Parameters
+
+Open the browser console and use these commands:
+
+```javascript
+// View all stored parameters (debug method)
+nextDebug.stores.parameter().debug()
+
+// Get all parameters
+const params = next.getAllParams();
+console.log('Current parameters:', params);
+
+// Check specific parameter
+nextDebug.stores.parameter().getParam('seen')
+
+// Check if parameter exists
+nextDebug.stores.parameter().hasParam('timer')
+```
+
+### Common Issues
+
+**Parameters not persisting**
+- Check that sessionStorage is not being cleared
+- Verify parameters are being set correctly
+
+**Wrong values showing**
+- Remember that URL parameters override stored values
+- Check parameter priority order
+
+**Case sensitivity**
+- Parameter names are case-sensitive
+- `param.Test` is NOT the same as `param.test`
+
+**Webflow quote stripping**
+- Webflow may strip quotes from attribute values
+- Both formats work:
+  - `data-next-hide="param.timer == 'n'"` (with quotes)
+  - `data-next-hide="param.timer==n"` (without quotes)
+- The SDK automatically handles both formats
+
+## Complete Examples
+
+### Feature Flag System
+
+```html
+<!-- Block exit intent -->
+<div data-next-hide="param.exit == 'n'">
+  <div data-next-exit-intent>
+    Special offer popup
+  </div>
+</div>
+
+<!-- Block countdown timers -->
+<div data-next-hide="param.timer == 'n'">
+  <div data-next-timer>00:00:00</div>
+</div>
+
+<!-- Hide reviews/testimonials -->
+<div data-next-hide="param.reviews == 'n'">
+  Customer reviews section
+</div>
+
+<!-- Hide loading animations -->
+<div data-next-hide="param.loading == 'n'">
+  <div class="loading-animation">Loading...</div>
+</div>
+
+<!-- Remove promotional banners -->
+<div data-next-hide="param.banner == 'n'">
+  Promotional banner content
+</div>
+
+<!-- Hide "As seen on" section -->
+<div data-next-hide="param.seen == 'n'">
+  As seen on TV/Media logos
+</div>
+```
+
+### A/B Test Implementation
+
+```html
+<!-- Test variant A -->
+<div data-next-show="param.variant == 'a'">
+  <h1>Limited Time Offer!</h1>
+  <button class="cta-red">Buy Now - Save 50%</button>
+  <p>Only 3 items left in stock</p>
+</div>
+
+<!-- Test variant B -->
+<div data-next-show="param.variant == 'b'">
+  <h1>Premium Quality Products</h1>
+  <button class="cta-blue">Get Started Today</button>
+  <p>Free shipping on all orders</p>
+</div>
+
+<!-- Control (no parameter) -->
+<div data-next-hide="param.variant">
+  <h1>Welcome to Our Store</h1>
+  <button>Shop Now</button>
+</div>
+```
+
+## Best Practices
+
+1. **Use descriptive parameter names**
+   - Good: `?hideReviews=y`
+   - Bad: `?hr=y`
+
+2. **Be consistent with values**
+   - Choose a convention: `true`/`false` or `y`/`n`
+   - Use the same convention throughout your site
+
+3. **Document your parameters**
+   - Keep a list of all parameters your site uses
+   - Document what each parameter does
+
+4. **Consider security**
+   - Don't use parameters for sensitive features without validation
+   - Parameters are visible in URLs and can be modified
+
+5. **Test thoroughly**
+   - Test parameter behavior across page navigation
+   - Verify session persistence works as expected
+   - Check both with and without parameters in URL
+
+## Conditional Operators Reference
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `==` | Equal to | `param.mode == 'advanced'` |
+| `!=` | Not equal to | `param.theme != 'dark'` |
+| `>` | Greater than | `param.quantity > 5` |
+| `<` | Less than | `param.age < 18` |
+| `param.name` | Exists (truthy) | `param.preview` |
+| `!param.name` | Does not exist | `!param.authenticated` |
+| `&&` | Logical AND | `param.a == 'x' && param.b == 'y'` |
+
+## Related Documentation
+
+- [State Attributes](/data-attributes/state/) - Conditional display logic
+- [Display Attributes](/data-attributes/display/) - Display dynamic data
+- [Configuration Attributes](/data-attributes/configuration/) - Advanced options
