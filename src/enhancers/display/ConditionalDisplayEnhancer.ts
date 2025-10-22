@@ -206,6 +206,10 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
 
   private conditionDependsOnCart(condition: any): boolean {
     switch (condition.type) {
+      case 'not':
+        // Check if the inner condition depends on cart
+        return this.conditionDependsOnCart(condition.condition);
+
       case 'logical':
         // Check if ANY sub-condition depends on cart
         return condition.conditions.some((cond: any) => this.conditionDependsOnCart(cond));
@@ -227,6 +231,10 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
 
   private conditionDependsOnPackage(condition: any): boolean {
     switch (condition.type) {
+      case 'not':
+        // Check if the inner condition depends on package
+        return this.conditionDependsOnPackage(condition.condition);
+
       case 'logical':
         // Check if ANY sub-condition depends on package
         return condition.conditions.some((cond: any) => this.conditionDependsOnPackage(cond));
@@ -248,6 +256,10 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
 
   private conditionDependsOnSelection(condition: any): boolean {
     switch (condition.type) {
+      case 'not':
+        // Check if the inner condition depends on selection
+        return this.conditionDependsOnSelection(condition.condition);
+
       case 'logical':
         // Check if ANY sub-condition depends on selection
         return condition.conditions.some((cond: any) => this.conditionDependsOnSelection(cond));
@@ -267,7 +279,7 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
                                 (condition.right.object === 'selection' ||
                                  (condition.right.object && condition.right.object.startsWith('selection.')));
         return leftIsSelection || rightIsSelection;
-      
+
       default:
         return false;
     }
@@ -275,6 +287,10 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
 
   private conditionDependsOnOrder(condition: any): boolean {
     switch (condition.type) {
+      case 'not':
+        // Check if the inner condition depends on order
+        return this.conditionDependsOnOrder(condition.condition);
+
       case 'logical':
         // Check if ANY sub-condition depends on order
         return condition.conditions.some((cond: any) => this.conditionDependsOnOrder(cond));
@@ -296,6 +312,10 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
 
   private conditionDependsOnShipping(condition: any): boolean {
     switch (condition.type) {
+      case 'not':
+        // Check if the inner condition depends on shipping
+        return this.conditionDependsOnShipping(condition.condition);
+
       case 'logical':
         // Check if ANY sub-condition depends on shipping
         return condition.conditions.some((cond: any) => this.conditionDependsOnShipping(cond));
@@ -319,6 +339,10 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
     if (!condition) return false;
 
     switch (condition.type) {
+      case 'not':
+        // Check if the inner condition depends on profile
+        return this.conditionDependsOnProfile(condition.condition);
+
       case 'logical':
         // Check if ANY sub-condition depends on profile
         return condition.conditions.some((cond: any) => this.conditionDependsOnProfile(cond));
@@ -349,6 +373,10 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
     });
 
     switch (condition.type) {
+      case 'not':
+        // Check if the inner condition depends on params
+        return this.conditionDependsOnParams(condition.condition);
+
       case 'logical':
         // Check if ANY sub-condition depends on params
         return condition.conditions.some((cond: any) => this.conditionDependsOnParams(cond));
@@ -816,6 +844,9 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
   private evaluateSelectionCondition(): boolean {
     try {
       switch (this.condition.type) {
+        case 'not':
+          return !this.evaluateSelectionConditionRecursive(this.condition.condition);
+
         case 'logical':
           return this.evaluateSelectionLogicalCondition(this.condition);
 
@@ -849,6 +880,8 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
 
   private evaluateSelectionConditionRecursive(condition: any): boolean {
     switch (condition.type) {
+      case 'not':
+        return !this.evaluateSelectionConditionRecursive(condition.condition);
       case 'logical':
         return this.evaluateSelectionLogicalCondition(condition);
       case 'property':
@@ -863,6 +896,9 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
   private evaluateShippingCondition(): boolean {
     try {
       switch (this.condition.type) {
+        case 'not':
+          return !this.evaluateShippingConditionRecursive(this.condition.condition);
+
         case 'logical':
           return this.evaluateShippingLogicalCondition(this.condition);
 
@@ -896,6 +932,8 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
 
   private evaluateShippingConditionRecursive(condition: any): boolean {
     switch (condition.type) {
+      case 'not':
+        return !this.evaluateShippingConditionRecursive(condition.condition);
       case 'logical':
         return this.evaluateShippingLogicalCondition(condition);
       case 'property':
@@ -911,6 +949,9 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
     try {
 
       switch (this.condition.type) {
+        case 'not':
+          return !this.evaluateProfileConditionRecursive(profileState, this.condition.condition);
+
         case 'logical':
           return this.evaluateProfileLogicalCondition(profileState, this.condition);
 
@@ -981,16 +1022,62 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
   }
 
   private evaluateProfileConditionRecursive(profileState: any, condition: any): boolean {
-    const originalCondition = this.condition;
-    this.condition = condition;
-    const result = this.evaluateProfileCondition(profileState);
-    this.condition = originalCondition;
-    return result;
+    switch (condition.type) {
+      case 'not':
+        return !this.evaluateProfileConditionRecursive(profileState, condition.condition);
+      case 'logical':
+        return this.evaluateProfileLogicalCondition(profileState, condition);
+      case 'property':
+        // Handle profile.active or profile.isActive
+        if (condition.property === 'active' || condition.property === 'isActive') {
+          return Boolean(profileState.activeProfileId);
+        }
+        // Handle profile.id
+        if (condition.property === 'id') {
+          return profileState.activeProfileId || '';
+        }
+        return false;
+      case 'comparison':
+        // Handle profile.active === 'profile_id'
+        if (condition.left.object === 'profile' &&
+            (condition.left.property === 'active' || condition.left.property === 'id')) {
+          const activeProfile = profileState.activeProfileId || '';
+          const compareValue = condition.right;
+          switch (condition.operator) {
+            case '===':
+            case '==':
+              return activeProfile === compareValue;
+            case '!==':
+            case '!=':
+              return activeProfile !== compareValue;
+            default:
+              return false;
+          }
+        }
+        return false;
+      case 'function':
+        // Handle profile.is('profile_id')
+        if (condition.method === 'is') {
+          const profileId = condition.args[0];
+          return profileState.activeProfileId === profileId;
+        }
+        // Handle profile.has('profile_id')
+        if (condition.method === 'has') {
+          const profileId = condition.args[0];
+          return profileState.profiles.has(profileId);
+        }
+        return false;
+      default:
+        return false;
+    }
   }
 
   private evaluateParamsCondition(paramState: any): boolean {
     try {
       switch (this.condition.type) {
+        case 'not':
+          return !this.evaluateParamsConditionRecursive(paramState, this.condition.condition);
+
         case 'logical':
           return this.evaluateParamsLogicalCondition(paramState, this.condition);
 
@@ -1072,11 +1159,53 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
   }
 
   private evaluateParamsConditionRecursive(paramState: any, condition: any): boolean {
-    const originalCondition = this.condition;
-    this.condition = condition;
-    const result = this.evaluateParamsCondition(paramState);
-    this.condition = originalCondition;
-    return result;
+    switch (condition.type) {
+      case 'not':
+        return !this.evaluateParamsConditionRecursive(paramState, condition.condition);
+      case 'logical':
+        return this.evaluateParamsLogicalCondition(paramState, condition);
+      case 'property':
+        // param.seen would check if 'seen' parameter exists
+        return paramState.hasParam(condition.property);
+      case 'comparison':
+        // param.seen == 'n' would check the value
+        const paramValue = String(paramState.getParam(condition.left.property) || '');
+        const compareValue = String(condition.right);
+        switch (condition.operator) {
+          case '===':
+          case '==':
+            return paramValue === compareValue;
+          case '!==':
+          case '!=':
+            return paramValue !== compareValue;
+          case '>':
+            return Number(paramValue) > Number(compareValue);
+          case '>=':
+            return Number(paramValue) >= Number(compareValue);
+          case '<':
+            return Number(paramValue) < Number(compareValue);
+          case '<=':
+            return Number(paramValue) <= Number(compareValue);
+          default:
+            return false;
+        }
+      case 'function':
+        // Handle param.has('seen') or param.exists('seen')
+        if (condition.method === 'has' || condition.method === 'exists') {
+          const paramName = condition.args[0];
+          return paramState.hasParam(paramName);
+        }
+        // Handle param.is('seen', 'n')
+        if (condition.method === 'is' || condition.method === 'equals') {
+          const paramName = condition.args[0];
+          const expectedValue = String(condition.args[1]);
+          const actualValue = paramState.getParam(paramName) || '';
+          return actualValue === expectedValue;
+        }
+        return false;
+      default:
+        return false;
+    }
   }
 
   private evaluateSelectionProperty(condition: any): boolean {

@@ -215,6 +215,120 @@ The SDK automatically applies CSS classes based on element state.
 | `||` | Logical OR | `cart.isEmpty || cart.total < 25` |
 | `!` | Logical NOT | `!cart.hasItem(123)` |
 
+### Compound Conditionals
+
+Combine multiple conditions using logical operators for powerful conditional logic.
+
+#### OR Operator (`||`)
+
+Show elements when ANY condition is true:
+
+```html
+<!-- Show if cart has either package -->
+<div data-next-show="cart.hasItem(15) || cart.hasItem(3)">
+  You have selected an eligible package!
+</div>
+
+<!-- Multiple OR conditions -->
+<div data-next-show="cart.hasItem(10) || cart.hasItem(15) || cart.hasItem(20)">
+  Premium package detected
+</div>
+
+<!-- Combine with comparisons -->
+<div data-next-show="cart.total > 100 || cart.totalQuantity > 5">
+  Eligible for bulk discount
+</div>
+```
+
+#### AND Operator (`&&`)
+
+Show elements when ALL conditions are true:
+
+```html
+<!-- Both conditions must be met -->
+<div data-next-show="cart.hasItem(15) && cart.total > 50">
+  Premium package with minimum order met
+</div>
+
+<!-- Multiple AND conditions -->
+<div data-next-show="cart.hasItems && cart.totalQuantity > 2 && cart.total > 30">
+  Bulk order discount applied
+</div>
+```
+
+#### NOT Operator (`!`)
+
+Negate conditions:
+
+```html
+<!-- Show when item is NOT in cart -->
+<div data-next-show="!cart.hasItem(6)">
+  <button data-next-action="add-to-cart" data-next-package-id="6">
+    Add Extended Warranty
+  </button>
+</div>
+
+<!-- Combine with other operators -->
+<div data-next-show="cart.hasItems && !cart.hasItem(123)">
+  Complete your order with our premium package
+</div>
+```
+
+#### Parentheses for Grouping
+
+Control operator precedence with parentheses:
+
+```html
+<!-- OR conditions grouped with AND -->
+<div data-next-show="(cart.hasItem(15) || cart.hasItem(3)) && cart.total > 50">
+  Special offer unlocked!
+</div>
+
+<!-- Complex eligibility check -->
+<div data-next-show="cart.hasItem(15) && (cart.total > 100 || cart.totalQuantity > 3)">
+  VIP checkout available
+</div>
+
+<!-- Multiple grouped conditions -->
+<div data-next-show="(cart.hasItem(2) || cart.hasItem(3) || cart.hasItem(4)) && !cart.hasItem(6)">
+  Protect your purchase with extended warranty
+</div>
+```
+
+#### Real-World Examples
+
+**Conditional Upsells**
+```html
+<!-- Show warranty upsell if main product in cart but warranty is not -->
+<div data-next-show="(cart.hasItem(2) || cart.hasItem(3) || cart.hasItem(4) || cart.hasItem(5)) && !cart.hasItem(6)">
+  <div class="upsell-card">
+    <h3>Protect Your Purchase</h3>
+    <p>Add 3-year extended warranty for peace of mind</p>
+    <button data-next-action="add-to-cart" data-next-package-id="6">
+      Add Warranty - $29.99
+    </button>
+  </div>
+</div>
+```
+
+**Smart Cross-Sells**
+```html
+<!-- Show accessory bundle if user has product A or B, but not the accessory -->
+<div data-next-show="(cart.hasItem(100) || cart.hasItem(101)) && !cart.hasItem(200)">
+  Complete your setup with our accessory bundle!
+</div>
+```
+
+**Eligibility Gates**
+```html
+<!-- Show express checkout only for qualified orders -->
+<div data-next-show="cart.total > 25 && cart.total < 500 && cart.hasItems">
+  <button data-next-action="express-checkout">
+    Express Checkout Available
+  </button>
+</div>
+```
+
 ### Available Properties
 
 #### Cart Properties
