@@ -242,6 +242,42 @@ export class AttributeParser {
     try {
       this.logger.debug('Parsing condition:', condition);
 
+      // Trim the condition
+      condition = condition.trim();
+
+      // Check for logical operators (|| and &&)
+      // We need to split while respecting parentheses and function calls
+      const logicalSplit = this.splitByLogicalOperator(condition);
+
+      if (logicalSplit) {
+        // We have a compound condition
+        const { operator, parts } = logicalSplit;
+
+        return {
+          type: 'logical',
+          operator: operator,
+          conditions: parts.map(part => this.parseCondition(part))
+        };
+      }
+
+      // Check for NOT operator (!)
+      if (condition.startsWith('!')) {
+        const innerCondition = condition.slice(1).trim();
+        return {
+          type: 'not',
+          condition: this.parseCondition(innerCondition)
+        };
+      }
+
+      // Remove outer parentheses if present
+      if (condition.startsWith('(') && condition.endsWith(')')) {
+        const innerCondition = condition.slice(1, -1);
+        // Make sure these are matching outer parentheses, not part of a function call
+        if (!innerCondition.includes('(') || this.hasMatchingParentheses(innerCondition)) {
+          return this.parseCondition(innerCondition);
+        }
+      }
+
       // Support simple conditions like "cart.hasItems" or complex ones like "cart.total > 50"
       if (condition.includes('(') && condition.includes(')')) {
         // Function call format: cart.hasItem(123)
@@ -255,7 +291,7 @@ export class AttributeParser {
           };
         }
       }
-      
+
       if (condition.includes(' ') || condition.includes('==') || condition.includes('!=')) {
         // Comparison format: cart.total > 50 or param.timer==n (without spaces)
         const operators = ['>=', '<=', '>', '<', '===', '==', '!==', '!='];
@@ -319,7 +355,7 @@ export class AttributeParser {
           }
         }
       }
-      
+
       // Simple property access: cart.hasItems
       return {
         type: 'property',
@@ -329,5 +365,85 @@ export class AttributeParser {
       this.logger.error('Failed to parse condition:', condition, error);
       return { type: 'property', object: 'cart', property: 'isEmpty' };
     }
+  }
+
+  /**
+   * Split a condition by logical operators (|| or &&) while respecting parentheses
+   * Returns null if no logical operators are found at the top level
+   */
+  private static splitByLogicalOperator(condition: string): { operator: '||' | '&&', parts: string[] } | null {
+    // Check for || first (lower precedence)
+    const orParts = this.splitByOperator(condition, '||');
+    if (orParts.length > 1) {
+      return { operator: '||', parts: orParts };
+    }
+
+    // Check for && (higher precedence)
+    const andParts = this.splitByOperator(condition, '&&');
+    if (andParts.length > 1) {
+      return { operator: '&&', parts: andParts };
+    }
+
+    return null;
+  }
+
+  /**
+   * Split a string by an operator while respecting parentheses and function calls
+   */
+  private static splitByOperator(text: string, operator: string): string[] {
+    const parts: string[] = [];
+    let currentPart = '';
+    let depth = 0;
+    let i = 0;
+
+    while (i < text.length) {
+      const char = text[i];
+      const nextChar = text[i + 1];
+
+      // Track parentheses depth
+      if (char === '(') {
+        depth++;
+        currentPart += char;
+        i++;
+        continue;
+      } else if (char === ')') {
+        depth--;
+        currentPart += char;
+        i++;
+        continue;
+      }
+
+      // Check if we're at the operator and at depth 0
+      if (depth === 0 && text.slice(i, i + operator.length) === operator) {
+        // Found the operator at top level
+        parts.push(currentPart.trim());
+        currentPart = '';
+        i += operator.length;
+        continue;
+      }
+
+      currentPart += char;
+      i++;
+    }
+
+    // Add the last part
+    if (currentPart.trim()) {
+      parts.push(currentPart.trim());
+    }
+
+    return parts;
+  }
+
+  /**
+   * Check if a string has matching parentheses
+   */
+  private static hasMatchingParentheses(text: string): boolean {
+    let depth = 0;
+    for (const char of text) {
+      if (char === '(') depth++;
+      if (char === ')') depth--;
+      if (depth < 0) return false;
+    }
+    return depth === 0;
   }
 }
