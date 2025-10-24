@@ -11,7 +11,7 @@ export interface CheckoutState {
   errors: Record<string, string>;
   formData: Record<string, any>;
   paymentToken?: string;
-  paymentMethod: 'card_token' | 'paypal' | 'apple_pay' | 'google_pay' | 'credit-card';
+  paymentMethod: 'card_token' | 'paypal' | 'apple_pay' | 'google_pay' | 'credit-card' | 'klarna';
   shippingMethod?: {
     id: number;
     name: string;
@@ -161,11 +161,11 @@ export const useCheckoutStore = create<CheckoutState & CheckoutActions>()(
           shippingMethod: state.shippingMethod,
           billingAddress: state.billingAddress,
           sameAsShipping: state.sameAsShipping,
+          paymentMethod: state.paymentMethod, // Persist payment method selection for better UX when navigating back
           // Explicitly exclude:
           // - errors (transient validation state)
           // - isProcessing (transient UI state)
           // - paymentToken (sensitive, should not persist)
-          // - paymentMethod (should be derived from form, not persisted)
           // - testMode (session-specific)
           // - vouchers (will be revalidated on page load)
         } as any;
