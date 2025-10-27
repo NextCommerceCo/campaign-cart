@@ -28,6 +28,7 @@ export declare class TooltipEnhancer extends BaseEnhancer {
     private handleBlur;
     private handleTouchStart;
     private handleKeydown;
+    private handleScroll;
     private scheduleShow;
     private scheduleHide;
     private cleanupTimeouts;
