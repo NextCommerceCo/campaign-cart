@@ -224,16 +224,19 @@ export class TooltipEnhancer extends BaseEnhancer {
     // Mouse events
     this.element.addEventListener('mouseenter', this.handleMouseEnter);
     this.element.addEventListener('mouseleave', this.handleMouseLeave);
-    
+
     // Focus events for accessibility
     this.element.addEventListener('focus', this.handleFocus);
     this.element.addEventListener('blur', this.handleBlur);
-    
+
     // Touch events for mobile
     this.element.addEventListener('touchstart', this.handleTouchStart);
-    
+
     // Escape key to hide tooltip
     document.addEventListener('keydown', this.handleKeydown);
+
+    // Hide tooltip on scroll (especially important for mobile)
+    window.addEventListener('scroll', this.handleScroll, { passive: true });
   }
 
   protected override cleanupEventListeners(): void {
@@ -243,6 +246,7 @@ export class TooltipEnhancer extends BaseEnhancer {
     this.element.removeEventListener('blur', this.handleBlur);
     this.element.removeEventListener('touchstart', this.handleTouchStart);
     document.removeEventListener('keydown', this.handleKeydown);
+    window.removeEventListener('scroll', this.handleScroll);
   }
 
   private handleMouseEnter = (): void => {
@@ -273,6 +277,13 @@ export class TooltipEnhancer extends BaseEnhancer {
 
   private handleKeydown = (e: KeyboardEvent): void => {
     if (e.key === 'Escape' && this.isVisible) {
+      this.hide();
+    }
+  };
+
+  private handleScroll = (): void => {
+    // Hide tooltip immediately when scrolling (especially important for mobile)
+    if (this.isVisible) {
       this.hide();
     }
   };
