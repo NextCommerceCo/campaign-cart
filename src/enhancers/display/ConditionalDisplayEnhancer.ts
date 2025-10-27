@@ -206,16 +206,24 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
 
   private conditionDependsOnCart(condition: any): boolean {
     switch (condition.type) {
+      case 'not':
+        // Check if the inner condition depends on cart
+        return this.conditionDependsOnCart(condition.condition);
+
+      case 'logical':
+        // Check if ANY sub-condition depends on cart
+        return condition.conditions.some((cond: any) => this.conditionDependsOnCart(cond));
+
       case 'property':
         return condition.object === 'cart';
-      
+
       case 'function':
         return condition.object === 'cart';
-      
+
       case 'comparison':
-        return condition.left.object === 'cart' || 
+        return condition.left.object === 'cart' ||
                (condition.right && typeof condition.right === 'object' && condition.right.object === 'cart');
-      
+
       default:
         return false;
     }
@@ -223,16 +231,24 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
 
   private conditionDependsOnPackage(condition: any): boolean {
     switch (condition.type) {
+      case 'not':
+        // Check if the inner condition depends on package
+        return this.conditionDependsOnPackage(condition.condition);
+
+      case 'logical':
+        // Check if ANY sub-condition depends on package
+        return condition.conditions.some((cond: any) => this.conditionDependsOnPackage(cond));
+
       case 'property':
         return condition.object === 'package';
-      
+
       case 'function':
         return condition.object === 'package';
-      
+
       case 'comparison':
-        return condition.left.object === 'package' || 
+        return condition.left.object === 'package' ||
                (condition.right && typeof condition.right === 'object' && condition.right.object === 'package');
-      
+
       default:
         return false;
     }
@@ -240,22 +256,30 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
 
   private conditionDependsOnSelection(condition: any): boolean {
     switch (condition.type) {
+      case 'not':
+        // Check if the inner condition depends on selection
+        return this.conditionDependsOnSelection(condition.condition);
+
+      case 'logical':
+        // Check if ANY sub-condition depends on selection
+        return condition.conditions.some((cond: any) => this.conditionDependsOnSelection(cond));
+
       case 'property':
-        return condition.object === 'selection' || 
+        return condition.object === 'selection' ||
                (condition.object && condition.object.startsWith('selection.'));
-      
+
       case 'function':
-        return condition.object === 'selection' || 
+        return condition.object === 'selection' ||
                (condition.object && condition.object.startsWith('selection.'));
-      
+
       case 'comparison':
-        const leftIsSelection = condition.left.object === 'selection' || 
+        const leftIsSelection = condition.left.object === 'selection' ||
                                (condition.left.object && condition.left.object.startsWith('selection.'));
-        const rightIsSelection = condition.right && typeof condition.right === 'object' && 
-                                (condition.right.object === 'selection' || 
+        const rightIsSelection = condition.right && typeof condition.right === 'object' &&
+                                (condition.right.object === 'selection' ||
                                  (condition.right.object && condition.right.object.startsWith('selection.')));
         return leftIsSelection || rightIsSelection;
-      
+
       default:
         return false;
     }
@@ -263,16 +287,24 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
 
   private conditionDependsOnOrder(condition: any): boolean {
     switch (condition.type) {
+      case 'not':
+        // Check if the inner condition depends on order
+        return this.conditionDependsOnOrder(condition.condition);
+
+      case 'logical':
+        // Check if ANY sub-condition depends on order
+        return condition.conditions.some((cond: any) => this.conditionDependsOnOrder(cond));
+
       case 'property':
         return condition.object === 'order';
-      
+
       case 'function':
         return condition.object === 'order';
-      
+
       case 'comparison':
-        return condition.left.object === 'order' || 
+        return condition.left.object === 'order' ||
                (condition.right && typeof condition.right === 'object' && condition.right.object === 'order');
-      
+
       default:
         return false;
     }
@@ -280,16 +312,24 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
 
   private conditionDependsOnShipping(condition: any): boolean {
     switch (condition.type) {
+      case 'not':
+        // Check if the inner condition depends on shipping
+        return this.conditionDependsOnShipping(condition.condition);
+
+      case 'logical':
+        // Check if ANY sub-condition depends on shipping
+        return condition.conditions.some((cond: any) => this.conditionDependsOnShipping(cond));
+
       case 'property':
         return condition.object === 'shipping';
-      
+
       case 'function':
         return condition.object === 'shipping';
-      
+
       case 'comparison':
-        return condition.left.object === 'shipping' || 
+        return condition.left.object === 'shipping' ||
                (condition.right && typeof condition.right === 'object' && condition.right.object === 'shipping');
-      
+
       default:
         return false;
     }
@@ -299,6 +339,14 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
     if (!condition) return false;
 
     switch (condition.type) {
+      case 'not':
+        // Check if the inner condition depends on profile
+        return this.conditionDependsOnProfile(condition.condition);
+
+      case 'logical':
+        // Check if ANY sub-condition depends on profile
+        return condition.conditions.some((cond: any) => this.conditionDependsOnProfile(cond));
+
       case 'property':
         return condition.object === 'profile';
 
@@ -325,6 +373,14 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
     });
 
     switch (condition.type) {
+      case 'not':
+        // Check if the inner condition depends on params
+        return this.conditionDependsOnParams(condition.condition);
+
+      case 'logical':
+        // Check if ANY sub-condition depends on params
+        return condition.conditions.some((cond: any) => this.conditionDependsOnParams(cond));
+
       case 'property':
         return condition.object === 'param' || condition.object === 'params';
 
@@ -471,12 +527,18 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
   private evaluatePackageCondition(): boolean {
     try {
       switch (this.condition.type) {
+        case 'not':
+          return !this.evaluatePackageConditionRecursive(this.condition.condition);
+
+        case 'logical':
+          return this.evaluatePackageLogicalCondition(this.condition);
+
         case 'property':
           return this.evaluatePackageProperty(this.condition);
-        
+
         case 'comparison':
           return this.evaluatePackageComparison(this.condition);
-        
+
         default:
           this.logger.warn(`Unsupported condition type for package: ${this.condition.type}`);
           return false;
@@ -487,15 +549,48 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
     }
   }
 
+  private evaluatePackageLogicalCondition(condition: any): boolean {
+    const { operator, conditions } = condition;
+
+    if (operator === '||') {
+      return conditions.some((cond: any) => this.evaluatePackageConditionRecursive(cond));
+    } else if (operator === '&&') {
+      return conditions.every((cond: any) => this.evaluatePackageConditionRecursive(cond));
+    }
+
+    return false;
+  }
+
+  private evaluatePackageConditionRecursive(condition: any): boolean {
+    switch (condition.type) {
+      case 'not':
+        return !this.evaluatePackageConditionRecursive(condition.condition);
+      case 'logical':
+        return this.evaluatePackageLogicalCondition(condition);
+      case 'property':
+        return this.evaluatePackageProperty(condition);
+      case 'comparison':
+        return this.evaluatePackageComparison(condition);
+      default:
+        return false;
+    }
+  }
+
   private evaluateOrderCondition(orderState: any): boolean {
     try {
       switch (this.condition.type) {
+        case 'not':
+          return !this.evaluateOrderConditionRecursive(orderState, this.condition.condition);
+
+        case 'logical':
+          return this.evaluateOrderLogicalCondition(orderState, this.condition);
+
         case 'property':
           return this.evaluateOrderProperty(orderState, this.condition);
-        
+
         case 'comparison':
           return this.evaluateOrderComparison(orderState, this.condition);
-        
+
         default:
           this.logger.warn(`Unsupported condition type for order: ${this.condition.type}`);
           return false;
@@ -503,6 +598,33 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
     } catch (error) {
       this.logger.error('Error evaluating order condition:', error);
       return false;
+    }
+  }
+
+  private evaluateOrderLogicalCondition(orderState: any, condition: any): boolean {
+    const { operator, conditions } = condition;
+
+    if (operator === '||') {
+      return conditions.some((cond: any) => this.evaluateOrderConditionRecursive(orderState, cond));
+    } else if (operator === '&&') {
+      return conditions.every((cond: any) => this.evaluateOrderConditionRecursive(orderState, cond));
+    }
+
+    return false;
+  }
+
+  private evaluateOrderConditionRecursive(orderState: any, condition: any): boolean {
+    switch (condition.type) {
+      case 'not':
+        return !this.evaluateOrderConditionRecursive(orderState, condition.condition);
+      case 'logical':
+        return this.evaluateOrderLogicalCondition(orderState, condition);
+      case 'property':
+        return this.evaluateOrderProperty(orderState, condition);
+      case 'comparison':
+        return this.evaluateOrderComparison(orderState, condition);
+      default:
+        return false;
     }
   }
 
@@ -586,15 +708,21 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
   private evaluateCondition(cartState: CartState): boolean {
     try {
       switch (this.condition.type) {
+        case 'not':
+          return !this.evaluateConditionRecursive(cartState, this.condition.condition);
+
+        case 'logical':
+          return this.evaluateLogicalCondition(cartState, this.condition);
+
         case 'property':
           return this.evaluateProperty(cartState, this.condition);
-        
+
         case 'function':
           return this.evaluateFunction(cartState, this.condition);
-        
+
         case 'comparison':
           return this.evaluateComparison(cartState, this.condition);
-        
+
         default:
           this.logger.warn(`Unknown condition type: ${this.condition.type}`);
           return false;
@@ -602,6 +730,42 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
     } catch (error) {
       this.logger.error('Error evaluating condition:', error);
       return false;
+    }
+  }
+
+  private evaluateLogicalCondition(cartState: CartState, condition: any): boolean {
+    const { operator, conditions } = condition;
+
+    if (operator === '||') {
+      // OR: return true if ANY condition is true
+      return conditions.some((cond: any) => this.evaluateConditionRecursive(cartState, cond));
+    } else if (operator === '&&') {
+      // AND: return true only if ALL conditions are true
+      return conditions.every((cond: any) => this.evaluateConditionRecursive(cartState, cond));
+    }
+
+    return false;
+  }
+
+  private evaluateConditionRecursive(cartState: CartState, condition: any): boolean {
+    switch (condition.type) {
+      case 'not':
+        return !this.evaluateConditionRecursive(cartState, condition.condition);
+
+      case 'logical':
+        return this.evaluateLogicalCondition(cartState, condition);
+
+      case 'property':
+        return this.evaluateProperty(cartState, condition);
+
+      case 'function':
+        return this.evaluateFunction(cartState, condition);
+
+      case 'comparison':
+        return this.evaluateComparison(cartState, condition);
+
+      default:
+        return false;
     }
   }
 
@@ -680,12 +844,18 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
   private evaluateSelectionCondition(): boolean {
     try {
       switch (this.condition.type) {
+        case 'not':
+          return !this.evaluateSelectionConditionRecursive(this.condition.condition);
+
+        case 'logical':
+          return this.evaluateSelectionLogicalCondition(this.condition);
+
         case 'property':
           return this.evaluateSelectionProperty(this.condition);
-        
+
         case 'comparison':
           return this.evaluateSelectionComparison(this.condition);
-        
+
         default:
           this.logger.warn(`Unsupported condition type for selection: ${this.condition.type}`);
           return false;
@@ -696,15 +866,48 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
     }
   }
 
+  private evaluateSelectionLogicalCondition(condition: any): boolean {
+    const { operator, conditions } = condition;
+
+    if (operator === '||') {
+      return conditions.some((cond: any) => this.evaluateSelectionConditionRecursive(cond));
+    } else if (operator === '&&') {
+      return conditions.every((cond: any) => this.evaluateSelectionConditionRecursive(cond));
+    }
+
+    return false;
+  }
+
+  private evaluateSelectionConditionRecursive(condition: any): boolean {
+    switch (condition.type) {
+      case 'not':
+        return !this.evaluateSelectionConditionRecursive(condition.condition);
+      case 'logical':
+        return this.evaluateSelectionLogicalCondition(condition);
+      case 'property':
+        return this.evaluateSelectionProperty(condition);
+      case 'comparison':
+        return this.evaluateSelectionComparison(condition);
+      default:
+        return false;
+    }
+  }
+
   private evaluateShippingCondition(): boolean {
     try {
       switch (this.condition.type) {
+        case 'not':
+          return !this.evaluateShippingConditionRecursive(this.condition.condition);
+
+        case 'logical':
+          return this.evaluateShippingLogicalCondition(this.condition);
+
         case 'property':
           return this.evaluateShippingProperty(this.condition);
-        
+
         case 'comparison':
           return this.evaluateShippingComparison(this.condition);
-        
+
         default:
           this.logger.warn(`Unsupported condition type for shipping: ${this.condition.type}`);
           return false;
@@ -715,10 +918,43 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
     }
   }
 
+  private evaluateShippingLogicalCondition(condition: any): boolean {
+    const { operator, conditions } = condition;
+
+    if (operator === '||') {
+      return conditions.some((cond: any) => this.evaluateShippingConditionRecursive(cond));
+    } else if (operator === '&&') {
+      return conditions.every((cond: any) => this.evaluateShippingConditionRecursive(cond));
+    }
+
+    return false;
+  }
+
+  private evaluateShippingConditionRecursive(condition: any): boolean {
+    switch (condition.type) {
+      case 'not':
+        return !this.evaluateShippingConditionRecursive(condition.condition);
+      case 'logical':
+        return this.evaluateShippingLogicalCondition(condition);
+      case 'property':
+        return this.evaluateShippingProperty(condition);
+      case 'comparison':
+        return this.evaluateShippingComparison(condition);
+      default:
+        return false;
+    }
+  }
+
   private evaluateProfileCondition(profileState: any): boolean {
     try {
 
       switch (this.condition.type) {
+        case 'not':
+          return !this.evaluateProfileConditionRecursive(profileState, this.condition.condition);
+
+        case 'logical':
+          return this.evaluateProfileLogicalCondition(profileState, this.condition);
+
         case 'property':
           // Handle profile.active or profile.isActive
           if (this.condition.property === 'active' || this.condition.property === 'isActive') {
@@ -773,9 +1009,78 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
     }
   }
 
+  private evaluateProfileLogicalCondition(profileState: any, condition: any): boolean {
+    const { operator, conditions } = condition;
+
+    if (operator === '||') {
+      return conditions.some((cond: any) => this.evaluateProfileConditionRecursive(profileState, cond));
+    } else if (operator === '&&') {
+      return conditions.every((cond: any) => this.evaluateProfileConditionRecursive(profileState, cond));
+    }
+
+    return false;
+  }
+
+  private evaluateProfileConditionRecursive(profileState: any, condition: any): boolean {
+    switch (condition.type) {
+      case 'not':
+        return !this.evaluateProfileConditionRecursive(profileState, condition.condition);
+      case 'logical':
+        return this.evaluateProfileLogicalCondition(profileState, condition);
+      case 'property':
+        // Handle profile.active or profile.isActive
+        if (condition.property === 'active' || condition.property === 'isActive') {
+          return Boolean(profileState.activeProfileId);
+        }
+        // Handle profile.id
+        if (condition.property === 'id') {
+          return profileState.activeProfileId || '';
+        }
+        return false;
+      case 'comparison':
+        // Handle profile.active === 'profile_id'
+        if (condition.left.object === 'profile' &&
+            (condition.left.property === 'active' || condition.left.property === 'id')) {
+          const activeProfile = profileState.activeProfileId || '';
+          const compareValue = condition.right;
+          switch (condition.operator) {
+            case '===':
+            case '==':
+              return activeProfile === compareValue;
+            case '!==':
+            case '!=':
+              return activeProfile !== compareValue;
+            default:
+              return false;
+          }
+        }
+        return false;
+      case 'function':
+        // Handle profile.is('profile_id')
+        if (condition.method === 'is') {
+          const profileId = condition.args[0];
+          return profileState.activeProfileId === profileId;
+        }
+        // Handle profile.has('profile_id')
+        if (condition.method === 'has') {
+          const profileId = condition.args[0];
+          return profileState.profiles.has(profileId);
+        }
+        return false;
+      default:
+        return false;
+    }
+  }
+
   private evaluateParamsCondition(paramState: any): boolean {
     try {
       switch (this.condition.type) {
+        case 'not':
+          return !this.evaluateParamsConditionRecursive(paramState, this.condition.condition);
+
+        case 'logical':
+          return this.evaluateParamsLogicalCondition(paramState, this.condition);
+
         case 'property':
           // param.seen would check if 'seen' parameter exists
           return paramState.hasParam(this.condition.property);
@@ -838,6 +1143,68 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
     } catch (error) {
       this.logger.error('Error evaluating params condition:', error);
       return false;
+    }
+  }
+
+  private evaluateParamsLogicalCondition(paramState: any, condition: any): boolean {
+    const { operator, conditions } = condition;
+
+    if (operator === '||') {
+      return conditions.some((cond: any) => this.evaluateParamsConditionRecursive(paramState, cond));
+    } else if (operator === '&&') {
+      return conditions.every((cond: any) => this.evaluateParamsConditionRecursive(paramState, cond));
+    }
+
+    return false;
+  }
+
+  private evaluateParamsConditionRecursive(paramState: any, condition: any): boolean {
+    switch (condition.type) {
+      case 'not':
+        return !this.evaluateParamsConditionRecursive(paramState, condition.condition);
+      case 'logical':
+        return this.evaluateParamsLogicalCondition(paramState, condition);
+      case 'property':
+        // param.seen would check if 'seen' parameter exists
+        return paramState.hasParam(condition.property);
+      case 'comparison':
+        // param.seen == 'n' would check the value
+        const paramValue = String(paramState.getParam(condition.left.property) || '');
+        const compareValue = String(condition.right);
+        switch (condition.operator) {
+          case '===':
+          case '==':
+            return paramValue === compareValue;
+          case '!==':
+          case '!=':
+            return paramValue !== compareValue;
+          case '>':
+            return Number(paramValue) > Number(compareValue);
+          case '>=':
+            return Number(paramValue) >= Number(compareValue);
+          case '<':
+            return Number(paramValue) < Number(compareValue);
+          case '<=':
+            return Number(paramValue) <= Number(compareValue);
+          default:
+            return false;
+        }
+      case 'function':
+        // Handle param.has('seen') or param.exists('seen')
+        if (condition.method === 'has' || condition.method === 'exists') {
+          const paramName = condition.args[0];
+          return paramState.hasParam(paramName);
+        }
+        // Handle param.is('seen', 'n')
+        if (condition.method === 'is' || condition.method === 'equals') {
+          const paramName = condition.args[0];
+          const expectedValue = String(condition.args[1]);
+          const actualValue = paramState.getParam(paramName) || '';
+          return actualValue === expectedValue;
+        }
+        return false;
+      default:
+        return false;
     }
   }
 

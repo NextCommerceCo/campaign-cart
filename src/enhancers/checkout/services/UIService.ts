@@ -11,6 +11,7 @@ import type { Logger } from '@/utils/logger';
 import type { CartState } from '@/types/global';
 import { ErrorDisplayManager } from '../utils/error-display-utils';
 import { EventHandlerManager } from '../utils/event-handler-utils';
+import { useCheckoutStore } from '@/stores/checkoutStore';
 
 export class UIService {
   private form: HTMLFormElement;
@@ -307,29 +308,48 @@ export class UIService {
   // ============================================================================
 
   /**
-   * Initialize payment forms based on their current state in the DOM
+   * Initialize payment forms based on the checkout store state
    */
   public initializePaymentForms(): void {
     this.logger.debug('Initializing payment forms');
-    
+
+    // Get the payment method from checkout store
+    const checkoutStore = useCheckoutStore.getState();
+    const storePaymentMethod = checkoutStore.paymentMethod;
+
+    this.logger.debug('Payment method from store:', storePaymentMethod);
+
     const paymentMethods = this.form.querySelectorAll('[data-next-payment-method]');
-    
+
     paymentMethods.forEach(paymentMethodElement => {
       if (paymentMethodElement instanceof HTMLElement) {
+        const methodType = paymentMethodElement.getAttribute('data-next-payment-method');
         const radio = paymentMethodElement.querySelector('input[type="radio"]');
         const paymentForm = paymentMethodElement.querySelector('[data-next-payment-form]');
-        
+
         if (!(radio instanceof HTMLInputElement) || !(paymentForm instanceof HTMLElement)) {
           return;
         }
-        
-        // Check the current state from HTML
-        const isExpanded = paymentForm.getAttribute('data-next-payment-state') === 'expanded' ||
-                          paymentForm.classList.contains('payment-method__form--expanded');
-        const isChecked = radio.checked;
-        
-        // Sync the state
-        if (isChecked || isExpanded) {
+
+        // Map store payment method to radio value
+        // Store uses: 'credit-card', 'paypal', 'apple_pay', 'google_pay', 'klarna'
+        // Radio uses: 'credit', 'paypal', 'apple-pay', 'google-pay', 'klarna'
+        const paymentMethodMap: Record<string, string[]> = {
+          'credit': ['credit-card', 'card_token'],
+          'paypal': ['paypal'],
+          'apple-pay': ['apple_pay'],
+          'google-pay': ['google_pay'],
+          'klarna': ['klarna']
+        };
+
+        // Check if this payment method should be selected based on store
+        const shouldBeSelected = methodType && paymentMethodMap[methodType]?.includes(storePaymentMethod || '');
+
+        // Sync radio button state with store
+        radio.checked = !!shouldBeSelected;
+
+        // Sync the visual state
+        if (shouldBeSelected) {
           // Ensure it's properly expanded
           paymentMethodElement.classList.add('next-selected');
           paymentForm.setAttribute('data-next-payment-state', 'expanded');
@@ -340,6 +360,8 @@ export class UIService {
           paymentForm.style.height = '';
           paymentForm.style.overflow = '';
           paymentForm.style.transition = '';
+
+          this.logger.debug(`Expanded payment method: ${methodType} (store: ${storePaymentMethod})`);
         } else {
           // Ensure it's properly collapsed
           paymentMethodElement.classList.remove('next-selected');
@@ -351,6 +373,8 @@ export class UIService {
           paymentForm.style.height = '0px';
           paymentForm.style.overflow = 'hidden';
           paymentForm.style.transition = '';
+
+          this.logger.debug(`Collapsed payment method: ${methodType}`);
         }
       }
     });

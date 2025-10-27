@@ -4,7 +4,7 @@ export interface CheckoutState {
     errors: Record<string, string>;
     formData: Record<string, any>;
     paymentToken?: string;
-    paymentMethod: 'card_token' | 'paypal' | 'apple_pay' | 'google_pay' | 'credit-card';
+    paymentMethod: 'card_token' | 'paypal' | 'apple_pay' | 'google_pay' | 'credit-card' | 'klarna';
     shippingMethod?: {
         id: number;
         name: string;

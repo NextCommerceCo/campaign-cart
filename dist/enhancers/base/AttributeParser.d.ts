@@ -14,5 +14,8 @@ export declare class AttributeParser {
         property: string;
     };
     static parseCondition(condition: string): any;
+    private static splitByLogicalOperator;
+    private static splitByOperator;
+    private static hasMatchingParentheses;
 }
 //# sourceMappingURL=AttributeParser.d.ts.map

@@ -31,11 +31,12 @@ const BILLING_CONTAINER_SELECTOR = '[os-checkout-element="different-billing-addr
 const SHIPPING_FORM_SELECTOR = '[os-checkout-component="shipping-form"], [data-next-component="shipping-form"]';
 const BILLING_FORM_CONTAINER_SELECTOR = '[os-checkout-component="billing-form"], [data-next-component="billing-form"]';
 
-const PAYMENT_METHOD_MAP: Record<string, 'card_token' | 'paypal' | 'apple_pay' | 'google_pay' | 'credit-card'> = {
+const PAYMENT_METHOD_MAP: Record<string, 'card_token' | 'paypal' | 'apple_pay' | 'google_pay' | 'klarna' | 'credit-card'> = {
   'credit': 'credit-card',
   'paypal': 'paypal',
   'apple-pay': 'apple_pay',
-  'google-pay': 'google_pay'
+  'google-pay': 'google_pay',
+  'klarna': 'klarna'
 };
 
 const API_PAYMENT_METHOD_MAP: Record<string, PaymentMethod> = {
@@ -43,7 +44,8 @@ const API_PAYMENT_METHOD_MAP: Record<string, PaymentMethod> = {
   'card_token': 'card_token',
   'paypal': 'paypal',
   'apple_pay': 'apple_pay',
-  'google_pay': 'google_pay'
+  'google_pay': 'google_pay',
+  'klarna': 'klarna'
 };
 
 
@@ -288,15 +290,18 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
         const checkoutStore = useCheckoutStore.getState();
 
-        // Reset processing state
+        // Reset processing state if needed
         if (checkoutStore.isProcessing) {
           this.logger.info('Resetting processing state after bfcache restore');
           checkoutStore.setProcessing(false);
         }
+
+        // Always reset express payment methods when returning from bfcache
+        // This handles cases where user pressed back from Apple Pay/Google Pay/PayPal
         if (checkoutStore.paymentMethod === 'apple_pay' ||
             checkoutStore.paymentMethod === 'google_pay' ||
             checkoutStore.paymentMethod === 'paypal') {
-          this.logger.info('Resetting payment method from', checkoutStore.paymentMethod, 'to credit-card');
+          this.logger.info('Resetting payment method from', checkoutStore.paymentMethod, 'to credit-card after bfcache restore');
           checkoutStore.setPaymentMethod('credit-card');
           checkoutStore.setPaymentToken(''); // Clear any stale payment token
         }

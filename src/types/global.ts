@@ -577,7 +577,8 @@ export interface CheckoutData {
     | 'paypal'
     | 'apple_pay'
     | 'google_pay'
-    | 'credit-card';
+    | 'credit-card'
+    | 'klarna';
   isProcessing?: boolean;
   step?: number;
 }

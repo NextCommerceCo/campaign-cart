@@ -11,7 +11,7 @@ export interface CheckoutState {
   errors: Record<string, string>;
   formData: Record<string, any>;
   paymentToken?: string;
-  paymentMethod: 'card_token' | 'paypal' | 'apple_pay' | 'google_pay' | 'credit-card';
+  paymentMethod: 'card_token' | 'paypal' | 'apple_pay' | 'google_pay' | 'credit-card' | 'klarna';
   shippingMethod?: {
     id: number;
     name: string;
@@ -155,19 +155,65 @@ export const useCheckoutStore = create<CheckoutState & CheckoutActions>()(
       },
       // Exclude transient state from persistence
       partialize: (state) => {
+        // Don't persist express payment methods (they should reset to credit-card on page load/navigation)
+        const paymentMethod = (state.paymentMethod === 'apple_pay' ||
+                               state.paymentMethod === 'google_pay' ||
+                               state.paymentMethod === 'paypal')
+          ? 'credit-card'
+          : state.paymentMethod;
+
+        // Filter out sensitive payment fields from formData
+        const {
+          cvv,
+          card_cvv,
+          month,
+          expiration_month,
+          year,
+          expiration_year,
+          'exp-month': expMonth,
+          'exp-year': expYear,
+          card_number,
+          ...remainingFormData
+        } = state.formData;
+
+        // Remove empty string values from formData (no point persisting empty fields)
+        const safeFormData = Object.fromEntries(
+          Object.entries(remainingFormData).filter(([_, value]) => {
+            // Keep non-empty strings, booleans, and numbers
+            if (typeof value === 'string') return value.trim() !== '';
+            if (typeof value === 'boolean' || typeof value === 'number') return true;
+            return false;
+          })
+        );
+
+        // Filter out empty billing address fields
+        let billingAddress = state.billingAddress;
+        if (billingAddress) {
+          const filteredBilling = Object.fromEntries(
+            Object.entries(billingAddress).filter(([_, value]) => {
+              if (typeof value === 'string') return value.trim() !== '';
+              return false;
+            })
+          );
+          // Only persist if there's at least one non-empty field
+          billingAddress = Object.keys(filteredBilling).length > 0 ? filteredBilling as any : undefined;
+        }
+
         return {
           step: state.step,
-          formData: state.formData,
+          formData: safeFormData, // Exclude CVV, expiration, card number, and empty values
           shippingMethod: state.shippingMethod,
-          billingAddress: state.billingAddress,
+          billingAddress, // Only non-empty billing fields
           sameAsShipping: state.sameAsShipping,
+          paymentMethod, // Only persist credit-card/klarna, not express methods
           // Explicitly exclude:
           // - errors (transient validation state)
           // - isProcessing (transient UI state)
           // - paymentToken (sensitive, should not persist)
-          // - paymentMethod (should be derived from form, not persisted)
           // - testMode (session-specific)
           // - vouchers (will be revalidated on page load)
+          // - CVV, card number, expiration (sensitive payment data)
+          // - Empty string values (no benefit to persist)
         } as any;
       },
     }

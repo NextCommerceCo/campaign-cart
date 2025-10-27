@@ -687,9 +687,16 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
           // Auto-add pre-selected item to cart (except in select mode)
           // The cart store will handle any profile mapping needed
           if (this.mode !== 'select' && cartState.isEmpty) {
-            this.updateCart(null, preSelected).catch(error => {
-              this.logger.error('Failed to add pre-selected item:', error);
-            });
+            this.updateCart(null, preSelected)
+              .then(() => {
+                // Handle shipping method if specified
+                if (preSelected.shippingId) {
+                  this.setShippingMethod(preSelected.shippingId);
+                }
+              })
+              .catch(error => {
+                this.logger.error('Failed to add pre-selected item:', error);
+              });
           }
         } else if (this.mode === 'select' && this.items.length > 0) {
           // In select mode with no pre-selected item, select the first item
