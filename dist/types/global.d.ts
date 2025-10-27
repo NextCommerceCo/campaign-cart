@@ -617,7 +617,7 @@ export interface ShippingMethod {
 }
 export interface CheckoutData {
     formData: Record<string, any>;
-    paymentMethod: 'card_token' | 'paypal' | 'apple_pay' | 'google_pay' | 'credit-card';
+    paymentMethod: 'card_token' | 'paypal' | 'apple_pay' | 'google_pay' | 'credit-card' | 'klarna';
     isProcessing?: boolean;
     step?: number;
 }
