@@ -346,7 +346,7 @@ export class UIService {
         const shouldBeSelected = methodType && paymentMethodMap[methodType]?.includes(storePaymentMethod || '');
 
         // Sync radio button state with store
-        radio.checked = shouldBeSelected;
+        radio.checked = !!shouldBeSelected;
 
         // Sync the visual state
         if (shouldBeSelected) {

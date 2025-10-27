@@ -691,7 +691,7 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
               .then(() => {
                 // Handle shipping method if specified
                 if (preSelected.shippingId) {
-                  return this.setShippingMethod(preSelected.shippingId);
+                  this.setShippingMethod(preSelected.shippingId);
                 }
               })
               .catch(error => {

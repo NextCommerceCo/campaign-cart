@@ -290,19 +290,20 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
         const checkoutStore = useCheckoutStore.getState();
 
-        // Reset processing state and payment method only if there was an abandoned express checkout
+        // Reset processing state if needed
         if (checkoutStore.isProcessing) {
           this.logger.info('Resetting processing state after bfcache restore');
           checkoutStore.setProcessing(false);
+        }
 
-          // Only reset express payment methods if processing was true (abandoned checkout)
-          if (checkoutStore.paymentMethod === 'apple_pay' ||
-              checkoutStore.paymentMethod === 'google_pay' ||
-              checkoutStore.paymentMethod === 'paypal') {
-            this.logger.info('Resetting payment method from', checkoutStore.paymentMethod, 'to credit-card');
-            checkoutStore.setPaymentMethod('credit-card');
-            checkoutStore.setPaymentToken(''); // Clear any stale payment token
-          }
+        // Always reset express payment methods when returning from bfcache
+        // This handles cases where user pressed back from Apple Pay/Google Pay/PayPal
+        if (checkoutStore.paymentMethod === 'apple_pay' ||
+            checkoutStore.paymentMethod === 'google_pay' ||
+            checkoutStore.paymentMethod === 'paypal') {
+          this.logger.info('Resetting payment method from', checkoutStore.paymentMethod, 'to credit-card after bfcache restore');
+          checkoutStore.setPaymentMethod('credit-card');
+          checkoutStore.setPaymentToken(''); // Clear any stale payment token
         }
 
         // Re-initialize credit card service if needed
