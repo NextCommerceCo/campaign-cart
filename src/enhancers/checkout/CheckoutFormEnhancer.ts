@@ -613,19 +613,19 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     // Update name and id attributes
     billingForm.querySelectorAll('input, select, textarea').forEach(field => {
       const element = field as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
-      
+
       if (element.name && !element.name.startsWith('billing_')) {
-        element.name = element.name.startsWith('shipping_') 
+        element.name = element.name.startsWith('shipping_')
           ? element.name.replace('shipping_', 'billing_')
           : `billing_${element.name}`;
       }
-      
+
       if (element.id && !element.id.startsWith('billing_')) {
-        element.id = element.id.startsWith('shipping_') 
+        element.id = element.id.startsWith('shipping_')
           ? element.id.replace('shipping_', 'billing_')
           : `billing_${element.id}`;
       }
-      
+
       // Clear values
       if (element.type === 'checkbox' || element.type === 'radio') {
         (element as HTMLInputElement).checked = false;
@@ -1174,7 +1174,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         const provinceField = this.fields.get('province');
         if (provinceField instanceof HTMLSelectElement) {
           await this.updateStateOptions(selectedCountryCode, provinceField);
-          this.currentCountryConfig = selectedCountryConfig;
+          // NOTE: updateStateOptions already sets this.currentCountryConfig and calls updateFormLabels
+          // with the correct config from the states endpoint, so we don't need to do it again here
 
           // Restore stored province after states are loaded (if country matches)
           if (storedProvince && storedCountry === selectedCountryCode) {
@@ -1194,7 +1195,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
             }
           }
         }
-        this.updateFormLabels(selectedCountryConfig);
       }
       
       if (this.billingFields.size > 0) {
@@ -1435,21 +1435,22 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     // Find billing form container
     const billingContainer = document.querySelector('[os-checkout-element="different-billing-address"]');
     if (!billingContainer) return;
-    
+
     const billingStateLabel = billingContainer.querySelector('label[for*="billing"][for*="province"], label[for*="billing"][for*="state"]');
     if (billingStateLabel) {
       const isRequired = countryConfig.stateRequired ? ' *' : '';
       billingStateLabel.textContent = `Billing ${countryConfig.stateLabel}${isRequired}`;
     }
-    
+
     const billingPostalLabel = billingContainer.querySelector('label[for*="billing"][for*="postal"], label[for*="billing"][for*="zip"]');
     if (billingPostalLabel) {
       billingPostalLabel.textContent = `Billing ${countryConfig.postcodeLabel} *`;
     }
-    
+
+    // Update billing postal field placeholder WITHOUT "Billing" prefix
     const billingPostalField = this.billingFields.get('billing-postal');
     if (billingPostalField instanceof HTMLInputElement) {
-      billingPostalField.placeholder = `Billing ${countryConfig.postcodeLabel}`;
+      billingPostalField.placeholder = countryConfig.postcodeLabel;
     }
   }
 
