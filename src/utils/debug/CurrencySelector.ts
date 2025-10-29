@@ -369,8 +369,10 @@ export class CurrencySelector {
       this.logger.info(`Saved currency preference to session: ${newCurrency}`);
       
       // Reload campaign data with new currency
-      await campaignStore.loadCampaign(configStore.apiKey);
-      
+      // IMPORTANT: Pass forceFresh: true to skip cache fallback and always fetch from API
+      // This ensures we get EUR data instead of falling back to cached USD
+      await campaignStore.loadCampaign(configStore.apiKey, { forceFresh: true });
+
       // Refresh cart item prices with new campaign data
       await cartStore.refreshItemPrices();
       

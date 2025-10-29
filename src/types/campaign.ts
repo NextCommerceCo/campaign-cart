@@ -10,6 +10,9 @@ export interface Campaign {
   payment_env_key: string;
   shipping_methods: ShippingOption[];
   available_currencies?: Array<{ code: string; label: string }>;
+  available_shipping_countries?: Array<{ code: string; label: string }>;
+  available_express_payment_methods?: Array<{ code: string; label: string }>;
+  available_payment_methods?: Array<{ code: string; label: string }>;
 }
 
 export interface VariantAttribute {

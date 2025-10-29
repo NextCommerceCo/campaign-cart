@@ -398,13 +398,21 @@ export class SDKInitializer {
     this.campaignFromCache = campaignStore.isFromCache || false;
 
     this.logger.debug('Campaign data loaded');
-    
+
+    // Set campaign shipping countries in CountryService for global use
+    // This ensures country dropdowns only show countries the campaign ships to
+    if (campaignStore.data?.available_shipping_countries) {
+      const countryService = CountryService.getInstance();
+      countryService.setCampaignShippingCountries(campaignStore.data.available_shipping_countries);
+      this.logger.info('Campaign shipping countries set globally:', campaignStore.data.available_shipping_countries.map((c: any) => c.code));
+    }
+
     // Process forcePackageId parameter after campaign data is available
     await this.processForcePackageId();
-    
+
     // Process forceShippingId parameter after campaign data is available
     await this.processForceShippingId();
-    
+
     // Process profile parameter after campaign data is available
     await this.processProfileParameter();
     

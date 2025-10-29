@@ -14,8 +14,20 @@ const config = {
       }
     },
     addressConfig: {
-      defaultCountry: "US",
-      showCountries: ["US", "CA", "GB", "BR"],
+      // ⚠️ OPTIONAL: defaultCountry is now a low-priority fallback
+      // Automatic fallback when detected country unavailable:
+      //   1. United States (US) - if in shipping list
+      //   2. First available country - if US not in list
+      //   3. This defaultCountry - only if list is empty (rare)
+      // defaultCountry: "US",
+
+      // ⚠️ DEPRECATED: showCountries is no longer needed!
+      // Countries are now automatically loaded from campaign API (available_shipping_countries)
+      // This ensures your country dropdown always matches what your campaign can ship to.
+      // You can still use this for testing, but production should rely on the API.
+      // showCountries: ["US", "CA", "GB", "BR"],
+
+      // Hide specific US territories from state dropdowns
       dontShowStates: ["AS", "GU", "PR", "VI"]
     },
     discounts: {

@@ -73,7 +73,7 @@ interface ProductVariantGroup {
 }
 
 interface CampaignActions {
-  loadCampaign: (apiKey: string) => Promise<void>;
+  loadCampaign: (apiKey: string, options?: { forceFresh?: boolean }) => Promise<void>;
   getPackage: (id: number) => Package | null;
   getProduct: (id: number) => Package | null;
   setError: (error: string | null) => void;
@@ -130,37 +130,48 @@ const campaignStoreInstance = create<CampaignState & CampaignActions>((set, get)
     });
   },
 
-  loadCampaign: async (apiKey: string) => {
+  loadCampaign: async (apiKey: string, options?: { forceFresh?: boolean }) => {
     set({ isLoading: true, error: null });
-    
+
     try {
       // Get the selected currency from config store
       const { useConfigStore } = await import('./configStore');
       const configStore = useConfigStore.getState();
       const requestedCurrency = configStore.selectedCurrency || configStore.detectedCurrency || 'USD';
-      
+
       const now = Date.now();
-      
+
       // IMPROVED: Check cache for BOTH requested and potential fallback currencies
       const requestedCacheKey = `${CAMPAIGN_STORAGE_KEY}_${requestedCurrency}`;
       const fallbackCacheKey = `${CAMPAIGN_STORAGE_KEY}_USD`;
-      
+
       // Check if URL parameter is forcing a specific currency
       const urlParams = new URLSearchParams(window.location.search);
       const urlCurrency = urlParams.get('currency');
       const isUrlCurrencyOverride = urlCurrency && urlCurrency === requestedCurrency;
-      
+
+      // Check if this is a forced fresh fetch (e.g., user actively changing currency)
+      const forceFresh = options?.forceFresh || false;
+
       // Try requested currency cache first
       let cachedData = sessionStorageManager.get<CachedCampaignData>(requestedCacheKey);
-      
+
       // If not found and requested isn't USD, check USD cache (common fallback)
-      // BUT skip fallback if URL is explicitly requesting a currency
-      if (!cachedData && requestedCurrency !== 'USD' && !isUrlCurrencyOverride) {
+      // BUT skip fallback if:
+      // 1. URL is explicitly requesting a currency
+      // 2. User is actively changing currency (forceFresh)
+      if (!cachedData && requestedCurrency !== 'USD' && !isUrlCurrencyOverride && !forceFresh) {
         cachedData = sessionStorageManager.get<CachedCampaignData>(fallbackCacheKey);
-        
+
         if (cachedData) {
           logger.info(`No cache for ${requestedCurrency}, checking USD cache as potential fallback`);
         }
+      }
+
+      // Skip cache entirely if forceFresh is true
+      if (forceFresh && cachedData) {
+        logger.info(`🔄 Force fresh fetch requested, skipping cache for ${requestedCurrency}`);
+        cachedData = undefined;
       }
       
       // Use cache if valid, but skip cache if URL is forcing a different currency
