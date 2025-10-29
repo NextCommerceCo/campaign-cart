@@ -13,6 +13,7 @@ export interface Campaign {
   available_express_payment_methods?: PaymentMethodOption[];
   available_payment_methods?: PaymentMethodOption[];
   available_currencies?: Array<{ code: string; label: string }>;
+  available_shipping_countries?: Array<{ code: string; label: string }>;
 }
 
 export interface PackageSerializer {

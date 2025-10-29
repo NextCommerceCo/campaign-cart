@@ -393,10 +393,11 @@ export class CountrySelector {
         
         // Save currency preference
         sessionStorage.setItem('next_selected_currency', countryConfig.currencyCode);
-        
+
         // Reload campaign with new currency
-        await campaignStore.loadCampaign(configStore.apiKey);
-        
+        // IMPORTANT: Pass forceFresh: true to skip cache fallback when changing country/currency
+        await campaignStore.loadCampaign(configStore.apiKey, { forceFresh: true });
+
         // Refresh cart prices
         await cartStore.refreshItemPrices();
         

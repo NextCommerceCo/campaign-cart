@@ -295,6 +295,9 @@ export interface Campaign {
   payment_env_key: string;
   shipping_methods: ShippingOption[];
   available_currencies?: Array<{ code: string; label: string }>;
+  available_shipping_countries?: Array<{ code: string; label: string }>;
+  available_express_payment_methods?: Array<{ code: string; label: string }>;
+  available_payment_methods?: Array<{ code: string; label: string }>;
 }
 
 export interface Package {
@@ -330,9 +333,38 @@ export interface GoogleMapsConfig {
 
 // Address configuration interface
 export interface AddressConfig {
+  /**
+   * Fallback country when detected country is not available (Low priority fallback).
+   *
+   * Automatic fallback priority:
+   * 1. United States (US) - if available in shipping countries
+   * 2. First country in available list - if US not available
+   * 3. This defaultCountry - only if list is empty (edge case)
+   *
+   * @example "US"
+   * @default undefined (auto-fallback to US or first available country)
+   */
   defaultCountry?: string;
+
+  /**
+   * @deprecated Use campaign API's available_shipping_countries instead.
+   * Countries are now automatically filtered based on your campaign configuration.
+   * This field is kept for backward compatibility only (Priority 3 fallback).
+   * @example ["US", "CA", "GB"]
+   */
   showCountries?: string[];
+
+  /**
+   * Array of state/province codes to hide from dropdowns (e.g., US territories).
+   * @example ["AS", "GU", "PR", "VI"]
+   */
   dontShowStates?: string[];
+
+  /**
+   * Custom countries list with full control over code and name.
+   * Takes priority over showCountries but not over campaign API countries.
+   * @example [{ code: "US", name: "United States" }]
+   */
   countries?: Array<{
     code: string;
     name: string;

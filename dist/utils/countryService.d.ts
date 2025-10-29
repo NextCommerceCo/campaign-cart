@@ -39,10 +39,16 @@ export declare class CountryService {
     private baseUrl;
     private logger;
     private config;
+    private campaignShippingCountries;
     private constructor();
     static getInstance(): CountryService;
     setConfig(config: AddressConfig): void;
     getConfig(): AddressConfig;
+    setCampaignShippingCountries(countries: Array<{
+        code: string;
+        label: string;
+    }> | null): void;
+    getCampaignShippingCountries(): string[] | null;
     getLocationData(): Promise<LocationData>;
     getCountryStates(countryCode: string): Promise<CountryStatesData>;
     getCountryConfig(countryCode: string): Promise<CountryConfig>;

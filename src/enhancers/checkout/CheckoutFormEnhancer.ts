@@ -1043,15 +1043,25 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private async initializeAddressManagement(config: any): Promise<void> {
     try {
       this.addClass('next-loading-countries');
-      
+
       if (config.addressConfig) {
         this.countryService.setConfig(config.addressConfig);
       }
-      
+
+      // IMPORTANT: Set campaign shipping countries from campaign API
+      // This takes priority over showCountries in addressConfig
+      const campaignState = useCampaignStore.getState();
+      if (campaignState.data?.available_shipping_countries) {
+        this.logger.info('Setting campaign shipping countries:', campaignState.data.available_shipping_countries);
+        this.countryService.setCampaignShippingCountries(campaignState.data.available_shipping_countries);
+      } else {
+        this.logger.debug('No campaign shipping countries available, using config');
+      }
+
       // Check if autocomplete should be enabled
       const googleMapsConfig = config.googleMapsConfig || {};
       this.enableAutocomplete = googleMapsConfig.enableAutocomplete !== false && !!googleMapsConfig.apiKey;
-      
+
       const locationData = await this.countryService.getLocationData();
       this.countries = locationData.countries;
       
@@ -1150,17 +1160,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         }
       }
       
-      // Always fetch the config for the selected country to ensure we have the right one
-      let selectedCountryConfig;
-      try {
-        selectedCountryConfig = await this.countryService.getCountryConfig(selectedCountryCode);
-        this.logger.debug(`Fetched config for country ${selectedCountryCode}`);
-      } catch (error) {
-        this.logger.warn(`Failed to get config for country ${selectedCountryCode}, using detected config`);
-        selectedCountryConfig = locationData.detectedCountryConfig;
-      }
-      
-      this.countryConfigs.set(selectedCountryCode, selectedCountryConfig);
+      // NOTE: We don't need to fetch config here because updateStateOptions()
+      // will fetch the correct country config (line 1336) and update form labels (line 1340)
+      // This ensures postcode label/regex/validation always matches the selected country
 
       // IMPORTANT: Save stored province before loading states (updateStateOptions clears it)
       const storedProvince = checkoutStore.formData.province;
@@ -1173,8 +1175,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       if (selectedCountryCode) {
         const provinceField = this.fields.get('province');
         if (provinceField instanceof HTMLSelectElement) {
+          // updateStateOptions fetches the correct country config and updates form labels
           await this.updateStateOptions(selectedCountryCode, provinceField);
-          this.currentCountryConfig = selectedCountryConfig;
+          // this.currentCountryConfig is already set by updateStateOptions (line 1337)
 
           // Restore stored province after states are loaded (if country matches)
           if (storedProvince && storedCountry === selectedCountryCode) {
@@ -1194,7 +1197,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
             }
           }
         }
-        this.updateFormLabels(selectedCountryConfig);
+
+        // updateFormLabels is already called by updateStateOptions (line 1340)
+        // No need to call it again here
       }
       
       if (this.billingFields.size > 0) {

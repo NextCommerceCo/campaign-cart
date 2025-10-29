@@ -50,7 +50,9 @@ interface ProductVariantGroup {
     }>;
 }
 interface CampaignActions {
-    loadCampaign: (apiKey: string) => Promise<void>;
+    loadCampaign: (apiKey: string, options?: {
+        forceFresh?: boolean;
+    }) => Promise<void>;
     getPackage: (id: number) => Package | null;
     getProduct: (id: number) => Package | null;
     setError: (error: string | null) => void;
