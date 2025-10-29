@@ -9,8 +9,6 @@ declare const config: {
         };
     };
     addressConfig: {
-        defaultCountry: string;
-        showCountries: string[];
         dontShowStates: string[];
     };
     discounts: {

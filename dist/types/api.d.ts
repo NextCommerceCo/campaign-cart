@@ -11,6 +11,10 @@ export interface Campaign {
         code: string;
         label: string;
     }>;
+    available_shipping_countries?: Array<{
+        code: string;
+        label: string;
+    }>;
 }
 export interface PackageSerializer {
     ref_id: number;
