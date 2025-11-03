@@ -1,0 +1,621 @@
+---
+title: FOMO Notifications
+description: Create social proof with purchase notifications that display recent customer activity
+---
+
+import { Tabs, TabItem, Aside, Steps, Code } from '@astrojs/starlight/components';
+
+FOMO (Fear of Missing Out) notifications create social proof by showing fake purchase notifications, encouraging visitors to take action based on seeing others' purchases.
+
+## Basic Usage
+
+The simplest way to start FOMO notifications:
+
+```javascript
+// Wait for SDK to be fully initialized
+window.addEventListener('next:initialized', function() {
+  console.log('SDK initialized, starting FOMO popups...');
+
+  // Simple usage - starts immediately with defaults
+  next.fomo();
+
+  // Optional: Listen to events for analytics
+  next.on('fomo:shown', (data) => {
+    console.log('FOMO shown:', data.customer, 'purchased', data.product);
+  });
+});
+```
+
+<Aside type="tip">
+FOMO popups automatically use products from your campaign data with default customer names by country.
+</Aside>
+
+## Configuration Options
+
+Customize timing and behavior:
+
+```javascript
+next.fomo({
+  initialDelay: 2000,      // Start after 2 seconds
+  displayDuration: 5000,   // Show for 5 seconds
+  delayBetween: 10000,     // 10 seconds between popups
+  maxMobileShows: 3        // Limit to 3 popups on mobile
+});
+```
+
+### Configuration Parameters
+
+| Parameter | Type | Description | Default |
+|-----------|------|-------------|---------|
+| `initialDelay` | `number` | Delay before first popup (milliseconds) | `0` |
+| `displayDuration` | `number` | How long to show each popup (milliseconds) | `5000` |
+| `delayBetween` | `number` | Time between popups (milliseconds) | `12000` |
+| `maxMobileShows` | `number` | Maximum popups on mobile devices | `2` |
+| `items` | `Array<{text, image}>` | Custom products to show | Campaign products |
+| `customers` | `Object` | Customer names by country code | Default names |
+| `country` | `string` | Force specific country | Auto-detected |
+
+## Control Functions
+
+<Tabs>
+<TabItem label="Start FOMO">
+
+```javascript
+// Start FOMO notifications
+function startFomo() {
+  next.fomo({
+    initialDelay: 2000,
+    displayDuration: 5000,
+    delayBetween: 10000
+  });
+}
+```
+
+</TabItem>
+
+<TabItem label="Stop FOMO">
+
+```javascript
+// Stop FOMO notifications
+function stopFomo() {
+  next.stopFomo();
+}
+```
+
+Stops all active FOMO popups and clears scheduled notifications.
+
+</TabItem>
+
+<TabItem label="Conditional Control">
+
+```javascript
+// Stop FOMO when user reaches checkout
+if (window.location.pathname.includes('checkout')) {
+  next.stopFomo();
+}
+
+// Restart on navigation
+window.addEventListener('popstate', function() {
+  if (!window.location.pathname.includes('checkout')) {
+    next.fomo();
+  }
+});
+```
+
+</TabItem>
+</Tabs>
+
+## Custom Configuration
+
+### Custom Products
+
+Define specific products to show in notifications:
+
+```javascript
+next.fomo({
+  items: [
+    {
+      text: "Premium Bundle - Save 30%",
+      image: "https://example.com/premium-bundle.jpg"
+    },
+    {
+      text: "Starter Pack",
+      image: "https://example.com/starter-pack.jpg"
+    },
+    {
+      text: "Ultimate Collection",
+      image: "https://example.com/ultimate.jpg"
+    }
+  ],
+  displayDuration: 4000,
+  delayBetween: 15000
+});
+```
+
+### Custom Customer Names
+
+Provide localized customer names for different regions:
+
+```javascript
+next.fomo({
+  customers: {
+    US: ["Sarah from Dallas", "Mike from Boston", "Lisa from Miami"],
+    CA: ["Jean from Montreal", "Pierre from Quebec", "Marie from Toronto"],
+    GB: ["Oliver from London", "Emma from Manchester", "James from Leeds"],
+    AU: ["Liam from Sydney", "Olivia from Melbourne", "Noah from Brisbane"]
+  },
+  maxMobileShows: 3,
+  initialDelay: 0  // Start immediately
+});
+```
+
+<Aside type="note">
+If the detected country doesn't match any provided customer lists, it will fall back to the US list. Country is auto-detected from timezone or can be forced via the `country` parameter.
+</Aside>
+
+### Complete Custom Setup
+
+```javascript
+function customFomo() {
+  next.fomo({
+    // Products to rotate through
+    items: [
+      {
+        text: "Premium Bundle - Save 30%",
+        image: "https://example.com/premium-bundle.jpg"
+      },
+      {
+        text: "Starter Pack",
+        image: "https://example.com/starter-pack.jpg"
+      }
+    ],
+
+    // Customer names by country
+    customers: {
+      US: ["Sarah from Dallas", "Mike from Boston", "Lisa from Miami"],
+      CA: ["Jean from Montreal", "Pierre from Quebec", "Marie from Toronto"]
+    },
+
+    // Timing configuration
+    maxMobileShows: 3,     // Show max 3 times on mobile
+    displayDuration: 4000, // Show for 4 seconds
+    delayBetween: 15000,   // 15 seconds between popups
+    initialDelay: 0,       // Start immediately
+
+    // Force specific country (optional)
+    country: 'US'
+  });
+}
+
+// Initialize on page load
+window.addEventListener('next:initialized', customFomo);
+```
+
+## Events
+
+Listen to FOMO events for analytics tracking:
+
+<Tabs>
+<TabItem label="fomo:shown">
+
+```javascript
+// Popup shown
+next.on('fomo:shown', (data) => {
+  console.log('FOMO popup displayed');
+  console.log('Customer:', data.customer);
+  console.log('Product:', data.product);
+  console.log('Image:', data.image);
+
+  // Track with analytics
+  gtag('event', 'fomo_shown', {
+    customer: data.customer,
+    product: data.product
+  });
+});
+```
+
+**Event Data:**
+- `customer` (string) - Customer name shown
+- `product` (string) - Product name shown
+- `image` (string) - Product image URL
+
+</TabItem>
+
+<TabItem label="All Events">
+
+```javascript
+// Popup shown
+next.on('fomo:shown', (data) => {
+  console.log('FOMO popup displayed', data);
+});
+
+// Popup clicked (if click handlers added)
+next.on('fomo:clicked', (data) => {
+  console.log('FOMO popup clicked', data);
+});
+
+// Popup closed (if close handlers added)
+next.on('fomo:closed', (data) => {
+  console.log('FOMO popup closed', data);
+});
+```
+
+<Aside type="note">
+`fomo:clicked` and `fomo:closed` events require custom implementation as the default popup doesn't include click or close handlers.
+</Aside>
+
+</TabItem>
+</Tabs>
+
+## Styling
+
+The FOMO popup has default styles but can be fully customized with CSS:
+
+### Default Structure
+
+```html
+<div class="next-fomo-wrapper">
+  <div class="next-fomo-inner">
+    <div class="next-fomo-item">
+      <div class="next-fomo-thumb">
+        <img class="next-fomo-image" alt="Product">
+      </div>
+      <div class="next-fomo-desc">
+        <p>
+          <span class="next-fomo-customer"></span><br>
+          Just purchased:<br>
+          <span class="next-fomo-product"></span><br>
+          <span class="next-fomo-time">JUST NOW</span>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+### Custom Styling
+
+<Tabs>
+<TabItem label="Basic Customization">
+
+```css
+/* Override default styles */
+.next-fomo-wrapper {
+  bottom: 20px;
+  left: 20px;
+  width: 320px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+/* Customize text */
+.next-fomo-customer {
+  font-weight: 600;
+  color: #000;
+}
+
+.next-fomo-product {
+  font-weight: 600;
+  color: #333;
+}
+
+.next-fomo-time {
+  font-size: 11px;
+  color: #999;
+  text-transform: uppercase;
+}
+```
+
+</TabItem>
+
+<TabItem label="Position & Animation">
+
+```css
+/* Change position to top-right */
+.next-fomo-wrapper {
+  bottom: auto;
+  top: 20px;
+  left: auto;
+  right: 20px;
+}
+
+/* Custom animation */
+.next-fomo-wrapper {
+  transform: translateX(120%);
+  transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.next-fomo-wrapper.next-fomo-show {
+  transform: translateX(0);
+}
+```
+
+</TabItem>
+
+<TabItem label="Brand Colors">
+
+```css
+/* Match your brand */
+.next-fomo-wrapper {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.next-fomo-desc p {
+  color: white;
+}
+
+.next-fomo-customer,
+.next-fomo-product {
+  color: #fff;
+}
+
+.next-fomo-time {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.next-fomo-thumb img {
+  border: 2px solid white;
+}
+```
+
+</TabItem>
+
+<TabItem label="Responsive">
+
+```css
+/* Mobile optimization */
+@media (max-width: 768px) {
+  .next-fomo-wrapper {
+    width: calc(100% - 40px);
+    max-width: 320px;
+    bottom: 10px;
+    left: 20px;
+    right: 20px;
+  }
+
+  .next-fomo-item {
+    padding: 12px;
+  }
+
+  .next-fomo-thumb img {
+    width: 50px;
+    height: 50px;
+  }
+
+  .next-fomo-desc p {
+    font-size: 12px;
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Best Practices
+
+<Steps>
+
+1. **Realistic Timing**
+   - Use realistic delays between notifications (12-20 seconds)
+   - Don't show popups too frequently - it reduces credibility
+
+2. **Mobile Limits**
+   - Keep `maxMobileShows` low (2-3) on mobile devices
+   - Mobile users are more sensitive to interruptions
+
+3. **Relevant Products**
+   - Show products related to the current page or category
+   - Match notification products to user's browsing context
+
+4. **Geographic Matching**
+   - Use customer names from the target region
+   - Increases believability and relatability
+
+5. **Balance UX**
+   - Don't overuse FOMO - it can annoy users
+   - Stop notifications on checkout/thank you pages
+   - Consider disabling after user interaction
+
+</Steps>
+
+<Aside type="caution">
+FOMO notifications should create urgency without compromising user experience. Overuse can appear spammy and hurt conversions.
+</Aside>
+
+## Integration Examples
+
+### Product Pages Only
+
+```javascript
+window.addEventListener('next:initialized', function() {
+  // Only show FOMO on product pages
+  const pageType = document.querySelector('meta[name="next-page-type"]')?.content;
+
+  if (pageType === 'product') {
+    next.fomo({
+      initialDelay: 3000,
+      displayDuration: 4000,
+      delayBetween: 12000,
+      maxMobileShows: 2
+    });
+  }
+});
+```
+
+### Dynamic Product Selection
+
+Show notifications for products related to what the user is viewing:
+
+```javascript
+// Get current product being viewed
+const currentProductId = document.querySelector('[data-next-package-id]')?.dataset.nextPackageId;
+const currentProductImage = document.querySelector('[data-next-display="package.image"]')?.src;
+const currentProductName = document.querySelector('[data-next-display="package.name"]')?.textContent;
+
+// Show FOMO for current and related products
+next.fomo({
+  items: [
+    {
+      text: currentProductName || "Popular Product",
+      image: currentProductImage || "/images/placeholder.jpg"
+    }
+  ],
+  initialDelay: 5000,
+  displayDuration: 5000
+});
+```
+
+### Category-Specific Notifications
+
+```javascript
+// Different products for different categories
+const category = window.location.pathname.split('/')[1];
+
+const categoryProducts = {
+  supplements: [
+    { text: "Protein Powder - Chocolate", image: "/images/protein.jpg" },
+    { text: "Pre-Workout Formula", image: "/images/preworkout.jpg" }
+  ],
+  apparel: [
+    { text: "Performance T-Shirt", image: "/images/shirt.jpg" },
+    { text: "Training Shorts", image: "/images/shorts.jpg" }
+  ]
+};
+
+next.fomo({
+  items: categoryProducts[category] || [],
+  displayDuration: 4000,
+  delayBetween: 15000
+});
+```
+
+### Stop on Checkout
+
+Disable FOMO notifications when user reaches checkout to avoid distraction:
+
+```javascript
+// Initialize FOMO
+window.addEventListener('next:initialized', function() {
+  if (!window.location.pathname.includes('checkout')) {
+    next.fomo({
+      initialDelay: 2000,
+      displayDuration: 5000,
+      delayBetween: 12000
+    });
+  }
+});
+
+// Stop on checkout navigation
+next.on('checkout:started', function() {
+  next.stopFomo();
+});
+```
+
+### Time-Based Display
+
+Show FOMO only during specific hours:
+
+```javascript
+function shouldShowFomo() {
+  const hour = new Date().getHours();
+  // Show between 9 AM and 9 PM
+  return hour >= 9 && hour < 21;
+}
+
+window.addEventListener('next:initialized', function() {
+  if (shouldShowFomo()) {
+    next.fomo({
+      initialDelay: 3000,
+      displayDuration: 5000,
+      delayBetween: 15000
+    });
+  }
+});
+```
+
+## Default Customer Names
+
+If you don't provide custom customer names, these defaults are used:
+
+<Tabs>
+<TabItem label="United States">
+
+```javascript
+["Grace from New York", "Hailey from Sacramento", "Phoebe from Las Vegas", "Jenny from Scottsdale"]
+```
+
+</TabItem>
+
+<TabItem label="Canada">
+
+```javascript
+["Lily from Toronto", "Emma from Vancouver", "Ava from Montreal", "Sophia from Calgary"]
+```
+
+</TabItem>
+
+<TabItem label="United Kingdom">
+
+```javascript
+["Jane from London", "Olivia from Manchester", "Amelia from Birmingham", "Isabella from Leeds"]
+```
+
+</TabItem>
+
+<TabItem label="Australia">
+
+```javascript
+["Jessica from Sydney", "Emma from Melbourne", "Olivia from Brisbane", "Sophia from Perth"]
+```
+
+</TabItem>
+</Tabs>
+
+## Troubleshooting
+
+### FOMO Not Appearing
+
+<Steps>
+
+1. Check that SDK is initialized: `window.next` should be defined
+2. Verify campaign has products with images (required for default items)
+3. Check browser console for errors
+4. Ensure `next.fomo()` is called after `next:initialized` event
+
+</Steps>
+
+### FOMO Showing Too Often
+
+```javascript
+// Increase delay between popups
+next.fomo({
+  delayBetween: 20000  // 20 seconds instead of default 12
+});
+
+// Or limit total shows on mobile
+next.fomo({
+  maxMobileShows: 1  // Show only once on mobile
+});
+```
+
+### Custom Products Not Displaying
+
+```javascript
+// Ensure images have valid URLs and are accessible
+next.fomo({
+  items: [
+    {
+      text: "Product Name",
+      image: "https://full-url-to-image.jpg"  // Must be complete URL
+    }
+  ]
+});
+```
+
+## Related Documentation
+
+- [Events API](/javascript-api/events) - Complete event reference including FOMO events
+- [Exit Intent](/building-blocks/exit-intent) - Another behavioral trigger feature
+- [JavaScript API](/javascript-api/) - Core SDK methods

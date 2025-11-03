@@ -66,6 +66,9 @@ export default defineConfig({
                       { label: 'Price Display', slug: 'building-blocks/price-display' },
                       { label: 'Product Selection', slug: 'building-blocks/product-selection' },
                       { label: 'Checkout Forms', slug: 'building-blocks/checkout-forms' },
+                      { label: 'Upsells', slug: 'building-blocks/upsells' },
+                      { label: 'Exit Intent', slug: 'building-blocks/exit-intent' },
+                      { label: 'FOMO Notifications', slug: 'building-blocks/fomo-notifications' },
                   ],
               },
               {

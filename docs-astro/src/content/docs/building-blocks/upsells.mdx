@@ -1,0 +1,869 @@
+---
+title: Post-Purchase Upsells
+description: Maximize order value with flexible upsell patterns after checkout - direct yes/no offers, selection cards, and quantity controls
+---
+
+import { Tabs, TabItem, Aside, Steps, Code } from '@astrojs/starlight/components';
+
+Post-purchase upsells present additional offers after checkout, allowing customers to add items to their completed order. The SDK provides three flexible patterns for building upsell pages.
+
+## How Upsells Work
+
+<Steps>
+
+1. **Customer completes initial purchase** - Checkout flow completes successfully
+2. **Redirect to upsell page(s)** - Customer lands on first upsell offer
+3. **Present relevant offers** - Show targeted products using upsell patterns
+4. **Customer accepts or declines** - User makes choice with action buttons
+5. **Continue to next step** - Either next upsell page or final receipt page
+6. **Order updated** - Accepted items added to original order
+
+</Steps>
+
+<Aside type="note">
+Upsells are post-purchase, meaning the customer has already completed payment for their initial order. Accepted upsells are charged separately using the same payment method.
+</Aside>
+
+## Configuration
+
+Set upsell navigation URLs in meta tags:
+
+```html
+<!-- Upsell configuration -->
+<meta name="next-page-type" content="upsell">
+<meta name="next-upsell-accept-url" content="/upsell-2">
+<meta name="next-upsell-decline-url" content="/receipt">
+```
+
+**Meta Tags:**
+- `next-page-type="upsell"` - Marks page as upsell (enables analytics tracking)
+- `next-upsell-accept-url` - Where to navigate after accepting offer
+- `next-upsell-decline-url` - Where to navigate after declining offer
+
+<Aside type="tip">
+You can override these URLs per button using `data-next-url` on action buttons for custom navigation flows.
+</Aside>
+
+## Upsell Patterns
+
+<Tabs>
+<TabItem label="Direct">
+
+**Direct Upsell** - Simple yes/no decision for a single item.
+
+Best for: Single product offers, warranties, insurance, expedited shipping
+
+```html
+<div data-next-upsell="offer" data-next-package-id="7">
+  <h3>Add Extra Battery Pack?</h3>
+  <p>Never run out of power - 50% off!</p>
+
+  <button data-next-upsell-action="add">Yes, Add It</button>
+  <button data-next-upsell-action="skip">No Thanks</button>
+</div>
+```
+
+</TabItem>
+
+<TabItem label="Selection">
+
+**Selection Upsell** - Multiple options to choose from (cards or dropdown).
+
+Best for: Protection plans, subscription tiers, accessory bundles
+
+```html
+<div data-next-upsell-selector data-next-selector-id="protection">
+  <h3>Choose Your Protection Plan</h3>
+
+  <div data-next-upsell-option data-next-package-id="7">
+    Basic - 1 Year
+  </div>
+  <div data-next-upsell-option data-next-package-id="9" data-next-selected="true">
+    Premium - 2 Years
+  </div>
+
+  <button data-next-upsell-action="add">Add Selected</button>
+  <button data-next-upsell-action="skip">No Thanks</button>
+</div>
+```
+
+</TabItem>
+
+<TabItem label="Quantity">
+
+**Quantity Upsell** - Let customers choose quantity before accepting.
+
+Best for: Bulk purchases, consumables, multi-packs
+
+```html
+<div data-next-upsell="offer" data-next-package-id="7">
+  <h3>Stock Up on Batteries!</h3>
+
+  <button data-next-upsell-quantity="decrease">-</button>
+  <span data-next-upsell-quantity="display">1</span>
+  <button data-next-upsell-quantity="increase">+</button>
+
+  <button data-next-upsell-action="add">Add to Order</button>
+  <button data-next-upsell-action="skip">No Thanks</button>
+</div>
+```
+
+</TabItem>
+</Tabs>
+
+## Pattern 1: Direct Upsells
+
+Simple yes/no decision for a single item. Package ID is on the container.
+
+### Basic Pattern
+
+```html
+<!-- Direct mode: package ID on container -->
+<div data-next-upsell="offer" data-next-package-id="7">
+  <h3>Add Extra Battery?</h3>
+  <p>Extend your flight time with an extra battery pack</p>
+  <button data-next-upsell-action="add">Yes, Add for $29</button>
+  <button data-next-upsell-action="skip">No Thanks</button>
+</div>
+```
+
+### With Product Display
+
+Show product details using display attributes:
+
+```html
+<div data-next-upsell="offer" data-next-package-id="8">
+  <img src="battery-image.jpg" alt="Extra Battery">
+  <h3><span data-next-display="package.name">Extra Battery Pack</span></h3>
+  <p>Price: <span data-next-display="package.price">$29.99</span></p>
+  <p data-next-show="package.hasSavings">
+    Save <span data-next-display="package.savingsPercentage">50%</span>
+  </p>
+
+  <button data-next-upsell-action="add">Yes, Add It!</button>
+  <button data-next-upsell-action="skip">No, Continue</button>
+</div>
+```
+
+### Styling Examples
+
+<Tabs>
+<TabItem label="Card Style">
+
+```html
+<div class="upsell-card" data-next-upsell="offer" data-next-package-id="7">
+  <div class="upsell-header">
+    <h3>Special Offer!</h3>
+  </div>
+  <div class="upsell-body">
+    <p>Add protection for your purchase</p>
+    <div class="price">
+      Only <span data-next-display="package.price">$14.99</span>
+    </div>
+  </div>
+  <div class="upsell-actions">
+    <button class="btn-accept" data-next-upsell-action="add">
+      Protect My Order
+    </button>
+    <button class="btn-decline" data-next-upsell-action="skip">
+      Skip Protection
+    </button>
+  </div>
+</div>
+```
+
+</TabItem>
+
+<TabItem label="Minimal">
+
+```html
+<div data-next-upsell="offer" data-next-package-id="9">
+  <p>Add expedited shipping for just $9.99?</p>
+  <button data-next-upsell-action="add">Yes</button>
+  <button data-next-upsell-action="skip">No</button>
+</div>
+```
+
+</TabItem>
+</Tabs>
+
+### Direct Upsell Best Practices
+
+<Steps>
+
+1. **Clear Value Proposition** - Explain why they need the item
+2. **Show Savings** - Highlight discounts or special pricing
+3. **Easy to Decline** - Make "No" option clear and accessible
+4. **Single Focus** - One product per direct upsell
+5. **Create Urgency** - Mention if offer is time-limited
+
+</Steps>
+
+## Pattern 2: Selection Upsells
+
+Multiple options to choose from. Uses selector ID instead of package ID.
+
+### Card Selection Pattern
+
+Let customers choose from multiple options:
+
+```html
+<!-- Selector mode: uses selector ID -->
+<div data-next-upsell-selector data-next-selector-id="protection">
+  <h3>Choose Your Protection Plan</h3>
+
+  <div data-next-upsell-option data-next-package-id="7">
+    <h4>Basic Protection</h4>
+    <p>1 Year Coverage</p>
+    <span data-next-display="package.price">$14.99</span>
+  </div>
+
+  <div data-next-upsell-option data-next-package-id="9" data-next-selected="true">
+    <h4>Premium Protection</h4>
+    <p>2 Year Coverage + Accidental Damage</p>
+    <span data-next-display="package.price">$24.99</span>
+  </div>
+
+  <div data-next-upsell-option data-next-package-id="10">
+    <h4>Ultimate Protection</h4>
+    <p>3 Year Coverage + Everything</p>
+    <span data-next-display="package.price">$39.99</span>
+  </div>
+
+  <button data-next-upsell-action="add">
+    Add Selected Protection
+  </button>
+  <button data-next-upsell-action="skip">
+    Continue Without Protection
+  </button>
+</div>
+```
+
+### Dropdown Selection Pattern
+
+Compact selection using native select element:
+
+```html
+<!-- Wrap in upsell container -->
+<div data-next-upsell-selector data-next-selector-id="training">
+  <h3>Add Training Course?</h3>
+
+  <select data-next-upsell-select="training">
+    <option value="">Choose a course...</option>
+    <option value="2">Beginner Course - $29.99</option>
+    <option value="3" selected>Advanced Course - $49.99</option>
+    <option value="4">Master Course - $79.99</option>
+  </select>
+
+  <button data-next-upsell-action="add">
+    Add Course to Order
+  </button>
+  <button data-next-upsell-action="skip">
+    No Thanks
+  </button>
+</div>
+```
+
+<Aside type="note">
+The `value` attribute on `<option>` elements should be the package ID. The selector ID must match between `data-next-selector-id` and `data-next-upsell-select`.
+</Aside>
+
+### Display Selection Info
+
+Show details about the currently selected option:
+
+```html
+<div data-next-upsell-selector data-next-selector-id="warranty">
+  <!-- Option cards here -->
+
+  <div class="selection-summary">
+    <p>Selected: <span data-next-display="selection.warranty.name">None</span></p>
+    <p>Price: <span data-next-display="selection.warranty.price">$0</span></p>
+    <p data-next-show="selection.warranty.hasSavings">
+      You save: <span data-next-display="selection.warranty.savingsAmount">$0</span>
+    </p>
+  </div>
+
+  <button data-next-upsell-action="add">Add to Order</button>
+</div>
+```
+
+### Grid Layout Example
+
+```html
+<div data-next-upsell-selector data-next-selector-id="accessories">
+  <h3>Popular Accessories</h3>
+
+  <div class="upsell-grid">
+    <div class="upsell-card" data-next-upsell-option data-next-package-id="11">
+      <img src="case.jpg" alt="Carrying Case">
+      <h4>Carrying Case</h4>
+      <span data-next-display="package.price">$19.99</span>
+    </div>
+
+    <div class="upsell-card" data-next-upsell-option data-next-package-id="12">
+      <img src="filters.jpg" alt="Filter Set">
+      <h4>Filter Set</h4>
+      <span data-next-display="package.price">$39.99</span>
+    </div>
+
+    <div class="upsell-card" data-next-upsell-option data-next-package-id="13">
+      <img src="props.jpg" alt="Extra Props">
+      <h4>Extra Props</h4>
+      <span data-next-display="package.price">$24.99</span>
+    </div>
+  </div>
+
+  <button data-next-upsell-action="add">Add Selected Item</button>
+  <button data-next-upsell-action="skip">Continue</button>
+</div>
+```
+
+### Selection Attributes Reference
+
+**Container:**
+- `data-next-upsell-selector` - Marks as selection upsell
+- `data-next-selector-id` - Unique ID for this selector
+
+**Options:**
+- `data-next-upsell-option` - Individual option card
+- `data-next-package-id` - Package for this option
+- `data-next-selected="true"` - Default selection
+
+**Dropdown:**
+- `data-next-upsell-select` - Native select element (value must match selector ID)
+- Option `value` - Package ID for that option
+
+### CSS Classes
+
+Options automatically get classes:
+- `.next-selected` - Currently selected option
+- `.next-upsell-option` - All option cards
+
+### Selection Best Practices
+
+<Steps>
+
+1. **Highlight Best Value** - Mark recommended option visually
+2. **Show Comparisons** - Display savings or feature differences
+3. **Default Selection** - Pre-select most popular option
+4. **Clear Pricing** - Show price for each option
+5. **Visual Hierarchy** - Make selected state obvious
+
+</Steps>
+
+## Pattern 3: Quantity Upsells
+
+Let customers choose quantity before accepting the upsell.
+
+### Quantity Controls Pattern
+
+Simple quantity selector for bulk purchases:
+
+```html
+<!-- Quantity controls -->
+<div data-next-upsell="offer" data-next-package-id="7">
+  <h3>Add Extra Batteries?</h3>
+  <p>Never run out of power during your flights</p>
+
+  <div class="quantity-controls">
+    <button data-next-upsell-quantity="decrease">-</button>
+    <span data-next-upsell-quantity="display">1</span>
+    <button data-next-upsell-quantity="increase">+</button>
+  </div>
+
+  <p>Price: <span data-next-display="package.price">$29.99</span> each</p>
+
+  <button data-next-upsell-action="add">
+    Add <span data-next-upsell-quantity="display">1</span> to Order
+  </button>
+  <button data-next-upsell-action="skip">
+    No Thanks
+  </button>
+</div>
+```
+
+### Quantity Toggle Cards Pattern
+
+Click to select quantity - perfect for bundles:
+
+```html
+<!-- Quantity toggle cards -->
+<div data-next-upsell="offer" data-next-package-id="7">
+  <h3>Stock Up & Save!</h3>
+  <p>Choose your battery bundle:</p>
+
+  <div class="quantity-cards">
+    <div data-next-upsell-quantity-toggle="1" class="quantity-card">
+      <h4>1 Pack</h4>
+      <p>$29.99</p>
+    </div>
+
+    <div data-next-upsell-quantity-toggle="2" class="quantity-card">
+      <h4>2 Pack</h4>
+      <p>$49.99</p>
+      <span class="badge">Save $10</span>
+    </div>
+
+    <div data-next-upsell-quantity-toggle="4" class="quantity-card">
+      <h4>4 Pack</h4>
+      <p>$89.99</p>
+      <span class="badge">Best Value!</span>
+    </div>
+  </div>
+
+  <button data-next-upsell-action="add">
+    Add <span data-next-upsell-quantity="display">1</span> Pack to Order
+  </button>
+  <button data-next-upsell-action="skip">
+    Continue Without
+  </button>
+</div>
+```
+
+### Advanced Quantity Display
+
+Show dynamic pricing based on quantity:
+
+```html
+<div data-next-upsell="offer" data-next-package-id="8">
+  <h3>Replacement Filters</h3>
+
+  <div class="quantity-selector">
+    <button data-next-upsell-quantity="decrease">-</button>
+    <input type="text" data-next-upsell-quantity="display" readonly>
+    <button data-next-upsell-quantity="increase">+</button>
+  </div>
+
+  <div class="pricing-display">
+    <p>Unit Price: <span data-next-display="package.price">$9.99</span></p>
+    <p class="total">
+      Total: <span data-next-upsell-quantity="display">1</span> × $<span data-next-display="package.price.raw">9.99</span>
+    </p>
+  </div>
+
+  <button data-next-upsell-action="add">Add to Order</button>
+</div>
+```
+
+### Quantity Attributes
+
+**Controls:**
+- `data-next-upsell-quantity="increase"` - Increment button (max: 10)
+- `data-next-upsell-quantity="decrease"` - Decrement button (min: 1)
+- `data-next-upsell-quantity="display"` - Shows current quantity
+
+**Toggle Cards:**
+- `data-next-upsell-quantity-toggle` - Set specific quantity on click
+- Value is the quantity to set (e.g., `"1"`, `"2"`, `"4"`)
+
+### Styling Quantity Cards
+
+```css
+/* Style selected quantity card */
+.quantity-card.next-selected,
+.quantity-card[data-next-selected="true"] {
+  border: 2px solid #007bff;
+  background: #f0f8ff;
+}
+
+/* Disable decrease at minimum */
+button[data-next-upsell-quantity="decrease"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+```
+
+### Quantity Best Practices
+
+<Steps>
+
+1. **Show Savings** - Highlight bulk discounts clearly
+2. **Display Total** - Show total price for selected quantity
+3. **Preset Options** - Offer common quantities (1, 2, 4)
+4. **Visual Feedback** - Mark selected quantity prominently
+5. **Set Limits** - Enforce min (1) and max (10) quantity
+
+</Steps>
+
+### Common Quantity Patterns
+
+<Tabs>
+<TabItem label="Tiered Pricing">
+
+```html
+<div data-next-upsell-quantity-toggle="1" class="tier">
+  <strong>1 for $10</strong>
+</div>
+<div data-next-upsell-quantity-toggle="3" class="tier">
+  <strong>3 for $25</strong>
+  <span class="savings">Save $5</span>
+</div>
+<div data-next-upsell-quantity-toggle="5" class="tier">
+  <strong>5 for $40</strong>
+  <span class="savings">Save $10</span>
+</div>
+```
+
+</TabItem>
+
+<TabItem label="Subscription Quantities">
+
+```html
+<div data-next-upsell-quantity-toggle="1">
+  <p>Monthly Supply</p>
+  <strong>$29/mo</strong>
+</div>
+<div data-next-upsell-quantity-toggle="3">
+  <p>3 Month Supply</p>
+  <strong>$79</strong>
+  <span class="badge">Save $8</span>
+</div>
+```
+
+</TabItem>
+</Tabs>
+
+## Action Buttons
+
+All upsell patterns use action buttons to accept or decline the offer:
+
+### Action Attributes
+
+| Attribute | Description |
+|-----------|-------------|
+| `data-next-upsell-action="add"` | Accept upsell and add to order |
+| `data-next-upsell-action="accept"` | Alias for "add" |
+| `data-next-upsell-action="skip"` | Decline upsell and continue |
+| `data-next-upsell-action="decline"` | Alias for "skip" |
+
+### Custom Navigation
+
+Override meta tag URLs per button:
+
+```html
+<!-- Custom next URL for this specific button -->
+<button data-next-upsell-action="add" data-next-url="/special-upsell-2">
+  Yes, Add It!
+</button>
+
+<!-- Different decline URL -->
+<button data-next-upsell-action="skip" data-next-url="/receipt">
+  No Thanks
+</button>
+```
+
+<Aside type="note">
+If `data-next-url` is not provided, the SDK falls back to the meta tag URLs (`next-upsell-accept-url` or `next-upsell-decline-url`).
+</Aside>
+
+## Events
+
+The upsell system emits events for analytics and tracking:
+
+<Tabs>
+<TabItem label="upsell:viewed">
+
+```javascript
+next.on('upsell:viewed', (data) => {
+  // Fired once per upsell page (page-level tracking)
+  console.log('Upsell page viewed:', data.pagePath);
+  console.log('Order ID:', data.orderId);
+});
+```
+
+**Event Data:**
+- `pagePath` (string) - Current upsell page path
+- `orderId` (string) - Order reference ID
+
+</TabItem>
+
+<TabItem label="upsell:added">
+
+```javascript
+next.on('upsell:added', (data) => {
+  // Fired when upsell is successfully added
+  console.log('Package ID:', data.packageId);
+  console.log('Quantity:', data.quantity);
+  console.log('Value:', data.value);
+  console.log('Updated order:', data.order);
+  console.log('Will redirect:', data.willRedirect);
+});
+```
+
+**Event Data:**
+- `packageId` (number) - Package added to order
+- `quantity` (number) - Quantity added
+- `value` (number) - Upsell value in currency
+- `order` (object) - Updated order object
+- `willRedirect` (boolean) - If navigation will occur
+
+</TabItem>
+
+<TabItem label="upsell:skipped">
+
+```javascript
+next.on('upsell:skipped', (data) => {
+  // Fired when user declines upsell
+  console.log('Package ID:', data.packageId);
+  console.log('Order ID:', data.orderId);
+});
+```
+
+**Event Data:**
+- `packageId` (number) - Package that was declined
+- `orderId` (string) - Order reference ID
+
+</TabItem>
+
+<TabItem label="upsell:error">
+
+```javascript
+next.on('upsell:error', (data) => {
+  // Fired when upsell addition fails
+  console.log('Package ID:', data.packageId);
+  console.log('Error:', data.error);
+});
+```
+
+**Event Data:**
+- `packageId` (number) - Package that failed
+- `error` (string) - Error message
+
+</TabItem>
+</Tabs>
+
+## State Classes
+
+The SDK automatically adds CSS classes to upsell containers based on state:
+
+| Class | Description |
+|-------|-------------|
+| `.next-available` | Upsell is available and can be added |
+| `.next-processing` | Upsell is being added to order |
+| `.next-success` | Upsell was successfully added (temporary) |
+| `.next-error` | Error occurred adding upsell |
+| `.next-skipped` | User declined the upsell |
+| `.next-disabled` | Action buttons are disabled |
+| `.next-selected` | Applied to selected option/quantity |
+
+### Styling with State Classes
+
+```css
+/* Processing state */
+[data-next-upsell].next-processing {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+[data-next-upsell].next-processing::after {
+  content: 'Adding to order...';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Success state */
+[data-next-upsell].next-success {
+  border-color: #28a745;
+  background: #d4edda;
+}
+
+/* Error state */
+[data-next-upsell].next-error {
+  border-color: #dc3545;
+  background: #f8d7da;
+}
+
+/* Selected option */
+[data-next-upsell-option].next-selected {
+  border: 2px solid #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+}
+```
+
+## Complete Examples
+
+### Multi-Tier Protection Plan
+
+```html
+<div data-next-upsell-selector data-next-selector-id="protection" class="protection-upsell">
+  <h2>Protect Your Purchase</h2>
+  <p>Choose the coverage that's right for you</p>
+
+  <div class="protection-grid">
+    <div class="protection-option" data-next-upsell-option data-next-package-id="101">
+      <span class="badge">Basic</span>
+      <h3>1 Year</h3>
+      <ul>
+        <li>Manufacturer defects</li>
+        <li>Email support</li>
+      </ul>
+      <div class="price">
+        <span data-next-display="package.price">$14.99</span>
+      </div>
+    </div>
+
+    <div class="protection-option recommended" data-next-upsell-option data-next-package-id="102" data-next-selected="true">
+      <span class="badge">Most Popular</span>
+      <h3>2 Years</h3>
+      <ul>
+        <li>Manufacturer defects</li>
+        <li>Accidental damage</li>
+        <li>Priority support</li>
+      </ul>
+      <div class="price">
+        <span data-next-display="package.price">$24.99</span>
+        <small data-next-show="package.hasSavings">
+          Save <span data-next-display="package.savingsAmount">$5</span>
+        </small>
+      </div>
+    </div>
+
+    <div class="protection-option" data-next-upsell-option data-next-package-id="103">
+      <span class="badge">Ultimate</span>
+      <h3>3 Years</h3>
+      <ul>
+        <li>Everything in Premium</li>
+        <li>Theft protection</li>
+        <li>24/7 phone support</li>
+        <li>Free replacements</li>
+      </ul>
+      <div class="price">
+        <span data-next-display="package.price">$39.99</span>
+        <small data-next-show="package.hasSavings">
+          Save <span data-next-display="package.savingsAmount">$20</span>
+        </small>
+      </div>
+    </div>
+  </div>
+
+  <div class="action-buttons">
+    <button class="btn btn-primary" data-next-upsell-action="add">
+      Add Selected Protection
+    </button>
+    <button class="btn btn-link" data-next-upsell-action="skip">
+      I'll take my chances
+    </button>
+  </div>
+</div>
+```
+
+### Bulk Quantity with Tiered Pricing
+
+```html
+<div data-next-upsell="offer" data-next-package-id="50" class="bulk-upsell">
+  <h2>Stock Up on Filters</h2>
+  <p>Choose your quantity and save</p>
+
+  <div class="quantity-tiers">
+    <div class="tier-card" data-next-upsell-quantity-toggle="1">
+      <div class="tier-quantity">1 Pack</div>
+      <div class="tier-price">$12.99</div>
+      <div class="tier-unit">$12.99/unit</div>
+    </div>
+
+    <div class="tier-card featured" data-next-upsell-quantity-toggle="3">
+      <span class="tier-badge">Save 15%</span>
+      <div class="tier-quantity">3 Pack</div>
+      <div class="tier-price">$32.99</div>
+      <div class="tier-unit">$10.99/unit</div>
+      <div class="tier-savings">Save $6</div>
+    </div>
+
+    <div class="tier-card best-value" data-next-upsell-quantity-toggle="6">
+      <span class="tier-badge">Best Value!</span>
+      <div class="tier-quantity">6 Pack</div>
+      <div class="tier-price">$59.99</div>
+      <div class="tier-unit">$9.99/unit</div>
+      <div class="tier-savings">Save $18</div>
+    </div>
+  </div>
+
+  <div class="selected-summary">
+    <p>You selected: <strong><span data-next-upsell-quantity="display">1</span> pack</strong></p>
+    <p class="total">Total: <span data-next-display="package.price">$12.99</span></p>
+  </div>
+
+  <div class="action-buttons">
+    <button class="btn btn-success" data-next-upsell-action="add">
+      Add <span data-next-upsell-quantity="display">1</span> Pack to Order
+    </button>
+    <button class="btn btn-secondary" data-next-upsell-action="skip">
+      No Thanks
+    </button>
+  </div>
+</div>
+```
+
+## Best Practices
+
+<Steps>
+
+1. **Keep Offers Relevant**
+   - Match upsells to original purchase
+   - Suggest complementary products
+   - Consider customer value/tier
+
+2. **Highlight Value**
+   - Show savings and discounts
+   - Explain benefits clearly
+   - Create urgency if appropriate
+
+3. **Make Declining Easy**
+   - "No" button should be visible
+   - Don't shame users for declining
+   - Allow quick skip to receipt
+
+4. **Limit Upsell Steps**
+   - Maximum 2-3 upsell pages
+   - Most valuable offers first
+   - Don't overwhelm customers
+
+5. **Show Order Summary**
+   - Display original order
+   - Show running total
+   - Make acceptance clear
+
+6. **Test Everything**
+   - Verify navigation flows
+   - Test all action buttons
+   - Check mobile experience
+
+</Steps>
+
+## Troubleshooting
+
+### Upsell Not Adding to Order
+
+<Steps>
+
+1. Check `next-page-type="upsell"` meta tag exists
+2. Verify order ref_id is in URL (`?ref_id=...`)
+3. Check browser console for API errors
+4. Ensure package IDs are correct
+5. Verify order supports post-purchase upsells
+
+</Steps>
+
+### Selection Not Working
+
+- Ensure `data-next-selector-id` matches across container and options
+- For dropdowns, `value` must be package ID as string
+- Check that at least one option has `data-next-selected="true"`
+
+### Quantity Controls Not Updating
+
+- Verify `data-next-upsell-quantity` attributes are correct
+- Check console for errors
+- Ensure buttons are inside upsell container
+- Try refreshing quantity display with event
+
+## Related Documentation
+
+- [Data Attributes](/data-attributes/) - Using package and cart data in templates
+- [Events API](/javascript-api/events) - Complete upsell event reference
+- [Add to Cart](/building-blocks/add-to-cart) - Similar action patterns
+- [Product Selection](/building-blocks/product-selection) - Selection patterns
+- [Quantity Controls](/building-blocks/quantity-controls) - Quantity management

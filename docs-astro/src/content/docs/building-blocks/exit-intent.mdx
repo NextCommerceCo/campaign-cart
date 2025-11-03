@@ -1,0 +1,853 @@
+---
+title: Exit Intent Popups
+description: Show targeted popups when users attempt to leave the page, with support for simple images or custom HTML templates
+---
+
+import { Tabs, TabItem, Aside, Steps, Code } from '@astrojs/starlight/components';
+
+Exit Intent popups detect when users are about to leave your page and display targeted offers to keep them engaged. Supports both simple image popups and fully customizable HTML templates.
+
+## Basic Usage
+
+<Tabs>
+<TabItem label="Image Popup">
+
+```javascript
+// Wait for SDK to be fully initialized
+window.addEventListener('next:initialized', function() {
+  console.log('SDK initialized, setting up exit intent...');
+
+  // Simple image popup setup
+  next.exitIntent({
+    image: 'https://example.com/exit-popup.webp',
+    action: async () => {
+      const result = await next.applyCoupon('SAVE10');
+      if (result.success) {
+        alert('Coupon applied: ' + result.message);
+      }
+    }
+  });
+
+  // Optional: Listen to events for analytics
+  next.on('exit-intent:shown', (data) => {
+    console.log('Exit intent shown:', data);
+  });
+});
+```
+
+</TabItem>
+
+<TabItem label="Template Popup">
+
+```html
+<!-- Define your template in HTML -->
+<template data-template="exit-intent">
+  <div class="exit-modal">
+    <h2>Wait! Don't Leave Yet!</h2>
+    <p>Get 20% OFF your order</p>
+
+    <!-- Display dynamic cart data -->
+    <div class="cart-info">
+      Your cart total: <span data-next-display="cart.total"></span>
+    </div>
+
+    <!-- Action buttons with special attributes -->
+    <button data-exit-intent-action="apply-coupon" data-coupon-code="SAVE20">
+      Apply 20% Discount
+    </button>
+
+    <button data-exit-intent-action="close">
+      No Thanks
+    </button>
+  </div>
+</template>
+
+<script>
+window.addEventListener('next:initialized', function() {
+  next.exitIntent({
+    template: 'exit-intent',     // Name matches data-template attribute
+    showCloseButton: true,       // Show X button
+    overlayClosable: true,       // Click overlay to close
+    maxTriggers: 1,              // Show only once per session
+    disableOnMobile: true        // Desktop only by default
+  });
+});
+</script>
+```
+
+</TabItem>
+</Tabs>
+
+<Aside type="tip">
+**Choosing the Right Method:**
+- Use **image popups** for simple, visual offers
+- Use **templates** for interactive, complex modals with buttons and dynamic content
+</Aside>
+
+## Configuration Options
+
+### Complete Parameter Reference
+
+| Parameter | Type | Description | Default |
+|-----------|------|-------------|---------|
+| `image` | `string` | URL of popup image | - |
+| `template` | `string` | Name of template (matches `data-template` attribute) | - |
+| `action` | `function` | Function to execute on click/custom action | - |
+| `showCloseButton` | `boolean` | Show X button on modal | `false` |
+| `overlayClosable` | `boolean` | Allow clicking overlay to close | `true` |
+| `maxTriggers` | `number` | Maximum times to show per session | `1` |
+| `disableOnMobile` | `boolean` | Disable on mobile devices | `true` |
+| `mobileScrollTrigger` | `boolean` | Enable scroll trigger on mobile (50% scroll) | `false` |
+| `useSessionStorage` | `boolean` | Remember dismissal in session | `true` |
+| `sessionStorageKey` | `string` | Custom storage key | `'exit-intent-dismissed'` |
+| `imageClickable` | `boolean` | Make image clickable to trigger action | `true` |
+| `actionButtonText` | `string` | Text for action button (shows button instead of clickable image) | - |
+
+<Aside type="caution" title="Required Parameters">
+You must provide **either** `image` **or** `template` - one is required.
+</Aside>
+
+## Simple Examples
+
+<Tabs>
+<TabItem label="Just Show Popup">
+
+```javascript
+// Display popup without any action
+function justShowPopup() {
+  next.exitIntent({
+    image: 'https://example.com/just-popup.webp'
+  });
+}
+```
+
+No action function needed - just shows the image popup.
+
+</TabItem>
+
+<TabItem label="Redirect on Click">
+
+```javascript
+// Redirect to offer page when clicked
+function redirectExample() {
+  next.exitIntent({
+    image: 'https://example.com/special-offer.webp',
+    action: () => {
+      window.location.href = '/special-offer';
+    }
+  });
+}
+```
+
+</TabItem>
+
+<TabItem label="Conditional Display">
+
+```javascript
+// Different popups based on cart state
+function conditionalExample() {
+  const cartCount = next.getCartCount();
+
+  if (cartCount === 0) {
+    next.exitIntent({
+      image: 'https://example.com/empty-cart.webp',
+      action: () => window.location.href = '/products'
+    });
+  } else {
+    next.exitIntent({
+      image: 'https://example.com/discount.webp',
+      action: () => next.applyCoupon('SAVE10')
+    });
+  }
+}
+```
+
+</TabItem>
+
+<TabItem label="Action Button">
+
+```javascript
+// Show a button instead of clickable image
+function actionButtonExample() {
+  next.exitIntent({
+    image: 'https://example.com/offer.webp',
+    actionButtonText: 'Claim My Discount',
+    action: async () => {
+      await next.applyCoupon('SAVE20');
+      alert('Discount applied!');
+    }
+  });
+}
+```
+
+When `actionButtonText` is provided, a button appears below the image.
+
+</TabItem>
+</Tabs>
+
+## Template-Based Popups
+
+### Template Action Attributes
+
+When using templates, add special attributes to buttons and links to trigger actions:
+
+| Attribute | Additional Attributes | Description |
+|-----------|----------------------|-------------|
+| `data-exit-intent-action="close"` | - | Closes the modal |
+| `data-exit-intent-action="apply-coupon"` | `data-coupon-code="CODE"` | Applies coupon and closes modal |
+| `data-exit-intent-action="custom"` | - | Triggers the custom action function |
+
+<Aside type="caution" title="How Actions Work">
+**For Templates:**
+- The `action` function is **ONLY** triggered by elements with `data-exit-intent-action="custom"`
+- Clicking regular content (divs, text, etc.) does NOT trigger any action
+- You MUST add the attribute to buttons/links that should trigger the action
+
+**For Images:**
+- Clicking anywhere on the image triggers the action function (if `imageClickable: true`)
+</Aside>
+
+### Template Example
+
+```html
+<template data-template="exit-intent">
+  <div class="exit-modal-content">
+    <!-- This content does nothing when clicked -->
+    <h2>Special Offer!</h2>
+    <p>Click the buttons below for actions:</p>
+
+    <!-- Only these buttons trigger actions -->
+    <button data-exit-intent-action="apply-coupon" data-coupon-code="SAVE10">
+      Apply SAVE10 Coupon
+    </button>
+
+    <button data-exit-intent-action="custom">
+      Custom Action
+    </button>
+
+    <button data-exit-intent-action="close">
+      Close Modal
+    </button>
+  </div>
+</template>
+
+<script>
+next.exitIntent({
+  template: 'exit-intent',
+  action: () => {
+    // This ONLY runs when clicking elements with:
+    // data-exit-intent-action="custom"
+    console.log('Custom action triggered!');
+    alert('Custom action!');
+  }
+});
+</script>
+```
+
+### Multiple Offer Template
+
+```html
+<template data-template="exit-intent-offers">
+  <div class="exit-offers">
+    <h2>Choose Your Discount!</h2>
+
+    <div class="offer-grid">
+      <div class="offer">
+        <h3>10% OFF</h3>
+        <button data-exit-intent-action="apply-coupon" data-coupon-code="SAVE10">
+          Apply Code
+        </button>
+      </div>
+
+      <div class="offer">
+        <h3>Free Shipping</h3>
+        <button data-exit-intent-action="apply-coupon" data-coupon-code="FREESHIP">
+          Get Free Shipping
+        </button>
+      </div>
+
+      <div class="offer">
+        <h3>$5 OFF</h3>
+        <button data-exit-intent-action="apply-coupon" data-coupon-code="FIVER">
+          Save $5
+        </button>
+      </div>
+    </div>
+
+    <button data-exit-intent-action="close" class="close-link">
+      I don't want to save money
+    </button>
+  </div>
+</template>
+```
+
+## Events
+
+The exit intent system emits several events for analytics and tracking:
+
+<Tabs>
+<TabItem label="exit-intent:shown">
+
+```javascript
+next.on('exit-intent:shown', (data) => {
+  // data.imageUrl - The image URL shown (if using image)
+  // data.template - The template name (if using template)
+
+  console.log('Exit intent displayed:', data);
+
+  // Track with analytics
+  gtag('event', 'exit_intent_shown', {
+    type: data.template ? 'template' : 'image'
+  });
+});
+```
+
+Fired when popup is displayed.
+
+</TabItem>
+
+<TabItem label="exit-intent:clicked">
+
+```javascript
+next.on('exit-intent:clicked', (data) => {
+  // data.imageUrl - The image URL clicked
+
+  console.log('Exit intent clicked:', data);
+});
+```
+
+Fired when popup is clicked (image mode only, when `imageClickable: true`).
+
+</TabItem>
+
+<TabItem label="exit-intent:dismissed">
+
+```javascript
+next.on('exit-intent:dismissed', (data) => {
+  // data.imageUrl - The image URL (if using image)
+  // data.template - The template name (if using template)
+
+  console.log('Exit intent dismissed:', data);
+});
+```
+
+Fired when popup is closed without action (overlay click or ESC key).
+
+</TabItem>
+
+<TabItem label="exit-intent:closed">
+
+```javascript
+next.on('exit-intent:closed', (data) => {
+  // data.imageUrl or data.template
+
+  console.log('Exit intent close button clicked:', data);
+});
+```
+
+Fired when close button (X) is clicked.
+
+</TabItem>
+
+<TabItem label="exit-intent:action">
+
+```javascript
+next.on('exit-intent:action', (data) => {
+  // data.action - The action type ('close', 'apply-coupon', 'custom')
+  // data.couponCode - The coupon code (if action is 'apply-coupon')
+
+  console.log('Exit intent action:', data.action);
+
+  if (data.action === 'apply-coupon') {
+    console.log('Coupon applied:', data.couponCode);
+  }
+});
+```
+
+Fired when template action buttons are clicked.
+
+</TabItem>
+</Tabs>
+
+## Advanced Examples
+
+### Page-Specific Strategies
+
+```javascript
+// Different popups for different pages
+window.addEventListener('next:initialized', function() {
+  const pathname = window.location.pathname;
+
+  if (pathname.includes('/product')) {
+    // Product page - offer discount
+    next.exitIntent({
+      image: '/images/10-percent-off.jpg',
+      action: () => next.applyCoupon('SAVE10')
+    });
+  } else if (pathname.includes('/cart')) {
+    // Cart page - free shipping offer with template
+    next.exitIntent({
+      template: 'exit-intent-shipping',
+      showCloseButton: true
+    });
+  } else {
+    // Other pages - newsletter signup
+    next.exitIntent({
+      template: 'exit-intent-newsletter',
+      overlayClosable: true
+    });
+  }
+});
+```
+
+### Cart Value-Based Offers
+
+```javascript
+function setupDynamicExitIntent() {
+  const cartData = next.getCartData();
+  const cartTotal = cartData?.totals?.total?.value || 0;
+
+  if (cartTotal === 0) {
+    // Empty cart - show bestsellers
+    next.exitIntent({
+      image: '/images/bestsellers.jpg',
+      action: () => window.location.href = '/bestsellers'
+    });
+  } else if (cartTotal < 50) {
+    // Small cart - offer percentage discount
+    next.exitIntent({
+      template: 'exit-intent-discount-15',
+      showCloseButton: true
+    });
+  } else if (cartTotal < 100) {
+    // Medium cart - offer free shipping
+    next.exitIntent({
+      template: 'exit-intent-free-shipping',
+      overlayClosable: true
+    });
+  } else {
+    // Large cart - offer free gift
+    next.exitIntent({
+      image: '/images/free-gift-100.jpg',
+      action: async () => {
+        await next.addItem({ packageId: 99, quantity: 1 }); // Free gift
+      }
+    });
+  }
+}
+
+// Call when cart changes
+next.on('cart:updated', setupDynamicExitIntent);
+```
+
+### Time-Based Trigger
+
+```javascript
+// Show exit intent only after user has been on page for 30 seconds
+let exitIntentTimer;
+
+window.addEventListener('next:initialized', function() {
+  exitIntentTimer = setTimeout(() => {
+    next.exitIntent({
+      image: '/images/dont-leave-yet.jpg',
+      action: () => next.applyCoupon('COMEBACK'),
+      maxTriggers: 1
+    });
+  }, 30000); // 30 seconds
+});
+
+// Clear timer if user completes checkout
+next.on('checkout:started', () => {
+  clearTimeout(exitIntentTimer);
+});
+```
+
+### Profile-Based Offers
+
+```javascript
+// Different offers based on user segment
+function showProfileBasedExitIntent() {
+  const activeProfile = next.getActiveProfile();
+
+  if (activeProfile === 'vip') {
+    next.exitIntent({
+      template: 'exit-intent-vip',
+      showCloseButton: true
+    });
+  } else if (activeProfile === 'new-customer') {
+    next.exitIntent({
+      image: '/images/first-time-discount.jpg',
+      action: () => next.applyCoupon('WELCOME20')
+    });
+  } else {
+    next.exitIntent({
+      template: 'exit-intent-standard'
+    });
+  }
+}
+```
+
+## Styling
+
+Customize the exit intent popup appearance with CSS:
+
+<Tabs>
+<TabItem label="Basic Styling">
+
+```css
+/* Exit intent overlay */
+[data-exit-intent="overlay"] {
+  background: rgba(0, 0, 0, 0.8) !important;
+}
+
+/* Popup container */
+[data-exit-intent="popup"] {
+  /* Styles are inline but can be overridden */
+}
+
+/* Template popup specific */
+.exit-intent-template-popup {
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+/* Close button */
+[data-exit-intent="close"] {
+  color: #666;
+  font-size: 28px;
+}
+
+[data-exit-intent="close"]:hover {
+  color: #000;
+}
+```
+
+</TabItem>
+
+<TabItem label="Custom Template">
+
+```css
+/* Your custom template content */
+.exit-modal-content {
+  padding: 40px;
+  text-align: center;
+  max-width: 500px;
+}
+
+.exit-modal-content h2 {
+  margin-bottom: 20px;
+  font-size: 28px;
+  color: #333;
+}
+
+.exit-modal-content p {
+  margin-bottom: 30px;
+  font-size: 16px;
+  color: #666;
+}
+
+.exit-modal-content button {
+  margin: 10px;
+  padding: 12px 30px;
+  font-size: 16px;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.exit-modal-content button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+```
+
+</TabItem>
+
+<TabItem label="Animations">
+
+```css
+/* Custom animation for popup */
+@keyframes exitIntentSlideIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8) rotateX(-15deg);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1) rotateX(0deg);
+  }
+}
+
+[data-exit-intent="popup"] {
+  animation: exitIntentSlideIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* Overlay fade in */
+@keyframes overlayFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+[data-exit-intent="overlay"] {
+  animation: overlayFadeIn 0.3s ease;
+}
+```
+
+</TabItem>
+
+<TabItem label="Mobile Responsive">
+
+```css
+/* Mobile optimization */
+@media (max-width: 768px) {
+  .exit-modal-content {
+    padding: 20px;
+    max-width: 90vw;
+  }
+
+  .exit-modal-content h2 {
+    font-size: 22px;
+  }
+
+  .exit-modal-content button {
+    width: 100%;
+    margin: 5px 0;
+  }
+
+  [data-exit-intent="close"] {
+    font-size: 24px;
+    top: 5px;
+    right: 5px;
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Mobile Behavior
+
+<Steps>
+
+1. **Desktop Detection** (Default)
+   - Triggers when mouse leaves top of viewport (`clientY <= 10`)
+   - Uses `mouseout` event on `document.documentElement`
+   - Enabled by default
+
+2. **Mobile Detection** (Opt-in)
+   - Disabled by default (`disableOnMobile: true`)
+   - Can enable with `mobileScrollTrigger: true`
+   - Triggers at 50% scroll depth
+   - Detects mobile via: touch capability + (mobile width OR mobile user agent)
+
+3. **Mobile Optimization**
+   - Set `disableOnMobile: false` to enable on mobile
+   - Add `mobileScrollTrigger: true` for scroll-based trigger
+   - Test templates on small screens
+   - Consider simpler offers for mobile users
+
+</Steps>
+
+```javascript
+// Enable exit intent on mobile with scroll trigger
+next.exitIntent({
+  template: 'exit-intent-mobile',
+  disableOnMobile: false,       // Enable on mobile
+  mobileScrollTrigger: true,    // Use scroll detection
+  maxTriggers: 1,               // Show only once
+  showCloseButton: true
+});
+```
+
+## Best Practices
+
+<Steps>
+
+1. **Choose the Right Method**
+   - Image popups for quick, visual offers
+   - Templates for interactive, complex modals
+   - Templates allow dynamic cart data display
+
+2. **Session Management**
+   - Use `maxTriggers: 1` to avoid annoying users
+   - Leverage `sessionStorage` to remember dismissals
+   - Different triggers for different pages
+   - Reset if user takes desired action
+
+3. **Mobile Optimization**
+   - Default `disableOnMobile: true` for desktop-only
+   - Enable `mobileScrollTrigger` sparingly
+   - Test template layouts on small screens
+   - Simpler offers work better on mobile
+
+4. **Template Best Practices**
+   - Keep templates hidden with `<template>` tags
+   - Use semantic `data-template` names
+   - Include cart display attributes for dynamic data
+   - Test all action buttons thoroughly
+   - Provide clear close options
+
+5. **Performance**
+   - Templates are only cloned when needed
+   - Images should be optimized and pre-loaded
+   - Use CDN for image hosting
+   - Lazy-load the exit intent enhancer
+
+6. **User Experience**
+   - Don't trigger immediately - wait for engagement
+   - Provide clear value in your offer
+   - Make close/dismiss obvious
+   - Track conversions to measure effectiveness
+
+</Steps>
+
+## API Methods
+
+### next.exitIntent()
+
+```javascript
+// Initialize exit intent
+next.exitIntent(options);
+```
+
+The main API method. Pass configuration options to set up the exit intent popup.
+
+### next.disableExitIntent()
+
+```javascript
+// Disable exit intent
+next.disableExitIntent();
+```
+
+Disables the exit intent popup and removes event listeners.
+
+```javascript
+// Disable when user starts checkout
+next.on('checkout:started', () => {
+  next.disableExitIntent();
+});
+```
+
+## Integration Tips
+
+<Tabs>
+<TabItem label="Analytics">
+
+```javascript
+// Track exit intent conversion
+next.on('exit-intent:action', (data) => {
+  gtag('event', 'exit_intent_conversion', {
+    action_type: data.action,
+    coupon_code: data.couponCode
+  });
+});
+```
+
+</TabItem>
+
+<TabItem label="A/B Testing">
+
+```javascript
+// Random A/B test for different templates
+const variant = Math.random() < 0.5 ? 'variant-a' : 'variant-b';
+
+next.exitIntent({
+  template: `exit-intent-${variant}`,
+  showCloseButton: true
+});
+
+// Track which variant
+next.on('exit-intent:shown', () => {
+  gtag('event', 'exit_intent_variant', {
+    variant: variant
+  });
+});
+```
+
+</TabItem>
+
+<TabItem label="Personalization">
+
+```javascript
+// Use cart data to customize offers
+const cartData = next.getCartData();
+const hasSubscription = cartData.items.some(item => item.is_recurring);
+
+if (hasSubscription) {
+  next.exitIntent({
+    template: 'exit-intent-subscription-discount'
+  });
+} else {
+  next.exitIntent({
+    template: 'exit-intent-standard'
+  });
+}
+```
+
+</TabItem>
+
+<TabItem label="Timing">
+
+```javascript
+// Wait for user engagement before enabling
+let userEngaged = false;
+
+document.addEventListener('scroll', function() {
+  if (!userEngaged && window.scrollY > 200) {
+    userEngaged = true;
+    next.exitIntent({
+      image: '/images/exit-offer.jpg',
+      action: () => next.applyCoupon('ENGAGED10')
+    });
+  }
+}, { once: true });
+```
+
+</TabItem>
+</Tabs>
+
+## Troubleshooting
+
+### Exit Intent Not Triggering
+
+<Steps>
+
+1. Verify SDK is initialized (`window.next` exists)
+2. Check if `disableOnMobile: true` is blocking on mobile device
+3. Ensure either `image` or `template` is provided
+4. Check console for errors
+5. Verify `maxTriggers` hasn't been exceeded
+6. Clear session storage to reset
+
+</Steps>
+
+### Template Not Found
+
+```javascript
+// Ensure template exists with matching name
+<template data-template="exit-intent">
+  <!-- content -->
+</template>
+
+// And matches in JavaScript
+next.exitIntent({
+  template: 'exit-intent'  // Must match exactly
+});
+```
+
+### Actions Not Working
+
+- For **image popups**: Check `imageClickable` is `true` (default)
+- For **templates**: Ensure buttons have `data-exit-intent-action` attribute
+- Custom actions require `data-exit-intent-action="custom"`
+- Apply coupon requires `data-coupon-code` attribute
+
+## Related Documentation
+
+- [FOMO Notifications](/building-blocks/fomo-notifications) - Another behavioral trigger feature
+- [Events API](/javascript-api/events) - Complete event reference
+- [Data Attributes](/data-attributes/) - Using cart data in templates
+- [JavaScript API](/javascript-api/) - Core SDK methods

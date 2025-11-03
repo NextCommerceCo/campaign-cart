@@ -1,6 +1,487 @@
 ---
-title: Debugging
-description: Documentation coming soon
+title: Debug Mode
+description: Comprehensive debug overlay system for inspecting state, monitoring events, and troubleshooting SDK issues during development
 ---
 
-Documentation coming soon.
+import { Tabs, TabItem, Aside, Steps, Code } from '@astrojs/starlight/components';
+
+The Campaign Cart SDK includes a comprehensive debug overlay system that helps developers inspect state, monitor events, and troubleshoot issues during development.
+
+## Enabling Debug Mode
+
+Add the `?debugger=true` parameter to any page URL:
+
+```
+https://yoursite.com/checkout?debugger=true
+```
+
+<Steps>
+
+1. **Automatic activation** - Debug overlay loads and displays at the bottom of the page
+2. **Global access** - Creates the `window.nextDebug` object for console access
+3. **Verbose logging** - Sets logger to DEBUG level for detailed console output
+
+</Steps>
+
+<Aside type="caution" title="Debug Access">
+The `nextDebug` object is only available when debug mode is enabled via the URL parameter. Without it, you'll get a "nextDebug is not defined" error.
+</Aside>
+
+## Debug Overlay Features
+
+The debug overlay provides multiple panels for inspecting different aspects of the SDK:
+
+### 1. Cart Panel
+- View current cart state and items
+- Inspect cart totals, discounts, and calculations
+- Monitor cart updates in real-time
+- Test cart operations directly
+
+### 2. Config Panel
+- View current SDK configuration
+- Inspect API keys and endpoints
+- Check feature flags and settings
+- Monitor configuration changes
+
+### 3. Campaign Panel
+- View campaign data and settings
+- Inspect product/package information
+- Monitor campaign-specific state
+- Test campaign operations
+
+### 4. Checkout Panel
+- Monitor checkout form state
+- Inspect validation errors
+- View payment method selections
+- Debug checkout flow issues
+
+### 5. Event Timeline Panel
+- Real-time event monitoring
+- Visual timeline of SDK events
+- Event details and payloads
+- Performance timing information
+
+### 6. Storage Panel
+- Inspect localStorage data
+- View sessionStorage contents
+- Monitor storage changes
+- Clear storage for testing
+
+## Using Debug Mode
+
+### Global Access
+
+When debug mode is active (via `?debugger=true`), a global `nextDebug` object is available in the console:
+
+<Tabs>
+<TabItem label="Overlay Controls">
+
+```javascript
+// Access debug overlay controls
+nextDebug.overlay.show()
+nextDebug.overlay.hide()
+nextDebug.overlay.toggle()
+nextDebug.overlay.isVisible()
+```
+
+</TabItem>
+
+<TabItem label="Debug Mode Management">
+
+```javascript
+// Debug mode management
+nextDebug.enableDebug()    // Enables debug mode programmatically
+nextDebug.disableDebug()   // Disables debug mode and removes URL param
+nextDebug.toggleDebug()     // Toggles debug mode on/off
+nextDebug.isDebugMode()    // Returns true/false
+```
+
+</TabItem>
+
+<TabItem label="Store Access">
+
+```javascript
+// Access to SDK stores
+nextDebug.stores.cart       // Cart store
+nextDebug.stores.campaign   // Campaign store
+nextDebug.stores.config     // Config store
+nextDebug.stores.checkout   // Checkout store
+nextDebug.stores.order      // Order store
+nextDebug.stores.attribution // Attribution store
+```
+
+</TabItem>
+
+<TabItem label="Utilities">
+
+```javascript
+// SDK instance
+nextDebug.sdk              // NextCommerce instance
+
+// Utility methods
+nextDebug.reinitialize()   // Reinitialize the SDK
+nextDebug.getStats()       // Get initialization statistics
+```
+
+</TabItem>
+</Tabs>
+
+### Keyboard Shortcuts
+
+When the debug overlay is visible:
+- `ESC` - Toggle overlay visibility
+- `Tab` - Switch between panels
+- `↑/↓` - Navigate within panels
+
+### Panel-Specific Features
+
+#### Cart Panel Actions
+- Add/remove test items
+- Apply test discounts
+- Clear cart
+- Simulate cart errors
+
+#### Event Timeline
+- Filter events by type
+- Export event log
+- Clear timeline
+- Pause/resume monitoring
+
+#### Storage Panel
+- Search storage keys
+- Edit values directly
+- Export/import storage
+- Clear specific keys
+
+## Visual Debugging
+
+### X-Ray Mode
+The debugger includes an X-Ray mode that highlights SDK-enhanced elements with color-coded outlines:
+
+- **Cyan** (`#4ecdc4`): Display attributes (`data-next-display`)
+- **Yellow** (`#ffe66d`): Conditional visibility (`data-next-show`)
+- **Red** (`#ff6b6b`): Checkout elements
+- **Green** (`#a8e6cf`): Package selectors
+- **Purple** (`#6c5ce7`): Bump/toggle elements
+- **Orange** (`#ffa502`): Selected states
+- **Pink** (`#ff8b94`): Package IDs
+
+Toggle X-Ray mode from the debug overlay toolbar.
+
+<Aside type="tip">
+X-Ray mode shows hover tooltips with attribute values and adds visual labels to package IDs and selector IDs in the top corners of elements.
+</Aside>
+
+### Performance Monitoring
+- Track render times
+- Monitor API call durations
+- Identify performance bottlenecks
+- View memory usage
+
+## Advanced Features
+
+### Cart Operations
+
+```javascript
+// Add items to cart
+nextDebug.addToCart(packageId, quantity)
+
+// Remove items from cart
+nextDebug.removeFromCart(packageId)
+
+// Update quantity
+nextDebug.updateQuantity(packageId, quantity)
+
+// Add test items (packages 2, 7, 9)
+nextDebug.addTestItems()
+```
+
+### Campaign Inspection
+
+```javascript
+// Reload campaign data
+nextDebug.loadCampaign()
+
+// Clear campaign cache
+nextDebug.clearCampaignCache()
+
+// Get cache information
+nextDebug.getCacheInfo()
+
+// Inspect specific package details
+nextDebug.inspectPackage(packageId)
+
+// Test shipping methods
+nextDebug.testShippingMethod(methodId)
+```
+
+### Analytics Debugging
+
+```javascript
+// Get analytics status
+await nextDebug.analytics.getStatus()
+
+// View active providers
+await nextDebug.analytics.getProviders()
+
+// Track custom event
+await nextDebug.analytics.track('custom_event', { data: 'value' })
+
+// Enable analytics debug mode
+await nextDebug.analytics.setDebugMode(true)
+
+// Invalidate analytics context
+await nextDebug.analytics.invalidateContext()
+```
+
+### Attribution Debugging
+
+```javascript
+// Debug attribution data
+nextDebug.attribution.debug()
+
+// Get attribution for API
+nextDebug.attribution.get()
+
+// Set funnel name
+nextDebug.attribution.setFunnel('FUNNEL_NAME')
+
+// Set Everflow click ID
+nextDebug.attribution.setEvclid('click_id')
+
+// Get current funnel
+nextDebug.attribution.getFunnel()
+
+// Clear persisted funnel
+nextDebug.attribution.clearFunnel()
+```
+
+### Order Management
+
+```javascript
+// View upsell journey
+nextDebug.order.getJourney()
+
+// Check if order is expired
+nextDebug.order.isExpired()
+
+// Clear order cache
+nextDebug.order.clearCache()
+
+// Get order statistics
+nextDebug.order.getStats()
+```
+
+### Accordion Controls
+
+```javascript
+// Open accordion
+nextDebug.accordion.open('accordion-id')
+
+// Close accordion
+nextDebug.accordion.close('accordion-id')
+
+// Toggle accordion
+nextDebug.accordion.toggle('accordion-id')
+```
+
+### Custom Event Logging
+
+```javascript
+// Log custom events to the timeline
+window.dispatchEvent(new CustomEvent('debug:log', {
+  detail: {
+    type: 'custom',
+    message: 'My debug message',
+    data: { /* any data */ }
+  }
+}));
+
+// Update debug content
+window.dispatchEvent(new CustomEvent('debug:update-content'));
+```
+
+### State Snapshots
+- Save current state for later comparison
+- Export state as JSON
+- Import saved states for testing
+- Compare state differences
+
+### Network Monitoring
+- View API requests and responses
+- Inspect request headers
+- Monitor request timing
+- Simulate network errors
+
+## Alternative Activation Methods
+
+<Tabs>
+<TabItem label="URL Parameter">
+
+```
+https://yoursite.com?debugger=true
+```
+
+The primary and recommended method.
+
+</TabItem>
+
+<TabItem label="Meta Tag">
+
+```html
+<meta name="next-debug" content="true">
+```
+
+Enables debug mode without URL parameter.
+
+</TabItem>
+
+<TabItem label="JavaScript Config">
+
+```javascript
+window.nextConfig = {
+  debug: true
+};
+```
+
+Configure via JavaScript before SDK loads.
+
+</TabItem>
+
+<TabItem label="Programmatic">
+
+```javascript
+// First, check if the SDK is loaded
+if (window.next) {
+  // Add debugger=true to URL and reload
+  const url = new URL(window.location.href);
+  url.searchParams.set('debugger', 'true');
+  window.location.href = url.toString();
+}
+```
+
+Activate from code (requires page reload).
+
+</TabItem>
+</Tabs>
+
+## Best Practices
+
+<Steps>
+
+1. **Development Only** - Never enable debug mode in production environments
+2. **Performance Impact** - Debug mode adds overhead; disable when testing performance
+3. **Privacy Concerns** - Debug overlay may display sensitive data (API keys, customer info)
+4. **Storage Management** - Clear debug storage regularly to avoid conflicts
+
+</Steps>
+
+## Troubleshooting
+
+### Debug Overlay Not Appearing
+
+<Steps>
+
+1. Ensure `?debugger=true` is in the URL
+2. Check browser console for errors
+3. Verify SDK is properly loaded
+4. Try hard refresh (`Ctrl+F5` or `Cmd+Shift+R`)
+
+</Steps>
+
+### Performance Issues
+
+If the debug overlay is causing performance problems:
+
+- Disable event timeline if too many events
+- Clear storage panel data
+- Reduce update frequency in settings
+- Use panel-specific views instead of "All"
+
+### Console Errors
+
+#### nextDebug is undefined
+
+This happens when debug mode is not enabled. Solutions:
+
+<Tabs>
+<TabItem label="URL Parameter">
+
+```
+https://yoursite.com?debugger=true
+```
+
+Add the parameter and reload.
+
+</TabItem>
+
+<TabItem label="Programmatic">
+
+```javascript
+// First, check if the SDK is loaded
+if (window.next) {
+  // Add debugger=true to URL and reload
+  const url = new URL(window.location.href);
+  url.searchParams.set('debugger', 'true');
+  window.location.href = url.toString();
+}
+```
+
+</TabItem>
+
+<TabItem label="Config">
+
+```javascript
+// In your config.js
+window.nextConfig = {
+  debug: true,
+  // other config...
+};
+```
+
+</TabItem>
+</Tabs>
+
+#### Panel-specific errors
+
+```javascript
+// Refresh specific panel
+nextDebug.overlay.updateContent()
+
+// Reinitialize debug overlay
+nextDebug.reinitialize()
+```
+
+## Security Considerations
+
+<Aside type="danger" title="Production Warning">
+Debug mode exposes internal state and sensitive data. **Never use in production environments.**
+</Aside>
+
+The debug overlay displays:
+- API keys and configuration
+- Cart and order details
+- Customer information
+- Analytics data
+- Internal SDK state
+
+**Best practices:**
+- Be cautious when sharing debug screenshots
+- Clear sensitive data from storage panel
+- Disable debug mode for production builds
+- Use environment-specific configuration
+
+## Integration with Dev Tools
+
+The debug overlay complements browser dev tools:
+
+- **Console logs** include debug context
+- **Network tab** shows SDK requests
+- **Elements panel** highlights SDK attributes
+- **Performance profiler** includes SDK marks
+
+## Related Documentation
+
+- [URL Parameters](/configuration/url-parameters) - Other functional URL parameters
+- [Configuration Reference](/configuration/configuration-reference) - Complete SDK configuration
+- [Events](/javascript-api/events) - SDK event system
