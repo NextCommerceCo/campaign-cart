@@ -46,6 +46,460 @@ window.nextReady.push(function() {
 });
 ```
 
+## Tracking Methods API Reference
+
+All tracking methods are available via the `next` object. These methods provide a simple API for tracking events programmatically.
+
+### E-commerce Events
+
+#### `trackViewItemList()`
+
+Track when a list of products is viewed (e.g., collection pages, search results).
+
+**Syntax:**
+```javascript
+next.trackViewItemList(packageIds, listId, listName)
+```
+
+**Parameters:**
+- `packageIds` (Array<string|number>) - Array of package IDs being displayed
+- `listId` (string, optional) - Unique identifier for the list
+- `listName` (string, optional) - Human-readable name for the list
+
+**Example:**
+```javascript
+window.nextReady.push(function() {
+  // Track homepage product grid
+  next.trackViewItemList(
+    ['101', '102', '103', '104'],
+    'homepage-grid',
+    'Featured Products'
+  );
+
+  // Track search results
+  next.trackViewItemList(
+    ['201', '202'],
+    'search-results',
+    'Search: "drone"'
+  );
+
+  // Track collection page
+  next.trackViewItemList(
+    ['301', '302', '303'],
+    'collection-bestsellers',
+    'Best Sellers'
+  );
+});
+```
+
+**Fires:** `dl_view_item_list` event to all analytics providers
+
+---
+
+#### `trackViewItem()`
+
+Track when a single product is viewed (e.g., product detail page).
+
+**Syntax:**
+```javascript
+next.trackViewItem(packageId)
+```
+
+**Parameters:**
+- `packageId` (string|number) - The package ID being viewed
+
+**Example:**
+```javascript
+window.nextReady.push(function() {
+  // Track product page view
+  next.trackViewItem('123');
+
+  // Track when user clicks to view product details
+  document.querySelectorAll('.product-card').forEach(card => {
+    card.addEventListener('click', function() {
+      const packageId = this.dataset.packageId;
+      next.trackViewItem(packageId);
+    });
+  });
+});
+```
+
+**Fires:** `dl_view_item` event to all analytics providers
+
+---
+
+#### `trackAddToCart()`
+
+Track when a product is added to cart.
+
+**Syntax:**
+```javascript
+next.trackAddToCart(packageId, quantity)
+```
+
+**Parameters:**
+- `packageId` (string|number) - The package ID being added
+- `quantity` (number, optional) - Number of items to add (default: 1)
+
+**Example:**
+```javascript
+window.nextReady.push(function() {
+  // Track add to cart with default quantity
+  next.trackAddToCart('123');
+
+  // Track add to cart with specific quantity
+  next.trackAddToCart('123', 2);
+
+  // Track from custom button
+  document.getElementById('custom-add-btn').addEventListener('click', function() {
+    const packageId = this.dataset.packageId;
+    const quantity = document.getElementById('qty-input').value;
+    next.trackAddToCart(packageId, parseInt(quantity));
+  });
+});
+```
+
+**Fires:** `dl_add_to_cart` event to all analytics providers
+
+**Note:** This is automatically tracked when using `data-next-action="add-to-cart"` buttons.
+
+---
+
+#### `trackRemoveFromCart()`
+
+Track when a product is removed from cart.
+
+**Syntax:**
+```javascript
+next.trackRemoveFromCart(packageId, quantity)
+```
+
+**Parameters:**
+- `packageId` (string|number) - The package ID being removed
+- `quantity` (number, optional) - Number of items to remove (default: 1)
+
+**Example:**
+```javascript
+window.nextReady.push(function() {
+  // Track remove from cart
+  next.trackRemoveFromCart('123');
+
+  // Track remove with specific quantity
+  next.trackRemoveFromCart('123', 2);
+
+  // Listen to cart events for automatic tracking
+  next.on('cart:item-removed', function(data) {
+    console.log('Item removed automatically tracked:', data.packageId);
+  });
+});
+```
+
+**Fires:** `dl_remove_from_cart` event to all analytics providers
+
+**Note:** This is automatically tracked when items are removed from cart via SDK methods.
+
+---
+
+#### `trackBeginCheckout()`
+
+Track when the checkout process begins.
+
+**Syntax:**
+```javascript
+next.trackBeginCheckout()
+```
+
+**Parameters:** None
+
+**Example:**
+```javascript
+window.nextReady.push(function() {
+  // Track checkout start
+  document.getElementById('checkout-btn').addEventListener('click', function() {
+    next.trackBeginCheckout();
+  });
+
+  // Or listen for automatic tracking
+  next.on('checkout:started', function(data) {
+    console.log('Checkout started - automatically tracked');
+  });
+});
+```
+
+**Fires:** `dl_begin_checkout` event to all analytics providers
+
+**Note:** This is automatically tracked when checkout forms are initialized.
+
+---
+
+#### `trackPurchase()`
+
+Track when a purchase is completed.
+
+**Syntax:**
+```javascript
+next.trackPurchase(orderData)
+```
+
+**Parameters:**
+- `orderData` (object) - Order information object
+
+**Order Data Structure:**
+```javascript
+{
+  id: 'ORDER_123',           // Order ID (required)
+  total: 99.99,              // Order total (required)
+  currency: 'USD',           // Currency code (optional, default: 'USD')
+  tax: 5.99,                 // Tax amount (optional)
+  shipping: 10.00,           // Shipping cost (optional)
+  coupon: 'SAVE10',          // Coupon code (optional)
+  items: [                   // Order items (optional)
+    {
+      packageId: '123',
+      quantity: 1,
+      price: 29.99
+    }
+  ]
+}
+```
+
+**Example:**
+```javascript
+window.nextReady.push(function() {
+  // Track purchase with minimal data
+  next.trackPurchase({
+    id: 'ORDER_789',
+    total: 149.99
+  });
+
+  // Track purchase with full details
+  next.trackPurchase({
+    id: 'ORDER_790',
+    total: 149.99,
+    currency: 'USD',
+    tax: 12.50,
+    shipping: 10.00,
+    coupon: 'SUMMER20',
+    items: [
+      { packageId: '123', quantity: 1, price: 99.99 },
+      { packageId: '456', quantity: 2, price: 25.00 }
+    ]
+  });
+
+  // Listen for automatic purchase tracking
+  next.on('order:completed', function(orderData) {
+    console.log('Purchase automatically tracked:', orderData);
+  });
+});
+```
+
+**Fires:** `dl_purchase` event to all analytics providers
+
+**Note:** This is automatically tracked when orders are completed via the SDK.
+
+---
+
+### User Events
+
+#### `trackSignUp()`
+
+Track when a user signs up or registers.
+
+**Syntax:**
+```javascript
+next.trackSignUp(email)
+```
+
+**Parameters:**
+- `email` (string) - User's email address
+
+**Example:**
+```javascript
+window.nextReady.push(function() {
+  // Track sign up after form submission
+  document.getElementById('signup-form').addEventListener('submit', function(e) {
+    const email = document.getElementById('email').value;
+    next.trackSignUp(email);
+  });
+
+  // Track newsletter subscription
+  document.getElementById('newsletter-form').addEventListener('submit', function(e) {
+    const email = document.getElementById('newsletter-email').value;
+    next.trackSignUp(email);
+  });
+});
+```
+
+**Fires:** `dl_sign_up` event to all analytics providers
+
+---
+
+#### `trackLogin()`
+
+Track when a user logs in.
+
+**Syntax:**
+```javascript
+next.trackLogin(email)
+```
+
+**Parameters:**
+- `email` (string) - User's email address
+
+**Example:**
+```javascript
+window.nextReady.push(function() {
+  // Track login
+  document.getElementById('login-form').addEventListener('submit', function(e) {
+    const email = document.getElementById('email').value;
+    next.trackLogin(email);
+  });
+
+  // Track after successful authentication
+  function onAuthSuccess(userData) {
+    next.trackLogin(userData.email);
+  }
+});
+```
+
+**Fires:** `dl_login` event to all analytics providers
+
+---
+
+### Custom Events
+
+#### `trackCustomEvent()`
+
+Track custom events with arbitrary data.
+
+**Syntax:**
+```javascript
+next.trackCustomEvent(eventName, data)
+```
+
+**Parameters:**
+- `eventName` (string) - Name of the custom event
+- `data` (object, optional) - Additional event data
+
+**Example:**
+```javascript
+window.nextReady.push(function() {
+  // Track video play
+  next.trackCustomEvent('video_played', {
+    video_id: 'demo-video-1',
+    video_title: 'Product Demo',
+    duration: 120
+  });
+
+  // Track feature usage
+  next.trackCustomEvent('feature_used', {
+    feature_name: 'product_comparison',
+    products_compared: ['123', '456']
+  });
+
+  // Track user interaction
+  next.trackCustomEvent('button_clicked', {
+    button_name: 'get_quote',
+    button_location: 'header'
+  });
+
+  // Track milestone reached
+  next.trackCustomEvent('cart_milestone', {
+    milestone: 'free_shipping_reached',
+    cart_value: 75.00
+  });
+});
+```
+
+**Fires:** Custom event to all analytics providers
+
+---
+
+### Advanced Methods
+
+#### `setDebugMode()`
+
+Enable or disable analytics debug mode for troubleshooting.
+
+**Syntax:**
+```javascript
+next.setDebugMode(enabled)
+```
+
+**Parameters:**
+- `enabled` (boolean) - `true` to enable debug mode, `false` to disable
+
+**Example:**
+```javascript
+window.nextReady.push(function() {
+  // Enable debug mode
+  next.setDebugMode(true);
+
+  // Disable debug mode
+  next.setDebugMode(false);
+
+  // Enable debug mode based on URL parameter
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('debug') === 'true') {
+    next.setDebugMode(true);
+  }
+});
+```
+
+**Effect:** When enabled, all analytics events are logged to the browser console with detailed information.
+
+---
+
+#### `invalidateAnalyticsContext()`
+
+Invalidate the current analytics context (useful for SPA route changes).
+
+**Syntax:**
+```javascript
+next.invalidateAnalyticsContext()
+```
+
+**Parameters:** None
+
+**Example:**
+```javascript
+window.nextReady.push(function() {
+  // Call after SPA route change
+  window.addEventListener('popstate', function() {
+    next.invalidateAnalyticsContext();
+  });
+
+  // Or in your routing library
+  router.afterEach((to, from) => {
+    next.invalidateAnalyticsContext();
+  });
+});
+```
+
+**Effect:** Resets session context and fires new `dl_user_data` event for the new page context.
+
+---
+
+### Quick Reference Table
+
+| Method | Parameters | Use Case | Auto-Tracked? |
+|--------|------------|----------|---------------|
+| `trackViewItemList()` | packageIds, listId, listName | Product list views | Yes* |
+| `trackViewItem()` | packageId | Product detail views | No |
+| `trackAddToCart()` | packageId, quantity | Add to cart actions | Yes |
+| `trackRemoveFromCart()` | packageId, quantity | Remove from cart | Yes |
+| `trackBeginCheckout()` | - | Checkout started | Yes |
+| `trackPurchase()` | orderData | Order completed | Yes |
+| `trackSignUp()` | email | User registration | No |
+| `trackLogin()` | email | User login | No |
+| `trackCustomEvent()` | eventName, data | Custom tracking | No |
+| `setDebugMode()` | enabled | Enable debugging | - |
+| `invalidateAnalyticsContext()` | - | SPA route changes | - |
+
+\* Auto-tracked when using specific data attributes
+
+---
+
 ## Event Listening
 
 Listen to SDK events for custom analytics implementations:
