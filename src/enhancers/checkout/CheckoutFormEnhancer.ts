@@ -14,6 +14,7 @@ import { CreditCardService, type CreditCardData } from './services/CreditCardSer
 import { CheckoutValidator } from './validation/CheckoutValidator';
 import { UIService } from './services/UIService';
 import { useAttributionStore } from '@/stores/attributionStore';
+import { useParameterStore } from '@/stores/parameterStore';
 import type { CreateOrder, Address, Payment, Attribution, PaymentMethod } from '@/types/api';
 import { ProspectCartEnhancer } from './ProspectCartEnhancer';
 import { GeneralModal } from '@/components/modals/GeneralModal';
@@ -2577,7 +2578,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           if (!url.searchParams.has('ref_id') && order.ref_id) {
             url.searchParams.set('ref_id', order.ref_id);
           }
-          window.location.href = url.href;
+          // Preserve all current session parameters
+          const finalUrl = this.preserveQueryParams(url.href);
+          window.location.href = finalUrl;
         }
       } else {
         // User clicked 'Close' - ensure form is properly initialized
@@ -2909,35 +2912,68 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const metaTag = document.querySelector('meta[name="next-success-url"]') as HTMLMetaElement ||
                    document.querySelector('meta[name="next-next-url"]') as HTMLMetaElement ||
                    document.querySelector('meta[name="os-next-page"]') as HTMLMetaElement;
-    
+
     if (!metaTag?.content) return null;
-    
+
     const nextPagePath = metaTag.content;
-    const redirectUrl = nextPagePath.startsWith('http') ? 
-      new URL(nextPagePath) : 
+    const redirectUrl = nextPagePath.startsWith('http') ?
+      new URL(nextPagePath) :
       new URL(nextPagePath, window.location.origin);
-    
+
     if (refId) {
       redirectUrl.searchParams.append('ref_id', refId);
     }
-    
-    return redirectUrl.href;
+
+    // Preserve all current session parameters (currency, country, utm params, etc.)
+    return this.preserveQueryParams(redirectUrl.href);
   }
 
-  private preserveQueryParams(targetUrl: string, preserveParams: string[] = ['debug', 'debugger']): string {
+  private preserveQueryParams(targetUrl: string, preserveParams: string[] | 'all' = 'all'): string {
     try {
       const url = new URL(targetUrl, window.location.origin);
-      const currentParams = new URLSearchParams(window.location.search);
-      
-      preserveParams.forEach(param => {
-        const value = currentParams.get(param);
-        if (value && !url.searchParams.has(param)) {
-          url.searchParams.append(param, value);
+
+      if (preserveParams === 'all') {
+        // Get stored parameters from parameter store (persisted across page navigations)
+        const paramStore = useParameterStore.getState();
+        const storedParams = paramStore.params;
+
+        // Also get current URL params (in case there are new ones not yet captured)
+        const currentParams = new URLSearchParams(window.location.search);
+        const currentParamsObj: Record<string, string> = {};
+        currentParams.forEach((value, key) => {
+          currentParamsObj[key] = value;
+        });
+
+        // Update parameter store with any new current URL params
+        if (Object.keys(currentParamsObj).length > 0) {
+          paramStore.mergeParams(currentParamsObj);
         }
-      });
-      
+
+        // Merge: current URL params take priority over stored ones (most recent)
+        const allParams = { ...storedParams, ...currentParamsObj };
+
+        // Apply all parameters to the target URL (don't override existing params in target)
+        Object.entries(allParams).forEach(([key, value]) => {
+          if (!url.searchParams.has(key)) {
+            url.searchParams.append(key, value);
+          }
+        });
+
+        this.logger.debug('Preserved parameters from store:', allParams);
+      } else {
+        // Preserve only specified parameters (fallback to URL for specific params)
+        const currentParams = new URLSearchParams(window.location.search);
+        preserveParams.forEach(param => {
+          const value = currentParams.get(param);
+          if (value && !url.searchParams.has(param)) {
+            url.searchParams.append(param, value);
+          }
+        });
+      }
+
       return url.href;
     } catch (error) {
+      this.logger.error('Error preserving query params:', error);
       return targetUrl;
     }
   }
@@ -3115,17 +3151,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       // Update step in store before navigation
       checkoutStore.setStep(this.currentStep + 1);
 
-      // Build next URL with preserved query parameters
-      let nextUrl = this.nextStepUrl!;
-      const currentParams = new URLSearchParams(window.location.search);
-
-      // Check if debug=true is in current URL
-      if (currentParams.get('debug') === 'true') {
-        // Handle relative URLs (e.g., "shipping", "shipping.html", "/shipping.html")
-        const separator = nextUrl.includes('?') ? '&' : '?';
-        nextUrl = `${nextUrl}${separator}debug=true`;
-        this.logger.debug('Preserving debug parameter in next step URL');
-      }
+      // Build next URL with all session parameters preserved (currency, country, utm params, etc.)
+      const nextUrl = this.preserveQueryParams(this.nextStepUrl!);
+      this.logger.debug('Preserving all session parameters in next step URL');
 
       // Add a small delay to show the loading spinner before navigation
       await new Promise(resolve => setTimeout(resolve, 1000));

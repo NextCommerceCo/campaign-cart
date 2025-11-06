@@ -871,7 +871,7 @@ export class UpsellEnhancer extends BaseEnhancer {
   }
   
   /**
-   * Navigate to a URL, preserving ref_id and debug parameters
+   * Navigate to a URL, preserving ref_id and all session parameters
    * @param url - The URL to navigate to
    * @param refId - Optional ref_id to preserve (defaults to current order ref_id)
    */
@@ -880,24 +880,24 @@ export class UpsellEnhancer extends BaseEnhancer {
       this.logger.warn('No URL provided for navigation');
       return;
     }
-    
+
     try {
       const targetUrl = new URL(url, window.location.origin);
       const orderStore = useOrderStore.getState();
-      
+
       // Use provided ref_id or get from current order
       const orderRefId = refId || orderStore.order?.ref_id;
-      
+
       // Append the order reference ID if not already in the URL
       if (orderRefId && !targetUrl.searchParams.has('ref_id')) {
         targetUrl.searchParams.append('ref_id', orderRefId);
       }
-      
-      // Preserve debug and other important parameters
-      const finalUrl = preserveQueryParams(targetUrl.href, ['debug', 'debugger', 'test']);
+
+      // Preserve all session parameters (currency, utm params, country, etc.)
+      const finalUrl = preserveQueryParams(targetUrl.href);
       this.logger.info(`Navigating to ${finalUrl}`);
       window.location.href = finalUrl;
-      
+
     } catch (error) {
       this.logger.error('Invalid URL for navigation:', url, error);
       // Fallback: preserve params even for direct navigation
