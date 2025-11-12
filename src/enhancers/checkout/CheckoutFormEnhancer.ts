@@ -471,13 +471,17 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const monthField = this.fields.get('cc-month') || this.fields.get('exp-month');
     const yearField = this.fields.get('cc-year') || this.fields.get('exp-year');
 
-          // Month names for display
-      const monthNames = [
-        'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December'
-      ];
+    // Month names for display
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
 
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // getMonth() returns 0-11, we need 1-12
 
+    // Populate months - always show all 12 months
     if (monthField instanceof HTMLSelectElement) {
       monthField.innerHTML = '';
       // Create placeholder for month
@@ -496,26 +500,66 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         option.textContent = `(${month}) ${monthNames[i - 1]}`;
         monthField.appendChild(option);
       }
+
+      // Add change listener to update years when month changes
+      monthField.addEventListener('change', () => {
+        if (yearField instanceof HTMLSelectElement) {
+          const selectedMonth = parseInt(monthField.value);
+          this.populateYearOptions(yearField, currentYear, currentMonth, selectedMonth);
+        }
+      });
     }
 
+    // Populate years initially (all years available)
     if (yearField instanceof HTMLSelectElement) {
-      yearField.innerHTML = '';
-      // Create placeholder for year
-      const yearPlaceholder = document.createElement('option');
-      yearPlaceholder.value = '';
-      yearPlaceholder.textContent = 'Year';
-      yearPlaceholder.disabled = true;
-      yearPlaceholder.selected = true;
-      yearPlaceholder.hidden = true; // Hide from dropdown list
-      yearField.appendChild(yearPlaceholder);
+      this.populateYearOptions(yearField, currentYear, currentMonth);
+    }
+  }
 
-      const currentYear = new Date().getFullYear();
-      for (let i = 0; i < 20; i++) {
-        const year = currentYear + i;
-        const option = document.createElement('option');
-        option.value = year.toString();
-        option.textContent = year.toString();
-        yearField.appendChild(option);
+  private populateYearOptions(
+    yearField: HTMLSelectElement,
+    currentYear: number,
+    currentMonth: number,
+    selectedMonth?: number
+  ): void {
+    const savedValue = yearField.value;
+    yearField.innerHTML = '';
+
+    // Create placeholder for year
+    const yearPlaceholder = document.createElement('option');
+    yearPlaceholder.value = '';
+    yearPlaceholder.textContent = 'Year';
+    yearPlaceholder.disabled = true;
+    yearPlaceholder.selected = true;
+    yearPlaceholder.hidden = true; // Hide from dropdown list
+    yearField.appendChild(yearPlaceholder);
+
+    // Determine starting year based on selected month
+    let startYear = currentYear;
+    if (selectedMonth) {
+      // If selected month has already passed this year, start from next year
+      if (selectedMonth < currentMonth) {
+        startYear = currentYear + 1;
+      }
+    }
+
+    // Add 20 years from the start year
+    for (let i = 0; i < 20; i++) {
+      const year = startYear + i;
+      const option = document.createElement('option');
+      option.value = year.toString();
+      option.textContent = year.toString();
+      yearField.appendChild(option);
+    }
+
+    // Restore value if still valid
+    if (savedValue) {
+      const option = yearField.querySelector(`option[value="${savedValue}"]`);
+      if (option && !(option as HTMLOptionElement).disabled) {
+        yearField.value = savedValue;
+      } else {
+        // If saved value is no longer valid, reset to placeholder
+        yearField.value = '';
       }
     }
   }
