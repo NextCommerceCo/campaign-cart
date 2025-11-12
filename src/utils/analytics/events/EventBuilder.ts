@@ -5,6 +5,7 @@
 
 import type { DataLayerEvent, UserProperties, EventContext, EventMetadata, EcommerceItem, ElevarProduct, ElevarImpression } from '../types';
 import { useCampaignStore } from '@/stores/campaignStore';
+import { useCheckoutStore } from '@/stores/checkoutStore';
 
 // Define minimal types to avoid external dependencies
 interface MinimalCartItem {
@@ -84,50 +85,46 @@ export class EventBuilder {
     // Try to get store states safely
     try {
       if (typeof window !== 'undefined') {
-        // Try to import stores dynamically
-        const checkoutStore = (window as any).checkoutStore;
+        // Access checkout store directly
+        const checkoutState = useCheckoutStore.getState();
 
-        if (checkoutStore) {
-          const checkoutState = checkoutStore.getState();
+        // Add billing address info if available (Elevar format without address_ prefix)
+        if (checkoutState.billingAddress) {
+          const billing = checkoutState.billingAddress;
+          userProperties.customer_first_name = billing.first_name;
+          userProperties.customer_last_name = billing.last_name;
+          userProperties.customer_city = billing.city; // No address_ prefix
+          userProperties.customer_province = billing.province; // No address_ prefix
+          userProperties.customer_province_code = billing.province_code || billing.province;
+          userProperties.customer_zip = billing.postal; // No address_ prefix
+          userProperties.customer_country = billing.country; // No address_ prefix
+          userProperties.customer_phone = billing.phone;
 
-          // Add billing address info if available (Elevar format without address_ prefix)
-          if (checkoutState.billingAddress) {
-            const billing = checkoutState.billingAddress;
-            userProperties.customer_first_name = billing.first_name;
-            userProperties.customer_last_name = billing.last_name;
-            userProperties.customer_city = billing.city; // No address_ prefix
-            userProperties.customer_province = billing.province; // No address_ prefix
-            userProperties.customer_province_code = billing.province_code || billing.province;
-            userProperties.customer_zip = billing.postal; // No address_ prefix
-            userProperties.customer_country = billing.country; // No address_ prefix
-            userProperties.customer_phone = billing.phone;
+          // Add address lines for Elevar
+          userProperties.customer_address_1 = billing.address_1 || billing.address || '';
+          userProperties.customer_address_2 = billing.address_2 || '';
+        }
 
-            // Add address lines for Elevar
-            userProperties.customer_address_1 = billing.address_1 || billing.address || '';
-            userProperties.customer_address_2 = billing.address_2 || '';
-          }
+        // Add customer email if available from form data
+        if (checkoutState.formData?.email) {
+          userProperties.customer_email = checkoutState.formData.email;
+        }
 
-          // Add customer email if available from form data
-          if (checkoutState.formData?.email) {
-            userProperties.customer_email = checkoutState.formData.email;
-          }
+        // Add customer ID if available (from order or other sources)
+        if (checkoutState.formData?.customerId) {
+          userProperties.customer_id = String(checkoutState.formData.customerId);
+          userProperties.visitor_type = 'logged_in'; // Elevar uses 'logged_in' not 'customer'
+        }
 
-          // Add customer ID if available (from order or other sources)
-          if (checkoutState.formData?.customerId) {
-            userProperties.customer_id = String(checkoutState.formData.customerId);
-            userProperties.visitor_type = 'logged_in'; // Elevar uses 'logged_in' not 'customer'
-          }
-
-          // Add customer metrics if available (convert to string for Elevar)
-          if (checkoutState.formData?.orderCount !== undefined) {
-            userProperties.customer_order_count = String(checkoutState.formData.orderCount);
-          }
-          if (checkoutState.formData?.totalSpent !== undefined) {
-            userProperties.customer_total_spent = String(checkoutState.formData.totalSpent);
-          }
-          if (checkoutState.formData?.tags) {
-            userProperties.customer_tags = String(checkoutState.formData.tags);
-          }
+        // Add customer metrics if available (convert to string for Elevar)
+        if (checkoutState.formData?.orderCount !== undefined) {
+          userProperties.customer_order_count = String(checkoutState.formData.orderCount);
+        }
+        if (checkoutState.formData?.totalSpent !== undefined) {
+          userProperties.customer_total_spent = String(checkoutState.formData.totalSpent);
+        }
+        if (checkoutState.formData?.tags) {
+          userProperties.customer_tags = String(checkoutState.formData.tags);
         }
       }
     } catch (error) {
