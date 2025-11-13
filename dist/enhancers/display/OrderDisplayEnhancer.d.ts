@@ -16,6 +16,7 @@ export declare class OrderDisplayEnhancer extends BaseDisplayEnhancer {
     private getOrderLineProperty;
     private getOrderAttributionProperty;
     private formatAddress;
+    private beautifyPaymentMethod;
     private isComplexOrderProperty;
     private getCalculatedProperty;
 }

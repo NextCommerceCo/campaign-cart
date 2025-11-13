@@ -95,14 +95,14 @@ export class EventBuilder {
           userProperties.customer_last_name = billing.last_name;
           userProperties.customer_city = billing.city; // No address_ prefix
           userProperties.customer_province = billing.province; // No address_ prefix
-          userProperties.customer_province_code = billing.province_code || billing.province;
+          userProperties.customer_province_code = billing.province;
           userProperties.customer_zip = billing.postal; // No address_ prefix
           userProperties.customer_country = billing.country; // No address_ prefix
           userProperties.customer_phone = billing.phone;
 
           // Add address lines for Elevar
-          userProperties.customer_address_1 = billing.address_1 || billing.address || '';
-          userProperties.customer_address_2 = billing.address_2 || '';
+          userProperties.customer_address_1 = billing.address1 || '';
+          userProperties.customer_address_2 = billing.address2 || '';
         }
 
         // Add customer email if available from form data

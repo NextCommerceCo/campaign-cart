@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
+import { persist } from 'zustand/middleware';
 import type { Order, AddUpsellLine } from '@/types/api';
 import { createLogger } from '@/utils/logger';
 
@@ -92,9 +92,8 @@ const initialState: OrderState = {
 };
 
 export const useOrderStore = create<OrderState & OrderActions>()(
-  devtools(
-    persist(
-      (set, get) => ({
+  persist(
+    (set, get) => ({
         ...initialState,
 
       // Order management
@@ -421,8 +420,5 @@ export const useOrderStore = create<OrderState & OrderActions>()(
         }
       }
     }
-  ),
-  {
-    name: 'order-store',
-  })
+  )
 );
