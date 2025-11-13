@@ -51,6 +51,7 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private scanBillingFields;
     private scanExpirationFields;
     private populateExpirationFields;
+    private populateYearOptions;
     private setupBillingForm;
     private convertShippingFieldsToBilling;
     private setInitialBillingFormState;

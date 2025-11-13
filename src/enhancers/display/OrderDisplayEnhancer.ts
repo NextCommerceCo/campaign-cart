@@ -111,16 +111,16 @@ export class OrderDisplayEnhancer extends BaseDisplayEnhancer {
   private getDisplayValue(orderState: any, path: string): any {
     const parsed = AttributeParser.parseDisplayPath(path);
     const property = parsed.property;
-    
+
     if (!property) {
       return '';
     }
-    
+
     // At this point, property is guaranteed to be a non-empty string
     const propertyStr = property as string;
-    
+
     const order = orderState.order;
-    
+
     if (!order) {
       // Handle loading and error states
       if (orderState.isLoading) {
@@ -130,7 +130,7 @@ export class OrderDisplayEnhancer extends BaseDisplayEnhancer {
       }
       return '';
     }
-    
+
     // Check property mappings first
     const mappedPath = getPropertyMapping('order', propertyStr);
     if (mappedPath) {
@@ -138,12 +138,16 @@ export class OrderDisplayEnhancer extends BaseDisplayEnhancer {
       if (mappedPath.startsWith('_calculated.')) {
         return this.getCalculatedProperty(order, mappedPath.substring(12));
       }
-      
+
       // If we have a mapping, use PropertyResolver to get the value
       // For order object, we need to check if it's a direct property or nested
       if (mappedPath.startsWith('order.')) {
         const value = PropertyResolver.getNestedProperty(order, mappedPath.substring(6));
         if (value !== undefined) {
+          // Special handling for payment_method - beautify the name
+          if (mappedPath === 'order.payment_method' || propertyStr === 'payment_method' || propertyStr === 'paymentMethod') {
+            return this.beautifyPaymentMethod(value);
+          }
           return value;
         }
       } else {
@@ -178,7 +182,11 @@ export class OrderDisplayEnhancer extends BaseDisplayEnhancer {
       
       case 'testBadge':
         return order.is_test ? '🧪 TEST ORDER' : '';
-        
+
+      case 'payment_method':
+      case 'paymentMethod':
+        return this.beautifyPaymentMethod(order.payment_method || '');
+
       // User/Customer properties
       case 'user':
       case 'customer':
@@ -367,7 +375,7 @@ export class OrderDisplayEnhancer extends BaseDisplayEnhancer {
 
   private formatAddress(address: any): string {
     if (!address) return '';
-    
+
     const parts = [
       address.line1,
       address.line2,
@@ -376,8 +384,27 @@ export class OrderDisplayEnhancer extends BaseDisplayEnhancer {
       address.postcode,
       address.country
     ].filter(Boolean).map(part => String(part));
-    
+
     return parts.join(', ');
+  }
+
+  private beautifyPaymentMethod(method: string): string {
+    if (!method) return '';
+
+    // Mapping of raw payment method values to beautified names
+    const paymentMethodMap: Record<string, string> = {
+      'card_token': 'Credit Card',
+      'credit card': 'Credit Card',
+      'apple_pay': 'Apple Pay',
+      'apple pay': 'Apple Pay',
+      'google_pay': 'Google Pay',
+      'google pay': 'Google Pay',
+      'paypal': 'PayPal',
+      'Paypal': 'PayPal'
+    };
+
+    // Return beautified name or original if not in map
+    return paymentMethodMap[method] || method;
   }
 
   private isComplexOrderProperty(property: string): boolean {

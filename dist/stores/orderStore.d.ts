@@ -46,11 +46,7 @@ export interface OrderActions {
     getUpsellJourney: () => any[];
     reset: () => void;
 }
-export declare const useOrderStore: import('zustand').UseBoundStore<Omit<Omit<import('zustand').StoreApi<OrderState & OrderActions>, "setState"> & {
-    setState<A extends string | {
-        type: string;
-    }>(partial: (OrderState & OrderActions) | Partial<OrderState & OrderActions> | ((state: OrderState & OrderActions) => (OrderState & OrderActions) | Partial<OrderState & OrderActions>), replace?: boolean | undefined, action?: A | undefined): void;
-}, "persist"> & {
+export declare const useOrderStore: import('zustand').UseBoundStore<Omit<import('zustand').StoreApi<OrderState & OrderActions>, "persist"> & {
     persist: {
         setOptions: (options: Partial<import('zustand/middleware').PersistOptions<OrderState & OrderActions, OrderState & OrderActions>>) => void;
         clearStorage: () => void;
