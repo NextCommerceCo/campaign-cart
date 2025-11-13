@@ -683,17 +683,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private setInitialBillingFormState(): void {
     const billingToggle = this.form.querySelector('input[name="use_shipping_address"]') as HTMLInputElement;
     const billingSection = document.querySelector(BILLING_CONTAINER_SELECTOR) as HTMLElement;
-    
-    // Production logging that won't be stripped
-    console.log('%c[PROD] Setting initial billing state', 'color: #4CAF50; font-weight: bold', {
-      toggleFound: !!billingToggle,
-      sectionFound: !!billingSection,
-      toggleChecked: billingToggle?.checked,
-      currentHeight: billingSection?.style.height,
-      currentOverflow: billingSection?.style.overflow,
-      currentClasses: billingSection?.className
-    });
-    
+
     this.logger.info('[Billing] Setting initial state', {
       toggleFound: !!billingToggle,
       sectionFound: !!billingSection,
@@ -766,20 +756,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         billingSection.style.setProperty('transition', 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 'important');
         billingSection.style.setProperty('height', `${fullHeight}px`, 'important');
         
-        // Force style in production
-        const computedStyle = window.getComputedStyle(billingSection);
-        console.log('%c[PROD] Expand animation started', 'color: #00BCD4; font-weight: bold', {
-          fromHeight: '0px',
-          toHeight: fullHeight,
-          measuredFullHeight: fullHeight,
-          appliedTransition: billingSection.style.transition,
-          computedTransition: computedStyle.transition,
-          computedHeight: computedStyle.height,
-          hasTransition: computedStyle.transition !== 'none',
-          transitionProperty: computedStyle.transitionProperty,
-          transitionDuration: computedStyle.transitionDuration
-        });
-        
         this.logger.debug('[Billing] Expand animation started', {
           fromHeight: '0px',
           toHeight: fullHeight
@@ -793,16 +769,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           billingSection.style.overflow = 'visible';
           billingSection.removeEventListener('transitionend', handleTransitionEnd);
           this.billingAnimationInProgress = false;
-          
-          // Production logging for completion
-          console.log('%c[PROD] Expand complete', 'color: #4CAF50; font-weight: bold', {
-            finalHeight: billingSection.style.height,
-            finalOverflow: billingSection.style.overflow,
-            finalTransition: billingSection.style.transition,
-            computedHeight: window.getComputedStyle(billingSection).height,
-            scrollHeight: billingSection.scrollHeight
-          });
-          
+
           this.logger.info('[Billing] Expand complete', {
             finalHeight: billingSection.style.height,
             finalOverflow: billingSection.style.overflow,
@@ -868,20 +835,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         // Animate to collapsed state
         billingSection.style.setProperty('transition', 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 'important');
         billingSection.style.setProperty('height', '0px', 'important');
-        
-        // Force style in production
-        const computedStyle = window.getComputedStyle(billingSection);
-        console.log('%c[PROD] Collapse animation started', 'color: #E91E63; font-weight: bold', {
-          fromHeight: currentHeight,
-          toHeight: '0px',
-          appliedTransition: billingSection.style.transition,
-          computedTransition: computedStyle.transition,
-          computedHeight: computedStyle.height,
-          hasTransition: computedStyle.transition !== 'none',
-          transitionProperty: computedStyle.transitionProperty,
-          transitionDuration: computedStyle.transitionDuration
-        });
-        
+
         this.logger.debug('[Billing] Collapse animation started', {
           fromHeight: currentHeight,
           toHeight: '0px'
@@ -895,15 +849,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           billingSection.style.overflow = 'hidden';
           billingSection.removeEventListener('transitionend', handleTransitionEnd);
           this.billingAnimationInProgress = false;
-          
-          // Production logging for completion
-          console.log('%c[PROD] Collapse complete', 'color: #9C27B0; font-weight: bold', {
-            finalHeight: billingSection.style.height,
-            finalOverflow: billingSection.style.overflow,
-            finalTransition: billingSection.style.transition,
-            computedHeight: window.getComputedStyle(billingSection).height
-          });
-          
+
           this.logger.info('[Billing] Collapse complete', {
             finalHeight: billingSection.style.height,
             finalOverflow: billingSection.style.overflow,
@@ -1114,21 +1060,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       // NOTE: This only affects the shipping country dropdown, NOT currency
       let selectedCountryCode = locationData.detectedCountryCode;
 
-      // Use console.log to ensure visibility
       const countryConfig = this.countryService.getConfig();
       const checkoutStore = useCheckoutStore.getState();
       const storedCountry = checkoutStore.formData.country;
-
-      console.log('%c[CheckoutForm] Shipping Country Priority Check', 'color: #FF6B6B; font-weight: bold', {
-        detectedCountry: locationData.detectedCountryCode,
-        detectedCurrency: locationData.detectedCountryConfig.currencyCode,
-        addressConfigDefault: countryConfig?.defaultCountry,
-        storedCountry: storedCountry,
-        urlParam: new URLSearchParams(window.location.search).get('country'),
-        sessionOverride: sessionStorage.getItem('next_selected_country'),
-        availableCountries: this.countries.map(c => c.code),
-        note: 'Shipping country may differ from detected location. Currency is based on detected location only.'
-      });
 
       this.logger.info('Shipping country selection priority check (does not affect currency):', {
         detectedCountry: locationData.detectedCountryCode,
@@ -1186,22 +1120,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       
       const countryField = this.fields.get('country');
       if (countryField instanceof HTMLSelectElement) {
-        console.log('%c[CheckoutForm] Setting country dropdown', 'color: #4ECDC4; font-weight: bold', {
-          field: countryField,
-          selectedCountry: selectedCountryCode,
-          availableOptions: locationData.countries.map(c => c.code)
-        });
-        
         this.populateCountryDropdown(countryField, locationData.countries, selectedCountryCode);
-        
+
         if (selectedCountryCode) {
           this.updateFormData({ country: selectedCountryCode });
           this.clearError('country');
-          
-          console.log('%c[CheckoutForm] Country set to:', 'color: #95E77E; font-weight: bold', selectedCountryCode, {
-            dropdownValue: countryField.value,
-            formData: useCheckoutStore.getState().formData.country
-          });
         }
       }
       
@@ -1211,11 +1134,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
       // IMPORTANT: Save stored province before loading states (updateStateOptions clears it)
       const storedProvince = checkoutStore.formData.province;
-      console.log('%c[CheckoutForm] Saved province before state loading', 'color: #FF1493; font-weight: bold', {
-        storedProvince,
-        storedCountry,
-        willRestore: !!storedProvince && storedCountry === selectedCountryCode
-      });
 
       if (selectedCountryCode) {
         const provinceField = this.fields.get('province');
@@ -1230,15 +1148,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
             if (optionExists) {
               provinceField.value = storedProvince;
               this.updateFormData({ province: storedProvince });
-              console.log('%c[CheckoutForm] ✅ Restored province after state loading', 'color: #00FF00; font-weight: bold', {
-                province: storedProvince,
-                fieldValue: provinceField.value
-              });
-            } else {
-              console.log('%c[CheckoutForm] ⚠️ Cannot restore province - option not found', 'color: #FFA500', {
-                storedProvince,
-                availableOptions: Array.from(provinceField.options).map(o => o.value)
-              });
             }
           }
         }
@@ -1737,8 +1646,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   }
 
   private async fillAddressFromAutocomplete(place: any, type: 'shipping' | 'billing'): Promise<void> {
-    console.log('🔍 fillAddressFromAutocomplete called with place:', place, 'type:', type);
-    
     if (!place.address_components) return;
 
     // Parse address components
@@ -1749,33 +1656,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       return;
     }
 
-    // Log autocomplete selection for specific countries (e.g., Brazil)
     const countryCode = components.country?.short;
-    if (countryCode === 'BR' || countryCode === 'GB' || countryCode === 'JP' || countryCode === 'IN' || countryCode === 'CA') {
-      // Use console.log directly to ensure visibility
-      console.log(`🌍 Google Autocomplete selection for ${countryCode}:`, {
-        country: countryCode,
-        type: type,
-        formatted_address: place.formatted_address,
-        components: {
-          street_number: components.street_number?.long,
-          route: components.route?.long,
-          locality: components.locality?.long,
-          postal_town: components.postal_town?.long,
-          sublocality: components.sublocality?.long,
-          sublocality_level_1: components.sublocality_level_1?.long,
-          sublocality_level_2: components.sublocality_level_2?.long,
-          administrative_area_level_1: components.administrative_area_level_1?.long,
-          administrative_area_level_2: components.administrative_area_level_2?.long,
-          administrative_area_level_3: components.administrative_area_level_3?.long,
-          administrative_area_level_4: components.administrative_area_level_4?.long,
-          neighborhood: components.neighborhood?.long,
-          postal_code: components.postal_code?.long,
-          postal_code_suffix: components.postal_code_suffix?.long
-        },
-        all_types: Object.keys(components)
-      });
-    }
 
     const isShipping = type === 'shipping';
     const fieldPrefix = isShipping ? '' : 'billing-';
@@ -3958,14 +3839,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
   private handleBillingAddressToggle(event: Event): void {
     const target = event.target as HTMLInputElement;
-    
-    // Production logging
-    console.log('%c[PROD] Billing toggle clicked', 'color: #2196F3; font-weight: bold', {
-      checked: target.checked,
-      animationInProgress: this.billingAnimationInProgress,
-      timestamp: Date.now()
-    });
-    
+
     this.logger.info('[Billing] Toggle clicked', {
       checked: target.checked,
       animationInProgress: this.billingAnimationInProgress
@@ -3994,17 +3868,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         this.logger.error('[Billing] CRITICAL: Billing section not found!');
         return;
       }
-      
-      // Production logging before processing
-      console.log('%c[PROD] Processing toggle', 'color: #FF9800; font-weight: bold', {
-        targetChecked: target.checked,
-        currentHeight: billingSection.style.height,
-        currentOverflow: billingSection.style.overflow,
-        currentTransition: billingSection.style.transition,
-        classes: billingSection.className,
-        computedHeight: window.getComputedStyle(billingSection).height
-      });
-      
+
       this.logger.info('[Billing] Processing toggle', {
         targetChecked: target.checked,
         currentHeight: billingSection.style.height,
@@ -4235,12 +4099,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private async populateFormData(): Promise<void> {
     const checkoutStore = useCheckoutStore.getState();
 
-    console.log('%c[populateFormData] Starting form population', 'color: #FFA500; font-weight: bold', {
-      storedData: checkoutStore.formData,
-      country: checkoutStore.formData.country,
-      province: checkoutStore.formData.province
-    });
-
     // Check if country is stored and different from current
     const storedCountry = checkoutStore.formData.country;
     const countryField = this.fields.get('country');
@@ -4248,35 +4106,16 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     if (storedCountry && countryField instanceof HTMLSelectElement) {
       // Set country first
       countryField.value = storedCountry;
-      console.log('%c[populateFormData] Set country field', 'color: #00CED1', {
-        storedCountry,
-        fieldValue: countryField.value,
-        detectedCountryCode: this.detectedCountryCode
-      });
 
       // If country changed, load states for that country
       const currentCountryValue = countryField.value;
       if (currentCountryValue && currentCountryValue !== this.detectedCountryCode) {
         this.logger.info(`Restoring saved country: ${currentCountryValue}`);
-        console.log('%c[populateFormData] Loading states for restored country', 'color: #FFD700', currentCountryValue);
 
         // Load states for the stored country
         const provinceField = this.fields.get('province');
         if (provinceField instanceof HTMLSelectElement) {
-          console.log('%c[populateFormData] Before updateStateOptions', 'color: #FF6347', {
-            country: currentCountryValue,
-            provinceField: provinceField,
-            currentOptions: Array.from(provinceField.options).map(o => o.value)
-          });
-
           await this.updateStateOptions(currentCountryValue, provinceField);
-
-          console.log('%c[populateFormData] After updateStateOptions', 'color: #32CD32', {
-            country: currentCountryValue,
-            provinceField: provinceField,
-            newOptions: Array.from(provinceField.options).map(o => o.value),
-            optionsCount: provinceField.options.length
-          });
         }
       }
     }
@@ -4287,7 +4126,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         // Skip province if we just loaded states - it will be set below
         if (name !== 'province' || !(field instanceof HTMLSelectElement)) {
           field.value = checkoutStore.formData[name];
-          console.log(`[populateFormData] Set field ${name} =`, checkoutStore.formData[name]);
         }
       }
     });
@@ -4296,62 +4134,27 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const storedProvince = checkoutStore.formData.province;
     const provinceField = this.fields.get('province');
 
-    console.log('%c[populateFormData] Setting province', 'color: #FF1493; font-weight: bold', {
-      storedProvince,
-      provinceField: provinceField,
-      isSelect: provinceField instanceof HTMLSelectElement
-    });
-
     if (storedProvince && provinceField instanceof HTMLSelectElement) {
       const availableOptions = Array.from(provinceField.options).map(opt => ({
         value: opt.value,
         text: opt.text
       }));
 
-      console.log('%c[populateFormData] Province field options', 'color: #9370DB', {
-        storedProvince,
-        availableOptions,
-        optionsCount: provinceField.options.length
-      });
-
       // Check if the option exists
       const optionExists = Array.from(provinceField.options).some(opt => opt.value === storedProvince);
-
-      console.log('%c[populateFormData] Province option check', 'color: #FF4500', {
-        storedProvince,
-        optionExists,
-        availableValues: availableOptions.map(o => o.value)
-      });
 
       if (optionExists) {
         provinceField.value = storedProvince;
         // IMPORTANT: Also update the store since updateStateOptions cleared it
         this.updateFormData({ province: storedProvince });
-        console.log('%c[populateFormData] ✅ Province set successfully', 'color: #00FF00; font-weight: bold', {
-          storedProvince,
-          fieldValue: provinceField.value,
-          storeUpdated: true
-        });
         this.logger.debug(`Restored province: ${storedProvince}`);
       } else {
-        console.log('%c[populateFormData] ❌ Province NOT set - option not found', 'color: #FF0000; font-weight: bold', {
-          storedProvince,
-          availableOptions
-        });
         this.logger.warn(`Province ${storedProvince} not found in options for country ${storedCountry}`);
       }
-    } else {
-      console.log('%c[populateFormData] Province not set', 'color: #FFA500', {
-        hasStoredProvince: !!storedProvince,
-        hasProvinceField: !!provinceField,
-        isSelectElement: provinceField instanceof HTMLSelectElement
-      });
     }
 
     // Update floating labels for populated data
     this.ui.updateLabelsForPopulatedData();
-
-    console.log('%c[populateFormData] Form population complete', 'color: #00FF00; font-weight: bold');
   }
 
   private handleTestDataFilled(_event: Event): void {
