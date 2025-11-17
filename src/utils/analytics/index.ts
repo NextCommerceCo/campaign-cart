@@ -186,10 +186,12 @@ export class NextAnalytics {
 
     // GTM Adapter
     if (config.providers?.gtm?.enabled) {
-      const gtmAdapter = new GTMAdapter();
+      const gtmAdapter = new GTMAdapter(config.providers.gtm);
       this.providers.set('gtm', gtmAdapter);
       dataLayer.addProvider(gtmAdapter);
-      logger.info('GTM adapter initialized');
+      logger.info('GTM adapter initialized', {
+        blockedEvents: config.providers.gtm.blockedEvents || []
+      });
     }
 
     // Facebook Pixel Adapter

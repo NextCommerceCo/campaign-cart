@@ -307,7 +307,7 @@ export interface AnalyticsConfig {
     gtm?: {
       enabled: boolean;
       settings?: Record<string, any>;
-      blockedEvents?: string[];
+      blockedEvents?: string[];  // Block specific events from GTM
     };
     facebook?: {
       enabled: boolean;
