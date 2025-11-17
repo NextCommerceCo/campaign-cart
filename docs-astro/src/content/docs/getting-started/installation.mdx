@@ -30,7 +30,7 @@ The fastest way to get started is with our CDN:
    <meta name="next-api-key" content="your-api-key-here">
 
    <!-- Campaign Cart SDK -->
-   <script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.3.1/dist/loader.js" type="module"></script>
+   <script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.3.8/dist/loader.js" type="module"></script>
    ```
 
 3. **Start Building**
@@ -47,15 +47,13 @@ Replace `your-api-key-here` with your actual API key from the dashboard.
 
 <Tabs>
   <TabItem label="CDN (Recommended)">
-    <Code code={`<!-- Latest version -->
-<script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.3.1/dist/loader.js" type="module"></script>
+    <Code code={`<!-- Campaign Cart SDK -->
+<script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.3.8/dist/loader.js" type="module"></script>
 
-<!-- Specific version (recommended for production) -->
-<script src="https://campaign-cart-v2.pages.dev/v2.1.0/loader.js"></script>
-
-<!-- With integrity check -->
-<script 
-  src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.3.1/dist/loader.js"
+<!-- With integrity check (recommended for production) -->
+<script
+  src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.3.8/dist/loader.js"
+  type="module"
   integrity="sha384-..."
   crossorigin="anonymous">
 </script>`} lang="html" />
@@ -87,7 +85,7 @@ const CampaignCart = require('@campaigncart/js-sdk');`} lang="javascript" />
 
   <TabItem label="Self-Hosted">
     <Code code={`# Download the SDK
-curl -o campaign-cart.js https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.3.1/dist/loader.js
+curl -o campaign-cart.js https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.3.8/dist/loader.js
 
 # Host on your server
 <script src="/js/campaign-cart.js"></script>`} lang="bash" />
@@ -165,7 +163,7 @@ document.addEventListener('next:initialized', function() {
 <meta name="next-debug" content="true">
 <meta name="next-env" content="development">
 
-<script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.3.1/dist/loader.js" type="module"></script>`} lang="html" title="Development Setup" />
+<script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.3.8/dist/loader.js" type="module"></script>`} lang="html" title="Development Setup" />
 
 ### Production Environment
 
@@ -173,9 +171,9 @@ document.addEventListener('next:initialized', function() {
 <meta name="next-api-key" content="live_your-api-key">
 <meta name="next-env" content="production">
 
-<script 
-  src="https://campaign-cart-v2.pages.dev/v2.1.0/loader.js"
-  async>
+<script
+  src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.3.8/dist/loader.js"
+  type="module">
 </script>`} lang="html" title="Production Setup" />
 
 ### Staging Environment
@@ -185,7 +183,7 @@ document.addEventListener('next:initialized', function() {
 <meta name="next-debug" content="true">
 <meta name="next-env" content="staging">
 
-<script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.3.1/dist/loader.js" type="module"></script>`} lang="html" title="Staging Setup" />
+<script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.3.8/dist/loader.js" type="module"></script>`} lang="html" title="Staging Setup" />
 
 ## Verification
 

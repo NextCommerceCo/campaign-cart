@@ -89,7 +89,35 @@ export default defineConfig({
                       { label: 'Cart Methods', slug: 'javascript-api/cart-methods' },
                       { label: 'Events', slug: 'javascript-api/events' },
                       { label: 'Callbacks', slug: 'javascript-api/callbacks' },
-                      { label: 'Analytics', slug: 'javascript-api/analytics' },
+                  ],
+              },
+              {
+                  label: 'Analytics',
+                  items: [
+                      { label: 'Overview', slug: 'analytics' },
+                      { label: 'Configuration & Modes', slug: 'analytics/configuration' },
+                      { label: 'Tracking API', slug: 'analytics/tracking-api' },
+                      {
+                          label: 'Providers',
+                          items: [
+                              { label: 'Overview', slug: 'analytics/providers' },
+                              { label: 'Google Tag Manager', slug: 'analytics/providers/google-tag-manager' },
+                              { label: 'Direct GA4', slug: 'analytics/providers/direct-ga4' },
+                              { label: 'Facebook Pixel', slug: 'analytics/providers/facebook-pixel' },
+                              { label: 'RudderStack', slug: 'analytics/providers/rudderstack' },
+                              { label: 'Custom Webhook', slug: 'analytics/providers/custom-webhook' },
+                          ],
+                      },
+                      { label: 'Event Reference', slug: 'analytics/events' },
+                      { label: 'Custom Events', slug: 'analytics/custom-events' },
+                      {
+                          label: 'Advanced',
+                          items: [
+                              { label: 'Event Transformers', slug: 'analytics/advanced/event-transformers' },
+                          ],
+                      },
+                      { label: 'Debugging', slug: 'analytics/debugging' },
+                      { label: 'Best Practices', slug: 'analytics/best-practices' },
                   ],
               },
               {

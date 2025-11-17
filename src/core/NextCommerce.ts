@@ -245,7 +245,25 @@ export class NextCommerce {
     queueMicrotask(async () => {
       try {
         const { nextAnalytics } = await import('@/utils/analytics/index');
-        nextAnalytics.trackViewItem(packageId);
+        const { useCampaignStore } = await import('@/stores/campaignStore');
+
+        // Convert to number and validate package exists
+        const packageIdNum = typeof packageId === 'string' ? parseInt(packageId, 10) : packageId;
+        const campaignStore = useCampaignStore.getState();
+        const packageData = campaignStore.getPackage(packageIdNum);
+
+        if (!packageData) {
+          this.logger.warn('Package not found in store:', packageIdNum);
+          return;
+        }
+
+        // Create a minimal item object for tracking (matches auto-tracking format)
+        const item = {
+          packageId: packageIdNum,
+          package_id: packageIdNum,
+          id: packageIdNum
+        };
+        nextAnalytics.trackViewItem(item);
       } catch (error) {
         this.logger.debug('Analytics tracking failed (non-critical):', error);
       }
