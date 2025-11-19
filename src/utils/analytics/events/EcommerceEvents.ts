@@ -228,7 +228,7 @@ export class EcommerceEvents {
 
     // Handle order object structure from API
     const order = orderData.order || orderData;
-    const orderId = order.ref_id || order.number || orderData.orderId ||
+    const orderId = order.number || order.ref_id || orderData.orderId ||
                    orderData.transactionId || `order_${Date.now()}`;
 
     // Parse order totals
