@@ -11,6 +11,7 @@ export declare class FacebookAdapter extends ProviderAdapter {
     private blockedEvents;
     private storeName?;
     private eventMapping;
+    private customEvents;
     constructor(config?: any);
     trackEvent(event: DataLayerEvent): void;
     private isFbqLoaded;
@@ -19,6 +20,7 @@ export declare class FacebookAdapter extends ProviderAdapter {
     private sendEventInternal;
     private mapEventName;
     private transformParameters;
+    private calculateTotalValue;
     private buildViewContentParams;
     private buildAddToCartParams;
     private buildShippingInfoParams;
