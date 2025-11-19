@@ -13,8 +13,13 @@ declare global {
  * Google Tag Manager adapter
  */
 export class GTMAdapter extends ProviderAdapter {
-  constructor() {
+  private blockedEvents: string[] = [];
+
+  constructor(config?: any) {
     super('GTM');
+    if (config?.blockedEvents) {
+      this.blockedEvents = config.blockedEvents;
+    }
   }
 
   /**
@@ -29,6 +34,12 @@ export class GTMAdapter extends ProviderAdapter {
    */
   sendEvent(event: DataLayerEvent): void {
     if (!this.enabled || !this.isBrowser()) {
+      return;
+    }
+
+    // Check if this event is blocked
+    if (this.blockedEvents.includes(event.event)) {
+      this.debug(`Event ${event.event} is blocked for GTM`);
       return;
     }
 

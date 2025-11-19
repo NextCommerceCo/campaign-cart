@@ -15,6 +15,7 @@ export class FacebookAdapter extends ProviderAdapter {
   private storeName?: string;
   private eventMapping: Record<string, string> = {
     // Data layer events to Facebook events
+    'dl_user_data': 'PageView',  // User data acts as PageView
     'dl_page_view': 'PageView',
     'dl_view_item': 'ViewContent',
     'dl_add_to_cart': 'AddToCart',
@@ -35,6 +36,7 @@ export class FacebookAdapter extends ProviderAdapter {
     'dl_accepted_upsell': 'AcceptedUpsell',
     'dl_skipped_upsell': 'SkippedUpsell',
     // Standard event names
+    'user_data': 'PageView',
     'page_view': 'PageView',
     'view_item': 'ViewContent',
     'add_to_cart': 'AddToCart',
@@ -51,6 +53,19 @@ export class FacebookAdapter extends ProviderAdapter {
     'start_trial': 'StartTrial',
     'view_cart': 'ViewCart'
   };
+
+  // Facebook Custom Events (use trackCustom instead of track)
+  private customEvents: string[] = [
+    'AddShippingInfo',    // Not a standard Facebook event
+    'RemoveFromCart',     // Not a standard Facebook event
+    'Login',              // Not a standard Facebook event
+    'Subscribe',          // Not a standard Facebook event
+    'StartTrial',         // Not a standard Facebook event
+    'ViewCart',           // Not a standard Facebook event
+    'ViewedUpsell',       // Custom upsell event
+    'AcceptedUpsell',     // Custom upsell event
+    'SkippedUpsell'       // Custom upsell event
+  ];
 
   constructor(config?: any) {
     super('Facebook');
@@ -137,8 +152,8 @@ export class FacebookAdapter extends ProviderAdapter {
 
     try {
       if (window.fbq) {
-        // AddShippingInfo is not a standard FB event, use trackCustom
-        if (fbEventName === 'AddShippingInfo') {
+        // Check if this is a custom event (not a standard Facebook event)
+        if (this.customEvents.includes(fbEventName)) {
           window.fbq('trackCustom', fbEventName, parameters);
           this.debug(`Custom event sent to Facebook: ${fbEventName}`, parameters);
         }
@@ -156,6 +171,7 @@ export class FacebookAdapter extends ProviderAdapter {
             this.debug(`Event sent to Facebook: ${fbEventName} (no order identifier for eventID)`, parameters);
           }
         } else {
+          // Standard Facebook events use track
           window.fbq('track', fbEventName, parameters);
           this.debug(`Event sent to Facebook: ${fbEventName}`, parameters);
         }
@@ -225,16 +241,27 @@ export class FacebookAdapter extends ProviderAdapter {
   }
 
   /**
+   * Calculate total value from items array
+   */
+  private calculateTotalValue(items: any[]): number {
+    return items.reduce((sum: number, item: any) => {
+      const price = item.price || item.item_price || 0;
+      const quantity = item.quantity || 1;
+      return sum + (price * quantity);
+    }, 0);
+  }
+
+  /**
    * Build ViewContent parameters
    */
   private buildViewContentParams(event: DataLayerEvent): any {
     const ecommerceData = this.extractEcommerceData(event);
     const items = ecommerceData.items || [];
-    
+
     const params: any = {
       content_type: 'product',
       currency: ecommerceData.currency || 'USD',
-      value: ecommerceData.value || 0
+      value: ecommerceData.value || this.calculateTotalValue(items)
     };
 
     if (items.length > 0) {
@@ -259,11 +286,11 @@ export class FacebookAdapter extends ProviderAdapter {
   private buildAddToCartParams(event: DataLayerEvent): any {
     const ecommerceData = this.extractEcommerceData(event);
     const items = ecommerceData.items || [];
-    
+
     const params: any = {
       content_type: 'product',
       currency: ecommerceData.currency || 'USD',
-      value: ecommerceData.value || 0
+      value: ecommerceData.value || this.calculateTotalValue(items)
     };
 
     if (items.length > 0) {
@@ -308,11 +335,11 @@ export class FacebookAdapter extends ProviderAdapter {
   private buildShippingInfoParams(event: DataLayerEvent): any {
     const ecommerceData = this.extractEcommerceData(event);
     const items = ecommerceData.items || [];
-    
+
     const params: any = {
       content_type: 'product',
       currency: ecommerceData.currency || 'USD',
-      value: ecommerceData.value || 0,
+      value: ecommerceData.value || this.calculateTotalValue(items),
       num_items: items.length
     };
 
@@ -341,11 +368,11 @@ export class FacebookAdapter extends ProviderAdapter {
   private buildPaymentInfoParams(event: DataLayerEvent): any {
     const ecommerceData = this.extractEcommerceData(event);
     const items = ecommerceData.items || [];
-    
+
     const params: any = {
       content_type: 'product',
       currency: ecommerceData.currency || 'USD',
-      value: ecommerceData.value || 0,
+      value: ecommerceData.value || this.calculateTotalValue(items),
       num_items: items.length
     };
 
@@ -375,11 +402,11 @@ export class FacebookAdapter extends ProviderAdapter {
     // Check for ecommerce data first (GA4 format), then fall back to data
     const ecommerceData = event.ecommerce || event.data || {};
     const items = ecommerceData.items || ecommerceData.products || [];
-    
+
     const params: any = {
       content_type: 'product',
       currency: ecommerceData.currency || 'USD',
-      value: ecommerceData.value || ecommerceData.total || 0,
+      value: ecommerceData.value || ecommerceData.total || this.calculateTotalValue(items),
       num_items: items.length
     };
 
@@ -407,11 +434,11 @@ export class FacebookAdapter extends ProviderAdapter {
   private buildPurchaseParams(event: DataLayerEvent): any {
     const ecommerceData = this.extractEcommerceData(event);
     const items = ecommerceData.items || [];
-    
+
     const params: any = {
       content_type: 'product',
       currency: ecommerceData.currency || 'USD',
-      value: ecommerceData.value || 0,
+      value: ecommerceData.value || this.calculateTotalValue(items),
       num_items: items.length,
       order_id: ecommerceData.transaction_id || event.data?.order_id,
       order_number: event.data?.order_number // Include order_number for eventID deduplication

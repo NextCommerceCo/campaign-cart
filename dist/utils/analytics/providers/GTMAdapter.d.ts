@@ -8,7 +8,8 @@ declare global {
     }
 }
 export declare class GTMAdapter extends ProviderAdapter {
-    constructor();
+    private blockedEvents;
+    constructor(config?: any);
     trackEvent(event: DataLayerEvent): void;
     sendEvent(event: DataLayerEvent): void;
     private transformToGTMFormat;

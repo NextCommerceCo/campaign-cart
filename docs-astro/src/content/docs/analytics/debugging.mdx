@@ -1,0 +1,419 @@
+---
+title: "Debugging & Testing"
+description: "Test analytics implementation, troubleshoot issues, and verify event tracking across all providers."
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+## Overview
+
+This guide provides debugging tools and troubleshooting strategies for testing your analytics implementation. Use these techniques to verify events are being tracked correctly across all providers and identify issues.
+
+## Enable Debug Mode
+
+Debug mode provides console logging of analytics events and provider interactions.
+
+<Tabs>
+<TabItem label="Configuration">
+
+Enable debug mode in your analytics configuration:
+
+```javascript
+analytics: {
+  debug: true  // Enable in config
+}
+```
+
+</TabItem>
+<TabItem label="Runtime">
+
+Enable or check debug mode at runtime via the browser console:
+
+```javascript
+// Enable at runtime
+window.NextAnalytics.setDebugMode(true);
+
+// Check current status
+const status = window.NextAnalytics.getStatus();
+console.log(status);
+```
+
+</TabItem>
+</Tabs>
+
+When debug mode is enabled, you'll see detailed console output for every event tracked, including which providers received the event and any transformations applied.
+
+## Disable Tracking for Testing
+
+Temporarily disable all tracking while testing your site without affecting session data.
+
+### Enable Ignore Mode
+
+Add the `?ignore=true` query parameter to your URL:
+
+```
+https://yoursite.com?ignore=true
+```
+
+This disables **ALL** tracking for the entire session. All analytics events will be silently ignored.
+
+### Clear Ignore Mode
+
+When you're finished testing, clear the ignore flag:
+
+```javascript
+window.NextAnalyticsClearIgnore();
+```
+
+After calling this function, tracking will resume normally for new events.
+
+## Verify Events in Data Layers
+
+Check that events are properly pushed to the data layer and available for your analytics platforms to consume.
+
+### Check All Data Layers
+
+View the raw event data in each data layer:
+
+```javascript
+// NextAnalytics data layer
+console.log(window.NextDataLayer);
+
+// Google Tag Manager
+console.log(window.dataLayer);
+
+// Elevar (if enabled)
+console.log(window.ElevarDataLayer);
+```
+
+### Example Output
+
+When you track an event with debug mode enabled:
+
+```javascript
+// Check data layers
+console.log(window.NextDataLayer);
+// Output: [{
+//   event: 'dl_add_to_cart',
+//   ecommerce: { items: [...], value: 99.99 },
+//   timestamp: 1234567890
+// }]
+
+console.log(window.dataLayer);
+// Output: [{
+//   event: 'add_to_cart',
+//   ecommerce: { items: [...], value: 99.99 }
+// }]
+```
+
+## Check Analytics Status
+
+Use the status API to verify providers are loaded and events are being tracked.
+
+### Get Current Status
+
+```javascript
+const status = window.NextAnalytics.getStatus();
+console.log('Events tracked:', status.eventsTracked);
+console.log('Providers:', status.providers);
+```
+
+### Example Output
+
+```javascript
+{
+  eventsTracked: 42,
+  providers: ['GTM', 'Facebook', 'RudderStack', 'Custom'],
+  debugMode: true,
+  ignoreMode: false
+}
+```
+
+This tells you:
+- **eventsTracked**: Total number of events processed in this session
+- **providers**: List of active providers receiving events
+- **debugMode**: Whether debug logging is enabled
+- **ignoreMode**: Whether tracking is temporarily disabled
+
+## Provider-Specific Debugging
+
+Each provider has different debugging tools and verification methods. Use the appropriate tab for your provider.
+
+### Verify Provider Connections
+
+First, verify that all expected providers are connected and receiving events:
+
+```javascript
+// Enable debug mode to see detailed logs
+window.NextAnalytics.setDebugMode(true);
+
+// Track a test event
+next.trackAddToCart('123', 1);
+
+// Console will show detailed output:
+// [NextDataLayer] Event pushed: dl_add_to_cart
+// [GTM] Pushing to dataLayer
+// [Facebook] Tracking AddToCart
+// [RudderStack] Tracking Product Added
+// [Custom] Batching event (1/10)
+```
+
+### Test Each Provider
+
+<Tabs>
+<TabItem label="GTM">
+
+**Google Tag Manager Debugging**
+
+```javascript
+// Check if GTM container loaded
+console.log('GTM loaded:', typeof window.dataLayer !== 'undefined');
+
+// View all events in dataLayer
+console.log(window.dataLayer);
+
+// Check Elevar data layer (if using Elevar)
+console.log(window.ElevarDataLayer);
+```
+
+**Verification in GTM:**
+1. Go to your GTM container in preview mode
+2. Load your website and perform actions
+3. The GTM preview panel should show events being fired
+4. Check that events match your expected naming convention
+
+**Common GTM Issues:**
+- Events not appearing in preview mode
+- Incorrect event names or properties
+- Missing custom variables in GTM
+- Events firing after GTM container loads
+
+</TabItem>
+<TabItem label="Facebook">
+
+**Facebook Pixel Debugging**
+
+```javascript
+// Check if Pixel loaded
+console.log('Facebook Pixel loaded:', typeof window.fbq !== 'undefined');
+
+// Track a test event
+if (window.fbq) {
+  fbq('trackCustom', 'TestEvent', { test: true });
+}
+```
+
+**Using Facebook Pixel Helper:**
+1. Install the [Facebook Pixel Helper browser extension](https://www.facebook.com/business/tools/pixel-helper)
+2. Open the extension to see all pixel events firing in real-time
+3. Verify event names and data parameters match your Facebook Catalog
+
+**Common Facebook Issues:**
+- Duplicate purchase events from tracking same conversion twice
+- Missing `storeName` in configuration causing pixel conflicts
+- Events not matching Facebook's standard event names
+- Pixel events firing but not converting in Ads Manager
+
+</TabItem>
+<TabItem label="RudderStack">
+
+**RudderStack Debugging**
+
+```javascript
+// Check if RudderStack SDK loaded
+console.log('RudderStack loaded:', typeof window.rudderanalytics !== 'undefined');
+
+// Check ready state
+if (window.rudderanalytics) {
+  rudderanalytics.ready(() => {
+    console.log('RudderStack is ready');
+    console.log('User ID:', rudderanalytics.getUserId());
+  });
+}
+```
+
+**Using RudderStack Debugger:**
+1. Enable the RudderStack debugger in your browser dev tools
+2. Open the Console and look for RudderStack logs
+3. Check the Network tab for POST requests to your RudderStack endpoint
+4. Verify the event payloads match your destination schema
+
+**Common RudderStack Issues:**
+- RudderStack SDK doesn't load within 5-second timeout
+- Events queued but not sent to destination
+- Invalid schema causing events to be rejected
+- Missing user identification for conversion tracking
+
+</TabItem>
+<TabItem label="Custom Webhook">
+
+**Custom Endpoint Debugging**
+
+```javascript
+// Check network requests to your endpoint
+// 1. Open DevTools > Network tab
+// 2. Filter by your endpoint URL
+// 3. Look for POST requests with analytics events
+
+// Or add debug logging in your transform function:
+transformFunction: (event) => {
+  console.log('Sending to webhook:', {
+    event: event.event,
+    timestamp: new Date().toISOString(),
+    payload: event
+  });
+  return event;
+}
+```
+
+**Verification Steps:**
+1. Open DevTools > Network tab
+2. Filter requests by your webhook endpoint
+3. Look for POST requests containing your events
+4. Check the request payload matches your expected format
+5. Verify response status is 200-299 (success)
+6. Check your server logs for incoming requests
+
+**Common Custom Issues:**
+- 429 Rate Limit errors: Increase `batchIntervalMs` or reduce `batchSize`
+- Webhook not receiving batched events: Check endpoint URL and network connectivity
+- Events arriving in wrong order: Adjust batching configuration
+- Server returning 400/500 errors: Validate event schema against your API spec
+
+</TabItem>
+</Tabs>
+
+## Common Issues and Solutions
+
+Common analytics problems and solutions:
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| No events in any provider | Analytics not initialized | Verify SDK loads before tracking events; check `debug` config |
+| GTM not receiving events | Container loads after tracking events | Ensure GTM tag loads before SDK initialization |
+| Facebook showing duplicate purchases | Same event tracked twice or storeName conflict | Remove duplicate tracking calls; configure `storeName` if using multiple pixels |
+| RudderStack events not sent | SDK not ready when events tracked | SDK waits 5 seconds for RudderStack to load; verify endpoint configuration |
+| Custom webhook 429 errors | Sending too many requests per second | Increase `batchIntervalMs` (default 3000ms) or reduce `batchSize` (default 10) |
+| Events in dataLayer but not in provider | Provider script not loaded | Verify provider scripts load and initialize before analytics events |
+| Debug logs not showing | Debug mode disabled | Enable with `window.NextAnalytics.setDebugMode(true)` |
+| ?ignore=true not working | Session already processing events | Clear ignore with `window.NextAnalyticsClearIgnore()` and refresh page |
+| Missing event properties | Insufficient context data | Verify event context (user, page, cart) populated before tracking |
+| Provider not in status list | Provider configuration disabled | Check analytics config for provider `enabled: true` setting |
+
+## Provider Not Receiving Events
+
+If a specific provider isn't receiving events, follow this debugging process:
+
+### Step 1: Verify Provider is Enabled
+
+```javascript
+const status = window.NextAnalytics.getStatus();
+console.log('Active providers:', status.providers);
+```
+
+If your provider isn't in the list, check your configuration to ensure it's enabled.
+
+### Step 2: Enable Debug Mode
+
+```javascript
+window.NextAnalytics.setDebugMode(true);
+```
+
+Now track an event and watch the console for debug output related to your provider.
+
+### Step 3: Check for Blocked Events
+
+Some events may be intentionally blocked from certain providers:
+
+```javascript
+// Check GTM blocked events as an example
+const config = window.nextConfig.analytics.providers.gtm;
+console.log('Blocked events:', config.blockedEvents);
+```
+
+Verify the event you're testing isn't in the blocked list.
+
+### Step 4: Verify Provider Script Loaded
+
+Check that the provider's JavaScript library loaded successfully:
+
+```javascript
+// Google Tag Manager
+console.log('GTM loaded:', typeof window.dataLayer !== 'undefined');
+
+// Facebook Pixel
+console.log('Facebook loaded:', typeof window.fbq !== 'undefined');
+
+// RudderStack
+console.log('RudderStack loaded:', typeof window.rudderanalytics !== 'undefined');
+```
+
+If any of these return `false` or `undefined`, the provider script didn't load. Check your configuration and network requests.
+
+## Events Not Showing in Analytics Platform
+
+Events sent from your site may not appear in your analytics platform's dashboard. Use provider-specific debugging tools:
+
+### GTM: Preview Mode
+
+1. Open your GTM container
+2. Click **Preview** to enter preview mode
+3. Visit your website in a new tab
+4. The GTM preview panel will show all tags and events firing in real-time
+5. Click on events to see their properties and which tags they trigger
+
+### Facebook: Pixel Helper
+
+1. Install the [Facebook Pixel Helper extension](https://www.facebook.com/business/tools/pixel-helper)
+2. Click the extension icon to view all pixel events
+3. Verify event names match your Facebook Catalog
+4. Check event properties like `value` and `currency` are correct
+5. Use the Diagnostics tab to identify validation issues
+
+### RudderStack: Debugger
+
+1. Check RudderStack's web console for errors
+2. Open DevTools Network tab and filter for RudderStack API calls
+3. Verify the destination is receiving events in your RudderStack workspace
+4. Check that your destination transformation rules are correct
+
+### Custom: Server Logs and Network Monitoring
+
+1. Check your server logs for incoming webhook requests
+2. Verify request headers and payload structure match your spec
+3. Check response codes (200-299 = success, 4xx/5xx = error)
+4. Monitor Network tab in DevTools for request timing and failures
+
+## Testing Checklist
+
+Verify your analytics implementation before going live:
+
+- [ ] **Debug mode enabled** - `window.NextAnalytics.setDebugMode(true)` shows detailed logs
+- [ ] **All providers active** - `window.NextAnalytics.getStatus()` lists all expected providers
+- [ ] **Events in data layer** - `console.log(window.NextDataLayer)` shows events
+- [ ] **GTM receiving events** - `console.log(window.dataLayer)` contains your events
+- [ ] **GTM preview mode** - Events appear in GTM container preview panel
+- [ ] **Facebook Pixel Helper** - Extension shows purchase and add-to-cart events
+- [ ] **RudderStack events** - Network tab shows POST requests to RudderStack
+- [ ] **Custom webhook** - Server receives POST requests with event payloads
+- [ ] **Event properties complete** - All required fields present (value, currency, items)
+- [ ] **No blocked events** - Verify events aren't in provider `blockedEvents` list
+- [ ] **No duplicate events** - Each action tracked once per provider
+- [ ] **Ignore mode works** - `?ignore=true` prevents events from being tracked
+- [ ] **Ignore mode clears** - `window.NextAnalyticsClearIgnore()` resumes tracking
+- [ ] **Status API responsive** - `getStatus()` returns current state
+- [ ] **Multiple providers tested** - Events work across all enabled providers
+- [ ] **Error handling** - Failed provider requests don't break site functionality
+- [ ] **Production ready** - Debug mode disabled in production config
+
+## Next Steps
+
+After testing and debugging your analytics:
+
+1. **Review Configuration** - Check your provider settings match your platform setup
+2. **Enable Tracking** - Remove `?ignore=true` and deploy to production
+3. **Monitor Events** - Use platform dashboards to monitor event flow
+4. **Set Up Alerts** - Configure monitoring for provider failures or dropped events
+5. **Document Setup** - Record your analytics configuration for your team
+
+See the [Configuration Guide](/docs/configuration) for detailed provider setup instructions.
