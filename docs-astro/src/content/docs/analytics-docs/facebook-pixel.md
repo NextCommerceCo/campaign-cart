@@ -1,0 +1,162 @@
+# Facebook Pixel Setup
+
+Integrate Facebook Pixel with automatic event mapping and purchase deduplication.
+
+## Setup
+
+### 1. Add Facebook Pixel Base Code
+
+```html
+<!-- Facebook Pixel Code -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', 'YOUR_PIXEL_ID');
+</script>
+```
+
+### 2. Configure SDK
+
+```javascript
+window.nextConfig = {
+  storeName: 'my-store',  // IMPORTANT for deduplication!
+  analytics: {
+    providers: {
+      facebook: {
+        enabled: true,
+        settings: {
+          pixelId: 'YOUR_PIXEL_ID'
+        },
+        blockedEvents: []  // Optional
+      }
+    }
+  }
+};
+```
+
+> **Tip:** Make sure to replace `YOUR_PIXEL_ID` with your actual Facebook Pixel ID from your Meta Business Manager account.
+
+## Event Mapping
+
+SDK events are automatically mapped to Facebook standard events:
+
+| SDK Event | Facebook Event | Type |
+|-----------|----------------|------|
+| `dl_view_item` | `ViewContent` | Standard |
+| `dl_add_to_cart` | `AddToCart` | Standard |
+| `dl_begin_checkout` | `InitiateCheckout` | Standard |
+| `dl_add_shipping_info` | `AddShippingInfo` | Custom |
+| `dl_add_payment_info` | `AddPaymentInfo` | Standard |
+| `dl_purchase` | `Purchase` | Standard |
+| `dl_sign_up` | `CompleteRegistration` | Standard |
+
+This mapping tracks store events in Facebook Analytics without additional configuration.
+
+## Purchase Deduplication
+
+The SDK uses `eventID` to prevent duplicate purchase tracking:
+
+```javascript
+// SDK automatically generates eventID
+fbq('track', 'Purchase', {
+  value: 159.99,
+  currency: 'USD'
+}, {
+  eventID: 'my-store-12345'  // Format: {storeName}-{orderNumber}
+});
+```
+
+**Why storeName is required:**
+- Creates unique eventIDs across different stores
+- Prevents Facebook from counting the same purchase twice
+- Required for server-side API deduplication
+- Without it, deduplication may fail
+
+> **Caution:** The `storeName` configuration is required for Facebook Pixel purchase deduplication. Without it, Facebook may count the same purchase multiple times across your sales channels (web, mobile, server-side events). Set `storeName` to a unique identifier for your store before deploying to production.
+
+## Event Format Example
+
+Facebook Pixel events are formatted with these properties:
+
+```javascript
+fbq('track', 'AddToCart', {
+  content_type: 'product',
+  content_ids: ['SKU-123'],
+  content_name: 'Product Name',
+  value: 99.99,
+  currency: 'USD',
+  contents: [{
+    id: 'SKU-123',
+    quantity: 1,
+    item_price: 99.99
+  }]
+});
+```
+
+### Event Property Details
+
+- **content_type**: Type of content (e.g., 'product', 'product_group')
+- **content_ids**: Array of product SKUs or IDs
+- **content_name**: Name of the product or content
+- **value**: Total value of the event
+- **currency**: Currency code (e.g., 'USD', 'EUR')
+- **contents**: Array of items with quantity and pricing details
+
+## Blocked Events
+
+Prevent specific events from being sent to Facebook Pixel using the `blockedEvents` configuration:
+
+```javascript
+facebook: {
+  enabled: true,
+  settings: { pixelId: 'xxx' },
+  blockedEvents: ['dl_test_event', 'internal_event']
+}
+```
+
+This is useful for:
+- Preventing test events from affecting analytics
+- Blocking internal tracking events not relevant to Facebook
+- Reducing event volume and optimizing tracking
+
+## Troubleshooting
+
+### Events Not Appearing in Facebook Analytics
+
+1. **Verify Pixel ID**: Ensure your `pixelId` is correct in the configuration
+2. **Check storeName**: Confirm that `storeName` is set in your config - missing this can cause events to be blocked or deduplicated unexpectedly
+3. **Test with Facebook Pixel Helper**: Use the [Facebook Pixel Helper Chrome extension](https://chrome.google.com/webstore/detail/facebook-pixel-helper/fdgodlnavgvnoonakpplpknkeae6764d) to verify events are firing
+4. **Review Browser Console**: Check for JavaScript errors that might prevent events from sending
+
+### Purchase Deduplication Not Working
+
+- **Ensure storeName is configured**: This is the primary reason deduplication fails
+- **Verify eventID format**: Should be `{storeName}-{orderNumber}` (e.g., `my-store-12345`)
+- **Check server-side events**: If you're also sending events server-side, ensure consistent storeName and eventID
+- **Allow time for deduplication**: Facebook's deduplication can take up to 24 hours to process
+
+### Low Purchase Conversion Events
+
+- **Verify currency code**: Ensure the currency matches your Facebook Pixel settings
+- **Check content details**: Make sure `contents` array includes all required item information
+- **Review blocked events**: Ensure `dl_purchase` is not in your `blockedEvents` list
+- **Validate event values**: Confirm that transaction values are being passed correctly
+
+### Multiple Events Firing for Same Action
+
+1. Check that you're not initializing the Facebook Pixel multiple times
+2. Verify that duplicate SDK instances aren't running
+3. Review your `blockedEvents` configuration to filter unwanted duplicates
+
+### Contact Support
+
+If you continue experiencing issues:
+- Check your Meta Business Manager logs for event validation errors
+- Consult the [Facebook Pixel documentation](https://developers.facebook.com/docs/facebook-pixel)
+- Reach out to your analytics support team with event payloads for investigation

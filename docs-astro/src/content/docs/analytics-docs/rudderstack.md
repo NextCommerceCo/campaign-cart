@@ -1,0 +1,219 @@
+# RudderStack Setup
+
+Integrate RudderStack with Segment-compatible event tracking.
+
+RudderStack is a Segment-compatible analytics platform that tracks customer events and collects product data. This integration maps SDK events to RudderStack's Segment specification.
+
+## Setup
+
+### 1. Add RudderStack Snippet
+
+Add the RudderStack tracking snippet to your HTML `<head>` section. You'll need to replace `YOUR_WRITE_KEY` and `YOUR_DATA_PLANE_URL` with your actual RudderStack credentials:
+
+```html
+<script>
+rudderanalytics=window.rudderanalytics=[];for(var methods=["load","page","track","identify","alias","group","ready","reset","getAnonymousId","setAnonymousId"],i=0;i<methods.length;i++){var method=methods[i];rudderanalytics[method]=function(a){return function(){rudderanalytics.push([a].concat(Array.prototype.slice.call(arguments)))}}(method)}rudderanalytics.load("YOUR_WRITE_KEY","YOUR_DATA_PLANE_URL"),rudderanalytics.page();
+</script>
+<script src="https://cdn.rudderlabs.com/v1.1/rudder-analytics.min.js"></script>
+```
+
+**Getting Your Credentials:**
+- Log in to your RudderStack dashboard
+- Navigate to Workspace Settings → Data Plane URLs
+- Copy your Write Key and Data Plane URL
+- Replace the placeholders in the snippet above
+
+### 2. Enable in SDK Config
+
+Configure the RudderStack provider in your analytics configuration:
+
+```javascript
+analytics: {
+  providers: {
+    rudderstack: {
+      enabled: true,
+      blockedEvents: []  // Optional: array of event names to exclude
+    }
+  }
+}
+```
+
+**Configuration Options:**
+- `enabled` (boolean): Enable or disable RudderStack tracking
+- `blockedEvents` (array): List of SDK event names to exclude from RudderStack (useful for filtering sensitive events)
+
+## Event Mapping
+
+RudderStack events follow the Segment specification. The SDK automatically maps your e-commerce events to their RudderStack equivalents:
+
+| SDK Event | RudderStack Event | Description |
+|-----------|-------------------|-------------|
+| `dl_add_to_cart` | `Product Added` | Fired when a product is added to the shopping cart |
+| `dl_remove_from_cart` | `Product Removed` | Fired when a product is removed from the shopping cart |
+| `dl_view_item` | `Product Viewed` | Fired when a product detail page is viewed |
+| `dl_view_item_list` | `Product List Viewed` | Fired when a product list or category page is viewed |
+| `dl_view_cart` | `Cart Viewed` | Fired when the shopping cart is viewed |
+| `dl_begin_checkout` | `Checkout Started` | Fired when the checkout process is initiated |
+| `dl_add_shipping_info` | `Checkout Step Completed` | Fired when shipping information is entered |
+| `dl_add_payment_info` | `Payment Info Entered` | Fired when payment information is provided |
+| `dl_purchase` | `Order Completed` | Fired when an order is successfully completed |
+
+## Product Format
+
+Products are automatically converted to the Segment specification format. Each product in your events will be transformed to include these standardized properties:
+
+```javascript
+{
+  product_id: 'SKU-123',
+  sku: 'SKU-123',
+  name: 'Product Name',
+  price: 99.99,
+  quantity: 1,
+  category: 'Category',
+  brand: 'Brand',
+  variant: 'Variant',
+  position: 0,
+  url: 'https://example.com/product/sku-123'
+}
+```
+
+**Field Descriptions:**
+- `product_id`: Unique identifier for the product (same as SKU)
+- `sku`: Stock Keeping Unit
+- `name`: Product display name
+- `price`: Product price in decimal format
+- `quantity`: Number of units
+- `category`: Product category
+- `brand`: Product brand
+- `variant`: Product variant or size
+- `position`: Position in product list (0-indexed)
+- `url`: Product page URL
+
+## Features
+
+### Identify Calls
+
+The SDK sends `identify()` calls with user data when user information is available. This includes:
+- User profile tracking
+- Cross-device identification
+- Demographic data collection
+- User trait enrichment
+
+### Page Calls
+
+The SDK triggers `page()` calls on route changes to:
+- Track page views and navigation patterns
+- Segment user journeys
+- Analyze user flow through your application
+
+### Additional Capabilities
+
+- Product metadata included in tracking calls
+- Campaign source and attribution tracking
+- Session tracking across user interactions
+- Revenue and conversion metrics
+
+## Configuration Options
+
+### Basic Configuration
+
+```javascript
+analytics: {
+  providers: {
+    rudderstack: {
+      enabled: true
+    }
+  }
+}
+```
+
+### Advanced Configuration
+
+```javascript
+analytics: {
+  providers: {
+    rudderstack: {
+      enabled: true,
+      blockedEvents: [
+        'dl_custom_internal_event',
+        'dl_debug_event'
+      ]
+    }
+  }
+}
+```
+
+### Environment-Based Configuration
+
+```javascript
+analytics: {
+  providers: {
+    rudderstack: {
+      enabled: process.env.NODE_ENV === 'production',
+      blockedEvents: process.env.NODE_ENV === 'development' ? ['dl_debug_event'] : []
+    }
+  }
+}
+```
+
+## Troubleshooting
+
+### Events Not Appearing in RudderStack
+
+**Check Your Setup:**
+1. Verify the RudderStack snippet is loaded in your `<head>` section
+2. Ensure your Write Key and Data Plane URL are correct
+3. Check browser console for JavaScript errors (open Developer Tools)
+4. Confirm RudderStack is enabled in your SDK configuration
+
+**Debug with Browser Console:**
+```javascript
+// Check if RudderStack is loaded
+console.log(window.rudderanalytics);
+
+// Manually trigger a test event
+rudderanalytics.track('Test Event', { test: true });
+```
+
+### Write Key or Data Plane URL Issues
+
+**Symptoms:** Events fail silently or "401 Unauthorized" errors appear
+
+**Solution:**
+1. Verify credentials in your RudderStack dashboard
+2. Ensure your Data Plane URL is complete (include protocol, e.g., `https://`)
+3. Check that your workspace is active
+4. Generate a new Write Key if the current one seems compromised
+
+### Blocked Events Not Working
+
+**Symptoms:** Events you want to exclude still appear in RudderStack
+
+**Solution:**
+1. Verify the event name exactly matches your blockedEvents array
+2. Check that the configuration is properly loaded before events fire
+3. Event names are case-sensitive: `dl_add_to_cart` ≠ `dl_AddToCart`
+
+### Product Data Missing
+
+**Symptoms:** Product events reach RudderStack but lack properties
+
+**Solution:**
+1. Ensure your product objects include required fields: `product_id`, `name`, `price`
+2. Check that product data is properly formatted in your event payloads
+3. Verify no custom product field mapping is conflicting
+
+### Performance Issues
+
+**Optimization Tips:**
+1. Use `blockedEvents` to exclude high-frequency internal events
+2. Load the RudderStack script asynchronously
+3. Consider batching events if sending large volumes
+4. Review RudderStack's destination list and disable unused integrations
+
+### Contact Support
+
+For additional help:
+- Check the [RudderStack Documentation](https://www.rudderstack.com/docs/)
+- Review [Segment Event Specification](https://segment.com/docs/protocols/tracking-plan/spec/)
+- Contact your RudderStack support team
