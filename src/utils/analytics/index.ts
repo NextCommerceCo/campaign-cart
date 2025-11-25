@@ -16,6 +16,7 @@ import { ViewItemListTracker } from './tracking/ViewItemListTracker';
 import { UserDataTracker } from './tracking/UserDataTracker';
 import { AutoEventListener } from './tracking/AutoEventListener';
 import { PendingEventsHandler } from './tracking/PendingEventsHandler';
+import { MetaTagController } from './tracking/MetaTagController';
 import { EventValidator } from './validation/EventValidator';
 import { EcommerceEvents } from './events/EcommerceEvents';
 import { UserEvents } from './events/UserEvents';
@@ -31,6 +32,7 @@ export class NextAnalytics {
   private initialized = false;
   private providers: Map<string, any> = new Map();
   private validator = new EventValidator();
+  private metaTagController = MetaTagController.getInstance();
   private listTracker = ListAttributionTracker.getInstance();
   private viewTracker = ViewItemListTracker.getInstance();
   private userTracker = UserDataTracker.getInstance();
@@ -146,12 +148,17 @@ export class NextAnalytics {
         // Wait a moment to ensure dl_user_data is processed
         await new Promise(resolve => setTimeout(resolve, 100));
 
+        // Initialize MetaTagController BEFORE other trackers
+        // This handles meta tag overrides for view_item/view_item_list
+        this.metaTagController.initialize();
+
         // Now initialize other trackers (they may fire view/list events)
+        // ViewItemListTracker will check metaTagController for overrides
         this.listTracker.initialize();
         this.viewTracker.initialize();
         this.autoListener.initialize();
 
-        logger.info('Auto-tracking initialized (user data fired first)');
+        logger.info('Auto-tracking initialized (user data fired first, meta tags processed)');
       }
 
       // Process any pending events from previous page AFTER everything is initialized
@@ -297,6 +304,7 @@ export class NextAnalytics {
     }
 
     // Reset trackers
+    this.metaTagController.reset();
     this.viewTracker.reset();
     // Track new user data
     this.track(UserEvents.createUserDataEvent('dl_user_data'));
@@ -372,17 +380,19 @@ export { EventValidator } from './validation/EventValidator';
 export { EcommerceEvents } from './events/EcommerceEvents';
 export { UserEvents } from './events/UserEvents';
 export { dataLayer } from './DataLayerManager';
+export { MetaTagController, metaTagController } from './tracking/MetaTagController';
 
 // Set up global access for debugging
 if (typeof window !== 'undefined') {
   (window as any).NextAnalytics = nextAnalytics;
   (window as any).NextDataLayerManager = dataLayer;
-  
+  (window as any).NextMetaTagController = MetaTagController.getInstance();
+
   // Set up route change handling
   (window as any).NextInvalidateContext = () => {
     nextAnalytics.invalidateContext();
   };
-  
+
   // Set up ignore flag management
   (window as any).NextAnalyticsClearIgnore = () => {
     nextAnalytics.clearIgnoreFlag();

@@ -8,6 +8,7 @@ import { useCampaignStore } from '@/stores/campaignStore';
 import { dataLayer } from '../DataLayerManager';
 import { listAttributionTracker } from './ListAttributionTracker';
 import { EcommerceEvents } from '../events/EcommerceEvents';
+import { metaTagController } from './MetaTagController';
 
 const logger = createLogger('ViewItemListTracker');
 
@@ -70,6 +71,15 @@ export class ViewItemListTracker {
     }
     this.lastScanTime = now;
 
+    // Check if meta tags should override auto-detection
+    const hasViewItemOverride = metaTagController.hasMetaTagOverride('dl_view_item');
+    const hasViewItemListOverride = metaTagController.hasMetaTagOverride('dl_view_item_list');
+
+    if (hasViewItemOverride && hasViewItemListOverride) {
+      logger.debug('Both view_item and view_item_list handled by meta tags, skipping auto-detection');
+      return;
+    }
+
     const products = this.findProductElements();
 
     if (products.length === 0) {
@@ -80,17 +90,28 @@ export class ViewItemListTracker {
     logger.debug(`Found ${products.length} products on page`);
 
     if (products.length === 1) {
-      // Single product - fire view_item event
-      const product = products[0];
-      if (product) {
-        this.trackViewItem(product);
+      // Single product - fire view_item event (unless meta tag handles it)
+      if (hasViewItemOverride) {
+        logger.debug('view_item handled by meta tag, skipping auto-detection');
+      } else {
+        const product = products[0];
+        if (product) {
+          this.trackViewItem(product);
+        }
       }
     } else {
-      // Multiple products - fire view_item_list event
-      this.trackViewItemList(products);
+      // Multiple products - fire view_item_list event (unless meta tag handles it)
+      if (hasViewItemListOverride) {
+        logger.debug('view_item_list handled by meta tag, skipping auto-detection');
+      } else {
+        this.trackViewItemList(products);
+      }
 
       // Also fire view_item for the selected item in select mode selectors
-      this.trackSelectedItemInSelectors();
+      // (unless meta tag handles view_item)
+      if (!hasViewItemOverride) {
+        this.trackSelectedItemInSelectors();
+      }
     }
   }
 

@@ -8,6 +8,7 @@ export { ViewItemListTracker } from './ViewItemListTracker';
 export { UserDataTracker } from './UserDataTracker';
 export { AutoEventListener } from './AutoEventListener';
 export { PendingEventsHandler } from './PendingEventsHandler';
+export { MetaTagController, metaTagController } from './MetaTagController';
 
 // Import the classes to use them in the functions
 import { ListAttributionTracker } from './ListAttributionTracker';
