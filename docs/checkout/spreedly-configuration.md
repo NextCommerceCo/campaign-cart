@@ -1,25 +1,27 @@
-# Spreedly iFrame Configuration
+# Card Input Configuration
 
-Configure Spreedly's iFrame payment fields through `window.nextConfig`. All options are **optional** - the SDK works perfectly with defaults.
+Configure credit card input fields through `window.nextConfig`. All options are **optional** - the SDK works perfectly with defaults.
+
+> **Note**: This configuration was previously named `spreedly`. Both `cardInputConfig` (recommended) and the legacy `spreedly`/`spreedlyConfig` names are supported for backward compatibility.
 
 ## Basic Usage (No Config Needed)
 
-The SDK automatically loads the Spreedly environment key from your campaign API. No configuration needed:
+The SDK automatically loads the payment environment key from your campaign API. No configuration needed:
 
 ```javascript
-// That's it! Spreedly works out of the box
+// That's it! Card input works out of the box
 ```
 
 ## Custom Configuration (Optional)
 
-Add custom Spreedly settings to control field types, styling, security, and more:
+Add custom card input settings to control field types, styling, security, and more:
 
 ```javascript
 window.nextConfig = {
   apiKey: 'your-api-key',
 
-  // Optional Spreedly configuration
-  spreedly: {
+  // Optional card input configuration (recommended naming)
+  cardInputConfig: {
     // Field types (controls mobile keyboards)
     fieldType: {
       number: 'tel',    // Options: 'text' | 'tel' | 'number'
@@ -45,7 +47,7 @@ window.nextConfig = {
     // Security parameters (for enhanced authentication)
     nonce: 'unique-session-uuid',              // Generated per session
     timestamp: '1738252535',                   // Epoch time
-    certificateToken: 'your-cert-token',       // From Spreedly
+    certificateToken: 'your-cert-token',       // From payment provider
     signature: 'server-generated-signature',   // SHA256 hash
 
     // Fraud detection
@@ -66,7 +68,7 @@ window.nextConfig = {
 Control keyboard display on mobile devices:
 
 ```javascript
-spreedly: {
+cardInputConfig: {
   fieldType: {
     number: 'tel',    // Shows telephone keypad
     cvv: 'number'     // Shows numeric keypad
@@ -79,7 +81,7 @@ spreedly: {
 ### Number Format
 
 ```javascript
-spreedly: {
+cardInputConfig: {
   numberFormat: 'prettyFormat'  // 4111 1111 1111 1111
   // numberFormat: 'plainFormat'   // 4111111111111111
   // numberFormat: 'maskedFormat'  // ****************
@@ -89,7 +91,7 @@ spreedly: {
 ### Placeholders
 
 ```javascript
-spreedly: {
+cardInputConfig: {
   placeholders: {
     number: 'Card Number',
     cvv: 'Security Code'
@@ -100,7 +102,7 @@ spreedly: {
 ### Labels (Accessibility)
 
 ```javascript
-spreedly: {
+cardInputConfig: {
   labels: {
     number: 'Credit Card Number',
     cvv: 'CVV Code'
@@ -111,7 +113,7 @@ spreedly: {
 ### Titles (Accessibility)
 
 ```javascript
-spreedly: {
+cardInputConfig: {
   titles: {
     number: 'Enter your card number',
     cvv: 'Enter security code'
@@ -124,7 +126,7 @@ spreedly: {
 Apply CSS to iFrame fields:
 
 ```javascript
-spreedly: {
+cardInputConfig: {
   styles: {
     number: 'font-size: 18px; color: #000; font-family: Arial;',
     cvv: 'font-size: 18px; color: #000;',
@@ -135,10 +137,10 @@ spreedly: {
 
 ### Security Parameters
 
-For Spreedly's enhanced security (optional):
+For enhanced security (optional):
 
 ```javascript
-spreedly: {
+cardInputConfig: {
   nonce: generateUUID(),                    // Unique per session
   timestamp: Math.floor(Date.now() / 1000).toString(),
   certificateToken: 'your-certificate-token',
@@ -153,13 +155,13 @@ spreedly: {
 Enable fraud prevention:
 
 ```javascript
-spreedly: {
+cardInputConfig: {
   fraud: true  // Uses default fraud detection
 }
 
 // OR with custom fraud site
 
-spreedly: {
+cardInputConfig: {
   fraud: { siteId: 'your-fraud-site-id' }  // BYOC fraud
 }
 ```
@@ -167,7 +169,7 @@ spreedly: {
 ### Validation Options
 
 ```javascript
-spreedly: {
+cardInputConfig: {
   allowBlankName: false,      // Skip name validation
   allowExpiredDate: false,    // Allow expired cards
   enableAutoComplete: false   // Disable autocomplete
@@ -179,7 +181,7 @@ spreedly: {
 Control HTML `required` attribute:
 
 ```javascript
-spreedly: {
+cardInputConfig: {
   requiredAttributes: {
     number: true,  // Default
     cvv: true      // Default
@@ -187,14 +189,23 @@ spreedly: {
 }
 ```
 
-## Alternative Naming
+## Naming Conventions (Backward Compatibility)
 
-You can use either `spreedly` or `spreedlyConfig` key:
+The following property names are all supported. Priority order (highest to lowest):
+
+1. `cardInputConfig` - **Recommended** (generic naming)
+2. `spreedly` - Legacy naming (still supported)
+3. `spreedlyConfig` - Legacy naming (still supported)
 
 ```javascript
 window.nextConfig = {
+  // Recommended (new projects)
+  cardInputConfig: { /* config */ }
+
+  // OR legacy naming (existing projects)
   spreedly: { /* config */ }
-  // OR
+
+  // OR alternative legacy naming
   spreedlyConfig: { /* config */ }
 };
 ```
@@ -240,7 +251,7 @@ If you don't provide configuration, these defaults are used:
     window.nextConfig = {
       apiKey: 'your-api-key',
 
-      spreedly: {
+      cardInputConfig: {
         // Mobile-friendly keyboards
         fieldType: {
           number: 'tel',
@@ -273,7 +284,7 @@ If you don't provide configuration, these defaults are used:
 </head>
 <body>
   <form data-next-checkout="form">
-    <!-- Spreedly iFrame fields -->
+    <!-- Card input iFrame fields -->
     <div data-next-checkout-field="cc-number"></div>
     <div data-next-checkout-field="cvv"></div>
 
@@ -290,21 +301,46 @@ Enable debug logging to see applied configuration:
 ```javascript
 window.nextConfig = {
   debug: true,
-  spreedly: { /* your config */ }
+  cardInputConfig: { /* your config */ }
 };
 ```
 
 Check browser console for:
 ```
-[CreditCardService] Spreedly configuration applied: {
+[CreditCardService] Card input configuration applied: {
   fieldType: { number: 'tel', cvv: 'number' },
   numberFormat: 'prettyFormat',
   ...
 }
 ```
 
+## Migration Guide
+
+If you're migrating from the legacy `spreedly` naming:
+
+**Before (still works):**
+```javascript
+window.nextConfig = {
+  spreedly: {
+    fieldType: { number: 'tel' },
+    styles: { number: 'font-size: 16px;' }
+  }
+};
+```
+
+**After (recommended):**
+```javascript
+window.nextConfig = {
+  cardInputConfig: {
+    fieldType: { number: 'tel' },
+    styles: { number: 'font-size: 16px;' }
+  }
+};
+```
+
+No code changes are required - the legacy naming will continue to work indefinitely.
+
 ## Related Documentation
 
-- [Spreedly iFrame API Docs](https://docs.spreedly.com/reference/iframe/v1/)
 - [Checkout Configuration](../guides/configuration.md)
 - [Payment Integration](./payment-integration.md)

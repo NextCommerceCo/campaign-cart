@@ -2313,11 +2313,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     try {
       this.addClass('next-loading-spreedly');
       
-      // Get Spreedly configuration from config store
+      // Get card input configuration from config store
+      // Supports both new cardInputConfig and legacy spreedly naming
       const config = useConfigStore.getState();
-      const spreedlyConfig = config.paymentConfig?.spreedly;
+      const cardInputConfig = config.paymentConfig?.cardInputConfig || config.paymentConfig?.spreedly;
 
-      this.creditCardService = new CreditCardService(environmentKey, spreedlyConfig);
+      this.creditCardService = new CreditCardService(environmentKey, cardInputConfig);
       
       
       this.creditCardService.setOnReady(() => {

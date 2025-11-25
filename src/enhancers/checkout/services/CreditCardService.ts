@@ -9,7 +9,7 @@ import { FieldFinder } from '../utils/field-finder-utils';
 import type { Logger } from '@/utils/logger';
 import { useCheckoutStore } from '@/stores/checkoutStore';
 import { nextAnalytics, EcommerceEvents } from '@/utils/analytics/index';
-import type { SpreedlyConfig } from '@/types/global';
+import type { CardInputConfig } from '@/types/global';
 
 
 declare global {
@@ -34,7 +34,7 @@ export interface CreditCardValidationState {
 export class CreditCardService {
   private logger: Logger;
   private environmentKey: string;
-  private config?: SpreedlyConfig;
+  private config?: CardInputConfig;
   private isReady: boolean = false;
   // errorManager removed - unused
   private validationState: CreditCardValidationState;
@@ -65,7 +65,7 @@ export class CreditCardService {
   private originalPlaceholders: { number: string; cvv: string } = { number: 'Card Number', cvv: 'CVV *' };
   private labelBehavior: { number: string | null; cvv: string | null } = { number: null, cvv: null };
 
-  constructor(environmentKey: string, config?: SpreedlyConfig) {
+  constructor(environmentKey: string, config?: CardInputConfig) {
     this.environmentKey = environmentKey;
     this.config = config;
     this.logger = createLogger('CreditCardService');

@@ -1,8 +1,9 @@
 # Analytics Enhancement Proposal - Simplified
 
 **Date**: 2025-11-19
+**Updated**: 2025-11-25
 **Status**: Proposal - Simplified Version
-**Version**: 2.0
+**Version**: 3.0
 
 ---
 
@@ -24,6 +25,67 @@ We'll extend these patterns rather than create entirely new systems.
 
 ---
 
+## Event Control Hierarchy (IMPORTANT)
+
+Understanding the priority of different blocking/control mechanisms is critical:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  LEVEL 1: Provider-Specific blockedEvents (Most Granular)          │
+│  ─────────────────────────────────────────────────────────────────  │
+│  Blocks event for THAT PROVIDER ONLY                               │
+│                                                                     │
+│  gtm: { blockedEvents: ['dl_view_item_list'] }   → GTM won't get it│
+│  facebook: { blockedEvents: ['dl_view_item'] }   → FB won't get it │
+│                                                                     │
+│  Other providers still receive the event normally.                 │
+└─────────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│  LEVEL 2: Meta Tag disable/enable-only (Global Block)              │
+│  ─────────────────────────────────────────────────────────────────  │
+│  Blocks event for ALL PROVIDERS                                    │
+│                                                                     │
+│  <meta name="next-analytics-disable" content="dl_view_item">       │
+│  → Event won't fire AT ALL (no provider receives it)               │
+│                                                                     │
+│  <meta name="next-analytics-enable-only" content="dl_purchase">    │
+│  → ONLY dl_purchase fires, everything else blocked globally        │
+└─────────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│  LEVEL 3: Meta Tag view-item/view-item-list (Auto-Event Override)  │
+│  ─────────────────────────────────────────────────────────────────  │
+│  REPLACES auto-detection entirely (not additive)                   │
+│                                                                     │
+│  <meta name="next-analytics-view-item-list" content="1,2,3">       │
+│  → Auto-detected dl_view_item_list is REPLACED                     │
+│  → No need to block first - meta tag takes priority                │
+│                                                                     │
+│  This is simpler for content creators!                             │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Key Decision: Meta Tags Override Auto-Events
+
+If a meta tag like `<meta name="next-analytics-view-item-list" content="1,2,3">` is present:
+- It **REPLACES** the auto-detected `dl_view_item_list` entirely
+- **No need to manually block it first** in the config
+- The meta tag always takes priority over auto-detection
+
+This makes it simpler for content creators who don't have access to JS config.
+
+### Provider blockedEvents vs Meta Tag Blocking
+
+| Method | Scope | Use Case |
+|--------|-------|----------|
+| `blockedEvents` in GTM config | GTM only | "Send to FB but not GTM" |
+| `blockedEvents` in FB config | FB only | "Send to GTM but not FB" |
+| `<meta name="next-analytics-disable">` | ALL providers | "Don't fire this event at all" |
+| `<meta name="next-analytics-view-item-list">` | ALL providers (replaces auto) | "Fire with these specific items instead" |
+
+---
+
 ## Three Simple Enhancements
 
 ### Enhancement 1: Meta Tag Event Control
@@ -35,7 +97,7 @@ Fire analytics events from button clicks using data attributes.
 ### Enhancement 3: Queue Before Redirect
 Ensure events fire before page navigation.
 
-**Total implementation**: ~200 lines of code, 3-5 days
+**Total implementation**: ~250 lines of code, 5-6 days
 
 ---
 
@@ -46,21 +108,23 @@ Control auto-tracking behavior per page without JavaScript.
 
 ### Implementation
 
-#### A. Disable Specific Events
+#### A. Disable Specific Events (Global Block)
 
 ```html
-<!-- Disable view_item auto-tracking on this page -->
+<!-- Disable view_item auto-tracking on this page for ALL providers -->
 <meta name="next-analytics-disable" content="dl_view_item,dl_view_item_list">
 ```
 
 #### B. Whitelist Mode (Enable Only)
 
 ```html
-<!-- Only fire these events on this page -->
+<!-- Only fire these events on this page (blocks everything else globally) -->
 <meta name="next-analytics-enable-only" content="dl_add_to_cart,dl_purchase">
 ```
 
-#### C. Auto-Fire View Item Event
+#### C. Auto-Fire View Item Event (Replaces Auto-Detection)
+
+When this meta tag is present, it **replaces** auto-detected `dl_view_item` - no need to block first.
 
 **Option 1: Fire immediately on page load**
 ```html
@@ -77,35 +141,54 @@ Control auto-tracking behavior per page without JavaScript.
 <meta name="next-analytics-view-item" content="123" trigger="view:#product-details">
 ```
 
+**Option 4: Read package ID from URL parameter (NEW)**
+```html
+<!-- Reads from ?package_id=123 or ?pid=123 -->
+<meta name="next-analytics-view-item" content="url:package_id">
+<meta name="next-analytics-view-item" content="url:pid">
+```
+
 **Trigger Format**: `type:value`
 - `time:3000` = wait 3000ms (3 seconds) after page load
 - `view:#selector` = fire when CSS selector scrolls into view (50% threshold)
+- `url:param_name` = read package ID from URL parameter
 
 The system will:
-1. Look up package 123 from campaign store
+1. Look up package from campaign store (or URL param)
 2. Extract product_sku, product_name, price, qty, etc.
 3. Fire `dl_view_item` event based on trigger condition
 4. Use existing `EcommerceEvents.createViewItemEvent()` builder
+5. **Skip auto-detection** since meta tag takes priority
 
-**No need to manually specify item properties!**
+**No need to manually specify item properties or block auto-events!**
 
-#### C2. Auto-Fire View Item List Event
+#### D. Auto-Fire View Item List Event (Replaces Auto-Detection)
+
+When this meta tag is present, it **replaces** auto-detected `dl_view_item_list`.
 
 ```html
 <!-- Automatically fire dl_view_item_list for multiple packages on page load -->
+<!-- This REPLACES auto-detection - no need to block first -->
 <meta name="next-analytics-view-item-list" content="123,456,789">
 ```
 
+**With URL parameters (NEW):**
+```html
+<!-- Read comma-separated IDs from URL param: ?products=123,456,789 -->
+<meta name="next-analytics-view-item-list" content="url:products">
+```
+
 The system will:
-1. Parse comma-separated package IDs
+1. Parse comma-separated package IDs (or read from URL param)
 2. Look up each package from campaign store
 3. Extract full product data for each
 4. Fire `dl_view_item_list` event with all items
 5. Use existing `EcommerceEvents.createViewItemListEvent()` builder
+6. **Skip auto-detection** since meta tag takes priority
 
-**Perfect for collection/category pages!**
+**Perfect for collection/category pages and landing pages with URL params!**
 
-#### D. Set Page-Level List Context
+#### E. Set Page-Level List Context
 
 ```html
 <!-- All add-to-cart events on this page will include this list context -->
@@ -113,7 +196,7 @@ The system will:
 <meta name="next-analytics-list-name" content="Product Detail Page">
 ```
 
-#### E. Track Scroll Depth
+#### F. Track Scroll Depth
 
 ```html
 <!-- Track when user scrolls to 25%, 50%, 75%, 90% of page -->
@@ -130,7 +213,7 @@ The system will:
 
 ### Technical Implementation
 
-**New File**: `src/utils/analytics/tracking/MetaTagController.ts` (~60 lines)
+**New File**: `src/utils/analytics/tracking/MetaTagController.ts` (~80 lines)
 
 ```typescript
 export class MetaTagController {
@@ -139,8 +222,9 @@ export class MetaTagController {
     disabledEvents: string[];
     enabledOnlyEvents: string[];
     listContext: { id?: string; name?: string };
-    viewItem?: { packageId: string; trigger?: string };
+    viewItem?: { packageId: string; trigger?: string; fromUrl?: boolean };
     viewItemListPackageIds?: string[];
+    viewItemListFromUrl?: string;
     scrollThresholds?: number[];
   };
 
@@ -151,16 +235,16 @@ export class MetaTagController {
       enabledOnlyEvents: this.parseArray('next-analytics-enable-only'),
       listContext: this.parseListContext(),
       viewItem: this.parseViewItemConfig(),
-      viewItemListPackageIds: this.parseArray('next-analytics-view-item-list'),
+      viewItemListPackageIds: this.parseViewItemListConfig(),
       scrollThresholds: this.parseScrollThresholds()
     };
 
-    // Auto-fire view_item if specified
+    // Auto-fire view_item if specified (REPLACES auto-detection)
     if (this.config.viewItem) {
-      this.fireViewItemEvent(this.config.viewItem.packageId, this.config.viewItem.trigger);
+      this.fireViewItemEvent(this.config.viewItem);
     }
 
-    // Auto-fire view_item_list if specified
+    // Auto-fire view_item_list if specified (REPLACES auto-detection)
     if (this.config.viewItemListPackageIds && this.config.viewItemListPackageIds.length > 0) {
       this.fireViewItemListEvent(this.config.viewItemListPackageIds);
     }
@@ -179,6 +263,9 @@ export class MetaTagController {
     }
   }
 
+  /**
+   * Check if event should be blocked globally (all providers)
+   */
   public shouldBlockEvent(eventName: string): boolean {
     // Whitelist mode - only allow specified events
     if (this.config.enabledOnlyEvents.length > 0) {
@@ -189,15 +276,75 @@ export class MetaTagController {
     return this.config.disabledEvents.includes(eventName);
   }
 
-  private fireViewItemEvent(packageId: string, trigger?: string): void {
+  /**
+   * Check if meta tag should override auto-detection for this event
+   */
+  public hasMetaTagOverride(eventName: string): boolean {
+    if (eventName === 'dl_view_item' && this.config.viewItem) {
+      return true;
+    }
+    if (eventName === 'dl_view_item_list' && this.config.viewItemListPackageIds?.length > 0) {
+      return true;
+    }
+    return false;
+  }
+
+  private parseViewItemConfig(): { packageId: string; trigger?: string; fromUrl?: boolean } | undefined {
+    const meta = document.querySelector('meta[name="next-analytics-view-item"]') as HTMLMetaElement;
+    if (!meta || !meta.content) return undefined;
+
+    const content = meta.content;
+    const trigger = meta.getAttribute('trigger') || undefined;
+
+    // Check if reading from URL param
+    if (content.startsWith('url:')) {
+      const paramName = content.substring(4);
+      const urlParams = new URLSearchParams(window.location.search);
+      const packageId = urlParams.get(paramName);
+
+      if (!packageId) {
+        console.warn(`URL param "${paramName}" not found for view_item event`);
+        return undefined;
+      }
+
+      return { packageId, trigger, fromUrl: true };
+    }
+
+    return { packageId: content, trigger };
+  }
+
+  private parseViewItemListConfig(): string[] {
+    const meta = document.querySelector('meta[name="next-analytics-view-item-list"]') as HTMLMetaElement;
+    if (!meta || !meta.content) return [];
+
+    const content = meta.content;
+
+    // Check if reading from URL param
+    if (content.startsWith('url:')) {
+      const paramName = content.substring(4);
+      const urlParams = new URLSearchParams(window.location.search);
+      const paramValue = urlParams.get(paramName);
+
+      if (!paramValue) {
+        console.warn(`URL param "${paramName}" not found for view_item_list event`);
+        return [];
+      }
+
+      return paramValue.split(',').map(s => s.trim());
+    }
+
+    return content.split(',').map(s => s.trim());
+  }
+
+  private fireViewItemEvent(config: { packageId: string; trigger?: string }): void {
     // Look up package from campaign store (existing pattern)
     const campaignStore = useCampaignStore.getState();
     const packageData = campaignStore.data?.packages?.find(
-      (p: any) => String(p.ref_id) === packageId || String(p.external_id) === packageId
+      (p: any) => String(p.ref_id) === config.packageId || String(p.external_id) === config.packageId
     );
 
     if (!packageData) {
-      console.warn(`Package ${packageId} not found for view_item event`);
+      console.warn(`Package ${config.packageId} not found for view_item event`);
       return;
     }
 
@@ -209,26 +356,22 @@ export class MetaTagController {
     };
 
     // Handle different trigger types
-    if (!trigger) {
-      // No trigger - fire immediately
+    if (!config.trigger) {
       fireEvent();
       return;
     }
 
-    // Parse trigger format: "time:3000" or "view:#selector"
-    const [triggerType, triggerValue] = trigger.split(':');
+    const [triggerType, triggerValue] = config.trigger.split(':');
 
     if (triggerType === 'time') {
-      // Time trigger - fire after X milliseconds
       const duration = parseInt(triggerValue);
       if (!isNaN(duration)) {
         setTimeout(fireEvent, duration);
       } else {
-        console.warn(`Invalid time trigger: ${trigger}`);
-        fireEvent(); // Fallback to immediate
+        console.warn(`Invalid time trigger: ${config.trigger}`);
+        fireEvent();
       }
     } else if (triggerType === 'view') {
-      // View trigger - fire when selector scrolls into view
       const selector = triggerValue;
       const element = document.querySelector(selector);
       if (element) {
@@ -241,16 +384,15 @@ export class MetaTagController {
         observer.observe(element);
       } else {
         console.warn(`Element ${selector} not found for view_item trigger`);
-        fireEvent(); // Fallback to immediate
+        fireEvent();
       }
     } else {
       console.warn(`Unknown trigger type: ${triggerType}`);
-      fireEvent(); // Fallback to immediate
+      fireEvent();
     }
   }
 
   private fireViewItemListEvent(packageIds: string[]): void {
-    // Look up all packages from campaign store
     const campaignStore = useCampaignStore.getState();
     const items: any[] = [];
 
@@ -271,7 +413,6 @@ export class MetaTagController {
       return;
     }
 
-    // Use existing event builder with list context
     const event = EcommerceEvents.createViewItemListEvent(
       items,
       this.config.listContext.id,
@@ -292,16 +433,6 @@ export class MetaTagController {
     return content ? content.split(',').map(s => s.trim()) : [];
   }
 
-  private parseViewItemConfig(): { packageId: string; trigger?: string } | undefined {
-    const meta = document.querySelector('meta[name="next-analytics-view-item"]') as HTMLMetaElement;
-    if (!meta || !meta.content) return undefined;
-
-    return {
-      packageId: meta.content,
-      trigger: meta.getAttribute('trigger') || undefined
-    };
-  }
-
   private parseScrollThresholds(): number[] {
     const content = this.getMeta('next-analytics-scroll-tracking');
     if (!content) return [];
@@ -310,7 +441,7 @@ export class MetaTagController {
       .split(',')
       .map(s => parseFloat(s.trim()))
       .filter(n => !isNaN(n) && n > 0 && n <= 100)
-      .sort((a, b) => a - b); // Sort ascending
+      .sort((a, b) => a - b);
   }
 
   private setupScrollTracking(): void {
@@ -322,12 +453,10 @@ export class MetaTagController {
     const scrollHandler = () => {
       const scrollPercent = (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100;
 
-      // Check each threshold
       thresholds.forEach(threshold => {
         if (scrollPercent >= threshold && !reachedThresholds.has(threshold)) {
           reachedThresholds.add(threshold);
 
-          // Fire scroll depth event
           const event = EventBuilder.createEvent('dl_scroll_depth', {
             user_properties: EventBuilder.getUserProperties(),
             scroll_depth: Math.round(scrollPercent),
@@ -340,16 +469,12 @@ export class MetaTagController {
         }
       });
 
-      // Remove listener if all thresholds reached
       if (reachedThresholds.size === thresholds.length) {
         window.removeEventListener('scroll', scrollHandler);
       }
     };
 
-    // Add passive scroll listener for performance
     window.addEventListener('scroll', scrollHandler, { passive: true });
-
-    // Check immediately in case user already scrolled
     scrollHandler();
   }
 
@@ -360,12 +485,20 @@ export class MetaTagController {
 }
 ```
 
-**Integration**: Add to `AutoEventListener.shouldProcessEvent()`:
+**Integration**: Modify `AutoEventListener.shouldProcessEvent()`:
 
 ```typescript
 private shouldProcessEvent(eventName: string): boolean {
-  // Check meta tag blocking (NEW - 3 lines)
-  if (MetaTagController.getInstance().shouldBlockEvent(eventName)) {
+  const metaController = MetaTagController.getInstance();
+
+  // Check if meta tag should override auto-detection (NEW)
+  if (metaController.hasMetaTagOverride(eventName)) {
+    this.logger.debug(`Event ${eventName} handled by meta tag - skipping auto-detection`);
+    return false;
+  }
+
+  // Check meta tag blocking (global block)
+  if (metaController.shouldBlockEvent(eventName)) {
     this.logger.debug(`Event ${eventName} blocked by meta tag configuration`);
     return false;
   }
@@ -380,7 +513,7 @@ private shouldProcessEvent(eventName: string): boolean {
 
 ```typescript
 if (config.analytics.mode === 'auto') {
-  // Initialize meta tag controller FIRST (NEW - 1 line)
+  // Initialize meta tag controller FIRST (handles overrides)
   MetaTagController.getInstance().initialize();
 
   // Then existing trackers
@@ -396,6 +529,23 @@ if (config.analytics.mode === 'auto') {
 
 ### Goal
 Fire analytics events from button clicks without JavaScript.
+
+### Supported Events
+
+**Top-of-funnel events** (Full support via meta tags + data attributes):
+- `dl_view_item` - Product detail view
+- `dl_view_item_list` - Product list view
+- `dl_add_to_cart` - Add to cart
+- `dl_select_item` - Item selection
+- Custom events (any `dl_*` event name)
+
+**Checkout events** (Data attributes only - require form context):
+- `dl_begin_checkout` - Checkout initiation
+- `dl_add_shipping_info` - Shipping info added
+- `dl_add_payment_info` - Payment info added
+
+**Purchase events** (Automatic only - tied to order completion):
+- `dl_purchase` - Should remain automatic (tied to order flow)
 
 ### Implementation
 
@@ -424,7 +574,7 @@ Fire analytics events from button clicks without JavaScript.
 ```
 
 **Compact Syntax Format**: `trigger:eventName:duration`
-- `trigger` = `click`, `view`, `hover`
+- `trigger` = `click`, `view`
 - `eventName` = event to fire (e.g., `dl_add_to_cart`)
 - `duration` (optional) = milliseconds to wait for view triggers (e.g., `3000` = 3 seconds)
 
@@ -440,7 +590,7 @@ Fire analytics events from button clicks without JavaScript.
 </button>
 ```
 
-#### B. Custom Event Properties
+#### C. Custom Event Properties
 
 Any attribute starting with `data-next-analytics-*` becomes an event property:
 
@@ -464,7 +614,7 @@ Results in event:
 }
 ```
 
-#### C. Override List Context Per Element
+#### D. Override List Context Per Element
 
 ```html
 <!-- Use page-level list context from meta tags -->
@@ -495,7 +645,7 @@ export class AttributeEventListener {
     // Single delegated click listener for performance
     document.addEventListener('click', (e) => this.handleClick(e), true);
 
-    // Setup view/hover triggers
+    // Setup view triggers
     this.setupViewTriggers();
   }
 
@@ -518,18 +668,33 @@ export class AttributeEventListener {
     // Extract all custom properties
     const eventData = this.extractEventData(element);
 
+    // Check if this should queue before redirect
+    const queueBeforeRedirect = element.getAttribute('data-next-analytics-queue-before-redirect') === 'true';
+    const redirectUrl = element.getAttribute('data-next-redirect') ||
+                       (element.tagName === 'A' ? (element as HTMLAnchorElement).href : null);
+
     // Build the analytics event
     const analyticsEvent = this.buildEvent(config.eventName, packageId, eventData);
 
-    // Fire the event
+    // Handle redirect queueing
+    if (queueBeforeRedirect && redirectUrl) {
+      (analyticsEvent as any)._willRedirect = true;
+      event.preventDefault();
+      dataLayer.push(analyticsEvent);
+
+      setTimeout(() => {
+        window.location.href = redirectUrl;
+      }, 100);
+
+      return;
+    }
+
+    // Normal event firing
     dataLayer.push(analyticsEvent);
 
     logger.debug('Attribute event fired:', config.eventName, analyticsEvent);
   }
 
-  /**
-   * Parse compact or traditional syntax
-   */
   private parseAnalyticsConfig(element: Element): { trigger: string; eventName: string; duration?: number } | null {
     // Compact syntax: data-next-analytics="click:dl_add_to_cart" or "view:dl_view_item:3000"
     const compact = element.getAttribute('data-next-analytics');
@@ -553,11 +718,7 @@ export class AttributeEventListener {
     return null;
   }
 
-  /**
-   * Setup view/hover triggers using IntersectionObserver
-   */
   private setupViewTriggers(): void {
-    // Find all elements with view triggers
     const viewElements = document.querySelectorAll('[data-next-analytics^="view:"]');
 
     if (viewElements.length === 0) return;
@@ -570,20 +731,16 @@ export class AttributeEventListener {
 
           if (!config || config.trigger !== 'view') return;
 
-          // If duration specified, wait before firing
           if (config.duration) {
             setTimeout(() => {
-              // Check if still visible
               if (entry.isIntersecting) {
                 this.fireViewEvent(element, config.eventName);
               }
             }, config.duration);
           } else {
-            // Fire immediately
             this.fireViewEvent(element, config.eventName);
           }
 
-          // Unobserve after firing
           this.intersectionObserver?.unobserve(element);
         }
       });
@@ -599,23 +756,19 @@ export class AttributeEventListener {
     dataLayer.push(analyticsEvent);
   }
 
-  /**
-   * Extract all data-next-analytics-* attributes as event properties
-   */
   private extractEventData(element: Element): Record<string, any> {
     const data: Record<string, any> = {};
 
     Array.from(element.attributes).forEach((attr) => {
-      // Skip the event name itself
       if (attr.name === 'data-next-analytics-event') return;
+      if (attr.name === 'data-next-analytics') return;
+      if (attr.name === 'data-next-analytics-trigger') return;
 
-      // Extract analytics properties
       if (attr.name.startsWith('data-next-analytics-')) {
         const key = attr.name
           .replace('data-next-analytics-', '')
-          .replace(/-/g, '_'); // Convert kebab-case to snake_case
+          .replace(/-/g, '_');
 
-        // Try to parse as number or boolean
         let value: any = attr.value;
         if (value === 'true') value = true;
         else if (value === 'false') value = false;
@@ -633,9 +786,6 @@ export class AttributeEventListener {
     return data;
   }
 
-  /**
-   * Build analytics event using existing builders when possible
-   */
   private buildEvent(
     eventName: string,
     packageId: string | null,
@@ -672,7 +822,9 @@ export class AttributeEventListener {
   }
 
   public destroy(): void {
-    // Cleanup if needed
+    if (this.intersectionObserver) {
+      this.intersectionObserver.disconnect();
+    }
   }
 }
 ```
@@ -683,7 +835,7 @@ export class AttributeEventListener {
 if (config.analytics.mode === 'auto') {
   // ... existing trackers ...
 
-  // Add attribute event listener (NEW - 1 line)
+  // Add attribute event listener
   AttributeEventListener.getInstance().initialize();
 }
 ```
@@ -737,53 +889,6 @@ Ensure analytics events fire before page navigation (prevent data loss).
 </button>
 ```
 
-### Technical Implementation
-
-**Modify**: `AttributeEventListener.handleClick()` to detect redirect scenarios:
-
-```typescript
-private handleClick(event: MouseEvent): void {
-  const target = event.target as HTMLElement;
-  const element = target.closest('[data-next-analytics-event]');
-
-  if (!element) return;
-
-  const eventName = element.getAttribute('data-next-analytics-event');
-  const packageId = element.getAttribute('data-next-package-id');
-  const eventData = this.extractEventData(element);
-
-  // Check if this should queue before redirect (NEW)
-  const queueBeforeRedirect = element.getAttribute('data-next-analytics-queue-before-redirect') === 'true';
-  const redirectUrl = element.getAttribute('data-next-redirect') ||
-                     (element.tagName === 'A' ? (element as HTMLAnchorElement).href : null);
-
-  // Build event
-  const analyticsEvent = this.buildEvent(eventName, packageId, eventData);
-
-  // Handle redirect queueing (NEW)
-  if (queueBeforeRedirect && redirectUrl) {
-    // Mark for queueing
-    (analyticsEvent as any)._willRedirect = true;
-
-    // Prevent default navigation
-    event.preventDefault();
-
-    // Queue event (uses existing PendingEventsHandler)
-    dataLayer.push(analyticsEvent);
-
-    // Navigate after brief delay
-    setTimeout(() => {
-      window.location.href = redirectUrl;
-    }, 100);
-
-    return;
-  }
-
-  // Normal event firing
-  dataLayer.push(analyticsEvent);
-}
-```
-
 **How It Works**:
 1. Detects `data-next-analytics-queue-before-redirect="true"`
 2. Prevents default link/form navigation
@@ -798,7 +903,7 @@ private handleClick(event: MouseEvent): void {
 
 ## Complete Examples
 
-### Example 1: Product Detail Page (With Compact Syntax)
+### Example 1: Product Detail Page (With URL Params Support)
 
 ```html
 <!DOCTYPE html>
@@ -806,8 +911,9 @@ private handleClick(event: MouseEvent): void {
 <head>
   <title>Drone Hawk - Product</title>
 
-  <!-- Auto-fire view_item after user views for 3 seconds (engagement signal) -->
-  <meta name="next-analytics-view-item" content="123" trigger="time:3000">
+  <!-- Auto-fire view_item - reads package ID from URL: ?pid=123 -->
+  <!-- This REPLACES auto-detection - no need to block first -->
+  <meta name="next-analytics-view-item" content="url:pid" trigger="time:3000">
 
   <!-- Set list context for all add-to-cart on this page -->
   <meta name="next-analytics-list-id" content="pdp">
@@ -825,7 +931,7 @@ private handleClick(event: MouseEvent): void {
     Add to Cart
   </button>
 
-  <!-- Buy now - queue event before redirect (traditional syntax) -->
+  <!-- Buy now - queue event before redirect -->
   <button
     data-next-package-id="123"
     data-next-analytics-event="dl_add_to_cart"
@@ -845,14 +951,13 @@ private handleClick(event: MouseEvent): void {
     data-next-package-id="123"
     data-next-analytics="view:dl_reviews_engaged:2000">
     <h2>Customer Reviews</h2>
-    <!-- Reviews content -->
   </section>
 
   <!-- Related products section -->
   <div class="related-products">
     <h2>You May Also Like</h2>
 
-    <!-- COMPACT: Override list context with custom properties -->
+    <!-- Override list context with custom properties -->
     <button
       data-next-package-id="456"
       data-next-analytics="click:dl_add_to_cart"
@@ -866,9 +971,9 @@ private handleClick(event: MouseEvent): void {
 ```
 
 **What happens**:
-1. Page loads → waits 3 seconds → `dl_view_item` fires (confirms user is actually viewing)
+1. Page loads → reads `pid` from URL → waits 3 seconds → `dl_view_item` fires
 2. User scrolls → `dl_scroll_depth` fires at 25%, 50%, 75%, 90%
-3. Video section scrolls into view → `dl_video_section_viewed` fires immediately
+3. Video section scrolls into view → `dl_video_section_viewed` fires
 4. Reviews section visible for 2+ seconds → `dl_reviews_engaged` fires
 5. Click "Add to Cart" → `dl_add_to_cart` fires with list context from meta tags
 6. Click "Buy Now" → `dl_add_to_cart` queues, then redirects
@@ -876,7 +981,51 @@ private handleClick(event: MouseEvent): void {
 
 ---
 
-### Example 2: Upsell Page
+### Example 2: Landing Page with URL Params
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Black Friday Sale</title>
+
+  <!-- Read product IDs from URL: ?products=100,101,102 -->
+  <!-- This REPLACES auto-detection - no need to block in config -->
+  <meta name="next-analytics-view-item-list" content="url:products">
+
+  <!-- Set list context -->
+  <meta name="next-analytics-list-id" content="bf-landing">
+  <meta name="next-analytics-list-name" content="Black Friday Landing">
+
+  <!-- Track scroll engagement -->
+  <meta name="next-analytics-scroll-tracking" content="25,50,75,90">
+</head>
+<body>
+  <!-- Hero CTA -->
+  <section class="hero">
+    <button
+      data-next-analytics="click:dl_cta_clicked"
+      data-next-analytics-cta-name="hero-primary"
+      data-next-analytics-campaign="black-friday">
+      Shop Now - 50% Off
+    </button>
+  </section>
+
+  <!-- Product grid -->
+  <div class="products">
+    <button
+      data-next-package-id="100"
+      data-next-analytics="click:dl_add_to_cart">
+      Add to Cart
+    </button>
+  </div>
+</body>
+</html>
+```
+
+---
+
+### Example 3: Upsell Page
 
 ```html
 <!DOCTYPE html>
@@ -884,7 +1033,7 @@ private handleClick(event: MouseEvent): void {
 <head>
   <title>Special Offer!</title>
 
-  <!-- Disable auto-tracking of cart events on upsell page -->
+  <!-- Disable auto-tracking of cart events on upsell page (global block) -->
   <meta name="next-analytics-disable" content="dl_remove_from_cart,dl_view_item_list">
 
   <!-- Set upsell list context -->
@@ -898,7 +1047,7 @@ private handleClick(event: MouseEvent): void {
   <!-- Accept upsell - queue before redirect -->
   <button
     data-next-package-id="789"
-    data-next-analytics-event="dl_upsell_purchase"
+    data-next-analytics-event="dl_upsell_accepted"
     data-next-analytics-queue-before-redirect="true"
     data-next-redirect="/thank-you">
     Yes, Add This Deal!
@@ -907,108 +1056,10 @@ private handleClick(event: MouseEvent): void {
   <!-- Skip upsell - queue before redirect -->
   <a
     href="/thank-you"
-    data-next-analytics-event="dl_skipped_upsell"
+    data-next-analytics-event="dl_upsell_skipped"
     data-next-analytics-package-id="789"
     data-next-analytics-queue-before-redirect="true">
     No Thanks, Continue
-  </a>
-</body>
-</html>
-```
-
----
-
-### Example 3: Landing Page with Custom Events & Scroll Tracking
-
-```html
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Black Friday Sale</title>
-
-  <!-- Only track specific events on this landing page -->
-  <meta name="next-analytics-enable-only" content="dl_cta_clicked,dl_add_to_cart,dl_scroll_depth">
-
-  <!-- Track scroll engagement at 25%, 50%, 75% and 90% -->
-  <meta name="next-analytics-scroll-tracking" content="25,50,75,90">
-</head>
-<body>
-  <!-- Hero CTA -->
-  <section class="hero">
-    <button
-      data-next-analytics-event="dl_cta_clicked"
-      data-next-analytics-cta-name="hero-primary"
-      data-next-analytics-cta-text="Shop Now"
-      data-next-analytics-campaign="black-friday"
-      data-next-analytics-variant="version-a">
-      Shop Now - 50% Off
-    </button>
-  </section>
-
-  <!-- Product grid -->
-  <div class="products">
-    <button
-      data-next-package-id="100"
-      data-next-analytics-event="dl_add_to_cart"
-      data-next-analytics-list-id="bf-landing"
-      data-next-analytics-list-name="Black Friday Landing">
-      Add to Cart
-    </button>
-  </div>
-
-  <!-- Newsletter signup -->
-  <button
-    data-next-analytics-event="dl_newsletter_signup_clicked"
-    data-next-analytics-source="footer"
-    data-next-analytics-campaign="black-friday">
-    Get Exclusive Deals
-  </button>
-</body>
-</html>
-```
-
-**What happens**:
-- As user scrolls, `dl_scroll_depth` fires at 25%, 50%, 75%, and 90%
-- Each event includes `scroll_depth`, `scroll_threshold`, `page_height`, `viewport_height`
-- Scroll listener automatically removes itself after all thresholds reached (performance optimization)
-
----
-
-### Example 4: Checkout Page
-
-```html
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Checkout</title>
-
-  <!-- Disable cart modification events on checkout -->
-  <meta name="next-analytics-disable" content="dl_add_to_cart,dl_remove_from_cart">
-</head>
-<body>
-  <h1>Complete Your Order</h1>
-
-  <form id="checkout-form" action="/process-order" method="POST">
-    <!-- Form fields -->
-    <input type="email" name="email" required>
-    <input type="text" name="name" required>
-
-    <!-- Track checkout submission -->
-    <button
-      type="submit"
-      data-next-analytics-event="dl_checkout_submitted"
-      data-next-analytics-form-name="checkout"
-      data-next-analytics-queue-before-redirect="true">
-      Place Order
-    </button>
-  </form>
-
-  <!-- Back to cart link -->
-  <a
-    href="/cart"
-    data-next-analytics-event="dl_back_to_cart_clicked"
-    data-next-analytics-source="checkout">
-    ← Back to Cart
   </a>
 </body>
 </html>
@@ -1022,13 +1073,15 @@ private handleClick(event: MouseEvent): void {
 
 | Meta Tag | Purpose | Example |
 |----------|---------|---------|
-| `next-analytics-disable` | Comma-separated list of events to block | `<meta name="next-analytics-disable" content="dl_view_item">` |
-| `next-analytics-enable-only` | Whitelist mode - only fire these events | `<meta name="next-analytics-enable-only" content="dl_purchase">` |
-| `next-analytics-view-item` | Auto-fire dl_view_item with package ID | `<meta name="next-analytics-view-item" content="123">` |
+| `next-analytics-disable` | Block events globally (all providers) | `<meta name="next-analytics-disable" content="dl_view_item">` |
+| `next-analytics-enable-only` | Whitelist mode - only fire these events globally | `<meta name="next-analytics-enable-only" content="dl_purchase">` |
+| `next-analytics-view-item` | Fire dl_view_item (REPLACES auto-detection) | `<meta name="next-analytics-view-item" content="123">` |
 | | With trigger attribute (time-based) | `<meta name="next-analytics-view-item" content="123" trigger="time:3000">` |
 | | With trigger attribute (view-based) | `<meta name="next-analytics-view-item" content="123" trigger="view:#product-details">` |
-| `next-analytics-view-item-list` | Auto-fire dl_view_item_list with package IDs | `<meta name="next-analytics-view-item-list" content="123,456,789">` |
-| `next-analytics-scroll-tracking` | Track scroll depth at percentages (fires `dl_scroll_depth` event) | `<meta name="next-analytics-scroll-tracking" content="25,50,75,90">` |
+| | With URL parameter | `<meta name="next-analytics-view-item" content="url:pid">` |
+| `next-analytics-view-item-list` | Fire dl_view_item_list (REPLACES auto-detection) | `<meta name="next-analytics-view-item-list" content="123,456,789">` |
+| | With URL parameter | `<meta name="next-analytics-view-item-list" content="url:products">` |
+| `next-analytics-scroll-tracking` | Track scroll depth (fires `dl_scroll_depth`) | `<meta name="next-analytics-scroll-tracking" content="25,50,75,90">` |
 | `next-analytics-list-id` | Default list ID for all events on page | `<meta name="next-analytics-list-id" content="pdp">` |
 | `next-analytics-list-name` | Default list name for all events | `<meta name="next-analytics-list-name" content="Product Detail">` |
 
@@ -1044,7 +1097,7 @@ private handleClick(event: MouseEvent): void {
 | | View trigger (with duration) | `data-next-analytics="view:dl_engaged:3000"` |
 
 **Format breakdown**:
-- `trigger` = `click`, `view`, `hover`
+- `trigger` = `click`, `view`
 - `eventName` = event to fire (e.g., `dl_add_to_cart`)
 - `duration` = (optional) milliseconds for view triggers (e.g., `3000` = 3 seconds)
 
@@ -1053,7 +1106,7 @@ private handleClick(event: MouseEvent): void {
 | Attribute | Purpose | Example |
 |-----------|---------|---------|
 | `data-next-analytics-event` | Event name to fire on interaction | `data-next-analytics-event="dl_add_to_cart"` |
-| `data-next-analytics-trigger` | Trigger type (click, view, hover) | `data-next-analytics-trigger="click"` |
+| `data-next-analytics-trigger` | Trigger type (click, view) | `data-next-analytics-trigger="click"` |
 | `data-next-package-id` | Package ID for ecommerce events | `data-next-package-id="123"` |
 | `data-next-analytics-queue-before-redirect` | Queue event before navigation | `data-next-analytics-queue-before-redirect="true"` |
 | `data-next-redirect` | URL to navigate to after event fires | `data-next-redirect="/checkout"` |
@@ -1065,33 +1118,37 @@ private handleClick(event: MouseEvent): void {
 
 ```typescript
 // MetaTagController
-MetaTagController.getInstance().shouldBlockEvent('dl_view_item'); // boolean
+MetaTagController.getInstance().shouldBlockEvent('dl_view_item'); // boolean - global block
+MetaTagController.getInstance().hasMetaTagOverride('dl_view_item'); // boolean - replaces auto
 
 // AttributeEventListener
 AttributeEventListener.getInstance().initialize();
 AttributeEventListener.getInstance().destroy();
 
 // Pending Events (existing - enhanced)
-window.NextAnalytics.getPendingEvents(); // Debug helper (NEW)
+window.NextAnalytics.getPendingEvents(); // Debug helper
 ```
 
 ---
 
 ## Implementation Checklist
 
-### Phase 1: Meta Tag Controller (1-2 days)
+### Phase 1: Meta Tag Controller (2 days)
 - [ ] Create `MetaTagController.ts`
-- [ ] Parse `next-analytics-disable` meta tag
+- [ ] Parse `next-analytics-disable` meta tag (global block)
 - [ ] Parse `next-analytics-enable-only` meta tag
-- [ ] Parse `next-analytics-view-item` meta tag
+- [ ] Parse `next-analytics-view-item` meta tag (with URL param support)
+- [ ] Parse `next-analytics-view-item-list` meta tag (with URL param support)
 - [ ] Parse list context meta tags
-- [ ] Auto-fire view_item on initialization
+- [ ] Implement `hasMetaTagOverride()` method
+- [ ] Auto-fire view_item/view_item_list on initialization
 - [ ] Integrate with `AutoEventListener.shouldProcessEvent()`
 - [ ] Unit tests for meta tag parsing
 
 ### Phase 2: Attribute Event Listener (2 days)
 - [ ] Create `AttributeEventListener.ts`
 - [ ] Implement click event delegation
+- [ ] Implement view triggers with IntersectionObserver
 - [ ] Extract `data-next-analytics-*` attributes
 - [ ] Build events using existing event builders
 - [ ] Support custom events with EventBuilder
@@ -1111,9 +1168,9 @@ window.NextAnalytics.getPendingEvents(); // Debug helper (NEW)
 - [ ] Add JSDoc comments to all methods
 - [ ] Create example HTML templates
 - [ ] Update main README
-- [ ] Video tutorial (optional)
+- [ ] Document hierarchy/priority clearly
 
-**Total: 5-6 days**
+**Total: 6 days**
 
 ---
 
@@ -1140,7 +1197,7 @@ document.querySelector('.add-to-cart').addEventListener('click', () => {
 
 <button class="add-to-cart"
         data-next-package-id="123"
-        data-next-analytics-event="dl_add_to_cart">
+        data-next-analytics="click:dl_add_to_cart">
   Add to Cart
 </button>
 ```
@@ -1157,9 +1214,28 @@ window.NextDataLayerTransformFn = (event) => {
 };
 ```
 
-**After** (meta tag):
+**After** (meta tag - global block):
 ```html
 <meta name="next-analytics-disable" content="dl_view_item">
+```
+
+### From Provider blockedEvents
+
+Provider `blockedEvents` is still useful for **per-provider control**:
+
+```javascript
+// Block dl_view_item_list for GTM only (FB still receives it)
+gtm: {
+  enabled: true,
+  blockedEvents: ['dl_view_item_list']
+}
+```
+
+Use meta tags for **global control** (all providers):
+
+```html
+<!-- Block dl_view_item_list for ALL providers -->
+<meta name="next-analytics-disable" content="dl_view_item_list">
 ```
 
 ---
@@ -1172,6 +1248,7 @@ window.NextDataLayerTransformFn = (event) => {
 2. **WeakMap/WeakSet** - Automatic garbage collection for tracked elements
 3. **Lazy initialization** - Parse meta tags only once on page load
 4. **No polling** - Event-driven architecture only
+5. **Passive scroll listeners** - No blocking during scroll
 
 ### Performance Budget
 
@@ -1206,54 +1283,18 @@ window.NextDataLayerTransformFn = (event) => {
 
 ---
 
-## Testing Strategy
-
-### Unit Tests
-- Meta tag parsing
-- Attribute extraction
-- Event building
-- Redirect detection
-
-### Integration Tests
-- Meta tags blocking events
-- Click events firing
-- Queue before redirect
-- List context inheritance
-
-### E2E Tests
-- Full page flows
-- Multi-page journeys
-- Cross-browser testing
-
----
-
-## Success Metrics
-
-### Developer Experience
-- **90% reduction** in custom analytics JavaScript
-- **< 5 minutes** to add analytics to new page
-- **Zero learning curve** (uses familiar HTML attributes)
-
-### Performance
-- **< 20ms** initialization overhead
-- **100% event delivery** before redirects
-- **Zero duplicate events**
-
-### Reliability
-- **99.9%** event firing accuracy
-- **Complete attribution** across redirects
-
----
-
 ## Summary
 
-This simplified proposal delivers **90% of the value with 10% of the complexity**:
+This proposal delivers **90% of the value with 10% of the complexity**:
 
+✅ **Clear hierarchy** - Provider blockedEvents → Meta tag blocks → Meta tag overrides
 ✅ **7 meta tags total** (disable, enable-only, view-item, view-item-list, scroll-tracking, list-id, list-name)
+✅ **URL parameter support** for dynamic landing pages
+✅ **Meta tags override auto-detection** - No need to block first
 ✅ **Simple attribute pattern** (`data-next-analytics-*`)
-✅ **Builds on existing systems** (campaign store lookup, event builders, pending queue, scroll calc)
+✅ **Builds on existing systems** (campaign store lookup, event builders, pending queue)
 ✅ **~250 lines of code**
-✅ **5-6 day implementation**
+✅ **6 day implementation**
 ✅ **Zero breaking changes**
 
 The key insight: **Don't reinvent patterns, extend what works.**
@@ -1262,7 +1303,7 @@ The key insight: **Don't reinvent patterns, extend what works.**
 
 ## Next Steps
 
-1. Review this simplified proposal
+1. Review this updated proposal
 2. Approve scope and timeline
 3. Begin Phase 1 implementation
 4. Iterate based on real-world usage
