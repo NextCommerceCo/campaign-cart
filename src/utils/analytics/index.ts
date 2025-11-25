@@ -139,6 +139,10 @@ export class NextAnalytics {
       // Initialize providers based on configuration FIRST
       await this.initializeProviders(config.analytics, config.storeName);
 
+      // Initialize MetaTagController ALWAYS (works in both auto and manual modes)
+      // This allows declarative control via meta tags regardless of mode
+      this.metaTagController.initialize();
+
       // CRITICAL: Fire dl_user_data FIRST, before any other tracking
       // This must happen before any other events
       if (config.analytics.mode === 'auto') {
@@ -148,10 +152,6 @@ export class NextAnalytics {
         // Wait a moment to ensure dl_user_data is processed
         await new Promise(resolve => setTimeout(resolve, 100));
 
-        // Initialize MetaTagController BEFORE other trackers
-        // This handles meta tag overrides for view_item/view_item_list
-        this.metaTagController.initialize();
-
         // Now initialize other trackers (they may fire view/list events)
         // ViewItemListTracker will check metaTagController for overrides
         this.listTracker.initialize();
@@ -159,6 +159,8 @@ export class NextAnalytics {
         this.autoListener.initialize();
 
         logger.info('Auto-tracking initialized (user data fired first, meta tags processed)');
+      } else {
+        logger.info('Manual mode - meta tags processed, auto-tracking disabled');
       }
 
       // Process any pending events from previous page AFTER everything is initialized
