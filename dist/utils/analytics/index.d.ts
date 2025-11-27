@@ -5,6 +5,7 @@ export declare class NextAnalytics {
     private initialized;
     private providers;
     private validator;
+    private metaTagController;
     private listTracker;
     private viewTracker;
     private userTracker;
@@ -37,4 +38,5 @@ export { EventValidator } from './validation/EventValidator';
 export { EcommerceEvents } from './events/EcommerceEvents';
 export { UserEvents } from './events/UserEvents';
 export { dataLayer } from './DataLayerManager';
+export { MetaTagController, metaTagController } from './tracking/MetaTagController';
 //# sourceMappingURL=index.d.ts.map

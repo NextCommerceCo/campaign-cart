@@ -88,7 +88,7 @@ export class MetaTagController {
     // Update list attribution if specified
     if (this.config.listContext.id || this.config.listContext.name) {
       const listTracker = ListAttributionTracker.getInstance();
-      listTracker.setListContext(
+      listTracker.setCurrentList(
         this.config.listContext.id,
         this.config.listContext.name
       );

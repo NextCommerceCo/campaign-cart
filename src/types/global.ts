@@ -386,6 +386,7 @@ export interface ConfigState {
   // Location and currency detection
   detectedCountry?: string;
   detectedCurrency?: string;
+  detectedIp?: string; // User's IP address from location detection
   selectedCurrency?: string;
   locationData?: any;
   currencyBehavior?: 'auto' | 'manual'; // auto: change currency when country changes, manual: never auto-change

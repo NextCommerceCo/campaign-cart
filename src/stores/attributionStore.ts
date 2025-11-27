@@ -94,28 +94,17 @@ export const useAttributionStore = create<AttributionState & AttributionActions>
           const collector = new AttributionCollector();
           const data = await collector.collect();
 
-          console.log('[AttributionStore] Collected data.metadata:', {
-            landing_page: data.metadata.landing_page,
-            domain: data.metadata.domain
-          });
-
-          set((state) => {
-            console.log('[AttributionStore] State before merge:', {
-              landing_page: state.metadata.landing_page,
-              domain: state.metadata.domain
-            });
-            return {
-              ...state,
-              ...data,
-              // Merge metadata to preserve custom fields
-              metadata: {
-                ...state.metadata,  // Preserve existing custom fields
-                ...data.metadata    // Update with new collected data
-              },
-              // Preserve first visit timestamp if it exists
-              first_visit_timestamp: state.first_visit_timestamp || data.first_visit_timestamp
-            };
-          });
+          set((state) => ({
+            ...state,
+            ...data,
+            // Merge metadata to preserve custom fields
+            metadata: {
+              ...state.metadata,  // Preserve existing custom fields
+              ...data.metadata    // Update with new collected data
+            },
+            // Preserve first visit timestamp if it exists
+            first_visit_timestamp: state.first_visit_timestamp || data.first_visit_timestamp
+          }));
         } catch (error) {
           console.error('[AttributionStore] Error initializing attribution:', error);
         }
