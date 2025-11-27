@@ -253,7 +253,7 @@ export class DataLayerManager {
       // Get attribution from store
       const attributionStore = useAttributionStore.getState();
       const attributionData = attributionStore.getAttributionForApi();
-      
+
       // Only include attribution if it has data
       if (attributionData && Object.keys(attributionData).length > 0) {
         attribution = attributionData;

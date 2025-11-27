@@ -706,22 +706,20 @@ export class SDKInitializer {
   }
 
   private static async initializeAnalytics(): Promise<void> {
-    // Schedule analytics initialization to run after SDK is ready
-    // This ensures analytics doesn't block core functionality
-    setTimeout(async () => {
-      try {
-        this.logger.info('Initializing analytics v2 (lazy)...');
-        
-        // Dynamically import new analytics v2 to avoid loading it during initial bundle
-        const { nextAnalytics } = await import('@/utils/analytics/index');
-        await nextAnalytics.initialize();
-        
-        this.logger.debug('Analytics v2 initialized successfully (lazy)');
-      } catch (error) {
-        this.logger.warn('Analytics v2 initialization failed (non-critical):', error);
-        // Don't throw - analytics failure shouldn't break SDK initialization
-      }
-    }, 0); // Run on next tick after SDK initialization completes
+    // Initialize analytics synchronously to ensure attribution data is ready
+    // before dl_user_data event is fired
+    try {
+      this.logger.info('Initializing analytics v2...');
+
+      // Dynamically import new analytics v2 to avoid loading it during initial bundle
+      const { nextAnalytics } = await import('@/utils/analytics/index');
+      await nextAnalytics.initialize();
+
+      this.logger.debug('Analytics v2 initialized successfully');
+    } catch (error) {
+      this.logger.warn('Analytics v2 initialization failed (non-critical):', error);
+      // Don't throw - analytics failure shouldn't break SDK initialization
+    }
   }
   
   
