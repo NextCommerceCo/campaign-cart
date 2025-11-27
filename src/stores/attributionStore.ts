@@ -15,20 +15,21 @@ export interface AttributionMetadata {
   timestamp: number;
   conversion_timestamp?: number;
   sdk_version?: string;  // SDK version detected at runtime
-  
+  user_ip?: string;      // User's IP address from location detection
+
   // Generic click tracking
   clickid?: string;
-  
+
   // Facebook tracking
   fb_fbp?: string;
   fb_fbc?: string;
   fb_pixel_id?: string;
   fbclid?: string;
-  
+
   // Everflow tracking
   everflow_transaction_id?: string;
   sg_evclid?: string;
-  
+
   // Custom tracking tags
   [key: string]: any;
 }
@@ -92,18 +93,29 @@ export const useAttributionStore = create<AttributionState & AttributionActions>
           const { AttributionCollector } = await import('@/utils/attribution/AttributionCollector');
           const collector = new AttributionCollector();
           const data = await collector.collect();
-          
-          set((state) => ({
-            ...state,
-            ...data,
-            // Merge metadata to preserve custom fields
-            metadata: {
-              ...state.metadata,  // Preserve existing custom fields
-              ...data.metadata    // Update with new collected data
-            },
-            // Preserve first visit timestamp if it exists
-            first_visit_timestamp: state.first_visit_timestamp || data.first_visit_timestamp
-          }));
+
+          console.log('[AttributionStore] Collected data.metadata:', {
+            landing_page: data.metadata.landing_page,
+            domain: data.metadata.domain
+          });
+
+          set((state) => {
+            console.log('[AttributionStore] State before merge:', {
+              landing_page: state.metadata.landing_page,
+              domain: state.metadata.domain
+            });
+            return {
+              ...state,
+              ...data,
+              // Merge metadata to preserve custom fields
+              metadata: {
+                ...state.metadata,  // Preserve existing custom fields
+                ...data.metadata    // Update with new collected data
+              },
+              // Preserve first visit timestamp if it exists
+              first_visit_timestamp: state.first_visit_timestamp || data.first_visit_timestamp
+            };
+          });
         } catch (error) {
           console.error('[AttributionStore] Error initializing attribution:', error);
         }
@@ -252,6 +264,7 @@ export const useAttributionStore = create<AttributionState & AttributionActions>
         // Metadata
         console.log('\n📋 Metadata:');
         console.log('- SDK Version:', state.metadata.sdk_version || '(not set)');
+        console.log('- User IP:', state.metadata.user_ip || '(not set)');
         console.log('- Landing Page:', state.metadata.landing_page);
         console.log('- Referrer:', state.metadata.referrer || '(direct)');
         console.log('- Domain:', state.metadata.domain);

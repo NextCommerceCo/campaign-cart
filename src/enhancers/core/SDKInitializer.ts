@@ -257,13 +257,15 @@ export class SDKInitializer {
         this.logger.info('User location detected:', {
           country: locationData.detectedCountryCode,
           currency: locationData.detectedCountryConfig.currencyCode,
-          currencySymbol: locationData.detectedCountryConfig.currencySymbol
+          currencySymbol: locationData.detectedCountryConfig.currencySymbol,
+          ip: locationData.detectedIp
         });
-        
+
         // Store in config for global access
         configStore.updateConfig({
           detectedCountry: locationData.detectedCountryCode,
           detectedCurrency: locationData.detectedCountryConfig.currencyCode,
+          detectedIp: locationData.detectedIp || '', // Store user IP address
           locationData: locationData // Cache the entire response
         });
         
@@ -623,26 +625,33 @@ export class SDKInitializer {
   private static async initializeAttribution(): Promise<void> {
     try {
       this.logger.info('Initializing attribution...');
-      
+
       const attributionStore = useAttributionStore.getState();
       const configStore = useConfigStore.getState();
-      
+
       // Initialize attribution data collection
       await attributionStore.initialize();
-      
-      // Add SDK version to metadata
-      const sdkVersion = typeof window !== 'undefined' && window.__NEXT_SDK_VERSION__ 
-        ? window.__NEXT_SDK_VERSION__ 
+
+      // Add SDK version and user IP to metadata
+      const sdkVersion = typeof window !== 'undefined' && window.__NEXT_SDK_VERSION__
+        ? window.__NEXT_SDK_VERSION__
         : 'unknown';
-      
+
+      // Get user IP from config store (set during location detection)
+      const userIp = configStore.detectedIp || '';
+
       attributionStore.updateAttribution({
         metadata: {
           ...attributionStore.metadata,
-          sdk_version: sdkVersion
+          sdk_version: sdkVersion,
+          user_ip: userIp
         }
       });
-      
+
       this.logger.debug(`Added SDK version to attribution metadata: ${sdkVersion}`);
+      if (userIp) {
+        this.logger.debug(`Added user IP to attribution metadata: ${userIp}`);
+      }
       
       // Set up event listeners for attribution updates
       this.setupAttributionListeners();

@@ -37,6 +37,7 @@ export interface LocationData {
   detectedCountryConfig: CountryConfig;
   detectedStates: State[];
   countries: Country[];
+  detectedIp?: string;
 }
 
 export interface CountryStatesData {

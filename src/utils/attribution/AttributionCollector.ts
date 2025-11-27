@@ -47,14 +47,19 @@ export class AttributionCollector {
    * Collect metadata including device info, referrer, and tracking data
    */
   private collectMetadata(): AttributionMetadata {
+    const landing_page = window.location.href;
+    const domain = window.location.hostname;
+
+    logger.debug('Collecting metadata from browser:', { landing_page, domain });
+
     const metadata: AttributionMetadata = {
-      landing_page: window.location.href,
+      landing_page,
       referrer: document.referrer || '',
       device: navigator.userAgent || '',
       device_type: this.getDeviceType(),
-      domain: window.location.hostname,
+      domain,
       timestamp: Date.now(),
-      
+
       // Facebook tracking
       fb_fbp: this.getCookie('_fbp') || '',
       fb_fbc: this.getCookie('_fbc') || '',

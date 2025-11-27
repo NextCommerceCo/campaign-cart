@@ -69,6 +69,7 @@ const initialState: ConfigState = {
   // Location and currency detection
   detectedCountry: '',
   detectedCurrency: '',
+  detectedIp: '', // User's IP address from location detection
   selectedCurrency: '',
   locationData: null as any, // Cache the entire location response
   currencyBehavior: 'auto' as 'auto' | 'manual', // Default to auto-switch currency on country change
