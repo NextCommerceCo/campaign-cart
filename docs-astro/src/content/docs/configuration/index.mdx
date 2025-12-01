@@ -63,19 +63,31 @@ window.nextConfig = {
       // Require form validation before express checkout
       requireValidation: true,
       requiredFields: ['email', 'fname', 'lname'],
-      
+
       // Optional: Custom button styling
       buttonStyle: {
         color: 'gold',     // 'gold' | 'blue' | 'silver' | 'white' | 'black'
         shape: 'rect',     // 'pill' | 'rect'
         height: 44
       }
+    }
+  },
+
+  // Card input configuration for credit card fields
+  cardInputConfig: {
+    fieldType: {
+      number: 'tel',    // 'text' | 'tel' | 'number'
+      cvv: 'number'
     },
-    
-    // Spreedly configuration (if using custom gateway)
-    spreedly: {
-      environmentKey: 'your-spreedly-env-key',
-      // Additional Spreedly options
+    numberFormat: 'prettyFormat',  // 'prettyFormat' | 'plainFormat' | 'maskedFormat'
+    placeholders: {
+      number: 'Card Number',
+      cvv: 'CVV'
+    },
+    styles: {
+      number: 'font-size: 16px; color: #333;',
+      cvv: 'font-size: 16px; color: #333;',
+      placeholder: 'color: #999;'
     }
   }
 };

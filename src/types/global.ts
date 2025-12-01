@@ -386,6 +386,7 @@ export interface ConfigState {
   // Location and currency detection
   detectedCountry?: string;
   detectedCurrency?: string;
+  detectedIp?: string; // User's IP address from location detection
   selectedCurrency?: string;
   locationData?: any;
   currencyBehavior?: 'auto' | 'manual'; // auto: change currency when country changes, manual: never auto-change
@@ -477,8 +478,10 @@ export interface ConfigState {
 
 export type PageType = 'product' | 'cart' | 'checkout' | 'upsell' | 'receipt';
 
-// Spreedly iFrame configuration interface
-export interface SpreedlyConfig {
+// Card input configuration interface
+// Generic configuration for credit card input fields (iFrame-based)
+// Previously named SpreedlyConfig - alias maintained for backward compatibility
+export interface CardInputConfig {
   // Field type configuration - controls keyboard display on mobile
   fieldType?: {
     number?: 'number' | 'text' | 'tel';
@@ -534,8 +537,14 @@ export interface SpreedlyConfig {
   allowExpiredDate?: boolean; // Allow expired dates
 }
 
+// Backward compatibility alias - SpreedlyConfig is now CardInputConfig
+export type SpreedlyConfig = CardInputConfig;
+
 export interface PaymentConfig {
-  spreedly?: SpreedlyConfig;
+  // Generic card input configuration (preferred)
+  cardInputConfig?: CardInputConfig;
+  // Legacy naming - maintained for backward compatibility
+  spreedly?: CardInputConfig;
 
   expressCheckout?: {
     enabled: boolean;

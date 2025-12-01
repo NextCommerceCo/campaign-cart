@@ -1,0 +1,657 @@
+# Event Reference
+
+Complete reference of all analytics events with schemas, examples, and when they fire.
+
+Complete reference of all standard analytics events tracked by the SDK, including event structure, when they fire, and whether they're automatically tracked.
+
+## Event Naming Convention
+
+All standard events follow the `dl_*` naming pattern for consistency with data layer conventions.
+
+## Event Categories
+
+- **User Events** - User identification and authentication
+- **E-commerce Events** - Product views, cart, checkout, purchase
+- **Custom Events** - Your custom business events
+
+---
+
+## User Events
+
+### dl_user_data
+
+Base user event with cart contents. Automatically fired on every page load in auto mode.
+
+**When it fires:**
+- Page load
+- Route changes
+- User login/logout
+- Browser back/forward navigation
+
+**Auto-tracked:** Yes (in auto mode)
+
+**Example:**
+
+```javascript
+{
+  event: 'dl_user_data',
+  event_id: 'sess_123_1_1234567890',
+  event_time: '2025-01-12T10:30:00Z',
+  user_properties: {
+    visitor_type: 'guest',
+    customer_email: 'user@example.com',
+    customer_id: 'user_123'
+  },
+  ecommerce: {
+    currency: 'USD',
+    value: 199.99,
+    items: [...]  // Current cart items
+  }
+}
+```
+
+---
+
+### dl_sign_up
+
+User registration event.
+
+**When it fires:** When user creates an account
+
+**Auto-tracked:** No (manual tracking required)
+
+**Tracking:**
+
+```javascript
+// Simple
+next.trackSignUp('user@example.com');
+
+// Advanced
+window.NextAnalytics.trackSignUp('user@example.com');
+```
+
+**Example:**
+
+```javascript
+{
+  event: 'dl_sign_up',
+  event_id: 'sess_123_2_1234567890',
+  method: 'email',
+  user_properties: {
+    visitor_type: 'logged_in',
+    customer_email: 'user@example.com',
+    customer_first_name: 'John',
+    customer_last_name: 'Doe'
+  }
+}
+```
+
+---
+
+### dl_login
+
+User login event.
+
+**When it fires:** When user logs in
+
+**Auto-tracked:** No (manual tracking required)
+
+**Tracking:**
+
+```javascript
+// Simple
+next.trackLogin('user@example.com');
+
+// Advanced
+window.NextAnalytics.trackLogin('user@example.com');
+```
+
+---
+
+## E-commerce Events
+
+### dl_view_item_list
+
+Product list view (collection, category, search results).
+
+**When it fires:** When a product list is displayed
+
+**Auto-tracked:** Yes (when URL matches collection/category patterns)
+
+**Tracking:**
+
+```javascript
+// Simple
+next.trackViewItemList(['123', '456'], 'summer-sale', 'Summer Sale');
+
+// Advanced
+window.NextAnalytics.trackViewItemList(items, listId, listName);
+```
+
+**Example:**
+
+```javascript
+{
+  event: 'dl_view_item_list',
+  event_id: 'sess_123_3_1234567890',
+  user_properties: { ... },
+  ecommerce: {
+    item_list_id: 'summer-sale',
+    item_list_name: 'Summer Sale Collection',
+    currency: 'USD',
+    items: [
+      {
+        item_id: 'SKU-123',
+        item_name: 'Product Name',
+        price: 99.99,
+        quantity: 1,
+        index: 0
+      }
+    ]
+  }
+}
+```
+
+**List Attribution:** Stores list ID and name in session storage for 30 minutes.
+
+---
+
+### dl_view_item
+
+Product detail view.
+
+**When it fires:** When a product page is viewed
+
+**Auto-tracked:** Yes (when page has exactly 1 product with `data-next-package-id`)
+
+**Manual tracking:**
+
+```javascript
+// Simple
+next.trackViewItem('123');
+
+// Advanced
+window.NextAnalytics.trackViewItem({
+  id: 'pkg-123',
+  packageId: '123',
+  title: 'Product Name',
+  price: 99.99
+});
+```
+
+**Example:**
+
+```javascript
+{
+  event: 'dl_view_item',
+  ecommerce: {
+    currency: 'USD',
+    value: 99.99,
+    items: [{
+      item_id: 'SKU-123',
+      item_name: 'Product Name',
+      price: 99.99,
+      quantity: 1,
+      item_list_id: 'summer-sale',  // If coming from a list
+      item_list_name: 'Summer Sale'
+    }]
+  }
+}
+```
+
+---
+
+### dl_add_to_cart
+
+Item added to cart.
+
+**When it fires:** When user adds item to cart
+
+**Auto-tracked:** Yes (when using data attributes or cart methods)
+
+**Tracking:**
+
+```javascript
+// Simple
+next.trackAddToCart('123', 1);
+
+// Advanced with list attribution
+window.NextAnalytics.trackAddToCart({
+  id: 'pkg-123',
+  packageId: '123',
+  title: 'Product Name',
+  price: 99.99,
+  quantity: 1
+}, 'summer-sale', 'Summer Sale');
+```
+
+**Example:**
+
+```javascript
+{
+  event: 'dl_add_to_cart',
+  ecommerce: {
+    currency: 'USD',
+    value: 99.99,
+    items: [{
+      item_id: 'SKU-123',
+      item_name: 'Product Name',
+      price: 99.99,
+      quantity: 1,
+      item_list_id: 'summer-sale',
+      item_list_name: 'Summer Sale'
+    }]
+  }
+}
+```
+
+---
+
+### dl_remove_from_cart
+
+Item removed from cart.
+
+**When it fires:** When user removes item from cart
+
+**Auto-tracked:** Yes (when using cart methods)
+
+**Tracking:**
+
+```javascript
+// Simple
+next.trackRemoveFromCart('123', 1);
+
+// Advanced
+import { EcommerceEvents } from '@/utils/analytics';
+import { dataLayer } from '@/utils/analytics';
+
+const event = EcommerceEvents.createRemoveFromCartEvent(item);
+dataLayer.push(event);
+```
+
+---
+
+### dl_view_cart
+
+Cart page view.
+
+**When it fires:** When cart page is viewed
+
+**Auto-tracked:** No (manual tracking required)
+
+**Example:**
+
+```javascript
+{
+  event: 'dl_view_cart',
+  ecommerce: {
+    currency: 'USD',
+    value: 199.99,
+    items: [...]  // All cart items
+  }
+}
+```
+
+---
+
+### dl_begin_checkout
+
+Checkout process initiation.
+
+**When it fires:** When checkout starts
+
+**Auto-tracked:** Yes (when checkout page loads)
+
+**Tracking:**
+
+```javascript
+// Simple
+next.trackBeginCheckout();
+
+// Advanced
+window.NextAnalytics.trackBeginCheckout();
+```
+
+**Example:**
+
+```javascript
+{
+  event: 'dl_begin_checkout',
+  ecommerce: {
+    currency: 'USD',
+    value: 199.99,
+    items: [...]  // All cart items
+  }
+}
+```
+
+---
+
+### dl_add_shipping_info
+
+Shipping information entered.
+
+**When it fires:** When shipping details are completed
+
+**Auto-tracked:** Yes (when shipping form is submitted)
+
+**Example:**
+
+```javascript
+{
+  event: 'dl_add_shipping_info',
+  ecommerce: {
+    currency: 'USD',
+    value: 199.99,
+    shipping_tier: 'Standard Shipping',
+    items: [...]
+  }
+}
+```
+
+---
+
+### dl_add_payment_info
+
+Payment information entered.
+
+**When it fires:** When payment method is selected
+
+**Auto-tracked:** Yes (when payment form is submitted)
+
+**Example:**
+
+```javascript
+{
+  event: 'dl_add_payment_info',
+  ecommerce: {
+    currency: 'USD',
+    value: 199.99,
+    payment_type: 'Credit Card',
+    items: [...]
+  }
+}
+```
+
+---
+
+### dl_purchase
+
+Order completion.
+
+**When it fires:** When order is completed
+
+**Auto-tracked:** Yes
+
+**Event Queue:**
+
+Purchase events are queued to `sessionStorage` when the order completes, then automatically fired on the confirmation page after redirect. This prevents event loss during navigation.
+
+**Manual tracking (optional):**
+
+```javascript
+// Optional: Manually trigger for testing or special integrations
+// Order data automatically available in sessionStorage['next-order']
+const orderData = JSON.parse(sessionStorage.getItem('next-order'))?.state?.order;
+if (orderData) {
+  next.trackPurchase({ order: orderData });
+}
+
+// Or provide custom order data
+next.trackPurchase({
+  id: 'ORDER_123',
+  total: 159.99,
+  currency: 'USD',
+  tax: 9.99,
+  shipping: 10.00
+});
+```
+
+**Example:**
+
+```javascript
+{
+  event: 'dl_purchase',
+  transaction_id: 'ORD-12345',
+  ecommerce: {
+    transaction_id: 'ORD-12345',
+    affiliation: 'Online Store',
+    currency: 'USD',
+    value: 159.99,
+    tax: 9.99,
+    shipping: 10.00,
+    coupon: 'SUMMER20',
+    items: [
+      {
+        item_id: 'SKU-123',
+        item_name: 'Product Name',
+        price: 149.99,
+        quantity: 1
+      }
+    ]
+  }
+}
+```
+
+---
+
+### dl_package_swapped
+
+Package swap (replace one item with another).
+
+**When it fires:** When user swaps one package for another
+
+**Auto-tracked:** No (manual tracking required)
+
+**Example:**
+
+```javascript
+{
+  event: 'dl_package_swapped',
+  ecommerce: {
+    currency: 'USD',
+    value: 20.00,  // Price difference
+    items_removed: [{
+      item_id: 'SKU-123',
+      item_name: 'Basic Package',
+      price: 99.99,
+      quantity: 1
+    }],
+    items_added: [{
+      item_id: 'SKU-456',
+      item_name: 'Premium Package',
+      price: 119.99,
+      quantity: 1
+    }]
+  }
+}
+```
+
+---
+
+### dl_upsell_purchase
+
+Upsell accepted (post-purchase).
+
+**When it fires:** When user accepts an upsell offer
+
+**Auto-tracked:** No (manual tracking required)
+
+**Example:**
+
+```javascript
+{
+  event: 'dl_upsell_purchase',
+  transaction_id: 'ORD-12345-US1',  // Format: {orderId}-US{number}
+  ecommerce: {
+    transaction_id: 'ORD-12345-US1',
+    currency: 'USD',
+    value: 29.99,
+    items: [{
+      item_id: 'UPSELL-789',
+      item_name: 'Upsell Package',
+      price: 29.99,
+      quantity: 1
+    }]
+  },
+  _willRedirect: true  // Queued for post-redirect processing
+}
+```
+
+**Note:** Has `_willRedirect: true` flag - automatically queued and processed after page redirect.
+
+---
+
+### dl_view_search_results
+
+Search results page view.
+
+**When it fires:** When search results are displayed
+
+**Auto-tracked:** No (manual tracking required)
+
+**Example:**
+
+```javascript
+{
+  event: 'dl_view_search_results',
+  search_term: 'drone',
+  ecommerce: {
+    item_list_id: 'search-results',
+    item_list_name: 'Search Results',
+    currency: 'USD',
+    items: [...]
+  }
+}
+```
+
+---
+
+## Event Structure
+
+All events follow this GA4-compliant structure:
+
+```javascript
+{
+  // Event identification
+  event: string,              // Event name (e.g., 'dl_add_to_cart')
+  event_id: string,           // Unique ID: sessionId_sequence_timestamp
+  event_time: string,         // ISO timestamp
+
+  // User properties (Elevar format)
+  user_properties: {
+    visitor_type: 'guest' | 'logged_in',
+    customer_id?: string,
+    customer_email?: string,
+    customer_phone?: string,
+    customer_first_name?: string,
+    customer_last_name?: string,
+    customer_address_1?: string,
+    customer_city?: string,
+    customer_province?: string,
+    customer_zip?: string,
+    customer_country?: string
+  },
+
+  // Ecommerce data (GA4 format)
+  ecommerce?: {
+    currency: string,
+    value?: number,
+    transaction_id?: string,
+    affiliation?: string,
+    tax?: number,
+    shipping?: number,
+    coupon?: string,
+    discount?: number,
+    item_list_id?: string,
+    item_list_name?: string,
+    shipping_tier?: string,
+    payment_type?: string,
+    items: [{
+      item_id: string,
+      item_name: string,
+      item_brand?: string,
+      item_category?: string,
+      item_variant?: string,
+      price: number,
+      quantity: number,
+      currency: string,
+      index?: number,
+      item_list_id?: string,
+      item_list_name?: string
+    }]
+  },
+
+  // Attribution (auto-added)
+  attribution?: {
+    utm_source?: string,
+    utm_medium?: string,
+    utm_campaign?: string,
+    utm_term?: string,
+    utm_content?: string,
+    gclid?: string,
+    funnel?: string,
+    affiliate?: string
+  },
+
+  // Context (auto-added)
+  page_location?: string,
+  page_title?: string,
+  page_referrer?: string,
+
+  // Internal metadata
+  _metadata: {
+    pushed_at: number,
+    session_id: string,
+    sequence_number: number,
+    source: 'next-campaign-cart',
+    version: '0.2.0'
+  }
+}
+```
+
+## Quick Reference Table
+
+| Event | When it Fires | Auto-Tracked | Manual Method |
+|-------|--------------|--------------|---------------|
+| `dl_user_data` | Every page load | Yes | - |
+| `dl_sign_up` | User registration | No | `next.trackSignUp()` |
+| `dl_login` | User login | No | `next.trackLogin()` |
+| `dl_view_item_list` | List page view | Yes | `next.trackViewItemList()` |
+| `dl_view_item` | Product page view | Yes | `next.trackViewItem()` |
+| `dl_add_to_cart` | Add to cart | Yes | `next.trackAddToCart()` |
+| `dl_remove_from_cart` | Remove from cart | Yes | `next.trackRemoveFromCart()` |
+| `dl_view_cart` | Cart page view | No | Manual |
+| `dl_begin_checkout` | Checkout start | Yes | `next.trackBeginCheckout()` |
+| `dl_add_shipping_info` | Shipping entered | Yes | Manual |
+| `dl_add_payment_info` | Payment entered | Yes | Manual |
+| `dl_purchase` | Order complete | Yes | `next.trackPurchase()` (optional) |
+| `dl_package_swapped` | Package swap | No | Manual |
+| `dl_upsell_purchase` | Upsell accepted | No | Manual |
+| `dl_view_search_results` | Search results | No | Manual |
+
+## Event Validation
+
+All events are automatically validated against schemas:
+
+```javascript
+import { EventValidator } from '@/utils/analytics';
+
+const validator = new EventValidator(true);
+
+// Validate event
+const result = validator.validateEvent(event);
+if (!result.valid) {
+  console.error('Invalid event:', result.errors);
+}
+
+// Get available schemas
+const schemas = validator.getAvailableSchemas();
+console.log(schemas);
+```
+
+## Related Documentation
+
+- [Analytics Overview](./index.md) - Main analytics documentation
+- [Custom Events](./custom-events.md) - Creating custom events
+- [Providers](./providers.md) - Provider integration guides

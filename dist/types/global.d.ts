@@ -473,6 +473,7 @@ export interface ConfigState {
     addressConfig: AddressConfig;
     detectedCountry?: string;
     detectedCurrency?: string;
+    detectedIp?: string;
     selectedCurrency?: string;
     locationData?: any;
     currencyBehavior?: 'auto' | 'manual';
@@ -540,7 +541,7 @@ export interface ConfigState {
     activeProfile?: string;
 }
 export type PageType = 'product' | 'cart' | 'checkout' | 'upsell' | 'receipt';
-export interface SpreedlyConfig {
+export interface CardInputConfig {
     fieldType?: {
         number?: 'number' | 'text' | 'tel';
         cvv?: 'number' | 'text' | 'tel';
@@ -578,8 +579,10 @@ export interface SpreedlyConfig {
     allowBlankName?: boolean;
     allowExpiredDate?: boolean;
 }
+export type SpreedlyConfig = CardInputConfig;
 export interface PaymentConfig {
-    spreedly?: SpreedlyConfig;
+    cardInputConfig?: CardInputConfig;
+    spreedly?: CardInputConfig;
     expressCheckout?: {
         enabled: boolean;
         methods: {

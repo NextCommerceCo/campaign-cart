@@ -54,7 +54,7 @@ export class AttributionCollector {
       device_type: this.getDeviceType(),
       domain: window.location.hostname,
       timestamp: Date.now(),
-      
+
       // Facebook tracking
       fb_fbp: this.getCookie('_fbp') || '',
       fb_fbc: this.getCookie('_fbc') || '',

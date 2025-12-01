@@ -15,20 +15,21 @@ export interface AttributionMetadata {
   timestamp: number;
   conversion_timestamp?: number;
   sdk_version?: string;  // SDK version detected at runtime
-  
+  user_ip?: string;      // User's IP address from location detection
+
   // Generic click tracking
   clickid?: string;
-  
+
   // Facebook tracking
   fb_fbp?: string;
   fb_fbc?: string;
   fb_pixel_id?: string;
   fbclid?: string;
-  
+
   // Everflow tracking
   everflow_transaction_id?: string;
   sg_evclid?: string;
-  
+
   // Custom tracking tags
   [key: string]: any;
 }
@@ -50,6 +51,16 @@ interface AttributionActions {
   clearPersistedFunnel: () => void;
 }
 
+// Get initial values from browser - these are used if no persisted state exists
+const getInitialMetadata = (): AttributionMetadata => ({
+  landing_page: typeof window !== 'undefined' ? window.location.href : '',
+  referrer: typeof document !== 'undefined' ? document.referrer : '',
+  device: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+  device_type: typeof navigator !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
+  domain: typeof window !== 'undefined' ? window.location.hostname : '',
+  timestamp: Date.now()
+});
+
 const initialState: AttributionState = {
   // Attribution fields
   affiliate: '',
@@ -65,17 +76,10 @@ const initialState: AttributionState = {
   subaffiliate3: '',
   subaffiliate4: '',
   subaffiliate5: '',
-  
-  // Metadata
-  metadata: {
-    landing_page: '',
-    referrer: '',
-    device: '',
-    device_type: 'desktop',
-    domain: '',
-    timestamp: Date.now()
-  },
-  
+
+  // Metadata - initialized with actual browser values
+  metadata: getInitialMetadata(),
+
   // Timestamps
   first_visit_timestamp: Date.now(),
   current_visit_timestamp: Date.now()
@@ -92,7 +96,7 @@ export const useAttributionStore = create<AttributionState & AttributionActions>
           const { AttributionCollector } = await import('@/utils/attribution/AttributionCollector');
           const collector = new AttributionCollector();
           const data = await collector.collect();
-          
+
           set((state) => ({
             ...state,
             ...data,
@@ -252,6 +256,7 @@ export const useAttributionStore = create<AttributionState & AttributionActions>
         // Metadata
         console.log('\n📋 Metadata:');
         console.log('- SDK Version:', state.metadata.sdk_version || '(not set)');
+        console.log('- User IP:', state.metadata.user_ip || '(not set)');
         console.log('- Landing Page:', state.metadata.landing_page);
         console.log('- Referrer:', state.metadata.referrer || '(direct)');
         console.log('- Domain:', state.metadata.domain);

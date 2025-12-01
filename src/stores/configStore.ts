@@ -69,6 +69,7 @@ const initialState: ConfigState = {
   // Location and currency detection
   detectedCountry: '',
   detectedCurrency: '',
+  detectedIp: '', // User's IP address from location detection
   selectedCurrency: '',
   locationData: null as any, // Cache the entire location response
   currencyBehavior: 'auto' as 'auto' | 'manual', // Default to auto-switch currency on country change
@@ -171,20 +172,27 @@ export const configStore = create<ConfigState & ConfigActions>((set, _get) => ({
       updates.paymentConfig = windowConfig.paymentConfig as PaymentConfig;
     }
     
-        // Load Spreedly configuration from window.nextConfig
-    // Can be specified as spreedly or spreedlyConfig
-    if (windowConfig.spreedly && typeof windowConfig.spreedly === 'object') {
+    // Load card input configuration from window.nextConfig
+    // Supports multiple naming conventions for flexibility and backward compatibility:
+    // - cardInputConfig (preferred, generic naming)
+    // - spreedly (legacy naming, still supported)
+    // - spreedlyConfig (legacy naming, still supported)
+    // Priority: cardInputConfig > spreedly > spreedlyConfig
+    if (windowConfig.cardInputConfig && typeof windowConfig.cardInputConfig === 'object') {
       if (!updates.paymentConfig) {
         updates.paymentConfig = {};
       }
-      updates.paymentConfig.spreedly = windowConfig.spreedly;
-    }
-
-    if (windowConfig.spreedlyConfig && typeof windowConfig.spreedlyConfig === 'object') {
+      updates.paymentConfig.cardInputConfig = windowConfig.cardInputConfig;
+    } else if (windowConfig.spreedly && typeof windowConfig.spreedly === 'object') {
       if (!updates.paymentConfig) {
         updates.paymentConfig = {};
       }
-      updates.paymentConfig.spreedly = windowConfig.spreedlyConfig;
+      updates.paymentConfig.cardInputConfig = windowConfig.spreedly;
+    } else if (windowConfig.spreedlyConfig && typeof windowConfig.spreedlyConfig === 'object') {
+      if (!updates.paymentConfig) {
+        updates.paymentConfig = {};
+      }
+      updates.paymentConfig.cardInputConfig = windowConfig.spreedlyConfig;
     }
 
 
