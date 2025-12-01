@@ -3450,9 +3450,22 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       }
 
       // Get the correct value based on input type
-      const fieldValue = (target instanceof HTMLInputElement && (target.type === 'checkbox' || target.type === 'radio'))
-        ? target.checked
-        : target.value;
+      // For phone fields, use intlTelInput's international format if available
+      let fieldValue: any;
+      if (fieldName === 'phone' || fieldName === 'billing-phone') {
+        const phoneType = fieldName === 'phone' ? 'shipping' : 'billing';
+        const phoneInstance = this.phoneInputs.get(phoneType);
+        if (phoneInstance) {
+          // Use intlTelInput's getNumber() for international format
+          fieldValue = phoneInstance.getNumber() || target.value;
+        } else {
+          fieldValue = target.value;
+        }
+      } else if (target instanceof HTMLInputElement && (target.type === 'checkbox' || target.type === 'radio')) {
+        fieldValue = target.checked;
+      } else {
+        fieldValue = target.value;
+      }
 
       this.updateFormData({ [fieldName]: fieldValue });
       checkoutStore.clearError(fieldName);
@@ -3520,10 +3533,14 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           if (fieldName === 'email') updates.email = target.value;
           if (fieldName === 'fname') updates.firstName = target.value;
           if (fieldName === 'lname') updates.lastName = target.value;
-          if (fieldName === 'phone') updates.phone = target.value;
-          
+          if (fieldName === 'phone') {
+            // Use international format for phone if intlTelInput is available
+            const phoneInstance = this.phoneInputs.get('shipping');
+            updates.phone = phoneInstance ? (phoneInstance.getNumber() || target.value) : target.value;
+          }
+
           userDataStorage.updateUserData(updates);
-          this.logger.debug('Updated user data storage:', fieldName, target.value);
+          this.logger.debug('Updated user data storage:', fieldName, updates[fieldName === 'fname' ? 'firstName' : fieldName === 'lname' ? 'lastName' : fieldName]);
         }
         
         // Check if we have enough data to create prospect cart
@@ -4130,6 +4147,20 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         }
       }
     });
+
+    // After populating phone field, ensure it's stored in international format
+    // This handles the case where phone was persisted in national format before intlTelInput processed it
+    const shippingPhoneInstance = this.phoneInputs.get('shipping');
+    if (shippingPhoneInstance && checkoutStore.formData.phone) {
+      // Give intlTelInput a moment to process the value we just set
+      setTimeout(() => {
+        const internationalNumber = shippingPhoneInstance.getNumber();
+        if (internationalNumber && internationalNumber !== checkoutStore.formData.phone) {
+          this.logger.debug(`Converting phone to international format: ${checkoutStore.formData.phone} -> ${internationalNumber}`);
+          this.updateFormData({ phone: internationalNumber });
+        }
+      }, 50);
+    }
 
     // Set province value after states are loaded
     const storedProvince = checkoutStore.formData.province;
