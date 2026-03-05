@@ -230,8 +230,8 @@ export default defineConfig({
 
           // Split utilities into separate chunk (excluding debug and analytics)
           if ((id.includes('/utils/') || id.includes('/helpers/')) &&
-              !id.includes('/debug/') &&
-              !id.includes('/analytics/')) {
+            !id.includes('/debug/') &&
+            !id.includes('/analytics/')) {
             return 'utils';
           }
 
@@ -240,11 +240,11 @@ export default defineConfig({
             return 'api';
           }
         },
-        
+
         // Option 2: If you prefer preserveModules, comment out manualChunks above and uncomment these:
         // preserveModules: true,
         // preserveModulesRoot: 'src',
-        
+
         // Better file naming for caching
         entryFileNames: '[name].js',
         chunkFileNames: 'chunks/[name]-[hash].js',
@@ -263,24 +263,24 @@ export default defineConfig({
           }
           return 'assets/[name]-[hash][extname]';
         },
-        
+
         // Optimize globals
         globals: {
           react: 'React',
           'react-dom': 'ReactDOM',
         },
-        
+
         // Advanced options
         generatedCode: {
           constBindings: true,
           objectShorthand: true,
           arrowFunctions: true,
         },
-        
+
         // Don't inline dynamic imports for better code splitting
         inlineDynamicImports: false,
       },
-      
+
       // Tree-shaking optimizations
       treeshake: {
         moduleSideEffects: false,
@@ -288,22 +288,22 @@ export default defineConfig({
         tryCatchDeoptimization: false,
       },
     },
-    
+
     // Source maps only for debugging builds
     sourcemap: process.env.DEBUG === 'true' ? 'inline' : false,
-    
+
     // Target modern browsers for smaller bundles
     target: 'es2020',
-    
+
     // Inline assets smaller than 4kb
     assetsInlineLimit: 4096,
-    
+
     // Output directory
     outDir: 'dist',
-    
+
     // Empty output directory before build
     emptyOutDir: true,
-    
+
     // Improve build performance
     minify: 'terser',
     terserOptions,
@@ -329,8 +329,9 @@ export default defineConfig({
     warmup: {
       clientFiles: ['./src/index.ts'],
     },
+    allowedHosts: ['*']
   },
-  
+
   // Public directory for serving static files (including debug files)
   publicDir: 'public',
 

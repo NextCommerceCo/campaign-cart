@@ -2,11 +2,11 @@
  * API Client for NextCommerce Campaigns API
  */
 
-import type { Campaign, Cart, Order, CartBase, CreateOrder, AddUpsellLine } from '@/types/api';
+import type { Campaign, Cart, Order, CartBase, CreateOrder, AddUpsellLine, CartCalculateSummary, CartSummary } from '@/types/api';
 import { Logger, createLogger } from '@/utils/logger';
 
 export class ApiClient {
-  private baseURL = 'https://campaigns.apps.29next.com';
+  private baseURL = 'https://campaign.midless.dev';
   private apiKey: string;
   private logger: Logger;
 
@@ -24,6 +24,13 @@ export class ApiClient {
   // Cart endpoints
   public async createCart(data: CartBase & { currency?: string }): Promise<Cart> {
     return this.request<Cart>('/api/v1/carts/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  public async calculateSummary(data: CartCalculateSummary): Promise<CartSummary> {
+    return this.request<CartSummary>('/api/v1/carts/calculate/', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -103,13 +110,13 @@ export class ApiClient {
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const method = options?.method || 'GET';
     const url = `${this.baseURL}${endpoint}`;
-    
+
     const headers = {
       'Authorization': this.apiKey,
       'Content-Type': 'application/json',
       ...options?.headers,
     };
-    
+
     this.logger.debug(`API Request: ${method} ${url}`);
 
     const startTime = performance.now();
@@ -140,7 +147,7 @@ export class ApiClient {
       if (!response.ok) {
         errorMessage = `API Error: ${response.status} ${response.statusText}`;
         errorType = this.getErrorType(response.status);
-        
+
         // Try to parse error response body
         let errorData: any = {};
         try {
@@ -151,7 +158,7 @@ export class ApiClient {
         } catch (parseError) {
           this.logger.warn('Failed to parse error response body');
         }
-        
+
         this.logger.error(errorMessage, errorData);
 
         // Create enhanced error with response data
@@ -173,7 +180,7 @@ export class ApiClient {
       } else {
         this.logger.error('API request failed:', String(error));
       }
-      
+
       throw error;
     }
   }

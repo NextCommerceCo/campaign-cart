@@ -14,7 +14,7 @@ export class AnalyticsManager {
   private loading = false;
   private loadPromise: Promise<void> | null = null;
 
-  private constructor() {}
+  private constructor() { }
 
   public static getInstance(): AnalyticsManager {
     if (!AnalyticsManager.instance) {
@@ -39,7 +39,7 @@ export class AnalyticsManager {
 
     this.loading = true;
     this.loadPromise = this.performLoad();
-    
+
     try {
       await this.loadPromise;
       this.loaded = true;
@@ -61,7 +61,7 @@ export class AnalyticsManager {
       throw new Error('API key not available for analytics initialization');
     }
 
-    const scriptUrl = `https://campaigns.apps.29next.com/js/v1/campaign/`;
+    const scriptUrl = `https://campaign.midless.dev/js/v1/campaign/`;
 
     // Load the analytics script
     await this.loadScript(scriptUrl);
@@ -71,7 +71,7 @@ export class AnalyticsManager {
       (window as any).nextCampaign.config({
         apiKey: apiKey
       });
-      
+
       logger.debug('Analytics SDK configured with API key');
     } else {
       throw new Error('nextCampaign not available after script load');
@@ -90,12 +90,12 @@ export class AnalyticsManager {
       const script = document.createElement('script');
       script.async = true;
       script.src = url;
-      
+
       script.onload = () => {
         logger.debug(`Analytics script loaded: ${url}`);
         resolve();
       };
-      
+
       script.onerror = () => {
         logger.error(`Failed to load analytics script: ${url}`);
         reject(new Error(`Failed to load analytics script: ${url}`));

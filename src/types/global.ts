@@ -202,6 +202,16 @@ export interface CartItem {
   price_retail_total?: string | undefined; // Total retail price (price_retail_total from campaign)
   price_recurring?: string | undefined; // Recurring price if applicable
   price_recurring_total?: string | undefined; // Total recurring price
+
+  // discount data
+  unit_price_incl_discount?: string | undefined;
+  unit_price_excl_discount?: string | undefined;
+  package_price_incl_discount?: string | undefined;
+  package_price_excl_discount?: string | undefined;
+  total?: string | undefined;
+  total_discount?: string | undefined;
+  discounts?: Array<{ offer_id: number; amount: string; description?: string; name?: string }> | undefined;
+
   is_recurring?: boolean | undefined; // Whether this is a recurring item
   interval?: string | null | undefined; // Billing interval
   interval_count?: number | null | undefined; // Billing interval count
@@ -211,8 +221,8 @@ export interface CartItem {
   variantId?: number | undefined;
   variantName?: string | undefined;
   variantAttributes?:
-    | Array<{ code: string; name: string; value: string }>
-    | undefined;
+  | Array<{ code: string; name: string; value: string }>
+  | undefined;
   variantSku?: string | undefined;
   // Grouping support
   groupedItemIds?: number[] | undefined; // IDs of items grouped together
@@ -244,11 +254,16 @@ export interface CartState {
   totals: CartTotals;
   swapInProgress?: boolean;
   lastCurrency?: string; // Track last currency to detect changes
+  discountDetails?: {
+    offerDiscounts: Array<{ offer_id: number; amount: string; description?: string; name?: string }>;
+    voucherDiscounts: Array<{ amount: string; description?: string; name?: string }>;
+  };
 }
 
 export interface CartTotals {
   subtotal: { value: number; formatted: string };
   shipping: { value: number; formatted: string };
+  shippingDiscount: { value: number; formatted: string };
   tax: { value: number; formatted: string };
   discounts: { value: number; formatted: string };
   total: { value: number; formatted: string };
@@ -614,12 +629,12 @@ export interface ShippingMethod {
 export interface CheckoutData {
   formData: Record<string, any>;
   paymentMethod:
-    | 'card_token'
-    | 'paypal'
-    | 'apple_pay'
-    | 'google_pay'
-    | 'credit-card'
-    | 'klarna';
+  | 'card_token'
+  | 'paypal'
+  | 'apple_pay'
+  | 'google_pay'
+  | 'credit-card'
+  | 'klarna';
   isProcessing?: boolean;
   step?: number;
 }

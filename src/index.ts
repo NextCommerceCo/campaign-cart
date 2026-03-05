@@ -39,6 +39,18 @@ export { ProfileManager } from './core/ProfileManager';
 export { ProfileMapper } from './utils/profiles/ProfileMapper';
 export { ProfileSwitcherEnhancer, ProfileSelectorEnhancer } from './enhancers/profile/ProfileSwitcherEnhancer';
 
+// Enhancer exports
+export { DiscountListEnhancer } from './enhancers/cart/DiscountListEnhancer';
+
+// Offer enhancer exports
+export {
+  OfferPackageSelectorEnhancer,
+  OfferVariantSelectorEnhancer,
+  OfferDisplayEnhancer,
+  OfferBadgeEnhancer,
+  OfferConditionDisplayEnhancer
+} from './enhancers/offers';
+
 // Version - use runtime detected version from loader, fallback to build-time version
 declare global {
   interface Window {
@@ -86,14 +98,21 @@ if (typeof window !== 'undefined') {
         // Checkout flow
         import('./enhancers/checkout/CheckoutFormEnhancer');
         import('./enhancers/checkout/ExpressCheckoutContainerEnhancer');
-        
+
         // Order/Upsell
         import('./enhancers/display/OrderDisplayEnhancer');
         import('./enhancers/order/UpsellEnhancer');
-        
+
+        // Offer enhancers
+        import('./enhancers/offers/OfferPackageSelectorEnhancer');
+        import('./enhancers/offers/OfferVariantSelectorEnhancer');
+        import('./enhancers/offers/OfferDisplayEnhancer');
+        import('./enhancers/offers/OfferBadgeEnhancer');
+        import('./enhancers/offers/OfferConditionDisplayEnhancer');
+
         // Attribution
         import('./utils/attribution/AttributionCollector');
-        
+
         // Cart UI components
         import('./enhancers/cart/CartItemListEnhancer');
         import('./enhancers/cart/QuantityControlEnhancer');

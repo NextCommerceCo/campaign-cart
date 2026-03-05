@@ -32,10 +32,10 @@ export class AttributeScanner {
     this.logger = createLogger('AttributeScanner');
     this.domObserver = new DOMObserver();
     this.domObserver.addHandler(this.handleDOMChange.bind(this));
-    
+
     // Check if debug mode is enabled
     this.isDebugMode = new URLSearchParams(location.search).get('debug') === 'true';
-    
+
     if (this.isDebugMode) {
       console.log('🐛 AttributeScanner: Debug mode enabled for performance tracking');
     }
@@ -49,7 +49,7 @@ export class AttributeScanner {
 
     this.isScanning = true;
     this.logger.info('🔍 Starting DOM scan for data attributes...', { root: root.tagName });
-    
+
     try {
       // Find all elements with data-next attributes
       const selector = [
@@ -67,6 +67,7 @@ export class AttributeScanner {
         '[data-next-timer-display]',
         '[data-next-timer-expired]',
         '[data-next-cart-items]',
+        '[data-next-discount-list]',
         '[data-next-order-items]',
         '[data-next-quantity="increase"]',
         '[data-next-quantity="decrease"]',
@@ -86,9 +87,15 @@ export class AttributeScanner {
         '[data-next-component="scroll-hint"]',
         '[data-next-quantity-text]',
         '[data-next-profile]',
-        'select[data-next-profile-selector]'
+        'select[data-next-profile-selector]',
+        // Offer enhancers
+        '[data-next-offer-selector]',
+        '[data-next-offer-variant-selector]',
+        '[data-next-offer-display]',
+        '[data-next-offer-badge]',
+        '[data-next-offer-condition]'
       ].join(', ');
-      
+
       const elements = root.querySelectorAll(selector);
 
       this.logger.debug(`Found ${elements.length} elements with data attributes`);
@@ -105,15 +112,15 @@ export class AttributeScanner {
           }))
         );
       }
-      
+
       let enhancedCount = 0;
       const enhancePromises: Promise<void>[] = [];
-      
+
       // Process elements in batches to avoid blocking
       const batchSize = 10;
       for (let i = 0; i < elements.length; i += batchSize) {
         const batch = Array.from(elements).slice(i, i + batchSize);
-        
+
         for (const element of batch) {
           if (element instanceof HTMLElement) {
             enhancePromises.push(
@@ -123,30 +130,30 @@ export class AttributeScanner {
             );
           }
         }
-        
+
         // Process batch and yield control
         await Promise.all(enhancePromises.splice(0, batchSize));
-        
+
         // Yield control to prevent blocking
         if (i + batchSize < elements.length) {
           await new Promise(resolve => setTimeout(resolve, 0));
         }
       }
-      
+
       // Wait for any remaining promises
       await Promise.all(enhancePromises);
-      
+
       this.logger.debug(`Enhanced ${enhancedCount} elements successfully`);
-      
+
       // Show performance report in debug mode
       if (this.isDebugMode && this.enhancerStats.size > 0) {
         this.showPerformanceReport();
       }
-      
+
       // Add class to HTML element to indicate display is finished
       document.documentElement.classList.add('next-display-ready');
       this.logger.debug('Added next-display-ready class to HTML element');
-      
+
       // Dispatch custom event for additional flexibility
       window.dispatchEvent(new CustomEvent('next:display-ready', {
         detail: {
@@ -154,10 +161,10 @@ export class AttributeScanner {
           root: root.tagName
         }
       }));
-      
+
       // Start observing for dynamic content
       this.startObserving(root);
-      
+
     } catch (error) {
       this.logger.error('Error during scan and enhance:', error);
     } finally {
@@ -188,29 +195,29 @@ export class AttributeScanner {
 
     try {
       const enhancerTypes = AttributeParser.getEnhancerTypes(element);
-      
+
       if (enhancerTypes.length === 0) {
         this.logger.debug('No enhancer types found for element', element);
         return;
       }
 
       const elementEnhancers: BaseEnhancer[] = [];
-      
+
       for (const type of enhancerTypes) {
         const enhancer = await this.createEnhancer(type, element);
         if (enhancer) {
           elementEnhancers.push(enhancer);
-          
+
           try {
             if (this.isDebugMode) {
               // console.log(`🔧 Starting ${type} enhancer...`, element);
               const enhancerStart = performance.now();
               await enhancer.initialize();
               const enhancerTime = performance.now() - enhancerStart;
-              
+
               // Track performance stats
               this.updateEnhancerStats(type, enhancerTime);
-              
+
               // console.log(`🔧 ${type}: ${enhancerTime.toFixed(2)}ms`, element);
               this.logger.debug(`Initialized ${type} enhancer for element`, element);
             } else {
@@ -223,7 +230,7 @@ export class AttributeScanner {
           }
         }
       }
-      
+
       if (elementEnhancers.length > 0) {
         this.enhancers.set(element, elementEnhancers);
         this.enhancerCount += elementEnhancers.length;
@@ -245,13 +252,13 @@ export class AttributeScanner {
           // Determine if this is a cart display or product display
           const displayPath = element.getAttribute('data-next-display') || '';
           const parsed = AttributeParser.parseDisplayPath(displayPath);
-          
+
           this.logger.debug(`Creating display enhancer for path: "${displayPath}"`, {
             parsed,
             element: element.tagName,
             elementHtml: element.outerHTML.substring(0, 200) + '...'
           });
-          
+
           if (parsed.object === 'cart') {
             this.logger.debug('Using CartDisplayEnhancer');
             const { CartDisplayEnhancer } = await import('@/enhancers/display/CartDisplayEnhancer');
@@ -276,16 +283,16 @@ export class AttributeScanner {
             // Check for context-based package detection
             let currentElement: HTMLElement | null = element.parentElement;
             let hasPackageContext = false;
-            
+
             while (currentElement && !hasPackageContext) {
               if (currentElement.hasAttribute('data-next-package-id') ||
-                  currentElement.hasAttribute('data-next-package') ||
-                  currentElement.hasAttribute('data-package-id')) {
+                currentElement.hasAttribute('data-next-package') ||
+                currentElement.hasAttribute('data-package-id')) {
                 hasPackageContext = true;
               }
               currentElement = currentElement.parentElement;
             }
-            
+
             if (hasPackageContext) {
               this.logger.debug(`Using ProductDisplayEnhancer (fallback with package context)`);
               const { ProductDisplayEnhancer } = await import('@/enhancers/display/ProductDisplayEnhancer');
@@ -297,7 +304,7 @@ export class AttributeScanner {
               return new CartDisplayEnhancer(element);
             }
           }
-          
+
         case 'toggle':
           const { CartToggleEnhancer } = await import('@/enhancers/cart/CartToggleEnhancer');
           return new CartToggleEnhancer(element);
@@ -305,16 +312,16 @@ export class AttributeScanner {
         case 'action':
           // Determine which specific action enhancer to use
           const action = element.getAttribute('data-next-action');
-          
+
           switch (action) {
             case 'add-to-cart':
               const { AddToCartEnhancer } = await import('@/enhancers/cart/AddToCartEnhancer');
               return new AddToCartEnhancer(element);
-              
+
             case 'accept-upsell':
               const { AcceptUpsellEnhancer } = await import('@/enhancers/cart/AcceptUpsellEnhancer');
               return new AcceptUpsellEnhancer(element);
-              
+
             default:
               this.logger.warn(`Unknown action type: ${action}`);
               return null;
@@ -323,11 +330,11 @@ export class AttributeScanner {
         case 'selector':
           const { PackageSelectorEnhancer } = await import('@/enhancers/cart/PackageSelectorEnhancer');
           return new PackageSelectorEnhancer(element);
-          
+
         case 'timer':
           const { TimerEnhancer } = await import('@/enhancers/display/TimerEnhancer');
           return new TimerEnhancer(element);
-          
+
         case 'conditional':
           this.logger.info('Creating ConditionalDisplayEnhancer for element:', {
             element: element.tagName,
@@ -337,7 +344,7 @@ export class AttributeScanner {
           });
           const { ConditionalDisplayEnhancer } = await import('@/enhancers/display/ConditionalDisplayEnhancer');
           return new ConditionalDisplayEnhancer(element);
-          
+
         case 'checkout':
           // SIMPLIFIED: Use single CheckoutFormEnhancer for all checkout functionality
           // This matches the original CheckoutFormEnhancer.backup.ts approach
@@ -357,14 +364,14 @@ export class AttributeScanner {
           // Currently we don't have a separate enhancer for these, they're managed by the container
           this.logger.debug('Skipping individual express checkout button - managed by container');
           return null;
-          
+
         case 'express-checkout-container':
           const { ExpressCheckoutContainerEnhancer } = await import('@/enhancers/checkout/ExpressCheckoutContainerEnhancer');
           return new ExpressCheckoutContainerEnhancer(element);
 
         // REMOVED: form-validator, payment, address, phone, validation enhancers
         // These are now handled by the main CheckoutFormEnhancer (simplified approach)
-          
+
         case 'cart-items':
           const { CartItemListEnhancer } = await import('@/enhancers/cart/CartItemListEnhancer');
           return new CartItemListEnhancer(element);
@@ -391,6 +398,10 @@ export class AttributeScanner {
           const { CouponEnhancer } = await import('@/enhancers/CouponEnhancer');
           return new CouponEnhancer(element);
 
+        case 'discount-list':
+          const { DiscountListEnhancer } = await import('@/enhancers/cart/DiscountListEnhancer');
+          return new DiscountListEnhancer(element);
+
         case 'accordion':
           const { AccordionEnhancer } = await import('@/enhancers/ui/AccordionEnhancer');
           return new AccordionEnhancer(element);
@@ -402,19 +413,39 @@ export class AttributeScanner {
         case 'scroll-hint':
           const { ScrollHintEnhancer } = await import('@/enhancers/ui/ScrollHintEnhancer');
           return new ScrollHintEnhancer(element);
-        
+
         case 'quantity-text':
           const { QuantityTextEnhancer } = await import('@/enhancers/display/QuantityTextEnhancer');
           return new QuantityTextEnhancer(element);
-        
+
         case 'profile-switcher':
           const { ProfileSwitcherEnhancer } = await import('@/enhancers/profile/ProfileSwitcherEnhancer');
           return new ProfileSwitcherEnhancer(element);
-        
+
         case 'profile-selector':
           const { ProfileSelectorEnhancer } = await import('@/enhancers/profile/ProfileSwitcherEnhancer');
           return new ProfileSelectorEnhancer(element);
-          
+
+        case 'offer-selector':
+          const { OfferPackageSelectorEnhancer } = await import('@/enhancers/offers/OfferPackageSelectorEnhancer');
+          return new OfferPackageSelectorEnhancer(element);
+
+        case 'offer-variant-selector':
+          const { OfferVariantSelectorEnhancer } = await import('@/enhancers/offers/OfferVariantSelectorEnhancer');
+          return new OfferVariantSelectorEnhancer(element);
+
+        case 'offer-display':
+          const { OfferDisplayEnhancer } = await import('@/enhancers/offers/OfferDisplayEnhancer');
+          return new OfferDisplayEnhancer(element);
+
+        case 'offer-badge':
+          const { OfferBadgeEnhancer } = await import('@/enhancers/offers/OfferBadgeEnhancer');
+          return new OfferBadgeEnhancer(element);
+
+        case 'offer-condition':
+          const { OfferConditionDisplayEnhancer } = await import('@/enhancers/offers/OfferConditionDisplayEnhancer');
+          return new OfferConditionDisplayEnhancer(element);
+
         default:
           this.logger.warn(`Unknown enhancer type: ${type}`);
           return null;
@@ -437,11 +468,11 @@ export class AttributeScanner {
       case 'added':
         this.queueElementForEnhancement(event.element);
         break;
-        
+
       case 'removed':
         this.cleanupElement(event.element);
         break;
-        
+
       case 'attributeChanged':
         if (event.attributeName?.startsWith('data-next-')) {
           this.logger.debug('Data attribute changed, re-enhancing element', {
@@ -450,7 +481,7 @@ export class AttributeScanner {
             oldValue: event.oldValue,
             newValue: event.newValue
           });
-          
+
           // Re-enhance element when data attributes change
           this.cleanupElement(event.element);
           this.queueElementForEnhancement(event.element);
@@ -506,15 +537,15 @@ export class AttributeScanner {
 
   public destroy(): void {
     this.domObserver.destroy();
-    
+
     // Clear any pending queue processing
     this.scanQueue.clear();
-    
+
     // Note: WeakMap doesn't support iteration or clear()
     // Enhancers will be garbage collected when their elements are removed
     // Reset the count since we can't iterate to destroy remaining enhancers
     this.enhancerCount = 0;
-    
+
     this.logger.debug('AttributeScanner destroyed');
   }
 
@@ -537,7 +568,7 @@ export class AttributeScanner {
 
   private showPerformanceReport(): void {
     console.group('🚀 Enhancement Performance Report');
-    
+
     // Convert to array and sort by total time
     const sortedStats = Array.from(this.enhancerStats.entries())
       .map(([type, stats]) => ({
@@ -548,9 +579,9 @@ export class AttributeScanner {
         'Impact': stats.totalTime > 50 ? '🔴 High' : stats.totalTime > 20 ? '🟡 Medium' : '🟢 Low'
       }))
       .sort((a, b) => parseFloat(b['Total Time (ms)']) - parseFloat(a['Total Time (ms)']));
-    
+
     console.table(sortedStats);
-    
+
     // Show top slowest enhancers
     const topSlow = sortedStats.slice(0, 3);
     if (topSlow.length > 0) {
@@ -559,19 +590,19 @@ export class AttributeScanner {
         console.log(`${index + 1}. ${stat.Enhancer}: ${stat['Total Time (ms)']}ms (${stat.Count} instances)`);
       });
     }
-    
+
     const totalTime = Array.from(this.enhancerStats.values())
       .reduce((sum, stats) => sum + stats.totalTime, 0);
     const totalCount = Array.from(this.enhancerStats.values())
       .reduce((sum, stats) => sum + stats.count, 0);
-    
+
     console.log(`📊 Total enhancement time: ${totalTime.toFixed(2)}ms across ${totalCount} enhancers`);
     console.groupEnd();
   }
 
-  public getStats(): { 
-    enhancedElements: number; 
-    queuedElements: number; 
+  public getStats(): {
+    enhancedElements: number;
+    queuedElements: number;
     isObserving: boolean;
     isScanning: boolean;
     performanceStats?: Record<string, { totalTime: number; averageTime: number; count: number }>;

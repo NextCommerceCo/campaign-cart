@@ -47,6 +47,35 @@ export interface Cart {
   attribution?: MarketingAttribution;
 }
 
+export interface Discount {
+  offer_id: number;
+  amount: string;
+  description?: string;
+  name?: string;
+}
+
+export interface SummaryLine {
+  package_id: number;
+  quantity: number;
+  unit_price_excl_discount: string;
+  unit_price_incl_discount: string;
+  package_price_incl_discount: string;
+  package_price_excl_discount: string;
+  total: string;
+  total_discount: string;
+  discounts: Discount[];
+}
+
+export interface CartSummary {
+  lines: SummaryLine[];
+  total: string;
+  total_discounts: string;
+  offer_discounts: Discount[];
+  voucher_discounts: Discount[];
+  shipping: string;
+  shipping_discount: string;
+}
+
 export interface CartLine {
   id: number;
   quantity: number;
@@ -177,7 +206,7 @@ export interface Discount {
   name?: string;
 }
 
-export type PaymentMethod = 
+export type PaymentMethod =
   | 'apple_pay'
   | 'card_token'
   | 'paypal'
@@ -262,6 +291,13 @@ export interface CreateOrder {
   use_default_shipping_address?: boolean;
   user?: OrderUser;
   vouchers?: string[];
+}
+
+export interface CartCalculateSummary {
+  lines: LineWithUpsell[];
+  vouchers?: string[];
+  currency?: string;
+  shipping_method?: number;
 }
 
 export interface Address {

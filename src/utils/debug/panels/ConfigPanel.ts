@@ -43,10 +43,10 @@ export class ConfigPanel implements DebugPanel {
 
   private getOverviewContent(): string {
     const config = useConfigStore.getState();
-    const sdkVersion = typeof window !== 'undefined' && (window as any).__NEXT_SDK_VERSION__ 
-      ? (window as any).__NEXT_SDK_VERSION__ 
+    const sdkVersion = typeof window !== 'undefined' && (window as any).__NEXT_SDK_VERSION__
+      ? (window as any).__NEXT_SDK_VERSION__
       : '1.0.0';
-    
+
     return `
       <div class="enhanced-panel">
         <div class="metrics-grid">
@@ -85,10 +85,10 @@ export class ConfigPanel implements DebugPanel {
 
   private getSettingsContent(): string {
     const config = useConfigStore.getState();
-    const sdkVersion = typeof window !== 'undefined' && (window as any).__NEXT_SDK_VERSION__ 
-      ? (window as any).__NEXT_SDK_VERSION__ 
+    const sdkVersion = typeof window !== 'undefined' && (window as any).__NEXT_SDK_VERSION__
+      ? (window as any).__NEXT_SDK_VERSION__
       : '1.0.0';
-    
+
     return `
       <div class="enhanced-panel">
         <div class="section">
@@ -110,7 +110,7 @@ export class ConfigPanel implements DebugPanel {
                 </div>
                 <div class="config-item">
                   <span class="config-key">Base URL:</span>
-                  <span class="config-value">https://campaigns.apps.29next.com</span>
+                  <span class="config-value">https://campaign.midless.dev</span>
                 </div>
               </div>
             </div>

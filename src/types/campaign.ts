@@ -9,6 +9,7 @@ export interface Campaign {
   packages: Package[];
   payment_env_key: string;
   shipping_methods: ShippingOption[];
+  offers?: Offer[];
   available_currencies?: Array<{ code: string; label: string }>;
   available_shipping_countries?: Array<{ code: string; label: string }>;
   available_express_payment_methods?: Array<{ code: string; label: string }>;
@@ -68,4 +69,77 @@ export interface ShippingOption {
   ref_id: number;
   code: string;
   price: string;
+}
+
+/**
+ * Benefit types for offers
+ */
+export type BenefitType = 'package_percentage' | 'shipping_percentage' | 'order_percentage';
+
+/**
+ * Condition types for offers
+ */
+export type ConditionType = 'any' | 'count';
+
+/**
+ * Offer types
+ */
+export type OfferType = 'offer' | 'voucher';
+
+/**
+ * Benefit details of an offer
+ */
+export interface OfferBenefit {
+  description: string;
+  type: BenefitType;
+  value: string;
+}
+
+/**
+ * Condition details of an offer
+ */
+export interface OfferCondition {
+  description: string;
+  type: ConditionType;
+  value: number;
+}
+
+/**
+ * Package associated with an offer
+ */
+export interface OfferPackage {
+  package_id: number;
+  package_image: string | null;
+  package_name: string;
+  package_price: string;
+  package_price_before_discount: string;
+  package_unit_qty: number;
+  product_name: string;
+  product_variant_name: string;
+  unit_price: string;
+  unit_price_before_discount: string;
+}
+
+/**
+ * Shipping method associated with an offer
+ */
+export interface OfferShippingMethod {
+  code: string;
+  price: string;
+  price_before_discount: string;
+  ref_id: number;
+}
+
+/**
+ * Complete offer structure
+ */
+export interface Offer {
+  benefit: OfferBenefit;
+  code?: string;
+  condition: OfferCondition;
+  name: string;
+  packages: OfferPackage[];
+  ref_id: number;
+  shipping_methods: OfferShippingMethod[];
+  type: OfferType;
 }
