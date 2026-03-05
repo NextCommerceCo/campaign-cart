@@ -15,7 +15,7 @@ import { CheckoutValidator } from './validation/CheckoutValidator';
 import { UIService } from './services/UIService';
 import { useAttributionStore } from '@/stores/attributionStore';
 import { useParameterStore } from '@/stores/parameterStore';
-import type { CreateOrder, Address, Payment, Attribution, PaymentMethod } from '@/types/api';
+import type { CreateOrder, Address, Payment, Attribution, PaymentMethod, AddressAutocomplete, AddressAutocompleteResult } from '@/types/api';
 import { ProspectCartEnhancer } from './ProspectCartEnhancer';
 import { GeneralModal } from '@/components/modals/GeneralModal';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
@@ -79,36 +79,30 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     super(element);
     this.loadingOverlay = new LoadingOverlay();
   }
-  
+
   // Field collections
   private fields: Map<string, HTMLElement> = new Map();
   private billingFields: Map<string, HTMLElement> = new Map();
   private paymentButtons: Map<string, HTMLElement> = new Map();
   private submitButton?: HTMLButtonElement;
-  
+
   // Country/State management
   private countries: Country[] = [];
   private countryConfigs: Map<string, CountryConfig> = new Map();
   private currentCountryConfig?: CountryConfig;
   private detectedCountryCode: string = 'US';
-  
+  private enableAutocomplete = false;
+
   // Phone input management
   private phoneInputs: Map<string, any> = new Map();
   private isIntlTelInputAvailable = false;
-  
-  // Google Maps management
-  private googleMapsLoaded = false;
-  private googleMapsLoading = false;
-  private googleMapsLoadPromise: Promise<void> | null = null;
-  private autocompleteInstances: Map<string, any> = new Map();
-  private enableAutocomplete = true;
-  
+
   // Location field visibility management
   private locationElements: NodeListOf<Element> | null = null;
   private billingLocationElements: NodeListOf<Element> | null = null;
   private locationFieldsShown: boolean = false;
   private billingLocationFieldsShown: boolean = false;
-  
+
   // Event handlers
   private submitHandler?: (event: Event) => void;
   private changeHandler?: (event: Event) => void;
@@ -117,12 +111,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private billingAddressToggleHandler?: (event: Event) => void;
   private boundHandleTestDataFilled?: EventListener;
   private boundHandleKonamiActivation?: EventListener;
-  
+
   // Animation state management
   private billingAnimationInProgress = false;
   private billingAnimationDebounceTimer?: NodeJS.Timeout;
   private billingAnimationTimeouts: Set<NodeJS.Timeout> = new Set();
-  
+
   // Track if analytics events have been fired
   private hasTrackedShippingInfo = false;
   private hasTrackedBeginCheckout = false;
@@ -150,29 +144,29 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     // Initialize loading overlay
     this.loadingOverlay = new LoadingOverlay();
-    
+
     // NOTE: Currency is initialized separately based on:
     // 1. URL parameter (?currency=XXX) - highest priority
     // 2. Session storage (previous selection) - medium priority  
     // 3. Detected location - lowest priority
     // Currency does NOT change when shipping/billing country changes
-    
+
     // Initialize core dependencies
     const config = useConfigStore.getState();
     this.apiClient = new ApiClient(config.apiKey);
     this.countryService = CountryService.getInstance();
-    
+
     // Re-initialize attribution to ensure we have current page data
     const attributionStore = useAttributionStore.getState();
     await attributionStore.initialize();
-    
+
     // Initialize OrderManager and ExpressCheckoutProcessor
     this.orderManager = new OrderManager(
       this.apiClient,
       this.logger,
       (event: string, data: any) => this.emit(event as any, data)
     );
-    
+
     this.expressProcessor = new ExpressCheckoutProcessor(
       this.logger,
       () => this.loadingOverlay.show(),
@@ -180,26 +174,26 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       (event: string, data: any) => this.emit(event as any, data),
       this.orderManager
     );
-    
+
     // intl-tel-input is now bundled with the SDK - always available
     this.isIntlTelInputAvailable = true;
-    
+
     // Initialize validator
     this.validator = new CheckoutValidator(
       this.logger,
       this.countryService,
       undefined // PhoneInputManager will be handled by us
     );
-    
+
     // Scan for all fields and buttons
     this.scanAllFields();
-    
+
     // Setup billing form (clone from shipping if needed)
     const billingFormCloned = this.setupBillingForm();
     if (billingFormCloned) {
       this.scanBillingFields(); // Re-scan after cloning
     }
-    
+
     // Initialize UI service
     this.ui = new UIService(
       this.form,
@@ -208,24 +202,24 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       this.billingFields
     );
     this.ui.initialize();
-    
+
     // Initialize payment forms to sync with DOM state
     this.ui.initializePaymentForms();
-    
+
     // Initialize credit card service
     if (config.spreedlyEnvironmentKey) {
       await this.initializeCreditCard(config.spreedlyEnvironmentKey, config.debug);
     }
-    
+
     // Initialize address/country functionality
     await this.initializeAddressManagement(config);
-    
+
     // Initialize phone inputs
     this.initializePhoneInputs();
-    
+
     // Initialize address autocomplete
     await this.initializeAddressAutocomplete();
-    
+
     // Set up phone validation callback for validator after phone inputs are initialized
     this.validator.setPhoneValidator((phoneNumber: string, type: 'shipping' | 'billing' = 'shipping') => {
       const instance = this.phoneInputs.get(type);
@@ -236,40 +230,40 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       // Fallback to basic validation if instance not found
       return /^[\d\s\-\+\(\)]+$/.test(phoneNumber);
     });
-    
+
     // Populate expiration fields
     this.populateExpirationFields();
-    
+
     // Setup event handlers
     this.setupEventHandlers();
-    
+
     // Subscribe to store changes
     this.subscribe(useCheckoutStore, this.handleCheckoutUpdate.bind(this));
     this.subscribe(useCartStore, this.handleCartUpdate.bind(this));
     this.subscribe(useConfigStore, this.handleConfigUpdate.bind(this));
-    
+
     // Setup debug event listeners
     this.boundHandleTestDataFilled = this.handleTestDataFilled.bind(this);
     this.boundHandleKonamiActivation = this.handleKonamiActivation.bind(this);
     document.addEventListener('checkout:test-data-filled', this.boundHandleTestDataFilled as EventListener);
     document.addEventListener('next:test-mode-activated', this.boundHandleKonamiActivation as EventListener);
-    
+
     // Initialize form with existing data
     await this.populateFormData();
 
     // Initialize location field visibility
     this.initializeLocationFieldVisibility();
-    
+
     // Initialize ProspectCartEnhancer
     await this.initializeProspectCart();
-    
+
     // Listen for payment errors from other components
     this.eventBus.on('payment:error', (event: any) => {
       if (event.message) {
         this.displayPaymentError(event.message);
       }
     });
-    
+
     // Listen for country changes from debug selector
     document.addEventListener('next:country-changed', async (e) => {
       const customEvent = e as CustomEvent;
@@ -278,11 +272,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         await this.handleCountryChange(newCountry);
       }
     });
-    
+
     // Handle page restoration from bfcache (back/forward navigation)
     window.addEventListener('pageshow', (event) => {
       if (event.persisted ||
-          (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming)?.type === 'back_forward') {
+        (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming)?.type === 'back_forward') {
         // Page was restored from bfcache
         this.logger.info('Page restored from bfcache, resetting express checkout state');
 
@@ -300,8 +294,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         // Always reset express payment methods when returning from bfcache
         // This handles cases where user pressed back from Apple Pay/Google Pay/PayPal
         if (checkoutStore.paymentMethod === 'apple_pay' ||
-            checkoutStore.paymentMethod === 'google_pay' ||
-            checkoutStore.paymentMethod === 'paypal') {
+          checkoutStore.paymentMethod === 'google_pay' ||
+          checkoutStore.paymentMethod === 'paypal') {
           this.logger.info('Resetting payment method from', checkoutStore.paymentMethod, 'to credit-card after bfcache restore');
           checkoutStore.setPaymentMethod('credit-card');
           checkoutStore.setPaymentToken(''); // Clear any stale payment token
@@ -337,15 +331,15 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
         // Reset payment method back to credit-card if it's an express method
         if (checkoutStore.paymentMethod === 'apple_pay' ||
-            checkoutStore.paymentMethod === 'google_pay' ||
-            checkoutStore.paymentMethod === 'paypal') {
+          checkoutStore.paymentMethod === 'google_pay' ||
+          checkoutStore.paymentMethod === 'paypal') {
           this.logger.info('Resetting payment method from', checkoutStore.paymentMethod, 'to credit-card');
           checkoutStore.setPaymentMethod('credit-card');
           checkoutStore.setPaymentToken('');
         }
       }
     });
-    
+
     // Check for fresh purchase on initial load
     this.handlePurchaseEvent();
 
@@ -375,9 +369,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     });
 
     // Find submit button
-    const submitButton = this.form.querySelector('button[type="submit"]') || 
-                        this.form.querySelector('[data-next-checkout-submit]') ||
-                        this.form.querySelector('[os-checkout-submit]');
+    const submitButton = this.form.querySelector('button[type="submit"]') ||
+      this.form.querySelector('[data-next-checkout-submit]') ||
+      this.form.querySelector('[os-checkout-submit]');
     if (submitButton instanceof HTMLButtonElement) {
       this.submitButton = submitButton;
       this.logger.debug('Found submit button:', submitButton);
@@ -410,8 +404,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     ];
     billingSelectors.forEach(selector => {
       document.querySelectorAll(selector).forEach(element => {
-        const fieldName = element.getAttribute('os-checkout-field') || 
-                         element.getAttribute('data-next-checkout-field');
+        const fieldName = element.getAttribute('os-checkout-field') ||
+          element.getAttribute('data-next-checkout-field');
         if (fieldName && element instanceof HTMLElement) {
           this.billingFields.set(fieldName, element);
         }
@@ -422,16 +416,16 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private scanExpirationFields(): void {
     const monthSelectors = [
       '[data-next-checkout-field="cc-month"]',
-      '[data-next-checkout-field="exp-month"]', 
+      '[data-next-checkout-field="exp-month"]',
       '[os-checkout-field="cc-month"]',
       '[os-checkout-field="exp-month"]',
       '#credit_card_exp_month'
     ];
-    
+
     const yearSelectors = [
       '[data-next-checkout-field="cc-year"]',
       '[data-next-checkout-field="exp-year"]',
-      '[os-checkout-field="cc-year"]', 
+      '[os-checkout-field="cc-year"]',
       '[os-checkout-field="exp-year"]',
       '#credit_card_exp_year'
     ];
@@ -439,15 +433,15 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const monthField = monthSelectors
       .map(selector => document.querySelector(selector))
       .find(element => element !== null) as HTMLElement | null;
-    
+
     const yearField = yearSelectors
       .map(selector => document.querySelector(selector))
       .find(element => element !== null) as HTMLElement | null;
 
     if (monthField) {
       const hasExpMonth = monthField.getAttribute('data-next-checkout-field') === 'exp-month' ||
-                         monthField.getAttribute('os-checkout-field') === 'exp-month';
-      
+        monthField.getAttribute('os-checkout-field') === 'exp-month';
+
       if (hasExpMonth && !this.fields.has('exp-month')) {
         this.fields.set('exp-month', monthField);
       } else if (!hasExpMonth && !this.fields.has('cc-month') && !this.fields.has('exp-month')) {
@@ -457,8 +451,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     if (yearField) {
       const hasExpYear = yearField.getAttribute('data-next-checkout-field') === 'exp-year' ||
-                        yearField.getAttribute('os-checkout-field') === 'exp-year';
-      
+        yearField.getAttribute('os-checkout-field') === 'exp-year';
+
       if (hasExpYear && !this.fields.has('exp-year')) {
         this.fields.set('exp-year', yearField);
       } else if (!hasExpYear && !this.fields.has('cc-year') && !this.fields.has('exp-year')) {
@@ -580,15 +574,15 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     // Clear the billing form container
     billingFormContainer.innerHTML = '';
-    
+
     // Clone ALL shipping field rows (including basic fields like name, country, address1)
     const allShippingFieldRows = shippingForm.querySelectorAll('[data-next-component="shipping-field-row"]');
-    
+
     // First clone the non-location field rows (name, country, address1)
     allShippingFieldRows.forEach(row => {
       // Check if this row is inside a location container
       const isInsideLocation = row.closest('[data-next-component="location"]');
-      
+
       if (!isInsideLocation) {
         // This is a basic field row (name, country, address1), clone it
         const clonedRow = row.cloneNode(true) as HTMLElement;
@@ -596,30 +590,30 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         billingFormContainer.appendChild(clonedRow);
       }
     });
-    
+
     // Then check if there's a location container with additional fields
     const locationContainer = shippingForm.querySelector('[data-next-component="location"]');
-    
+
     if (locationContainer) {
       // Clone the entire location container with all its field rows
       const clonedLocation = locationContainer.cloneNode(true) as HTMLElement;
-      
+
       // Mark it as billing location
       clonedLocation.setAttribute('data-next-component', 'billing-location');
-      
+
       // Convert all fields inside to billing fields
       this.convertShippingFieldsToBilling(clonedLocation);
-      
+
       // Initially hide the billing location fields (they'll be shown when billing address1 is filled)
       clonedLocation.classList.add('next-hidden', 'next-location-hidden');
       clonedLocation.style.display = 'none';
-      
+
       billingFormContainer.appendChild(clonedLocation);
     } else {
       // Fallback: If no location container, clone any remaining field rows
       allShippingFieldRows.forEach(row => {
         const isInsideLocation = row.closest('[data-next-component="location"]');
-        
+
         if (isInsideLocation) {
           // These are location fields without a container, clone them
           const clonedRow = row.cloneNode(true) as HTMLElement;
@@ -628,7 +622,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         }
       });
     }
-    
+
     this.setInitialBillingFormState();
     return true;
   }
@@ -658,19 +652,19 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     // Update name and id attributes
     billingForm.querySelectorAll('input, select, textarea').forEach(field => {
       const element = field as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
-      
+
       if (element.name && !element.name.startsWith('billing_')) {
-        element.name = element.name.startsWith('shipping_') 
+        element.name = element.name.startsWith('shipping_')
           ? element.name.replace('shipping_', 'billing_')
           : `billing_${element.name}`;
       }
-      
+
       if (element.id && !element.id.startsWith('billing_')) {
-        element.id = element.id.startsWith('shipping_') 
+        element.id = element.id.startsWith('shipping_')
           ? element.id.replace('shipping_', 'billing_')
           : `billing_${element.id}`;
       }
-      
+
       // Clear values
       if (element.type === 'checkbox' || element.type === 'radio') {
         (element as HTMLInputElement).checked = false;
@@ -692,13 +686,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       currentOverflow: billingSection?.style.overflow,
       currentClasses: billingSection?.className
     });
-    
+
     if (billingToggle && billingSection) {
       // Clear any existing inline styles first
       billingSection.style.removeProperty('height');
       billingSection.style.removeProperty('overflow');
       billingSection.style.removeProperty('transition');
-      
+
       if (billingToggle.checked) {
         // Set collapsed state immediately without animation
         billingSection.style.height = '0px';
@@ -723,79 +717,79 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     // Clear any existing animation timeouts
     this.billingAnimationTimeouts.forEach(timeout => clearTimeout(timeout));
     this.billingAnimationTimeouts.clear();
-    
+
     // Mark animation as in progress
     this.billingAnimationInProgress = true;
-    
+
     this.logger.debug('[Billing] Starting expand animation', {
       startHeight: billingSection.offsetHeight,
       startOverflow: billingSection.style.overflow
     });
-    
+
     // Double RAF for better browser compatibility in production
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-      // Measure the full height
-      billingSection.style.transition = 'none';
-      billingSection.style.height = 'auto';
-      const fullHeight = billingSection.scrollHeight;
-      
-      this.logger.debug('[Billing] Measured full height:', fullHeight);
-      
-      // Set back to 0 for animation
-      billingSection.style.height = '0px';
-      billingSection.style.overflow = 'hidden';
-      
-      // Force reflow - use multiple methods to ensure it works in production
-      void billingSection.offsetHeight;
-      void billingSection.getBoundingClientRect();
-      
-      // Add another RAF to ensure the height is set before transition
-      requestAnimationFrame(() => {
-        // Animate to full height
-        billingSection.style.setProperty('transition', 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 'important');
-        billingSection.style.setProperty('height', `${fullHeight}px`, 'important');
-        
-        this.logger.debug('[Billing] Expand animation started', {
-          fromHeight: '0px',
-          toHeight: fullHeight
-        });
-        
-        // Clean up after animation
-        const handleTransitionEnd = () => {
-          // Set to auto and remove transition
-          billingSection.style.transition = 'none';
-          billingSection.style.height = 'auto';
-          billingSection.style.overflow = 'visible';
-          billingSection.removeEventListener('transitionend', handleTransitionEnd);
-          this.billingAnimationInProgress = false;
+        // Measure the full height
+        billingSection.style.transition = 'none';
+        billingSection.style.height = 'auto';
+        const fullHeight = billingSection.scrollHeight;
 
-          this.logger.info('[Billing] Expand complete', {
-            finalHeight: billingSection.style.height,
-            finalOverflow: billingSection.style.overflow,
-            finalTransition: billingSection.style.transition
+        this.logger.debug('[Billing] Measured full height:', fullHeight);
+
+        // Set back to 0 for animation
+        billingSection.style.height = '0px';
+        billingSection.style.overflow = 'hidden';
+
+        // Force reflow - use multiple methods to ensure it works in production
+        void billingSection.offsetHeight;
+        void billingSection.getBoundingClientRect();
+
+        // Add another RAF to ensure the height is set before transition
+        requestAnimationFrame(() => {
+          // Animate to full height
+          billingSection.style.setProperty('transition', 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 'important');
+          billingSection.style.setProperty('height', `${fullHeight}px`, 'important');
+
+          this.logger.debug('[Billing] Expand animation started', {
+            fromHeight: '0px',
+            toHeight: fullHeight
           });
-        };
-        
-        billingSection.addEventListener('transitionend', handleTransitionEnd);
-        
-        // Fallback cleanup
-        const fallbackTimeout = setTimeout(() => {
-          if (this.billingAnimationInProgress && billingSection.classList.contains('billing-form-expanded')) {
-            this.logger.warn('[Billing] Expand fallback triggered - forcing completion');
+
+          // Clean up after animation
+          const handleTransitionEnd = () => {
+            // Set to auto and remove transition
             billingSection.style.transition = 'none';
             billingSection.style.height = 'auto';
             billingSection.style.overflow = 'visible';
+            billingSection.removeEventListener('transitionend', handleTransitionEnd);
             this.billingAnimationInProgress = false;
-          }
-          this.billingAnimationTimeouts.delete(fallbackTimeout);
-        }, 350);
-        
-        this.billingAnimationTimeouts.add(fallbackTimeout);
-      });
-      
-      billingSection.classList.add('billing-form-expanded');
-      billingSection.classList.remove('billing-form-collapsed');
+
+            this.logger.info('[Billing] Expand complete', {
+              finalHeight: billingSection.style.height,
+              finalOverflow: billingSection.style.overflow,
+              finalTransition: billingSection.style.transition
+            });
+          };
+
+          billingSection.addEventListener('transitionend', handleTransitionEnd);
+
+          // Fallback cleanup
+          const fallbackTimeout = setTimeout(() => {
+            if (this.billingAnimationInProgress && billingSection.classList.contains('billing-form-expanded')) {
+              this.logger.warn('[Billing] Expand fallback triggered - forcing completion');
+              billingSection.style.transition = 'none';
+              billingSection.style.height = 'auto';
+              billingSection.style.overflow = 'visible';
+              this.billingAnimationInProgress = false;
+            }
+            this.billingAnimationTimeouts.delete(fallbackTimeout);
+          }, 350);
+
+          this.billingAnimationTimeouts.add(fallbackTimeout);
+        });
+
+        billingSection.classList.add('billing-form-expanded');
+        billingSection.classList.remove('billing-form-collapsed');
       }); // Extra RAF close
     });
   }
@@ -804,127 +798,83 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     // Clear any existing animation timeouts
     this.billingAnimationTimeouts.forEach(timeout => clearTimeout(timeout));
     this.billingAnimationTimeouts.clear();
-    
+
     // Mark animation as in progress
     this.billingAnimationInProgress = true;
-    
+
     this.logger.debug('[Billing] Starting collapse animation', {
       startHeight: billingSection.offsetHeight,
       scrollHeight: billingSection.scrollHeight
     });
-    
+
     // Double RAF for better browser compatibility in production
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-      // Get current height before collapsing
-      const currentHeight = billingSection.scrollHeight;
-      
-      // Remove any existing transition first
-      billingSection.style.transition = 'none';
-      
-      // Set explicit height to enable transition from auto
-      billingSection.style.height = `${currentHeight}px`;
-      billingSection.style.overflow = 'hidden';
-      
-      // Force reflow - use multiple methods to ensure it works in production
-      void billingSection.offsetHeight;
-      void billingSection.getBoundingClientRect();
-      
-      // Add another RAF to ensure the height is set before transition
-      requestAnimationFrame(() => {
-        // Animate to collapsed state
-        billingSection.style.setProperty('transition', 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 'important');
-        billingSection.style.setProperty('height', '0px', 'important');
+        // Get current height before collapsing
+        const currentHeight = billingSection.scrollHeight;
 
-        this.logger.debug('[Billing] Collapse animation started', {
-          fromHeight: currentHeight,
-          toHeight: '0px'
-        });
-        
-        // Clean up after animation
-        const handleTransitionEnd = () => {
-          // Keep it collapsed but remove transition
-          billingSection.style.transition = 'none';
-          billingSection.style.height = '0px';
-          billingSection.style.overflow = 'hidden';
-          billingSection.removeEventListener('transitionend', handleTransitionEnd);
-          this.billingAnimationInProgress = false;
+        // Remove any existing transition first
+        billingSection.style.transition = 'none';
 
-          this.logger.info('[Billing] Collapse complete', {
-            finalHeight: billingSection.style.height,
-            finalOverflow: billingSection.style.overflow,
-            finalTransition: billingSection.style.transition
+        // Set explicit height to enable transition from auto
+        billingSection.style.height = `${currentHeight}px`;
+        billingSection.style.overflow = 'hidden';
+
+        // Force reflow - use multiple methods to ensure it works in production
+        void billingSection.offsetHeight;
+        void billingSection.getBoundingClientRect();
+
+        // Add another RAF to ensure the height is set before transition
+        requestAnimationFrame(() => {
+          // Animate to collapsed state
+          billingSection.style.setProperty('transition', 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 'important');
+          billingSection.style.setProperty('height', '0px', 'important');
+
+          this.logger.debug('[Billing] Collapse animation started', {
+            fromHeight: currentHeight,
+            toHeight: '0px'
           });
-        };
-        
-        billingSection.addEventListener('transitionend', handleTransitionEnd);
-        
-        // Fallback cleanup
-        const fallbackTimeout = setTimeout(() => {
-          if (this.billingAnimationInProgress && billingSection.classList.contains('billing-form-collapsed')) {
-            this.logger.warn('[Billing] Collapse fallback triggered - forcing completion');
+
+          // Clean up after animation
+          const handleTransitionEnd = () => {
+            // Keep it collapsed but remove transition
             billingSection.style.transition = 'none';
             billingSection.style.height = '0px';
             billingSection.style.overflow = 'hidden';
+            billingSection.removeEventListener('transitionend', handleTransitionEnd);
             this.billingAnimationInProgress = false;
-          }
-          this.billingAnimationTimeouts.delete(fallbackTimeout);
-        }, 350);
-        
-        this.billingAnimationTimeouts.add(fallbackTimeout);
-      });
-      
-      billingSection.classList.add('billing-form-collapsed');
-      billingSection.classList.remove('billing-form-expanded');
+
+            this.logger.info('[Billing] Collapse complete', {
+              finalHeight: billingSection.style.height,
+              finalOverflow: billingSection.style.overflow,
+              finalTransition: billingSection.style.transition
+            });
+          };
+
+          billingSection.addEventListener('transitionend', handleTransitionEnd);
+
+          // Fallback cleanup
+          const fallbackTimeout = setTimeout(() => {
+            if (this.billingAnimationInProgress && billingSection.classList.contains('billing-form-collapsed')) {
+              this.logger.warn('[Billing] Collapse fallback triggered - forcing completion');
+              billingSection.style.transition = 'none';
+              billingSection.style.height = '0px';
+              billingSection.style.overflow = 'hidden';
+              this.billingAnimationInProgress = false;
+            }
+            this.billingAnimationTimeouts.delete(fallbackTimeout);
+          }, 350);
+
+          this.billingAnimationTimeouts.add(fallbackTimeout);
+        });
+
+        billingSection.classList.add('billing-form-collapsed');
+        billingSection.classList.remove('billing-form-expanded');
       }); // Extra RAF close
     });
   }
 
 
-  // ============================================================================
-  // GOOGLE MAPS LOADER METHODS
-  // ============================================================================
-
-  private async loadGoogleMapsAPI(): Promise<void> {
-    const configStore = useConfigStore.getState();
-    const googleMapsConfig = configStore.googleMapsConfig;
-
-    // Skip loading if autocomplete is disabled
-    if (googleMapsConfig.enableAutocomplete === false) {
-      this.logger.debug('Google Maps Autocomplete is disabled in configuration');
-      return;
-    }
-
-    // Check if API key is available
-    if (!googleMapsConfig.apiKey) {
-      this.logger.warn('Google Maps API key not found. Autocomplete will be disabled.');
-      return;
-    }
-
-    if (this.googleMapsLoaded) {
-      this.logger.debug('Google Maps API already loaded');
-      return;
-    }
-
-    if (this.googleMapsLoading) {
-      this.logger.debug('Google Maps API loading in progress, waiting...');
-      return this.googleMapsLoadPromise!;
-    }
-
-    this.googleMapsLoading = true;
-    this.googleMapsLoadPromise = this.performGoogleMapsLoad(googleMapsConfig);
-    
-    try {
-      await this.googleMapsLoadPromise;
-      this.googleMapsLoaded = true;
-      this.logger.info('Google Maps API loaded successfully');
-    } catch (error) {
-      this.logger.error('Failed to load Google Maps API:', error);
-      // Don't throw - autocomplete failure shouldn't break checkout
-    } finally {
-      this.googleMapsLoading = false;
-    }
-  }
 
   private async performGoogleMapsLoad(config: any): Promise<void> {
     // Check if Google Maps is already loaded
@@ -936,37 +886,37 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
       const regionParam = config.region ? `&region=${config.region}` : '';
-      
+
       script.src = `https://maps.googleapis.com/maps/api/js?key=${config.apiKey}&libraries=places${regionParam}&loading=async`;
       script.async = true;
       script.defer = true;
-      
+
       script.onload = async () => {
         this.logger.debug('Google Maps API script loaded successfully');
-        
+
         // Wait a bit for the API to fully initialize
         let attempts = 0;
         const maxAttempts = 10;
-        
+
         while (attempts < maxAttempts) {
-          if (typeof window.google !== 'undefined' && 
-              typeof window.google.maps !== 'undefined' && 
-              typeof window.google.maps.places !== 'undefined' &&
-              typeof window.google.maps.places.Autocomplete !== 'undefined') {
+          if (typeof window.google !== 'undefined' &&
+            typeof window.google.maps !== 'undefined' &&
+            typeof window.google.maps.places !== 'undefined' &&
+            typeof window.google.maps.places.Autocomplete !== 'undefined') {
             this.logger.debug('Google Maps Places API fully initialized');
             resolve();
             return;
           }
-          
+
           attempts++;
           this.logger.debug(`Waiting for Google Maps API to initialize... (attempt ${attempts}/${maxAttempts})`);
           await new Promise(r => setTimeout(r, 100));
         }
-        
+
         // If we get here, something went wrong
         reject(new Error('Google Maps API not fully available after script load'));
       };
-      
+
       script.onerror = () => {
         const error = new Error('Failed to load Google Maps API script');
         this.logger.error(error.message);
@@ -977,38 +927,38 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       const existingScript = document.querySelector(`script[src*="maps.googleapis.com"]`);
       if (existingScript) {
         this.logger.debug('Google Maps script already in DOM, waiting for load...');
-        
+
         // Check if already fully loaded
-        if (typeof window.google !== 'undefined' && 
-            typeof window.google.maps !== 'undefined' && 
-            typeof window.google.maps.places !== 'undefined' &&
-            typeof window.google.maps.places.Autocomplete !== 'undefined') {
+        if (typeof window.google !== 'undefined' &&
+          typeof window.google.maps !== 'undefined' &&
+          typeof window.google.maps.places !== 'undefined' &&
+          typeof window.google.maps.places.Autocomplete !== 'undefined') {
           resolve();
           return;
         }
-        
+
         // Wait for existing script to fully load
         const waitForExisting = async () => {
           let attempts = 0;
           const maxAttempts = 10;
-          
+
           while (attempts < maxAttempts) {
-            if (typeof window.google !== 'undefined' && 
-                typeof window.google.maps !== 'undefined' && 
-                typeof window.google.maps.places !== 'undefined' &&
-                typeof window.google.maps.places.Autocomplete !== 'undefined') {
+            if (typeof window.google !== 'undefined' &&
+              typeof window.google.maps !== 'undefined' &&
+              typeof window.google.maps.places !== 'undefined' &&
+              typeof window.google.maps.places.Autocomplete !== 'undefined') {
               this.logger.debug('Existing Google Maps script fully loaded');
               resolve();
               return;
             }
-            
+
             attempts++;
             await new Promise(r => setTimeout(r, 100));
           }
-          
+
           reject(new Error('Existing Google Maps script failed to fully initialize'));
         };
-        
+
         waitForExisting();
         return;
       }
@@ -1017,15 +967,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     });
   }
 
-  private isGoogleMapsLoaded(): boolean {
-    return this.googleMapsLoaded && typeof window.google !== 'undefined' && typeof window.google.maps !== 'undefined';
-  }
-
-  private isGoogleMapsPlacesAvailable(): boolean {
-    return this.isGoogleMapsLoaded() && 
-           typeof window.google.maps.places !== 'undefined' &&
-           typeof window.google.maps.places.Autocomplete !== 'undefined';
-  }
 
   // ============================================================================
   // ADDRESS AND COUNTRY MANAGEMENT
@@ -1050,12 +991,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       }
 
       // Check if autocomplete should be enabled
-      const googleMapsConfig = config.googleMapsConfig || {};
-      this.enableAutocomplete = googleMapsConfig.enableAutocomplete !== false && !!googleMapsConfig.apiKey;
+      this.enableAutocomplete = config.addressConfig.enableAutocomplete !== false && !!config.apiKey;
 
       const locationData = await this.countryService.getLocationData();
       this.countries = locationData.countries;
-      
+
       // Check for shipping country override from URL or sessionStorage
       // NOTE: This only affects the shipping country dropdown, NOT currency
       let selectedCountryCode = locationData.detectedCountryCode;
@@ -1115,9 +1055,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           }
         }
       }
-      
+
       this.detectedCountryCode = selectedCountryCode;
-      
+
       const countryField = this.fields.get('country');
       if (countryField instanceof HTMLSelectElement) {
         this.populateCountryDropdown(countryField, locationData.countries, selectedCountryCode);
@@ -1127,7 +1067,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           this.clearError('country');
         }
       }
-      
+
       // NOTE: We don't need to fetch config here because updateStateOptions()
       // will fetch the correct country config (line 1336) and update form labels (line 1340)
       // This ensures postcode label/regex/validation always matches the selected country
@@ -1155,11 +1095,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         // updateFormLabels is already called by updateStateOptions (line 1340)
         // No need to call it again here
       }
-      
+
       if (this.billingFields.size > 0) {
         this.populateBillingCountryDropdown();
       }
-      
+
     } catch (error) {
       this.logger.error('Failed to load country data:', error);
     } finally {
@@ -1175,7 +1115,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       firstOption.hidden = true; // Hide from dropdown list
       countrySelect.appendChild(firstOption);
     }
-    
+
     countries.forEach(country => {
       const option = document.createElement('option');
       option.value = country.code;
@@ -1185,7 +1125,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       }
       countrySelect.appendChild(option);
     });
-    
+
     if (defaultCountry) {
       countrySelect.dispatchEvent(new Event('change', { bubbles: true }));
     }
@@ -1202,7 +1142,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       firstOption.hidden = true; // Hide from dropdown list
       billingCountryField.appendChild(firstOption);
     }
-    
+
     this.countries.forEach(country => {
       const option = document.createElement('option');
       option.value = country.code;
@@ -1213,32 +1153,32 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
   private async handleCountryChange(newCountry: string): Promise<void> {
     this.logger.info(`Handling country change to: ${newCountry}`);
-    
+
     // Update the country dropdown
     const countryField = this.fields.get('country');
     if (countryField instanceof HTMLSelectElement) {
       countryField.value = newCountry;
-      
+
       // Update form data in checkout store
       this.updateFormData({ country: newCountry });
-      
+
       // Update state options for the new country
       const provinceField = this.fields.get('province');
       if (provinceField instanceof HTMLSelectElement) {
         await this.updateStateOptions(newCountry, provinceField);
       }
-      
+
       // Trigger change event to update any dependent fields
       countryField.dispatchEvent(new Event('change', { bubbles: true }));
-      
+
       this.logger.info(`Country field updated to: ${newCountry}`);
     }
-    
+
     // Also update billing country if billing form is visible
     const billingCountryField = this.billingFields.get('billing-country');
     if (billingCountryField instanceof HTMLSelectElement) {
       billingCountryField.value = newCountry;
-      
+
       // Update billing state options
       const billingProvinceField = this.billingFields.get('billing-province');
       if (billingProvinceField instanceof HTMLSelectElement) {
@@ -1247,7 +1187,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         const shippingProvince = checkoutStore.sameAsShipping ? checkoutStore.formData.province : undefined;
         await this.updateBillingStateOptions(newCountry, billingProvinceField, shippingProvince);
       }
-      
+
       billingCountryField.dispatchEvent(new Event('change', { bubbles: true }));
     }
   }
@@ -1259,20 +1199,20 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       provinceField.disabled = true;
       return;
     }
-    
+
     provinceField.disabled = true;
     const originalHTML = provinceField.innerHTML;
     provinceField.innerHTML = '<option value="">Loading...</option>';
-    
+
     try {
       // Check if we already have a promise for this country
       let countryDataPromise = this.stateLoadingPromises.get(country);
-      
+
       if (!countryDataPromise) {
         // Create new promise and store it
         countryDataPromise = this.countryService.getCountryStates(country);
         this.stateLoadingPromises.set(country, countryDataPromise);
-        
+
         // Clean up after completion
         countryDataPromise.finally(() => {
           setTimeout(() => this.stateLoadingPromises.delete(country), 100);
@@ -1280,19 +1220,19 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       } else {
         this.logger.debug(`Reusing existing state loading promise for ${country}`);
       }
-      
+
       const countryData = await countryDataPromise;
       this.countryConfigs.set(country, countryData.countryConfig);
       this.currentCountryConfig = countryData.countryConfig;
-      
+
       // Update form labels and placeholders for the new country
       this.updateFormLabels(countryData.countryConfig);
-      
+
       const hasStates = countryData.states && countryData.states.length > 0;
       const stateRequired = countryData.countryConfig.stateRequired;
-      
+
       const provinceContainer = provinceField.closest('.frm-flds, .form-group, .form-field, .field-group') || provinceField.parentElement;
-      
+
       if (!stateRequired && !hasStates) {
         if (provinceContainer) {
           (provinceContainer as HTMLElement).style.display = 'none';
@@ -1302,13 +1242,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         this.clearError('province');
         return;
       }
-      
+
       if (provinceContainer) {
         (provinceContainer as HTMLElement).style.display = '';
       }
-      
+
       provinceField.innerHTML = '';
-      
+
       // Create placeholder option that shows the appropriate label
       const placeholderOption = document.createElement('option');
       placeholderOption.value = '';
@@ -1317,27 +1257,27 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       placeholderOption.selected = true;
       placeholderOption.hidden = true; // Hide from dropdown list but show when selected
       provinceField.appendChild(placeholderOption);
-      
+
       countryData.states.forEach((state: any) => {
         const option = document.createElement('option');
         option.value = state.code;
         option.textContent = state.name;
         provinceField.appendChild(option);
       });
-      
+
       if (countryData.countryConfig.stateRequired) {
         provinceField.setAttribute('required', 'required');
       } else {
         provinceField.removeAttribute('required');
       }
-      
+
       // Store the current value (might be from autofill)
       const currentProvinceValue = provinceField.value;
-      
+
       // Clear the form data but keep the field value if it exists
       this.updateFormData({ province: '' });
       this.clearError('province');
-      
+
       // Check if the current value is valid for the new country
       let validStateFound = false;
       if (currentProvinceValue) {
@@ -1355,7 +1295,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       } else {
         provinceField.value = '';
       }
-      
+
       // Don't auto-select - keep the placeholder selected
       // The placeholder option is already selected by default
       if (!validStateFound) {
@@ -1363,7 +1303,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         provinceField.value = '';
         this.logger.debug(`No valid state found, showing placeholder: Select ${countryData.countryConfig.stateLabel}`);
       }
-      
+
     } catch (error) {
       this.logger.error('Failed to load states:', error);
       provinceField.innerHTML = originalHTML;
@@ -1378,12 +1318,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       const isRequired = countryConfig.stateRequired ? ' *' : '';
       stateLabel.textContent = countryConfig.stateLabel + isRequired;
     }
-    
+
     const postalLabel = this.form.querySelector('label[for*="postal"], label[for*="zip"]');
     if (postalLabel) {
       postalLabel.textContent = countryConfig.postcodeLabel + ' *';
     }
-    
+
     const postalField = this.fields.get('postal');
     if (postalField instanceof HTMLInputElement) {
       postalField.placeholder = countryConfig.postcodeLabel;
@@ -1394,18 +1334,18 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     // Find billing form container
     const billingContainer = document.querySelector('[os-checkout-element="different-billing-address"]');
     if (!billingContainer) return;
-    
+
     const billingStateLabel = billingContainer.querySelector('label[for*="billing"][for*="province"], label[for*="billing"][for*="state"]');
     if (billingStateLabel) {
       const isRequired = countryConfig.stateRequired ? ' *' : '';
       billingStateLabel.textContent = `Billing ${countryConfig.stateLabel}${isRequired}`;
     }
-    
+
     const billingPostalLabel = billingContainer.querySelector('label[for*="billing"][for*="postal"], label[for*="billing"][for*="zip"]');
     if (billingPostalLabel) {
       billingPostalLabel.textContent = `Billing ${countryConfig.postcodeLabel} *`;
     }
-    
+
     const billingPostalField = this.billingFields.get('billing-postal');
     if (billingPostalField instanceof HTMLInputElement) {
       billingPostalField.placeholder = `Billing ${countryConfig.postcodeLabel}`;
@@ -1418,7 +1358,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
   private async initializeAddressAutocomplete(): Promise<void> {
     if (!this.enableAutocomplete) {
-      this.logger.debug('Google Maps autocomplete disabled, skipping initialization');
+      this.logger.debug('NextCommerce autocomplete disabled, skipping initialization');
       return;
     }
 
@@ -1439,14 +1379,14 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     const loadAutocompleteOnFocus = async () => {
       if (isLoaded || isLoading) return;
-      
+
       isLoading = true;
       this.logger.info('User focused on address field, loading Google Maps API...');
-      
+
       try {
-        await this.initializeGoogleMapsAutocomplete();
+        this.setupAutocomplete();
         isLoaded = true;
-        
+
         // Remove all focus listeners since we've loaded the API
         if (addressField) {
           addressField.removeEventListener('focus', loadAutocompleteOnFocus);
@@ -1465,40 +1405,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     if (addressField instanceof HTMLInputElement) {
       addressField.addEventListener('focus', loadAutocompleteOnFocus);
     }
-    
+
     if (billingAddressField instanceof HTMLInputElement) {
       billingAddressField.addEventListener('focus', loadAutocompleteOnFocus);
     }
   }
 
-  private async initializeGoogleMapsAutocomplete(): Promise<void> {
-    try {
-      // Load Google Maps API
-      await this.loadGoogleMapsAPI();
-      
-      // Add a small delay to ensure the API is fully initialized
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Debug logging
-      this.logger.debug('Google Maps status:', {
-        google: typeof window.google !== 'undefined',
-        maps: typeof window.google?.maps !== 'undefined',
-        places: typeof window.google?.maps?.places !== 'undefined',
-        Autocomplete: typeof window.google?.maps?.places?.Autocomplete !== 'undefined'
-      });
-      
-      if (!this.isGoogleMapsPlacesAvailable()) {
-        this.logger.warn('Google Places API not available, skipping autocomplete setup');
-        return;
-      }
-
-      this.logger.debug('Google Maps API loaded, setting up autocomplete');
-      this.setupAutocomplete();
-      
-    } catch (error) {
-      this.logger.warn('Failed to load Google Maps API:', error);
-    }
-  }
 
   private setupAutocomplete(): void {
     const addressField = this.fields.get('address1');
@@ -1525,8 +1437,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       );
     }
 
-    // Set up country change listeners to update autocomplete restrictions
-    this.setupAutocompleteCountryChangeListeners();
   }
 
   private createAutocompleteInstance(
@@ -1536,37 +1446,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     type: 'shipping' | 'billing'
   ): void {
     try {
-      const countryField = type === 'shipping' 
-        ? this.fields.get('country') 
+      const countryField = type === 'shipping'
+        ? this.fields.get('country')
         : this.billingFields.get('billing-country');
-      const countryValue = (countryField instanceof HTMLSelectElement && countryField.value) 
-        ? countryField.value 
+      let countryValue = (countryField instanceof HTMLSelectElement && countryField.value)
+        ? countryField.value
         : defaultCountry;
-      
-      const options = {
-        types: ['address'],
-        fields: ['address_components', 'formatted_address'],
-        componentRestrictions: { country: countryValue }
-      };
-
-      // Check if Google Maps API is loaded
-      if (!window.google?.maps?.places) {
-        this.logger.warn('Google Maps Places API not loaded, skipping autocomplete initialization');
-        return;
-      }
-      
-      // For now, stick with the legacy Autocomplete API until we can properly implement PlaceAutocompleteElement
-      // The new API requires more complex DOM manipulation and styling
-      // Note: Google shows deprecation warnings but the API is still fully supported
-      if (!window.google.maps.places.Autocomplete) {
-        this.logger.warn('Google Maps Autocomplete API not available');
-        return;
-      }
-      
-      const autocomplete = new window.google.maps.places.Autocomplete(input, options);
-      this.autocompleteInstances.set(fieldKey, autocomplete);
-
-      this.logger.debug(`Autocomplete created for ${fieldKey}, restricted to: ${countryValue}`);
 
       // Add close button to autocomplete container after it's created
       const addCloseButton = () => {
@@ -1617,27 +1502,102 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         }
       };
 
-      // Handle place selection
-      autocomplete.addListener('place_changed', async () => {
-        const place = autocomplete.getPlace();
-        if (!place || !place.address_components) {
-          this.logger.debug('No valid place data returned from autocomplete');
-          return;
+      let abortController: AbortController | null = null;
+      let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+      const buildHighlightedLabel = (text: string, query: string): HTMLSpanElement => {
+        const label = document.createElement('span');
+        label.className = 'pac-item-query';
+        const words = query.split(/\s+/).filter(Boolean);
+        if (!words.length) {
+          label.textContent = text;
+          return label;
         }
+        const escaped = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        const pattern = new RegExp(`(${escaped.join('|')})`, 'gi');
+        label.append(...text.split(pattern).map(part =>
+          words.some(w => w.toLowerCase() === part.toLowerCase())
+            ? Object.assign(document.createElement('b'), { textContent: part })
+            : document.createTextNode(part)
+        ));
+        return label;
+      };
 
-        await this.fillAddressFromAutocomplete(place, type);
-      });
+      const buildPacItem = (r: AddressAutocompleteResult): HTMLDivElement => {
+        const item = document.createElement('div');
+        item.className = 'pac-item';
 
-      // Add close button when dropdown opens
-      input.addEventListener('focus', () => {
-        setTimeout(addCloseButton, 100);
+        const icon = document.createElement('span');
+        icon.className = 'pac-icon pac-icon-marker';
+
+        item.append(icon, buildHighlightedLabel(r.label, input.value));
+        item.addEventListener('click', () => {
+          input.value = r.label;
+          this.fillAddressFromAutocomplete(r, type);
+          input.blur();
+        });
+        return item;
+      };
+
+      const getOrCreatePacContainer = (): HTMLElement => {
+        let pac = document.querySelector<HTMLElement>('.pac-container.pac-logo');
+        if (!pac) {
+          pac = document.createElement('div');
+          pac.className = 'pac-container pac-logo';
+          pac.style.cssText = 'display:block;position:absolute';
+          pac.addEventListener('mousedown', (e) => e.preventDefault());
+          document.body.appendChild(pac);
+        }
+        return pac;
+      };
+
+      const showAutocomplete = async () => {
+        abortController?.abort();
+        abortController = new AbortController();
+        countryValue = (countryField instanceof HTMLSelectElement && countryField.value)
+          ? countryField.value
+          : defaultCountry;
+
+        try {
+          if (input.value === '') return;
+          const result = await this.apiClient.getAddressesAutocomplete(
+            input.value, countryValue, undefined, abortController.signal
+          );
+
+          if (!result.results.length) {
+            document.querySelector('.pac-container.pac-logo')?.remove();
+            return;
+          }
+
+          const pacContainer = getOrCreatePacContainer();
+          const rect = input.getBoundingClientRect();
+          pacContainer.style.left = `${rect.left + window.scrollX}px`;
+          pacContainer.style.top = `${rect.bottom + window.scrollY}px`;
+          pacContainer.style.width = `${rect.width}px`;
+          pacContainer.replaceChildren(...result.results.map(buildPacItem));
+          setTimeout(addCloseButton, 100);
+        } catch (e) {
+          if (e instanceof DOMException && e.name === 'AbortError') return;
+          throw e;
+        }
+      };
+
+      input.addEventListener('focus', showAutocomplete);
+
+      input.addEventListener('blur', () => {
+        setTimeout(() => {
+          document.querySelector('.pac-container.pac-logo')?.remove();
+        }, 150);
       });
 
       // Prevent form submission on Enter
       input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-        }
+        if (e.key === 'Enter') e.preventDefault();
+      });
+
+      input.addEventListener('input', () => {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(showAutocomplete, 500);
       });
 
     } catch (error) {
@@ -1645,129 +1605,42 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     }
   }
 
-  private async fillAddressFromAutocomplete(place: any, type: 'shipping' | 'billing'): Promise<void> {
-    if (!place.address_components) return;
+  private async fillAddressFromAutocomplete(place: AddressAutocompleteResult, type: 'shipping' | 'billing'): Promise<void> {
+    if (!place) return;
 
     // Parse address components
-    const components = this.parseAddressComponents(place.address_components);
-    
-    if (!components) {
-      this.logger.warn('Failed to parse address components');
-      return;
-    }
+    const components = place;
 
-    const countryCode = components.country?.short;
+    const countryCode = components.address.country_code;
 
     const isShipping = type === 'shipping';
     const fieldPrefix = isShipping ? '' : 'billing-';
     const fieldMap = isShipping ? this.fields : this.billingFields;
-    const checkoutStore = useCheckoutStore.getState();
 
     // Fill in the address fields
     const addressField = fieldMap.get(`${fieldPrefix}address1`);
     if (addressField instanceof HTMLInputElement) {
-      const streetNumber = components.street_number?.long || '';
-      const route = components.route?.long || '';
-      
-      let addressValue = '';
-      
-      // Country-specific address formatting
-      if (countryCode === 'BR' && route && streetNumber) {
-        // Brazil format: "Street Name, Number"
-        addressValue = `${route}, ${streetNumber}`;
-        
-        // Append neighborhood if available
-        if (components.sublocality_level_1) {
-          addressValue += ` - ${components.sublocality_level_1.long}`;
-        } else if (components.sublocality) {
-          addressValue += ` - ${components.sublocality.long}`;
-        }
-      } else {
-        // Default format: "Number Street Name"
-        addressValue = [streetNumber, route].filter(Boolean).join(' ');
-      }
-      
-      addressField.value = addressValue;
-      addressField.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-
-    // For Brazil, parse city and state from formatted address if components are missing
-    let parsedCity = '';
-    let parsedState = '';
-    
-    if (countryCode === 'BR' && place.formatted_address && 
-        (!components.administrative_area_level_2 || !components.administrative_area_level_1)) {
-      // BR format: "Street, Number - Neighborhood, City - State, Postal, Country"
-      const addressParts = place.formatted_address.split(',');
-      if (addressParts.length >= 3) {
-        // Extract city and state from the pattern "City - State"
-        const cityStatePart = addressParts[addressParts.length - 3]?.trim();
-        if (cityStatePart && cityStatePart.includes(' - ')) {
-          const [city, state] = cityStatePart.split(' - ').map((s: string) => s.trim());
-          parsedCity = city || '';
-          parsedState = state || '';
-        }
-      }
     }
 
     const cityField = fieldMap.get(`${fieldPrefix}city`);
     if (cityField instanceof HTMLInputElement) {
-      let cityValue = '';
-      
-      // Country-specific logic
-      if (countryCode === 'BR') {
-        // Brazil: try administrative_area_level_2 first, then parsed city
-        if (components.administrative_area_level_2) {
-          cityValue = components.administrative_area_level_2.long;
-        } else if (parsedCity) {
-          cityValue = parsedCity;
-        }
-      }
-      // Primary: Try locality (most common - US, CA, AU, etc.)
-      else if (components.locality) {
-        cityValue = components.locality.long;
-      } 
-      // Fallback 1: Try postal_town (common in UK)
-      else if (components.postal_town) {
-        cityValue = components.postal_town.long;
-      }
-      // Fallback 2: Try administrative_area_level_2 (some countries use this)
-      else if (components.administrative_area_level_2) {
-        cityValue = components.administrative_area_level_2.long;
-      }
-      // Fallback 3: Try sublocality (common in some Asian countries - but not for BR)
-      else if (components.sublocality && countryCode !== 'BR') {
-        cityValue = components.sublocality.long;
-      }
-      // Fallback 4: Try sublocality_level_1 (but not for BR where it's neighborhood)
-      else if (components.sublocality_level_1 && countryCode !== 'BR') {
-        cityValue = components.sublocality_level_1.long;
-      }
-      
-      if (cityValue) {
-        cityField.value = cityValue;
-        cityField.dispatchEvent(new Event('change', { bubbles: true }));
-        this.logger.debug(`City set to: ${cityValue} (type: ${
-          components.locality ? 'locality' : 
-          components.postal_town ? 'postal_town' : 
-          components.sublocality ? 'sublocality' : 
-          'sublocality_level_1'
-        })`);
-      } else {
-        this.logger.warn('No suitable city component found in address');
-      }
+      let cityValue = components.address.city;
+
+      cityField.value = cityValue;
+      cityField.dispatchEvent(new Event('change', { bubbles: true }));
+      this.logger.debug(`City set to: ${cityValue}`);
+
     }
 
     const zipField = fieldMap.get(`${fieldPrefix}postal`);
-    if (zipField instanceof HTMLInputElement && components?.postal_code) {
-      zipField.value = components.postal_code.long;
+    if (zipField instanceof HTMLInputElement && components.address.postcode) {
+      zipField.value = components.address.postcode;
       zipField.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
     // Handle country and state
     const countryField = fieldMap.get(`${fieldPrefix}country`);
-    if (countryField instanceof HTMLSelectElement && components?.country) {
-      const countryCode = components.country.short;
+    if (countryField instanceof HTMLSelectElement && components.address.country) {
       if (countryField.value !== countryCode) {
         countryField.value = countryCode;
         countryField.dispatchEvent(new Event('change', { bubbles: true }));
@@ -1777,163 +1650,51 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       // Set state with retry (wait for country change to load states)
       const stateField = fieldMap.get(`${fieldPrefix}province`);
       if (stateField instanceof HTMLSelectElement) {
-        if (components?.administrative_area_level_1) {
-          this.setStateWithRetry(stateField, components.administrative_area_level_1.short, fieldPrefix);
-        } else if (countryCode === 'BR' && parsedState) {
+        if (components.address.state) {
+          this.setStateWithRetry(stateField, components.address.state_code, fieldPrefix);
+        } else if (countryCode === 'BR' && components.address.state_code) {
           // For Brazil, use parsed state if component is missing
-          this.setStateWithRetry(stateField, parsedState, fieldPrefix);
+          this.setStateWithRetry(stateField, components.address.state_code, fieldPrefix);
         }
       }
     }
 
-    // Update the store
+    const checkoutStore = useCheckoutStore.getState();
+    const { line1, city, state_code, postcode, country_code } = components.address;
+    const addressUpdates = {
+      ...(line1 && { address1: line1 }),
+      ...(city && { city }),
+      ...(state_code && { province: state_code }),
+      ...(postcode && { postal: postcode }),
+      ...(country_code && { country: country_code }),
+    };
+
     if (isShipping) {
-      const updates: Record<string, string> = {};
-      if (components.street_number || components.route) {
-        const streetNumber = components.street_number?.long || '';
-        const route = components.route?.long || '';
-        
-        let addressValue = '';
-        
-        // Country-specific address formatting
-        if (countryCode === 'BR' && route && streetNumber) {
-          // Brazil format: "Street Name, Number"
-          addressValue = `${route}, ${streetNumber}`;
-          
-          // Append neighborhood if available
-          if (components.sublocality_level_1) {
-            addressValue += ` - ${components.sublocality_level_1.long}`;
-          } else if (components.sublocality) {
-            addressValue += ` - ${components.sublocality.long}`;
-          }
-        } else {
-          // Default format: "Number Street Name"
-          addressValue = [streetNumber, route].filter(Boolean).join(' ');
-        }
-        
-        updates.address1 = addressValue;
-      }
-      // Enhanced city extraction for store updates
-      if (countryCode === 'BR' && components.administrative_area_level_2) {
-        updates.city = components.administrative_area_level_2.long;
-      } else if (components.locality) {
-        updates.city = components.locality.long;
-      } else if (components.postal_town) {
-        updates.city = components.postal_town.long;
-      } else if (components.administrative_area_level_2) {
-        updates.city = components.administrative_area_level_2.long;
-      } else if (components.sublocality && countryCode !== 'BR') {
-        updates.city = components.sublocality.long;
-      } else if (components.sublocality_level_1) {
-        updates.city = components.sublocality_level_1.long;
-      }
-      if (components.postal_code) updates.postal = components.postal_code.long;
-      if (components.country) updates.country = components.country.short;
-      if (components.administrative_area_level_1) updates.province = components.administrative_area_level_1.short;
-      
-      checkoutStore.updateFormData(updates);
-      
-      // Check if we should track shipping info after autofill
-      if (!this.hasTrackedShippingInfo && updates.city && updates.province) {
+      checkoutStore.updateFormData(addressUpdates);
+
+      if (!this.hasTrackedShippingInfo && city && state_code) {
         try {
-          // Get current shipping method if selected
           const shippingMethod = checkoutStore.shippingMethod;
           const shippingTier = shippingMethod ? shippingMethod.name : 'Standard';
           nextAnalytics.track(EcommerceEvents.createAddShippingInfoEvent(shippingTier));
           this.hasTrackedShippingInfo = true;
-          this.logger.info('Tracked add_shipping_info event (Google Places autofill)', { shippingTier });
+          this.logger.info('Tracked add_shipping_info event (autofill)', { shippingTier });
         } catch (error) {
           this.logger.warn('Failed to track add_shipping_info event after autofill:', error);
         }
       }
     } else {
-      // Update billing address
       const currentBillingData = checkoutStore.billingAddress || {
         first_name: '', last_name: '', address1: '', city: '', province: '', postal: '', country: '', phone: ''
       };
-      
-      const updates: any = { ...currentBillingData };
-      if (components.street_number || components.route) {
-        const streetNumber = components.street_number?.long || '';
-        const route = components.route?.long || '';
-        
-        let addressValue = '';
-        
-        // Country-specific address formatting
-        if (countryCode === 'BR' && route && streetNumber) {
-          // Brazil format: "Street Name, Number"
-          addressValue = `${route}, ${streetNumber}`;
-          
-          // Append neighborhood if available
-          if (components.sublocality_level_1) {
-            addressValue += ` - ${components.sublocality_level_1.long}`;
-          } else if (components.sublocality) {
-            addressValue += ` - ${components.sublocality.long}`;
-          }
-        } else {
-          // Default format: "Number Street Name"
-          addressValue = [streetNumber, route].filter(Boolean).join(' ');
-        }
-        
-        updates.address1 = addressValue;
-      }
-      // Enhanced city extraction for store updates
-      if (countryCode === 'BR' && components.administrative_area_level_2) {
-        updates.city = components.administrative_area_level_2.long;
-      } else if (components.locality) {
-        updates.city = components.locality.long;
-      } else if (components.postal_town) {
-        updates.city = components.postal_town.long;
-      } else if (components.administrative_area_level_2) {
-        updates.city = components.administrative_area_level_2.long;
-      } else if (components.sublocality && countryCode !== 'BR') {
-        updates.city = components.sublocality.long;
-      } else if (components.sublocality_level_1) {
-        updates.city = components.sublocality_level_1.long;
-      }
-      if (components.postal_code) updates.postal = components.postal_code.long;
-      if (components.country) updates.country = components.country.short;
-      if (components.administrative_area_level_1) updates.province = components.administrative_area_level_1.short;
-      
-      checkoutStore.setBillingAddress(updates);
+      checkoutStore.setBillingAddress({ ...currentBillingData, ...addressUpdates });
     }
 
-    // Emit event for other components
+    // // Emit event for other components
     this.emit('address:autocomplete-filled', {
       type,
       components
     });
-  }
-
-  private parseAddressComponents(addressComponents: any[]): Record<string, { long: string; short: string }> {
-    const components: Record<string, { long: string; short: string }> = {};
-    
-    addressComponents.forEach(component => {
-      // Store the component for ALL its types, not just the first one
-      component.types.forEach((type: string) => {
-        // Skip 'political' as it's too generic
-        if (type !== 'political') {
-          components[type] = {
-            long: component.long_name,
-            short: component.short_name
-          };
-        }
-      });
-    });
-
-    // Debug logging for address component parsing
-    this.logger.debug('Parsed address components:', {
-      availableTypes: Object.keys(components),
-      cityRelatedComponents: {
-        locality: components.locality?.long,
-        postal_town: components.postal_town?.long,
-        sublocality: components.sublocality?.long,
-        sublocality_level_1: components.sublocality_level_1?.long
-      },
-      allComponents: components
-    });
-
-    return components;
   }
 
   private async setStateWithRetry(stateSelect: HTMLSelectElement, stateCode: string, fieldPrefix: string, attempt = 0): Promise<void> {
@@ -1954,52 +1715,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     }
   }
 
-  private autocompleteListenersAttached = false;
-
-  private setupAutocompleteCountryChangeListeners(): void {
-    // Prevent duplicate listener attachment
-    if (this.autocompleteListenersAttached) {
-      this.logger.debug('Autocomplete country change listeners already attached, skipping');
-      return;
-    }
-
-    // Shipping country change - use a named function so we can identify it
-    const shippingCountryField = this.fields.get('country');
-    if (shippingCountryField instanceof HTMLSelectElement) {
-      // Mark the field to indicate autocomplete handler will be attached
-      (shippingCountryField as any)._hasAutocompleteHandler = true;
-      
-      shippingCountryField.addEventListener('change', () => {
-        const autocomplete = this.autocompleteInstances.get('address1');
-        const countryValue = shippingCountryField.value;
-        if (autocomplete && countryValue && countryValue.length === 2) {
-          // Legacy Autocomplete API
-          if (autocomplete.setComponentRestrictions) {
-            autocomplete.setComponentRestrictions({ country: countryValue });
-          }
-          this.logger.debug(`Shipping autocomplete restricted to: ${countryValue}`);
-        }
-      });
-    }
-
-    // Billing country change
-    const billingCountryField = this.billingFields.get('billing-country');
-    if (billingCountryField instanceof HTMLSelectElement) {
-      billingCountryField.addEventListener('change', () => {
-        const autocomplete = this.autocompleteInstances.get('billing-address1');
-        const countryValue = billingCountryField.value;
-        if (autocomplete && countryValue && countryValue.length === 2) {
-          // Legacy Autocomplete API
-          if (autocomplete.setComponentRestrictions) {
-            autocomplete.setComponentRestrictions({ country: countryValue });
-          }
-          this.logger.debug(`Billing autocomplete restricted to: ${countryValue}`);
-        }
-      });
-    }
-
-    this.autocompleteListenersAttached = true;
-  }
 
   // ============================================================================
   // LOCATION FIELD VISIBILITY MANAGEMENT
@@ -2008,22 +1723,22 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private initializeLocationFieldVisibility(): void {
     // Find all location elements - check both possible attributes
     this.locationElements = this.form.querySelectorAll('[data-next-component="location"], [data-next-component-location="location"]');
-    
+
     // Also find billing location elements
     this.billingLocationElements = this.form.querySelectorAll('[data-next-component="billing-location"]');
-    
+
     if (!this.locationElements || this.locationElements.length === 0) {
       this.logger.debug('No shipping location elements found');
     }
-    
+
     if (!this.billingLocationElements || this.billingLocationElements.length === 0) {
       this.logger.debug('No billing location elements found');
     }
-    
+
     // Hide location fields initially
     this.hideLocationFields();
     this.hideBillingLocationFields();
-    
+
     // Set up address field listeners for shipping
     const addressField = this.fields.get('address1');
     if (addressField instanceof HTMLInputElement) {
@@ -2031,13 +1746,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       addressField.addEventListener('input', this.handleAddressInput.bind(this));
       addressField.addEventListener('change', this.handleAddressInput.bind(this));
       addressField.addEventListener('blur', this.handleAddressInput.bind(this));
-      
+
       // Check initial state
       if (addressField.value && addressField.value.trim().length > 0) {
         this.showLocationFields();
       }
     }
-    
+
     // Set up address field listeners for billing
     const billingAddressField = this.billingFields?.get('billing-address1');
     if (billingAddressField instanceof HTMLInputElement) {
@@ -2045,13 +1760,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       billingAddressField.addEventListener('input', this.handleBillingAddressInput.bind(this));
       billingAddressField.addEventListener('change', this.handleBillingAddressInput.bind(this));
       billingAddressField.addEventListener('blur', this.handleBillingAddressInput.bind(this));
-      
+
       // Check initial state
       if (billingAddressField.value && billingAddressField.value.trim().length > 0) {
         this.showBillingLocationFields();
       }
     }
-    
+
     // Listen for autocomplete fill events
     this.eventBus.on('address:autocomplete-filled', (event: any) => {
       if (event.type === 'shipping') {
@@ -2060,7 +1775,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         this.showBillingLocationFields();
       }
     });
-    
+
     // Listen for address field changes via store updates
     const checkoutStore = useCheckoutStore.getState();
     if (checkoutStore.formData.address1 && checkoutStore.formData.address1.trim().length > 0) {
@@ -2069,90 +1784,90 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     if (checkoutStore.formData['billing-address1'] && checkoutStore.formData['billing-address1'].trim().length > 0) {
       this.showBillingLocationFields();
     }
-    
+
     this.logger.debug('Location field visibility initialized', {
       shippingLocationElementsCount: this.locationElements?.length || 0,
       billingLocationElementsCount: this.billingLocationElements?.length || 0
     });
   }
-  
+
   private handleAddressInput(event: Event): void {
     const field = event.target as HTMLInputElement;
     if (field.value && field.value.trim().length > 0) {
       this.showLocationFields();
     }
   }
-  
+
   private handleBillingAddressInput(event: Event): void {
     const field = event.target as HTMLInputElement;
     if (field.value && field.value.trim().length > 0) {
       this.showBillingLocationFields();
     }
   }
-  
+
   private hideLocationFields(): void {
     if (!this.locationElements) return;
-    
+
     this.locationElements.forEach(el => {
       if (el instanceof HTMLElement) {
         el.style.display = 'none';
         el.classList.add('next-location-hidden');
       }
     });
-    
+
     this.locationFieldsShown = false;
     this.logger.debug('Location fields hidden');
   }
-  
+
   private showLocationFields(): void {
     if (this.locationFieldsShown || !this.locationElements) return;
-    
+
     this.locationElements.forEach(el => {
       if (el instanceof HTMLElement) {
         el.style.display = 'flex';
         el.classList.remove('next-location-hidden');
       }
     });
-    
+
     this.locationFieldsShown = true;
-    
+
     // Emit event for other components
     this.eventBus.emit('checkout:location-fields-shown', {});
     this.form.dispatchEvent(new CustomEvent('checkout:location-fields-shown'));
-    
+
     this.logger.debug('Location fields shown');
   }
-  
+
   private hideBillingLocationFields(): void {
     if (!this.billingLocationElements) return;
-    
+
     this.billingLocationElements.forEach(el => {
       if (el instanceof HTMLElement) {
         el.style.display = 'none';
         el.classList.add('next-location-hidden');
       }
     });
-    
+
     this.billingLocationFieldsShown = false;
     this.logger.debug('Billing location fields hidden');
   }
-  
+
   private showBillingLocationFields(): void {
     if (this.billingLocationFieldsShown || !this.billingLocationElements) return;
-    
+
     this.billingLocationElements.forEach(el => {
       if (el instanceof HTMLElement) {
         el.style.display = 'flex';
         el.classList.remove('next-location-hidden');
       }
     });
-    
+
     this.billingLocationFieldsShown = true;
-    
+
     // Emit event for other components
     this.eventBus.emit('checkout:billing-location-fields-shown', {});
     this.form.dispatchEvent(new CustomEvent('checkout:billing-location-fields-shown'));
-    
+
     this.logger.debug('Billing location fields shown');
   }
 
@@ -2164,21 +1879,21 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     try {
       // Initialize ProspectCartEnhancer with email entry trigger
       this.prospectCartEnhancer = new ProspectCartEnhancer(this.form);
-      
+
       // Configure it to trigger on email entry
       await this.prospectCartEnhancer.initialize();
-      
+
       // Listen for prospect cart events
       this.form.addEventListener('next:prospect-cart-created', (event: Event) => {
         const customEvent = event as CustomEvent;
         this.logger.info('Prospect cart created', customEvent.detail);
       });
-      
+
       this.form.addEventListener('next:prospect-cart-abandoned', (event: Event) => {
         const customEvent = event as CustomEvent;
         this.logger.info('Prospect cart abandoned', customEvent.detail);
       });
-      
+
       this.logger.debug('ProspectCartEnhancer initialized');
     } catch (error) {
       this.logger.warn('Failed to initialize ProspectCartEnhancer:', error);
@@ -2247,15 +1962,15 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       // Get initial country from country field or use detected country
       const countryFieldName = type === 'shipping' ? 'country' : 'billing-country';
       const countryField = type === 'shipping' ? this.fields.get(countryFieldName) : this.billingFields.get(countryFieldName);
-      const initialCountry = (countryField instanceof HTMLSelectElement && countryField.value) 
-        ? countryField.value.toLowerCase() 
+      const initialCountry = (countryField instanceof HTMLSelectElement && countryField.value)
+        ? countryField.value.toLowerCase()
         : this.detectedCountryCode.toLowerCase();
 
       // Set placeholder based on required attribute
-      const isRequired = phoneField.getAttribute('data-next-required') === 'true' || 
-                        phoneField.hasAttribute('required');
+      const isRequired = phoneField.getAttribute('data-next-required') === 'true' ||
+        phoneField.hasAttribute('required');
       phoneField.placeholder = isRequired ? 'Phone*' : 'Phone (Optional)';
-      
+
       const instance = intlTelInput(phoneField, {
         separateDialCode: false,
         nationalMode: true,
@@ -2286,7 +2001,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           }
         }
       });
-      
+
       // Listen for country changes to update phone country
       if (countryField instanceof HTMLSelectElement) {
         const updatePhoneCountry = () => {
@@ -2312,39 +2027,39 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private async initializeCreditCard(environmentKey: string, _debug: boolean): Promise<void> {
     try {
       this.addClass('next-loading-spreedly');
-      
+
       // Get card input configuration from config store
       // Supports both new cardInputConfig and legacy spreedly naming
       const config = useConfigStore.getState();
       const cardInputConfig = config.paymentConfig?.cardInputConfig || config.paymentConfig?.spreedly;
 
       this.creditCardService = new CreditCardService(environmentKey, cardInputConfig);
-      
-      
+
+
       this.creditCardService.setOnReady(() => {
         this.removeClass('next-loading-spreedly');
         this.emit('checkout:spreedly-ready', {});
         this.logger.debug('[Spreedly] Credit card service ready');
-        
+
         // Spreedly is now ready and will handle error clearing via field events
       });
-      
+
       this.creditCardService.setOnError((errors) => {
         this.logger.warn('[Spreedly] Credit card validation errors:', errors);
         this.emit('payment:error', { errors });
-        
+
         // Display credit card validation errors
         if (errors && errors.length > 0) {
           const errorMessage = errors.map((err: any) => err.message || err).join('. ');
           this.displayPaymentError(errorMessage);
         }
       });
-      
+
       this.creditCardService.setOnToken((token, pmData) => {
         this.logger.info('[Spreedly] Payment token received:', { token, pmData });
         this.handleTokenizedPayment(token, pmData);
       });
-      
+
       // Set up floating label callbacks for Spreedly fields
       if (this.ui) {
         this.creditCardService.setFloatingLabelCallbacks(
@@ -2363,12 +2078,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         );
         this.logger.debug('[Spreedly] Connected floating label callbacks');
       }
-      
+
       await this.creditCardService.initialize();
-      
+
       // Connect credit card service to validator
       this.validator.setCreditCardService(this.creditCardService);
-      
+
     } catch (error) {
       this.logger.error('Failed to initialize credit card service:', error);
       this.removeClass('next-loading-spreedly');
@@ -2448,35 +2163,35 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     // Check for existing order in sessionStorage
     const orderDataStr = sessionStorage.getItem('next-order');
     if (!orderDataStr) return;
-    
+
     try {
       const orderData = JSON.parse(orderDataStr);
       const order = orderData?.state?.order;
-      
+
       // Check if we have a valid order
       if (!order?.ref_id || !order?.number) return;
-      
+
       // Check if we've already shown the modal for this order
       const shownOrdersStr = sessionStorage.getItem('next-shown-order-warnings');
       const shownOrders = shownOrdersStr ? JSON.parse(shownOrdersStr) : [];
-      
+
       if (shownOrders.includes(order.ref_id)) {
         this.logger.debug('Already shown warning for order', order.ref_id);
         return;
       }
-      
+
       this.logger.info('Fresh purchase detected, showing attention modal', {
         orderNumber: order.number,
         refId: order.ref_id
       });
-      
+
       // Track modal shown time for duration calculation
       const modalShownTime = Date.now();
-      
+
       // Ensure checkout is not in processing state before showing modal
       const checkoutStore = useCheckoutStore.getState();
       checkoutStore.setProcessing(false);
-      
+
       const action = await GeneralModal.show({
         title: 'Attention',
         content: 'Your initial order has been successfully processed. Please check your email for the order confirmation. Entering your payment details again will result in a secondary purchase.',
@@ -2486,15 +2201,15 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         ],
         className: 'purchase-warning-modal'
       });
-      
+
       // Mark this order as shown
       shownOrders.push(order.ref_id);
       sessionStorage.setItem('next-shown-order-warnings', JSON.stringify(shownOrders));
-      
+
       // Track the duplicate order prevention event with user action
       const timeOnModal = Date.now() - modalShownTime;
 
-      
+
       if (action === 'confirm') {
         // Handle back button - navigate to the success URL
         const successUrl = this.getSuccessUrl();
@@ -2512,12 +2227,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         // User clicked 'Close' - ensure form is properly initialized
         // Re-populate form data if it exists in the store
         this.populateFormData();
-        
+
         // Ensure UI is in correct state
         if (this.ui) {
           this.ui.hideLoading('checkout');
         }
-        
+
         // Clear all form fields and reset checkout state
         this.clearAllCheckoutFields();
       }
@@ -2545,7 +2260,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       country: checkoutStore.formData.country || '',
       phone_number: checkoutStore.formData.phone
     };
-    
+
     let billingAddressData: Address | undefined;
     if (!checkoutStore.sameAsShipping && checkoutStore.billingAddress) {
       billingAddressData = {
@@ -2560,18 +2275,18 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         ...(checkoutStore.billingAddress.phone && { phone_number: checkoutStore.billingAddress.phone })
       };
     }
-    
+
     const payment: Payment = {
       payment_method: API_PAYMENT_METHOD_MAP[checkoutStore.paymentMethod] || 'card_token',
       ...(checkoutStore.paymentToken && { card_token: checkoutStore.paymentToken })
     };
-    
+
     const attributionStore = useAttributionStore.getState();
     const attribution = attributionStore.getAttributionForApi();
-    
+
     // Extract coupon codes from cart's appliedCoupons
     const vouchers = (cartStore.appliedCoupons || []).map((coupon: any) => coupon.code);
-    
+
     return {
       lines: cartStore.items.map((item: any) => ({
         package_id: item.packageId,
@@ -2602,48 +2317,48 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private async createOrder(): Promise<any> {
     const checkoutStore = useCheckoutStore.getState();
     const cartStore = useCartStore.getState();
-    
+
     try {
       if (!checkoutStore.formData.email || !checkoutStore.formData.fname || !checkoutStore.formData.lname) {
         throw new Error('Missing required customer information');
       }
-      
+
       if (cartStore.items.length === 0) {
         throw new Error('Cannot create order with empty cart');
       }
-      
+
       if ((checkoutStore.paymentMethod === 'credit-card' || checkoutStore.paymentMethod === 'card_token') && !checkoutStore.paymentToken) {
         throw new Error('Payment token is required for credit card payments');
       }
-      
+
       const orderData = this.buildOrderData(checkoutStore, cartStore);
       const order = await this.apiClient.createOrder(orderData);
-      
+
       if (!order.ref_id) {
         throw new Error('Invalid order response: missing ref_id');
       }
-      
+
       // cartStore.reset();
-      
+
       this.logger.info('Order created successfully', {
         ref_id: order.ref_id,
         number: order.number,
         total: order.total_incl_tax,
         payment_method: checkoutStore.paymentMethod
       });
-      
+
       return order;
-      
+
     } catch (error: any) {
       this.logger.error('Failed to create order:', error);
-      
+
       // Check for API errors in the response
       if (error.status === 400 && error.responseData) {
         const responseData = error.responseData;
-        
+
         // Log the full error response for debugging
         this.logger.warn('API 400 error response:', responseData);
-        
+
         // Check for message array (common API error format)
         if (responseData.message && Array.isArray(responseData.message)) {
           // Extract the actual message from each array item
@@ -2657,25 +2372,25 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           this.displayPaymentError(errorMessages);
           throw new Error(errorMessages);
         }
-        
+
         // Check for single message string
         if (responseData.message && typeof responseData.message === 'string') {
           this.displayPaymentError(responseData.message);
           throw new Error(responseData.message);
         }
-        
+
         // Check for payment-specific errors
         if (responseData.payment_details || responseData.payment_response_code) {
           this.logger.warn('Payment error detected:', {
             payment_details: responseData.payment_details,
             payment_response_code: responseData.payment_response_code
           });
-          
+
           // Tracking removed - implement custom analytics in the future if needed
-          
+
           // Display payment error in the UI
           this.displayPaymentError(responseData.payment_details || 'Payment failed. Please check your payment information.');
-          
+
           // Create a user-friendly error message
           let errorMessage = 'Payment failed: ';
           if (responseData.payment_details) {
@@ -2683,10 +2398,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           } else {
             errorMessage += 'Please check your payment information and try again.';
           }
-          
+
           throw new Error(errorMessage);
         }
-        
+
         // Check for validation errors
         if (responseData.errors) {
           const errorMessages = Object.entries(responseData.errors)
@@ -2697,14 +2412,14 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
               return messages;
             })
             .join('. ');
-          
+
           // Tracking removed - NextAnalytics handles this automatically if needed
-          
+
           this.displayPaymentError(errorMessages);
           throw new Error(errorMessages);
         }
       }
-      
+
       // Enhance error message for better user experience
       if (error instanceof Error) {
         if (error.message.includes('Rate limited')) {
@@ -2717,27 +2432,27 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           throw new Error('Server error. Please try again in a few moments.');
         }
       }
-      
+
       throw error;
     }
   }
 
   private async createTestOrder(): Promise<any> {
     const cartStore = useCartStore.getState();
-    
+
     try {
       // Extract coupon codes from cart's appliedCoupons
       const vouchers = (cartStore.appliedCoupons || []).map((coupon: any) => coupon.code);
-      
+
       const testOrderData = {
-        lines: cartStore.items.length > 0 
+        lines: cartStore.items.length > 0
           ? cartStore.items.map((item: any) => ({
-              package_id: item.packageId,
-              quantity: item.quantity,
-              is_upsell: item.is_upsell || false
-            }))
+            package_id: item.packageId,
+            quantity: item.quantity,
+            is_upsell: item.is_upsell || false
+          }))
           : [{ package_id: 1, quantity: 1, is_upsell: false }],
-        
+
         shipping_address: {
           first_name: 'Test',
           last_name: 'Order',
@@ -2749,15 +2464,15 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           country: 'US',
           phone_number: '+14807581224'
         },
-        
+
         billing_same_as_shipping_address: true,
         shipping_method: cartStore.shippingMethod?.id || 1,
-        
+
         payment_detail: {
           payment_method: 'card_token' as PaymentMethod,
           card_token: 'test_card'
         },
-        
+
         user: {
           email: 'test@test.com',
           first_name: 'Test',
@@ -2766,19 +2481,19 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           phone_number: '+14807581224',
           accepts_marketing: true
         },
-        
+
         vouchers: vouchers,
         attribution: this.getTestAttribution(),
         currency: this.getCurrency(),
         success_url: this.getSuccessUrl(),
         payment_failed_url: this.getFailureUrl()
       };
-      
+
       const order = await this.apiClient.createOrder(testOrderData);
       // cartStore.reset();
-      
+
       return order;
-      
+
     } catch (error) {
       this.logger.error('Failed to create test order:', error);
       throw error;
@@ -2788,7 +2503,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private getTestAttribution(): Attribution {
     const attributionStore = useAttributionStore.getState();
     const baseAttribution = attributionStore.getAttributionForApi();
-    
+
     return {
       ...baseAttribution,
       utm_source: 'konami_code',
@@ -2805,9 +2520,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
   private handleOrderRedirect(order: any): void {
     // Tracking removed - implement custom analytics in the future if needed
-    
+
     let redirectUrl: string | undefined;
-    
+
     if (order.payment_complete_url) {
       redirectUrl = order.payment_complete_url;
     } else {
@@ -2820,7 +2535,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         redirectUrl = `${window.location.origin}/checkout/confirmation/?ref_id=${order.ref_id || ''}`;
       }
     }
-    
+
     if (redirectUrl) {
       const finalUrl = this.preserveQueryParams(redirectUrl);
       // Keep the loading state active during redirect
@@ -2836,8 +2551,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
   private getNextPageUrlFromMeta(refId?: string): string | null {
     const metaTag = document.querySelector('meta[name="next-success-url"]') as HTMLMetaElement ||
-                   document.querySelector('meta[name="next-next-url"]') as HTMLMetaElement ||
-                   document.querySelector('meta[name="os-next-page"]') as HTMLMetaElement;
+      document.querySelector('meta[name="next-next-url"]') as HTMLMetaElement ||
+      document.querySelector('meta[name="os-next-page"]') as HTMLMetaElement;
 
     if (!metaTag?.content) return null;
 
@@ -2910,16 +2625,16 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     if (campaignState?.data?.currency) {
       return campaignState.data.currency;
     }
-    
+
     const configStore = useConfigStore.getState();
     return configStore?.selectedCurrency || configStore?.detectedCurrency || 'USD';
   }
 
   private getSuccessUrl(): string {
     const metaTag = document.querySelector('meta[name="next-success-url"]') as HTMLMetaElement ||
-                   document.querySelector('meta[name="next-next-url"]') as HTMLMetaElement ||
-                   document.querySelector('meta[name="os-next-page"]') as HTMLMetaElement;
-    
+      document.querySelector('meta[name="next-next-url"]') as HTMLMetaElement ||
+      document.querySelector('meta[name="os-next-page"]') as HTMLMetaElement;
+
     if (metaTag?.content) {
       // Convert to absolute URL if it's a relative path
       if (metaTag.content.startsWith('/')) {
@@ -2928,18 +2643,18 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       // Return as-is if it's already an absolute URL
       return metaTag.content;
     }
-    
+
     return window.location.origin + '/success';
   }
 
   private async validateExpressCheckoutFields(formData: any, requiredFields: string[]): Promise<any> {
     const errors: Record<string, string> = {};
     let firstErrorField: string | null = null;
-    
+
     // Validate only the specified required fields
     for (const field of requiredFields) {
       const value = formData[field];
-      
+
       if (!value || (typeof value === 'string' && !value.trim())) {
         const fieldNameMap: Record<string, string> = {
           'email': 'Email',
@@ -2952,15 +2667,15 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           'postal': 'ZIP/Postal Code',
           'country': 'Country'
         };
-        
+
         const fieldLabel = fieldNameMap[field] || field;
         errors[field] = `${fieldLabel} is required`;
-        
+
         if (!firstErrorField) {
           firstErrorField = field;
         }
       }
-      
+
       // Special validation for email using the validator
       if (field === 'email' && value) {
         if (!this.validator.isValidEmail(value)) {
@@ -2971,7 +2686,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         }
       }
     }
-    
+
     return {
       isValid: Object.keys(errors).length === 0,
       errors,
@@ -2981,8 +2696,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
   private getFailureUrl(): string {
     const metaTag = document.querySelector('meta[name="next-failure-url"]') as HTMLMetaElement ||
-                   document.querySelector('meta[name="os-failure-url"]') as HTMLMetaElement;
-    
+      document.querySelector('meta[name="os-failure-url"]') as HTMLMetaElement;
+
     if (metaTag?.content) {
       // Convert to absolute URL if it's a relative path
       if (metaTag.content.startsWith('/')) {
@@ -2991,7 +2706,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       // Return as-is if it's already an absolute URL
       return metaTag.content;
     }
-    
+
     const currentUrl = new URL(window.location.href);
     currentUrl.searchParams.set('payment_failed', 'true');
     return currentUrl.href;
@@ -3007,7 +2722,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private detectMultiStepCheckout(): void {
     // Check for data-next-checkout-step attribute on form
     const stepAttr = this.form.getAttribute('data-next-checkout-step') ||
-                     this.form.getAttribute('os-checkout-step');
+      this.form.getAttribute('os-checkout-step');
 
     if (stepAttr) {
       this.isMultiStep = true;
@@ -3112,245 +2827,245 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     if (this.isMultiStep && this.nextStepUrl) {
       return this.handleStepNavigation(checkoutStore, cartStore);
     }
-    
-        try {
-          checkoutStore.clearAllErrors();
-          checkoutStore.setProcessing(true);
-          
-          // Show loading overlay
-          this.loadingOverlay.show();
-          
-          // Validate phone numbers using intl-tel-input if available
-          if (this.isIntlTelInputAvailable) {
-            // Validate shipping phone
-            const shippingPhoneInstance = this.phoneInputs.get('shipping');
-            if (shippingPhoneInstance) {
-              const isValidShipping = shippingPhoneInstance.isValidNumber();
-              if (!isValidShipping && checkoutStore.formData.phone) {
-                checkoutStore.setError('phone', 'Please enter a valid phone number');
-              } else if (isValidShipping) {
-                // Update with formatted number
-                const formattedNumber = shippingPhoneInstance.getNumber();
-                if (formattedNumber) {
-                  checkoutStore.updateFormData({ phone: formattedNumber });
-                }
-              }
-            }
-            
-            // Validate billing phone if different from shipping
-            if (!checkoutStore.sameAsShipping && checkoutStore.billingAddress) {
-              const billingPhoneInstance = this.phoneInputs.get('billing');
-              if (billingPhoneInstance) {
-                const isValidBilling = billingPhoneInstance.isValidNumber();
-                if (!isValidBilling && checkoutStore.billingAddress.phone) {
-                  checkoutStore.setError('billing-phone', 'Please enter a valid phone number');
-                }
-              }
-            }
-          }
-          
-          // Check if this is an express payment method
-          const expressPaymentMethods = ['paypal', 'apple_pay', 'google_pay'];
-          const isExpressPayment = expressPaymentMethods.includes(checkoutStore.paymentMethod);
 
-          // Tracking removed - implement custom analytics in the future if needed
-          
-          // Check if validation is required for express payments
-          const config = useConfigStore.getState();
-          const requireExpressValidation = config.paymentConfig?.expressCheckout?.requireValidation;
-          
-          // Debug logging
-          this.logger.debug('Express payment config:', {
-            isExpressPayment,
-            paymentMethod: checkoutStore.paymentMethod,
-            requireExpressValidation,
-            hasExpressProcessor: !!this.expressProcessor,
-            fullConfig: config.paymentConfig?.expressCheckout
-          });
-          
-          // If it's an express payment method and validation is NOT required, use ExpressCheckoutProcessor
-          if (isExpressPayment && this.expressProcessor && !requireExpressValidation) {
-            this.logger.info(`Processing express checkout for ${checkoutStore.paymentMethod} (skipping validation)`);
-            
-            // Hide loading overlay first since ExpressCheckoutProcessor will show its own
-            this.loadingOverlay.hide(true);
-            
-            // Use ExpressCheckoutProcessor which handles everything including order creation
-            await this.expressProcessor.handleExpressCheckout(
-              checkoutStore.paymentMethod,
-              cartStore.items,
-              cartStore.isEmpty,
-              () => cartStore.reset()
-            );
-            
-            // ExpressCheckoutProcessor handles all success/error cases and redirects
-            return;
-          }
-          
-          // Log if express payment requires validation
-          if (isExpressPayment && requireExpressValidation) {
-            this.logger.info(`Express payment ${checkoutStore.paymentMethod} requires validation (requireValidation: true)`);
-          }
-          
-          // For regular credit card payments OR express payments with validation required
-          const includePayment = checkoutStore.paymentMethod === 'credit-card' || 
-                               checkoutStore.paymentMethod === 'card_token' ||
-                               (isExpressPayment && requireExpressValidation);
-          
-          let validation;
-          
-          // If express payment with custom required fields, validate only those fields
-          if (isExpressPayment && requireExpressValidation && config.paymentConfig?.expressCheckout?.requiredFields) {
-            const requiredFields = config.paymentConfig.expressCheckout.requiredFields;
-            validation = await this.validateExpressCheckoutFields(checkoutStore.formData, requiredFields);
-          } else {
-            // Otherwise use full validation
-            validation = await this.validator.validateForm(
-              checkoutStore.formData,
-              this.countryConfigs,
-              this.currentCountryConfig,
-              includePayment,
-              checkoutStore.billingAddress,
-              checkoutStore.sameAsShipping
-            );
-          }
-          
-          if (!validation.isValid) {
-            
-            // Log validation errors for debugging
-            this.logger.warn('Validation failed', {
-              paymentMethod: checkoutStore.paymentMethod,
-              isExpressPayment,
-              requireExpressValidation,
-              errors: validation.errors,
-              firstErrorField: validation.firstErrorField
-            });
-            
-            if (validation.errors) {
-              Object.entries(validation.errors).forEach(([field, error]) => {
-                checkoutStore.setError(field, error as string);
-                // Also show error in UI
-                this.validator.showError(field, error as string);
-              });
-            }
-            
-            // For express payments with validation, show a detailed error message
-            if (isExpressPayment && requireExpressValidation) {
-              const errorFields = Object.keys(validation.errors || {});
-              // const errorCount = errorFields.length;
-              
-              // Create a human-readable list of field names
-              const fieldNameMap: Record<string, string> = {
-                'email': 'Email',
-                'fname': 'First Name',
-                'lname': 'Last Name',
-                'phone': 'Phone',
-                'address1': 'Address',
-                'city': 'City',
-                'province': 'State/Province',
-                'postal': 'ZIP/Postal Code',
-                'country': 'Country',
-                'cc-month': 'Expiration Month',
-                'cc-year': 'Expiration Year',
-                'exp-month': 'Expiration Month',
-                'exp-year': 'Expiration Year',
-                'billing-fname': 'Billing First Name',
-                'billing-lname': 'Billing Last Name',
-                'billing-address1': 'Billing Address',
-                'billing-city': 'Billing City',
-                'billing-province': 'Billing State/Province',
-                'billing-postal': 'Billing ZIP/Postal Code',
-                'billing-country': 'Billing Country'
-              };
-              
-              const requiredFields = errorFields.map(field => fieldNameMap[field] || field).join(', ');
-              const generalMessage = `Please fill in the following required fields: ${requiredFields}`;
-              checkoutStore.setError('general', generalMessage);
-              
-              // Also show payment error to make it more visible
-              this.displayPaymentError(generalMessage);
-            }
-            
-            if (validation.firstErrorField) {
-              // Add a small delay to ensure errors are rendered before scrolling
-              setTimeout(() => {
-                this.validator.focusFirstErrorField(validation.firstErrorField);
-              }, 100);
-            }
-            
-            // Clear processing state when validation fails
-            checkoutStore.setProcessing(false);
-            this.loadingOverlay.hide(true); // Hide immediately on validation error
-            return;
-          }
-          
-          // span?.setAttribute('validation.passed', true);
+    try {
+      checkoutStore.clearAllErrors();
+      checkoutStore.setProcessing(true);
 
-          // Tracking removed - implement custom analytics in the future if needed
-          
-          // For express payment methods (PayPal, Apple Pay, Google Pay), always use ExpressCheckoutProcessor
-          if (isExpressPayment && this.expressProcessor) {
-            this.logger.info(`Processing express checkout for ${checkoutStore.paymentMethod} (after validation)`);
-            
-            // Hide loading overlay first since ExpressCheckoutProcessor will show its own
-            this.loadingOverlay.hide(true);
-            
-            // Use ExpressCheckoutProcessor which handles everything including order creation
-            await this.expressProcessor.handleExpressCheckout(
-              checkoutStore.paymentMethod,
-              cartStore.items,
-              cartStore.isEmpty,
-              () => cartStore.reset()
-            );
-            
-            // ExpressCheckoutProcessor handles all success/error cases and redirects
-            return;
-          }
-          
-          // Only credit card payments go through the regular flow
-          if (checkoutStore.paymentMethod === 'credit-card' || checkoutStore.paymentMethod === 'card_token') {
-            // span?.setAttribute('payment.type', 'credit_card');
-            
-            if (this.creditCardService?.ready) {
-              const cardData: CreditCardData = {
-                full_name: `${checkoutStore.formData.fname || ''} ${checkoutStore.formData.lname || ''}`.trim(),
-                month: checkoutStore.formData['cc-month'] || checkoutStore.formData['exp-month'] || '',
-                year: checkoutStore.formData['cc-year'] || checkoutStore.formData['exp-year'] || ''
-              };
-              await this.creditCardService.tokenizeCard(cardData);
-              // span?.setAttribute('payment.tokenization_started', true);
-              return;
-            } else {
-              throw new Error('Credit card payment system is not ready. Please refresh the page and try again.');
+      // Show loading overlay
+      this.loadingOverlay.show();
+
+      // Validate phone numbers using intl-tel-input if available
+      if (this.isIntlTelInputAvailable) {
+        // Validate shipping phone
+        const shippingPhoneInstance = this.phoneInputs.get('shipping');
+        if (shippingPhoneInstance) {
+          const isValidShipping = shippingPhoneInstance.isValidNumber();
+          if (!isValidShipping && checkoutStore.formData.phone) {
+            checkoutStore.setError('phone', 'Please enter a valid phone number');
+          } else if (isValidShipping) {
+            // Update with formatted number
+            const formattedNumber = shippingPhoneInstance.getNumber();
+            if (formattedNumber) {
+              checkoutStore.updateFormData({ phone: formattedNumber });
             }
           }
-          
-          // This should not be reached for express payments
-          // span?.setAttribute('payment.type', checkoutStore.paymentMethod || 'unknown');
-          await this.processOrder();
-          
-        } catch (error) {
-          // span?.setAttribute('error', true);
-          // span?.setAttribute('error.type', (error as Error).name);
-          // span?.setAttribute('error.message', (error as Error).message);
-          
-          this.handleError(error, 'handleFormSubmit');
-          checkoutStore.setError('general', 'Failed to process order. Please try again.');
-          // Only set processing to false on error
-          checkoutStore.setProcessing(false);
-          this.loadingOverlay.hide(true); // Hide immediately on error
         }
+
+        // Validate billing phone if different from shipping
+        if (!checkoutStore.sameAsShipping && checkoutStore.billingAddress) {
+          const billingPhoneInstance = this.phoneInputs.get('billing');
+          if (billingPhoneInstance) {
+            const isValidBilling = billingPhoneInstance.isValidNumber();
+            if (!isValidBilling && checkoutStore.billingAddress.phone) {
+              checkoutStore.setError('billing-phone', 'Please enter a valid phone number');
+            }
+          }
+        }
+      }
+
+      // Check if this is an express payment method
+      const expressPaymentMethods = ['paypal', 'apple_pay', 'google_pay'];
+      const isExpressPayment = expressPaymentMethods.includes(checkoutStore.paymentMethod);
+
+      // Tracking removed - implement custom analytics in the future if needed
+
+      // Check if validation is required for express payments
+      const config = useConfigStore.getState();
+      const requireExpressValidation = config.paymentConfig?.expressCheckout?.requireValidation;
+
+      // Debug logging
+      this.logger.debug('Express payment config:', {
+        isExpressPayment,
+        paymentMethod: checkoutStore.paymentMethod,
+        requireExpressValidation,
+        hasExpressProcessor: !!this.expressProcessor,
+        fullConfig: config.paymentConfig?.expressCheckout
+      });
+
+      // If it's an express payment method and validation is NOT required, use ExpressCheckoutProcessor
+      if (isExpressPayment && this.expressProcessor && !requireExpressValidation) {
+        this.logger.info(`Processing express checkout for ${checkoutStore.paymentMethod} (skipping validation)`);
+
+        // Hide loading overlay first since ExpressCheckoutProcessor will show its own
+        this.loadingOverlay.hide(true);
+
+        // Use ExpressCheckoutProcessor which handles everything including order creation
+        await this.expressProcessor.handleExpressCheckout(
+          checkoutStore.paymentMethod,
+          cartStore.items,
+          cartStore.isEmpty,
+          () => cartStore.reset()
+        );
+
+        // ExpressCheckoutProcessor handles all success/error cases and redirects
+        return;
+      }
+
+      // Log if express payment requires validation
+      if (isExpressPayment && requireExpressValidation) {
+        this.logger.info(`Express payment ${checkoutStore.paymentMethod} requires validation (requireValidation: true)`);
+      }
+
+      // For regular credit card payments OR express payments with validation required
+      const includePayment = checkoutStore.paymentMethod === 'credit-card' ||
+        checkoutStore.paymentMethod === 'card_token' ||
+        (isExpressPayment && requireExpressValidation);
+
+      let validation;
+
+      // If express payment with custom required fields, validate only those fields
+      if (isExpressPayment && requireExpressValidation && config.paymentConfig?.expressCheckout?.requiredFields) {
+        const requiredFields = config.paymentConfig.expressCheckout.requiredFields;
+        validation = await this.validateExpressCheckoutFields(checkoutStore.formData, requiredFields);
+      } else {
+        // Otherwise use full validation
+        validation = await this.validator.validateForm(
+          checkoutStore.formData,
+          this.countryConfigs,
+          this.currentCountryConfig,
+          includePayment,
+          checkoutStore.billingAddress,
+          checkoutStore.sameAsShipping
+        );
+      }
+
+      if (!validation.isValid) {
+
+        // Log validation errors for debugging
+        this.logger.warn('Validation failed', {
+          paymentMethod: checkoutStore.paymentMethod,
+          isExpressPayment,
+          requireExpressValidation,
+          errors: validation.errors,
+          firstErrorField: validation.firstErrorField
+        });
+
+        if (validation.errors) {
+          Object.entries(validation.errors).forEach(([field, error]) => {
+            checkoutStore.setError(field, error as string);
+            // Also show error in UI
+            this.validator.showError(field, error as string);
+          });
+        }
+
+        // For express payments with validation, show a detailed error message
+        if (isExpressPayment && requireExpressValidation) {
+          const errorFields = Object.keys(validation.errors || {});
+          // const errorCount = errorFields.length;
+
+          // Create a human-readable list of field names
+          const fieldNameMap: Record<string, string> = {
+            'email': 'Email',
+            'fname': 'First Name',
+            'lname': 'Last Name',
+            'phone': 'Phone',
+            'address1': 'Address',
+            'city': 'City',
+            'province': 'State/Province',
+            'postal': 'ZIP/Postal Code',
+            'country': 'Country',
+            'cc-month': 'Expiration Month',
+            'cc-year': 'Expiration Year',
+            'exp-month': 'Expiration Month',
+            'exp-year': 'Expiration Year',
+            'billing-fname': 'Billing First Name',
+            'billing-lname': 'Billing Last Name',
+            'billing-address1': 'Billing Address',
+            'billing-city': 'Billing City',
+            'billing-province': 'Billing State/Province',
+            'billing-postal': 'Billing ZIP/Postal Code',
+            'billing-country': 'Billing Country'
+          };
+
+          const requiredFields = errorFields.map(field => fieldNameMap[field] || field).join(', ');
+          const generalMessage = `Please fill in the following required fields: ${requiredFields}`;
+          checkoutStore.setError('general', generalMessage);
+
+          // Also show payment error to make it more visible
+          this.displayPaymentError(generalMessage);
+        }
+
+        if (validation.firstErrorField) {
+          // Add a small delay to ensure errors are rendered before scrolling
+          setTimeout(() => {
+            this.validator.focusFirstErrorField(validation.firstErrorField);
+          }, 100);
+        }
+
+        // Clear processing state when validation fails
+        checkoutStore.setProcessing(false);
+        this.loadingOverlay.hide(true); // Hide immediately on validation error
+        return;
+      }
+
+      // span?.setAttribute('validation.passed', true);
+
+      // Tracking removed - implement custom analytics in the future if needed
+
+      // For express payment methods (PayPal, Apple Pay, Google Pay), always use ExpressCheckoutProcessor
+      if (isExpressPayment && this.expressProcessor) {
+        this.logger.info(`Processing express checkout for ${checkoutStore.paymentMethod} (after validation)`);
+
+        // Hide loading overlay first since ExpressCheckoutProcessor will show its own
+        this.loadingOverlay.hide(true);
+
+        // Use ExpressCheckoutProcessor which handles everything including order creation
+        await this.expressProcessor.handleExpressCheckout(
+          checkoutStore.paymentMethod,
+          cartStore.items,
+          cartStore.isEmpty,
+          () => cartStore.reset()
+        );
+
+        // ExpressCheckoutProcessor handles all success/error cases and redirects
+        return;
+      }
+
+      // Only credit card payments go through the regular flow
+      if (checkoutStore.paymentMethod === 'credit-card' || checkoutStore.paymentMethod === 'card_token') {
+        // span?.setAttribute('payment.type', 'credit_card');
+
+        if (this.creditCardService?.ready) {
+          const cardData: CreditCardData = {
+            full_name: `${checkoutStore.formData.fname || ''} ${checkoutStore.formData.lname || ''}`.trim(),
+            month: checkoutStore.formData['cc-month'] || checkoutStore.formData['exp-month'] || '',
+            year: checkoutStore.formData['cc-year'] || checkoutStore.formData['exp-year'] || ''
+          };
+          await this.creditCardService.tokenizeCard(cardData);
+          // span?.setAttribute('payment.tokenization_started', true);
+          return;
+        } else {
+          throw new Error('Credit card payment system is not ready. Please refresh the page and try again.');
+        }
+      }
+
+      // This should not be reached for express payments
+      // span?.setAttribute('payment.type', checkoutStore.paymentMethod || 'unknown');
+      await this.processOrder();
+
+    } catch (error) {
+      // span?.setAttribute('error', true);
+      // span?.setAttribute('error.type', (error as Error).name);
+      // span?.setAttribute('error.message', (error as Error).message);
+
+      this.handleError(error, 'handleFormSubmit');
+      checkoutStore.setError('general', 'Failed to process order. Please try again.');
+      // Only set processing to false on error
+      checkoutStore.setProcessing(false);
+      this.loadingOverlay.hide(true); // Hide immediately on error
+    }
   }
 
   private async processOrder(): Promise<void> {
     try {
       const order = await this.createOrder();
-      
+
       // Mark prospect cart as converted if it exists
       if (this.prospectCartEnhancer) {
         await this.prospectCartEnhancer.convertCart();
       }
-      
+
       this.emit('order:completed', order);
       this.handleOrderRedirect(order);
       // Note: LoadingOverlay will hide after 3 seconds on success
@@ -3367,15 +3082,15 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     try {
       const checkoutStore = useCheckoutStore.getState();
       checkoutStore.setPaymentToken(token);
-      
+
       this.emit('payment:tokenized', { token, pmData, paymentMethod: checkoutStore.paymentMethod });
-      
+
       await this.processOrder();
-      
+
     } catch (error: any) {
       this.logger.error('Failed to process tokenized payment:', error);
       const checkoutStore = useCheckoutStore.getState();
-      
+
       // Check if error has payment details
       if (error.message && error.message.includes('Payment failed:')) {
         // The error message already contains payment details from createOrder
@@ -3383,7 +3098,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       } else {
         checkoutStore.setError('general', 'Payment processing failed. Please try again.');
       }
-      
+
       checkoutStore.setProcessing(false);
       this.loadingOverlay.hide(true); // Hide immediately on error
     }
@@ -3469,10 +3184,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
       this.updateFormData({ [fieldName]: fieldValue });
       checkoutStore.clearError(fieldName);
-      
+
       // Validate fields on blur - simplified without redundant fallback messages
       const fieldsToValidate = ['email', 'city', 'fname', 'lname'];
-      
+
       if (fieldsToValidate.includes(fieldName) && (event.type === 'blur' || event.type === 'change')) {
         const fieldValue = target.value.trim();
         if (fieldValue) {
@@ -3485,25 +3200,25 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           }
         }
       }
-      
+
       if (fieldName === 'country') {
         const provinceField = this.fields.get('province');
         if (provinceField instanceof HTMLSelectElement) {
           await this.updateStateOptions(target.value, provinceField);
         }
-        
+
         // Save the user's country selection to sessionStorage
         sessionStorage.setItem('next_selected_country', target.value);
         this.logger.debug(`Saved user's country selection to session: ${target.value}`);
-        
+
         // Currency is now based on user's location, not shipping country
         // Currency can only be changed via URL parameter or manual selection
       }
-      
+
       // Show location fields when address1 is populated
       if (fieldName === 'address1' && target.value && target.value.trim().length > 0) {
         this.showLocationFields();
-        
+
         // Track add_shipping_info when user has entered a shipping address
         // Check if we have enough address info to consider it "entered"
         if (!this.hasTrackedShippingInfo && checkoutStore.formData.city && checkoutStore.formData.province) {
@@ -3519,14 +3234,14 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           }
         }
       }
-      
+
       // Only update prospect cart and storage on blur/change events, not on every input
       if (event.type === 'blur' || event.type === 'change') {
         // Update ProspectCartEnhancer when email changes
         if (fieldName === 'email' && this.prospectCartEnhancer) {
           this.prospectCartEnhancer.updateEmail(target.value);
         }
-        
+
         // Save user data to cookies for persistence
         if (fieldName === 'email' || fieldName === 'fname' || fieldName === 'lname' || fieldName === 'phone') {
           const updates: any = {};
@@ -3542,37 +3257,37 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           userDataStorage.updateUserData(updates);
           this.logger.debug('Updated user data storage:', fieldName, updates[fieldName === 'fname' ? 'firstName' : fieldName === 'lname' ? 'lastName' : fieldName]);
         }
-        
+
         // Check if we have enough data to create prospect cart
         if (this.prospectCartEnhancer && ['email', 'fname', 'lname'].includes(fieldName)) {
           this.prospectCartEnhancer.checkAndCreateCart();
         }
       }
     }
-    
+
     // Handle validation differently based on event type
     if (event.type === 'blur') {
       // On blur, always handle the field state
       const field = this.getFieldByName(fieldName);
       if (!field) return;
-      
+
       const wrapper = field.closest('.form-group, .form-input');
-      
+
       // Check if field is empty (works for both input and select elements)
       const isEmpty = !target.value || (typeof target.value === 'string' && target.value.trim() === '');
-      
+
       if (isEmpty) {
         // Field is empty - check if there's an error label present
         // Check both in wrapper and form-group (error label can be in either)
         const formGroup = field.closest('.form-group');
         const errorLabel = wrapper?.querySelector('.next-error-label') || formGroup?.querySelector('.next-error-label');
-        
+
         if (errorLabel) {
           // There's an error label present, so maintain the error state on the field
           // Re-add error classes to the field to keep them consistent with the error label
           field.classList.add('has-error', 'next-error-field');
           field.classList.remove('no-error');
-          
+
           // Also ensure wrapper has error icon class if there's an error
           if (wrapper) {
             wrapper.classList.add('addErrorIcon');
@@ -3581,24 +3296,24 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         } else {
           // No error label - remove both error and success classes
           field.classList.remove('has-error', 'next-error-field', 'no-error');
-          
+
           if (wrapper) {
             wrapper.classList.remove('addErrorIcon', 'addTick');
           }
         }
-        
+
         // For required fields, we might want to show an error
         // Don't show required error on blur for better UX - only on submit
         // Just leave the field in neutral state
       } else {
         // Field has value - validate it
         const validationResult = this.validator.validateField(fieldName, target.value);
-        
+
         if (validationResult.isValid) {
           // Field is valid, add the no-error class
           field.classList.remove('has-error', 'next-error-field');
           field.classList.add('no-error');
-          
+
           // Remove error message if exists
           if (wrapper) {
             wrapper.classList.remove('addErrorIcon');
@@ -3620,7 +3335,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       if (field) {
         // Just remove error classes without adding success classes
         field.classList.remove('has-error', 'next-error-field');
-        
+
         // Remove error message if exists - check both wrapper and parent form-group
         const wrapper = field.closest('.form-group, .form-input');
         if (wrapper) {
@@ -3629,7 +3344,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           if (errorLabel) {
             errorLabel.remove();
           }
-          
+
           // Also check if wrapper is form-input inside a form-group
           const formGroup = wrapper.closest('.form-group');
           if (formGroup) {
@@ -3639,7 +3354,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
             }
           }
         }
-        
+
         // Also check parent element in case structure is different
         const parentGroup = field.closest('.form-group');
         if (parentGroup) {
@@ -3655,12 +3370,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       if (field && target.value && target.value.trim() !== '') {
         // Field has value - validate it and clear error if valid
         const validationResult = this.validator.validateField(fieldName, target.value);
-        
+
         if (validationResult.isValid) {
           // Field is valid, remove error classes and messages
           field.classList.remove('has-error', 'next-error-field');
           field.classList.add('no-error');
-          
+
           const wrapper = field.closest('.form-group, .form-input');
           if (wrapper) {
             wrapper.classList.remove('addErrorIcon');
@@ -3670,7 +3385,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
               errorLabel.remove();
             }
           }
-          
+
           // Also clear error from store
           const checkoutStore = useCheckoutStore.getState();
           checkoutStore.clearError(fieldName);
@@ -3686,20 +3401,20 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       billingProvinceField.disabled = true;
       return;
     }
-    
+
     billingProvinceField.disabled = true;
     const originalHTML = billingProvinceField.innerHTML;
     billingProvinceField.innerHTML = '<option value="">Loading...</option>';
-    
+
     try {
       // Check if we already have a promise for this country
       let countryDataPromise = this.stateLoadingPromises.get(country);
-      
+
       if (!countryDataPromise) {
         // Create new promise and store it
         countryDataPromise = this.countryService.getCountryStates(country);
         this.stateLoadingPromises.set(country, countryDataPromise);
-        
+
         // Clean up after completion
         countryDataPromise.finally(() => {
           setTimeout(() => this.stateLoadingPromises.delete(country), 100);
@@ -3707,14 +3422,14 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       } else {
         this.logger.debug(`Reusing existing state loading promise for ${country} (billing)`);
       }
-      
+
       const countryData = await countryDataPromise;
-      
+
       // Update billing form labels and placeholders
       this.updateBillingFormLabels(countryData.countryConfig);
-      
+
       billingProvinceField.innerHTML = '';
-      
+
       // Create placeholder option with appropriate label
       const placeholderOption = document.createElement('option');
       placeholderOption.value = '';
@@ -3723,24 +3438,24 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       placeholderOption.selected = true;
       placeholderOption.hidden = true; // Hide from dropdown list but show when selected
       billingProvinceField.appendChild(placeholderOption);
-      
+
       countryData.states.forEach((state: any) => {
         const option = document.createElement('option');
         option.value = state.code;
         option.textContent = state.name;
         billingProvinceField.appendChild(option);
       });
-      
+
       if (countryData.countryConfig.stateRequired) {
         billingProvinceField.setAttribute('required', 'required');
       } else {
         billingProvinceField.removeAttribute('required');
       }
-      
+
       if (shippingProvince) {
         billingProvinceField.value = shippingProvince;
       }
-      
+
     } catch (error) {
       this.logger.error('Failed to load billing states:', error);
       billingProvinceField.innerHTML = originalHTML;
@@ -3750,15 +3465,15 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   }
 
   private getFieldNameFromElement(element: HTMLElement): string | null {
-    const checkoutFieldName = element.getAttribute('data-next-checkout-field') || 
-                              element.getAttribute('os-checkout-field');
-    
+    const checkoutFieldName = element.getAttribute('data-next-checkout-field') ||
+      element.getAttribute('os-checkout-field');
+
     if (checkoutFieldName) return checkoutFieldName;
-    
+
     if (element instanceof HTMLInputElement || element instanceof HTMLSelectElement) {
       if (element.name) return element.name;
     }
-    
+
     return null;
   }
 
@@ -3766,11 +3481,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     // Check shipping fields first
     const shippingField = this.fields.get(fieldName);
     if (shippingField) return shippingField;
-    
+
     // Check billing fields
     const billingField = this.billingFields.get(fieldName);
     if (billingField) return billingField;
-    
+
     return null;
   }
 
@@ -3779,9 +3494,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const currentBillingData = checkoutStore.billingAddress || {
       first_name: '', last_name: '', address1: '', city: '', province: '', postal: '', country: '', phone: ''
     };
-    
+
     const mappedFieldName = BILLING_ADDRESS_FIELD_MAP[billingFieldName] || billingFieldName;
-    
+
     checkoutStore.setBillingAddress({
       ...currentBillingData,
       [mappedFieldName]: value
@@ -3791,23 +3506,23 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private handlePaymentMethodChange(event: Event): void {
     const target = event.target as HTMLInputElement;
     const checkoutStore = useCheckoutStore.getState();
-    
+
     const mappedMethod = PAYMENT_METHOD_MAP[target.value] || 'credit-card';
     checkoutStore.setPaymentMethod(mappedMethod as any);
-    
+
     // Hide any payment-specific errors when switching methods
     const paypalError = document.querySelector('[data-next-component="paypal-error"]');
     if (paypalError instanceof HTMLElement) {
       paypalError.style.display = 'none';
     }
-    
+
     const creditError = document.querySelector('[data-next-component="credit-error"]');
     if (creditError instanceof HTMLElement) {
       creditError.style.display = 'none';
     }
-    
+
     this.ui.updatePaymentFormVisibility(target.value);
-    
+
     // Note: For credit card payments, add_payment_info is tracked when card fields are complete (via CreditCardService)
     // For express payments (PayPal, Apple Pay, Google Pay), it's tracked when the button is clicked (via ExpressCheckoutProcessor)
   }
@@ -3817,23 +3532,23 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private handleShippingMethodChange(event: Event): void {
     const target = event.target as HTMLInputElement;
     const checkoutStore = useCheckoutStore.getState();
-    
+
     const shippingMethods = [
       { id: 1, name: 'Standard Shipping', price: 0, code: 'standard' },
       { id: 2, name: 'Subscription Shipping', price: 5, code: 'subscription' },
       { id: 3, name: 'Expedited: Standard Overnight', price: 28, code: 'overnight' }
     ];
-    
+
     const parsedValue = parseInt(target.value);
     if (isNaN(parsedValue)) return;
-    
+
     const selectedMethod = shippingMethods.find(m => m.id === parsedValue);
     if (selectedMethod) {
       checkoutStore.setShippingMethod(selectedMethod);
-      
+
       const cartStore = useCartStore.getState();
       cartStore.setShippingMethod(selectedMethod.id);
-      
+
       // Track add_shipping_info event when shipping method is selected
       if (!this.hasTrackedShippingInfo) {
         try {
@@ -3843,7 +3558,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
             'subscription': 'Subscription',
             'overnight': 'Express'
           };
-          
+
           const shippingTier = shippingTierMap[selectedMethod.code] || selectedMethod.name;
           nextAnalytics.track(EcommerceEvents.createAddShippingInfoEvent(shippingTier));
           this.hasTrackedShippingInfo = true;
@@ -3862,7 +3577,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       checked: target.checked,
       animationInProgress: this.billingAnimationInProgress
     });
-    
+
     // Prevent rapid clicks during animation
     if (this.billingAnimationInProgress) {
       event.preventDefault();
@@ -3871,17 +3586,17 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       this.logger.warn('[Billing] Click blocked - animation in progress');
       return;
     }
-    
+
     // Clear any existing debounce timer
     if (this.billingAnimationDebounceTimer) {
       clearTimeout(this.billingAnimationDebounceTimer);
     }
-    
+
     // Reduced debounce to 10ms (just enough to prevent double-clicks)
     this.billingAnimationDebounceTimer = setTimeout(() => {
       const checkoutStore = useCheckoutStore.getState();
       const billingSection = document.querySelector(BILLING_CONTAINER_SELECTOR);
-      
+
       if (!billingSection || !(billingSection instanceof HTMLElement)) {
         this.logger.error('[Billing] CRITICAL: Billing section not found!');
         return;
@@ -3894,29 +3609,29 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         currentTransition: billingSection.style.transition,
         classes: billingSection.className
       });
-      
+
       // Update store state
       checkoutStore.setSameAsShipping(target.checked);
-      
+
       if (target.checked) {
         this.logger.info('[Billing] Collapsing form...');
         this.collapseBillingForm(billingSection);
       } else {
         this.logger.info('[Billing] Expanding form...');
         this.expandBillingForm(billingSection);
-        
+
         // Populate billing fields after expansion
         setTimeout(() => {
           // Only set the country and trigger state loading
           const shippingCountry = checkoutStore.formData.country;
           const billingCountryField = this.billingFields.get('billing-country');
-          
+
           if (shippingCountry && billingCountryField instanceof HTMLSelectElement) {
             billingCountryField.value = shippingCountry;
             billingCountryField.dispatchEvent(new Event('change', { bubbles: true }));
             this.logger.debug('[Billing] Set country to:', shippingCountry);
           }
-          
+
           // Clear the billing address in the store (except country)
           checkoutStore.setBillingAddress({
             first_name: '',
@@ -3940,10 +3655,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private setupAutofillDetection(): void {
     // Track the previous values of fields
     const fieldValues = new Map<HTMLElement, string>();
-    
+
     // Flag to temporarily disable autofill detection (e.g., during Google Places autocomplete)
     let isAutofillDetectionPaused = false;
-    
+
     // Listen for Google Places autocomplete events to pause detection
     this.eventBus.on('address:autocomplete-filled', () => {
       isAutofillDetectionPaused = true;
@@ -3958,55 +3673,55 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         });
       }, 2000);
     });
-    
+
     // Initialize with current values
     [...this.fields.values()].forEach(field => {
       if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement) {
         fieldValues.set(field, field.value);
       }
     });
-    
+
     // Check for autofill periodically
     let checkCount = 0;
     const maxChecks = 60; // Check for up to 30 seconds (60 * 500ms)
-    
+
     const checkInterval = setInterval(() => {
       checkCount++;
-      
+
       // Skip if detection is paused (Google Places is filling fields)
       if (isAutofillDetectionPaused) {
         return;
       }
-      
+
       // Track if we found autofilled fields
       let hasAutofill = false;
       const autofilledFields: string[] = [];
-      
+
       // Check each field for changes
       [...this.fields.values()].forEach(field => {
         if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement) {
           const oldValue = fieldValues.get(field) || '';
           const newValue = field.value;
-          
+
           // Skip address1 field as it's handled by Google Places
-          const fieldName = field.getAttribute('data-next-checkout-field') || 
-                          field.getAttribute('os-checkout-field') || 
-                          field.name;
+          const fieldName = field.getAttribute('data-next-checkout-field') ||
+            field.getAttribute('os-checkout-field') ||
+            field.name;
           if (fieldName === 'address1' || fieldName === 'address') {
             fieldValues.set(field, newValue); // Update value but don't trigger events
             return;
           }
-          
+
           // If value changed and field wasn't focused (likely autofill)
           if (newValue !== oldValue && newValue !== '' && document.activeElement !== field) {
             hasAutofill = true;
             fieldValues.set(field, newValue);
-            
+
             // Add field name to list
             if (fieldName) {
               autofilledFields.push(fieldName);
             }
-            
+
             // Don't dispatch change events for country field as it has side effects (loads states)
             // The state management should handle keeping the autofilled state value
             if (fieldName !== 'country' && fieldName !== 'billing-country') {
@@ -4016,11 +3731,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           }
         }
       });
-      
+
       // If we detected autofill, check for shipping info tracking
       if (hasAutofill && autofilledFields.length > 0) {
         this.logger.info('Browser autofill detected for fields:', autofilledFields);
-        
+
         // Small delay to ensure store is updated
         setTimeout(() => {
           const checkoutStore = useCheckoutStore.getState();
@@ -4037,14 +3752,14 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           }
         }, 100);
       }
-      
+
       // Stop checking after max attempts
       if (checkCount >= maxChecks) {
         clearInterval(checkInterval);
         this.logger.debug('Stopped autofill detection after 30 seconds');
       }
     }, 500);
-    
+
     // Store interval for cleanup
     (this as any).autofillInterval = checkInterval;
   }
@@ -4052,21 +3767,21 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private setupEventHandlers(): void {
     this.submitHandler = this.handleFormSubmit.bind(this);
     this.form.addEventListener('submit', this.submitHandler);
-    
+
     this.changeHandler = this.handleFieldChange.bind(this);
     [...this.fields.values(), ...this.billingFields.values()].forEach(field => {
       if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement || field instanceof HTMLTextAreaElement) {
         field.addEventListener('change', this.changeHandler!);
         field.addEventListener('blur', this.changeHandler!);
-        
+
         // Add input event listener for better autofill detection
         field.addEventListener('input', this.changeHandler!);
       }
     });
-    
+
     // Set up Chrome autofill detection
     this.setupAutofillDetection();
-    
+
     this.paymentMethodChangeHandler = this.handlePaymentMethodChange.bind(this);
     const paymentRadios = this.form.querySelectorAll([
       '[data-next-checkout-field="payment-method"]',
@@ -4076,19 +3791,19 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     paymentRadios.forEach(radio => {
       radio.addEventListener('change', this.paymentMethodChangeHandler!);
     });
-    
+
     this.shippingMethodChangeHandler = this.handleShippingMethodChange.bind(this);
     const shippingRadios = this.form.querySelectorAll('input[name="shipping_method"]');
     shippingRadios.forEach(radio => {
       radio.addEventListener('change', this.shippingMethodChangeHandler!);
     });
-    
+
     this.billingAddressToggleHandler = this.handleBillingAddressToggle.bind(this);
     const billingToggle = this.form.querySelector('input[name="use_shipping_address"]');
     if (billingToggle) {
       billingToggle.addEventListener('change', this.billingAddressToggleHandler);
     }
-    
+
     // Note: Credit card error clearing is handled by CreditCardService via Spreedly events
   }
 
@@ -4192,13 +3907,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private handleTestDataFilled(_event: Event): void {
     setTimeout(() => {
       this.populateFormData();
-      
+
       this.fields.forEach((field) => {
         if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement) {
           field.dispatchEvent(new Event('change', { bubbles: true }));
         }
       });
-      
+
       // Update UI for test data
       this.ui.updateLabelsForPopulatedData();
     }, 150);
@@ -4207,10 +3922,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private async handleKonamiActivation(event: Event): Promise<void> {
     const checkoutStore = useCheckoutStore.getState();
     // const cartStore = useCartStore.getState();
-    
+
     const customEvent = event as CustomEvent;
     const activationMethod = customEvent.detail?.method;
-    
+
     if (activationMethod === 'konami') {
       try {
         const testFormData = {
@@ -4226,7 +3941,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           country: 'US',
           accepts_marketing: true
         };
-        
+
         checkoutStore.clearAllErrors();
         this.validator.clearAllErrors();
         checkoutStore.updateFormData(testFormData);
@@ -4261,9 +3976,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
             });
           }
         }
-        
+
         this.populateFormData();
-        
+
         setTimeout(async () => {
           try {
             const order = await this.createTestOrder();
@@ -4273,7 +3988,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
             this.logger.error('Failed to create test order:', error);
           }
         }, 1000);
-        
+
       } catch (error) {
         this.logger.error('Error filling test data for Konami order:', error);
       }
@@ -4292,12 +4007,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     // Note: We do NOT call clearAllErrors when state has no errors
     // because that would mark all fields as valid prematurely.
     // Errors should only be cleared field-by-field as they're fixed.
-    
+
     // Check if address1 was updated and show location fields if needed
     if (state.formData?.address1 && state.formData.address1.trim().length > 0) {
       this.showLocationFields();
     }
-    
+
     // Handle processing state
     if (state.isProcessing) {
       // Disable submit button when processing
@@ -4347,13 +4062,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
   private setOrCreateMetaTag(name: string, content: string): void {
     let metaTag = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement;
-    
+
     if (!metaTag) {
       metaTag = document.createElement('meta');
       metaTag.name = name;
       document.head.appendChild(metaTag);
     }
-    
+
     metaTag.content = content;
   }
 
@@ -4380,7 +4095,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     if (this.submitHandler) {
       this.form.removeEventListener('submit', this.submitHandler);
     }
-    
+
     if (this.changeHandler) {
       [...this.fields.values(), ...this.billingFields.values()].forEach(field => {
         field.removeEventListener('change', this.changeHandler!);
@@ -4388,12 +4103,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         field.removeEventListener('input', this.changeHandler!);
       });
     }
-    
+
     // Clear autofill detection interval
     if ((this as any).autofillInterval) {
       clearInterval((this as any).autofillInterval);
     }
-    
+
     if (this.paymentMethodChangeHandler) {
       const paymentRadios = this.form.querySelectorAll([
         '[data-next-checkout-field="payment-method"]',
@@ -4404,25 +4119,25 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         radio.removeEventListener('change', this.paymentMethodChangeHandler!);
       });
     }
-    
+
     if (this.shippingMethodChangeHandler) {
       const shippingRadios = this.form.querySelectorAll('input[name="shipping_method"]');
       shippingRadios.forEach(radio => {
         radio.removeEventListener('change', this.shippingMethodChangeHandler!);
       });
     }
-    
+
     if (this.billingAddressToggleHandler) {
       const billingToggle = this.form.querySelector('input[name="use_shipping_address"]');
       if (billingToggle) {
         billingToggle.removeEventListener('change', this.billingAddressToggleHandler!);
       }
     }
-    
+
     if (this.boundHandleTestDataFilled) {
       document.removeEventListener('checkout:test-data-filled', this.boundHandleTestDataFilled);
     }
-    
+
     if (this.boundHandleKonamiActivation) {
       document.removeEventListener('next:test-mode-activated', this.boundHandleKonamiActivation);
     }
@@ -4514,23 +4229,23 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     if (this.billingAnimationDebounceTimer) {
       clearTimeout(this.billingAnimationDebounceTimer);
     }
-    
+
     // Clear all animation timeouts
     this.billingAnimationTimeouts.forEach(timeout => clearTimeout(timeout));
     this.billingAnimationTimeouts.clear();
-    
+
     if (this.validator) {
       this.validator.destroy();
     }
-    
+
     if (this.creditCardService) {
       this.creditCardService.destroy();
     }
-    
+
     if (this.prospectCartEnhancer) {
       this.prospectCartEnhancer.destroy();
     }
-    
+
     this.phoneInputs.forEach((instance) => {
       try {
         instance.destroy();
@@ -4539,14 +4254,14 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       }
     });
     this.phoneInputs.clear();
-    
+
     // Clean up autocomplete instances
     this.autocompleteInstances.clear();
-    
+
     this.fields.clear();
     this.billingFields.clear();
     this.paymentButtons.clear();
-    
+
     super.destroy();
   }
 }
