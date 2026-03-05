@@ -2,7 +2,7 @@
  * API Client for NextCommerce Campaigns API
  */
 
-import type { Campaign, Cart, Order, CartBase, CreateOrder, AddUpsellLine } from '@/types/api';
+import type { Campaign, Cart, Order, CartBase, CreateOrder, AddUpsellLine, AddressAutocomplete } from '@/types/api';
 import { Logger, createLogger } from '@/utils/logger';
 
 export class ApiClient {
@@ -79,13 +79,23 @@ export class ApiClient {
     });
   }
 
+  public async getAddressesAutocomplete(query_text: string, country?: string, language?: string, signal?: AbortSignal): Promise<any> {
+    const params = new URLSearchParams({ query_text });
+
+    if (country) params.append('country', country);
+    if (language) params.append('language', language);
+
+    return this.request<AddressAutocomplete>(`/api/v1/addresses/autocomplete/?${params.toString()}`, { signal });
+  }
+
   // Get request type from endpoint
-  private getRequestType(endpoint: string): 'campaign' | 'cart' | 'order' | 'upsell' | 'prospect_cart' {
+  private getRequestType(endpoint: string): string {
     if (endpoint.includes('/campaigns')) return 'campaign';
     if (endpoint.includes('/upsells')) return 'upsell';
     if (endpoint.includes('/orders')) return 'order';
     if (endpoint.includes('/prospect-carts')) return 'prospect_cart';
     if (endpoint.includes('/carts')) return 'cart';
+    if (endpoint.includes('/addresses')) return 'addresses';
     return 'campaign'; // default
   }
 
@@ -103,13 +113,13 @@ export class ApiClient {
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const method = options?.method || 'GET';
     const url = `${this.baseURL}${endpoint}`;
-    
+
     const headers = {
       'Authorization': this.apiKey,
       'Content-Type': 'application/json',
       ...options?.headers,
     };
-    
+
     this.logger.debug(`API Request: ${method} ${url}`);
 
     const startTime = performance.now();
@@ -140,7 +150,7 @@ export class ApiClient {
       if (!response.ok) {
         errorMessage = `API Error: ${response.status} ${response.statusText}`;
         errorType = this.getErrorType(response.status);
-        
+
         // Try to parse error response body
         let errorData: any = {};
         try {
@@ -151,7 +161,7 @@ export class ApiClient {
         } catch (parseError) {
           this.logger.warn('Failed to parse error response body');
         }
-        
+
         this.logger.error(errorMessage, errorData);
 
         // Create enhanced error with response data
@@ -173,7 +183,7 @@ export class ApiClient {
       } else {
         this.logger.error('API request failed:', String(error));
       }
-      
+
       throw error;
     }
   }
