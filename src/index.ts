@@ -30,6 +30,7 @@ export type * from './types/global';
 // Utility exports
 export { Logger } from './utils/logger';
 export { EventBus } from './utils/events';
+export * as VariantHelper from './utils/variant/VariantHelper';
 
 // API client export
 export { ApiClient } from './api/client';
@@ -41,6 +42,7 @@ export { ProfileSwitcherEnhancer, ProfileSelectorEnhancer } from './enhancers/pr
 
 // Enhancer exports
 export { DiscountListEnhancer } from './enhancers/cart/DiscountListEnhancer';
+export { VariantOptionSelectorEnhancer } from './enhancers/cart/VariantOptionSelectorEnhancer';
 
 // Offer enhancer exports
 export {

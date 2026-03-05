@@ -467,7 +467,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
               is_upsell: item.is_upsell || false,
             })),
             vouchers: [...checkoutState.vouchers, 'SAVE10'],
-            currency: campaignState.data?.currency || "",
+            currency: campaignState.data?.currency || null,
             shipping_method: 1,
           };
 

@@ -245,6 +245,11 @@ export class AttributeParser {
       types.push('offer-condition');
     }
 
+    // Check for variant selector
+    if (element.hasAttribute('data-next-variant-selector')) {
+      types.push('variant-selector');
+    }
+
     // Remove duplicates (just in case)
     return [...new Set(types)];
   }

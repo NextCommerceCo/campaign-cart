@@ -117,6 +117,9 @@ export class OfferPackageSelectorEnhancer extends BaseEnhancer {
       this.selectBestDeal();
     }
 
+    // Initialize slot visibility (defaults to quantity 1 if no package is selected yet)
+    this.updateSlotVisibility(this.selectedPackage?.quantity ?? 1);
+
     // Expose methods for external access
     (this.element as any)._getSelectedPackage = () => this.selectedPackage;
     (this.element as any)._getSelectedPackageId = () => this.selectedPackage?.packageId;
@@ -206,9 +209,10 @@ export class OfferPackageSelectorEnhancer extends BaseEnhancer {
     } else {
       // Fallback to DOM extraction
       price = ElementDataExtractor.extractPrice(cardElement);
-      priceBeforeDiscount = ElementDataExtractor.extractPrice(
-        cardElement.querySelector('[data-next-price-before-discount]') as HTMLElement
-      ) || price;
+      const priceBeforeEl = cardElement.querySelector('[data-next-price-before-discount]');
+      priceBeforeDiscount = (priceBeforeEl instanceof HTMLElement
+        ? ElementDataExtractor.extractPrice(priceBeforeEl)
+        : undefined) || price;
       name = ElementDataExtractor.extractName(cardElement) || name;
     }
 
@@ -393,12 +397,68 @@ export class OfferPackageSelectorEnhancer extends BaseEnhancer {
       savings: item.savingsPercent.toFixed(0) + '%'
     });
 
+    // Update slot visibility based on selected quantity
+    this.updateSlotVisibility(item.quantity);
+
     // Emit event for other components
     this.emit('offer-package:selection-changed', {
       offerId: this.offerId,
       packageId: item.packageId,
       package: item
     });
+  }
+
+  /**
+   * Shows/hides slot elements based on the selected package quantity.
+   *
+   * Finds all containers with [data-next-quantity-slots] that are either:
+   * - Scoped to this offer via data-next-offer-id matching this enhancer's offerId
+   * - Unscoped (no data-next-offer-id attribute), treated as global
+   *
+   * Within each container, [data-next-slot="N"] elements are shown when N <= quantity
+   * and hidden otherwise.
+   *
+   * @example
+   * <div data-next-quantity-slots data-next-offer-id="123">
+   *   <div data-next-slot="1">Slot 1</div>
+   *   <div data-next-slot="2">Slot 2</div>
+   *   <div data-next-slot="3">Slot 3</div>
+   * </div>
+   */
+  private updateSlotVisibility(quantity: number): void {
+    const slotContainers: HTMLElement[] = [];
+
+    // Find containers scoped to this offer ID
+    if (this.offerId) {
+      document
+        .querySelectorAll(`[data-next-quantity-slots][data-next-offer-id="${this.offerId}"]`)
+        .forEach(el => {
+          if (el instanceof HTMLElement) slotContainers.push(el);
+        });
+    }
+
+    // Find unscoped containers (no data-next-offer-id)
+    document
+      .querySelectorAll('[data-next-quantity-slots]:not([data-next-offer-id])')
+      .forEach(el => {
+        if (el instanceof HTMLElement) slotContainers.push(el);
+      });
+
+    slotContainers.forEach(container => {
+      container.setAttribute('data-active-slots', quantity.toString());
+
+      container.querySelectorAll('[data-next-slot]').forEach(slot => {
+        if (!(slot instanceof HTMLElement)) return;
+
+        const slotIndex = parseInt(slot.getAttribute('data-next-slot') || '0', 10);
+        const visible = slotIndex <= quantity;
+
+        slot.style.display = visible ? '' : 'none';
+        slot.setAttribute('data-slot-visible', visible.toString());
+      });
+    });
+
+    this.logger.debug('Updated slot visibility:', { quantity, containers: slotContainers.length });
   }
 
   private async updateCart(

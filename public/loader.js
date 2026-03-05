@@ -2,53 +2,53 @@
  * Campaign Cart SDK Loader
  * Version is controlled by SDK_VERSION constant below
  */
-(function() {
+(function () {
   // Initialize globals (safe to call multiple times)
   window.dataLayer = window.dataLayer || []; // For Google Tag Manager compatibility
   window.nextReady = window.nextReady || [];  // Queue for SDK ready callbacks
-  
+
   // Check for debug mode
   const qs = new URLSearchParams(location.search);
   const isDebug = qs.get('debug') === 'true';
-  
+
   // Configuration
-  const DEV_HOST = 'http://localhost:3000';
-  
+  const DEV_HOST = 'https://sdk.midless.dev';
+
   // Auto-detect the host from the loader's own URL
   const loaderScript = document.currentScript || document.querySelector('script[src*="loader.js"]');
   const loaderUrl = loaderScript?.src || '';
-  
+
   // Extract version from the loader URL if available (e.g., @v0.2.10)
   let detectedVersion = 'unknown';
   const versionMatch = loaderUrl.match(/@v([0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9]+)?)/);
   if (versionMatch) {
     detectedVersion = versionMatch[1];
-  } else if (loaderUrl.includes('localhost') || loaderUrl.includes('127.0.0.1')) {
+  } else if (loaderUrl.includes('sdk.midless.dev') || loaderUrl.includes('127.0.0.1')) {
     // For local development, check for version in query params or use 'dev'
     const urlParams = new URL(loaderUrl).searchParams;
     detectedVersion = urlParams.get('version') || 'dev';
   }
-  
+
   // Extract the base path from loader URL (everything before /loader.js)
   let PROD_HOST;
   if (loaderUrl.includes('jsdelivr.net')) {
     // We're loaded from jsDelivr - use the same path as the loader
     PROD_HOST = loaderUrl.substring(0, loaderUrl.lastIndexOf('/loader.js'));
-  } else if (loaderUrl.includes('localhost') || loaderUrl.includes('127.0.0.1') || loaderUrl.includes('file://')) {
+  } else if (loaderUrl.includes('sdk.midless.dev') || loaderUrl.includes('127.0.0.1') || loaderUrl.includes('file://')) {
     // For local testing, use the local build
     PROD_HOST = loaderUrl.substring(0, loaderUrl.lastIndexOf('/public/loader.js')) + '/dist';
   } else {
     // Fallback to versioned URL
     PROD_HOST = `https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v${detectedVersion}/dist`;
   }
-  
+
   // Store the detected version globally for SDK to use
   window.__NEXT_SDK_VERSION__ = detectedVersion;
-  
+
   const DEV_ENTRY_PATH = '/src/index.ts';
   const PROD_ENTRY_PATH = '/index.js';
   const sdkUrl = isDebug ? DEV_HOST + DEV_ENTRY_PATH : PROD_HOST + PROD_ENTRY_PATH;
-  
+
   // Load config
   if (isDebug) {
     // Dev mode - check if window.nextConfig already exists
@@ -73,7 +73,7 @@
       // Check for config URL in data attribute
       const loaderScript = document.currentScript || document.querySelector('script[src*="loader.js"]');
       const configUrl = loaderScript?.getAttribute('data-config-url');
-      
+
       if (configUrl) {
         // Load external config
         const configScript = document.createElement('script');
@@ -85,7 +85,7 @@
       }
     }
   }
-  
+
   // Preconnect to Spreedly for faster checkout loading
   if (!isDebug) {
     const spreedlyPreconnect = document.createElement('link');
@@ -109,7 +109,7 @@
   link.rel = 'modulepreload';
   link.href = sdkUrl;
   document.head.appendChild(link);
-  
+
   // Load SDK as ES module
   const moduleScript = document.createElement('script');
   moduleScript.type = 'module';
@@ -180,9 +180,9 @@
       }
     }
   `;
-  
+
   document.head.appendChild(moduleScript);
-  
+
   // Fallback for browsers that don't support modules
   const nomoduleScript = document.createElement('script');
   nomoduleScript.setAttribute('nomodule', '');
@@ -202,6 +202,6 @@
     };
     document.head.appendChild(script);
   `;
-  
+
   document.head.appendChild(nomoduleScript);
 })();

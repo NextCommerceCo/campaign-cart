@@ -329,7 +329,7 @@ export default defineConfig({
     warmup: {
       clientFiles: ['./src/index.ts'],
     },
-    allowedHosts: ['*']
+    allowedHosts: true
   },
 
   // Public directory for serving static files (including debug files)

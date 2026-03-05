@@ -296,7 +296,7 @@ export interface CreateOrder {
 export interface CartCalculateSummary {
   lines: LineWithUpsell[];
   vouchers?: string[];
-  currency?: string;
+  currency?: string | null;
   shipping_method?: number;
 }
 

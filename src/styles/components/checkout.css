@@ -3,7 +3,19 @@
   cursor: not-allowed;
 }
 
+/* Unavailable variant options */
+.next-unavailable {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+  position: relative;
+  text-decoration: line-through;
+  color: gray;
+}
 
+.next-unavailable:hover {
+  background-color: transparent;
+}
 
 /* Base button processing state */
 .next-processing {
@@ -334,9 +346,6 @@
     width: 3rem !important;
     right: 0 !important;
     left: auto !important;
-    padding: 1px;
-  }
-
   .iti:not(.iti--allow-dropdown) input,
   .iti:not(.iti--allow-dropdown) input[type=text],
   .iti:not(.iti--allow-dropdown) input[type=tel] {
@@ -344,3 +353,30 @@
     padding-left: 12px !important;
     margin-left: 0 !important;
   }
+}
+
+/* ========================================
+   DROPDOWN COLOR SWATCH STYLING
+======================================== */
+/* Color swatch styling for variant selector dropdowns */
+.os-card__option-swatch {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  border: 2px solid #ddd;
+  flex-shrink: 0;
+  background-color: #ccc;
+  transition: all 0.2s ease;
+}
+
+.os-card__variant-dropdown-toggle .os-card__option-swatch {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.os-card__variant-toggle-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}

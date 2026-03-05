@@ -93,7 +93,9 @@ export class AttributeScanner {
         '[data-next-offer-variant-selector]',
         '[data-next-offer-display]',
         '[data-next-offer-badge]',
-        '[data-next-offer-condition]'
+        '[data-next-offer-condition]',
+        // Variant selector
+        '[data-next-variant-selector]'
       ].join(', ');
 
       const elements = root.querySelectorAll(selector);
@@ -445,6 +447,10 @@ export class AttributeScanner {
         case 'offer-condition':
           const { OfferConditionDisplayEnhancer } = await import('@/enhancers/offers/OfferConditionDisplayEnhancer');
           return new OfferConditionDisplayEnhancer(element);
+
+        case 'variant-selector':
+          const { VariantOptionSelectorEnhancer } = await import('@/enhancers/cart/VariantOptionSelectorEnhancer');
+          return new VariantOptionSelectorEnhancer(element);
 
         default:
           this.logger.warn(`Unknown enhancer type: ${type}`);
