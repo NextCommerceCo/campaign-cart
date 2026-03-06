@@ -1532,7 +1532,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
         item.append(icon, buildHighlightedLabel(r.label, input.value));
         item.addEventListener('click', () => {
-          input.value = r.label;
           this.fillAddressFromAutocomplete(r, type);
           input.blur();
         });
@@ -1561,7 +1560,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         try {
           if (input.value === '') return;
           const result = await this.apiClient.getAddressesAutocomplete(
-            input.value, countryValue, undefined, abortController.signal
+            input.value, countryValue, "EN", abortController.signal
           );
 
           if (!result.results.length) {
@@ -1620,6 +1619,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     // Fill in the address fields
     const addressField = fieldMap.get(`${fieldPrefix}address1`);
     if (addressField instanceof HTMLInputElement) {
+      let addressValue = components.address.line1;
+      addressField.value = addressValue;
+      addressField.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
     const cityField = fieldMap.get(`${fieldPrefix}city`);
@@ -1650,11 +1652,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       // Set state with retry (wait for country change to load states)
       const stateField = fieldMap.get(`${fieldPrefix}province`);
       if (stateField instanceof HTMLSelectElement) {
-        if (components.address.state) {
-          this.setStateWithRetry(stateField, components.address.state_code, fieldPrefix);
-        } else if (countryCode === 'BR' && components.address.state_code) {
-          // For Brazil, use parsed state if component is missing
-          this.setStateWithRetry(stateField, components.address.state_code, fieldPrefix);
+        if (components.address.state || components.address.state_code ) {
+          this.setStateWithRetry(stateField, components.address.state_code, components.address.state, fieldPrefix);
         }
       }
     }
@@ -1697,7 +1696,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     });
   }
 
-  private async setStateWithRetry(stateSelect: HTMLSelectElement, stateCode: string, fieldPrefix: string, attempt = 0): Promise<void> {
+  private async setStateWithRetry(stateSelect: HTMLSelectElement, stateCode: string, stateName: string, fieldPrefix: string, attempt = 0): Promise<void> {
     if (attempt >= 5) {
       this.logger.warn(`Failed to set state ${stateCode} after 5 attempts`);
       return;
@@ -1705,13 +1704,18 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     await new Promise(resolve => setTimeout(resolve, 300 * Math.pow(1.5, attempt)));
 
-    const hasOption = Array.from(stateSelect.options).some(opt => opt.value === stateCode);
-    if (hasOption) {
-      stateSelect.value = stateCode;
+    const options = Array.from(stateSelect.options);
+
+    const match =
+      (stateCode && options.find(opt => opt.value === stateCode)) ||
+      (stateName && options.find(opt => opt.text.toLowerCase().trim().includes(stateName.toLowerCase().trim())));
+
+    if (match) {
+      stateSelect.value = (match as HTMLOptionElement).value;
       stateSelect.dispatchEvent(new Event('change', { bubbles: true }));
-      this.logger.debug(`State set to ${stateCode}`);
+      this.logger.debug(`State set to ${(match as HTMLOptionElement).value}`);
     } else {
-      this.setStateWithRetry(stateSelect, stateCode, fieldPrefix, attempt + 1);
+      this.setStateWithRetry(stateSelect, stateCode, stateName, fieldPrefix, attempt + 1);
     }
   }
 
@@ -4254,9 +4258,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       }
     });
     this.phoneInputs.clear();
-
-    // Clean up autocomplete instances
-    this.autocompleteInstances.clear();
 
     this.fields.clear();
     this.billingFields.clear();
