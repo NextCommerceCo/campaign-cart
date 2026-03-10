@@ -14,7 +14,7 @@ export class AnalyticsManager {
   private loading = false;
   private loadPromise: Promise<void> | null = null;
 
-  private constructor() { }
+  private constructor() {}
 
   public static getInstance(): AnalyticsManager {
     if (!AnalyticsManager.instance) {
@@ -69,7 +69,7 @@ export class AnalyticsManager {
     // Initialize with API key
     if (typeof (window as any).nextCampaign !== 'undefined') {
       (window as any).nextCampaign.config({
-        apiKey: apiKey
+        apiKey: apiKey,
       });
 
       logger.debug('Analytics SDK configured with API key');
@@ -108,7 +108,10 @@ export class AnalyticsManager {
   /**
    * Tracks an analytics event
    */
-  public async trackEvent(eventName: string, eventData: Record<string, any> = {}): Promise<void> {
+  public async trackEvent(
+    eventName: string,
+    eventData: Record<string, any> = {}
+  ): Promise<void> {
     try {
       // Ensure SDK is loaded before tracking
       await this.loadAnalyticsSDK();
@@ -130,7 +133,7 @@ export class AnalyticsManager {
   public async trackPageView(): Promise<void> {
     const pageData = {
       title: document.title,
-      url: window.location.href
+      url: window.location.href,
     };
 
     await this.trackEvent('page_view', pageData);

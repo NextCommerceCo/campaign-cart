@@ -30,7 +30,6 @@ export type * from './types/global';
 // Utility exports
 export { Logger } from './utils/logger';
 export { EventBus } from './utils/events';
-export * as VariantHelper from './utils/variant/VariantHelper';
 
 // API client export
 export { ApiClient } from './api/client';
@@ -39,19 +38,6 @@ export { ApiClient } from './api/client';
 export { ProfileManager } from './core/ProfileManager';
 export { ProfileMapper } from './utils/profiles/ProfileMapper';
 export { ProfileSwitcherEnhancer, ProfileSelectorEnhancer } from './enhancers/profile/ProfileSwitcherEnhancer';
-
-// Enhancer exports
-export { DiscountListEnhancer } from './enhancers/cart/DiscountListEnhancer';
-export { VariantOptionSelectorEnhancer } from './enhancers/cart/VariantOptionSelectorEnhancer';
-
-// Offer enhancer exports
-export {
-  OfferPackageSelectorEnhancer,
-  OfferVariantSelectorEnhancer,
-  OfferDisplayEnhancer,
-  OfferBadgeEnhancer,
-  OfferConditionDisplayEnhancer
-} from './enhancers/offers';
 
 // Version - use runtime detected version from loader, fallback to build-time version
 declare global {
@@ -104,13 +90,6 @@ if (typeof window !== 'undefined') {
         // Order/Upsell
         import('./enhancers/display/OrderDisplayEnhancer');
         import('./enhancers/order/UpsellEnhancer');
-
-        // Offer enhancers
-        import('./enhancers/offers/OfferPackageSelectorEnhancer');
-        import('./enhancers/offers/OfferVariantSelectorEnhancer');
-        import('./enhancers/offers/OfferDisplayEnhancer');
-        import('./enhancers/offers/OfferBadgeEnhancer');
-        import('./enhancers/offers/OfferConditionDisplayEnhancer');
 
         // Attribution
         import('./utils/attribution/AttributionCollector');

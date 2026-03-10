@@ -43,7 +43,7 @@ export class StorageManager {
         this.logger.debug(`No value found for key: ${key}`);
         return defaultValue;
       }
-      
+
       const deserialized = this.deserialize(item);
       this.logger.debug(`Retrieved value for key: ${key}`);
       return deserialized;
@@ -151,10 +151,13 @@ export const CAMPAIGN_STORAGE_KEY = 'next-campaign-cache';
  */
 export const TIMER_STORAGE_PREFIX = 'next-timer-';
 
-export const getTimerKey = (persistenceId: string): string => 
+export const getTimerKey = (persistenceId: string): string =>
   `${TIMER_STORAGE_PREFIX}${persistenceId}`;
 
-export const saveTimerState = (persistenceId: string, endTime: number): void => {
+export const saveTimerState = (
+  persistenceId: string,
+  endTime: number
+): void => {
   sessionStorageManager.set(getTimerKey(persistenceId), endTime);
 };
 
@@ -169,8 +172,15 @@ export const clearTimerState = (persistenceId: string): void => {
 /**
  * Storage quota helpers
  */
-export const getStorageQuota = async (): Promise<{ quota: number; usage: number } | null> => {
-  if ('navigator' in globalThis && 'storage' in navigator && 'estimate' in navigator.storage) {
+export const getStorageQuota = async (): Promise<{
+  quota: number;
+  usage: number;
+} | null> => {
+  if (
+    'navigator' in globalThis &&
+    'storage' in navigator &&
+    'estimate' in navigator.storage
+  ) {
     try {
       const estimate = await navigator.storage.estimate();
       return {
@@ -193,19 +203,19 @@ export const onStorageChange = (
   const handler = (event: StorageEvent) => {
     if (event.key && event.storageArea === sessionStorage) {
       let oldValue, newValue;
-      
+
       try {
         oldValue = event.oldValue ? JSON.parse(event.oldValue) : null;
       } catch {
         oldValue = event.oldValue;
       }
-      
+
       try {
         newValue = event.newValue ? JSON.parse(event.newValue) : null;
       } catch {
         newValue = event.newValue;
       }
-      
+
       callback({
         key: event.key,
         oldValue,
@@ -215,7 +225,7 @@ export const onStorageChange = (
   };
 
   window.addEventListener('storage', handler);
-  
+
   return () => {
     window.removeEventListener('storage', handler);
   };

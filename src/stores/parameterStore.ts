@@ -33,29 +33,29 @@ export const useParameterStore = create<ParameterState>()(
 
       updateParam: (key, value) => {
         set(state => ({
-          params: { ...state.params, [key]: value }
+          params: { ...state.params, [key]: value },
         }));
         logger.debug(`Parameter updated: ${key} = ${value}`);
       },
 
-      updateParams: (params) => {
+      updateParams: params => {
         set({ params });
         logger.debug('Parameters replaced:', params);
       },
 
-      mergeParams: (params) => {
+      mergeParams: params => {
         set(state => ({
-          params: { ...state.params, ...params }
+          params: { ...state.params, ...params },
         }));
         logger.debug('Parameters merged:', params);
       },
 
-      getParam: (key) => {
+      getParam: key => {
         const state = get();
         return state.params[key];
       },
 
-      hasParam: (key) => {
+      hasParam: key => {
         const state = get();
         return key in state.params;
       },
@@ -65,7 +65,7 @@ export const useParameterStore = create<ParameterState>()(
         logger.info('All parameters cleared');
       },
 
-      removeParam: (key) => {
+      removeParam: key => {
         set(state => {
           const newParams = { ...state.params };
           delete newParams[key];
@@ -116,13 +116,19 @@ export const useParameterStore = create<ParameterState>()(
           const storedKeys = new Set(Object.keys(state.params));
           const urlKeys = new Set(Object.keys(currentParams));
 
-          const onlyInStore = Array.from(storedKeys).filter(k => !urlKeys.has(k));
+          const onlyInStore = Array.from(storedKeys).filter(
+            k => !urlKeys.has(k)
+          );
           const onlyInUrl = Array.from(urlKeys).filter(k => !storedKeys.has(k));
-          const different = Array.from(storedKeys).filter(k =>
-            urlKeys.has(k) && state.params[k] !== currentParams[k]
+          const different = Array.from(storedKeys).filter(
+            k => urlKeys.has(k) && state.params[k] !== currentParams[k]
           );
 
-          if (onlyInStore.length > 0 || onlyInUrl.length > 0 || different.length > 0) {
+          if (
+            onlyInStore.length > 0 ||
+            onlyInUrl.length > 0 ||
+            different.length > 0
+          ) {
             console.log('\n⚠️ Differences:');
             if (onlyInStore.length > 0) {
               console.log('  Only in store:', onlyInStore);
@@ -138,12 +144,12 @@ export const useParameterStore = create<ParameterState>()(
 
         console.groupEnd();
         return 'Parameter debug info logged to console.';
-      }
+      },
     }),
     {
       name: 'next-url-params',
       storage: {
-        getItem: (name) => {
+        getItem: name => {
           try {
             const str = sessionStorage.getItem(name);
             return str ? JSON.parse(str) : null;
@@ -159,14 +165,14 @@ export const useParameterStore = create<ParameterState>()(
             logger.error('Error writing to sessionStorage:', error);
           }
         },
-        removeItem: (name) => {
+        removeItem: name => {
           try {
             sessionStorage.removeItem(name);
           } catch (error) {
             logger.error('Error removing from sessionStorage:', error);
           }
-        }
-      }
+        },
+      },
     }
   )
 );

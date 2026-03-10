@@ -1,0 +1,212 @@
+<!--
+title: Simple Selector
+description: Full product page with variant selectors (color swatches + size pills), add-to-cart, and buy-now buttons.
+order: 1
+-->
+
+<!--
+  HOW THIS WORKS:
+  ─────────────────────────────────────────────────────────────────────────────
+  PackageSelectorEnhancer (data-next-selector):
+    • Wraps all variant cards for a single dimension (e.g. color OR size).
+    • data-next-selector-id  — unique name, shared with buttons that read from it.
+    • data-next-selection-mode="select"  — just tracks selection; "swap" (default)
+                                          also swaps the full cart immediately.
+
+  Selector cards (data-next-selector-card):
+    • Each card maps to ONE package ref_id via data-next-package-id.
+    • data-next-selected="true"  — pre-selects this card on page load.
+    • SDK adds/removes `.next-selected` on click.
+
+  Add-to-Cart button (data-next-action="add-to-cart"):
+    • data-next-selector-id  — reads the active package from that selector.
+    • data-next-url          — redirect after success (pass to checkout, etc.).
+    • data-next-clear-cart   — "true" to replace cart contents.
+
+  Buy-Now button:
+    • Same as add-to-cart but with data-next-url pointing to your checkout page.
+  ─────────────────────────────────────────────────────────────────────────────
+-->
+
+<div data-next-selector-id="drone-packages" data-next-cart-selector="" data-next-selection-mode="swap" class="os-option"
+    data-selected-package="2">
+    <div class="os-cards__vertical os--gap-m">
+        <div data-next-shipping-id="1" role="button" data-next-selector-card="" data-next-package-id="4"
+            data-next-quantity="1" data-next-selected="false" data-next-await="" class="os-card next-selector-card"
+            data-next-in-cart="false">
+            <div os-slot="header" class="os-card__header-slot"></div>
+            <div class="os-card__wrapper">
+                <div class="os-card__content os--align-middle">
+                    <div data-selected="true" class="radio-style-1">
+                        <div class="radio-inner"></div>
+                    </div>
+                    <div class="os-card__image-slot hide-tablet"><img data-next-display="package.image"
+                            class="image display-visible"
+                            src="https://d1w87fp8j98gad.cloudfront.net/media/cache/e9/9c/e99c03dce396dae3a651e9e143f80439.webp"
+                            alt="Product image"></div>
+                    <div os-slot="left" class="os-card__main-slot">
+                        <div os-component="title-section" class="os-card__title-section">
+                            <div class="os-card__title-wrapper">
+                                <div data-next-display="package.name" class="os-card__title display-visible">3x Drone
+                                </div>
+                                <div data-next-show="package.hasSavings"
+                                    class="os-card__title-badge pb--bestseller next-condition-met next-visible">
+                                    <div>SAVE <span data-next-display="package.savingsPercentage"
+                                            class="display-visible">60%</span></div>
+                                </div>
+                            </div>
+                            <div class="os-card__subtitle-wrapper">
+                                <div data-next-show="package.hasSavings"
+                                    class="os-card__subtitle-text next-condition-met next-visible">Save <span
+                                        data-next-display="package.savingsAmount"
+                                        class="display-visible">$72.00</span><span data-next-show="shipping.isFree"
+                                        class="next-condition-met next-visible"> + Free Shipping</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div os-slot="right" class="os-card__secondary-slot">
+                        <div class="os-card__pricing">
+                            <div os-component="price-container" class="os-card__price-container">
+                                <div data-next-show="package.hasRetailPrice" data-next-display="package.price_retail"
+                                    class="os-card__price os--compare os-style display-visible next-condition-met next-visible">
+                                    $39.99</div>
+                                <div class="os-card__price os--current"><span data-next-display="package.price"
+                                        class="display-visible">$15.99</span>/ea</div>
+                            </div>
+                            <div os-component="total-container" class="os-card__total-container">
+                                <div class="os-card__total-label">Total:</div>
+                                <div data-next-show="package.hasRetailPrice"
+                                    data-next-display="package.price_retail_total"
+                                    class="os-card__total-compare display-visible next-condition-met next-visible">
+                                    $119.97</div>
+                                <div data-next-display="package.price_total"
+                                    class="os-card__total-current display-visible">$47.97</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div os-slot="bottom" class="os-card__bottom-slot hide"></div>
+            </div>
+            <div os-slot="footer" class="os-card__footer-slot"></div>
+            <div os-slot="label" class="os-card__label-slot">
+                <div os-label-position="top-right" class="os-card__label os-card__label--top-right">
+                    <div class="os-card__label-text">BEST DEAL</div>
+                </div>
+            </div>
+        </div>
+        <div data-next-shipping-id="2" role="button" data-next-selector-card="" data-next-package-id="3"
+            data-next-quantity="1" data-next-await="" class="os-card next-selector-card next-in-cart"
+            data-next-in-cart="true" data-next-selected="false">
+            <div os-slot="header" class="os-card__header-slot"></div>
+            <div class="os-card__wrapper">
+                <div class="os-card__content os--align-middle">
+                    <div data-selected="true" class="radio-style-1">
+                        <div class="radio-inner"></div>
+                    </div>
+                    <div class="os-card__image-slot hide-tablet"><img data-next-display="package.image"
+                            class="image display-visible"
+                            src="https://d1w87fp8j98gad.cloudfront.net/media/cache/a0/6b/a06b750446f400be6a606ae0e5a283df.webp"
+                            alt="Product image"></div>
+                    <div os-slot="left" class="os-card__main-slot">
+                        <div os-component="title-section" class="os-card__title-section">
+                            <div class="os-card__title-wrapper">
+                                <div data-next-display="package.name" class="os-card__title display-visible">2x Drone
+                                </div>
+                                <div data-next-show="package.hasSavings"
+                                    class="os-card__title-badge pb--bestseller next-condition-met next-visible">
+                                    <div>SAVE <span data-next-display="package.savingsPercentage"
+                                            class="display-visible">55%</span></div>
+                                </div>
+                            </div>
+                            <div class="os-card__subtitle-wrapper">
+                                <div data-next-show="package.hasSavings"
+                                    class="os-card__subtitle-text next-condition-met next-visible">Save <span
+                                        data-next-display="package.savingsAmount" class="display-visible">$44.00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div os-slot="right" class="os-card__secondary-slot">
+                        <div class="os-card__pricing">
+                            <div os-component="price-container" class="os-card__price-container">
+                                <div data-next-display="package.price_retail"
+                                    class="os-card__price os--compare os-style display-visible">$39.99</div>
+                                <div class="os-card__price os--current"><span data-next-display="package.price"
+                                        class="display-visible">$17.99</span>/ea</div>
+                            </div>
+                            <div os-component="total-container" class="os-card__total-container">
+                                <div class="os-card__total-label">Total:</div>
+                                <div data-next-show="package.hasRetailPrice"
+                                    data-next-display="package.price_retail_total"
+                                    class="os-card__total-compare display-visible next-condition-met next-visible">
+                                    $79.98</div>
+                                <div data-next-display="package.price_total"
+                                    class="os-card__total-current display-visible">$35.98</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div os-slot="bottom" class="os-card__bottom-slot hide"></div>
+            </div>
+            <div os-slot="footer" class="os-card__footer-slot"></div>
+        </div>
+        <div data-next-shipping-id="2" role="button" data-next-selector-card="" data-next-package-id="2"
+            data-next-quantity="1" data-next-await="" class="os-card next-selector-card next-selected"
+            data-next-in-cart="false" data-next-selected="true">
+            <div os-slot="header" class="os-card__header-slot"></div>
+            <div class="os-card__wrapper">
+                <div class="os-card__content os--align-middle">
+                    <div data-selected="true" class="radio-style-1">
+                        <div class="radio-inner"></div>
+                    </div>
+                    <div class="os-card__image-slot hide-tablet"><img data-next-display="package.image"
+                            class="image display-visible"
+                            src="https://d1w87fp8j98gad.cloudfront.net/media/cache/12/92/12929fd6c9c67611beb10c28d09eb8c1.webp"
+                            alt="Product image"></div>
+                    <div os-slot="left" class="os-card__main-slot">
+                        <div os-component="title-section" class="os-card__title-section">
+                            <div class="os-card__title-wrapper">
+                                <div data-next-display="package.name" class="os-card__title display-visible">1x Drone
+                                </div>
+                                <div data-next-show="package.hasSavings"
+                                    class="os-card__title-badge pb--bestseller next-condition-met next-visible">
+                                    <div>SAVE <span data-next-display="package.savingsPercentage"
+                                            class="display-visible">50%</span></div>
+                                </div>
+                            </div>
+                            <div class="os-card__subtitle-wrapper">
+                                <div data-next-show="package.hasSavings"
+                                    class="os-card__subtitle-text next-condition-met next-visible">Save <span
+                                        data-next-display="package.savingsAmount"
+                                        class="display-visible">$20.00</span><span data-next-show="shipping.isFree"
+                                        class="next-condition-not-met next-hidden" style="display: none;"> + Free
+                                        Shipping</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div os-slot="right" class="os-card__secondary-slot">
+                        <div class="os-card__pricing">
+                            <div os-component="price-container" class="os-card__price-container">
+                                <div data-next-display="package.price_retail"
+                                    class="os-card__price os--compare os-style display-visible">$39.99</div>
+                                <div class="os-card__price os--current"><span data-next-display="package.price"
+                                        class="display-visible">$19.99</span>/ea</div>
+                            </div>
+                            <div os-component="total-container" class="os-card__total-container">
+                                <div class="os-card__total-label">Total:</div>
+                                <div data-next-show="package.hasRetailPrice"
+                                    data-next-display="package.price_retail_total"
+                                    class="os-card__total-compare display-visible next-condition-met next-visible">
+                                    $39.99</div>
+                                <div data-next-display="package.price_total"
+                                    class="os-card__total-current os-dark display-visible">$19.99</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div os-slot="bottom" class="os-card__bottom-slot hide"></div>
+            </div>
+            <div os-slot="footer" class="os-card__footer-slot"></div>
+        </div>
+    </div>
+</div>

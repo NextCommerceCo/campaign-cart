@@ -1,0 +1,174 @@
+---
+title: Package Selector
+description: A group of clickable cards that let the user pick a package. Supports swap and select modes.
+---
+
+`PackageSelectorEnhancer` manages a group of package option cards inside a container element. When a card is clicked, the SDK updates the selection state and (in `swap` mode) immediately updates the cart.
+
+---
+
+## Basic usage
+
+```html
+<div data-next-cart-selector
+     data-next-selector-id="main"
+     data-next-selection-mode="select">
+
+  <div data-next-selector-card
+       data-next-package-id="10"
+       data-next-selected="true">
+    <!-- Card content -->
+    1 Bottle — $29
+  </div>
+
+  <div data-next-selector-card data-next-package-id="20">
+    3 Bottles — $69
+  </div>
+
+  <div data-next-selector-card data-next-package-id="30">
+    6 Bottles — $99
+  </div>
+
+</div>
+```
+
+---
+
+## Modes
+
+### `swap` mode (default)
+
+Selecting a card **immediately replaces** the cart contents with that package. Use this when you want a simple "pick one and buy" flow with no separate button.
+
+```html
+<div data-next-cart-selector data-next-selector-id="packages">
+  <!-- selecting any card instantly updates the cart -->
+  <div data-next-selector-card data-next-package-id="10" data-next-selected="true">...</div>
+  <div data-next-selector-card data-next-package-id="20">...</div>
+</div>
+```
+
+### `select` mode
+
+Selecting a card marks it as selected but does **not** add it to the cart. Pair with an [`AddToCartEnhancer`](/docs/cart/add-to-cart) button that reads the selection.
+
+```html
+<div data-next-cart-selector
+     data-next-selector-id="main"
+     data-next-selection-mode="select">
+  <div data-next-selector-card data-next-package-id="10" data-next-selected="true">...</div>
+  <div data-next-selector-card data-next-package-id="20">...</div>
+</div>
+
+<button data-next-action="add-to-cart"
+        data-next-selector-id="main"
+        data-next-url="/checkout">
+  Buy Now
+</button>
+```
+
+---
+
+## Container attributes
+
+| Attribute | Required | Description |
+|---|---|---|
+| `data-next-cart-selector` | ✓ | Marks this element as a selector container |
+| `data-next-selector-id` | ✓ | ID used to link with `AddToCartEnhancer` and display enhancers |
+| `data-next-selection-mode` | | `swap` (default) or `select` |
+
+---
+
+## Card attributes (`data-next-selector-card`)
+
+| Attribute | Required | Description |
+|---|---|---|
+| `data-next-package-id` | ✓ | Package ID for this card |
+| `data-next-quantity` | | Cart quantity when this card is selected (default `1`) |
+| `data-next-selected="true"` | | Pre-selected on page load |
+| `data-next-shipping-id` | | Set a specific shipping method when this card is selected (swap mode only) |
+| `data-next-min-quantity` | | Minimum quantity for inline quantity controls (default `1`) |
+| `data-next-max-quantity` | | Maximum quantity for inline quantity controls (default `999`) |
+
+---
+
+## Inline quantity controls
+
+Cards can have their own quantity +/− controls. These work even in `select` mode and update the cart quantity when the card is selected.
+
+```html
+<div data-next-selector-card
+     data-next-package-id="10"
+     data-next-quantity="1"
+     data-next-min-quantity="1"
+     data-next-max-quantity="10"
+     data-next-selected="true">
+
+  <button data-next-quantity-decrease>−</button>
+  <span data-next-quantity-display></span>
+  <button data-next-quantity-increase>+</button>
+
+  <span>Bottle @ $29 each</span>
+</div>
+```
+
+---
+
+## CSS classes
+
+The SDK manages these classes automatically — no JavaScript needed:
+
+| Class | Applied to | Meaning |
+|---|---|---|
+| `next-selector-card` | Each card | Added on init |
+| `next-selected` | Selected card | Card is currently selected |
+| `next-in-cart` | Card | Package is currently in the cart |
+| `next-disabled` | Quantity buttons | Button is at its min/max limit |
+
+Style the selected state in your CSS:
+
+```css
+[data-next-selector-card].next-selected {
+  border: 2px solid #0070f3;
+  background: #f0f7ff;
+}
+```
+
+---
+
+## Events emitted
+
+| Event | Payload | When |
+|---|---|---|
+| `selector:item-selected` | `{ selectorId, packageId, previousPackageId, mode }` | Card clicked |
+| `selector:selection-changed` | `{ selectorId, packageId, item }` | Internal selection state updated |
+| `selector:quantity-changed` | `{ selectorId, packageId, quantity }` | Inline quantity control changed |
+
+```js
+window.NextCommerce.on('selector:item-selected', ({ packageId }) => {
+  console.log('User selected package', packageId);
+});
+```
+
+---
+
+## Dynamic cards
+
+Cards added to the DOM after initialization are detected automatically via a `MutationObserver`. You can also dynamically update `data-next-package-id` on an existing card and the selector will re-register it.
+
+---
+
+## Reading the selection
+
+For use in custom JavaScript:
+
+```js
+const container = document.querySelector('[data-next-selector-id="main"]');
+
+// Via element property
+const selected = container._getSelectedItem();    // SelectorItem | null
+const packageId = container._getSelectedPackageId(); // number | undefined
+
+// Via data attribute
+const packageIdStr = container.getAttribute('data-selected-package'); // "10"
+```

@@ -1,0 +1,850 @@
+/**
+ * Bundle Selector Enhancer
+ *
+ * Lets the developer define named bundles — each bundle being a fixed set of
+ * packages + quantities — and lets the visitor pick one. When a bundle is
+ * selected in **swap** mode the enhancer atomically replaces the previous
+ * bundle's cart items with the new bundle's items while leaving unrelated
+ * cart items untouched.
+ *
+ * ─── Container attributes ────────────────────────────────────────────────────
+ *
+ *   data-next-bundle-selector            — marks the container element
+ *
+ *   data-next-selection-mode             — "swap" (default) | "select"
+ *     swap   → selecting a bundle immediately updates the cart
+ *     select → only tracks selection; an external add-to-cart handles the cart
+ *
+ *   data-next-bundles='[…]'             — JSON array of bundle definitions for
+ *                                          auto-rendered mode (see below)
+ *
+ *   data-next-bundle-template-id="<id>" — ID of an element whose innerHTML is
+ *                                          the card template (auto-render mode)
+ *
+ *   data-next-bundle-template="<html>"  — inline card template string
+ *                                          (alternative to template-id)
+ *
+ * ─── Per-item slot templates ──────────────────────────────────────────────────
+ *
+ *   data-next-bundle-slot-template-id="<id>"
+ *     ID of a <template> element whose innerHTML is the slot template rendered
+ *     once for each item in the bundle. Inject variant selectors by placing
+ *     an element with data-next-variant-selectors inside the template.
+ *     If omitted, no per-item rows are rendered.
+ *
+ *   data-next-bundle-slot-template="<html>"
+ *     Inline alternative to data-next-bundle-slot-template-id.
+ *
+ *   data-next-variant-option-template-id="<id>"
+ *     ID of a <template> element whose innerHTML represents a single variant
+ *     option (e.g. a button or swatch). When provided, custom elements replace
+ *     the default <select> dropdowns. Omit to keep the default <select> behavior.
+ *
+ * ─── Slot template variables ─────────────────────────────────────────────────
+ *
+ *   {slot.index}       — 1-based slot number
+ *   {item.packageId}   — current package ref_id for this slot
+ *   {item.name}        — package name
+ *   {item.image}       — package image URL
+ *   {item.price}       — package price string
+ *   {item.quantity}    — quantity for this slot
+ *   {item.variantName} — variant display name (e.g. "Black / Small")
+ *   {item.productName} — product name
+ *
+ * ─── Variant selector injection ──────────────────────────────────────────────
+ *
+ *   Place an element with data-next-variant-selectors inside the slot template.
+ *   The enhancer populates it with one selector block per variant attribute.
+ *   Products without variant attributes get no selectors injected.
+ *
+ *   Default: a <select> dropdown per attribute dimension.
+ *   Custom (data-next-variant-option-template-id): renders one copy per option.
+ *
+ *   Custom option template variables:
+ *     {attr.code}       — attribute code (e.g. "color")
+ *     {attr.name}       — attribute label (e.g. "Color")
+ *     {option.value}    — option value (e.g. "Red")
+ *     {option.selected} — "true" / "false"
+ *
+ *   CSS class added to the selected option: next-variant-selected
+ *   data-selected="true" is set on the selected option element.
+ *
+ * ─── Bundle card placement ────────────────────────────────────────────────────
+ *
+ *   Place a [data-next-bundle-slots] element inside the bundle card template to
+ *   mark where per-item slot rows are injected.
+ *
+ * ─── Auto-render mode ────────────────────────────────────────────────────────
+ *
+ * ─── Per-unit configuration (color / size per unit) ─────────────────────────
+ *
+ *   Add "configurable": true to any bundle item whose quantity > 1 to expand
+ *   it into individual slots — one per unit — each with its own variant
+ *   selectors. Without this flag a quantity-3 item renders as a single slot.
+ *
+ *   Extra slot template variables available for configurable items:
+ *     {slot.unitNumber} — 1-based index within the item's expanded units
+ *     {slot.unitIndex}  — 0-based index within the item's expanded units
+ *
+ * ─── Auto-render mode ────────────────────────────────────────────────────────
+ *
+ *   [
+ *     {
+ *       "id": "starter",
+ *       "name": "Starter Kit",
+ *       "price": "$49",
+ *       "items": [
+ *         { "packageId": 10, "quantity": 1 },
+ *         { "packageId": 20, "quantity": 1 }
+ *       ]
+ *     }
+ *   ]
+ *
+ *   With per-unit configuration (e.g. 3 units, each configurable):
+ *
+ *   [
+ *     {
+ *       "id": "trio",
+ *       "name": "Pick Your 3",
+ *       "items": [
+ *         { "packageId": 10, "quantity": 3, "configurable": true }
+ *       ]
+ *     }
+ *   ]
+ *
+ * ─── Manual / static card mode ───────────────────────────────────────────────
+ *
+ *   <div data-next-bundle-selector
+ *        data-next-bundle-slot-template-id="slot-tpl"
+ *        data-next-variant-option-template-id="variant-opt-tpl">
+ *
+ *     <!-- quantity 3, each unit independently configurable -->
+ *     <div data-next-bundle-card
+ *          data-next-bundle-id="buy3"
+ *          data-next-bundle-items='[{"packageId":101,"quantity":3,"configurable":true}]'
+ *          data-next-selected="true">
+ *       <h3>Pick Your 3</h3>
+ *       <div data-next-bundle-slots></div>
+ *     </div>
+ *   </div>
+ *
+ *   <template id="slot-tpl">
+ *     <div class="slot-row">
+ *       <img src="{item.image}" alt="{item.name}" />
+ *       <div data-next-variant-selectors></div>
+ *     </div>
+ *   </template>
+ *
+ *   <template id="variant-opt-tpl">
+ *     <button class="swatch" data-selected="{option.selected}">{option.value}</button>
+ *   </template>
+ *
+ * ─── CSS classes applied ─────────────────────────────────────────────────────
+ *
+ *   next-bundle-card    — added to every registered card
+ *   next-selected       — the currently selected card
+ *   next-in-cart        — all bundle items are present in the cart at required qty
+ *
+ * ─── Events emitted ──────────────────────────────────────────────────────────
+ *
+ *   bundle:selected           — card clicked; payload: { bundleId, items }
+ *   bundle:selection-changed  — internal selection updated; same payload
+ *
+ * ─── Container attribute set by enhancer ─────────────────────────────────────
+ *
+ *   data-selected-bundle="<id>"  — reflects the currently selected bundle id
+ */
+
+import { BaseEnhancer } from '@/enhancers/base/BaseEnhancer';
+import { useCartStore } from '@/stores/cartStore';
+import { useCampaignStore } from '@/stores/campaignStore';
+import type { CartState } from '@/types/global';
+import type { Package } from '@/types/campaign';
+
+// ─── Internal types ───────────────────────────────────────────────────────────
+
+interface BundleItem {
+  packageId: number;
+  quantity: number;
+  /**
+   * When true, a quantity > 1 is expanded into individual slots so the visitor
+   * can configure color / size (or any variant) independently per unit.
+   */
+  configurable?: boolean;
+}
+
+interface BundleDef {
+  id: string;
+  items: BundleItem[];
+  [key: string]: unknown;
+}
+
+/** Tracks one item slot within a bundle card, with variant override support. */
+interface BundleSlot {
+  slotIndex: number;
+  /**
+   * 0-based index within the units that were expanded from this item.
+   * Always 0 for non-configurable items.
+   */
+  unitIndex: number;
+  /** Package as originally defined in the bundle. */
+  originalPackageId: number;
+  /** Currently active package (may differ after the user selects a variant). */
+  activePackageId: number;
+  quantity: number;
+}
+
+interface BundleCard {
+  element: HTMLElement;
+  bundleId: string;
+  /** Original item definitions — kept for reference. */
+  items: BundleItem[];
+  /** One slot per item; tracks active variant selections. */
+  slots: BundleSlot[];
+  isPreSelected: boolean;
+}
+
+// ─── Enhancer ─────────────────────────────────────────────────────────────────
+
+export class BundleSelectorEnhancer extends BaseEnhancer {
+  private mode: 'swap' | 'select' = 'swap';
+  private template: string = '';
+  private slotTemplate: string = '';
+  private variantOptionTemplate: string = '';
+  private cards: BundleCard[] = [];
+  private selectedCard: BundleCard | null = null;
+  private clickHandlers = new Map<HTMLElement, (e: Event) => void>();
+  private selectHandlers = new Map<HTMLSelectElement, EventListener>();
+  private mutationObserver: MutationObserver | null = null;
+  private boundVariantOptionClick: ((e: Event) => void) | null = null;
+  /** Prevents re-entrant cart updates when we trigger them ourselves. */
+  private isApplying: boolean = false;
+
+  public async initialize(): Promise<void> {
+    this.validateElement();
+
+    this.mode = (this.getAttribute('data-next-selection-mode') ?? 'swap') as 'swap' | 'select';
+
+    // ── Card template ──────────────────────────────────────────────────────────
+    const templateId = this.getAttribute('data-next-bundle-template-id');
+    if (templateId) {
+      this.template = document.getElementById(templateId)?.innerHTML.trim() ?? '';
+    } else {
+      this.template = this.getAttribute('data-next-bundle-template') ?? '';
+    }
+
+    // ── Slot template (per-item rows within a card) ────────────────────────────
+    const slotTemplateId = this.getAttribute('data-next-bundle-slot-template-id');
+    if (slotTemplateId) {
+      this.slotTemplate = document.getElementById(slotTemplateId)?.innerHTML.trim() ?? '';
+    } else {
+      this.slotTemplate = this.getAttribute('data-next-bundle-slot-template') ?? '';
+    }
+
+    // ── Custom variant option template ─────────────────────────────────────────
+    const variantOptionTemplateId = this.getAttribute('data-next-variant-option-template-id');
+    if (variantOptionTemplateId) {
+      this.variantOptionTemplate =
+        document.getElementById(variantOptionTemplateId)?.innerHTML.trim() ?? '';
+    }
+
+    // ── Auto-render bundle cards from JSON ─────────────────────────────────────
+    const bundlesAttr = this.getAttribute('data-next-bundles');
+    if (bundlesAttr && this.template) {
+      try {
+        const bundleDefs: BundleDef[] = JSON.parse(bundlesAttr);
+        this.element.innerHTML = '';
+        for (const def of bundleDefs) {
+          const el = this.renderBundleTemplate(def);
+          if (el) this.element.appendChild(el);
+        }
+      } catch {
+        this.logger.warn('Invalid JSON in data-next-bundles, ignoring auto-render', bundlesAttr);
+      }
+    }
+
+    // ── Delegated click handler for custom variant options ─────────────────────
+    if (this.slotTemplate) {
+      const handler = this.handleVariantOptionClick.bind(this);
+      this.boundVariantOptionClick = handler;
+      this.element.addEventListener('click', handler);
+    }
+
+    this.scanCards();
+    this.setupMutationObserver();
+
+    this.subscribe(useCartStore, this.syncWithCart.bind(this));
+    this.syncWithCart(useCartStore.getState());
+
+    this.logger.debug('BundleSelectorEnhancer initialized', {
+      mode: this.mode,
+      cardCount: this.cards.length,
+    });
+  }
+
+  // ─── Bundle card template rendering ──────────────────────────────────────────
+
+  private renderBundleTemplate(bundle: BundleDef): HTMLElement | null {
+    const vars: Record<string, string> = {};
+    for (const [key, value] of Object.entries(bundle)) {
+      if (key !== 'items') {
+        vars[`bundle.${key}`] = value != null ? String(value) : '';
+      }
+    }
+
+    const html = this.template.replace(/\{([^}]+)\}/g, (_, k: string) => vars[k] ?? '');
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = html.trim();
+
+    const cardEl =
+      wrapper.querySelector<HTMLElement>('[data-next-bundle-card]') ??
+      (wrapper.firstElementChild as HTMLElement | null);
+
+    if (!cardEl) {
+      this.logger.warn('Bundle template produced no root element for bundle', bundle.id);
+      return null;
+    }
+
+    cardEl.setAttribute('data-next-bundle-card', '');
+    cardEl.setAttribute('data-next-bundle-id', bundle.id);
+    cardEl.setAttribute('data-next-bundle-items', JSON.stringify(bundle.items));
+
+    return cardEl;
+  }
+
+  // ─── Card registration ────────────────────────────────────────────────────────
+
+  private scanCards(): void {
+    this.element.querySelectorAll<HTMLElement>('[data-next-bundle-card]').forEach(el => {
+      if (!this.cards.find(c => c.element === el)) this.registerCard(el);
+    });
+  }
+
+  private registerCard(el: HTMLElement): void {
+    const bundleId = el.getAttribute('data-next-bundle-id');
+    if (!bundleId) {
+      this.logger.warn('Bundle card is missing data-next-bundle-id', el);
+      return;
+    }
+
+    const itemsAttr = el.getAttribute('data-next-bundle-items');
+    if (!itemsAttr) {
+      this.logger.warn(`Bundle card "${bundleId}" is missing data-next-bundle-items`, el);
+      return;
+    }
+
+    let items: BundleItem[];
+    try {
+      items = JSON.parse(itemsAttr);
+    } catch {
+      this.logger.warn(`Invalid JSON in data-next-bundle-items for bundle "${bundleId}"`, el);
+      return;
+    }
+
+    if (!Array.isArray(items) || items.length === 0) {
+      this.logger.warn(`Bundle "${bundleId}" has no items`, el);
+      return;
+    }
+
+    const isPreSelected = el.getAttribute('data-next-selected') === 'true';
+
+    const slots: BundleSlot[] = [];
+    let slotIdx = 0;
+    for (const item of items) {
+      if (item.configurable && item.quantity > 1) {
+        for (let u = 0; u < item.quantity; u++) {
+          slots.push({
+            slotIndex: slotIdx++,
+            unitIndex: u,
+            originalPackageId: item.packageId,
+            activePackageId: item.packageId,
+            quantity: 1,
+          });
+        }
+      } else {
+        slots.push({
+          slotIndex: slotIdx++,
+          unitIndex: 0,
+          originalPackageId: item.packageId,
+          activePackageId: item.packageId,
+          quantity: item.quantity,
+        });
+      }
+    }
+
+    const card: BundleCard = { element: el, bundleId, items, slots, isPreSelected };
+
+    this.cards.push(card);
+    el.classList.add('next-bundle-card');
+
+    // Render per-item slots when a slot template is configured
+    if (this.slotTemplate) {
+      this.renderSlotsForCard(card);
+    }
+
+    // Card click selects the bundle — but not when clicking variant controls
+    const handler = (e: Event) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('select, [data-next-variant-option]')) return;
+      void this.handleCardClick(e, card);
+    };
+    this.clickHandlers.set(el, handler);
+    el.addEventListener('click', handler);
+
+    this.logger.debug(`Registered bundle card "${bundleId}"`, { itemCount: items.length });
+  }
+
+  private setupMutationObserver(): void {
+    this.mutationObserver = new MutationObserver(mutations => {
+      for (const mutation of mutations) {
+        if (mutation.type !== 'childList') continue;
+        mutation.addedNodes.forEach(node => {
+          if (!(node instanceof HTMLElement)) return;
+          if (node.hasAttribute('data-next-bundle-card')) {
+            if (!this.cards.find(c => c.element === node)) this.registerCard(node);
+          }
+          node.querySelectorAll<HTMLElement>('[data-next-bundle-card]').forEach(el => {
+            if (!this.cards.find(c => c.element === el)) this.registerCard(el);
+          });
+        });
+      }
+    });
+    this.mutationObserver.observe(this.element, { childList: true, subtree: true });
+  }
+
+  // ─── Slot rendering ───────────────────────────────────────────────────────────
+
+  private renderSlotsForCard(card: BundleCard): void {
+    const placeholder = card.element.querySelector<HTMLElement>('[data-next-bundle-slots]');
+    if (!placeholder) return;
+
+    // Clean up any existing select handlers for this card's slots
+    placeholder.querySelectorAll<HTMLSelectElement>('select').forEach(s => {
+      const h = this.selectHandlers.get(s);
+      if (h) {
+        s.removeEventListener('change', h);
+        this.selectHandlers.delete(s);
+      }
+    });
+
+    const allPackages = useCampaignStore.getState().packages || [];
+    placeholder.innerHTML = '';
+
+    for (const slot of card.slots) {
+      const pkg = allPackages.find(p => p.ref_id === slot.activePackageId);
+      if (!pkg) continue;
+
+      const slotEl = this.createSlotElement(card.bundleId, slot, pkg);
+
+      const variantPlaceholder = slotEl.querySelector<HTMLElement>('[data-next-variant-selectors]');
+      if (variantPlaceholder && (pkg.product_variant_attribute_values?.length ?? 0) > 0) {
+        this.renderVariantSelectors(variantPlaceholder, card.bundleId, slot.slotIndex, pkg, allPackages);
+      }
+
+      placeholder.appendChild(slotEl);
+    }
+  }
+
+  private createSlotElement(bundleId: string, slot: BundleSlot, pkg: Package): HTMLElement {
+    const vars: Record<string, string> = {
+      'slot.index': String(slot.slotIndex + 1),
+      'slot.unitIndex': String(slot.unitIndex),
+      'slot.unitNumber': String(slot.unitIndex + 1),
+      'item.packageId': String(slot.activePackageId),
+      'item.name': pkg.name || '',
+      'item.image': pkg.image || '',
+      'item.price': pkg.price || '',
+      'item.quantity': String(slot.quantity),
+      'item.variantName': pkg.product_variant_name || '',
+      'item.productName': pkg.product_name || '',
+    };
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'next-bundle-slot';
+    wrapper.dataset.nextBundleId = bundleId;
+    wrapper.dataset.nextSlotIndex = String(slot.slotIndex);
+    wrapper.innerHTML = this.slotTemplate.replace(/\{([^}]+)\}/g, (_, key) => vars[key] ?? '');
+    return wrapper;
+  }
+
+  // ─── Variant selector rendering ───────────────────────────────────────────────
+
+  private renderVariantSelectors(
+    container: HTMLElement,
+    bundleId: string,
+    slotIndex: number,
+    currentPkg: Package,
+    allPackages: Package[]
+  ): void {
+    const productId = currentPkg.product_id;
+    if (!productId) return;
+
+    const productPkgs = allPackages.filter(p => p.product_id === productId);
+    const currentAttrs = currentPkg.product_variant_attribute_values || [];
+    if (currentAttrs.length === 0) return;
+
+    // Collect ordered attribute definitions
+    const attrDefs = new Map<string, string>();
+    for (const pkg of productPkgs) {
+      for (const attr of pkg.product_variant_attribute_values || []) {
+        if (!attrDefs.has(attr.code)) attrDefs.set(attr.code, attr.name);
+      }
+    }
+
+    const selected: Record<string, string> = {};
+    for (const attr of currentAttrs) selected[attr.code] = attr.value;
+
+    container.innerHTML = '';
+
+    for (const [code, name] of attrDefs) {
+      const values = [
+        ...new Set(
+          productPkgs.flatMap(p =>
+            (p.product_variant_attribute_values || [])
+              .filter(a => a.code === code)
+              .map(a => a.value)
+          )
+        ),
+      ];
+
+      if (this.variantOptionTemplate) {
+        this.renderCustomOptions(container, bundleId, slotIndex, code, name, values, selected[code] ?? '');
+      } else {
+        const field = document.createElement('div');
+        field.className = 'next-slot-variant-field';
+
+        const label = document.createElement('label');
+        label.className = 'next-slot-variant-label';
+        label.textContent = `${name}:`;
+
+        const select = document.createElement('select');
+        select.className = 'next-slot-variant-select';
+        select.dataset.variantCode = code;
+
+        for (const value of values) {
+          const option = document.createElement('option');
+          option.value = value;
+          option.textContent = value;
+          if (value === selected[code]) option.selected = true;
+          select.appendChild(option);
+        }
+
+        const handler: EventListener = () =>
+          void this.handleSelectVariantChange(select, bundleId, slotIndex);
+        this.selectHandlers.set(select, handler);
+        select.addEventListener('change', handler);
+
+        field.appendChild(label);
+        field.appendChild(select);
+        container.appendChild(field);
+      }
+    }
+  }
+
+  private renderCustomOptions(
+    container: HTMLElement,
+    bundleId: string,
+    slotIndex: number,
+    code: string,
+    name: string,
+    values: string[],
+    selectedValue: string
+  ): void {
+    const group = document.createElement('div');
+    group.className = 'next-slot-variant-group';
+    group.dataset.variantCode = code;
+    group.dataset.variantName = name;
+    group.dataset.nextBundleId = bundleId;
+    group.dataset.nextSlotIndex = String(slotIndex);
+
+    for (const value of values) {
+      const isSelected = value === selectedValue;
+      const vars: Record<string, string> = {
+        'attr.code': code,
+        'attr.name': name,
+        'option.value': value,
+        'option.selected': String(isSelected),
+      };
+      const html = this.variantOptionTemplate.replace(/\{([^}]+)\}/g, (_, k) => vars[k] ?? '');
+      const temp = document.createElement('div');
+      temp.innerHTML = html.trim();
+      const el = temp.firstElementChild as HTMLElement | null;
+      if (!el) continue;
+
+      el.dataset.nextVariantOption = code;
+      el.dataset.nextVariantValue = value;
+      if (isSelected) {
+        el.setAttribute('data-selected', 'true');
+        el.classList.add('next-variant-selected');
+      }
+
+      group.appendChild(el);
+    }
+
+    container.appendChild(group);
+  }
+
+  // ─── Variant change handlers ──────────────────────────────────────────────────
+
+  /** Delegated click handler for custom variant option elements. */
+  private handleVariantOptionClick(e: Event): void {
+    const target = e.target as HTMLElement;
+    const optionEl = target.closest<HTMLElement>('[data-next-variant-option]');
+    if (!optionEl) return;
+
+    const code = optionEl.dataset.nextVariantOption;
+    const value = optionEl.dataset.nextVariantValue;
+    if (!code || !value) return;
+
+    const group = optionEl.closest<HTMLElement>('[data-variant-code]');
+    if (!group) return;
+
+    const bundleId = group.dataset.nextBundleId;
+    const slotIndex = Number(group.dataset.nextSlotIndex);
+    if (!bundleId) return;
+
+    const card = this.cards.find(c => c.bundleId === bundleId);
+    if (!card) return;
+
+    // Update visual selection within this attribute group
+    group.querySelectorAll<HTMLElement>('[data-next-variant-option]').forEach(el => {
+      el.removeAttribute('data-selected');
+      el.classList.remove('next-variant-selected');
+    });
+    optionEl.setAttribute('data-selected', 'true');
+    optionEl.classList.add('next-variant-selected');
+
+    // Read all currently selected values across groups for this slot
+    const slotEl = card.element.querySelector<HTMLElement>(`[data-next-slot-index="${slotIndex}"]`);
+    if (!slotEl) return;
+
+    const selectedAttrs: Record<string, string> = {};
+    slotEl.querySelectorAll<HTMLElement>('[data-variant-code]').forEach(g => {
+      const attrCode = g.dataset.variantCode!;
+      const sel = g.querySelector<HTMLElement>('[data-next-variant-option][data-selected="true"]');
+      if (sel?.dataset.nextVariantValue) selectedAttrs[attrCode] = sel.dataset.nextVariantValue;
+    });
+
+    void this.applyVariantChange(card, slotIndex, selectedAttrs);
+  }
+
+  private async handleSelectVariantChange(
+    select: HTMLSelectElement,
+    bundleId: string,
+    slotIndex: number
+  ): Promise<void> {
+    const card = this.cards.find(c => c.bundleId === bundleId);
+    if (!card) return;
+
+    // Read all selects within this slot to get the full combination
+    const slotEl = card.element.querySelector<HTMLElement>(`[data-next-slot-index="${slotIndex}"]`);
+    if (!slotEl) return;
+
+    const selectedAttrs: Record<string, string> = {};
+    slotEl.querySelectorAll<HTMLSelectElement>('select[data-variant-code]').forEach(s => {
+      if (s.dataset.variantCode) selectedAttrs[s.dataset.variantCode] = s.value;
+    });
+
+    await this.applyVariantChange(card, slotIndex, selectedAttrs);
+  }
+
+  private async applyVariantChange(
+    card: BundleCard,
+    slotIndex: number,
+    selectedAttrs: Record<string, string>
+  ): Promise<void> {
+    const slot = card.slots[slotIndex];
+    if (!slot) return;
+
+    const allPackages = useCampaignStore.getState().packages || [];
+    const currentPkg = allPackages.find(p => p.ref_id === slot.activePackageId);
+    if (!currentPkg?.product_id) return;
+
+    const productPkgs = allPackages.filter(p => p.product_id === currentPkg.product_id);
+
+    const matched = productPkgs.find(pkg => {
+      const attrs = pkg.product_variant_attribute_values || [];
+      return Object.entries(selectedAttrs).every(([c, v]) =>
+        attrs.some(a => a.code === c && a.value === v)
+      );
+    });
+
+    if (!matched) {
+      this.logger.warn('No package found for variant combination', selectedAttrs);
+      return;
+    }
+
+    if (slot.activePackageId === matched.ref_id) return;
+
+    // Snapshot effective items BEFORE the change so we know what to remove
+    const previousEffective = this.getEffectiveItems(card);
+    slot.activePackageId = matched.ref_id;
+
+    if (this.mode === 'swap' && this.selectedCard === card) {
+      await this.applyEffectiveChange(previousEffective, card);
+    }
+
+    this.logger.debug(
+      `Variant changed on bundle "${card.bundleId}" slot ${slotIndex}`,
+      { packageId: matched.ref_id }
+    );
+  }
+
+  // ─── Selection & cart update ──────────────────────────────────────────────────
+
+  private async handleCardClick(e: Event, card: BundleCard): Promise<void> {
+    e.preventDefault();
+    if (this.selectedCard === card) return;
+
+    const previous = this.selectedCard;
+    this.selectCard(card);
+    this.emit('bundle:selected', { bundleId: card.bundleId, items: this.getEffectiveItems(card) });
+
+    if (this.mode === 'swap') {
+      await this.applyBundle(previous, card);
+    }
+  }
+
+  private selectCard(card: BundleCard): void {
+    this.cards.forEach(c => {
+      c.element.classList.remove('next-selected');
+      c.element.setAttribute('data-next-selected', 'false');
+    });
+    card.element.classList.add('next-selected');
+    card.element.setAttribute('data-next-selected', 'true');
+    this.selectedCard = card;
+    this.element.setAttribute('data-selected-bundle', card.bundleId);
+    this.emit('bundle:selection-changed', { bundleId: card.bundleId, items: this.getEffectiveItems(card) });
+  }
+
+  /**
+   * Returns the currently active cart items for a bundle card, accounting for
+   * any variant selections the user has made in the slot rows.
+   */
+  private getEffectiveItems(card: BundleCard): BundleItem[] {
+    const qtyCounts = new Map<number, number>();
+    for (const slot of card.slots) {
+      qtyCounts.set(
+        slot.activePackageId,
+        (qtyCounts.get(slot.activePackageId) ?? 0) + slot.quantity
+      );
+    }
+    return Array.from(qtyCounts.entries()).map(([packageId, quantity]) => ({ packageId, quantity }));
+  }
+
+  /**
+   * Apply a bundle to the cart.
+   *
+   * - Swapping from a previous bundle: strips previous bundle's packages and
+   *   replaces them with the new bundle, leaving unrelated items untouched.
+   * - First selection (no previous): adds bundle items not already in the cart.
+   *
+   * Uses getEffectiveItems() so variant selections are respected.
+   */
+  private async applyBundle(previous: BundleCard | null, selected: BundleCard): Promise<void> {
+    const cartStore = useCartStore.getState();
+    const newItems = this.getEffectiveItems(selected);
+    try {
+      if (previous) {
+        const prevIds = new Set(this.getEffectiveItems(previous).map(i => i.packageId));
+        const retained = cartStore.items
+          .filter(ci => !prevIds.has(ci.packageId))
+          .map(ci => ({ packageId: ci.packageId, quantity: ci.quantity }));
+        await cartStore.swapCart([...retained, ...newItems]);
+      } else {
+        for (const item of newItems) {
+          if (!cartStore.hasItem(item.packageId)) {
+            await cartStore.addItem({ packageId: item.packageId, quantity: item.quantity, isUpsell: false });
+          }
+        }
+      }
+      this.logger.debug(`Applied bundle "${selected.bundleId}"`, newItems);
+    } catch (error) {
+      this.handleError(error, 'applyBundle');
+    }
+  }
+
+  /**
+   * Called when the user changes a variant on the currently selected bundle.
+   * Swaps the previous effective items out and the new ones in.
+   */
+  private async applyEffectiveChange(
+    previousItems: BundleItem[],
+    card: BundleCard
+  ): Promise<void> {
+    if (this.isApplying) return;
+    this.isApplying = true;
+    try {
+      const cartStore = useCartStore.getState();
+      const prevIds = new Set(previousItems.map(i => i.packageId));
+      const retained = cartStore.items
+        .filter(ci => !prevIds.has(ci.packageId))
+        .map(ci => ({ packageId: ci.packageId, quantity: ci.quantity }));
+      const newItems = this.getEffectiveItems(card);
+      await cartStore.swapCart([...retained, ...newItems]);
+      this.logger.debug(`Variant change synced for bundle "${card.bundleId}"`, newItems);
+    } catch (error) {
+      this.handleError(error, 'applyEffectiveChange');
+    } finally {
+      this.isApplying = false;
+    }
+  }
+
+  // ─── Cart sync ────────────────────────────────────────────────────────────────
+
+  private syncWithCart(cartState: CartState): void {
+    for (const card of this.cards) {
+      const effectiveItems = this.getEffectiveItems(card);
+      const allItemsInCart = effectiveItems.every(bi => {
+        const ci = cartState.items.find(i => i.packageId === bi.packageId);
+        return ci != null && ci.quantity >= bi.quantity;
+      });
+      card.element.classList.toggle('next-in-cart', allItemsInCart);
+      card.element.setAttribute('data-next-in-cart', String(allItemsInCart));
+    }
+
+    if (!this.selectedCard) {
+      const preSelected = this.cards.find(c => c.isPreSelected);
+      if (preSelected) {
+        this.selectCard(preSelected);
+        if (this.mode === 'swap' && cartState.isEmpty) {
+          void this.applyBundle(null, preSelected);
+        }
+      }
+    }
+  }
+
+  // ─── BaseEnhancer ──────────────────────────────────────────────────────────────
+
+  public update(): void {
+    this.syncWithCart(useCartStore.getState());
+  }
+
+  public getSelectedCard(): BundleCard | null {
+    return this.selectedCard;
+  }
+
+  protected override cleanupEventListeners(): void {
+    this.clickHandlers.forEach((h, el) => el.removeEventListener('click', h));
+    this.clickHandlers.clear();
+    this.selectHandlers.forEach((h, sel) => sel.removeEventListener('change', h));
+    this.selectHandlers.clear();
+    if (this.boundVariantOptionClick) {
+      this.element.removeEventListener('click', this.boundVariantOptionClick);
+      this.boundVariantOptionClick = null;
+    }
+    if (this.mutationObserver) {
+      this.mutationObserver.disconnect();
+      this.mutationObserver = null;
+    }
+  }
+
+  public override destroy(): void {
+    this.cleanupEventListeners();
+    this.cards.forEach(c =>
+      c.element.classList.remove('next-bundle-card', 'next-selected', 'next-in-cart')
+    );
+    this.cards = [];
+    super.destroy();
+  }
+}

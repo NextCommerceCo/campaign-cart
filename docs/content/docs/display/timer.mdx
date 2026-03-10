@@ -1,0 +1,116 @@
+---
+title: Timer
+description: A countdown timer with localStorage persistence. Survives page refreshes.
+---
+
+`TimerEnhancer` creates a countdown timer that persists across page refreshes using `localStorage`. When the timer expires, it shows any associated expired-state elements and emits a `timer:expired` event.
+
+---
+
+## Basic usage
+
+```html
+<!-- Timer container -->
+<div data-next-timer data-duration="600" data-persistence-id="checkout-timer" data-format="mm:ss">
+  <span data-next-timer-display></span>
+</div>
+
+<!-- Shown after timer expires -->
+<div data-next-timer-expired data-persistence-id="checkout-timer" style="display:none">
+  <p>⚠️ This offer has expired.</p>
+</div>
+```
+
+---
+
+## Attributes
+
+| Attribute | Required | Description |
+|---|---|---|
+| `data-next-timer` | ✓ | Marks this as a timer container |
+| `data-duration` | ✓ | Countdown duration in seconds (e.g. `600` = 10 minutes) |
+| `data-persistence-id` | | `localStorage` key to persist time across refreshes. Defaults to `"default-timer"` |
+| `data-format` | | Time format: `hh:mm:ss`, `mm:ss` (default), or `ss` |
+| `data-next-timer-display` | | Element inside the container where the time string is rendered |
+
+### Expired element
+
+Add `data-next-timer-expired` with a matching `data-persistence-id` to show content when the timer runs out:
+
+```html
+<div data-next-timer-expired data-persistence-id="checkout-timer" style="display:none">
+  Offer expired!
+</div>
+```
+
+---
+
+## How persistence works
+
+The SDK stores the timer's **expiry timestamp** (not remaining time) in `localStorage` under the `data-persistence-id` key. This means:
+
+- If a user refreshes the page, the timer continues from where it left off
+- If a user opens the page in a new tab (same browser), the same timer state is shown
+- The timer is unique per `data-persistence-id` — use different IDs for independent timers on the same page
+
+---
+
+## Format options
+
+| Format | Example output |
+|---|---|
+| `hh:mm:ss` | `1:00:00` |
+| `mm:ss` | `10:00` |
+| `ss` | `600` |
+
+---
+
+## Events
+
+| Event | When |
+|---|---|
+| `timer:expired` | Timer reaches zero |
+
+```js
+window.NextCommerce.on('timer:expired', () => {
+  // Redirect or show expired state
+  document.querySelector('.offer-cta').style.opacity = '0.5';
+});
+```
+
+---
+
+## Multiple timers
+
+Use different `data-persistence-id` values for independent timers:
+
+```html
+<!-- 10-minute offer timer -->
+<div data-next-timer data-duration="600" data-persistence-id="offer-timer">
+  <span data-next-timer-display></span>
+</div>
+
+<!-- 24-hour flash sale timer -->
+<div data-next-timer data-duration="86400" data-persistence-id="flash-sale" data-format="hh:mm:ss">
+  <span data-next-timer-display></span>
+</div>
+```
+
+---
+
+## Example: Urgency banner
+
+```html
+<div class="urgency-banner" data-next-hide="timer.expired">
+  ⏰ Offer expires in
+  <strong>
+    <div data-next-timer data-duration="900" data-persistence-id="urgency" data-format="mm:ss">
+      <span data-next-timer-display></span>
+    </div>
+  </strong>
+</div>
+
+<div class="expired-banner" data-next-timer-expired data-persistence-id="urgency" style="display:none">
+  This special offer has ended.
+</div>
+```

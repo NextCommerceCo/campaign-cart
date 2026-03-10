@@ -54,7 +54,8 @@ export class DebugOverlay {
   private constructor() {
     // Only initialize if debug mode is enabled
     const urlParams = new URLSearchParams(window.location.search);
-    const isDebugMode = urlParams.get('debugger') === 'true' || urlParams.get('debug') === 'true';
+    const windowConfig = (window as any).nextConfig;
+    const isDebugMode = urlParams.get('debugger') === 'true' || urlParams.get('debug') === 'true' || windowConfig?.debugger === true || windowConfig?.debug === true;
 
     if (isDebugMode) {
       this.eventManager = new DebugEventManager();
@@ -119,7 +120,8 @@ export class DebugOverlay {
 
   public initialize(): void {
     const urlParams = new URLSearchParams(window.location.search);
-    const isDebugMode = urlParams.get('debugger') === 'true';
+    const windowConfig = (window as any).nextConfig;
+    const isDebugMode = urlParams.get('debugger') === 'true' || windowConfig?.debugger === true;
 
     if (isDebugMode) {
       this.show();

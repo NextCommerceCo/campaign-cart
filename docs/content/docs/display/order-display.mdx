@@ -1,0 +1,136 @@
+---
+title: Order Display
+description: Display post-purchase order data on thank-you and upsell pages.
+---
+
+`OrderDisplayEnhancer` handles `data-next-display="order.*"` elements. It reads from the order store, which is automatically populated on the thank-you/upsell page.
+
+If the page URL contains a `?ref_id=` parameter and the order store is empty, the SDK automatically loads the order from the API.
+
+---
+
+## Usage
+
+```html
+<h1>Thank you, <span data-next-display="order.user.firstName"></span>!</h1>
+<p>Your order <strong data-next-display="order.refId"></strong> is confirmed.</p>
+<p>We'll send updates to <span data-next-display="order.user.email"></span></p>
+```
+
+---
+
+## Available properties
+
+### Order info
+
+| Property | Description |
+|---|---|
+| `order.refId` | Order reference ID |
+| `order.status` | Order status |
+| `order.total` | Order total |
+| `order.subtotal` | Subtotal |
+| `order.shipping` | Shipping cost |
+| `order.tax` | Tax |
+| `order.discounts` | Discount amount |
+| `order.currency` | Currency code |
+| `order.paymentMethod` | Payment method used |
+
+### Customer
+
+| Property | Description |
+|---|---|
+| `order.user.name` | Full name |
+| `order.user.firstName` | First name |
+| `order.user.lastName` | Last name |
+| `order.user.email` | Email address |
+| `order.user.phone` | Phone number |
+
+### Shipping address
+
+| Property | Description |
+|---|---|
+| `order.shippingAddress.line1` | Address line 1 |
+| `order.shippingAddress.city` | City |
+| `order.shippingAddress.state` | State / province |
+| `order.shippingAddress.zip` | ZIP / postal code |
+| `order.shippingAddress.country` | Country |
+| `order.shippingAddress.full` | Full formatted address |
+
+Same properties available on `order.billingAddress.*`.
+
+### Line items
+
+| Property | Description |
+|---|---|
+| `order.items.count` | Number of line items |
+| `order.items.totalQuantity` | Total units |
+| `order.items.upsellCount` | Number of upsell items |
+| `order.items.mainProduct` | Name of the main product |
+| `order.items[0].title` | First item name |
+| `order.items[0].price` | First item price |
+| `order.items[0].quantity` | First item quantity |
+
+### Attribution
+
+| Property | Description |
+|---|---|
+| `order.attribution.utm_source` | UTM source |
+| `order.attribution.utm_medium` | UTM medium |
+| `order.attribution.utm_campaign` | UTM campaign |
+| `order.attribution.gclid` | Google Click ID |
+| `order.attribution.funnel` | Funnel name |
+| `order.attribution.affiliate` | Affiliate ID |
+
+### Computed flags
+
+| Property | Description |
+|---|---|
+| `order.savingsAmount` | Savings vs retail |
+| `order.savingsPercentage` | Savings % |
+| `order.hasSavings` | Boolean |
+| `order.hasItems` | Boolean |
+| `order.hasShipping` | Boolean |
+| `order.hasTax` | Boolean |
+| `order.hasUpsells` | Boolean |
+| `order.hasDiscounts` | Boolean |
+
+---
+
+## CSS classes
+
+| Class | When |
+|---|---|
+| `next-loading` | Order data is being loaded |
+| `next-loaded` | Order data is ready |
+| `next-error` | Failed to load order data |
+
+---
+
+## Link elements
+
+For `<a>` elements, the enhancer sets the `href` attribute instead of text content:
+
+```html
+<a data-next-display="order.statusUrl">Track your order</a>
+```
+
+---
+
+## Example: Thank-you page
+
+```html
+<h1>Order Confirmed!</h1>
+<p>
+  Hi <span data-next-display="order.user.firstName"></span>,
+  your order <strong data-next-display="order.refId"></strong> has been placed.
+</p>
+
+<div class="order-summary">
+  <p>Total: <span data-next-display="order.total"></span></p>
+  <p>Shipping to: <span data-next-display="order.shippingAddress.full"></span></p>
+</div>
+
+<div data-next-show="order.hasSavings" class="savings-note">
+  You saved <span data-next-display="order.savingsAmount"></span>!
+</div>
+```

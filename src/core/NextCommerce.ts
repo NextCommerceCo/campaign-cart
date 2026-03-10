@@ -9,14 +9,14 @@ declare global {
   }
 }
 
-import type { 
-  CartTotals, 
-  Campaign, 
-  CallbackType, 
+import type {
+  CartTotals,
+  Campaign,
+  CallbackType,
   CallbackData,
   EventMap,
   AppliedCoupon,
-  DiscountDefinition
+  DiscountDefinition,
 } from '@/types/global';
 import type { AddUpsellLine } from '@/types/api';
 import { useCartStore } from '@/stores/cartStore';
@@ -53,33 +53,33 @@ export class NextCommerce {
   // Cart manipulation methods
   public hasItemInCart(options: { packageId?: number }): boolean {
     const cartStore = useCartStore.getState();
-    
+
     if (options.packageId) {
       return cartStore.items.some(item => item.packageId === options.packageId);
     }
-    
+
     return false;
   }
 
-  public async addItem(options: { 
-    packageId?: number; 
-    quantity?: number; 
+  public async addItem(options: {
+    packageId?: number;
+    quantity?: number;
   }): Promise<void> {
     const cartStore = useCartStore.getState();
     const quantity = options.quantity ?? 1;
-    
+
     if (options.packageId) {
       await cartStore.addItem({
         packageId: options.packageId,
         quantity,
-        isUpsell: false
+        isUpsell: false,
       });
     }
   }
 
   public async removeItem(options: { packageId?: number }): Promise<void> {
     const cartStore = useCartStore.getState();
-    
+
     if (options.packageId) {
       await cartStore.removeItem(options.packageId);
     }
@@ -90,7 +90,7 @@ export class NextCommerce {
     quantity: number;
   }): Promise<void> {
     const cartStore = useCartStore.getState();
-    
+
     if (options.packageId) {
       await cartStore.updateQuantity(options.packageId, options.quantity);
     }
@@ -101,26 +101,28 @@ export class NextCommerce {
     await cartStore.clear();
   }
 
-  public async swapCart(items: Array<{ packageId: number; quantity: number }>): Promise<void> {
+  public async swapCart(
+    items: Array<{ packageId: number; quantity: number }>
+  ): Promise<void> {
     const cartStore = useCartStore.getState();
-    
+
     // Use a new method in cartStore if available, or do it manually
     if (typeof cartStore.swapCart === 'function') {
       await cartStore.swapCart(items);
     } else {
       // Fallback: clear and add all items
       await cartStore.clear();
-      
+
       // Add all new items
       for (const item of items) {
         await cartStore.addItem({
           packageId: item.packageId,
           quantity: item.quantity,
-          isUpsell: false
+          isUpsell: false,
         });
       }
     }
-    
+
     this.logger.debug(`Cart swapped with ${items.length} items`);
   }
 
@@ -128,7 +130,7 @@ export class NextCommerce {
   public getCartData(): CallbackData {
     const cartStore = useCartStore.getState();
     const campaignStore = useCampaignStore.getState();
-    
+
     return {
       cartLines: cartStore.enrichedItems,
       cartTotals: cartStore.totals,
@@ -147,7 +149,6 @@ export class NextCommerce {
     return cartStore.totalQuantity;
   }
 
-
   // Campaign data access
   public getCampaignData(): Campaign | null {
     const campaignStore = useCampaignStore.getState();
@@ -165,14 +166,26 @@ export class NextCommerce {
     return campaignStore.getVariantsByProductId(productId);
   }
 
-  public getAvailableVariantAttributes(productId: number, attributeCode: string): string[] {
+  public getAvailableVariantAttributes(
+    productId: number,
+    attributeCode: string
+  ): string[] {
     const campaignStore = useCampaignStore.getState();
-    return campaignStore.getAvailableVariantAttributes(productId, attributeCode);
+    return campaignStore.getAvailableVariantAttributes(
+      productId,
+      attributeCode
+    );
   }
 
-  public getPackageByVariantSelection(productId: number, selectedAttributes: Record<string, string>): any | null {
+  public getPackageByVariantSelection(
+    productId: number,
+    selectedAttributes: Record<string, string>
+  ): any | null {
     const campaignStore = useCampaignStore.getState();
-    return campaignStore.getPackageByVariantSelection(productId, selectedAttributes);
+    return campaignStore.getPackageByVariantSelection(
+      productId,
+      selectedAttributes
+    );
   }
 
   // Enhanced pricing tier methods
@@ -186,7 +199,10 @@ export class NextCommerce {
     return campaignStore.getVariantPricingTiers(productId, variantKey);
   }
 
-  public getLowestPriceForVariant(productId: number, variantKey: string): any | null {
+  public getLowestPriceForVariant(
+    productId: number,
+    variantKey: string
+  ): any | null {
     const campaignStore = useCampaignStore.getState();
     return campaignStore.getLowestPriceForVariant(productId, variantKey);
   }
@@ -200,7 +216,10 @@ export class NextCommerce {
   }
 
   // Event and callback registration
-  public on<K extends keyof EventMap>(event: K, handler: (data: EventMap[K]) => void): void {
+  public on<K extends keyof EventMap>(
+    event: K,
+    handler: (data: EventMap[K]) => void
+  ): void {
     this.eventBus.on(event, handler);
   }
 
@@ -208,7 +227,10 @@ export class NextCommerce {
     this.eventBus.off(event, handler);
   }
 
-  public registerCallback(type: CallbackType, callback: (data: CallbackData) => void): void {
+  public registerCallback(
+    type: CallbackType,
+    callback: (data: CallbackData) => void
+  ): void {
     if (!this.callbacks.has(type)) {
       this.callbacks.set(type, new Set());
     }
@@ -230,7 +252,11 @@ export class NextCommerce {
   }
 
   // Analytics methods (v2 system)
-  public async trackViewItemList(packageIds: (string | number)[], _listId?: string, listName?: string): Promise<void> {
+  public async trackViewItemList(
+    packageIds: (string | number)[],
+    _listId?: string,
+    listName?: string
+  ): Promise<void> {
     queueMicrotask(async () => {
       try {
         const { nextAnalytics } = await import('@/utils/analytics/index');
@@ -248,7 +274,8 @@ export class NextCommerce {
         const { useCampaignStore } = await import('@/stores/campaignStore');
 
         // Convert to number and validate package exists
-        const packageIdNum = typeof packageId === 'string' ? parseInt(packageId, 10) : packageId;
+        const packageIdNum =
+          typeof packageId === 'string' ? parseInt(packageId, 10) : packageId;
         const campaignStore = useCampaignStore.getState();
         const packageData = campaignStore.getPackage(packageIdNum);
 
@@ -261,7 +288,7 @@ export class NextCommerce {
         const item = {
           packageId: packageIdNum,
           package_id: packageIdNum,
-          id: packageIdNum
+          id: packageIdNum,
         };
         nextAnalytics.trackViewItem(item);
       } catch (error) {
@@ -270,7 +297,10 @@ export class NextCommerce {
     });
   }
 
-  public async trackAddToCart(packageId: string | number, quantity?: number): Promise<void> {
+  public async trackAddToCart(
+    packageId: string | number,
+    quantity?: number
+  ): Promise<void> {
     queueMicrotask(async () => {
       try {
         const { nextAnalytics } = await import('@/utils/analytics/index');
@@ -278,7 +308,7 @@ export class NextCommerce {
         const item = {
           id: String(packageId),
           packageId: packageId,
-          quantity: quantity || 1
+          quantity: quantity || 1,
         };
         nextAnalytics.trackAddToCart(item);
       } catch (error) {
@@ -287,11 +317,20 @@ export class NextCommerce {
     });
   }
 
-  public async trackRemoveFromCart(packageId: string | number, quantity?: number): Promise<void> {
+  public async trackRemoveFromCart(
+    packageId: string | number,
+    quantity?: number
+  ): Promise<void> {
     queueMicrotask(async () => {
       try {
-        const { nextAnalytics, EcommerceEvents } = await import('@/utils/analytics/index');
-        nextAnalytics.track(EcommerceEvents.createRemoveFromCartEvent({ packageId, quantity: quantity || 1 }));
+        const { nextAnalytics, EcommerceEvents } =
+          await import('@/utils/analytics/index');
+        nextAnalytics.track(
+          EcommerceEvents.createRemoveFromCartEvent({
+            packageId,
+            quantity: quantity || 1,
+          })
+        );
       } catch (error) {
         this.logger.debug('Analytics tracking failed (non-critical):', error);
       }
@@ -320,7 +359,10 @@ export class NextCommerce {
     });
   }
 
-  public async trackCustomEvent(eventName: string, data?: Record<string, any>): Promise<void> {
+  public async trackCustomEvent(
+    eventName: string,
+    data?: Record<string, any>
+  ): Promise<void> {
     queueMicrotask(async () => {
       try {
         const { nextAnalytics } = await import('@/utils/analytics/index');
@@ -372,7 +414,10 @@ export class NextCommerce {
         const { nextAnalytics } = await import('@/utils/analytics/index');
         nextAnalytics.invalidateContext();
       } catch (error) {
-        this.logger.debug('Analytics context invalidation failed (non-critical):', error);
+        this.logger.debug(
+          'Analytics context invalidation failed (non-critical):',
+          error
+        );
       }
     });
   }
@@ -382,14 +427,14 @@ export class NextCommerce {
     try {
       const store = useAttributionStore.getState();
       const currentMetadata = store.metadata || {};
-      
+
       store.updateAttribution({
         metadata: {
           ...currentMetadata,
-          [key]: value
-        }
+          [key]: value,
+        },
       });
-      
+
       this.logger.debug(`Attribution metadata added: ${key}`, value);
     } catch (error) {
       this.logger.error('Failed to add attribution metadata:', error);
@@ -400,15 +445,15 @@ export class NextCommerce {
     try {
       const store = useAttributionStore.getState();
       const currentMetadata = store.metadata || {};
-      
+
       // Merge with existing metadata to preserve automatic fields
-      store.updateAttribution({ 
+      store.updateAttribution({
         metadata: {
           ...currentMetadata,
-          ...metadata
-        }
+          ...metadata,
+        },
       });
-      
+
       this.logger.debug('Attribution metadata set:', metadata);
     } catch (error) {
       this.logger.error('Failed to set attribution metadata:', error);
@@ -418,8 +463,8 @@ export class NextCommerce {
   public clearMetadata(): void {
     try {
       const store = useAttributionStore.getState();
-      
-      store.updateAttribution({ 
+
+      store.updateAttribution({
         metadata: {
           // Preserve automatic fields
           landing_page: store.metadata?.landing_page || '',
@@ -427,10 +472,10 @@ export class NextCommerce {
           device: store.metadata?.device || '',
           device_type: store.metadata?.device_type || 'desktop',
           domain: store.metadata?.domain || '',
-          timestamp: store.metadata?.timestamp || Date.now()
-        }
+          timestamp: store.metadata?.timestamp || Date.now(),
+        },
       });
-      
+
       this.logger.debug('Attribution metadata cleared');
     } catch (error) {
       this.logger.error('Failed to clear attribution metadata:', error);
@@ -451,7 +496,7 @@ export class NextCommerce {
     try {
       const store = useAttributionStore.getState();
       store.updateAttribution(attribution);
-      
+
       this.logger.debug('Attribution set:', attribution);
     } catch (error) {
       this.logger.error('Failed to set attribution:', error);
@@ -478,12 +523,21 @@ export class NextCommerce {
   }
 
   // Shipping methods
-  public getShippingMethods(): Array<{ref_id: number; code: string; price: string}> {
+  public getShippingMethods(): Array<{
+    ref_id: number;
+    code: string;
+    price: string;
+  }> {
     const campaignStore = useCampaignStore.getState();
     return campaignStore.data?.shipping_methods || [];
   }
 
-  public getSelectedShippingMethod(): {id: number; name: string; price: number; code: string} | null {
+  public getSelectedShippingMethod(): {
+    id: number;
+    name: string;
+    price: number;
+    code: string;
+  } | null {
     const checkoutStore = useCheckoutStore.getState();
     return checkoutStore.shippingMethod || null;
   }
@@ -507,20 +561,20 @@ export class NextCommerce {
     const { formatCurrency } = require('@/utils/currencyFormatter');
     const campaignStore = useCampaignStore.getState();
     const useCurrency = currency ?? campaignStore.data?.currency ?? 'USD';
-    
+
     return formatCurrency(amount, useCurrency);
   }
 
   public validateCheckout(): { valid: boolean; errors: string[] } {
     const cartStore = useCartStore.getState();
     const errors: string[] = [];
-    
+
     if (cartStore.items.length === 0) {
       errors.push('Cart is empty');
     }
-    
+
     // Add more validation logic as needed
-    
+
     return {
       valid: errors.length === 0,
       errors,
@@ -528,7 +582,9 @@ export class NextCommerce {
   }
 
   // Coupon methods
-  public async applyCoupon(code: string): Promise<{ success: boolean; message: string }> {
+  public async applyCoupon(
+    code: string
+  ): Promise<{ success: boolean; message: string }> {
     const cartStore = useCartStore.getState();
     return await cartStore.applyCoupon(code);
   }
@@ -571,7 +627,8 @@ export class NextCommerce {
     try {
       // Lazy load the enhancer
       if (!this.exitIntentEnhancer) {
-        const { ExitIntentEnhancer } = await import('@/enhancers/behavior/SimpleExitIntentEnhancer');
+        const { ExitIntentEnhancer } =
+          await import('@/enhancers/behavior/SimpleExitIntentEnhancer');
         this.exitIntentEnhancer = new ExitIntentEnhancer();
         await this.exitIntentEnhancer.initialize();
       }
@@ -605,7 +662,8 @@ export class NextCommerce {
     try {
       // Lazy load the enhancer
       if (!this.fomoEnhancer) {
-        const { FomoPopupEnhancer } = await import('@/enhancers/behavior/FomoPopupEnhancer');
+        const { FomoPopupEnhancer } =
+          await import('@/enhancers/behavior/FomoPopupEnhancer');
         this.fomoEnhancer = new FomoPopupEnhancer();
         await this.fomoEnhancer.initialize();
       }
@@ -634,81 +692,93 @@ export class NextCommerce {
   }): Promise<any> {
     const orderStore = useOrderStore.getState();
     const configStore = useConfigStore.getState();
-    
+
     // Check if order exists
     if (!orderStore.order) {
-      throw new Error('No order found. Upsells can only be added after order completion.');
+      throw new Error(
+        'No order found. Upsells can only be added after order completion.'
+      );
     }
-    
+
     // Check if order supports upsells
     if (!orderStore.canAddUpsells()) {
-      throw new Error('Order does not support post-purchase upsells or is currently processing.');
+      throw new Error(
+        'Order does not support post-purchase upsells or is currently processing.'
+      );
     }
-    
+
     // Create API client
     const apiClient = new ApiClient(configStore.apiKey);
-    
+
     // Build upsell data - support both single item and multiple items
     let lines: Array<{ package_id: number; quantity: number }> = [];
-    
+
     if (options.items && options.items.length > 0) {
       // Multiple items provided
       lines = options.items.map(item => ({
         package_id: item.packageId,
-        quantity: item.quantity || 1
+        quantity: item.quantity || 1,
       }));
     } else if (options.packageId) {
       // Single item provided
-      lines = [{
-        package_id: options.packageId,
-        quantity: options.quantity || 1
-      }];
+      lines = [
+        {
+          package_id: options.packageId,
+          quantity: options.quantity || 1,
+        },
+      ];
     } else {
       throw new Error('Either packageId or items array must be provided');
     }
-    
+
     const upsellData: AddUpsellLine = { lines };
-    
+
     this.logger.info('Adding upsell(s) via SDK:', upsellData);
-    
+
     try {
       // Store previous line IDs to identify new additions
-      const previousLineIds = orderStore.order?.lines?.map((line: any) => line.id) || [];
-      
+      const previousLineIds =
+        orderStore.order?.lines?.map((line: any) => line.id) || [];
+
       // Add the upsell(s)
       const updatedOrder = await orderStore.addUpsell(upsellData, apiClient);
-      
+
       if (!updatedOrder) {
         throw new Error('Failed to add upsell - no updated order returned');
       }
-      
+
       // Find all newly added upsell lines
-      const addedLines = updatedOrder.lines?.filter((line: any) => 
-        line.is_upsell && !previousLineIds.includes(line.id)
-      ) || [];
-      
+      const addedLines =
+        updatedOrder.lines?.filter(
+          (line: any) => line.is_upsell && !previousLineIds.includes(line.id)
+        ) || [];
+
       // Calculate total value of added upsells
       const totalUpsellValue = addedLines.reduce((sum: number, line: any) => {
-        return sum + (line.price_incl_tax ? parseFloat(line.price_incl_tax) : 0);
+        return (
+          sum + (line.price_incl_tax ? parseFloat(line.price_incl_tax) : 0)
+        );
       }, 0);
-      
+
       // Emit event for each added item
       lines.forEach((line, index) => {
         const addedLine = addedLines[index];
-        const value = addedLine?.price_incl_tax ? parseFloat(addedLine.price_incl_tax) : 0;
-        
+        const value = addedLine?.price_incl_tax
+          ? parseFloat(addedLine.price_incl_tax)
+          : 0;
+
         this.eventBus.emit('upsell:added', {
           packageId: line.package_id,
           quantity: line.quantity,
           order: updatedOrder,
-          value: value
+          value: value,
         });
       });
-      
+
       return {
         order: updatedOrder,
         addedLines: addedLines,
-        totalValue: totalUpsellValue
+        totalValue: totalUpsellValue,
       };
     } catch (error) {
       this.logger.error('Failed to add upsell(s) via SDK:', error);
@@ -728,22 +798,26 @@ export class NextCommerce {
 
   public isUpsellAlreadyAdded(packageId: number): boolean {
     const orderStore = useOrderStore.getState();
-    
+
     // Check in completed upsells
     if (orderStore.completedUpsells.includes(packageId.toString())) {
       return true;
     }
-    
+
     // Also check in upsell journey for accepted items
     const acceptedInJourney = orderStore.upsellJourney.some(
-      entry => entry.packageId === packageId.toString() && entry.action === 'accepted'
+      entry =>
+        entry.packageId === packageId.toString() && entry.action === 'accepted'
     );
-    
+
     return acceptedInJourney;
   }
-  
+
   // Profile Management Methods
-  public async setProfile(profileId: string, options?: { clearCart?: boolean; preserveQuantities?: boolean }): Promise<void> {
+  public async setProfile(
+    profileId: string,
+    options?: { clearCart?: boolean; preserveQuantities?: boolean }
+  ): Promise<void> {
     try {
       const { ProfileManager } = await import('@/core/ProfileManager');
       const profileManager = ProfileManager.getInstance();
@@ -754,7 +828,7 @@ export class NextCommerce {
       throw error;
     }
   }
-  
+
   public async revertProfile(): Promise<void> {
     try {
       const { ProfileManager } = await import('@/core/ProfileManager');
@@ -766,40 +840,45 @@ export class NextCommerce {
       throw error;
     }
   }
-  
+
   public getActiveProfile(): string | null {
     const profileStore = useProfileStore.getState();
     return profileStore.activeProfileId;
   }
-  
+
   public getProfileInfo(profileId?: string): any | null {
     const profileStore = useProfileStore.getState();
-    return profileId 
+    return profileId
       ? profileStore.getProfileById(profileId)
       : profileStore.getActiveProfile();
   }
-  
+
   public getMappedPackageId(originalId: number): number {
     const profileStore = useProfileStore.getState();
     return profileStore.getMappedPackageId(originalId);
   }
-  
+
   public getOriginalPackageId(mappedId: number): number | null {
     const profileStore = useProfileStore.getState();
     return profileStore.getOriginalPackageId(mappedId);
   }
-  
+
   public listProfiles(): string[] {
     const profileStore = useProfileStore.getState();
     return Array.from(profileStore.profiles.keys());
   }
-  
+
   public hasProfile(profileId: string): boolean {
     const profileStore = useProfileStore.getState();
     return profileStore.hasProfile(profileId);
   }
-  
-  public registerProfile(profile: { id: string; name: string; description?: string; packageMappings: Record<number, number> }): void {
+
+  public registerProfile(profile: {
+    id: string;
+    name: string;
+    description?: string;
+    packageMappings: Record<number, number>;
+  }): void {
     const profileStore = useProfileStore.getState();
     profileStore.registerProfile(profile);
     this.logger.info(`Profile "${profile.id}" registered via API`);

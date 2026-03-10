@@ -1,0 +1,226 @@
+---
+title: Campaign Types
+description: TypeScript types for campaign and offer data structures
+---
+
+## Campaign
+
+The top-level campaign object returned from the API. This is the root of all product, pricing, and offer data for the page.
+
+<AutoTypeTable path="../src/types/campaign.ts" name="Campaign" />
+
+### Accessing campaign data
+
+```ts
+NextCommerce.on('campaign:loaded', (campaign) => {
+  console.log(campaign.currency);  // "USD"
+  console.log(campaign.language);  // "en"
+  console.log(campaign.packages.length); // 3
+});
+```
+
+### packages
+
+All purchasable packages in the campaign. Each entry is a `Package` object with pricing, product, and variant details.
+
+```ts
+const campaign = NextCommerce.getCampaign();
+
+campaign.packages.forEach(pkg => {
+  console.log(pkg.ref_id);    // 101
+  console.log(pkg.name);      // "3-Pack Bundle"
+  console.log(pkg.price);     // "$19.99"
+  console.log(pkg.price_total); // "$59.97"
+  console.log(pkg.qty);       // 3
+});
+```
+
+### offers
+
+Present when the campaign has at least one offer configured. Each entry is an `Offer` with a condition and benefit. Check `offers?.length` before iterating.
+
+```ts
+const campaign = NextCommerce.getCampaign();
+
+campaign.offers?.forEach(offer => {
+  console.log(offer.name);             // "Buy 2 Get 20% Off"
+  console.log(offer.condition.type);   // "count"
+  console.log(offer.condition.value);  // 2
+  console.log(offer.benefit.type);     // "package_percentage"
+  console.log(offer.benefit.value);    // "20"
+});
+```
+
+---
+
+## Package
+
+A purchasable package in the campaign.
+
+<AutoTypeTable path="../src/types/campaign.ts" name="Package" />
+
+### Pricing fields
+
+Packages expose multiple price strings for different display contexts:
+
+| Field | Description | Example |
+| ----- | ----------- | ------- |
+| `price` | Per-unit price | `"$19.99"` |
+| `price_total` | Total for all units | `"$59.97"` |
+| `price_retail` | Per-unit compare-at price | `"$29.99"` |
+| `price_retail_total` | Total compare-at price | `"$89.97"` |
+| `price_recurring` | Per-unit recurring price | `"$14.99"` |
+| `price_recurring_total` | Total recurring price | `"$44.97"` |
+
+### Recurring packages
+
+When `is_recurring` is `true`, the package bills on a schedule defined by `interval` and `interval_count`:
+
+```ts
+if (pkg.is_recurring) {
+  // e.g. "every 1 month" or "every 3 months"
+  console.log(`every ${pkg.interval_count} ${pkg.interval}`);
+}
+```
+
+### Availability
+
+The `product_purchase_availability` and `product_inventory_availability` fields control whether a package can be added to the cart:
+
+```ts
+const isAvailable =
+  pkg.product_purchase_availability !== 'unavailable' &&
+  pkg.product_inventory_availability !== 'out_of_stock';
+```
+
+---
+
+## Product
+
+Product information associated with a package.
+
+<AutoTypeTable path="../src/types/campaign.ts" name="Product" />
+
+---
+
+## ProductVariant
+
+Variant details of a product.
+
+<AutoTypeTable path="../src/types/campaign.ts" name="ProductVariant" />
+
+---
+
+## VariantAttribute
+
+A single attribute of a product variant (e.g. color, size).
+
+<AutoTypeTable path="../src/types/campaign.ts" name="VariantAttribute" />
+
+### Example
+
+```ts
+// attributes on a "Red / Large" variant
+[
+  { code: 'color', name: 'Color', value: 'Red' },
+  { code: 'size',  name: 'Size',  value: 'Large' },
+]
+```
+
+---
+
+## ShippingOption
+
+A shipping method available in the campaign.
+
+<AutoTypeTable path="../src/types/campaign.ts" name="ShippingOption" />
+
+```ts
+const campaign = NextCommerce.getCampaign();
+
+campaign.shipping_methods.forEach(method => {
+  console.log(method.ref_id); // 5
+  console.log(method.code);   // "standard"
+  console.log(method.price);  // "$5.99"
+});
+```
+
+---
+
+## Offer
+
+A discount offer that can be applied to the cart. An offer has a condition (what triggers it) and a benefit (what discount is applied).
+
+<AutoTypeTable path="../src/types/campaign.ts" name="Offer" />
+
+### type
+
+| Value | Description |
+| ----- | ----------- |
+| `'offer'` | Applied automatically when the condition is met |
+| `'voucher'` | Requires a `code` to activate |
+
+---
+
+## OfferCondition
+
+The condition that must be met to unlock an offer.
+
+<AutoTypeTable path="../src/types/campaign.ts" name="OfferCondition" />
+
+### type
+
+| Value | Description |
+| ----- | ----------- |
+| `'any'` | Offer is always active — no threshold required |
+| `'count'` | Requires at least `value` items in the cart |
+
+---
+
+## OfferBenefit
+
+The benefit applied when an offer condition is met.
+
+<AutoTypeTable path="../src/types/campaign.ts" name="OfferBenefit" />
+
+### type
+
+| Value | Description |
+| ----- | ----------- |
+| `'package_percentage'` | Percentage discount on package prices |
+| `'shipping_percentage'` | Percentage discount on shipping |
+| `'order_percentage'` | Percentage discount on the order total |
+
+---
+
+## OfferPackage
+
+A package associated with an offer, including discounted pricing pre-calculated by the API.
+
+<AutoTypeTable path="../src/types/campaign.ts" name="OfferPackage" />
+
+```ts
+const offer = campaign.offers?.[0];
+
+offer?.packages.forEach(pkg => {
+  console.log(pkg.package_name);                // "3-Pack Bundle"
+  console.log(pkg.unit_price_before_discount);  // "$19.99"
+  console.log(pkg.unit_price);                  // "$15.99"
+  console.log(pkg.package_price);               // "$47.97"
+});
+```
+
+---
+
+## OfferShippingMethod
+
+A shipping method associated with an offer, including the discounted price.
+
+<AutoTypeTable path="../src/types/campaign.ts" name="OfferShippingMethod" />
+
+```ts
+offer?.shipping_methods.forEach(method => {
+  console.log(method.price_before_discount); // "$9.99"
+  console.log(method.price);                 // "$0.00" (free shipping)
+});
+```

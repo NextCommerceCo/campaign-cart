@@ -1,0 +1,12 @@
+{
+  "title": "Display System",
+  "pages": [
+    "index",
+    "cart-display",
+    "product-display",
+    "selection-display",
+    "order-display",
+    "conditional-display",
+    "timer"
+  ]
+}

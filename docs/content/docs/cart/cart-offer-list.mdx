@@ -1,0 +1,166 @@
+---
+title: Cart Offer List
+description: Renders campaign offers as selectable cards and applies them to the cart on click.
+---
+
+`CartOfferListEnhancer` loads offers from the campaign data and renders them as clickable cards. When a user clicks a card, the offer's package is added to the cart automatically. Supports both auto-rendered (template-driven) and manually-written card markup.
+
+---
+
+## Basic usage
+
+### Auto-render from a template
+
+The container fetches offers from the campaign and renders one card per offer using your template:
+
+```html
+<div
+  data-next-offer-list
+  data-next-offer-template-id="offer-tpl"
+  data-next-offer-replace-cart="true"
+>
+</div>
+
+<script id="offer-tpl" type="text/html">
+  <div
+    class="offer-card"
+    data-next-offer-card
+    data-next-offer-id="{offer.ref_id}"
+    data-next-offer-package-id="{offer.package.id}"
+  >
+    <strong>{offer.name}</strong>
+    <p>{offer.benefit.description}</p>
+    <span class="price">{offer.package.price}</span>
+  </div>
+</script>
+```
+
+### Manual cards
+
+You can also write cards directly in the HTML without a template. The enhancer registers them automatically:
+
+```html
+<div data-next-offer-list>
+  <div data-next-offer-card data-next-offer-id="42" data-next-offer-package-id="10">
+    Free Gift
+  </div>
+  <div data-next-offer-card data-next-offer-id="43" data-next-offer-package-id="20">
+    Bonus Bundle
+  </div>
+</div>
+```
+
+---
+
+## Container attributes
+
+| Attribute | Description |
+|---|---|
+| `data-next-offer-list` | Required. Marks the container |
+| `data-next-offer-template-id` | ID of element whose `innerHTML` is the card template |
+| `data-next-offer-template` | Inline template string (alternative to `template-id`) |
+| `data-next-offer-replace-cart` | `"true"` (default) clears cart before applying; `"false"` adds alongside existing items |
+| `data-next-offer-filter` | JSON filter to narrow which offers are rendered |
+
+---
+
+## Filtering offers
+
+Use `data-next-offer-filter` to render only a subset of the campaign's offers. The value is a JSON object of dot-notation keys and exact-match string values:
+
+```html
+<!-- Only voucher-type offers -->
+<div data-next-offer-list data-next-offer-filter='{"type":"voucher"}' ...>
+
+<!-- Only count-condition offers -->
+<div data-next-offer-list data-next-offer-filter='{"condition.type":"count"}' ...>
+
+<!-- Multiple criteria (AND) -->
+<div data-next-offer-list data-next-offer-filter='{"benefit.type":"package_percentage","type":"offer"}' ...>
+```
+
+---
+
+## Card attributes
+
+These attributes go on the element that represents a single offer card (either inside a template or directly in the HTML):
+
+| Attribute | Description |
+|---|---|
+| `data-next-offer-card` | Required. Marks the element as an offer card |
+| `data-next-offer-id` | Required. The offer's `ref_id` |
+| `data-next-offer-package-id` | Package ID to add when selected (defaults to first package in offer) |
+
+---
+
+## Template variables
+
+Use `{offer.PROPERTY}` and `{offer.package.PROPERTY}` in your template. The enhancer replaces these when rendering:
+
+### Offer fields
+
+| Variable | Value |
+|---|---|
+| `{offer.name}` | Offer name |
+| `{offer.ref_id}` | Offer ref_id |
+| `{offer.type}` | Offer type (e.g. `"offer"`, `"voucher"`) |
+| `{offer.condition.description}` | Human-readable condition description |
+| `{offer.condition.type}` | `"any"` or `"count"` |
+| `{offer.condition.value}` | Threshold for `count` conditions |
+| `{offer.benefit.description}` | Human-readable benefit description |
+| `{offer.benefit.type}` | Benefit type string |
+| `{offer.benefit.value}` | Benefit value (e.g. `"20"` for 20%) |
+
+### Package fields (first eligible package)
+
+| Variable | Value |
+|---|---|
+| `{offer.package.id}` | Package ID |
+| `{offer.package.name}` | Package name |
+| `{offer.package.productName}` | Product name |
+| `{offer.package.variantName}` | Variant display name |
+| `{offer.package.price}` | Discounted price string |
+| `{offer.package.priceBeforeDiscount}` | Original price string |
+| `{offer.package.unitPrice}` | Per-unit discounted price |
+| `{offer.package.unitPriceBeforeDiscount}` | Per-unit original price |
+| `{offer.package.qty}` | Units per package |
+| `{offer.package.image}` | Package image URL |
+
+---
+
+## Selection behaviour
+
+When a card is clicked:
+
+1. All cards lose `next-selected` / `data-next-selected="true"`
+2. The clicked card gains `next-selected` + `data-next-selected="true"`
+3. The cart is cleared (if `data-next-offer-replace-cart` is `"true"`, the default)
+4. The offer's package is added to the cart:
+   - `condition.type "any"` → qty `1`
+   - `condition.type "count"` → qty equal to `condition.value`
+5. On success the card also gains `next-in-cart`
+
+---
+
+## CSS classes managed
+
+| Class | Applied to |
+|---|---|
+| `next-offer-card` | Every registered card on init |
+| `next-selected` | The currently selected card |
+| `next-in-cart` | Card whose offer was successfully applied to the cart |
+
+---
+
+## Events emitted
+
+| Event | Payload | When |
+|---|---|---|
+| `offer:selected` | `{ offerId }` | Card clicked |
+| `offer:applied` | `{ offerId }` | Cart add succeeded |
+
+---
+
+## Pairing with CartItemSlotsEnhancer
+
+When an offer adds a multi-unit package (e.g. a `count` condition offer that adds 3 units), use [`CartItemSlotsEnhancer`](/docs/cart/cart-item-slots) to let the user configure each unit individually with a variant selector.

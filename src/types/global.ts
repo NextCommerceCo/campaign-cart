@@ -181,51 +181,93 @@ export interface EventMap {
     profileId: string;
     mappingsCount: number;
   };
+
+  // Offer Events
+  'offer:selected': { offerId: number };
+  'offer:applied': { offerId: number };
+
+  // Bundle Events
+  'bundle:selected': { bundleId: string; items: { packageId: number; quantity: number }[] };
+  'bundle:selection-changed': { bundleId: string; items: { packageId: number; quantity: number }[] };
 }
 
 // Basic cart types
 export interface CartItem {
+  /** Unique cart line ID returned by the API. */
   id: number;
+  /** The campaign package `ref_id` for this item. */
   packageId: number;
-  originalPackageId?: number; // Original package ID before profile mapping
+  /** Original package ID before any profile mapping was applied. */
+  originalPackageId?: number;
+  /** Number of packages in the cart (not units — see `qty` for units per package). */
   quantity: number;
-  price: number; // Total package price (price_total from campaign)
+  /** Total package price as a raw number (mirrors `price_total` from the campaign). Used for calculations. */
+  price: number;
+  /** Product image URL. */
   image: string | undefined;
+  /** Package display name. */
   title: string;
+  /** Product SKU. */
   sku: string | undefined;
+  /** `true` when this item was added via a post-purchase upsell, not a regular add-to-cart. */
   is_upsell: boolean | undefined;
-  // Campaign response data for display (using snake_case to match API)
-  price_per_unit?: string | undefined; // Per-unit price (price from campaign)
-  qty?: number | undefined; // Number of units in package (qty from campaign)
-  price_total?: string | undefined; // Total package price (price_total from campaign)
-  price_retail?: string | undefined; // Per-unit retail price (price_retail from campaign)
-  price_retail_total?: string | undefined; // Total retail price (price_retail_total from campaign)
-  price_recurring?: string | undefined; // Recurring price if applicable
-  price_recurring_total?: string | undefined; // Total recurring price
-
-  // discount data
+  /** Per-unit price as a formatted string (matches `price` from the campaign API). */
+  price_per_unit?: string | undefined;
+  /** Number of product units included in this package (matches `qty` from the campaign API). */
+  qty?: number | undefined;
+  /** Total package price as a formatted string (matches `price_total` from the campaign API). */
+  price_total?: string | undefined;
+  /** Per-unit retail/compare-at price as a formatted string. */
+  price_retail?: string | undefined;
+  /** Total retail/compare-at price as a formatted string. */
+  price_retail_total?: string | undefined;
+  /** Recurring per-unit price string. Present when `is_recurring` is `true`. */
+  price_recurring?: string | undefined;
+  /** Total recurring price string. */
+  price_recurring_total?: string | undefined;
+  /** Per-unit price after offer discounts, tax-inclusive. */
   unit_price_incl_discount?: string | undefined;
+  /** Per-unit price after offer discounts, tax-exclusive. */
   unit_price_excl_discount?: string | undefined;
+  /** Total package price after offer discounts, tax-inclusive. */
   package_price_incl_discount?: string | undefined;
+  /** Total package price after offer discounts, tax-exclusive. */
   package_price_excl_discount?: string | undefined;
+  /** Total line amount as a formatted string. */
   total?: string | undefined;
+  /** Total discount amount for this line as a formatted string. */
   total_discount?: string | undefined;
-  discounts?: Array<{ offer_id: number; amount: string; description?: string; name?: string }> | undefined;
-
-  is_recurring?: boolean | undefined; // Whether this is a recurring item
-  interval?: string | null | undefined; // Billing interval
-  interval_count?: number | null | undefined; // Billing interval count
-  // Product and variant information for display
+  /** Offer discounts applied to this line. */
+  discounts?:
+    | Array<{
+        offer_id: number;
+        amount: string;
+        description?: string;
+        name?: string;
+      }>
+    | undefined;
+  /** `true` for subscription/recurring items. Check `interval` and `interval_count` for billing cycle details. */
+  is_recurring?: boolean | undefined;
+  /** Billing interval for recurring items (`'day'` or `'month'`). */
+  interval?: string | null | undefined;
+  /** Number of intervals between billing cycles (e.g. `3` with `interval: 'month'` = every 3 months). */
+  interval_count?: number | null | undefined;
+  /** Associated product ID. */
   productId?: number | undefined;
+  /** Associated product display name. */
   productName?: string | undefined;
+  /** Product variant ID. */
   variantId?: number | undefined;
+  /** Product variant display name. */
   variantName?: string | undefined;
+  /** Variant attribute values (e.g. `[{ code: 'color', name: 'Color', value: 'Red' }]`). */
   variantAttributes?:
-  | Array<{ code: string; name: string; value: string }>
-  | undefined;
+    | Array<{ code: string; name: string; value: string }>
+    | undefined;
+  /** Variant SKU. */
   variantSku?: string | undefined;
-  // Grouping support
-  groupedItemIds?: number[] | undefined; // IDs of items grouped together
+  /** IDs of other cart items grouped with this one (bundle support). */
+  groupedItemIds?: number[] | undefined;
 }
 
 // Selector-specific types with explicit undefined handling
@@ -240,42 +282,85 @@ export interface SelectorItem {
 }
 
 export interface CartState {
+  /** All items currently in the cart. */
   items: CartItem[];
+  /** Cart subtotal as a raw number, before shipping and discounts. */
   subtotal: number;
+  /** Shipping cost as a raw number. */
   shipping: number;
+  /** Tax amount as a raw number. */
   tax: number;
+  /** Cart grand total as a raw number. */
   total: number;
+  /** Total unit count across all items (sum of each item's `quantity × qty`). */
   totalQuantity: number;
+  /** `true` when the cart has no items. */
   isEmpty: boolean;
-  coupon?: Coupon; // Legacy - will be deprecated in favor of appliedCoupons
+  /**
+   * @deprecated Use `appliedCoupons` instead.
+   * Legacy coupon object — kept for backwards compatibility.
+   */
+  coupon?: Coupon;
+  /** All active coupons with their calculated discount amounts. */
   appliedCoupons: AppliedCoupon[];
+  /** The currently selected shipping method. */
   shippingMethod?: ShippingMethod;
+  /** Cart items enriched with full pricing breakdown for display. See `EnrichedCartLine`. */
   enrichedItems: EnrichedCartLine[];
+  /** Computed cart totals with both raw values and formatted display strings. See `CartTotals`. */
   totals: CartTotals;
+  /** `true` while a package swap animation is in progress. Use to prevent double-clicks. */
   swapInProgress?: boolean;
-  lastCurrency?: string; // Track last currency to detect changes
+  /** ISO currency code of the last loaded cart data. Used to detect currency changes. */
+  lastCurrency?: string;
+  /** Breakdown of offer and voucher discounts applied to the cart. */
   discountDetails?: {
-    offerDiscounts: Array<{ offer_id: number; amount: string; description?: string; name?: string }>;
-    voucherDiscounts: Array<{ amount: string; description?: string; name?: string }>;
+    offerDiscounts: Array<{
+      offer_id: number;
+      amount: string;
+      description?: string;
+      name?: string;
+    }>;
+    voucherDiscounts: Array<{
+      amount: string;
+      description?: string;
+      name?: string;
+    }>;
   };
 }
 
 export interface CartTotals {
+  /** Cart subtotal before shipping and discounts. */
   subtotal: { value: number; formatted: string };
+  /** Shipping cost. */
   shipping: { value: number; formatted: string };
+  /** Discount applied to shipping (e.g. from a free-shipping offer). */
   shippingDiscount: { value: number; formatted: string };
+  /** Tax amount. */
   tax: { value: number; formatted: string };
+  /** Total discount amount from coupons and offers. */
   discounts: { value: number; formatted: string };
+  /** Cart grand total (subtotal + shipping − discounts + tax). */
   total: { value: number; formatted: string };
+  /** Grand total excluding shipping — useful for "free shipping" threshold displays. */
   totalExclShipping: { value: number; formatted: string };
+  /** Number of packages (lines) in the cart. */
   count: number;
+  /** `true` when the cart has no items. */
   isEmpty: boolean;
+  /** Savings from the retail/compare-at price on selected packages. */
   savings: { value: number; formatted: string };
+  /** Retail savings as a percentage of the compare-at total. */
   savingsPercentage: { value: number; formatted: string };
+  /** Sum of all retail/compare-at prices — the "before" price for savings display. */
   compareTotal: { value: number; formatted: string };
+  /** `true` when retail savings are available to display. */
   hasSavings: boolean;
+  /** Total savings including both retail price differences and applied discounts. */
   totalSavings: { value: number; formatted: string };
+  /** Total savings as a percentage of the compare-at total. */
   totalSavingsPercentage: { value: number; formatted: string };
+  /** `true` when there are total savings (retail + discounts) to display. */
   hasTotalSavings: boolean;
 }
 
@@ -391,6 +476,7 @@ export interface ConfigState {
   apiKey: string;
   campaignId: string;
   debug: boolean;
+  debugger: boolean | undefined;
   pageType: PageType;
   storeName?: string;
   spreedlyEnvironmentKey?: string | undefined;
@@ -629,12 +715,12 @@ export interface ShippingMethod {
 export interface CheckoutData {
   formData: Record<string, any>;
   paymentMethod:
-  | 'card_token'
-  | 'paypal'
-  | 'apple_pay'
-  | 'google_pay'
-  | 'credit-card'
-  | 'klarna';
+    | 'card_token'
+    | 'paypal'
+    | 'apple_pay'
+    | 'google_pay'
+    | 'credit-card'
+    | 'klarna';
   isProcessing?: boolean;
   step?: number;
 }

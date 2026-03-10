@@ -1,0 +1,149 @@
+<!--
+title: Cart Item List
+description: Render cart items from a custom HTML template with quantity controls, pricing, and remove buttons.
+order: 3
+-->
+
+<!--
+  HOW THIS WORKS:
+  ─────────────────────────────────────────────────────────────────────────────
+  CartItemListEnhancer (data-next-cart-list):
+    Reads cart items from cartStore and renders one copy of the item template
+    per item, filling in {item.*} variables.
+
+  data-item-template-id — points to a <template> element by ID.
+  data-empty-template   — HTML string shown when cart is empty.
+
+  Inside the template you can use any {item.*} variable:
+    {item.image}              image URL
+    {item.title}              package name
+    {item.variantAttributesFormatted}  "Black / Medium"
+    {item.sku}                SKU code
+    {item.quantity}           current quantity
+    {item.unitPrice}          per-unit price string
+    {item.finalLineTotal}     line total after discounts
+    {item.comparePrice}       compare-at price (empty if no discount)
+    {item.savingsPct}         "25" (integer percent off, empty if none)
+    {item.id}                 cart item id (for quantity/remove controls)
+    {item.packageId}          package ref_id
+
+  QuantityControlEnhancer (data-next-action="increase-qty" / "decrease-qty"):
+    Needs data-next-item-id="{item.id}" to know which line to adjust.
+
+  RemoveItemEnhancer (data-next-action="remove-item"):
+    Needs data-next-item-id="{item.id}" to know which line to remove.
+  ─────────────────────────────────────────────────────────────────────────────
+-->
+
+<!-- Item template — lives outside the DOM until rendered -->
+<template id="cart-item-tpl">
+  <div class="cart-item">
+
+    <img src="{item.image}" alt="{item.title}" />
+
+    <div class="item-body">
+      <p class="item-name">{item.title}</p>
+      <p class="item-variant">{item.variantAttributesFormatted}</p>
+      <p class="item-sku">SKU: {item.sku}</p>
+
+      <!-- Quantity control -->
+      <div class="qty-row">
+        <button class="qty-btn"
+                data-next-action="decrease-qty"
+                data-next-item-id="{item.id}">−</button>
+        <span class="qty-value">{item.quantity}</span>
+        <button class="qty-btn"
+                data-next-action="increase-qty"
+                data-next-item-id="{item.id}">+</button>
+      </div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+      <button class="remove-btn"
+              data-next-action="remove-item"
+              data-next-item-id="{item.id}"
+              title="Remove">✕</button>
+      <div class="item-price">
+        <p class="price-final">{item.finalLineTotal}</p>
+        <p class="price-was">{item.comparePrice}</p>
+      </div>
+    </div>
+
+  </div>
+</template>
+
+<!-- Cart list — SDK fills this in from the template above -->
+<div id="cart-list"
+     data-next-cart-list
+     data-item-template-id="cart-item-tpl"
+     data-empty-template="<div class='empty-msg'>Your cart is empty.</div>">
+</div>
+
+<!-- Cart totals — CartDisplayEnhancer populates these -->
+<div class="totals">
+  <div class="totals-row">
+    <span>Subtotal</span>
+    <span data-next-display="cart.subtotal"></span>
+  </div>
+  <div class="totals-row">
+    <span>Shipping</span>
+    <span data-next-display="cart.shipping"></span>
+  </div>
+  <div class="totals-row">
+    <span>Discount</span>
+    <span data-next-display="cart.discount"></span>
+  </div>
+  <div class="totals-row total">
+    <span>Total</span>
+    <span data-next-display="cart.total"></span>
+  </div>
+</div>
+
+<style>
+  body { font-family: sans-serif; padding: 24px; max-width: 520px; }
+
+  /* ── Cart list container ── */
+  #cart-list { display: flex; flex-direction: column; gap: 12px; }
+
+  /* ── Item card ── */
+  .cart-item {
+    display: grid; grid-template-columns: 72px 1fr auto;
+    gap: 14px; padding: 14px; border: 1px solid #e5e7eb;
+    border-radius: 10px; background: white; align-items: start;
+  }
+  .cart-item img { width: 72px; height: 72px; object-fit: cover; border-radius: 6px; background: #f3f4f6; }
+  .item-body { display: flex; flex-direction: column; gap: 4px; }
+  .item-name  { font-size: 14px; font-weight: 600; color: #111; }
+  .item-sku   { font-size: 12px; color: #9ca3af; }
+  .item-variant { font-size: 12px; color: #6b7280; }
+
+  /* Quantity control */
+  .qty-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .qty-btn {
+    width: 28px; height: 28px; border: 1px solid #d1d5db; border-radius: 6px;
+    background: white; cursor: pointer; font-size: 16px; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .qty-btn:hover { background: #f3f4f6; }
+  .qty-value { font-size: 14px; font-weight: 600; min-width: 20px; text-align: center; }
+
+  /* Price column */
+  .item-price { text-align: right; }
+  .price-final { font-size: 15px; font-weight: 700; color: #111; }
+  .price-was   { font-size: 12px; color: #9ca3af; text-decoration: line-through; }
+
+  /* Remove button */
+  .remove-btn {
+    background: none; border: none; cursor: pointer; color: #d1d5db;
+    font-size: 18px; padding: 2px; margin-top: 2px; transition: color .15s;
+  }
+  .remove-btn:hover { color: #ef4444; }
+
+  /* Empty cart message */
+  .empty-msg { text-align: center; padding: 40px; color: #9ca3af; font-size: 14px; }
+
+  /* ── Cart totals ── */
+  .totals { margin-top: 20px; padding: 16px; border: 1px solid #e5e7eb; border-radius: 10px; }
+  .totals-row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px; }
+  .totals-row.total { font-weight: 700; font-size: 16px; border-top: 1px solid #e5e7eb; padding-top: 10px; margin-top: 4px; }
+</style>

@@ -73,7 +73,8 @@ export class DebugModule {
    */
   public static async initializeIfEnabled(): Promise<void> {
     const urlParams = new URLSearchParams(window.location.search);
-    const isDebugMode = urlParams.get('debugger') === 'true';
+    const windowConfig = (window as any).nextConfig;
+    const isDebugMode = urlParams.get('debugger') === 'true' || windowConfig?.debugger === true;
     
     if (!isDebugMode) return;
 
@@ -134,7 +135,8 @@ export class DebugModule {
    */
   public static isDebugMode(): boolean {
     const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get('debugger') === 'true';
+    const windowConfig = (window as any).nextConfig;
+    return urlParams.get('debugger') === 'true' || windowConfig?.debugger === true;
   }
 
   /**

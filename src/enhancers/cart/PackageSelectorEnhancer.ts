@@ -1,7 +1,48 @@
 /**
- * Package Selector Enhancer
- * Manages selector components that swap entire cart contents with selected package
- * Similar to the old SelectorManager with swap functionality
+ * PackageSelectorEnhancer
+ *
+ * Manages a group of selectable package cards within a container element. Each card
+ * carries a `data-next-selector-card` attribute and a `data-next-package-id`.
+ *
+ * ## Modes
+ * - **swap** (default): selecting a card immediately replaces the current cart item
+ *   with the newly selected package via `cartStore.swapPackage`. If no item from
+ *   this selector is in the cart yet, the selected package is added automatically.
+ * - **select**: clicking a card only records the selection and emits events; the
+ *   cart is not touched. An external AddToCartEnhancer reads
+ *   `data-selected-package` off the container to know what to add.
+ *
+ * ## Lifecycle
+ * 1. `initialize()` — reads `data-next-selector-id` / `data-next-id` and
+ *    `data-next-selection-mode`, then scans child `[data-next-selector-card]`
+ *    elements and registers each as a `SelectorItem`.
+ * 2. A `MutationObserver` keeps the item list in sync when cards are added,
+ *    removed, or have their `data-next-package-id` changed at runtime (e.g. by
+ *    a variant selector swapping package IDs).
+ * 3. The enhancer subscribes to `cartStore` and calls `syncWithCart()` on every
+ *    change to keep `next-selected` / `next-in-cart` CSS classes and
+ *    `data-next-selected` / `data-next-in-cart` attributes accurate.
+ *
+ * ## Pre-selection
+ * A card with `data-next-selected="true"` is auto-selected on init. In swap mode
+ * it is also auto-added to the cart when the cart is empty.
+ *
+ * ## Quantity controls
+ * Cards may contain `[data-next-quantity-increase]` / `[data-next-quantity-decrease]`
+ * buttons and a `[data-next-quantity-display]` element. In swap mode, changing the
+ * quantity of the currently selected card updates the cart immediately.
+ * `data-next-min-quantity` / `data-next-max-quantity` attributes on the card set
+ * the allowed range (default 1–999).
+ *
+ * ## Events emitted
+ * - `selector:item-selected`    — card clicked (before cart update)
+ * - `selector:selection-changed` — internal selection state updated
+ * - `selector:quantity-changed`  — inline quantity control changed
+ *
+ * ## CSS classes applied
+ * - `next-selector-card` — added to every registered card element
+ * - `next-selected`      — the currently selected card
+ * - `next-in-cart`       — any card whose package is present in the cart
  */
 
 import { BaseEnhancer } from '@/enhancers/base/BaseEnhancer';

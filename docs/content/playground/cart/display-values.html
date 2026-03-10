@@ -1,0 +1,106 @@
+<!--
+title: Display Values
+description: Show live cart and campaign data anywhere on the page using data-next-display. Values update automatically when the cart changes.
+order: 6
+-->
+
+<!--
+  HOW THIS WORKS:
+  ─────────────────────────────────────────────────────────────────────────────
+  data-next-display="<path>"
+    Binds an element to a reactive value. The element's text content is replaced
+    with the resolved value and updated automatically on every state change.
+
+  Cart values (cartStore):
+    cart.total          — formatted grand total
+    cart.subtotal       — formatted subtotal (before discounts)
+    cart.discount       — formatted discount amount
+    cart.shipping       — formatted shipping cost or "Free"
+    cart.itemCount      — total item count (respects quantity)
+    cart.coupon         — applied coupon code
+    cart.savings        — formatted total savings amount
+
+  Package / selector values (campaignStore + active selection):
+    package.price       — active package price
+    package.comparePrice — compare-at price
+    package.savings     — savings amount
+    package.savingsPct  — "25" (integer percent)
+    package.name        — package name
+    package.qty         — units in the package
+
+    data-next-selector-id="<id>"  — which PackageSelectorEnhancer to read from.
+    Without it, falls back to the first selected package in the cart.
+
+  Selector name (for showing "Color: Green"):
+    selector.name       — display name of the currently selected card
+    data-next-selector-id="<id>"  — required to know which selector to read.
+  ─────────────────────────────────────────────────────────────────────────────
+-->
+
+<h3>Cart Totals</h3>
+<div class="row"><label>Subtotal</label>    <span class="val" data-next-display="cart.subtotal"></span></div>
+<div class="row"><label>Discount</label>    <span class="val" data-next-display="cart.discount"></span></div>
+<div class="row"><label>Shipping</label>    <span class="val" data-next-display="cart.shipping"></span></div>
+<div class="row"><label>Total</label>       <span class="val" data-next-display="cart.total"></span></div>
+<div class="row"><label>Items in cart</label><span class="val" data-next-display="cart.itemCount"></span></div>
+<div class="row"><label>You save</label>    <span class="val" data-next-display="cart.savings"></span></div>
+<div class="row"><label>Coupon applied</label><span class="val" data-next-display="cart.coupon"></span></div>
+
+<h3>Active Package (linked to selector)</h3>
+<!--
+  All these read from the PackageSelectorEnhancer whose id="pkg".
+  Drop data-next-selector-id to fall back to whatever is in the cart.
+-->
+<div class="row">
+  <label>Package name</label>
+  <span class="val" data-next-display="package.name" data-next-selector-id="pkg"></span>
+</div>
+<div class="row">
+  <label>Price</label>
+  <span class="val" data-next-display="package.price" data-next-selector-id="pkg"></span>
+</div>
+<div class="row">
+  <label>Was</label>
+  <span class="val" data-next-display="package.comparePrice" data-next-selector-id="pkg"></span>
+</div>
+<div class="row">
+  <label>You save</label>
+  <span class="val">
+    <span data-next-display="package.savings" data-next-selector-id="pkg"></span>
+    <span class="badge"
+          data-next-display="package.savingsPct"
+          data-next-display-suffix="% off"
+          data-next-selector-id="pkg">
+    </span>
+  </span>
+</div>
+
+<h3>Variant Selection Labels</h3>
+<!--
+  Shows "Green" / "Small" below color + size selectors defined elsewhere on the page.
+-->
+<div class="row">
+  <label>Selected color</label>
+  <span class="val" data-next-display="selector.name" data-next-selector-id="color-selector"></span>
+</div>
+<div class="row">
+  <label>Selected size</label>
+  <span class="val" data-next-display="selector.name" data-next-selector-id="size-selector"></span>
+</div>
+
+<style>
+  body { font-family: sans-serif; padding: 24px; max-width: 480px; }
+  h3 { font-size: 14px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; margin: 24px 0 8px; }
+  .row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0; border-bottom: 1px solid #f3f4f6; font-size: 14px;
+  }
+  .row:last-child { border-bottom: none; }
+  .row label { color: #374151; }
+  .row .val   { font-weight: 600; color: #111; }
+  .badge {
+    display: inline-block; font-size: 11px; font-weight: 700;
+    padding: 3px 8px; border-radius: 20px; background: #ecfdf5; color: #059669;
+    margin-left: 8px;
+  }
+</style>

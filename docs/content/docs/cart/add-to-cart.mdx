@@ -1,0 +1,125 @@
+---
+title: Add to Cart Button
+description: A button that adds a package to the cart. Works with a direct package ID or reads from a PackageSelectorEnhancer.
+---
+
+`AddToCartEnhancer` turns any element into an add-to-cart action. It supports two modes:
+
+- **Direct mode** — adds a fixed package ID
+- **Selector mode** — reads the current selection from a [`PackageSelectorEnhancer`](/docs/cart/package-selector)
+
+---
+
+## Direct mode
+
+Add a fixed package on click:
+
+```html
+<button data-next-action="add-to-cart"
+        data-next-package-id="42"
+        data-next-url="/checkout">
+  Buy Now
+</button>
+```
+
+---
+
+## Selector mode
+
+Read the selection from a `PackageSelectorEnhancer`. The button stays disabled until a selection is made.
+
+```html
+<!-- Selector -->
+<div data-next-cart-selector data-next-selector-id="main" data-next-selection-mode="select">
+  <div data-next-selector-card data-next-package-id="10" data-next-selected="true">1 Bottle</div>
+  <div data-next-selector-card data-next-package-id="20">3 Bottles</div>
+</div>
+
+<!-- Button reads from selector "main" -->
+<button data-next-action="add-to-cart"
+        data-next-selector-id="main"
+        data-next-url="/checkout">
+  Buy Now
+</button>
+```
+
+---
+
+## Attributes
+
+| Attribute | Description |
+|---|---|
+| `data-next-action="add-to-cart"` | Required. Marks this as an add-to-cart button |
+| `data-next-package-id` | Package ID to add (direct mode) |
+| `data-next-selector-id` | ID of the selector to read from (selector mode) |
+| `data-next-quantity` | Quantity to add (default `1`) |
+| `data-next-url` | Redirect URL after the item is successfully added |
+| `data-next-clear-cart="true"` | Clear the entire cart before adding this item |
+| `data-next-profile` | Apply a pricing profile before adding |
+
+<Callout>
+  `data-next-package-id` and `data-next-selector-id` are mutually exclusive. Use one or the other.
+</Callout>
+
+---
+
+## Redirect URL
+
+`data-next-url` accepts a relative or absolute URL. Existing URL query parameters are preserved automatically, so UTM tags and attribution data flow through to the checkout page.
+
+```html
+<!-- Simple redirect -->
+<button data-next-action="add-to-cart"
+        data-next-package-id="10"
+        data-next-url="/checkout">
+  Buy Now
+</button>
+
+<!-- No redirect — just adds to cart -->
+<button data-next-action="add-to-cart"
+        data-next-package-id="10">
+  Add to Cart
+</button>
+```
+
+---
+
+## Clear cart before adding
+
+Useful for "buy now" flows where you want to ensure only one package is in the cart:
+
+```html
+<button data-next-action="add-to-cart"
+        data-next-package-id="10"
+        data-next-clear-cart="true"
+        data-next-url="/checkout">
+  Buy Now
+</button>
+```
+
+---
+
+## Loading state
+
+While the add-to-cart API call is in progress, the button receives `disabled` and `next-loading` attributes. You can style this state:
+
+```css
+button[data-next-action="add-to-cart"].next-loading {
+  opacity: 0.6;
+  cursor: wait;
+}
+```
+
+---
+
+## Events emitted
+
+| Event | Payload | When |
+|---|---|---|
+| `cart:item-added` | `{ packageId, quantity }` | Item successfully added to cart |
+
+```js
+window.NextCommerce.on('cart:item-added', ({ packageId }) => {
+  console.log('Added package', packageId, 'to cart');
+});
+```

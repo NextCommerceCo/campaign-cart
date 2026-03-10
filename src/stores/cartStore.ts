@@ -4,7 +4,13 @@
 
 import { create } from 'zustand';
 import { subscribeWithSelector, persist } from 'zustand/middleware';
-import type { CartState, CartItem, CartTotals, DiscountDefinition, AppliedCoupon } from '@/types/global';
+import type {
+  CartState,
+  CartItem,
+  CartTotals,
+  DiscountDefinition,
+  AppliedCoupon,
+} from '@/types/global';
 import { sessionStorageManager, CART_STORAGE_KEY } from '@/utils/storage';
 import { EventBus } from '@/utils/events';
 import { createLogger } from '@/utils/logger';
@@ -14,12 +20,19 @@ import type { CartCalculateSummary } from '@/types/api';
 const logger = createLogger('CartStore');
 
 interface CartActions {
-  addItem: (item: Partial<CartItem> & { isUpsell: boolean | undefined }) => Promise<void>;
+  addItem: (
+    item: Partial<CartItem> & { isUpsell: boolean | undefined }
+  ) => Promise<void>;
   removeItem: (packageId: number) => Promise<void>;
   updateQuantity: (packageId: number, quantity: number) => Promise<void>;
-  swapPackage: (removePackageId: number, addItem: Partial<CartItem> & { isUpsell: boolean | undefined }) => Promise<void>;
+  swapPackage: (
+    removePackageId: number,
+    addItem: Partial<CartItem> & { isUpsell: boolean | undefined }
+  ) => Promise<void>;
   clear: () => Promise<void>;
-  swapCart: (items: Array<{ packageId: number; quantity: number }>) => Promise<void>;
+  swapCart: (
+    items: Array<{ packageId: number; quantity: number }>
+  ) => Promise<void>;
   syncWithAPI: () => Promise<void>;
   calculateTotals: () => void;
   calculateShipping: () => number;
@@ -78,7 +91,9 @@ const cartStoreInstance = create<CartState & CartActions>()(
     subscribeWithSelector((set, get) => ({
       ...initialState,
 
-      addItem: async (item: Partial<CartItem> & { isUpsell: boolean | undefined }) => {
+      addItem: async (
+        item: Partial<CartItem> & { isUpsell: boolean | undefined }
+      ) => {
         const { useCampaignStore } = await import('./campaignStore');
         const { useProfileStore } = await import('./profileStore');
         const campaignStore = useCampaignStore.getState();
@@ -89,7 +104,9 @@ const cartStoreInstance = create<CartState & CartActions>()(
         if (!item.originalPackageId && profileStore.activeProfileId) {
           const mappedId = profileStore.getMappedPackageId(finalPackageId);
           if (mappedId !== finalPackageId) {
-            logger.debug(`Applying profile mapping: ${finalPackageId} -> ${mappedId}`);
+            logger.debug(
+              `Applying profile mapping: ${finalPackageId} -> ${mappedId}`
+            );
             finalPackageId = mappedId;
           }
         }
@@ -98,14 +115,20 @@ const cartStoreInstance = create<CartState & CartActions>()(
         const packageData = campaignStore.getPackage(finalPackageId);
 
         if (!packageData) {
-          throw new Error(`Package ${finalPackageId} not found in campaign data`);
+          throw new Error(
+            `Package ${finalPackageId} not found in campaign data`
+          );
         }
 
         set(state => {
           const newItem: CartItem = {
             id: Date.now(),
             packageId: finalPackageId,
-            originalPackageId: item.originalPackageId || (finalPackageId !== (item.packageId ?? 0) ? item.packageId : undefined),
+            originalPackageId:
+              item.originalPackageId ||
+              (finalPackageId !== (item.packageId ?? 0)
+                ? item.packageId
+                : undefined),
             quantity: item.quantity ?? 1,
             price: parseFloat(packageData.price_total), // Use total package price, not per-unit
             title: item.title ?? packageData.name,
@@ -128,7 +151,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
             variantId: packageData.product_variant_id,
             variantName: packageData.product_variant_name,
             variantAttributes: packageData.product_variant_attribute_values,
-            variantSku: packageData.product_sku || undefined || undefined
+            variantSku: packageData.product_sku || undefined || undefined,
           };
 
           // Console log for debugging upsell items
@@ -137,7 +160,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
               packageId: newItem.packageId,
               isUpsell: item.isUpsell,
               finalItemIsUpsell: newItem.is_upsell,
-              itemData: newItem
+              itemData: newItem,
             });
           }
 
@@ -163,16 +186,20 @@ const cartStoreInstance = create<CartState & CartActions>()(
         const eventBus = EventBus.getInstance();
         eventBus.emit('cart:item-added', {
           packageId: item.packageId ?? 0,
-          quantity: item.quantity ?? 1
+          quantity: item.quantity ?? 1,
         });
         eventBus.emit('cart:updated', get());
       },
 
       removeItem: async (packageId: number) => {
-        const removedItem = get().items.find(item => item.packageId === packageId);
+        const removedItem = get().items.find(
+          item => item.packageId === packageId
+        );
 
         set(state => {
-          const newItems = state.items.filter(item => item.packageId !== packageId);
+          const newItems = state.items.filter(
+            item => item.packageId !== packageId
+          );
           return { ...state, items: newItems };
         });
 
@@ -194,7 +221,9 @@ const cartStoreInstance = create<CartState & CartActions>()(
           return get().removeItem(packageId);
         }
 
-        const currentItem = get().items.find(item => item.packageId === packageId);
+        const currentItem = get().items.find(
+          item => item.packageId === packageId
+        );
         const oldQuantity = currentItem?.quantity ?? 0;
 
         set(state => {
@@ -213,14 +242,16 @@ const cartStoreInstance = create<CartState & CartActions>()(
           eventBus.emit('cart:quantity-changed', {
             packageId,
             quantity,
-            oldQuantity
+            oldQuantity,
           });
           eventBus.emit('cart:updated', get());
         }
       },
 
-
-      swapPackage: async (removePackageId: number, addItem: Partial<CartItem> & { isUpsell: boolean | undefined }) => {
+      swapPackage: async (
+        removePackageId: number,
+        addItem: Partial<CartItem> & { isUpsell: boolean | undefined }
+      ) => {
         const { useCampaignStore } = await import('./campaignStore');
         const { useProfileStore } = await import('./profileStore');
         const campaignStore = useCampaignStore.getState();
@@ -229,9 +260,12 @@ const cartStoreInstance = create<CartState & CartActions>()(
         // Apply profile mapping to both the package being removed and added
         let mappedRemovePackageId = removePackageId;
         if (profileStore.activeProfileId) {
-          const mappedRemoveId = profileStore.getMappedPackageId(removePackageId);
+          const mappedRemoveId =
+            profileStore.getMappedPackageId(removePackageId);
           if (mappedRemoveId !== removePackageId) {
-            logger.debug(`Applying profile mapping to remove package: ${removePackageId} -> ${mappedRemoveId}`);
+            logger.debug(
+              `Applying profile mapping to remove package: ${removePackageId} -> ${mappedRemoveId}`
+            );
             mappedRemovePackageId = mappedRemoveId;
           }
         }
@@ -241,7 +275,9 @@ const cartStoreInstance = create<CartState & CartActions>()(
         if (profileStore.activeProfileId) {
           const mappedId = profileStore.getMappedPackageId(finalPackageId);
           if (mappedId !== finalPackageId) {
-            logger.debug(`Applying profile mapping in swapPackage: ${finalPackageId} -> ${mappedId}`);
+            logger.debug(
+              `Applying profile mapping in swapPackage: ${finalPackageId} -> ${mappedId}`
+            );
             finalPackageId = mappedId;
           }
         }
@@ -250,17 +286,24 @@ const cartStoreInstance = create<CartState & CartActions>()(
         const newPackageData = campaignStore.getPackage(finalPackageId);
 
         if (!newPackageData) {
-          throw new Error(`Package ${finalPackageId} not found in campaign data`);
+          throw new Error(
+            `Package ${finalPackageId} not found in campaign data`
+          );
         }
 
         // Get the item being removed (using the mapped ID)
-        const previousItem = get().items.find(item => item.packageId === mappedRemovePackageId);
+        const previousItem = get().items.find(
+          item => item.packageId === mappedRemovePackageId
+        );
 
         // Create the new item
         const newItem: CartItem = {
           id: Date.now(),
           packageId: finalPackageId,
-          originalPackageId: finalPackageId !== (addItem.packageId ?? 0) ? (addItem.packageId ?? 0) : undefined,
+          originalPackageId:
+            finalPackageId !== (addItem.packageId ?? 0)
+              ? (addItem.packageId ?? 0)
+              : undefined,
           quantity: addItem.quantity ?? 1,
           price: parseFloat(newPackageData.price_total),
           title: addItem.title ?? newPackageData.name,
@@ -282,7 +325,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
           variantId: newPackageData.product_variant_id,
           variantName: newPackageData.product_variant_name,
           variantAttributes: newPackageData.product_variant_attribute_values,
-          variantSku: newPackageData.product_sku || undefined
+          variantSku: newPackageData.product_sku || undefined,
         };
 
         // Calculate price difference
@@ -291,7 +334,9 @@ const cartStoreInstance = create<CartState & CartActions>()(
         // Perform atomic update
         set(state => {
           // Remove old item and add new item in single state update
-          const newItems = state.items.filter(item => item.packageId !== mappedRemovePackageId);
+          const newItems = state.items.filter(
+            item => item.packageId !== mappedRemovePackageId
+          );
 
           // Check if new package already exists
           const existingIndex = newItems.findIndex(
@@ -312,12 +357,14 @@ const cartStoreInstance = create<CartState & CartActions>()(
 
         // Emit single swap event
         const eventBus = EventBus.getInstance();
-        const swapEvent: Parameters<typeof eventBus.emit<'cart:package-swapped'>>[1] = {
+        const swapEvent: Parameters<
+          typeof eventBus.emit<'cart:package-swapped'>
+        >[1] = {
           previousPackageId: mappedRemovePackageId,
           newPackageId: finalPackageId,
           newItem,
           priceDifference,
-          source: 'package-selector'
+          source: 'package-selector',
         };
 
         // Only include previousItem if it exists
@@ -341,7 +388,9 @@ const cartStoreInstance = create<CartState & CartActions>()(
         get().calculateTotals();
       },
 
-      swapCart: async (items: Array<{ packageId: number; quantity: number }>) => {
+      swapCart: async (
+        items: Array<{ packageId: number; quantity: number }>
+      ) => {
         const { useCampaignStore } = await import('./campaignStore');
         const { useProfileStore } = await import('./profileStore');
         const campaignStore = useCampaignStore.getState();
@@ -368,7 +417,9 @@ const cartStoreInstance = create<CartState & CartActions>()(
           if (!originalPackageId && profileStore.activeProfileId) {
             const mappedId = profileStore.getMappedPackageId(finalPackageId);
             if (mappedId !== finalPackageId) {
-              logger.debug(`Applying profile mapping: ${finalPackageId} -> ${mappedId}`);
+              logger.debug(
+                `Applying profile mapping: ${finalPackageId} -> ${mappedId}`
+              );
               originalPackageId = finalPackageId;
               finalPackageId = mappedId;
             }
@@ -378,8 +429,13 @@ const cartStoreInstance = create<CartState & CartActions>()(
           const packageData = campaignStore.getPackage(finalPackageId);
 
           if (!packageData) {
-            logger.warn(`Package ${finalPackageId} not found in campaign data, skipping`);
-            logger.debug('Available packages:', campaignStore.data?.packages?.map(p => p.ref_id));
+            logger.warn(
+              `Package ${finalPackageId} not found in campaign data, skipping`
+            );
+            logger.debug(
+              'Available packages:',
+              campaignStore.data?.packages?.map(p => p.ref_id)
+            );
             continue;
           }
 
@@ -410,7 +466,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
             variantId: packageData.product_variant_id,
             variantName: packageData.product_variant_name,
             variantAttributes: packageData.product_variant_attribute_values,
-            variantSku: packageData.product_sku || undefined || undefined
+            variantSku: packageData.product_sku || undefined || undefined,
           };
 
           newItems.push(newItem);
@@ -455,10 +511,10 @@ const cartStoreInstance = create<CartState & CartActions>()(
           const { useCheckoutStore } = await import('./checkoutStore');
           const checkoutState = useCheckoutStore.getState();
 
-          logger.info('Bond Debug ->> Cart ->', state)
-          logger.info('Bond Debug ->> Config ->', configState)
-          logger.info('Bond Debug ->> Campaign ->', campaignState)
-          logger.info('Bond Debug ->> Checkout ->', checkoutState)
+          logger.info('Bond Debug ->> Cart ->', state);
+          logger.info('Bond Debug ->> Config ->', configState);
+          logger.info('Bond Debug ->> Campaign ->', campaignState);
+          logger.info('Bond Debug ->> Checkout ->', checkoutState);
 
           const cartData: CartCalculateSummary = {
             lines: state.items.map(item => ({
@@ -466,51 +522,90 @@ const cartStoreInstance = create<CartState & CartActions>()(
               quantity: item.quantity,
               is_upsell: item.is_upsell || false,
             })),
-            vouchers: [...checkoutState.vouchers, 'SAVE10'],
+            vouchers: [...checkoutState.vouchers],
             currency: campaignState.data?.currency || null,
             shipping_method: 1,
           };
 
-          logger.info('Bond Debug ->> Cart Data ->', cartData)
+          logger.info('Bond Debug ->> Cart Data ->', cartData);
 
           try {
             const response = await client.calculateSummary(cartData);
-            logger.info('Bond Debug ->> Response ->', response)
+            logger.info('Bond Debug ->> Response ->', response);
 
             const total = parseFloat(response.total);
-            const subtotal = parseFloat(response.total) - parseFloat(response.shipping);
+            const subtotal =
+              parseFloat(response.total) - parseFloat(response.shipping);
             const shipping = parseFloat(response.shipping);
-            const shippingDiscount = parseFloat(response.shipping_discount || '0');
-            const discount = parseFloat(response.total_discounts);
-            const savings = parseFloat(response.total_discounts);
-            const savingsPercentage = parseFloat(response.total_discounts) / parseFloat(response.total) * 100;
-            const compareTotal = parseFloat(response.total) - parseFloat(response.total_discounts);
-            const hasSavings = parseFloat(response.total_discounts) > 0;
-            const count = response.lines.reduce((sum, line) => sum + line.quantity, 0);
+            const shippingDiscount = parseFloat(
+              response.shipping_discount || '0'
+            );
+            const discount = parseFloat(response.total_discount);
+            const savings = parseFloat(response.total_discount);
+            const savingsPercentage =
+              (parseFloat(response.total_discount) /
+                parseFloat(response.total)) *
+              100;
+            const compareTotal =
+              parseFloat(response.total) - parseFloat(response.total_discount);
+            const hasSavings = parseFloat(response.total_discount) > 0;
+            const count = response.lines.reduce(
+              (sum, line) => sum + line.quantity,
+              0
+            );
             const isEmpty = response.lines.length === 0;
 
             const totals: CartTotals = {
-              subtotal: { value: subtotal, formatted: formatCurrency(subtotal) },
-              shipping: { value: shipping, formatted: shipping === 0 ? 'FREE' : formatCurrency(shipping) },
-              shippingDiscount: { value: shippingDiscount, formatted: formatCurrency(shippingDiscount) },
+              subtotal: {
+                value: subtotal,
+                formatted: formatCurrency(subtotal),
+              },
+              shipping: {
+                value: shipping,
+                formatted: shipping === 0 ? 'FREE' : formatCurrency(shipping),
+              },
+              shippingDiscount: {
+                value: shippingDiscount,
+                formatted: formatCurrency(shippingDiscount),
+              },
               tax: { value: 0, formatted: formatCurrency(0) },
-              discounts: { value: discount, formatted: formatCurrency(discount) },
+              discounts: {
+                value: discount,
+                formatted: formatCurrency(discount),
+              },
               total: { value: total, formatted: formatCurrency(total) },
-              totalExclShipping: { value: subtotal, formatted: formatCurrency(subtotal) },
+              totalExclShipping: {
+                value: subtotal,
+                formatted: formatCurrency(subtotal),
+              },
               count: count,
               isEmpty: isEmpty,
               savings: { value: savings, formatted: formatCurrency(savings) },
-              savingsPercentage: { value: savingsPercentage, formatted: `${savingsPercentage}%` },
-              compareTotal: { value: compareTotal, formatted: formatCurrency(compareTotal) },
-              totalSavings: { value: savings, formatted: formatCurrency(savings) },
-              totalSavingsPercentage: { value: savingsPercentage, formatted: `${savingsPercentage}%` },
+              savingsPercentage: {
+                value: savingsPercentage,
+                formatted: `${savingsPercentage}%`,
+              },
+              compareTotal: {
+                value: compareTotal,
+                formatted: formatCurrency(compareTotal),
+              },
+              totalSavings: {
+                value: savings,
+                formatted: formatCurrency(savings),
+              },
+              totalSavingsPercentage: {
+                value: savingsPercentage,
+                formatted: `${savingsPercentage}%`,
+              },
               hasSavings: hasSavings,
               hasTotalSavings: hasSavings,
             };
 
             // Update items with discount data from response
             const updatedItems = state.items.map(item => {
-              const line = response.lines.find(l => l.package_id === item.packageId);
+              const line = response.lines.find(
+                l => l.package_id === item.packageId
+              );
               if (line) {
                 return {
                   ...item,
@@ -537,8 +632,8 @@ const cartStoreInstance = create<CartState & CartActions>()(
               totals,
               discountDetails: {
                 offerDiscounts: response.offer_discounts || [],
-                voucherDiscounts: response.voucher_discounts || []
-              }
+                voucherDiscounts: response.voucher_discounts || [],
+              },
             });
           } catch (error) {
             logger.error('Failed to sync cart with API:', error);
@@ -547,8 +642,14 @@ const cartStoreInstance = create<CartState & CartActions>()(
           return;
 
           // item.price is already the total package price, so just multiply by quantity of packages
-          const subtotal = state.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-          const totalQuantity = state.items.reduce((sum, item) => sum + item.quantity, 0);
+          const subtotal = state.items.reduce(
+            (sum, item) => sum + item.price * item.quantity,
+            0
+          );
+          const totalQuantity = state.items.reduce(
+            (sum, item) => sum + item.quantity,
+            0
+          );
           const isEmpty = state.items.length === 0;
 
           // Currency formatting is handled by the centralized formatter
@@ -563,12 +664,13 @@ const cartStoreInstance = create<CartState & CartActions>()(
             } else if (packageData?.price_total) {
               retailTotal = parseFloat(packageData.price_total);
             }
-            return sum + (retailTotal * item.quantity);
+            return sum + retailTotal * item.quantity;
           }, 0);
 
           // Calculate savings
           const savings = Math.max(0, compareTotal - subtotal);
-          const savingsPercentage = compareTotal > 0 ? (savings / compareTotal) * 100 : 0;
+          const savingsPercentage =
+            compareTotal > 0 ? (savings / compareTotal) * 100 : 0;
           const hasSavings = savings > 0;
 
           const shipping = get().calculateShipping();
@@ -578,11 +680,13 @@ const cartStoreInstance = create<CartState & CartActions>()(
           let totalDiscounts = 0;
           const appliedCoupons = state.appliedCoupons || []; // Add safety check for undefined
           const updatedCoupons = appliedCoupons.map(appliedCoupon => {
-            const discountAmount = get().calculateDiscountAmount(appliedCoupon.definition);
+            const discountAmount = get().calculateDiscountAmount(
+              appliedCoupon.definition
+            );
             totalDiscounts += discountAmount;
             return {
               ...appliedCoupon,
-              discount: discountAmount
+              discount: discountAmount,
             };
           });
 
@@ -590,7 +694,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
           if (updatedCoupons.length > 0) {
             set(currentState => ({
               ...currentState,
-              appliedCoupons: updatedCoupons
+              appliedCoupons: updatedCoupons,
             }));
           }
 
@@ -599,25 +703,47 @@ const cartStoreInstance = create<CartState & CartActions>()(
 
           // Calculate total savings (retail savings + discount coupons)
           const totalSavings = savings + totalDiscounts;
-          const totalSavingsPercentage = compareTotal > 0 ? (totalSavings / compareTotal) * 100 : 0;
+          const totalSavingsPercentage =
+            compareTotal > 0 ? (totalSavings / compareTotal) * 100 : 0;
           const hasTotalSavings = totalSavings > 0;
 
           const totals: CartTotals = {
             subtotal: { value: subtotal, formatted: formatCurrency(subtotal) },
-            shipping: { value: shipping, formatted: shipping === 0 ? 'FREE' : formatCurrency(shipping) },
+            shipping: {
+              value: shipping,
+              formatted: shipping === 0 ? 'FREE' : formatCurrency(shipping),
+            },
             shippingDiscount: { value: 0, formatted: formatCurrency(0) },
             tax: { value: tax, formatted: formatCurrency(tax) },
-            discounts: { value: totalDiscounts, formatted: formatCurrency(totalDiscounts) },
+            discounts: {
+              value: totalDiscounts,
+              formatted: formatCurrency(totalDiscounts),
+            },
             total: { value: total, formatted: formatCurrency(total) },
-            totalExclShipping: { value: totalExclShipping, formatted: formatCurrency(totalExclShipping) },
+            totalExclShipping: {
+              value: totalExclShipping,
+              formatted: formatCurrency(totalExclShipping),
+            },
             count: totalQuantity,
             isEmpty,
             savings: { value: savings, formatted: formatCurrency(savings) },
-            savingsPercentage: { value: savingsPercentage, formatted: formatPercentage(savingsPercentage) },
-            compareTotal: { value: compareTotal, formatted: formatCurrency(compareTotal) },
+            savingsPercentage: {
+              value: savingsPercentage,
+              formatted: formatPercentage(savingsPercentage),
+            },
+            compareTotal: {
+              value: compareTotal,
+              formatted: formatCurrency(compareTotal),
+            },
             hasSavings,
-            totalSavings: { value: totalSavings, formatted: formatCurrency(totalSavings) },
-            totalSavingsPercentage: { value: totalSavingsPercentage, formatted: formatPercentage(totalSavingsPercentage) },
+            totalSavings: {
+              value: totalSavings,
+              formatted: formatCurrency(totalSavings),
+            },
+            totalSavingsPercentage: {
+              value: totalSavingsPercentage,
+              formatted: formatPercentage(totalSavingsPercentage),
+            },
             hasTotalSavings,
           };
 
@@ -660,7 +786,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
               totalSavings: { value: 0, formatted: '$0.00' },
               totalSavingsPercentage: { value: 0, formatted: '0%' },
               hasTotalSavings: false,
-            }
+            },
           });
         }
       },
@@ -733,8 +859,8 @@ const cartStoreInstance = create<CartState & CartActions>()(
               id: shippingMethod.ref_id,
               name: shippingMethod.code,
               price,
-              code: shippingMethod.code
-            }
+              code: shippingMethod.code,
+            },
           }));
 
           // Also update checkout store to keep in sync
@@ -742,7 +868,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
             id: shippingMethod.ref_id,
             name: shippingMethod.code,
             price: price,
-            code: shippingMethod.code
+            code: shippingMethod.code,
           });
 
           // Recalculate totals with new shipping method
@@ -752,9 +878,8 @@ const cartStoreInstance = create<CartState & CartActions>()(
           const eventBus = EventBus.getInstance();
           eventBus.emit('shipping:method-changed', {
             methodId,
-            method: shippingMethod
+            method: shippingMethod,
           });
-
         } catch (error) {
           console.error('Failed to set shipping method:', error);
           throw error;
@@ -791,7 +916,9 @@ const cartStoreInstance = create<CartState & CartActions>()(
 
             // FIXED: Use direct API values instead of double-dividing
             const actualUnitPrice = parseFloat(packageData?.price || '0'); // Direct per-unit price from API
-            const retailUnitPrice = parseFloat(packageData?.price_retail || packageData?.price || '0'); // Direct per-unit retail from API
+            const retailUnitPrice = parseFloat(
+              packageData?.price_retail || packageData?.price || '0'
+            ); // Direct per-unit retail from API
 
             // Package-level pricing (what's stored in cart)
             const packagePrice = item.price; // This is the total package price
@@ -809,34 +936,67 @@ const cartStoreInstance = create<CartState & CartActions>()(
             // Savings calculations
             const unitSavings = Math.max(0, retailUnitPrice - actualUnitPrice);
             const lineSavings = Math.max(0, retailLineTotal - lineTotal);
-            const savingsPct = retailUnitPrice > actualUnitPrice ? Math.round((unitSavings / retailUnitPrice) * 100) : 0;
+            const savingsPct =
+              retailUnitPrice > actualUnitPrice
+                ? Math.round((unitSavings / retailUnitPrice) * 100)
+                : 0;
 
             // FIXED: Trust API's is_recurring flag and handle recurring pricing properly
             const hasRecurring = packageData?.is_recurring === true;
-            const recurringPrice = hasRecurring ? parseFloat(packageData?.price_recurring || '0') : 0;
+            const recurringPrice = hasRecurring
+              ? parseFloat(packageData?.price_recurring || '0')
+              : 0;
 
             // Frequency text
-            const frequencyText = hasRecurring ?
-              (packageData?.interval_count && packageData.interval_count > 1 ?
-                `Every ${packageData.interval_count} ${packageData.interval}s` :
-                `Per ${packageData.interval}`) : 'One time';
+            const frequencyText = hasRecurring
+              ? packageData?.interval_count && packageData.interval_count > 1
+                ? `Every ${packageData.interval_count} ${packageData.interval}s`
+                : `Per ${packageData.interval}`
+              : 'One time';
 
             return {
               id: item.id,
               packageId: item.packageId,
               quantity: item.quantity,
               price: {
-                excl_tax: { value: actualUnitPrice, formatted: formatCurrency(actualUnitPrice) },
-                incl_tax: { value: actualUnitPrice, formatted: formatCurrency(actualUnitPrice) },
-                original: { value: retailUnitPrice, formatted: formatCurrency(retailUnitPrice) },
-                savings: { value: unitSavings, formatted: formatCurrency(unitSavings) },
-                recurring: { value: recurringPrice, formatted: formatCurrency(recurringPrice) },
+                excl_tax: {
+                  value: actualUnitPrice,
+                  formatted: formatCurrency(actualUnitPrice),
+                },
+                incl_tax: {
+                  value: actualUnitPrice,
+                  formatted: formatCurrency(actualUnitPrice),
+                },
+                original: {
+                  value: retailUnitPrice,
+                  formatted: formatCurrency(retailUnitPrice),
+                },
+                savings: {
+                  value: unitSavings,
+                  formatted: formatCurrency(unitSavings),
+                },
+                recurring: {
+                  value: recurringPrice,
+                  formatted: formatCurrency(recurringPrice),
+                },
                 // Line totals
-                lineTotal: { value: lineTotal, formatted: formatCurrency(lineTotal) },
-                lineCompare: { value: retailLineTotal, formatted: formatCurrency(retailLineTotal) },
-                lineSavings: { value: lineSavings, formatted: formatCurrency(lineSavings) },
+                lineTotal: {
+                  value: lineTotal,
+                  formatted: formatCurrency(lineTotal),
+                },
+                lineCompare: {
+                  value: retailLineTotal,
+                  formatted: formatCurrency(retailLineTotal),
+                },
+                lineSavings: {
+                  value: lineSavings,
+                  formatted: formatCurrency(lineSavings),
+                },
                 // Calculated fields
-                savingsPct: { value: savingsPct, formatted: formatPercentage(savingsPct) },
+                savingsPct: {
+                  value: savingsPct,
+                  formatted: formatPercentage(savingsPct),
+                },
               },
               product: {
                 title: item.title || packageData?.name || '',
@@ -888,29 +1048,40 @@ const cartStoreInstance = create<CartState & CartActions>()(
         // Validate coupon
         const validation = get().validateCoupon(normalizedCode);
         if (!validation.valid) {
-          return { success: false, message: validation.message || 'Coupon cannot be applied' };
+          return {
+            success: false,
+            message: validation.message || 'Coupon cannot be applied',
+          };
         }
 
         // Apply coupon - store definition but calculate discount dynamically
         set(state => ({
           ...state,
-          appliedCoupons: [...state.appliedCoupons, {
-            code: normalizedCode,
-            discount: 0, // Will be calculated dynamically in calculateTotals
-            definition: discount
-          }]
+          appliedCoupons: [
+            ...state.appliedCoupons,
+            {
+              code: normalizedCode,
+              discount: 0, // Will be calculated dynamically in calculateTotals
+              definition: discount,
+            },
+          ],
         }));
 
         // Recalculate totals
         get().calculateTotals();
 
-        return { success: true, message: `Coupon ${normalizedCode} applied successfully` };
+        return {
+          success: true,
+          message: `Coupon ${normalizedCode} applied successfully`,
+        };
       },
 
       removeCoupon: (code: string) => {
         set(state => ({
           ...state,
-          appliedCoupons: (state.appliedCoupons || []).filter(c => c.code !== code)
+          appliedCoupons: (state.appliedCoupons || []).filter(
+            c => c.code !== code
+          ),
         }));
 
         // Recalculate totals
@@ -937,9 +1108,11 @@ const cartStoreInstance = create<CartState & CartActions>()(
 
         // Check minimum order value
         if (discount.minOrderValue && state.subtotal < discount.minOrderValue) {
-          return { valid: false, message: `Minimum order value of $${discount.minOrderValue} required` };
+          return {
+            valid: false,
+            message: `Minimum order value of $${discount.minOrderValue} required`,
+          };
         }
-
 
         // Check if combinable with other coupons
         if (!discount.combinable && (state.appliedCoupons || []).length > 0) {
@@ -967,7 +1140,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
           // Apply to specific packages
           const eligibleTotal = state.items
             .filter(item => coupon.packageIds?.includes(item.packageId))
-            .reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            .reduce((sum, item) => sum + item.price * item.quantity, 0);
 
           if (coupon.type === 'percentage') {
             discountAmount = eligibleTotal * (coupon.value / 100);
@@ -1003,7 +1176,9 @@ const cartStoreInstance = create<CartState & CartActions>()(
             const packageData = campaignStore.getPackage(item.packageId);
 
             if (!packageData) {
-              logger.warn(`Package ${item.packageId} not found in campaign data`);
+              logger.warn(
+                `Package ${item.packageId} not found in campaign data`
+              );
               return item;
             }
 
@@ -1022,8 +1197,10 @@ const cartStoreInstance = create<CartState & CartActions>()(
               productName: item.productName ?? packageData.product_name,
               variantId: item.variantId ?? packageData.product_variant_id,
               variantName: item.variantName ?? packageData.product_variant_name,
-              variantAttributes: item.variantAttributes ?? packageData.product_variant_attribute_values,
-              variantSku: item.variantSku ?? packageData.product_sku
+              variantAttributes:
+                item.variantAttributes ??
+                packageData.product_variant_attribute_values,
+              variantSku: item.variantSku ?? packageData.product_sku,
             };
           });
 
@@ -1038,9 +1215,11 @@ const cartStoreInstance = create<CartState & CartActions>()(
               const newPrice = parseFloat(shippingMethodData.price || '0');
               updatedShippingMethod = {
                 ...updatedShippingMethod,
-                price: newPrice
+                price: newPrice,
               };
-              logger.info(`Updated shipping method price: ${updatedShippingMethod.code} = ${newPrice} ${campaignStore.data.currency}`);
+              logger.info(
+                `Updated shipping method price: ${updatedShippingMethod.code} = ${newPrice} ${campaignStore.data.currency}`
+              );
             }
           }
 
@@ -1048,7 +1227,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
           set(state => {
             const updates: any = {
               ...state,
-              items: updatedItems
+              items: updatedItems,
             };
             if (updatedShippingMethod !== undefined) {
               updates.shippingMethod = updatedShippingMethod;
@@ -1056,14 +1235,15 @@ const cartStoreInstance = create<CartState & CartActions>()(
             return updates;
           });
 
-          logger.info('Cart item prices and shipping refreshed with new currency');
+          logger.info(
+            'Cart item prices and shipping refreshed with new currency'
+          );
 
           // Recalculate totals with updated prices
           // Use setTimeout to ensure the state update completes first
           setTimeout(() => {
             get().calculateTotals();
           }, 0);
-
         } catch (error) {
           logger.error('Failed to refresh item prices:', error);
         }
@@ -1091,14 +1271,14 @@ const cartStoreInstance = create<CartState & CartActions>()(
           sessionStorageManager.remove(name);
         },
       },
-      onRehydrateStorage: () => (state) => {
+      onRehydrateStorage: () => state => {
         // Recalculate totals after rehydration to ensure discounts are properly calculated
         if (state) {
           logger.debug('Cart store rehydrated, recalculating totals...');
           state.calculateTotals();
         }
       },
-      partialize: (state) => ({
+      partialize: state => ({
         items: state.items,
         appliedCoupons: state.appliedCoupons,
         subtotal: state.subtotal,

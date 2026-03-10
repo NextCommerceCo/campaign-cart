@@ -1,0 +1,111 @@
+---
+title: Quantity Controls
+description: Buttons and inputs to increase, decrease, or set the quantity of a cart item.
+---
+
+`QuantityControlEnhancer` handles quantity changes for a specific cart item. Apply it to a button, input, or select element.
+
+---
+
+## Increase / Decrease buttons
+
+```html
+<button data-next-quantity="decrease" data-package-id="10" data-min="1">−</button>
+<span>2</span>
+<button data-next-quantity="increase" data-package-id="10" data-max="10">+</button>
+```
+
+---
+
+## Input / Select (set)
+
+```html
+<!-- Number input -->
+<input data-next-quantity="set"
+       data-package-id="10"
+       type="number"
+       min="1"
+       max="10"
+       value="1">
+
+<!-- Select -->
+<select data-next-quantity="set" data-package-id="10">
+  <option value="1">1</option>
+  <option value="2">2</option>
+  <option value="3">3</option>
+</select>
+```
+
+---
+
+## Attributes
+
+| Attribute | Required | Description |
+|---|---|---|
+| `data-next-quantity` | ✓ | Action: `increase`, `decrease`, or `set` |
+| `data-package-id` | ✓ | Package ID to control |
+| `data-step` | | Amount per click (default `1`) |
+| `data-min` | | Minimum quantity. Setting quantity to `0` removes the item (default `0`) |
+| `data-max` | | Maximum quantity (default `99`) |
+
+---
+
+## Remove on zero
+
+By default, setting quantity to `0` removes the item from the cart entirely. Set `data-min="1"` to prevent going below 1:
+
+```html
+<!-- Prevent removal via quantity control -->
+<button data-next-quantity="decrease" data-package-id="10" data-min="1">−</button>
+```
+
+---
+
+## Button states
+
+Increase/decrease buttons automatically disable themselves when they reach their limits:
+- `decrease` button disables at `data-min`
+- `increase` button disables at `data-max`
+
+```css
+button[data-next-quantity]:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+```
+
+---
+
+## Remove item button
+
+`RemoveItemEnhancer` removes a package from the cart on click:
+
+```html
+<button data-next-remove-item data-package-id="10">Remove</button>
+
+<!-- With confirmation dialog -->
+<button data-next-remove-item
+        data-package-id="10"
+        data-confirm="true"
+        data-confirm-message="Remove this item from your cart?">
+  Remove
+</button>
+```
+
+### Remove item attributes
+
+| Attribute | Description |
+|---|---|
+| `data-next-remove-item` | Required |
+| `data-package-id` | Package to remove |
+| `data-confirm="true"` | Show a browser `confirm()` dialog first |
+| `data-confirm-message` | Custom confirmation message |
+
+---
+
+## Events emitted
+
+| Event | Payload | When |
+|---|---|---|
+| `cart:quantity-changed` | `{ packageId, quantity }` | Quantity updated |
+| `cart:item-removed` | `{ packageId }` | Item removed from cart |

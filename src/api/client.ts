@@ -2,7 +2,16 @@
  * API Client for NextCommerce Campaigns API
  */
 
-import type { Campaign, Cart, Order, CartBase, CreateOrder, AddUpsellLine, CartCalculateSummary, CartSummary } from '@/types/api';
+import type {
+  Campaign,
+  Cart,
+  Order,
+  CartBase,
+  CreateOrder,
+  AddUpsellLine,
+  CartCalculateSummary,
+  CartSummary,
+} from '@/types/api';
 import { Logger, createLogger } from '@/utils/logger';
 
 export class ApiClient {
@@ -22,14 +31,18 @@ export class ApiClient {
   }
 
   // Cart endpoints
-  public async createCart(data: CartBase & { currency?: string }): Promise<Cart> {
+  public async createCart(
+    data: CartBase & { currency?: string }
+  ): Promise<Cart> {
     return this.request<Cart>('/api/v1/carts/', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  public async calculateSummary(data: CartCalculateSummary): Promise<CartSummary> {
+  public async calculateSummary(
+    data: CartCalculateSummary
+  ): Promise<CartSummary> {
     return this.request<CartSummary>('/api/v1/carts/calculate/', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -37,7 +50,9 @@ export class ApiClient {
   }
 
   // Order endpoints
-  public async createOrder(data: CreateOrder & { currency?: string }): Promise<Order> {
+  public async createOrder(
+    data: CreateOrder & { currency?: string }
+  ): Promise<Order> {
     return this.request<Order>('/api/v1/orders/', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -87,7 +102,9 @@ export class ApiClient {
   }
 
   // Get request type from endpoint
-  private getRequestType(endpoint: string): 'campaign' | 'cart' | 'order' | 'upsell' | 'prospect_cart' {
+  private getRequestType(
+    endpoint: string
+  ): 'campaign' | 'cart' | 'order' | 'upsell' | 'prospect_cart' {
     if (endpoint.includes('/campaigns')) return 'campaign';
     if (endpoint.includes('/upsells')) return 'upsell';
     if (endpoint.includes('/orders')) return 'order';
@@ -97,7 +114,9 @@ export class ApiClient {
   }
 
   // Get error type from status code
-  private getErrorType(status: number): 'network' | 'rate_limit' | 'auth' | 'server_error' | 'client_error' {
+  private getErrorType(
+    status: number
+  ): 'network' | 'rate_limit' | 'auth' | 'server_error' | 'client_error' {
     if (status === 0) return 'network';
     if (status === 429) return 'rate_limit';
     if (status === 401 || status === 403) return 'auth';
@@ -107,12 +126,15 @@ export class ApiClient {
   }
 
   // Generic request handler with error handling and rate limiting
-  private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  private async request<T>(
+    endpoint: string,
+    options?: RequestInit
+  ): Promise<T> {
     const method = options?.method || 'GET';
     const url = `${this.baseURL}${endpoint}`;
 
     const headers = {
-      'Authorization': this.apiKey,
+      Authorization: this.apiKey,
       'Content-Type': 'application/json',
       ...options?.headers,
     };
@@ -122,7 +144,13 @@ export class ApiClient {
     const startTime = performance.now();
     let statusCode = 0;
     let errorMessage: string | undefined;
-    let errorType: 'network' | 'rate_limit' | 'auth' | 'server_error' | 'client_error' | undefined;
+    let errorType:
+      | 'network'
+      | 'rate_limit'
+      | 'auth'
+      | 'server_error'
+      | 'client_error'
+      | undefined;
     let retryAfter: number | undefined;
 
     try {

@@ -9,10 +9,11 @@
 
   // Check for debug mode
   const qs = new URLSearchParams(location.search);
-  const isDebug = qs.get('debug') === 'true';
+  const isDebug = qs.get('debug') === 'true' || window.nextConfig?.debug === true;
 
-  // Configuration
-  const DEV_HOST = 'https://sdk.midless.dev';
+  // Configuration — priority: query string > nextConfig > default
+  const DEV_HOST = qs.get('sdk-host') || window.nextConfig?.sdkHost?.replace(/\/$/, '') || 'http://localhost:3000';
+  const customSdkHost = qs.get('sdk-host') || window.nextConfig?.sdkHost || null;
 
   // Auto-detect the host from the loader's own URL
   const loaderScript = document.currentScript || document.querySelector('script[src*="loader.js"]');
@@ -23,7 +24,7 @@
   const versionMatch = loaderUrl.match(/@v([0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9]+)?)/);
   if (versionMatch) {
     detectedVersion = versionMatch[1];
-  } else if (loaderUrl.includes('sdk.midless.dev') || loaderUrl.includes('127.0.0.1')) {
+  } else if (loaderUrl.includes('DEV_HOST') || loaderUrl.includes('127.0.0.1') || customSdkHost) {
     // For local development, check for version in query params or use 'dev'
     const urlParams = new URL(loaderUrl).searchParams;
     detectedVersion = urlParams.get('version') || 'dev';
@@ -34,7 +35,7 @@
   if (loaderUrl.includes('jsdelivr.net')) {
     // We're loaded from jsDelivr - use the same path as the loader
     PROD_HOST = loaderUrl.substring(0, loaderUrl.lastIndexOf('/loader.js'));
-  } else if (loaderUrl.includes('sdk.midless.dev') || loaderUrl.includes('127.0.0.1') || loaderUrl.includes('file://')) {
+  } else if (loaderUrl.includes(DEV_HOST) || loaderUrl.includes('127.0.0.1') || loaderUrl.includes('file://') || customSdkHost) {
     // For local testing, use the local build
     PROD_HOST = loaderUrl.substring(0, loaderUrl.lastIndexOf('/public/loader.js')) + '/dist';
   } else {

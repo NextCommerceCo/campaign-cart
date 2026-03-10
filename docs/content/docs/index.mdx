@@ -1,0 +1,121 @@
+---
+title: Introduction
+description: 29Next Campaign Cart SDK — data-attribute-driven cart and checkout for landing pages.
+---
+
+## What is the Campaign Cart SDK?
+
+The **29Next Campaign Cart SDK** is a JavaScript library that connects your HTML landing pages to the 29Next cart and checkout API. Instead of writing JavaScript, you add `data-next-*` attributes to your HTML elements and the SDK wires everything up automatically.
+
+**What it does:**
+- Loads your campaign's packages and pricing
+- Manages a cart (add, remove, update, clear)
+- Shows live data — totals, prices, item counts — that update as the cart changes
+- Drives checkout form submission and payment
+- Handles post-purchase upsells
+
+---
+
+## How it works
+
+The SDK initializes once on page load, scans the DOM for `data-next-*` attributes, and attaches an **enhancer** to each matching element. Each enhancer is a self-contained class that:
+
+1. Reads its configuration from the element's data attributes
+2. Subscribes to the relevant Zustand store (cart, campaign, order, etc.)
+3. Updates the DOM whenever the store changes
+4. Cleans up its listeners when the element is removed
+
+This means your HTML is the configuration. No JavaScript required for most pages.
+
+```html
+<!-- This button adds package 42 to the cart and redirects to checkout -->
+<button
+  data-next-action="add-to-cart"
+  data-next-package-id="42"
+  data-next-url="/checkout"
+>
+  Buy Now
+</button>
+```
+
+---
+
+## Architecture overview
+
+```
+HTML (data-next-* attributes)
+         │
+         ▼
+  AttributeScanner  ←── scans DOM on init
+         │ instantiates
+         ▼
+    Enhancers  ────────► DOM updates
+         │ subscribe
+         ▼
+   Zustand Stores  ◄──── API responses
+  (cart, campaign,
+   order, config…)
+         │
+         ▼
+   29Next Cart API
+```
+
+**Stores** hold all application state. Enhancers subscribe to stores — when state changes, every enhancer that cares about that state updates its DOM element automatically.
+
+---
+
+## JavaScript API
+
+For advanced use cases, every SDK capability is also available programmatically:
+
+```js
+const sdk = window.NextCommerce;
+
+// Get cart data
+const count = sdk.getCartCount();         // 2
+const totals = sdk.getCartTotals();       // { total: { formatted: "$49.00" }, … }
+
+// Manipulate cart
+await sdk.addItem({ packageId: 42 });
+await sdk.removeItem({ packageId: 42 });
+await sdk.clearCart();
+
+// Listen to events
+sdk.on('cart:item-added', ({ packageId }) => {
+  console.log('Added package', packageId);
+});
+```
+
+The `window.NextCommerce` object is the singleton [`NextCommerce`](/docs/javascript-api) class instance.
+
+---
+
+## Objects
+
+The SDK works with a set of typed data objects. Understanding their shape is useful when writing custom event handlers, analytics callbacks, or conditional logic.
+
+| Object | Description |
+|---|---|
+| [`CartState`](/docs/types/cart#cartstate) | Full cart state — items, totals, coupon, shipping |
+| [`CartTotals`](/docs/types/cart#carttotals) | Formatted monetary totals (subtotal, tax, discounts, total) |
+| [`CartItem`](/docs/types/cart#cartitem) | A single item in the cart |
+| [`EnrichedCartLine`](/docs/types/cart#enrichedcartline) | Cart item with full tax-inclusive/exclusive pricing breakdown |
+| [`Campaign`](/docs/types/campaign#campaign) | Top-level campaign — packages, offers, shipping methods |
+| [`Package`](/docs/types/campaign#package) | A purchasable package with pricing and product data |
+| [`Offer`](/docs/types/campaign#offer) | An automatic or voucher-triggered discount |
+| [`Order`](/docs/types/api#order) | A completed order returned after checkout |
+| [`ShippingMethod`](/docs/types/cart#shippingmethod) | The currently selected shipping method |
+| [`AppliedCoupon`](/docs/types/cart#appliedcoupon) | An active coupon with its calculated discount |
+
+---
+
+## Navigation
+
+<Cards>
+  <Card title="Getting Started" href="/docs/getting-started" description="Installation, configuration, and a quick-start example" />
+  <Card title="Cart System" href="/docs/cart" description="Package selectors, add-to-cart buttons, quantity controls" />
+  <Card title="Display System" href="/docs/display" description="Reactive data display, conditionals, and timers" />
+  <Card title="JavaScript API" href="/docs/javascript-api" description="Full programmatic API reference" />
+  <Card title="Objects" href="/docs/types/cart" description="Data shapes for cart, campaign, packages, orders, and more" />
+  <Card title="Reference" href="/docs/reference" description="Data attributes, CSS classes, and events cheat sheet" />
+</Cards>

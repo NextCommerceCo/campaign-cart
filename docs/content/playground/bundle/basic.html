@@ -1,0 +1,214 @@
+<!--
+title: Basic
+description: Auto-render bundle cards from a JSON array. Each bundle adds multiple fixed packages to the cart at once — no per-item variant configuration required.
+order: 1
+-->
+
+<!--
+  HOW THIS WORKS:
+  ─────────────────────────────────────────────────────────────────────────────
+  BundleSelectorEnhancer (data-next-bundle-selector):
+    Registers every [data-next-bundle-card] inside it.
+    Selecting a card replaces the previous bundle's packages in the cart with
+    the new bundle's packages, leaving unrelated cart items untouched.
+
+  data-next-selection-mode:
+    "swap" (default) → selecting a card immediately updates the cart.
+    "select"         → only marks the active card; an external add-to-cart
+                       button handles the cart update.
+
+  ── AUTO-RENDER MODE ─────────────────────────────────────────────────────────
+    Supply data-next-bundles with a JSON array of bundle objects and a
+    card template via data-next-bundle-template-id.
+    • All fields except "items" become {bundle.<field>} template variables.
+    • data-next-bundle-id and data-next-bundle-items are injected onto the
+      card element automatically — the template does not need to include them.
+    • The template root element must carry data-next-bundle-card.
+
+  Bundle JSON object fields:
+    id        (required) — unique bundle identifier
+    items     (required) — array of {packageId, quantity}
+    name      — bundle display name        → {bundle.name}
+    tagline   — short description          → {bundle.tagline}
+    badge     — e.g. "Most Popular"        → {bundle.badge}
+    price     — formatted price string     → {bundle.price}
+    priceWas  — compare-at price           → {bundle.priceWas}
+    saving    — saving label               → {bundle.saving}
+    (+ any custom fields you add)
+
+  SDK-managed attributes / CSS classes on each card:
+    data-next-selected="true/false"
+    data-next-in-cart="true/false"
+    .next-bundle-card   — added to every registered card
+    .next-selected      — currently selected bundle
+    .next-in-cart       — all bundle items present in cart at required qty
+
+  Container attribute set by enhancer:
+    data-selected-bundle="<id>"   — reflects the active bundle id
+  ─────────────────────────────────────────────────────────────────────────────
+-->
+
+
+<section class="demo-section">
+  <h2>Choose Your Kit</h2>
+  <p class="subtitle">Every kit ships free. Pick the one that works best for you.</p>
+
+  <!-- Bundle card template -->
+  <template id="bundle-tpl">
+    <div class="bundle-card" data-next-bundle-card>
+      <div class="radio" aria-hidden="true"></div>
+      <div class="bundle-body">
+        <p class="bundle-name">
+          {bundle.name}
+          <span class="badge">{bundle.badge}</span>
+        </p>
+        <p class="bundle-tagline">{bundle.tagline}</p>
+      </div>
+      <div class="bundle-price">
+        <p class="price-was">{bundle.priceWas}</p>
+        <p class="price-now">{bundle.price}</p>
+        <p class="price-save">{bundle.saving}</p>
+      </div>
+    </div>
+  </template>
+
+  <!--
+    Replace packageId values with real ref_ids from your campaign.
+  -->
+  <div class="bundle-list"
+       data-next-bundle-selector
+       data-next-selection-mode="swap"
+       data-next-bundle-template-id="bundle-tpl"
+       data-next-bundles='[
+         {
+           "id": "starter",
+           "name": "Starter Kit",
+           "tagline": "1× Cleanser · 1× Moisturiser",
+           "badge": "",
+           "price": "$49",
+           "priceWas": "$64",
+           "saving": "Save $15",
+           "items": [
+             { "packageId": 1, "quantity": 1 },
+             { "packageId": 10, "quantity": 1 }
+           ]
+         },
+         {
+           "id": "routine",
+           "name": "Complete Routine",
+           "tagline": "1× Cleanser · 1× Serum · 1× Moisturiser",
+           "badge": "Most Popular",
+           "price": "$79",
+           "priceWas": "$114",
+           "saving": "Save $35",
+           "items": [
+             { "packageId": 1, "quantity": 2},
+             { "packageId": 10, "quantity": 1 }
+           ]
+         },
+         {
+           "id": "ultimate",
+           "name": "Ultimate Bundle",
+           "tagline": "2× Cleanser · 1× Serum · 2× Moisturiser",
+           "badge": "Best Value",
+           "price": "$129",
+           "priceWas": "$228",
+           "saving": "Save $99",
+           "items": [
+             { "packageId": 1, "quantity": 3 },
+             { "packageId": 10, "quantity": 2 }
+           ]
+         }
+       ]'>
+  </div>
+
+  <!--
+    In swap mode the cart is already updated on selection.
+    This button just navigates to checkout.
+  -->
+  <button class="cta"
+          data-next-action="add-to-cart"
+          data-next-url="/checkout">
+    Continue to Checkout
+  </button>
+</section>
+
+
+<style>
+  body { font-family: sans-serif; padding: 32px; max-width: 680px; }
+
+  .demo-section { margin-bottom: 56px; }
+
+  h2       { font-size: 20px; font-weight: 700; color: #111; margin: 0 0 6px; text-align: center; }
+  .subtitle { font-size: 14px; color: #6b7280; margin: 0 0 24px; text-align: center; }
+
+  /* ── Bundle list ── */
+  .bundle-list { display: flex; flex-direction: column; gap: 10px; }
+
+  /* ── Bundle card ── */
+  .bundle-card {
+    display: grid;
+    grid-template-columns: 24px 1fr auto;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    border: 2px solid #e5e7eb;
+    border-radius: 14px;
+    background: white;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+    user-select: none;
+  }
+  .bundle-card:hover { border-color: #9ca3af; }
+  .bundle-card.next-selected {
+    border-color: #111;
+    background: #f9fafb;
+  }
+
+  /* ── Radio dot ── */
+  .radio {
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 2px solid #d1d5db; background: white;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color .15s;
+  }
+  .bundle-card.next-selected .radio { border-color: #111; }
+  .radio::after {
+    content: ''; width: 10px; height: 10px; border-radius: 50%;
+    background: #111; opacity: 0; transition: opacity .15s;
+  }
+  .bundle-card.next-selected .radio::after { opacity: 1; }
+
+  /* ── Bundle body ── */
+  .bundle-name {
+    font-size: 15px; font-weight: 700; color: #111;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    margin: 0;
+  }
+  .bundle-tagline { font-size: 13px; color: #6b7280; margin: 3px 0 0; }
+
+  /* Badge — hidden when empty */
+  .badge {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+    padding: 3px 9px; border-radius: 20px;
+    background: #ecfdf5; color: #059669;
+  }
+  .badge:empty { display: none; }
+
+  /* ── Price column ── */
+  .bundle-price { text-align: right; white-space: nowrap; }
+  .price-was  { font-size: 12px; color: #9ca3af; text-decoration: line-through; margin: 0; }
+  .price-now  { font-size: 18px; font-weight: 700; color: #111; margin: 0; }
+  .price-save { font-size: 12px; font-weight: 600; color: #059669; margin: 0; }
+
+  /* ── CTA ── */
+  .cta {
+    margin-top: 16px; width: 100%; padding: 15px;
+    background: #111; color: white; font-size: 15px; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase;
+    border: none; border-radius: 50px; cursor: pointer; transition: background .15s;
+    display: block;
+  }
+  .cta:hover { background: #374151; }
+</style>

@@ -1,0 +1,162 @@
+---
+title: Cart Item Slots
+description: Expands cart items into individual per-unit slot cards with optional variant selectors.
+---
+
+`CartItemSlotsEnhancer` breaks each cart item down into one card per unit. A package at qty 3 becomes three separate slot cards. If the product has variants (Color, Size, etc.), a `<select>` per variant dimension is injected automatically. Changing a select updates the cart in place.
+
+This is designed to work alongside [`CartOfferListEnhancer`](/docs/cart/cart-offer-list) when an offer adds a multi-unit package and the user should configure each unit independently.
+
+---
+
+## Basic usage
+
+Define a slot template, then point the container at it:
+
+```html
+<div
+  data-next-cart-slots
+  data-next-slot-template-id="slot-tpl"
+  data-next-empty-template="<p>Your cart is empty.</p>"
+>
+</div>
+
+<template id="slot-tpl">
+  <div class="slot-card">
+    <span class="slot-num">#{slot.index}</span>
+    <img src="{item.image}" alt="{item.name}" />
+    <p class="slot-name">{item.name}</p>
+    <p class="slot-variant">{item.variantName}</p>
+    <p class="slot-price">{item.price}</p>
+    <!-- Variant selects are injected here -->
+    <div data-next-variant-selectors></div>
+  </div>
+</template>
+```
+
+---
+
+## Container attributes
+
+| Attribute | Description |
+|---|---|
+| `data-next-cart-slots` | Required. Marks the container |
+| `data-next-slot-template-id` | ID of element whose `innerHTML` is the slot template |
+| `data-next-slot-template` | Inline template string (alternative) |
+| `data-next-empty-template` | HTML shown when the cart is empty |
+
+---
+
+## Template variables
+
+Use `{slot.PROPERTY}` and `{item.PROPERTY}` in your template:
+
+### Slot
+
+| Variable | Value |
+|---|---|
+| `{slot.index}` | 1-based slot number (1, 2, 3 …) |
+
+### Item
+
+| Variable | Value |
+|---|---|
+| `{item.packageId}` | Package ref_id for this slot |
+| `{item.name}` | Package name |
+| `{item.image}` | Package image URL |
+| `{item.productName}` | Product name |
+| `{item.variantName}` | Variant display name (e.g. `"Black / Small"`) |
+
+### Pricing
+
+Prices reflect any active offers or discounts from the cart API.
+
+| Variable | Value |
+|---|---|
+| `{item.price}` | Unit price (after discount) |
+| `{item.unitPrice}` | Same as `{item.price}` |
+| `{item.unitPriceBeforeDiscount}` | Original per-unit price |
+| `{item.retailPrice}` | Retail/compare price |
+| `{item.packagePrice}` | Total package price (incl. discount) |
+| `{item.packagePriceBeforeDiscount}` | Total package price before discount |
+
+---
+
+## Variant selector injection
+
+Place an empty element with `data-next-variant-selectors` inside your template. The enhancer detects all variant attribute dimensions for the slot's product and injects one `<select>` per dimension:
+
+```html
+<template id="slot-tpl">
+  <div class="slot-card">
+    <p>{item.variantName}</p>
+    <!-- Color and Size selects appear here automatically -->
+    <div data-next-variant-selectors></div>
+  </div>
+</template>
+```
+
+Each generated select has:
+- `class="next-slot-variant-select"`
+- `data-variant-code` — attribute code (e.g. `"color"`, `"size"`)
+- `data-slot-index` — slot index
+
+When the user changes a select, the enhancer finds the matching package and calls `cartStore.swapCart` to update the cart without losing the other slots' selections.
+
+<Callout>
+  If a product has no variant attributes, the `data-next-variant-selectors` placeholder remains empty and nothing is injected.
+</Callout>
+
+---
+
+## CSS classes managed
+
+| Class | Applied to |
+|---|---|
+| `next-slot-item` | Wrapper `<div>` generated for each slot |
+| `next-slot-variant-field` | Wrapper div around each label+select pair |
+| `next-slot-variant-label` | Label element inside the variant field |
+| `next-slot-variant-select` | Select element inside the variant field |
+
+---
+
+## Full example
+
+```html
+<!-- Offer list adds 3 units when the user picks an offer -->
+<div
+  data-next-offer-list
+  data-next-offer-template-id="offer-tpl"
+  data-next-offer-filter='{"condition.type":"count"}'
+>
+</div>
+
+<script id="offer-tpl" type="text/html">
+  <div
+    class="offer-card"
+    data-next-offer-card
+    data-next-offer-id="{offer.ref_id}"
+    data-next-offer-package-id="{offer.package.id}"
+  >
+    {offer.name} — {offer.package.price}
+  </div>
+</script>
+
+<!-- Slot list lets the user pick a variant per unit -->
+<div
+  data-next-cart-slots
+  data-next-slot-template-id="slot-tpl"
+  data-next-empty-template="<p>Select an offer above to get started.</p>"
+>
+</div>
+
+<template id="slot-tpl">
+  <div class="slot-card">
+    <span class="slot-badge">Unit #{slot.index}</span>
+    <img src="{item.image}" alt="{item.name}" />
+    <p>{item.name}</p>
+    <p class="slot-price">{item.price}</p>
+    <div data-next-variant-selectors></div>
+  </div>
+</template>
+```

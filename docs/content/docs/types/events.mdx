@@ -1,0 +1,34 @@
+---
+title: Event Types
+description: TypeScript types for SDK events emitted via the EventBus
+---
+
+## EventMap
+
+All events emitted by the SDK. Use this type for type-safe event handling with `NextCommerce.on()`.
+
+<AutoTypeTable path="../src/types/global.ts" name="EventMap" />
+
+## CheckoutData
+
+Payload for the `checkout:started` event.
+
+<AutoTypeTable path="../src/types/global.ts" name="CheckoutData" />
+
+## OrderData
+
+Payload for the `order:completed` event.
+
+<AutoTypeTable path="../src/types/global.ts" name="OrderData" />
+
+## ErrorData
+
+Payload for the `error:occurred` event.
+
+<AutoTypeTable path="../src/types/global.ts" name="ErrorData" />
+
+## SelectorItem
+
+Represents a selectable package card item tracked by a selector enhancer.
+
+<AutoTypeTable path="../src/types/global.ts" name="SelectorItem" />

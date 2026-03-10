@@ -45,7 +45,9 @@ export class GoogleMapsLoader {
 
     // Check if API key is available
     if (!googleMapsConfig.apiKey) {
-      logger.warn('Google Maps API key not found. Autocomplete will be disabled.');
+      logger.warn(
+        'Google Maps API key not found. Autocomplete will be disabled.'
+      );
       return;
     }
 
@@ -61,7 +63,7 @@ export class GoogleMapsLoader {
 
     this.loading = true;
     this.loadPromise = this.performLoad(googleMapsConfig);
-    
+
     try {
       await this.loadPromise;
       this.loaded = true;
@@ -76,7 +78,10 @@ export class GoogleMapsLoader {
 
   private async performLoad(config: any): Promise<void> {
     // Check if Google Maps is already loaded
-    if (typeof window.google !== 'undefined' && typeof window.google.maps !== 'undefined') {
+    if (
+      typeof window.google !== 'undefined' &&
+      typeof window.google.maps !== 'undefined'
+    ) {
       logger.debug('Google Maps API already available');
       return;
     }
@@ -84,37 +89,43 @@ export class GoogleMapsLoader {
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
       const regionParam = config.region ? `&region=${config.region}` : '';
-      
+
       script.src = `https://maps.googleapis.com/maps/api/js?key=${config.apiKey}&libraries=places${regionParam}&loading=async`;
       script.async = true;
       script.defer = true;
-      
+
       script.onload = async () => {
         logger.debug('Google Maps API script loaded successfully');
-        
+
         // Wait a bit for the API to fully initialize
         let attempts = 0;
         const maxAttempts = 10;
-        
+
         while (attempts < maxAttempts) {
-          if (typeof window.google !== 'undefined' && 
-              typeof window.google.maps !== 'undefined' && 
-              typeof window.google.maps.places !== 'undefined' &&
-              typeof window.google.maps.places.Autocomplete !== 'undefined') {
+          if (
+            typeof window.google !== 'undefined' &&
+            typeof window.google.maps !== 'undefined' &&
+            typeof window.google.maps.places !== 'undefined' &&
+            typeof window.google.maps.places.Autocomplete !== 'undefined'
+          ) {
             logger.debug('Google Maps Places API fully initialized');
             resolve();
             return;
           }
-          
+
           attempts++;
-          logger.debug(`Waiting for Google Maps API to initialize... (attempt ${attempts}/${maxAttempts})`);
+          logger.debug(
+            `Waiting for Google Maps API to initialize... (attempt ${attempts}/${maxAttempts})`
+          );
           await new Promise(r => setTimeout(r, 100));
         }
-        
+
         // If we get here, something went wrong
-        reject(new Error('Google Maps API not fully available after script load'));
+        reject(
+          new Error('Google Maps API not fully available after script load')
+        );
       };
-      
+
       script.onerror = () => {
         const error = new Error('Failed to load Google Maps API script');
         logger.error(error.message);
@@ -122,41 +133,49 @@ export class GoogleMapsLoader {
       };
 
       // Check if script is already loading/loaded
-      const existingScript = document.querySelector(`script[src*="maps.googleapis.com"]`);
+      const existingScript = document.querySelector(
+        `script[src*="maps.googleapis.com"]`
+      );
       if (existingScript) {
         logger.debug('Google Maps script already in DOM, waiting for load...');
-        
+
         // Check if already fully loaded
-        if (typeof window.google !== 'undefined' && 
-            typeof window.google.maps !== 'undefined' && 
-            typeof window.google.maps.places !== 'undefined' &&
-            typeof window.google.maps.places.Autocomplete !== 'undefined') {
+        if (
+          typeof window.google !== 'undefined' &&
+          typeof window.google.maps !== 'undefined' &&
+          typeof window.google.maps.places !== 'undefined' &&
+          typeof window.google.maps.places.Autocomplete !== 'undefined'
+        ) {
           resolve();
           return;
         }
-        
+
         // Wait for existing script to fully load
         const waitForExisting = async () => {
           let attempts = 0;
           const maxAttempts = 10;
-          
+
           while (attempts < maxAttempts) {
-            if (typeof window.google !== 'undefined' && 
-                typeof window.google.maps !== 'undefined' && 
-                typeof window.google.maps.places !== 'undefined' &&
-                typeof window.google.maps.places.Autocomplete !== 'undefined') {
+            if (
+              typeof window.google !== 'undefined' &&
+              typeof window.google.maps !== 'undefined' &&
+              typeof window.google.maps.places !== 'undefined' &&
+              typeof window.google.maps.places.Autocomplete !== 'undefined'
+            ) {
               logger.debug('Existing Google Maps script fully loaded');
               resolve();
               return;
             }
-            
+
             attempts++;
             await new Promise(r => setTimeout(r, 100));
           }
-          
-          reject(new Error('Existing Google Maps script failed to fully initialize'));
+
+          reject(
+            new Error('Existing Google Maps script failed to fully initialize')
+          );
         };
-        
+
         waitForExisting();
         return;
       }
@@ -169,7 +188,11 @@ export class GoogleMapsLoader {
    * Check if Google Maps API is loaded and ready
    */
   public isLoaded(): boolean {
-    return this.loaded && typeof window.google !== 'undefined' && typeof window.google.maps !== 'undefined';
+    return (
+      this.loaded &&
+      typeof window.google !== 'undefined' &&
+      typeof window.google.maps !== 'undefined'
+    );
   }
 
   /**
@@ -193,9 +216,11 @@ export class GoogleMapsLoader {
    * Check if Places API is available
    */
   public isPlacesAvailable(): boolean {
-    return this.isLoaded() && 
-           typeof window.google.maps.places !== 'undefined' &&
-           typeof window.google.maps.places.Autocomplete !== 'undefined';
+    return (
+      this.isLoaded() &&
+      typeof window.google.maps.places !== 'undefined' &&
+      typeof window.google.maps.places.Autocomplete !== 'undefined'
+    );
   }
 }
 

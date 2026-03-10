@@ -11,7 +11,10 @@ import { useParameterStore } from '@/stores/parameterStore';
  * @param preserveParams - Array of parameter names to preserve, or 'all' to preserve all stored parameters (defaults to 'all')
  * @returns The URL with preserved parameters
  */
-export function preserveQueryParams(targetUrl: string, preserveParams: string[] | 'all' = 'all'): string {
+export function preserveQueryParams(
+  targetUrl: string,
+  preserveParams: string[] | 'all' = 'all'
+): string {
   try {
     // Parse the target URL
     const url = new URL(targetUrl, window.location.origin);
@@ -66,9 +69,12 @@ export function preserveQueryParams(targetUrl: string, preserveParams: string[] 
  * @param url - The URL to navigate to
  * @param options - Navigation options
  */
-export function navigateWithParams(url: string, options?: { replace?: boolean; preserveParams?: string[] }): void {
+export function navigateWithParams(
+  url: string,
+  options?: { replace?: boolean; preserveParams?: string[] }
+): void {
   const finalUrl = preserveQueryParams(url, options?.preserveParams);
-  
+
   if (options?.replace) {
     window.location.replace(finalUrl);
   } else {
@@ -77,10 +83,26 @@ export function navigateWithParams(url: string, options?: { replace?: boolean; p
 }
 
 /**
- * Check if debug mode is active
- * @returns true if debug mode is enabled via URL parameters
+ * Check if debug mode is active (verbose logging)
+ * @returns true if enabled via URL params or window.nextConfig
  */
 export function isDebugMode(): boolean {
   const params = new URLSearchParams(window.location.search);
-  return params.get('debug') === 'true' || params.get('debugger') === 'true';
+  const windowConfig = (window as any).nextConfig;
+  return (
+    params.get('debug') === 'true' ||
+    params.get('debugger') === 'true' ||
+    windowConfig?.debug === true ||
+    windowConfig?.debugger === true
+  );
+}
+
+/**
+ * Check if the debug overlay (debugger UI) is active
+ * @returns true if enabled via URL params or window.nextConfig
+ */
+export function isDebuggerMode(): boolean {
+  const params = new URLSearchParams(window.location.search);
+  const windowConfig = (window as any).nextConfig;
+  return params.get('debugger') === 'true' || windowConfig?.debugger === true;
 }

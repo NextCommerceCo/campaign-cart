@@ -1,0 +1,11 @@
+{
+  "title": "Cart System",
+  "pages": [
+    "index",
+    "package-selector",
+    "add-to-cart",
+    "cart-toggle",
+    "cart-items",
+    "quantity-controls"
+  ]
+}

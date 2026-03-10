@@ -1,0 +1,250 @@
+---
+title: Reference
+description: Quick reference for all data attributes, CSS classes, and events.
+---
+
+## Data attributes
+
+### Configuration
+
+| Attribute | Element | Description |
+|---|---|---|
+| `data-next-cart-selector` | Container | Package selector container |
+| `data-next-selector-id` | Container / button / display | Links a selector, button, and display together |
+| `data-next-selection-mode` | Selector container | `swap` (default) or `select` |
+| `data-next-selector-card` | Card | Selectable card inside a selector |
+| `data-next-package-id` | Card / container / button | Package ID |
+| `data-next-quantity` | Card / button / input | Quantity or quantity action (`increase`, `decrease`, `set`) |
+| `data-next-selected="true"` | Card / toggle | Pre-selected / auto-added on load |
+| `data-next-shipping-id` | Card | Set shipping method when this card is selected |
+| `data-next-action="add-to-cart"` | Button | Add-to-cart button |
+| `data-next-action="accept-upsell"` | Button | Post-purchase upsell button |
+| `data-next-toggle` | Button | Toggle add/remove a package |
+| `data-next-cart-items` | Container | Cart item list container |
+| `data-next-remove-item` | Button | Remove a cart item |
+| `data-package-id` | Button | Package ID for quantity/remove controls |
+| `data-next-url` | Button | Redirect URL after action |
+| `data-next-clear-cart="true"` | Button | Clear cart before adding |
+| `data-next-checkout` | Form | Checkout form |
+
+### Display
+
+| Attribute | Description |
+|---|---|
+| `data-next-display="cart.*"` | Cart data (totals, counts) |
+| `data-next-display="package.*"` | Package data (prices, info) |
+| `data-next-display="selection.<id>.*"` | Selected package data |
+| `data-next-display="order.*"` | Order data |
+| `data-next-display="shipping.*"` | Shipping data |
+| `data-next-show="<condition>"` | Show element when condition is true |
+| `data-next-hide="<condition>"` | Hide element when condition is true |
+| `data-next-show-if-profile="<id>"` | Show when profile is active |
+| `data-next-hide-if-profile="<id>"` | Hide when profile is active |
+| `data-next-format` | Override display format: `currency`, `percentage`, `number`, `text`, `raw` |
+| `data-include-discounts` | On `cart.subtotal` — subtract coupon discounts |
+| `data-next-quantity-text` | Render total cart quantity as text |
+| `data-next-format-currency` | Format element's text/value as currency |
+| `data-value` | Explicit numeric value for `data-next-format-currency` |
+| `data-currency` | Currency code override for `data-next-format-currency` |
+| `data-hide-zero-cents` | Omit `.00` cents in currency formatting |
+
+### Timer
+
+| Attribute | Description |
+|---|---|
+| `data-next-timer` | Timer container |
+| `data-duration` | Countdown in seconds |
+| `data-persistence-id` | localStorage key |
+| `data-format` | `hh:mm:ss`, `mm:ss`, or `ss` |
+| `data-next-timer-display` | Element inside timer for time output |
+| `data-next-timer-expired` | Shown after timer expires (match `data-persistence-id`) |
+
+### Quantity controls (inside selector cards)
+
+| Attribute | Description |
+|---|---|
+| `data-next-quantity-increase` | Increase quantity button |
+| `data-next-quantity-decrease` | Decrease quantity button |
+| `data-next-quantity-display` | Element to show current quantity |
+| `data-next-min-quantity` | Minimum quantity |
+| `data-next-max-quantity` | Maximum quantity |
+
+### Cart item list template
+
+| Attribute | Description |
+|---|---|
+| `data-item-template-id` | ID of template `<script>` element |
+| `data-item-template-selector` | CSS selector for template element |
+| `data-item-template` | Inline template HTML |
+| `data-empty-template` | HTML for empty cart |
+| `data-title-map` | JSON map to override package names |
+| `data-group-items` | Merge duplicate cart items |
+
+### Cart offer list
+
+| Attribute | Description |
+|---|---|
+| `data-next-offer-list` | Offer list container |
+| `data-next-offer-template-id` | ID of element whose `innerHTML` is the card template |
+| `data-next-offer-template` | Inline template string |
+| `data-next-offer-replace-cart` | `"true"` (default) clears cart before applying |
+| `data-next-offer-filter` | JSON filter to narrow which offers are rendered |
+| `data-next-offer-card` | Marks an element as an offer card |
+| `data-next-offer-id` | Offer `ref_id` for a card |
+| `data-next-offer-package-id` | Package ID to add when card is selected |
+
+### Cart item slots
+
+| Attribute | Description |
+|---|---|
+| `data-next-cart-slots` | Per-unit slot list container |
+| `data-next-slot-template-id` | ID of element whose `innerHTML` is the slot template |
+| `data-next-slot-template` | Inline slot template string |
+| `data-next-empty-template` | HTML shown when cart is empty |
+| `data-next-variant-selectors` | Placeholder inside slot template — variant selects injected here |
+
+### Toggle button
+
+| Attribute | Description |
+|---|---|
+| `data-add-text` | Button text when package not in cart |
+| `data-remove-text` | Button text when package is in cart |
+| `data-next-package-sync` | Comma-separated package IDs to mirror quantity |
+| `data-next-is-upsell="true"` | Mark as upsell when adding |
+
+### Remove item button
+
+| Attribute | Description |
+|---|---|
+| `data-confirm="true"` | Show confirmation dialog |
+| `data-confirm-message` | Custom confirmation message text |
+
+### Profile
+
+| Attribute | Description |
+|---|---|
+| `data-next-profile` | Profile ID button to switch profiles |
+| `data-next-profile-selector` | `<select>` element for profile switching |
+
+---
+
+## CSS classes
+
+Classes are managed by the SDK. Add them to your CSS to style state changes.
+
+### Selection
+
+| Class | Applied to | Meaning |
+|---|---|---|
+| `next-selector-card` | Every selector card | Added on init |
+| `next-selected` | Selected card | Currently selected |
+| `next-in-cart` | Card / toggle / container | Item is in cart |
+| `next-not-in-cart` | Toggle / container | Item is not in cart |
+| `next-active` | Toggle | Alias for `next-in-cart` |
+
+### Cart display
+
+| Class | Applied to | Meaning |
+|---|---|---|
+| `next-cart-empty` | `cart.*` display elements | Cart is empty |
+| `next-cart-has-items` | `cart.*` display elements | Cart has items |
+
+### Offer list
+
+| Class | Applied to | Meaning |
+|---|---|---|
+| `next-offer-card` | Every registered offer card | Added on init |
+| `next-selected` | Selected offer card | Currently selected |
+| `next-in-cart` | Offer card | Offer was successfully applied to cart |
+
+### Cart item slots
+
+| Class | Applied to | Meaning |
+|---|---|---|
+| `next-slot-item` | Wrapper div for each slot | Added on render |
+| `next-slot-variant-field` | Wrapper div around each label+select | Per-dimension variant field |
+| `next-slot-variant-label` | Label element in variant field | Variant attribute label |
+| `next-slot-variant-select` | Select element in variant field | Variant value dropdown |
+
+### Actions
+
+| Class | Applied to | Meaning |
+|---|---|---|
+| `next-loading` | Action buttons, order display | Loading in progress |
+| `next-disabled` | Quantity buttons, cards | Disabled state |
+| `next-unavailable` | Cards | Option is unavailable |
+
+### Order display
+
+| Class | Applied to | Meaning |
+|---|---|---|
+| `next-loading` | Order display elements | Order data loading |
+| `next-loaded` | Order display elements | Order data ready |
+| `next-error` | Order display elements | Error loading order |
+
+---
+
+## Events
+
+All events are emitted on the `EventBus` and accessible via `sdk.on()`.
+
+### Cart events
+
+| Event | Payload |
+|---|---|
+| `cart:item-added` | `{ packageId, quantity }` |
+| `cart:item-removed` | `{ packageId }` |
+| `cart:quantity-changed` | `{ packageId, quantity }` |
+
+### Selector events
+
+| Event | Payload |
+|---|---|
+| `selector:item-selected` | `{ selectorId, packageId, previousPackageId, mode }` |
+| `selector:selection-changed` | `{ selectorId, packageId, item }` |
+| `selector:quantity-changed` | `{ selectorId, packageId, quantity }` |
+
+### Variant events
+
+| Event | Payload |
+|---|---|
+| `variant:option-selected` | `{ productId, attributeCode, value }` |
+| `variant:package-changed` | `{ productId, packageId, variantKey }` |
+
+### Upsell events
+
+| Event | Payload |
+|---|---|
+| `upsell:added` | `{ packageId, quantity, order, value }` |
+| `upsell:accepted` | `{ packageId }` |
+
+### Offer events
+
+| Event | Payload |
+|---|---|
+| `offer:selected` | `{ offerId }` |
+| `offer:applied` | `{ offerId }` |
+
+### Other events
+
+| Event | Payload |
+|---|---|
+| `timer:expired` | `{}` |
+| `currency:fallback` | `{ requested, fallback }` |
+| `condition:met` | `{ condition }` |
+| `condition:not-met` | `{ condition }` |
+
+---
+
+## Meta tags
+
+Configuration meta tags for `<head>`:
+
+| Meta name | Required | Description |
+|---|---|---|
+| `next-api-key` | ✓ | Campaign API key |
+| `next-campaign` | ✓ | Campaign slug |
+| `next-currency` | | Default currency (e.g. `USD`) |
+| `next-language` | | Language code (e.g. `en`) |
+| `next-upsell-accept-url` | | Fallback redirect after upsell accepted |
+| `next-upsell-decline-url` | | Fallback redirect after upsell declined |

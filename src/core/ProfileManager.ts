@@ -52,16 +52,26 @@ export class ProfileManager {
     const profileStore = useProfileStore.getState();
 
     // Only capture if no profile is active (true initial state)
-    if (!profileStore.activeProfileId || profileStore.activeProfileId === 'default' || profileStore.activeProfileId === 'regular') {
+    if (
+      !profileStore.activeProfileId ||
+      profileStore.activeProfileId === 'default' ||
+      profileStore.activeProfileId === 'regular'
+    ) {
       this.initialCartState = [...cartStore.items];
-      this.logger.debug('Captured initial cart state with items:', this.initialCartState.map(i => i.packageId));
+      this.logger.debug(
+        'Captured initial cart state with items:',
+        this.initialCartState.map(i => i.packageId)
+      );
     }
   }
-  
+
   /**
    * Apply a profile to the current cart
    */
-  public async applyProfile(profileId: string, options: ApplyProfileOptions = {}): Promise<void> {
+  public async applyProfile(
+    profileId: string,
+    options: ApplyProfileOptions = {}
+  ): Promise<void> {
     // Prevent concurrent profile operations
     if (this.profileOperationInProgress) {
       this.logger.warn('Profile operation already in progress, skipping');
@@ -71,7 +81,11 @@ export class ProfileManager {
     this.profileOperationInProgress = true;
 
     try {
-      const { clearCart = false, preserveQuantities = true, skipValidation = false } = options;
+      const {
+        clearCart = false,
+        preserveQuantities = true,
+        skipValidation = false,
+      } = options;
 
       this.logger.info(`Applying profile: ${profileId}`, options);
 
@@ -81,8 +95,14 @@ export class ProfileManager {
       // Special handling for "default", "regular", or empty profile - just clear profile without mappings
       if (profileId === 'default' || profileId === 'regular' || !profileId) {
         // Check if already on default to avoid unnecessary operations
-        if (!profileStore.activeProfileId || profileStore.activeProfileId === 'default' || profileStore.activeProfileId === 'regular') {
-          this.logger.info('Already on default/regular profile, no action needed');
+        if (
+          !profileStore.activeProfileId ||
+          profileStore.activeProfileId === 'default' ||
+          profileStore.activeProfileId === 'regular'
+        ) {
+          this.logger.info(
+            'Already on default/regular profile, no action needed'
+          );
           this.profileOperationInProgress = false;
           return;
         }
@@ -91,89 +111,98 @@ export class ProfileManager {
         this.profileOperationInProgress = false;
         return;
       }
-    
-    const profile = profileStore.getProfileById(profileId);
-    
-    if (!profile) {
-      const error = `Profile "${profileId}" not found`;
-      this.logger.error(error);
-      throw new Error(error);
-    }
-    
-    // Check if profile is already active
-    if (profileStore.activeProfileId === profileId) {
-      this.logger.info(`Profile "${profileId}" is already active`);
-      return;
-    }
-    
-    // Store current cart state before applying profile
-    const currentItems = [...cartStore.items];
-    
-    // Clear cart if requested
-    if (clearCart) {
-      await cartStore.clear();
+
+      const profile = profileStore.getProfileById(profileId);
+
+      if (!profile) {
+        const error = `Profile "${profileId}" not found`;
+        this.logger.error(error);
+        throw new Error(error);
+      }
+
+      // Check if profile is already active
+      if (profileStore.activeProfileId === profileId) {
+        this.logger.info(`Profile "${profileId}" is already active`);
+        return;
+      }
+
+      // Store current cart state before applying profile
+      const currentItems = [...cartStore.items];
+
+      // Clear cart if requested
+      if (clearCart) {
+        await cartStore.clear();
+        profileStore.activateProfile(profileId);
+        profileStore.clearOriginalCartSnapshot();
+
+        this.eventBus.emit('profile:applied', {
+          profileId,
+          previousProfileId: profileStore.previousProfileId,
+          cleared: true,
+          itemsSwapped: 0,
+          profile,
+        });
+
+        this.logger.info(`Profile "${profileId}" applied with cart cleared`);
+        return;
+      }
+
+      // Store original cart for potential revert (only if we don't already have one)
+      if (currentItems.length > 0 && !profileStore.originalCartSnapshot) {
+        profileStore.setOriginalCartSnapshot(currentItems);
+        this.logger.debug(
+          'Saved original cart snapshot before profile application'
+        );
+      } else if (profileStore.originalCartSnapshot) {
+        this.logger.debug('Keeping existing cart snapshot, not overwriting');
+      }
+
+      // Map existing cart items
+      const mappedItems = await this.mapCartItems(
+        currentItems,
+        profile,
+        preserveQuantities,
+        skipValidation
+      );
+
+      if (mappedItems.length === 0 && currentItems.length > 0) {
+        this.logger.warn('No items could be mapped to the new profile');
+      }
+
+      // Apply mapped items to cart
+      await this.applyMappedItems(mappedItems, currentItems);
+
+      // Activate profile in store
       profileStore.activateProfile(profileId);
-      profileStore.clearOriginalCartSnapshot();
-      
+
+      // Add to mapping history
+      const event: any = {
+        profileId,
+        action: 'applied',
+        itemsAffected: mappedItems.length,
+      };
+      if (profileStore.previousProfileId) {
+        event.previousProfileId = profileStore.previousProfileId;
+      }
+      profileStore.addMappingEvent(event);
+
+      // Emit events
       this.eventBus.emit('profile:applied', {
         profileId,
         previousProfileId: profileStore.previousProfileId,
-        cleared: true,
-        itemsSwapped: 0,
+        itemsSwapped: mappedItems.length,
+        originalItems: currentItems.length,
         profile,
       });
-      
-      this.logger.info(`Profile "${profileId}" applied with cart cleared`);
-      return;
-    }
-    
-    // Store original cart for potential revert (only if we don't already have one)
-    if (currentItems.length > 0 && !profileStore.originalCartSnapshot) {
-      profileStore.setOriginalCartSnapshot(currentItems);
-      this.logger.debug('Saved original cart snapshot before profile application');
-    } else if (profileStore.originalCartSnapshot) {
-      this.logger.debug('Keeping existing cart snapshot, not overwriting');
-    }
-    
-    // Map existing cart items
-    const mappedItems = await this.mapCartItems(currentItems, profile, preserveQuantities, skipValidation);
-    
-    if (mappedItems.length === 0 && currentItems.length > 0) {
-      this.logger.warn('No items could be mapped to the new profile');
-    }
-    
-    // Apply mapped items to cart
-    await this.applyMappedItems(mappedItems, currentItems);
-    
-    // Activate profile in store
-    profileStore.activateProfile(profileId);
-    
-    // Add to mapping history
-    const event: any = {
-      profileId,
-      action: 'applied',
-      itemsAffected: mappedItems.length,
-    };
-    if (profileStore.previousProfileId) {
-      event.previousProfileId = profileStore.previousProfileId;
-    }
-    profileStore.addMappingEvent(event);
-    
-    // Emit events
-    this.eventBus.emit('profile:applied', {
-      profileId,
-      previousProfileId: profileStore.previousProfileId,
-      itemsSwapped: mappedItems.length,
-      originalItems: currentItems.length,
-      profile,
-    });
-    
-    this.logger.info(`Profile "${profileId}" applied successfully, swapped ${mappedItems.length} items`);
+
+      this.logger.info(
+        `Profile "${profileId}" applied successfully, swapped ${mappedItems.length} items`
+      );
     } finally {
       this.profileOperationInProgress = false;
     }
   }
-  
+
   /**
    * Map cart items to new package IDs based on profile
    */
@@ -191,7 +220,9 @@ export class ProfileManager {
 
       if (mappedId === undefined) {
         // No mapping found - preserve the item as-is (for upsells, warranties, etc.)
-        this.logger.debug(`No mapping found for package ${item.packageId} in profile ${profile.id}, preserving as-is`);
+        this.logger.debug(
+          `No mapping found for package ${item.packageId} in profile ${profile.id}, preserving as-is`
+        );
         mappedItems.push({
           originalItem: item,
           mappedPackageId: item.packageId, // Keep the same package ID
@@ -205,7 +236,9 @@ export class ProfileManager {
       if (!skipValidation) {
         const mappedPackage = campaignStore.getPackage(mappedId);
         if (!mappedPackage) {
-          this.logger.warn(`Mapped package ${mappedId} not found in campaign data, skipping`);
+          this.logger.warn(
+            `Mapped package ${mappedId} not found in campaign data, skipping`
+          );
           continue;
         }
 
@@ -226,7 +259,7 @@ export class ProfileManager {
 
     return mappedItems;
   }
-  
+
   /**
    * Apply mapped items to cart (swap operation)
    */
@@ -252,22 +285,30 @@ export class ProfileManager {
         quantity: mapped.quantity,
         isUpsell: mapped.originalItem.is_upsell || false,
         // Only store original package ID if it was actually mapped
-        originalPackageId: isUnmapped ? undefined : mapped.originalItem.packageId,
+        originalPackageId: isUnmapped
+          ? undefined
+          : mapped.originalItem.packageId,
       });
 
       if (isUnmapped) {
-        this.logger.debug(`Will preserve unmapped package ${mapped.mappedPackageId}`);
+        this.logger.debug(
+          `Will preserve unmapped package ${mapped.mappedPackageId}`
+        );
       } else {
-        this.logger.debug(`Will add mapped package ${mapped.mappedPackageId} (was ${mapped.originalItem.packageId})`);
+        this.logger.debug(
+          `Will add mapped package ${mapped.mappedPackageId} (was ${mapped.originalItem.packageId})`
+        );
       }
     }
 
     // Use swapCart to atomically replace all items with swapInProgress flag
     await cartStore.swapCart(swapItems as any);
 
-    this.logger.info(`Applied ${mappedItems.length} items to cart (including preserved items)`);
+    this.logger.info(
+      `Applied ${mappedItems.length} items to cart (including preserved items)`
+    );
   }
-  
+
   /**
    * Revert to original packages (before profile was applied)
    */
@@ -285,10 +326,16 @@ export class ProfileManager {
     }
 
     if (!cartToRestore || cartToRestore.length === 0) {
-      this.logger.warn('No cart state to revert to, attempting to reverse profile mappings');
+      this.logger.warn(
+        'No cart state to revert to, attempting to reverse profile mappings'
+      );
 
       // If we have an active profile and cart items, try to reverse the mappings
-      if (previousProfileId && previousProfileId !== 'default' && previousProfileId !== 'regular') {
+      if (
+        previousProfileId &&
+        previousProfileId !== 'default' &&
+        previousProfileId !== 'regular'
+      ) {
         const currentItems = cartStore.items;
         if (currentItems.length > 0) {
           // Attempt to reverse map items using originalPackageId field
@@ -303,7 +350,9 @@ export class ProfileManager {
             };
           });
 
-          this.logger.info('Attempting to reverse profile mappings for cart items');
+          this.logger.info(
+            'Attempting to reverse profile mappings for cart items'
+          );
 
           try {
             await cartStore.swapCart(itemsToRestore);
@@ -314,7 +363,9 @@ export class ProfileManager {
               itemsRestored: itemsToRestore.length,
             });
 
-            this.logger.info(`Reversed profile mappings for ${itemsToRestore.length} items`);
+            this.logger.info(
+              `Reversed profile mappings for ${itemsToRestore.length} items`
+            );
             return;
           } catch (error) {
             this.logger.error('Failed to reverse profile mappings:', error);
@@ -380,32 +431,34 @@ export class ProfileManager {
       action: 'reverted',
       itemsAffected: restoredCount,
     });
-    
+
     this.eventBus.emit('profile:reverted', {
       previousProfileId,
       itemsRestored: restoredCount,
     });
-    
+
     this.logger.info(`Reverted profile, restored ${restoredCount} items`);
   }
-  
+
   /**
    * Switch between profiles (convenience method)
    */
   public async switchProfile(
-    fromProfileId: string | null, 
+    fromProfileId: string | null,
     toProfileId: string,
     options: ApplyProfileOptions = {}
   ): Promise<void> {
     if (fromProfileId) {
       const profileStore = useProfileStore.getState();
       if (profileStore.activeProfileId !== fromProfileId) {
-        this.logger.warn(`Expected active profile "${fromProfileId}" but found "${profileStore.activeProfileId}"`);
+        this.logger.warn(
+          `Expected active profile "${fromProfileId}" but found "${profileStore.activeProfileId}"`
+        );
       }
     }
-    
+
     await this.applyProfile(toProfileId, options);
-    
+
     const profileStore = useProfileStore.getState();
     const switchEvent: any = {
       profileId: toProfileId,
@@ -417,22 +470,22 @@ export class ProfileManager {
     }
     profileStore.addMappingEvent(switchEvent);
   }
-  
+
   /**
    * Check if a profile can be applied
    */
   public canApplyProfile(profileId: string): boolean {
     const profileStore = useProfileStore.getState();
     const profile = profileStore.getProfileById(profileId);
-    
+
     if (!profile) {
       return false;
     }
-    
+
     // Could add more validation here (e.g., check campaign data)
     return true;
   }
-  
+
   /**
    * Get profile application statistics
    */
@@ -444,7 +497,7 @@ export class ProfileManager {
     hasOriginalSnapshot: boolean;
   } {
     const profileStore = useProfileStore.getState();
-    
+
     return {
       activeProfile: profileStore.activeProfileId,
       previousProfile: profileStore.previousProfileId,
@@ -453,16 +506,16 @@ export class ProfileManager {
       hasOriginalSnapshot: !!profileStore.originalCartSnapshot,
     };
   }
-  
+
   /**
    * Clear all profile data and revert to original state
    */
   public async clearAllProfiles(): Promise<void> {
     await this.revertProfile();
-    
+
     const profileStore = useProfileStore.getState();
     profileStore.reset();
-    
+
     this.logger.info('All profile data cleared');
   }
 }

@@ -1,0 +1,54 @@
+<!--
+title: Accordion / FAQ
+description: Collapsible accordion panels — SDK manages open/close state.
+order: 1
+-->
+
+<div class="item" data-next-accordion>
+  <button class="trigger" data-next-accordion-trigger>
+    What's included in each bottle?
+  </button>
+  <div class="body" data-next-accordion-body>
+    Each bottle contains a 30-day supply of our premium formula,
+    third-party tested for purity and potency.
+  </div>
+</div>
+
+<div class="item" data-next-accordion>
+  <button class="trigger" data-next-accordion-trigger>
+    How long does shipping take?
+  </button>
+  <div class="body" data-next-accordion-body>
+    Standard shipping takes 5–7 business days. Expedited options available at checkout.
+  </div>
+</div>
+
+<div class="item" data-next-accordion>
+  <button class="trigger" data-next-accordion-trigger>
+    Do you offer a money-back guarantee?
+  </button>
+  <div class="body" data-next-accordion-body>
+    Yes — 60-day no-questions-asked money-back guarantee on all orders.
+  </div>
+</div>
+
+<style>
+  body { font-family: sans-serif; padding: 24px; max-width: 480px; }
+  .item {
+    border: 1px solid #e5e7eb; border-radius: 8px;
+    margin-bottom: 8px; overflow: hidden;
+  }
+  .trigger {
+    width: 100%; padding: 14px 16px; background: white; border: none;
+    text-align: left; font-size: 15px; font-weight: 600; cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .trigger::after { content: '+'; font-size: 20px; color: #6b7280; }
+  /* SDK adds .next-open to [data-next-accordion] when expanded */
+  .item.next-open .trigger::after { content: '−'; }
+  .body {
+    display: none; padding: 0 16px 14px;
+    color: #374151; font-size: 14px; line-height: 1.6;
+  }
+  .item.next-open .body { display: block; }
+</style>

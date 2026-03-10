@@ -38,9 +38,9 @@ export function isValidPrice(value: unknown): value is number {
  */
 export function isValidCartItem(item: unknown): item is CartItem {
   if (!item || typeof item !== 'object') return false;
-  
+
   const candidate = item as Partial<CartItem>;
-  
+
   return (
     isValidNumber(candidate.id) &&
     isValidNumber(candidate.packageId) &&
@@ -70,9 +70,9 @@ export function hasValidOptionalCartItemProps(
  */
 export function isValidPackage(pkg: unknown): pkg is Package {
   if (!pkg || typeof pkg !== 'object') return false;
-  
+
   const candidate = pkg as Partial<Package>;
-  
+
   return (
     isValidNumber(candidate.ref_id) &&
     isValidNumber(candidate.external_id) &&
@@ -87,32 +87,40 @@ export function isValidPackage(pkg: unknown): pkg is Package {
 /**
  * Type guard for SelectorItem with proper price validation
  */
-export function hasValidPrice(item: { price: number | undefined }): item is { price: number } {
+export function hasValidPrice(item: {
+  price: number | undefined;
+}): item is { price: number } {
   return item.price !== undefined && isValidPrice(item.price);
 }
 
 /**
  * Type guard for SelectorItem with proper name validation
  */
-export function hasValidName(item: { name: string | undefined }): item is { name: string } {
+export function hasValidName(item: {
+  name: string | undefined;
+}): item is { name: string } {
   return item.name !== undefined && isValidString(item.name);
 }
 
 /**
  * Type guard for SelectorItem with shipping ID validation
  */
-export function hasValidShippingId(item: { shippingId: string | undefined }): item is { shippingId: string } {
+export function hasValidShippingId(item: {
+  shippingId: string | undefined;
+}): item is { shippingId: string } {
   return item.shippingId !== undefined && isValidString(item.shippingId);
 }
 
 /**
  * Comprehensive SelectorItem validation
  */
-export function isValidSelectorItem(item: unknown): item is Required<SelectorItem> {
+export function isValidSelectorItem(
+  item: unknown
+): item is Required<SelectorItem> {
   if (!item || typeof item !== 'object') return false;
-  
+
   const candidate = item as Partial<SelectorItem>;
-  
+
   return (
     candidate.element instanceof HTMLElement &&
     isValidNumber(candidate.packageId) &&
@@ -127,20 +135,17 @@ export function isValidSelectorItem(item: unknown): item is Required<SelectorIte
 /**
  * Safe array access with type guard
  */
-export function safeArrayAccess<T>(
-  array: T[],
-  index: number
-): T | undefined {
+export function safeArrayAccess<T>(array: T[], index: number): T | undefined {
   return index >= 0 && index < array.length ? array[index] : undefined;
 }
 
 /**
  * Safe object property access with type guard
  */
-export function safeObjectAccess<T extends Record<string, unknown>, K extends keyof T>(
-  obj: T,
-  key: K | undefined
-): T[K] | undefined {
+export function safeObjectAccess<
+  T extends Record<string, unknown>,
+  K extends keyof T,
+>(obj: T, key: K | undefined): T[K] | undefined {
   return key !== undefined && key in obj ? obj[key] : undefined;
 }
 
@@ -152,7 +157,9 @@ export function assertExists<T>(
   message?: string
 ): asserts value is T {
   if (value === undefined || value === null) {
-    throw new Error(message || 'Expected value to exist but received undefined or null');
+    throw new Error(
+      message || 'Expected value to exist but received undefined or null'
+    );
   }
 }
 
@@ -180,12 +187,14 @@ export function exists<T>(value: T | null | undefined): value is T {
 /**
  * Parse and validate price from string
  */
-export function parseValidPrice(priceString: string | undefined): number | undefined {
+export function parseValidPrice(
+  priceString: string | undefined
+): number | undefined {
   if (!isValidString(priceString)) return undefined;
-  
+
   const priceMatch = priceString.match(/\$?(\d+\.?\d*)/);
   if (!priceMatch || !priceMatch[1]) return undefined;
-  
+
   const parsed = parseFloat(priceMatch[1]);
   return isValidPrice(parsed) ? parsed : undefined;
 }
@@ -193,9 +202,11 @@ export function parseValidPrice(priceString: string | undefined): number | undef
 /**
  * Validate and extract package ID
  */
-export function parseValidPackageId(value: string | null | undefined): number | undefined {
+export function parseValidPackageId(
+  value: string | null | undefined
+): number | undefined {
   if (!isValidString(value)) return undefined;
-  
+
   const parsed = parseInt(value, 10);
   return isValidNumber(parsed) && parsed > 0 ? parsed : undefined;
 }
@@ -203,9 +214,12 @@ export function parseValidPackageId(value: string | null | undefined): number | 
 /**
  * Validate and extract quantity
  */
-export function parseValidQuantity(value: string | null | undefined, defaultValue = 1): number {
+export function parseValidQuantity(
+  value: string | null | undefined,
+  defaultValue = 1
+): number {
   if (!isValidString(value)) return defaultValue;
-  
+
   const parsed = parseInt(value, 10);
   return isValidPositiveNumber(parsed) && parsed > 0 ? parsed : defaultValue;
 }

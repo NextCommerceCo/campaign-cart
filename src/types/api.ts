@@ -69,7 +69,7 @@ export interface SummaryLine {
 export interface CartSummary {
   lines: SummaryLine[];
   total: string;
-  total_discounts: string;
+  total_discount: string;
   offer_discounts: Discount[];
   voucher_discounts: Discount[];
   shipping: string;

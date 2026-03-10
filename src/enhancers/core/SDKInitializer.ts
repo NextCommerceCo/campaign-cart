@@ -351,7 +351,8 @@ export class SDKInitializer {
     await this.captureUrlParameters(urlParams);
 
     // Check URL parameters for debug mode, forcePackageId, and forceShippingId
-    const debugMode = urlParams.get('debugger') === 'true';
+    const windowConfig = (window as any).nextConfig;
+    const debugMode = urlParams.get('debugger') === 'true' || windowConfig?.debugger === true;
     const forcePackageId = urlParams.get('forcePackageId');
     const forceShippingId = urlParams.get('forceShippingId');
     

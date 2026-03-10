@@ -1,0 +1,115 @@
+<!--
+title: Conditional Display
+description: Show or hide elements based on cart state — item count thresholds, coupon applied, free shipping unlocked, and more.
+order: 7
+-->
+
+<!--
+  HOW THIS WORKS:
+  ─────────────────────────────────────────────────────────────────────────────
+  ConditionalDisplayEnhancer (data-next-show / data-next-hide):
+
+  data-next-show="<condition>"   — element is visible only when condition is TRUE
+  data-next-hide="<condition>"   — element is hidden only when condition is TRUE
+
+  Conditions (all reactive — update on cart change):
+
+    cart.hasItems                — cart has at least 1 item
+    cart.isEmpty                 — cart is empty
+    cart.hasCoupon               — a coupon is applied
+    cart.hasDiscount             — cart total is discounted
+    cart.hasFreeShipping         — shipping cost is $0
+    cart.itemCount >= N          — item count meets threshold
+    cart.itemCount < N
+    cart.total >= N              — raw total (number, no currency symbol)
+    cart.total < N
+
+  String shorthand (no operator):
+    "cart.hasItems"   === "cart.hasItems == true"
+
+  Numeric comparison:
+    data-next-show="cart.itemCount >= 3"
+    data-next-show="cart.total >= 50"
+  ─────────────────────────────────────────────────────────────────────────────
+-->
+
+<h3>Cart State</h3>
+
+<!-- Shown only when cart is empty -->
+<div class="banner banner-amber"
+     data-next-show="cart.isEmpty">
+  🛒 Your cart is empty — add a product to get started.
+</div>
+
+<!-- Shown only when cart has items -->
+<div class="banner banner-green"
+     data-next-show="cart.hasItems">
+  ✓ Great choice! Your items are saved.
+</div>
+
+<hr />
+<h3>Free Shipping Progress</h3>
+
+<!-- Below threshold — prompt to add more -->
+<div class="banner banner-blue"
+     data-next-show="cart.total < 50">
+  🚚 Add
+  <strong>
+    $<span data-next-display="cart.freeShippingRemaining"></span>
+  </strong>
+  more to unlock free shipping!
+</div>
+
+<!-- Threshold met -->
+<div class="banner banner-green"
+     data-next-show="cart.hasFreeShipping">
+  🎉 You've unlocked <strong>FREE shipping</strong>!
+</div>
+
+<hr />
+<h3>Coupon State</h3>
+
+<!-- Coupon applied -->
+<div class="banner banner-green"
+     data-next-show="cart.hasCoupon">
+  🏷️ Coupon <strong data-next-display="cart.coupon"></strong> applied!
+  You saved <strong data-next-display="cart.discount"></strong>.
+</div>
+
+<!-- No coupon yet -->
+<div class="banner banner-amber"
+     data-next-hide="cart.hasCoupon">
+  💡 Have a coupon code? Enter it at checkout to save.
+</div>
+
+<hr />
+<h3>Quantity Upsell</h3>
+
+<!-- Fewer than 3 items — show upsell nudge -->
+<div class="banner banner-blue"
+     data-next-show="cart.itemCount < 3">
+  📦 Buy 3 or more to save an extra 15%.
+</div>
+
+<!-- 3+ items — confirm the deal -->
+<div class="banner banner-green"
+     data-next-show="cart.itemCount >= 3">
+  ✅ Bulk discount applied — 15% off your order!
+</div>
+
+<style>
+  body { font-family: sans-serif; padding: 24px; max-width: 480px; }
+
+  .banner {
+    padding: 12px 16px; border-radius: 8px; font-size: 14px; font-weight: 500;
+    margin-bottom: 12px;
+  }
+  .banner-green { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+  .banner-amber { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+  .banner-blue  { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+  .banner-red   { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+
+  hr { border: none; border-top: 1px solid #e5e7eb; margin: 20px 0; }
+  h3 { font-size: 13px; font-weight: 700; color: #9ca3af; text-transform: uppercase;
+       letter-spacing: .06em; margin: 0 0 10px; }
+</style>

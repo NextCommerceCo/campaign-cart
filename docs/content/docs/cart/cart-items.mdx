@@ -1,0 +1,155 @@
+---
+title: Cart Item List
+description: Renders cart items using an HTML template. Updates automatically as the cart changes.
+---
+
+`CartItemListEnhancer` renders the current cart items into a container element using a template. The list re-renders automatically whenever the cart changes.
+
+---
+
+## Basic usage
+
+Define a template in a `<script>` tag, then reference it from the container:
+
+```html
+<!-- Container where items will be rendered -->
+<div data-next-cart-items data-item-template-id="cart-item-tmpl"></div>
+
+<!-- Item template (not rendered by browser, just a string) -->
+<script id="cart-item-tmpl" type="text/html">
+  <div class="cart-item">
+    <span class="name">{item.name}</span>
+    <span class="qty">× {item.quantity}</span>
+    <span class="price">{item.finalLineTotal}</span>
+    <button data-next-remove-item data-package-id="{item.packageId}">Remove</button>
+  </div>
+</script>
+```
+
+---
+
+## Template resolution
+
+The SDK tries the following methods in order to find the template:
+
+1. `data-item-template-id="id"` → `document.getElementById(id).innerHTML`
+2. `data-item-template-selector=".selector"` → `document.querySelector(selector).innerHTML`
+3. `data-item-template` attribute value (inline HTML)
+4. The container element's own `innerHTML` on page load
+5. A built-in default template
+
+---
+
+## Container attributes
+
+| Attribute | Description |
+|---|---|
+| `data-next-cart-items` | Required. Marks the container |
+| `data-item-template-id` | ID of the `<script>` template element |
+| `data-item-template-selector` | CSS selector for the template element |
+| `data-item-template` | Inline template HTML string |
+| `data-empty-template` | HTML shown when the cart is empty |
+| `data-title-map='{"10":"Custom Name"}'` | Override display names per package ID |
+| `data-group-items` | Merge duplicate items, adding their quantities |
+
+---
+
+## Template tokens
+
+Use `{item.PROPERTY}` in your template. All currency values are formatted by default (e.g. `$29.00`). Append `.raw` for the unformatted number.
+
+### Basic
+
+| Token | Description |
+|---|---|
+| `{item.packageId}` | Package ID |
+| `{item.name}` | Product/package name |
+| `{item.title}` | Alias for name |
+| `{item.quantity}` | Cart quantity |
+| `{item.image}` | Product image URL |
+| `{item.sku}` | Product SKU |
+
+### Pricing
+
+| Token | Description |
+|---|---|
+| `{item.price}` | Unit sale price |
+| `{item.unitPrice}` | Per-unit price |
+| `{item.lineTotal}` | price × quantity |
+| `{item.comparePrice}` | Retail/compare price |
+| `{item.savingsAmount}` | Total savings vs retail |
+| `{item.savingsPct}` | Savings percentage |
+| `{item.finalPrice}` | Price after coupon discounts |
+| `{item.finalLineTotal}` | finalPrice × quantity |
+| `{item.discountAmount}` | Coupon discount amount |
+
+### Variant
+
+| Token | Description |
+|---|---|
+| `{item.variantAttributesFormatted}` | Formatted variant string e.g. `"Blue / Large"` |
+| `{item.variant.color}` | Specific variant attribute by code |
+| `{item.variant.size}` | Specific variant attribute by code |
+
+### Boolean flags
+
+| Token | Description |
+|---|---|
+| `{item.hasSavings}` | `"true"` / `"false"` |
+| `{item.isRecurring}` | `"true"` / `"false"` |
+| `{item.showCompare}` | `"true"` when compare price is higher |
+
+---
+
+## Full example
+
+```html
+<div data-next-cart-items
+     data-item-template-id="cart-row"
+     data-empty-template="<p>Your cart is empty.</p>">
+</div>
+
+<script id="cart-row" type="text/html">
+  <div class="cart-row" data-cart-item-id="{item.packageId}">
+    <img src="{item.image}" alt="{item.name}" width="60">
+
+    <div class="cart-row__info">
+      <p class="cart-row__name">{item.name}</p>
+      <p class="cart-row__variant">{item.variantAttributesFormatted}</p>
+    </div>
+
+    <div class="cart-row__qty">
+      <button data-next-quantity="decrease" data-package-id="{item.packageId}" data-min="1">−</button>
+      <span>{item.quantity}</span>
+      <button data-next-quantity="increase" data-package-id="{item.packageId}">+</button>
+    </div>
+
+    <p class="cart-row__price">{item.finalLineTotal}</p>
+
+    <button data-next-remove-item data-package-id="{item.packageId}">×</button>
+  </div>
+</script>
+```
+
+<Callout>
+  After rendering, the SDK automatically activates any `[data-next-quantity]` and `[data-next-remove-item]` elements found in the rendered HTML. You don't need to initialize them manually.
+</Callout>
+
+---
+
+## Quantity controls in list
+
+Because quantity and remove buttons inside the template are auto-initialized, you can use them directly:
+
+```html
+<script id="cart-tmpl" type="text/html">
+  <div class="item">
+    {item.name}
+    <!-- These are auto-initialized after render -->
+    <button data-next-quantity="decrease" data-package-id="{item.packageId}" data-min="1">−</button>
+    <span>{item.quantity}</span>
+    <button data-next-quantity="increase" data-package-id="{item.packageId}">+</button>
+    <button data-next-remove-item data-package-id="{item.packageId}">Remove</button>
+  </div>
+</script>
+```

@@ -1,0 +1,122 @@
+<!--
+title: Offer List
+description: Render campaign offers as selectable cards. Selecting a card applies the offer package to the cart.
+order: 5
+-->
+
+<!--
+  HOW THIS WORKS:
+  ─────────────────────────────────────────────────────────────────────────────
+  CartOfferListEnhancer (data-next-offer-list):
+    Fetches offers from campaignStore and renders one card per offer using the
+    template you supply.
+
+  data-next-offer-template-id:
+    ID of a <template> element. Supports {offer.*} variables (see below).
+
+  data-next-offer-replace-cart:
+    "true" (default) — clear the cart before applying the offer package.
+    "false"          — add the offer package on top of existing items.
+
+  data-next-offer-filter  (optional JSON):
+    Filters which offers are rendered.
+    e.g. { "type": "voucher" }
+         { "condition.type": "count" }
+
+  Offer template variables:
+    {offer.name}                    offer name
+    {offer.type}                    offer type string
+    {offer.condition.description}   human-readable condition
+    {offer.benefit.description}     human-readable benefit
+    {offer.benefit.value}           e.g. "20" for 20% off
+    {offer.package.name}            first eligible package name
+    {offer.package.productName}     product name
+    {offer.package.price}           discounted price string
+    {offer.package.priceBeforeDiscount}  original price string
+    {offer.package.unitPrice}       per-unit discounted price
+    {offer.package.image}           package image URL
+    {offer.package.qty}             units per package
+
+  SDK-managed CSS classes on card:
+    .next-selected   — card is currently chosen
+    .next-in-cart    — offer is applied to the cart
+  ─────────────────────────────────────────────────────────────────────────────
+-->
+
+<!-- Offer card template -->
+<template id="offer-tpl">
+  <div class="offer-card">
+
+    <img class="offer-img"
+         src="{offer.package.image}"
+         alt="{offer.package.productName}" />
+
+    <div class="offer-body">
+      <p class="offer-name">{offer.name}</p>
+      <p class="offer-cond">{offer.condition.description}</p>
+      <p class="offer-benefit">✓ {offer.benefit.description}</p>
+    </div>
+
+    <div class="offer-price">
+      <p class="price-was">{offer.package.priceBeforeDiscount}</p>
+      <p class="price-now">{offer.package.price}</p>
+    </div>
+
+  </div>
+</template>
+
+<h2>Exclusive Add-ons</h2>
+<p class="subtitle">Select an offer to add it to your order.</p>
+
+<div class="offer-cards"
+     data-next-offer-list
+     data-next-offer-template-id="offer-tpl"
+     data-next-offer-replace-cart="false">
+</div>
+
+<button class="cta"
+        data-next-action="add-to-cart"
+        data-next-url="/checkout">
+  Continue to Checkout
+</button>
+
+<style>
+  body { font-family: sans-serif; padding: 24px; max-width: 560px; }
+
+  h2 { font-size: 18px; font-weight: 700; margin: 0 0 6px; }
+  .subtitle { font-size: 14px; color: #6b7280; margin: 0 0 20px; }
+
+  /* ── Offer cards ── */
+  .offer-cards { display: flex; flex-direction: column; gap: 10px; }
+
+  .offer-card {
+    display: grid; grid-template-columns: 56px 1fr auto;
+    align-items: center; gap: 14px; padding: 14px 16px;
+    border: 2px solid #e5e7eb; border-radius: 12px; cursor: pointer;
+    background: white; transition: border-color .15s;
+  }
+  .offer-card:hover { border-color: #9ca3af; }
+
+  /* SDK adds .next-selected when card is chosen */
+  .offer-card.next-selected { border-color: #111; background: #f9fafb; }
+
+  .offer-img { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; background: #f3f4f6; }
+
+  .offer-body {}
+  .offer-name  { font-size: 14px; font-weight: 600; color: #111; }
+  .offer-cond  { font-size: 12px; color: #6b7280; margin-top: 2px; }
+  .offer-benefit { font-size: 12px; font-weight: 600; color: #059669; margin-top: 2px; }
+
+  .offer-price { text-align: right; }
+  .price-was   { font-size: 12px; color: #9ca3af; text-decoration: line-through; }
+  .price-now   { font-size: 16px; font-weight: 700; color: #111; }
+
+  /* Checkout CTA */
+  .cta {
+    margin-top: 20px; width: 100%; padding: 14px;
+    background: #111; color: white; font-size: 15px; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase;
+    border: none; border-radius: 50px; cursor: pointer; transition: background .15s;
+  }
+  .cta:hover { background: #374151; }
+</style>

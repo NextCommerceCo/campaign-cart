@@ -1,0 +1,64 @@
+---
+title: Format Currency
+description: Format a static numeric value as currency using the campaign currency or an explicit override.
+---
+
+`FormatCurrencyEnhancer` formats a static number as a currency string. It reads the campaign's active currency by default and re-renders whenever the currency changes (e.g. via the `?currency=` URL parameter).
+
+Use this when you have a hardcoded price in HTML that should be formatted consistently with the rest of the page — without wiring it to a dynamic store path.
+
+---
+
+## Basic usage
+
+Place the numeric value as text content and add the attribute:
+
+```html
+<!-- Uses campaign currency, value from text content -->
+<span data-next-format-currency>29.99</span>
+<!-- → $29.99 -->
+```
+
+---
+
+## Attributes
+
+| Attribute | Description |
+|---|---|
+| `data-next-format-currency` | Required. Marks the element for formatting |
+| `data-value` | Explicit numeric value (takes priority over text content) |
+| `data-currency` | Override currency code (e.g. `"EUR"`) |
+| `data-hide-zero-cents` | `"true"` — omit `.00` cents (e.g. `$29` instead of `$29.00`) |
+
+---
+
+## Examples
+
+```html
+<!-- Value from text content, campaign currency -->
+<span data-next-format-currency>29.99</span>
+
+<!-- Value from attribute -->
+<span data-next-format-currency data-value="29.99"></span>
+
+<!-- Force EUR -->
+<span data-next-format-currency data-currency="EUR">29.99</span>
+<!-- → €29.99 -->
+
+<!-- Hide zero cents -->
+<span data-next-format-currency data-hide-zero-cents="true">29.00</span>
+<!-- → $29 -->
+
+<!-- Works on inputs too -->
+<input data-next-format-currency data-value="9.95" readonly />
+```
+
+---
+
+## Currency change behaviour
+
+The enhancer listens for `next:currency-changed` events. When the active currency switches, it re-formats the value automatically without a page reload.
+
+<Callout>
+  For dynamic values that come from the cart or campaign store, use `data-next-display` instead. `FormatCurrencyEnhancer` is only for static, hardcoded numbers.
+</Callout>
