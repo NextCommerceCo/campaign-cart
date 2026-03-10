@@ -28,7 +28,8 @@ const config = {
       // showCountries: ["US", "CA", "GB", "BR"],
 
       // Hide specific US territories from state dropdowns
-      dontShowStates: ["AS", "GU", "PR", "VI"]
+      dontShowStates: ["AS", "GU", "PR", "VI"],
+      enableAutocomplete: true
     },
     discounts: {
       SAVE10: {
@@ -43,7 +44,6 @@ const config = {
     googleMaps: {
       apiKey: "AIzaSyBmrv1QRE41P9FhFOTwUhRMGg6LcFH1ehs",
       region: "US",
-      enableAutocomplete: true
     },
     tracking: "auto",
     analytics: {

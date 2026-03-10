@@ -1543,9 +1543,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         if (!pac) {
           pac = document.createElement('div');
           pac.className = 'pac-container pac-logo';
-          pac.style.cssText = 'display:block;position:absolute';
+          pac.style.cssText = 'display:block; position:absolute';
           pac.addEventListener('mousedown', (e) => e.preventDefault());
           document.body.appendChild(pac);
+        } else {
+          pac.removeAttribute('data-close-added');
         }
         return pac;
       };
@@ -1557,10 +1559,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           ? countryField.value
           : defaultCountry;
 
+        // Read rect before async operation to get accurate layout position
+        const rect_input = input.getBoundingClientRect();
+
         try {
           if (input.value === '') return;
           const result = await this.apiClient.getAddressesAutocomplete(
-            input.value, countryValue, "EN", abortController.signal
+            input.value, countryValue, undefined, abortController.signal
           );
 
           if (!result.results.length) {
@@ -1569,12 +1574,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           }
 
           const pacContainer = getOrCreatePacContainer();
-          const rect = input.getBoundingClientRect();
-          pacContainer.style.left = `${rect.left + window.scrollX}px`;
-          pacContainer.style.top = `${rect.bottom + window.scrollY}px`;
-          pacContainer.style.width = `${rect.width}px`;
+          pacContainer.style.left = `${rect_input.left + window.scrollX}px`;
+          pacContainer.style.top = `${rect_input.bottom + window.scrollY}px`;
+          pacContainer.style.width = `${rect_input.width}px`;
           pacContainer.replaceChildren(...result.results.map(buildPacItem));
-          setTimeout(addCloseButton, 100);
+          addCloseButton()
         } catch (e) {
           if (e instanceof DOMException && e.name === 'AbortError') return;
           throw e;
@@ -1596,7 +1600,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
       input.addEventListener('input', () => {
         if (debounceTimer) clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(showAutocomplete, 500);
+        debounceTimer = setTimeout(showAutocomplete, 300);
       });
 
     } catch (error) {
