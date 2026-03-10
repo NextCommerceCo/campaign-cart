@@ -266,9 +266,9 @@
 
 /* Individual suggestion items */
 .pac-item {
+  border-radius: 0px 0px 8px 8px !important;
   margin: 0rem 0rem !important;
   background-color: var(--brand--color--background, #ffffff);
-  border: none !important;
   padding: 10px 12px;
   cursor: pointer;
   font-size: 14px;
