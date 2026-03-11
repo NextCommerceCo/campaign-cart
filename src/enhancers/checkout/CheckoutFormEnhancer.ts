@@ -91,11 +91,18 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private countryConfigs: Map<string, CountryConfig> = new Map();
   private currentCountryConfig?: CountryConfig;
   private detectedCountryCode: string = 'US';
-  private enableAutocomplete = false;
+  private enableNextCommerceAutocomplete = false;
 
   // Phone input management
   private phoneInputs: Map<string, any> = new Map();
   private isIntlTelInputAvailable = false;
+
+  // Google Maps management
+  private googleMapsLoaded = false;
+  private googleMapsLoading = false;
+  private googleMapsLoadPromise: Promise<void> | null = null;
+  private autocompleteInstances: Map<string, any> = new Map();
+  private enableAutocomplete = true;
 
   // Location field visibility management
   private locationElements: NodeListOf<Element> | null = null;
@@ -875,6 +882,50 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   }
 
 
+  // ============================================================================
+  // GOOGLE MAPS LOADER METHODS
+  // ============================================================================
+
+  private async loadGoogleMapsAPI(): Promise<void> {
+    const configStore = useConfigStore.getState();
+    const googleMapsConfig = configStore.googleMapsConfig;
+
+    // Skip loading if autocomplete is disabled
+    if (googleMapsConfig.enableAutocomplete === false) {
+      this.logger.debug('Google Maps Autocomplete is disabled in configuration');
+      return;
+    }
+
+    // Check if API key is available
+    if (!googleMapsConfig.apiKey) {
+      this.logger.warn('Google Maps API key not found. Autocomplete will be disabled.');
+      return;
+    }
+
+    if (this.googleMapsLoaded) {
+      this.logger.debug('Google Maps API already loaded');
+      return;
+    }
+
+    if (this.googleMapsLoading) {
+      this.logger.debug('Google Maps API loading in progress, waiting...');
+      return this.googleMapsLoadPromise!;
+    }
+
+    this.googleMapsLoading = true;
+    this.googleMapsLoadPromise = this.performGoogleMapsLoad(googleMapsConfig);
+
+    try {
+      await this.googleMapsLoadPromise;
+      this.googleMapsLoaded = true;
+      this.logger.info('Google Maps API loaded successfully');
+    } catch (error) {
+      this.logger.error('Failed to load Google Maps API:', error);
+      // Don't throw - autocomplete failure shouldn't break checkout
+    } finally {
+      this.googleMapsLoading = false;
+    }
+  }
 
   private async performGoogleMapsLoad(config: any): Promise<void> {
     // Check if Google Maps is already loaded
@@ -967,6 +1018,15 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     });
   }
 
+  private isGoogleMapsLoaded(): boolean {
+    return this.googleMapsLoaded && typeof window.google !== 'undefined' && typeof window.google.maps !== 'undefined';
+  }
+
+  private isGoogleMapsPlacesAvailable(): boolean {
+    return this.isGoogleMapsLoaded() &&
+      typeof window.google.maps.places !== 'undefined' &&
+      typeof window.google.maps.places.Autocomplete !== 'undefined';
+  }
 
   // ============================================================================
   // ADDRESS AND COUNTRY MANAGEMENT
@@ -991,7 +1051,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       }
 
       // Check if autocomplete should be enabled
-      this.enableAutocomplete = config.addressConfig.enableAutocomplete !== false && !!config.apiKey;
+      const googleMapsConfig = config.googleMapsConfig || {};
+      this.enableAutocomplete = googleMapsConfig.enableAutocomplete !== false && !!googleMapsConfig.apiKey;
+      this.enableNextCommerceAutocomplete = config.addressConfig?.enableAutocomplete === true && !!config.apiKey;
+
 
       const locationData = await this.countryService.getLocationData();
       this.countries = locationData.countries;
@@ -1357,13 +1420,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // ============================================================================
 
   private async initializeAddressAutocomplete(): Promise<void> {
-    if (!this.enableAutocomplete) {
-      this.logger.debug('NextCommerce autocomplete disabled, skipping initialization');
+    if (!this.enableAutocomplete && !this.enableNextCommerceAutocomplete) {
+      this.logger.debug('All autocomplete providers disabled, skipping initialization');
       return;
     }
 
     try {
-      // Set up lazy loading for Google Maps autocomplete
+      // Set up lazy loading for autocomplete
       this.setupLazyAutocompleteLoading();
     } catch (error) {
       this.logger.error('Failed to initialize autocomplete:', error);
@@ -1384,7 +1447,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       this.logger.info('User focused on address field, loading Google Maps API...');
 
       try {
-        this.setupAutocomplete();
+        if (this.enableAutocomplete) {
+          await this.initializeGoogleMapsAutocomplete();
+        } else {
+          this.setupNextCommerceAutocomplete();
+        }
         isLoaded = true;
 
         // Remove all focus listeners since we've loaded the API
@@ -1411,6 +1478,34 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     }
   }
 
+  private async initializeGoogleMapsAutocomplete(): Promise<void> {
+    try {
+      // Load Google Maps API
+      await this.loadGoogleMapsAPI();
+
+      // Add a small delay to ensure the API is fully initialized
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Debug logging
+      this.logger.debug('Google Maps status:', {
+        google: typeof window.google !== 'undefined',
+        maps: typeof window.google?.maps !== 'undefined',
+        places: typeof window.google?.maps?.places !== 'undefined',
+        Autocomplete: typeof window.google?.maps?.places?.Autocomplete !== 'undefined'
+      });
+
+      if (!this.isGoogleMapsPlacesAvailable()) {
+        this.logger.warn('Google Places API not available, skipping autocomplete setup');
+        return;
+      }
+
+      this.logger.debug('Google Maps API loaded, setting up autocomplete');
+      this.setupAutocomplete();
+
+    } catch (error) {
+      this.logger.warn('Failed to load Google Maps API:', error);
+    }
+  }
 
   private setupAutocomplete(): void {
     const addressField = this.fields.get('address1');
@@ -1437,9 +1532,462 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       );
     }
 
+    // Set up country change listeners to update autocomplete restrictions
+    this.setupAutocompleteCountryChangeListeners();
   }
 
   private createAutocompleteInstance(
+    input: HTMLInputElement,
+    fieldKey: string,
+    defaultCountry: string,
+    type: 'shipping' | 'billing'
+  ): void {
+    try {
+      const countryField = type === 'shipping'
+        ? this.fields.get('country')
+        : this.billingFields.get('billing-country');
+      const countryValue = (countryField instanceof HTMLSelectElement && countryField.value)
+        ? countryField.value
+        : defaultCountry;
+
+      const options = {
+        types: ['address'],
+        fields: ['address_components', 'formatted_address'],
+        componentRestrictions: { country: countryValue }
+      };
+
+      // Check if Google Maps API is loaded
+      if (!window.google?.maps?.places) {
+        this.logger.warn('Google Maps Places API not loaded, skipping autocomplete initialization');
+        return;
+      }
+
+      // For now, stick with the legacy Autocomplete API until we can properly implement PlaceAutocompleteElement
+      // The new API requires more complex DOM manipulation and styling
+      // Note: Google shows deprecation warnings but the API is still fully supported
+      if (!window.google.maps.places.Autocomplete) {
+        this.logger.warn('Google Maps Autocomplete API not available');
+        return;
+      }
+
+      const autocomplete = new window.google.maps.places.Autocomplete(input, options);
+      this.autocompleteInstances.set(fieldKey, autocomplete);
+
+      this.logger.debug(`Autocomplete created for ${fieldKey}, restricted to: ${countryValue}`);
+
+      // Add close button to autocomplete container after it's created
+      const addCloseButton = () => {
+        const pacContainer = document.querySelector('.pac-container:not([data-close-added])') as HTMLElement;
+        if (pacContainer) {
+          pacContainer.setAttribute('data-close-added', 'true');
+
+          // Create close button
+          const closeButton = document.createElement('button');
+          closeButton.type = 'button';
+          closeButton.className = 'pac-close-button';
+          closeButton.innerHTML = '×';
+          closeButton.setAttribute('aria-label', 'Close suggestions');
+          closeButton.style.cssText = `
+            position: absolute;
+            top: 0.4rem;
+            right: 0.75rem;
+            background: none;
+            border: none;
+            font-size: 20px;
+            line-height: 24px;
+            color: #6b7280;
+            cursor: pointer;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+            width: 24px;
+            height: 24px;
+          `;
+
+          closeButton.addEventListener('mouseenter', () => {
+            closeButton.style.backgroundColor = '#f3f4f6';
+          });
+
+          closeButton.addEventListener('mouseleave', () => {
+            closeButton.style.backgroundColor = 'transparent';
+          });
+
+          closeButton.addEventListener('click', () => {
+            pacContainer.style.display = 'none';
+            input.blur();
+          });
+
+          pacContainer.appendChild(closeButton);
+        }
+      };
+
+      // Handle place selection
+      autocomplete.addListener('place_changed', async () => {
+        const place = autocomplete.getPlace();
+        if (!place || !place.address_components) {
+          this.logger.debug('No valid place data returned from autocomplete');
+          return;
+        }
+
+        await this.fillAddressFromAutocomplete(place, type);
+      });
+
+      // Add close button when dropdown opens
+      input.addEventListener('focus', () => {
+        setTimeout(addCloseButton, 100);
+      });
+
+      // Prevent form submission on Enter
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+        }
+      });
+
+    } catch (error) {
+      this.logger.error(`Failed to create autocomplete for ${fieldKey}:`, error);
+    }
+  }
+
+  private async fillAddressFromAutocomplete(place: any, type: 'shipping' | 'billing'): Promise<void> {
+    if (!place.address_components) return;
+
+    // Parse address components
+    const components = this.parseAddressComponents(place.address_components);
+
+    if (!components) {
+      this.logger.warn('Failed to parse address components');
+      return;
+    }
+
+    const countryCode = components.country?.short;
+
+    const isShipping = type === 'shipping';
+    const fieldPrefix = isShipping ? '' : 'billing-';
+    const fieldMap = isShipping ? this.fields : this.billingFields;
+    const checkoutStore = useCheckoutStore.getState();
+
+    // Fill in the address fields
+    const addressField = fieldMap.get(`${fieldPrefix}address1`);
+    if (addressField instanceof HTMLInputElement) {
+      const streetNumber = components.street_number?.long || '';
+      const route = components.route?.long || '';
+
+      let addressValue = '';
+
+      // Country-specific address formatting
+      if (countryCode === 'BR' && route && streetNumber) {
+        // Brazil format: "Street Name, Number"
+        addressValue = `${route}, ${streetNumber}`;
+
+        // Append neighborhood if available
+        if (components.sublocality_level_1) {
+          addressValue += ` - ${components.sublocality_level_1.long}`;
+        } else if (components.sublocality) {
+          addressValue += ` - ${components.sublocality.long}`;
+        }
+      } else {
+        // Default format: "Number Street Name"
+        addressValue = [streetNumber, route].filter(Boolean).join(' ');
+      }
+
+      addressField.value = addressValue;
+      addressField.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    // For Brazil, parse city and state from formatted address if components are missing
+    let parsedCity = '';
+    let parsedState = '';
+
+    if (countryCode === 'BR' && place.formatted_address &&
+      (!components.administrative_area_level_2 || !components.administrative_area_level_1)) {
+      // BR format: "Street, Number - Neighborhood, City - State, Postal, Country"
+      const addressParts = place.formatted_address.split(',');
+      if (addressParts.length >= 3) {
+        // Extract city and state from the pattern "City - State"
+        const cityStatePart = addressParts[addressParts.length - 3]?.trim();
+        if (cityStatePart && cityStatePart.includes(' - ')) {
+          const [city, state] = cityStatePart.split(' - ').map((s: string) => s.trim());
+          parsedCity = city || '';
+          parsedState = state || '';
+        }
+      }
+    }
+
+    const cityField = fieldMap.get(`${fieldPrefix}city`);
+    if (cityField instanceof HTMLInputElement) {
+      let cityValue = '';
+
+      // Country-specific logic
+      if (countryCode === 'BR') {
+        // Brazil: try administrative_area_level_2 first, then parsed city
+        if (components.administrative_area_level_2) {
+          cityValue = components.administrative_area_level_2.long;
+        } else if (parsedCity) {
+          cityValue = parsedCity;
+        }
+      }
+      // Primary: Try locality (most common - US, CA, AU, etc.)
+      else if (components.locality) {
+        cityValue = components.locality.long;
+      }
+      // Fallback 1: Try postal_town (common in UK)
+      else if (components.postal_town) {
+        cityValue = components.postal_town.long;
+      }
+      // Fallback 2: Try administrative_area_level_2 (some countries use this)
+      else if (components.administrative_area_level_2) {
+        cityValue = components.administrative_area_level_2.long;
+      }
+      // Fallback 3: Try sublocality (common in some Asian countries - but not for BR)
+      else if (components.sublocality && countryCode !== 'BR') {
+        cityValue = components.sublocality.long;
+      }
+      // Fallback 4: Try sublocality_level_1 (but not for BR where it's neighborhood)
+      else if (components.sublocality_level_1 && countryCode !== 'BR') {
+        cityValue = components.sublocality_level_1.long;
+      }
+
+      if (cityValue) {
+        cityField.value = cityValue;
+        cityField.dispatchEvent(new Event('change', { bubbles: true }));
+        this.logger.debug(`City set to: ${cityValue} (type: ${components.locality ? 'locality' :
+            components.postal_town ? 'postal_town' :
+              components.sublocality ? 'sublocality' :
+                'sublocality_level_1'
+          })`);
+      } else {
+        this.logger.warn('No suitable city component found in address');
+      }
+    }
+
+    const zipField = fieldMap.get(`${fieldPrefix}postal`);
+    if (zipField instanceof HTMLInputElement && components?.postal_code) {
+      zipField.value = components.postal_code.long;
+      zipField.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    // Handle country and state
+    const countryField = fieldMap.get(`${fieldPrefix}country`);
+    if (countryField instanceof HTMLSelectElement && components?.country) {
+      const countryCode = components.country.short;
+      if (countryField.value !== countryCode) {
+        countryField.value = countryCode;
+        countryField.dispatchEvent(new Event('change', { bubbles: true }));
+        this.logger.debug(`Country set to ${countryCode}`);
+      }
+
+      // Set state with retry (wait for country change to load states)
+      const stateField = fieldMap.get(`${fieldPrefix}province`);
+      if (stateField instanceof HTMLSelectElement) {
+        if (components?.administrative_area_level_1) {
+          this.setStateWithRetry(stateField, components.administrative_area_level_1.short, fieldPrefix);
+        } else if (countryCode === 'BR' && parsedState) {
+          // For Brazil, use parsed state if component is missing
+          this.setStateWithRetry(stateField, parsedState, fieldPrefix);
+        }
+      }
+    }
+
+    // Update the store
+    if (isShipping) {
+      const updates: Record<string, string> = {};
+      if (components.street_number || components.route) {
+        const streetNumber = components.street_number?.long || '';
+        const route = components.route?.long || '';
+
+        let addressValue = '';
+
+        // Country-specific address formatting
+        if (countryCode === 'BR' && route && streetNumber) {
+          // Brazil format: "Street Name, Number"
+          addressValue = `${route}, ${streetNumber}`;
+
+          // Append neighborhood if available
+          if (components.sublocality_level_1) {
+            addressValue += ` - ${components.sublocality_level_1.long}`;
+          } else if (components.sublocality) {
+            addressValue += ` - ${components.sublocality.long}`;
+          }
+        } else {
+          // Default format: "Number Street Name"
+          addressValue = [streetNumber, route].filter(Boolean).join(' ');
+        }
+
+        updates.address1 = addressValue;
+      }
+      // Enhanced city extraction for store updates
+      if (countryCode === 'BR' && components.administrative_area_level_2) {
+        updates.city = components.administrative_area_level_2.long;
+      } else if (components.locality) {
+        updates.city = components.locality.long;
+      } else if (components.postal_town) {
+        updates.city = components.postal_town.long;
+      } else if (components.administrative_area_level_2) {
+        updates.city = components.administrative_area_level_2.long;
+      } else if (components.sublocality && countryCode !== 'BR') {
+        updates.city = components.sublocality.long;
+      } else if (components.sublocality_level_1) {
+        updates.city = components.sublocality_level_1.long;
+      }
+      if (components.postal_code) updates.postal = components.postal_code.long;
+      if (components.country) updates.country = components.country.short;
+      if (components.administrative_area_level_1) updates.province = components.administrative_area_level_1.short;
+
+      checkoutStore.updateFormData(updates);
+
+      // Check if we should track shipping info after autofill
+      if (!this.hasTrackedShippingInfo && updates.city && updates.province) {
+        try {
+          // Get current shipping method if selected
+          const shippingMethod = checkoutStore.shippingMethod;
+          const shippingTier = shippingMethod ? shippingMethod.name : 'Standard';
+          nextAnalytics.track(EcommerceEvents.createAddShippingInfoEvent(shippingTier));
+          this.hasTrackedShippingInfo = true;
+          this.logger.info('Tracked add_shipping_info event (Google Places autofill)', { shippingTier });
+        } catch (error) {
+          this.logger.warn('Failed to track add_shipping_info event after autofill:', error);
+        }
+      }
+    } else {
+      // Update billing address
+      const currentBillingData = checkoutStore.billingAddress || {
+        first_name: '', last_name: '', address1: '', city: '', province: '', postal: '', country: '', phone: ''
+      };
+
+      const updates: any = { ...currentBillingData };
+      if (components.street_number || components.route) {
+        const streetNumber = components.street_number?.long || '';
+        const route = components.route?.long || '';
+
+        let addressValue = '';
+
+        // Country-specific address formatting
+        if (countryCode === 'BR' && route && streetNumber) {
+          // Brazil format: "Street Name, Number"
+          addressValue = `${route}, ${streetNumber}`;
+
+          // Append neighborhood if available
+          if (components.sublocality_level_1) {
+            addressValue += ` - ${components.sublocality_level_1.long}`;
+          } else if (components.sublocality) {
+            addressValue += ` - ${components.sublocality.long}`;
+          }
+        } else {
+          // Default format: "Number Street Name"
+          addressValue = [streetNumber, route].filter(Boolean).join(' ');
+        }
+
+        updates.address1 = addressValue;
+      }
+      // Enhanced city extraction for store updates
+      if (countryCode === 'BR' && components.administrative_area_level_2) {
+        updates.city = components.administrative_area_level_2.long;
+      } else if (components.locality) {
+        updates.city = components.locality.long;
+      } else if (components.postal_town) {
+        updates.city = components.postal_town.long;
+      } else if (components.administrative_area_level_2) {
+        updates.city = components.administrative_area_level_2.long;
+      } else if (components.sublocality && countryCode !== 'BR') {
+        updates.city = components.sublocality.long;
+      } else if (components.sublocality_level_1) {
+        updates.city = components.sublocality_level_1.long;
+      }
+      if (components.postal_code) updates.postal = components.postal_code.long;
+      if (components.country) updates.country = components.country.short;
+      if (components.administrative_area_level_1) updates.province = components.administrative_area_level_1.short;
+
+      checkoutStore.setBillingAddress(updates);
+    }
+
+    // Emit event for other components
+    this.emit('address:autocomplete-filled', {
+      type,
+      components
+    });
+  }
+
+  private parseAddressComponents(addressComponents: any[]): Record<string, { long: string; short: string }> {
+    const components: Record<string, { long: string; short: string }> = {};
+
+    addressComponents.forEach(component => {
+      // Store the component for ALL its types, not just the first one
+      component.types.forEach((type: string) => {
+        // Skip 'political' as it's too generic
+        if (type !== 'political') {
+          components[type] = {
+            long: component.long_name,
+            short: component.short_name
+          };
+        }
+      });
+    });
+
+    // Debug logging for address component parsing
+    this.logger.debug('Parsed address components:', {
+      availableTypes: Object.keys(components),
+      cityRelatedComponents: {
+        locality: components.locality?.long,
+        postal_town: components.postal_town?.long,
+        sublocality: components.sublocality?.long,
+        sublocality_level_1: components.sublocality_level_1?.long
+      },
+      allComponents: components
+    });
+
+    return components;
+  }
+
+  private async setStateWithRetry(stateSelect: HTMLSelectElement, stateCode: string, fieldPrefix: string, attempt = 0): Promise<void> {
+    if (attempt >= 5) {
+      this.logger.warn(`Failed to set state ${stateCode} after 5 attempts`);
+      return;
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 300 * Math.pow(1.5, attempt)));
+
+    const hasOption = Array.from(stateSelect.options).some(opt => opt.value === stateCode);
+    if (hasOption) {
+      stateSelect.value = stateCode;
+      stateSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      this.logger.debug(`State set to ${stateCode}`);
+    } else {
+      this.setStateWithRetry(stateSelect, stateCode, fieldPrefix, attempt + 1);
+    }
+  }
+
+  private setupNextCommerceAutocomplete(): void {
+    const addressField = this.fields.get('address1');
+    const billingAddressField = this.billingFields.get('billing-address1');
+    const defaultCountry = this.detectedCountryCode || 'US';
+
+    // Set up autocomplete for shipping address
+    if (addressField instanceof HTMLInputElement) {
+      this.createNextCommerceAutocompleteInstance(
+        addressField,
+        'address1',
+        defaultCountry,
+        'shipping'
+      );
+    }
+
+    // Set up autocomplete for billing address
+    if (billingAddressField instanceof HTMLInputElement) {
+      this.createNextCommerceAutocompleteInstance(
+        billingAddressField,
+        'billing-address1',
+        defaultCountry,
+        'billing'
+      );
+    }
+
+  }
+
+  private createNextCommerceAutocompleteInstance(
     input: HTMLInputElement,
     fieldKey: string,
     defaultCountry: string,
@@ -1455,7 +2003,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
       // Add close button to autocomplete container after it's created
       const addCloseButton = () => {
-        const pacContainer = document.querySelector('.pac-container:not([data-close-added])') as HTMLElement;
+        const pacContainer = document.querySelector('.pac-container-nextcommerce:not([data-close-added])') as HTMLElement;
         if (pacContainer) {
           pacContainer.setAttribute('data-close-added', 'true');
 
@@ -1525,24 +2073,24 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
       const buildPacItem = (r: AddressAutocompleteResult): HTMLDivElement => {
         const item = document.createElement('div');
-        item.className = 'pac-item';
+        item.className = 'pac-item-nextcommerce';
 
         const icon = document.createElement('span');
         icon.className = 'pac-icon pac-icon-marker';
 
         item.append(icon, buildHighlightedLabel(r.label, input.value));
         item.addEventListener('click', () => {
-          this.fillAddressFromAutocomplete(r, type);
+          this.fillAddressFromNextCommerceAutocomplete(r, type);
           input.blur();
         });
         return item;
       };
 
       const getOrCreatePacContainer = (): HTMLElement => {
-        let pac = document.querySelector<HTMLElement>('.pac-container.pac-logo');
+        let pac = document.querySelector<HTMLElement>('.pac-container-nextcommerce.pac-logo');
         if (!pac) {
           pac = document.createElement('div');
-          pac.className = 'pac-container pac-logo';
+          pac.className = 'pac-container-nextcommerce pac-logo';
           pac.style.cssText = 'display:block; position:absolute';
           pac.addEventListener('mousedown', (e) => e.preventDefault());
           document.body.appendChild(pac);
@@ -1569,7 +2117,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           );
 
           if (!result.results.length) {
-            document.querySelector('.pac-container.pac-logo')?.remove();
+            document.querySelector('.pac-container-nextcommerce.pac-logo')?.remove();
             return;
           }
 
@@ -1588,8 +2136,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       input.addEventListener('focus', showAutocomplete);
 
       input.addEventListener('blur', () => {
+
         setTimeout(() => {
-          document.querySelector('.pac-container.pac-logo')?.remove();
+          document.querySelector('.pac-container-nextcommerce.pac-logo')?.remove();
         }, 150);
       });
 
@@ -1608,7 +2157,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     }
   }
 
-  private async fillAddressFromAutocomplete(place: AddressAutocompleteResult, type: 'shipping' | 'billing'): Promise<void> {
+  private async fillAddressFromNextCommerceAutocomplete(place: AddressAutocompleteResult, type: 'shipping' | 'billing'): Promise<void> {
     if (!place) return;
 
     // Parse address components
@@ -1656,8 +2205,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       // Set state with retry (wait for country change to load states)
       const stateField = fieldMap.get(`${fieldPrefix}province`);
       if (stateField instanceof HTMLSelectElement) {
-        if (components.address.state || components.address.state_code ) {
-          this.setStateWithRetry(stateField, components.address.state_code, components.address.state, fieldPrefix);
+        if (components.address.state || components.address.state_code) {
+          this.setStateWithRetryNextCommerce(stateField, components.address.state_code, components.address.state, fieldPrefix);
         }
       }
     }
@@ -1700,7 +2249,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     });
   }
 
-  private async setStateWithRetry(stateSelect: HTMLSelectElement, stateCode: string, stateName: string, fieldPrefix: string, attempt = 0): Promise<void> {
+  private async setStateWithRetryNextCommerce(stateSelect: HTMLSelectElement, stateCode: string, stateName: string, fieldPrefix: string, attempt = 0): Promise<void> {
     if (attempt >= 5) {
       this.logger.warn(`Failed to set state ${stateCode} after 5 attempts`);
       return;
@@ -1719,10 +2268,56 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       stateSelect.dispatchEvent(new Event('change', { bubbles: true }));
       this.logger.debug(`State set to ${(match as HTMLOptionElement).value}`);
     } else {
-      this.setStateWithRetry(stateSelect, stateCode, stateName, fieldPrefix, attempt + 1);
+      this.setStateWithRetryNextCommerce(stateSelect, stateCode, stateName, fieldPrefix, attempt + 1);
     }
   }
 
+  private autocompleteListenersAttached = false;
+
+  private setupAutocompleteCountryChangeListeners(): void {
+    // Prevent duplicate listener attachment
+    if (this.autocompleteListenersAttached) {
+      this.logger.debug('Autocomplete country change listeners already attached, skipping');
+      return;
+    }
+
+    // Shipping country change - use a named function so we can identify it
+    const shippingCountryField = this.fields.get('country');
+    if (shippingCountryField instanceof HTMLSelectElement) {
+      // Mark the field to indicate autocomplete handler will be attached
+      (shippingCountryField as any)._hasAutocompleteHandler = true;
+
+      shippingCountryField.addEventListener('change', () => {
+        const autocomplete = this.autocompleteInstances.get('address1');
+        const countryValue = shippingCountryField.value;
+        if (autocomplete && countryValue && countryValue.length === 2) {
+          // Legacy Autocomplete API
+          if (autocomplete.setComponentRestrictions) {
+            autocomplete.setComponentRestrictions({ country: countryValue });
+          }
+          this.logger.debug(`Shipping autocomplete restricted to: ${countryValue}`);
+        }
+      });
+    }
+
+    // Billing country change
+    const billingCountryField = this.billingFields.get('billing-country');
+    if (billingCountryField instanceof HTMLSelectElement) {
+      billingCountryField.addEventListener('change', () => {
+        const autocomplete = this.autocompleteInstances.get('billing-address1');
+        const countryValue = billingCountryField.value;
+        if (autocomplete && countryValue && countryValue.length === 2) {
+          // Legacy Autocomplete API
+          if (autocomplete.setComponentRestrictions) {
+            autocomplete.setComponentRestrictions({ country: countryValue });
+          }
+          this.logger.debug(`Billing autocomplete restricted to: ${countryValue}`);
+        }
+      });
+    }
+
+    this.autocompleteListenersAttached = true;
+  }
 
   // ============================================================================
   // LOCATION FIELD VISIBILITY MANAGEMENT
@@ -4262,6 +4857,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       }
     });
     this.phoneInputs.clear();
+
+    if (this.enableAutocomplete) {
+      this.autocompleteInstances.clear();
+    }
 
     this.fields.clear();
     this.billingFields.clear();

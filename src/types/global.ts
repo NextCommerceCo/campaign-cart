@@ -123,7 +123,7 @@ export interface EventMap {
   // Address Autocomplete Events
   'address:autocomplete-filled': {
     type: 'shipping' | 'billing';
-    components: AddressAutocompleteResult;
+    components: any;
   };
   'address:location-fields-shown': {};
   'checkout:location-fields-shown': {};
@@ -329,6 +329,8 @@ export interface ShippingOption {
 export interface GoogleMapsConfig {
   apiKey?: string;
   region?: string;
+  enableAutocomplete?: boolean;
+  autocompleteOptions?: any;
 }
 
 // Address configuration interface
@@ -371,7 +373,6 @@ export interface AddressConfig {
   }>;
 
   enableAutocomplete?: boolean;
-  autocompleteOptions?: any;
 }
 
 // Configuration types

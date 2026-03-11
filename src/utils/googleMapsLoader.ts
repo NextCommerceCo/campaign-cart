@@ -37,6 +37,12 @@ export class GoogleMapsLoader {
     const configStore = useConfigStore.getState();
     const googleMapsConfig = configStore.googleMapsConfig;
 
+    // Skip loading if autocomplete is disabled
+    if (googleMapsConfig.enableAutocomplete === false) {
+      logger.debug('Google Maps Autocomplete is disabled in configuration');
+      return;
+    }
+
     // Check if API key is available
     if (!googleMapsConfig.apiKey) {
       logger.warn('Google Maps API key not found. Autocomplete will be disabled.');

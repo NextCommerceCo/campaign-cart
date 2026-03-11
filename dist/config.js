@@ -1,11 +1,9 @@
-// Development config module with HMR support
-
-// This config is ONLY loaded in debug mode (?debug=true) via loader.js
-// In production, merchants provide their own window.nextConfig
-
-const config = {
+// Auto-generated from src/config.ts
+// WARNING: This contains DEMO API keys only!
+// For production, use your own configuration
+window.nextConfig = {
     apiKey: "kLGpgEfCX3iUZG16hpI5zrCH9qxcOdahDY1im6ud",
-    debug: true, // Always true since this file only loads in debug mode
+    debug: false, // Always true since this file only loads in debug mode
     paymentConfig: {
       expressCheckout: {
         requireValidation: true,
@@ -98,16 +96,3 @@ const config = {
       // paramsToCopy: ['utm_source', 'utm_medium']
     }
 };
-
-// Set on window for compatibility
-(window as any).nextConfig = config;
-
-// Enable HMR
-if (import.meta.hot) {
-  import.meta.hot.accept(() => {
-    console.log('[Config] Hot update received');
-    window.location.reload();
-  });
-}
-
-export default config;
