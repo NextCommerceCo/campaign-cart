@@ -1,16 +1,3 @@
-import type { Logger } from '@/utils/logger';
-import type { EventBus } from '@/utils/events';
-
-export interface AutocompleteContext {
-  fields: Map<string, HTMLElement>;
-  billingFields: Map<string, HTMLElement>;
-  getDetectedCountryCode: () => string;
-  getHasTrackedShippingInfo: () => boolean;
-  setHasTrackedShippingInfo: (value: boolean) => void;
-  logger: Logger;
-  eventBus: EventBus;
-}
-
 /** Creates a close button element styled for PAC containers */
 export function createCloseButton(onClose: () => void): HTMLButtonElement {
   const closeButton = document.createElement('button');

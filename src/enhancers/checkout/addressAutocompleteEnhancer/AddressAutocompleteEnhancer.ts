@@ -3,7 +3,7 @@ import { EventBus } from '@/utils/events';
 import { ApiClient } from '@/api/client';
 import { GoogleMapsAutocomplete } from './GoogleMapsAutocomplete';
 import { NextCommerceAutocomplete } from './NextCommerceAutocomplete';
-import type { AutocompleteContext } from './types';
+import type { AutocompleteContext } from '../types';
 
 export interface AddressAutocompleteOptions {
   enableGoogleMaps: boolean;

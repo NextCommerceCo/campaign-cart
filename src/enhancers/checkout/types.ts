@@ -1,3 +1,6 @@
+import type { Logger } from '@/utils/logger';
+import type { EventBus } from '@/utils/events';
+
 // Field validation types
 export interface ValidationRule {
   test: (value: any) => boolean;
@@ -56,4 +59,14 @@ export interface FloatingLabel {
 export interface LoadingState {
   section: string;
   isLoading: boolean;
+}
+
+export interface AutocompleteContext {
+  fields: Map<string, HTMLElement>;
+  billingFields: Map<string, HTMLElement>;
+  getDetectedCountryCode: () => string;
+  getHasTrackedShippingInfo: () => boolean;
+  setHasTrackedShippingInfo: (value: boolean) => void;
+  logger: Logger;
+  eventBus: EventBus;
 }

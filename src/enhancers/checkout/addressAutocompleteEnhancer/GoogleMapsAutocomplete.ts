@@ -1,6 +1,7 @@
 import { useCheckoutStore } from '@/stores/checkoutStore';
 import { nextAnalytics, EcommerceEvents } from '@/utils/analytics/index';
-import { type AutocompleteContext, createCloseButton } from './types';
+import type { AutocompleteContext } from '../types';
+import { createCloseButton } from '../utils/create-close-button';
 
 export class GoogleMapsAutocomplete {
   private ctx: AutocompleteContext;
