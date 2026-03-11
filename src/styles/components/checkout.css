@@ -229,7 +229,7 @@
 }
 
 /* ============================================
-   Google Places Autocomplete Customization
+   Autocomplete Customization
    ============================================ */
 
 /* Main container - appears outside the form element */
@@ -244,8 +244,23 @@
   z-index: 9999;
 }
 
+.pac-container-nextcommerce {
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e5e7eb;
+  margin-top: 4px;
+  padding: 12px;
+  background-color: var(--brand--color--surface, #ffffff);
+  font-family: inherit;
+  z-index: 9999;
+}
+
 .pac-container.pac-logo {
   padding: 0.5rem !important;
+}
+
+.pac-container-nextcommerce.pac-logo {
+  padding: 0rem !important;
 }
 
 /* Add header bar with "Suggestions" text */
@@ -255,6 +270,21 @@
   font-size: 11px;
   font-weight: 600;
   margin: 0rem -0.75rem !important;
+  padding: 0rem 0.75rem !important;
+  text-transform: uppercase;
+  padding-bottom: 0.5rem !important;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  border-bottom: 1px solid #e5e7eb;
+  line-height: 24px;
+}
+
+.pac-container-nextcommerce::before {
+  content: 'Suggestions';
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  margin: 0.5rem 0rem 0rem 0rem !important;
   padding: 0rem 0.75rem !important;
   text-transform: uppercase;
   padding-bottom: 0.5rem !important;
@@ -275,9 +305,24 @@
   line-height: 1.5;
 }
 
+.pac-item-nextcommerce {
+  border-radius: 0px 0px 8px 8px !important;
+  margin: 0rem 0rem !important;
+  background-color: var(--brand--color--background, #ffffff);
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
 /* Hover state */
 .pac-item:hover,
 .pac-item.pac-item-selected {
+  background-color: #f9fafb;
+}
+
+.pac-item-nextcommerce:hover,
+.pac-item-nextcommerce.pac-item-selected {
   background-color: #f9fafb;
 }
 

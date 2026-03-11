@@ -2,6 +2,8 @@
  * Global type definitions for the SDK
  */
 
+import { AddressAutocompleteResult } from "./api";
+
 // Event Map for type-safe event handling
 export interface EventMap {
   'cart:updated': CartState;
@@ -121,7 +123,7 @@ export interface EventMap {
   // Address Autocomplete Events
   'address:autocomplete-filled': {
     type: 'shipping' | 'billing';
-    components: Record<string, { long: string; short: string }>;
+    components: any;
   };
   'address:location-fields-shown': {};
   'checkout:location-fields-shown': {};
@@ -369,6 +371,8 @@ export interface AddressConfig {
     code: string;
     name: string;
   }>;
+
+  enableAutocomplete?: boolean;
 }
 
 // Configuration types
