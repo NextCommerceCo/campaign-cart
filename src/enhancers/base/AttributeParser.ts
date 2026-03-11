@@ -224,6 +224,11 @@ export class AttributeParser {
       types.push('offer-list');
     }
 
+    // Check for cart summary enhancer
+    if (element.hasAttribute('data-next-cart-summary')) {
+      types.push('cart-summary');
+    }
+
     // Check for cart item slots enhancer
     if (element.hasAttribute('data-next-cart-slots')) {
       types.push('cart-slots');

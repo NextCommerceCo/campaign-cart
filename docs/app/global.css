@@ -37,6 +37,7 @@
     from {
       transform: translateX(0);
     }
+
     to {
       transform: translateX(calc(-100% - var(--gap)));
     }
@@ -46,6 +47,7 @@
     from {
       transform: translateY(0);
     }
+
     to {
       transform: translateY(calc(-100% - var(--gap)));
     }
@@ -55,6 +57,7 @@
     from {
       stroke-dasharray: 1000;
     }
+
     to {
       stroke-dasharray: 1000;
       stroke-dashoffset: 2000;
@@ -65,10 +68,8 @@
 
   --color-gradient-radial: radial-gradient(circle, var(--tw-gradient-stops));
   --color-repeat-gradient-to-r: repeating-linear-gradient(to right, var(--tw-gradient-stops));
-  --color-repeat-gradient-to-br: repeating-linear-gradient(
-    to bottom right,
-    var(--tw-gradient-stops)
-  );
+  --color-repeat-gradient-to-br: repeating-linear-gradient(to bottom right,
+    var(--tw-gradient-stops));
 }
 
 .ui {
@@ -118,15 +119,18 @@ body {
 }
 
 @keyframes circuit_1_x_energy {
+
   0%,
   46% {
     opacity: 0;
     transform: translateX(-20px);
   }
+
   47%,
   70% {
     opacity: 100%;
   }
+
   100% {
     opacity: 0;
     transform: translateX(212px);

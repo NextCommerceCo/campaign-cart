@@ -630,6 +630,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
               totalQuantity: count,
               isEmpty: isEmpty,
               totals,
+              summary: response,
               discountDetails: {
                 offerDiscounts: response.offer_discounts || [],
                 voucherDiscounts: response.voucher_discounts || [],

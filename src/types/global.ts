@@ -327,6 +327,8 @@ export interface CartState {
       name?: string;
     }>;
   };
+  /** Raw CartSummary response from the API calculate endpoint. */
+  summary?: import('./api').CartSummary;
 }
 
 export interface CartTotals {

@@ -1,5 +1,5 @@
-import fs from 'node:fs';
-import path from 'node:path';
+import fs from "node:fs";
+import path from "node:path";
 
 export interface PlaygroundExample {
   id: string;
@@ -7,10 +7,11 @@ export interface PlaygroundExample {
   description: string;
   category: string;
   order: number;
+  layout: string;
   code: string;
 }
 
-const PLAYGROUND_DIR = path.join(process.cwd(), 'content/playground');
+const PLAYGROUND_DIR = path.join(process.cwd(), "content/playground");
 
 /**
  * Parse the leading HTML comment block as key: value frontmatter.
@@ -31,8 +32,8 @@ function parseFrontmatter(raw: string): {
   if (!match) return { meta: {}, code: raw.trim() };
 
   const meta: Record<string, string> = {};
-  for (const line of match[1].split('\n')) {
-    const colon = line.indexOf(':');
+  for (const line of match[1].split("\n")) {
+    const colon = line.indexOf(":");
     if (colon === -1) continue;
     const key = line.slice(0, colon).trim();
     const value = line.slice(colon + 1).trim();
@@ -56,22 +57,23 @@ export function loadPlaygroundExamples(): PlaygroundExample[] {
     const catDir = path.join(PLAYGROUND_DIR, category);
     const files = fs
       .readdirSync(catDir)
-      .filter((f) => f.endsWith('.html'))
+      .filter((f) => f.endsWith(".html"))
       .sort();
 
     for (const file of files) {
-      const raw = fs.readFileSync(path.join(catDir, file), 'utf-8');
+      const raw = fs.readFileSync(path.join(catDir, file), "utf-8");
       const { meta, code } = parseFrontmatter(raw);
 
       // Derive a stable id from the folder + filename
-      const id = `${category}/${file.replace('.html', '')}`;
+      const id = `${category}/${file.replace(".html", "")}`;
 
       examples.push({
         id,
-        title: meta.title ?? file.replace('.html', '').replace(/-/g, ' '),
-        description: meta.description ?? '',
+        title: meta.title ?? file.replace(".html", "").replace(/-/g, " "),
+        description: meta.description ?? "",
         category: capitalize(category),
         order: meta.order ? Number(meta.order) : 99,
+        layout: meta.layout ?? "",
         code,
       });
     }
