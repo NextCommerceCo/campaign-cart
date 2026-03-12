@@ -28,7 +28,19 @@ const config = {
       // showCountries: ["US", "CA", "GB", "BR"],
 
       // Hide specific US territories from state dropdowns
-      dontShowStates: ["AS", "GU", "PR", "VI"]
+      dontShowStates: ["AS", "GU", "PR", "VI"],
+
+      // ⚠️ AUTOCOMPLETE PROVIDER SELECTION:
+      // - To use NextCommerce Autocomplete: set enableAutocomplete: true
+      // - To use Google Maps Autocomplete: provide a valid apiKey in googleMaps config below
+      // - To disable Google Maps and use NextCommerce only: leave googleMaps.apiKey empty ("")
+      // enableAutocomplete: true,
+
+    },
+    googleMaps: {
+      apiKey: "AIzaSyBmrv1QRE41P9FhFOTwUhRMGg6LcFH1ehs",
+      region: "US",
+      enableAutocomplete: true
     },
     discounts: {
       SAVE10: {
@@ -39,11 +51,6 @@ const config = {
         description: "10% off entire order",
         combinable: true
       }
-    },
-    googleMaps: {
-      apiKey: "AIzaSyBmrv1QRE41P9FhFOTwUhRMGg6LcFH1ehs",
-      region: "US",
-      enableAutocomplete: true
     },
     tracking: "auto",
     analytics: {
