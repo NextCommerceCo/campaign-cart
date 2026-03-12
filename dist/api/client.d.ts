@@ -18,6 +18,7 @@ export declare class ApiClient {
     getProspectCart(cartId: string): Promise<any>;
     abandonProspectCart(cartId: string): Promise<any>;
     convertProspectCart(cartId: string): Promise<any>;
+    getAddressesAutocomplete(query_text: string, country?: string, language?: string, signal?: AbortSignal): Promise<any>;
     private getRequestType;
     private getErrorType;
     private request;

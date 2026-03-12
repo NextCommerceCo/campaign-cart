@@ -1,3 +1,5 @@
+import { Logger } from '../../utils/logger';
+import { EventBus } from '../../utils/events';
 export interface ValidationRule {
     test: (value: any) => boolean;
     message: string;
@@ -45,5 +47,14 @@ export interface FloatingLabel {
 export interface LoadingState {
     section: string;
     isLoading: boolean;
+}
+export interface AutocompleteContext {
+    fields: Map<string, HTMLElement>;
+    billingFields: Map<string, HTMLElement>;
+    getDetectedCountryCode: () => string;
+    getHasTrackedShippingInfo: () => boolean;
+    setHasTrackedShippingInfo: (value: boolean) => void;
+    logger: Logger;
+    eventBus: EventBus;
 }
 //# sourceMappingURL=types.d.ts.map

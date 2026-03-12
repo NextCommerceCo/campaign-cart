@@ -11,6 +11,11 @@ declare const config: {
     addressConfig: {
         dontShowStates: string[];
     };
+    googleMaps: {
+        apiKey: string;
+        region: string;
+        enableAutocomplete: boolean;
+    };
     discounts: {
         SAVE10: {
             code: string;
@@ -20,11 +25,6 @@ declare const config: {
             description: string;
             combinable: boolean;
         };
-    };
-    googleMaps: {
-        apiKey: string;
-        region: string;
-        enableAutocomplete: boolean;
     };
     tracking: string;
     analytics: {

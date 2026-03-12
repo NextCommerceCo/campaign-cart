@@ -165,10 +165,7 @@ export interface EventMap {
     };
     'address:autocomplete-filled': {
         type: 'shipping' | 'billing';
-        components: Record<string, {
-            long: string;
-            short: string;
-        }>;
+        components: any;
     };
     'address:location-fields-shown': {};
     'checkout:location-fields-shown': {};
@@ -460,6 +457,7 @@ export interface AddressConfig {
         code: string;
         name: string;
     }>;
+    enableAutocomplete?: boolean;
 }
 export interface ConfigState {
     apiKey: string;
