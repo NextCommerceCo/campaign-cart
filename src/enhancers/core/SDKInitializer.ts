@@ -43,6 +43,9 @@ export class SDKInitializer {
       // Wait for DOM to be ready
       await this.waitForDOM();
 
+      // Signal loading state to the page so developers can show skeleton UIs
+      document.body.setAttribute('data-next-sdk-loading', 'true');
+
       // Load configuration
       await this.loadConfiguration();
 
@@ -82,12 +85,16 @@ export class SDKInitializer {
       this.logger.info('SDK initialization complete ✅');
 
       this.retryAttempts = 0;
-      
+
+      // Clear global loading state — page skeletons can now hide
+      document.body.setAttribute('data-next-sdk-loading', 'false');
+
       // Emit initialization event
       this.emitInitializedEvent();
-      
+
     } catch (error) {
       this.logger.error('SDK initialization failed:', error);
+      document.body.setAttribute('data-next-sdk-loading', 'false');
 
       // Retry logic
       if (this.retryAttempts < this.maxRetries) {

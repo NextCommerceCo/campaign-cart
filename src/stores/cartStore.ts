@@ -7,7 +7,6 @@ import { subscribeWithSelector, persist } from 'zustand/middleware';
 import type {
   CartState,
   CartItem,
-  CartTotals,
   DiscountDefinition,
   AppliedCoupon,
 } from '@/types/global';
@@ -15,7 +14,6 @@ import { sessionStorageManager, CART_STORAGE_KEY } from '@/utils/storage';
 import { EventBus } from '@/utils/events';
 import { createLogger } from '@/utils/logger';
 import { formatCurrency, formatPercentage } from '@/utils/currencyFormatter';
-import type { CartCalculateSummary } from '@/types/api';
 
 const logger = createLogger('CartStore');
 
@@ -495,124 +493,40 @@ const cartStoreInstance = create<CartState & CartActions>()(
 
       calculateTotals: async () => {
         try {
-          // Import campaign store dynamically to avoid circular dependencies
           const { useCampaignStore } = await import('./campaignStore');
-          const campaignState = useCampaignStore.getState();
+          const { useCheckoutStore } = await import('./checkoutStore');
+          const { calculateCart } = await import(
+            '@/utils/calculations/CartCalculator'
+          );
 
+          const campaignState = useCampaignStore.getState();
+          const checkoutState = useCheckoutStore.getState();
           const state = get();
 
-          // Cache miss or expired - fetch from API
-          logger.info(`🌐 Fetching cart summary from API...`);
-          const { ApiClient } = await import('@/api/client');
-          const { useConfigStore } = await import('./configStore');
-          const configState = useConfigStore.getState();
-          const client = new ApiClient(configState.apiKey);
-
-          const { useCheckoutStore } = await import('./checkoutStore');
-          const checkoutState = useCheckoutStore.getState();
-
-          logger.info('Bond Debug ->> Cart ->', state);
-          logger.info('Bond Debug ->> Config ->', configState);
-          logger.info('Bond Debug ->> Campaign ->', campaignState);
-          logger.info('Bond Debug ->> Checkout ->', checkoutState);
-
-          const cartData: CartCalculateSummary = {
-            lines: state.items.map(item => ({
-              package_id: item.packageId,
-              quantity: item.quantity,
-              is_upsell: item.is_upsell || false,
-            })),
-            vouchers: [...checkoutState.vouchers],
-            currency: campaignState.data?.currency || null,
-            shipping_method: 1,
-          };
-
-          logger.info('Bond Debug ->> Cart Data ->', cartData);
-
           try {
-            const response = await client.calculateSummary(cartData);
-            logger.info('Bond Debug ->> Response ->', response);
+            const { totals, summary } = await calculateCart({
+              lines: state.items.map(item => ({
+                package_id: item.packageId,
+                quantity: item.quantity,
+                is_upsell: item.is_upsell || false,
+              })),
+              vouchers: [...checkoutState.vouchers],
+              currency: campaignState.data?.currency || null,
+              shippingMethod: 1,
+            });
 
-            const total = parseFloat(response.total);
-            const subtotal =
-              parseFloat(response.total) - parseFloat(response.shipping);
-            const shipping = parseFloat(response.shipping);
-            const shippingDiscount = parseFloat(
-              response.shipping_discount || '0'
-            );
-            const discount = parseFloat(response.total_discount);
-            const savings = parseFloat(response.total_discount);
-            const savingsPercentage =
-              (parseFloat(response.total_discount) /
-                parseFloat(response.total)) *
-              100;
-            const compareTotal =
-              parseFloat(response.total) - parseFloat(response.total_discount);
-            const hasSavings = parseFloat(response.total_discount) > 0;
-            const count = response.lines.reduce(
-              (sum, line) => sum + line.quantity,
-              0
-            );
-            const isEmpty = response.lines.length === 0;
-
-            const totals: CartTotals = {
-              subtotal: {
-                value: subtotal,
-                formatted: formatCurrency(subtotal),
-              },
-              shipping: {
-                value: shipping,
-                formatted: shipping === 0 ? 'FREE' : formatCurrency(shipping),
-              },
-              shippingDiscount: {
-                value: shippingDiscount,
-                formatted: formatCurrency(shippingDiscount),
-              },
-              tax: { value: 0, formatted: formatCurrency(0) },
-              discounts: {
-                value: discount,
-                formatted: formatCurrency(discount),
-              },
-              total: { value: total, formatted: formatCurrency(total) },
-              totalExclShipping: {
-                value: subtotal,
-                formatted: formatCurrency(subtotal),
-              },
-              count: count,
-              isEmpty: isEmpty,
-              savings: { value: savings, formatted: formatCurrency(savings) },
-              savingsPercentage: {
-                value: savingsPercentage,
-                formatted: `${savingsPercentage}%`,
-              },
-              compareTotal: {
-                value: compareTotal,
-                formatted: formatCurrency(compareTotal),
-              },
-              totalSavings: {
-                value: savings,
-                formatted: formatCurrency(savings),
-              },
-              totalSavingsPercentage: {
-                value: savingsPercentage,
-                formatted: `${savingsPercentage}%`,
-              },
-              hasSavings: hasSavings,
-              hasTotalSavings: hasSavings,
-            };
-
-            // Update items with discount data from response
+            // Merge per-line discount data back onto cart items
             const updatedItems = state.items.map(item => {
-              const line = response.lines.find(
+              const line = summary.lines.find(
                 l => l.package_id === item.packageId
               );
               if (line) {
                 return {
                   ...item,
-                  unit_price_incl_discount: line.unit_price_incl_discount,
-                  unit_price_excl_discount: line.unit_price_excl_discount,
-                  package_price_incl_discount: line.package_price_incl_discount,
-                  package_price_excl_discount: line.package_price_excl_discount,
+                  unit_price: line.unit_price,
+                  original_unit_price: line.original_unit_price,
+                  package_price: line.package_price,
+                  original_package_price: line.original_package_price,
                   total: line.total,
                   total_discount: line.total_discount,
                   discounts: line.discounts || [],
@@ -621,145 +535,109 @@ const cartStoreInstance = create<CartState & CartActions>()(
               return item;
             });
 
+            // Enrich totals with retail (compare-at) prices from campaign data.
+            // The API summary has no retail prices — those come from the campaign
+            // packages. Strategy:
+            //   • Has price_retail_total → use as compare-at for that line
+            //   • No retail price       → use original_package_price (pre-discount)
+            //     from the API line — so savings reflects applied discounts only.
+            // This means:
+            //   savings      = compareTotal - subtotal (pure retail savings)
+            //   totalSavings = compareTotal - total    (retail + offer/coupon savings)
+            let retailCompareTotal = 0;
+            let anyRetailPrice = false;
+
+            for (const item of state.items) {
+              const pkg = campaignState.getPackage(item.packageId);
+              if (pkg?.price_retail_total) {
+                retailCompareTotal += parseFloat(pkg.price_retail_total) * item.quantity;
+                anyRetailPrice = true;
+              } else {
+                // Fall back to pre-discount price from the API summary line
+                const line = summary.lines.find(l => l.package_id === item.packageId);
+                retailCompareTotal += parseFloat(line?.original_package_price || '0') * item.quantity;
+              }
+            }
+
+            const enrichedTotals = (() => {
+              const retailSavings = Math.max(0, retailCompareTotal - totals.subtotal.value);
+              const totalSavingsValue = Math.max(0, retailCompareTotal - totals.total.value);
+              const savingsPct = retailCompareTotal > 0
+                ? (retailSavings / retailCompareTotal) * 100
+                : 0;
+              const totalSavingsPct = retailCompareTotal > 0
+                ? (totalSavingsValue / retailCompareTotal) * 100
+                : 0;
+              return {
+                ...totals,
+                compareTotal: {
+                  value: retailCompareTotal,
+                  formatted: formatCurrency(retailCompareTotal),
+                },
+                savings: {
+                  value: retailSavings,
+                  formatted: formatCurrency(retailSavings),
+                },
+                savingsPercentage: {
+                  value: savingsPct,
+                  formatted: formatPercentage(savingsPct),
+                },
+                hasSavings: anyRetailPrice && retailSavings > 0,
+                totalSavings: {
+                  value: totalSavingsValue,
+                  formatted: formatCurrency(totalSavingsValue),
+                },
+                totalSavingsPercentage: {
+                  value: totalSavingsPct,
+                  formatted: formatPercentage(totalSavingsPct),
+                },
+                hasTotalSavings: totalSavingsValue > 0,
+              };
+            })();
+
+            // Enrich summary lines with package data from campaign
+            const enrichedSummaryLines = summary.lines.map(line => {
+              const pkg = campaignState.getPackage(line.package_id);
+              if (!pkg) return line;
+              return {
+                ...line,
+                name: pkg.name,
+                image: pkg.image,
+                qty: pkg.qty,
+                price: pkg.price,
+                price_total: pkg.price_total,
+                price_retail: pkg.price_retail,
+                price_retail_total: pkg.price_retail_total,
+                price_recurring: pkg.price_recurring,
+                price_recurring_total: pkg.price_recurring_total,
+                is_recurring: pkg.is_recurring,
+                interval: pkg.interval,
+                interval_count: pkg.interval_count,
+                product_name: pkg.product_name,
+                product_variant_name: pkg.product_variant_name,
+                product_sku: pkg.product_sku,
+                product_variant_attribute_values: pkg.product_variant_attribute_values,
+              };
+            });
+
             set({
               items: updatedItems,
-              subtotal: subtotal,
-              shipping: shipping,
+              subtotal: totals.subtotal.value,
+              shipping: totals.shipping.value,
               tax: 0,
-              total: total,
-              totalQuantity: count,
-              isEmpty: isEmpty,
-              totals,
-              summary: response,
+              total: totals.total.value,
+              totalQuantity: totals.count,
+              isEmpty: totals.isEmpty,
+              totals: enrichedTotals,
+              summary: { ...summary, lines: enrichedSummaryLines },
               discountDetails: {
-                offerDiscounts: response.offer_discounts || [],
-                voucherDiscounts: response.voucher_discounts || [],
+                offerDiscounts: summary.offer_discounts || [],
+                voucherDiscounts: summary.voucher_discounts || [],
               },
             });
           } catch (error) {
             logger.error('Failed to sync cart with API:', error);
           }
-
-          return;
-
-          // item.price is already the total package price, so just multiply by quantity of packages
-          const subtotal = state.items.reduce(
-            (sum, item) => sum + item.price * item.quantity,
-            0
-          );
-          const totalQuantity = state.items.reduce(
-            (sum, item) => sum + item.quantity,
-            0
-          );
-          const isEmpty = state.items.length === 0;
-
-          // Currency formatting is handled by the centralized formatter
-
-          // Calculate compare total (retail prices) - FIXED: Handle null values properly
-          const compareTotal = state.items.reduce((sum, item) => {
-            const packageData = campaignState.getPackage(item.packageId);
-            // FIXED: Proper null handling for price_retail_total
-            let retailTotal = 0;
-            if (packageData?.price_retail_total) {
-              retailTotal = parseFloat(packageData.price_retail_total);
-            } else if (packageData?.price_total) {
-              retailTotal = parseFloat(packageData.price_total);
-            }
-            return sum + retailTotal * item.quantity;
-          }, 0);
-
-          // Calculate savings
-          const savings = Math.max(0, compareTotal - subtotal);
-          const savingsPercentage =
-            compareTotal > 0 ? (savings / compareTotal) * 100 : 0;
-          const hasSavings = savings > 0;
-
-          const shipping = get().calculateShipping();
-          const tax = get().calculateTax();
-
-          // SINGLE SOURCE OF TRUTH: Dynamically calculate all coupon discounts
-          let totalDiscounts = 0;
-          const appliedCoupons = state.appliedCoupons || []; // Add safety check for undefined
-          const updatedCoupons = appliedCoupons.map(appliedCoupon => {
-            const discountAmount = get().calculateDiscountAmount(
-              appliedCoupon.definition
-            );
-            totalDiscounts += discountAmount;
-            return {
-              ...appliedCoupon,
-              discount: discountAmount,
-            };
-          });
-
-          // Update the applied coupons with recalculated discount amounts
-          if (updatedCoupons.length > 0) {
-            set(currentState => ({
-              ...currentState,
-              appliedCoupons: updatedCoupons,
-            }));
-          }
-
-          const total = subtotal + shipping + tax - totalDiscounts;
-          const totalExclShipping = subtotal + tax - totalDiscounts; // Total without shipping
-
-          // Calculate total savings (retail savings + discount coupons)
-          const totalSavings = savings + totalDiscounts;
-          const totalSavingsPercentage =
-            compareTotal > 0 ? (totalSavings / compareTotal) * 100 : 0;
-          const hasTotalSavings = totalSavings > 0;
-
-          const totals: CartTotals = {
-            subtotal: { value: subtotal, formatted: formatCurrency(subtotal) },
-            shipping: {
-              value: shipping,
-              formatted: shipping === 0 ? 'FREE' : formatCurrency(shipping),
-            },
-            shippingDiscount: { value: 0, formatted: formatCurrency(0) },
-            tax: { value: tax, formatted: formatCurrency(tax) },
-            discounts: {
-              value: totalDiscounts,
-              formatted: formatCurrency(totalDiscounts),
-            },
-            total: { value: total, formatted: formatCurrency(total) },
-            totalExclShipping: {
-              value: totalExclShipping,
-              formatted: formatCurrency(totalExclShipping),
-            },
-            count: totalQuantity,
-            isEmpty,
-            savings: { value: savings, formatted: formatCurrency(savings) },
-            savingsPercentage: {
-              value: savingsPercentage,
-              formatted: formatPercentage(savingsPercentage),
-            },
-            compareTotal: {
-              value: compareTotal,
-              formatted: formatCurrency(compareTotal),
-            },
-            hasSavings,
-            totalSavings: {
-              value: totalSavings,
-              formatted: formatCurrency(totalSavings),
-            },
-            totalSavingsPercentage: {
-              value: totalSavingsPercentage,
-              formatted: formatPercentage(totalSavingsPercentage),
-            },
-            hasTotalSavings,
-          };
-
-          set({
-            subtotal,
-            shipping,
-            tax,
-            total,
-            totalQuantity,
-            isEmpty,
-            totals,
-          });
-
-          // Calculate enriched items after updating totals
-          await get().calculateEnrichedItems();
         } catch (error) {
           console.error('Error calculating totals:', error);
           // Set safe defaults on error

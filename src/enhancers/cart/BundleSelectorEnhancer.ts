@@ -24,6 +24,24 @@
  *   data-next-bundle-template="<html>"  — inline card template string
  *                                          (alternative to template-id)
  *
+ * ─── Backend price calculation ────────────────────────────────────────────────
+ *
+ *   Place an element with data-next-bundle-price inside a bundle card (or its
+ *   template) to receive the backend-calculated total price for that bundle.
+ *   The enhancer calls the /calculate API for each card on init and re-fetches
+ *   whenever the user changes a variant selection.
+ *
+ *   Attribute values (optional):
+ *     data-next-bundle-price            — formatted total (default)
+ *     data-next-bundle-price="subtotal" — formatted subtotal
+ *     data-next-bundle-price="compare"  — formatted compare-at total
+ *     data-next-bundle-price="savings"  — formatted savings amount
+ *     data-next-bundle-price="savings-pct" — formatted savings percentage
+ *
+ *   Example:
+ *     <span data-next-bundle-price></span>
+ *     <span data-next-bundle-price="compare"></span>
+ *
  * ─── Per-item slot templates ──────────────────────────────────────────────────
  *
  *   data-next-bundle-slot-template-id="<id>"
@@ -42,14 +60,35 @@
  *
  * ─── Slot template variables ─────────────────────────────────────────────────
  *
- *   {slot.index}       — 1-based slot number
- *   {item.packageId}   — current package ref_id for this slot
- *   {item.name}        — package name
- *   {item.image}       — package image URL
- *   {item.price}       — package price string
- *   {item.quantity}    — quantity for this slot
- *   {item.variantName} — variant display name (e.g. "Black / Small")
- *   {item.productName} — product name
+ *   {slot.index}                — 1-based slot number
+ *   {slot.unitNumber}           — 1-based unit index within a configurable item
+ *   {slot.unitIndex}            — 0-based unit index within a configurable item
+ *   {item.packageId}            — current package ref_id for this slot
+ *   {item.name}                 — package name
+ *   {item.image}                — package image URL
+ *   {item.quantity}             — quantity for this slot
+ *   {item.qty}                  — units per package
+ *   {item.variantName}          — variant display name (e.g. "Black / Small")
+ *   {item.productName}          — product name
+ *   {item.sku}                  — product SKU
+ *   {item.isRecurring}          — "true" / "false"
+ *   Campaign prices (before offer discounts):
+ *   {item.price}                — per-unit price (campaign)
+ *   {item.priceTotal}           — total package price (campaign)
+ *   {item.priceRetail}          — retail per-unit price
+ *   {item.priceRetailTotal}     — retail total price
+ *   {item.priceRecurring}       — recurring per-unit price
+ *   API prices (reflect applied offer/coupon discounts):
+ *   {item.unitPrice}            — per-unit price after discounts
+ *   {item.originalUnitPrice}    — per-unit price before discounts
+ *   {item.packagePrice}         — package total after discounts
+ *   {item.originalPackagePrice} — package total before discounts
+ *   {item.subtotal}             — line subtotal
+ *   {item.totalDiscount}        — total discount on this line
+ *   {item.total}                — line total after all discounts
+ *   Conditional helpers:
+ *   {item.hasDiscount}          — "show" / "hide"
+ *   {item.hasSavings}           — "show" / "hide"
  *
  * ─── Variant selector injection ──────────────────────────────────────────────
  *
@@ -61,13 +100,22 @@
  *   Custom (data-next-variant-option-template-id): renders one copy per option.
  *
  *   Custom option template variables:
- *     {attr.code}       — attribute code (e.g. "color")
- *     {attr.name}       — attribute label (e.g. "Color")
- *     {option.value}    — option value (e.g. "Red")
- *     {option.selected} — "true" / "false"
+ *     {attr.code}         — attribute code (e.g. "color")
+ *     {attr.name}         — attribute label (e.g. "Color")
+ *     {option.value}      — option value (e.g. "Red")
+ *     {option.selected}   — "true" / "false"
+ *     {option.available}  — "true" / "false" — false when no package exists for
+ *                           this value combined with the other currently-selected
+ *                           attribute values (e.g. "Blue / XL" doesn't exist)
  *
- *   CSS class added to the selected option: next-variant-selected
+ *   CSS class added to the selected option:    next-variant-selected
+ *   CSS class added to unavailable options:    next-variant-unavailable
  *   data-selected="true" is set on the selected option element.
+ *   data-unavailable="true" is set on unavailable option elements.
+ *   Clicks on unavailable options are silently ignored.
+ *
+ *   Default <select> mode: unavailable options are rendered with the HTML
+ *   `disabled` attribute.
  *
  * ─── Bundle card placement ────────────────────────────────────────────────────
  *
@@ -158,8 +206,10 @@
 import { BaseEnhancer } from '@/enhancers/base/BaseEnhancer';
 import { useCartStore } from '@/stores/cartStore';
 import { useCampaignStore } from '@/stores/campaignStore';
+import { calculateBundlePrice } from '@/utils/calculations/CartCalculator';
 import type { CartState } from '@/types/global';
 import type { Package } from '@/types/campaign';
+import type { SummaryLine } from '@/types/api';
 
 // ─── Internal types ───────────────────────────────────────────────────────────
 
@@ -217,8 +267,11 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
   private selectHandlers = new Map<HTMLSelectElement, EventListener>();
   private mutationObserver: MutationObserver | null = null;
   private boundVariantOptionClick: ((e: Event) => void) | null = null;
+  private boundCurrencyChangeHandler: (() => void) | null = null;
   /** Prevents re-entrant cart updates when we trigger them ourselves. */
   private isApplying: boolean = false;
+  /** Per-bundle preview lines from the calculate API (used when bundle is not in cart). */
+  private previewLines = new Map<string, SummaryLine[]>();
 
   public async initialize(): Promise<void> {
     this.validateElement();
@@ -275,6 +328,19 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
 
     this.subscribe(useCartStore, this.syncWithCart.bind(this));
     this.syncWithCart(useCartStore.getState());
+
+    // Re-fetch prices when the active currency changes
+    this.boundCurrencyChangeHandler = () => {
+      for (const card of this.cards) {
+        void this.fetchAndUpdateBundlePrice(card);
+      }
+    };
+    document.addEventListener('next:currency-changed', this.boundCurrencyChangeHandler);
+
+    // Fetch backend prices for all registered cards
+    for (const card of this.cards) {
+      void this.fetchAndUpdateBundlePrice(card);
+    }
 
     this.logger.debug('BundleSelectorEnhancer initialized', {
       mode: this.mode,
@@ -446,17 +512,50 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
   }
 
   private createSlotElement(bundleId: string, slot: BundleSlot, pkg: Package): HTMLElement {
+    // Pull SummaryLine for this package (enriched with discounted prices from API).
+    // Cart summary is used when the bundle is in the cart; preview lines (from
+    // calculateBundlePrice) are used as a fallback for non-selected bundles.
+    const summaryLine =
+      useCartStore.getState().summary?.lines.find(l => l.package_id === slot.activePackageId) ??
+      this.previewLines.get(bundleId)?.find(l => l.package_id === slot.activePackageId);
+
+    const hasDiscount = summaryLine ? parseFloat(summaryLine.total_discount) > 0 : false;
+    const hasSavings = summaryLine?.price_retail_total != null
+      ? parseFloat(summaryLine.price_retail_total) > parseFloat(summaryLine.package_price)
+      : (pkg.price_retail != null && pkg.price_retail !== pkg.price);
+
     const vars: Record<string, string> = {
+      // Slot position
       'slot.index': String(slot.slotIndex + 1),
       'slot.unitIndex': String(slot.unitIndex),
       'slot.unitNumber': String(slot.unitIndex + 1),
+      // Package identity
       'item.packageId': String(slot.activePackageId),
       'item.name': pkg.name || '',
       'item.image': pkg.image || '',
-      'item.price': pkg.price || '',
       'item.quantity': String(slot.quantity),
       'item.variantName': pkg.product_variant_name || '',
       'item.productName': pkg.product_name || '',
+      'item.sku': pkg.product_sku || '',
+      'item.qty': String(pkg.qty ?? 1),
+      // Campaign prices (formatted strings, before any offer discounts)
+      'item.price': pkg.price || '',
+      'item.priceTotal': pkg.price_total || '',
+      'item.priceRetail': pkg.price_retail || '',
+      'item.priceRetailTotal': pkg.price_retail_total || '',
+      'item.priceRecurring': pkg.price_recurring || '',
+      'item.isRecurring': pkg.is_recurring ? 'true' : 'false',
+      // API summary prices (reflect applied offer/coupon discounts)
+      'item.unitPrice':            summaryLine?.unit_price            ?? pkg.price ?? '',
+      'item.originalUnitPrice':    summaryLine?.original_unit_price   ?? pkg.price ?? '',
+      'item.packagePrice':         summaryLine?.package_price         ?? pkg.price_total ?? '',
+      'item.originalPackagePrice': summaryLine?.original_package_price ?? pkg.price_total ?? '',
+      'item.subtotal':             summaryLine?.subtotal              ?? '',
+      'item.totalDiscount':        summaryLine?.total_discount        ?? '0',
+      'item.total':                summaryLine?.total                 ?? pkg.price_total ?? '',
+      // Conditional helpers
+      'item.hasDiscount': hasDiscount ? 'show' : 'hide',
+      'item.hasSavings':  hasSavings  ? 'show' : 'hide',
     };
 
     const wrapper = document.createElement('div');
@@ -508,7 +607,7 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
       ];
 
       if (this.variantOptionTemplate) {
-        this.renderCustomOptions(container, bundleId, slotIndex, code, name, values, selected[code] ?? '');
+        this.renderCustomOptions(container, bundleId, slotIndex, code, name, values, selected[code] ?? '', productPkgs, selected);
       } else {
         const field = document.createElement('div');
         field.className = 'next-slot-variant-field';
@@ -526,6 +625,9 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
           option.value = value;
           option.textContent = value;
           if (value === selected[code]) option.selected = true;
+          if (!this.isVariantValueAvailable(value, code, productPkgs, selected)) {
+            option.disabled = true;
+          }
           select.appendChild(option);
         }
 
@@ -541,6 +643,22 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     }
   }
 
+  private isVariantValueAvailable(
+    value: string,
+    code: string,
+    productPkgs: Package[],
+    allSelectedAttrs: Record<string, string>
+  ): boolean {
+    return productPkgs.some(pkg => {
+      if (pkg.product_purchase_availability === 'unavailable') return false;
+      const attrs = pkg.product_variant_attribute_values || [];
+      if (!attrs.some(a => a.code === code && a.value === value)) return false;
+      return Object.entries(allSelectedAttrs)
+        .filter(([c]) => c !== code)
+        .every(([c, v]) => attrs.some(a => a.code === c && a.value === v));
+    });
+  }
+
   private renderCustomOptions(
     container: HTMLElement,
     bundleId: string,
@@ -548,7 +666,9 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     code: string,
     name: string,
     values: string[],
-    selectedValue: string
+    selectedValue: string,
+    productPkgs: Package[],
+    allSelectedAttrs: Record<string, string>
   ): void {
     const group = document.createElement('div');
     group.className = 'next-slot-variant-group';
@@ -559,11 +679,13 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
 
     for (const value of values) {
       const isSelected = value === selectedValue;
+      const isAvailable = this.isVariantValueAvailable(value, code, productPkgs, allSelectedAttrs);
       const vars: Record<string, string> = {
         'attr.code': code,
         'attr.name': name,
         'option.value': value,
         'option.selected': String(isSelected),
+        'option.available': String(isAvailable),
       };
       const html = this.variantOptionTemplate.replace(/\{([^}]+)\}/g, (_, k) => vars[k] ?? '');
       const temp = document.createElement('div');
@@ -576,6 +698,10 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
       if (isSelected) {
         el.setAttribute('data-selected', 'true');
         el.classList.add('next-variant-selected');
+      }
+      if (!isAvailable) {
+        el.dataset.nextUnavailable = 'true';
+        el.classList.add('next-variant-unavailable');
       }
 
       group.appendChild(el);
@@ -591,6 +717,9 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     const target = e.target as HTMLElement;
     const optionEl = target.closest<HTMLElement>('[data-next-variant-option]');
     if (!optionEl) return;
+
+    // Ignore clicks on unavailable options
+    if (optionEl.dataset.nextUnavailable === 'true') return;
 
     const code = optionEl.dataset.nextVariantOption;
     const value = optionEl.dataset.nextVariantValue;
@@ -680,9 +809,14 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     const previousEffective = this.getEffectiveItems(card);
     slot.activePackageId = matched.ref_id;
 
+    // Re-render slots so image and all template vars reflect the new package
+    this.renderSlotsForCard(card);
+
     if (this.mode === 'swap' && this.selectedCard === card) {
       await this.applyEffectiveChange(previousEffective, card);
     }
+
+    void this.fetchAndUpdateBundlePrice(card);
 
     this.logger.debug(
       `Variant changed on bundle "${card.bundleId}" slot ${slotIndex}`,
@@ -790,6 +924,40 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     }
   }
 
+  // ─── Backend price calculation ────────────────────────────────────────────────
+
+  private async fetchAndUpdateBundlePrice(card: BundleCard): Promise<void> {
+    const items = this.getEffectiveItems(card);
+    const currency = useCampaignStore.getState().data?.currency ?? null;
+
+    card.element.classList.add('next-loading');
+    card.element.setAttribute('data-next-loading', 'true');
+
+    try {
+      const { totals, summary } = await calculateBundlePrice(items, { currency });
+
+      this.previewLines.set(card.bundleId, summary.lines);
+      // Re-render slots so per-item prices reflect the preview discounts
+      if (this.slotTemplate) this.renderSlotsForCard(card);
+
+      card.element.querySelectorAll<HTMLElement>('[data-next-bundle-price]').forEach(el => {
+        const field = el.getAttribute('data-next-bundle-price') || 'total';
+        switch (field) {
+          case 'subtotal':   el.textContent = totals.subtotal.formatted; break;
+          case 'compare':    el.textContent = totals.compareTotal.formatted; break;
+          case 'savings':    el.textContent = totals.savings.formatted; break;
+          case 'savings-pct': el.textContent = totals.savingsPercentage.formatted; break;
+          default:           el.textContent = totals.total.formatted; break;
+        }
+      });
+    } catch (error) {
+      this.logger.warn(`Failed to fetch bundle price for "${card.bundleId}"`, error);
+    } finally {
+      card.element.classList.remove('next-loading');
+      card.element.setAttribute('data-next-loading', 'false');
+    }
+  }
+
   // ─── Cart sync ────────────────────────────────────────────────────────────────
 
   private syncWithCart(cartState: CartState): void {
@@ -801,6 +969,11 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
       });
       card.element.classList.toggle('next-in-cart', allItemsInCart);
       card.element.setAttribute('data-next-in-cart', String(allItemsInCart));
+
+      // Re-render slots so per-item prices reflect updated cart summary (discounts)
+      if (this.slotTemplate && !this.isApplying) {
+        this.renderSlotsForCard(card);
+      }
     }
 
     if (!this.selectedCard) {
@@ -832,6 +1005,10 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     if (this.boundVariantOptionClick) {
       this.element.removeEventListener('click', this.boundVariantOptionClick);
       this.boundVariantOptionClick = null;
+    }
+    if (this.boundCurrencyChangeHandler) {
+      document.removeEventListener('next:currency-changed', this.boundCurrencyChangeHandler);
+      this.boundCurrencyChangeHandler = null;
     }
     if (this.mutationObserver) {
       this.mutationObserver.disconnect();

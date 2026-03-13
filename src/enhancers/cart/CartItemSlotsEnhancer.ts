@@ -224,7 +224,7 @@ export class CartItemSlotsEnhancer extends BaseEnhancer {
     const ci = slot.cartItem;
     // Prefer cart item prices (reflect offers/discounts) over campaign package prices
     const unitPrice =
-      ci.unit_price_incl_discount ||
+      ci.unit_price ||
       ci.price_per_unit ||
       pkg.price ||
       '';
@@ -253,7 +253,7 @@ export class CartItemSlotsEnhancer extends BaseEnhancer {
       'item.unitPrice': unitPrice,
       'item.unitPriceBeforeDiscount': unitPriceBeforeDiscount,
       'item.retailPrice': retailPrice,
-      'item.packagePrice': ci.package_price_incl_discount || ci.price_total || pkg.price_total || '',
+      'item.packagePrice': ci.package_price || ci.price_total || pkg.price_total || '',
       'item.packagePriceBeforeDiscount': ci.price_total || pkg.price_total || '',
       // Savings
       'item.savingAmount': savingAmount,

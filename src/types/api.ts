@@ -57,23 +57,51 @@ export interface Discount {
 export interface SummaryLine {
   package_id: number;
   quantity: number;
-  unit_price_excl_discount: string;
-  unit_price_incl_discount: string;
-  package_price_incl_discount: string;
-  package_price_excl_discount: string;
-  total: string;
+  discounts: Discount[];
+  original_unit_price: string;
+  original_package_price: string;
+  unit_price: string;
+  package_price: string;
+  subtotal: string;
   total_discount: string;
+  total: string;
+  // Package data enriched from campaign — populated by the cart store after the API call
+  name?: string;
+  image?: string;
+  qty?: number;
+  price?: string;
+  price_total?: string;
+  price_retail?: string;
+  price_retail_total?: string;
+  price_recurring?: string;
+  price_recurring_total?: string;
+  is_recurring?: boolean;
+  interval?: 'day' | 'month' | null;
+  interval_count?: number | null;
+  product_name?: string;
+  product_variant_name?: string;
+  product_sku?: string | null;
+  product_variant_attribute_values?: Array<{ code: string; name: string; value: string }>;
+}
+
+export interface ShippingMethodSummary {
+  id: number;
+  name: string;
+  code: string;
+  original_price: string;
+  price: string;
   discounts: Discount[];
 }
 
 export interface CartSummary {
   lines: SummaryLine[];
-  total: string;
-  total_discount: string;
+  shipping_method: ShippingMethodSummary;
   offer_discounts: Discount[];
   voucher_discounts: Discount[];
-  shipping: string;
-  shipping_discount: string;
+  subtotal: string;
+  total_discount: string;
+  total: string;
+  currency: string;
 }
 
 export interface CartLine {
@@ -195,12 +223,6 @@ export interface OrderAddress {
 }
 
 export interface Voucher {
-  amount: string;
-  description?: string;
-  name?: string;
-}
-
-export interface Discount {
   amount: string;
   description?: string;
   name?: string;

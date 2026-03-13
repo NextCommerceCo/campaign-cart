@@ -89,43 +89,59 @@ layout: center
 
   </div>
 
-  <!-- ── Cart summary (live, from cartStore) ────────────────────── -->
+  <!-- ── Cart item template (hidden, referenced by data-item-template-id) ── -->
+  <template id="cart-item-tpl">
+    <div class="cart-item">
+      <div class="cart-item-info">
+        <p class="cart-item-name">{item.name}</p>
+        <p class="cart-item-qty">Qty: {item.quantity}</p>
+      </div>
+      <p class="cart-item-price">{item.finalLineTotal|currency}</p>
+    </div>
+  </template>
+
+  <!-- ── Cart items ───────────────────────────────────────────── -->
+  <div class="cart-items" data-next-show="cart.hasItems">
+    <div data-next-cart-items data-item-template-id="cart-item-tpl"></div>
+  </div>
+
+  <!-- ── Cart summary ─────────────────────────────────────────── -->
   <div class="cart-summary" data-next-show="cart.hasItems">
-    <div class="summary-row">
-      <span>Subtotal</span>
-      <span data-next-display="cart.subtotal"></span>
-    </div>
-    <!-- ── Offer discounts breakdown (CartSummaryEnhancer) ── -->
-    <ul class="discount-list"
-        data-next-cart-summary="offer_discounts">
+    <div data-next-cart-summary>
       <template>
-        <li class="discount-item">
-          <span class="discount-name">{discount.name}</span>
-          <span class="discount-amount">-{discount.amount}</span>
-        </li>
+        <div class="summary-row">
+          <span>Subtotal</span>
+          <span>{subtotal}</span>
+        </div>
+        <ul class="discount-list" data-summary-list="offer_discounts">
+          <template>
+            <li class="discount-item">
+              <span class="discount-name">{discount.name}</span>
+              <span class="discount-amount">-{discount.amount}</span>
+            </li>
+          </template>
+        </ul>
+        <ul class="discount-list" data-summary-list="voucher_discounts">
+          <template>
+            <li class="discount-item discount-item--voucher">
+              <span class="discount-name">{discount.name}</span>
+              <span class="discount-amount">-{discount.amount}</span>
+            </li>
+          </template>
+        </ul>
+        <div class="summary-row summary-row--shipping">
+          <span>Shipping</span>
+          <span>{shipping}</span>
+        </div>
+        <div class="summary-row summary-row--savings">
+          <span>You save</span>
+          <span>{savings}</span>
+        </div>
+        <div class="summary-row summary-row--total">
+          <span>Total</span>
+          <span>{total}</span>
+        </div>
       </template>
-    </ul>
-
-    <!-- ── Voucher discounts breakdown (CartSummaryEnhancer) ── -->
-    <ul class="discount-list"
-        data-next-cart-summary="voucher_discounts">
-      <template>
-        <li class="discount-item discount-item--voucher">
-          <span class="discount-name">{discount.name}</span>
-          <span class="discount-amount">-{discount.amount}</span>
-        </li>
-      </template>
-    </ul>
-
-    <!-- ── Shipping from API summary ── -->
-    <div class="summary-row summary-row--shipping">
-      <span>Shipping</span>
-      <span data-next-cart-summary="shipping"></span>
-    </div>
-
-    <div class="summary-row summary-row--total">
-      <span>Total</span>
-      <span data-next-display="cart.total"></span>
     </div>
   </div>
 
@@ -143,7 +159,8 @@ layout: center
   body { font-family: sans-serif; background: #f8fafc; margin: 0; padding: 32px 16px; }
 
   .package-selector {
-    max-width: 560px; margin: 0 auto;
+    width: 100%;
+    max-width: 420px; margin: 0 auto;
     background: white; border-radius: 16px; padding: 28px 24px;
   }
 
@@ -210,6 +227,22 @@ layout: center
   .price-current  { font-size: 17px; font-weight: 700; color: #111; margin: 0; }
   .price-per      { font-size: 11px; color: #6b7280; margin: 0; }
 
+  /* ── Cart items ── */
+  .cart-items {
+    margin-top: 20px;
+    border: 1px solid #e5e7eb; border-radius: 10px;
+    overflow: hidden;
+  }
+  .cart-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 16px; border-bottom: 1px solid #f3f4f6;
+    font-size: 14px; color: #374151;
+  }
+  .cart-item:last-child { border-bottom: none; }
+  .cart-item-name { margin: 0; font-weight: 600; color: #111; }
+  .cart-item-qty  { margin: 2px 0 0; font-size: 12px; color: #6b7280; }
+  .cart-item-price { margin: 0; font-weight: 700; white-space: nowrap; }
+
   /* ── Cart summary ── */
   .cart-summary {
     margin-top: 20px; padding: 14px 18px;
@@ -221,22 +254,23 @@ layout: center
     border-bottom: 1px solid #f3f4f6;
   }
   .summary-row:last-child { border-bottom: none; }
-  .summary-row--discount  { color: #059669; font-weight: 500; }
-  .summary-row--total     { font-weight: 700; font-size: 15px; color: #111; }
+  .summary-row--total    { font-weight: 700; font-size: 15px; color: #111; }
+  .summary-row--shipping { font-size: 13px; color: #6b7280; }
+  .summary-row--savings  { font-size: 13px; color: #059669; font-weight: 600; }
 
-  /* ── Discount lists (CartSummaryEnhancer) ── */
-  .discount-list {
-    list-style: none; margin: 4px 0 0; padding: 0;
-  }
+  /* Hide savings row when no savings exist */
+  .next-no-savings .summary-row--savings { display: none; }
+
+  /* ── Discount lists ── */
+  .discount-list { list-style: none; margin: 4px 0 0; padding: 0; }
   .discount-list.next-summary-empty { display: none; }
   .discount-item {
     display: flex; justify-content: space-between;
     font-size: 13px; color: #059669; padding: 4px 0;
   }
   .discount-item--voucher { color: #7c3aed; }
-  .discount-name  { font-weight: 500; }
+  .discount-name   { font-weight: 500; }
   .discount-amount { font-weight: 600; }
-  .summary-row--shipping { font-size: 13px; color: #6b7280; }
 
   /* ── Checkout button ── */
   .btn-checkout {

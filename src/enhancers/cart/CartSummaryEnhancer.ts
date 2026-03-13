@@ -1,193 +1,345 @@
 /**
  * Cart Summary Enhancer
- * Displays cart summary data fetched from the API's calculate endpoint.
+ * Renders a complete cart summary block with automatic reactivity.
  *
- * Scalar display (renders a single value as text content):
- *   data-next-cart-summary="total"
- *   data-next-cart-summary="total_discount"
- *   data-next-cart-summary="shipping"
- *   data-next-cart-summary="shipping_discount"
+ * ─── USAGE ───────────────────────────────────────────────────────────────────
  *
- * List display (renders a list using a template):
- *   data-next-cart-summary="offer_discounts"
- *   data-next-cart-summary="voucher_discounts"
+ * Minimal — renders the built-in default template:
+ *   <div data-next-cart-summary></div>
  *
- *   Template source (first match wins):
- *     <template> child element            — native HTML template inside the container
- *     data-next-template-id="<id>"       — innerHTML of element with that id
- *     data-next-template="<html string>" — inline template attribute
- *
- *   Template variables:
- *     {discount.name}             — discount name
- *     {discount.amount}           — raw amount string from API (e.g. "5.00")
- *     {discount.description}      — discount description
- *
- * CSS classes managed on the host element:
- *   next-summary-empty            — added when the list/value is empty or zero
- *   next-summary-has-items        — added when the list has at least one item
- *
- * @example Scalar values
- * <p>Total: <span data-next-cart-summary="total"></span></p>
- * <p>Discount: <span data-next-cart-summary="total_discount"></span></p>
- * <p>Shipping: <span data-next-cart-summary="shipping"></span></p>
- * <p>Shipping discount: <span data-next-cart-summary="shipping_discount"></span></p>
- *
- * @example Offer discounts list — <template> child (recommended)
- * <ul data-next-cart-summary="offer_discounts">
- *   <template>
- *     <li>
- *       <strong>{discount.name}</strong>
- *       <span>{discount.description}</span>
- *       <span>-{discount.amount}</span>
- *     </li>
- *   </template>
- * </ul>
- *
- * @example Voucher discounts list — external <template> by ID
- * <ul data-next-cart-summary="voucher_discounts"
- *     data-next-template-id="voucher-tpl">
- * </ul>
- * <template id="voucher-tpl">
- *   <li>{discount.name}: -{discount.amount}</li>
- * </template>
- *
- * @example Conditional visibility (hide section when no discounts)
- * <div data-next-show="cart.summary.hasOfferDiscounts">
- *   <p>Applied offers:</p>
- *   <ul data-next-cart-summary="offer_discounts">
+ * Custom template — replaces the default with your own markup:
+ *   <div data-next-cart-summary>
  *     <template>
- *       <li>{discount.name} — -{discount.amount}</li>
+ *       <div class="row"><span>Subtotal</span><span>{subtotal}</span></div>
+ *       <div class="row"><span>Discounts</span><span>-{discounts}</span></div>
+ *       <div class="row"><span>Shipping</span><span>{shipping}</span></div>
+ *       <div class="row"><span>Total</span><span>{total}</span></div>
  *     </template>
+ *   </div>
+ *
+ * ─── TEMPLATE VARIABLES ──────────────────────────────────────────────────────
+ *
+ *   {subtotal}      Subtotal before shipping and discounts
+ *   {total}         Grand total
+ *   {shipping}      Shipping cost (formatted, or "Free" if zero)
+ *   {tax}           Tax amount
+ *   {discounts}     Total discount amount
+ *   {savings}       Retail savings (compare-at minus price)
+ *   {compareTotal}  Compare-at total (before savings)
+ *   {itemCount}     Number of items in cart
+ *
+ * ─── STATE CSS CLASSES (added to host element) ───────────────────────────────
+ *
+ *   next-cart-empty       cart is empty
+ *   next-cart-has-items   cart has items
+ *   next-has-discounts    discounts > 0
+ *   next-no-discounts     discounts = 0
+ *   next-has-shipping     shipping cost > 0
+ *   next-free-shipping    shipping cost = 0
+ *   next-has-tax          tax > 0
+ *   next-no-tax           tax = 0
+ *   next-has-savings      retail savings available
+ *   next-no-savings       no retail savings
+ *
+ * Use these classes to show/hide rows with CSS:
+ *   .next-no-discounts .discount-row { display: none }
+ *
+ * ─── DISCOUNT LISTS (offer & voucher) ────────────────────────────────────────
+ *
+ * Inside a custom <template> you can include list containers. The enhancer will
+ * find them after rendering and populate them from the API summary:
+ *
+ *   <ul data-summary-list="offer_discounts">
+ *     <template><li>{discount.name} — -{discount.amount}</li></template>
  *   </ul>
+ *
+ *   <ul data-summary-list="voucher_discounts">
+ *     <template><li>{discount.name}: -{discount.amount}</li></template>
+ *   </ul>
+ *
+ * @example Minimal
+ * <div data-next-cart-summary></div>
+ *
+ * @example Custom with conditional discount row
+ * <div data-next-cart-summary>
+ *   <template>
+ *     <div class="row"><span>Subtotal</span><span>{subtotal}</span></div>
+ *     <div class="row discount-row"><span>Discounts</span><span>-{discounts}</span></div>
+ *     <div class="row"><span>Total</span><span>{total}</span></div>
+ *   </template>
+ * </div>
+ * <style>
+ *   .next-no-discounts .discount-row { display: none }
+ * </style>
+ *
+ * @example Custom with offer discount list
+ * <div data-next-cart-summary>
+ *   <template>
+ *     <div class="row"><span>Subtotal</span><span>{subtotal}</span></div>
+ *     <ul data-summary-list="offer_discounts">
+ *       <template><li class="discount-item">{discount.name} — -{discount.amount}</li></template>
+ *     </ul>
+ *     <div class="row"><span>Total</span><span>{total}</span></div>
+ *   </template>
  * </div>
  */
 
 import { BaseEnhancer } from '@/enhancers/base/BaseEnhancer';
 import { useCartStore } from '@/stores/cartStore';
-import { formatCurrency } from '@/utils/currencyFormatter';
-import type { CartState } from '@/types/global';
-import type { CartSummary } from '@/types/api';
+import type { CartState, CartTotals } from '@/types/global';
+import type { CartSummary, SummaryLine } from '@/types/api';
 
-type ScalarProperty = 'total' | 'total_discount' | 'shipping' | 'shipping_discount';
-type ListProperty = 'offer_discounts' | 'voucher_discounts';
-type SummaryProperty = ScalarProperty | ListProperty;
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-const LIST_PROPERTIES: ReadonlySet<string> = new Set<ListProperty>(['offer_discounts', 'voucher_discounts']);
+type TemplateVars = Record<string, string>;
+type ListKey = 'offer_discounts' | 'voucher_discounts' | 'lines';
+type DiscountItem = { name?: string; amount: string; description?: string };
+
+// ─── Default template ─────────────────────────────────────────────────────────
+
+/** Built-in template. Rows are conditionally rendered — zero-value rows are omitted. */
+function buildDefaultTemplate(vars: TemplateVars, flags: SummaryFlags): string {
+  const row = (label: string, value: string, cls = '') =>
+    `<div class="next-summary-row${cls ? ` ${cls}` : ''}">` +
+    `<span class="next-summary-label">${label}</span>` +
+    `<span class="next-summary-value">${value}</span>` +
+    `</div>`;
+
+  return [
+    row('Subtotal', vars.subtotal, 'next-row-subtotal'),
+    flags.hasDiscounts ? row('Discounts', `-${vars.discounts}`, 'next-row-discounts') : '',
+    row('Shipping', flags.isFreeShipping ? 'Free' : vars.shipping, 'next-row-shipping'),
+    flags.hasTax      ? row('Tax', vars.tax, 'next-row-tax') : '',
+    row('Total', vars.total, 'next-row-total'),
+  ].join('');
+}
+
+// ─── Flags ────────────────────────────────────────────────────────────────────
+
+interface SummaryFlags {
+  isEmpty: boolean;
+  hasDiscounts: boolean;
+  isFreeShipping: boolean;
+  hasTax: boolean;
+  hasSavings: boolean;
+}
+
+function buildFlags(totals: CartTotals): SummaryFlags {
+  return {
+    isEmpty:        totals.isEmpty,
+    hasDiscounts:   totals.discounts.value > 0,
+    isFreeShipping: totals.shipping.value === 0,
+    hasTax:         totals.tax.value > 0,
+    hasSavings:     totals.hasTotalSavings, // retail savings OR applied discounts
+  };
+}
+
+// ─── Enhancer ─────────────────────────────────────────────────────────────────
 
 export class CartSummaryEnhancer extends BaseEnhancer {
-  private property!: SummaryProperty;
-  private template?: string;
+  private customTemplate?: string;
+  private totals?: CartTotals;
   private summary?: CartSummary;
+  private itemCount: number = 0;
 
   public async initialize(): Promise<void> {
     this.validateElement();
 
-    const prop = this.getAttribute('data-next-cart-summary');
-    if (!prop) {
-      this.logger.warn('data-next-cart-summary attribute is missing or empty');
-      return;
-    }
-    this.property = prop as SummaryProperty;
+    this.customTemplate = this.resolveTemplate();
 
-    if (this.isListProperty()) {
-      this.template = this.resolveTemplate();
-    }
+    const state = useCartStore.getState();
+    this.totals = state.totals;
+    this.summary = state.summary;
+    this.itemCount = state.items.length;
 
     this.subscribe(useCartStore, this.handleCartUpdate.bind(this));
-    this.summary = useCartStore.getState().summary;
     this.render();
 
-    this.logger.debug('CartSummaryEnhancer initialized', { property: this.property });
+    this.logger.debug('CartSummaryEnhancer initialized');
   }
 
+  public update(): void {
+    this.render();
+  }
+
+  // ─── Private ───────────────────────────────────────────────────────────────
+
   private handleCartUpdate(state: CartState): void {
-    if (state.summary !== this.summary) {
-      this.summary = state.summary;
+    const totalsChanged  = state.totals  !== this.totals;
+    const summaryChanged = state.summary !== this.summary;
+    const countChanged   = state.items.length !== this.itemCount;
+
+    if (totalsChanged || summaryChanged || countChanged) {
+      this.totals    = state.totals;
+      this.summary   = state.summary;
+      this.itemCount = state.items.length;
       this.render();
     }
   }
 
-  private resolveTemplate(): string | undefined {
-    // 1. Native <template> child element
-    const templateEl = this.element.querySelector(':scope > template');
-    if (templateEl) {
-      return (templateEl as HTMLTemplateElement).innerHTML.trim();
-    }
-
-    // 2. External element by ID
-    const templateId = this.getAttribute('data-next-template-id');
-    if (templateId) {
-      const el = document.getElementById(templateId);
-      return el?.innerHTML.trim();
-    }
-
-    // 3. Inline attribute
-    return this.getAttribute('data-next-template') ?? undefined;
-  }
-
-  private isListProperty(): boolean {
-    return LIST_PROPERTIES.has(this.property);
-  }
-
   private render(): void {
-    if (!this.summary) return;
+    if (!this.totals) return;
 
-    if (this.isListProperty()) {
-      this.renderList();
+    const flags = buildFlags(this.totals);
+    const vars  = this.buildVars(this.totals, flags);
+
+    this.updateStateClasses(flags);
+
+    if (this.customTemplate) {
+      this.renderCustom(vars);
     } else {
-      this.renderScalar();
+      this.renderDefault(vars, flags);
     }
   }
 
-  private renderScalar(): void {
-    if (!this.summary) return;
-
-    const value = this.summary[this.property as ScalarProperty];
-    const isEmpty = !value || parseFloat(value as string) === 0;
-
-    this.toggleClass('next-summary-empty', isEmpty);
-    this.toggleClass('next-summary-has-items', !isEmpty);
-
-    const numeric = parseFloat(value as string);
-    this.element.textContent = isNaN(numeric) ? (value as string ?? '') : formatCurrency(numeric);
+  private renderDefault(vars: TemplateVars, flags: SummaryFlags): void {
+    this.element.innerHTML = buildDefaultTemplate(vars, flags);
   }
 
-  private renderList(): void {
-    if (!this.summary) return;
+  private renderCustom(vars: TemplateVars): void {
+    // Substitute scalar variables into template string
+    const html = this.customTemplate!.replace(/\{([^}]+)\}/g, (match, key: string) =>
+      key in vars ? vars[key] : match
+    );
+    this.element.innerHTML = html;
 
-    const items = this.summary[this.property as ListProperty] ?? [];
-    const isEmpty = items.length === 0;
+    // Populate any discount list containers inside the rendered output
+    this.renderListContainers();
+  }
 
-    this.toggleClass('next-summary-empty', isEmpty);
-    this.toggleClass('next-summary-has-items', !isEmpty);
+  /** Find [data-summary-list] containers in rendered output and populate them. */
+  private renderListContainers(): void {
+    const containers = this.element.querySelectorAll<HTMLElement>('[data-summary-list]');
+    containers.forEach(container => {
+      const key = container.getAttribute('data-summary-list') as ListKey;
+      if (key !== 'offer_discounts' && key !== 'voucher_discounts' && key !== 'lines') return;
 
-    if (!this.template) {
-      this.logger.debug('No template defined for list property, skipping render', { property: this.property });
-      return;
-    }
+      const templateEl = container.querySelector(':scope > template') as HTMLTemplateElement | null;
+      if (!templateEl) return;
 
-    // Remove previously rendered items but keep any <template> children intact
-    Array.from(this.element.childNodes).forEach(node => {
-      if ((node as Element).tagName?.toLowerCase() !== 'template') {
-        node.parentNode?.removeChild(node);
+      const itemTemplate = templateEl.innerHTML.trim();
+
+      // Remove previously rendered items, keep <template> intact
+      Array.from(container.childNodes).forEach(node => {
+        if ((node as Element).tagName?.toLowerCase() !== 'template') {
+          node.parentNode?.removeChild(node);
+        }
+      });
+
+      if (key === 'lines') {
+        const lines: SummaryLine[] = this.summary?.lines ?? [];
+        const isEmpty = lines.length === 0;
+        this.toggleElementClass('next-summary-empty', isEmpty, container);
+        this.toggleElementClass('next-summary-has-items', !isEmpty, container);
+        container.insertAdjacentHTML(
+          'beforeend',
+          lines.map(l => this.renderSummaryLine(itemTemplate, l)).join('')
+        );
+      } else {
+        const items: DiscountItem[] = this.summary?.[key] ?? [];
+        const isEmpty = items.length === 0;
+        this.toggleElementClass('next-summary-empty', isEmpty, container);
+        this.toggleElementClass('next-summary-has-items', !isEmpty, container);
+        container.insertAdjacentHTML(
+          'beforeend',
+          items.map(d => this.renderDiscountItem(itemTemplate, d)).join('')
+        );
       }
     });
-
-    this.element.insertAdjacentHTML('beforeend', items.map(d => this.renderItem(d)).join(''));
   }
 
-  private renderItem(discount: { name?: string; amount: string; description?: string }): string {
-    return this.template!.replace(/\{([^}]+)\}/g, (_, key: string) => {
+  private renderDiscountItem(template: string, discount: DiscountItem): string {
+    return template.replace(/\{([^}]+)\}/g, (_, key: string) => {
       switch (key) {
-        case 'discount.name':        return discount.name ?? '';
-        case 'discount.amount':      return discount.amount ?? '';
+        case 'discount.name':        return discount.name        ?? '';
+        case 'discount.amount':      return discount.amount      ?? '';
         case 'discount.description': return discount.description ?? '';
         default:                     return '';
       }
     });
   }
 
-  public update(): void {
-    this.render();
+  private renderSummaryLine(template: string, line: SummaryLine): string {
+    const hasDiscount = parseFloat(line.total_discount) > 0;
+    const hasSavings = line.price_retail_total != null
+      ? parseFloat(line.price_retail_total) > parseFloat(line.package_price)
+      : hasDiscount;
+
+    const vars: Record<string, string> = {
+      'line.packageId':             String(line.package_id),
+      'line.quantity':              String(line.quantity),
+      'line.name':                  line.name                  ?? '',
+      'line.image':                 line.image                 ?? '',
+      'line.qty':                   line.qty != null ? String(line.qty) : '',
+      'line.productName':           line.product_name          ?? '',
+      'line.variantName':           line.product_variant_name  ?? '',
+      'line.sku':                   line.product_sku           ?? '',
+      // Campaign prices (formatted strings from campaign data)
+      'line.price':                 line.price                 ?? '',
+      'line.priceTotal':            line.price_total           ?? '',
+      'line.priceRetail':           line.price_retail          ?? '',
+      'line.priceRetailTotal':      line.price_retail_total    ?? '',
+      'line.priceRecurring':        line.price_recurring       ?? '',
+      'line.priceRecurringTotal':   line.price_recurring_total ?? '',
+      'line.isRecurring':           line.is_recurring ? 'true' : 'false',
+      // API summary prices (reflect applied offer/coupon discounts)
+      'line.unitPrice':             line.unit_price,
+      'line.originalUnitPrice':     line.original_unit_price,
+      'line.packagePrice':          line.package_price,
+      'line.originalPackagePrice':  line.original_package_price,
+      'line.subtotal':              line.subtotal,
+      'line.totalDiscount':         line.total_discount,
+      'line.total':                 line.total,
+      // Conditional helpers
+      'line.hasDiscount':           hasDiscount ? 'show' : 'hide',
+      'line.hasSavings':            hasSavings  ? 'show' : 'hide',
+    };
+
+    return template.replace(/\{([^}]+)\}/g, (_, key: string) => vars[key] ?? '');
+  }
+
+  // ─── State CSS classes ─────────────────────────────────────────────────────
+
+  private updateStateClasses(flags: SummaryFlags): void {
+    this.toggleClass('next-cart-empty',     flags.isEmpty);
+    this.toggleClass('next-cart-has-items', !flags.isEmpty);
+    this.toggleClass('next-has-discounts',  flags.hasDiscounts);
+    this.toggleClass('next-no-discounts',  !flags.hasDiscounts);
+    this.toggleClass('next-has-shipping',  !flags.isFreeShipping);
+    this.toggleClass('next-free-shipping',  flags.isFreeShipping);
+    this.toggleClass('next-has-tax',        flags.hasTax);
+    this.toggleClass('next-no-tax',        !flags.hasTax);
+    this.toggleClass('next-has-savings',    flags.hasSavings);
+    this.toggleClass('next-no-savings',    !flags.hasSavings);
+  }
+
+  private toggleElementClass(cls: string, on: boolean, el: HTMLElement = this.element): void {
+    el.classList.toggle(cls, on);
+  }
+
+  // ─── Template vars ─────────────────────────────────────────────────────────
+
+  private buildVars(totals: CartTotals, flags: SummaryFlags): TemplateVars {
+    return {
+      subtotal:     totals.subtotal.formatted,
+      total:        totals.total.formatted,
+      shipping:     flags.isFreeShipping ? 'Free' : totals.shipping.formatted,
+      tax:          totals.tax.formatted,
+      discounts:    totals.discounts.formatted,
+      savings:      totals.totalSavings.formatted,   // retail + offer/coupon savings
+      compareTotal: totals.compareTotal.formatted,
+      itemCount:    String(this.itemCount),
+    };
+  }
+
+  // ─── Template resolution ───────────────────────────────────────────────────
+
+  /**
+   * Looks for a <template> child element and returns its inner HTML.
+   * Returns undefined if none found — the built-in default is used instead.
+   */
+  private resolveTemplate(): string | undefined {
+    const templateEl = this.element.querySelector(':scope > template') as HTMLTemplateElement | null;
+    return templateEl?.innerHTML.trim() || undefined;
   }
 }

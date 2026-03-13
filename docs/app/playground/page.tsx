@@ -3,9 +3,9 @@ import { loadPlaygroundExamples } from "@/lib/playground";
 import { PlaygroundClient } from "./playground.client";
 
 export const metadata: Metadata = {
-  title: "Playground — Campaign Cart SDK",
+  title: "Campaign Cart SDK",
   description:
-    "Interactively explore Campaign Cart SDK data attributes with a live preview.",
+    "Try Campaign Cart SDK examples live in the browser. Edit HTML and see the result instantly.",
 };
 
 export default function PlaygroundPage() {

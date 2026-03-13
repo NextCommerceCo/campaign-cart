@@ -223,12 +223,12 @@ export class CartItemListEnhancer extends BaseEnhancer {
     const retailLineTotal = retailPriceTotal * item.quantity;
     const lineTotalRaw = p(item.total) || packagePrice * item.quantity;
 
-    // Discounts from API (unit_price_excl_discount = before discount, incl_discount = after discount)
+    // Discounts from API (original_* = before discount, unit_price/package_price = after discount)
     const discountAmountRaw = p(item.total_discount);
     const hasDiscount = discountAmountRaw > 0;
-    const finalPriceRaw = p(item.package_price_incl_discount) || packagePrice;
+    const finalPriceRaw = p(item.package_price) || packagePrice;
     const finalLineTotalRaw = finalPriceRaw * item.quantity;
-    const unitFinalPrice = p(item.unit_price_incl_discount) || unitPrice;
+    const unitFinalPrice = p(item.unit_price) || unitPrice;
 
     // Recurring
     const hasRecurring = item.is_recurring ?? false;

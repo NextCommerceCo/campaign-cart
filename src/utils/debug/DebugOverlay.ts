@@ -641,8 +641,8 @@ export class DebugOverlay {
       const upsellBadge = isUpsell ? '<span class="mini-cart-upsell-badge">UPSELL</span>' : '';
 
       // Calculate pricing
-      const packagePriceExcl = item.package_price_excl_discount ? parseFloat(item.package_price_excl_discount) : 0;
-      const packagePriceIncl = item.package_price_incl_discount ? parseFloat(item.package_price_incl_discount) : item.price;
+      const packagePriceExcl = item.original_package_price ? parseFloat(item.original_package_price) : 0;
+      const packagePriceIncl = item.package_price ? parseFloat(item.package_price) : item.price;
 
       // Check if item has a discount applied (comparing package prices)
       const itemHasDiscount = packagePriceExcl > 0 && packagePriceIncl < packagePriceExcl;

@@ -1,0 +1,794 @@
+<!--
+title: Bundle Selector
+description: Static bundle cards where each unit can have its own color / size. "configurable": true expands a quantity-N item into N independent slots, each with its own variant controls.
+order: 2
+layout: center
+-->
+
+<!--
+  HOW THIS WORKS:
+  ─────────────────────────────────────────────────────────────────────────────
+  BundleSelectorEnhancer (data-next-bundle-selector):
+    Registers every [data-next-bundle-card] inside it.
+    Selecting a card replaces the previous bundle's packages in the cart with
+    the new bundle's packages, leaving unrelated cart items untouched.
+
+  ── STATIC CARD MODE ─────────────────────────────────────────────────────────
+    Write bundle cards directly in HTML. Useful when each card needs unique
+    markup, or when combining slot rendering with static card structure.
+
+    Each card needs:
+      data-next-bundle-card         — marks the card
+      data-next-bundle-id           — unique bundle identifier
+      data-next-bundle-items        — JSON array of {packageId, quantity, configurable?}
+
+  ── PER-ITEM SLOT TEMPLATES (variant selectors) ───────────────────────────────
+    data-next-bundle-slot-template-id="<id>"
+      ID of a <template> rendered once per slot. When configurable: true, a
+      quantity-N item expands into N individual slots with independent controls.
+      Slot template variables:
+        {slot.index}                — 1-based slot number (unique across all slots)
+        {slot.unitNumber}           — 1-based unit index within a configurable item
+        {item.packageId}            — current package ref_id
+        {item.name}                 — package name
+        {item.image}                — package image URL
+        {item.quantity}             — quantity for this slot
+        {item.qty}                  — units per package
+        {item.variantName}          — variant display name (e.g. "Black / S")
+        {item.productName}          — product name
+        {item.sku}                  — product SKU
+        Campaign prices (before offer discounts):
+        {item.price}                — per-unit price
+        {item.priceTotal}           — total package price
+        {item.priceRetail}          — retail per-unit price
+        {item.priceRetailTotal}     — retail total price
+        API prices (reflect applied offer/coupon discounts):
+        {item.unitPrice}            — per-unit price after discounts
+        {item.originalUnitPrice}    — per-unit price before discounts
+        {item.packagePrice}         — package total after discounts
+        {item.originalPackagePrice} — package total before discounts
+        {item.totalDiscount}        — total discount on this line
+        {item.total}                — line total after all discounts
+        {item.hasDiscount}          — "show" / "hide"
+        {item.hasSavings}           — "show" / "hide"
+
+      Place data-next-variant-selectors inside the template where variant
+      controls (dropdowns or swatches) should be injected.
+
+    data-next-variant-option-template-id="<id>"  (optional)
+      Template for a single variant option (e.g. a swatch button).
+      Omit to use default <select> dropdowns.
+      Option template variables:
+        {option.value}     — option value (e.g. "Red")
+        {option.selected}  — "true" / "false"
+        {option.available} — "true" / "false" — false when no package exists for
+                             this value combined with other currently-selected attrs
+      CSS class next-variant-selected and data-selected="true" are set on
+      the currently selected option element.
+      CSS class next-variant-unavailable and data-unavailable="true" are set on
+      options with no matching package. Clicks on these are ignored by the SDK.
+      Default <select> mode: unavailable options receive the HTML `disabled` attr.
+
+    Place data-next-bundle-slots inside a bundle card to mark where per-item
+    slot rows are injected.
+
+  ── MULTI-CURRENCY ───────────────────────────────────────────────────────────
+    All prices shown by data-next-bundle-price and the slot template variables
+    ({item.unitPrice}, {item.originalUnitPrice}, etc.) are automatically
+    recalculated whenever the active currency changes.
+
+    Currency is resolved in this priority order:
+      1. ?currency=GBP URL parameter
+      2. next_selected_currency sessionStorage value (set by the currency picker)
+      3. Auto-detected from visitor's country (when currencyBehavior="auto")
+
+    Use the currency selector in the debug overlay to preview different
+    currencies while building — no code changes required.
+
+  ── CART SUMMARY WITH LINE ITEMS ─────────────────────────────────────────────
+    data-summary-list="lines" inside a data-next-cart-summary <template>
+    renders one row per SummaryLine from the API, enriched with package data.
+
+    Line template variables:
+      {line.packageId}            — package ref_id
+      {line.quantity}             — cart quantity
+      {line.name}                 — package display name
+      {line.image}                — product image URL
+      {line.qty}                  — units per package
+      {line.productName}          — product name
+      {line.variantName}          — variant display name (e.g. "Black / S")
+      {line.sku}                  — product SKU
+      {line.price}                — per-unit price (campaign)
+      {line.priceTotal}           — total package price (campaign)
+      {line.priceRetail}          — retail per-unit price
+      {line.priceRetailTotal}     — retail total price
+      {line.unitPrice}            — per-unit price after discounts (API)
+      {line.originalUnitPrice}    — per-unit price before discounts (API)
+      {line.packagePrice}         — package total after discounts (API)
+      {line.originalPackagePrice} — package total before discounts (API)
+      {line.subtotal}             — line subtotal
+      {line.totalDiscount}        — total discount on this line
+      {line.total}                — line total after all discounts
+      {line.hasDiscount}          — "show" / "hide"
+      {line.hasSavings}           — "show" / "hide"
+
+  Item fields:
+    packageId    (required) — package ref_id
+    quantity     (required) — number of units
+    configurable (optional) — when true, quantity > 1 is expanded into
+                              individual slots so each unit can have its own
+                              variant selection.
+
+  SDK-managed attributes / CSS classes on each card:
+    data-next-selected="true/false"
+    .next-selected  — currently selected bundle
+    .next-in-cart   — all bundle items present in cart at required qty
+  ─────────────────────────────────────────────────────────────────────────────
+-->
+
+
+<!--
+  SKELETON: shown while body[data-next-sdk-loading="true"] (SDK initializing).
+  Mirrors the real card layout so the page doesn't jump on load.
+-->
+<div class="package-selector skeleton-page" aria-hidden="true">
+  <div class="skeleton-line skeleton-line--title"></div>
+  <div class="skeleton-line skeleton-line--sub"></div>
+  <div class="skeleton-cards">
+    <div class="skeleton-card">
+      <div class="skeleton-card-header">
+        <div class="skeleton-circle"></div>
+        <div class="skeleton-lines">
+          <div class="skeleton-line skeleton-line--sm"></div>
+          <div class="skeleton-line skeleton-line--xs"></div>
+        </div>
+        <div class="skeleton-price-block">
+          <div class="skeleton-line skeleton-line--xs"></div>
+          <div class="skeleton-line skeleton-line--sm"></div>
+        </div>
+      </div>
+      <div class="skeleton-slots">
+        <div class="skeleton-slot"></div>
+        <div class="skeleton-slot"></div>
+      </div>
+    </div>
+    <div class="skeleton-card">
+      <div class="skeleton-card-header">
+        <div class="skeleton-circle"></div>
+        <div class="skeleton-lines">
+          <div class="skeleton-line skeleton-line--sm"></div>
+          <div class="skeleton-line skeleton-line--xs"></div>
+        </div>
+        <div class="skeleton-price-block">
+          <div class="skeleton-line skeleton-line--xs"></div>
+          <div class="skeleton-line skeleton-line--sm"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="package-selector real-content">
+
+  <div class="selector-layout">
+  <div class="selector-left">
+
+  <h1 class="selector-heading">Choose Your Bundle</h1>
+  <p class="selector-subtitle">Pick a size &amp; color for every unit — mix &amp; match freely.</p>
+
+
+  <!--
+    Slot template — rendered once per slot (one per unit when configurable).
+    {slot.unitNumber} shows "Unit 1", "Unit 2", etc. for expanded items.
+    Place data-next-variant-selectors where the SDK should inject controls.
+  -->
+  <template id="slot-tpl">
+    <div class="slot-row">
+      <img class="slot-img" src="{item.image}" alt="{item.name}" />
+      <div class="slot-info">
+        <p class="slot-name">{item.productName}</p>
+        <!-- Variant dropdowns / swatches are injected here -->
+        <div class="slot-selectors" data-next-variant-selectors></div>
+      </div>
+      <div class="slot-pricing">
+        <span class="slot-price-original {item.hasDiscount}">{item.originalUnitPrice}</span>
+        <span class="slot-price">{item.unitPrice}</span>
+      </div>
+    </div>
+  </template>
+
+  <!--
+    Custom variant option template — renders a swatch button per option value.
+    Omit data-next-variant-option-template-id to use default <select> dropdowns.
+  -->
+  <template id="variant-opt-tpl">
+    <button class="variant-btn"
+            data-selected="{option.selected}"
+            data-available="{option.available}"
+            data-attr-code="{attr.code}"
+            style="--swatch:{option.value}">
+      {option.value}
+    </button>
+  </template>
+
+  <!--
+    data-next-bundle-slot-template-id enables per-unit slot rendering.
+    data-next-variant-option-template-id replaces <select> with swatch buttons.
+  -->
+  <div class="package-list"
+       data-next-bundle-selector
+       data-next-selection-mode="swap"
+       data-next-bundle-slot-template-id="slot-tpl"
+       data-next-variant-option-template-id="variant-opt-tpl">
+
+    <!--
+      Bundle card: 2 individually configurable units + 1 free non-configurable item.
+      "configurable": true on the first item expands quantity 2 into 2 separate slots,
+      each with its own Size / Color controls.
+      Replace packageId values with real ref_ids from your campaign.
+    -->
+    <div class="package-card"
+         data-next-bundle-card
+         data-next-bundle-id="buy2"
+         data-next-bundle-items='[
+           { "packageId": 1, "quantity": 2, "configurable": true },
+           { "packageId": 10, "quantity": 1 }
+         ]'
+         data-next-selected="true">
+
+      <div class="card-cover"></div>
+      <div class="card-header">
+        <div class="card-radio"></div>
+        <div class="card-content">
+          <p class="card-title">
+            Buy 2, Get 1 FREE
+            <span class="badge">Best Deal</span>
+          </p>
+          <p class="card-subtitle">Configure each unit independently</p>
+        </div>
+        <div class="card-pricing">
+          <p class="price-original" data-next-bundle-price="compare"></p>
+          <p class="price-current" data-next-bundle-price></p>
+          <p class="price-savings" data-next-bundle-price="savings"></p>
+        </div>
+      </div>
+
+      <!-- Per-unit slot rows are injected here by the SDK -->
+      <div class="slots-container" data-next-bundle-slots></div>
+
+    </div>
+
+    <div class="package-card"
+         data-next-bundle-card
+         data-next-bundle-id="buy1"
+         data-next-bundle-items='[
+           { "packageId": 1, "quantity": 1 }
+         ]'>
+
+      <div class="card-cover"></div>
+      <div class="card-header">
+        <div class="card-radio"></div>
+        <div class="card-content">
+          <p class="card-title">Buy 1</p>
+          <p class="card-subtitle">Pick your size &amp; color</p>
+        </div>
+        <div class="card-pricing">
+          <p class="price-original" data-next-bundle-price="compare"></p>
+          <p class="price-current" data-next-bundle-price></p>
+          <p class="price-savings" data-next-bundle-price="savings"></p>
+        </div>
+      </div>
+
+      <div class="slots-container" data-next-bundle-slots></div>
+
+    </div>
+
+  </div><!-- /.package-list -->
+
+  <button class="btn-checkout"
+          data-next-action="add-to-cart"
+          data-next-url="/checkout">
+    Continue to Checkout
+  </button>
+
+  </div><!-- /.selector-left -->
+
+  <!-- ── Cart items + summary ─────────────────────────────────── -->
+  <div class="selector-right">
+  <div class="order-summary" data-next-show="cart.hasItems">
+    <p class="order-summary-heading">Order Summary</p>
+    <div data-next-cart-summary>
+      <template>
+        <!--
+          data-summary-list="lines" renders one entry per SummaryLine from the
+          API calculate response, enriched with package data.
+
+          Available variables:
+            {line.packageId}            — package ref_id
+            {line.quantity}             — cart quantity
+            {line.name}                 — package display name
+            {line.image}                — product image URL
+            {line.qty}                  — units per package
+            {line.productName}          — product name
+            {line.variantName}          — variant display name (e.g. "Black / S")
+            {line.sku}                  — product SKU
+            {line.price}                — per-unit price (campaign)
+            {line.priceTotal}           — total package price (campaign)
+            {line.priceRetail}          — retail per-unit price
+            {line.priceRetailTotal}     — retail total price
+            {line.priceRecurring}       — recurring per-unit price
+            {line.priceRecurringTotal}  — recurring total price
+            {line.isRecurring}          — "true" / "false"
+            {line.unitPrice}            — per-unit price after discounts (API)
+            {line.originalUnitPrice}    — per-unit price before discounts (API)
+            {line.packagePrice}         — package total after discounts (API)
+            {line.originalPackagePrice} — package total before discounts (API)
+            {line.subtotal}             — line subtotal
+            {line.totalDiscount}        — total discount on this line
+            {line.total}                — line total after all discounts
+            {line.hasDiscount}          — "show" / "hide"
+            {line.hasSavings}           — "show" / "hide"
+        -->
+        <ul class="cart-lines" data-summary-list="lines">
+          <template>
+            <li class="cart-item">
+              <img class="cart-item-image" src="{line.image}" alt="{line.name}" onerror="this.style.display='none'">
+              <div class="cart-item-info">
+                <p class="cart-item-name">{line.quantity}x {line.productName}</p>
+                <p class="cart-item-meta">{line.variantName}</p>
+              </div>
+              <div class="cart-item-price">
+                <span class="price-original {line.hasSavings}">{line.originalPackagePrice}</span>
+                <span class="cart-item-final">{line.total}</span>
+                <span class="price-savings {line.hasDiscount}">{line.totalDiscount}</span>
+              </div>
+            </li>
+          </template>
+        </ul>
+
+        <div class="summary-totals">
+          <div class="summary-row">
+            <span>Subtotal</span>
+            <span>{subtotal}</span>
+          </div>
+          <ul class="discount-list" data-summary-list="offer_discounts">
+            <template>
+              <li class="discount-item">
+                <span class="discount-name">{discount.name}</span>
+                <span class="discount-amount">-{discount.amount}</span>
+              </li>
+            </template>
+          </ul>
+          <ul class="discount-list" data-summary-list="voucher_discounts">
+            <template>
+              <li class="discount-item discount-item--voucher">
+                <span class="discount-name">{discount.name}</span>
+                <span class="discount-amount">-{discount.amount}</span>
+              </li>
+            </template>
+          </ul>
+          <div class="summary-row summary-row--shipping">
+            <span>Shipping</span>
+            <span>{shipping}</span>
+          </div>
+          <div class="summary-row summary-row--savings">
+            <span>You save</span>
+            <span>{savings}</span>
+          </div>
+          <div class="summary-row summary-row--total">
+            <span>Total</span>
+            <span>{total}</span>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div><!-- /.order-summary -->
+  </div><!-- /.selector-right -->
+
+  </div><!-- /.selector-layout -->
+
+</div><!-- /.real-content -->
+
+
+<style>
+  body { font-family: sans-serif; background: #f8fafc; margin: 0; padding: 32px 16px; }
+
+  .package-selector {
+    width: 100%;
+    max-width: 860px; margin: 0 auto;
+  }
+
+  /* ── Two-column layout ── */
+  .selector-layout {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 20px;
+    align-items: start;
+  }
+
+  .selector-left {
+    min-width: 0;
+    background: white; border-radius: 16px; padding: 24px;
+  }
+
+  .selector-right {
+    min-width: 0;
+    position: sticky;
+    top: 24px;
+  }
+
+  .selector-heading {
+    font-size: 22px; font-weight: 700; color: #111;
+    text-align: center; margin: 0 0 6px;
+  }
+  .selector-subtitle { font-size: 14px; color: #6b7280; text-align: center; margin: 0 0 24px; }
+
+  /* ── Package list ── */
+  .package-list { display: flex; flex-direction: column; gap: 10px; }
+
+  /* ── Package card ── */
+  .package-card {
+    position: relative;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    background: white;
+    cursor: pointer;
+    transition: border-color .15s, box-shadow .15s;
+    user-select: none;
+    overflow: hidden;
+  }
+  .package-card:hover { border-color: #9ca3af; }
+  .package-card.next-selected {
+    border-color: #2563eb;
+    background: #eff6ff;
+    box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+  }
+
+  /* Card cover — full-surface click target */
+  .card-cover {
+    position: absolute; inset: 0;
+    border-radius: 10px;
+    cursor: pointer; z-index: 1;
+  }
+
+  /* ── Card header ── */
+  .card-header {
+    display: grid;
+    grid-template-columns: 24px 1fr auto;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+  }
+
+  /* ── Radio dot ── */
+  .card-radio {
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 2px solid #d1d5db; background: white;
+    flex-shrink: 0; position: relative;
+    transition: border-color .15s;
+  }
+  .package-card.next-selected .card-radio { border-color: #2563eb; }
+  .card-radio::after {
+    content: ''; position: absolute;
+    inset: 3px; border-radius: 50%;
+    background: #2563eb; opacity: 0; transition: opacity .15s;
+  }
+  .package-card.next-selected .card-radio::after { opacity: 1; }
+
+  /* ── Card content ── */
+  .card-title {
+    font-size: 15px; font-weight: 600; color: #111;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    margin: 0 0 2px;
+  }
+  .card-subtitle { font-size: 13px; color: #6b7280; margin: 0; }
+
+  /* Badge */
+  .badge {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    padding: 2px 8px; border-radius: 20px;
+    background: #ecfdf5; color: #059669;
+  }
+  .badge:empty { display: none; }
+  .badge--gold { background: #fefce8; color: #92400e; }
+
+  /* ── Pricing column ── */
+  .card-pricing    { text-align: right; white-space: nowrap; }
+  .price-original  { font-size: 12px; color: #9ca3af; text-decoration: none; margin: 0; position: relative; display: inline-block; }
+  .price-original::after {
+    content: '';
+    position: absolute;
+    left: 0; top: 50%; right: 0;
+    border-top: 1.5px solid #dc2626;
+    transform: rotate(-10deg);
+    transform-origin: center;
+  }
+  .price-original:empty { display: none; }
+  .price-current   { font-size: 17px; font-weight: 700; color: #111; margin: 0; }
+  .price-per       { font-size: 11px; color: #6b7280; margin: 0; }
+  .price-savings   { font-size: 11px; font-weight: 700; color: #059669; margin: 2px 0 0; }
+  .price-savings::before { content: "Save "; }
+  .price-savings:empty { display: none; }
+
+  /* ── Slot rows ── */
+  .slots-container {
+    border-top: 1px solid #f3f4f6;
+    padding: 0 20px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    position: relative; z-index: 2;
+  }
+
+  /* Injected by SDK: .next-bundle-slot */
+  .next-bundle-slot { padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
+  .next-bundle-slot:last-child { border-bottom: none; }
+
+  .slot-row {
+    display: grid;
+    grid-template-columns: 44px 1fr auto;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .slot-img { width: 44px; height: 44px; object-fit: cover; border-radius: 8px; background: #f3f4f6; }
+  .slot-info { min-width: 0; }
+  .slot-name {
+    font-size: 13px; font-weight: 600; color: #111;
+    margin: 0 0 6px; display: flex; align-items: center; gap: 6px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .slot-unit-label {
+    font-size: 11px; font-weight: 500; color: #9ca3af;
+    background: #f3f4f6; border-radius: 10px; padding: 1px 7px;
+    white-space: nowrap;
+  }
+  .slot-pricing { display: flex; flex-direction: column; align-items: flex-end; white-space: nowrap; }
+  .slot-price { font-size: 13px; font-weight: 700; color: #111; margin: 0; }
+  .slot-price-original { font-size: 11px; color: #9ca3af; text-decoration: none; position: relative; display: inline-block; }
+  .slot-price-original::after {
+    content: '';
+    position: absolute;
+    left: 0; top: 50%; right: 0;
+    border-top: 1.5px solid #dc2626;
+    transform: rotate(-10deg);
+    transform-origin: center;
+  }
+  .slot-price-original.hide,
+  .slot-price-original:empty { display: none; }
+
+  /* ── Variant selectors (default <select> mode) ── */
+  .slot-selectors { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  /* Injected by SDK: .next-slot-variant-field */
+  .next-slot-variant-field { display: flex; align-items: center; gap: 5px; }
+  .next-slot-variant-label { font-size: 12px; color: #6b7280; }
+  .next-slot-variant-select {
+    font-size: 12px; padding: 3px 6px;
+    border: 1px solid #d1d5db; border-radius: 6px;
+    background: white; cursor: pointer;
+  }
+
+  /* ── Custom variant option buttons (swatch mode) ── */
+  /* Injected by SDK: .next-slot-variant-group */
+  .next-slot-variant-group {
+    display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
+  }
+  /* Axis label from data-variant-name */
+  .next-slot-variant-group::before {
+    content: attr(data-variant-name) ":";
+    font-size: 11px; color: #9ca3af;
+    margin-right: 2px; align-self: center;
+    white-space: nowrap;
+  }
+
+  .variant-btn {
+    font-size: 12px; padding: 3px 10px;
+    border: 1.5px solid #d1d5db; border-radius: 20px;
+    background: white; color: #374151;
+    cursor: pointer; transition: border-color .12s, background .12s;
+    line-height: 1.4;
+  }
+  .variant-btn:hover { border-color: #9ca3af; }
+
+  /* SDK sets .next-variant-selected + data-selected="true" on the active option */
+  .variant-btn.next-variant-selected,
+  .variant-btn[data-selected="true"] {
+    border-color: #2563eb;
+    background: #2563eb;
+    color: white;
+  }
+
+  /* SDK sets .next-variant-unavailable + data-unavailable="true" on options with
+     no matching package for the current attribute combination. */
+  .variant-btn.next-variant-unavailable,
+  .variant-btn[data-available="false"] {
+    opacity: 0.38;
+    cursor: not-allowed;
+    text-decoration: line-through;
+    border-color: #e5e7eb;
+    background: #f9fafb;
+    color: #9ca3af;
+  }
+  .variant-btn.next-variant-unavailable:hover,
+  .variant-btn[data-available="false"]:hover {
+    border-color: #e5e7eb;
+  }
+
+  /* ── Size pills ── */
+  .variant-btn[data-attr-code="size"] {
+    min-width: 36px; text-align: center;
+    border-radius: 6px; padding: 3px 10px;
+  }
+
+  /* ── Color swatches ── */
+  .variant-btn[data-attr-code="color"] {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px 3px 5px;
+  }
+  .variant-btn[data-attr-code="color"]::before {
+    content: '';
+    width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
+    background-color: var(--swatch);
+    border: 1.5px solid rgba(0,0,0,.15);
+  }
+  .variant-btn[data-attr-code="color"][data-selected="true"]::before,
+  .variant-btn[data-attr-code="color"].next-variant-selected::before {
+    border-color: rgba(255,255,255,.5);
+  }
+
+  /* ── Order summary wrapper ── */
+  .order-summary {
+    background: white; border-radius: 16px; overflow: hidden;
+    border: 1px solid #e5e7eb;
+  }
+  .order-summary-heading {
+    font-size: 12px; font-weight: 700; color: #6b7280;
+    text-transform: uppercase; letter-spacing: .08em;
+    margin: 0; padding: 16px 16px 12px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+
+  /* ── Line items (rendered by data-summary-list="lines") ── */
+  .cart-lines {
+    list-style: none; margin: 0; padding: 0;
+    background: white; border-bottom: 1px solid #e5e7eb;
+  }
+  .cart-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border-bottom: 1px solid #f3f4f6;
+    font-size: 14px; color: #374151;
+  }
+  .cart-item:last-child { border-bottom: none; }
+  .cart-item-image { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
+  .cart-item-info { flex: 1; min-width: 0; }
+  .cart-item-name { margin: 0; font-weight: 600; color: #111; }
+  .cart-item-meta { margin: 2px 0 0; font-size: 12px; color: #6b7280; }
+  .cart-item-price { display: flex; flex-direction: column; align-items: flex-end; white-space: nowrap; align-self: flex-start; }
+  .hide { display: none; }
+  .cart-item-final { font-size: 15px; font-weight: 700; color: #111; }
+
+  /* ── Totals section ── */
+  .summary-totals { padding: 12px 16px; background: #f9fafb; }
+  .summary-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 14px; color: #374151; padding: 5px 0;
+  }
+  .summary-row--total {
+    font-weight: 700; font-size: 16px; color: #111;
+    border-top: 2px solid #e5e7eb; margin-top: 4px; padding-top: 10px;
+  }
+  .summary-row--shipping { font-size: 13px; color: #6b7280; }
+  .summary-row--savings  { font-size: 13px; color: #059669; font-weight: 600; }
+
+  /* Hide savings row when no savings exist */
+  .next-no-savings .summary-row--savings { display: none; }
+
+  /* ── Discount lists ── */
+  .discount-list { list-style: none; margin: 0; padding: 0; }
+  .discount-list.next-summary-empty { display: none; }
+  .discount-item {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 13px; color: #059669; padding: 5px 0;
+  }
+  .discount-item--voucher { color: #7c3aed; }
+  .discount-name   { font-weight: 500; }
+  .discount-amount { font-weight: 600; }
+
+  /* ══════════════════════════════════════════════════════════════
+     SKELETON / LOADING STATES
+     ══════════════════════════════════════════════════════════════
+
+     Two hooks provided by the SDK:
+
+     1. body[data-next-sdk-loading="true"]  — SDK is initializing
+        → show .skeleton-page, hide .real-content
+
+     2. [data-next-bundle-card][data-next-loading="true"]  — card
+        price is being fetched from the API
+        → pulse the price elements on that card
+  ══════════════════════════════════════════════════════════════ */
+
+  @keyframes shimmer {
+    0%   { background-position: -400px 0; }
+    100% { background-position:  400px 0; }
+  }
+
+  .skeleton-pulse {
+    background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+    background-size: 800px 100%;
+    animation: shimmer 1.4s infinite linear;
+    border-radius: 6px;
+  }
+
+  /* ── Page-level skeleton ── */
+  .skeleton-page  { display: none; }
+  .real-content   { display: block; }
+
+  /* While SDK is loading: flip visibility */
+  body[data-next-sdk-loading="true"]  .skeleton-page  { display: block; }
+  body[data-next-sdk-loading="true"]  .real-content   { display: none; }
+
+  /* Skeleton card layout mirrors .package-card */
+  .skeleton-cards { display: flex; flex-direction: column; gap: 10px; }
+
+  .skeleton-card {
+    border: 2px solid #e5e7eb; border-radius: 12px;
+    background: white; overflow: hidden;
+  }
+
+  .skeleton-card-header {
+    display: grid;
+    grid-template-columns: 24px 1fr auto;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+  }
+
+  .skeleton-circle {
+    width: 20px; height: 20px; border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .skeleton-lines { display: flex; flex-direction: column; gap: 6px; }
+
+  .skeleton-price-block {
+    display: flex; flex-direction: column; gap: 6px; align-items: flex-end;
+  }
+
+  .skeleton-line {
+    height: 12px; border-radius: 6px;
+  }
+  .skeleton-line--title { width: 180px; height: 18px; margin: 0 auto 6px; }
+  .skeleton-line--sub   { width: 260px; height: 12px; margin: 0 auto 24px; }
+  .skeleton-line--sm    { width: 120px; }
+  .skeleton-line--xs    { width:  80px; }
+
+  /* Apply shimmer to all skeleton parts */
+  .skeleton-circle,
+  .skeleton-line,
+  .skeleton-slot {
+    background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+    background-size: 800px 100%;
+    animation: shimmer 1.4s infinite linear;
+  }
+
+  .skeleton-slots {
+    border-top: 1px solid #f3f4f6;
+    padding: 12px 20px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .skeleton-slot { height: 44px; border-radius: 8px; }
+
+  /* ── Checkout button ── */
+  .btn-checkout {
+    margin-top: 16px; width: 100%; padding: 15px;
+    background: #2563eb; color: white; font-size: 15px; font-weight: 700;
+    letter-spacing: .04em; text-transform: uppercase;
+    border: none; border-radius: 50px; cursor: pointer;
+    transition: background .15s;
+    display: block;
+  }
+  .btn-checkout:hover { background: #1d4ed8; }
+</style>

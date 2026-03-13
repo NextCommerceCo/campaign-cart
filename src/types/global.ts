@@ -225,14 +225,14 @@ export interface CartItem {
   price_recurring?: string | undefined;
   /** Total recurring price string. */
   price_recurring_total?: string | undefined;
-  /** Per-unit price after offer discounts, tax-inclusive. */
-  unit_price_incl_discount?: string | undefined;
-  /** Per-unit price after offer discounts, tax-exclusive. */
-  unit_price_excl_discount?: string | undefined;
-  /** Total package price after offer discounts, tax-inclusive. */
-  package_price_incl_discount?: string | undefined;
-  /** Total package price after offer discounts, tax-exclusive. */
-  package_price_excl_discount?: string | undefined;
+  /** Per-unit price after offer discounts. */
+  unit_price?: string | undefined;
+  /** Per-unit price before offer discounts. */
+  original_unit_price?: string | undefined;
+  /** Total package price after offer discounts. */
+  package_price?: string | undefined;
+  /** Total package price before offer discounts. */
+  original_package_price?: string | undefined;
   /** Total line amount as a formatted string. */
   total?: string | undefined;
   /** Total discount amount for this line as a formatted string. */

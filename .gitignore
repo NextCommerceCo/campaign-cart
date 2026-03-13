@@ -29,3 +29,23 @@ coverage/
 /clients
 
 .claude/
+
+# generated content
+.source
+
+# test & build
+/out/
+/build
+*.tsbuildinfo
+
+# misc
+*.pem
+/.pnp
+.pnp.js
+yarn-debug.log*
+yarn-error.log*
+
+# others
+.env*.local
+.vercel
+next-env.d.ts
