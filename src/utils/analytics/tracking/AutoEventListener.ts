@@ -591,6 +591,8 @@ export class AutoEventListener {
 
     this.eventBus.on('order:completed', handleOrderCompleted);
     this.eventHandlers.set('order:completed', handleOrderCompleted);
+    this.eventBus.on('express-checkout:completed', handleOrderCompleted);
+    this.eventHandlers.set('express-checkout:completed', handleOrderCompleted);
   }
 
   /**
