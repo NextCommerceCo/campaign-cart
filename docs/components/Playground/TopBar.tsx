@@ -14,9 +14,10 @@ interface TopBarProps {
 export function TopBar({ onRun, onReset, onShare, onConfigOpen, copied }: TopBarProps) {
   return (
     <header className="flex items-center gap-3 px-4 h-12 border-b border-fd-border shrink-0">
-      <a href="/docs" className="flex items-center gap-1 text-fd-muted-foreground hover:text-fd-foreground text-sm">
+      {/* <a href="/docs" className="flex items-center gap-1 text-fd-muted-foreground hover:text-fd-foreground text-sm">
         <ChevronLeft size={14} /> Docs
-      </a>
+      </a> */}
+      <span className="font-semibold text-sm">Next</span>
       <span className="text-fd-border">|</span>
       <span className="font-semibold text-sm">Playground</span>
       <div className="ml-auto flex items-center gap-2">

@@ -121,7 +121,7 @@ export class NextCampaignAdapter extends ProviderAdapter {
    * Perform the actual script loading
    */
   private async performLoad(): Promise<void> {
-    const scriptUrl = 'https://campaign.midless.dev/js/v1/campaign/';
+    const scriptUrl = 'https://campaigns.apps.29next.com/js/v1/campaign/';
 
     // Check if script already exists
     const existingScript = document.querySelector(`script[src="${scriptUrl}"]`);

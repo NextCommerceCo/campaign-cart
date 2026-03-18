@@ -1,0 +1,1508 @@
+<!--
+title: Product Detail Page
+description: PDP-style layout — color swatches, size grid, free gift bundle, and shipping insurance add-on. Main product image updates automatically when a color/variant is selected.
+order: 3
+layout: full
+-->
+
+<!--
+  HOW THIS WORKS:
+  ─────────────────────────────────────────────────────────────────────────────
+  BundleSelectorEnhancer (data-next-bundle-selector):
+    A single pre-selected bundle card drives the entire page. Selecting it (or
+    having it pre-selected via data-next-selected="true") places its packages
+    into the cart. data-next-selection-mode="swap" replaces previous bundle
+    items rather than accumulating them.
+
+  ── BUNDLE ITEMS ARRAY ───────────────────────────────────────────────────────
+    data-next-bundle-items is a JSON array of items added when the card is selected.
+    Each item:
+      packageId    (required) — package ref_id from your campaign
+      quantity     (required) — number of units
+      noSlot       (optional) — when true, the item is added to the cart but no
+                                slot row is rendered (use for invisible add-ons
+                                like free gifts or insurance)
+      configurable (optional) — when true, quantity > 1 expands into individual
+                                slots so each unit can have its own variant selection
+
+    Example: [{"packageId": 5, "quantity": 1}, {"packageId": 65, "quantity": 1, "noSlot": true}]
+    Package 5 gets a slot rendered; package 65 is silently added (the free gift).
+
+  ── VOUCHERS ─────────────────────────────────────────────────────────────────
+    data-next-bundle-vouchers="CODE"
+      Automatically applies one or more voucher codes (comma-separated) when
+      this bundle card is selected. Useful for free-shipping promos or
+      bundle-specific discounts tied to a coupon code.
+
+  ── SLOT TEMPLATE ────────────────────────────────────────────────────────────
+    data-next-bundle-slot-template-id="product-slot"
+      ID of a <template> rendered once per slot. Contains the product image
+      and variant selectors.
+
+      Key template variables:
+        {item.image}             — variant image URL (re-renders on variant change)
+        {item.productName}       — product name
+
+      Place data-next-variant-selectors inside the slot template where the SDK
+      should inject variant controls for that slot.
+
+  ── VARIANT OPTION TEMPLATE (custom swatches) ────────────────────────────────
+    data-next-variant-option-template-id="product-option"
+      One button is rendered per option value (e.g. "Red", "S", "M").
+      Omit this attribute to use default <select> dropdowns instead.
+
+      Template variables:
+        {option.value}     — option value (e.g. "Red")
+        {option.selected}  — "true" / "false"
+        {option.available} — "true" / "false"
+        {attr.code}        — attribute axis ("color", "size", etc.)
+
+  ── BUNDLE PRICE DISPLAYS ────────────────────────────────────────────────────
+    data-next-bundle-price (no value) — current total after discounts
+    data-next-bundle-price="compare"  — original retail price (strikethrough)
+    data-next-bundle-price="savings"  — amount saved (e.g. "$10.00")
+
+  ── PACKAGE DISPLAY (data-next-display) ──────────────────────────────────────
+    Pulls live package data from the campaign and writes it into the element:
+      data-next-display="package.name"        — package display name
+      data-next-display="package.image"       — product image URL (sets src)
+      data-next-display="package.price"       — current price
+      data-next-display="package.priceRetail" — retail / compare-at price
+    Pair with data-next-package-id to target a specific package by ref_id.
+
+  ── CART TOGGLE (data-next-toggle) ───────────────────────────────────────────
+    Clicking the element adds the package to the cart; clicking again removes it.
+    data-next-is-upsell="true" marks it as an optional add-on (not a main item).
+    data-next-selected="true" pre-adds the package on page load.
+    The SDK adds .next-in-cart when the item is in the cart — use this class to
+    drive the checked/unchecked visual via CSS.
+
+  ── CONDITIONAL DISPLAY ──────────────────────────────────────────────────────
+    data-next-show="cart.hasItems" — element is hidden until the cart has items
+
+  ── SKELETON LOADING ─────────────────────────────────────────────────────────
+    body[data-next-sdk-loading="true"] is set while the SDK initialises.
+    Show .skeleton-page and hide .real-content during this state using CSS.
+  ─────────────────────────────────────────────────────────────────────────────
+-->
+
+<meta name="next-api-key" content="Fdm0h0Jcm8TfhkBvhIhP0xDQzc5F5Ev8oNHnlv91">
+<meta name="next-clear-cart" content="true">
+
+<!-- ═══════════════════════════════════════════════════════ REAL CONTENT ══ -->
+<div class="product-layout real-content">
+
+  <!-- ── LEFT COLUMN: main content ──────────────────────────────────────── -->
+  <div class="product-main">
+
+    <!-- Page header: reviews, sale banner, title -->
+    <div class="product-header">
+      <div class="product-reviews">
+        <span class="stars" aria-label="4.7 out of 5 stars">
+          <span class="star star--full"  aria-hidden="true">★</span>
+          <span class="star star--full"  aria-hidden="true">★</span>
+          <span class="star star--full"  aria-hidden="true">★</span>
+          <span class="star star--full"  aria-hidden="true">★</span>
+          <span class="star star--half"  aria-hidden="true">★</span>
+        </span>
+        <span class="review-score">4.7/5</span>
+        <span class="review-count">200,000+ verified buyers</span>
+      </div>
+
+      <div class="product-sale-banner">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        Flash Sale — Ends Tonight
+      </div>
+      <h1 class="product-title">Next Classic Tee — Limited Sale</h1>
+    </div>
+
+
+    <!--
+      ─────────────────────────────────────────────────────────────────────────
+      Bundle selector — single pre-selected card.
+      Replace packageId "5" and "65" with the real ref_ids from your campaign.
+      ─────────────────────────────────────────────────────────────────────────
+    -->
+    <div data-next-bundle-selector
+         data-next-selection-mode="swap"
+         data-next-bundle-slot-template-id="product-slot"
+         data-next-variant-option-template-id="product-option">
+
+      <div data-next-bundle-card
+           data-next-bundle-id="next-shirt-bundle"
+           data-next-bundle-items='[{"packageId": 5, "quantity": 1}, {"packageId": 65, "quantity": 1, "noSlot": true}]'
+           data-next-bundle-vouchers="FREESHIP"
+           data-next-selected="true">
+
+
+        <!-- ─────────────────────────────────────────────────────────────────
+          STEP 1: CHOOSE YOUR STYLE
+          SDK injects the product-slot template into data-next-bundle-slots.
+          The slot template renders a 2-column layout: gallery image on the
+          left, variant selectors (color swatches + size grid) on the right.
+          Pricing and urgency bar are shown below the slot.
+        ──────────────────────────────────────────────────────────────────── -->
+        <div class="section-block">
+          <div class="section-label">
+            <span class="section-step">1</span>
+            <span class="section-title">Choose Your Style</span>
+            <span class="section-hint">Select color and size</span>
+          </div>
+
+          <!-- Slot rows injected here by BundleSelectorEnhancer -->
+          <div class="product-slots" data-next-bundle-slots></div>
+
+          <!--
+            Pricing block — reads from the active bundle card.
+            data-next-bundle-price updates automatically on currency changes.
+          -->
+          <div class="product-pricing">
+            <div class="product-pricing-row">
+              <span class="product-price-compare" data-next-bundle-price="compare"></span>
+              <span class="product-savings-badge" data-next-bundle-price="savings"></span>
+            </div>
+            <div class="pricing-bottom-row">
+              <span class="product-price-current" data-next-bundle-price></span>
+              <div class="product-urgency-bar">
+                <span class="urgency-dot"></span>
+                <span class="urgency-text"><strong id="urgency-count">47</strong> people viewing now</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+        <!-- ─────────────────────────────────────────────────────────────────
+          STEP 2: CLAIM YOUR FREE BUNDLE
+          The free gift (packageId 65) is silently added to the cart via the
+          bundle items array (noSlot: true) — no user action required.
+          It's displayed here as a visual confirmation of the included bonus.
+
+          The shipping insurance toggle independently adds/removes packageId 64.
+          data-next-is-upsell="true" marks it as an optional add-on.
+          data-next-selected="true" pre-adds it on page load.
+          SDK adds .next-in-cart to drive the checkbox visual via CSS.
+        ──────────────────────────────────────────────────────────────────── -->
+        <div class="section-block">
+          <div class="section-label">
+            <span class="section-step">2</span>
+            <span class="section-title">Your Free Bundle Gifts</span>
+            <span class="section-hint">Automatically included with every order</span>
+          </div>
+
+          <div class="addon-list">
+
+            <!--
+              Free gift card — always included, not a toggle.
+              Styled as permanently checked to confirm inclusion.
+              data-next-display fills name, image, and retail price live.
+            -->
+            <div class="addon-card addon-card--gift" aria-label="Free gift included with order">
+              <span class="addon-check" aria-hidden="true"></span>
+
+              <div class="addon-gift-img">
+                <img data-next-display="package.image"
+                     data-next-package-id="65"
+                     alt=""
+                     onerror="this.style.display='none'">
+              </div>
+
+              <div class="addon-info">
+                <p class="addon-name">
+                  <span data-next-display="package.name" data-next-package-id="65"></span>
+                  <span class="addon-badge addon-badge--free">FREE GIFT</span>
+                </p>
+                <p class="addon-desc">Bonus item included with every shirt — today only!</p>
+              </div>
+
+              <div class="addon-price-col">
+                <span class="addon-price addon-price--free">FREE</span>
+                <span class="addon-price-retail"
+                      data-next-display="package.priceRetail"
+                      data-next-package-id="65"></span>
+              </div>
+            </div>
+
+            <!--
+              Shipping insurance toggle — adds/removes packageId 64 on click.
+              Pre-selected by default to maximise attach rate.
+              SDK adds .next-in-cart to drive the checkbox visual via CSS.
+            -->
+            <div class="addon-card"
+                 role="checkbox"
+                 aria-checked="true"
+                 data-next-toggle
+                 data-next-package-id="64"
+                 data-next-is-upsell="true"
+                 data-next-selected="true">
+
+              <span class="addon-check" aria-hidden="true"></span>
+
+              <div class="addon-icon addon-icon--shield" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  <polyline points="9 12 11 14 15 10"/>
+                </svg>
+              </div>
+
+              <div class="addon-info">
+                <p class="addon-name">
+                  Shipping Insurance
+                  <span class="addon-badge">Recommended</span>
+                </p>
+                <p class="addon-desc">Protect your order against loss or damage</p>
+              </div>
+
+              <div class="addon-price-col">
+                <span class="addon-price"
+                      data-next-display="package.price"
+                      data-next-package-id="64"></span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+
+        <!-- ─────────────────────────────────────────────────────────────────
+          CHECKOUT FOOTER
+          data-next-action="add-to-cart" — SDK adds selected bundle + add-ons
+          data-next-url="/checkout"      — redirect after API call completes
+          data-next-loading="true"       — SDK attribute during the API call
+        ──────────────────────────────────────────────────────────────────── -->
+        <div class="product-footer">
+
+          <ul class="product-benefits">
+            <li>100% organic cotton — soft, breathable, preshrunk</li>
+            <li>True-to-size regular fit, machine washable</li>
+            <li>Premium double-stitched seams for lasting durability</li>
+            <li>Ships today — arrives in 3–5 business days</li>
+          </ul>
+
+          <button class="btn-add-to-cart"
+                  data-next-action="add-to-cart"
+                  data-next-url="/checkout">
+            <svg class="btn-cart-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+            Checkout
+          </button>
+
+          <!-- Trust signals -->
+          <div class="trust-row">
+            <div class="trust-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" width="16" height="16"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <span>Secure Checkout</span>
+            </div>
+            <div class="trust-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" width="16" height="16"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              <span>90-Day Returns</span>
+            </div>
+            <div class="trust-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" width="16" height="16"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              <span>Free Shipping $150+</span>
+            </div>
+          </div>
+
+          <div class="payment-row">
+            <img loading="lazy" src="https://uploads-ssl.webflow.com/61f98dd058ae6109cf705231/61f98dd058ae6161337052a5_cc_visa.svg" alt="Visa" class="pay-icon">
+            <img loading="lazy" src="https://uploads-ssl.webflow.com/61f98dd058ae6109cf705231/61f98dd058ae61ca777052a4_cc_master.svg" alt="Mastercard" class="pay-icon">
+            <img loading="lazy" src="https://uploads-ssl.webflow.com/61f98dd058ae6109cf705231/61f98dd058ae6128807052a3_cc_amex.svg" alt="Amex" class="pay-icon">
+            <img loading="lazy" src="https://uploads-ssl.webflow.com/61f98dd058ae6109cf705231/61f98dd058ae61e8567052ad_cc_discover.svg" alt="Discover" class="pay-icon">
+          </div>
+
+          <div class="checkout-guarantee">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span>90-Day Money-Back Guarantee — No questions asked</span>
+          </div>
+
+        </div><!-- /.product-footer -->
+
+      </div><!-- /bundle card -->
+    </div><!-- /bundle selector -->
+
+  </div><!-- /.product-main -->
+
+
+  <!-- ── RIGHT COLUMN: sticky order summary ─────────────────────────────── -->
+  <!--
+    Hidden until the cart has at least one item.
+    data-next-show="cart.hasItems" — SDK toggles visibility automatically.
+  -->
+  <div class="product-sidebar" data-next-show="cart.hasItems">
+    <div class="order-summary">
+      <p class="order-summary-title">Order Summary</p>
+
+      <div data-next-cart-summary>
+        <template>
+
+          <ul class="summary-lines" data-summary-list="lines">
+            <template>
+              <li class="summary-line">
+                <img class="summary-img"
+                     src="{line.image}"
+                     alt="{line.name}"
+                     onerror="this.style.display='none'">
+                <div class="summary-line-info">
+                  <p class="summary-line-name">{line.quantity}× {line.productName}</p>
+                  <p class="summary-line-meta">{line.variantName}</p>
+                </div>
+                <div class="summary-line-price">
+                  <span class="summary-line-original {line.hasSavings}">{line.originalPackagePrice}</span>
+                  <span class="summary-line-total">{line.total}</span>
+                </div>
+              </li>
+            </template>
+          </ul>
+
+          <div class="summary-totals">
+            <div class="summary-row">
+              <span>Subtotal</span>
+              <span>{subtotal}</span>
+            </div>
+
+            <ul class="discount-list" data-summary-list="offer_discounts">
+              <template>
+                <li class="discount-item">
+                  <span class="discount-name">{discount.name}</span>
+                  <span class="discount-amount">−{discount.amount}</span>
+                </li>
+              </template>
+            </ul>
+
+            <ul class="discount-list" data-summary-list="voucher_discounts">
+              <template>
+                <li class="discount-item discount-item--voucher">
+                  <span class="discount-name">{discount.name}</span>
+                  <span class="discount-amount">−{discount.amount}</span>
+                </li>
+              </template>
+            </ul>
+
+            <div class="summary-row summary-row--shipping">
+              <span>Shipping</span>
+              <span class="shipping-price">
+                <span class="shipping-original">{shippingOriginal}</span>
+                {shipping}
+              </span>
+            </div>
+
+            <div class="summary-row summary-row--savings">
+              <span>You save</span>
+              <span>{savings}</span>
+            </div>
+
+            <div class="summary-row summary-row--total">
+              <span>Total</span>
+              <span>{total}</span>
+            </div>
+          </div>
+
+        </template>
+      </div>
+    </div><!-- /.order-summary -->
+  </div><!-- /.product-sidebar -->
+
+</div><!-- /.product-layout real-content -->
+
+
+<!--
+  SLOT TEMPLATE
+  Rendered once per slot by BundleSelectorEnhancer.
+  {item.image} re-renders whenever the active variant changes,
+  keeping the product image in sync with the selected color/size.
+-->
+<template id="product-slot">
+  <div class="product-body">
+
+    <!-- Left: product image + badge (image swaps on variant change) -->
+    <div class="product-gallery">
+      <div class="product-badge">
+        <div class="product-badge-rank">#1</div>
+        <div class="product-badge-info">
+          <strong>BEST SELLER</strong>
+          <span>Most Popular Style</span>
+        </div>
+      </div>
+      <!-- {item.image} is replaced by the SDK with the active variant's image URL -->
+      <div class="product-image-frame">
+        <img class="product-main-image"
+             src="{item.image}"
+             alt="{item.productName}"
+             onerror="this.style.visibility='hidden'">
+      </div>
+    </div><!-- /.product-gallery -->
+
+    <!-- Right: size and color variant selectors injected by SDK -->
+    <div class="product-selectors">
+      <button class="size-guide-trigger" onclick="document.getElementById('size-guide-modal').showModal()">Size Guide</button>
+      <div class="product-variant-selectors" data-next-variant-selectors></div>
+    </div>
+
+  </div><!-- /.product-body -->
+</template>
+
+
+<!-- SIZE GUIDE MODAL -->
+<dialog id="size-guide-modal" class="size-guide-modal">
+  <div class="size-guide-inner">
+    <div class="size-guide-header">
+      <h2 class="size-guide-title">Size Guide</h2>
+      <button class="size-guide-close" onclick="document.getElementById('size-guide-modal').close()" aria-label="Close size guide">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <p class="size-guide-hint">All measurements are in <strong>inches</strong>. Measure over your base layer for best fit.</p>
+
+    <div class="size-guide-table-wrap">
+      <table class="size-guide-table">
+        <thead>
+          <tr>
+            <th>Size</th>
+            <th>Chest</th>
+            <th>Waist</th>
+            <th>Hip</th>
+            <th>Length</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="sg-size-pill">XS</span></td><td>32–34</td><td>26–28</td><td>34–36</td><td>26</td></tr>
+          <tr><td><span class="sg-size-pill">S</span></td><td>35–37</td><td>29–31</td><td>37–39</td><td>27</td></tr>
+          <tr><td><span class="sg-size-pill">M</span></td><td>38–40</td><td>32–34</td><td>40–42</td><td>28</td></tr>
+          <tr><td><span class="sg-size-pill">L</span></td><td>41–43</td><td>35–37</td><td>43–45</td><td>29</td></tr>
+          <tr><td><span class="sg-size-pill">XL</span></td><td>44–46</td><td>38–40</td><td>46–48</td><td>30</td></tr>
+          <tr><td><span class="sg-size-pill">XXL</span></td><td>47–49</td><td>41–43</td><td>49–51</td><td>31</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="size-guide-tips">
+      <div class="sg-tip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
+        </svg>
+        <span>Between sizes? Size up for a relaxed fit.</span>
+      </div>
+      <div class="sg-tip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        <span>This tee runs true to size with a regular fit.</span>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+
+<!--
+  VARIANT OPTION TEMPLATE
+  One button per option value (e.g. "White", "Gray", "Small", "Large").
+  data-attr-code drives CSS styling for color swatches vs. size pills.
+  --swatch sets the swatch circle color for color options.
+-->
+<template id="product-option">
+  <button class="product-option-btn"
+          data-selected="{option.selected}"
+          data-available="{option.available}"
+          data-attr-code="{attr.code}"
+          data-value="{option.value}"
+          style="--swatch:{option.value}">
+    {option.value}
+  </button>
+</template>
+
+
+<!-- ═══════════════════════════════════════════════════ SKELETON PAGE ════ -->
+<!--
+  Shown while body[data-next-sdk-loading="true"].
+  Mirrors the layout of .product-layout so there is no layout shift on init.
+  aria-hidden="true" removes it from the accessibility tree.
+-->
+<div class="product-layout skeleton-page" aria-hidden="true">
+  <div class="product-main">
+    <div class="skel-header">
+      <div class="skel-line skel-line--stars"></div>
+      <div class="skel-line skel-line--title"></div>
+      <div class="skel-line skel-line--sub"></div>
+    </div>
+    <!-- Step 1 skeleton -->
+    <div class="skel-section-block">
+      <div class="skel-line skel-line--label"></div>
+      <div class="skel-step1">
+        <div class="skel-img"></div>
+        <div class="skel-selectors">
+          <div class="skel-swatches">
+            <div class="skel-swatch"></div>
+            <div class="skel-swatch"></div>
+            <div class="skel-swatch"></div>
+            <div class="skel-swatch"></div>
+          </div>
+          <div class="skel-size-grid">
+            <div class="skel-size"></div><div class="skel-size"></div>
+            <div class="skel-size"></div><div class="skel-size"></div>
+          </div>
+        </div>
+      </div>
+      <div class="skel-pricing">
+        <div class="skel-line skel-line--price-orig"></div>
+        <div class="skel-line skel-line--price-curr"></div>
+      </div>
+    </div>
+    <!-- Step 2 skeleton -->
+    <div class="skel-section-block">
+      <div class="skel-line skel-line--label"></div>
+      <div class="skel-addons">
+        <div class="skel-addon"></div>
+        <div class="skel-addon"></div>
+      </div>
+    </div>
+    <!-- CTA skeleton -->
+    <div class="skel-btn"></div>
+  </div>
+  <div class="product-sidebar">
+    <div class="skel-summary">
+      <div class="skel-line skel-line--sm"></div>
+      <div class="skel-line skel-line--xs"></div>
+      <div class="skel-line skel-line--sm"></div>
+      <div class="skel-line skel-line--xs"></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Mobile sticky CTA bar — visible only on small screens -->
+<div class="mobile-sticky-cta">
+  <div class="mobile-sticky-price">
+    <div class="mobile-sticky-top">
+      <span class="mobile-sticky-current" data-next-bundle-price></span>
+      <span class="mobile-sticky-savings-badge" data-next-bundle-price="savings"></span>
+    </div>
+    <span class="mobile-sticky-compare" data-next-bundle-price="compare"></span>
+  </div>
+  <button class="mobile-sticky-btn"
+          data-next-action="add-to-cart"
+          data-next-url="/checkout">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true" width="16" height="16"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+    Checkout
+  </button>
+</div>
+
+
+<script>
+  // Close size guide modal on backdrop click
+  document.getElementById('size-guide-modal').addEventListener('click', function(e) {
+    if (e.target === this) this.close();
+  });
+
+  // Move the size guide trigger into the Size variant group so it sits
+  // in the same CSS grid row as the "Size:" label (right-aligned, col 3-4).
+  // Uses MutationObserver because the variant group is rendered asynchronously
+  // after API data loads — well after next:initialized fires.
+  (function() {
+    function moveSizeGuide() {
+      const sizeGroup = document.querySelector('.next-slot-variant-group[data-variant-name="Size"]');
+      const trigger   = document.querySelector('.size-guide-trigger');
+      if (sizeGroup && trigger) { sizeGroup.prepend(trigger); return true; }
+      return false;
+    }
+    if (!moveSizeGuide()) {
+      const observer = new MutationObserver(function() {
+        if (moveSizeGuide()) observer.disconnect();
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
+  })();
+
+  // Dynamic urgency viewer count — re-randomizes delay each tick for organic feel
+  (function() {
+    var base = Math.floor(Math.random() * 30) + 35; // 35–64
+    var el = document.getElementById('urgency-count');
+    if (!el) return;
+    el.textContent = base;
+    (function tick() {
+      setTimeout(function() {
+        var delta = Math.floor(Math.random() * 5) - 2; // -2 to +2
+        if (delta !== 0) {
+          base = Math.min(80, Math.max(22, base + delta));
+          el.textContent = base;
+        }
+        tick();
+      }, Math.floor(Math.random() * 15000) + 20000); // 20–35s, re-rolled each tick
+    })();
+  })();
+
+  window.addEventListener('next:initialized', function() {
+    next.exitIntent({
+      image: 'https://placehold.co/600x400',
+      action: async () => {
+        const result = await next.applyCoupon('EXIT10');
+        if (result.success) {
+          console.log('Coupon applied:', result.message);
+        } else {
+          console.log('Coupon failed:', result.message);
+        }
+      }
+    });
+  });
+</script>
+
+
+<style>
+  /*
+    ============================================================================
+    DESIGN TOKENS
+    ============================================================================
+  */
+  :root {
+    --color-primary:       #16a34a;
+    --color-primary-dark:  #15803d;
+    --color-primary-light: #f0fdf4;
+    --color-primary-glow:  rgba(22, 163, 74, 0.18);
+
+    --color-gold:          #d97706;
+    --color-gold-bg:       #fef3c7;
+    --color-danger:        #dc2626;
+    --color-purple:        #7c3aed;
+
+    --color-text:          #111827;
+    --color-text-secondary:#374151;
+    --color-muted:         #6b7280;
+    --color-muted-light:   #9ca3af;
+
+    --color-bg:            #f8fafc;
+    --color-bg-white:      #ffffff;
+    --color-bg-subtle:     #f9fafb;
+    --color-border:        #e5e7eb;
+    --color-border-light:  #f3f4f6;
+
+    --color-skel-base:     #f3f4f6;
+    --color-skel-shine:    #e5e7eb;
+
+    --radius-card:   16px;
+    --radius-btn:    50px;
+    --radius-badge:  20px;
+    --radius-addon:  10px;
+    --radius-check:  6px;
+    --radius-size:   8px;
+    --radius-swatch: 50%;
+  }
+
+  /* ── Base ────────────────────────────────────────────────────────────── */
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--color-bg);
+    margin: 0; padding: 32px 16px;
+    color: var(--color-text);
+  }
+
+  .next-hide { display: none !important; }
+
+  /* ── Page layout: main content (left) + sticky summary (right) ──────── */
+  .product-layout {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 20px;
+    align-items: start;
+    width: 100%; max-width: 960px; margin: 0 auto;
+  }
+
+  /* Left column — white card containing all content sections */
+  .product-main {
+    min-width: 0;
+    background: var(--color-bg-white);
+    border-radius: var(--radius-card);
+    padding: 28px 24px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    display: flex; flex-direction: column; gap: 20px;
+  }
+
+  /* Right column — sticky order summary */
+  .product-sidebar {
+    min-width: 0;
+    position: sticky;
+    top: 24px;
+  }
+
+  /* Bundle card — flex column, gap handled by section-blocks */
+  [data-next-bundle-card] {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* SDK slot wrapper — remove default spacing */
+  .next-bundle-slot { padding: 0; border: none; }
+  .product-slots { position: relative; }
+
+
+  /* ── Header ──────────────────────────────────────────────────────────── */
+  .product-header { display: flex; flex-direction: column; gap: 10px; }
+
+  .product-reviews {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  }
+  .stars { display: flex; }
+  .star--full  { color: #f59e0b; }
+  .star--half  { color: #f59e0b; opacity: .5; }
+  .review-score { font-size: 15px; font-weight: 800; color: var(--color-text); }
+  .review-count {
+    font-size: 13px; color: var(--color-muted);
+  }
+  .review-count::before {
+    content: '✓ '; color: var(--color-primary); font-weight: 700;
+  }
+
+  .product-title {
+    font-size: clamp(22px, 3vw, 28px); font-weight: 800;
+    color: var(--color-text); margin: 0; line-height: 1.2;
+  }
+
+  /* ── Sale banner ──────────────────────────────────────────────────────── */
+  .product-sale-banner {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    color: #fff; font-size: 12px; font-weight: 800;
+    letter-spacing: .05em; text-transform: uppercase;
+    padding: 5px 12px; border-radius: 50px;
+    align-self: flex-start;
+  }
+  .product-sale-banner svg { width: 13px; height: 13px; flex-shrink: 0; }
+
+
+  /* ── Section blocks (step containers) ───────────────────────────────── */
+  .section-block {
+    display: flex; flex-direction: column; gap: 14px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    padding: 20px;
+  }
+
+  .section-label {
+    display: flex; align-items: center; gap: 8px;
+    flex-wrap: wrap;
+  }
+  .section-step {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--color-primary); color: #fff;
+    font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .section-title { font-size: 15px; font-weight: 700; color: var(--color-text); }
+  .section-hint  { font-size: 12px; color: var(--color-muted); }
+
+
+  /* ── Product body: two-column (gallery | selectors) in slot template ─── */
+  .product-body {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  /* ── Gallery ─────────────────────────────────────────────────────────── */
+  .product-gallery { display: flex; flex-direction: column; gap: 10px; }
+
+  .product-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 2px solid var(--color-border);
+    border-radius: 10px; padding: 6px 12px;
+    align-self: flex-start;
+  }
+  .product-badge-rank {
+    font-size: 18px; font-weight: 900; color: #fff;
+    background: var(--color-primary); border-radius: 6px;
+    padding: 2px 8px; line-height: 1.3;
+  }
+  .product-badge-info { display: flex; flex-direction: column; line-height: 1.3; }
+  .product-badge-info strong { font-size: 12px; font-weight: 800; color: var(--color-text); }
+  .product-badge-info span   { font-size: 10px; color: var(--color-muted); }
+
+  .product-image-frame {
+    background: var(--color-border-light);
+    border-radius: var(--radius-card);
+    aspect-ratio: 1; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .product-main-image {
+    width: 100%; height: 100%; object-fit: cover;
+    transition: opacity .25s;
+  }
+
+
+  /* ── Variant selectors ───────────────────────────────────────────────── */
+  .product-selectors { display: flex; flex-direction: column; gap: 14px; }
+  .product-variant-selectors { display: flex; flex-direction: column; gap: 14px; }
+
+  /* SDK injects .next-slot-variant-group per attribute axis (Color, Size, …) */
+  .next-slot-variant-group {
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .next-slot-variant-group::before {
+    content: attr(data-variant-name) ":";
+    font-size: 13px; font-weight: 600; color: var(--color-text-secondary);
+  }
+
+  /* ── Variant button base ─────────────────────────────────────────────── */
+  .product-option-btn {
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-bg-white);
+    color: var(--color-text-secondary);
+    font-size: 13px; font-weight: 500;
+    cursor: pointer; padding: 6px 14px;
+    transition: border-color .12s, background .12s, color .12s;
+    line-height: 1.3;
+  }
+  .product-option-btn:hover { border-color: var(--color-muted-light); }
+  .product-option-btn:focus-visible {
+    outline: 2px solid var(--color-primary); outline-offset: 2px;
+  }
+
+  /* Selected state */
+  .product-option-btn.next-variant-selected,
+  .product-option-btn[data-selected="true"] {
+    border-color: var(--color-primary);
+    background: var(--color-primary-light);
+    color: var(--color-primary); font-weight: 600;
+  }
+
+  /* Unavailable state */
+  .product-option-btn.next-variant-unavailable,
+  .product-option-btn[data-available="false"] {
+    opacity: 0.45; cursor: not-allowed;
+    text-decoration: line-through;
+    border-color: var(--color-border-light);
+    background: var(--color-bg-subtle);
+    color: var(--color-muted-light);
+  }
+  .product-option-btn[data-available="false"]:hover {
+    border-color: var(--color-border-light);
+  }
+
+  /* Color swatches — 4-column grid */
+  .next-slot-variant-group[data-variant-name="Color"] {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+  }
+  .next-slot-variant-group[data-variant-name="Color"]::before {
+    grid-column: 1 / -1;
+  }
+
+  .product-option-btn[data-attr-code="color"] {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 10px 4px 7px; border-radius: var(--radius-size);
+    min-height: 60px; text-align: center; gap: 6px;
+  }
+  .product-option-btn[data-attr-code="color"]::before {
+    content: '';
+    width: 28px; height: 28px; border-radius: var(--radius-swatch); flex-shrink: 0;
+    background-color: var(--swatch);
+    border: 2px solid rgba(0,0,0,.12);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,.08);
+  }
+  .product-option-btn[data-attr-code="color"][data-selected="true"]::before,
+  .product-option-btn[data-attr-code="color"].next-variant-selected::before {
+    border-color: rgba(255,255,255,.55);
+    box-shadow: 0 0 0 2px var(--color-primary);
+  }
+
+  /* Size buttons — 4-column grid with "Size Guide" link in header row */
+  .next-slot-variant-group[data-variant-name="Size"] {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+  }
+  .next-slot-variant-group[data-variant-name="Size"]::before {
+    grid-column: 1 / 3;
+    grid-row: 1;
+    align-self: center;
+  }
+  .next-slot-variant-group[data-variant-name="Size"] .size-guide-trigger {
+    grid-column: 3 / 5;
+    grid-row: 1;
+    justify-self: end;
+    align-self: center;
+  }
+
+  .product-option-btn[data-attr-code="size"] {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 7px 4px; border-radius: var(--radius-size);
+    min-height: 50px; text-align: center;
+    grid-row-start: 2;
+  }
+  .product-option-btn[data-attr-code="size"]::after {
+    font-size: 10px; font-weight: 400; color: var(--color-muted);
+    margin-top: 2px; display: block;
+  }
+
+  /* Size dimension map */
+  .product-option-btn[data-value="XS"]::after     { content: 'Extra Small'; }
+  .product-option-btn[data-value="Small"]::after   { content: 'S'; }
+  .product-option-btn[data-value="Medium"]::after  { content: 'M'; }
+  .product-option-btn[data-value="Large"]::after   { content: 'L'; }
+  .product-option-btn[data-value="XL"]::after      { content: 'Extra Large'; }
+  .product-option-btn[data-value="XXL"]::after     { content: '2X Large'; }
+
+  .product-option-btn[data-attr-code="size"][data-selected="true"]::after,
+  .product-option-btn[data-attr-code="size"].next-variant-selected::after {
+    color: var(--color-primary);
+  }
+
+
+  /* ── Pricing block (Step 1 footer) ───────────────────────────────────── */
+  .product-pricing { display: flex; flex-direction: column; gap: 4px; }
+  .product-pricing-row {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  .pricing-bottom-row {
+    display: flex; align-items: center;
+    justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  }
+
+  /* Original price with diagonal strikethrough */
+  .product-price-compare {
+    font-size: 16px; color: var(--color-muted-light);
+    position: relative; display: inline-block;
+  }
+  .product-price-compare::after {
+    content: '';
+    position: absolute; left: 0; top: 50%; right: 0;
+    border-top: 1.5px solid var(--color-danger);
+    transform: rotate(-8deg); transform-origin: center;
+  }
+  .product-price-compare:empty { display: none; }
+
+  .product-price-current {
+    font-size: 32px; font-weight: 800; color: var(--color-text); line-height: 1;
+  }
+
+  /* "YOU SAVE $X.XX" pill */
+  .product-savings-badge {
+    font-size: 12px; font-weight: 700;
+    background: linear-gradient(135deg, #16a34a, #15803d); color: #fff;
+    padding: 4px 12px; border-radius: 50px; white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(22,163,74,.35);
+  }
+  .product-savings-badge::before { content: "YOU SAVE "; }
+  .product-savings-badge:empty   { display: none; }
+
+  /* Pulse prices while SDK loads bundle data */
+  [data-next-bundle-card][data-next-loading="true"] .product-price-current,
+  [data-next-bundle-card][data-next-loading="true"] .product-price-compare {
+    opacity: 0.35;
+  }
+
+
+  /* ── Urgency bar ──────────────────────────────────────────────────────── */
+  .product-urgency-bar {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--color-text-secondary);
+  }
+  .urgency-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    background: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239,68,68,.2);
+    animation: urgency-pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes urgency-pulse {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(239,68,68,.2); }
+    50%       { box-shadow: 0 0 0 6px rgba(239,68,68,.08); }
+  }
+  .urgency-text strong { color: var(--color-text); }
+
+
+  /* ── Add-on toggle cards ──────────────────────────────────────────────── */
+  .addon-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .addon-card {
+    display: grid;
+    grid-template-columns: 24px 40px 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-addon);
+    background: var(--color-bg-white);
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+    user-select: none;
+  }
+  .addon-card:hover { border-color: var(--color-muted-light); }
+
+  /* SDK adds .next-in-cart when this package is active in the cart */
+  .addon-card.next-in-cart {
+    border-color: var(--color-primary);
+    background: var(--color-primary-light);
+  }
+
+  /* CSS-driven checkbox */
+  .addon-check {
+    width: 20px; height: 20px;
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-check);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; background: var(--color-bg-white);
+    transition: border-color .15s, background .15s;
+    position: relative;
+  }
+  .addon-card.next-in-cart .addon-check {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+  }
+  .addon-check::after {
+    content: ''; display: block;
+    width: 5px; height: 9px;
+    border: 2px solid #fff;
+    border-top: none; border-left: none;
+    transform: rotate(45deg) translateY(-1px);
+    opacity: 0; transition: opacity .15s;
+  }
+  .addon-card.next-in-cart .addon-check::after { opacity: 1; }
+
+  /* Addon icon circle */
+  .addon-icon {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .addon-icon svg { width: 18px; height: 18px; }
+  .addon-icon--shield { background: #ecfdf5; color: var(--color-primary); }
+
+  .addon-info { min-width: 0; }
+  .addon-name {
+    font-size: 13px; font-weight: 700; color: var(--color-text);
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    margin: 0 0 2px;
+  }
+  .addon-desc { font-size: 11px; color: var(--color-muted); margin: 0; }
+
+  .addon-badge {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    padding: 2px 7px; border-radius: 20px;
+    background: #ecfdf5; color: var(--color-primary);
+    white-space: nowrap;
+  }
+  .addon-badge:empty { display: none; }
+
+  .addon-price-col { text-align: right; white-space: nowrap; }
+  .addon-price       { display: block; font-size: 14px; font-weight: 700; color: var(--color-text); }
+  .addon-price-retail {
+    display: block; font-size: 11px; color: var(--color-muted-light);
+    text-decoration: line-through;
+  }
+  .addon-price-retail:empty { display: none; }
+
+
+  /* ── Free gift card — always selected, not a toggle ──────────────────── */
+  .addon-card--gift {
+    cursor: default;
+    border-color: #bbf7d0;
+    background: var(--color-primary-light);
+  }
+  .addon-card--gift:hover { border-color: #86efac; }
+
+  /* Gift checkbox always shows as checked */
+  .addon-card--gift .addon-check {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+  }
+  .addon-card--gift .addon-check::after { opacity: 1; }
+
+  /* Gift image instead of icon */
+  .addon-gift-img {
+    width: 40px; height: 40px; border-radius: 8px;
+    overflow: hidden; flex-shrink: 0;
+    background: #d1fae5;
+  }
+  .addon-gift-img img {
+    width: 100%; height: 100%; object-fit: cover;
+  }
+
+  .addon-badge--free {
+    background: var(--color-primary); color: #fff;
+  }
+
+  .addon-price--free {
+    font-size: 14px; font-weight: 800;
+    color: var(--color-primary);
+  }
+
+
+  /* ── Footer: benefits + CTA + trust ──────────────────────────────────── */
+  .product-footer { display: flex; flex-direction: column; gap: 14px; }
+
+  /* Benefit bullets */
+  .product-benefits {
+    list-style: none; margin: 0; padding: 0;
+    display: flex; flex-direction: column; gap: 5px;
+  }
+  .product-benefits li {
+    font-size: 13px; color: var(--color-text-secondary);
+    display: flex; align-items: flex-start; gap: 7px;
+    line-height: 1.4;
+  }
+  .product-benefits li::before {
+    content: '✓';
+    color: var(--color-primary); font-weight: 700; font-size: 13px;
+    flex-shrink: 0;
+  }
+
+  /* CTA button */
+  .btn-add-to-cart {
+    width: 100%; padding: 17px;
+    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); color: #fff;
+    font-size: 17px; font-weight: 700; letter-spacing: .04em;
+    text-transform: uppercase;
+    border: none; border-radius: var(--radius-btn);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    box-shadow: 0 4px 20px rgba(22,163,74,.45);
+    transition: box-shadow .2s, transform .1s;
+    position: relative; overflow: hidden;
+  }
+  .btn-add-to-cart::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,.18) 50%, transparent 60%);
+    transform: translateX(-100%);
+    animation: btn-shimmer 2.4s ease-in-out 1.2s infinite;
+  }
+  @keyframes btn-shimmer {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(200%); }
+  }
+  .btn-add-to-cart:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 24px rgba(22,163,74,.55);
+  }
+  .btn-add-to-cart:active { transform: translateY(0); }
+  .btn-cart-icon { width: 20px; height: 20px; flex-shrink: 0; }
+
+  [data-next-action][data-next-loading="true"] {
+    opacity: .6; cursor: wait; pointer-events: none;
+  }
+
+  /* Trust row */
+  .trust-row {
+    display: flex; align-items: center; justify-content: center;
+    gap: 16px; flex-wrap: wrap;
+  }
+  .trust-item {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 12px; color: var(--color-muted);
+  }
+  .trust-item svg { color: var(--color-muted-light); }
+
+  /* Payment icons */
+  .payment-row {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .pay-icon { height: 22px; width: auto; opacity: .6; }
+
+  /* Guarantee line */
+  .checkout-guarantee {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 12px; font-weight: 500; color: var(--color-muted);
+    justify-content: center;
+  }
+  .checkout-guarantee svg { width: 14px; height: 14px; color: var(--color-primary); flex-shrink: 0; }
+
+
+  /* ── Order summary sidebar ────────────────────────────────────────────── */
+  .order-summary {
+    background: var(--color-bg-white);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+  }
+  .order-summary-title {
+    font-size: 12px; font-weight: 700; color: var(--color-muted);
+    text-transform: uppercase; letter-spacing: .08em;
+    margin: 0; padding: 16px 16px 12px;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .summary-lines {
+    list-style: none; margin: 0; padding: 0;
+    display: flex; flex-direction: column; gap: 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .summary-line {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--color-border-light);
+  }
+  .summary-line:last-child { border-bottom: none; }
+  .summary-img {
+    width: 44px; height: 44px; object-fit: cover;
+    border-radius: 6px; background: var(--color-bg-subtle); flex-shrink: 0;
+  }
+  .summary-line-info { flex: 1; min-width: 0; }
+  .summary-line-name { font-size: 12px; font-weight: 600; color: var(--color-text); margin: 0 0 2px; }
+  .summary-line-meta { font-size: 11px; color: var(--color-muted); margin: 0; }
+  .summary-line-price { text-align: right; white-space: nowrap; }
+  .summary-line-original {
+    display: block; font-size: 11px; color: var(--color-muted-light);
+    text-decoration: line-through;
+  }
+  .summary-line-original.next-hide { display: none; }
+  .summary-line-total { display: block; font-size: 13px; font-weight: 700; color: var(--color-text); }
+
+  .summary-totals { padding: 12px 16px; background: var(--color-bg-subtle); }
+  .summary-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 13px; color: var(--color-muted); padding: 4px 0;
+  }
+  .summary-row--shipping { font-size: 12px; }
+  .summary-row--savings  { color: var(--color-primary); font-weight: 600; }
+  .summary-row--total {
+    font-size: 15px; font-weight: 700; color: var(--color-text);
+    border-top: 2px solid var(--color-border); margin-top: 4px; padding-top: 10px;
+  }
+
+  .shipping-price { display: flex; align-items: baseline; gap: 6px; }
+  .shipping-original {
+    font-size: 11px; color: var(--color-muted-light);
+    position: relative; display: inline-block;
+  }
+  .shipping-original::after {
+    content: '';
+    position: absolute; left: 0; top: 50%; right: 0;
+    border-top: 1.5px solid var(--color-danger);
+    transform: rotate(-10deg);
+  }
+  .shipping-original:empty { display: none; }
+
+  .discount-list { list-style: none; margin: 0; padding: 0; }
+  .discount-list.next-summary-empty { display: none; }
+  .discount-item {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 12px; color: var(--color-primary); padding: 3px 0;
+  }
+  .discount-item--voucher { color: var(--color-purple); }
+  .discount-name   { font-weight: 500; }
+  .discount-amount { font-weight: 600; }
+
+
+  /* ── Size guide trigger ──────────────────────────────────────────────── */
+  .size-guide-trigger {
+    background: none; border: none; padding: 0;
+    font-size: 11px; font-weight: 500; color: var(--color-muted-light);
+    cursor: pointer;
+    text-decoration: underline; text-decoration-style: dashed;
+    text-underline-offset: 3px;
+    transition: color .12s;
+    white-space: nowrap;
+  }
+  .size-guide-trigger:hover { color: var(--color-muted); }
+
+
+  /* ── Size guide modal ────────────────────────────────────────────────── */
+  .size-guide-modal {
+    border: none; border-radius: var(--radius-card);
+    padding: 0; width: min(560px, 95vw);
+    background: var(--color-bg-white);
+    box-shadow: 0 20px 60px rgba(0,0,0,.18);
+    max-height: 90vh; overflow: hidden;
+  }
+  .size-guide-modal::backdrop {
+    background: rgba(0,0,0,.45);
+    backdrop-filter: blur(2px);
+  }
+  .size-guide-inner {
+    display: flex; flex-direction: column;
+    max-height: 90vh; overflow-y: auto;
+    padding: 24px; gap: 16px;
+  }
+  .size-guide-header {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .size-guide-title { font-size: 18px; font-weight: 800; color: var(--color-text); margin: 0; }
+  .size-guide-close {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: none; background: var(--color-bg-subtle);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--color-muted);
+    transition: background .12s, color .12s; flex-shrink: 0;
+  }
+  .size-guide-close:hover { background: var(--color-border); color: var(--color-text); }
+  .size-guide-close svg { width: 15px; height: 15px; }
+  .size-guide-hint { font-size: 13px; color: var(--color-muted); margin: 0; }
+  .size-guide-table-wrap { overflow-x: auto; }
+  .size-guide-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .size-guide-table thead tr {
+    background: var(--color-bg-subtle);
+    border-bottom: 2px solid var(--color-border);
+  }
+  .size-guide-table th {
+    padding: 10px 14px; text-align: center;
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--color-muted);
+    white-space: nowrap;
+  }
+  .size-guide-table th:first-child { text-align: left; }
+  .size-guide-table td {
+    padding: 10px 14px; text-align: center;
+    color: var(--color-text-secondary);
+    border-bottom: 1px solid var(--color-border-light);
+  }
+  .size-guide-table td:first-child { text-align: left; }
+  .size-guide-table tbody tr:last-child td { border-bottom: none; }
+  .size-guide-table tbody tr:hover td { background: var(--color-bg-subtle); }
+  .sg-size-pill {
+    display: inline-block;
+    background: var(--color-border-light); color: var(--color-text);
+    font-size: 12px; font-weight: 700;
+    padding: 2px 10px; border-radius: 50px;
+    border: 1px solid var(--color-border);
+  }
+  .size-guide-tips {
+    display: flex; flex-direction: column; gap: 8px;
+    background: var(--color-primary-light);
+    border: 1px solid #bbf7d0;
+    border-radius: 10px; padding: 12px 14px;
+  }
+  .sg-tip {
+    display: flex; align-items: flex-start; gap: 8px;
+    font-size: 13px; color: var(--color-text-secondary);
+  }
+  .sg-tip svg { width: 15px; height: 15px; flex-shrink: 0; color: var(--color-primary); margin-top: 1px; }
+
+
+  /* ── Skeleton loading ─────────────────────────────────────────────────── */
+  @keyframes skel-shimmer {
+    from { background-position: -400px 0; }
+    to   { background-position:  400px 0; }
+  }
+
+  .skel-line, .skel-img, .skel-swatch, .skel-size,
+  .skel-addon, .skel-btn, .skel-summary {
+    background: linear-gradient(90deg,
+      var(--color-skel-base) 25%,
+      var(--color-skel-shine) 50%,
+      var(--color-skel-base) 75%
+    );
+    background-size: 800px 100%;
+    animation: skel-shimmer 1.4s infinite;
+    border-radius: 6px;
+  }
+
+  .skeleton-page { display: none; }
+  .real-content  { display: grid; }
+  body[data-next-sdk-loading="true"] .skeleton-page { display: grid; }
+  body[data-next-sdk-loading="true"] .real-content  { display: none; }
+
+  .skel-header { display: flex; flex-direction: column; gap: 8px; }
+  .skel-line--stars       { height: 14px; width: 130px; }
+  .skel-line--title       { height: 26px; width: 75%; }
+  .skel-line--sub         { height: 13px; width: 50%; }
+  .skel-line--label       { height: 18px; width: 45%; }
+  .skel-line--price-orig  { height: 14px; width: 80px; }
+  .skel-line--price-curr  { height: 32px; width: 130px; }
+  .skel-line--sm          { height: 14px; width: 80%; }
+  .skel-line--xs          { height: 12px; width: 60%; }
+
+  .skel-section-block {
+    border: 1px solid var(--color-skel-base);
+    border-radius: var(--radius-card);
+    padding: 20px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+
+  .skel-step1 {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 24px;
+  }
+  .skel-img { aspect-ratio: 1; width: 100%; border-radius: var(--radius-card); }
+  .skel-selectors { display: flex; flex-direction: column; gap: 12px; }
+  .skel-swatches { display: flex; gap: 6px; }
+  .skel-swatch { width: 56px; height: 60px; border-radius: 8px; }
+  .skel-size-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .skel-size { height: 50px; }
+  .skel-pricing { display: flex; flex-direction: column; gap: 8px; }
+
+  .skel-addons { display: flex; flex-direction: column; gap: 8px; }
+  .skel-addon  { height: 64px; border-radius: var(--radius-addon); }
+
+  .skel-btn { height: 52px; border-radius: var(--radius-btn); }
+
+  .skel-summary {
+    padding: 20px; border-radius: var(--radius-card);
+    display: flex; flex-direction: column; gap: 10px;
+  }
+
+
+  /* ── Mobile sticky CTA bar ────────────────────────────────────────────── */
+  .mobile-sticky-cta {
+    display: none;
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+    background: var(--color-bg-white);
+    border-top: 1px solid var(--color-border);
+    padding: 12px 16px;
+    box-shadow: 0 -4px 20px rgba(0,0,0,.1);
+    align-items: center; gap: 12px;
+  }
+  .mobile-sticky-price {
+    display: flex; flex-direction: column; min-width: 0; flex-shrink: 0;
+  }
+  .mobile-sticky-top { display: flex; align-items: center; gap: 7px; }
+  .mobile-sticky-current {
+    font-size: 18px; font-weight: 800; color: var(--color-text); line-height: 1.2;
+  }
+  .mobile-sticky-savings-badge {
+    font-size: 11px; font-weight: 700;
+    background: var(--color-primary); color: #fff;
+    padding: 2px 7px; border-radius: 50px; white-space: nowrap;
+  }
+  .mobile-sticky-savings-badge::before { content: "SAVE "; }
+  .mobile-sticky-savings-badge:empty { display: none; }
+  .mobile-sticky-compare {
+    font-size: 12px; color: var(--color-muted-light);
+    text-decoration: line-through;
+  }
+  .mobile-sticky-compare:empty { display: none; }
+  .mobile-sticky-btn {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+    background: linear-gradient(135deg, #16a34a, #15803d); color: #fff;
+    font-size: 15px; font-weight: 700; border: none; border-radius: 50px;
+    padding: 13px 20px; cursor: pointer;
+    box-shadow: 0 3px 12px rgba(22,163,74,.4);
+  }
+
+
+  /* ── Responsive ──────────────────────────────────────────────────────── */
+  @media (max-width: 780px) {
+    .product-layout { grid-template-columns: 1fr; }
+    .product-sidebar { position: static; }
+  }
+
+  @media (max-width: 640px) {
+    .product-main { padding: 20px 16px; gap: 16px; }
+    .product-body { grid-template-columns: 1fr; gap: 16px; }
+    .skel-step1   { grid-template-columns: 1fr; }
+
+    .next-slot-variant-group[data-variant-name="Size"],
+    .next-slot-variant-group[data-variant-name="Color"] {
+      grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    .mobile-sticky-cta { display: flex; }
+    body { padding-bottom: 80px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .skel-line, .skel-img, .skel-swatch, .skel-size,
+    .skel-addon, .skel-btn, .skel-summary {
+      animation: none;
+      background: var(--color-skel-shine);
+    }
+    .urgency-dot { animation: none; }
+    .btn-add-to-cart::after { animation: none; }
+  }
+</style>

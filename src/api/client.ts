@@ -15,7 +15,7 @@ import type {
 import { Logger, createLogger } from '@/utils/logger';
 
 export class ApiClient {
-  private baseURL = 'https://campaign.midless.dev';
+  private baseURL = 'https://campaigns.apps.29next.com';
   private apiKey: string;
   private logger: Logger;
 

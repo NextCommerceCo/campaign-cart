@@ -268,6 +268,8 @@ export interface CartItem {
   variantSku?: string | undefined;
   /** IDs of other cart items grouped with this one (bundle support). */
   groupedItemIds?: number[] | undefined;
+  /** Bundle ID this item belongs to (set by BundleSelectorEnhancer). */
+  bundleId?: string | undefined;
 }
 
 // Selector-specific types with explicit undefined handling
@@ -577,6 +579,9 @@ export interface ConfigState {
   >;
   defaultProfile?: string;
   activeProfile?: string;
+
+  // Cart initialization behavior
+  clearCartOnInit?: boolean;
 }
 
 export type PageType = 'product' | 'cart' | 'checkout' | 'upsell' | 'receipt';

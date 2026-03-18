@@ -80,6 +80,7 @@ const initialState: ConfigState = {
   profiles: {},
   defaultProfile: undefined,
   activeProfile: undefined,
+  clearCartOnInit: false,
 
   // Error monitoring removed - add externally via HTML/scripts
 };
@@ -110,6 +111,12 @@ export const configStore = create<ConfigState & ConfigActions>((set, _get) => ({
     const debugMeta = document.querySelector('meta[name="next-debug"]');
     if (debugMeta) {
       updates.debug = debugMeta.getAttribute('content') === 'true';
+    }
+
+    // Load clear cart on init flag
+    const clearCartMeta = document.querySelector('meta[name="next-clear-cart"]');
+    if (clearCartMeta) {
+      updates.clearCartOnInit = clearCartMeta.getAttribute('content') === 'true';
     }
 
     // Load page type

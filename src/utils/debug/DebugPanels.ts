@@ -147,7 +147,7 @@ export class ConfigPanel implements DebugPanel {
 
   private async testApiConnection(): Promise<void> {
     try {
-      const response = await fetch('https://campaign.midless.dev/health');
+      const response = await fetch('https://campaigns.apps.29next.com/health');
       console.log(response.ok ? 'API connection successful' : 'API connection failed');
     } catch (error) {
       console.error('API connection error:', error);

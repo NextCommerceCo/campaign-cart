@@ -61,7 +61,7 @@ export class AnalyticsManager {
       throw new Error('API key not available for analytics initialization');
     }
 
-    const scriptUrl = `https://campaign.midless.dev/js/v1/campaign/`;
+    const scriptUrl = `https://campaigns.apps.29next.com/js/v1/campaign/`;
 
     // Load the analytics script
     await this.loadScript(scriptUrl);

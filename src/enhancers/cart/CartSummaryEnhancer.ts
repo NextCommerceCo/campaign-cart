@@ -19,35 +19,40 @@
  *
  * ─── TEMPLATE VARIABLES ──────────────────────────────────────────────────────
  *
- *   {subtotal}      Subtotal before shipping and discounts
- *   {total}         Grand total
- *   {shipping}      Shipping cost (formatted, or "Free" if zero)
- *   {tax}           Tax amount
- *   {discounts}     Total discount amount
- *   {savings}       Retail savings (compare-at minus price)
- *   {compareTotal}  Compare-at total (before savings)
- *   {itemCount}     Number of items in cart
+ *   {subtotal}          Subtotal before shipping and discounts
+ *   {total}             Grand total
+ *   {shipping}          Shipping cost (formatted, or "Free" if zero)
+ *   {shippingOriginal}  Original shipping before any shipping discount (empty if no discount)
+ *   {tax}               Tax amount
+ *   {discounts}         Total discount amount (offer + voucher)
+ *   {savings}           Total savings: retail (compare-at minus price) + applied discounts
+ *   {compareTotal}      Compare-at total (before savings)
+ *   {itemCount}         Number of items in cart
  *
  * ─── STATE CSS CLASSES (added to host element) ───────────────────────────────
  *
- *   next-cart-empty       cart is empty
- *   next-cart-has-items   cart has items
- *   next-has-discounts    discounts > 0
- *   next-no-discounts     discounts = 0
- *   next-has-shipping     shipping cost > 0
- *   next-free-shipping    shipping cost = 0
- *   next-has-tax          tax > 0
- *   next-no-tax           tax = 0
- *   next-has-savings      retail savings available
- *   next-no-savings       no retail savings
+ *   next-cart-empty              cart is empty
+ *   next-cart-has-items          cart has items
+ *   next-has-discounts           discounts > 0
+ *   next-no-discounts            discounts = 0
+ *   next-has-shipping            shipping cost > 0
+ *   next-free-shipping           shipping cost = 0
+ *   next-has-shipping-discount   a shipping discount is applied
+ *   next-no-shipping-discount    no shipping discount
+ *   next-has-tax                 tax > 0
+ *   next-no-tax                  tax = 0
+ *   next-has-savings             retail or discount savings available
+ *   next-no-savings              no savings
  *
  * Use these classes to show/hide rows with CSS:
  *   .next-no-discounts .discount-row { display: none }
  *
- * ─── DISCOUNT LISTS (offer & voucher) ────────────────────────────────────────
+ * ─── SUMMARY LISTS ───────────────────────────────────────────────────────────
  *
  * Inside a custom <template> you can include list containers. The enhancer will
- * find them after rendering and populate them from the API summary:
+ * find them after rendering and populate them from the API summary.
+ *
+ * Discount lists — {discount.name}, {discount.amount}, {discount.description}:
  *
  *   <ul data-summary-list="offer_discounts">
  *     <template><li>{discount.name} — -{discount.amount}</li></template>
@@ -56,6 +61,49 @@
  *   <ul data-summary-list="voucher_discounts">
  *     <template><li>{discount.name}: -{discount.amount}</li></template>
  *   </ul>
+ *
+ * Line items — per-cart-line breakdown with full price and product detail:
+ *
+ *   <ul data-summary-list="lines">
+ *     <template>
+ *       <li>
+ *         <img src="{line.image}" />
+ *         <span>{line.name}</span>
+ *         <span>{line.qty} × {line.unitPrice}</span>
+ *         <span>{line.total}</span>
+ *       </li>
+ *     </template>
+ *   </ul>
+ *
+ *   Line item variables:
+ *     {line.packageId}            Package ref_id
+ *     {line.quantity}             Quantity (integer)
+ *     {line.qty}                  Quantity (display alias)
+ *     {line.name}                 Package display name
+ *     {line.image}                Product image URL
+ *     {line.productName}          Product name
+ *     {line.variantName}          Variant name (if applicable)
+ *     {line.sku}                  Product SKU
+ *     {line.price}                Unit price from campaign data
+ *     {line.priceTotal}           Line total from campaign data
+ *     {line.priceRetail}          Retail (compare-at) unit price
+ *     {line.priceRetailTotal}     Retail line total
+ *     {line.priceRecurring}       Recurring unit price (subscriptions)
+ *     {line.priceRecurringTotal}  Recurring line total (subscriptions)
+ *     {line.isRecurring}          "true" | "false"
+ *     {line.unitPrice}            Unit price after discounts (from API summary)
+ *     {line.originalUnitPrice}    Unit price before discounts (from API summary)
+ *     {line.packagePrice}         Package price after discounts (from API summary)
+ *     {line.originalPackagePrice} Package price before discounts (from API summary)
+ *     {line.subtotal}             Line subtotal (from API summary)
+ *     {line.totalDiscount}        Total discount applied to line
+ *     {line.total}                Line total after discounts
+ *     {line.hasDiscount}          "show" if discount > 0, else "hide"
+ *     {line.hasSavings}           "show" if retail or discount savings exist, else "hide"
+ *
+ * All list containers also receive:
+ *   next-summary-empty      no items in the list
+ *   next-summary-has-items  one or more items in the list
  *
  * @example Minimal
  * <div data-next-cart-summary></div>
@@ -86,6 +134,7 @@
 
 import { BaseEnhancer } from '@/enhancers/base/BaseEnhancer';
 import { useCartStore } from '@/stores/cartStore';
+import { formatCurrency } from '@/utils/currencyFormatter';
 import type { CartState, CartTotals } from '@/types/global';
 import type { CartSummary, SummaryLine } from '@/types/api';
 
@@ -120,17 +169,19 @@ interface SummaryFlags {
   isEmpty: boolean;
   hasDiscounts: boolean;
   isFreeShipping: boolean;
+  hasShippingDiscount: boolean;
   hasTax: boolean;
   hasSavings: boolean;
 }
 
 function buildFlags(totals: CartTotals): SummaryFlags {
   return {
-    isEmpty:        totals.isEmpty,
-    hasDiscounts:   totals.discounts.value > 0,
-    isFreeShipping: totals.shipping.value === 0,
-    hasTax:         totals.tax.value > 0,
-    hasSavings:     totals.hasTotalSavings, // retail savings OR applied discounts
+    isEmpty:             totals.isEmpty,
+    hasDiscounts:        totals.discounts.value > 0,
+    isFreeShipping:      totals.shipping.value === 0,
+    hasShippingDiscount: totals.shippingDiscount.value > 0,
+    hasTax:              totals.tax.value > 0,
+    hasSavings:          totals.hasTotalSavings, // retail savings OR applied discounts
   };
 }
 
@@ -227,7 +278,7 @@ export class CartSummaryEnhancer extends BaseEnhancer {
       });
 
       if (key === 'lines') {
-        const lines: SummaryLine[] = this.summary?.lines ?? [];
+        const lines: SummaryLine[] = (this.summary?.lines ?? []).sort((a, b) => a.package_id - b.package_id);
         const isEmpty = lines.length === 0;
         this.toggleElementClass('next-summary-empty', isEmpty, container);
         this.toggleElementClass('next-summary-has-items', !isEmpty, container);
@@ -305,8 +356,10 @@ export class CartSummaryEnhancer extends BaseEnhancer {
     this.toggleClass('next-cart-has-items', !flags.isEmpty);
     this.toggleClass('next-has-discounts',  flags.hasDiscounts);
     this.toggleClass('next-no-discounts',  !flags.hasDiscounts);
-    this.toggleClass('next-has-shipping',  !flags.isFreeShipping);
-    this.toggleClass('next-free-shipping',  flags.isFreeShipping);
+    this.toggleClass('next-has-shipping',          !flags.isFreeShipping);
+    this.toggleClass('next-free-shipping',          flags.isFreeShipping);
+    this.toggleClass('next-has-shipping-discount',  flags.hasShippingDiscount);
+    this.toggleClass('next-no-shipping-discount',  !flags.hasShippingDiscount);
     this.toggleClass('next-has-tax',        flags.hasTax);
     this.toggleClass('next-no-tax',        !flags.hasTax);
     this.toggleClass('next-has-savings',    flags.hasSavings);
@@ -323,7 +376,10 @@ export class CartSummaryEnhancer extends BaseEnhancer {
     return {
       subtotal:     totals.subtotal.formatted,
       total:        totals.total.formatted,
-      shipping:     flags.isFreeShipping ? 'Free' : totals.shipping.formatted,
+      shipping:         flags.isFreeShipping ? 'Free' : totals.shipping.formatted,
+      shippingOriginal: flags.hasShippingDiscount
+        ? formatCurrency(totals.shipping.value + totals.shippingDiscount.value)
+        : '',
       tax:          totals.tax.formatted,
       discounts:    totals.discounts.formatted,
       savings:      totals.totalSavings.formatted,   // retail + offer/coupon savings

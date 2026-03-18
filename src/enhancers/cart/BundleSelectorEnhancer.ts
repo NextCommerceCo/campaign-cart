@@ -15,6 +15,13 @@
  *     swap   → selecting a bundle immediately updates the cart
  *     select → only tracks selection; an external add-to-cart handles the cart
  *
+ *   data-next-bundle-vouchers (on each card) — comma-separated list of voucher
+ *     / coupon codes to apply when this bundle is selected. When switching
+ *     bundles the previous card's vouchers are removed before the new ones are
+ *     applied. Alternatively supply a JSON array: '["CODE1","CODE2"]'.
+ *     Also supported in auto-render JSON via the "vouchers" key:
+ *       { "id": "premium", "vouchers": ["SAVE10"], "items": […] }
+ *
  *   data-next-bundles='[…]'             — JSON array of bundle definitions for
  *                                          auto-rendered mode (see below)
  *
@@ -36,7 +43,8 @@
  *     data-next-bundle-price="subtotal" — formatted subtotal
  *     data-next-bundle-price="compare"  — formatted compare-at total
  *     data-next-bundle-price="savings"  — formatted savings amount
- *     data-next-bundle-price="savings-pct" — formatted savings percentage
+ *     data-next-bundle-price="savingsPercentage" — formatted savings percentage
+ *     data-next-bundle-price="totalExclShipping" — formatted total excluding shipping
  *
  *   Example:
  *     <span data-next-bundle-price></span>
@@ -206,7 +214,7 @@
 import { BaseEnhancer } from '@/enhancers/base/BaseEnhancer';
 import { useCartStore } from '@/stores/cartStore';
 import { useCampaignStore } from '@/stores/campaignStore';
-import { calculateBundlePrice } from '@/utils/calculations/CartCalculator';
+import { calculateBundlePrice, buildCartTotals } from '@/utils/calculations/CartCalculator';
 import type { CartState } from '@/types/global';
 import type { Package } from '@/types/campaign';
 import type { SummaryLine } from '@/types/api';
@@ -221,11 +229,18 @@ interface BundleItem {
    * can configure color / size (or any variant) independently per unit.
    */
   configurable?: boolean;
+  /**
+   * When true, no slot row is rendered for this item even when a slot template
+   * is configured. Useful for silent add-ons like free gifts that are displayed
+   * via a separate static block rather than a slot row.
+   */
+  noSlot?: boolean;
 }
 
 interface BundleDef {
   id: string;
   items: BundleItem[];
+  vouchers?: string[];
   [key: string]: unknown;
 }
 
@@ -242,6 +257,8 @@ interface BundleSlot {
   /** Currently active package (may differ after the user selects a variant). */
   activePackageId: number;
   quantity: number;
+  /** When true, no slot row is rendered for this slot. */
+  noSlot?: boolean;
 }
 
 interface BundleCard {
@@ -252,6 +269,8 @@ interface BundleCard {
   /** One slot per item; tracks active variant selections. */
   slots: BundleSlot[];
   isPreSelected: boolean;
+  /** Voucher/coupon codes to apply when this bundle is selected. */
+  vouchers: string[];
 }
 
 // ─── Enhancer ─────────────────────────────────────────────────────────────────
@@ -270,13 +289,17 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
   private boundCurrencyChangeHandler: (() => void) | null = null;
   /** Prevents re-entrant cart updates when we trigger them ourselves. */
   private isApplying: boolean = false;
+  private includeShipping: boolean = false;
   /** Per-bundle preview lines from the calculate API (used when bundle is not in cart). */
   private previewLines = new Map<string, SummaryLine[]>();
+  /** Debounce timer for currency-change price re-fetches. */
+  private currencyChangeTimeout: ReturnType<typeof setTimeout> | null = null;
 
   public async initialize(): Promise<void> {
     this.validateElement();
 
     this.mode = (this.getAttribute('data-next-selection-mode') ?? 'swap') as 'swap' | 'select';
+    this.includeShipping = this.getAttribute('data-next-include-shipping') === 'true';
 
     // ── Card template ──────────────────────────────────────────────────────────
     const templateId = this.getAttribute('data-next-bundle-template-id');
@@ -305,11 +328,15 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     const bundlesAttr = this.getAttribute('data-next-bundles');
     if (bundlesAttr && this.template) {
       try {
-        const bundleDefs: BundleDef[] = JSON.parse(bundlesAttr);
-        this.element.innerHTML = '';
-        for (const def of bundleDefs) {
-          const el = this.renderBundleTemplate(def);
-          if (el) this.element.appendChild(el);
+        const parsed: unknown = JSON.parse(bundlesAttr);
+        if (!Array.isArray(parsed)) {
+          this.logger.warn('data-next-bundles must be a JSON array, ignoring auto-render');
+        } else {
+          this.element.innerHTML = '';
+          for (const def of parsed as BundleDef[]) {
+            const el = this.renderBundleTemplate(def);
+            if (el) this.element.appendChild(el);
+          }
         }
       } catch {
         this.logger.warn('Invalid JSON in data-next-bundles, ignoring auto-render', bundlesAttr);
@@ -329,11 +356,15 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     this.subscribe(useCartStore, this.syncWithCart.bind(this));
     this.syncWithCart(useCartStore.getState());
 
-    // Re-fetch prices when the active currency changes
+    // Re-fetch prices when the active currency changes (debounced to avoid thundering herd)
     this.boundCurrencyChangeHandler = () => {
-      for (const card of this.cards) {
-        void this.fetchAndUpdateBundlePrice(card);
-      }
+      if (this.currencyChangeTimeout !== null) clearTimeout(this.currencyChangeTimeout);
+      this.currencyChangeTimeout = setTimeout(() => {
+        this.currencyChangeTimeout = null;
+        for (const card of this.cards) {
+          void this.fetchAndUpdateBundlePrice(card);
+        }
+      }, 150);
     };
     document.addEventListener('next:currency-changed', this.boundCurrencyChangeHandler);
 
@@ -362,9 +393,10 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     const wrapper = document.createElement('div');
     wrapper.innerHTML = html.trim();
 
+    const firstChild = wrapper.firstElementChild;
     const cardEl =
       wrapper.querySelector<HTMLElement>('[data-next-bundle-card]') ??
-      (wrapper.firstElementChild as HTMLElement | null);
+      (firstChild instanceof HTMLElement ? firstChild : null);
 
     if (!cardEl) {
       this.logger.warn('Bundle template produced no root element for bundle', bundle.id);
@@ -374,6 +406,9 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     cardEl.setAttribute('data-next-bundle-card', '');
     cardEl.setAttribute('data-next-bundle-id', bundle.id);
     cardEl.setAttribute('data-next-bundle-items', JSON.stringify(bundle.items));
+    if (bundle.vouchers?.length) {
+      cardEl.setAttribute('data-next-bundle-vouchers', JSON.stringify(bundle.vouchers));
+    }
 
     return cardEl;
   }
@@ -414,6 +449,8 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
 
     const isPreSelected = el.getAttribute('data-next-selected') === 'true';
 
+    const vouchers = this.parseVouchers(el.getAttribute('data-next-bundle-vouchers'));
+
     const slots: BundleSlot[] = [];
     let slotIdx = 0;
     for (const item of items) {
@@ -425,6 +462,7 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
             originalPackageId: item.packageId,
             activePackageId: item.packageId,
             quantity: 1,
+            noSlot: item.noSlot,
           });
         }
       } else {
@@ -434,11 +472,12 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
           originalPackageId: item.packageId,
           activePackageId: item.packageId,
           quantity: item.quantity,
+          noSlot: item.noSlot,
         });
       }
     }
 
-    const card: BundleCard = { element: el, bundleId, items, slots, isPreSelected };
+    const card: BundleCard = { element: el, bundleId, items, slots, isPreSelected, vouchers };
 
     this.cards.push(card);
     el.classList.add('next-bundle-card');
@@ -496,11 +535,20 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     const allPackages = useCampaignStore.getState().packages || [];
     placeholder.innerHTML = '';
 
+    const cartState = useCartStore.getState();
+    const effectiveItems = this.getEffectiveItems(card);
+    const isInCart = effectiveItems.every(bi => {
+      const ci = cartState.items.find(i => i.packageId === bi.packageId);
+      return ci != null && ci.quantity >= bi.quantity;
+    });
+
     for (const slot of card.slots) {
+      if (slot.noSlot) continue;
+
       const pkg = allPackages.find(p => p.ref_id === slot.activePackageId);
       if (!pkg) continue;
 
-      const slotEl = this.createSlotElement(card.bundleId, slot, pkg);
+      const slotEl = this.createSlotElement(card.bundleId, slot, pkg, isInCart);
 
       const variantPlaceholder = slotEl.querySelector<HTMLElement>('[data-next-variant-selectors]');
       if (variantPlaceholder && (pkg.product_variant_attribute_values?.length ?? 0) > 0) {
@@ -511,13 +559,13 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     }
   }
 
-  private createSlotElement(bundleId: string, slot: BundleSlot, pkg: Package): HTMLElement {
+  private createSlotElement(bundleId: string, slot: BundleSlot, pkg: Package, isInCart = false): HTMLElement {
     // Pull SummaryLine for this package (enriched with discounted prices from API).
     // Cart summary is used when the bundle is in the cart; preview lines (from
     // calculateBundlePrice) are used as a fallback for non-selected bundles.
-    const summaryLine =
-      useCartStore.getState().summary?.lines.find(l => l.package_id === slot.activePackageId) ??
-      this.previewLines.get(bundleId)?.find(l => l.package_id === slot.activePackageId);
+    const summaryLine = isInCart
+      ? useCartStore.getState().summary?.lines.find(l => l.package_id === slot.activePackageId)
+      : this.previewLines.get(bundleId)?.find(l => l.package_id === slot.activePackageId);
 
     const hasDiscount = summaryLine ? parseFloat(summaryLine.total_discount) > 0 : false;
     const hasSavings = summaryLine?.price_retail_total != null
@@ -690,7 +738,8 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
       const html = this.variantOptionTemplate.replace(/\{([^}]+)\}/g, (_, k) => vars[k] ?? '');
       const temp = document.createElement('div');
       temp.innerHTML = html.trim();
-      const el = temp.firstElementChild as HTMLElement | null;
+      const first = temp.firstElementChild;
+      const el = first instanceof HTMLElement ? first : null;
       if (!el) continue;
 
       el.dataset.nextVariantOption = code;
@@ -749,7 +798,8 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
 
     const selectedAttrs: Record<string, string> = {};
     slotEl.querySelectorAll<HTMLElement>('[data-variant-code]').forEach(g => {
-      const attrCode = g.dataset.variantCode!;
+      const attrCode = g.dataset.variantCode;
+      if (!attrCode) return;
       const sel = g.querySelector<HTMLElement>('[data-next-variant-option][data-selected="true"]');
       if (sel?.dataset.nextVariantValue) selectedAttrs[attrCode] = sel.dataset.nextVariantValue;
     });
@@ -782,6 +832,8 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     slotIndex: number,
     selectedAttrs: Record<string, string>
   ): Promise<void> {
+    if (this.isApplying) return;
+
     const slot = card.slots[slotIndex];
     if (!slot) return;
 
@@ -805,15 +857,13 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
 
     if (slot.activePackageId === matched.ref_id) return;
 
-    // Snapshot effective items BEFORE the change so we know what to remove
-    const previousEffective = this.getEffectiveItems(card);
     slot.activePackageId = matched.ref_id;
 
     // Re-render slots so image and all template vars reflect the new package
     this.renderSlotsForCard(card);
 
     if (this.mode === 'swap' && this.selectedCard === card) {
-      await this.applyEffectiveChange(previousEffective, card);
+      await this.applyEffectiveChange(card);
     }
 
     void this.fetchAndUpdateBundlePrice(card);
@@ -834,6 +884,9 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     this.selectCard(card);
     this.emit('bundle:selected', { bundleId: card.bundleId, items: this.getEffectiveItems(card) });
 
+    if (card.vouchers.length || previous?.vouchers.length) {
+      await this.applyVoucherSwap(previous, card);
+    }
     if (this.mode === 'swap') {
       await this.applyBundle(previous, card);
     }
@@ -871,29 +924,33 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
    *
    * - Swapping from a previous bundle: strips previous bundle's packages and
    *   replaces them with the new bundle, leaving unrelated items untouched.
-   * - First selection (no previous): adds bundle items not already in the cart.
+   * - First selection (no previous): replaces the entire cart with the bundle's items.
    *
    * Uses getEffectiveItems() so variant selections are respected.
    */
   private async applyBundle(previous: BundleCard | null, selected: BundleCard): Promise<void> {
     const cartStore = useCartStore.getState();
-    const newItems = this.getEffectiveItems(selected);
+    const newItems = this.getEffectiveItems(selected).map(i => ({ ...i, bundleId: selected.bundleId }));
     try {
       if (previous) {
-        const prevIds = new Set(this.getEffectiveItems(previous).map(i => i.packageId));
         const retained = cartStore.items
-          .filter(ci => !prevIds.has(ci.packageId))
-          .map(ci => ({ packageId: ci.packageId, quantity: ci.quantity }));
+          .filter(ci => ci.bundleId !== previous.bundleId)
+          .map(ci => ({ packageId: ci.packageId, quantity: ci.quantity, isUpsell: ci.is_upsell, bundleId: ci.bundleId }));
         await cartStore.swapCart([...retained, ...newItems]);
       } else {
-        for (const item of newItems) {
-          if (!cartStore.hasItem(item.packageId)) {
-            await cartStore.addItem({ packageId: item.packageId, quantity: item.quantity, isUpsell: false });
-          }
-        }
+        await cartStore.swapCart(newItems);
       }
       this.logger.debug(`Applied bundle "${selected.bundleId}"`, newItems);
     } catch (error) {
+      // Revert visual selection so UI stays consistent with cart state
+      if (previous) {
+        this.selectCard(previous);
+      } else {
+        selected.element.classList.remove('next-selected');
+        selected.element.setAttribute('data-next-selected', 'false');
+        this.selectedCard = null;
+        this.element.removeAttribute('data-selected-bundle');
+      }
       this.handleError(error, 'applyBundle');
     }
   }
@@ -903,18 +960,16 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
    * Swaps the previous effective items out and the new ones in.
    */
   private async applyEffectiveChange(
-    previousItems: BundleItem[],
     card: BundleCard
   ): Promise<void> {
     if (this.isApplying) return;
     this.isApplying = true;
     try {
       const cartStore = useCartStore.getState();
-      const prevIds = new Set(previousItems.map(i => i.packageId));
       const retained = cartStore.items
-        .filter(ci => !prevIds.has(ci.packageId))
-        .map(ci => ({ packageId: ci.packageId, quantity: ci.quantity }));
-      const newItems = this.getEffectiveItems(card);
+        .filter(ci => ci.bundleId !== card.bundleId)
+        .map(ci => ({ packageId: ci.packageId, quantity: ci.quantity, isUpsell: ci.is_upsell, bundleId: ci.bundleId }));
+      const newItems = this.getEffectiveItems(card).map(i => ({ ...i, bundleId: card.bundleId }));
       await cartStore.swapCart([...retained, ...newItems]);
       this.logger.debug(`Variant change synced for bundle "${card.bundleId}"`, newItems);
     } catch (error) {
@@ -934,20 +989,43 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     card.element.setAttribute('data-next-loading', 'true');
 
     try {
-      const { totals, summary } = await calculateBundlePrice(items, { currency });
+      const vouchers = card.vouchers.length ? card.vouchers : undefined;
+      const { totals, summary } = await calculateBundlePrice(items, { currency, exclude_shipping: !this.includeShipping, vouchers });
+
+      // Skip stale results if effective items changed while the fetch was in flight
+      const currentItems = this.getEffectiveItems(card);
+      if (
+        currentItems.length !== items.length ||
+        currentItems.some((ci, i) => ci.packageId !== items[i].packageId || ci.quantity !== items[i].quantity)
+      ) {
+        return;
+      }
 
       this.previewLines.set(card.bundleId, summary.lines);
       // Re-render slots so per-item prices reflect the preview discounts
       if (this.slotTemplate) this.renderSlotsForCard(card);
 
+      // Compute compareTotal from campaign package retail prices so savings
+      // reflects the retail/compare-at price diff, not just coupon discounts.
+      const campaignPackages = useCampaignStore.getState().packages;
+      const retailCompareTotal = items.reduce((sum, item) => {
+        const pkg = campaignPackages.find(p => p.ref_id === item.packageId);
+        if (!pkg?.price_retail) return sum;
+        return sum + parseFloat(pkg.price_retail) * item.quantity;
+      }, 0);
+      const effectiveTotals = retailCompareTotal > 0
+        ? buildCartTotals(summary, { exclude_shipping: !this.includeShipping, compareTotal: retailCompareTotal })
+        : totals;
+
       card.element.querySelectorAll<HTMLElement>('[data-next-bundle-price]').forEach(el => {
         const field = el.getAttribute('data-next-bundle-price') || 'total';
         switch (field) {
-          case 'subtotal':   el.textContent = totals.subtotal.formatted; break;
-          case 'compare':    el.textContent = totals.compareTotal.formatted; break;
-          case 'savings':    el.textContent = totals.savings.formatted; break;
-          case 'savings-pct': el.textContent = totals.savingsPercentage.formatted; break;
-          default:           el.textContent = totals.total.formatted; break;
+          case 'subtotal':   el.textContent = effectiveTotals.subtotal.formatted; break;
+          case 'compare':    el.textContent = effectiveTotals.compareTotal.formatted; break;
+          case 'savings':    el.textContent = effectiveTotals.savings.formatted; break;
+          case 'savingsPercentage': el.textContent = effectiveTotals.savingsPercentage.formatted; break;
+          case 'totalExclShipping': el.textContent = effectiveTotals.totalExclShipping.formatted; break;
+          default:           el.textContent = effectiveTotals.total.formatted; break;
         }
       });
     } catch (error) {
@@ -955,6 +1033,37 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     } finally {
       card.element.classList.remove('next-loading');
       card.element.setAttribute('data-next-loading', 'false');
+    }
+  }
+
+  // ─── Voucher helpers ──────────────────────────────────────────────────────────
+
+  private parseVouchers(attr: string | null): string[] {
+    if (!attr) return [];
+    const trimmed = attr.trim();
+    if (trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === 'string') : [];
+      } catch {
+        this.logger.warn('Invalid JSON in data-next-bundle-vouchers', attr);
+        return [];
+      }
+    }
+    return trimmed.split(',').map(s => s.trim()).filter(Boolean);
+  }
+
+  private async applyVoucherSwap(previous: BundleCard | null, next: BundleCard): Promise<void> {
+    const { useCheckoutStore } = await import('@/stores/checkoutStore');
+    const checkoutStore = useCheckoutStore.getState();
+    const toRemove = previous?.vouchers ?? [];
+    const toApply = next.vouchers;
+    for (const code of toRemove) {
+      if (!toApply.includes(code)) checkoutStore.removeVoucher(code);
+    }
+    for (const code of toApply) {
+      const current = useCheckoutStore.getState().vouchers;
+      if (!current.includes(code)) checkoutStore.addVoucher(code);
     }
   }
 
@@ -980,8 +1089,13 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
       const preSelected = this.cards.find(c => c.isPreSelected);
       if (preSelected) {
         this.selectCard(preSelected);
+        const initVouchers = preSelected.vouchers.length
+          ? this.applyVoucherSwap(null, preSelected)
+          : Promise.resolve();
         if (this.mode === 'swap' && cartState.isEmpty) {
-          void this.applyBundle(null, preSelected);
+          void initVouchers.then(() => this.applyBundle(null, preSelected));
+        } else {
+          void initVouchers;
         }
       }
     }
@@ -1005,6 +1119,10 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     if (this.boundVariantOptionClick) {
       this.element.removeEventListener('click', this.boundVariantOptionClick);
       this.boundVariantOptionClick = null;
+    }
+    if (this.currencyChangeTimeout !== null) {
+      clearTimeout(this.currencyChangeTimeout);
+      this.currencyChangeTimeout = null;
     }
     if (this.boundCurrencyChangeHandler) {
       document.removeEventListener('next:currency-changed', this.boundCurrencyChangeHandler);

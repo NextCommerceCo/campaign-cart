@@ -30,6 +30,8 @@ export interface BundlePriceOptions {
   shippingMethod?: number;
   /** Cache TTL in milliseconds. Defaults to 10 minutes. Pass 0 to skip cache. */
   ttl?: number;
+  /** When true, shipping is excluded from the returned total. Default false. */
+  exclude_shipping?: boolean;
 }
 
 interface CachedBundlePrice {
@@ -37,12 +39,21 @@ interface CachedBundlePrice {
   expiresAt: number;
 }
 
-function bundleCacheKey(items: BundlePriceItem[], currency?: string | null): string {
-  const itemKey = [...items]
-    .sort((a, b) => a.packageId - b.packageId)
-    .map(i => `${i.packageId}x${i.quantity}`)
-    .join('-');
-  return BUNDLE_PRICE_CACHE_PREFIX + itemKey + (currency ? `-${currency}` : '');
+async function bundleCacheKey(
+  items: BundlePriceItem[],
+  currency?: string | null,
+  vouchers?: string[],
+  apiKey?: string,
+): Promise<string> {
+  const data = JSON.stringify({
+    items: [...items].sort((a, b) => a.packageId - b.packageId),
+    currency: currency ?? null,
+    vouchers: vouchers ? [...vouchers].sort() : [],
+    apiKey: apiKey ?? '',
+  });
+  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(data));
+  const hex = Array.from(new Uint8Array(bytes)).map(b => b.toString(16).padStart(2, '0')).join('');
+  return BUNDLE_PRICE_CACHE_PREFIX + hex;
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -52,6 +63,7 @@ export interface CalculateCartParams {
   vouchers?: string[];
   currency?: string | null;
   shippingMethod?: number;
+  exclude_shipping?: boolean;
 }
 
 export interface CalculateCartResult {
@@ -80,7 +92,7 @@ export async function calculateCart(
 
   const summary = await client.calculateSummary(cartData);
 
-  return { totals: buildCartTotals(summary), summary };
+  return { totals: buildCartTotals(summary, { exclude_shipping: params.exclude_shipping }), summary };
 }
 
 /**
@@ -97,8 +109,10 @@ export async function calculateBundlePrice(
   items: BundlePriceItem[],
   options: BundlePriceOptions = {}
 ): Promise<CalculateCartResult> {
+  const { useConfigStore } = await import('@/stores/configStore');
+  const apiKey = useConfigStore.getState().apiKey;
   const ttl = options.ttl ?? BUNDLE_PRICE_CACHE_TTL_MS;
-  const cacheKey = bundleCacheKey(items, options.currency);
+  const cacheKey = await bundleCacheKey(items, options.currency, options.vouchers, apiKey);
 
   if (ttl > 0) {
     const cached = sessionStorageManager.get<CachedBundlePrice>(cacheKey);
@@ -117,6 +131,7 @@ export async function calculateBundlePrice(
     vouchers: options.vouchers,
     currency: options.currency,
     shippingMethod: options.shippingMethod,
+    exclude_shipping: options.exclude_shipping,
   });
 
   if (ttl > 0) {
@@ -132,15 +147,18 @@ export async function calculateBundlePrice(
 /**
  * Evict a specific bundle's cached price (e.g. after a coupon is applied).
  */
-export function clearBundlePriceCache(items: BundlePriceItem[], currency?: string | null): void {
-  sessionStorageManager.remove(bundleCacheKey(items, currency));
+export async function clearBundlePriceCache(items: BundlePriceItem[], currency?: string | null, apiKey?: string): Promise<void> {
+  sessionStorageManager.remove(await bundleCacheKey(items, currency, undefined, apiKey));
 }
 
 /**
  * Transform a raw CartSummary API response into a CartTotals object.
  * Pure function – no side effects, easy to test.
  */
-export function buildCartTotals(response: CartSummary): CartTotals {
+export function buildCartTotals(
+  response: CartSummary,
+  options?: { exclude_shipping?: boolean; compareTotal?: number }
+): CartTotals {
   const subtotal = parseFloat(response.subtotal);
   const total = parseFloat(response.total);
   const discount = parseFloat(response.total_discount);
@@ -151,12 +169,18 @@ export function buildCartTotals(response: CartSummary): CartTotals {
     ? shippingOriginalPrice - shippingPrice
     : 0;
 
-  // compareTotal is the cart value before any discounts are applied.
-  // CartSummary does not include retail/compare-at prices, so this is the
-  // best approximation: the full campaign price before discounts.
-  const compareTotal = subtotal + discount;
-  const savingsPercentage = compareTotal > 0 ? (discount / compareTotal) * 100 : 0;
-  const hasSavings = discount > 0;
+  const effectiveTotal = options?.exclude_shipping ? total - shippingPrice : total;
+
+  // compareTotal: use provided retail/compare-at total when available (e.g. from
+  // campaign package price_retail fields), otherwise fall back to the undiscounted
+  // campaign subtotal so savings only reflects coupon/offer discounts.
+  const compareTotal = options?.compareTotal ?? subtotal;
+  const retailSavings = Math.max(0, compareTotal - subtotal);
+  const totalSavingsValue = Math.max(0, compareTotal - effectiveTotal);
+  const savingsPercentage = compareTotal > 0 ? (retailSavings / compareTotal) * 100 : 0;
+  const totalSavingsPercentage = compareTotal > 0 ? (totalSavingsValue / compareTotal) * 100 : 0;
+  const hasSavings = retailSavings > 0;
+  const hasTotalSavings = totalSavingsValue > 0;
 
   const count = response.lines.reduce((sum, line) => sum + line.quantity, 0);
   const isEmpty = response.lines.length === 0;
@@ -173,22 +197,19 @@ export function buildCartTotals(response: CartSummary): CartTotals {
     },
     tax: { value: 0, formatted: formatCurrency(0) },
     discounts: { value: discount, formatted: formatCurrency(discount) },
-    total: { value: total, formatted: formatCurrency(total) },
+    total: { value: effectiveTotal, formatted: formatCurrency(effectiveTotal) },
     totalExclShipping: {
       value: total - shippingPrice,
       formatted: formatCurrency(total - shippingPrice),
     },
     count,
     isEmpty,
-    // savings / compareTotal: retail savings are not available in CartSummary.
-    // These reflect discount savings (coupons + offers) until retail price
-    // data is passed in from the campaign.
     compareTotal: { value: compareTotal, formatted: formatCurrency(compareTotal) },
-    savings: { value: discount, formatted: formatCurrency(discount) },
+    savings: { value: retailSavings, formatted: formatCurrency(retailSavings) },
     savingsPercentage: { value: savingsPercentage, formatted: formatPercentage(savingsPercentage) },
     hasSavings,
-    totalSavings: { value: discount, formatted: formatCurrency(discount) },
-    totalSavingsPercentage: { value: savingsPercentage, formatted: formatPercentage(savingsPercentage) },
-    hasTotalSavings: hasSavings,
+    totalSavings: { value: totalSavingsValue, formatted: formatCurrency(totalSavingsValue) },
+    totalSavingsPercentage: { value: totalSavingsPercentage, formatted: formatPercentage(totalSavingsPercentage) },
+    hasTotalSavings,
   };
 }

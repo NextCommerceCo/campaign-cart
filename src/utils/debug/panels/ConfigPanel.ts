@@ -110,7 +110,7 @@ export class ConfigPanel implements DebugPanel {
                 </div>
                 <div class="config-item">
                   <span class="config-key">Base URL:</span>
-                  <span class="config-value">https://campaign.midless.dev</span>
+                  <span class="config-value">https://campaigns.apps.29next.com</span>
                 </div>
               </div>
             </div>

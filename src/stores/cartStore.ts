@@ -448,6 +448,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
             price_retail: packageData.price_retail,
             quantity: item.quantity,
             is_upsell: (item as any).isUpsell || false, // Preserve isUpsell flag if provided
+          bundleId: (item as any).bundleId,
             image: packageData.image,
             sku: packageData.product_sku || undefined,
             qty: packageData.qty,
@@ -906,45 +907,18 @@ const cartStoreInstance = create<CartState & CartActions>()(
 
       // Coupon methods
       applyCoupon: async (code: string) => {
-        const { useConfigStore } = await import('./configStore');
-        const configState = useConfigStore.getState();
-        const state = get();
+        const { useCheckoutStore } = await import('./checkoutStore');
+        const checkoutState = useCheckoutStore.getState();
 
-        // Normalize code
         const normalizedCode = code.toUpperCase().trim();
 
         // Check if already applied
-        if ((state.appliedCoupons || []).some(c => c.code === normalizedCode)) {
+        if (checkoutState.vouchers.includes(normalizedCode)) {
           return { success: false, message: 'Coupon already applied' };
         }
 
-        // Get discount definition
-        const discount = configState.discounts[normalizedCode];
-        if (!discount) {
-          return { success: false, message: 'Invalid coupon code' };
-        }
-
-        // Validate coupon
-        const validation = get().validateCoupon(normalizedCode);
-        if (!validation.valid) {
-          return {
-            success: false,
-            message: validation.message || 'Coupon cannot be applied',
-          };
-        }
-
-        // Apply coupon - store definition but calculate discount dynamically
-        set(state => ({
-          ...state,
-          appliedCoupons: [
-            ...state.appliedCoupons,
-            {
-              code: normalizedCode,
-              discount: 0, // Will be calculated dynamically in calculateTotals
-              definition: discount,
-            },
-          ],
-        }));
+        // Add to checkout vouchers
+        checkoutState.addVoucher(normalizedCode);
 
         // Recalculate totals
         get().calculateTotals();

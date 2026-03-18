@@ -64,7 +64,13 @@ export class SDKInitializer {
       // IMPORTANT: Wait for cart store to fully rehydrate from storage
       // This prevents race conditions where display enhancers initialize with empty cart state
       await this.waitForStoreRehydration();
-      
+
+      // Clear cart if meta[name="next-clear-cart"] content="true"
+      if (useConfigStore.getState().clearCartOnInit) {
+        await useCartStore.getState().clear();
+        this.logger.debug('Cart cleared on init (next-clear-cart)');
+      }
+
       // Initialize global error handler
       this.initializeErrorHandler();
 
