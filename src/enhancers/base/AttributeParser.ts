@@ -219,19 +219,9 @@ export class AttributeParser {
       types.push('quantity-text');
     }
 
-    // Check for offer list enhancer
-    if (element.hasAttribute('data-next-offer-list')) {
-      types.push('offer-list');
-    }
-
     // Check for cart summary enhancer
     if (element.hasAttribute('data-next-cart-summary')) {
       types.push('cart-summary');
-    }
-
-    // Check for cart item slots enhancer
-    if (element.hasAttribute('data-next-cart-slots')) {
-      types.push('cart-slots');
     }
 
     // Check for bundle selector enhancer
@@ -239,10 +229,6 @@ export class AttributeParser {
       types.push('bundle-selector');
     }
 
-    // Check for format currency enhancer
-    if (element.hasAttribute('data-next-format-currency')) {
-      types.push('format-currency');
-    }
 
     // Remove duplicates (just in case)
     return [...new Set(types)];
@@ -423,8 +409,6 @@ export class AttributeParser {
 
     while (i < text.length) {
       const char = text[i];
-      const nextChar = text[i + 1];
-
       // Track parentheses depth
       if (char === '(') {
         depth++;

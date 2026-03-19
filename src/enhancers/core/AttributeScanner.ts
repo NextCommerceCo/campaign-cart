@@ -69,7 +69,6 @@ export class AttributeScanner {
         '[data-next-cart-items]',
         '[data-next-cart-summary]',
         '[data-next-bundle-selector]',
-        '[data-next-format-currency]',
         '[data-next-order-items]',
         '[data-next-quantity="increase"]',
         '[data-next-quantity="decrease"]',
@@ -426,10 +425,6 @@ export class AttributeScanner {
           const { ProfileSelectorEnhancer } = await import('@/enhancers/profile/ProfileSwitcherEnhancer');
           return new ProfileSelectorEnhancer(element);
           
-        case 'format-currency':
-          const { FormatCurrencyEnhancer } = await import('@/enhancers/display/FormatCurrencyEnhancer');
-          return new FormatCurrencyEnhancer(element);
-
         default:
           this.logger.warn(`Unknown enhancer type: ${type}`);
           return null;
