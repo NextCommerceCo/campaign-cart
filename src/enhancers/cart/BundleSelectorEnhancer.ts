@@ -214,6 +214,7 @@
 import { BaseEnhancer } from '@/enhancers/base/BaseEnhancer';
 import { useCartStore } from '@/stores/cartStore';
 import { useCampaignStore } from '@/stores/campaignStore';
+import { useCheckoutStore } from '@/stores/checkoutStore';
 import { calculateBundlePrice, buildCartTotals } from '@/utils/calculations/CartCalculator';
 import type { CartState } from '@/types/global';
 import type { Package } from '@/types/campaign';
@@ -355,6 +356,19 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
 
     this.subscribe(useCartStore, this.syncWithCart.bind(this));
     this.syncWithCart(useCartStore.getState());
+
+    // Re-fetch bundle prices whenever checkout vouchers change
+    let prevCheckoutVouchers = useCheckoutStore.getState().vouchers;
+    this.subscribe(useCheckoutStore, (state) => {
+      const next = state.vouchers;
+      if (next.length !== prevCheckoutVouchers.length ||
+          next.some((v, i) => v !== prevCheckoutVouchers[i])) {
+        prevCheckoutVouchers = next;
+        for (const card of this.cards) {
+          void this.fetchAndUpdateBundlePrice(card);
+        }
+      }
+    });
 
     // Re-fetch prices when the active currency changes (debounced to avoid thundering herd)
     this.boundCurrencyChangeHandler = () => {
@@ -989,7 +1003,9 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     card.element.setAttribute('data-next-loading', 'true');
 
     try {
-      const vouchers = card.vouchers.length ? card.vouchers : undefined;
+      const checkoutVouchers = useCheckoutStore.getState().vouchers;
+      const merged = [...new Set([...checkoutVouchers, ...card.vouchers])];
+      const vouchers = merged.length ? merged : undefined;
       const { totals, summary } = await calculateBundlePrice(items, { currency, exclude_shipping: !this.includeShipping, vouchers });
 
       // Skip stale results if effective items changed while the fetch was in flight
@@ -1022,8 +1038,8 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
         switch (field) {
           case 'subtotal':   el.textContent = effectiveTotals.subtotal.formatted; break;
           case 'compare':    el.textContent = effectiveTotals.compareTotal.formatted; break;
-          case 'savings':    el.textContent = effectiveTotals.savings.formatted; break;
-          case 'savingsPercentage': el.textContent = effectiveTotals.savingsPercentage.formatted; break;
+          case 'savings':    el.textContent = effectiveTotals.totalSavings.formatted; break;
+          case 'savingsPercentage': el.textContent = effectiveTotals.totalSavingsPercentage.formatted; break;
           case 'totalExclShipping': el.textContent = effectiveTotals.totalExclShipping.formatted; break;
           default:           el.textContent = effectiveTotals.total.formatted; break;
         }
@@ -1092,7 +1108,7 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
         const initVouchers = preSelected.vouchers.length
           ? this.applyVoucherSwap(null, preSelected)
           : Promise.resolve();
-        if (this.mode === 'swap' && cartState.isEmpty) {
+        if (this.mode === 'swap') {
           void initVouchers.then(() => this.applyBundle(null, preSelected));
         } else {
           void initVouchers;
