@@ -67,9 +67,7 @@ export class AttributeScanner {
         '[data-next-timer-display]',
         '[data-next-timer-expired]',
         '[data-next-cart-items]',
-        '[data-next-offer-list]',
         '[data-next-cart-summary]',
-        '[data-next-cart-slots]',
         '[data-next-bundle-selector]',
         '[data-next-format-currency]',
         '[data-next-order-items]',
@@ -374,17 +372,9 @@ export class AttributeScanner {
           const { CartItemListEnhancer } = await import('@/enhancers/cart/CartItemListEnhancer');
           return new CartItemListEnhancer(element);
 
-        case 'offer-list':
-          const { CartOfferListEnhancer } = await import('@/enhancers/cart/CartOfferListEnhancer');
-          return new CartOfferListEnhancer(element);
-
         case 'cart-summary':
           const { CartSummaryEnhancer } = await import('@/enhancers/cart/CartSummaryEnhancer');
           return new CartSummaryEnhancer(element);
-
-        case 'cart-slots':
-          const { CartItemSlotsEnhancer } = await import('@/enhancers/cart/CartItemSlotsEnhancer');
-          return new CartItemSlotsEnhancer(element);
 
         case 'bundle-selector':
           const { BundleSelectorEnhancer } = await import('@/enhancers/cart/BundleSelectorEnhancer');
