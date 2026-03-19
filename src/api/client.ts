@@ -9,6 +9,7 @@ import type {
   CartBase,
   CreateOrder,
   AddUpsellLine,
+  AddressAutocomplete,
   CartCalculateSummary,
   CartSummary,
 } from '@/types/api';
@@ -101,15 +102,23 @@ export class ApiClient {
     });
   }
 
+  public async getAddressesAutocomplete(query_text: string, country?: string, language?: string, signal?: AbortSignal): Promise<any> {
+    const params = new URLSearchParams({ query_text });
+
+    if (country) params.append('country', country);
+    if (language) params.append('language', language);
+
+    return this.request<AddressAutocomplete>(`/api/v1/addresses/autocomplete/?${params.toString()}`, { signal });
+  }
+
   // Get request type from endpoint
-  private getRequestType(
-    endpoint: string
-  ): 'campaign' | 'cart' | 'order' | 'upsell' | 'prospect_cart' {
+  private getRequestType(endpoint: string): string {
     if (endpoint.includes('/campaigns')) return 'campaign';
     if (endpoint.includes('/upsells')) return 'upsell';
     if (endpoint.includes('/orders')) return 'order';
     if (endpoint.includes('/prospect-carts')) return 'prospect_cart';
     if (endpoint.includes('/carts')) return 'cart';
+    if (endpoint.includes('/addresses')) return 'addresses';
     return 'campaign'; // default
   }
 
@@ -133,11 +142,13 @@ export class ApiClient {
     const method = options?.method || 'GET';
     const url = `${this.baseURL}${endpoint}`;
 
+
     const headers = {
       Authorization: this.apiKey,
       'Content-Type': 'application/json',
       ...options?.headers,
     };
+
 
     this.logger.debug(`API Request: ${method} ${url}`);
 
@@ -176,6 +187,7 @@ export class ApiClient {
         errorMessage = `API Error: ${response.status} ${response.statusText}`;
         errorType = this.getErrorType(response.status);
 
+
         // Try to parse error response body
         let errorData: any = {};
         try {
@@ -186,6 +198,7 @@ export class ApiClient {
         } catch (parseError) {
           this.logger.warn('Failed to parse error response body');
         }
+
 
         this.logger.error(errorMessage, errorData);
 
@@ -208,6 +221,7 @@ export class ApiClient {
       } else {
         this.logger.error('API request failed:', String(error));
       }
+
 
       throw error;
     }

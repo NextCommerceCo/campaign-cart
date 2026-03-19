@@ -324,4 +324,21 @@ export interface PaymentDetail {
     payment_gateway?: number;
     payment_gateway_group?: number;
 }
+export interface AddressAutocompleteResult {
+    label: string;
+    address: {
+        line1: string;
+        line2?: string;
+        line3?: string;
+        city: string;
+        state: string;
+        state_code: string;
+        postcode: string;
+        country: string;
+        country_code: string;
+    };
+}
+export interface AddressAutocomplete {
+    results: AddressAutocompleteResult[];
+}
 //# sourceMappingURL=api.d.ts.map
