@@ -1,8 +1,0 @@
-export declare function preserveQueryParams(targetUrl: string, preserveParams?: string[] | 'all'): string;
-export declare function navigateWithParams(url: string, options?: {
-    replace?: boolean;
-    preserveParams?: string[];
-}): void;
-export declare function isDebugMode(): boolean;
-export declare function isDebuggerMode(): boolean;
-//# sourceMappingURL=url-utils.d.ts.map
