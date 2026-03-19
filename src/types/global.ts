@@ -2,6 +2,8 @@
  * Global type definitions for the SDK
  */
 
+import type { Offer } from './campaign';
+
 // Event Map for type-safe event handling
 export interface EventMap {
   'cart:updated': CartState;
@@ -398,6 +400,7 @@ export interface Campaign {
   packages: Package[];
   payment_env_key: string;
   shipping_methods: ShippingOption[];
+  offers?: Offer[];
   available_currencies?: Array<{ code: string; label: string }>;
   available_shipping_countries?: Array<{ code: string; label: string }>;
   available_express_payment_methods?: Array<{ code: string; label: string }>;

@@ -5,6 +5,7 @@ export interface Campaign {
     packages: Package[];
     payment_env_key: string;
     shipping_methods: ShippingOption[];
+    offers?: Offer[];
     available_currencies?: Array<{
         code: string;
         label: string;
@@ -69,5 +70,46 @@ export interface ShippingOption {
     ref_id: number;
     code: string;
     price: string;
+}
+export type BenefitType = 'package_percentage' | 'shipping_percentage' | 'order_percentage';
+export type ConditionType = 'any' | 'count';
+export type OfferType = 'offer' | 'voucher';
+export interface OfferBenefit {
+    description: string;
+    type: BenefitType;
+    value: string;
+}
+export interface OfferCondition {
+    description: string;
+    type: ConditionType;
+    value: number;
+}
+export interface OfferPackage {
+    package_id: number;
+    package_image: string | null;
+    package_name: string;
+    package_price: string;
+    package_price_before_discount: string;
+    package_unit_qty: number;
+    product_name: string;
+    product_variant_name: string;
+    unit_price: string;
+    unit_price_before_discount: string;
+}
+export interface OfferShippingMethod {
+    code: string;
+    price: string;
+    price_before_discount: string;
+    ref_id: number;
+}
+export interface Offer {
+    benefit: OfferBenefit;
+    code?: string;
+    condition: OfferCondition;
+    name: string;
+    packages: OfferPackage[];
+    ref_id: number;
+    shipping_methods: OfferShippingMethod[];
+    type: OfferType;
 }
 //# sourceMappingURL=campaign.d.ts.map

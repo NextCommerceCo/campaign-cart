@@ -1,3 +1,4 @@
+import { Offer } from './campaign';
 export interface EventMap {
     'cart:updated': CartState;
     'cart:item-added': {
@@ -260,6 +261,26 @@ export interface EventMap {
         profileId: string;
         mappingsCount: number;
     };
+    'offer:selected': {
+        offerId: number;
+    };
+    'offer:applied': {
+        offerId: number;
+    };
+    'bundle:selected': {
+        bundleId: string;
+        items: {
+            packageId: number;
+            quantity: number;
+        }[];
+    };
+    'bundle:selection-changed': {
+        bundleId: string;
+        items: {
+            packageId: number;
+            quantity: number;
+        }[];
+    };
 }
 export interface CartItem {
     id: number;
@@ -278,6 +299,18 @@ export interface CartItem {
     price_retail_total?: string | undefined;
     price_recurring?: string | undefined;
     price_recurring_total?: string | undefined;
+    unit_price?: string | undefined;
+    original_unit_price?: string | undefined;
+    package_price?: string | undefined;
+    original_package_price?: string | undefined;
+    total?: string | undefined;
+    total_discount?: string | undefined;
+    discounts?: Array<{
+        offer_id: number;
+        amount: string;
+        description?: string;
+        name?: string;
+    }> | undefined;
     is_recurring?: boolean | undefined;
     interval?: string | null | undefined;
     interval_count?: number | null | undefined;
@@ -292,6 +325,7 @@ export interface CartItem {
     }> | undefined;
     variantSku?: string | undefined;
     groupedItemIds?: number[] | undefined;
+    bundleId?: string | undefined;
 }
 export interface SelectorItem {
     element: HTMLElement;
@@ -317,6 +351,20 @@ export interface CartState {
     totals: CartTotals;
     swapInProgress?: boolean;
     lastCurrency?: string;
+    discountDetails?: {
+        offerDiscounts: Array<{
+            offer_id: number;
+            amount: string;
+            description?: string;
+            name?: string;
+        }>;
+        voucherDiscounts: Array<{
+            amount: string;
+            description?: string;
+            name?: string;
+        }>;
+    };
+    summary?: import('./api').CartSummary;
 }
 export interface CartTotals {
     subtotal: {
@@ -324,6 +372,10 @@ export interface CartTotals {
         formatted: string;
     };
     shipping: {
+        value: number;
+        formatted: string;
+    };
+    shippingDiscount: {
         value: number;
         formatted: string;
     };
@@ -408,6 +460,7 @@ export interface Campaign {
     packages: Package[];
     payment_env_key: string;
     shipping_methods: ShippingOption[];
+    offers?: Offer[];
     available_currencies?: Array<{
         code: string;
         label: string;
@@ -465,6 +518,7 @@ export interface ConfigState {
     apiKey: string;
     campaignId: string;
     debug: boolean;
+    debugger: boolean | undefined;
     pageType: PageType;
     storeName?: string;
     spreedlyEnvironmentKey?: string | undefined;
@@ -539,6 +593,7 @@ export interface ConfigState {
     }>;
     defaultProfile?: string;
     activeProfile?: string;
+    clearCartOnInit?: boolean;
 }
 export type PageType = 'product' | 'cart' | 'checkout' | 'upsell' | 'receipt';
 export interface CardInputConfig {

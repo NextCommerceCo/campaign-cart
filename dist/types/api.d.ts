@@ -45,6 +45,62 @@ export interface Cart {
     user: User;
     attribution?: MarketingAttribution;
 }
+export interface Discount {
+    offer_id: number;
+    amount: string;
+    description?: string;
+    name?: string;
+}
+export interface SummaryLine {
+    package_id: number;
+    quantity: number;
+    discounts: Discount[];
+    original_unit_price: string;
+    original_package_price: string;
+    unit_price: string;
+    package_price: string;
+    subtotal: string;
+    total_discount: string;
+    total: string;
+    name?: string;
+    image?: string;
+    qty?: number;
+    price?: string;
+    price_total?: string;
+    price_retail?: string;
+    price_retail_total?: string;
+    price_recurring?: string;
+    price_recurring_total?: string;
+    is_recurring?: boolean;
+    interval?: 'day' | 'month' | null;
+    interval_count?: number | null;
+    product_name?: string;
+    product_variant_name?: string;
+    product_sku?: string | null;
+    product_variant_attribute_values?: Array<{
+        code: string;
+        name: string;
+        value: string;
+    }>;
+}
+export interface ShippingMethodSummary {
+    id: number;
+    name: string;
+    code: string;
+    original_price: string;
+    price: string;
+    discounts: Discount[];
+}
+export interface CartSummary {
+    lines: SummaryLine[];
+    shipping_method: ShippingMethodSummary;
+    offer_discounts: Discount[];
+    voucher_discounts: Discount[];
+    subtotal: string;
+    total_discount: string;
+    total: string;
+    currency: string;
+}
 export interface CartLine {
     id: number;
     quantity: number;
@@ -159,11 +215,6 @@ export interface Voucher {
     description?: string;
     name?: string;
 }
-export interface Discount {
-    amount: string;
-    description?: string;
-    name?: string;
-}
 export type PaymentMethod = 'apple_pay' | 'card_token' | 'paypal' | 'klarna' | 'ideal' | 'bancontact' | 'giropay' | 'google_pay' | 'sofort' | 'sepa_debit' | 'external';
 export interface CartBase {
     address?: AddressCart;
@@ -231,6 +282,12 @@ export interface CreateOrder {
     use_default_shipping_address?: boolean;
     user?: OrderUser;
     vouchers?: string[];
+}
+export interface CartCalculateSummary {
+    lines: LineWithUpsell[];
+    vouchers?: string[];
+    currency?: string | null;
+    shipping_method?: number;
 }
 export interface Address {
     country: string;

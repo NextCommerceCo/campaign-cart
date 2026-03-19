@@ -1,4 +1,4 @@
-import { CartState, CartItem, CartTotals, DiscountDefinition, AppliedCoupon } from '../types/global';
+import { CartState, CartItem, DiscountDefinition, AppliedCoupon } from '../types/global';
 interface CartActions {
     addItem: (item: Partial<CartItem> & {
         isUpsell: boolean | undefined;
@@ -51,7 +51,7 @@ export declare const cartStore: import('zustand').UseBoundStore<Omit<Omit<import
             total: number;
             totalQuantity: number;
             isEmpty: boolean;
-            totals: CartTotals;
+            totals: import('../types/global').CartTotals;
             enrichedItems: never[];
         }>>) => void;
         clearStorage: () => void;
@@ -69,7 +69,7 @@ export declare const cartStore: import('zustand').UseBoundStore<Omit<Omit<import
             total: number;
             totalQuantity: number;
             isEmpty: boolean;
-            totals: CartTotals;
+            totals: import('../types/global').CartTotals;
             enrichedItems: never[];
         }>>;
     };
@@ -94,7 +94,7 @@ export declare const useCartStore: import('zustand').UseBoundStore<Omit<Omit<imp
             total: number;
             totalQuantity: number;
             isEmpty: boolean;
-            totals: CartTotals;
+            totals: import('../types/global').CartTotals;
             enrichedItems: never[];
         }>>) => void;
         clearStorage: () => void;
@@ -112,7 +112,7 @@ export declare const useCartStore: import('zustand').UseBoundStore<Omit<Omit<imp
             total: number;
             totalQuantity: number;
             isEmpty: boolean;
-            totals: CartTotals;
+            totals: import('../types/global').CartTotals;
             enrichedItems: never[];
         }>>;
     };

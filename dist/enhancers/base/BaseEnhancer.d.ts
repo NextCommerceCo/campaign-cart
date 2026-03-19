@@ -24,6 +24,7 @@ export declare abstract class BaseEnhancer {
     protected removeClass(className: string): void;
     protected hasClass(className: string): boolean;
     protected toggleClass(className: string, force?: boolean): void;
+    protected setLoading(loading: boolean): void;
     protected updateTextContent(content: string): void;
     protected updateInnerHTML(html: string): void;
     protected cleanupEventListeners(): void;

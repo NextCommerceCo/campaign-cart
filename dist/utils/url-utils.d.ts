@@ -4,4 +4,5 @@ export declare function navigateWithParams(url: string, options?: {
     preserveParams?: string[];
 }): void;
 export declare function isDebugMode(): boolean;
+export declare function isDebuggerMode(): boolean;
 //# sourceMappingURL=url-utils.d.ts.map

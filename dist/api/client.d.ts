@@ -1,4 +1,4 @@
-import { Campaign, Cart, Order, CartBase, CreateOrder, AddUpsellLine } from '../types/api';
+import { Campaign, Cart, Order, CartBase, CreateOrder, AddUpsellLine, CartCalculateSummary, CartSummary } from '../types/api';
 export declare class ApiClient {
     private baseURL;
     private apiKey;
@@ -8,6 +8,7 @@ export declare class ApiClient {
     createCart(data: CartBase & {
         currency?: string;
     }): Promise<Cart>;
+    calculateSummary(data: CartCalculateSummary): Promise<CartSummary>;
     createOrder(data: CreateOrder & {
         currency?: string;
     }): Promise<Order>;
