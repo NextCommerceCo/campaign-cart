@@ -49,31 +49,39 @@
  *
  * ─── SUMMARY LISTS ───────────────────────────────────────────────────────────
  *
- * Inside a custom <template> you can include list containers. The enhancer will
- * find them after rendering and populate them from the API summary.
+ * Inside a custom <template> you can include list containers. Each container
+ * uses a dedicated attribute and must include a <template> child for its row.
  *
  * Discount lists — {discount.name}, {discount.amount}, {discount.description}:
  *
- *   <ul data-summary-list="offer_discounts">
+ *   <ul data-summary-offer-discounts>
  *     <template><li>{discount.name} — -{discount.amount}</li></template>
  *   </ul>
  *
- *   <ul data-summary-list="voucher_discounts">
+ *   <ul data-summary-voucher-discounts>
  *     <template><li>{discount.name}: -{discount.amount}</li></template>
  *   </ul>
  *
  * Line items — per-cart-line breakdown with full price and product detail:
  *
- *   <ul data-summary-list="lines">
+ *   <ul data-summary-lines>
  *     <template>
  *       <li>
  *         <img src="{line.image}" />
  *         <span>{line.name}</span>
  *         <span>{line.qty} × {line.unitPrice}</span>
  *         <span>{line.total}</span>
+ *         <!-- Per-line discount breakdown (data-line-discounts) -->
+ *         <ul data-line-discounts>
+ *           <template><li>{discount.name} — -{discount.amount}</li></template>
+ *         </ul>
  *       </li>
  *     </template>
  *   </ul>
+ *
+ * data-line-discounts renders each individual Discount on the line.
+ * Variables: {discount.name}, {discount.amount}, {discount.description}
+ * Receives next-summary-empty / next-summary-has-items classes.
  *
  *   Line item variables:
  *     {line.packageId}            Package ref_id
@@ -124,7 +132,7 @@
  * <div data-next-cart-summary>
  *   <template>
  *     <div class="row"><span>Subtotal</span><span>{subtotal}</span></div>
- *     <ul data-summary-list="offer_discounts">
+ *     <ul data-summary-offer-discounts>
  *       <template><li class="discount-item">{discount.name} — -{discount.amount}</li></template>
  *     </ul>
  *     <div class="row"><span>Total</span><span>{total}</span></div>
@@ -141,7 +149,6 @@ import type { CartSummary, SummaryLine } from '@/types/api';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type TemplateVars = Record<string, string>;
-type ListKey = 'offer_discounts' | 'voucher_discounts' | 'lines';
 type DiscountItem = { name?: string; amount: string; description?: string };
 
 // ─── Default template ─────────────────────────────────────────────────────────
@@ -258,43 +265,79 @@ export class CartSummaryEnhancer extends BaseEnhancer {
     this.renderListContainers();
   }
 
-  /** Find [data-summary-list] containers in rendered output and populate them. */
+  /** Find summary list containers in rendered output and populate them. */
   private renderListContainers(): void {
-    const containers = this.element.querySelectorAll<HTMLElement>('[data-summary-list]');
-    containers.forEach(container => {
-      const key = container.getAttribute('data-summary-list') as ListKey;
-      if (key !== 'offer_discounts' && key !== 'voucher_discounts' && key !== 'lines') return;
+    this.renderLines();
+    this.renderDiscountList('[data-summary-offer-discounts]', this.summary?.offer_discounts ?? []);
+    this.renderDiscountList('[data-summary-voucher-discounts]', this.summary?.voucher_discounts ?? []);
+  }
 
-      const templateEl = container.querySelector(':scope > template') as HTMLTemplateElement | null;
-      if (!templateEl) return;
+  private renderLines(): void {
+    const container = this.element.querySelector<HTMLElement>('[data-summary-lines]');
+    if (!container) return;
+    const templateEl = container.querySelector(':scope > template') as HTMLTemplateElement | null;
+    if (!templateEl) return;
 
-      const itemTemplate = templateEl.innerHTML.trim();
+    const itemTemplate = templateEl.innerHTML.trim();
+    this.clearListItems(container);
 
-      // Remove previously rendered items, keep <template> intact
-      Array.from(container.childNodes).forEach(node => {
-        if ((node as Element).tagName?.toLowerCase() !== 'template') {
-          node.parentNode?.removeChild(node);
-        }
-      });
+    const lines: SummaryLine[] = (this.summary?.lines ?? []).sort((a, b) => a.package_id - b.package_id);
+    const isEmpty = lines.length === 0;
+    this.toggleElementClass('next-summary-empty', isEmpty, container);
+    this.toggleElementClass('next-summary-has-items', !isEmpty, container);
+    lines.forEach(line => container.appendChild(this.buildLineElement(itemTemplate, line)));
+  }
 
-      if (key === 'lines') {
-        const lines: SummaryLine[] = (this.summary?.lines ?? []).sort((a, b) => a.package_id - b.package_id);
-        const isEmpty = lines.length === 0;
-        this.toggleElementClass('next-summary-empty', isEmpty, container);
-        this.toggleElementClass('next-summary-has-items', !isEmpty, container);
-        container.insertAdjacentHTML(
+  /**
+   * Renders a single summary line into a DOM element, then populates any
+   * [data-line-discounts] nested list inside it with the line's discount items.
+   */
+  private buildLineElement(template: string, line: SummaryLine): Element {
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = this.renderSummaryLine(template, line);
+    const el = wrapper.firstElementChild ?? wrapper;
+
+    const discountContainer = el.querySelector<HTMLElement>('[data-line-discounts]');
+    if (discountContainer) {
+      const discountTemplateEl = discountContainer.querySelector(':scope > template') as HTMLTemplateElement | null;
+      if (discountTemplateEl) {
+        const discountTemplate = discountTemplateEl.innerHTML.trim();
+        const isEmpty = line.discounts.length === 0;
+        this.toggleElementClass('next-summary-empty', isEmpty, discountContainer);
+        this.toggleElementClass('next-summary-has-items', !isEmpty, discountContainer);
+        discountContainer.insertAdjacentHTML(
           'beforeend',
-          lines.map(l => this.renderSummaryLine(itemTemplate, l)).join('')
+          line.discounts.map(d => this.renderDiscountItem(discountTemplate, d)).join('')
         );
-      } else {
-        const items: DiscountItem[] = this.summary?.[key] ?? [];
-        const isEmpty = items.length === 0;
-        this.toggleElementClass('next-summary-empty', isEmpty, container);
-        this.toggleElementClass('next-summary-has-items', !isEmpty, container);
-        container.insertAdjacentHTML(
-          'beforeend',
-          items.map(d => this.renderDiscountItem(itemTemplate, d)).join('')
-        );
+      }
+    }
+
+    return el;
+  }
+
+  private renderDiscountList(selector: string, items: DiscountItem[]): void {
+    const container = this.element.querySelector<HTMLElement>(selector);
+    if (!container) return;
+    const templateEl = container.querySelector(':scope > template') as HTMLTemplateElement | null;
+    if (!templateEl) return;
+
+    const itemTemplate = templateEl.innerHTML.trim();
+    this.clearListItems(container);
+
+    const isEmpty = items.length === 0;
+    this.toggleElementClass('next-summary-empty', isEmpty, container);
+    this.toggleElementClass('next-summary-has-items', !isEmpty, container);
+    container.insertAdjacentHTML(
+      'beforeend',
+      items.map(d => this.renderDiscountItem(itemTemplate, d)).join('')
+    );
+  }
+
+  /** Remove all rendered children from a list container, keeping <template> intact. */
+  private clearListItems(container: HTMLElement): void {
+    Array.from(container.childNodes).forEach(node => {
+      if ((node as Element).tagName?.toLowerCase() !== 'template') {
+        node.parentNode?.removeChild(node);
       }
     });
   }

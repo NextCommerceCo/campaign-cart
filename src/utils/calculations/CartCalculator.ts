@@ -64,6 +64,7 @@ export interface CalculateCartParams {
   currency?: string | null;
   shippingMethod?: number;
   exclude_shipping?: boolean;
+  signal?: AbortSignal;
 }
 
 export interface CalculateCartResult {
@@ -90,7 +91,7 @@ export async function calculateCart(
     shipping_method: params.shippingMethod,
   };
 
-  const summary = await client.calculateSummary(cartData);
+  const summary = await client.calculateSummary(cartData, params.signal);
 
   return { totals: buildCartTotals(summary, { exclude_shipping: params.exclude_shipping }), summary };
 }
@@ -142,13 +143,6 @@ export async function calculateBundlePrice(
   }
 
   return result;
-}
-
-/**
- * Evict a specific bundle's cached price (e.g. after a coupon is applied).
- */
-export async function clearBundlePriceCache(items: BundlePriceItem[], currency?: string | null, apiKey?: string): Promise<void> {
-  sessionStorageManager.remove(await bundleCacheKey(items, currency, undefined, apiKey));
 }
 
 /**

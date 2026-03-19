@@ -341,21 +341,21 @@ Renders a complete cart summary block. Re-renders on every cart store update. Us
 | `next-has-savings` / `next-no-savings` | Retail or discount savings exist / none |
 
 ### Summary lists
-Place `data-summary-list` containers inside the custom `<template>` to render dynamic lists:
+Place summary list containers inside the custom `<template>` to render dynamic lists:
 
 ```html
 <!-- Offer discounts: {discount.name}, {discount.amount}, {discount.description} -->
-<ul data-summary-list="offer_discounts">
+<ul data-summary-offer-discounts>
   <template><li>{discount.name} — -{discount.amount}</li></template>
 </ul>
 
 <!-- Voucher discounts: same variables -->
-<ul data-summary-list="voucher_discounts">
+<ul data-summary-voucher-discounts>
   <template><li>{discount.name}: -{discount.amount}</li></template>
 </ul>
 
 <!-- Line items -->
-<ul data-summary-list="lines">
+<ul data-summary-lines>
   <template>
     <li>
       <img src="{line.image}" />

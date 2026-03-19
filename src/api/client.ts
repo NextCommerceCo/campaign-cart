@@ -42,11 +42,13 @@ export class ApiClient {
   }
 
   public async calculateSummary(
-    data: CartCalculateSummary
+    data: CartCalculateSummary,
+    signal?: AbortSignal
   ): Promise<CartSummary> {
     return this.request<CartSummary>('/api/v1/carts/calculate/', {
       method: 'POST',
       body: JSON.stringify(data),
+      signal,
     });
   }
 

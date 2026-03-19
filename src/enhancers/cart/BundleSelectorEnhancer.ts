@@ -44,7 +44,6 @@
  *     data-next-bundle-price="compare"  — formatted compare-at total
  *     data-next-bundle-price="savings"  — formatted savings amount
  *     data-next-bundle-price="savingsPercentage" — formatted savings percentage
- *     data-next-bundle-price="totalExclShipping" — formatted total excluding shipping
  *
  *   Example:
  *     <span data-next-bundle-price></span>
@@ -1040,7 +1039,6 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
           case 'compare':    el.textContent = effectiveTotals.compareTotal.formatted; break;
           case 'savings':    el.textContent = effectiveTotals.totalSavings.formatted; break;
           case 'savingsPercentage': el.textContent = effectiveTotals.totalSavingsPercentage.formatted; break;
-          case 'totalExclShipping': el.textContent = effectiveTotals.totalExclShipping.formatted; break;
           default:           el.textContent = effectiveTotals.total.formatted; break;
         }
       });
