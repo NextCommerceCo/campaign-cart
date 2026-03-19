@@ -318,7 +318,7 @@ export default defineConfig({
       overlay: true,
       clientPort: 3000,
     },
-    open: 'http://next-staging-core.webflow.io/playground?debugger=true&debug=true',
+    open: 'https://developers.29next.com/playground/?debug=true',
     cors: {
       origin: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

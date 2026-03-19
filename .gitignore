@@ -28,8 +28,6 @@ coverage/
 
 /clients
 
-.claude/
-
 # generated content
 .source
 
