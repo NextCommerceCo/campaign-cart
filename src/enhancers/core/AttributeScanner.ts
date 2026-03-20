@@ -55,7 +55,7 @@ export class AttributeScanner {
       const selector = [
         '[data-next-enhancer]',  // Generic enhancer (checkout-review, etc.)
         '[data-next-display]',
-        '[data-next-toggle]',
+        '[data-next-package-toggle]',
         '[data-next-action]',
         '[data-next-timer]',
         '[data-next-show]',
@@ -69,14 +69,12 @@ export class AttributeScanner {
         '[data-next-cart-items]',
         '[data-next-cart-summary]',
         '[data-next-bundle-selector]',
+        '[data-next-package-selector]',
         '[data-next-order-items]',
         '[data-next-quantity="increase"]',
         '[data-next-quantity="decrease"]',
         '[data-next-quantity="set"]',
         '[data-next-remove-item]',
-        '[data-next-selector]',
-        '[data-next-selector-id]',
-        '[data-next-cart-selector]',
         '[data-next-upsell]',
         '[data-next-upsell-selector]',
         '[data-next-upsell-select]',
@@ -300,9 +298,9 @@ export class AttributeScanner {
             }
           }
           
-        case 'toggle':
-          const { CartToggleEnhancer } = await import('@/enhancers/cart/CartToggleEnhancer');
-          return new CartToggleEnhancer(element);
+        case 'package-toggle':
+          const { PackageToggleEnhancer } = await import('@/enhancers/cart/PackageToggleEnhancer');
+          return new PackageToggleEnhancer(element);
 
         case 'action':
           // Determine which specific action enhancer to use
@@ -322,7 +320,7 @@ export class AttributeScanner {
               return null;
           }
 
-        case 'selector':
+        case 'package-selector':
           const { PackageSelectorEnhancer } = await import('@/enhancers/cart/PackageSelectorEnhancer');
           return new PackageSelectorEnhancer(element);
           
@@ -378,6 +376,7 @@ export class AttributeScanner {
         case 'bundle-selector':
           const { BundleSelectorEnhancer } = await import('@/enhancers/cart/BundleSelectorEnhancer');
           return new BundleSelectorEnhancer(element);
+
 
         case 'order-items':
           const { OrderItemListEnhancer } = await import('@/enhancers/order/OrderItemListEnhancer');

@@ -92,9 +92,9 @@ export class AttributeParser {
       types.push('display');
     }
 
-    // Check for toggle enhancer
-    if (element.hasAttribute('data-next-toggle')) {
-      types.push('toggle');
+    // Check for package toggle enhancer
+    if (element.hasAttribute('data-next-package-toggle')) {
+      types.push('package-toggle');
     }
 
     // Check for action button enhancer
@@ -167,16 +167,9 @@ export class AttributeParser {
       types.push('remove-item');
     }
 
-    // Check for selector enhancer
-    // Only treat as selector if it's the container, not action buttons that reference selectors
-    // Also exclude upsell selectors which are handled by UpsellEnhancer
-    if (element.hasAttribute('data-next-selector') || 
-        element.hasAttribute('data-next-cart-selector') ||
-        (element.hasAttribute('data-next-selector-id') && 
-         !element.hasAttribute('data-next-action') &&
-         !element.hasAttribute('data-next-upsell') &&
-         !element.hasAttribute('data-next-upsell-selector'))) {
-      types.push('selector');
+    // Check for package selector enhancer
+    if (element.hasAttribute('data-next-package-selector')) {
+      types.push('package-selector');
     }
 
     // Order display is now handled via data-next-display="order.xxx" pattern
@@ -228,6 +221,7 @@ export class AttributeParser {
     if (element.hasAttribute('data-next-bundle-selector')) {
       types.push('bundle-selector');
     }
+
 
 
     // Remove duplicates (just in case)

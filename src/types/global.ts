@@ -193,6 +193,10 @@ export interface EventMap {
   // Bundle Events
   'bundle:selected': { bundleId: string; items: { packageId: number; quantity: number }[] };
   'bundle:selection-changed': { bundleId: string; items: { packageId: number; quantity: number }[] };
+
+  // Package Toggle Events
+  'toggle:toggled': { packageId: number; added: boolean };
+  'toggle:selection-changed': { selected: number[] };
 }
 
 // Basic cart types

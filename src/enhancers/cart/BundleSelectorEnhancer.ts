@@ -258,7 +258,7 @@ interface BundleSlot {
   activePackageId: number;
   quantity: number;
   /** When true, no slot row is rendered for this slot. */
-  noSlot?: boolean;
+  noSlot?: boolean;  
 }
 
 interface BundleCard {
