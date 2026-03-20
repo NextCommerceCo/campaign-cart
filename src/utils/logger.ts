@@ -12,11 +12,17 @@ export enum LogLevel {
 // Check if we're in production - will be replaced by Vite's define
 const isProduction = process.env.NODE_ENV === 'production';
 
-// Check if debug mode is enabled via URL parameters
+// Check if debug mode is enabled via URL parameters or window.nextConfig
 const isDebugModeEnabled = (): boolean => {
   if (typeof window === 'undefined') return false;
   const params = new URLSearchParams(window.location.search);
-  return params.get('debug') === 'true' || params.get('debugger') === 'true';
+  const windowConfig = (window as any).nextConfig;
+  return (
+    params.get('debug') === 'true' ||
+    params.get('debugger') === 'true' ||
+    windowConfig?.debug === true ||
+    windowConfig?.debugger === true
+  );
 };
 
 // Interface for logger methods

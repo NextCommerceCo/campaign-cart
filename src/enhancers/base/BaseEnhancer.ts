@@ -95,6 +95,20 @@ export abstract class BaseEnhancer {
     this.element.classList.toggle(className, force);
   }
 
+  /**
+   * Toggle a loading state on the element.
+   * Adds/removes the `next-loading` CSS class and sets
+   * `data-next-loading="true|false"` so CSS skeleton rules can target it.
+   *
+   * Example CSS:
+   *   [data-next-loading="true"] .skeleton { display: block; }
+   *   [data-next-loading="true"] .content  { visibility: hidden; }
+   */
+  protected setLoading(loading: boolean): void {
+    this.element.classList.toggle('next-loading', loading);
+    this.element.setAttribute('data-next-loading', String(loading));
+  }
+
   protected updateTextContent(content: string): void {
     this.element.textContent = content;
   }

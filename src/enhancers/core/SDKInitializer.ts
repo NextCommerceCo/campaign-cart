@@ -43,6 +43,9 @@ export class SDKInitializer {
       // Wait for DOM to be ready
       await this.waitForDOM();
 
+      // Signal loading state to the page so developers can show skeleton UIs
+      document.body.setAttribute('data-next-sdk-loading', 'true');
+
       // Load configuration
       await this.loadConfiguration();
 
@@ -61,7 +64,13 @@ export class SDKInitializer {
       // IMPORTANT: Wait for cart store to fully rehydrate from storage
       // This prevents race conditions where display enhancers initialize with empty cart state
       await this.waitForStoreRehydration();
-      
+
+      // Clear cart if meta[name="next-clear-cart"] content="true"
+      if (useConfigStore.getState().clearCartOnInit) {
+        await useCartStore.getState().clear();
+        this.logger.debug('Cart cleared on init (next-clear-cart)');
+      }
+
       // Initialize global error handler
       this.initializeErrorHandler();
 
@@ -82,12 +91,16 @@ export class SDKInitializer {
       this.logger.info('SDK initialization complete ✅');
 
       this.retryAttempts = 0;
-      
+
+      // Clear global loading state — page skeletons can now hide
+      document.body.setAttribute('data-next-sdk-loading', 'false');
+
       // Emit initialization event
       this.emitInitializedEvent();
-      
+
     } catch (error) {
       this.logger.error('SDK initialization failed:', error);
+      document.body.setAttribute('data-next-sdk-loading', 'false');
 
       // Retry logic
       if (this.retryAttempts < this.maxRetries) {
@@ -351,7 +364,8 @@ export class SDKInitializer {
     await this.captureUrlParameters(urlParams);
 
     // Check URL parameters for debug mode, forcePackageId, and forceShippingId
-    const debugMode = urlParams.get('debugger') === 'true';
+    const windowConfig = (window as any).nextConfig;
+    const debugMode = urlParams.get('debugger') === 'true' || windowConfig?.debugger === true;
     const forcePackageId = urlParams.get('forcePackageId');
     const forceShippingId = urlParams.get('forceShippingId');
     

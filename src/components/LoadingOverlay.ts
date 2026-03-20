@@ -1,12 +1,12 @@
 export class LoadingOverlay {
   private overlay: HTMLElement | null = null;
   private showTime: number = 0;
-  
+
   public show(): void {
     if (this.overlay) return;
-    
+
     this.showTime = Date.now();
-    
+
     this.overlay = document.createElement('div');
     this.overlay.className = 'next-loading-overlay';
     this.overlay.innerHTML = `
@@ -28,7 +28,7 @@ export class LoadingOverlay {
         <div class="spinner"></div>
       </div>
     `;
-    
+
     Object.assign(this.overlay.style, {
       position: 'fixed',
       top: '0',
@@ -39,15 +39,15 @@ export class LoadingOverlay {
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'center',
-      zIndex: '9999'
+      zIndex: '9999',
     });
-    
+
     document.body.appendChild(this.overlay);
   }
-  
+
   public hide(immediate: boolean = false): void {
     if (!this.overlay) return;
-    
+
     if (immediate) {
       // Hide immediately for errors
       document.body.removeChild(this.overlay);
@@ -56,7 +56,7 @@ export class LoadingOverlay {
       // Enforce minimum 3 second display for success
       const elapsedTime = Date.now() - this.showTime;
       const remainingTime = Math.max(0, 3000 - elapsedTime);
-      
+
       setTimeout(() => {
         if (this.overlay) {
           document.body.removeChild(this.overlay);

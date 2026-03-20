@@ -39,7 +39,7 @@ export class AnalyticsManager {
 
     this.loading = true;
     this.loadPromise = this.performLoad();
-    
+
     try {
       await this.loadPromise;
       this.loaded = true;
@@ -69,9 +69,9 @@ export class AnalyticsManager {
     // Initialize with API key
     if (typeof (window as any).nextCampaign !== 'undefined') {
       (window as any).nextCampaign.config({
-        apiKey: apiKey
+        apiKey: apiKey,
       });
-      
+
       logger.debug('Analytics SDK configured with API key');
     } else {
       throw new Error('nextCampaign not available after script load');
@@ -90,12 +90,12 @@ export class AnalyticsManager {
       const script = document.createElement('script');
       script.async = true;
       script.src = url;
-      
+
       script.onload = () => {
         logger.debug(`Analytics script loaded: ${url}`);
         resolve();
       };
-      
+
       script.onerror = () => {
         logger.error(`Failed to load analytics script: ${url}`);
         reject(new Error(`Failed to load analytics script: ${url}`));
@@ -108,7 +108,10 @@ export class AnalyticsManager {
   /**
    * Tracks an analytics event
    */
-  public async trackEvent(eventName: string, eventData: Record<string, any> = {}): Promise<void> {
+  public async trackEvent(
+    eventName: string,
+    eventData: Record<string, any> = {}
+  ): Promise<void> {
     try {
       // Ensure SDK is loaded before tracking
       await this.loadAnalyticsSDK();
@@ -130,7 +133,7 @@ export class AnalyticsManager {
   public async trackPageView(): Promise<void> {
     const pageData = {
       title: document.title,
-      url: window.location.href
+      url: window.location.href,
     };
 
     await this.trackEvent('page_view', pageData);

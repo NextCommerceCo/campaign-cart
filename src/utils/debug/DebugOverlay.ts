@@ -13,6 +13,7 @@ import { useConfigStore } from '../../stores/configStore';
 import { XrayManager } from './XrayStyles';
 import { selectorContainer } from './SelectorContainer';
 import { upsellSelector } from './UpsellSelector';
+import { formatCurrency } from '../currencyFormatter';
 import {
   CartPanel,
   OrderPanel,
@@ -34,10 +35,10 @@ export class DebugOverlay {
   private activePanelTab: string | undefined;
   private updateInterval: number | null = null;
   private logger = new Logger('DebugOverlay');
-  
+
   private eventManager: DebugEventManager | null = null;
   private panels: DebugPanel[] = [];
-  
+
   // Storage keys
   private static readonly EXPANDED_STORAGE_KEY = 'debug-overlay-expanded';
   private static readonly ACTIVE_PANEL_KEY = 'debug-overlay-active-panel';
@@ -53,25 +54,26 @@ export class DebugOverlay {
   private constructor() {
     // Only initialize if debug mode is enabled
     const urlParams = new URLSearchParams(window.location.search);
-    const isDebugMode = urlParams.get('debugger') === 'true' || urlParams.get('debug') === 'true';
-    
+    const windowConfig = (window as any).nextConfig;
+    const isDebugMode = urlParams.get('debugger') === 'true' || urlParams.get('debug') === 'true' || windowConfig?.debugger === true || windowConfig?.debug === true;
+
     if (isDebugMode) {
       this.eventManager = new DebugEventManager();
       this.initializePanels();
       this.setupEventListeners();
-      
+
       // Restore saved state from localStorage
       const savedExpandedState = localStorage.getItem(DebugOverlay.EXPANDED_STORAGE_KEY);
       if (savedExpandedState === 'true') {
         this.isExpanded = true;
       }
-      
+
       // Restore active panel
       const savedPanel = localStorage.getItem(DebugOverlay.ACTIVE_PANEL_KEY);
       if (savedPanel) {
         this.activePanel = savedPanel;
       }
-      
+
       // Restore active tab
       const savedTab = localStorage.getItem(DebugOverlay.ACTIVE_TAB_KEY);
       if (savedTab) {
@@ -97,15 +99,15 @@ export class DebugOverlay {
     document.addEventListener('debug:update-content', () => {
       this.updateContent();
     });
-    
+
     // Listen for new events being added
     document.addEventListener('debug:event-added', (e: Event) => {
       const customEvent = e as CustomEvent;
       const { panelId } = customEvent.detail;
-      
+
       // Debug logging
       console.log('[Debug] Event added:', panelId, 'Active panel:', this.activePanel, 'Expanded:', this.isExpanded);
-      
+
       // Only update if the event panel is currently active
       if (this.activePanel === panelId && this.isExpanded) {
         // For the events panel, always update regardless of input focus
@@ -118,7 +120,8 @@ export class DebugOverlay {
 
   public initialize(): void {
     const urlParams = new URLSearchParams(window.location.search);
-    const isDebugMode = urlParams.get('debugger') === 'true';
+    const windowConfig = (window as any).nextConfig;
+    const isDebugMode = urlParams.get('debugger') === 'true' || windowConfig?.debugger === true;
 
     if (isDebugMode) {
       this.show();
@@ -145,17 +148,17 @@ export class DebugOverlay {
     this.visible = true;
     await this.createOverlay();
     this.startAutoUpdate();
-    
+
     // Initialize XrayManager with saved state
     XrayManager.initialize();
-    
+
     // Auto-restore mini cart if it was previously visible
     const savedMiniCartState = localStorage.getItem('debug-mini-cart-visible');
     if (savedMiniCartState === 'true') {
       // Create mini cart and show it based on saved state
       this.toggleMiniCart(true);
     }
-    
+
     // Update button states after everything is rendered
     this.updateButtonStates();
   }
@@ -208,41 +211,41 @@ export class DebugOverlay {
       z-index: 2147483647;
       pointer-events: none;
     `;
-    
+
     // Create Shadow DOM
     this.shadowRoot = this.container.attachShadow({ mode: 'open' });
-    
+
     // Load and inject styles into Shadow DOM
     await this.injectShadowStyles();
-    
+
     // Create overlay container inside shadow DOM
     const overlayContainer = document.createElement('div');
     overlayContainer.className = 'debug-overlay';
     overlayContainer.style.pointerEvents = 'auto';
-    
+
     this.shadowRoot.appendChild(overlayContainer);
-    
+
     // Render initial content
     this.updateOverlay();
-    
+
     // Add event listeners
     this.addEventListeners();
-    
+
     document.body.appendChild(this.container);
   }
-  
+
   private async injectShadowStyles(): Promise<void> {
     if (!this.shadowRoot) return;
-    
+
     // Load debug styles
     const { DebugStyleLoader } = await import('./DebugStyleLoader');
     const styles = await DebugStyleLoader.getDebugStyles();
-    
+
     // Create style element in shadow DOM
     const styleElement = document.createElement('style');
     styleElement.textContent = styles;
     this.shadowRoot.appendChild(styleElement);
-    
+
     // Add reset styles to prevent inheritance
     const resetStyles = document.createElement('style');
     resetStyles.textContent = `
@@ -271,26 +274,26 @@ export class DebugOverlay {
 
   private updateOverlay(): void {
     if (!this.shadowRoot) return;
-    
+
     const overlayContainer = this.shadowRoot.querySelector('.debug-overlay');
     if (!overlayContainer) return;
-    
+
     overlayContainer.innerHTML = EnhancedDebugUI.createOverlayHTML(
-      this.panels, 
-      this.activePanel, 
+      this.panels,
+      this.activePanel,
       this.isExpanded,
       this.activePanelTab
     );
-    
+
     this.addEventListeners();
-    
+
     // Restore button states
     this.updateButtonStates();
   }
 
   private updateContent(): void {
     if (!this.shadowRoot) return;
-    
+
     const panelContent = this.shadowRoot.querySelector('.panel-content');
     if (panelContent) {
       const activePanel = this.panels.find(p => p.id === this.activePanel);
@@ -316,15 +319,17 @@ export class DebugOverlay {
 
     // Remove any existing listeners to prevent duplicates
     this.shadowRoot.removeEventListener('click', this.handleContainerClick);
-    
+    this.shadowRoot.removeEventListener('mouseover', this.handleContainerHover);
+
     // Use event delegation for all debug actions
     this.shadowRoot.addEventListener('click', this.handleContainerClick);
+    this.shadowRoot.addEventListener('mouseover', this.handleContainerHover);
   }
 
   private handleContainerClick = (event: Event) => {
     const target = event.target as HTMLElement;
     const action = target.getAttribute('data-action') || target.closest('[data-action]')?.getAttribute('data-action');
-    
+
     // Handle main debug actions
     if (action) {
       console.log('[Debug] Action clicked:', action);
@@ -336,8 +341,8 @@ export class DebugOverlay {
           this.updateBodyHeight();
           this.updateOverlay();
           // Emit event for selector container
-          document.dispatchEvent(new CustomEvent('debug:panel-toggled', { 
-            detail: { isExpanded: this.isExpanded } 
+          document.dispatchEvent(new CustomEvent('debug:panel-toggled', {
+            detail: { isExpanded: this.isExpanded }
           }));
           break;
         case 'close':
@@ -378,11 +383,11 @@ export class DebugOverlay {
       if (panelId && panelId !== this.activePanel) {
         this.activePanel = panelId;
         this.activePanelTab = undefined; // Reset horizontal tab when switching panels
-        
+
         // Save to localStorage
         localStorage.setItem(DebugOverlay.ACTIVE_PANEL_KEY, panelId);
         localStorage.removeItem(DebugOverlay.ACTIVE_TAB_KEY); // Clear tab when switching panels
-        
+
         this.updateOverlay();
       }
       return;
@@ -395,10 +400,10 @@ export class DebugOverlay {
       console.log('[Debug] Horizontal tab switch:', this.activePanelTab, '->', tabId, 'in panel:', this.activePanel);
       if (tabId && tabId !== this.activePanelTab) {
         this.activePanelTab = tabId;
-        
+
         // Save to localStorage
         localStorage.setItem(DebugOverlay.ACTIVE_TAB_KEY, tabId);
-        
+
         this.updateOverlay();
       }
       return;
@@ -410,13 +415,53 @@ export class DebugOverlay {
       const actionLabel = panelActionBtn.getAttribute('data-panel-action');
       const activePanel = this.panels.find(p => p.id === this.activePanel);
       const panelAction = activePanel?.getActions?.()?.find(a => a.label === actionLabel);
-      
+
       if (panelAction) {
         panelAction.action();
         // Update content after action
         setTimeout(() => this.updateContent(), 100);
       }
       return;
+    }
+  };
+
+  private handleContainerHover = (event: Event) => {
+    const target = event.target as HTMLElement;
+    const miniCartItem = target.closest('.debug-mini-cart-item');
+
+    if (miniCartItem) {
+      const detailsCard = miniCartItem.querySelector('.mini-cart-discount-details-card') as HTMLElement;
+      if (detailsCard) {
+        const itemRect = miniCartItem.getBoundingClientRect();
+
+        // Exact width from CSS: 240px width + 32px padding (16*2) + 2px border = 274px
+        const cardWidth = 250;
+        const gap = 8;
+
+        const left = itemRect.left - cardWidth - gap;
+        const top = itemRect.top;
+
+        detailsCard.style.left = `${left}px`;
+        detailsCard.style.top = `${top}px`;
+      }
+    }
+
+    // Handle cart-level discount popup hover
+    const miniCartTotals = target.closest('.debug-mini-cart-totals.has-cart-discounts');
+    if (miniCartTotals) {
+      const cartDiscountPopup = miniCartTotals.querySelector('.mini-cart-cart-discount-popup .mini-cart-discount-details-card') as HTMLElement;
+      if (cartDiscountPopup) {
+        const totalsRect = miniCartTotals.getBoundingClientRect();
+
+        const cardWidth = 250;
+        const gap = 8;
+
+        const left = totalsRect.left - cardWidth - gap;
+        const top = totalsRect.top;
+
+        cartDiscountPopup.style.left = `${left}px`;
+        cartDiscountPopup.style.top = `${top}px`;
+      }
     }
   };
 
@@ -434,7 +479,7 @@ export class DebugOverlay {
     this.updateInterval = window.setInterval(() => {
       // Only update quick stats, not the full content to avoid losing focus
       this.updateQuickStats();
-      
+
       // Only update content for specific panels that need real-time updates
       // Skip updates if viewing raw data tab to prevent constant re-renders
       if ((this.activePanel === 'cart' || this.activePanel === 'config' || this.activePanel === 'campaign') && this.activePanelTab !== 'raw') {
@@ -462,10 +507,10 @@ export class DebugOverlay {
   public setActivePanel(panelId: string): void {
     if (this.panels.find(p => p.id === panelId)) {
       this.activePanel = panelId;
-      
+
       // Save to localStorage
       localStorage.setItem(DebugOverlay.ACTIVE_PANEL_KEY, panelId);
-      
+
       this.updateOverlay();
     }
   }
@@ -508,7 +553,7 @@ export class DebugOverlay {
     if (miniCart) {
       miniCart.classList.remove('show');
       localStorage.setItem('debug-mini-cart-visible', 'false');
-      
+
       // Update button state
       const cartButton = this.shadowRoot.querySelector('[data-action="toggle-mini-cart"]');
       if (cartButton) {
@@ -517,19 +562,19 @@ export class DebugOverlay {
       }
     }
   }
-  
+
   private toggleMiniCart(forceShow?: boolean): void {
     if (!this.shadowRoot) return;
-    
+
     let miniCart = this.shadowRoot.querySelector('#debug-mini-cart-display') as HTMLDivElement;
-    
+
     if (!miniCart) {
       // Create mini cart if it doesn't exist
       miniCart = document.createElement('div');
       miniCart.id = 'debug-mini-cart-display';
       miniCart.className = 'debug-mini-cart-display';
       this.shadowRoot.appendChild(miniCart);
-      
+
       // Subscribe to cart changes for real-time updates
       useCartStore.subscribe(() => {
         const cart = this.shadowRoot?.querySelector('#debug-mini-cart-display');
@@ -537,7 +582,7 @@ export class DebugOverlay {
           this.updateMiniCart();
         }
       });
-      
+
       // When creating for the first time via button click (not auto-restore), show it
       if (forceShow !== false) {
         miniCart.classList.add('show');
@@ -546,16 +591,16 @@ export class DebugOverlay {
     } else {
       // Toggle visibility
       miniCart.classList.toggle('show');
-      
+
       // Update content if showing
       if (miniCart.classList.contains('show')) {
         this.updateMiniCart();
       }
     }
-    
+
     // Save state to localStorage
     localStorage.setItem('debug-mini-cart-visible', miniCart.classList.contains('show').toString());
-    
+
     // Update cart button state - use shadowRoot!
     const cartButton = this.shadowRoot?.querySelector('[data-action="toggle-mini-cart"]');
     if (cartButton && miniCart) {
@@ -573,9 +618,9 @@ export class DebugOverlay {
     if (!this.shadowRoot) return;
     const miniCart = this.shadowRoot.querySelector('#debug-mini-cart-display') as HTMLDivElement;
     if (!miniCart || !miniCart.classList.contains('show')) return;
-    
+
     const cartState = useCartStore.getState();
-    
+
     if (!cartState.items || cartState.items.length === 0) {
       miniCart.innerHTML = `
         <div class="debug-mini-cart-header">
@@ -586,39 +631,268 @@ export class DebugOverlay {
       `;
       return;
     }
-    
+
     let itemsHtml = '';
+    let subtotalBeforeDiscounts = 0;
+
     cartState.items.forEach(item => {
       // Check for upsell flag
       const isUpsell = item.is_upsell;
       const upsellBadge = isUpsell ? '<span class="mini-cart-upsell-badge">UPSELL</span>' : '';
-      itemsHtml += `
-        <div class="debug-mini-cart-item">
-          <div class="mini-cart-item-info">
-            <span class="mini-cart-item-id">ID: ${item.packageId}</span>
-            ${upsellBadge}
-            <span class="mini-cart-item-qty">×${item.quantity}</span>
+
+      // Calculate pricing
+      const packagePriceExcl = item.original_package_price ? parseFloat(item.original_package_price) : 0;
+      const packagePriceIncl = item.package_price ? parseFloat(item.package_price) : item.price;
+
+      // Check if item has a discount applied (comparing package prices)
+      const itemHasDiscount = packagePriceExcl > 0 && packagePriceIncl < packagePriceExcl;
+
+      // For display: use the DISCOUNTED price (incl) as the current price
+      const currentUnitPrice = packagePriceIncl;
+      const originalUnitPrice = packagePriceExcl > 0 ? packagePriceExcl : packagePriceIncl;
+
+      // Line totals
+      const currentLineTotal = currentUnitPrice * item.quantity;
+      const originalLineTotal = originalUnitPrice * item.quantity;
+
+      // Add CURRENT (discounted) price to running subtotal for clarity
+      subtotalBeforeDiscounts += currentLineTotal;
+
+      // Build savings text (show total savings on this line)
+      const itemLineSavings = itemHasDiscount ? originalLineTotal - currentLineTotal : 0;
+      const savingsPercent = itemHasDiscount ? Math.round(((originalUnitPrice - currentUnitPrice) / originalUnitPrice) * 100) : 0;
+
+      // Build discount details hover card
+      let discountDetailsCard = '';
+
+      // Collect discount information from various sources
+      const discountList: string[] = [];
+
+      // Check for item.discounts array
+      if (item.discounts && item.discounts.length > 0) {
+        item.discounts.forEach(d => {
+          const discountName = d.description || d.description || `Offer #${d.offer_id}`;
+          discountList.push(discountName + ' ' + d.amount);
+        });
+      }
+
+      // Only show hover card if we have discount info or item has discount pricing
+      if (itemHasDiscount || (item.discounts && item.discounts.length > 0)) {
+        let discountItemsHtml = '';
+
+        if (item.discounts && item.discounts.length > 0) {
+          discountItemsHtml = item.discounts.map(d => `
+            <li class="discount-card-item">
+              <span class="discount-card-bullet">•</span>
+              <span style="display: flex; justify-content: space-between; width: 100%;">
+                <span class="discount-card-text">${d.description}</span>
+                <span class="discount-card-text" style="text-align: right;">${formatCurrency(parseFloat(d.amount))}</span>
+              </span>
+            </li>
+          `).join('');
+        } else {
+          // Show a generic message if we detect discount but no details
+          discountItemsHtml = `
+            <li class="discount-card-item">
+              <span class="discount-card-bullet">•</span>
+              <span class="discount-card-text">Price discount applied (${savingsPercent}% off)</span>
+            </li>
+          `;
+        }
+
+        discountDetailsCard = `
+          <div class="mini-cart-discount-details-card">
+            <div class="discount-card-header">
+              <span class="discount-card-icon">🎯</span>
+              <span class="discount-card-title">Applied Discounts</span>
+            </div>
+            <ul class="discount-card-list">${discountItemsHtml}</ul>
           </div>
-          <div class="mini-cart-item-title">${item.title || 'Unknown'}</div>
-          <div class="mini-cart-item-price">$${(item.price * item.quantity).toFixed(2)}</div>
+        `;
+      }
+
+      // Build pricing display
+      let pricingHtml = '';
+      if (itemHasDiscount) {
+        pricingHtml = `
+          <div class="mini-cart-price-details">
+            <span class="mini-cart-original-price">${formatCurrency(originalUnitPrice)} each</span>
+            <span class="mini-cart-unit-price">${formatCurrency(currentUnitPrice)} each</span>
+          </div>
+          <div class="mini-cart-line-total">${formatCurrency(currentLineTotal)}</div>
+        `;
+      } else {
+        pricingHtml = `
+          <span class="mini-cart-unit-price">${formatCurrency(currentUnitPrice)} each</span>
+          <div class="mini-cart-line-total">${formatCurrency(currentLineTotal)}</div>
+        `;
+      }
+
+      itemsHtml += `
+        <div class="debug-mini-cart-item${itemHasDiscount ? ' has-discount' : ''}">
+          ${discountDetailsCard}
+          <div class="mini-cart-item-header">
+            <div class="mini-cart-item-title-row">
+              <div class="mini-cart-item-title">${item.title || 'Unknown'}</div>
+              <div class="mini-cart-line-total">${formatCurrency(currentLineTotal)}</div>
+            </div>
+            <div class="mini-cart-item-meta">
+              <span class="mini-cart-item-id">ID: ${item.packageId}</span>
+              ${upsellBadge}
+            </div>
+          </div>
+          ${itemHasDiscount ? `
+            <div class="mini-cart-item-price-breakdown">
+              <div class="mini-cart-price-row">
+                <span class="mini-cart-price-label">Was</span>
+                <span class="mini-cart-original-price">${formatCurrency(originalUnitPrice)} each</span>
+              </div>
+              <div class="mini-cart-price-row mini-cart-sale-row">
+                <span class="mini-cart-price-label">Now</span>
+                <span class="mini-cart-unit-price">${formatCurrency(currentUnitPrice)} each × ${item.quantity}</span>
+              </div>
+              <div class="mini-cart-price-row mini-cart-savings-row">
+                <span class="mini-cart-price-label">You save</span>
+                <span class="mini-cart-savings-amount">${formatCurrency(itemLineSavings)} (${savingsPercent}% off)</span>
+              </div>
+            </div>
+          ` : `
+            <div class="mini-cart-item-price-breakdown">
+              <div class="mini-cart-price-row">
+                <span class="mini-cart-unit-price">${formatCurrency(currentUnitPrice)} each × ${item.quantity}</span>
+              </div>
+            </div>
+          `}
         </div>
       `;
     });
-    
+
+    // Build totals breakdown - use calculated subtotal before discounts
+    const totalDiscount = cartState.totals.discounts.value;
+    const shipping = cartState.totals.shipping.value;
+    const shippingDiscount = cartState.totals.shippingDiscount.value;
+    // If there's a shipping discount, the API returns net shipping, so we need to show original shipping
+    const displayShipping = shippingDiscount > 0 ? shipping + shippingDiscount : shipping;
+    const shippingLabel = displayShipping === 0 ? 'FREE' : formatCurrency(displayShipping);
+    const total = cartState.totals.total.value;
+
+    // Collect all item-level discount offer_ids to avoid showing them twice
+    const itemLevelOfferIds = new Set<number>();
+    cartState.items.forEach(item => {
+      if (item.discounts) {
+        item.discounts.forEach(d => itemLevelOfferIds.add(d.offer_id));
+      }
+    });
+
+    // Build detailed discount breakdown for cart-level offers and vouchers
+    let hasCartLevelDiscounts = false;
+    let cartLevelDiscountList: Array<{ type: 'offer' | 'voucher'; label: string; amount: number }> = [];
+
+    if (cartState.discountDetails) {
+      const { offerDiscounts, voucherDiscounts } = cartState.discountDetails;
+      console.log(offerDiscounts)
+      console.log(voucherDiscounts)
+
+      // Collect offer discounts ONLY if they're not already shown on line items
+      // Cart-wide offers that apply to multiple items or the cart total should appear here
+      if (offerDiscounts && offerDiscounts.length > 0) {
+        offerDiscounts.forEach(discount => {
+          const label = discount.name || discount.description || `Offer #${discount.offer_id}`;
+          const amount = parseFloat(discount.amount);
+          cartLevelDiscountList.push({ type: 'offer', label, amount });
+        });
+      }
+
+      // Collect voucher discounts (these are always cart-level)
+      if (voucherDiscounts && voucherDiscounts.length > 0) {
+        hasCartLevelDiscounts = true;
+        voucherDiscounts.forEach(discount => {
+          const amount = parseFloat(discount.amount);
+          const label = discount.name || discount.description || 'Voucher';
+          cartLevelDiscountList.push({ type: 'voucher', label, amount });
+        });
+      }
+    } else if (totalDiscount > 0) {
+      // Fallback: show single discount row if no details available
+      hasCartLevelDiscounts = true;
+      cartLevelDiscountList.push({ type: 'offer', label: 'Discount', amount: totalDiscount });
+    }
+
+    console.log(cartLevelDiscountList)
+
+    // Build cart-level discount popup (similar to item discount popup)
+    let cartDiscountPopup = '';
+    if (hasCartLevelDiscounts) {
+      const discountItemsHtml = cartLevelDiscountList.map(discount => `
+        <li class="discount-card-item">
+          <span class="discount-card-bullet">•</span>
+          <span style="display: flex; justify-content: space-between; width: 100%; gap: 8px;">
+            <span class="discount-card-text">
+              <span class="mini-cart-discount-type">${discount.type.toUpperCase()}</span> ${discount.label}
+            </span>
+            <span class="discount-card-text" style="text-align: right;">-${formatCurrency(discount.amount)}</span>
+          </span>
+        </li>
+      `).join('');
+
+      cartDiscountPopup = `
+        <div class="mini-cart-cart-discount-popup">
+          <div class="mini-cart-discount-details-card">
+            <div class="discount-card-header">
+              <span class="discount-card-icon">🎁</span>
+              <span class="discount-card-title">Discounts</span>
+            </div>
+            <ul class="discount-card-list">${discountItemsHtml}</ul>
+          </div>
+        </div>
+      `;
+    }
+
+    // Build shipping row with savings (inline format)
+    let shippingRow = '';
+    if (shippingDiscount > 0) {
+      // Show shipping with original price strikethrough and discounted price
+      shippingRow = `
+        <div class="mini-cart-total-row mini-cart-shipping-row has-discount">
+          <span>Shipping:</span>
+          <span class="mini-cart-shipping-prices">
+            <span class="mini-cart-original-price">${formatCurrency(displayShipping)}</span>
+            <span class="mini-cart-shipping">${formatCurrency(shipping)}</span>
+          </span>
+        </div>
+      `;
+    } else {
+      // Regular shipping row
+      shippingRow = `
+        <div class="mini-cart-total-row">
+          <span>Shipping:</span>
+          <span class="mini-cart-shipping">${shippingLabel}</span>
+        </div>
+      `;
+    }
+
     miniCart.innerHTML = `
       <div class="debug-mini-cart-header">
         <span>🛒 Debug Cart</span>
         <button class="mini-cart-close" data-action="close-mini-cart">×</button>
       </div>
       <div class="debug-mini-cart-items">${itemsHtml}</div>
+      <div class="debug-mini-cart-totals${hasCartLevelDiscounts ? ' has-cart-discounts' : ''}">
+        ${cartDiscountPopup}
+        <div class="mini-cart-total-row">
+          <span>Subtotal:</span>
+          <span>${formatCurrency(subtotalBeforeDiscounts)}</span>
+        </div>
+        ${shippingRow}
+        <div class="mini-cart-total-row mini-cart-final-total">
+          <span>Total:</span>
+          <span class="mini-cart-total">${formatCurrency(total)}</span>
+        </div>
+      </div>
       <div class="debug-mini-cart-footer">
         <div class="mini-cart-stat">
           <span>Items:</span>
           <span>${cartState.totalQuantity}</span>
-        </div>
-        <div class="mini-cart-stat">
-          <span>Total:</span>
-          <span class="mini-cart-total">${cartState.totals.total.formatted}</span>
         </div>
       </div>
     `;
@@ -627,7 +901,7 @@ export class DebugOverlay {
 
   private toggleXray(): void {
     const isActive = XrayManager.toggle();
-    
+
     // Update button state - use shadowRoot not container!
     const xrayButton = this.shadowRoot?.querySelector('[data-action="toggle-xray"]');
     if (xrayButton) {
@@ -639,7 +913,7 @@ export class DebugOverlay {
         xrayButton.setAttribute('title', 'Toggle X-Ray View');
       }
     }
-    
+
     // Log event
     if (this.eventManager) {
       this.eventManager.logEvent('debug:xray-toggled', { active: isActive }, 'Debug');
@@ -648,7 +922,7 @@ export class DebugOverlay {
 
   private updateButtonStates(): void {
     if (!this.shadowRoot) return;
-    
+
     // Update X-ray button state
     const xrayButton = this.shadowRoot.querySelector('[data-action="toggle-xray"]');
     if (xrayButton) {
@@ -660,7 +934,7 @@ export class DebugOverlay {
         xrayButton.setAttribute('title', 'Toggle X-Ray View');
       }
     }
-    
+
     // Update mini cart button state
     const miniCart = this.shadowRoot.querySelector('#debug-mini-cart-display');
     const cartButton = this.shadowRoot.querySelector('[data-action="toggle-mini-cart"]');
@@ -679,12 +953,12 @@ export class DebugOverlay {
     if (!this.shadowRoot) return;
 
     const cartState = useCartStore.getState();
-    
+
     // Update cart stats
     const cartItemsEl = this.shadowRoot.querySelector('[data-debug-stat="cart-items"]');
     const cartTotalEl = this.shadowRoot.querySelector('[data-debug-stat="cart-total"]');
     const enhancedElementsEl = this.shadowRoot.querySelector('[data-debug-stat="enhanced-elements"]');
-    
+
     if (cartItemsEl) cartItemsEl.textContent = cartState.totalQuantity.toString();
     if (cartTotalEl) cartTotalEl.textContent = cartState.totals.total.formatted;
     if (enhancedElementsEl) enhancedElementsEl.textContent = document.querySelectorAll('[data-next-]').length.toString();

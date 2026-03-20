@@ -11,24 +11,34 @@ export interface CheckoutState {
   errors: Record<string, string>;
   formData: Record<string, any>;
   paymentToken?: string;
-  paymentMethod: 'card_token' | 'paypal' | 'apple_pay' | 'google_pay' | 'credit-card' | 'klarna';
-  shippingMethod?: {
-    id: number;
-    name: string;
-    price: number;
-    code: string;
-  } | undefined;
-  billingAddress?: {
-    first_name: string;
-    last_name: string;
-    address1: string;
-    address2?: string | undefined;
-    city: string;
-    province: string;
-    postal: string;
-    country: string;
-    phone: string;
-  } | undefined;
+  paymentMethod:
+    | 'card_token'
+    | 'paypal'
+    | 'apple_pay'
+    | 'google_pay'
+    | 'credit-card'
+    | 'klarna';
+  shippingMethod?:
+    | {
+        id: number;
+        name: string;
+        price: number;
+        code: string;
+      }
+    | undefined;
+  billingAddress?:
+    | {
+        first_name: string;
+        last_name: string;
+        address1: string;
+        address2?: string | undefined;
+        city: string;
+        province: string;
+        postal: string;
+        country: string;
+        phone: string;
+      }
+    | undefined;
   sameAsShipping: boolean;
   testMode: boolean;
   vouchers: string[];
@@ -65,7 +75,7 @@ const initialState: CheckoutState = {
 
 export const useCheckoutStore = create<CheckoutState & CheckoutActions>()(
   persist(
-    (set) => ({
+    set => ({
       ...initialState,
 
       setStep: (step: number) => {
@@ -142,25 +152,26 @@ export const useCheckoutStore = create<CheckoutState & CheckoutActions>()(
     {
       name: 'next-checkout-store', // Key in sessionStorage
       storage: {
-        getItem: (name) => {
+        getItem: name => {
           const str = sessionStorage.getItem(name);
           return str ? JSON.parse(str) : null;
         },
         setItem: (name, value) => {
           sessionStorage.setItem(name, JSON.stringify(value));
         },
-        removeItem: (name) => {
+        removeItem: name => {
           sessionStorage.removeItem(name);
         },
       },
       // Exclude transient state from persistence
-      partialize: (state) => {
+      partialize: state => {
         // Don't persist express payment methods (they should reset to credit-card on page load/navigation)
-        const paymentMethod = (state.paymentMethod === 'apple_pay' ||
-                               state.paymentMethod === 'google_pay' ||
-                               state.paymentMethod === 'paypal')
-          ? 'credit-card'
-          : state.paymentMethod;
+        const paymentMethod =
+          state.paymentMethod === 'apple_pay' ||
+          state.paymentMethod === 'google_pay' ||
+          state.paymentMethod === 'paypal'
+            ? 'credit-card'
+            : state.paymentMethod;
 
         // Filter out sensitive payment fields from formData
         const {
@@ -181,7 +192,8 @@ export const useCheckoutStore = create<CheckoutState & CheckoutActions>()(
           Object.entries(remainingFormData).filter(([_, value]) => {
             // Keep non-empty strings, booleans, and numbers
             if (typeof value === 'string') return value.trim() !== '';
-            if (typeof value === 'boolean' || typeof value === 'number') return true;
+            if (typeof value === 'boolean' || typeof value === 'number')
+              return true;
             return false;
           })
         );
@@ -196,7 +208,10 @@ export const useCheckoutStore = create<CheckoutState & CheckoutActions>()(
             })
           );
           // Only persist if there's at least one non-empty field
-          billingAddress = Object.keys(filteredBilling).length > 0 ? filteredBilling as any : undefined;
+          billingAddress =
+            Object.keys(filteredBilling).length > 0
+              ? (filteredBilling as any)
+              : undefined;
         }
 
         return {

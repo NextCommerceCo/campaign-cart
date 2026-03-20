@@ -8,7 +8,8 @@ import { useConfigStore } from '@/stores/configStore';
 
 export class CurrencyFormatter {
   private static formatters: Map<string, Intl.NumberFormat> = new Map();
-  private static formattersNoZeroCents: Map<string, Intl.NumberFormat> = new Map();
+  private static formattersNoZeroCents: Map<string, Intl.NumberFormat> =
+    new Map();
   private static numberFormatter: Intl.NumberFormat | null = null;
 
   /**
@@ -20,10 +21,12 @@ export class CurrencyFormatter {
     if (campaignStore?.data?.currency) {
       return campaignStore.data.currency;
     }
-    
+
     // Fallback to config store
     const configStore = useConfigStore.getState();
-    return configStore?.selectedCurrency || configStore?.detectedCurrency || 'USD';
+    return (
+      configStore?.selectedCurrency || configStore?.detectedCurrency || 'USD'
+    );
   }
 
   /**
@@ -35,7 +38,7 @@ export class CurrencyFormatter {
     if (selectedLocale) {
       return selectedLocale;
     }
-    
+
     // Fallback to browser locale
     return navigator.language || 'en-US';
   }
@@ -52,27 +55,30 @@ export class CurrencyFormatter {
   /**
    * Get or create a currency formatter
    */
-  private static getCurrencyFormatter(currency: string, hideZeroCents: boolean = false): Intl.NumberFormat {
+  private static getCurrencyFormatter(
+    currency: string,
+    hideZeroCents: boolean = false
+  ): Intl.NumberFormat {
     const locale = this.getUserLocale();
     const key = `${locale}-${currency}-${hideZeroCents}`;
-    
+
     const cache = hideZeroCents ? this.formattersNoZeroCents : this.formatters;
-    
+
     if (!cache.has(key)) {
       const options: Intl.NumberFormatOptions = {
         style: 'currency',
         currency: currency,
         currencyDisplay: 'narrowSymbol', // Use narrowSymbol to avoid A$, CA$, etc.
       };
-      
+
       if (hideZeroCents) {
         options.minimumFractionDigits = 0;
         options.maximumFractionDigits = 2;
       }
-      
+
       cache.set(key, new Intl.NumberFormat(locale, options));
     }
-    
+
     return cache.get(key)!;
   }
 
@@ -81,14 +87,14 @@ export class CurrencyFormatter {
    */
   private static getNumberFormatter(): Intl.NumberFormat {
     const locale = this.getUserLocale();
-    
+
     if (!this.numberFormatter) {
       this.numberFormatter = new Intl.NumberFormat(locale, {
         minimumFractionDigits: 0,
-        maximumFractionDigits: 2
+        maximumFractionDigits: 2,
       });
     }
-    
+
     return this.numberFormatter;
   }
 
@@ -96,23 +102,26 @@ export class CurrencyFormatter {
    * Format a value as currency
    */
   public static formatCurrency(
-    value: number | string, 
-    currency?: string, 
+    value: number | string,
+    currency?: string,
     options?: { hideZeroCents?: boolean }
   ): string {
     // Parse value if it's a string
     const numValue = typeof value === 'string' ? parseFloat(value) : value;
-    
+
     if (isNaN(numValue)) {
       return '';
     }
-    
+
     // Use provided currency or get from stores
     const currencyCode = currency || this.getCurrentCurrency();
-    
+
     // Get appropriate formatter
-    const formatter = this.getCurrencyFormatter(currencyCode, options?.hideZeroCents);
-    
+    const formatter = this.getCurrencyFormatter(
+      currencyCode,
+      options?.hideZeroCents
+    );
+
     return formatter.format(numValue);
   }
 
@@ -121,11 +130,11 @@ export class CurrencyFormatter {
    */
   public static formatNumber(value: number | string): string {
     const numValue = typeof value === 'string' ? parseFloat(value) : value;
-    
+
     if (isNaN(numValue)) {
       return '';
     }
-    
+
     return this.getNumberFormatter().format(numValue);
   }
 
@@ -142,7 +151,7 @@ export class CurrencyFormatter {
   public static getCurrencySymbol(currency?: string): string {
     const currencyCode = currency || this.getCurrentCurrency();
     const formatter = this.getCurrencyFormatter(currencyCode);
-    
+
     // Format 0 and extract just the symbol
     const formatted = formatter.format(0);
     return formatted.replace(/[0-9.,\s]/g, '').trim();
@@ -153,14 +162,18 @@ export class CurrencyFormatter {
    */
   public static isAlreadyFormatted(value: string, currency?: string): boolean {
     if (typeof value !== 'string') return false;
-    
+
     const symbol = this.getCurrencySymbol(currency);
     return value.includes(symbol);
   }
 }
 
 // Export convenience functions
-export const formatCurrency = CurrencyFormatter.formatCurrency.bind(CurrencyFormatter);
-export const formatNumber = CurrencyFormatter.formatNumber.bind(CurrencyFormatter);
-export const formatPercentage = CurrencyFormatter.formatPercentage.bind(CurrencyFormatter);
-export const getCurrencySymbol = CurrencyFormatter.getCurrencySymbol.bind(CurrencyFormatter);
+export const formatCurrency =
+  CurrencyFormatter.formatCurrency.bind(CurrencyFormatter);
+export const formatNumber =
+  CurrencyFormatter.formatNumber.bind(CurrencyFormatter);
+export const formatPercentage =
+  CurrencyFormatter.formatPercentage.bind(CurrencyFormatter);
+export const getCurrencySymbol =
+  CurrencyFormatter.getCurrencySymbol.bind(CurrencyFormatter);

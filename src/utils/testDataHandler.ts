@@ -13,7 +13,7 @@ export interface TestCheckoutData {
   lname?: string;
   email?: string;
   phone?: string;
-  
+
   // Address information
   address1?: string;
   address2?: string;
@@ -21,14 +21,14 @@ export interface TestCheckoutData {
   province?: string;
   postal?: string;
   country?: string;
-  
+
   // Credit card information
   'cc-name'?: string;
   'cc-number'?: string;
   'cc-month'?: string;
   'cc-year'?: string;
   cvv?: string;
-  
+
   // Billing address (if different)
   billingAddress?: {
     first_name?: string;
@@ -41,7 +41,7 @@ export interface TestCheckoutData {
     country?: string;
     phone?: string;
   };
-  
+
   // Other form data
   accepts_marketing?: boolean;
   use_shipping_address?: boolean;
@@ -52,10 +52,10 @@ export interface TestCheckoutData {
 export class TestDataHandler {
   private static instance: TestDataHandler;
   private logger = createLogger('TestDataHandler');
-  
+
   // Default test data sets
   private readonly defaultTestData: Record<string, TestCheckoutData> = {
-    'us': {
+    us: {
       fname: 'John',
       lname: 'Doe',
       email: 'john.doe@example.com',
@@ -69,9 +69,9 @@ export class TestDataHandler {
       'cc-number': '4111111111111111',
       'cc-month': '12',
       'cc-year': '2025',
-      cvv: '123'
+      cvv: '123',
     },
-    'ca': {
+    ca: {
       fname: 'Jane',
       lname: 'Smith',
       email: 'jane.smith@example.com',
@@ -85,9 +85,9 @@ export class TestDataHandler {
       'cc-number': '4111111111111111',
       'cc-month': '06',
       'cc-year': '2026',
-      cvv: '456'
+      cvv: '456',
     },
-    'uk': {
+    uk: {
       fname: 'William',
       lname: 'Johnson',
       email: 'w.johnson@example.com',
@@ -100,8 +100,8 @@ export class TestDataHandler {
       'cc-number': '4111111111111111',
       'cc-month': '03',
       'cc-year': '2027',
-      cvv: '789'
-    }
+      cvv: '789',
+    },
   };
 
   public static getInstance(): TestDataHandler {
@@ -114,10 +114,13 @@ export class TestDataHandler {
   /**
    * Fill checkout form with test data
    */
-  public fillTestData(dataSet: string = 'us', customData?: Partial<TestCheckoutData>): void {
+  public fillTestData(
+    dataSet: string = 'us',
+    customData?: Partial<TestCheckoutData>
+  ): void {
     const testData = {
       ...this.defaultTestData[dataSet],
-      ...customData
+      ...customData,
     };
 
     if (!testData) {
@@ -135,9 +138,16 @@ export class TestDataHandler {
     if (testData.billingAddress) {
       const billing = testData.billingAddress;
       // Ensure all required fields are present
-      if (billing.first_name && billing.last_name && billing.address1 && 
-          billing.city && billing.province && billing.postal && 
-          billing.country && billing.phone) {
+      if (
+        billing.first_name &&
+        billing.last_name &&
+        billing.address1 &&
+        billing.city &&
+        billing.province &&
+        billing.postal &&
+        billing.country &&
+        billing.phone
+      ) {
         checkoutStore.setBillingAddress({
           first_name: billing.first_name,
           last_name: billing.last_name,
@@ -147,7 +157,7 @@ export class TestDataHandler {
           province: billing.province,
           postal: billing.postal,
           country: billing.country,
-          phone: billing.phone
+          phone: billing.phone,
         });
         checkoutStore.setSameAsShipping(false);
       } else {
@@ -166,14 +176,16 @@ export class TestDataHandler {
         id: testData.shipping_method,
         name: 'Test Shipping',
         price: 0,
-        code: 'test'
+        code: 'test',
       });
     }
 
     // Emit event for enhancers to pick up the changes
-    document.dispatchEvent(new CustomEvent('checkout:test-data-filled', {
-      detail: { dataSet, testData }
-    }));
+    document.dispatchEvent(
+      new CustomEvent('checkout:test-data-filled', {
+        detail: { dataSet, testData },
+      })
+    );
 
     this.logger.info(`Test data filled for ${dataSet}`);
   }
@@ -219,7 +231,10 @@ export class TestDataHandler {
 
       if (timeZone.includes('America/Toronto') || timeZone.includes('Canada')) {
         dataSet = 'ca';
-      } else if (timeZone.includes('Europe/London') || timeZone.includes('GMT')) {
+      } else if (
+        timeZone.includes('Europe/London') ||
+        timeZone.includes('GMT')
+      ) {
         dataSet = 'uk';
       }
 

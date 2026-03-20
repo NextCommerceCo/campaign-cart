@@ -93,9 +93,16 @@ export class CountryService {
    *
    * @param countries Array of shipping countries from campaign API
    */
-  public setCampaignShippingCountries(countries: Array<{ code: string; label: string }> | null): void {
-    this.campaignShippingCountries = countries ? countries.map(c => c.code) : null;
-    this.logger.debug('Campaign shipping countries updated:', this.campaignShippingCountries);
+  public setCampaignShippingCountries(
+    countries: Array<{ code: string; label: string }> | null
+  ): void {
+    this.campaignShippingCountries = countries
+      ? countries.map(c => c.code)
+      : null;
+    this.logger.debug(
+      'Campaign shipping countries updated:',
+      this.campaignShippingCountries
+    );
   }
 
   /**
@@ -111,25 +118,27 @@ export class CountryService {
   public async getLocationData(): Promise<LocationData> {
     // Use localStorage for location data as countries list doesn't change often
     const cached = this.getFromCache('location_data', true);
-    
+
     if (cached) {
       return await this.applyCountryFiltering(cached);
     }
 
     try {
       const response = await fetch(`${this.baseUrl}/location`);
-      
+
       if (!response.ok) {
-        throw new Error(`Failed to fetch location data: ${response.statusText}`);
+        throw new Error(
+          `Failed to fetch location data: ${response.statusText}`
+        );
       }
 
       const data = await response.json();
       // Store in localStorage for longer persistence
       this.setCache('location_data', data, true);
-      
+
       this.logger.debug('Location data fetched', {
         detectedCountry: data.detectedCountryCode,
-        countriesCount: data.countries?.length
+        countriesCount: data.countries?.length,
       });
 
       return await this.applyCountryFiltering(data);
@@ -142,44 +151,50 @@ export class CountryService {
   /**
    * Get states for a specific country
    */
-  public async getCountryStates(countryCode: string): Promise<CountryStatesData> {
+  public async getCountryStates(
+    countryCode: string
+  ): Promise<CountryStatesData> {
     const cacheKey = `states_${countryCode}`;
     // Use localStorage for country states as they don't change often
     const cached = this.getFromCache(cacheKey, true);
-    
+
     if (cached) {
       return {
         ...cached,
-        states: this.applyStateFiltering(cached.states || [])
+        states: this.applyStateFiltering(cached.states || []),
       };
     }
 
     try {
-      const response = await fetch(`${this.baseUrl}/countries/${countryCode}/states`);
-      
+      const response = await fetch(
+        `${this.baseUrl}/countries/${countryCode}/states`
+      );
+
       if (!response.ok) {
-        throw new Error(`Failed to fetch states for ${countryCode}: ${response.statusText}`);
+        throw new Error(
+          `Failed to fetch states for ${countryCode}: ${response.statusText}`
+        );
       }
 
       const data = await response.json();
       // Store in localStorage for longer persistence
       this.setCache(cacheKey, data, true);
-      
+
       this.logger.debug(`States data fetched for ${countryCode}`, {
         statesCount: data.states?.length,
-        stateLabel: data.countryConfig?.stateLabel
+        stateLabel: data.countryConfig?.stateLabel,
       });
 
       return {
         ...data,
-        states: this.applyStateFiltering(data.states || [])
+        states: this.applyStateFiltering(data.states || []),
       };
     } catch (error) {
       this.logger.error(`Failed to fetch states for ${countryCode}:`, error);
       // Return empty states with default config
       return {
         countryConfig: this.getDefaultCountryConfig(countryCode),
-        states: []
+        states: [],
       };
     }
   }
@@ -202,12 +217,18 @@ export class CountryService {
   /**
    * Validate postal code based on country configuration
    */
-  public validatePostalCode(postalCode: string, _countryCode: string, countryConfig: CountryConfig): boolean {
+  public validatePostalCode(
+    postalCode: string,
+    _countryCode: string,
+    countryConfig: CountryConfig
+  ): boolean {
     if (!postalCode) return false;
 
     // Check length constraints
-    if (postalCode.length < countryConfig.postcodeMinLength ||
-        postalCode.length > countryConfig.postcodeMaxLength) {
+    if (
+      postalCode.length < countryConfig.postcodeMinLength ||
+      postalCode.length > countryConfig.postcodeMaxLength
+    ) {
       return false;
     }
 
@@ -229,7 +250,10 @@ export class CountryService {
    * Format postal code based on country configuration
    * Applies formatting pattern from CDN (e.g., "XXX XXX" for Canadian postal codes)
    */
-  public formatPostalCode(postalCode: string, countryConfig: CountryConfig): string {
+  public formatPostalCode(
+    postalCode: string,
+    countryConfig: CountryConfig
+  ): string {
     if (!postalCode) {
       return postalCode;
     }
@@ -260,7 +284,13 @@ export class CountryService {
     for (let i = 0; i < format.length && charIndex < cleanCode.length; i++) {
       const formatChar = format[i];
 
-      if (formatChar === 'N' || formatChar === 'X' || formatChar === '#' || formatChar === '9' || formatChar === 'A') {
+      if (
+        formatChar === 'N' ||
+        formatChar === 'X' ||
+        formatChar === '#' ||
+        formatChar === '9' ||
+        formatChar === 'A'
+      ) {
         // Format character placeholders - insert actual character from postal code
         // N = any alphanumeric, X = any char, # = digit, 9 = digit, A = letter
         formatted += cleanCode[charIndex];
@@ -286,7 +316,7 @@ export class CountryService {
     try {
       // Remove all cache entries with our prefix from both storages
       const keysToRemove: string[] = [];
-      
+
       // Clear from sessionStorage
       for (let i = 0; i < sessionStorage.length; i++) {
         const key = sessionStorage.key(i);
@@ -295,7 +325,7 @@ export class CountryService {
         }
       }
       keysToRemove.forEach(key => sessionStorage.removeItem(key));
-      
+
       // Clear from localStorage (mainly states data)
       const localKeysToRemove: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
@@ -305,8 +335,10 @@ export class CountryService {
         }
       }
       localKeysToRemove.forEach(key => localStorage.removeItem(key));
-      
-      this.logger.debug(`Country service cache cleared (${keysToRemove.length} session + ${localKeysToRemove.length} local entries)`);
+
+      this.logger.debug(
+        `Country service cache cleared (${keysToRemove.length} session + ${localKeysToRemove.length} local entries)`
+      );
     } catch (error) {
       this.logger.warn('Failed to clear cache:', error);
     }
@@ -324,7 +356,10 @@ export class CountryService {
       sessionStorage.removeItem(cacheKey);
       this.logger.debug(`Cache cleared for country: ${countryCode}`);
     } catch (error) {
-      this.logger.warn(`Failed to clear cache for country ${countryCode}:`, error);
+      this.logger.warn(
+        `Failed to clear cache for country ${countryCode}:`,
+        error
+      );
     }
   }
 
@@ -350,12 +385,16 @@ export class CountryService {
     }
   }
 
-  private setCache(key: string, data: any, useLocalStorage: boolean = false): void {
+  private setCache(
+    key: string,
+    data: any,
+    useLocalStorage: boolean = false
+  ): void {
     try {
       const cacheKey = this.cachePrefix + key;
       const cacheData = {
         data,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
       const storage = useLocalStorage ? localStorage : sessionStorage;
       storage.setItem(cacheKey, JSON.stringify(cacheData));
@@ -378,7 +417,7 @@ export class CountryService {
         postcodeExample: '12345 or 12345-6789',
         postcodeFormat: null,
         currencyCode: 'USD',
-        currencySymbol: '$'
+        currencySymbol: '$',
       },
       CA: {
         stateLabel: 'Province',
@@ -390,7 +429,7 @@ export class CountryService {
         postcodeExample: 'K1A 0B1',
         postcodeFormat: null,
         currencyCode: 'CAD',
-        currencySymbol: '$'
+        currencySymbol: '$',
       },
       GB: {
         stateLabel: 'County',
@@ -402,22 +441,24 @@ export class CountryService {
         postcodeExample: 'SW1A 1AA',
         postcodeFormat: null,
         currencyCode: 'GBP',
-        currencySymbol: '£'
-      }
+        currencySymbol: '£',
+      },
     };
 
-    return configs[countryCode] || {
-      stateLabel: 'State/Province',
-      stateRequired: false,
-      postcodeLabel: 'Postal Code',
-      postcodeRegex: null,
-      postcodeMinLength: 2,
-      postcodeMaxLength: 20,
-      postcodeExample: null,
-      postcodeFormat: null,
-      currencyCode: 'USD',
-      currencySymbol: '$'
-    };
+    return (
+      configs[countryCode] || {
+        stateLabel: 'State/Province',
+        stateRequired: false,
+        postcodeLabel: 'Postal Code',
+        postcodeRegex: null,
+        postcodeMinLength: 2,
+        postcodeMaxLength: 20,
+        postcodeExample: null,
+        postcodeFormat: null,
+        currencyCode: 'USD',
+        currencySymbol: '$',
+      }
+    );
   }
 
   private getFallbackLocationData(): LocationData {
@@ -427,12 +468,42 @@ export class CountryService {
       detectedCountryConfig: this.getDefaultCountryConfig('US'),
       detectedStates: [],
       countries: [
-        { code: 'US', name: 'United States', phonecode: '+1', currencyCode: 'USD', currencySymbol: '$' },
-        { code: 'CA', name: 'Canada', phonecode: '+1', currencyCode: 'CAD', currencySymbol: '$' },
-        { code: 'GB', name: 'United Kingdom', phonecode: '+44', currencyCode: 'GBP', currencySymbol: '£' },
-        { code: 'AU', name: 'Australia', phonecode: '+61', currencyCode: 'AUD', currencySymbol: '$' },
-        { code: 'DE', name: 'Germany', phonecode: '+49', currencyCode: 'EUR', currencySymbol: '€' }
-      ]
+        {
+          code: 'US',
+          name: 'United States',
+          phonecode: '+1',
+          currencyCode: 'USD',
+          currencySymbol: '$',
+        },
+        {
+          code: 'CA',
+          name: 'Canada',
+          phonecode: '+1',
+          currencyCode: 'CAD',
+          currencySymbol: '$',
+        },
+        {
+          code: 'GB',
+          name: 'United Kingdom',
+          phonecode: '+44',
+          currencyCode: 'GBP',
+          currencySymbol: '£',
+        },
+        {
+          code: 'AU',
+          name: 'Australia',
+          phonecode: '+61',
+          currencyCode: 'AUD',
+          currencySymbol: '$',
+        },
+        {
+          code: 'DE',
+          name: 'Germany',
+          phonecode: '+49',
+          currencyCode: 'EUR',
+          currencySymbol: '€',
+        },
+      ],
     };
   }
 
@@ -464,49 +535,67 @@ export class CountryService {
    * - Currency: Preserved from user's detected location (not affected by country filtering)
    * - Example: Canadian user with US-only shipping will see USD prices but CAD currency symbol
    */
-  private async applyCountryFiltering(data: LocationData): Promise<LocationData> {
+  private async applyCountryFiltering(
+    data: LocationData
+  ): Promise<LocationData> {
     let filteredCountries = [...data.countries];
 
     // Priority 1: Campaign shipping countries (from API) - RECOMMENDED ⭐
     // This ensures we only show countries that the campaign actually ships to
-    if (this.campaignShippingCountries && this.campaignShippingCountries.length > 0) {
-      this.logger.info('✅ Filtering countries based on campaign API (available_shipping_countries):', this.campaignShippingCountries);
+    if (
+      this.campaignShippingCountries &&
+      this.campaignShippingCountries.length > 0
+    ) {
+      this.logger.info(
+        '✅ Filtering countries based on campaign API (available_shipping_countries):',
+        this.campaignShippingCountries
+      );
       filteredCountries = filteredCountries.filter(country =>
         this.campaignShippingCountries!.includes(country.code)
       );
     }
     // Priority 2: Custom countries list from config
     else if (this.config.countries && this.config.countries.length > 0) {
-      this.logger.info('Using custom countries list from addressConfig.countries');
+      this.logger.info(
+        'Using custom countries list from addressConfig.countries'
+      );
       filteredCountries = this.config.countries.map(customCountry => ({
         code: customCountry.code,
         name: customCountry.name,
         phonecode: '',
         currencyCode: 'USD',
-        currencySymbol: '$'
+        currencySymbol: '$',
       }));
     }
     // Priority 3: showCountries filter from config (DEPRECATED - legacy fallback)
-    else if (this.config.showCountries && this.config.showCountries.length > 0) {
-      this.logger.warn('⚠️ Using deprecated showCountries config. Please use campaign API instead.');
-      this.logger.info('Filtering countries based on addressConfig.showCountries (legacy):', this.config.showCountries);
+    else if (
+      this.config.showCountries &&
+      this.config.showCountries.length > 0
+    ) {
+      this.logger.warn(
+        '⚠️ Using deprecated showCountries config. Please use campaign API instead.'
+      );
+      this.logger.info(
+        'Filtering countries based on addressConfig.showCountries (legacy):',
+        this.config.showCountries
+      );
       filteredCountries = filteredCountries.filter(country =>
         this.config.showCountries!.includes(country.code)
       );
     }
-    
+
     // IMPORTANT: Preserve the original detected country config for currency purposes
     // Even if the country is not in the allowed shipping list, we want to keep
     // the detected currency (e.g., show CAD for Canadian users even if only shipping to US)
     const originalDetectedCountryConfig = data.detectedCountryConfig;
-    
+
     // Use detected country or fall back to default if detection failed
     let detectedCountryCode = data.detectedCountryCode;
     let detectedCountryConfig = data.detectedCountryConfig;
-    
+
     // Check if detected country is in the allowed list
-    const detectedCountryAllowed = filteredCountries.some(country =>
-      country.code === detectedCountryCode
+    const detectedCountryAllowed = filteredCountries.some(
+      country => country.code === detectedCountryCode
     );
 
     // Fallback logic when detected country is not in the allowed shipping list
@@ -517,21 +606,29 @@ export class CountryService {
       const usExists = filteredCountries.some(country => country.code === 'US');
       if (usExists) {
         fallbackCountryCode = 'US';
-        this.logger.info(`✅ Detected country (${detectedCountryCode}) not available for shipping. Using fallback: United States (US)`);
+        this.logger.info(
+          `✅ Detected country (${detectedCountryCode}) not available for shipping. Using fallback: United States (US)`
+        );
       }
       // Fallback Priority 2: First country in the available list
       else if (filteredCountries.length > 0) {
         fallbackCountryCode = filteredCountries[0].code;
-        this.logger.info(`✅ Detected country (${detectedCountryCode}) not available and US not in list. Using first available country: ${fallbackCountryCode}`);
+        this.logger.info(
+          `✅ Detected country (${detectedCountryCode}) not available and US not in list. Using first available country: ${fallbackCountryCode}`
+        );
       }
       // Fallback Priority 3: defaultCountry from config (if set)
       else if (this.config.defaultCountry) {
         fallbackCountryCode = this.config.defaultCountry;
-        this.logger.warn(`⚠️ No countries available in filtered list. Using config defaultCountry: ${this.config.defaultCountry}`);
+        this.logger.warn(
+          `⚠️ No countries available in filtered list. Using config defaultCountry: ${this.config.defaultCountry}`
+        );
       }
 
       if (fallbackCountryCode) {
-        this.logger.info(`Preserving detected currency: ${originalDetectedCountryConfig.currencyCode} from detected location: ${data.detectedCountryCode}`);
+        this.logger.info(
+          `Preserving detected currency: ${originalDetectedCountryConfig.currencyCode} from detected location: ${data.detectedCountryCode}`
+        );
 
         // Change country code for shipping dropdown default
         // But KEEP the original detected country config for currency
@@ -542,37 +639,51 @@ export class CountryService {
         detectedCountryConfig = originalDetectedCountryConfig;
       }
     } else if (detectedCountryCode && detectedCountryAllowed) {
-      this.logger.info(`✅ Using detected country: ${detectedCountryCode} (available for shipping)`);
+      this.logger.info(
+        `✅ Using detected country: ${detectedCountryCode} (available for shipping)`
+      );
     }
-    
+
     return {
       ...data,
       countries: filteredCountries,
       detectedCountryCode,
-      detectedCountryConfig  // This will be the original detected config for currency
+      detectedCountryConfig, // This will be the original detected config for currency
     };
   }
 
   private applyStateFiltering(states: State[]): State[] {
     // Hardcoded US territories to exclude
     const US_TERRITORIES_TO_HIDE = [
-      "AS", "UM-81", "GU", "UM-84", "UM-86", "UM-67", 
-      "UM-89", "UM-71", "UM-76", "MP", "UM-95", "PR", 
-      "UM", "VI", "UM-79"
+      'AS',
+      'UM-81',
+      'GU',
+      'UM-84',
+      'UM-86',
+      'UM-67',
+      'UM-89',
+      'UM-71',
+      'UM-76',
+      'MP',
+      'UM-95',
+      'PR',
+      'UM',
+      'VI',
+      'UM-79',
     ];
-    
+
     // Apply hardcoded filtering first
-    let filteredStates = states.filter(state => 
-      !US_TERRITORIES_TO_HIDE.includes(state.code)
+    let filteredStates = states.filter(
+      state => !US_TERRITORIES_TO_HIDE.includes(state.code)
     );
-    
+
     // Then apply config-based filtering if any
     if (this.config.dontShowStates && this.config.dontShowStates.length > 0) {
-      filteredStates = filteredStates.filter(state => 
-        !this.config.dontShowStates!.includes(state.code)
+      filteredStates = filteredStates.filter(
+        state => !this.config.dontShowStates!.includes(state.code)
       );
     }
-    
+
     return filteredStates;
   }
-} 
+}
