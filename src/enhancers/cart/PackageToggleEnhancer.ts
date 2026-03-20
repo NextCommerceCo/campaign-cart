@@ -118,6 +118,8 @@ import { useCartStore } from '@/stores/cartStore';
 import { useCampaignStore } from '@/stores/campaignStore';
 import { useCheckoutStore } from '@/stores/checkoutStore';
 import { calculateBundlePrice } from '@/utils/calculations/CartCalculator';
+import { formatCurrency } from '@/utils/currencyFormatter';
+import { TemplateRenderer } from '@/shared/utils/TemplateRenderer';
 import type { CartState } from '@/types/global';
 import type { SummaryLine } from '@/types/api';
 
@@ -198,6 +200,10 @@ export class PackageToggleEnhancer extends BaseEnhancer {
     this.scanCards();
     this.setupMutationObserver();
 
+    for (const card of this.cards) {
+      this.renderToggleImage(card);
+    }
+
     this.subscribe(useCartStore, this.syncWithCart.bind(this));
     this.syncWithCart(useCartStore.getState());
 
@@ -238,24 +244,24 @@ export class PackageToggleEnhancer extends BaseEnhancer {
   // ─── Template rendering ───────────────────────────────────────────────────────
 
   private renderToggleTemplate(def: PackageDef): HTMLElement | null {
-    const allPackages = useCampaignStore.getState().packages ?? [];
+    const allPackages = useCampaignStore.getState().data?.packages ?? [];
     const pkg = allPackages.find(p => p.ref_id === def.packageId);
 
-    const vars: Record<string, string> = {};
+    const toggleData: Record<string, string> = {};
     for (const [key, value] of Object.entries(def)) {
-      vars[`toggle.${key}`] = value != null ? String(value) : '';
+      toggleData[key] = value != null ? String(value) : '';
     }
     // Enrich with campaign package data (only if not already set in JSON)
     if (pkg) {
-      vars['toggle.packageId'] ??= String(pkg.ref_id);
-      vars['toggle.name'] ??= pkg.name ?? '';
-      vars['toggle.image'] ??= pkg.image ?? '';
-      vars['toggle.price'] ??= pkg.price ?? '';
-      vars['toggle.priceRetail'] ??= pkg.price_retail ?? '';
-      vars['toggle.priceRetailTotal'] ??= pkg.price_retail_total ?? '';
+      toggleData['packageId'] ??= String(pkg.ref_id);
+      toggleData['name'] ??= pkg.name ?? '';
+      toggleData['image'] ??= pkg.image ?? '';
+      toggleData['price'] ??= pkg.price ?? '';
+      toggleData['priceRetail'] ??= pkg.price_retail ?? '';
+      toggleData['priceRetailTotal'] ??= pkg.price_retail_total ?? '';
     }
 
-    const html = this.template.replace(/\{([^}]+)\}/g, (_, k: string) => vars[k] ?? '');
+    const html = TemplateRenderer.render(this.template, { data: { toggle: toggleData } });
     const wrapper = document.createElement('div');
     wrapper.innerHTML = html.trim();
 
@@ -276,6 +282,23 @@ export class PackageToggleEnhancer extends BaseEnhancer {
     }
 
     return cardEl;
+  }
+
+  private renderToggleImage(card: ToggleCard): void {
+    const slots = card.element.querySelectorAll<HTMLImageElement>(
+      '[data-next-toggle-image]',
+    );
+    if (slots.length === 0) return;
+
+    const pkg = (useCampaignStore.getState().data?.packages ?? []).find(
+      p => p.ref_id === card.packageId,
+    );
+    if (!pkg?.image) return;
+
+    slots.forEach(el => {
+      el.src = pkg.image;
+      if (!el.alt) el.alt = pkg.name ?? '';
+    });
   }
 
   // ─── State container ──────────────────────────────────────────────────────────
@@ -484,7 +507,7 @@ export class PackageToggleEnhancer extends BaseEnhancer {
   }
 
   private async addToCart(card: ToggleCard): Promise<void> {
-    const allPackages = useCampaignStore.getState().packages ?? [];
+    const allPackages = useCampaignStore.getState().data?.packages ?? [];
     const pkg = allPackages.find(p => p.ref_id === card.packageId);
 
     await useCartStore.getState().addItem({
@@ -517,7 +540,13 @@ export class PackageToggleEnhancer extends BaseEnhancer {
       card.stateContainer.classList.toggle('os--active', inCart); // legacy
 
       if (card.addText && card.removeText) {
-        card.element.textContent = inCart ? card.removeText : card.addText;
+        const textSlot = card.element.querySelector<HTMLElement>('[data-next-button-text]');
+        if (textSlot) {
+          textSlot.textContent = inCart ? card.removeText : card.addText;
+        } else if (card.element.childElementCount === 0) {
+          // Single-element mode: safe to replace text content directly
+          card.element.textContent = inCart ? card.removeText : card.addText;
+        }
       }
 
       if (inCart) {
@@ -673,28 +702,40 @@ export class PackageToggleEnhancer extends BaseEnhancer {
   }
 
   private renderTogglePrice(card: ToggleCard, line: SummaryLine | null): void {
-    const allPackages = useCampaignStore.getState().packages ?? [];
+    const allPackages = useCampaignStore.getState().data?.packages ?? [];
     const pkg = allPackages.find(p => p.ref_id === card.packageId);
+    const qty = card.quantity || 1;
+
+    /** Scale a plain-decimal price string by qty and re-format it. */
+    const scale = (price: string | undefined): string => {
+      if (!price) return '';
+      const num = parseFloat(price);
+      return isNaN(num) ? '' : formatCurrency(num * qty);
+    };
 
     card.element.querySelectorAll<HTMLElement>('[data-next-toggle-price]').forEach(el => {
       const field = el.getAttribute('data-next-toggle-price') || 'total';
+      const comparePrice = line?.original_package_price ?? pkg?.price_total;
+      const basePrice = line?.package_price ?? pkg?.price_total ?? '0';
+      const savings = comparePrice && basePrice ? (parseFloat(comparePrice) - parseFloat(basePrice)) : 0;
       switch (field) {
         case 'compare':
-          el.textContent =
-            line?.price_retail_total ??
-            line?.original_package_price ??
-            pkg?.price_retail_total ??
-            pkg?.price_retail ??
-            '';
+          el.textContent = scale(comparePrice);
           break;
         case 'savings':
-          el.textContent = line?.total_discount ?? '';
+          el.textContent = savings > 0 ? formatCurrency(savings) : '';
           break;
+        case 'savingsPercentage': {
+          el.textContent = savings > 0 && comparePrice
+            ? `${Math.round((savings / parseFloat(comparePrice)) * 100)}%`
+            : '';
+          break;
+        }
         case 'subtotal':
           el.textContent = line?.subtotal ?? pkg?.price_total ?? '';
           break;
         default:
-          el.textContent = line?.package_price ?? pkg?.price_total ?? '';
+          el.textContent = scale(basePrice);
           break;
       }
     });

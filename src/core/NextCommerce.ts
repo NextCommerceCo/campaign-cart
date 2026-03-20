@@ -16,7 +16,6 @@ import type {
   CallbackData,
   EventMap,
   AppliedCoupon,
-  DiscountDefinition,
 } from '@/types/global';
 import type { AddUpsellLine } from '@/types/api';
 import { useCartStore } from '@/stores/cartStore';
@@ -597,16 +596,6 @@ export class NextCommerce {
   public getCoupons(): AppliedCoupon[] {
     const cartStore = useCartStore.getState();
     return cartStore.getCoupons();
-  }
-
-  public validateCoupon(code: string): { valid: boolean; message?: string } {
-    const cartStore = useCartStore.getState();
-    return cartStore.validateCoupon(code);
-  }
-
-  public calculateDiscountAmount(coupon: DiscountDefinition): number {
-    const cartStore = useCartStore.getState();
-    return cartStore.calculateDiscountAmount(coupon);
   }
 
   // Exit Intent - Simple approach
