@@ -125,7 +125,8 @@ export class EventTimelinePanel implements DebugPanel {
   constructor() {
     // Check if debug mode is actually enabled before initializing
     const urlParams = new URLSearchParams(window.location.search);
-    const isDebugMode = urlParams.get('debugger') === 'true' || urlParams.get('debug') === 'true';
+    const windowConfig = (window as any).nextConfig;
+    const isDebugMode = urlParams.get('debugger') === 'true' || urlParams.get('debug') === 'true' || windowConfig?.debugger === true || windowConfig?.debug === true;
     
     if (isDebugMode) {
       this.loadSavedState();

@@ -16,12 +16,12 @@ export function isApplePayAvailable(): boolean {
   try {
     // Check if this is an Android device - if so, hide Apple Pay
     const isAndroid = /Android/i.test(navigator.userAgent);
-    
+
     if (isAndroid) {
       logger.debug('Android device detected - hiding Apple Pay');
       return false;
     }
-    
+
     // Show Apple Pay on all other devices (iOS, Desktop, etc)
     // Desktop will show QR code, iOS will use native Apple Pay
     logger.debug('Apple Pay available (non-Android device)');
@@ -85,6 +85,6 @@ export function getPaymentCapabilities(): {
     googlePay: isGooglePayAvailable(),
     paypal: isPayPalAvailable(),
     userAgent: navigator.userAgent,
-    platform: navigator.platform || 'unknown'
+    platform: navigator.platform || 'unknown',
   };
 }

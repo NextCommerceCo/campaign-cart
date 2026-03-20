@@ -9,7 +9,7 @@ import { beforeEach } from 'vitest';
 beforeEach(() => {
   // Clear DOM
   document.body.innerHTML = '';
-  
+
   // Reset window.nextConfig
   if (typeof window !== 'undefined') {
     (window as any).nextConfig = undefined;

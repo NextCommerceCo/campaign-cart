@@ -4,10 +4,10 @@
  */
 
 export { nextAnalytics as analyticsManager } from '@/utils/analytics/index';
-export type { 
-  AnalyticsProvider, 
-  AnalyticsEvent, 
+export type {
+  AnalyticsProvider,
+  AnalyticsEvent,
   AnalyticsConfig,
   TrackingItem,
-  EcommerceEvent
+  EcommerceEvent,
 } from '@/utils/analytics/types';

@@ -32,7 +32,7 @@ export class NextCampaignAdapter extends ProviderAdapter {
    */
   async initialize(config?: any): Promise<void> {
     this.logger.info('NextCampaign adapter initializing...');
-    
+
     // Get API key from config store or adapter config
     if (config?.apiKey) {
       this.apiKey = config.apiKey;
@@ -104,7 +104,7 @@ export class NextCampaignAdapter extends ProviderAdapter {
 
     this.scriptLoading = true;
     this.loadPromise = this.performLoad();
-    
+
     try {
       await this.loadPromise;
       this.scriptLoaded = true;
@@ -136,12 +136,12 @@ export class NextCampaignAdapter extends ProviderAdapter {
       const script = document.createElement('script');
       script.async = true;
       script.src = scriptUrl;
-      
+
       script.onload = () => {
         this.logger.debug('NextCampaign script loaded');
         resolve();
       };
-      
+
       script.onerror = () => {
         reject(new Error(`Failed to load NextCampaign script: ${scriptUrl}`));
       };
@@ -156,7 +156,7 @@ export class NextCampaignAdapter extends ProviderAdapter {
     if (window.nextCampaign && this.apiKey) {
       window.nextCampaign.config({ apiKey: this.apiKey });
       this.logger.debug('NextCampaign configured with API key');
-      
+
       // Fire initial page view event to match standalone script behavior
       this.fireInitialPageView();
     }
@@ -200,7 +200,7 @@ export class NextCampaignAdapter extends ProviderAdapter {
    */
   private async waitForNextCampaign(timeout: number = 5000): Promise<void> {
     const start = Date.now();
-    
+
     return new Promise((resolve, reject) => {
       const checkInterval = setInterval(() => {
         if (window.nextCampaign) {

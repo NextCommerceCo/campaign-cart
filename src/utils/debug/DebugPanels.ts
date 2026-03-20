@@ -36,7 +36,7 @@ export class CartPanel implements DebugPanel {
 
   getContent(): string {
     const cartState = useCartStore.getState();
-    
+
     const metrics = [
       ['Items Count', cartState.items.length.toString()],
       ['Total Quantity', cartState.totalQuantity.toString()],
@@ -101,7 +101,7 @@ export class ConfigPanel implements DebugPanel {
 
   getContent(): string {
     const configState = useConfigStore.getState();
-    
+
     const metrics = [
       ['API Key', configState.apiKey ? '✓ Set' : '✗ Missing'],
       ['Campaign ID', configState.campaignId || 'Not set'],
@@ -242,7 +242,7 @@ export class StoragePanel implements DebugPanel {
         Object.keys(localStorage).map(key => [key, localStorage.getItem(key)])
       )
     };
-    
+
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

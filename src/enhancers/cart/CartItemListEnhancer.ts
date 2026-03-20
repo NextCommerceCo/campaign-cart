@@ -5,9 +5,7 @@
 
 import { BaseEnhancer } from '@/enhancers/base/BaseEnhancer';
 import { useCartStore } from '@/stores/cartStore';
-import { useCampaignStore } from '@/stores/campaignStore';
 import { TemplateRenderer, TemplateFormatters } from '@/shared/utils/TemplateRenderer';
-import { PriceCalculator } from '@/utils/calculations/PriceCalculator';
 import { DisplayFormatter } from '@/enhancers/display/DisplayEnhancerCore';
 import type { CartState, CartItem } from '@/types/global';
 
@@ -93,14 +91,13 @@ export class CartItemListEnhancer extends BaseEnhancer {
     this.removeClass('cart-empty');
     this.addClass('cart-has-items');
 
-    const campaignStore = useCampaignStore.getState();
     const itemsHTML: string[] = [];
 
     // Group items if enabled
     const itemsToRender = this.groupItems ? this.groupIdenticalItems(items) : items;
 
     for (const item of itemsToRender) {
-      const itemHTML = await this.renderCartItem(item, campaignStore);
+      const itemHTML = this.renderCartItem(item);
       if (itemHTML) {
         itemsHTML.push(itemHTML);
       }
@@ -120,33 +117,16 @@ export class CartItemListEnhancer extends BaseEnhancer {
     }
   }
 
-  private async renderCartItem(item: CartItem, campaignStore: any): Promise<string> {
+  private renderCartItem(item: CartItem): string {
     try {
-      // Get package data for additional details
-      const packageData = campaignStore.getPackage(item.packageId);
-      
-      if (!packageData) {
-        this.logger.warn(`Package data not found for item ${item.packageId}`);
-        return '';
-      }
-
-      // Prepare all cart item data
-      const itemData = this.prepareCartItemData(item, packageData);
-
-      // Default template if none provided
+      const itemData = this.prepareCartItemData(item);
+      console.log('Rendering cart item with data:', itemData);
       const template = this.template || this.getDefaultItemTemplate();
-
-      // Use TemplateRenderer with formatters
       const formatters: TemplateFormatters = {
         ...TemplateRenderer.createDefaultFormatters(),
         currency: (value: any) => DisplayFormatter.formatCurrency(value)
       };
-
-      return TemplateRenderer.render(template, {
-        data: { item: itemData },
-        formatters
-      });
-
+      return TemplateRenderer.render(template, { data: { item: itemData }, formatters });
     } catch (error) {
       this.logger.error('Error rendering cart item:', error);
       return '';
@@ -228,197 +208,163 @@ export class CartItemListEnhancer extends BaseEnhancer {
     this.logger.debug(`Enhanced ${quantityButtons.length} quantity buttons and ${removeButtons.length} remove buttons`);
   }
 
-  private prepareCartItemData(item: CartItem, packageData: any): any {
-    // Enhanced pricing calculations with ALL campaign data
-    // Note: item.price contains the total package price, not per-unit price
-    const packageCurrentPrice = item.price;
-    const lineTotal = packageCurrentPrice * item.quantity;
-    
-    // Package-level pricing (from campaign API)
-    const packagePrice = parseFloat(packageData.price || '0');
-    const packagePriceTotal = parseFloat(packageData.price_total || '0');
-    const packageRetailPrice = parseFloat(packageData.price_retail || packageData.price || '0');
-    const packageRetailTotal = parseFloat(packageData.price_retail_total || '0');
-    const packageQty = packageData.qty || 1;
-    
-    // Calculate item-specific discount if any coupons apply to this package
-    const cartState = useCartStore.getState();
-    let itemDiscount = 0;
-    let hasDiscount = false;
-    
-    if (cartState.appliedCoupons && cartState.appliedCoupons.length > 0) {
-      for (const coupon of cartState.appliedCoupons) {
-        if (coupon.definition.scope === 'package' && 
-            coupon.definition.packageIds?.includes(item.packageId)) {
-          // This coupon applies to this specific item
-          if (coupon.definition.type === 'percentage') {
-            itemDiscount += lineTotal * (coupon.definition.value / 100);
-            if (coupon.definition.maxDiscount) {
-              itemDiscount = Math.min(itemDiscount, coupon.definition.maxDiscount);
-            }
-          } else {
-            // For fixed discounts, distribute proportionally if multiple items
-            const eligibleTotal = cartState.items
-              .filter(cartItem => coupon.definition.packageIds?.includes(cartItem.packageId))
-              .reduce((sum, cartItem) => sum + (cartItem.price * cartItem.quantity), 0);
-            const proportion = lineTotal / eligibleTotal;
-            itemDiscount += coupon.definition.value * proportion;
-          }
-          hasDiscount = true;
-        } else if (coupon.definition.scope === 'order') {
-          // For order-level discounts, distribute proportionally
-          const proportion = lineTotal / cartState.subtotal;
-          if (coupon.definition.type === 'percentage') {
-            itemDiscount += lineTotal * (coupon.definition.value / 100);
-          } else {
-            itemDiscount += coupon.definition.value * proportion;
-          }
-          hasDiscount = true;
-        }
-      }
-    }
-    
-    const discountedLineTotal = lineTotal - itemDiscount;
-    const discountedPackagePrice = packageCurrentPrice - (itemDiscount / item.quantity);
-    
-    // Use PriceCalculator for all price metrics
-    const metrics = PriceCalculator.calculatePackageMetrics({
-      price: packagePrice,
-      retailPrice: packageRetailPrice,
-      quantity: packageQty,
-      priceTotal: packagePriceTotal,
-      retailPriceTotal: packageRetailTotal
-    });
-    
-    // Line calculations (package price * cart quantity)
-    const retailLineTotal = metrics.totalRetailPrice * item.quantity;
-    const lineSavings = metrics.totalSavings * item.quantity;
-    
-    // Recurring pricing
-    const recurringPrice = parseFloat(packageData.price_recurring || '0');
-    const recurringTotal = parseFloat(packageData.price_recurring_total || '0');
-    const hasRecurring = packageData.is_recurring && recurringPrice > 0;
-    
-    // Frequency text
-    const frequencyText = hasRecurring ? 
-      (packageData.interval_count && packageData.interval_count > 1 ? 
-        `Every ${packageData.interval_count} ${packageData.interval}s` : 
-        `Per ${packageData.interval}`) : 'One time';
+  private prepareCartItemData(item: CartItem): any {
+    // Parse API-provided price strings to raw numbers (no frontend calculations)
+    const p = (s: string | undefined): number => parseFloat(s ?? '0') || 0;
 
-    // Check for custom title mapping (instance level takes priority, then global config)
+    console.log('Preparing cart item data for item:', item);
+
+    const packagePrice = item.price; // raw number (price_total)
+    const packageQty = item.qty ?? 1;
+    const unitPrice = p(item.price_per_unit);
+    const retailPrice = p(item.price_retail);
+    const retailPriceTotal = p(item.price_retail) * item.quantity;
+    const hasSavings = (retailPriceTotal > 0 && retailPriceTotal > packagePrice) || p(item.total_discount) > 0;
+    const retailLineTotal = retailPriceTotal * item.quantity;
+    const lineTotalRaw = p(item.total) || packagePrice * item.quantity;
+
+    // Discounts from API (original_* = before discount, unit_price/package_price = after discount)
+    const discountAmountRaw = p(item.total_discount);
+    const hasDiscount = discountAmountRaw > 0;
+    const finalPriceRaw = p(item.package_price) || packagePrice;
+    const finalLineTotalRaw = finalPriceRaw * item.quantity;
+    const unitFinalPrice = p(item.unit_price) || unitPrice;
+
+    // Recurring
+    const hasRecurring = item.is_recurring ?? false;
+    const recurringPriceRaw = p(item.price_recurring);
+    const recurringTotalRaw = p(item.price_recurring_total);
+
+    // Frequency text
+    const frequencyText = hasRecurring
+      ? (item.interval_count && item.interval_count > 1
+          ? `Every ${item.interval_count} ${item.interval}s`
+          : `Per ${item.interval}`)
+      : 'One time';
+
+    // Savings
+    const savingsRaw = hasSavings ? retailLineTotal - lineTotalRaw : 0;
+    const savingsPct = hasSavings && retailLineTotal > 0
+      ? Math.round((savingsRaw / retailLineTotal) * 100)
+      : 0;
+    const unitSavings = hasSavings ? retailPrice - unitPrice : 0;
+    const packageSavings = hasSavings ? retailPriceTotal - packagePrice : 0;
+
+    // Custom title mapping
     const globalTitleMap = (window as any).nextConfig?.productTitleMap || {};
     const titleMap = this.titleMap || globalTitleMap;
     let customTitle = titleMap[item.packageId] || titleMap[String(item.packageId)];
-    
-    // Apply transform function if available
     const titleTransform = (window as any).nextConfig?.productTitleTransform;
     if (!customTitle && typeof titleTransform === 'function') {
       try {
-        customTitle = titleTransform(item.packageId, packageData.name);
+        customTitle = titleTransform(item.packageId, item.title);
       } catch (error) {
         this.logger.warn('Error in productTitleTransform:', error);
       }
     }
-    
+
+    const attrs = item.variantAttributes ?? [];
+
     return {
       // Basic item data
       id: item.id,
       packageId: item.packageId,
-      title: customTitle || item.title || packageData.name,
-      name: customTitle || packageData.name,
+      title: customTitle || item.title,
+      name: customTitle || item.title,
       quantity: item.quantity,
 
       // Product and variant information
-      productId: item.productId || packageData.product_id,
-      productName: item.productName || packageData.product_name || '',
-      variantId: item.variantId || packageData.product_variant_id,
-      variantName: item.variantName || packageData.product_variant_name || '',
-      variantAttributes: item.variantAttributes || packageData.product_variant_attribute_values || [],
-      variantSku: item.variantSku || packageData.product_sku || '',
+      productId: item.productId,
+      productName: item.productName ?? '',
+      variantId: item.variantId,
+      variantName: item.variantName ?? '',
+      variantAttributes: attrs,
+      variantSku: item.variantSku ?? '',
 
       // Formatted variant attributes for easy display
-      variantAttributesFormatted: this.formatVariantAttributes(item.variantAttributes || packageData.product_variant_attribute_values || []),
-      variantAttributesList: this.formatVariantAttributesList(item.variantAttributes || packageData.product_variant_attribute_values || []),
+      variantAttributesFormatted: this.formatVariantAttributes(attrs),
+      variantAttributesList: this.formatVariantAttributesList(attrs),
 
       // Individual variant attributes by code
-      ...this.extractIndividualAttributes(item.variantAttributes || packageData.product_variant_attribute_values || []),
-      
-      // Pricing - will be formatted by TemplateRenderer
-      price: packageCurrentPrice, // Total package price (e.g., $47.97 for 3x Drone)
-      unitPrice: metrics.unitPrice, // Individual unit price (e.g., $15.99 per drone)
-      lineTotal: lineTotal,
-      lineCompare: metrics.hasSavings ? retailLineTotal : 0,
-      comparePrice: metrics.hasSavings ? metrics.totalRetailPrice : 0,
-      unitComparePrice: metrics.unitRetailPrice, // Individual unit retail price (e.g., $39.99 per drone)
-      recurringPrice: hasRecurring ? recurringPrice : 0,
-      savingsAmount: lineSavings > 0 ? lineSavings : 0,
-      unitSavings: metrics.unitSavings, // Per-unit savings
-      
-      // Discount-specific fields
-      discountAmount: itemDiscount,
-      discountedPrice: discountedPackagePrice,
-      discountedLineTotal: discountedLineTotal,
-      hasDiscount: hasDiscount,
-      finalPrice: hasDiscount ? discountedPackagePrice : packageCurrentPrice,
-      finalLineTotal: hasDiscount ? discountedLineTotal : lineTotal,
-      
+      ...this.extractIndividualAttributes(attrs),
+
+      // Pricing — raw numbers formatted by TemplateRenderer currency formatter
+      price: packagePrice,
+      unitPrice,
+      lineTotal: lineTotalRaw,
+      lineCompare: hasSavings ? retailLineTotal : 0,
+      comparePrice: hasSavings ? retailPriceTotal : 0,
+      unitComparePrice: hasSavings ? retailPrice : 0,
+      recurringPrice: hasRecurring ? recurringPriceRaw : 0,
+      savingsAmount: savingsRaw,
+      unitSavings,
+
+      // Discount fields (from API)
+      discountAmount: discountAmountRaw,
+      discountedPrice: finalPriceRaw,
+      discountedLineTotal: finalLineTotalRaw,
+      hasDiscount,
+      finalPrice: hasDiscount ? finalPriceRaw : packagePrice,
+      finalLineTotal: hasDiscount ? finalLineTotalRaw : lineTotalRaw,
+      unitFinalPrice,
+
       // Package-level pricing
-      packagePrice: packagePrice,
-      packagePriceTotal: metrics.totalPrice,
-      packageRetailPrice: packageRetailPrice,
-      packageRetailTotal: metrics.totalRetailPrice,
-      packageSavings: metrics.totalSavings > 0 ? metrics.totalSavings : 0,
-      recurringTotal: hasRecurring ? recurringTotal : 0,
-      
+      packagePrice: unitPrice,
+      packagePriceTotal: packagePrice,
+      packageRetailPrice: retailPrice,
+      packageRetailTotal: retailPriceTotal,
+      packageSavings,
+      recurringTotal: hasRecurring ? recurringTotalRaw : 0,
+
       // Calculated fields
-      savingsPct: metrics.totalSavingsPercentage > 0 ? `${Math.round(metrics.totalSavingsPercentage)}%` : '',
-      packageSavingsPct: metrics.totalSavingsPercentage > 0 ? `${Math.round(metrics.totalSavingsPercentage)}%` : '',
-      packageQty: packageQty,
+      savingsPct: savingsPct > 0 ? `${savingsPct}%` : '',
+      packageSavingsPct: savingsPct > 0 ? `${savingsPct}%` : '',
+      packageQty,
       frequency: frequencyText,
       isRecurring: hasRecurring ? 'true' : 'false',
-      hasSavings: lineSavings > 0 ? 'true' : 'false',
-      hasPackageSavings: metrics.hasSavings ? 'true' : 'false',
-      
+      hasSavings: savingsRaw > 0 ? 'true' : 'false',
+      hasPackageSavings: packageSavings > 0 ? 'true' : 'false',
+
       // Product data
-      image: packageData.image || '',
-      sku: packageData.external_id ? String(packageData.external_id) : '',
-      
+      image: item.image ?? '',
+      sku: item.sku ?? item.variantSku ?? '',
+
       // Raw values (unformatted)
-      'price.raw': packageCurrentPrice,
-      'unitPrice.raw': metrics.unitPrice,
-      'lineTotal.raw': lineTotal,
-      'lineCompare.raw': retailLineTotal,
-      'comparePrice.raw': metrics.totalRetailPrice,
-      'unitComparePrice.raw': metrics.unitRetailPrice,
-      'recurringPrice.raw': recurringPrice,
-      'savingsAmount.raw': lineSavings,
-      'unitSavings.raw': metrics.unitSavings,
-      'packagePrice.raw': packagePrice,
-      'packagePriceTotal.raw': metrics.totalPrice,
-      'packageRetailPrice.raw': packageRetailPrice,
-      'packageRetailTotal.raw': metrics.totalRetailPrice,
-      'packageSavings.raw': metrics.totalSavings,
-      'recurringTotal.raw': recurringTotal,
-      'savingsPct.raw': Math.round(metrics.totalSavingsPercentage),
-      'packageSavingsPct.raw': Math.round(metrics.totalSavingsPercentage),
-      'discountAmount.raw': itemDiscount,
-      'discountedPrice.raw': discountedPackagePrice,
-      'discountedLineTotal.raw': discountedLineTotal,
-      'finalPrice.raw': hasDiscount ? discountedPackagePrice : packageCurrentPrice,
-      'finalLineTotal.raw': hasDiscount ? discountedLineTotal : lineTotal,
-      
+      'price.raw': packagePrice,
+      'unitPrice.raw': unitPrice,
+      'lineTotal.raw': lineTotalRaw,
+      'lineCompare.raw': hasSavings ? retailLineTotal : 0,
+      'comparePrice.raw': hasSavings ? retailPriceTotal : 0,
+      'unitComparePrice.raw': hasSavings ? retailPrice : 0,
+      'recurringPrice.raw': recurringPriceRaw,
+      'savingsAmount.raw': savingsRaw,
+      'unitSavings.raw': unitSavings,
+      'packagePrice.raw': unitPrice,
+      'packagePriceTotal.raw': packagePrice,
+      'packageRetailPrice.raw': retailPrice,
+      'packageRetailTotal.raw': retailPriceTotal,
+      'packageSavings.raw': packageSavings,
+      'recurringTotal.raw': recurringTotalRaw,
+      'savingsPct.raw': savingsPct,
+      'packageSavingsPct.raw': savingsPct,
+      'discountAmount.raw': discountAmountRaw,
+      'discountedPrice.raw': finalPriceRaw,
+      'discountedLineTotal.raw': finalLineTotalRaw,
+      'finalPrice.raw': hasDiscount ? finalPriceRaw : packagePrice,
+      'finalLineTotal.raw': hasDiscount ? finalLineTotalRaw : lineTotalRaw,
+
       // Conditional display helpers
-      showCompare: metrics.hasSavings ? 'show' : 'hide',
-      showSavings: lineSavings > 0 ? 'show' : 'hide',
-      showUnitPrice: packageQty > 1 ? 'show' : 'hide', // Show unit price for multi-item packages
-      showUnitCompare: packageQty > 1 && metrics.unitSavings > 0 ? 'show' : 'hide',
-      showUnitSavings: packageQty > 1 && metrics.unitSavings > 0 ? 'show' : 'hide',
+      showCompare: hasSavings ? 'show' : 'hide',
+      showSavings: savingsRaw > 0 ? 'show' : 'hide',
+      showUnitPrice: packageQty > 1 ? 'show' : 'hide',
+      showUnitCompare: packageQty > 1 && hasSavings ? 'show' : 'hide',
+      showUnitSavings: packageQty > 1 && unitSavings > 0 ? 'show' : 'hide',
       showRecurring: hasRecurring ? 'show' : 'hide',
-      showPackageSavings: metrics.totalSavings > 0 ? 'show' : 'hide',
-      showPackageTotal: metrics.totalPrice > 0 ? 'show' : 'hide',
-      showRecurringTotal: hasRecurring && recurringTotal > 0 ? 'show' : 'hide',
+      showPackageSavings: packageSavings > 0 ? 'show' : 'hide',
+      showPackageTotal: packagePrice > 0 ? 'show' : 'hide',
+      showRecurringTotal: hasRecurring && recurringTotalRaw > 0 ? 'show' : 'hide',
       showDiscount: hasDiscount ? 'show' : 'hide',
-      showOriginalPrice: hasDiscount ? 'show' : 'hide'
+      showOriginalPrice: hasDiscount ? 'show' : 'hide',
     };
   }
 
