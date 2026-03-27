@@ -95,8 +95,8 @@ if (typeof window !== 'undefined') {
         import('./utils/attribution/AttributionCollector');
 
         // Cart UI components
-        import('./enhancers/cart/CartItemListEnhancer');
-        import('./enhancers/cart/QuantityControlEnhancer');
+        import('./enhancers/cart/CartItemList');
+        import('./enhancers/cart/QuantityControl');
       }, { timeout: 5000 });
       
       // Phase 3: Tertiary modules (preload when truly idle)

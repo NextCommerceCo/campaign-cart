@@ -308,11 +308,11 @@ export class AttributeScanner {
           
           switch (action) {
             case 'add-to-cart':
-              const { AddToCartEnhancer } = await import('@/enhancers/cart/AddToCartEnhancer');
+              const { AddToCartEnhancer } = await import('@/enhancers/cart/AddToCart');
               return new AddToCartEnhancer(element);
               
             case 'accept-upsell':
-              const { AcceptUpsellEnhancer } = await import('@/enhancers/cart/AcceptUpsellEnhancer');
+              const { AcceptUpsellEnhancer } = await import('@/enhancers/cart/AcceptUpsell');
               return new AcceptUpsellEnhancer(element);
               
             default:
@@ -366,7 +366,7 @@ export class AttributeScanner {
         // These are now handled by the main CheckoutFormEnhancer (simplified approach)
           
         case 'cart-items':
-          const { CartItemListEnhancer } = await import('@/enhancers/cart/CartItemListEnhancer');
+          const { CartItemListEnhancer } = await import('@/enhancers/cart/CartItemList');
           return new CartItemListEnhancer(element);
 
         case 'cart-summary':
@@ -383,11 +383,11 @@ export class AttributeScanner {
           return new OrderItemListEnhancer(element);
 
         case 'quantity':
-          const { QuantityControlEnhancer } = await import('@/enhancers/cart/QuantityControlEnhancer');
+          const { QuantityControlEnhancer } = await import('@/enhancers/cart/QuantityControl');
           return new QuantityControlEnhancer(element);
 
         case 'remove-item':
-          const { RemoveItemEnhancer } = await import('@/enhancers/cart/RemoveItemEnhancer');
+          const { RemoveItemEnhancer } = await import('@/enhancers/cart/RemoveItem');
           return new RemoveItemEnhancer(element);
 
         // 'order' case removed - order display now handled via data-next-display="order.xxx" pattern
