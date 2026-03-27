@@ -293,20 +293,6 @@ export class AttributionCollector {
       }
     }
     
-    // Handle sg_evclid separately
-    if (urlParams.has('sg_evclid')) {
-      const sg_evclid = urlParams.get('sg_evclid') || '';
-      sessionStorage.setItem('sg_evclid', sg_evclid);
-      localStorage.setItem('sg_evclid', sg_evclid);
-      metadata.sg_evclid = sg_evclid;
-      logger.debug(`SG Everflow click ID found: ${sg_evclid}`);
-    } else {
-      const storedSgEvclid = localStorage.getItem('sg_evclid');
-      if (storedSgEvclid) {
-        metadata.sg_evclid = storedSgEvclid;
-      }
-    }
-    
     // Set the transaction ID in metadata if we have it
     if (evclid) {
       metadata.everflow_transaction_id = evclid;

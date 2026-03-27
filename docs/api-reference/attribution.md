@@ -178,7 +178,6 @@ The SDK automatically collects these metadata fields:
   
   // Everflow tracking (when available)
   everflow_transaction_id?: string;
-  sg_evclid?: string;
 }
 ```
 
