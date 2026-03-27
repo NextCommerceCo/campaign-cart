@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.1] — 2026-03-27
+
+### Removed
+
+- **`sg_evclid` attribution parameter** — Singular Everflow click ID (`sg_evclid`) has been removed from attribution tracking. The `sg_evclid` URL parameter is no longer collected, stored, or sent to the API. Use `evclid` (Everflow transaction ID) for Everflow click tracking instead.
+
 ## [0.4.0] — 2026-03-20
 
 ### New

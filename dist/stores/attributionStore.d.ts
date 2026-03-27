@@ -15,7 +15,6 @@ export interface AttributionMetadata {
     fb_pixel_id?: string;
     fbclid?: string;
     everflow_transaction_id?: string;
-    sg_evclid?: string;
     [key: string]: any;
 }
 export interface AttributionState extends Attribution {

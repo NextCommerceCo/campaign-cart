@@ -28,7 +28,6 @@ export interface AttributionMetadata {
 
   // Everflow tracking
   everflow_transaction_id?: string;
-  sg_evclid?: string;
 
   // Custom tracking tags
   [key: string]: any;
@@ -280,7 +279,6 @@ export const useAttributionStore = create<
           '- Transaction ID:',
           state.metadata.everflow_transaction_id || '(not set)'
         );
-        console.log('- SG EVCLID:', state.metadata.sg_evclid || '(not set)');
         console.log(
           '- localStorage evclid:',
           localStorage.getItem('evclid') || '(not set)'
