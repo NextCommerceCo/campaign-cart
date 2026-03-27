@@ -89,7 +89,7 @@ if (typeof window !== 'undefined') {
 
         // Order/Upsell
         import('./enhancers/display/OrderDisplayEnhancer');
-        import('./enhancers/order/UpsellEnhancer');
+        import('./enhancers/order/Upsell');
 
         // Attribution
         import('./utils/attribution/AttributionCollector');

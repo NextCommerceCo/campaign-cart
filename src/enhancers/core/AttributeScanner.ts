@@ -393,7 +393,7 @@ export class AttributeScanner {
         // 'order' case removed - order display now handled via data-next-display="order.xxx" pattern
 
         case 'upsell':
-          const { UpsellEnhancer } = await import('@/enhancers/order/UpsellEnhancer');
+          const { UpsellEnhancer } = await import('@/enhancers/order/Upsell');
           return new UpsellEnhancer(element);
 
         case 'coupon':
