@@ -1,0 +1,41 @@
+import { BaseEnhancer } from '../../base/BaseEnhancer';
+import { BundleCard } from './BundleSelectorEnhancer.types';
+export declare class BundleSelectorEnhancer extends BaseEnhancer {
+    private mode;
+    private template;
+    private slotTemplate;
+    private variantOptionTemplate;
+    private variantSelectorTemplate;
+    private cards;
+    private selectedCard;
+    private clickHandlers;
+    private selectHandlers;
+    private mutationObserver;
+    private boundVariantOptionClick;
+    private boundCurrencyChangeHandler;
+    private isApplyingRef;
+    private includeShipping;
+    private externalSlotsEl;
+    private classNames;
+    private previewLines;
+    private currencyChangeTimeout;
+    private voucherChangeTimeout;
+    initialize(): Promise<void>;
+    private scanCards;
+    private registerCard;
+    private setupMutationObserver;
+    selectCard(card: BundleCard): void;
+    private renderExternalSlots;
+    getSelectedCard(): BundleCard | null;
+    private syncWithCart;
+    update(): void;
+    private makeRenderContext;
+    private makeHandlerContext;
+    private makePriceContext;
+    private parseClassNames;
+    private getEffectiveItems;
+    private parseVouchers;
+    protected cleanupEventListeners(): void;
+    destroy(): void;
+}
+//# sourceMappingURL=BundleSelectorEnhancer.d.ts.map
