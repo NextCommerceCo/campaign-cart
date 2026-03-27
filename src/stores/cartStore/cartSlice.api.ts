@@ -31,8 +31,8 @@ export const createCartApiSlice: StateCreator<
   CartApiSlice
 > = (set, get) => ({
   addItem: async item => {
-    const { useCampaignStore } = await import('./campaignStore');
-    const { useProfileStore } = await import('./profileStore');
+    const { useCampaignStore } = await import('../campaignStore');
+    const { useProfileStore } = await import('../profileStore');
     const campaignStore = useCampaignStore.getState();
     const profileStore = useProfileStore.getState();
 
@@ -155,8 +155,8 @@ export const createCartApiSlice: StateCreator<
   },
 
   swapPackage: async (removePackageId, addItem) => {
-    const { useCampaignStore } = await import('./campaignStore');
-    const { useProfileStore } = await import('./profileStore');
+    const { useCampaignStore } = await import('../campaignStore');
+    const { useProfileStore } = await import('../profileStore');
     const campaignStore = useCampaignStore.getState();
     const profileStore = useProfileStore.getState();
 
@@ -261,8 +261,8 @@ export const createCartApiSlice: StateCreator<
   },
 
   swapCart: async items => {
-    const { useCampaignStore } = await import('./campaignStore');
-    const { useProfileStore } = await import('./profileStore');
+    const { useCampaignStore } = await import('../campaignStore');
+    const { useProfileStore } = await import('../profileStore');
     const campaignStore = useCampaignStore.getState();
     const profileStore = useProfileStore.getState();
     const eventBus = EventBus.getInstance();
@@ -345,8 +345,8 @@ export const createCartApiSlice: StateCreator<
   calculateTotals: () => {
     scheduleCalculate(async signal => {
       try {
-        const { useCampaignStore } = await import('./campaignStore');
-        const { useCheckoutStore } = await import('./checkoutStore');
+        const { useCampaignStore } = await import('../campaignStore');
+        const { useCheckoutStore } = await import('../checkoutStore');
         const { calculateCart } = await import(
           '@/utils/calculations/CartCalculator'
         );
@@ -452,7 +452,7 @@ export const createCartApiSlice: StateCreator<
     try {
       logger.info('Refreshing cart item prices with new currency data...');
 
-      const { useCampaignStore } = await import('./campaignStore');
+      const { useCampaignStore } = await import('../campaignStore');
       const campaignStore = useCampaignStore.getState();
 
       if (!campaignStore.data) {
@@ -517,8 +517,8 @@ export const createCartApiSlice: StateCreator<
 
   setShippingMethod: async methodId => {
     try {
-      const { useCampaignStore } = await import('./campaignStore');
-      const { useCheckoutStore } = await import('./checkoutStore');
+      const { useCampaignStore } = await import('../campaignStore');
+      const { useCheckoutStore } = await import('../checkoutStore');
 
       const campaignStore = useCampaignStore.getState();
       const checkoutStore = useCheckoutStore.getState();
@@ -568,7 +568,7 @@ export const createCartApiSlice: StateCreator<
   },
 
   applyCoupon: async code => {
-    const { useCheckoutStore } = await import('./checkoutStore');
+    const { useCheckoutStore } = await import('../checkoutStore');
     const checkoutState = useCheckoutStore.getState();
 
     const normalizedCode = code.toUpperCase().trim();
@@ -586,7 +586,9 @@ export const createCartApiSlice: StateCreator<
     };
   },
 
-  removeCoupon: code => {
+  removeCoupon: async code => {
+    const { useCheckoutStore } = await import('../checkoutStore');
+    useCheckoutStore.getState().removeVoucher(code);
     set(state => ({
       ...state,
       appliedCoupons: (state.appliedCoupons ?? []).filter(c => c.code !== code),

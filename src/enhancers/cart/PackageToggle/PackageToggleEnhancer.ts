@@ -115,44 +115,19 @@
 
 import { BaseEnhancer } from '@/enhancers/base/BaseEnhancer';
 import { useCartStore } from '@/stores/cartStore';
-import { useCampaignStore } from '@/stores/campaignStore';
 import { useCheckoutStore } from '@/stores/checkoutStore';
-import { calculateBundlePrice } from '@/utils/calculations/CartCalculator';
-import { formatCurrency } from '@/utils/currencyFormatter';
-import { TemplateRenderer } from '@/shared/utils/TemplateRenderer';
 import type { CartState } from '@/types/global';
-import type { SummaryLine } from '@/types/api';
-
-// ─── Global auto-add deduplication ───────────────────────────────────────────
-
-/** Prevents two elements from auto-adding the same package on page load. */
-const autoAddedPackages = new Set<number>();
-if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', () => autoAddedPackages.clear());
-}
-
-// ─── Internal types ───────────────────────────────────────────────────────────
-
-interface PackageDef {
-  packageId: number;
-  selected?: boolean;
-  [key: string]: unknown;
-}
-
-interface ToggleCard {
-  element: HTMLElement;
-  packageId: number;
-  isPreSelected: boolean;
-  quantity: number;
-  isSyncMode: boolean;
-  syncPackageIds: number[];
-  isUpsell: boolean;
-  stateContainer: HTMLElement;
-  addText: string | null;
-  removeText: string | null;
-}
-
-// ─── Enhancer ─────────────────────────────────────────────────────────────────
+import type { PackageDef, ToggleCard } from './PackageToggleEnhancer.types';
+import type { ToggleHandlerContext } from './PackageToggleEnhancer.handlers';
+import { renderToggleTemplate, renderToggleImage, renderTogglePrice } from './PackageToggleEnhancer.renderer';
+import { fetchAndUpdateTogglePrice } from './PackageToggleEnhancer.price';
+import {
+  autoAddedPackages,
+  handleCardClick,
+  addToCart,
+  updateSyncedQuantity,
+  handleSyncUpdate,
+} from './PackageToggleEnhancer.handlers';
 
 export class PackageToggleEnhancer extends BaseEnhancer {
   private template: string = '';
@@ -170,7 +145,6 @@ export class PackageToggleEnhancer extends BaseEnhancer {
 
     this.includeShipping = this.getAttribute('data-next-include-shipping') === 'true';
 
-    // ── Card template ──────────────────────────────────────────────────────────
     const templateId = this.getAttribute('data-next-toggle-template-id');
     if (templateId) {
       this.template = document.getElementById(templateId)?.innerHTML.trim() ?? '';
@@ -178,7 +152,6 @@ export class PackageToggleEnhancer extends BaseEnhancer {
       this.template = this.getAttribute('data-next-toggle-template') ?? '';
     }
 
-    // ── Auto-render cards from JSON ────────────────────────────────────────────
     const packagesAttr = this.getAttribute('data-next-packages');
     if (packagesAttr && this.template) {
       try {
@@ -188,7 +161,7 @@ export class PackageToggleEnhancer extends BaseEnhancer {
         } else {
           this.element.innerHTML = '';
           for (const def of parsed as PackageDef[]) {
-            const el = this.renderToggleTemplate(def);
+            const el = renderToggleTemplate(this.template, def, this.logger);
             if (el) this.element.appendChild(el);
           }
         }
@@ -201,13 +174,12 @@ export class PackageToggleEnhancer extends BaseEnhancer {
     this.setupMutationObserver();
 
     for (const card of this.cards) {
-      this.renderToggleImage(card);
+      renderToggleImage(card);
     }
 
     this.subscribe(useCartStore, this.syncWithCart.bind(this));
     this.syncWithCart(useCartStore.getState());
 
-    // Re-fetch prices when checkout vouchers change
     let prevVouchers = useCheckoutStore.getState().vouchers;
     this.subscribe(useCheckoutStore, state => {
       const next = state.vouchers;
@@ -217,96 +189,143 @@ export class PackageToggleEnhancer extends BaseEnhancer {
       ) {
         prevVouchers = next;
         for (const card of this.cards) {
-          void this.fetchAndUpdateTogglePrice(card);
+          void fetchAndUpdateTogglePrice(card, this.includeShipping, this.logger);
         }
       }
     });
 
-    // Re-fetch prices when currency changes (debounced)
     this.boundCurrencyChangeHandler = () => {
       if (this.currencyChangeTimeout !== null) clearTimeout(this.currencyChangeTimeout);
       this.currencyChangeTimeout = setTimeout(() => {
         this.currencyChangeTimeout = null;
         for (const card of this.cards) {
-          void this.fetchAndUpdateTogglePrice(card);
+          void fetchAndUpdateTogglePrice(card, this.includeShipping, this.logger);
         }
       }, 150);
     };
     document.addEventListener('next:currency-changed', this.boundCurrencyChangeHandler);
 
     for (const card of this.cards) {
-      void this.fetchAndUpdateTogglePrice(card);
+      void fetchAndUpdateTogglePrice(card, this.includeShipping, this.logger);
     }
 
     this.logger.debug('PackageToggleEnhancer initialized', { cardCount: this.cards.length });
   }
 
-  // ─── Template rendering ───────────────────────────────────────────────────────
+  // ─── Context factory ───────────────────────────────────────────────────────
 
-  private renderToggleTemplate(def: PackageDef): HTMLElement | null {
-    const allPackages = useCampaignStore.getState().data?.packages ?? [];
-    const pkg = allPackages.find(p => p.ref_id === def.packageId);
-
-    const toggleData: Record<string, string> = {};
-    for (const [key, value] of Object.entries(def)) {
-      toggleData[key] = value != null ? String(value) : '';
-    }
-    // Enrich with campaign package data (only if not already set in JSON)
-    if (pkg) {
-      toggleData['packageId'] ??= String(pkg.ref_id);
-      toggleData['name'] ??= pkg.name ?? '';
-      toggleData['image'] ??= pkg.image ?? '';
-      toggleData['price'] ??= pkg.price ?? '';
-      toggleData['priceRetail'] ??= pkg.price_retail ?? '';
-      toggleData['priceRetailTotal'] ??= pkg.price_retail_total ?? '';
-    }
-
-    const html = TemplateRenderer.render(this.template, { data: { toggle: toggleData } });
-    const wrapper = document.createElement('div');
-    wrapper.innerHTML = html.trim();
-
-    const firstChild = wrapper.firstElementChild;
-    const cardEl =
-      wrapper.querySelector<HTMLElement>('[data-next-toggle-card]') ??
-      (firstChild instanceof HTMLElement ? firstChild : null);
-
-    if (!cardEl) {
-      this.logger.warn('Toggle template produced no root element for packageId', def.packageId);
-      return null;
-    }
-
-    cardEl.setAttribute('data-next-toggle-card', '');
-    cardEl.setAttribute('data-next-package-id', String(def.packageId));
-    if (def.selected) {
-      cardEl.setAttribute('data-next-selected', 'true');
-    }
-
-    return cardEl;
+  private makeHandlerContext(): ToggleHandlerContext {
+    return {
+      logger: this.logger,
+      emit: (e: string, d: unknown) => this.emit(e as any, d as any),
+      autoAddInProgress: this.autoAddInProgress,
+    };
   }
 
-  private renderToggleImage(card: ToggleCard): void {
-    const slots = card.element.querySelectorAll<HTMLImageElement>(
-      '[data-next-toggle-image]',
-    );
-    if (slots.length === 0) return;
+  // ─── Card registration ────────────────────────────────────────────────────
 
-    const pkg = (useCampaignStore.getState().data?.packages ?? []).find(
-      p => p.ref_id === card.packageId,
-    );
-    if (!pkg?.image) return;
+  private scanCards(): void {
+    this.element.querySelectorAll<HTMLElement>('[data-next-toggle-card]').forEach(el => {
+      if (!this.cards.find(c => c.element === el)) this.registerCard(el);
+    });
 
-    slots.forEach(el => {
-      el.src = pkg.image;
-      if (!el.alt) el.alt = pkg.name ?? '';
+    if (
+      this.element.hasAttribute('data-next-package-toggle') &&
+      this.cards.length === 0 &&
+      (this.element.hasAttribute('data-next-package-id') ||
+        this.element.hasAttribute('data-package-id'))
+    ) {
+      this.registerCard(this.element);
+    }
+  }
+
+  private registerCard(el: HTMLElement): void {
+    const stateContainer = this.findStateContainer(el);
+
+    const packageIdAttr = el.getAttribute('data-next-package-id');
+    let packageId: number;
+
+    if (packageIdAttr) {
+      const parsed = parseInt(packageIdAttr, 10);
+      if (isNaN(parsed)) {
+        this.logger.warn('Invalid data-next-package-id on toggle card', packageIdAttr);
+        return;
+      }
+      packageId = parsed;
+    } else {
+      const resolved = this.resolvePackageId(el, stateContainer);
+      if (resolved === null) {
+        this.logger.warn('Toggle card is missing data-next-package-id', el);
+        return;
+      }
+      packageId = resolved;
+    }
+
+    const isPreSelected =
+      el.getAttribute('data-next-selected') === 'true' ||
+      stateContainer.getAttribute('data-next-selected') === 'true';
+
+    const packageSyncAttr =
+      el.getAttribute('data-next-package-sync') ??
+      stateContainer.getAttribute('data-next-package-sync');
+
+    let isSyncMode = false;
+    let syncPackageIds: number[] = [];
+    let quantity = 1;
+
+    if (packageSyncAttr) {
+      syncPackageIds = packageSyncAttr
+        .split(',')
+        .map(id => parseInt(id.trim(), 10))
+        .filter(id => !isNaN(id));
+      if (syncPackageIds.length > 0) {
+        isSyncMode = true;
+        quantity = 0;
+      }
+    } else {
+      const qtyAttr =
+        el.getAttribute('data-next-quantity') ??
+        el.getAttribute('data-quantity') ??
+        stateContainer.getAttribute('data-next-quantity');
+      quantity = qtyAttr ? parseInt(qtyAttr, 10) : 1;
+    }
+
+    const isUpsell =
+      el.getAttribute('data-next-is-upsell') === 'true' ||
+      stateContainer.hasAttribute('data-next-upsell') ||
+      stateContainer.hasAttribute('data-next-bump') ||
+      el.closest('[data-next-upsell-section]') !== null ||
+      el.closest('[data-next-bump-section]') !== null;
+
+    const card: ToggleCard = {
+      element: el,
+      packageId,
+      isPreSelected,
+      quantity,
+      isSyncMode,
+      syncPackageIds,
+      isUpsell,
+      stateContainer,
+      addText: el.getAttribute('data-add-text'),
+      removeText: el.getAttribute('data-remove-text'),
+    };
+
+    this.cards.push(card);
+    el.classList.add('next-toggle-card');
+
+    const ctx = this.makeHandlerContext();
+    const handler = (e: Event) => void handleCardClick(e, card, ctx);
+    this.clickHandlers.set(el, handler);
+    el.addEventListener('click', handler);
+
+    this.logger.debug(`Registered toggle card for packageId ${packageId}`, {
+      isSyncMode,
+      syncPackageIds,
+      isUpsell,
+      quantity,
     });
   }
 
-  // ─── State container ──────────────────────────────────────────────────────────
-
-  /**
-   * Find the nearest ancestor that should receive state classes.
-   * Used for toggle/bump/upsell wrapper elements.
-   */
   private findStateContainer(el: HTMLElement): HTMLElement {
     let current: HTMLElement | null = el;
 
@@ -351,113 +370,7 @@ export class PackageToggleEnhancer extends BaseEnhancer {
     return null;
   }
 
-  // ─── Card registration ────────────────────────────────────────────────────────
-
-  private scanCards(): void {
-    this.element.querySelectorAll<HTMLElement>('[data-next-toggle-card]').forEach(el => {
-      if (!this.cards.find(c => c.element === el)) this.registerCard(el);
-    });
-
-    // Single-element mode: the container itself is the toggle card
-    if (
-      this.element.hasAttribute('data-next-package-toggle') &&
-      this.cards.length === 0 &&
-      (this.element.hasAttribute('data-next-package-id') ||
-        this.element.hasAttribute('data-package-id'))
-    ) {
-      this.registerCard(this.element);
-    }
-  }
-
-  private registerCard(el: HTMLElement): void {
-    const stateContainer = this.findStateContainer(el);
-
-    const packageIdAttr = el.getAttribute('data-next-package-id');
-    let packageId: number;
-
-    if (packageIdAttr) {
-      const parsed = parseInt(packageIdAttr, 10);
-      if (isNaN(parsed)) {
-        this.logger.warn('Invalid data-next-package-id on toggle card', packageIdAttr);
-        return;
-      }
-      packageId = parsed;
-    } else {
-      const resolved = this.resolvePackageId(el, stateContainer);
-      if (resolved === null) {
-        this.logger.warn('Toggle card is missing data-next-package-id', el);
-        return;
-      }
-      packageId = resolved;
-    }
-
-    const isPreSelected =
-      el.getAttribute('data-next-selected') === 'true' ||
-      stateContainer.getAttribute('data-next-selected') === 'true';
-
-    // Sync mode
-    const packageSyncAttr =
-      el.getAttribute('data-next-package-sync') ??
-      stateContainer.getAttribute('data-next-package-sync');
-
-    let isSyncMode = false;
-    let syncPackageIds: number[] = [];
-    let quantity = 1;
-
-    if (packageSyncAttr) {
-      syncPackageIds = packageSyncAttr
-        .split(',')
-        .map(id => parseInt(id.trim(), 10))
-        .filter(id => !isNaN(id));
-      if (syncPackageIds.length > 0) {
-        isSyncMode = true;
-        quantity = 0;
-      }
-    } else {
-      const qtyAttr =
-        el.getAttribute('data-next-quantity') ??
-        el.getAttribute('data-quantity') ??
-        stateContainer.getAttribute('data-next-quantity');
-      quantity = qtyAttr ? parseInt(qtyAttr, 10) : 1;
-    }
-
-    const isUpsell =
-      el.getAttribute('data-next-is-upsell') === 'true' ||
-      stateContainer.hasAttribute('data-next-upsell') ||
-      stateContainer.hasAttribute('data-next-bump') ||
-      el.closest('[data-next-upsell-section]') !== null ||
-      el.closest('[data-next-bump-section]') !== null;
-
-    const addText = el.getAttribute('data-add-text');
-    const removeText = el.getAttribute('data-remove-text');
-
-    const card: ToggleCard = {
-      element: el,
-      packageId,
-      isPreSelected,
-      quantity,
-      isSyncMode,
-      syncPackageIds,
-      isUpsell,
-      stateContainer,
-      addText,
-      removeText,
-    };
-
-    this.cards.push(card);
-    el.classList.add('next-toggle-card');
-
-    const handler = (e: Event) => void this.handleCardClick(e, card);
-    this.clickHandlers.set(el, handler);
-    el.addEventListener('click', handler);
-
-    this.logger.debug(`Registered toggle card for packageId ${packageId}`, {
-      isSyncMode,
-      syncPackageIds,
-      isUpsell,
-      quantity,
-    });
-  }
+  // ─── Mutation observer ────────────────────────────────────────────────────
 
   private setupMutationObserver(): void {
     this.mutationObserver = new MutationObserver(mutations => {
@@ -477,49 +390,7 @@ export class PackageToggleEnhancer extends BaseEnhancer {
     this.mutationObserver.observe(this.element, { childList: true, subtree: true });
   }
 
-  // ─── Click handler ────────────────────────────────────────────────────────────
-
-  private async handleCardClick(e: Event, card: ToggleCard): Promise<void> {
-    e.preventDefault();
-
-    const cartState = useCartStore.getState();
-    const isInCart = cartState.items.some(i => i.packageId === card.packageId);
-
-    if (card.isSyncMode) this.updateSyncedQuantity(card, cartState);
-
-    card.element.classList.add('next-loading');
-    card.element.setAttribute('data-next-loading', 'true');
-
-    try {
-      if (isInCart) {
-        await useCartStore.getState().removeItem(card.packageId);
-        this.emit('toggle:toggled', { packageId: card.packageId, added: false });
-      } else {
-        await this.addToCart(card);
-        this.emit('toggle:toggled', { packageId: card.packageId, added: true });
-      }
-    } catch (error) {
-      this.handleError(error, 'handleCardClick');
-    } finally {
-      card.element.classList.remove('next-loading');
-      card.element.setAttribute('data-next-loading', 'false');
-    }
-  }
-
-  private async addToCart(card: ToggleCard): Promise<void> {
-    const allPackages = useCampaignStore.getState().data?.packages ?? [];
-    const pkg = allPackages.find(p => p.ref_id === card.packageId);
-
-    await useCartStore.getState().addItem({
-      packageId: card.packageId,
-      quantity: card.quantity || 1,
-      title: pkg?.name ?? `Package ${card.packageId}`,
-      price: pkg ? parseFloat(pkg.price) : 0,
-      isUpsell: card.isUpsell,
-    });
-  }
-
-  // ─── Cart sync ────────────────────────────────────────────────────────────────
+  // ─── Cart sync ────────────────────────────────────────────────────────────
 
   private syncWithCart(cartState: CartState): void {
     const selectedPackageIds: number[] = [];
@@ -537,14 +408,13 @@ export class PackageToggleEnhancer extends BaseEnhancer {
       card.stateContainer.classList.toggle('next-in-cart', inCart);
       card.stateContainer.classList.toggle('next-not-in-cart', !inCart);
       card.stateContainer.classList.toggle('next-active', inCart);
-      card.stateContainer.classList.toggle('os--active', inCart); // legacy
+      card.stateContainer.classList.toggle('os--active', inCart);
 
       if (card.addText && card.removeText) {
         const textSlot = card.element.querySelector<HTMLElement>('[data-next-button-text]');
         if (textSlot) {
           textSlot.textContent = inCart ? card.removeText : card.addText;
         } else if (card.element.childElementCount === 0) {
-          // Single-element mode: safe to replace text content directly
           card.element.textContent = inCart ? card.removeText : card.addText;
         }
       }
@@ -553,15 +423,14 @@ export class PackageToggleEnhancer extends BaseEnhancer {
         selectedPackageIds.push(card.packageId);
         if (cartState.summary) {
           const line = cartState.summary.lines.find(l => l.package_id === card.packageId) ?? null;
-          this.renderTogglePrice(card, line);
+          renderTogglePrice(card, line);
         }
       }
 
       if (card.isSyncMode) {
-        void this.handleSyncUpdate(card, cartState);
+        void handleSyncUpdate(card, cartState, this.logger);
       }
 
-      // Auto-add pre-selected cards (once only, with global dedup)
       if (
         card.isPreSelected &&
         !inCart &&
@@ -572,176 +441,29 @@ export class PackageToggleEnhancer extends BaseEnhancer {
         autoAddedPackages.add(card.packageId);
         this.autoAddInProgress.add(card.packageId);
 
-        if (card.isSyncMode) this.updateSyncedQuantity(card, cartState);
+        if (card.isSyncMode) updateSyncedQuantity(card, cartState);
 
-        void this.addToCart(card).finally(() => {
+        void addToCart(card).finally(() => {
           this.autoAddInProgress.delete(card.packageId);
         });
       }
     }
 
-    this.emit('toggle:selection-changed', { selected: selectedPackageIds });
+    this.emit('toggle:selection-changed' as any, { selected: selectedPackageIds });
 
-    // Re-fetch preview prices for not-in-cart cards (debounced)
     if (this.priceSyncDebounce !== null) clearTimeout(this.priceSyncDebounce);
     this.priceSyncDebounce = setTimeout(() => {
       this.priceSyncDebounce = null;
       const currentItems = useCartStore.getState().items;
       for (const card of this.cards) {
         if (!currentItems.some(i => i.packageId === card.packageId)) {
-          void this.fetchAndUpdateTogglePrice(card);
+          void fetchAndUpdateTogglePrice(card, this.includeShipping, this.logger);
         }
       }
     }, 150);
   }
 
-  // ─── Sync mode helpers ────────────────────────────────────────────────────────
-
-  private updateSyncedQuantity(card: ToggleCard, cartState: CartState): void {
-    if (card.syncPackageIds.length === 0) return;
-
-    let totalQuantity = 0;
-    card.syncPackageIds.forEach(syncId => {
-      const syncedItem = cartState.items.find(
-        item => item.packageId === syncId || item.originalPackageId === syncId
-      );
-      if (syncedItem) {
-        const itemsPerPackage = (syncedItem as any).qty ?? 1;
-        totalQuantity += syncedItem.quantity * itemsPerPackage;
-      }
-    });
-
-    card.quantity = totalQuantity;
-  }
-
-  private async handleSyncUpdate(card: ToggleCard, cartState: CartState): Promise<void> {
-    if (!card.isSyncMode || card.syncPackageIds.length === 0) return;
-
-    let totalSyncQuantity = 0;
-    let anySyncedItemExists = false;
-
-    card.syncPackageIds.forEach(syncId => {
-      const syncedItem = cartState.items.find(
-        item => item.packageId === syncId || item.originalPackageId === syncId
-      );
-      if (syncedItem) {
-        anySyncedItemExists = true;
-        const itemsPerPackage = (syncedItem as any).qty ?? 1;
-        totalSyncQuantity += syncedItem.quantity * itemsPerPackage;
-      }
-    });
-
-    const currentItem = cartState.items.find(item => item.packageId === card.packageId);
-
-    if (anySyncedItemExists && totalSyncQuantity > 0) {
-      if (currentItem && currentItem.quantity !== totalSyncQuantity) {
-        await useCartStore.getState().updateQuantity(card.packageId, totalSyncQuantity);
-      }
-    } else if (currentItem && !cartState.swapInProgress) {
-      if (currentItem.is_upsell) {
-        setTimeout(async () => {
-          const updatedState = useCartStore.getState();
-          const stillNoSyncedPackages = card.syncPackageIds.every(syncId =>
-            !updatedState.items.find(
-              item => item.packageId === syncId || item.originalPackageId === syncId
-            )
-          );
-          const itemStillExists = updatedState.items.find(i => i.packageId === card.packageId);
-          if (stillNoSyncedPackages && itemStillExists && !updatedState.swapInProgress) {
-            await useCartStore.getState().removeItem(card.packageId);
-          }
-        }, 500);
-      } else {
-        await useCartStore.getState().removeItem(card.packageId);
-      }
-    }
-  }
-
-  // ─── Backend price calculation ────────────────────────────────────────────────
-
-  private async fetchAndUpdateTogglePrice(card: ToggleCard): Promise<void> {
-    const cartState = useCartStore.getState();
-
-    // In-cart: use the actual summary line
-    if (cartState.items.some(i => i.packageId === card.packageId)) {
-      if (cartState.summary) {
-        const line = cartState.summary.lines.find(l => l.package_id === card.packageId) ?? null;
-        this.renderTogglePrice(card, line);
-      }
-      return;
-    }
-
-    const priceSlots = card.element.querySelectorAll<HTMLElement>('[data-next-toggle-price]');
-    if (priceSlots.length === 0) return;
-
-    // Simulate adding this toggle to the current cart for context-aware pricing
-    const cartItems = cartState.items.map(i => ({ packageId: i.packageId, quantity: i.quantity }));
-    const itemsToCalc = [...cartItems, { packageId: card.packageId, quantity: 1 }];
-
-    const currency = useCampaignStore.getState().data?.currency ?? null;
-    const checkoutVouchers = useCheckoutStore.getState().vouchers;
-    const vouchers = checkoutVouchers.length ? checkoutVouchers : undefined;
-
-    card.element.classList.add('next-loading');
-    card.element.setAttribute('data-next-loading', 'true');
-
-    try {
-      const { summary } = await calculateBundlePrice(
-        itemsToCalc,
-        { currency, exclude_shipping: !this.includeShipping, vouchers }
-      );
-      const line = summary.lines.find(l => l.package_id === card.packageId) ?? null;
-      this.renderTogglePrice(card, line);
-    } catch (error) {
-      this.logger.warn(`Failed to fetch toggle price for packageId ${card.packageId}`, error);
-      this.renderTogglePrice(card, null);
-    } finally {
-      card.element.classList.remove('next-loading');
-      card.element.setAttribute('data-next-loading', 'false');
-    }
-  }
-
-  private renderTogglePrice(card: ToggleCard, line: SummaryLine | null): void {
-    const allPackages = useCampaignStore.getState().data?.packages ?? [];
-    const pkg = allPackages.find(p => p.ref_id === card.packageId);
-    const qty = card.quantity || 1;
-
-    /** Scale a plain-decimal price string by qty and re-format it. */
-    const scale = (price: string | undefined): string => {
-      if (!price) return '';
-      const num = parseFloat(price);
-      return isNaN(num) ? '' : formatCurrency(num * qty);
-    };
-
-    card.element.querySelectorAll<HTMLElement>('[data-next-toggle-price]').forEach(el => {
-      const field = el.getAttribute('data-next-toggle-price') || 'total';
-      const comparePrice = line?.original_package_price ?? pkg?.price_total;
-      const basePrice = line?.package_price ?? pkg?.price_total ?? '0';
-      const savings = comparePrice && basePrice ? (parseFloat(comparePrice) - parseFloat(basePrice)) : 0;
-      switch (field) {
-        case 'compare':
-          el.textContent = scale(comparePrice);
-          break;
-        case 'savings':
-          el.textContent = savings > 0 ? formatCurrency(savings) : '';
-          break;
-        case 'savingsPercentage': {
-          el.textContent = savings > 0 && comparePrice
-            ? `${Math.round((savings / parseFloat(comparePrice)) * 100)}%`
-            : '';
-          break;
-        }
-        case 'subtotal':
-          el.textContent = line?.subtotal ?? pkg?.price_total ?? '';
-          break;
-        default:
-          el.textContent = scale(basePrice);
-          break;
-      }
-    });
-  }
-
-  // ─── BaseEnhancer ─────────────────────────────────────────────────────────────
+  // ─── BaseEnhancer ─────────────────────────────────────────────────────────
 
   public update(): void {
     this.syncWithCart(useCartStore.getState());

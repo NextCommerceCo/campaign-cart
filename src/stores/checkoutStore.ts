@@ -221,12 +221,12 @@ export const useCheckoutStore = create<CheckoutState & CheckoutActions>()(
           billingAddress, // Only non-empty billing fields
           sameAsShipping: state.sameAsShipping,
           paymentMethod, // Only persist credit-card/klarna, not express methods
+          vouchers: state.vouchers, // Persist so user-entered coupons survive refresh; bundle vouchers are deduped on re-apply
           // Explicitly exclude:
           // - errors (transient validation state)
           // - isProcessing (transient UI state)
           // - paymentToken (sensitive, should not persist)
           // - testMode (session-specific)
-          // - vouchers (will be revalidated on page load)
           // - CVV, card number, expiration (sensitive payment data)
           // - Empty string values (no benefit to persist)
         } as any;

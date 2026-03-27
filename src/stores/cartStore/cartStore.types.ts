@@ -39,7 +39,7 @@ export interface CartApiSlice {
   refreshItemPrices: () => Promise<void>;
   setShippingMethod: (methodId: number) => Promise<void>;
   applyCoupon: (code: string) => Promise<{ success: boolean; message: string }>;
-  removeCoupon: (code: string) => void;
+  removeCoupon: (code: string) => Promise<void>;
 }
 
 export type CartStore = CartState & CartItemsSlice & CartUiSlice & CartApiSlice;

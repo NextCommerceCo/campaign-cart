@@ -299,7 +299,7 @@ export class AttributeScanner {
           }
           
         case 'package-toggle':
-          const { PackageToggleEnhancer } = await import('@/enhancers/cart/PackageToggleEnhancer');
+          const { PackageToggleEnhancer } = await import('@/enhancers/cart/PackageToggle');
           return new PackageToggleEnhancer(element);
 
         case 'action':
@@ -321,7 +321,7 @@ export class AttributeScanner {
           }
 
         case 'package-selector':
-          const { PackageSelectorEnhancer } = await import('@/enhancers/cart/PackageSelectorEnhancer');
+          const { PackageSelectorEnhancer } = await import('@/enhancers/cart/PackageSelector');
           return new PackageSelectorEnhancer(element);
           
         case 'timer':
@@ -370,11 +370,11 @@ export class AttributeScanner {
           return new CartItemListEnhancer(element);
 
         case 'cart-summary':
-          const { CartSummaryEnhancer } = await import('@/enhancers/cart/CartSummaryEnhancer');
+          const { CartSummaryEnhancer } = await import('@/enhancers/cart/CartSummary');
           return new CartSummaryEnhancer(element);
 
         case 'bundle-selector':
-          const { BundleSelectorEnhancer } = await import('@/enhancers/cart/BundleSelectorEnhancer');
+          const { BundleSelectorEnhancer } = await import('@/enhancers/cart/BundleSelector');
           return new BundleSelectorEnhancer(element);
 
 

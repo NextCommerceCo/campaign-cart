@@ -72,8 +72,8 @@ if (typeof window !== 'undefined') {
       requestIdleCallback(() => {
         // Cart enhancers - most commonly used
         import('./enhancers/display/CartDisplayEnhancer');
-        import('./enhancers/cart/PackageToggleEnhancer');
-        import('./enhancers/cart/PackageSelectorEnhancer');
+        import('./enhancers/cart/PackageToggle');
+        import('./enhancers/cart/PackageSelector');
         
         // Display enhancers
         import('./enhancers/display/ProductDisplayEnhancer');

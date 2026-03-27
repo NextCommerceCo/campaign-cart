@@ -1839,8 +1839,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const attributionStore = useAttributionStore.getState();
     const attribution = attributionStore.getAttributionForApi();
 
-    // Extract coupon codes from cart's appliedCoupons
-    const vouchers = (cartStore.appliedCoupons || []).map((coupon: any) => coupon.code);
+    const vouchers = useCheckoutStore.getState().vouchers;
 
     return {
       lines: cartStore.items.map((item: any) => ({
@@ -1996,8 +1995,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const cartStore = useCartStore.getState();
 
     try {
-      // Extract coupon codes from cart's appliedCoupons
-      const vouchers = (cartStore.appliedCoupons || []).map((coupon: any) => coupon.code);
+      const vouchers = useCheckoutStore.getState().vouchers;
 
       const testOrderData = {
         lines: cartStore.items.length > 0

@@ -15,7 +15,7 @@ import { sessionStorageManager } from '@/utils/storage';
 
 // ─── Bundle price cache ───────────────────────────────────────────────────────
 
-const BUNDLE_PRICE_CACHE_PREFIX = 'next-bundle-price-';
+const BUNDLE_PRICE_CACHE_PREFIX = 'next-price-';
 /** Default TTL matches the campaign cache (10 minutes). */
 const BUNDLE_PRICE_CACHE_TTL_MS = 10 * 60 * 1000;
 
@@ -51,7 +51,7 @@ async function bundleCacheKey(
     vouchers: vouchers ? [...vouchers].sort() : [],
     apiKey: apiKey ?? '',
   });
-  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(data));
+  const bytes = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(data));
   const hex = Array.from(new Uint8Array(bytes)).map(b => b.toString(16).padStart(2, '0')).join('');
   return BUNDLE_PRICE_CACHE_PREFIX + hex;
 }
