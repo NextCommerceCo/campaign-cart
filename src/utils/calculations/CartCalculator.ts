@@ -32,6 +32,8 @@ export interface BundlePriceOptions {
   ttl?: number;
   /** When true, shipping is excluded from the returned total. Default false. */
   exclude_shipping?: boolean;
+  /** When true, passes ?upsell=true to the calculate API for post-purchase pricing. */
+  upsell?: boolean;
 }
 
 interface CachedBundlePrice {
@@ -44,12 +46,14 @@ async function bundleCacheKey(
   currency?: string | null,
   vouchers?: string[],
   apiKey?: string,
+  upsell?: boolean,
 ): Promise<string> {
   const data = JSON.stringify({
     items: [...items].sort((a, b) => a.packageId - b.packageId),
     currency: currency ?? null,
     vouchers: vouchers ? [...vouchers].sort() : [],
     apiKey: apiKey ?? '',
+    upsell: upsell ?? false,
   });
   const bytes = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(data));
   const hex = Array.from(new Uint8Array(bytes)).map(b => b.toString(16).padStart(2, '0')).join('');
@@ -64,6 +68,8 @@ export interface CalculateCartParams {
   currency?: string | null;
   shippingMethod?: number;
   exclude_shipping?: boolean;
+  /** When true, passes ?upsell=true to the calculate API for post-purchase pricing. */
+  upsell?: boolean;
   signal?: AbortSignal;
 }
 
@@ -91,7 +97,7 @@ export async function calculateCart(
     shipping_method: params.shippingMethod,
   };
 
-  const summary = await client.calculateSummary(cartData, params.signal);
+  const summary = await client.calculateSummary(cartData, params.signal, { upsell: params.upsell });
 
   return { totals: buildCartTotals(summary, { exclude_shipping: params.exclude_shipping }), summary };
 }
@@ -113,7 +119,7 @@ export async function calculateBundlePrice(
   const { useConfigStore } = await import('@/stores/configStore');
   const apiKey = useConfigStore.getState().apiKey;
   const ttl = options.ttl ?? BUNDLE_PRICE_CACHE_TTL_MS;
-  const cacheKey = await bundleCacheKey(items, options.currency, options.vouchers, apiKey);
+  const cacheKey = await bundleCacheKey(items, options.currency, options.vouchers, apiKey, options.upsell);
 
   if (ttl > 0) {
     const cached = sessionStorageManager.get<CachedBundlePrice>(cacheKey);
@@ -133,6 +139,7 @@ export async function calculateBundlePrice(
     currency: options.currency,
     shippingMethod: options.shippingMethod,
     exclude_shipping: options.exclude_shipping,
+    upsell: options.upsell,
   });
 
   if (ttl > 0) {

@@ -118,6 +118,8 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
   private boundCurrencyChangeHandler: (() => void) | null = null;
   private currencyChangeTimeout: ReturnType<typeof setTimeout> | null = null;
   private includeShipping: boolean = false;
+  /** When true, operates in post-purchase upsell context: no cart writes, ?upsell=true on calculate. */
+  private isUpsellContext: boolean = false;
 
   public async initialize(): Promise<void> {
     this.validateElement();
@@ -127,7 +129,11 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
       this.getAttribute('data-next-id') ??
       `selector-${Date.now()}`;
 
-    this.mode = (this.getAttribute('data-next-selection-mode') ?? 'swap') as 'swap' | 'select';
+    this.isUpsellContext = this.element.hasAttribute('data-next-upsell-context');
+    // Upsell context is always select mode — no cart writes on selection.
+    this.mode = this.isUpsellContext
+      ? 'select'
+      : ((this.getAttribute('data-next-selection-mode') ?? 'swap') as 'swap' | 'select');
     this.includeShipping = this.getAttribute('data-next-include-shipping') === 'true';
 
     const templateId = this.getAttribute('data-next-package-template-id');
@@ -161,40 +167,55 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
     (this.element as any)._getSelectedItem = () => this.selectedItemRef.value;
     (this.element as any)._getSelectedPackageId = () => this.selectedItemRef.value?.packageId;
 
-    this.subscribe(useCartStore, this.syncWithCart.bind(this));
-    this.syncWithCart(useCartStore.getState());
+    if (this.isUpsellContext) {
+      // No cart sync in upsell context — just pre-select the default item.
+      this.initializeSelection();
+    } else {
+      this.subscribe(useCartStore, this.syncWithCart.bind(this));
+      this.syncWithCart(useCartStore.getState());
 
-    let prevVouchers = useCheckoutStore.getState().vouchers;
-    this.subscribe(useCheckoutStore, state => {
-      const next = state.vouchers;
-      if (next.length !== prevVouchers.length || next.some((v, i) => v !== prevVouchers[i])) {
-        prevVouchers = next;
-        for (const item of this.items) {
-          void fetchAndUpdatePrice(item, this.includeShipping, this.logger);
+      let prevVouchers = useCheckoutStore.getState().vouchers;
+      this.subscribe(useCheckoutStore, state => {
+        const next = state.vouchers;
+        if (next.length !== prevVouchers.length || next.some((v, i) => v !== prevVouchers[i])) {
+          prevVouchers = next;
+          for (const item of this.items) {
+            void fetchAndUpdatePrice(item, this.includeShipping, this.logger);
+          }
         }
-      }
-    });
+      });
+    }
 
     this.boundCurrencyChangeHandler = () => {
       if (this.currencyChangeTimeout !== null) clearTimeout(this.currencyChangeTimeout);
       this.currencyChangeTimeout = setTimeout(() => {
         this.currencyChangeTimeout = null;
         for (const item of this.items) {
-          void fetchAndUpdatePrice(item, this.includeShipping, this.logger);
+          void fetchAndUpdatePrice(item, this.includeShipping, this.logger, this.isUpsellContext);
         }
       }, 150);
     };
     document.addEventListener('next:currency-changed', this.boundCurrencyChangeHandler);
 
     for (const item of this.items) {
-      void fetchAndUpdatePrice(item, this.includeShipping, this.logger);
+      void fetchAndUpdatePrice(item, this.includeShipping, this.logger, this.isUpsellContext);
     }
 
     this.logger.debug('PackageSelectorEnhancer initialized', {
       selectorId: this.selectorId,
       mode: this.mode,
+      isUpsellContext: this.isUpsellContext,
       itemCount: this.items.length,
     });
+  }
+
+  // ─── Upsell context: pre-select default item without touching cart ────────
+
+  private initializeSelection(): void {
+    if (this.selectedItemRef.value) return;
+    const ctx = this.makeHandlerContext();
+    const preSelected = this.items.find(i => i.isPreSelected) ?? this.items[0];
+    if (preSelected) selectItem(preSelected, ctx);
   }
 
   // ─── Context factory ───────────────────────────────────────────────────────
@@ -427,7 +448,7 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
   // ─── BaseEnhancer ─────────────────────────────────────────────────────────
 
   public update(): void {
-    this.syncWithCart(useCartStore.getState());
+    if (!this.isUpsellContext) this.syncWithCart(useCartStore.getState());
   }
 
   public getSelectedItem(): SelectorItem | null {

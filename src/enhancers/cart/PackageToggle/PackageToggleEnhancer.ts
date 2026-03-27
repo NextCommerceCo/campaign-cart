@@ -139,10 +139,14 @@ export class PackageToggleEnhancer extends BaseEnhancer {
   private priceSyncDebounce: ReturnType<typeof setTimeout> | null = null;
   private includeShipping: boolean = false;
   private autoAddInProgress = new Set<number>();
+  /** When true, operates in post-purchase upsell context: clicks add to order, not cart. */
+  private isUpsellContext: boolean = false;
+  private isProcessingRef = { value: false };
 
   public async initialize(): Promise<void> {
     this.validateElement();
 
+    this.isUpsellContext = this.element.hasAttribute('data-next-upsell-context');
     this.includeShipping = this.getAttribute('data-next-include-shipping') === 'true';
 
     const templateId = this.getAttribute('data-next-toggle-template-id');
@@ -177,39 +181,44 @@ export class PackageToggleEnhancer extends BaseEnhancer {
       renderToggleImage(card);
     }
 
-    this.subscribe(useCartStore, this.syncWithCart.bind(this));
-    this.syncWithCart(useCartStore.getState());
+    if (!this.isUpsellContext) {
+      this.subscribe(useCartStore, this.syncWithCart.bind(this));
+      this.syncWithCart(useCartStore.getState());
 
-    let prevVouchers = useCheckoutStore.getState().vouchers;
-    this.subscribe(useCheckoutStore, state => {
-      const next = state.vouchers;
-      if (
-        next.length !== prevVouchers.length ||
-        next.some((v, i) => v !== prevVouchers[i])
-      ) {
-        prevVouchers = next;
-        for (const card of this.cards) {
-          void fetchAndUpdateTogglePrice(card, this.includeShipping, this.logger);
+      let prevVouchers = useCheckoutStore.getState().vouchers;
+      this.subscribe(useCheckoutStore, state => {
+        const next = state.vouchers;
+        if (
+          next.length !== prevVouchers.length ||
+          next.some((v, i) => v !== prevVouchers[i])
+        ) {
+          prevVouchers = next;
+          for (const card of this.cards) {
+            void fetchAndUpdateTogglePrice(card, this.includeShipping, this.logger);
+          }
         }
-      }
-    });
+      });
+    }
 
     this.boundCurrencyChangeHandler = () => {
       if (this.currencyChangeTimeout !== null) clearTimeout(this.currencyChangeTimeout);
       this.currencyChangeTimeout = setTimeout(() => {
         this.currencyChangeTimeout = null;
         for (const card of this.cards) {
-          void fetchAndUpdateTogglePrice(card, this.includeShipping, this.logger);
+          void fetchAndUpdateTogglePrice(card, this.includeShipping, this.logger, this.isUpsellContext);
         }
       }, 150);
     };
     document.addEventListener('next:currency-changed', this.boundCurrencyChangeHandler);
 
     for (const card of this.cards) {
-      void fetchAndUpdateTogglePrice(card, this.includeShipping, this.logger);
+      void fetchAndUpdateTogglePrice(card, this.includeShipping, this.logger, this.isUpsellContext);
     }
 
-    this.logger.debug('PackageToggleEnhancer initialized', { cardCount: this.cards.length });
+    this.logger.debug('PackageToggleEnhancer initialized', {
+      cardCount: this.cards.length,
+      isUpsellContext: this.isUpsellContext,
+    });
   }
 
   // ─── Context factory ───────────────────────────────────────────────────────
@@ -219,6 +228,9 @@ export class PackageToggleEnhancer extends BaseEnhancer {
       logger: this.logger,
       emit: (e: string, d: unknown) => this.emit(e as any, d as any),
       autoAddInProgress: this.autoAddInProgress,
+      isUpsellContext: this.isUpsellContext,
+      isProcessingRef: this.isProcessingRef,
+      containerElement: this.element,
     };
   }
 
@@ -466,7 +478,7 @@ export class PackageToggleEnhancer extends BaseEnhancer {
   // ─── BaseEnhancer ─────────────────────────────────────────────────────────
 
   public update(): void {
-    this.syncWithCart(useCartStore.getState());
+    if (!this.isUpsellContext) this.syncWithCart(useCartStore.getState());
   }
 
   protected override cleanupEventListeners(): void {

@@ -43,9 +43,13 @@ export class ApiClient {
 
   public async calculateSummary(
     data: CartCalculateSummary,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    options?: { upsell?: boolean }
   ): Promise<CartSummary> {
-    return this.request<CartSummary>('/api/v1/carts/calculate/', {
+    const endpoint = options?.upsell
+      ? '/api/v1/carts/calculate/?upsell=true'
+      : '/api/v1/carts/calculate/';
+    return this.request<CartSummary>(endpoint, {
       method: 'POST',
       body: JSON.stringify(data),
       signal,

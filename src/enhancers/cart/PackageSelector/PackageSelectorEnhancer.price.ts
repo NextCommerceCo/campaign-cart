@@ -8,10 +8,11 @@ export async function fetchAndUpdatePrice(
   item: SelectorItem,
   includeShipping: boolean,
   logger: Logger,
+  upsell?: boolean,
 ): Promise<void> {
   const currency = useCampaignStore.getState().data?.currency ?? null;
   const checkoutVouchers = useCheckoutStore.getState().vouchers;
-  const vouchers = checkoutVouchers.length ? checkoutVouchers : undefined;
+  const vouchers = !upsell && checkoutVouchers.length ? checkoutVouchers : undefined;
 
   const priceSlots = item.element.querySelectorAll<HTMLElement>('[data-next-package-price]');
   if (priceSlots.length === 0) return;
@@ -22,7 +23,7 @@ export async function fetchAndUpdatePrice(
   try {
     const { totals, summary } = await calculateBundlePrice(
       [{ packageId: item.packageId, quantity: item.quantity }],
-      { currency, exclude_shipping: !includeShipping, vouchers }
+      { currency, exclude_shipping: !includeShipping, vouchers, upsell }
     );
 
     const campaignPackages = useCampaignStore.getState().packages;

@@ -56,6 +56,9 @@ export class UpsellEnhancer extends BaseEnhancer {
   private selectedPackageId?: number;
   private currentPagePath?: string;
 
+  // External PackageSelectorEnhancer integration
+  private packageSelectorId?: string;
+
   // Per-selector quantity tracking
   private quantityBySelectorId = new Map<string, number>();
   private currentQuantitySelectorId?: string;
@@ -74,7 +77,8 @@ export class UpsellEnhancer extends BaseEnhancer {
     );
 
     this.selectorId = this.getAttribute('data-next-selector-id') ?? undefined;
-    this.isSelector = !!this.selectorId;
+    this.packageSelectorId = this.getAttribute('data-next-package-selector-id') ?? undefined;
+    this.isSelector = !!this.selectorId || !!this.packageSelectorId;
 
     if (this.isSelector) {
       this.initializeSelectorMode();
@@ -306,13 +310,29 @@ export class UpsellEnhancer extends BaseEnhancer {
     }
   }
 
+  /**
+   * Resolve the selected package from a linked PackageSelectorEnhancer element
+   * (data-next-package-selector-id="<id>"). Called at click time so it always
+   * reflects the current selection.
+   */
+  private resolveExternalSelection(): number | undefined {
+    if (!this.packageSelectorId) return undefined;
+    const el = document.querySelector<HTMLElement>(
+      `[data-next-package-selector][data-next-selector-id="${this.packageSelectorId}"]`,
+    );
+    if (!el) return undefined;
+    const fn = (el as unknown as Record<string, unknown>)['_getSelectedPackageId'];
+    return typeof fn === 'function' ? (fn() as number | undefined) : undefined;
+  }
+
   private makeHandlerContext(): UpsellHandlerContext {
+    const externalId = this.resolveExternalSelection();
     return {
       isProcessingRef: this.isProcessingRef,
       element: this.element,
-      packageId: this.packageId,
+      packageId: externalId ?? this.packageId,
       isSelector: this.isSelector,
-      selectedPackageId: this.selectedPackageId,
+      selectedPackageId: externalId ?? this.selectedPackageId,
       selectorId: this.selectorId,
       quantity: this.quantity,
       quantityBySelectorId: this.quantityBySelectorId,

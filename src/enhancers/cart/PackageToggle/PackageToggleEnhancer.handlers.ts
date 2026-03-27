@@ -1,6 +1,11 @@
 import { useCartStore } from '@/stores/cartStore';
 import { useCampaignStore } from '@/stores/campaignStore';
+import { useOrderStore } from '@/stores/orderStore';
+import { useConfigStore } from '@/stores/configStore';
+import { ApiClient } from '@/api/client';
+import { preserveQueryParams } from '@/utils/url-utils';
 import type { CartState } from '@/types/global';
+import type { AddUpsellLine } from '@/types/api';
 import type { Logger } from '@/utils/logger';
 import type { ToggleCard } from './PackageToggleEnhancer.types';
 
@@ -18,6 +23,9 @@ export interface ToggleHandlerContext {
   logger: Logger;
   emit: (event: string, detail: unknown) => void;
   autoAddInProgress: Set<number>;
+  isUpsellContext: boolean;
+  isProcessingRef: { value: boolean };
+  containerElement: HTMLElement;
 }
 
 export async function handleCardClick(
@@ -26,6 +34,11 @@ export async function handleCardClick(
   ctx: ToggleHandlerContext,
 ): Promise<void> {
   e.preventDefault();
+
+  if (ctx.isUpsellContext) {
+    await handleUpsellCardClick(card, ctx);
+    return;
+  }
 
   const cartState = useCartStore.getState();
   const isInCart = cartState.items.some(i => i.packageId === card.packageId);
@@ -48,6 +61,77 @@ export async function handleCardClick(
   } finally {
     card.element.classList.remove('next-loading');
     card.element.setAttribute('data-next-loading', 'false');
+  }
+}
+
+async function handleUpsellCardClick(
+  card: ToggleCard,
+  ctx: ToggleHandlerContext,
+): Promise<void> {
+  if (ctx.isProcessingRef.value) return;
+
+  const orderStore = useOrderStore.getState();
+  const nextUrl = resolveNextUrl(card, ctx.containerElement);
+
+  if (!orderStore.canAddUpsells()) {
+    ctx.logger.warn('Order does not support upsells at this time');
+    if (nextUrl) navigatePreservingParams(nextUrl, ctx.logger);
+    return;
+  }
+
+  ctx.isProcessingRef.value = true;
+  card.element.classList.add('next-loading');
+  card.element.setAttribute('data-next-loading', 'true');
+
+  try {
+    const campaign = useCampaignStore.getState().data;
+    const currency = campaign?.currency ?? useConfigStore.getState().selectedCurrency ?? 'USD';
+    const apiClient = new ApiClient(useConfigStore.getState().apiKey);
+
+    const upsellData: AddUpsellLine = {
+      lines: [{ package_id: card.packageId, quantity: card.quantity || 1 }],
+      currency,
+    };
+    ctx.logger.info('Adding upsell to order from toggle:', upsellData);
+    const updatedOrder = await orderStore.addUpsell(upsellData, apiClient);
+    if (!updatedOrder) throw new Error('No updated order returned');
+
+    ctx.emit('upsell:added', { packageId: card.packageId, quantity: card.quantity || 1, order: updatedOrder });
+    ctx.emit('toggle:toggled', { packageId: card.packageId, added: true });
+
+    if (nextUrl) {
+      setTimeout(() => navigatePreservingParams(nextUrl, ctx.logger), 100);
+    }
+  } catch (error) {
+    ctx.logger.error('handleUpsellCardClick failed:', error);
+  } finally {
+    ctx.isProcessingRef.value = false;
+    card.element.classList.remove('next-loading');
+    card.element.setAttribute('data-next-loading', 'false');
+  }
+}
+
+function resolveNextUrl(card: ToggleCard, containerElement: HTMLElement): string | undefined {
+  return (
+    card.element.getAttribute('data-next-url') ??
+    card.stateContainer.getAttribute('data-next-url') ??
+    containerElement.getAttribute('data-next-url') ??
+    document.querySelector('meta[name="next-upsell-accept-url"]')?.getAttribute('content') ??
+    undefined
+  );
+}
+
+function navigatePreservingParams(url: string, logger: Logger): void {
+  try {
+    const target = new URL(url, window.location.origin);
+    const orderRefId = useOrderStore.getState().order?.ref_id;
+    if (orderRefId && !target.searchParams.has('ref_id')) {
+      target.searchParams.append('ref_id', orderRefId);
+    }
+    window.location.href = preserveQueryParams(target.href);
+  } catch {
+    logger.error('Invalid navigation URL:', url);
+    window.location.href = preserveQueryParams(url);
   }
 }
 
