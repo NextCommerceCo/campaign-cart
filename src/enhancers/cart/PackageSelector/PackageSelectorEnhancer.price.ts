@@ -10,7 +10,7 @@ export async function fetchAndUpdatePrice(
   logger: Logger,
   upsell?: boolean,
 ): Promise<void> {
-  const currency = useCampaignStore.getState().data?.currency ?? null;
+  const currency = useCampaignStore.getState().currency ?? null;
   const checkoutVouchers = useCheckoutStore.getState().vouchers;
   const vouchers = !upsell && checkoutVouchers.length ? checkoutVouchers : undefined;
 

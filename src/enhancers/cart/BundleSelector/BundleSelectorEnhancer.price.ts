@@ -8,7 +8,7 @@ export async function fetchAndUpdateBundlePrice(
   ctx: PriceContext,
 ): Promise<void> {
   const items = ctx.getEffectiveItems(card);
-  const currency = useCampaignStore.getState().data?.currency ?? null;
+  const currency = useCampaignStore.getState().currency ?? null;
 
   card.element.classList.add('next-loading');
   card.element.setAttribute('data-next-loading', 'true');

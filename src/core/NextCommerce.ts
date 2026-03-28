@@ -187,25 +187,6 @@ export class NextCommerce {
     );
   }
 
-  // Enhanced pricing tier methods
-  public getProductVariantsWithPricing(productId: number): any | null {
-    const campaignStore = useCampaignStore.getState();
-    return campaignStore.getProductVariantsWithPricing(productId);
-  }
-
-  public getVariantPricingTiers(productId: number, variantKey: string): any[] {
-    const campaignStore = useCampaignStore.getState();
-    return campaignStore.getVariantPricingTiers(productId, variantKey);
-  }
-
-  public getLowestPriceForVariant(
-    productId: number,
-    variantKey: string
-  ): any | null {
-    const campaignStore = useCampaignStore.getState();
-    return campaignStore.getLowestPriceForVariant(productId, variantKey);
-  }
-
   public createVariantKey(attributes: Record<string, string>): string {
     // Helper method to create consistent variant keys
     return Object.entries(attributes)
@@ -559,7 +540,7 @@ export class NextCommerce {
   public formatPrice(amount: number, currency?: string): string {
     const { formatCurrency } = require('@/utils/currencyFormatter');
     const campaignStore = useCampaignStore.getState();
-    const useCurrency = currency ?? campaignStore.data?.currency ?? 'USD';
+    const useCurrency = currency ?? campaignStore.currency ?? 'USD';
 
     return formatCurrency(amount, useCurrency);
   }

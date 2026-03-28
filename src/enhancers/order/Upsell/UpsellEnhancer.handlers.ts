@@ -13,7 +13,7 @@ let trackedPagePath: string | null = null;
 
 function getCurrency(): string {
   const campaign = useCampaignStore.getState();
-  if (campaign?.data?.currency) return campaign.data.currency;
+  if (campaign?.currency) return campaign.currency;
   const config = useConfigStore.getState();
   return config?.selectedCurrency ?? config?.detectedCurrency ?? 'USD';
 }

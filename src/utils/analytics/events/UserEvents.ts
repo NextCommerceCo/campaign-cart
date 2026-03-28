@@ -31,7 +31,7 @@ export class UserEvents {
           const cartState = useCartStore.getState();
           const campaignState = useCampaignStore.getState();
 
-          const currency = campaignState?.data?.currency || 'USD';
+          const currency = campaignState?.currency ?? 'USD';
           // Use items from cart store - they already have all the fields we need
           const cartItems = cartState?.items || [];
 

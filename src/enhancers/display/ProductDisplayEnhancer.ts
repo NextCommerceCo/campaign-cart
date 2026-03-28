@@ -264,7 +264,7 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
       this.logger.debug(`Package prices - Original #${this.packageId}: retail=${this.originalPackageData?.price_retail}, sale=${this.originalPackageData?.price} | Mapped #${targetPackageId}: retail=${this.packageData.price_retail}, sale=${this.packageData.price}`);
     } else {
       // Log currency info when loading package
-      this.logger.debug(`Package ${this.packageId} loaded with price: ${this.packageData.price} ${this.campaignState.data?.currency || ''}`);
+      this.logger.debug(`Package ${this.packageId} loaded with price: ${this.packageData.price} ${this.campaignState.currency ?? ''}`);
     }
   }
 

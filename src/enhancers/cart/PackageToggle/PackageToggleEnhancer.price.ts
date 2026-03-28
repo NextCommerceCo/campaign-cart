@@ -15,7 +15,7 @@ export async function fetchAndUpdateTogglePrice(
   const priceSlots = card.element.querySelectorAll<HTMLElement>('[data-next-toggle-price]');
   if (priceSlots.length === 0) return;
 
-  const currency = useCampaignStore.getState().data?.currency ?? null;
+  const currency = useCampaignStore.getState().currency ?? null;
 
   // In upsell context: calculate the package standalone with ?upsell=true.
   // In normal context: merge with current cart items so the line price is accurate.

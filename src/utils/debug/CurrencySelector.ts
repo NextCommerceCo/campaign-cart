@@ -50,7 +50,7 @@ export class CurrencySelector {
       }
       
       // Only re-render if the currency actually changed or data was loaded for the first time
-      const currencyChanged = state.data?.currency !== prevState?.data?.currency;
+      const currencyChanged = state.currency !== prevState?.currency;
       const dataLoaded = !prevState?.data && state.data;
       
       if (currencyChanged || dataLoaded) {

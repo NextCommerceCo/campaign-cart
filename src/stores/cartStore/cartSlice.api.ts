@@ -363,7 +363,7 @@ export const createCartApiSlice: StateCreator<
               is_upsell: item.is_upsell ?? false,
             })),
             vouchers: [...checkoutState.vouchers],
-            currency: campaignState.data?.currency ?? null,
+            currency: campaignState.currency ?? null,
             shippingMethod: 1,
             signal,
           });
@@ -496,7 +496,7 @@ export const createCartApiSlice: StateCreator<
           const newPrice = parseFloat(shippingMethodData.price ?? '0');
           updatedShippingMethod = { ...updatedShippingMethod, price: newPrice };
           logger.info(
-            `Updated shipping method price: ${updatedShippingMethod.code} = ${newPrice} ${campaignStore.data.currency}`
+            `Updated shipping method price: ${updatedShippingMethod.code} = ${newPrice} ${campaignStore.currency ?? ''}`
           );
         }
       }

@@ -77,8 +77,8 @@ export class CartDisplayEnhancer extends BaseDisplayEnhancer {
     // Special handling for currency display
     if (this.property === 'currency' || this.property === 'currencyCode') {
       const campaignStore = useCampaignStore.getState();
-      if (campaignStore?.data?.currency) {
-        return campaignStore.data.currency;
+      if (campaignStore?.currency) {
+        return campaignStore.currency;
       } else {
         const configStore = useConfigStore.getState();
         return configStore?.selectedCurrency || configStore?.detectedCurrency || 'USD';
@@ -97,8 +97,8 @@ export class CartDisplayEnhancer extends BaseDisplayEnhancer {
       // Fallback to extracting from Intl.NumberFormat
       let currency = 'USD';
       const campaignStore = useCampaignStore.getState();
-      if (campaignStore?.data?.currency) {
-        currency = campaignStore.data.currency;
+      if (campaignStore?.currency) {
+        currency = campaignStore.currency;
       } else {
         currency = configStore?.selectedCurrency || configStore?.detectedCurrency || 'USD';
       }
@@ -122,8 +122,8 @@ export class CartDisplayEnhancer extends BaseDisplayEnhancer {
       // Get currency from campaign or config store
       let currency = 'USD';
       const campaignStore = useCampaignStore.getState();
-      if (campaignStore?.data?.currency) {
-        currency = campaignStore.data.currency;
+      if (campaignStore?.currency) {
+        currency = campaignStore.currency;
       } else {
         const configStore = useConfigStore.getState();
         currency = configStore?.selectedCurrency || configStore?.detectedCurrency || 'USD';
