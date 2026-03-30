@@ -43,14 +43,13 @@ Mark up the container and bundle cards directly in HTML. The enhancer discovers 
 
 Provide a `<template>` element and a `data-next-bundles` JSON array. The enhancer renders one card per entry.
 
-1. Write the template. The root element inside the template must have `data-next-bundle-card` or be the outermost element:
+1. Write the template. The root element inside the template must have `data-next-bundle-card` or be the outermost element. Do not include `data-next-bundle-items` in the template — the enhancer sets it automatically from the JSON definition:
 
 ```html
 <template id="bundle-tmpl">
   <div
     data-next-bundle-card
     data-next-bundle-id="{bundle.id}"
-    data-next-bundle-items="{bundle.items}"
   >
     <strong>{bundle.title}</strong>
     <span data-next-bundle-price>—</span>
@@ -99,7 +98,7 @@ Inside the bundle card template, add a placeholder where slots will be injected:
 
 ```html
 <template id="bundle-tmpl">
-  <div data-next-bundle-card data-next-bundle-id="{bundle.id}" data-next-bundle-items="{bundle.items}">
+  <div data-next-bundle-card data-next-bundle-id="{bundle.id}">
     <strong>{bundle.title}</strong>
     <div data-next-bundle-slots></div>
     <span data-next-bundle-price>—</span>
@@ -138,6 +137,33 @@ When a button should trigger the cart add rather than the card click:
   Add to Cart
 </button>
 ```
+
+### Option E — Display bundle data outside the card
+
+Use `data-next-display="bundle.{bundleId}.{property}"` to bind any element on the page to a specific bundle card's state. The element does not need to be inside the card or the selector container.
+
+```html
+<!-- These can go anywhere in the document -->
+<span data-next-display="bundle.starter.price"></span>
+<span data-next-display="bundle.starter.isSelected"></span>
+<span data-next-display="bundle.value.savings" data-hide-if-zero="true"></span>
+<span data-next-display="bundle.value.savingsPercentage"></span>
+```
+
+**Supported properties:** `isSelected`, `name`, `price`, `compare`, `savings`, `savingsPercentage`, `hasSavings`
+
+Prices update automatically after the async price fetch completes. `isSelected` updates on every card click.
+
+## Price display: which system to use
+
+There are two ways to show bundle prices. Use whichever fits your layout:
+
+| Situation | Use |
+|---|---|
+| Price element is **inside** the bundle card | `data-next-bundle-price` — simpler, no ID needed |
+| Price element is **outside** the card (e.g., sticky bar, comparison table) | `data-next-display="bundle.{bundleId}.price"` |
+
+Both read from the same calculated value and update at the same time. Do not use both on the same element.
 
 ## Verify it is working
 

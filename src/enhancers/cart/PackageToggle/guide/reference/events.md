@@ -60,3 +60,22 @@
   "order": { "ref_id": "ORD-123", "..." }
 }
 ```
+
+---
+
+## `toggle:price-updated`
+
+**When:** A price fetch (or cart-summary read) completes for a toggle card. Fires after `data-toggle-price-*` raw numeric attributes are written to the card element. Used internally by `PackageToggleDisplayEnhancer` to refresh `data-next-display="toggle.{packageId}.*"` elements.
+
+**Payload:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `packageId` | `number` | `ref_id` of the package whose price was updated |
+
+**Example:**
+```json
+{
+  "packageId": 101
+}
+```

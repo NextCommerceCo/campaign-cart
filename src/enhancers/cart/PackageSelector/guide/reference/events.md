@@ -79,3 +79,24 @@
   "quantity": 2
 }
 ```
+
+---
+
+## `selector:price-updated`
+
+**When:** A price fetch completes for a selector card. Fires after `data-package-price-*` raw numeric attributes are written to the card element. Used internally by `PackageSelectorDisplayEnhancer` to refresh `data-next-display="selector.{selectorId}.{packageId}.*"` elements.
+
+**Payload:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `selectorId` | `string` | ID of the selector containing the card |
+| `packageId` | `number` | `ref_id` of the package whose price was updated |
+
+**Example:**
+```json
+{
+  "selectorId": "main-selector",
+  "packageId": 101
+}
+```

@@ -272,6 +272,18 @@ export class AttributeScanner {
             this.logger.debug('Using ShippingDisplayEnhancer');
             const { ShippingDisplayEnhancer } = await import('@/enhancers/display/ShippingDisplayEnhancer');
             return new ShippingDisplayEnhancer(element);
+          } else if (parsed.object === 'bundle') {
+            this.logger.debug('Using BundleDisplayEnhancer');
+            const { BundleDisplayEnhancer } = await import('@/enhancers/cart/BundleSelector');
+            return new BundleDisplayEnhancer(element);
+          } else if (parsed.object === 'selector') {
+            this.logger.debug('Using PackageSelectorDisplayEnhancer');
+            const { PackageSelectorDisplayEnhancer } = await import('@/enhancers/cart/PackageSelector');
+            return new PackageSelectorDisplayEnhancer(element);
+          } else if (parsed.object === 'toggle') {
+            this.logger.debug('Using PackageToggleDisplayEnhancer');
+            const { PackageToggleDisplayEnhancer } = await import('@/enhancers/cart/PackageToggle');
+            return new PackageToggleDisplayEnhancer(element);
           } else {
             // Check for context-based package detection
             let currentElement: HTMLElement | null = element.parentElement;

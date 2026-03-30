@@ -194,6 +194,9 @@ export interface EventMap {
   // Bundle Events
   'bundle:selected': { bundleId: string; items: { packageId: number; quantity: number }[] };
   'bundle:selection-changed': { bundleId: string; items: { packageId: number; quantity: number }[] };
+  'bundle:price-updated': { bundleId: string };
+  'selector:price-updated': { selectorId: string; packageId: number };
+  'toggle:price-updated': { packageId: number };
 
   // Package Toggle Events
   'toggle:toggled': { packageId: number; added: boolean };

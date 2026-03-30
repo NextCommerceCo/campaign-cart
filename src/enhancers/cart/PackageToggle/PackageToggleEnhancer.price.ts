@@ -12,9 +12,6 @@ export async function fetchAndUpdateTogglePrice(
   logger: Logger,
   upsell?: boolean,
 ): Promise<void> {
-  const priceSlots = card.element.querySelectorAll<HTMLElement>('[data-next-toggle-price]');
-  if (priceSlots.length === 0) return;
-
   const currency = useCampaignStore.getState().currency ?? null;
 
   // In upsell context: calculate the package standalone with ?upsell=true.

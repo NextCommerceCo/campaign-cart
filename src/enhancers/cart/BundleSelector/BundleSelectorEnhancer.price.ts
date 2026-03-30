@@ -1,4 +1,3 @@
-import { Decimal } from 'decimal.js';
 import { useCampaignStore } from '@/stores/campaignStore';
 import { useCheckoutStore } from '@/stores/checkoutStore';
 import { calculateBundlePrice, CalculateCartResult } from '@/utils/calculations/CartCalculator';
@@ -63,7 +62,20 @@ function updateBundlePriceElements(
       case 'compare': el.textContent = formatCurrency(calculated.subtotal.toNumber()); break;
       case 'savings': el.textContent = formatCurrency(calculated.totalDiscount.toNumber()); break;
       case 'savingsPercentage': el.textContent = formatCurrency(calculated.totalDiscountPercentage.toNumber()); break;
-      default:         el.textContent = formatCurrency(calculated.total.toNumber()); break;
+      case 'total':
+      default:        el.textContent = formatCurrency(calculated.total.toNumber()); break;
     }
   });
+
+  // Store raw numeric values for BundleDisplayEnhancer
+  cardEl.setAttribute('data-bundle-price-total', calculated.total.toNumber().toString());
+  cardEl.setAttribute('data-bundle-price-compare', calculated.subtotal.toNumber().toString());
+  cardEl.setAttribute('data-bundle-price-savings', calculated.totalDiscount.toNumber().toString());
+  cardEl.setAttribute('data-bundle-price-savings-pct', calculated.totalDiscountPercentage.toNumber().toString());
+
+  // Notify BundleDisplayEnhancer subscribers
+  cardEl.dispatchEvent(new CustomEvent('bundle:price-updated', {
+    bubbles: true,
+    detail: { bundleId: cardEl.getAttribute('data-next-bundle-id') ?? '' },
+  }));
 }

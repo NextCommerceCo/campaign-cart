@@ -1,7 +1,7 @@
 # PackageSelectorEnhancer
 
 > Category: `cart`
-> Last reviewed: 2026-03-27
+> Last reviewed: 2026-03-30
 > Owner: campaign-cart
 
 A container that lets a user pick exactly one package from a set of options and, in swap mode, keeps the cart in sync with that selection automatically. Each option is a card element the enhancer registers, tracks, and updates as the cart or prices change.

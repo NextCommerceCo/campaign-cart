@@ -328,13 +328,20 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
 
     if (!this.selectedCard) {
       const preSelected = this.cards.find(c => c.isPreSelected);
-      if (preSelected) {
-        this.selectCard(preSelected);
-        const initVouchers = preSelected.vouchers.length
-          ? applyVoucherSwap(null, preSelected)
+      const cardToSelect = preSelected ?? this.cards[0] ?? null;
+      if (!preSelected && cardToSelect) {
+        this.logger.warn(
+          'No card has data-next-selected="true" — auto-selecting first card. ' +
+          'Add data-next-selected="true" to the default card to suppress this warning.',
+        );
+      }
+      if (cardToSelect) {
+        this.selectCard(cardToSelect);
+        const initVouchers = cardToSelect.vouchers.length
+          ? applyVoucherSwap(null, cardToSelect)
           : Promise.resolve();
         if (this.mode === 'swap') {
-          void initVouchers.then(() => applyBundle(null, preSelected, this.makeHandlerContext()));
+          void initVouchers.then(() => applyBundle(null, cardToSelect, this.makeHandlerContext()));
         } else {
           void initVouchers;
         }

@@ -43,3 +43,22 @@
   ]
 }
 ```
+
+---
+
+## `bundle:price-updated`
+
+**When:** A price fetch completes for a bundle card. Fires after `data-bundle-price-*` raw numeric attributes are written to the card element. Used internally by `BundleDisplayEnhancer` to refresh `data-next-display="bundle.{bundleId}.*"` elements.
+
+**Payload:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `bundleId` | `string` | ID of the bundle card whose price was updated |
+
+**Example:**
+```json
+{
+  "bundleId": "starter"
+}
+```

@@ -253,6 +253,22 @@ data-next-bundle-vouchers="SAVE10,FREESHIP"
 
 ---
 
+### `data-next-bundle-name`
+
+| | |
+|---|---|
+| Type | `string` |
+| Required | no |
+| Default | — |
+
+Human-readable display name for the bundle. When set, it is exposed as the `name` property in `data-next-display="bundle.{bundleId}.name"` elements anywhere in the document.
+
+```html
+<div data-next-bundle-card data-next-bundle-id="value" data-next-bundle-name="Value Pack" ...>
+```
+
+---
+
 ### `data-next-selected`
 
 | | |
@@ -261,7 +277,7 @@ data-next-bundle-vouchers="SAVE10,FREESHIP"
 | Required | no |
 | Default | `'false'` |
 
-Pre-marks a card as selected on init. The first card with `data-next-selected="true"` is selected; subsequent ones are ignored. Also written by the enhancer at runtime to reflect the current selection.
+Pre-marks a card as selected on init. Only the **first** card with `data-next-selected="true"` is selected — subsequent ones are ignored. If no card has this attribute, the enhancer auto-selects the first registered card and logs a warning. Also written by the enhancer at runtime to reflect the current selection.
 
 ---
 
@@ -301,6 +317,54 @@ Placeholder element inside a bundle card where slot rows are injected. Required 
 
 ---
 
+### `data-bundle-price-total` *(set by enhancer)*
+
+| | |
+|---|---|
+| Type | `string` (float) |
+| Set by | enhancer (after price fetch) |
+| Default | — |
+
+Raw numeric total price written to the card element after each price fetch. Read by `BundleDisplayEnhancer` to populate `data-next-display="bundle.{bundleId}.price"` elements.
+
+---
+
+### `data-bundle-price-compare` *(set by enhancer)*
+
+| | |
+|---|---|
+| Type | `string` (float) |
+| Set by | enhancer (after price fetch) |
+| Default | — |
+
+Raw numeric retail / compare-at price. Empty string when no compare price is available.
+
+---
+
+### `data-bundle-price-savings` *(set by enhancer)*
+
+| | |
+|---|---|
+| Type | `string` (float) |
+| Set by | enhancer (after price fetch) |
+| Default | — |
+
+Raw numeric savings amount (compare minus total). `0` when there are no savings.
+
+---
+
+### `data-bundle-price-savings-pct` *(set by enhancer)*
+
+| | |
+|---|---|
+| Type | `string` (float) |
+| Set by | enhancer (after price fetch) |
+| Default | — |
+
+Raw numeric savings percentage (0–100). `0` when there are no savings.
+
+---
+
 ## External slots container
 
 ---
@@ -314,6 +378,32 @@ Placeholder element inside a bundle card where slot rows are injected. Required 
 | Default | — |
 
 Marks an element outside the selector container as a target for slot rendering. The value must match `data-next-selector-id` on the container. When set, slots for the currently selected bundle are rendered here instead of (or in addition to) the inline `[data-next-bundle-slots]` placeholder.
+
+---
+
+## Display system integration
+
+Use `data-next-display="bundle.{bundleId}.{property}"` on any element in the document to bind it to a specific bundle card's state. The element does not need to be inside the bundle card or even inside the selector container.
+
+```html
+<span data-next-display="bundle.starter.price"></span>
+<span data-next-display="bundle.starter.isSelected"></span>
+<span data-next-display="bundle.premium.savings" data-hide-if-zero="true"></span>
+```
+
+**Supported properties:**
+
+| Property | Format | Description |
+|---|---|---|
+| `isSelected` | boolean | `true` when this bundle card is the currently selected card |
+| `name` | text | Value of `data-next-bundle-name` on the card element |
+| `price` | currency | Total price for the bundle (same value as `data-next-bundle-price`) |
+| `compare` | currency | Retail / compare-at price |
+| `savings` | currency | Discount amount (compare minus total) |
+| `savingsPercentage` | percentage | Discount as a percentage of compare price |
+| `hasSavings` | boolean | `true` when savings is greater than zero |
+
+Supports all standard display modifiers: `data-next-format`, `data-hide-if-zero`, `data-hide-if-false`.
 
 ---
 
@@ -335,8 +425,8 @@ Placed on elements inside a bundle card. The enhancer writes a formatted price s
 
 | Value | Displays |
 |-------|----------|
-| *(no value / empty)* | Total price for the bundle |
-| `subtotal` | Subtotal before shipping and discounts |
+| *(no value / empty)* | Total price after all discounts |
+| `total` | Explicit alias for the above |
 | `compare` | Retail / compare-at price (from `price_retail` on campaign packages) |
 | `savings` | Discount amount (compare price minus total) |
 | `savingsPercentage` | Discount as a percentage of the compare price |

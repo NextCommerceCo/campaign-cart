@@ -178,6 +178,83 @@ Button label when the package is in the cart. Requires `data-add-text` to also b
 
 ---
 
+## Display system integration
+
+Use `data-next-display="toggle.{packageId}.{property}"` on any element in the document to bind it to a specific toggle card's state. The element does not need to be inside the card or the container.
+
+```html
+<!-- These can go anywhere in the document -->
+<span data-next-display="toggle.101.isInCart"></span>
+<span data-next-display="toggle.101.price"></span>
+<span data-next-display="toggle.101.savings" data-hide-if-zero="true"></span>
+<span data-next-display="toggle.101.savingsPercentage"></span>
+```
+
+**Supported properties:**
+
+| Property | Format | Description |
+|---|---|---|
+| `isInCart` | boolean | `true` when this card's package is currently in the cart |
+| `price` | currency | Total price for the card's quantity |
+| `compare` | currency | Retail / compare-at price |
+| `savings` | currency | Discount amount (compare minus total) |
+| `savingsPercentage` | percentage | Discount as a percentage of the compare price |
+| `hasSavings` | boolean | `true` when savings is greater than zero |
+
+Supports all standard display modifiers: `data-next-format`, `data-hide-if-zero`, `data-hide-if-false`.
+
+---
+
+## Raw price data attributes *(set by enhancer)*
+
+The following attributes are written to card elements (`[data-next-toggle-card]`) after each price fetch. They hold the numeric values that `PackageToggleDisplayEnhancer` reads for `data-next-display="toggle.*"` elements.
+
+---
+
+### `data-toggle-price-total`
+
+| | |
+|---|---|
+| Type | `string` (float) |
+| Set by | enhancer (after price fetch) |
+
+Raw numeric total price for the card's quantity.
+
+---
+
+### `data-toggle-price-compare`
+
+| | |
+|---|---|
+| Type | `string` (float) |
+| Set by | enhancer (after price fetch) |
+
+Raw numeric retail / compare-at price. Empty string when no compare price is available.
+
+---
+
+### `data-toggle-price-savings`
+
+| | |
+|---|---|
+| Type | `string` (float) |
+| Set by | enhancer (after price fetch) |
+
+Raw numeric savings amount (compare minus total). `0` when there are no savings.
+
+---
+
+### `data-toggle-price-savings-pct`
+
+| | |
+|---|---|
+| Type | `string` (float) |
+| Set by | enhancer (after price fetch) |
+
+Raw numeric savings percentage (0–100). `0` when there are no savings.
+
+---
+
 ## Price slot attributes
 
 ### `data-next-toggle-price`

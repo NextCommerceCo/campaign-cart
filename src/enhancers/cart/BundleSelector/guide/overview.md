@@ -1,7 +1,7 @@
 # BundleSelectorEnhancer
 
 > Category: `cart`
-> Last reviewed: 2026-03-27
+> Last reviewed: 2026-03-30
 > Owner: campaign-cart
 
 A container that lets a developer define named bundles — each bundle being a fixed set of packages and quantities — and lets a visitor pick one. In swap mode, selecting a bundle atomically replaces the previous bundle's cart items while leaving unrelated cart items untouched. Bundle vouchers are applied and removed automatically as the selection changes.
@@ -48,7 +48,7 @@ Visitor changes variant (select or custom option)
 ## Business logic
 
 - Exactly one bundle card is selected at all times. There is no "none selected" state after initialization.
-- On init, the first card with `data-next-selected="true"` is pre-selected and, in swap mode, its items are immediately added to the cart.
+- On init, the first card with `data-next-selected="true"` is pre-selected and, in swap mode, its items are immediately added to the cart. If no card has `data-next-selected="true"`, the first registered card is auto-selected and a warning is logged.
 - In swap mode, bundle items are tagged in the cart with a `bundleId`. When a different bundle is selected, only the items sharing the previous bundle's `bundleId` are removed; unrelated cart items (upsells, standalone packages) are preserved.
 - Vouchers declared on a bundle card via `data-next-bundle-vouchers` are automatically applied when that bundle is selected and removed when it is deselected. Vouchers shared between two bundles are not re-applied or re-removed. User-applied coupons (not bundle vouchers) are always preserved.
 - A `BundleItem` with `configurable: true` and `quantity > 1` is expanded into one slot per unit so the visitor can independently choose a variant (size, color) for each unit.
@@ -77,3 +77,5 @@ Visitor changes variant (select or custom option)
 - External slots containers (`data-next-bundle-slots-for`) render only the currently selected bundle's slots. Slots for non-selected bundles are not rendered into the external container.
 - Price fetching is asynchronous. Until the fetch resolves, `[data-next-bundle-price]` elements show their initial content. There is no built-in skeleton or placeholder state.
 - In select mode, if no external action (button or other enhancer) writes to the cart, the bundle is never applied. The enhancer does not warn when this happens.
+- `data-next-bundle-items` does not need to be declared in a card template when using `data-next-bundle-template-id` — the enhancer sets it automatically from the JSON definition. Including `{bundle.items}` in the template is a no-op.
+- Inline template strings (`data-next-bundle-template`, `data-next-bundle-slot-template`) require HTML escaping inside attribute values and break syntax highlighting. Prefer `<template id="...">` elements with the corresponding `-id` attributes.

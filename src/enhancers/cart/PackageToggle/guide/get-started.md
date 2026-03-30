@@ -65,6 +65,22 @@ Provide a JSON array in `data-next-packages` and a `<template>` element. The enh
 </template>
 ```
 
+### Display card data outside the toggle container
+
+Use `data-next-display="toggle.{packageId}.{property}"` to bind any element on the page to a specific toggle card's state. The element does not need to be inside the card or the container.
+
+```html
+<!-- These can go anywhere in the document -->
+<span data-next-display="toggle.101.isInCart"></span>
+<span data-next-display="toggle.101.price"></span>
+<span data-next-display="toggle.101.savings" data-hide-if-zero="true"></span>
+<span data-next-display="toggle.101.savingsPercentage"></span>
+```
+
+**Supported properties:** `isInCart`, `price`, `compare`, `savings`, `savingsPercentage`, `hasSavings`
+
+`isInCart` updates on every cart sync. Prices update after the async price fetch completes.
+
 ## Verify it is working
 
 After the SDK initializes you should see:

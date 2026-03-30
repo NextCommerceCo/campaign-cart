@@ -75,13 +75,14 @@ export function renderTogglePrice(card: ToggleCard, line: SummaryLine | null): v
     return isNaN(num) ? '' : formatCurrency(num * qty);
   };
 
+  const comparePrice = line?.original_package_price ?? pkg?.price_total;
+  const basePrice = line?.package_price ?? pkg?.price_total ?? '0';
+  const savings = comparePrice && basePrice
+    ? (parseFloat(comparePrice) - parseFloat(basePrice))
+    : 0;
+
   card.element.querySelectorAll<HTMLElement>('[data-next-toggle-price]').forEach(el => {
     const field = el.getAttribute('data-next-toggle-price') || 'total';
-    const comparePrice = line?.original_package_price ?? pkg?.price_total;
-    const basePrice = line?.package_price ?? pkg?.price_total ?? '0';
-    const savings = comparePrice && basePrice
-      ? (parseFloat(comparePrice) - parseFloat(basePrice))
-      : 0;
 
     switch (field) {
       case 'compare':
@@ -103,4 +104,20 @@ export function renderTogglePrice(card: ToggleCard, line: SummaryLine | null): v
         break;
     }
   });
+
+  // Store raw numeric values for PackageToggleDisplayEnhancer
+  const baseNum = parseFloat(basePrice) * qty;
+  const compareNum = comparePrice ? parseFloat(comparePrice) * qty : null;
+  const savingsPct =
+    savings > 0 && compareNum ? (savings / compareNum) * 100 : 0;
+  card.element.setAttribute('data-toggle-price-total', isNaN(baseNum) ? '' : baseNum.toString());
+  card.element.setAttribute('data-toggle-price-compare', compareNum !== null ? compareNum.toString() : '');
+  card.element.setAttribute('data-toggle-price-savings', savings > 0 ? savings.toString() : '0');
+  card.element.setAttribute('data-toggle-price-savings-pct', savingsPct.toString());
+  card.element.dispatchEvent(
+    new CustomEvent('toggle:price-updated', {
+      bubbles: true,
+      detail: { packageId: card.packageId },
+    }),
+  );
 }

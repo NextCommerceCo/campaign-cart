@@ -21,6 +21,7 @@ The shape of each object in the `data-next-bundles` JSON array. Used for auto-re
 |-------|------|----------|-------------|
 | `id` | `string` | no | Unique identifier for the bundle. Becomes `data-next-bundle-id` on the rendered card |
 | `items` | `BundleItem[]` | no | The packages and quantities that make up this bundle |
+| `selected` | `boolean` | yes | When `true`, pre-selects this card on init. Equivalent to `data-next-selected="true"` on the rendered element. Only the first selected bundle wins |
 | `vouchers` | `string[]` | yes | Coupon codes to apply when this bundle is selected. Omit if no vouchers |
 | `[key]` | `unknown` | yes | Any additional fields are available as `{bundle.key}` template variables in the card template |
 
@@ -109,4 +110,6 @@ Variables available inside the bundle card template (`data-next-bundle-template-
 | Variable | Type | Description |
 |----------|------|-------------|
 | `bundle.id` | `string` | Bundle ID |
+| `bundle.itemCount` | `string` | Number of distinct visible items (excludes `noSlot` items) |
+| `bundle.totalQuantity` | `string` | Sum of all visible item quantities — excludes `noSlot` items |
 | `bundle.{key}` | `string` | Any additional field declared in the bundle definition object |

@@ -89,6 +89,22 @@ When a button should trigger the cart add rather than card click:
 </button>
 ```
 
+### Display card data outside the selector
+
+Use `data-next-display="selector.{selectorId}.{packageId}.{property}"` to bind any element on the page to a specific card's state. The element does not need to be inside the card or the selector container.
+
+```html
+<!-- These can go anywhere in the document -->
+<span data-next-display="selector.main-selector.101.isSelected"></span>
+<span data-next-display="selector.main-selector.101.price"></span>
+<span data-next-display="selector.main-selector.101.savings" data-hide-if-zero="true"></span>
+<span data-next-display="selector.main-selector.102.isInCart"></span>
+```
+
+**Supported properties:** `isSelected`, `isInCart`, `price`, `compare`, `savings`, `savingsPercentage`, `hasSavings`
+
+Prices update after the async price fetch completes. `isSelected` and `isInCart` update on every card click and cart sync.
+
 ## Verify it is working
 
 After the page loads with the SDK initialized, you should see:

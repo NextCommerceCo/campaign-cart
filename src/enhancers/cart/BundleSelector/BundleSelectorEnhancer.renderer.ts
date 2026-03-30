@@ -11,9 +11,16 @@ export function renderBundleTemplate(
   bundle: BundleDef,
   logger: Logger,
 ): HTMLElement | null {
-  const vars: Record<string, string> = {};
+  const visibleItems = bundle.items.filter(item => !item.noSlot);
+  const itemCount = visibleItems.length;
+  const totalQuantity = visibleItems.reduce((sum, item) => sum + (item.quantity ?? 1), 0);
+
+  const vars: Record<string, string> = {
+    'bundle.itemCount': String(itemCount),
+    'bundle.totalQuantity': String(totalQuantity),
+  };
   for (const [key, value] of Object.entries(bundle)) {
-    if (key !== 'items') {
+    if (key !== 'items' && key !== 'selected') {
       vars[`bundle.${key}`] = value != null ? String(value) : '';
     }
   }
@@ -35,6 +42,9 @@ export function renderBundleTemplate(
   cardEl.setAttribute('data-next-bundle-card', '');
   cardEl.setAttribute('data-next-bundle-id', bundle.id);
   cardEl.setAttribute('data-next-bundle-items', JSON.stringify(bundle.items));
+  if (bundle.selected) {
+    cardEl.setAttribute('data-next-selected', 'true');
+  }
   if (bundle.vouchers?.length) {
     cardEl.setAttribute('data-next-bundle-vouchers', JSON.stringify(bundle.vouchers));
   }

@@ -237,6 +237,82 @@ Written by the enhancer to reflect whether this card's package is currently in t
 
 ---
 
+## Display system integration
+
+Use `data-next-display="selector.{selectorId}.{packageId}.{property}"` on any element in the document to bind it to a specific card's state within a selector. The element does not need to be inside the card or the selector container.
+
+```html
+<span data-next-display="selector.main-selector.101.isSelected"></span>
+<span data-next-display="selector.main-selector.101.price"></span>
+<span data-next-display="selector.main-selector.101.savings" data-hide-if-zero="true"></span>
+```
+
+**Supported properties:**
+
+| Property | Format | Description |
+|---|---|---|
+| `isSelected` | boolean | `true` when this card is the currently selected card in the selector |
+| `isInCart` | boolean | `true` when this card's package is currently in the cart |
+| `price` | currency | Total price for the package at the current quantity |
+| `compare` | currency | Retail / compare-at price |
+| `savings` | currency | Discount amount (compare minus total) |
+| `savingsPercentage` | percentage | Discount as a percentage of the compare price |
+| `hasSavings` | boolean | `true` when savings is greater than zero |
+
+Supports all standard display modifiers: `data-next-format`, `data-hide-if-zero`, `data-hide-if-false`.
+
+---
+
+## Raw price data attributes *(set by enhancer)*
+
+The following attributes are written to card elements (`[data-next-selector-card]`) after each price fetch. They hold the numeric values that `PackageSelectorDisplayEnhancer` reads for `data-next-display="selector.*"` elements.
+
+---
+
+### `data-package-price-total`
+
+| | |
+|---|---|
+| Type | `string` (float) |
+| Set by | enhancer (after price fetch) |
+
+Raw numeric total price. Matches the value shown by `data-next-package-price` (default / total).
+
+---
+
+### `data-package-price-compare`
+
+| | |
+|---|---|
+| Type | `string` (float) |
+| Set by | enhancer (after price fetch) |
+
+Raw numeric retail / compare-at price. Empty string when no compare price is available.
+
+---
+
+### `data-package-price-savings`
+
+| | |
+|---|---|
+| Type | `string` (float) |
+| Set by | enhancer (after price fetch) |
+
+Raw numeric savings amount (compare minus total). `0` when there are no savings.
+
+---
+
+### `data-package-price-savings-pct`
+
+| | |
+|---|---|
+| Type | `string` (float) |
+| Set by | enhancer (after price fetch) |
+
+Raw numeric savings percentage (0–100). `0` when there are no savings.
+
+---
+
 ## Price slot attributes
 
 The following attributes are placed on elements inside a card. The enhancer writes formatted prices into these elements after fetching from the bundle price API.

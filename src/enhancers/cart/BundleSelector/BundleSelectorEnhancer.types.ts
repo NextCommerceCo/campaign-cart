@@ -31,6 +31,8 @@ export interface BundleDef {
   id: string;
   items: BundleItem[];
   vouchers?: string[];
+  /** When true, pre-selects this card on init. Equivalent to data-next-selected="true" on the rendered element. */
+  selected?: boolean;
   [key: string]: unknown;
 }
 
