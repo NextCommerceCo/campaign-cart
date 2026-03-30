@@ -1,3 +1,4 @@
+import Decimal from 'decimal.js';
 import type { StateCreator } from 'zustand';
 import type { CartItem } from '@/types/global';
 import { EventBus } from '@/utils/events';
@@ -6,8 +7,6 @@ import { initialCartState } from './cartSlice.items';
 import type { CartApiSlice, CartStore } from './cartStore.types';
 
 const logger = createLogger('CartStore');
-
-const EMPTY_TOTALS = initialCartState.totals;
 
 // Debounce + abort for calculateTotals.
 // Debounce coalesces rapid calls (e.g. 3 bundles initializing) into one request.
@@ -356,7 +355,7 @@ export const createCartApiSlice: StateCreator<
         const state = get();
 
         try {
-          const { totals, summary } = await calculateCart({
+          const { subtotal, total, hasDiscounts, totalDiscount, totalDiscountPercentage, shippingMethod, summary } = await calculateCart({
             lines: state.items.map(item => ({
               package_id: item.packageId,
               quantity: item.quantity,
@@ -413,20 +412,21 @@ export const createCartApiSlice: StateCreator<
           });
 
           if (signal.aborted) return;
+          const totalQuantity = summary.lines.reduce((s, l) => s + l.quantity, 0);
           set({
             items: updatedItems,
-            subtotal: totals.subtotal.value,
-            shipping: totals.shipping.value,
-            tax: 0,
-            total: totals.total.value,
-            totalQuantity: totals.count,
-            isEmpty: totals.isEmpty,
-            totals,
+            subtotal,
+            total,
+            hasDiscounts,
+            totalDiscount,
+            totalDiscountPercentage,
+            shippingMethod,
+            totalQuantity,
+            isEmpty: updatedItems.length === 0,
+            vouchers: [...checkoutState.vouchers],
+            offerDiscounts: summary.offer_discounts ?? [],
+            voucherDiscounts: summary.voucher_discounts ?? [],
             summary: { ...summary, lines: enrichedSummaryLines },
-            discountDetails: {
-              offerDiscounts: summary.offer_discounts ?? [],
-              voucherDiscounts: summary.voucher_discounts ?? [],
-            },
           });
           EventBus.getInstance().emit('cart:updated', get());
         } catch (error) {
@@ -436,13 +436,13 @@ export const createCartApiSlice: StateCreator<
       } catch (error) {
         logger.error('Error calculating totals:', error);
         set({
-          subtotal: 0,
-          shipping: 0,
-          tax: 0,
-          total: 0,
+          subtotal: new Decimal(0),
+          total: new Decimal(0),
+          hasDiscounts: false,
+          totalDiscount: new Decimal(0),
+          totalDiscountPercentage: new Decimal(0),
           totalQuantity: 0,
           isEmpty: true,
-          totals: EMPTY_TOTALS,
         });
       }
     });
@@ -493,10 +493,14 @@ export const createCartApiSlice: StateCreator<
           method => method.ref_id === updatedShippingMethod!.id
         );
         if (shippingMethodData) {
-          const newPrice = parseFloat(shippingMethodData.price ?? '0');
-          updatedShippingMethod = { ...updatedShippingMethod, price: newPrice };
+          const newPrice = new Decimal(shippingMethodData.price ?? '0');
+          updatedShippingMethod = {
+            ...updatedShippingMethod,
+            price: newPrice,
+            originalPrice: newPrice,
+          };
           logger.info(
-            `Updated shipping method price: ${updatedShippingMethod.code} = ${newPrice} ${campaignStore.currency ?? ''}`
+            `Updated shipping method price: ${updatedShippingMethod.code} = ${newPrice.toNumber()} ${campaignStore.currency ?? ''}`
           );
         }
       }
@@ -536,22 +540,26 @@ export const createCartApiSlice: StateCreator<
         throw new Error(`Shipping method ${methodId} not found`);
       }
 
-      const price = parseFloat(shippingMethod.price ?? '0');
+      const price = new Decimal(shippingMethod.price ?? '0');
 
       set(state => ({
         ...state,
         shippingMethod: {
           id: shippingMethod.ref_id,
           name: shippingMethod.code,
-          price,
           code: shippingMethod.code,
+          originalPrice: price,
+          price,
+          discountAmount: new Decimal(0),
+          discountPercentage: new Decimal(0),
+          hasDiscounts: false,
         },
       }));
 
       checkoutStore.setShippingMethod({
         id: shippingMethod.ref_id,
         name: shippingMethod.code,
-        price,
+        price: price.toNumber(),
         code: shippingMethod.code,
       });
 
@@ -589,10 +597,6 @@ export const createCartApiSlice: StateCreator<
   removeCoupon: async code => {
     const { useCheckoutStore } = await import('../checkoutStore');
     useCheckoutStore.getState().removeVoucher(code);
-    set(state => ({
-      ...state,
-      appliedCoupons: (state.appliedCoupons ?? []).filter(c => c.code !== code),
-    }));
     get().calculateTotals();
   },
 });

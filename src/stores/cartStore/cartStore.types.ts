@@ -1,8 +1,4 @@
-import type {
-  CartItem,
-  CartState,
-  AppliedCoupon,
-} from '@/types/global';
+import type { CartItem, CartState } from '@/types/global';
 
 export interface CartItemsSlice {
   reset: () => void;
@@ -12,7 +8,7 @@ export interface CartItemsSlice {
   getItemQuantity: (packageId: number) => number;
   getTotalWeight: () => number;
   getTotalItemCount: () => number;
-  getCoupons: () => AppliedCoupon[];
+  getCoupons: () => string[];
 }
 
 export interface CartUiSlice {

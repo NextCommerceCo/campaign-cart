@@ -30,20 +30,26 @@ function createTestElement(displayPath: string, attributes: Record<string, strin
 }
 
 function mockCampaignStore(packages: any[] = []) {
+  const state = { packages };
   const mockStore = {
-    getState: vi.fn(() => ({ packages })),
-    subscribe: vi.fn()
+    getState: vi.fn(() => state),
+    subscribe: vi.fn(() => () => {}),
   };
   (useCampaignStore as any).mockReturnValue(mockStore);
+  (useCampaignStore as any).getState = vi.fn(() => state);
+  (useCampaignStore as any).subscribe = vi.fn(() => () => {});
   return mockStore;
 }
 
 function mockCartStore(state: any = {}) {
+  const fullState = { items: [], isEmpty: true, vouchers: [], ...state };
   const mockStore = {
-    getState: vi.fn(() => state),
-    subscribe: vi.fn()
+    getState: vi.fn(() => fullState),
+    subscribe: vi.fn(() => () => {}),
   };
   (useCartStore as any).mockReturnValue(mockStore);
+  (useCartStore as any).getState = vi.fn(() => fullState);
+  (useCartStore as any).subscribe = vi.fn(() => () => {});
   return mockStore;
 }
 
@@ -306,8 +312,8 @@ describe('Display Formatting System', () => {
       const enhancer = new ProductDisplayEnhancer(element);
       await enhancer.initialize();
 
-      // Should show fallback value or empty
-      expect(element.textContent).toBe('');
+      // No package ID specified → fallback value (0) is shown as currency
+      expect(element.textContent).toBe('$0.00');
     });
 
     test('respects explicit format over auto-detection', async () => {
@@ -370,16 +376,7 @@ describe('Display Formatting System', () => {
   describe('CartDisplayEnhancer', () => {
     test('prevents double formatting of pre-formatted values', async () => {
       mockCartStore({
-        totals: {
-          total: {
-            value: 123.45,
-            formatted: '$123.45'
-          },
-          savings: {
-            value: 20.00,
-            formatted: '$20.00'
-          }
-        }
+        total: 123.45,
       });
 
       const element = createTestElement('cart.total');
@@ -392,12 +389,7 @@ describe('Display Formatting System', () => {
 
     test('uses raw values when needed', async () => {
       mockCartStore({
-        totals: {
-          subtotal: {
-            value: 99.99,
-            formatted: '$99.99'
-          }
-        }
+        subtotal: 99.99,
       });
 
       const element = createTestElement('cart.subtotal.raw', {
@@ -457,21 +449,21 @@ describe('Display Formatting System', () => {
     test('handles deeply nested property paths', async () => {
       mockCartStore({
         customer: {
-          shipping: {
-            address: {
-              components: {
-                street: '123 Main St'
-              }
+          profile: {
+            details: {
+              firstName: 'Jane'
             }
           }
         }
       });
 
-      const element = createTestElement('cart.customer.shipping.address.components.street');
+      const element = createTestElement('cart.customer.profile.details.firstName', {
+        'data-format': 'text'
+      });
       const enhancer = new CartDisplayEnhancer(element);
       await enhancer.initialize();
 
-      expect(element.textContent).toBe('123 Main St');
+      expect(element.textContent).toBe('Jane');
     });
 
     test('handles arrays in property paths', async () => {
@@ -509,15 +501,10 @@ describe('Display Formatting System', () => {
 
     test('handles conditional visibility', async () => {
       mockCartStore({
-        totals: {
-          savings: {
-            value: 0,
-            formatted: '$0.00'
-          }
-        }
+        totalDiscount: 0,
       });
 
-      const element = createTestElement('cart.savingsAmount', {
+      const element = createTestElement('cart.totalDiscount', {
         'data-hide-if-zero': 'true'
       });
       const enhancer = new CartDisplayEnhancer(element);

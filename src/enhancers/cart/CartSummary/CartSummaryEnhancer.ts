@@ -142,7 +142,7 @@
 
 import { BaseEnhancer } from '@/enhancers/base/BaseEnhancer';
 import { useCartStore } from '@/stores/cartStore';
-import type { CartState, CartTotals } from '@/types/global';
+import type { CartState } from '@/types/global';
 import type { CartSummary } from '@/types/api';
 import {
   buildFlags,
@@ -154,7 +154,7 @@ import {
 
 export class CartSummaryEnhancer extends BaseEnhancer {
   private customTemplate?: string;
-  private totals?: CartTotals;
+  private cartState?: CartState;
   private summary?: CartSummary;
   private itemCount: number = 0;
 
@@ -164,7 +164,7 @@ export class CartSummaryEnhancer extends BaseEnhancer {
     this.customTemplate = this.resolveTemplate();
 
     const state = useCartStore.getState();
-    this.totals    = state.totals;
+    this.cartState = state;
     this.summary   = state.summary;
     this.itemCount = state.items.length;
 
@@ -181,12 +181,13 @@ export class CartSummaryEnhancer extends BaseEnhancer {
   // ─── Private ───────────────────────────────────────────────────────────────
 
   private handleCartUpdate(state: CartState): void {
-    const totalsChanged  = state.totals  !== this.totals;
+    const totalsChanged  = state.subtotal  !== this.cartState?.subtotal
+      || state.total !== this.cartState?.total;
     const summaryChanged = state.summary !== this.summary;
     const countChanged   = state.items.length !== this.itemCount;
 
     if (totalsChanged || summaryChanged || countChanged) {
-      this.totals    = state.totals;
+      this.cartState = state;
       this.summary   = state.summary;
       this.itemCount = state.items.length;
       this.render();
@@ -194,10 +195,10 @@ export class CartSummaryEnhancer extends BaseEnhancer {
   }
 
   private render(): void {
-    if (!this.totals) return;
+    if (!this.cartState) return;
 
-    const flags = buildFlags(this.totals);
-    const vars  = buildVars(this.totals, flags, this.itemCount);
+    const flags = buildFlags(this.cartState);
+    const vars  = buildVars(this.cartState, flags, this.itemCount);
 
     updateStateClasses(this.element, flags);
 

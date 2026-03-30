@@ -8,9 +8,9 @@
  * - Voucher recalculation (pass updated vouchers, get new totals back)
  */
 
-import type { CartCalculateSummary, CartSummary, LineWithUpsell } from '@/types/api';
-import type { CartTotals } from '@/types/global';
-import { formatCurrency, formatPercentage } from '@/utils/currencyFormatter';
+import Decimal from 'decimal.js';
+import type { CartCalculateSummary, CartSummary, Discount, LineWithUpsell } from '@/types/api';
+import type { ShippingMethod } from '@/types/global';
 import { sessionStorageManager } from '@/utils/storage';
 
 // ─── Bundle price cache ───────────────────────────────────────────────────────
@@ -74,8 +74,28 @@ export interface CalculateCartParams {
 }
 
 export interface CalculateCartResult {
-  totals: CartTotals;
-  summary: CartSummary;
+  /** List of applied coupon codes. */
+  vouchers: string[];
+  /** ISO currency code of cart data. */
+  currency?: string;
+  /** Detailed offer information for offers applied to the cart. */
+  offerDiscounts?: Discount[];
+  /** Detailed voucher information for vouchers applied to the cart. */
+  voucherDiscounts?: Discount[];
+  /** Cart subtotal before shipping and discounts. */
+  subtotal: Decimal;
+  /** The currently selected shipping method and its pricing details. */
+  shippingMethod?: ShippingMethod;
+  /** `true` when any discount (coupon or offer) is applied. */
+  hasDiscounts: boolean;
+  /** Total discount amount from coupons and offers. */
+  totalDiscount: Decimal;
+  /** Total discount as a percentage of the subtotal. */
+  totalDiscountPercentage: Decimal;
+  /** Cart grand total (subtotal + shipping − discounts). */
+  total: Decimal;
+  /** Raw CartSummary response from the API calculate endpoint. */
+  summary?: CartSummary;
 }
 
 /**
@@ -99,7 +119,7 @@ export async function calculateCart(
 
   const summary = await client.calculateSummary(cartData, params.signal, { upsell: params.upsell });
 
-  return { totals: buildCartTotals(summary, { exclude_shipping: params.exclude_shipping }), summary };
+  return { ...buildCartFields(summary), vouchers: params.vouchers ?? [], summary };
 }
 
 /**
@@ -153,64 +173,56 @@ export async function calculateBundlePrice(
 }
 
 /**
- * Transform a raw CartSummary API response into a CartTotals object.
+ * Transform a raw CartSummary API response into flat CartState fields.
  * Pure function – no side effects, easy to test.
+ * All price fields are Decimal instances for precision arithmetic.
  */
-export function buildCartTotals(
+export function buildCartFields(
   response: CartSummary,
-  options?: { exclude_shipping?: boolean; compareTotal?: number }
-): CartTotals {
-  const subtotal = parseFloat(response.subtotal);
-  const total = parseFloat(response.total);
-  const discount = parseFloat(response.total_discount);
+): Omit<CalculateCartResult, 'summary' | 'vouchers'> {
+  const subtotal = new Decimal(response.subtotal);
+  const total = new Decimal(response.total);
+  const totalDiscount = new Decimal(response.total_discount);
 
-  const shippingPrice = parseFloat(response.shipping_method?.price ?? '0');
-  const shippingOriginalPrice = parseFloat(response.shipping_method?.original_price ?? '0');
-  const shippingDiscount = shippingOriginalPrice > shippingPrice
-    ? shippingOriginalPrice - shippingPrice
-    : 0;
+  const totalDiscountPercentage = subtotal.gt(0)
+    ? totalDiscount.div(subtotal).times(100)
+    : new Decimal(0);
 
-  const effectiveTotal = options?.exclude_shipping ? total - shippingPrice : total;
+  let shippingMethod: ShippingMethod | undefined;
+  if (response.shipping_method) {
+    const sm = response.shipping_method;
+    const shippingPrice = new Decimal(sm.price);
+    const shippingOriginalPrice = new Decimal(sm.original_price);
+    const shippingDiscountAmount = Decimal.max(
+      0,
+      shippingOriginalPrice.minus(shippingPrice),
+    );
+    const shippingDiscountPercentage = shippingOriginalPrice.gt(0)
+      ? shippingDiscountAmount.div(shippingOriginalPrice).times(100)
+      : new Decimal(0);
 
-  // compareTotal: use provided retail/compare-at total when available (e.g. from
-  // campaign package price_retail fields), otherwise fall back to the undiscounted
-  // campaign subtotal so savings only reflects coupon/offer discounts.
-  const compareTotal = options?.compareTotal ?? subtotal;
-  const retailSavings = Math.max(0, compareTotal - subtotal);
-  const totalSavingsValue = Math.max(0, compareTotal - effectiveTotal);
-  const savingsPercentage = compareTotal > 0 ? (retailSavings / compareTotal) * 100 : 0;
-  const totalSavingsPercentage = compareTotal > 0 ? (totalSavingsValue / compareTotal) * 100 : 0;
-  const hasSavings = retailSavings > 0;
-  const hasTotalSavings = totalSavingsValue > 0;
-
-  const count = response.lines.reduce((sum, line) => sum + line.quantity, 0);
-  const isEmpty = response.lines.length === 0;
+    shippingMethod = {
+      id: sm.id,
+      name: sm.name,
+      code: sm.code,
+      originalPrice: shippingOriginalPrice,
+      price: shippingPrice,
+      discountAmount: shippingDiscountAmount,
+      discountPercentage: shippingDiscountPercentage,
+      hasDiscounts: shippingDiscountAmount.gt(0),
+      discounts: sm.discounts,
+    };
+  }
 
   return {
-    subtotal: { value: subtotal, formatted: formatCurrency(subtotal) },
-    shipping: {
-      value: shippingPrice,
-      formatted: shippingPrice === 0 ? 'FREE' : formatCurrency(shippingPrice),
-    },
-    shippingDiscount: {
-      value: shippingDiscount,
-      formatted: formatCurrency(shippingDiscount),
-    },
-    tax: { value: 0, formatted: formatCurrency(0) },
-    discounts: { value: discount, formatted: formatCurrency(discount) },
-    total: { value: effectiveTotal, formatted: formatCurrency(effectiveTotal) },
-    totalExclShipping: {
-      value: total - shippingPrice,
-      formatted: formatCurrency(total - shippingPrice),
-    },
-    count,
-    isEmpty,
-    compareTotal: { value: compareTotal, formatted: formatCurrency(compareTotal) },
-    savings: { value: retailSavings, formatted: formatCurrency(retailSavings) },
-    savingsPercentage: { value: savingsPercentage, formatted: formatPercentage(savingsPercentage) },
-    hasSavings,
-    totalSavings: { value: totalSavingsValue, formatted: formatCurrency(totalSavingsValue) },
-    totalSavingsPercentage: { value: totalSavingsPercentage, formatted: formatPercentage(totalSavingsPercentage) },
-    hasTotalSavings,
+    currency: response.currency,
+    offerDiscounts: response.offer_discounts,
+    voucherDiscounts: response.voucher_discounts,
+    subtotal,
+    total,
+    hasDiscounts: totalDiscount.gt(0),
+    totalDiscount,
+    totalDiscountPercentage,
+    shippingMethod,
   };
 }

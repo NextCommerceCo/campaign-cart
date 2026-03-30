@@ -10,12 +10,10 @@ declare global {
 }
 
 import type {
-  CartTotals,
   Campaign,
   CallbackType,
   CallbackData,
   EventMap,
-  AppliedCoupon,
 } from '@/types/global';
 import type { AddUpsellLine } from '@/types/api';
 import { useCartStore } from '@/stores/cartStore';
@@ -132,15 +130,29 @@ export class NextCommerce {
 
     return {
       cartLines: cartStore.enrichedItems,
-      cartTotals: cartStore.totals,
+      cartTotals: {
+        subtotal: cartStore.subtotal,
+        total: cartStore.total,
+        hasDiscounts: cartStore.hasDiscounts,
+        totalDiscount: cartStore.totalDiscount,
+        totalDiscountPercentage: cartStore.totalDiscountPercentage,
+        shippingMethod: cartStore.shippingMethod,
+      },
       campaignData: campaignStore.data,
-      appliedCoupons: cartStore.getCoupons(),
+      vouchers: cartStore.getCoupons(),
     };
   }
 
-  public getCartTotals(): CartTotals {
+  public getCartTotals() {
     const cartStore = useCartStore.getState();
-    return cartStore.totals;
+    return {
+      subtotal: cartStore.subtotal,
+      total: cartStore.total,
+      hasDiscounts: cartStore.hasDiscounts,
+      totalDiscount: cartStore.totalDiscount,
+      totalDiscountPercentage: cartStore.totalDiscountPercentage,
+      shippingMethod: cartStore.shippingMethod,
+    };
   }
 
   public getCartCount(): number {
@@ -574,7 +586,7 @@ export class NextCommerce {
     cartStore.removeCoupon(code);
   }
 
-  public getCoupons(): AppliedCoupon[] {
+  public getCoupons(): string[] {
     const cartStore = useCartStore.getState();
     return cartStore.getCoupons();
   }

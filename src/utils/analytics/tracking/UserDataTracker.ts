@@ -141,7 +141,7 @@ export class UserDataTracker {
       const cartState = useCartStore.getState();
       
       if (cartState.items && cartState.items.length > 0) {
-        userData.cartValue = cartState.total || cartState.subtotal || 0;
+        userData.cartValue = cartState.total?.toNumber() || cartState.subtotal?.toNumber() || 0;
         userData.cartItems = cartState.totalQuantity || 0;
         userData.cartProducts = cartState.items.map(item => 
           item.packageId?.toString() || 'unknown'

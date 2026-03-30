@@ -1324,41 +1324,30 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
       // Handle special cart properties
       switch (property) {
         case 'total':
-        case 'total.value':
-          return cartState.totals.total.value;
+          return cartState.total.toNumber();
         case 'subtotal':
-        case 'subtotal.value':
-          return cartState.totals.subtotal.value;
+          return cartState.subtotal.toNumber();
         case 'shipping':
-        case 'shipping.value':
-          return cartState.totals.shipping.value;
-        case 'tax':
-        case 'tax.value':
-          return cartState.totals.tax.value;
+          return cartState.shippingMethod?.price.toNumber() ?? 0;
         case 'discounts':
-        case 'discounts.value':
-          return cartState.totals.discounts.value;
+        case 'totalDiscount':
+          return cartState.totalDiscount.toNumber();
+        case 'totalDiscountPercentage':
+          return cartState.totalDiscountPercentage.toNumber();
         case 'count':
           return cartState.totalQuantity;
         case 'isEmpty':
           return cartState.isEmpty;
         case 'hasItems':
           return !cartState.isEmpty;
+        case 'hasDiscounts':
+          return cartState.hasDiscounts;
         case 'hasShipping':
-          return cartState.totals.shipping.value > 0;
+          return (cartState.shippingMethod?.price.gt(0)) ?? false;
         case 'hasFreeShipping':
-          return cartState.totals.shipping.value === 0;
-        case 'savingsAmount':
-        case 'savingsAmount.value':
-          return cartState.totals.savings.value;
-        case 'savingsPercentage':
-        case 'savingsPercentage.value':
-          return cartState.totals.savingsPercentage.value;
-        case 'compareTotal':
-        case 'compareTotal.value':
-          return cartState.totals.compareTotal.value;
-        case 'hasSavings':
-          return cartState.totals.hasSavings;
+          return (cartState.shippingMethod?.price.isZero()) ?? true;
+        case 'hasShippingDiscount':
+          return cartState.shippingMethod?.hasDiscounts ?? false;
         default:
           // Check for mapped properties first
           const config = getPropertyConfig('cart', property);

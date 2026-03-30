@@ -3503,7 +3503,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         checkoutStore.setSameAsShipping(true);
         // Use existing shipping method from cart if available
         const cartStore = useCartStore.getState();
-        const existingShipping = cartStore.shippingMethod || checkoutStore.shippingMethod;
+        const cartShipping = cartStore.shippingMethod;
+        const existingShipping = cartShipping
+          ? { id: cartShipping.id, name: cartShipping.name, price: cartShipping.price.toNumber(), code: cartShipping.code }
+          : checkoutStore.shippingMethod;
         if (existingShipping) {
           checkoutStore.setShippingMethod(existingShipping);
         } else {

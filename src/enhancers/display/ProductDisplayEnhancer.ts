@@ -537,46 +537,9 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
   }
 
   private calculatePackageDiscountAmount(): number {
-    if (!this.packageData) return 0;
-    
-    const cartStore = useCartStore.getState();
-    const appliedCoupons = cartStore.appliedCoupons || [];
-    
-    let totalDiscount = 0;
-    
-    // Check each applied coupon to see if it applies to this package
-    for (const appliedCoupon of appliedCoupons) {
-      const coupon = appliedCoupon.definition;
-      
-      // Skip if coupon doesn't apply to this package
-      if (coupon.scope === 'package' && coupon.packageIds) {
-        if (!coupon.packageIds.includes(this.packageData.ref_id)) {
-          continue;
-        }
-      } else if (coupon.scope === 'package') {
-        // Package-scoped coupon without specific IDs - skip
-        continue;
-      }
-      
-      // Calculate discount for this package
-      const packageTotal = parseFloat(this.packageData.price_total || '0') || 
-                          (parseFloat(this.packageData.price || '0') * (this.packageData.qty || 1));
-      
-      if (coupon.type === 'percentage') {
-        const discount = packageTotal * (coupon.value / 100);
-        totalDiscount += coupon.maxDiscount ? Math.min(discount, coupon.maxDiscount) : discount;
-      } else if (coupon.type === 'fixed' && coupon.scope === 'order') {
-        // For order-level fixed discounts, distribute proportionally
-        const cartSubtotal = cartStore.subtotal;
-        if (cartSubtotal > 0) {
-          const packageProportion = packageTotal / cartSubtotal;
-          totalDiscount += coupon.value * packageProportion;
-        }
-      }
-    }
-    
-    // Ensure discount doesn't exceed package price
-    return Math.min(totalDiscount, parseFloat(this.packageData.price_total || '0'));
+    // Discount amounts are computed server-side and returned in cartState.voucherDiscounts /
+    // offerDiscounts. Per-package breakdown is not available here.
+    return 0;
   }
 
   private calculateDiscountedPrice(): number {

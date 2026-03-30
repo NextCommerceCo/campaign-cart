@@ -2,6 +2,7 @@
  * Global type definitions for the SDK
  */
 
+import type { Decimal } from 'decimal.js';
 import type { Offer } from './campaign';
 
 import { AddressAutocompleteResult } from "./api";
@@ -280,6 +281,17 @@ export interface CartItem {
   bundleId?: string | undefined;
 }
 
+export interface Discount {
+  /** ID of the offer that generated this discount. */
+  offer_id?: number;
+  /** Discount amount as a formatted string (e.g. "$10.00"). */
+  amount: string;
+  /** Optional description of the discount (e.g. "10% off"). */
+  description?: string;
+  /** Optional name of the discount (e.g. "Spring Sale"). */
+  name?: string;
+}
+
 // Selector-specific types with explicit undefined handling
 export interface SelectorItem {
   element: HTMLElement;
@@ -294,86 +306,36 @@ export interface SelectorItem {
 export interface CartState {
   /** All items currently in the cart. */
   items: CartItem[];
-  /** Cart subtotal as a raw number, before shipping and discounts. */
-  subtotal: number;
-  /** Shipping cost as a raw number. */
-  shipping: number;
-  /** Tax amount as a raw number. */
-  tax: number;
-  /** Cart grand total as a raw number. */
-  total: number;
+  /** Cart items enriched with full pricing breakdown for display. See `EnrichedCartLine`. */
+  enrichedItems: EnrichedCartLine[];
   /** Total unit count across all items (sum of each item's `quantity × qty`). */
   totalQuantity: number;
   /** `true` when the cart has no items. */
   isEmpty: boolean;
-  /**
-   * @deprecated Use `appliedCoupons` instead.
-   * Legacy coupon object — kept for backwards compatibility.
-   */
-  coupon?: Coupon;
-  /** All active coupons with their calculated discount amounts. */
-  appliedCoupons: AppliedCoupon[];
-  /** The currently selected shipping method. */
-  shippingMethod?: ShippingMethod;
-  /** Cart items enriched with full pricing breakdown for display. See `EnrichedCartLine`. */
-  enrichedItems: EnrichedCartLine[];
-  /** Computed cart totals with both raw values and formatted display strings. See `CartTotals`. */
-  totals: CartTotals;
+  /** List of applied coupon codes. */
+  vouchers: string[];
   /** `true` while a package swap animation is in progress. Use to prevent double-clicks. */
   swapInProgress?: boolean;
-  /** ISO currency code of the last loaded cart data. Used to detect currency changes. */
-  lastCurrency?: string;
-  /** Breakdown of offer and voucher discounts applied to the cart. */
-  discountDetails?: {
-    offerDiscounts: Array<{
-      offer_id: number;
-      amount: string;
-      description?: string;
-      name?: string;
-    }>;
-    voucherDiscounts: Array<{
-      amount: string;
-      description?: string;
-      name?: string;
-    }>;
-  };
+  /** ISO currency code of cart data. */
+  currency?: string;
+  /** Detailed offer information for offers applied to the cart. */
+  offerDiscounts?: Discount[];
+  /** Detailed voucher information for vouchers applied to the cart. */
+  voucherDiscounts?: Discount[];
+  /** Cart subtotal before shipping and discounts. */
+  subtotal: Decimal;
+  /** The currently selected shipping method and its pricing details. */
+  shippingMethod?: ShippingMethod;
+  /** `true` when any discount (coupon or offer) is applied. */
+  hasDiscounts: boolean;
+  /** Total discount amount from coupons and offers. */
+  totalDiscount: Decimal;
+  /** Total discount as a percentage of the subtotal. */
+  totalDiscountPercentage: Decimal;
+  /** Cart grand total (subtotal + shipping − discounts). */
+  total: Decimal;
   /** Raw CartSummary response from the API calculate endpoint. */
   summary?: import('./api').CartSummary;
-}
-
-export interface CartTotals {
-  /** Cart subtotal before shipping and discounts. */
-  subtotal: { value: number; formatted: string };
-  /** Shipping cost. */
-  shipping: { value: number; formatted: string };
-  /** Discount applied to shipping (e.g. from a free-shipping offer). */
-  shippingDiscount: { value: number; formatted: string };
-  /** Tax amount. */
-  tax: { value: number; formatted: string };
-  /** Total discount amount from coupons and offers. */
-  discounts: { value: number; formatted: string };
-  /** Cart grand total (subtotal + shipping − discounts + tax). */
-  total: { value: number; formatted: string };
-  /** Grand total excluding shipping — useful for "free shipping" threshold displays. */
-  totalExclShipping: { value: number; formatted: string };
-  /** Number of packages (lines) in the cart. */
-  count: number;
-  /** `true` when the cart has no items. */
-  isEmpty: boolean;
-  /** Savings from the retail/compare-at price on selected packages. */
-  savings: { value: number; formatted: string };
-  /** Retail savings as a percentage of the compare-at total. */
-  savingsPercentage: { value: number; formatted: string };
-  /** Sum of all retail/compare-at prices — the "before" price for savings display. */
-  compareTotal: { value: number; formatted: string };
-  /** `true` when retail savings are available to display. */
-  hasSavings: boolean;
-  /** Total savings including both retail price differences and applied discounts. */
-  totalSavings: { value: number; formatted: string };
-  /** Total savings as a percentage of the compare-at total. */
-  totalSavingsPercentage: { value: number; formatted: string };
-  /** `true` when there are total savings (retail + discounts) to display. */
-  hasTotalSavings: boolean;
 }
 
 export interface EnrichedCartLine {
@@ -691,9 +653,17 @@ export type CallbackType =
 
 export interface CallbackData {
   cartLines: EnrichedCartLine[];
-  cartTotals: CartTotals;
+  cartTotals: Pick<
+    CartState,
+    | 'subtotal'
+    | 'total'
+    | 'hasDiscounts'
+    | 'totalDiscount'
+    | 'totalDiscountPercentage'
+    | 'shippingMethod'
+  >;
   campaignData: Campaign | null;
-  appliedCoupons: AppliedCoupon[];
+  vouchers: string[];
 }
 
 // Coupon system types
@@ -724,10 +694,24 @@ export interface Coupon {
 }
 
 export interface ShippingMethod {
+  /** Shipping method ID. */
   id: number;
+  /** Shipping method display name. */
   name: string;
-  price: number;
+  /** Shipping method code (matches campaign API). */
   code: string;
+  /** Original shipping price before any discount. */
+  originalPrice: Decimal;
+  /** Final shipping price after discount. */
+  price: Decimal;
+  /** Absolute discount applied to shipping. */
+  discountAmount: Decimal;
+  /** Shipping discount as a percentage of the original price. */
+  discountPercentage: Decimal;
+  /** `true` when a shipping discount is applied. */
+  hasDiscounts: boolean;
+  /** Detailed shipping discounts applied to the cart. */
+  discounts?: Discount[];
 }
 
 export interface CheckoutData {

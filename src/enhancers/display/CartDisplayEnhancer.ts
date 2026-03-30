@@ -36,9 +36,9 @@ export class CartDisplayEnhancer extends BaseDisplayEnhancer {
     
     // If cart has items but totals haven't been calculated yet, trigger recalculation
     // This handles edge cases where rehydration might not have completed fully
-    if (this.cartState.items.length > 0 && this.cartState.totals.isEmpty) {
+    if (this.cartState.items?.length > 0 && this.cartState.isEmpty) {
       this.logger.debug('Cart has items but totals are empty, triggering recalculation');
-      useCartStore.getState().calculateTotals();
+      useCartStore.getState().calculateTotals?.();
     }
   }
 
@@ -54,7 +54,7 @@ export class CartDisplayEnhancer extends BaseDisplayEnhancer {
         isEmpty: cartState.isEmpty,
         itemCount: cartState.items.length,
         total: cartState.total,
-        totalsFormatted: cartState.totals?.total?.formatted
+        totalsTotal: cartState.total?.toNumber()
       });
     }
     
@@ -72,6 +72,22 @@ export class CartDisplayEnhancer extends BaseDisplayEnhancer {
         property: this.property 
       });
       return undefined;
+    }
+
+    // Handle .raw suffix — returns numeric value from Decimal fields without formatting
+    if (this.property.endsWith('.raw')) {
+      const baseProp = this.property.slice(0, -4);
+      const config = getPropertyConfig('cart', baseProp);
+      const path =
+        config && typeof config === 'object' && 'path' in config
+          ? config.path
+          : typeof config === 'string'
+            ? config
+            : baseProp;
+      const value = PropertyResolver.getNestedProperty(this.cartState, path);
+      return value != null && typeof (value as any).toNumber === 'function'
+        ? (value as any).toNumber()
+        : value;
     }
 
     // Special handling for currency display
@@ -110,16 +126,14 @@ export class CartDisplayEnhancer extends BaseDisplayEnhancer {
     // Special handling for subtotal with discounts
     if (this.includeDiscounts && this.property === 'subtotal') {
       this.logger.debug('Handling subtotal with discounts', {
-        subtotal: this.cartState.totals?.subtotal,
-        discounts: this.cartState.totals?.discounts
+        subtotal: this.cartState.subtotal?.toNumber(),
+        totalDiscount: this.cartState.totalDiscount?.toNumber(),
       });
-      
-      // Calculate subtotal minus discounts
-      const subtotalValue = this.cartState.totals?.subtotal?.value || 0;
-      const discountsValue = this.cartState.totals?.discounts?.value || 0;
+
+      const subtotalValue = this.cartState.subtotal?.toNumber() ?? 0;
+      const discountsValue = this.cartState.totalDiscount?.toNumber() ?? 0;
       const discountedSubtotal = subtotalValue - discountsValue;
-      
-      // Get currency from campaign or config store
+
       let currency = 'USD';
       const campaignStore = useCampaignStore.getState();
       if (campaignStore?.currency) {
@@ -128,23 +142,16 @@ export class CartDisplayEnhancer extends BaseDisplayEnhancer {
         const configStore = useConfigStore.getState();
         currency = configStore?.selectedCurrency || configStore?.detectedCurrency || 'USD';
       }
-      
-      // Return formatted value using centralized formatter
+
       const formatted = formatCurrency(discountedSubtotal, currency);
-      
-      this.logger.debug('Returning discounted subtotal', { 
-        discountedSubtotal, 
-        formatted,
-        currency 
-      });
-      
+      this.logger.debug('Returning discounted subtotal', { discountedSubtotal, formatted, currency });
       return { _preformatted: true, value: formatted };
     }
-    
+
     // Special handling for raw subtotal with discounts
     if (this.includeDiscounts && this.property === 'subtotal.raw') {
-      const subtotalValue = this.cartState.totals?.subtotal?.value || 0;
-      const discountsValue = this.cartState.totals?.discounts?.value || 0;
+      const subtotalValue = this.cartState.subtotal?.toNumber() ?? 0;
+      const discountsValue = this.cartState.totalDiscount?.toNumber() ?? 0;
       return subtotalValue - discountsValue;
     }
 

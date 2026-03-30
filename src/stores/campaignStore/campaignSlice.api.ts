@@ -211,13 +211,13 @@ export const createCampaignApiSlice: StateCreator<
       const cartStore = useCartStore.getState();
       if (
         !cartStore.isEmpty &&
-        cartStore.lastCurrency &&
-        cartStore.lastCurrency !== actualCurrency
+        cartStore.currency &&
+        cartStore.currency !== actualCurrency
       ) {
         logger.info('Currency changed, refreshing cart prices...');
         await cartStore.refreshItemPrices();
         cartStore.setLastCurrency(actualCurrency);
-      } else if (!cartStore.lastCurrency) {
+      } else if (!cartStore.currency) {
         cartStore.setLastCurrency(actualCurrency);
       }
     } catch (error) {

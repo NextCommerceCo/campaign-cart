@@ -1,6 +1,8 @@
+import { Decimal } from 'decimal.js';
 import { useCampaignStore } from '@/stores/campaignStore';
 import { useCheckoutStore } from '@/stores/checkoutStore';
-import { calculateBundlePrice, buildCartTotals } from '@/utils/calculations/CartCalculator';
+import { calculateBundlePrice, CalculateCartResult } from '@/utils/calculations/CartCalculator';
+import { formatCurrency } from '@/utils/currencyFormatter';
 import type { BundleCard, PriceContext } from './BundleSelectorEnhancer.types';
 
 export async function fetchAndUpdateBundlePrice(
@@ -20,9 +22,8 @@ export async function fetchAndUpdateBundlePrice(
     const merged = [...new Set([...userCoupons, ...card.vouchers])];
     const vouchers = merged.length ? merged : undefined;
 
-    const { totals, summary } = await calculateBundlePrice(items, {
+    const result = await calculateBundlePrice(items, {
       currency,
-      exclude_shipping: !ctx.includeShipping,
       vouchers,
     });
 
@@ -38,29 +39,12 @@ export async function fetchAndUpdateBundlePrice(
       return;
     }
 
-    ctx.previewLines.set(card.bundleId, summary.lines);
+    if (result.summary) ctx.previewLines.set(card.bundleId, result.summary.lines);
 
     // Re-render slots so per-item prices reflect the preview discounts
     if (ctx.slotTemplate) ctx.renderSlotsForCard(card);
 
-    // Compute compareTotal from campaign retail prices so savings reflects
-    // the retail/compare-at price diff, not just coupon discounts.
-    const campaignPackages = useCampaignStore.getState().packages;
-    const retailCompareTotal = items.reduce((sum, item) => {
-      const pkg = campaignPackages.find(p => p.ref_id === item.packageId);
-      if (!pkg?.price_retail) return sum;
-      return sum + parseFloat(pkg.price_retail) * item.quantity;
-    }, 0);
-
-    const effectiveTotals =
-      retailCompareTotal > 0
-        ? buildCartTotals(summary, {
-            exclude_shipping: !ctx.includeShipping,
-            compareTotal: retailCompareTotal,
-          })
-        : totals;
-
-    updateBundlePriceElements(card.element, effectiveTotals);
+    updateBundlePriceElements(card.element, result);
   } catch (error) {
     ctx.logger.warn(`Failed to fetch bundle price for "${card.bundleId}"`, error);
   } finally {
@@ -71,22 +55,15 @@ export async function fetchAndUpdateBundlePrice(
 
 function updateBundlePriceElements(
   cardEl: HTMLElement,
-  totals: {
-    subtotal: { formatted: string };
-    compareTotal: { formatted: string };
-    totalSavings: { formatted: string };
-    totalSavingsPercentage: { formatted: string };
-    total: { formatted: string };
-  },
+  calculated: CalculateCartResult,
 ): void {
   cardEl.querySelectorAll<HTMLElement>('[data-next-bundle-price]').forEach(el => {
-    const field = el.getAttribute('data-next-bundle-price') || 'total';
+    const field = el.getAttribute('data-next-bundle-price') ?? 'total';
     switch (field) {
-      case 'subtotal':          el.textContent = totals.subtotal.formatted; break;
-      case 'compare':           el.textContent = totals.compareTotal.formatted; break;
-      case 'savings':           el.textContent = totals.totalSavings.formatted; break;
-      case 'savingsPercentage': el.textContent = totals.totalSavingsPercentage.formatted; break;
-      default:                  el.textContent = totals.total.formatted; break;
+      case 'compare': el.textContent = formatCurrency(calculated.subtotal.toNumber()); break;
+      case 'savings': el.textContent = formatCurrency(calculated.totalDiscount.toNumber()); break;
+      case 'savingsPercentage': el.textContent = formatCurrency(calculated.totalDiscountPercentage.toNumber()); break;
+      default:         el.textContent = formatCurrency(calculated.total.toNumber()); break;
     }
   });
 }

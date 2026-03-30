@@ -142,7 +142,7 @@ export class CartItemListEnhancer extends BaseEnhancer {
 
     if (removeButtons.length > 0) {
       const { RemoveItemEnhancer } = await import(
-        '@/enhancers/cart/RemoveItemEnhancer'
+        '@/enhancers/cart/RemoveItem'
       );
       for (const button of Array.from(removeButtons)) {
         if (button instanceof HTMLElement) {

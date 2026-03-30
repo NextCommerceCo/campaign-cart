@@ -41,7 +41,7 @@ export class UserEvents {
             : [];
 
           // Calculate cart total
-          const cartTotal = cartState?.totals?.total?.value || cartState?.total || 0;
+          const cartTotal = cartState?.total?.toNumber() ?? 0;
 
           // Build GA4 ecommerce object
           const ecommerce: EcommerceData = {

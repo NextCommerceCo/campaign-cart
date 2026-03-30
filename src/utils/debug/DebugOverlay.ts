@@ -768,13 +768,13 @@ export class DebugOverlay {
     });
 
     // Build totals breakdown - use calculated subtotal before discounts
-    const totalDiscount = cartState.totals.discounts.value;
-    const shipping = cartState.totals.shipping.value;
-    const shippingDiscount = cartState.totals.shippingDiscount.value;
+    const totalDiscount = cartState.totalDiscount.toNumber();
+    const shipping = cartState.shippingMethod?.price.toNumber() ?? 0;
+    const shippingDiscount = cartState.shippingMethod?.discountAmount.toNumber() ?? 0;
     // If there's a shipping discount, the API returns net shipping, so we need to show original shipping
     const displayShipping = shippingDiscount > 0 ? shipping + shippingDiscount : shipping;
     const shippingLabel = displayShipping === 0 ? 'FREE' : formatCurrency(displayShipping);
-    const total = cartState.totals.total.value;
+    const total = cartState.total.toNumber();
 
     // Collect all item-level discount offer_ids to avoid showing them twice
     const itemLevelOfferIds = new Set<number>();
@@ -788,23 +788,22 @@ export class DebugOverlay {
     let hasCartLevelDiscounts = false;
     let cartLevelDiscountList: Array<{ type: 'offer' | 'voucher'; label: string; amount: number }> = [];
 
-    if (cartState.discountDetails) {
-      const { offerDiscounts, voucherDiscounts } = cartState.discountDetails;
-      console.log(offerDiscounts)
-      console.log(voucherDiscounts)
+    if (cartState.offerDiscounts || cartState.voucherDiscounts) {
+      const offerDiscounts = cartState.offerDiscounts ?? [];
+      const voucherDiscounts = cartState.voucherDiscounts ?? [];
 
       // Collect offer discounts ONLY if they're not already shown on line items
       // Cart-wide offers that apply to multiple items or the cart total should appear here
-      if (offerDiscounts && offerDiscounts.length > 0) {
+      if (offerDiscounts.length > 0) {
         offerDiscounts.forEach(discount => {
-          const label = discount.name || discount.description || `Offer #${discount.offer_id}`;
+          const label = discount.name || discount.description || (discount.offer_id ? `Offer #${discount.offer_id}` : 'Offer');
           const amount = parseFloat(discount.amount);
           cartLevelDiscountList.push({ type: 'offer', label, amount });
         });
       }
 
       // Collect voucher discounts (these are always cart-level)
-      if (voucherDiscounts && voucherDiscounts.length > 0) {
+      if (voucherDiscounts.length > 0) {
         hasCartLevelDiscounts = true;
         voucherDiscounts.forEach(discount => {
           const amount = parseFloat(discount.amount);
@@ -960,7 +959,7 @@ export class DebugOverlay {
     const enhancedElementsEl = this.shadowRoot.querySelector('[data-debug-stat="enhanced-elements"]');
 
     if (cartItemsEl) cartItemsEl.textContent = cartState.totalQuantity.toString();
-    if (cartTotalEl) cartTotalEl.textContent = cartState.totals.total.formatted;
+    if (cartTotalEl) cartTotalEl.textContent = formatCurrency(cartState.total.toNumber());
     if (enhancedElementsEl) enhancedElementsEl.textContent = document.querySelectorAll('[data-next-]').length.toString();
   }
 }

@@ -33,15 +33,10 @@ const cartStoreInstance = create<CartStore>()(
       partialize: state =>
         ({
           items: state.items,
-          appliedCoupons: state.appliedCoupons,
-          subtotal: state.subtotal,
-          shipping: state.shipping,
+          vouchers: state.vouchers,
           shippingMethod: state.shippingMethod,
-          tax: state.tax,
-          total: state.total,
           totalQuantity: state.totalQuantity,
           isEmpty: state.isEmpty,
-          totals: state.totals,
           enrichedItems: [],
         }) as unknown as CartStore,
     }

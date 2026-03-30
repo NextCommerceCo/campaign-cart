@@ -1,38 +1,33 @@
 import { formatCurrency } from '@/utils/currencyFormatter';
-import type { CartTotals } from '@/types/global';
+import type { CartState } from '@/types/global';
 import type { CartSummary, SummaryLine } from '@/types/api';
 import type { DiscountItem, SummaryFlags, TemplateVars } from './CartSummaryEnhancer.types';
 
 // ─── Data builders ────────────────────────────────────────────────────────────
 
-export function buildFlags(totals: CartTotals): SummaryFlags {
+export function buildFlags(state: CartState): SummaryFlags {
   return {
-    isEmpty:             totals.isEmpty,
-    hasDiscounts:        totals.discounts.value > 0,
-    isFreeShipping:      totals.shipping.value === 0,
-    hasShippingDiscount: totals.shippingDiscount.value > 0,
-    hasTax:              totals.tax.value > 0,
-    hasSavings:          totals.hasTotalSavings,
+    isEmpty:             state.isEmpty,
+    hasDiscounts:        state.hasDiscounts,
+    isFreeShipping:      state.shippingMethod?.price.isZero() ?? true,
+    hasShippingDiscount: state.shippingMethod?.hasDiscounts ?? false,
   };
 }
 
 export function buildVars(
-  totals: CartTotals,
+  state: CartState,
   flags: SummaryFlags,
   itemCount: number,
 ): TemplateVars {
   return {
-    subtotal:     totals.subtotal.formatted,
-    total:        totals.total.formatted,
-    shipping:         flags.isFreeShipping ? 'Free' : totals.shipping.formatted,
+    subtotal:         formatCurrency(state.subtotal.toNumber()),
+    total:            formatCurrency(state.total.toNumber()),
+    shipping:         flags.isFreeShipping ? 'Free' : formatCurrency(state.shippingMethod?.price.toNumber() ?? 0),
     shippingOriginal: flags.hasShippingDiscount
-      ? formatCurrency(totals.shipping.value + totals.shippingDiscount.value)
+      ? formatCurrency(state.shippingMethod?.originalPrice.toNumber() ?? 0)
       : '',
-    tax:          totals.tax.formatted,
-    discounts:    totals.discounts.formatted,
-    savings:      totals.totalSavings.formatted,
-    compareTotal: totals.compareTotal.formatted,
-    itemCount:    String(itemCount),
+    discounts:        formatCurrency(state.totalDiscount.toNumber()),
+    itemCount:        String(itemCount),
   };
 }
 
@@ -49,7 +44,6 @@ export function buildDefaultTemplate(vars: TemplateVars, flags: SummaryFlags): s
     row('Subtotal', vars.subtotal, 'next-row-subtotal'),
     flags.hasDiscounts ? row('Discounts', `-${vars.discounts}`, 'next-row-discounts') : '',
     row('Shipping', flags.isFreeShipping ? 'Free' : vars.shipping, 'next-row-shipping'),
-    flags.hasTax      ? row('Tax', vars.tax, 'next-row-tax') : '',
     row('Total', vars.total, 'next-row-total'),
   ].join('');
 }
@@ -65,10 +59,6 @@ export function updateStateClasses(element: HTMLElement, flags: SummaryFlags): v
   element.classList.toggle('next-free-shipping',          flags.isFreeShipping);
   element.classList.toggle('next-has-shipping-discount',  flags.hasShippingDiscount);
   element.classList.toggle('next-no-shipping-discount',  !flags.hasShippingDiscount);
-  element.classList.toggle('next-has-tax',        flags.hasTax);
-  element.classList.toggle('next-no-tax',        !flags.hasTax);
-  element.classList.toggle('next-has-savings',    flags.hasSavings);
-  element.classList.toggle('next-no-savings',    !flags.hasSavings);
 }
 
 // ─── Rendering ────────────────────────────────────────────────────────────────

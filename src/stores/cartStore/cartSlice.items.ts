@@ -1,35 +1,19 @@
+import Decimal from 'decimal.js';
 import type { StateCreator } from 'zustand';
 import type { CartState } from '@/types/global';
 import type { CartItemsSlice, CartStore } from './cartStore.types';
 
 export const initialCartState: CartState = {
   items: [],
-  subtotal: 0,
-  shipping: 0,
-  tax: 0,
-  total: 0,
+  enrichedItems: [],
   totalQuantity: 0,
   isEmpty: true,
-  appliedCoupons: [],
-  enrichedItems: [],
-  totals: {
-    subtotal: { value: 0, formatted: '$0.00' },
-    shipping: { value: 0, formatted: 'FREE' },
-    shippingDiscount: { value: 0, formatted: '$0.00' },
-    tax: { value: 0, formatted: '$0.00' },
-    discounts: { value: 0, formatted: '$0.00' },
-    total: { value: 0, formatted: '$0.00' },
-    totalExclShipping: { value: 0, formatted: '$0.00' },
-    count: 0,
-    isEmpty: true,
-    savings: { value: 0, formatted: '$0.00' },
-    savingsPercentage: { value: 0, formatted: '0%' },
-    compareTotal: { value: 0, formatted: '$0.00' },
-    hasSavings: false,
-    totalSavings: { value: 0, formatted: '$0.00' },
-    totalSavingsPercentage: { value: 0, formatted: '0%' },
-    hasTotalSavings: false,
-  },
+  vouchers: [],
+  subtotal: new Decimal(0),
+  hasDiscounts: false,
+  totalDiscount: new Decimal(0),
+  totalDiscountPercentage: new Decimal(0),
+  total: new Decimal(0),
 };
 
 export const createCartItemsSlice: StateCreator<
@@ -40,7 +24,7 @@ export const createCartItemsSlice: StateCreator<
 > = (set, get) => ({
   reset: () => set(initialCartState),
 
-  setLastCurrency: currency => set({ lastCurrency: currency }),
+  setLastCurrency: currency => set({ currency }),
 
   hasItem: packageId =>
     get().items.some(item => item.packageId === packageId),
@@ -57,5 +41,5 @@ export const createCartItemsSlice: StateCreator<
   getTotalItemCount: () =>
     get().items.reduce((sum, item) => sum + item.quantity, 0),
 
-  getCoupons: () => get().appliedCoupons ?? [],
+  getCoupons: () => get().vouchers ?? [],
 });

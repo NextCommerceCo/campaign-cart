@@ -62,7 +62,7 @@ export class CouponEnhancer extends BaseActionEnhancer {
 
     // Subscribe to cart changes
     this.unsubscribe = useCartStore.subscribe(
-      state => state.appliedCoupons,
+      state => state.vouchers,
       () => this.renderAppliedCoupons()
     );
 
@@ -162,8 +162,8 @@ export class CouponEnhancer extends BaseActionEnhancer {
     this.template.style.display = 'none';
     this.template.setAttribute('data-template', 'true');
 
-    // Render each coupon
-    coupons.forEach(coupon => {
+    // Render each coupon code
+    coupons.forEach(code => {
       const couponEl = this.template!.cloneNode(true) as HTMLElement;
       couponEl.removeAttribute('data-template');
       couponEl.style.display = '';
@@ -171,31 +171,14 @@ export class CouponEnhancer extends BaseActionEnhancer {
       // Update content
       const titleEl = couponEl.querySelector('[pb-checkout="coupon-title"]');
       if (titleEl) {
-        titleEl.textContent = coupon.code;
-      }
-
-      const descEl = couponEl.querySelector(
-        '[pb-checkout="coupon-description"]'
-      );
-      if (descEl && coupon.definition.description) {
-        descEl.textContent = coupon.definition.description;
-      }
-
-      const discountEl = couponEl.querySelector(
-        '[pb-checkout="coupon-discount"]'
-      );
-      if (discountEl) {
-        // Import at the top of the file instead of dynamically here
-        const { formatCurrency } = require('@/utils/currencyFormatter');
-        const formatted = formatCurrency(coupon.discount);
-        discountEl.textContent = `-${formatted}`;
+        titleEl.textContent = code;
       }
 
       // Setup remove button
       const removeBtn = couponEl.querySelector('[pb-checkout="coupon-remove"]');
       if (removeBtn) {
         removeBtn.addEventListener('click', () => {
-          this.removeCoupon(coupon.code);
+          this.removeCoupon(code);
         });
       }
 

@@ -3,6 +3,7 @@
  * Individual panel content generators for debug overlay
  */
 
+import { formatCurrency } from '../currencyFormatter';
 import { useCartStore } from '../../stores/cartStore';
 import { useConfigStore } from '../../stores/configStore';
 import { useCampaignStore } from '../../stores/campaignStore';
@@ -40,10 +41,10 @@ export class CartPanel implements DebugPanel {
     const metrics = [
       ['Items Count', cartState.items.length.toString()],
       ['Total Quantity', cartState.totalQuantity.toString()],
-      ['Subtotal', cartState.totals.subtotal.formatted],
-      ['Shipping', cartState.totals.shipping.formatted],
-      ['Tax', cartState.totals.tax.formatted],
-      ['Total', cartState.totals.total.formatted],
+      ['Subtotal', formatCurrency(cartState.subtotal.toNumber())],
+      ['Shipping', formatCurrency(cartState.shippingMethod?.price.toNumber() ?? 0)],
+      ['Tax', '$0.00'],
+      ['Total', formatCurrency(cartState.total.toNumber())],
       ['Is Empty', cartState.isEmpty.toString()]
     ];
 

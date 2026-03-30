@@ -1,6 +1,8 @@
+import { Decimal } from 'decimal.js';
 import { useCampaignStore } from '@/stores/campaignStore';
 import { useCheckoutStore } from '@/stores/checkoutStore';
-import { calculateBundlePrice, buildCartTotals } from '@/utils/calculations/CartCalculator';
+import { calculateBundlePrice } from '@/utils/calculations/CartCalculator';
+import { formatCurrency, formatPercentage } from '@/utils/currencyFormatter';
 import type { Logger } from '@/utils/logger';
 import type { SelectorItem } from '@/types/global';
 
@@ -21,29 +23,38 @@ export async function fetchAndUpdatePrice(
   item.element.setAttribute('data-next-loading', 'true');
 
   try {
-    const { totals, summary } = await calculateBundlePrice(
+    const { subtotal, total } = await calculateBundlePrice(
       [{ packageId: item.packageId, quantity: item.quantity }],
       { currency, exclude_shipping: !includeShipping, vouchers, upsell }
     );
 
     const campaignPackages = useCampaignStore.getState().packages;
     const pkg = campaignPackages.find(p => p.ref_id === item.packageId);
-    const retailCompareTotal = pkg?.price_retail
-      ? parseFloat(pkg.price_retail) * item.quantity
-      : 0;
-
-    const effectiveTotals = retailCompareTotal > 0
-      ? buildCartTotals(summary, { exclude_shipping: !includeShipping, compareTotal: retailCompareTotal })
-      : totals;
+    const compareD = pkg?.price_retail
+      ? new Decimal(pkg.price_retail).times(item.quantity)
+      : null;
 
     priceSlots.forEach(el => {
-      const field = el.getAttribute('data-next-package-price') || 'total';
+      const field = el.getAttribute('data-next-package-price') ?? 'total';
       switch (field) {
-        case 'subtotal':          el.textContent = effectiveTotals.subtotal.formatted; break;
-        case 'compare':           el.textContent = effectiveTotals.compareTotal.formatted; break;
-        case 'savings':           el.textContent = effectiveTotals.totalSavings.formatted; break;
-        case 'savingsPercentage': el.textContent = effectiveTotals.totalSavingsPercentage.formatted; break;
-        default:                  el.textContent = effectiveTotals.total.formatted; break;
+        case 'subtotal':
+          el.textContent = formatCurrency(subtotal.toNumber());
+          break;
+        case 'compare':
+          el.textContent = compareD ? formatCurrency(compareD.toNumber()) : '';
+          break;
+        case 'savings':
+          el.textContent = compareD
+            ? formatCurrency(compareD.minus(subtotal).toNumber())
+            : '';
+          break;
+        case 'savingsPercentage':
+          el.textContent = compareD?.gt(0)
+            ? formatPercentage(compareD.minus(subtotal).div(compareD).times(100).toNumber())
+            : '';
+          break;
+        default:
+          el.textContent = formatCurrency(total.toNumber());
       }
     });
   } catch (error) {
