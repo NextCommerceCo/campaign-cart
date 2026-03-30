@@ -163,12 +163,13 @@ export async function applyVariantChange(
 
   slot.activePackageId = matched.ref_id;
 
-  // Re-render slots so image and all template vars reflect the new package
-  ctx.renderSlotsForCard(card);
-
   if (ctx.mode === 'swap') {
     await applyEffectiveChange(card, ctx);
   }
+
+  // Re-render slots after cart sync so template vars (image, price, etc.)
+  // reflect the final cart state and don't blink from an intermediate render.
+  ctx.renderSlotsForCard(card);
 
   void ctx.fetchAndUpdateBundlePrice(card);
 
