@@ -8,7 +8,9 @@ export declare class ApiClient {
     createCart(data: CartBase & {
         currency?: string;
     }): Promise<Cart>;
-    calculateSummary(data: CartCalculateSummary, signal?: AbortSignal): Promise<CartSummary>;
+    calculateSummary(data: CartCalculateSummary, signal?: AbortSignal, options?: {
+        upsell?: boolean;
+    }): Promise<CartSummary>;
     createOrder(data: CreateOrder & {
         currency?: string;
     }): Promise<Order>;

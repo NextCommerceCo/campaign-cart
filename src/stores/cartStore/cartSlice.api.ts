@@ -367,6 +367,8 @@ export const createCartApiSlice: StateCreator<
             signal,
           });
 
+          if (!summary) return;
+
           const updatedItems = state.items.map(item => {
             const line = summary.lines.find(
               l => l.package_id === item.packageId

@@ -9,7 +9,5 @@ export interface SummaryFlags {
     hasDiscounts: boolean;
     isFreeShipping: boolean;
     hasShippingDiscount: boolean;
-    hasTax: boolean;
-    hasSavings: boolean;
 }
 //# sourceMappingURL=CartSummaryEnhancer.types.d.ts.map

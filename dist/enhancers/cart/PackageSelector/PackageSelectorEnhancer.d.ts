@@ -12,7 +12,9 @@ export declare class PackageSelectorEnhancer extends BaseEnhancer {
     private boundCurrencyChangeHandler;
     private currencyChangeTimeout;
     private includeShipping;
+    private isUpsellContext;
     initialize(): Promise<void>;
+    private initializeSelection;
     private makeHandlerContext;
     private scanCards;
     private registerCard;

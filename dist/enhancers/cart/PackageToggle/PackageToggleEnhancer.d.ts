@@ -9,6 +9,8 @@ export declare class PackageToggleEnhancer extends BaseEnhancer {
     private priceSyncDebounce;
     private includeShipping;
     private autoAddInProgress;
+    private isUpsellContext;
+    private isProcessingRef;
     initialize(): Promise<void>;
     private makeHandlerContext;
     private scanCards;

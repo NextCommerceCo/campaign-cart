@@ -1,7 +1,7 @@
 import { BaseEnhancer } from '../../base/BaseEnhancer';
 export declare class CartSummaryEnhancer extends BaseEnhancer {
     private customTemplate?;
-    private totals?;
+    private cartState?;
     private summary?;
     private itemCount;
     initialize(): Promise<void>;

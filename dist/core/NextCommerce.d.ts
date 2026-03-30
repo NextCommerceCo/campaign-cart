@@ -1,4 +1,4 @@
-import { CartTotals, Campaign, CallbackType, CallbackData, EventMap, AppliedCoupon } from '../types/global';
+import { Campaign, CallbackType, CallbackData, EventMap } from '../types/global';
 declare global {
     interface Window {
         __NEXT_SDK_VERSION__?: string;
@@ -32,16 +32,20 @@ export declare class NextCommerce {
         quantity: number;
     }>): Promise<void>;
     getCartData(): CallbackData;
-    getCartTotals(): CartTotals;
+    getCartTotals(): {
+        subtotal: import('decimal.js').Decimal;
+        total: import('decimal.js').Decimal;
+        hasDiscounts: boolean;
+        totalDiscount: import('decimal.js').Decimal;
+        totalDiscountPercentage: import('decimal.js').Decimal;
+        shippingMethod: import('../types/global').ShippingMethod | undefined;
+    };
     getCartCount(): number;
     getCampaignData(): Campaign | null;
     getPackage(id: number): any | null;
     getVariantsByProductId(productId: number): any | null;
     getAvailableVariantAttributes(productId: number, attributeCode: string): string[];
     getPackageByVariantSelection(productId: number, selectedAttributes: Record<string, string>): any | null;
-    getProductVariantsWithPricing(productId: number): any | null;
-    getVariantPricingTiers(productId: number, variantKey: string): any[];
-    getLowestPriceForVariant(productId: number, variantKey: string): any | null;
     createVariantKey(attributes: Record<string, string>): string;
     on<K extends keyof EventMap>(event: K, handler: (data: EventMap[K]) => void): void;
     off<K extends keyof EventMap>(event: K, handler: Function): void;
@@ -89,7 +93,7 @@ export declare class NextCommerce {
         message: string;
     }>;
     removeCoupon(code: string): void;
-    getCoupons(): AppliedCoupon[];
+    getCoupons(): string[];
     exitIntent(options: {
         image?: string;
         template?: string;

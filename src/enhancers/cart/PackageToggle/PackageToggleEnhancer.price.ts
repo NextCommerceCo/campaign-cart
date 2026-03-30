@@ -47,6 +47,7 @@ export async function fetchAndUpdateTogglePrice(
       itemsToCalc,
       { currency, exclude_shipping: !includeShipping, vouchers, upsell }
     );
+    if (!summary) return;
     const line = summary.lines.find(l => l.package_id === card.packageId) ?? null;
     renderTogglePrice(card, line);
   } catch (error) {

@@ -1,8 +1,8 @@
-import { CartTotals } from '../../../types/global';
+import { CartState } from '../../../types/global';
 import { CartSummary, SummaryLine } from '../../../types/api';
 import { DiscountItem, SummaryFlags, TemplateVars } from './CartSummaryEnhancer.types';
-export declare function buildFlags(totals: CartTotals): SummaryFlags;
-export declare function buildVars(totals: CartTotals, flags: SummaryFlags, itemCount: number): TemplateVars;
+export declare function buildFlags(state: CartState): SummaryFlags;
+export declare function buildVars(state: CartState, flags: SummaryFlags, itemCount: number): TemplateVars;
 export declare function buildDefaultTemplate(vars: TemplateVars, flags: SummaryFlags): string;
 export declare function updateStateClasses(element: HTMLElement, flags: SummaryFlags): void;
 export declare function renderDefault(element: HTMLElement, vars: TemplateVars, flags: SummaryFlags): void;

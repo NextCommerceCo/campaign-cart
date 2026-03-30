@@ -6,6 +6,11 @@ export interface ToggleHandlerContext {
     logger: Logger;
     emit: (event: string, detail: unknown) => void;
     autoAddInProgress: Set<number>;
+    isUpsellContext: boolean;
+    isProcessingRef: {
+        value: boolean;
+    };
+    containerElement: HTMLElement;
 }
 export declare function handleCardClick(e: Event, card: ToggleCard, ctx: ToggleHandlerContext): Promise<void>;
 export declare function addToCart(card: ToggleCard): Promise<void>;

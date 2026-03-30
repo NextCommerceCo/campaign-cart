@@ -1,5 +1,6 @@
-import { CartSummary, LineWithUpsell } from '../../types/api';
-import { CartTotals } from '../../types/global';
+import { default as Decimal } from 'decimal.js';
+import { CartSummary, Discount, LineWithUpsell } from '../../types/api';
+import { ShippingMethod } from '../../types/global';
 export interface BundlePriceItem {
     packageId: number;
     quantity: number;
@@ -10,6 +11,7 @@ export interface BundlePriceOptions {
     shippingMethod?: number;
     ttl?: number;
     exclude_shipping?: boolean;
+    upsell?: boolean;
 }
 export interface CalculateCartParams {
     lines: LineWithUpsell[];
@@ -17,16 +19,23 @@ export interface CalculateCartParams {
     currency?: string | null;
     shippingMethod?: number;
     exclude_shipping?: boolean;
+    upsell?: boolean;
     signal?: AbortSignal;
 }
 export interface CalculateCartResult {
-    totals: CartTotals;
-    summary: CartSummary;
+    vouchers: string[];
+    currency?: string;
+    offerDiscounts?: Discount[];
+    voucherDiscounts?: Discount[];
+    subtotal: Decimal;
+    shippingMethod?: ShippingMethod;
+    hasDiscounts: boolean;
+    totalDiscount: Decimal;
+    totalDiscountPercentage: Decimal;
+    total: Decimal;
+    summary?: CartSummary;
 }
 export declare function calculateCart(params: CalculateCartParams): Promise<CalculateCartResult>;
 export declare function calculateBundlePrice(items: BundlePriceItem[], options?: BundlePriceOptions): Promise<CalculateCartResult>;
-export declare function buildCartTotals(response: CartSummary, options?: {
-    exclude_shipping?: boolean;
-    compareTotal?: number;
-}): CartTotals;
+export declare function buildCartFields(response: CartSummary): Omit<CalculateCartResult, 'summary' | 'vouchers'>;
 //# sourceMappingURL=CartCalculator.d.ts.map

@@ -1,3 +1,4 @@
+import { Decimal } from 'decimal.js';
 import { Offer } from './campaign';
 export interface EventMap {
     'cart:updated': CartState;
@@ -331,6 +332,12 @@ export interface CartItem {
     groupedItemIds?: number[] | undefined;
     bundleId?: string | undefined;
 }
+export interface Discount {
+    offer_id?: number;
+    amount: string;
+    description?: string;
+    name?: string;
+}
 export interface SelectorItem {
     element: HTMLElement;
     packageId: number;
@@ -342,87 +349,21 @@ export interface SelectorItem {
 }
 export interface CartState {
     items: CartItem[];
-    subtotal: number;
-    shipping: number;
-    tax: number;
-    total: number;
+    enrichedItems: EnrichedCartLine[];
     totalQuantity: number;
     isEmpty: boolean;
-    coupon?: Coupon;
-    appliedCoupons: AppliedCoupon[];
-    shippingMethod?: ShippingMethod;
-    enrichedItems: EnrichedCartLine[];
-    totals: CartTotals;
+    vouchers: string[];
     swapInProgress?: boolean;
-    lastCurrency?: string;
-    discountDetails?: {
-        offerDiscounts: Array<{
-            offer_id: number;
-            amount: string;
-            description?: string;
-            name?: string;
-        }>;
-        voucherDiscounts: Array<{
-            amount: string;
-            description?: string;
-            name?: string;
-        }>;
-    };
+    currency?: string;
+    offerDiscounts?: Discount[];
+    voucherDiscounts?: Discount[];
+    subtotal: Decimal;
+    shippingMethod?: ShippingMethod;
+    hasDiscounts: boolean;
+    totalDiscount: Decimal;
+    totalDiscountPercentage: Decimal;
+    total: Decimal;
     summary?: import('./api').CartSummary;
-}
-export interface CartTotals {
-    subtotal: {
-        value: number;
-        formatted: string;
-    };
-    shipping: {
-        value: number;
-        formatted: string;
-    };
-    shippingDiscount: {
-        value: number;
-        formatted: string;
-    };
-    tax: {
-        value: number;
-        formatted: string;
-    };
-    discounts: {
-        value: number;
-        formatted: string;
-    };
-    total: {
-        value: number;
-        formatted: string;
-    };
-    totalExclShipping: {
-        value: number;
-        formatted: string;
-    };
-    count: number;
-    isEmpty: boolean;
-    savings: {
-        value: number;
-        formatted: string;
-    };
-    savingsPercentage: {
-        value: number;
-        formatted: string;
-    };
-    compareTotal: {
-        value: number;
-        formatted: string;
-    };
-    hasSavings: boolean;
-    totalSavings: {
-        value: number;
-        formatted: string;
-    };
-    totalSavingsPercentage: {
-        value: number;
-        formatted: string;
-    };
-    hasTotalSavings: boolean;
 }
 export interface EnrichedCartLine {
     id: number;
@@ -658,9 +599,9 @@ export interface PaymentConfig {
 export type CallbackType = 'beforeRender' | 'afterRender' | 'beforeCheckout' | 'afterCheckout' | 'beforeRedirect' | 'itemAdded' | 'itemRemoved' | 'cartCleared';
 export interface CallbackData {
     cartLines: EnrichedCartLine[];
-    cartTotals: CartTotals;
+    cartTotals: Pick<CartState, 'subtotal' | 'total' | 'hasDiscounts' | 'totalDiscount' | 'totalDiscountPercentage' | 'shippingMethod'>;
     campaignData: Campaign | null;
-    appliedCoupons: AppliedCoupon[];
+    vouchers: string[];
 }
 export interface DiscountDefinition {
     code: string;
@@ -687,8 +628,13 @@ export interface Coupon {
 export interface ShippingMethod {
     id: number;
     name: string;
-    price: number;
     code: string;
+    originalPrice: Decimal;
+    price: Decimal;
+    discountAmount: Decimal;
+    discountPercentage: Decimal;
+    hasDiscounts: boolean;
+    discounts?: Discount[];
 }
 export interface CheckoutData {
     formData: Record<string, any>;
