@@ -1,7 +1,7 @@
 import { useCampaignStore } from '@/stores/campaignStore';
 import { useCheckoutStore } from '@/stores/checkoutStore';
 import { calculateBundlePrice, CalculateCartResult } from '@/utils/calculations/CartCalculator';
-import { formatCurrency } from '@/utils/currencyFormatter';
+import { formatCurrency, formatPercentage } from '@/utils/currencyFormatter';
 import type { BundleCard, PriceContext } from './BundleSelectorEnhancer.types';
 
 export async function fetchAndUpdateBundlePrice(
@@ -61,7 +61,7 @@ function updateBundlePriceElements(
     switch (field) {
       case 'compare': el.textContent = formatCurrency(calculated.subtotal.toNumber()); break;
       case 'savings': el.textContent = formatCurrency(calculated.totalDiscount.toNumber()); break;
-      case 'savingsPercentage': el.textContent = formatCurrency(calculated.totalDiscountPercentage.toNumber()); break;
+      case 'savingsPercentage': el.textContent = formatPercentage(calculated.totalDiscountPercentage.toNumber()); break;
       case 'total':
       default:        el.textContent = formatCurrency(calculated.total.toNumber()); break;
     }

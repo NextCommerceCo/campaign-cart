@@ -362,6 +362,17 @@ function renderSelectorTemplate(
         }
         optionsPlaceholder.appendChild(option);
       }
+      const selectEl =
+        optionsPlaceholder instanceof HTMLSelectElement
+          ? optionsPlaceholder
+          : el.querySelector<HTMLSelectElement>('select');
+      if (selectEl) {
+        selectEl.dataset.nextVariantCode = code;
+        const handler: EventListener = () =>
+          void ctx.onSelectChange(selectEl, bundleId, slotIndex);
+        ctx.selectHandlers.set(selectEl, handler);
+        selectEl.addEventListener('change', handler);
+      }
     }
   }
 
