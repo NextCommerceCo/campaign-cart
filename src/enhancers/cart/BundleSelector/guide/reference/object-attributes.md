@@ -60,16 +60,13 @@ Variables available in `{curly.brace}` syntax inside the slot template (`data-ne
 | `item.sku` | `string` | Product SKU |
 | `item.qty` | `string` | Per-unit item quantity from the campaign package |
 | `item.price` | `string` | Unit price (formatted) |
-| `item.priceTotal` | `string` | Total price for all units of this package in the bundle (formatted) |
-| `item.priceRetail` | `string` | Retail / compare-at unit price (formatted) |
-| `item.priceRetailTotal` | `string` | Retail total for all units (formatted) |
-| `item.priceRecurring` | `string` | Recurring price (formatted), if applicable |
+| `item.priceTotal` | `string` | Package-level price for all units of this package in the bundle (formatted) |
 | `item.isRecurring` | `string` | `'true'` if the package has a recurring price, `'false'` otherwise |
-| `item.unitPrice` | `string` | Preview/cart unit price for this slot (formatted). Falls back to `item.price` if no preview |
+| `item.unitPrice` | `string` | Unit price for this slot (formatted) |
 | `item.originalUnitPrice` | `string` | Unit price before any discount (formatted) |
-| `item.packagePrice` | `string` | Package-level price for this slot from the preview (formatted) |
+| `item.packagePrice` | `string` | Package-level price for this slot (formatted) |
 | `item.originalPackagePrice` | `string` | Package price before discount (formatted) |
-| `item.subtotal` | `string` | Subtotal for this line from the preview |
+| `item.subtotal` | `string` | Subtotal for this line |
 | `item.totalDiscount` | `string` | Total discount amount for this line (formatted) |
 | `item.total` | `string` | Final line total after discount (formatted) |
 | `item.hasDiscount` | `'show' \| 'hide'` | `'show'` if a discount applies to this line; use with CSS `display` |

@@ -1,14 +1,21 @@
 import { useCampaignStore } from '@/stores/campaignStore';
 import { useCheckoutStore } from '@/stores/checkoutStore';
-import { calculateBundlePrice, CalculateCartResult } from '@/utils/calculations/CartCalculator';
-import { formatCurrency, formatPercentage } from '@/utils/currencyFormatter';
+import { calculateBundlePrice } from '@/utils/calculations/CartCalculator';
 import type { BundleCard, PriceContext } from './BundleSelectorEnhancer.types';
+import { getEffectiveItems } from './BundleSelectorEnhancer.state';
 
+/**
+ * Fetches the bundle-computed price for a card and writes the results directly
+ * onto card.packageStates (per-item prices) and card.bundlePrice (aggregate totals).
+ *
+ * Slot re-rendering is NOT triggered here — the orchestrator (BundleSelectorEnhancer)
+ * is responsible for calling renderSlotsForCard after this promise resolves.
+ */
 export async function fetchAndUpdateBundlePrice(
   card: BundleCard,
   ctx: PriceContext,
 ): Promise<void> {
-  const items = ctx.getEffectiveItems(card);
+  const items = getEffectiveItems(card);
   const currency = useCampaignStore.getState().currency ?? null;
 
   card.element.classList.add('next-loading');
@@ -16,8 +23,7 @@ export async function fetchAndUpdateBundlePrice(
 
   try {
     const checkoutVouchers = useCheckoutStore.getState().vouchers;
-    const allBundleVouchers = new Set(ctx.cards.flatMap(c => c.vouchers));
-    const userCoupons = checkoutVouchers.filter(v => !allBundleVouchers.has(v));
+    const userCoupons = checkoutVouchers.filter(v => !ctx.allBundleVouchers.has(v));
     const merged = [...new Set([...userCoupons, ...card.vouchers])];
     const vouchers = merged.length ? merged : undefined;
 
@@ -27,7 +33,7 @@ export async function fetchAndUpdateBundlePrice(
     });
 
     // Skip stale results if effective items changed while the fetch was in flight
-    const currentItems = ctx.getEffectiveItems(card);
+    const currentItems = getEffectiveItems(card);
     if (
       currentItems.length !== items.length ||
       currentItems.some(
@@ -38,44 +44,44 @@ export async function fetchAndUpdateBundlePrice(
       return;
     }
 
-    if (result.summary) ctx.previewLines.set(card.bundleId, result.summary.lines);
+    // Update per-package states with bundle-computed prices
+    if (result.summary) {
+      for (const line of result.summary.lines) {
+        const state = card.packageStates.get(line.package_id);
+        if (state) {
+          const hasDiscount = parseFloat(line.total_discount) > 0;
+          const hasSavings =
+            line.price_retail_total != null
+              ? parseFloat(line.price_retail_total) > parseFloat(line.package_price)
+              : state.hasSavings;
+          card.packageStates.set(line.package_id, {
+            ...state,
+            unitPrice: line.unit_price,
+            packagePrice: line.package_price,
+            originalUnitPrice: line.original_unit_price,
+            originalPackagePrice: line.original_package_price,
+            totalDiscount: line.total_discount,
+            subtotal: line.subtotal,
+            total: line.total,
+            hasDiscount,
+            hasSavings,
+          });
+        }
+      }
+    }
 
-    // Re-render slots so per-item prices reflect the preview discounts
-    if (ctx.slotTemplate) ctx.renderSlotsForCard(card);
+    // Update aggregate bundle price summary
+    card.bundlePrice = {
+      total: result.total.toNumber(),
+      subtotal: result.subtotal.toNumber(),
+      totalDiscount: result.totalDiscount.toNumber(),
+      totalDiscountPercentage: result.totalDiscountPercentage.toNumber(),
+    };
 
-    updateBundlePriceElements(card.element, result);
   } catch (error) {
     ctx.logger.warn(`Failed to fetch bundle price for "${card.bundleId}"`, error);
   } finally {
     card.element.classList.remove('next-loading');
     card.element.setAttribute('data-next-loading', 'false');
   }
-}
-
-function updateBundlePriceElements(
-  cardEl: HTMLElement,
-  calculated: CalculateCartResult,
-): void {
-  cardEl.querySelectorAll<HTMLElement>('[data-next-bundle-price]').forEach(el => {
-    const field = el.getAttribute('data-next-bundle-price') ?? 'total';
-    switch (field) {
-      case 'compare': el.textContent = formatCurrency(calculated.subtotal.toNumber()); break;
-      case 'savings': el.textContent = formatCurrency(calculated.totalDiscount.toNumber()); break;
-      case 'savingsPercentage': el.textContent = formatPercentage(calculated.totalDiscountPercentage.toNumber()); break;
-      case 'total':
-      default:        el.textContent = formatCurrency(calculated.total.toNumber()); break;
-    }
-  });
-
-  // Store raw numeric values for BundleDisplayEnhancer
-  cardEl.setAttribute('data-bundle-price-total', calculated.total.toNumber().toString());
-  cardEl.setAttribute('data-bundle-price-compare', calculated.subtotal.toNumber().toString());
-  cardEl.setAttribute('data-bundle-price-savings', calculated.totalDiscount.toNumber().toString());
-  cardEl.setAttribute('data-bundle-price-savings-pct', calculated.totalDiscountPercentage.toNumber().toString());
-
-  // Notify BundleDisplayEnhancer subscribers
-  cardEl.dispatchEvent(new CustomEvent('bundle:price-updated', {
-    bubbles: true,
-    detail: { bundleId: cardEl.getAttribute('data-next-bundle-id') ?? '' },
-  }));
 }

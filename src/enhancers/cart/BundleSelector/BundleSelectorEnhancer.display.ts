@@ -1,19 +1,25 @@
 import { BaseDisplayEnhancer } from '@/enhancers/display/DisplayEnhancerCore';
 import type { FormatType } from '@/enhancers/display/DisplayEnhancerTypes';
+import { BundleSelectorEnhancer } from './BundleSelectorEnhancer';
 
 const FORMAT_MAP: Record<string, FormatType> = {
   isSelected: 'boolean',
-  hasSavings: 'boolean',
+  hasDiscount: 'boolean',
   name: 'text',
   price: 'currency',
   compare: 'currency',
+  originalPrice: 'currency',
   savings: 'currency',
+  discountAmount: 'currency',
   savingsPercentage: 'percentage',
+  discountPercentage: 'percentage',
+  hasSavings: 'boolean',
+  unitPrice: 'currency',
+  originalUnitPrice: 'currency',
 };
 
 export class BundleDisplayEnhancer extends BaseDisplayEnhancer {
   private bundleId?: string;
-  private cardEl: HTMLElement | null = null;
   private selectionHandler: EventListener | null = null;
   private priceHandler: EventListener | null = null;
 
@@ -28,8 +34,6 @@ export class BundleDisplayEnhancer extends BaseDisplayEnhancer {
   }
 
   protected setupStoreSubscriptions(): void {
-    this.resolveCardEl();
-
     // Any selection change can flip isSelected across all cards
     this.selectionHandler = () => void this.updateDisplay();
     document.addEventListener('bundle:selection-changed', this.selectionHandler);
@@ -37,40 +41,44 @@ export class BundleDisplayEnhancer extends BaseDisplayEnhancer {
     // Price updates are filtered by bundleId
     this.priceHandler = (e: Event) => {
       const { bundleId } = (e as CustomEvent<{ bundleId: string }>).detail;
-      if (bundleId === this.bundleId) {
-        this.resolveCardEl();
-        void this.updateDisplay();
-      }
+      if (bundleId === this.bundleId) void this.updateDisplay();
     };
     document.addEventListener('bundle:price-updated', this.priceHandler);
   }
 
-  private resolveCardEl(): void {
-    if (!this.bundleId || this.cardEl) return;
-    this.cardEl = document.querySelector<HTMLElement>(
-      `[data-next-bundle-card][data-next-bundle-id="${this.bundleId}"]`,
-    );
-  }
-
   protected getPropertyValue(): unknown {
-    this.resolveCardEl();
-    if (!this.cardEl || !this.property) return undefined;
+    if (!this.bundleId || !this.property) return undefined;
+
+    const state = BundleSelectorEnhancer.getBundleState(this.bundleId);
+    if (!state) return undefined;
 
     switch (this.property) {
       case 'isSelected':
-        return this.cardEl.getAttribute('data-next-selected') === 'true';
+        return state.isSelected;
       case 'name':
-        return this.cardEl.getAttribute('data-next-bundle-name') ?? '';
+        return state.name;
       case 'price':
-        return parseFloat(this.cardEl.getAttribute('data-bundle-price-total') ?? '') || undefined;
-      case 'compare':
-        return parseFloat(this.cardEl.getAttribute('data-bundle-price-compare') ?? '') || undefined;
-      case 'savings':
-        return parseFloat(this.cardEl.getAttribute('data-bundle-price-savings') ?? '') || undefined;
-      case 'savingsPercentage':
-        return parseFloat(this.cardEl.getAttribute('data-bundle-price-savings-pct') ?? '') || undefined;
-      case 'hasSavings':
-        return (parseFloat(this.cardEl.getAttribute('data-bundle-price-savings') ?? '0') || 0) > 0;
+        return state.bundlePrice?.total;
+      case 'compare': // deprecated - use originalPrice instead, but keep supporting for backwards compatibility
+        return state.bundlePrice?.subtotal;
+      case 'originalPrice':
+        return state.bundlePrice?.subtotal;
+      case 'savings': // deprecated - use discountAmount instead, but keep supporting for backwards compatibility
+        return state.bundlePrice?.totalDiscount;
+      case 'discountAmount':
+        return state.bundlePrice?.totalDiscount;
+      case 'savingsPercentage': // deprecated - use discountPercentage instead, but keep supporting for backwards compatibility
+        return state.bundlePrice?.totalDiscountPercentage;
+      case 'discountPercentage':
+        return state.bundlePrice?.totalDiscountPercentage;
+      case 'hasSavings': // deprecated - use hasDiscount instead, but keep supporting for backwards compatibility
+        return (state.bundlePrice?.totalDiscount ?? 0) > 0;
+      case 'hasDiscount':
+        return (state.bundlePrice?.totalDiscount ?? 0) > 0;
+      case 'unitPrice':
+        return 0 // coming soon - not implemented yet
+      case 'originalUnitPrice':
+        return 0 // coming soon - not implemented yet
       default:
         this.logger.warn(`Unknown bundle display property: "${this.property}"`);
         return undefined;

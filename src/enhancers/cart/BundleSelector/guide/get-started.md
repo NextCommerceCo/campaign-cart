@@ -22,7 +22,7 @@ Mark up the container and bundle cards directly in HTML. The enhancer discovers 
     data-next-selected="true"
   >
     <strong>Starter — 1 bottle</strong>
-    <span data-next-bundle-price>—</span>
+    <span data-next-bundle-display>—</span>
   </div>
 
   <div
@@ -31,9 +31,9 @@ Mark up the container and bundle cards directly in HTML. The enhancer discovers 
     data-next-bundle-items='[{"packageId":101,"quantity":3}]'
   >
     <strong>Value — 3 bottles</strong>
-    <span data-next-bundle-price>—</span>
-    <span data-next-bundle-price="compare">—</span>
-    <span data-next-bundle-price="savings">—</span>
+    <span data-next-bundle-display>—</span>
+    <span data-next-bundle-display="originalPrice">—</span>
+    <span data-next-bundle-display="discountAmount">—</span>
   </div>
 
 </div>
@@ -52,7 +52,7 @@ Provide a `<template>` element and a `data-next-bundles` JSON array. The enhance
     data-next-bundle-id="{bundle.id}"
   >
     <strong>{bundle.title}</strong>
-    <span data-next-bundle-price>—</span>
+    <span data-next-bundle-display>—</span>
   </div>
 </template>
 ```
@@ -81,7 +81,7 @@ When you want to show the individual products inside each bundle, add a slot tem
     <img src="{item.image}" alt="{item.name}">
     <span>{item.name}</span>
     <span>{item.qty}x</span>
-    <span data-next-bundle-price>—</span>
+    <span data-next-bundle-display>—</span>
   </div>
 </template>
 
@@ -101,7 +101,7 @@ Inside the bundle card template, add a placeholder where slots will be injected:
   <div data-next-bundle-card data-next-bundle-id="{bundle.id}">
     <strong>{bundle.title}</strong>
     <div data-next-bundle-slots></div>
-    <span data-next-bundle-price>—</span>
+    <span data-next-bundle-display>—</span>
   </div>
 </template>
 ```
@@ -150,7 +150,7 @@ Use `data-next-display="bundle.{bundleId}.{property}"` to bind any element on th
 <span data-next-display="bundle.value.savingsPercentage"></span>
 ```
 
-**Supported properties:** `isSelected`, `name`, `price`, `compare`, `savings`, `savingsPercentage`, `hasSavings`
+**Supported properties:** `isSelected`, `name`, `price`, `originalPrice`, `discountAmount`, `discountPercentage`, `hasDiscount`, `unitPrice`, `originalUnitPrice`
 
 Prices update automatically after the async price fetch completes. `isSelected` updates on every card click.
 
@@ -160,7 +160,7 @@ There are two ways to show bundle prices. Use whichever fits your layout:
 
 | Situation | Use |
 |---|---|
-| Price element is **inside** the bundle card | `data-next-bundle-price` — simpler, no ID needed |
+| Price element is **inside** the bundle card | `data-next-bundle-display` — simpler, no ID needed |
 | Price element is **outside** the card (e.g., sticky bar, comparison table) | `data-next-display="bundle.{bundleId}.price"` |
 
 Both read from the same calculated value and update at the same time. Do not use both on the same element.
@@ -172,7 +172,7 @@ After the page loads with the SDK initialized, you should see:
 - One card has the `next-selected` CSS class and `data-next-selected="true"`.
 - The container has `data-selected-bundle` set to the selected bundle's ID.
 - In swap mode, the pre-selected bundle's packages are in the cart after init.
-- `[data-next-bundle-price]` elements display formatted prices (not `—`) once the price fetch completes.
+- `[data-next-bundle-display]` elements display formatted prices (not `—`) once the price fetch completes.
 - Clicking another card moves `next-selected` to that card and, in swap mode, the cart updates to reflect the new bundle.
 
 In the browser console with debug logging enabled, you should see:

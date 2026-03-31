@@ -54,7 +54,7 @@
 
 **When:** The campaign shows crossed-out retail prices and a savings amount per bundle to create urgency.
 
-**Why this enhancer:** `[data-next-bundle-price="compare"]`, `[data-next-bundle-price="savings"]`, and `[data-next-bundle-price="savingsPercentage"]` are populated automatically after each price fetch. Savings is calculated against `price_retail` from the campaign package data, not a manually entered value.
+**Why this enhancer:** `[data-next-bundle-display="originalPrice"]`, `[data-next-bundle-display="discountAmount"]`, and `[data-next-bundle-display="discountPercentage"]` are populated automatically after each price fetch. Savings is calculated against `price_retail` from the campaign package data, not a manually entered value.
 
 **Watch out for:** If packages do not have `price_retail` set in the backend, savings elements will show `$0` or `0%`. Verify retail prices are configured in the campaign.
 

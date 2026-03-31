@@ -13,30 +13,40 @@
 import { BaseEnhancer } from '@/enhancers/base/BaseEnhancer';
 import { useCartStore } from '@/stores/cartStore';
 import { useCheckoutStore } from '@/stores/checkoutStore';
+import { useCampaignStore } from '@/stores/campaignStore';
 import type { CartState } from '@/types/global';
-import type { SummaryLine } from '@/types/api';
 
 import type {
   BundleCard,
+  BundleCardPublicState,
   BundleDef,
   BundleItem,
+  BundlePackageState,
   BundleSlot,
   ClassNames,
   HandlerContext,
   PriceContext,
   RenderContext,
 } from './BundleSelectorEnhancer.types';
-import { renderBundleTemplate, renderSlotsForCard } from './BundleSelectorEnhancer.renderer';
+import {
+  renderBundleTemplate,
+  renderSlotsForCard,
+  updateCardDisplayElements,
+} from './BundleSelectorEnhancer.renderer';
 import {
   applyBundle,
   applyVoucherSwap,
   handleCardClick,
   handleSelectVariantChange,
   handleVariantOptionClick,
+  onVoucherApplied,
 } from './BundleSelectorEnhancer.handlers';
 import { fetchAndUpdateBundlePrice } from './BundleSelectorEnhancer.price';
+import { getEffectiveItems, makePackageState, parseVouchers } from './BundleSelectorEnhancer.state';
 
 export class BundleSelectorEnhancer extends BaseEnhancer {
+  private static readonly _instances = new Set<BundleSelectorEnhancer>();
+
   private mode: 'swap' | 'select' = 'swap';
   private template: string = '';
   private slotTemplate: string = '';
@@ -53,12 +63,12 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
   private includeShipping: boolean = false;
   private externalSlotsEl: HTMLElement | null = null;
   private classNames!: ClassNames;
-  private previewLines = new Map<string, SummaryLine[]>();
   private currencyChangeTimeout: ReturnType<typeof setTimeout> | null = null;
   private voucherChangeTimeout: ReturnType<typeof setTimeout> | null = null;
 
   public async initialize(): Promise<void> {
     this.validateElement();
+    BundleSelectorEnhancer._instances.add(this);
     this.classNames = this.parseClassNames();
 
     this.mode = (this.getAttribute('data-next-selection-mode') ?? 'swap') as 'swap' | 'select';
@@ -122,7 +132,7 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     // ── Delegated click handler for custom variant options ─────────────────────
     if (this.slotTemplate) {
       const handler = (e: Event) =>
-        handleVariantOptionClick(e, this.cards, this.makeHandlerContext());
+        void handleVariantOptionClick(e, this.cards, this.makeHandlerContext());
       this.boundVariantOptionClick = handler;
       this.element.addEventListener('click', handler);
       // External slots are outside this.element — attach there too
@@ -137,23 +147,26 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     this.subscribe(useCartStore, this.syncWithCart.bind(this));
     this.syncWithCart(useCartStore.getState());
 
-    // Re-fetch bundle prices whenever checkout vouchers change (debounced)
+    // Re-fetch bundle prices whenever user-entered coupons change (debounced).
+    // onVoucherApplied skips the re-fetch when only bundle-managed vouchers changed
+    // (e.g. during a bundle swap), avoiding redundant API calls.
     let prevCheckoutVouchers = useCheckoutStore.getState().vouchers;
     this.subscribe(useCheckoutStore, state => {
       const next = state.vouchers;
-      if (
-        next.length !== prevCheckoutVouchers.length ||
-        next.some((v, i) => v !== prevCheckoutVouchers[i])
-      ) {
-        prevCheckoutVouchers = next;
-        if (this.voucherChangeTimeout !== null) clearTimeout(this.voucherChangeTimeout);
-        this.voucherChangeTimeout = setTimeout(() => {
-          this.voucherChangeTimeout = null;
-          for (const card of this.cards) {
-            void fetchAndUpdateBundlePrice(card, this.makePriceContext());
-          }
-        }, 150);
-      }
+      const prev = prevCheckoutVouchers;
+      const changed =
+        next.length !== prev.length || next.some((v, i) => v !== prev[i]);
+      if (!changed) return;
+
+      prevCheckoutVouchers = next;
+      if (this.voucherChangeTimeout !== null) clearTimeout(this.voucherChangeTimeout);
+      this.voucherChangeTimeout = setTimeout(() => {
+        this.voucherChangeTimeout = null;
+        const allBundleVouchers = this.getAllKnownBundleVouchers();
+        onVoucherApplied(next, prev, this.cards, allBundleVouchers, card =>
+          this.calculateAndRenderPrice(card),
+        );
+      }, 150);
     });
 
     // Re-fetch prices when the active currency changes (debounced)
@@ -162,20 +175,51 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
       this.currencyChangeTimeout = setTimeout(() => {
         this.currencyChangeTimeout = null;
         for (const card of this.cards) {
-          void fetchAndUpdateBundlePrice(card, this.makePriceContext());
+          void this.calculateAndRenderPrice(card);
         }
       }, 150);
     };
     document.addEventListener('next:currency-changed', this.boundCurrencyChangeHandler);
 
     for (const card of this.cards) {
-      void fetchAndUpdateBundlePrice(card, this.makePriceContext());
+      void this.calculateAndRenderPrice(card);
     }
 
     this.logger.debug('BundleSelectorEnhancer initialized', {
       mode: this.mode,
       cardCount: this.cards.length,
     });
+  }
+
+  // ─── Price fetch + slot re-render ─────────────────────────────────────────────
+
+  /**
+   * Phases 3+4+5: fetch prices (CalculatePrices), write state (UpdateBundleState),
+   * then update all variable parts of the DOM (RelenderVariable).
+   * Entry point for onVariantChanged and onVoucherApplied — skips RenderBundleCard
+   * and RenderBundleCardItems.
+   */
+  private async calculateAndRenderPrice(card: BundleCard): Promise<void> {
+    await fetchAndUpdateBundlePrice(card, this.makePriceContext());
+    this.relenderVariables(card);
+  }
+
+  /**
+   * Phase 5 — RelenderVariable: updates all DOM that depends on calculated prices.
+   * Covers slot {item.xxx} variables, [data-next-bundle-display] elements,
+   * data-bundle-price-* attributes, and the bundle:price-updated event for
+   * BundleDisplayEnhancer.
+   */
+  private relenderVariables(card: BundleCard): void {
+    if (this.slotTemplate) {
+      renderSlotsForCard(card, this.makeRenderContext());
+      if (this.externalSlotsEl && card === this.selectedCard) {
+        renderSlotsForCard(card, this.makeRenderContext(), this.externalSlotsEl);
+      }
+    }
+    if (card.bundlePrice) {
+      updateCardDisplayElements(card, card.bundlePrice);
+    }
   }
 
   // ─── Card registration ────────────────────────────────────────────────────────
@@ -212,8 +256,9 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
       return;
     }
 
+    const name = el.getAttribute('data-next-bundle-name') ?? '';
     const isPreSelected = el.getAttribute('data-next-selected') === 'true';
-    const vouchers = this.parseVouchers(el.getAttribute('data-next-bundle-vouchers'));
+    const vouchers = parseVouchers(el.getAttribute('data-next-bundle-vouchers'), this.logger);
 
     const slots: BundleSlot[] = [];
     let slotIdx = 0;
@@ -241,7 +286,28 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
       }
     }
 
-    const card: BundleCard = { element: el, bundleId, items, slots, isPreSelected, vouchers };
+    // Populate bundle-owned package states from campaign packages (provisional baseline)
+    const allPackages = useCampaignStore.getState().packages ?? [];
+    const packageStates = new Map<number, BundlePackageState>();
+    for (const slot of slots) {
+      if (!packageStates.has(slot.activePackageId)) {
+        const pkg = allPackages.find(p => p.ref_id === slot.activePackageId);
+        if (pkg) packageStates.set(slot.activePackageId, makePackageState(pkg));
+      }
+    }
+
+    const card: BundleCard = {
+      element: el,
+      bundleId,
+      name,
+      items,
+      slots,
+      isPreSelected,
+      vouchers,
+      packageStates,
+      bundlePrice: null,
+      slotVarsCache: new Map(),
+    };
     this.cards.push(card);
     el.classList.add(this.classNames.bundleCard);
 
@@ -291,7 +357,7 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     this.element.setAttribute('data-selected-bundle', card.bundleId);
     this.emit('bundle:selection-changed', {
       bundleId: card.bundleId,
-      items: this.getEffectiveItems(card),
+      items: getEffectiveItems(card),
     });
     this.renderExternalSlots(card);
   }
@@ -305,25 +371,36 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     return this.selectedCard;
   }
 
+  /** Returns display state for a bundle card by id, for use by BundleDisplayEnhancer. */
+  static getBundleState(bundleId: string): BundleCardPublicState | null {
+    for (const inst of BundleSelectorEnhancer._instances) {
+      const card = inst.cards.find(c => c.bundleId === bundleId);
+      if (card) {
+        return {
+          name: card.name,
+          isSelected: inst.selectedCard?.bundleId === bundleId,
+          bundlePrice: card.bundlePrice,
+        };
+      }
+    }
+    return null;
+  }
+
   // ─── Cart sync ────────────────────────────────────────────────────────────────
 
   private syncWithCart(cartState: CartState): void {
     for (const card of this.cards) {
-      const effectiveItems = this.getEffectiveItems(card);
+      const effectiveItems = getEffectiveItems(card);
+      // Check both packageId AND bundleId so a package shared across bundles
+      // doesn't cause incorrect "in cart" state on the wrong bundle.
       const allItemsInCart = effectiveItems.every(bi => {
-        const ci = cartState.items.find(i => i.packageId === bi.packageId);
+        const ci = cartState.items.find(
+          i => i.packageId === bi.packageId && i.bundleId === card.bundleId,
+        );
         return ci != null && ci.quantity >= bi.quantity;
       });
       card.element.classList.toggle(this.classNames.inCart, allItemsInCart);
       card.element.setAttribute('data-next-in-cart', String(allItemsInCart));
-
-      if (this.slotTemplate && !this.isApplyingRef.value && !this.externalSlotsEl) {
-        renderSlotsForCard(card, this.makeRenderContext());
-      }
-    }
-
-    if (this.externalSlotsEl && this.selectedCard && !this.isApplyingRef.value) {
-      this.renderExternalSlots(this.selectedCard);
     }
 
     if (!this.selectedCard) {
@@ -361,7 +438,6 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
       variantOptionTemplate: this.variantOptionTemplate,
       variantSelectorTemplate: this.variantSelectorTemplate,
       selectHandlers: this.selectHandlers,
-      previewLines: this.previewLines,
       logger: this.logger,
       classNames: this.classNames,
       onSelectChange: (select, bundleId, slotIndex) =>
@@ -377,15 +453,8 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
       isApplyingRef: this.isApplyingRef,
       externalSlotsEl: this.externalSlotsEl,
       selectCard: card => this.selectCard(card),
-      getEffectiveItems: card => this.getEffectiveItems(card),
-      fetchAndUpdateBundlePrice: card =>
-        fetchAndUpdateBundlePrice(card, this.makePriceContext()),
-      renderSlotsForCard: card => {
-        renderSlotsForCard(card, this.makeRenderContext());
-        if (this.externalSlotsEl) {
-          renderSlotsForCard(card, this.makeRenderContext(), this.externalSlotsEl);
-        }
-      },
+      getSelectedCard: () => this.selectedCard,
+      fetchAndUpdateBundlePrice: card => this.calculateAndRenderPrice(card),
       emit: (event, detail) => this.emit(event, detail),
     };
   }
@@ -393,12 +462,8 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
   private makePriceContext(): PriceContext {
     return {
       includeShipping: this.includeShipping,
-      previewLines: this.previewLines,
-      cards: this.cards,
+      allBundleVouchers: this.getAllKnownBundleVouchers(),
       logger: this.logger,
-      slotTemplate: this.slotTemplate,
-      renderSlotsForCard: card => renderSlotsForCard(card, this.makeRenderContext()),
-      getEffectiveItems: card => this.getEffectiveItems(card),
     };
   }
 
@@ -418,36 +483,18 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     };
   }
 
-  private getEffectiveItems(card: BundleCard): BundleItem[] {
-    const qtyCounts = new Map<number, number>();
-    for (const slot of card.slots) {
-      qtyCounts.set(
-        slot.activePackageId,
-        (qtyCounts.get(slot.activePackageId) ?? 0) + slot.quantity,
-      );
-    }
-    return Array.from(qtyCounts.entries()).map(([packageId, quantity]) => ({
-      packageId,
-      quantity,
-    }));
+  /** Vouchers defined across this instance's bundle cards. */
+  private getBundleVouchers(): string[] {
+    return this.cards.flatMap(c => c.vouchers);
   }
 
-  private parseVouchers(attr: string | null): string[] {
-    if (!attr) return [];
-    const trimmed = attr.trim();
-    if (trimmed.startsWith('[')) {
-      try {
-        const parsed = JSON.parse(trimmed);
-        return Array.isArray(parsed)
-          ? parsed.filter((v): v is string => typeof v === 'string')
-          : [];
-      } catch {
-        this.logger.warn('Invalid JSON in data-next-bundle-vouchers', attr);
-        return [];
-      }
-    }
-    return trimmed.split(',').map(s => s.trim()).filter(Boolean);
+  /** Vouchers defined across ALL live BundleSelectorEnhancer instances. */
+  private getAllKnownBundleVouchers(): Set<string> {
+    return new Set(
+      [...BundleSelectorEnhancer._instances].flatMap(inst => inst.getBundleVouchers()),
+    );
   }
+
 
   // ─── Cleanup ──────────────────────────────────────────────────────────────────
 
@@ -480,6 +527,7 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
   }
 
   public override destroy(): void {
+    BundleSelectorEnhancer._instances.delete(this);
     super.destroy();
     this.cards.forEach(c =>
       c.element.classList.remove(

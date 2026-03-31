@@ -1,5 +1,4 @@
 import type { EventMap } from '@/types/global';
-import type { SummaryLine } from '@/types/api';
 import type { Logger } from '@/utils/logger';
 
 export interface ClassNames {
@@ -50,14 +49,70 @@ export interface BundleSlot {
   noSlot?: boolean;
 }
 
+/**
+ * Per-package state owned by a BundleCard.
+ * Initially populated from campaign package base data (provisional prices).
+ * Updated with bundle-computed prices after fetchAndUpdateBundlePrice resolves.
+ * This is the single source of truth for slot rendering — no campaign store
+ * fallback, no separate previewLines map.
+ */
+export interface BundlePackageState {
+  packageId: number;
+  // Static display data from campaign package:
+  name: string;
+  image: string;
+  qty: number;
+  productName: string;
+  variantName: string;
+  sku: string | null;
+  isRecurring: boolean;
+  // Prices — start as campaign package prices, replaced by bundle-computed after fetch:
+  unitPrice: string;
+  packagePrice: string;
+  originalUnitPrice: string;
+  originalPackagePrice: string;
+  totalDiscount: string;
+  subtotal: string;
+  total: string;
+  hasDiscount: boolean;
+  hasSavings: boolean;
+}
+
+/** Aggregate bundle price summary stored on BundleCard after price fetch. */
+export interface BundlePriceSummary {
+  total: number;
+  subtotal: number;
+  totalDiscount: number;
+  totalDiscountPercentage: number;
+}
+
 export interface BundleCard {
   element: HTMLElement;
   bundleId: string;
+  /** Display name from data-next-bundle-name on the card element. */
+  name: string;
   items: BundleItem[];
   slots: BundleSlot[];
   isPreSelected: boolean;
   /** Voucher/coupon codes to apply when this bundle is selected. */
   vouchers: string[];
+  /**
+   * Bundle-owned package data. Keyed by packageId (= campaign Package.ref_id).
+   * Initially populated from campaign packages on card registration.
+   * Updated with bundle-computed prices after fetchAndUpdateBundlePrice.
+   */
+  packageStates: Map<number, BundlePackageState>;
+  /** Aggregate bundle price. Null until first price fetch completes. */
+  bundlePrice: BundlePriceSummary | null;
+  /** Cached template vars from the last render of each slot. Key = slotIndex. */
+  slotVarsCache: Map<number, Record<string, string>>;
+}
+
+/** Read-only view of a BundleCard's state exposed to BundleDisplayEnhancer. */
+export interface BundleCardPublicState {
+  name: string;
+  isSelected: boolean;
+  bundlePrice: BundlePriceSummary | null;
 }
 
 /** Shared context passed to renderer functions. */
@@ -66,7 +121,6 @@ export interface RenderContext {
   variantOptionTemplate: string;
   variantSelectorTemplate: string;
   selectHandlers: Map<HTMLSelectElement, EventListener>;
-  previewLines: Map<string, SummaryLine[]>;
   logger: Logger;
   classNames: ClassNames;
   onSelectChange: (
@@ -86,9 +140,8 @@ export interface HandlerContext {
   /** External slots container, when slots are rendered outside the bundle selector element. */
   externalSlotsEl: HTMLElement | null;
   selectCard: (card: BundleCard) => void;
-  getEffectiveItems: (card: BundleCard) => BundleItem[];
+  getSelectedCard: () => BundleCard | null;
   fetchAndUpdateBundlePrice: (card: BundleCard) => Promise<void>;
-  renderSlotsForCard: (card: BundleCard) => void;
   emit: <K extends 'bundle:selected' | 'bundle:selection-changed'>(
     event: K,
     detail: EventMap[K],
@@ -98,10 +151,7 @@ export interface HandlerContext {
 /** Shared context passed to the price fetcher. */
 export interface PriceContext {
   includeShipping: boolean;
-  previewLines: Map<string, SummaryLine[]>;
-  cards: BundleCard[];
+  /** Union of every bundle voucher across ALL live BundleSelectorEnhancer instances. */
+  allBundleVouchers: Set<string>;
   logger: Logger;
-  slotTemplate: string;
-  renderSlotsForCard: (card: BundleCard) => void;
-  getEffectiveItems: (card: BundleCard) => BundleItem[];
 }

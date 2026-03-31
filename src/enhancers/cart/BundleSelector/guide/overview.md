@@ -1,7 +1,7 @@
 # BundleSelectorEnhancer
 
 > Category: `cart`
-> Last reviewed: 2026-03-30
+> Last reviewed: 2026-03-31
 > Owner: campaign-cart
 
 A container that lets a developer define named bundles — each bundle being a fixed set of packages and quantities — and lets a visitor pick one. In swap mode, selecting a bundle atomically replaces the previous bundle's cart items while leaving unrelated cart items untouched. Bundle vouchers are applied and removed automatically as the selection changes.
@@ -75,7 +75,7 @@ Visitor changes variant (select or custom option)
 - Variant resolution requires that all variant packages for a product exist in the campaign store. If only some variants are included in the campaign, unavailable combinations cannot be detected accurately.
 - Slots are re-rendered on every cart store update (when `slotTemplate` is configured). Do not attach event listeners to slot elements directly — they are destroyed on every re-render.
 - External slots containers (`data-next-bundle-slots-for`) render only the currently selected bundle's slots. Slots for non-selected bundles are not rendered into the external container.
-- Price fetching is asynchronous. Until the fetch resolves, `[data-next-bundle-price]` elements show their initial content. There is no built-in skeleton or placeholder state.
+- Price fetching is asynchronous. Until the fetch resolves, `[data-next-bundle-display]` elements show their initial content. There is no built-in skeleton or placeholder state.
 - In select mode, if no external action (button or other enhancer) writes to the cart, the bundle is never applied. The enhancer does not warn when this happens.
 - `data-next-bundle-items` does not need to be declared in a card template when using `data-next-bundle-template-id` — the enhancer sets it automatically from the JSON definition. Including `{bundle.items}` in the template is a no-op.
 - Inline template strings (`data-next-bundle-template`, `data-next-bundle-slot-template`) require HTML escaping inside attribute values and break syntax highlighting. Prefer `<template id="...">` elements with the corresponding `-id` attributes.

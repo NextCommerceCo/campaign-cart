@@ -1,8 +1,57 @@
-import { useCartStore } from '@/stores/cartStore';
 import { useCampaignStore } from '@/stores/campaignStore';
 import type { Package } from '@/types/campaign';
 import type { Logger } from '@/utils/logger';
-import type { BundleCard, BundleDef, BundleSlot, RenderContext } from './BundleSelectorEnhancer.types';
+import { formatCurrency, formatPercentage } from '@/utils/currencyFormatter';
+import type {
+  BundleCard,
+  BundleDef,
+  BundlePackageState,
+  BundlePriceSummary,
+  BundleSlot,
+  RenderContext,
+} from './BundleSelectorEnhancer.types';
+
+// ─── Slot vars builder ────────────────────────────────────────────────────────
+
+/**
+ * Builds the template variable map for a single slot.
+ * Extracted so callers can compare vars before deciding whether to re-render.
+ */
+export function buildSlotVars(
+  slot: BundleSlot,
+  pkgState: BundlePackageState,
+): Record<string, string> {
+  return {
+    'slot.index': String(slot.slotIndex + 1),
+    'slot.unitIndex': String(slot.unitIndex),
+    'slot.unitNumber': String(slot.unitIndex + 1),
+    'item.packageId': String(slot.activePackageId),
+    'item.name': pkgState.name,
+    'item.image': pkgState.image,
+    'item.quantity': String(slot.quantity),
+    'item.variantName': pkgState.variantName,
+    'item.productName': pkgState.productName,
+    'item.sku': pkgState.sku ?? '',
+    'item.qty': String(pkgState.qty),
+    'item.isRecurring': pkgState.isRecurring ? 'true' : 'false',
+    'item.price': pkgState.unitPrice,
+    'item.priceTotal': pkgState.packagePrice,
+    'item.unitPrice': pkgState.unitPrice,
+    'item.originalUnitPrice': pkgState.originalUnitPrice,
+    'item.packagePrice': pkgState.packagePrice,
+    'item.originalPackagePrice': pkgState.originalPackagePrice,
+    'item.totalDiscount': pkgState.totalDiscount,
+    'item.subtotal': pkgState.subtotal,
+    'item.total': pkgState.total,
+    'item.hasDiscount': pkgState.hasDiscount ? 'show' : 'hide',
+    'item.hasSavings': pkgState.hasSavings ? 'show' : 'hide',
+  };
+}
+
+function varsEqual(a: Record<string, string>, b: Record<string, string>): boolean {
+  const keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every(k => a[k] === b[k]);
+}
 
 // ─── Bundle card template ─────────────────────────────────────────────────────
 
@@ -52,8 +101,123 @@ export function renderBundleTemplate(
   return cardEl;
 }
 
+// ─── Card display elements ────────────────────────────────────────────────────
+
+interface BundleFieldData {
+  bundlePrice: BundlePriceSummary;
+  isSelected: boolean;
+  name: string;
+  unitPrice: number;
+  originalUnitPrice: number;
+}
+
+function applyBundleField(el: HTMLElement, field: string, data: BundleFieldData): void {
+  const { bundlePrice, isSelected, name, unitPrice, originalUnitPrice } = data;
+  switch (field) {
+    case 'price':
+    case 'total':
+      el.textContent = formatCurrency(bundlePrice.total);
+      break;
+    case 'compare':
+    case 'originalPrice':
+      el.textContent = formatCurrency(bundlePrice.subtotal);
+      break;
+    case 'savings':
+    case 'discountAmount':
+      el.textContent = formatCurrency(bundlePrice.totalDiscount);
+      break;
+    case 'unitPrice':
+      el.textContent = formatCurrency(unitPrice);
+      break;
+    case 'originalUnitPrice':
+      el.textContent = formatCurrency(originalUnitPrice);
+      break;
+    case 'savingsPercentage':
+    case 'discountPercentage':
+      el.textContent = formatPercentage(bundlePrice.totalDiscountPercentage);
+      break;
+    case 'isSelected':
+      el.style.display = isSelected ? '' : 'none';
+      break;
+    case 'hasDiscount':
+    case 'hasSavings':
+      el.style.display = bundlePrice.totalDiscount > 0 ? '' : 'none';
+      break;
+    case 'name':
+      el.textContent = name;
+      break;
+  }
+}
+
+/**
+ * Updates all display elements inside a bundle card after a price fetch resolves.
+ * Handles [data-next-bundle-display] (full field set) and the deprecated
+ * [data-next-bundle-price] (legacy, price fields only). Also writes raw numeric
+ * data-bundle-price-* attributes and fires bundle:price-updated for
+ * BundleDisplayEnhancer.
+ */
+export function updateCardDisplayElements(
+  card: BundleCard,
+  bundlePrice: BundlePriceSummary,
+): void {
+  const isSelected = card.element.getAttribute('data-next-selected') === 'true';
+  const totalQuantity = card.slots
+    .filter(s => !s.noSlot)
+    .reduce((sum, s) => sum + s.quantity, 0);
+  const unitPrice =
+    totalQuantity > 0 ? bundlePrice.total / totalQuantity : bundlePrice.total;
+  const originalUnitPrice =
+    totalQuantity > 0 ? bundlePrice.subtotal / totalQuantity : bundlePrice.subtotal;
+
+  const fieldData: BundleFieldData = {
+    bundlePrice,
+    isSelected,
+    name: card.name,
+    unitPrice,
+    originalUnitPrice,
+  };
+
+  card.element.querySelectorAll<HTMLElement>('[data-next-bundle-display]').forEach(el => {
+    const field = el.getAttribute('data-next-bundle-display') ?? 'price';
+    applyBundleField(el, field, fieldData);
+  });
+
+  // Deprecated: kept for backward compatibility
+  card.element.querySelectorAll<HTMLElement>('[data-next-bundle-price]').forEach(el => {
+    const field = el.getAttribute('data-next-bundle-price') ?? 'total';
+    applyBundleField(el, field, fieldData);
+  });
+
+  card.element.setAttribute('data-bundle-price-total', String(bundlePrice.total));
+  card.element.setAttribute('data-bundle-price-compare', String(bundlePrice.subtotal));
+  card.element.setAttribute('data-bundle-price-savings', String(bundlePrice.totalDiscount));
+  card.element.setAttribute(
+    'data-bundle-price-savings-pct',
+    String(bundlePrice.totalDiscountPercentage),
+  );
+
+  card.element.dispatchEvent(
+    new CustomEvent('bundle:price-updated', {
+      bubbles: true,
+      detail: { bundleId: card.element.getAttribute('data-next-bundle-id') ?? '' },
+    }),
+  );
+}
+
 // ─── Slot rendering ───────────────────────────────────────────────────────────
 
+/**
+ * Renders slots for a bundle card using surgical per-slot patching.
+ *
+ * On first render every slot is created and appended. On subsequent calls only
+ * slots whose template vars have changed are replaced — unchanged slots stay
+ * untouched in the DOM. Orphan slot elements (e.g. after a variant change that
+ * reduces the slot count) are removed.
+ *
+ * Reads exclusively from card.packageStates — no direct campaign store access
+ * for slot display data. Campaign store is only consulted for variant selector
+ * option lists (to enumerate all available variant values for a product).
+ */
 export function renderSlotsForCard(
   card: BundleCard,
   ctx: RenderContext,
@@ -63,92 +227,85 @@ export function renderSlotsForCard(
     targetEl ?? card.element.querySelector<HTMLElement>('[data-next-bundle-slots]');
   if (!placeholder) return;
 
-  // Clean up any existing select handlers for this card's slots
-  placeholder.querySelectorAll<HTMLSelectElement>('select').forEach(s => {
-    const h = ctx.selectHandlers.get(s);
-    if (h) {
-      s.removeEventListener('change', h);
-      ctx.selectHandlers.delete(s);
-    }
-  });
-
-  const allPackages = useCampaignStore.getState().packages ?? [];
-  placeholder.innerHTML = '';
+  const activeIndices = new Set<number>();
 
   for (const slot of card.slots) {
     if (slot.noSlot) continue;
 
-    const pkg = allPackages.find(p => p.ref_id === slot.activePackageId);
-    if (!pkg) continue;
+    const pkgState = card.packageStates.get(slot.activePackageId);
+    if (!pkgState) continue;
 
-    const slotEl = createSlotElement(card.bundleId, slot, pkg, ctx);
+    activeIndices.add(slot.slotIndex);
 
-    const variantPlaceholder = slotEl.querySelector<HTMLElement>('[data-next-variant-selectors]');
-    if (variantPlaceholder && (pkg.product_variant_attribute_values?.length ?? 0) > 0) {
-      renderVariantSelectors(
-        variantPlaceholder,
-        card.bundleId,
-        slot.slotIndex,
-        pkg,
-        allPackages,
-        ctx,
-      );
+    const existing = placeholder.querySelector<HTMLElement>(
+      `[data-next-slot-index="${slot.slotIndex}"]`,
+    );
+    const newVars = buildSlotVars(slot, pkgState);
+    const cachedVars = card.slotVarsCache.get(slot.slotIndex);
+
+    // Skip only when the element already exists in this placeholder AND vars haven't changed.
+    // The existing check is required because slotVarsCache is shared across render targets
+    // (card's own placeholder and the external slots container). A cache hit must not prevent
+    // first-time rendering into a container that doesn't have the slot element yet.
+    if (existing && cachedVars && varsEqual(cachedVars, newVars)) continue;
+
+    const newSlotEl = createSlotElement(card.bundleId, slot, newVars, ctx);
+
+    const variantPlaceholder =
+      newSlotEl.querySelector<HTMLElement>('[data-next-variant-selectors]');
+    if (variantPlaceholder) {
+      const allPackages = useCampaignStore.getState().packages ?? [];
+      const pkg = allPackages.find(p => p.ref_id === slot.activePackageId);
+      if (pkg && (pkg.product_variant_attribute_values?.length ?? 0) > 0) {
+        renderVariantSelectors(
+          variantPlaceholder,
+          card.bundleId,
+          slot.slotIndex,
+          pkg,
+          allPackages,
+          ctx,
+        );
+      }
     }
 
-    placeholder.appendChild(slotEl);
+    if (existing) {
+      // Clean up select handlers attached to the outgoing slot element
+      existing.querySelectorAll<HTMLSelectElement>('select').forEach(s => {
+        const h = ctx.selectHandlers.get(s);
+        if (h) {
+          s.removeEventListener('change', h);
+          ctx.selectHandlers.delete(s);
+        }
+      });
+      placeholder.replaceChild(newSlotEl, existing);
+    } else {
+      placeholder.appendChild(newSlotEl);
+    }
+
+    card.slotVarsCache.set(slot.slotIndex, newVars);
   }
+
+  // Remove orphan slots that no longer correspond to an active slot
+  placeholder.querySelectorAll<HTMLElement>('[data-next-slot-index]').forEach(el => {
+    const idx = Number(el.dataset.nextSlotIndex);
+    if (!activeIndices.has(idx)) placeholder.removeChild(el);
+  });
+  ctx.logger.debug('Rendered slots for bundle', card.bundleId, { activeCount: activeIndices.size });
 }
 
+/**
+ * Creates a slot DOM element from pre-built template vars (see buildSlotVars).
+ * All price and display variables come from vars — either campaign package
+ * baseline prices (before fetch) or bundle-computed prices (after fetch).
+ * There is no distinction between "in cart" and "preview" here; cart state
+ * drives CSS classes on the card element, not per-slot prices.
+ */
 function createSlotElement(
   bundleId: string,
   slot: BundleSlot,
-  pkg: Package,
+  vars: Record<string, string>,
   ctx: RenderContext,
 ): HTMLElement {
-  const isInCart = (() => {
-    const cartState = useCartStore.getState();
-    const ci = cartState.items.find(i => i.packageId === slot.activePackageId);
-    return ci != null && ci.quantity >= slot.quantity;
-  })();
-
-  const summaryLine = isInCart
-    ? useCartStore.getState().summary?.lines.find(l => l.package_id === slot.activePackageId)
-    : ctx.previewLines.get(bundleId)?.find(l => l.package_id === slot.activePackageId);
-
-  const hasDiscount = summaryLine ? parseFloat(summaryLine.total_discount) > 0 : false;
-  const hasSavings = summaryLine?.price_retail_total != null
-    ? parseFloat(summaryLine.price_retail_total) > parseFloat(summaryLine.package_price)
-    : (pkg.price_retail != null && pkg.price_retail !== pkg.price);
-
-  const vars: Record<string, string> = {
-    'slot.index': String(slot.slotIndex + 1),
-    'slot.unitIndex': String(slot.unitIndex),
-    'slot.unitNumber': String(slot.unitIndex + 1),
-    'item.packageId': String(slot.activePackageId),
-    'item.name': pkg.name || '',
-    'item.image': pkg.image || '',
-    'item.quantity': String(slot.quantity),
-    'item.variantName': pkg.product_variant_name || '',
-    'item.productName': pkg.product_name || '',
-    'item.sku': pkg.product_sku || '',
-    'item.qty': String(pkg.qty ?? 1),
-    'item.price': pkg.price || '',
-    'item.priceTotal': pkg.price_total || '',
-    'item.priceRetail': pkg.price_retail || '',
-    'item.priceRetailTotal': pkg.price_retail_total || '',
-    'item.priceRecurring': pkg.price_recurring || '',
-    'item.isRecurring': pkg.is_recurring ? 'true' : 'false',
-    'item.unitPrice':            summaryLine?.unit_price            ?? pkg.price ?? '',
-    'item.originalUnitPrice':    summaryLine?.original_unit_price   ?? pkg.price ?? '',
-    'item.packagePrice':         summaryLine?.package_price         ?? pkg.price_total ?? '',
-    'item.originalPackagePrice': summaryLine?.original_package_price ?? pkg.price_total ?? '',
-    'item.subtotal':             summaryLine?.subtotal              ?? '',
-    'item.totalDiscount':        summaryLine?.total_discount        ?? '0',
-    'item.total':                summaryLine?.total                 ?? pkg.price_total ?? '',
-    'item.hasDiscount': hasDiscount ? 'show' : 'hide',
-    'item.hasSavings':  hasSavings  ? 'show' : 'hide',
-  };
-
   const wrapper = document.createElement('div');
   wrapper.className = ctx.classNames.bundleSlot;
   wrapper.dataset.nextBundleId = bundleId;
@@ -394,4 +551,3 @@ export function isVariantValueAvailable(
       .every(([c, v]) => attrs.some(a => a.code === c && a.value === v));
   });
 }
-

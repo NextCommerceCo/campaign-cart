@@ -51,7 +51,7 @@ Unique identifier for this selector instance. Used by external enhancers (e.g., 
 | Required | no |
 | Default | `'false'` |
 
-When `'true'`, shipping cost is included in the price calculation and reflected in `[data-next-bundle-price]` elements.
+When `'true'`, shipping cost is included in the price calculation and reflected in `[data-next-bundle-display]` elements.
 
 ---
 
@@ -397,21 +397,63 @@ Use `data-next-display="bundle.{bundleId}.{property}"` on any element in the doc
 |---|---|---|
 | `isSelected` | boolean | `true` when this bundle card is the currently selected card |
 | `name` | text | Value of `data-next-bundle-name` on the card element |
-| `price` | currency | Total price for the bundle (same value as `data-next-bundle-price`) |
-| `compare` | currency | Retail / compare-at price |
-| `savings` | currency | Discount amount (compare minus total) |
-| `savingsPercentage` | percentage | Discount as a percentage of compare price |
-| `hasSavings` | boolean | `true` when savings is greater than zero |
+| `price` | currency | Total price for the bundle after all discounts |
+| `originalPrice` | currency | Retail / compare-at price (subtotal before discount) |
+| `discountAmount` | currency | Total discount applied to the bundle |
+| `discountPercentage` | percentage | Discount as a percentage of the original price |
+| `hasDiscount` | boolean | `true` when a discount is applied to the bundle |
+| `unitPrice` | currency | *(coming soon — not yet implemented)* |
+| `originalUnitPrice` | currency | *(coming soon — not yet implemented)* |
+
+**Deprecated properties** (still supported for backwards compatibility):
+
+| Property | Use instead |
+|---|---|
+| `compare` | `originalPrice` |
+| `savings` | `discountAmount` |
+| `savingsPercentage` | `discountPercentage` |
+| `hasSavings` | `hasDiscount` |
 
 Supports all standard display modifiers: `data-next-format`, `data-hide-if-zero`, `data-hide-if-false`.
 
 ---
 
-## Price display attributes
+## Display attributes
 
 ---
 
-### `data-next-bundle-price`
+### `data-next-bundle-display`
+
+| | |
+|---|---|
+| Type | `string` (field name) |
+| Required | no |
+| Default | `'price'` when attribute value is absent |
+
+Placed on elements inside a bundle card. The enhancer writes the formatted field value into the element after each price fetch.
+
+**Supported fields:**
+
+| Field | Format | Description |
+|-------|--------|-------------|
+| `price` | currency | Total price after all discounts |
+| `total` | currency | Alias for `price` |
+| `originalPrice` | currency | Retail / compare-at price before discount |
+| `compare` | currency | Alias for `originalPrice` |
+| `discountAmount` | currency | Total discount applied to the bundle |
+| `savings` | currency | Alias for `discountAmount` |
+| `unitPrice` | currency | Total price divided by total visible quantity |
+| `originalUnitPrice` | currency | Original price divided by total visible quantity |
+| `discountPercentage` | percentage | Discount as a percentage of the original price |
+| `savingsPercentage` | percentage | Alias for `discountPercentage` |
+| `hasDiscount` | boolean | Element is shown when a discount is applied; hidden otherwise |
+| `hasSavings` | boolean | Alias for `hasDiscount` |
+| `isSelected` | boolean | Element is shown when this bundle card is selected; hidden otherwise |
+| `name` | text | Value of `data-next-bundle-name` on the card element |
+
+---
+
+### `data-next-bundle-price` *(deprecated)*
 
 | | |
 |---|---|
@@ -419,17 +461,15 @@ Supports all standard display modifiers: `data-next-format`, `data-hide-if-zero`
 | Required | no |
 | Default | `'total'` when attribute value is absent |
 
-Placed on elements inside a bundle card. The enhancer writes a formatted price string into the element after each price fetch.
+Deprecated. Use `data-next-bundle-display` instead. Still supported for backward compatibility.
 
-**Valid values:**
-
-| Value | Displays |
-|-------|----------|
-| *(no value / empty)* | Total price after all discounts |
-| `total` | Explicit alias for the above |
-| `compare` | Retail / compare-at price (from `price_retail` on campaign packages) |
-| `savings` | Discount amount (compare price minus total) |
-| `savingsPercentage` | Discount as a percentage of the compare price |
+| Value | Use instead |
+|-------|-------------|
+| *(no value / empty)* | `data-next-bundle-display="price"` |
+| `total` | `data-next-bundle-display="price"` |
+| `compare` | `data-next-bundle-display="originalPrice"` |
+| `savings` | `data-next-bundle-display="discountAmount"` |
+| `savingsPercentage` | `data-next-bundle-display="discountPercentage"` |
 
 ---
 

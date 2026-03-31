@@ -2,6 +2,7 @@ import { useCartStore } from '@/stores/cartStore';
 import { useCheckoutStore } from '@/stores/checkoutStore';
 import { useCampaignStore } from '@/stores/campaignStore';
 import type { BundleCard, HandlerContext } from './BundleSelectorEnhancer.types';
+import { getEffectiveItems, makePackageState } from './BundleSelectorEnhancer.state';
 
 // ─── Card click / bundle selection ───────────────────────────────────────────
 
@@ -15,7 +16,7 @@ export async function handleCardClick(
   if (previousCard === card) return;
 
   ctx.selectCard(card);
-  ctx.emit('bundle:selected', { bundleId: card.bundleId, items: ctx.getEffectiveItems(card) });
+  ctx.emit('bundle:selected', { bundleId: card.bundleId, items: getEffectiveItems(card) });
 
   if (card.vouchers.length || previousCard?.vouchers.length) {
     await applyVoucherSwap(previousCard, card);
@@ -29,9 +30,10 @@ export async function handleCardClick(
 
 /**
  * Apply a bundle to the cart.
- * - Swapping from a previous bundle: strips previous bundle's packages and
- *   replaces them with the new bundle, leaving unrelated items untouched.
- * - First selection (no previous): replaces the entire cart with the bundle's items.
+ * Strips the outgoing bundle's items (previous when swapping, or any stale
+ * items already tagged with the selected bundle ID on first selection) and
+ * replaces them with the new bundle's items, leaving all unrelated cart items
+ * untouched.
  */
 export async function applyBundle(
   previous: BundleCard | null,
@@ -41,24 +43,21 @@ export async function applyBundle(
   if (ctx.isApplyingRef.value) return;
   ctx.isApplyingRef.value = true;
   const cartStore = useCartStore.getState();
-  const newItems = ctx.getEffectiveItems(selected).map(i => ({
+  const newItems = getEffectiveItems(selected).map(i => ({
     ...i,
     bundleId: selected.bundleId,
   }));
   try {
-    if (previous) {
-      const retained = cartStore.items
-        .filter(ci => ci.bundleId !== previous.bundleId)
-        .map(ci => ({
-          packageId: ci.packageId,
-          quantity: ci.quantity,
-          isUpsell: ci.is_upsell,
-          bundleId: ci.bundleId,
-        }));
-      await cartStore.swapCart([...retained, ...newItems]);
-    } else {
-      await cartStore.swapCart(newItems);
-    }
+    const filterBundleId = previous?.bundleId ?? selected.bundleId;
+    const retained = cartStore.items
+      .filter(ci => ci.bundleId !== filterBundleId)
+      .map(ci => ({
+        packageId: ci.packageId,
+        quantity: ci.quantity,
+        isUpsell: ci.is_upsell,
+        bundleId: ci.bundleId,
+      }));
+    await cartStore.swapCart([...retained, ...newItems]);
     ctx.logger.debug(`Applied bundle "${selected.bundleId}"`, newItems);
   } catch (error) {
     // Revert visual selection so UI stays consistent with cart state
@@ -95,7 +94,7 @@ export async function applyEffectiveChange(
         isUpsell: ci.is_upsell,
         bundleId: ci.bundleId,
       }));
-    const newItems = ctx.getEffectiveItems(card).map(i => ({
+    const newItems = getEffectiveItems(card).map(i => ({
       ...i,
       bundleId: card.bundleId,
     }));
@@ -126,6 +125,47 @@ export async function applyVoucherSwap(
     if (!current.includes(code)) checkoutStore.addVoucher(code);
   }
   useCartStore.getState().calculateTotals();
+}
+
+// ─── Voucher-change handler ───────────────────────────────────────────────────
+
+/**
+ * Called when checkout vouchers change.
+ * Compares the user-entered portion of the voucher list — vouchers that do not
+ * belong to any bundle across **all** BundleSelectorEnhancer instances. Re-fetches
+ * prices for every card in this instance only when that user-coupon set changes.
+ *
+ * This means a bundle swap (which only adds/removes bundle-managed vouchers) will
+ * NOT trigger a redundant price re-fetch, while a user manually entering or removing
+ * a coupon code will.
+ *
+ * @param newVouchers       Current checkout vouchers after the change.
+ * @param prevVouchers      Checkout vouchers before the change.
+ * @param cards             Bundle cards owned by this enhancer instance.
+ * @param allBundleVouchers Union of every bundle voucher across ALL live instances.
+ * @param fetchPrice        Re-fetches the price for a single card.
+ */
+export function onVoucherApplied(
+  newVouchers: string[],
+  prevVouchers: string[],
+  cards: BundleCard[],
+  allBundleVouchers: Set<string>,
+  fetchPrice: (card: BundleCard) => Promise<void>,
+): void {
+  const prevUserCoupons = prevVouchers.filter(v => !allBundleVouchers.has(v));
+  const nextUserCoupons = newVouchers.filter(v => !allBundleVouchers.has(v));
+
+  const prevSet = new Set(prevUserCoupons);
+  const nextSet = new Set(nextUserCoupons);
+  const changed =
+    prevSet.size !== nextSet.size ||
+    nextUserCoupons.some(v => !prevSet.has(v));
+
+  if (!changed) return;
+
+  for (const card of cards) {
+    void fetchPrice(card);
+  }
 }
 
 // ─── Variant change handlers ──────────────────────────────────────────────────
@@ -163,13 +203,15 @@ export async function applyVariantChange(
 
   slot.activePackageId = matched.ref_id;
 
+  // Ensure the new packageId has a packageState entry (provisional campaign prices).
+  // fetchAndUpdateBundlePrice will overwrite with bundle-computed prices afterward.
+  if (!card.packageStates.has(matched.ref_id)) {
+    card.packageStates.set(matched.ref_id, makePackageState(matched));
+  }
+
   if (ctx.mode === 'swap') {
     await applyEffectiveChange(card, ctx);
   }
-
-  // Re-render slots after cart sync so template vars (image, price, etc.)
-  // reflect the final cart state and don't blink from an intermediate render.
-  ctx.renderSlotsForCard(card);
 
   void ctx.fetchAndUpdateBundlePrice(card);
 
@@ -180,11 +222,11 @@ export async function applyVariantChange(
 }
 
 /** Delegated click handler for custom variant option elements. */
-export function handleVariantOptionClick(
+export async function handleVariantOptionClick(
   e: Event,
   cards: BundleCard[],
   ctx: HandlerContext,
-): void {
+): Promise<void> {
   const target = e.target as HTMLElement;
   const optionEl = target.closest<HTMLElement>('[data-next-variant-option]');
   if (!optionEl) return;
@@ -230,6 +272,15 @@ export function handleVariantOptionClick(
     const sel = g.querySelector<HTMLElement>('[data-next-variant-option][data-selected="true"]');
     if (sel?.dataset.nextVariantValue) selectedAttrs[attrCode] = sel.dataset.nextVariantValue;
   });
+
+  const previousCard = ctx.getSelectedCard();
+  if (previousCard !== card) {
+    ctx.selectCard(card);
+    ctx.emit('bundle:selected', { bundleId: card.bundleId, items: getEffectiveItems(card) });
+    if (card.vouchers.length || previousCard?.vouchers.length) {
+      await applyVoucherSwap(previousCard, card);
+    }
+  }
 
   void applyVariantChange(card, slotIndex, selectedAttrs, ctx);
 }
