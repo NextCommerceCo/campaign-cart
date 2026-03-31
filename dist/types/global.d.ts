@@ -279,6 +279,16 @@ export interface EventMap {
             quantity: number;
         }[];
     };
+    'bundle:price-updated': {
+        bundleId: string;
+    };
+    'selector:price-updated': {
+        selectorId: string;
+        packageId: number;
+    };
+    'toggle:price-updated': {
+        packageId: number;
+    };
     'toggle:toggled': {
         packageId: number;
         added: boolean;

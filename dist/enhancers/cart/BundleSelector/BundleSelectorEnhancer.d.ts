@@ -1,6 +1,7 @@
 import { BaseEnhancer } from '../../base/BaseEnhancer';
-import { BundleCard } from './BundleSelectorEnhancer.types';
+import { BundleCard, BundleCardPublicState } from './BundleSelectorEnhancer.types';
 export declare class BundleSelectorEnhancer extends BaseEnhancer {
+    private static readonly _instances;
     private mode;
     private template;
     private slotTemplate;
@@ -17,24 +18,26 @@ export declare class BundleSelectorEnhancer extends BaseEnhancer {
     private includeShipping;
     private externalSlotsEl;
     private classNames;
-    private previewLines;
     private currencyChangeTimeout;
     private voucherChangeTimeout;
     initialize(): Promise<void>;
+    private calculateAndRenderPrice;
+    private relenderVariables;
     private scanCards;
     private registerCard;
     private setupMutationObserver;
     selectCard(card: BundleCard): void;
     private renderExternalSlots;
     getSelectedCard(): BundleCard | null;
+    static getBundleState(bundleId: string): BundleCardPublicState | null;
     private syncWithCart;
     update(): void;
     private makeRenderContext;
     private makeHandlerContext;
     private makePriceContext;
     private parseClassNames;
-    private getEffectiveItems;
-    private parseVouchers;
+    private getBundleVouchers;
+    private getAllKnownBundleVouchers;
     protected cleanupEventListeners(): void;
     destroy(): void;
 }

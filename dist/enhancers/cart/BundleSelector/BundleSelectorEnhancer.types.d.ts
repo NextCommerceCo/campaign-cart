@@ -1,5 +1,4 @@
 import { EventMap } from '../../../types/global';
-import { SummaryLine } from '../../../types/api';
 import { Logger } from '../../../utils/logger';
 export interface ClassNames {
     bundleCard: string;
@@ -20,6 +19,7 @@ export interface BundleDef {
     id: string;
     items: BundleItem[];
     vouchers?: string[];
+    selected?: boolean;
     [key: string]: unknown;
 }
 export interface BundleSlot {
@@ -30,20 +30,53 @@ export interface BundleSlot {
     quantity: number;
     noSlot?: boolean;
 }
+export interface BundlePackageState {
+    packageId: number;
+    name: string;
+    image: string;
+    qty: number;
+    productName: string;
+    variantName: string;
+    sku: string | null;
+    isRecurring: boolean;
+    unitPrice: string;
+    packagePrice: string;
+    originalUnitPrice: string;
+    originalPackagePrice: string;
+    totalDiscount: string;
+    subtotal: string;
+    total: string;
+    hasDiscount: boolean;
+    hasSavings: boolean;
+}
+export interface BundlePriceSummary {
+    total: number;
+    subtotal: number;
+    totalDiscount: number;
+    totalDiscountPercentage: number;
+}
 export interface BundleCard {
     element: HTMLElement;
     bundleId: string;
+    name: string;
     items: BundleItem[];
     slots: BundleSlot[];
     isPreSelected: boolean;
     vouchers: string[];
+    packageStates: Map<number, BundlePackageState>;
+    bundlePrice: BundlePriceSummary | null;
+    slotVarsCache: Map<number, Record<string, string>>;
+}
+export interface BundleCardPublicState {
+    name: string;
+    isSelected: boolean;
+    bundlePrice: BundlePriceSummary | null;
 }
 export interface RenderContext {
     slotTemplate: string;
     variantOptionTemplate: string;
     variantSelectorTemplate: string;
     selectHandlers: Map<HTMLSelectElement, EventListener>;
-    previewLines: Map<string, SummaryLine[]>;
     logger: Logger;
     classNames: ClassNames;
     onSelectChange: (select: HTMLSelectElement, bundleId: string, slotIndex: number) => Promise<void>;
@@ -57,18 +90,13 @@ export interface HandlerContext {
     };
     externalSlotsEl: HTMLElement | null;
     selectCard: (card: BundleCard) => void;
-    getEffectiveItems: (card: BundleCard) => BundleItem[];
+    getSelectedCard: () => BundleCard | null;
     fetchAndUpdateBundlePrice: (card: BundleCard) => Promise<void>;
-    renderSlotsForCard: (card: BundleCard) => void;
     emit: <K extends 'bundle:selected' | 'bundle:selection-changed'>(event: K, detail: EventMap[K]) => void;
 }
 export interface PriceContext {
     includeShipping: boolean;
-    previewLines: Map<string, SummaryLine[]>;
-    cards: BundleCard[];
+    allBundleVouchers: Set<string>;
     logger: Logger;
-    slotTemplate: string;
-    renderSlotsForCard: (card: BundleCard) => void;
-    getEffectiveItems: (card: BundleCard) => BundleItem[];
 }
 //# sourceMappingURL=BundleSelectorEnhancer.types.d.ts.map
