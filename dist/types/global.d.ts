@@ -374,6 +374,7 @@ export interface CartState {
     totalDiscountPercentage: Decimal;
     total: Decimal;
     summary?: import('./api').CartSummary;
+    isCalculating: boolean;
 }
 export interface EnrichedCartLine {
     id: number;

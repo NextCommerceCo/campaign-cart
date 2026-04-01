@@ -1,6 +1,6 @@
 export { BaseDisplayEnhancer, DisplayFormatter, PropertyResolver } from './DisplayEnhancerCore';
 export { ProductDisplayEnhancer } from './ProductDisplayEnhancer';
-export { CartDisplayEnhancer } from './CartDisplayEnhancer';
+export { CartDisplayEnhancer } from '../cart/CartSummary';
 export { SelectionDisplayEnhancer } from './SelectionDisplayEnhancer';
 export { OrderDisplayEnhancer } from './OrderDisplayEnhancer';
 export { DisplayContextProvider, setupContextProviders } from './DisplayContextProvider';
