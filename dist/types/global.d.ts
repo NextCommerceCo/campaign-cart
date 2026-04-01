@@ -238,27 +238,6 @@ export interface EventMap {
         image: string;
     };
     'sdk:url-parameters-processed': {};
-    'profile:applied': {
-        profileId: string;
-        previousProfileId?: string | null;
-        itemsSwapped: number;
-        originalItems?: number;
-        cleared?: boolean;
-        profile?: any;
-    };
-    'profile:reverted': {
-        previousProfileId?: string | null;
-        itemsRestored: number;
-    };
-    'profile:switched': {
-        fromProfileId?: string | null;
-        toProfileId: string;
-        itemsAffected: number;
-    };
-    'profile:registered': {
-        profileId: string;
-        mappingsCount: number;
-    };
     'offer:selected': {
         offerId: number;
     };
@@ -543,13 +522,6 @@ export interface ConfigState {
             };
         };
     };
-    profiles?: Record<string, {
-        name: string;
-        description?: string;
-        packageMappings: Record<number, number>;
-    }>;
-    defaultProfile?: string;
-    activeProfile?: string;
     clearCartOnInit?: boolean;
 }
 export type PageType = 'product' | 'cart' | 'checkout' | 'upsell' | 'receipt';

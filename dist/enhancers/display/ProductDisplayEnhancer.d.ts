@@ -4,7 +4,6 @@ export declare class ProductDisplayEnhancer extends BaseDisplayEnhancer {
     private packageId?;
     private contextPackageId?;
     private packageData?;
-    private originalPackageData?;
     private multiplyByQuantity;
     private currentQuantity;
     private quantitySelectorId?;
@@ -13,8 +12,6 @@ export declare class ProductDisplayEnhancer extends BaseDisplayEnhancer {
     private handleCampaignUpdate;
     private handleCartUpdate;
     protected setupCurrencyChangeListener(): void;
-    private handleProfileUpdate;
-    private setupProfileEventListeners;
     private setupQuantityListeners;
     private detectPackageContext;
     private loadPackageData;
@@ -36,7 +33,6 @@ export declare class ProductDisplayEnhancer extends BaseDisplayEnhancer {
     private calculateTotalSavingsPercentage;
     private calculateTotalSavingsPercentageRaw;
     private calculateHasTotalSavings;
-    private calculateProfileAwareSavingsPercentage;
     private getPackageValue;
     private getCampaignProperty;
     getPackageProperty(property: string): any;
