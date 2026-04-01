@@ -71,11 +71,14 @@ export async function fetchAndUpdateBundlePrice(
     }
 
     // Update aggregate bundle price summary
+    // result fields are Decimal instances from a live fetch, but plain
+    // numbers/strings when rehydrated from the sessionStorage cache — use
+    // parseFloat(String()) to handle both cases safely.
     card.bundlePrice = {
-      total: result.total.toNumber(),
-      subtotal: result.subtotal.toNumber(),
-      totalDiscount: result.totalDiscount.toNumber(),
-      totalDiscountPercentage: result.totalDiscountPercentage.toNumber(),
+      total: parseFloat(String(result.total)),
+      subtotal: parseFloat(String(result.subtotal)),
+      totalDiscount: parseFloat(String(result.totalDiscount)),
+      totalDiscountPercentage: parseFloat(String(result.totalDiscountPercentage)),
     };
 
   } catch (error) {
