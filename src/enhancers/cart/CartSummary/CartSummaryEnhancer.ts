@@ -43,6 +43,8 @@
  *   next-no-tax                  tax = 0
  *   next-has-savings             retail or discount savings available
  *   next-no-savings              no savings
+ *   next-calculating             totals are being recalculated
+ *   next-not-calculating         totals are up to date
  *
  * Use these classes to show/hide rows with CSS:
  *   .next-no-discounts .discount-row { display: none }
@@ -181,12 +183,13 @@ export class CartSummaryEnhancer extends BaseEnhancer {
   // ─── Private ───────────────────────────────────────────────────────────────
 
   private handleCartUpdate(state: CartState): void {
-    const totalsChanged  = state.subtotal  !== this.cartState?.subtotal
+    const totalsChanged      = state.subtotal !== this.cartState?.subtotal
       || state.total !== this.cartState?.total;
-    const summaryChanged = state.summary !== this.summary;
-    const countChanged   = state.items.length !== this.itemCount;
+    const summaryChanged     = state.summary !== this.summary;
+    const countChanged       = state.items.length !== this.itemCount;
+    const calculatingChanged = state.isCalculating !== this.cartState?.isCalculating;
 
-    if (totalsChanged || summaryChanged || countChanged) {
+    if (totalsChanged || summaryChanged || countChanged || calculatingChanged) {
       this.cartState = state;
       this.summary   = state.summary;
       this.itemCount = state.items.length;

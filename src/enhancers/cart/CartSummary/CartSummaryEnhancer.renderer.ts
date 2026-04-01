@@ -11,6 +11,7 @@ export function buildFlags(state: CartState): SummaryFlags {
     hasDiscounts:        state.hasDiscounts,
     isFreeShipping:      state.shippingMethod?.price.isZero() ?? true,
     hasShippingDiscount: state.shippingMethod?.hasDiscounts ?? false,
+    isCalculating:       state.isCalculating,
   };
 }
 
@@ -59,6 +60,8 @@ export function updateStateClasses(element: HTMLElement, flags: SummaryFlags): v
   element.classList.toggle('next-free-shipping',          flags.isFreeShipping);
   element.classList.toggle('next-has-shipping-discount',  flags.hasShippingDiscount);
   element.classList.toggle('next-no-shipping-discount',  !flags.hasShippingDiscount);
+  element.classList.toggle('next-calculating',     flags.isCalculating);
+  element.classList.toggle('next-not-calculating', !flags.isCalculating);
 }
 
 // ─── Rendering ────────────────────────────────────────────────────────────────
