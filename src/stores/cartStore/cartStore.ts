@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { subscribeWithSelector, persist } from 'zustand/middleware';
+import Decimal from 'decimal.js';
 import { sessionStorageManager, CART_STORAGE_KEY } from '@/utils/storage';
 import { createLogger } from '@/utils/logger';
 import { createCartItemsSlice, initialCartState } from './cartSlice.items';
@@ -27,6 +28,16 @@ const cartStoreInstance = create<CartStore>()(
       onRehydrateStorage: () => state => {
         if (state) {
           logger.debug('Cart store rehydrated, recalculating totals...');
+          if (state.shippingMethod) {
+            const sm = state.shippingMethod;
+            state.shippingMethod = {
+              ...sm,
+              price: new Decimal(sm.price),
+              originalPrice: new Decimal(sm.originalPrice),
+              discountAmount: new Decimal(sm.discountAmount),
+              discountPercentage: new Decimal(sm.discountPercentage),
+            };
+          }
           state.calculateTotals();
         }
       },

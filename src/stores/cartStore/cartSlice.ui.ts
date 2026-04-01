@@ -9,4 +9,5 @@ export const createCartUiSlice: StateCreator<
 > = set => ({
   swapInProgress: false,
   setSwapInProgress: value => set({ swapInProgress: value }),
+  isCalculating: false,
 });

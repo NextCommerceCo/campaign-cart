@@ -14,6 +14,7 @@ export interface CartItemsSlice {
 export interface CartUiSlice {
   swapInProgress: boolean;
   setSwapInProgress: (value: boolean) => void;
+  isCalculating: boolean;
 }
 
 export interface CartApiSlice {

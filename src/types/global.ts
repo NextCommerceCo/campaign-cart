@@ -339,6 +339,8 @@ export interface CartState {
   total: Decimal;
   /** Raw CartSummary response from the API calculate endpoint. */
   summary?: import('./api').CartSummary;
+  /** `true` while the calculate API is in flight. Use to show loading state on price/total fields. */
+  isCalculating: boolean;
 }
 
 export interface EnrichedCartLine {

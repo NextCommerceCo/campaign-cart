@@ -14,6 +14,7 @@ export const initialCartState: CartState = {
   totalDiscount: new Decimal(0),
   totalDiscountPercentage: new Decimal(0),
   total: new Decimal(0),
+  isCalculating: false,
 };
 
 export const createCartItemsSlice: StateCreator<

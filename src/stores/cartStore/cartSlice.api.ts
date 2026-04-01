@@ -23,6 +23,23 @@ function scheduleCalculate(fn: (signal: AbortSignal) => Promise<void>): void {
   calcTimer = setTimeout(() => fn(signal), CALC_DEBOUNCE_MS);
 }
 
+// Compute subtotal/total/totalQuantity immediately from local item data.
+// This gives the UI an instant price update without waiting for the API.
+// The API result will override these values with accurate discounts/shipping.
+function optimisticTotals(items: CartItem[]): {
+  subtotal: Decimal;
+  total: Decimal;
+  totalQuantity: number;
+  isEmpty: boolean;
+} {
+  const subtotal = items.reduce(
+    (sum, item) => sum.plus(new Decimal(item.price).times(item.quantity)),
+    new Decimal(0)
+  );
+  const totalQuantity = items.reduce((s, i) => s + i.quantity, 0);
+  return { subtotal, total: subtotal, totalQuantity, isEmpty: items.length === 0 };
+}
+
 export const createCartApiSlice: StateCreator<
   CartStore,
   [],
@@ -104,7 +121,7 @@ export const createCartApiSlice: StateCreator<
         newItems = [...state.items, newItem];
       }
 
-      return { ...state, items: newItems };
+      return { ...state, items: newItems, ...optimisticTotals(newItems) };
     });
 
     EventBus.getInstance().emit('cart:item-added', {
@@ -117,10 +134,10 @@ export const createCartApiSlice: StateCreator<
   removeItem: async packageId => {
     const removedItem = get().items.find(item => item.packageId === packageId);
 
-    set(state => ({
-      ...state,
-      items: state.items.filter(item => item.packageId !== packageId),
-    }));
+    set(state => {
+      const newItems = state.items.filter(item => item.packageId !== packageId);
+      return { ...state, items: newItems, ...optimisticTotals(newItems) };
+    });
 
     if (removedItem) {
       EventBus.getInstance().emit('cart:item-removed', { packageId });
@@ -136,12 +153,12 @@ export const createCartApiSlice: StateCreator<
     const currentItem = get().items.find(item => item.packageId === packageId);
     const oldQuantity = currentItem?.quantity ?? 0;
 
-    set(state => ({
-      ...state,
-      items: state.items.map(item =>
+    set(state => {
+      const newItems = state.items.map(item =>
         item.packageId === packageId ? { ...item, quantity } : item
-      ),
-    }));
+      );
+      return { ...state, items: newItems, ...optimisticTotals(newItems) };
+    });
 
     if (currentItem) {
       EventBus.getInstance().emit('cart:quantity-changed', {
@@ -237,7 +254,7 @@ export const createCartApiSlice: StateCreator<
         newItems.push(newItem);
       }
 
-      return { ...state, items: newItems, swapInProgress: false };
+      return { ...state, items: newItems, swapInProgress: false, ...optimisticTotals(newItems) };
     });
 
     const eventBus = EventBus.getInstance();
@@ -326,14 +343,14 @@ export const createCartApiSlice: StateCreator<
       });
     }
 
-    set(state => ({ ...state, items: newItems, swapInProgress: false }));
+    set(state => ({ ...state, items: newItems, swapInProgress: false, ...optimisticTotals(newItems) }));
     get().calculateTotals();
 
     logger.info(`Cart swapped successfully with ${newItems.length} items`);
   },
 
   clear: () => {
-    set(state => ({ ...state, items: [] }));
+    set(state => ({ ...state, items: [], ...optimisticTotals([]) }));
     get().calculateTotals();
   },
 
@@ -342,6 +359,7 @@ export const createCartApiSlice: StateCreator<
   },
 
   calculateTotals: () => {
+    set({ isCalculating: true });
     scheduleCalculate(async signal => {
       try {
         const { useCampaignStore } = await import('../campaignStore');
@@ -429,11 +447,13 @@ export const createCartApiSlice: StateCreator<
             offerDiscounts: summary.offer_discounts ?? [],
             voucherDiscounts: summary.voucher_discounts ?? [],
             summary: { ...summary, lines: enrichedSummaryLines },
+            isCalculating: false,
           });
           EventBus.getInstance().emit('cart:updated', get());
         } catch (error) {
           if (signal.aborted) return;
           logger.error('Failed to sync cart with API:', error);
+          set({ isCalculating: false });
         }
       } catch (error) {
         logger.error('Error calculating totals:', error);
@@ -445,6 +465,7 @@ export const createCartApiSlice: StateCreator<
           totalDiscountPercentage: new Decimal(0),
           totalQuantity: 0,
           isEmpty: true,
+          isCalculating: false,
         });
       }
     });
