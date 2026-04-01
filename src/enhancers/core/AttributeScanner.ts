@@ -252,9 +252,9 @@ export class AttributeScanner {
             elementHtml: element.outerHTML.substring(0, 200) + '...'
           });
           
-          if (parsed.object === 'cart') {
+          if (parsed.object === 'cart' || parsed.object === 'cart-summary') {
             this.logger.debug('Using CartDisplayEnhancer');
-            const { CartDisplayEnhancer } = await import('@/enhancers/display/CartDisplayEnhancer');
+            const { CartDisplayEnhancer } = await import('@/enhancers/cart/CartSummary');
             return new CartDisplayEnhancer(element);
           } else if (parsed.object === 'selection') {
             this.logger.debug('Using SelectionDisplayEnhancer');
@@ -305,7 +305,7 @@ export class AttributeScanner {
             } else {
               // Default to cart display
               this.logger.debug(`Using CartDisplayEnhancer (fallback without package context)`);
-              const { CartDisplayEnhancer } = await import('@/enhancers/display/CartDisplayEnhancer');
+              const { CartDisplayEnhancer } = await import('@/enhancers/cart/CartSummary');
               return new CartDisplayEnhancer(element);
             }
           }

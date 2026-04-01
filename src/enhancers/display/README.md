@@ -68,7 +68,7 @@ Displays cart totals and state. Subscribes to `cartStore`.
 | `currency` / `currencyCode` | Currency code (e.g. `USD`) |
 | `currencySymbol` | Currency symbol (e.g. `$`) |
 
-**Special:** `data-include-discounts` attribute on element — for `subtotal`, subtracts applied coupon discounts.
+**Deprecated:** `data-include-discounts` — subtracts `totalDiscount` from `subtotal`. Logs a deprecation warning. Migrate to a separate `data-next-display="cart.totalDiscount"` element hidden via `.next-no-discounts`.
 
 **CSS classes managed:** `next-cart-empty`, `next-cart-has-items`
 

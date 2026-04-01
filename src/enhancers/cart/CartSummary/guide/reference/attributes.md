@@ -1,6 +1,6 @@
 # Attributes
 
-## Host element attributes
+## Host element attributes — `CartSummaryEnhancer`
 
 ---
 
@@ -16,7 +16,74 @@ Marks the element as a cart summary block and triggers enhancer instantiation. P
 
 ---
 
-## State classes *(set by enhancer)*
+## Display element attributes — `CartDisplayEnhancer`
+
+---
+
+### `data-next-display`
+
+| | |
+|---|---|
+| Type | `string` |
+| Required | yes |
+| Default | — |
+
+Places a single reactive cart value on the element. Value is updated automatically on every cart change. Format: `cart.{property}`.
+
+```html
+<span data-next-display="cart.total"></span>
+```
+
+**Supported properties:**
+
+| Property | Format | Description |
+|----------|--------|-------------|
+| `subtotal` | currency | Subtotal before shipping and discounts |
+| `total` | currency | Grand total after all discounts and shipping |
+| `totalDiscount` | currency | Combined offer and voucher discount amount |
+| `discounts` | currency | **Deprecated** — use `totalDiscount` instead |
+| `shipping` | currency | Shipping cost (`0` when free — pair with `isFreeShipping` for "Free" display) |
+| `shippingOriginal` | currency | Original shipping before a shipping discount; `0` when no shipping discount |
+| `shippingDiscountAmount` | currency | Absolute discount applied to shipping; `0` when no shipping discount |
+| `shippingDiscountPercentage` | number | Shipping discount as a percentage of the original price; `0` when no shipping discount |
+| `shippingName` | text | Display name of the selected shipping method; empty string when no method is selected |
+| `shippingCode` | text | Code of the selected shipping method (matches campaign API); empty string when no method is selected |
+| `itemCount` | number | Number of lines in the cart |
+| `totalQuantity` | number | Total unit quantity across all cart lines |
+| `isEmpty` | boolean | `Yes` / `No` — whether the cart has no items |
+| `hasDiscounts` | boolean | `Yes` / `No` — whether any discount is applied |
+| `isFreeShipping` | boolean | `Yes` / `No` — whether shipping cost is zero |
+| `hasShippingDiscount` | boolean | `Yes` / `No` — whether a shipping discount is applied |
+| `isCalculating` | boolean | `Yes` / `No` — whether a totals recalculation is in progress |
+| `currency` | text | Active currency code (e.g. `USD`) |
+| `currencyCode` | text | Alias for `currency` |
+| `currencySymbol` | text | Symbol for the active currency (e.g. `$`) |
+
+Optional attributes:
+
+| Attribute | Effect |
+|-----------|--------|
+| `data-include-discounts` | **Deprecated.** Subtracts `totalDiscount` from `subtotal` before formatting. Logs a console warning. Migrate to a separate `data-next-display="cart.totalDiscount"` element hidden via `.next-no-discounts`. |
+| `data-next-format` | Override format type (`currency`, `number`, `boolean`, `percentage`, `text`, `auto`) |
+| `data-hide-if-zero` | Hide the element when the value is `0` |
+| `data-hide-if-false` | Hide the element when the value is falsy |
+| `data-hide-zero-cents` | Omit `.00` from currency output |
+
+**Example — hide shipping cost when free:**
+```html
+<span data-next-display="cart.shipping" data-hide-if-zero="true"></span>
+```
+
+**Example — raw numeric value (no formatting):**
+```html
+<span data-next-display="cart.total.raw"></span>
+```
+
+> **Deprecated prefix:** `cart-summary.{property}` still works but logs a deprecation warning. Migrate to `cart.{property}`.
+
+---
+
+## State classes *(set by `CartSummaryEnhancer`)*
 
 Applied to the host element on every render. Use these in CSS to show or hide rows without JavaScript.
 
@@ -30,10 +97,8 @@ Applied to the host element on every render. Use these in CSS to show or hide ro
 | `next-free-shipping` | Shipping cost = 0 |
 | `next-has-shipping-discount` | A shipping discount is applied |
 | `next-no-shipping-discount` | No shipping discount |
-| `next-has-tax` | Tax amount > 0 |
-| `next-no-tax` | Tax amount = 0 |
-| `next-has-savings` | Retail or discount savings are available |
-| `next-no-savings` | No savings |
+| `next-calculating` | Totals recalculation is in progress |
+| `next-not-calculating` | Totals are up to date |
 
 **Example — hide discount row when no discount is active:**
 ```css
@@ -72,27 +137,9 @@ Original shipping cost before a shipping discount was applied. Empty string when
 
 ---
 
-### `{tax}`
-
-Tax amount. Formatted currency string. Zero when no tax applies.
-
----
-
 ### `{discounts}`
 
 Combined total of all offer and voucher discounts. Formatted currency string.
-
----
-
-### `{savings}`
-
-Total savings including both retail price differences (compare-at minus price) and applied discounts. Formatted currency string.
-
----
-
-### `{compareTotal}`
-
-The full retail (compare-at) total across all cart lines. Formatted currency string. The "before" price for a savings display.
 
 ---
 

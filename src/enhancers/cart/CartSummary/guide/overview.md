@@ -1,16 +1,19 @@
 # CartSummaryEnhancer
 
 > Category: `cart`
-> Last reviewed: 2026-03-27
+> Last reviewed: 2026-04-01
 > Owner: campaign-cart
 
-A reactive display block that shows the current cart totals — subtotal, discounts, shipping, tax, and grand total — and updates automatically whenever the cart changes. Supports a built-in default layout or a fully custom template defined in markup.
+Two enhancers cover cart summary display:
+
+- **`CartSummaryEnhancer`** — a reactive block that renders a full cart totals layout (subtotal, discounts, shipping, tax, grand total) into a container element. Supports a built-in default layout or a fully custom `<template>`.
+- **`CartDisplayEnhancer`** — renders a single cart value into any element, using `data-next-display="cart.{property}"`. Use this when you need individual values scattered across the page rather than a grouped block.
 
 ## Concept
 
-The enhancer subscribes to the cart store and re-renders its content whenever the totals, API summary, or item count changes. It is a read-only observer: it never writes to the cart.
+Both enhancers subscribe to the cart store and are read-only observers — neither ever writes to the cart.
 
-Rendering works in two paths depending on whether a `<template>` child is present:
+**`CartSummaryEnhancer`** rendering works in two paths depending on whether a `<template>` child is present:
 
 - **Default path**: the enhancer generates a standard row layout (subtotal, discounts, shipping, tax, total) using its built-in template. Optional rows (discounts, tax) are shown only when their values are non-zero.
 - **Custom path**: the enhancer uses the `<template>` child's markup as the layout. Token replacement (`{subtotal}`, `{total}`, etc.) fills in the formatted values. List containers for line items and discount breakdowns are wired up after token replacement.
@@ -20,28 +23,35 @@ In both paths, state CSS classes are applied to the host element on every render
 ```
 cartStore update
       │
-      ▼
- handleCartUpdate()
- ├── totals changed?
- ├── summary changed?
- └── item count changed?
-       │
-       YES → render()
-             ├── buildFlags(totals)       → SummaryFlags
-             ├── buildVars(totals, flags) → TemplateVars
-             ├── updateStateClasses()     → apply CSS classes to host
-             └── customTemplate?
-                 ├── YES → renderCustom() → token replacement + list containers
-                 └── NO  → renderDefault() → built-in row layout
+      ├─► CartSummaryEnhancer
+      │         │
+      │   handleCartUpdate()
+      │   ├── totals changed?
+      │   ├── summary changed?
+      │   └── item count changed?
+      │         │
+      │         YES → render()
+      │               ├── buildFlags(totals)       → SummaryFlags
+      │               ├── buildVars(totals, flags) → TemplateVars
+      │               ├── updateStateClasses()     → apply CSS classes to host
+      │               └── customTemplate?
+      │                   ├── YES → renderCustom() → token replacement + list containers
+      │                   └── NO  → renderDefault() → built-in row layout
+      │
+      └─► CartDisplayEnhancer (one instance per element)
+                │
+          getPropertyValue()  → raw value from cartStore
+                │
+          BaseDisplayEnhancer → format → set element textContent
 ```
 
 ## Business logic
 
 - Renders only when `cartStore.totals` is populated. Before the cart is initialized, the element is empty.
-- Re-renders on every change to `totals`, `summary`, or item count — not on every store tick. Reference equality is used to skip unnecessary renders.
+- Re-renders on every change to `totals`, `summary`, item count, or `isCalculating` — not on every store tick. Reference equality is used to skip unnecessary renders.
+- While a totals recalculation is in progress, `isCalculating` is `true` and the host element gets the `next-calculating` class. When recalculation completes, `next-not-calculating` is applied instead.
 - Shipping is displayed as "Free" when its value is zero. `{shippingOriginal}` is empty when no shipping discount is applied.
 - Discounts combine offer and voucher discounts into a single `{discounts}` total. Separate breakdown lists (`data-summary-offer-discounts`, `data-summary-voucher-discounts`) are available in custom templates.
-- `{savings}` covers retail price savings (compare-at minus price) plus applied discounts. `{compareTotal}` is the full retail total before savings.
 - List containers (`data-summary-lines`, `data-summary-offer-discounts`, `data-summary-voucher-discounts`) replace their non-template children entirely on each render. Children are cleared and rebuilt from the list template.
 - Line items are sorted by `package_id` ascending before rendering.
 - `{line.hasDiscount}` outputs `"show"` or `"hide"` — intended as a CSS class or `data-` flag, not directly displayed.

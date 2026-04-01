@@ -71,7 +71,7 @@ if (typeof window !== 'undefined') {
       // Phase 1: Critical modules (preload immediately)
       requestIdleCallback(() => {
         // Cart enhancers - most commonly used
-        import('./enhancers/display/CartDisplayEnhancer');
+        import('./enhancers/cart/CartSummary');
         import('./enhancers/cart/PackageToggle');
         import('./enhancers/cart/PackageSelector');
         
@@ -117,7 +117,7 @@ if (typeof window !== 'undefined') {
       // Fallback for browsers without requestIdleCallback
       setTimeout(() => {
         // Just preload critical modules
-        import('./enhancers/display/CartDisplayEnhancer');
+        import('./enhancers/cart/CartSummary');
         import('./enhancers/display/ProductDisplayEnhancer');
         import('./utils/analytics');
       }, 1000);

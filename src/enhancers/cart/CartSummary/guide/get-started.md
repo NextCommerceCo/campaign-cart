@@ -68,13 +68,29 @@ Inside a custom `<template>`, add list containers to render per-line breakdowns 
 </div>
 ```
 
+### Option D — Individual display values (`CartDisplayEnhancer`)
+
+Use `data-next-display="cart.{property}"` to place a single cart value on any element. Each element is an independent reactive display — no container or `<template>` needed.
+
+```html
+<p>Your total: <span data-next-display="cart.total"></span></p>
+<p>Subtotal: <span data-next-display="cart.subtotal"></span></p>
+<p>Savings: <span data-next-display="cart.totalDiscount"></span></p>
+<p>Items: <span data-next-display="cart.itemCount"></span></p>
+```
+
+The element content updates automatically whenever the cart changes. Available properties: `subtotal`, `total`, `totalDiscount`, `shipping`, `shippingOriginal`, `itemCount`, `isEmpty`, `hasDiscounts`, `isFreeShipping`, `hasShippingDiscount`, `isCalculating`, `currency`, `currencySymbol`.
+
+---
+
 ## Verify it is working
 
 After the SDK initializes and the cart contains at least one item, you should see:
 
 - The summary element's content is populated with prices — not blank.
 - Changing the cart (adding/removing items, applying a coupon) updates the displayed totals without a page reload.
-- The host element has state classes: `next-cart-has-items`, `next-has-discounts` or `next-no-discounts`, `next-free-shipping` or `next-has-shipping`.
+- The host element has state classes: `next-cart-has-items`, `next-has-discounts` or `next-no-discounts`, `next-free-shipping` or `next-has-shipping`, `next-not-calculating`.
+- While the cart is recalculating (e.g. after adding an item), the host briefly gets `next-calculating` then switches back to `next-not-calculating`.
 - In Option A, the discounts row is absent when no discount is active; the tax row is absent when tax is zero.
 - In Option B, `.discount-row` is hidden when `next-no-discounts` is present on the host.
 
