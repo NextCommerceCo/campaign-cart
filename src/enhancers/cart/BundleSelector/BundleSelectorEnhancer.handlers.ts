@@ -309,5 +309,10 @@ export async function handleSelectVariantChange(
     if (s.dataset.nextVariantCode) selectedAttrs[s.dataset.nextVariantCode] = s.value;
   });
 
+  // Ensure the changed select's new value takes precedence — it may not be
+  // inside slotEl (e.g. external slot containers), so the loop above can miss it.
+  const changedCode = _select.dataset.nextVariantCode;
+  if (changedCode) selectedAttrs[changedCode] = _select.value;
+
   await applyVariantChange(card, slotIndex, selectedAttrs, ctx);
 }

@@ -22,7 +22,6 @@ import { useCheckoutStore } from '@/stores/checkoutStore';
 import { useOrderStore } from '@/stores/orderStore';
 import { useConfigStore } from '@/stores/configStore';
 import { useAttributionStore } from '@/stores/attributionStore';
-import { useProfileStore } from '@/stores/profileStore';
 import { useParameterStore } from '@/stores/parameterStore';
 import { EventBus } from '@/utils/events';
 import { Logger } from '@/utils/logger';
@@ -793,77 +792,6 @@ export class NextCommerce {
     );
 
     return acceptedInJourney;
-  }
-
-  // Profile Management Methods
-  public async setProfile(
-    profileId: string,
-    options?: { clearCart?: boolean; preserveQuantities?: boolean }
-  ): Promise<void> {
-    try {
-      const { ProfileManager } = await import('@/core/ProfileManager');
-      const profileManager = ProfileManager.getInstance();
-      await profileManager.applyProfile(profileId, options);
-      this.logger.info(`Profile "${profileId}" applied via API`);
-    } catch (error) {
-      this.logger.error(`Failed to set profile "${profileId}":`, error);
-      throw error;
-    }
-  }
-
-  public async revertProfile(): Promise<void> {
-    try {
-      const { ProfileManager } = await import('@/core/ProfileManager');
-      const profileManager = ProfileManager.getInstance();
-      await profileManager.revertProfile();
-      this.logger.info('Profile reverted via API');
-    } catch (error) {
-      this.logger.error('Failed to revert profile:', error);
-      throw error;
-    }
-  }
-
-  public getActiveProfile(): string | null {
-    const profileStore = useProfileStore.getState();
-    return profileStore.activeProfileId;
-  }
-
-  public getProfileInfo(profileId?: string): any | null {
-    const profileStore = useProfileStore.getState();
-    return profileId
-      ? profileStore.getProfileById(profileId)
-      : profileStore.getActiveProfile();
-  }
-
-  public getMappedPackageId(originalId: number): number {
-    const profileStore = useProfileStore.getState();
-    return profileStore.getMappedPackageId(originalId);
-  }
-
-  public getOriginalPackageId(mappedId: number): number | null {
-    const profileStore = useProfileStore.getState();
-    return profileStore.getOriginalPackageId(mappedId);
-  }
-
-  public listProfiles(): string[] {
-    const profileStore = useProfileStore.getState();
-    return Array.from(profileStore.profiles.keys());
-  }
-
-  public hasProfile(profileId: string): boolean {
-    const profileStore = useProfileStore.getState();
-    return profileStore.hasProfile(profileId);
-  }
-
-  public registerProfile(profile: {
-    id: string;
-    name: string;
-    description?: string;
-    packageMappings: Record<number, number>;
-  }): void {
-    const profileStore = useProfileStore.getState();
-    profileStore.registerProfile(profile);
-    this.logger.info(`Profile "${profile.id}" registered via API`);
   }
 
   // URL Parameter Methods

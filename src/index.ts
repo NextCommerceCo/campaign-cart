@@ -21,9 +21,6 @@ export { useCampaignStore } from './stores/campaignStore';
 export { useConfigStore } from './stores/configStore';
 export { useCheckoutStore } from './stores/checkoutStore';
 export { useOrderStore } from './stores/orderStore';
-export { useProfileStore } from './stores/profileStore';
-export type { Profile, ProfileMapping, ProfileState, ProfileActions } from './stores/profileStore';
-
 // Type exports
 export type * from './types/global';
 
@@ -33,11 +30,6 @@ export { EventBus } from './utils/events';
 
 // API client export
 export { ApiClient } from './api/client';
-
-// Profile management exports
-export { ProfileManager } from './core/ProfileManager';
-export { ProfileMapper } from './utils/profiles/ProfileMapper';
-export { ProfileSwitcherEnhancer, ProfileSelectorEnhancer } from './enhancers/profile/ProfileSwitcherEnhancer';
 
 // Version - use runtime detected version from loader, fallback to build-time version
 declare global {
@@ -108,10 +100,6 @@ if (typeof window !== 'undefined') {
         // Behavior enhancers
         import('./enhancers/behavior/SimpleExitIntentEnhancer');
         
-        // Profile management (if profiles are configured)
-        import('./core/ProfileManager');
-        import('./enhancers/profile/ProfileSwitcherEnhancer');
-
       }, { timeout: 5000 });
     } else {
       // Fallback for browsers without requestIdleCallback

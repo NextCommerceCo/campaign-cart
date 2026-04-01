@@ -162,12 +162,6 @@ export class AddToCartEnhancer extends BaseActionEnhancer {
   private async handleClick(event: Event): Promise<void> {
     event.preventDefault();
 
-    const profileOverride = this.getAttribute('data-next-profile');
-    if (profileOverride) {
-      const { ProfileManager } = await import('@/core/ProfileManager');
-      await ProfileManager.getInstance().applyProfile(profileOverride);
-    }
-
     await this.executeAction(
       async () => {
         const { packageId, quantity } = this.resolveAddTarget();

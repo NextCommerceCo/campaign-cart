@@ -60,8 +60,6 @@ export class AttributeScanner {
         '[data-next-timer]',
         '[data-next-show]',
         '[data-next-hide]',
-        '[data-next-show-if-profile]',
-        '[data-next-hide-if-profile]',
         'form[data-next-checkout]',
         '[data-next-express-checkout]',
         '[data-next-timer-display]',
@@ -84,9 +82,7 @@ export class AttributeScanner {
         '[data-next-tooltip]',
         '[data-next-express-checkout="container"]',
         '[data-next-component="scroll-hint"]',
-        '[data-next-quantity-text]',
-        '[data-next-profile]',
-        'select[data-next-profile-selector]'
+        '[data-next-quantity-text]'
       ].join(', ');
       
       const elements = root.querySelectorAll(selector);
@@ -428,14 +424,6 @@ export class AttributeScanner {
           const { QuantityTextEnhancer } = await import('@/enhancers/display/QuantityTextEnhancer');
           return new QuantityTextEnhancer(element);
         
-        case 'profile-switcher':
-          const { ProfileSwitcherEnhancer } = await import('@/enhancers/profile/ProfileSwitcherEnhancer');
-          return new ProfileSwitcherEnhancer(element);
-        
-        case 'profile-selector':
-          const { ProfileSelectorEnhancer } = await import('@/enhancers/profile/ProfileSwitcherEnhancer');
-          return new ProfileSelectorEnhancer(element);
-          
         default:
           this.logger.warn(`Unknown enhancer type: ${type}`);
           return null;

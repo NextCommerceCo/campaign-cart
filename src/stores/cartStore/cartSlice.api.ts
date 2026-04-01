@@ -48,21 +48,9 @@ export const createCartApiSlice: StateCreator<
 > = (set, get) => ({
   addItem: async item => {
     const { useCampaignStore } = await import('../campaignStore');
-    const { useProfileStore } = await import('../profileStore');
     const campaignStore = useCampaignStore.getState();
-    const profileStore = useProfileStore.getState();
 
-    let finalPackageId = item.packageId ?? 0;
-    if (!item.originalPackageId && profileStore.activeProfileId) {
-      const mappedId = profileStore.getMappedPackageId(finalPackageId);
-      if (mappedId !== finalPackageId) {
-        logger.debug(
-          `Applying profile mapping: ${finalPackageId} -> ${mappedId}`
-        );
-        finalPackageId = mappedId;
-      }
-    }
-
+    const finalPackageId = item.packageId ?? 0;
     const packageData = campaignStore.getPackage(finalPackageId);
     if (!packageData) {
       throw new Error(`Package ${finalPackageId} not found in campaign data`);
@@ -72,11 +60,7 @@ export const createCartApiSlice: StateCreator<
       const newItem: CartItem = {
         id: Date.now(),
         packageId: finalPackageId,
-        originalPackageId:
-          item.originalPackageId ??
-          (finalPackageId !== (item.packageId ?? 0)
-            ? item.packageId
-            : undefined),
+        originalPackageId: item.originalPackageId,
         quantity: item.quantity ?? 1,
         price: parseFloat(packageData.price_total),
         title: item.title ?? packageData.name,
@@ -172,48 +156,22 @@ export const createCartApiSlice: StateCreator<
 
   swapPackage: async (removePackageId, addItem) => {
     const { useCampaignStore } = await import('../campaignStore');
-    const { useProfileStore } = await import('../profileStore');
     const campaignStore = useCampaignStore.getState();
-    const profileStore = useProfileStore.getState();
 
-    let mappedRemovePackageId = removePackageId;
-    if (profileStore.activeProfileId) {
-      const mappedId = profileStore.getMappedPackageId(removePackageId);
-      if (mappedId !== removePackageId) {
-        logger.debug(
-          `Applying profile mapping to remove package: ${removePackageId} -> ${mappedId}`
-        );
-        mappedRemovePackageId = mappedId;
-      }
-    }
-
-    let finalPackageId = addItem.packageId ?? 0;
-    if (profileStore.activeProfileId) {
-      const mappedId = profileStore.getMappedPackageId(finalPackageId);
-      if (mappedId !== finalPackageId) {
-        logger.debug(
-          `Applying profile mapping in swapPackage: ${finalPackageId} -> ${mappedId}`
-        );
-        finalPackageId = mappedId;
-      }
-    }
-
+    const finalPackageId = addItem.packageId ?? 0;
     const newPackageData = campaignStore.getPackage(finalPackageId);
     if (!newPackageData) {
       throw new Error(`Package ${finalPackageId} not found in campaign data`);
     }
 
     const previousItem = get().items.find(
-      item => item.packageId === mappedRemovePackageId
+      item => item.packageId === removePackageId
     );
 
     const newItem: CartItem = {
       id: Date.now(),
       packageId: finalPackageId,
-      originalPackageId:
-        finalPackageId !== (addItem.packageId ?? 0)
-          ? (addItem.packageId ?? 0)
-          : undefined,
+      originalPackageId: undefined,
       quantity: addItem.quantity ?? 1,
       price: parseFloat(newPackageData.price_total),
       title: addItem.title ?? newPackageData.name,
@@ -241,7 +199,7 @@ export const createCartApiSlice: StateCreator<
 
     set(state => {
       const newItems = state.items.filter(
-        item => item.packageId !== mappedRemovePackageId
+        item => item.packageId !== removePackageId
       );
 
       const existingIndex = newItems.findIndex(
@@ -261,7 +219,7 @@ export const createCartApiSlice: StateCreator<
     const swapEvent: Parameters<
       typeof eventBus.emit<'cart:package-swapped'>
     >[1] = {
-      previousPackageId: mappedRemovePackageId,
+      previousPackageId: removePackageId,
       newPackageId: finalPackageId,
       newItem,
       priceDifference,
@@ -278,10 +236,7 @@ export const createCartApiSlice: StateCreator<
 
   swapCart: async items => {
     const { useCampaignStore } = await import('../campaignStore');
-    const { useProfileStore } = await import('../profileStore');
     const campaignStore = useCampaignStore.getState();
-    const profileStore = useProfileStore.getState();
-    const eventBus = EventBus.getInstance();
 
     logger.debug('Swapping cart with new items:', items);
 
@@ -290,17 +245,8 @@ export const createCartApiSlice: StateCreator<
     const newItems: CartItem[] = [];
 
     for (const item of items) {
-      let finalPackageId = item.packageId;
-      let originalPackageId = (item as any).originalPackageId;
-
-      if (!originalPackageId && profileStore.activeProfileId) {
-        const mappedId = profileStore.getMappedPackageId(finalPackageId);
-        if (mappedId !== finalPackageId) {
-          logger.debug(`Applying profile mapping: ${finalPackageId} -> ${mappedId}`);
-          originalPackageId = finalPackageId;
-          finalPackageId = mappedId;
-        }
-      }
+      const finalPackageId = item.packageId;
+      const originalPackageId = (item as any).originalPackageId;
 
       const packageData = campaignStore.getPackage(finalPackageId);
       if (!packageData) {

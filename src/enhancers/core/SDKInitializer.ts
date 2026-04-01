@@ -429,9 +429,6 @@ export class SDKInitializer {
     // Process forceShippingId parameter after campaign data is available
     await this.processForceShippingId();
 
-    // Process profile parameter after campaign data is available
-    await this.processProfileParameter();
-    
     // Emit event to notify enhancers that URL parameters have been processed
     // This allows enhancers to re-evaluate their conditions after profiles are applied
     const eventBus = EventBus.getInstance();
@@ -501,85 +498,6 @@ export class SDKInitializer {
     } catch (error) {
       this.logger.error('Error processing forcePackageId parameter:', error);
       // Don't throw - this shouldn't break SDK initialization
-    }
-  }
-
-  private static async processProfileParameter(): Promise<void> {
-    const urlParams = new URLSearchParams(window.location.search);
-    const profileParam = urlParams.get('profile') ||
-                        urlParams.get('forceProfile') ||
-                        urlParams.get('packageProfile');
-
-    // First, register all profiles from config
-    const configStore = useConfigStore.getState();
-    if (configStore.profiles && Object.keys(configStore.profiles).length > 0) {
-      const { useProfileStore } = await import('@/stores/profileStore');
-      const profileStore = useProfileStore.getState();
-
-      Object.entries(configStore.profiles).forEach(([id, config]) => {
-        profileStore.registerProfile({
-          id,
-          name: config.name,
-          description: config.description || '',
-          packageMappings: config.packageMappings,
-        });
-      });
-      this.logger.debug(`Registered ${Object.keys(configStore.profiles).length} profiles from config`);
-    }
-
-    if (profileParam) {
-      this.logger.info('Profile parameter detected:', profileParam);
-
-      try {
-        const { ProfileManager } = await import('@/core/ProfileManager');
-        const profileManager = ProfileManager.getInstance();
-        const clearCart = urlParams.get('forceProfile') !== null;
-
-        await profileManager.applyProfile(profileParam, { clearCart });
-        this.logger.info(`Profile "${profileParam}" applied successfully from URL`);
-      } catch (error) {
-        this.logger.error('Failed to apply profile from URL:', error);
-        // Don't throw - this shouldn't break SDK initialization
-      }
-      return; // URL param takes precedence
-    }
-
-    // Check for persisted active profile (from previous session)
-    const { useProfileStore } = await import('@/stores/profileStore');
-    const profileStore = useProfileStore.getState();
-
-    if (profileStore.activeProfileId &&
-        profileStore.activeProfileId !== 'default' &&
-        profileStore.activeProfileId !== 'regular') {
-      try {
-        this.logger.info('Restoring persisted profile:', profileStore.activeProfileId);
-        const { ProfileManager } = await import('@/core/ProfileManager');
-        const profileManager = ProfileManager.getInstance();
-
-        // Re-apply the persisted profile
-        await profileManager.applyProfile(profileStore.activeProfileId, {
-          clearCart: false, // Don't clear cart when restoring
-          preserveQuantities: true
-        });
-        this.logger.info(`Restored profile "${profileStore.activeProfileId}" from previous session`);
-        return;
-      } catch (error) {
-        this.logger.error('Failed to restore persisted profile:', error);
-        // Continue to default profile logic if restoration fails
-      }
-    }
-
-    // Finally, check for default profile in config (only if no URL param or persisted profile)
-    if (configStore.defaultProfile && !profileStore.activeProfileId) {
-      try {
-        this.logger.info('Applying default profile:', configStore.defaultProfile);
-        const { ProfileManager } = await import('@/core/ProfileManager');
-        const profileManager = ProfileManager.getInstance();
-        await profileManager.applyProfile(configStore.defaultProfile);
-      } catch (error) {
-        this.logger.error('Failed to apply default profile:', error);
-        // Don't throw - this shouldn't break SDK initialization
-      }
     }
   }
 

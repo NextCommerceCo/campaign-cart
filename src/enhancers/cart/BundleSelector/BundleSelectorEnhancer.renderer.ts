@@ -152,9 +152,8 @@ function applyBundleField(el: HTMLElement, field: string, data: BundleFieldData)
 /**
  * Updates all display elements inside a bundle card after a price fetch resolves.
  * Handles [data-next-bundle-display] (full field set) and the deprecated
- * [data-next-bundle-price] (legacy, price fields only). Also writes raw numeric
- * data-bundle-price-* attributes and fires bundle:price-updated for
- * BundleDisplayEnhancer.
+ * [data-next-bundle-price] (legacy, price fields only). Fires bundle:price-updated
+ * for BundleDisplayEnhancer.
  */
 export function updateCardDisplayElements(
   card: BundleCard,
@@ -187,14 +186,6 @@ export function updateCardDisplayElements(
     const field = el.getAttribute('data-next-bundle-price') ?? 'total';
     applyBundleField(el, field, fieldData);
   });
-
-  card.element.setAttribute('data-bundle-price-total', String(bundlePrice.total));
-  card.element.setAttribute('data-bundle-price-compare', String(bundlePrice.subtotal));
-  card.element.setAttribute('data-bundle-price-savings', String(bundlePrice.totalDiscount));
-  card.element.setAttribute(
-    'data-bundle-price-savings-pct',
-    String(bundlePrice.totalDiscountPercentage),
-  );
 
   card.element.dispatchEvent(
     new CustomEvent('bundle:price-updated', {
@@ -241,12 +232,12 @@ export function renderSlotsForCard(
       `[data-next-slot-index="${slot.slotIndex}"]`,
     );
     const newVars = buildSlotVars(slot, pkgState);
-    const cachedVars = card.slotVarsCache.get(slot.slotIndex);
+    // External renders (targetEl provided) bypass the cache entirely so that a
+    // variant change that already updated the cache via the internal render does
+    // not cause the external container to be silently skipped.
+    const cachedVars = !targetEl ? card.slotVarsCache.get(slot.slotIndex) : undefined;
 
     // Skip only when the element already exists in this placeholder AND vars haven't changed.
-    // The existing check is required because slotVarsCache is shared across render targets
-    // (card's own placeholder and the external slots container). A cache hit must not prevent
-    // first-time rendering into a container that doesn't have the slot element yet.
     if (existing && cachedVars && varsEqual(cachedVars, newVars)) continue;
 
     const newSlotEl = createSlotElement(card.bundleId, slot, newVars, ctx);
@@ -282,7 +273,7 @@ export function renderSlotsForCard(
       placeholder.appendChild(newSlotEl);
     }
 
-    card.slotVarsCache.set(slot.slotIndex, newVars);
+    if (!targetEl) card.slotVarsCache.set(slot.slotIndex, newVars);
   }
 
   // Remove orphan slots that no longer correspond to an active slot
@@ -367,6 +358,10 @@ export function renderVariantSelectors(
     } else {
       const field = document.createElement('div');
       field.className = 'next-slot-variant-field';
+      field.dataset.nextVariantCode = code;
+      field.dataset.nextVariantName = name;
+      field.dataset.nextBundleId = bundleId;
+      field.dataset.nextSlotIndex = String(slotIndex);
 
       const label = document.createElement('label');
       label.className = 'next-slot-variant-label';
@@ -387,8 +382,9 @@ export function renderVariantSelectors(
         select.appendChild(option);
       }
 
-      const handler: EventListener = () =>
+      const handler: EventListener = () => {
         void ctx.onSelectChange(select, bundleId, slotIndex);
+      };
       ctx.selectHandlers.set(select, handler);
       select.addEventListener('change', handler);
 

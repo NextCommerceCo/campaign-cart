@@ -164,29 +164,6 @@ export interface EventMap {
   // SDK Events
   'sdk:url-parameters-processed': {};
 
-  // Profile Events
-  'profile:applied': {
-    profileId: string;
-    previousProfileId?: string | null;
-    itemsSwapped: number;
-    originalItems?: number;
-    cleared?: boolean;
-    profile?: any;
-  };
-  'profile:reverted': {
-    previousProfileId?: string | null;
-    itemsRestored: number;
-  };
-  'profile:switched': {
-    fromProfileId?: string | null;
-    toProfileId: string;
-    itemsAffected: number;
-  };
-  'profile:registered': {
-    profileId: string;
-    mappingsCount: number;
-  };
-
   // Offer Events
   'offer:selected': { offerId: number };
   'offer:applied': { offerId: number };
@@ -209,7 +186,7 @@ export interface CartItem {
   id: number;
   /** The campaign package `ref_id` for this item. */
   packageId: number;
-  /** Original package ID before any profile mapping was applied. */
+  /** Original package ID before any variant swap was applied. */
   originalPackageId?: number;
   /** Number of packages in the cart (not units — see `qty` for units per package). */
   quantity: number;
@@ -545,18 +522,6 @@ export interface ConfigState {
 
   // Error monitoring configuration - removed
   // Error tracking can be added externally via HTML/scripts
-
-  // Profile configuration
-  profiles?: Record<
-    string,
-    {
-      name: string;
-      description?: string;
-      packageMappings: Record<number, number>;
-    }
-  >;
-  defaultProfile?: string;
-  activeProfile?: string;
 
   // Cart initialization behavior
   clearCartOnInit?: boolean;
