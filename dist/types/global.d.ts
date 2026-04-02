@@ -245,21 +245,21 @@ export interface EventMap {
         offerId: number;
     };
     'bundle:selected': {
-        bundleId: string;
+        selectorId: string;
         items: {
             packageId: number;
             quantity: number;
         }[];
     };
     'bundle:selection-changed': {
-        bundleId: string;
+        selectorId: string;
         items: {
             packageId: number;
             quantity: number;
         }[];
     };
     'bundle:price-updated': {
-        bundleId: string;
+        selectorId: string;
     };
     'selector:price-updated': {
         selectorId: string;
@@ -319,7 +319,7 @@ export interface CartItem {
     }> | undefined;
     variantSku?: string | undefined;
     groupedItemIds?: number[] | undefined;
-    bundleId?: string | undefined;
+    selectorId?: string | undefined;
 }
 export interface Discount {
     offer_id?: number;

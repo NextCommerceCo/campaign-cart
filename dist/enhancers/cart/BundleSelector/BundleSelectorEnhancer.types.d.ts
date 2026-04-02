@@ -93,6 +93,7 @@ export interface HandlerContext {
     externalSlotsEl: HTMLElement | null;
     containerElement: HTMLElement;
     isUpsellContext: boolean;
+    selectorId: string | null;
     selectCard: (card: BundleCard) => void;
     getSelectedCard: () => BundleCard | null;
     fetchAndUpdateBundlePrice: (card: BundleCard) => Promise<void>;

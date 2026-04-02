@@ -1,7 +1,7 @@
 import { BaseDisplayEnhancer } from '../../display/DisplayEnhancerCore';
 import { FormatType } from '../../display/DisplayEnhancerTypes';
 export declare class BundleDisplayEnhancer extends BaseDisplayEnhancer {
-    private bundleId?;
+    private selectorId?;
     private selectionHandler;
     private priceHandler;
     protected parseDisplayAttributes(): void;
