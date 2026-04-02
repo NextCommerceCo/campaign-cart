@@ -15,6 +15,12 @@ export async function handleCardClick(
   e.preventDefault();
   if (previousCard === card) return;
 
+  if (ctx.isUpsellContext) {
+    ctx.selectCard(card);
+    ctx.emit('bundle:selected', { bundleId: card.bundleId, items: getEffectiveItems(card) });
+    return;
+  }
+
   ctx.selectCard(card);
   ctx.emit('bundle:selected', { bundleId: card.bundleId, items: getEffectiveItems(card) });
 

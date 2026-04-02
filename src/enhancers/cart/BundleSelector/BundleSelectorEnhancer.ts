@@ -48,6 +48,8 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
   private static readonly _instances = new Set<BundleSelectorEnhancer>();
 
   private mode: 'swap' | 'select' = 'swap';
+  /** When true, operates in post-purchase upsell context: clicks add to order, not cart. */
+  private isUpsellContext: boolean = false;
   private template: string = '';
   private slotTemplate: string = '';
   private variantOptionTemplate: string = '';
@@ -61,6 +63,7 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
   private boundCurrencyChangeHandler: (() => void) | null = null;
   private isApplyingRef = { value: false };
   private includeShipping: boolean = false;
+  private selectorId: string | null = null;
   private externalSlotsEl: HTMLElement | null = null;
   private classNames!: ClassNames;
   private currencyChangeTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -71,11 +74,16 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     BundleSelectorEnhancer._instances.add(this);
     this.classNames = this.parseClassNames();
 
-    this.mode = (this.getAttribute('data-next-selection-mode') ?? 'swap') as 'swap' | 'select';
+    this.isUpsellContext = this.element.hasAttribute('data-next-upsell-context');
+    // Upsell context is always select mode — no cart writes on selection.
+    this.mode = this.isUpsellContext
+      ? 'select'
+      : ((this.getAttribute('data-next-selection-mode') ?? 'swap') as 'swap' | 'select');
     this.includeShipping = this.getAttribute('data-next-include-shipping') === 'true';
 
     // ── External slots container ────────────────────────────────────────────────
     const selectorId = this.getAttribute('data-next-selector-id');
+    this.selectorId = selectorId;
     if (selectorId) {
       this.externalSlotsEl = document.querySelector<HTMLElement>(
         `[data-next-bundle-slots-for="${selectorId}"]`,
@@ -144,30 +152,38 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     this.scanCards();
     this.setupMutationObserver();
 
-    this.subscribe(useCartStore, this.syncWithCart.bind(this));
-    this.syncWithCart(useCartStore.getState());
+    (this.element as unknown as Record<string, unknown>)['_getSelectedBundleItems'] = () =>
+      this.selectedCard ? getEffectiveItems(this.selectedCard) : null;
 
-    // Re-fetch bundle prices whenever user-entered coupons change (debounced).
-    // onVoucherApplied skips the re-fetch when only bundle-managed vouchers changed
-    // (e.g. during a bundle swap), avoiding redundant API calls.
-    let prevCheckoutVouchers = useCheckoutStore.getState().vouchers;
-    this.subscribe(useCheckoutStore, state => {
-      const next = state.vouchers;
-      const prev = prevCheckoutVouchers;
-      const changed =
-        next.length !== prev.length || next.some((v, i) => v !== prev[i]);
-      if (!changed) return;
+    if (this.isUpsellContext) {
+      // No cart sync in upsell context — just pre-select the default card.
+      this.initializeBundleSelection();
+    } else {
+      this.subscribe(useCartStore, this.syncWithCart.bind(this));
+      this.syncWithCart(useCartStore.getState());
 
-      prevCheckoutVouchers = next;
-      if (this.voucherChangeTimeout !== null) clearTimeout(this.voucherChangeTimeout);
-      this.voucherChangeTimeout = setTimeout(() => {
-        this.voucherChangeTimeout = null;
-        const allBundleVouchers = this.getAllKnownBundleVouchers();
-        onVoucherApplied(next, prev, this.cards, allBundleVouchers, card =>
-          this.calculateAndRenderPrice(card),
-        );
-      }, 150);
-    });
+      // Re-fetch bundle prices whenever user-entered coupons change (debounced).
+      // onVoucherApplied skips the re-fetch when only bundle-managed vouchers changed
+      // (e.g. during a bundle swap), avoiding redundant API calls.
+      let prevCheckoutVouchers = useCheckoutStore.getState().vouchers;
+      this.subscribe(useCheckoutStore, state => {
+        const next = state.vouchers;
+        const prev = prevCheckoutVouchers;
+        const changed =
+          next.length !== prev.length || next.some((v, i) => v !== prev[i]);
+        if (!changed) return;
+
+        prevCheckoutVouchers = next;
+        if (this.voucherChangeTimeout !== null) clearTimeout(this.voucherChangeTimeout);
+        this.voucherChangeTimeout = setTimeout(() => {
+          this.voucherChangeTimeout = null;
+          const allBundleVouchers = this.getAllKnownBundleVouchers();
+          onVoucherApplied(next, prev, this.cards, allBundleVouchers, card =>
+            this.calculateAndRenderPrice(card),
+          );
+        }, 150);
+      });
+    }
 
     // Re-fetch prices when the active currency changes (debounced)
     this.boundCurrencyChangeHandler = () => {
@@ -188,6 +204,7 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     this.logger.debug('BundleSelectorEnhancer initialized', {
       mode: this.mode,
       cardCount: this.cards.length,
+      isUpsellContext: this.isUpsellContext,
     });
   }
 
@@ -371,7 +388,12 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     return this.selectedCard;
   }
 
-  /** Returns display state for a bundle card by id, for use by BundleDisplayEnhancer. */
+  /**
+   * Returns display state for a bundle card by id, for use by BundleDisplayEnhancer.
+   * If `bundleId` matches a selector's `data-next-selector-id`, returns the currently
+   * selected card's state — enabling `bundle.{selectorId}.property` to always reflect
+   * the active selection.
+   */
   static getBundleState(bundleId: string): BundleCardPublicState | null {
     for (const inst of BundleSelectorEnhancer._instances) {
       const card = inst.cards.find(c => c.bundleId === bundleId);
@@ -383,7 +405,35 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
         };
       }
     }
+    // Fall back: if the id matches a selector id, return the selected card's state
+    for (const inst of BundleSelectorEnhancer._instances) {
+      if (inst.selectorId === bundleId && inst.selectedCard) {
+        return {
+          name: inst.selectedCard.name,
+          isSelected: true,
+          bundlePrice: inst.selectedCard.bundlePrice,
+        };
+      }
+    }
     return null;
+  }
+
+  // ─── Upsell context selection ─────────────────────────────────────────────────
+
+  /**
+   * Pre-selects the default card without writing to the cart.
+   * Used when isUpsellContext is true to give the user a visual starting selection.
+   */
+  private initializeBundleSelection(): void {
+    const preSelected = this.cards.find(c => c.isPreSelected);
+    const cardToSelect = preSelected ?? this.cards[0] ?? null;
+    if (!preSelected && cardToSelect) {
+      this.logger.warn(
+        'No card has data-next-selected="true" — auto-selecting first card. ' +
+        'Add data-next-selected="true" to the default card to suppress this warning.',
+      );
+    }
+    if (cardToSelect) this.selectCard(cardToSelect);
   }
 
   // ─── Cart sync ────────────────────────────────────────────────────────────────
@@ -427,7 +477,7 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
   }
 
   public update(): void {
-    this.syncWithCart(useCartStore.getState());
+    if (!this.isUpsellContext) this.syncWithCart(useCartStore.getState());
   }
 
   // ─── Context factories ────────────────────────────────────────────────────────
@@ -452,6 +502,8 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
       classNames: this.classNames,
       isApplyingRef: this.isApplyingRef,
       externalSlotsEl: this.externalSlotsEl,
+      containerElement: this.element,
+      isUpsellContext: this.isUpsellContext,
       selectCard: card => this.selectCard(card),
       getSelectedCard: () => this.selectedCard,
       fetchAndUpdateBundlePrice: card => this.calculateAndRenderPrice(card),
@@ -463,6 +515,7 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     return {
       includeShipping: this.includeShipping,
       allBundleVouchers: this.getAllKnownBundleVouchers(),
+      isUpsellContext: this.isUpsellContext,
       logger: this.logger,
     };
   }

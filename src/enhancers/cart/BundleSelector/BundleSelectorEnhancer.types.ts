@@ -139,6 +139,10 @@ export interface HandlerContext {
   isApplyingRef: { value: boolean };
   /** External slots container, when slots are rendered outside the bundle selector element. */
   externalSlotsEl: HTMLElement | null;
+  /** The root element of the BundleSelectorEnhancer, used for URL resolution in upsell context. */
+  containerElement: HTMLElement;
+  /** When true, card clicks submit bundle items to orderStore instead of writing to cart. */
+  isUpsellContext: boolean;
   selectCard: (card: BundleCard) => void;
   getSelectedCard: () => BundleCard | null;
   fetchAndUpdateBundlePrice: (card: BundleCard) => Promise<void>;
@@ -153,5 +157,7 @@ export interface PriceContext {
   includeShipping: boolean;
   /** Union of every bundle voucher across ALL live BundleSelectorEnhancer instances. */
   allBundleVouchers: Set<string>;
+  /** When true, passes ?upsell=true to the calculate API for post-purchase pricing. */
+  isUpsellContext: boolean;
   logger: Logger;
 }

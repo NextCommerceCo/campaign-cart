@@ -126,7 +126,7 @@ export async function addUpsellToOrder(
     packageToAdd,
   });
 
-  if (!packageToAdd) {
+  if (!packageToAdd && !ctx.bundleItems?.length) {
     ctx.logger.warn('No package selected for upsell');
     renderError(ctx.element, 'Please select an option first', ctx.logger);
     return;
@@ -136,7 +136,7 @@ export async function addUpsellToOrder(
     ctx.isProcessingRef.value = true;
     renderProcessingState(ctx.element, ctx.actionButtons, true);
     ctx.loadingOverlay.show();
-    ctx.emit('upsell:adding', { packageId: packageToAdd });
+    ctx.emit('upsell:adding', { packageId: packageToAdd ?? 0 });
 
     let quantityToUse = ctx.quantity;
     if (ctx.selectorId && ctx.quantityBySelectorId.has(ctx.selectorId)) {
@@ -148,10 +148,15 @@ export async function addUpsellToOrder(
       quantityToUse = ctx.quantityBySelectorId.get(ctx.currentQuantitySelectorId)!;
     }
 
-    const upsellData: AddUpsellLine = {
-      lines: [{ package_id: packageToAdd, quantity: quantityToUse }],
-      currency: getCurrency(),
-    };
+    const upsellData: AddUpsellLine = ctx.bundleItems?.length
+      ? {
+          lines: ctx.bundleItems.map(i => ({ package_id: i.packageId, quantity: i.quantity })),
+          currency: getCurrency(),
+        }
+      : {
+          lines: [{ package_id: packageToAdd!, quantity: quantityToUse }],
+          currency: getCurrency(),
+        };
     ctx.logger.info('Adding upsell to order:', upsellData);
     const updatedOrder = await orderStore.addUpsell(upsellData, ctx.apiClient);
     if (!updatedOrder) throw new Error('Failed to add upsell - no updated order returned');
@@ -166,13 +171,16 @@ export async function addUpsellToOrder(
         l.is_upsell && !prevLineIds.includes(l.id),
     );
     if (addedLine?.price_incl_tax) upsellValue = parseFloat(addedLine.price_incl_tax);
-    const pkgData = useCampaignStore.getState().getPackage(packageToAdd);
+    const resolvedPackageId = packageToAdd ?? ctx.bundleItems?.[0]?.packageId;
+    const pkgData = resolvedPackageId != null
+      ? useCampaignStore.getState().getPackage(resolvedPackageId)
+      : undefined;
     if (pkgData && !upsellValue && pkgData.price) {
       upsellValue = parseFloat(pkgData.price) * ctx.quantity;
     }
 
     ctx.emit('upsell:added', {
-      packageId: packageToAdd,
+      packageId: packageToAdd ?? 0,
       quantity: quantityToUse,
       order: updatedOrder,
       value: upsellValue,

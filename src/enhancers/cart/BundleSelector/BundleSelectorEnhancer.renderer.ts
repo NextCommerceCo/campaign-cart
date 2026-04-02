@@ -279,7 +279,7 @@ export function renderSlotsForCard(
   // Remove orphan slots that no longer correspond to an active slot
   placeholder.querySelectorAll<HTMLElement>('[data-next-slot-index]').forEach(el => {
     const idx = Number(el.dataset.nextSlotIndex);
-    if (!activeIndices.has(idx)) placeholder.removeChild(el);
+    if (!activeIndices.has(idx)) el.remove();
   });
   ctx.logger.debug('Rendered slots for bundle', card.bundleId, { activeCount: activeIndices.size });
 }
@@ -332,7 +332,10 @@ export function renderVariantSelectors(
   const selected: Record<string, string> = {};
   for (const attr of currentAttrs) selected[attr.code] = attr.value;
 
-  container.innerHTML = '';
+  const outerSwap = container.getAttribute('next-render-swap') === 'outerHTML';
+  const noLabel = container.hasAttribute('next-render-no-label');
+  const target = outerSwap ? document.createElement('div') : container;
+  if (!outerSwap) container.innerHTML = '';
 
   for (const [code, name] of attrDefs) {
     const values = [
@@ -347,12 +350,12 @@ export function renderVariantSelectors(
 
     if (ctx.variantSelectorTemplate) {
       renderSelectorTemplate(
-        container, bundleId, slotIndex, code, name,
+        target, bundleId, slotIndex, code, name,
         values, selected[code] ?? '', productPkgs, selected, ctx,
       );
     } else if (ctx.variantOptionTemplate) {
       renderCustomOptions(
-        container, bundleId, slotIndex, code, name,
+        target, bundleId, slotIndex, code, name,
         values, selected[code] ?? '', productPkgs, selected, ctx,
       );
     } else {
@@ -365,7 +368,7 @@ export function renderVariantSelectors(
 
       const label = document.createElement('label');
       label.className = 'next-slot-variant-label';
-      label.textContent = `${name}:`;
+      label.textContent = `Select ${name}:`;
 
       const select = document.createElement('select');
       select.className = 'next-slot-variant-select';
@@ -388,9 +391,19 @@ export function renderVariantSelectors(
       ctx.selectHandlers.set(select, handler);
       select.addEventListener('change', handler);
 
-      field.appendChild(label);
+      if (!noLabel) field.appendChild(label);
       field.appendChild(select);
-      container.appendChild(field);
+      target.appendChild(field);
+    }
+  }
+
+  if (outerSwap) {
+    const parent = container.parentElement;
+    if (parent) {
+      while (target.firstChild) {
+        parent.insertBefore(target.firstChild, container);
+      }
+      parent.removeChild(container);
     }
   }
 }

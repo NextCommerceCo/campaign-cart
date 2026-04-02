@@ -30,6 +30,7 @@ export async function fetchAndUpdateBundlePrice(
     const result = await calculateBundlePrice(items, {
       currency,
       vouchers,
+      upsell: ctx.isUpsellContext,
     });
 
     // Skip stale results if effective items changed while the fetch was in flight

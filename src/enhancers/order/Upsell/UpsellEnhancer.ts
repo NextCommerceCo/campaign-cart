@@ -58,6 +58,8 @@ export class UpsellEnhancer extends BaseEnhancer {
 
   // External PackageSelectorEnhancer integration
   private packageSelectorId?: string;
+  // External BundleSelectorEnhancer integration
+  private bundleSelectorId?: string;
 
   // Per-selector quantity tracking
   private quantityBySelectorId = new Map<string, number>();
@@ -78,7 +80,8 @@ export class UpsellEnhancer extends BaseEnhancer {
 
     this.selectorId = this.getAttribute('data-next-selector-id') ?? undefined;
     this.packageSelectorId = this.getAttribute('data-next-package-selector-id') ?? undefined;
-    this.isSelector = !!this.selectorId || !!this.packageSelectorId;
+    this.bundleSelectorId = this.getAttribute('data-next-bundle-selector-id') ?? undefined;
+    this.isSelector = !!this.selectorId || !!this.packageSelectorId || !!this.bundleSelectorId;
 
     if (this.isSelector) {
       this.initializeSelectorMode();
@@ -325,8 +328,21 @@ export class UpsellEnhancer extends BaseEnhancer {
     return typeof fn === 'function' ? (fn() as number | undefined) : undefined;
   }
 
+  private resolveExternalBundleItems(): { packageId: number; quantity: number }[] | null {
+    if (!this.bundleSelectorId) return null;
+    const el = document.querySelector<HTMLElement>(
+      `[data-next-bundle-selector][data-next-selector-id="${this.bundleSelectorId}"]`,
+    );
+    if (!el) return null;
+    const fn = (el as unknown as Record<string, unknown>)['_getSelectedBundleItems'];
+    return typeof fn === 'function'
+      ? (fn() as { packageId: number; quantity: number }[] | null)
+      : null;
+  }
+
   private makeHandlerContext(): UpsellHandlerContext {
     const externalId = this.resolveExternalSelection();
+    const externalBundleItems = this.resolveExternalBundleItems();
     return {
       isProcessingRef: this.isProcessingRef,
       element: this.element,
@@ -337,6 +353,7 @@ export class UpsellEnhancer extends BaseEnhancer {
       quantity: this.quantity,
       quantityBySelectorId: this.quantityBySelectorId,
       currentQuantitySelectorId: this.currentQuantitySelectorId,
+      bundleItems: externalBundleItems,
       actionButtons: this.actionButtons,
       loadingOverlay: this.loadingOverlay,
       apiClient: this.apiClient,
