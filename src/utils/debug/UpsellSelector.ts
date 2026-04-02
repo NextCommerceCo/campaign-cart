@@ -10,8 +10,10 @@ import { EventBus } from '@/utils/events';
 interface UpsellState {
   packageId?: number;
   selectorId?: string;
+  bundleSelectorId?: string;
+  bundleItems?: { packageId: number; quantity: number }[];
   quantity: number;
-  mode: 'direct' | 'selector' | 'none';
+  mode: 'direct' | 'selector' | 'bundle' | 'none';
 }
 
 export class UpsellSelector {
@@ -77,7 +79,7 @@ export class UpsellSelector {
 
   private scanExistingUpsells(): void {
     // Find all upsell elements on the page
-    const upsellElements = document.querySelectorAll('[data-next-upsell="offer"], [data-next-upsell-selector]');
+    const upsellElements = document.querySelectorAll('[data-next-upsell], [data-next-upsell-selector]');
 
     this.logger.debug('Scanning for existing upsell elements:', upsellElements.length);
 
@@ -88,6 +90,19 @@ export class UpsellSelector {
 
     // Take the first upsell element to determine state
     const firstElement = upsellElements[0] as HTMLElement;
+
+    // Check for bundle selector mode first (child element or explicit attribute)
+    const childBundleSelector = firstElement.querySelector<HTMLElement>('[data-next-bundle-selector]');
+    const bundleSelectorId = firstElement.getAttribute('data-next-bundle-selector-id')
+      ?? childBundleSelector?.getAttribute('data-next-selector-id');
+    if (bundleSelectorId) {
+      this.state = { bundleSelectorId, quantity: 1, mode: 'bundle' };
+      // Delay read so BundleSelectorEnhancer has time to attach _getSelectedBundleItems
+      setTimeout(() => this.readBundleSelection(), 200);
+      this.render();
+      this.logger.debug('Initialized state from bundle selector:', { bundleSelectorId });
+      return;
+    }
 
     // Determine if this is a selector or direct mode
     let selectorId = firstElement.getAttribute('data-next-selector-id');
@@ -127,7 +142,7 @@ export class UpsellSelector {
       packageId: packageId || undefined,
       selectorId: selectorId || undefined,
       quantity: 1,
-      mode: selectorId ? 'selector' : (packageId ? 'direct' : 'none')
+      mode: selectorId ? 'selector' : (packageId ? 'direct' : 'none'),
     };
 
     this.render();
@@ -152,16 +167,34 @@ export class UpsellSelector {
 
       if (!element) return;
 
-      // Determine mode based on event data
       const selectorId = element.getAttribute('data-next-selector-id');
+      const childBundle = element.querySelector<HTMLElement>('[data-next-bundle-selector]');
+      const bundleSelectorId = element.getAttribute('data-next-bundle-selector-id')
+        ?? childBundle?.getAttribute('data-next-selector-id');
 
-      this.state = {
-        packageId: packageId || undefined,
-        selectorId: selectorId || undefined,
-        quantity: 1,
-        mode: selectorId ? 'selector' : 'direct'
-      };
+      if (bundleSelectorId) {
+        this.state = {
+          bundleSelectorId,
+          quantity: 1,
+          mode: 'bundle',
+        };
+      } else {
+        this.state = {
+          packageId: packageId || undefined,
+          selectorId: selectorId || undefined,
+          quantity: 1,
+          mode: selectorId ? 'selector' : 'direct',
+        };
+      }
 
+      this.render();
+    });
+
+    // Listen for bundle selection changes
+    this.eventBus.on('bundle:selection-changed', (data) => {
+      if (this.state.mode !== 'bundle') return;
+      this.logger.debug('Bundle selection changed:', data);
+      this.state.bundleItems = data.items;
       this.render();
     });
 
@@ -191,6 +224,22 @@ export class UpsellSelector {
     });
   }
 
+  private readBundleSelection(): void {
+    if (!this.state.bundleSelectorId) return;
+    const el = document.querySelector<HTMLElement>(
+      `[data-next-bundle-selector][data-next-selector-id="${this.state.bundleSelectorId}"]`,
+    );
+    if (!el) return;
+    const fn = (el as unknown as Record<string, unknown>)['_getSelectedBundleItems'];
+    if (typeof fn === 'function') {
+      const items = fn() as { packageId: number; quantity: number }[] | null;
+      if (items) {
+        this.state.bundleItems = items;
+        this.render();
+      }
+    }
+  }
+
   private getPackageName(packageId: number): string {
     const campaignStore = useCampaignStore.getState();
     const packageData = campaignStore.getPackage(packageId);
@@ -212,7 +261,7 @@ export class UpsellSelector {
     if (!this.shadowRoot) return;
 
     // Don't render if no selection or not on upsell page
-    if (this.state.mode === 'none' || !this.isUpsellPage) {
+    if ((this.state.mode === 'none' && !this.state.bundleSelectorId) || !this.isUpsellPage) {
       if (this.container) {
         this.container.style.display = 'none';
       }
@@ -225,7 +274,13 @@ export class UpsellSelector {
     }
 
     const packageName = this.state.packageId ? this.getPackageName(this.state.packageId) : 'None';
-    const modeLabel = this.state.mode === 'selector' ? '🎯 Selector' : '➡️ Direct';
+    const modeLabel =
+      this.state.mode === 'bundle'
+        ? '📦 Bundle'
+        : this.state.mode === 'selector'
+          ? '🎯 Selector'
+          : '➡️ Direct';
+    const bundleHasItems = (this.state.bundleItems?.length ?? 0) > 0;
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -372,7 +427,26 @@ export class UpsellSelector {
         </div>
 
         <div class="badge-content">
-          ${this.state.packageId ? `
+          ${this.state.mode === 'bundle' ? `
+            <div class="info-row">
+              <span class="info-label">Bundle:</span>
+              <span class="selector-id-value">${this.state.bundleSelectorId ?? ''}</span>
+              <span class="status-indicator ${bundleHasItems ? 'selected' : 'unselected'}"></span>
+            </div>
+            ${bundleHasItems ? this.state.bundleItems!.map(item => `
+              <div class="info-row">
+                <span class="info-label">Item:</span>
+                <span class="package-id">#${item.packageId}</span>
+                <span class="info-value package-name">${this.getPackageName(item.packageId)}</span>
+                <span class="quantity-badge">×${item.quantity}</span>
+              </div>
+            `).join('') : `
+              <div class="info-row">
+                <span class="info-label">Status:</span>
+                <span class="info-value">No selection</span>
+              </div>
+            `}
+          ` : this.state.packageId ? `
             <div class="info-row">
               <span class="info-label">Package:</span>
               <span class="package-id">#${this.state.packageId}</span>

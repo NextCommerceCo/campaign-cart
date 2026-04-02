@@ -47,6 +47,10 @@ export interface BundleSlot {
   quantity: number;
   /** When true, no slot row is rendered for this slot. */
   noSlot?: boolean;
+  /** When true, the user must select a variant before this slot can be submitted. */
+  configurable: boolean;
+  /** Set to true once the user has explicitly selected a variant for this slot. */
+  variantSelected: boolean;
 }
 
 /**

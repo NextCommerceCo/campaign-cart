@@ -79,7 +79,7 @@ export function syncQuantityAcrossContainers(
   } else if (packageId !== undefined) {
     document
       .querySelectorAll(
-        `[data-next-upsell="offer"][data-next-package-id="${packageId}"]:not([data-next-selector-id])`,
+        `[data-next-upsell][data-next-package-id="${packageId}"]:not([data-next-selector-id])`,
       )
       .forEach(container => {
         if (!(container instanceof HTMLElement)) return;

@@ -152,8 +152,13 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     this.scanCards();
     this.setupMutationObserver();
 
-    (this.element as unknown as Record<string, unknown>)['_getSelectedBundleItems'] = () =>
-      this.selectedCard ? getEffectiveItems(this.selectedCard) : null;
+    (this.element as unknown as Record<string, unknown>)['_getSelectedBundleItems'] = () => {
+      if (!this.selectedCard) return null;
+      const needsVariant = this.selectedCard.slots.some(
+        s => s.configurable && !s.variantSelected,
+      );
+      return needsVariant ? null : getEffectiveItems(this.selectedCard);
+    };
 
     if (this.isUpsellContext) {
       // No cart sync in upsell context — just pre-select the default card.
@@ -289,6 +294,8 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
             activePackageId: item.packageId,
             quantity: 1,
             noSlot: item.noSlot,
+            configurable: true,
+            variantSelected: false,
           });
         }
       } else {
@@ -299,6 +306,8 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
           activePackageId: item.packageId,
           quantity: item.quantity,
           noSlot: item.noSlot,
+          configurable: !!item.configurable,
+          variantSelected: false,
         });
       }
     }
@@ -310,6 +319,19 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
       if (!packageStates.has(slot.activePackageId)) {
         const pkg = allPackages.find(p => p.ref_id === slot.activePackageId);
         if (pkg) packageStates.set(slot.activePackageId, makePackageState(pkg));
+      }
+    }
+
+    // A configurable slot whose initial package already has specific variant
+    // attribute values is already a concrete selection — mark it as selected so
+    // _getSelectedBundleItems() doesn't block submission before the user
+    // interacts with any dropdown.
+    for (const slot of slots) {
+      if (slot.configurable && !slot.variantSelected) {
+        const pkg = allPackages.find(p => p.ref_id === slot.activePackageId);
+        if ((pkg?.product_variant_attribute_values?.length ?? 0) > 0) {
+          slot.variantSelected = true;
+        }
       }
     }
 

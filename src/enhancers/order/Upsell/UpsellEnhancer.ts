@@ -79,8 +79,15 @@ export class UpsellEnhancer extends BaseEnhancer {
     );
 
     this.selectorId = this.getAttribute('data-next-selector-id') ?? undefined;
-    this.packageSelectorId = this.getAttribute('data-next-package-selector-id') ?? undefined;
-    this.bundleSelectorId = this.getAttribute('data-next-bundle-selector-id') ?? undefined;
+
+    // Auto-detect child selectors, fall back to explicit attributes
+    const childBundleSelector = this.element.querySelector<HTMLElement>('[data-next-bundle-selector]');
+    this.bundleSelectorId = childBundleSelector?.getAttribute('data-next-selector-id')
+      ?? this.getAttribute('data-next-bundle-selector-id') ?? undefined;
+
+    const childPackageSelector = this.element.querySelector<HTMLElement>('[data-next-package-selector]');
+    this.packageSelectorId = childPackageSelector?.getAttribute('data-next-selector-id')
+      ?? this.getAttribute('data-next-package-selector-id') ?? undefined;
     this.isSelector = !!this.selectorId || !!this.packageSelectorId || !!this.bundleSelectorId;
 
     if (this.isSelector) {

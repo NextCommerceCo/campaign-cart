@@ -60,7 +60,73 @@ async function confirmDuplicate(
   return proceed;
 }
 
+async function acceptBundleUpsell(ctx: UpsellHandlerContext): Promise<void> {
+  const items = ctx.bundleItemsRef.value;
+  if (!items || items.length === 0) {
+    ctx.logger.warn('No bundle items selected for upsell');
+    return;
+  }
+
+  const orderStore = useOrderStore.getState();
+  if (!orderStore.order) {
+    ctx.logger.error('No order loaded');
+    return;
+  }
+
+  ctx.loadingOverlay.show();
+  try {
+    const previousLineIds = orderStore.order.lines?.map((line: any) => line.id) ?? [];
+
+    const upsellData: AddUpsellLine = {
+      lines: items.map(i => ({ package_id: i.packageId, quantity: i.quantity })),
+      currency: getCurrency(),
+    };
+
+    const updatedOrder = await orderStore.addUpsell(upsellData, ctx.apiClient);
+    if (!updatedOrder) throw new Error('Failed to add bundle upsell — no order returned');
+
+    const addedLines: any[] =
+      updatedOrder.lines?.filter(
+        (line: any) => line.is_upsell && !previousLineIds.includes(line.id),
+      ) ?? [];
+    const totalValue = addedLines.reduce(
+      (sum: number, line: any) =>
+        sum + (line.price_incl_tax ? parseFloat(line.price_incl_tax) : 0),
+      0,
+    );
+
+    for (const item of items) {
+      ctx.emit('upsell:accepted', {
+        packageId: item.packageId,
+        quantity: item.quantity,
+        orderId: useOrderStore.getState().refId,
+        value: totalValue,
+      });
+    }
+
+    const acceptUrl = resolveRedirectUrl(
+      ctx.nextUrl,
+      'next-upsell-accept-url',
+      ctx.logger,
+    );
+    if (acceptUrl) {
+      window.location.href = preserveQueryParams(acceptUrl);
+    } else {
+      ctx.loadingOverlay.hide();
+    }
+  } catch (error) {
+    ctx.logger.error('Failed to accept bundle upsell:', error);
+    ctx.loadingOverlay.hide(true);
+    throw error;
+  }
+}
+
 export async function acceptUpsell(ctx: UpsellHandlerContext): Promise<void> {
+  if (ctx.bundleSelectorId) {
+    await acceptBundleUpsell(ctx);
+    return;
+  }
+
   const packageIdToAdd = resolvePackageId(ctx);
   const quantityToAdd = resolveQuantity(ctx);
 

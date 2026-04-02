@@ -5,12 +5,14 @@ import { ApiClient } from '@/api/client';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { acceptUpsell } from './AcceptUpsellEnhancer.handlers';
 import type { SelectorItem } from '@/types/global';
-import type { UpsellHandlerContext } from './AcceptUpsellEnhancer.types';
+import type { BundleLineItem, UpsellHandlerContext } from './AcceptUpsellEnhancer.types';
 
 export class AcceptUpsellEnhancer extends BaseActionEnhancer {
   private packageId?: number;
   private quantity = 1;
   private selectorId?: string;
+  private bundleSelectorId?: string;
+  private bundleItemsRef: { value: BundleLineItem[] | null } = { value: null };
   private nextUrl?: string;
   private apiClient!: ApiClient;
   private loadingOverlay = new LoadingOverlay();
@@ -22,6 +24,8 @@ export class AcceptUpsellEnhancer extends BaseActionEnhancer {
     this.handlePageShow(e);
   private readonly boundHandleSelectorChange = (e: any) =>
     this.handleSelectorChange(e);
+  private readonly boundHandleBundleSelectionChange = () =>
+    this.handleBundleSelectionChange();
 
   public async initialize(): Promise<void> {
     this.validateElement();
@@ -37,6 +41,9 @@ export class AcceptUpsellEnhancer extends BaseActionEnhancer {
     const selectorIdAttr = this.getAttribute('data-next-selector-id');
     if (selectorIdAttr) this.selectorId = selectorIdAttr;
 
+    const bundleSelectorIdAttr = this.getAttribute('data-next-upsell-action-for');
+    if (bundleSelectorIdAttr) this.bundleSelectorId = bundleSelectorIdAttr;
+
     const nextUrlAttr = this.getAttribute('data-next-url');
     if (nextUrlAttr) this.nextUrl = nextUrlAttr;
 
@@ -44,6 +51,7 @@ export class AcceptUpsellEnhancer extends BaseActionEnhancer {
     this.element.addEventListener('click', this.boundHandleClick);
 
     if (this.selectorId) this.setupSelectorListener();
+    if (this.bundleSelectorId) this.setupBundleSelectorListener();
 
     this.subscribe(useOrderStore, () => this.updateButtonState());
     this.updateButtonState();
@@ -51,6 +59,7 @@ export class AcceptUpsellEnhancer extends BaseActionEnhancer {
     this.logger.debug('Initialized', {
       packageId: this.packageId,
       selectorId: this.selectorId,
+      bundleSelectorId: this.bundleSelectorId,
       quantity: this.quantity,
     });
   }
@@ -76,6 +85,41 @@ export class AcceptUpsellEnhancer extends BaseActionEnhancer {
       'selector:selection-changed',
       this.boundHandleSelectorChange,
     );
+  }
+
+  private setupBundleSelectorListener(): void {
+    // Delay so that BundleSelectorEnhancer has time to initialize first
+    setTimeout(() => {
+      const el = this.findBundleSelectorElement();
+      if (!el) {
+        this.logger.warn(`Bundle selector "${this.bundleSelectorId}" not found`);
+        return;
+      }
+      this.readBundleItems(el);
+      this.updateButtonState();
+    }, 100);
+
+    this.eventBus.on('bundle:selected', this.boundHandleBundleSelectionChange);
+    this.eventBus.on('bundle:selection-changed', this.boundHandleBundleSelectionChange);
+  }
+
+  private findBundleSelectorElement(): HTMLElement | null {
+    return document.querySelector<HTMLElement>(
+      `[data-next-bundle-selector][data-next-selector-id="${this.bundleSelectorId}"]`,
+    );
+  }
+
+  private readBundleItems(el: HTMLElement): void {
+    const getItems = (el as unknown as Record<string, unknown>)['_getSelectedBundleItems'];
+    if (typeof getItems === 'function') {
+      this.bundleItemsRef.value = getItems() as BundleLineItem[] | null;
+    }
+  }
+
+  private handleBundleSelectionChange(): void {
+    const el = this.findBundleSelectorElement();
+    if (el) this.readBundleItems(el);
+    this.updateButtonState();
   }
 
   private findSelectorElement(): HTMLElement | null {
@@ -139,7 +183,11 @@ export class AcceptUpsellEnhancer extends BaseActionEnhancer {
 
   private updateButtonState(): void {
     const { canAddUpsells } = useOrderStore.getState();
-    const hasPackage = !!(this.packageId ?? this.selectedItemRef.value);
+    const hasPackage = !!(
+      this.packageId ??
+      this.selectedItemRef.value ??
+      (this.bundleItemsRef.value?.length ? this.bundleItemsRef.value : null)
+    );
     this.setEnabled(canAddUpsells() && hasPackage);
   }
 
@@ -159,6 +207,8 @@ export class AcceptUpsellEnhancer extends BaseActionEnhancer {
       selectorId: this.selectorId,
       selectedItemRef: this.selectedItemRef,
       quantity: this.quantity,
+      bundleSelectorId: this.bundleSelectorId,
+      bundleItemsRef: this.bundleItemsRef,
       nextUrl: this.nextUrl,
       apiClient: this.apiClient,
       loadingOverlay: this.loadingOverlay,
@@ -203,6 +253,11 @@ export class AcceptUpsellEnhancer extends BaseActionEnhancer {
         'selector:selection-changed',
         this.boundHandleSelectorChange,
       );
+    }
+
+    if (this.bundleSelectorId) {
+      this.eventBus.off('bundle:selected', this.boundHandleBundleSelectionChange);
+      this.eventBus.off('bundle:selection-changed', this.boundHandleBundleSelectionChange);
     }
 
     super.destroy();

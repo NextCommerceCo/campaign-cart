@@ -139,7 +139,7 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
       }
     } else {
       // No selector ID - try to find quantity display in same container
-      const container = this.element.closest('[data-next-upsell="offer"]');
+      const container = this.element.closest('[data-next-upsell]');
       if (container) {
         const quantityDisplay = container.querySelector('[data-next-upsell-quantity="display"]');
         if (quantityDisplay && quantityDisplay.textContent) {

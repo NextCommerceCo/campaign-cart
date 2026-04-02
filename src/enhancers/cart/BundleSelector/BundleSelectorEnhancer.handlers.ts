@@ -205,7 +205,14 @@ export async function applyVariantChange(
     return;
   }
 
-  if (slot.activePackageId === matched.ref_id) return;
+  slot.variantSelected = true;
+  if (slot.activePackageId === matched.ref_id) {
+    ctx.emit('bundle:selection-changed', {
+      bundleId: card.bundleId,
+      items: getEffectiveItems(card),
+    });
+    return;
+  }
 
   slot.activePackageId = matched.ref_id;
 
@@ -218,6 +225,11 @@ export async function applyVariantChange(
   if (ctx.mode === 'swap') {
     await applyEffectiveChange(card, ctx);
   }
+
+  ctx.emit('bundle:selection-changed', {
+    bundleId: card.bundleId,
+    items: getEffectiveItems(card),
+  });
 
   void ctx.fetchAndUpdateBundlePrice(card);
 
