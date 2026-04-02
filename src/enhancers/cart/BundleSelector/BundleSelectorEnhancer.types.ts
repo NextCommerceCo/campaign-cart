@@ -147,6 +147,8 @@ export interface HandlerContext {
   containerElement: HTMLElement;
   /** When true, card clicks submit bundle items to orderStore instead of writing to cart. */
   isUpsellContext: boolean;
+  /** The selector's own ID (data-next-selector-id). Used to tag and filter cart items. */
+  selectorId: string | null;
   selectCard: (card: BundleCard) => void;
   getSelectedCard: () => BundleCard | null;
   fetchAndUpdateBundlePrice: (card: BundleCard) => Promise<void>;

@@ -250,7 +250,7 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
       if (this.selectorId && card === this.selectedCard) {
         document.dispatchEvent(
           new CustomEvent('bundle:price-updated', {
-            detail: { bundleId: this.selectorId },
+            detail: { selectorId: this.selectorId },
           }),
         );
       }
@@ -408,7 +408,7 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     this.selectedCard = card;
     this.element.setAttribute('data-selected-bundle', card.bundleId);
     this.emit('bundle:selection-changed', {
-      bundleId: card.bundleId,
+      selectorId: this.selectorId ?? '',
       items: getEffectiveItems(card),
     });
     this.renderExternalSlots(card);
@@ -420,7 +420,7 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     if (this.selectorId) {
       document.dispatchEvent(
         new CustomEvent('bundle:price-updated', {
-          detail: { bundleId: this.selectorId },
+          detail: { selectorId: this.selectorId },
         }),
       );
     }
@@ -437,24 +437,24 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
 
   /**
    * Returns display state for a bundle card by id, for use by BundleDisplayEnhancer.
-   * If `bundleId` matches a selector's `data-next-selector-id`, returns the currently
+   * If `selectorId` matches a selector's `data-next-selector-id`, returns the currently
    * selected card's state — enabling `bundle.{selectorId}.property` to always reflect
    * the active selection.
    */
-  static getBundleState(bundleId: string): BundleCardPublicState | null {
+  static getBundleState(selectorId: string): BundleCardPublicState | null {
     for (const inst of BundleSelectorEnhancer._instances) {
-      const card = inst.cards.find(c => c.bundleId === bundleId);
+      const card = inst.cards.find(c => c.bundleId === selectorId);
       if (card) {
         return {
           name: card.name,
-          isSelected: inst.selectedCard?.bundleId === bundleId,
+          isSelected: inst.selectedCard?.bundleId === selectorId,
           bundlePrice: card.bundlePrice,
         };
       }
     }
     // Fall back: if the id matches a selector id, return the selected card's state
     for (const inst of BundleSelectorEnhancer._instances) {
-      if (inst.selectorId === bundleId && inst.selectedCard) {
+      if (inst.selectorId === selectorId && inst.selectedCard) {
         return {
           name: inst.selectedCard.name,
           isSelected: true,
@@ -488,11 +488,11 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
   private syncWithCart(cartState: CartState): void {
     for (const card of this.cards) {
       const effectiveItems = getEffectiveItems(card);
-      // Check both packageId AND bundleId so a package shared across bundles
-      // doesn't cause incorrect "in cart" state on the wrong bundle.
+      // Check both packageId AND selectorId so a package shared across selectors
+      // doesn't cause incorrect "in cart" state on the wrong selector.
       const allItemsInCart = effectiveItems.every(bi => {
         const ci = cartState.items.find(
-          i => i.packageId === bi.packageId && i.bundleId === card.bundleId,
+          i => i.packageId === bi.packageId && i.selectorId === this.selectorId,
         );
         return ci != null && ci.quantity >= bi.quantity;
       });
@@ -551,6 +551,7 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
       externalSlotsEl: this.externalSlotsEl,
       containerElement: this.element,
       isUpsellContext: this.isUpsellContext,
+      selectorId: this.selectorId,
       selectCard: card => this.selectCard(card),
       getSelectedCard: () => this.selectedCard,
       fetchAndUpdateBundlePrice: card => this.calculateAndRenderPrice(card),

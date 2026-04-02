@@ -10,7 +10,7 @@ When running correctly with two cards, you should see:
 [BundleSelectorEnhancer] Registered bundle card "starter" { itemCount: 1 }
 [BundleSelectorEnhancer] Registered bundle card "value" { itemCount: 1 }
 [BundleSelectorEnhancer] BundleSelectorEnhancer initialized { mode: "swap", cardCount: 2 }
-[BundleSelectorEnhancer] Applied bundle "starter" [{ packageId: 101, quantity: 1, bundleId: "starter" }]
+[BundleSelectorEnhancer] Applied bundle "starter" (selector "upsellBundleMV") [{ packageId: 101, quantity: 1, selectorId: "upsellBundleMV" }]
 ```
 
 Price fetches run asynchronously after init. No additional logs appear for a successful price load.

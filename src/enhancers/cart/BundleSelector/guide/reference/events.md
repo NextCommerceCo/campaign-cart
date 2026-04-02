@@ -8,13 +8,13 @@
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `bundleId` | `string` | ID of the bundle card the user clicked, matching `data-next-bundle-id` |
+| `selectorId` | `string` | ID of the bundle selector that fired this event, matching `data-next-selector-id` |
 | `items` | `BundleItem[]` | Effective items at the moment of click — reflects any variant overrides already in place |
 
 **Example:**
 ```json
 {
-  "bundleId": "value",
+  "selectorId": "upsellBundleMV",
   "items": [
     { "packageId": 101, "quantity": 3 }
   ]
@@ -31,13 +31,13 @@
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `bundleId` | `string` | ID of the newly selected bundle card |
+| `selectorId` | `string` | ID of the bundle selector whose selection changed |
 | `items` | `BundleItem[]` | Effective items for the newly selected bundle — reflects current variant overrides |
 
 **Example:**
 ```json
 {
-  "bundleId": "value",
+  "selectorId": "upsellBundleMV",
   "items": [
     { "packageId": 101, "quantity": 3 }
   ]
@@ -48,17 +48,17 @@
 
 ## `bundle:price-updated`
 
-**When:** A price fetch completes for a bundle card. Fires after `data-bundle-price-*` raw numeric attributes are written to the card element. Used internally by `BundleDisplayEnhancer` to refresh `data-next-display="bundle.{bundleId}.*"` elements.
+**When:** A price fetch completes for a bundle card. Fires after `data-bundle-price-*` raw numeric attributes are written to the card element. Used internally by `BundleDisplayEnhancer` to refresh `data-next-display="bundle.{selectorId}.*"` elements.
 
 **Payload:**
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `bundleId` | `string` | ID of the bundle card whose price was updated |
+| `selectorId` | `string` | ID of the bundle selector whose price was updated |
 
 **Example:**
 ```json
 {
-  "bundleId": "starter"
+  "selectorId": "upsellBundleMV"
 }
 ```

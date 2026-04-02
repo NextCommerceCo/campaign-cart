@@ -269,7 +269,7 @@ export const createCartApiSlice: StateCreator<
         price_retail: packageData.price_retail,
         quantity: item.quantity,
         is_upsell: (item as any).isUpsell ?? false,
-        bundleId: (item as any).bundleId,
+        selectorId: (item as any).selectorId,
         image: packageData.image,
         sku: packageData.product_sku ?? undefined,
         qty: packageData.qty,

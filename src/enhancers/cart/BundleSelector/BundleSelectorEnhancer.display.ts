@@ -19,16 +19,16 @@ const FORMAT_MAP: Record<string, FormatType> = {
 };
 
 export class BundleDisplayEnhancer extends BaseDisplayEnhancer {
-  private bundleId?: string;
+  private selectorId?: string;
   private selectionHandler: EventListener | null = null;
   private priceHandler: EventListener | null = null;
 
   protected override parseDisplayAttributes(): void {
     super.parseDisplayAttributes();
-    // Parse bundle.{bundleId}.{property}
+    // Parse bundle.{selectorId}.{property}
     const parts = this.displayPath!.split('.');
     if (parts.length >= 3 && parts[0] === 'bundle') {
-      this.bundleId = parts[1];
+      this.selectorId = parts[1];
       this.property = parts.slice(2).join('.');
     }
   }
@@ -38,18 +38,18 @@ export class BundleDisplayEnhancer extends BaseDisplayEnhancer {
     this.selectionHandler = () => void this.updateDisplay();
     document.addEventListener('bundle:selection-changed', this.selectionHandler);
 
-    // Price updates are filtered by bundleId
+    // Price updates are filtered by selectorId
     this.priceHandler = (e: Event) => {
-      const { bundleId } = (e as CustomEvent<{ bundleId: string }>).detail;
-      if (bundleId === this.bundleId) void this.updateDisplay();
+      const { selectorId } = (e as CustomEvent<{ selectorId: string }>).detail;
+      if (selectorId === this.selectorId) void this.updateDisplay();
     };
     document.addEventListener('bundle:price-updated', this.priceHandler);
   }
 
   protected getPropertyValue(): unknown {
-    if (!this.bundleId || !this.property) return undefined;
+    if (!this.selectorId || !this.property) return undefined;
 
-    const state = BundleSelectorEnhancer.getBundleState(this.bundleId);
+    const state = BundleSelectorEnhancer.getBundleState(this.selectorId);
     if (!state) return undefined;
 
     switch (this.property) {

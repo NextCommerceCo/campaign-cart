@@ -190,7 +190,7 @@ export function updateCardDisplayElements(
   card.element.dispatchEvent(
     new CustomEvent('bundle:price-updated', {
       bubbles: true,
-      detail: { bundleId: card.element.getAttribute('data-next-bundle-id') ?? '' },
+      detail: { selectorId: card.element.getAttribute('data-next-bundle-id') ?? '' },
     }),
   );
 }

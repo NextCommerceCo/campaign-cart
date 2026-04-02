@@ -169,9 +169,9 @@ export interface EventMap {
   'offer:applied': { offerId: number };
 
   // Bundle Events
-  'bundle:selected': { bundleId: string; items: { packageId: number; quantity: number }[] };
-  'bundle:selection-changed': { bundleId: string; items: { packageId: number; quantity: number }[] };
-  'bundle:price-updated': { bundleId: string };
+  'bundle:selected': { selectorId: string; items: { packageId: number; quantity: number }[] };
+  'bundle:selection-changed': { selectorId: string; items: { packageId: number; quantity: number }[] };
+  'bundle:price-updated': { selectorId: string };
   'selector:price-updated': { selectorId: string; packageId: number };
   'toggle:price-updated': { packageId: number };
 
@@ -257,8 +257,8 @@ export interface CartItem {
   variantSku?: string | undefined;
   /** IDs of other cart items grouped with this one (bundle support). */
   groupedItemIds?: number[] | undefined;
-  /** Bundle ID this item belongs to (set by BundleSelectorEnhancer). */
-  bundleId?: string | undefined;
+  /** Selector ID this item belongs to (set by BundleSelectorEnhancer via data-next-selector-id). */
+  selectorId?: string | undefined;
 }
 
 export interface Discount {

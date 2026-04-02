@@ -182,7 +182,7 @@ Overrides the default CSS class names used by the enhancer. Available overrides:
 | Set by | enhancer |
 | Default | — |
 
-Written by the enhancer whenever the selection changes. Contains the `bundleId` of the currently selected card. Read by external enhancers and CSS attribute selectors.
+Written by the enhancer whenever the selection changes. Contains the `bundleId` of the currently selected card (from `data-next-bundle-id`). Read by external enhancers and CSS attribute selectors.
 
 ---
 
@@ -210,7 +210,7 @@ Marks an element as a bundle card within the selector. The enhancer scans for th
 | Required | yes (per card) |
 | Default | — |
 
-Unique identifier for this bundle card. Used to tag cart items with `bundleId` so the enhancer can strip the right items during a swap. Must be unique across all bundle cards in the same selector.
+Unique identifier for this bundle card. Used internally for variant group lookups. Must be unique across all bundle cards in the same selector. Cart items are tagged with the selector's `data-next-selector-id` (not this value) — see `data-next-selector-id`.
 
 ---
 
@@ -261,7 +261,7 @@ data-next-bundle-vouchers="SAVE10,FREESHIP"
 | Required | no |
 | Default | — |
 
-Human-readable display name for the bundle. When set, it is exposed as the `name` property in `data-next-display="bundle.{bundleId}.name"` elements anywhere in the document.
+Human-readable display name for the bundle. When set, it is exposed as the `name` property in `data-next-display="bundle.{selectorId}.name"` elements anywhere in the document.
 
 ```html
 <div data-next-bundle-card data-next-bundle-id="value" data-next-bundle-name="Value Pack" ...>
@@ -325,7 +325,7 @@ Placeholder element inside a bundle card where slot rows are injected. Required 
 | Set by | enhancer (after price fetch) |
 | Default | — |
 
-Raw numeric total price written to the card element after each price fetch. Read by `BundleDisplayEnhancer` to populate `data-next-display="bundle.{bundleId}.price"` elements.
+Raw numeric total price written to the card element after each price fetch. Read by `BundleDisplayEnhancer` to populate `data-next-display="bundle.{selectorId}.price"` elements.
 
 ---
 
@@ -383,12 +383,12 @@ Marks an element outside the selector container as a target for slot rendering. 
 
 ## Display system integration
 
-Use `data-next-display="bundle.{bundleId}.{property}"` on any element in the document to bind it to a specific bundle card's state. The element does not need to be inside the bundle card or even inside the selector container.
+Use `data-next-display="bundle.{selectorId}.{property}"` on any element in the document to bind it to a bundle selector's current state. The value of `{selectorId}` must match `data-next-selector-id` on the selector container. The element does not need to be inside the selector container.
 
 ```html
-<span data-next-display="bundle.starter.price"></span>
-<span data-next-display="bundle.starter.isSelected"></span>
-<span data-next-display="bundle.premium.savings" data-hide-if-zero="true"></span>
+<span data-next-display="bundle.upsellBundleMV.price"></span>
+<span data-next-display="bundle.upsellBundleMV.isSelected"></span>
+<span data-next-display="bundle.upsellBundleMV.savings" data-hide-if-zero="true"></span>
 ```
 
 **Supported properties:**
