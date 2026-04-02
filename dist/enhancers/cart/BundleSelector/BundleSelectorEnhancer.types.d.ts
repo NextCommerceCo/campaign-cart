@@ -29,6 +29,8 @@ export interface BundleSlot {
     activePackageId: number;
     quantity: number;
     noSlot?: boolean;
+    configurable: boolean;
+    variantSelected: boolean;
 }
 export interface BundlePackageState {
     packageId: number;
@@ -89,6 +91,8 @@ export interface HandlerContext {
         value: boolean;
     };
     externalSlotsEl: HTMLElement | null;
+    containerElement: HTMLElement;
+    isUpsellContext: boolean;
     selectCard: (card: BundleCard) => void;
     getSelectedCard: () => BundleCard | null;
     fetchAndUpdateBundlePrice: (card: BundleCard) => Promise<void>;
@@ -97,6 +101,7 @@ export interface HandlerContext {
 export interface PriceContext {
     includeShipping: boolean;
     allBundleVouchers: Set<string>;
+    isUpsellContext: boolean;
     logger: Logger;
 }
 //# sourceMappingURL=BundleSelectorEnhancer.types.d.ts.map

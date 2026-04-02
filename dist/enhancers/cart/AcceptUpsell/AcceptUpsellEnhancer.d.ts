@@ -3,6 +3,8 @@ export declare class AcceptUpsellEnhancer extends BaseActionEnhancer {
     private packageId?;
     private quantity;
     private selectorId?;
+    private bundleSelectorId?;
+    private bundleItemsRef;
     private nextUrl?;
     private apiClient;
     private loadingOverlay;
@@ -10,8 +12,13 @@ export declare class AcceptUpsellEnhancer extends BaseActionEnhancer {
     private readonly boundHandleClick;
     private readonly boundHandlePageShow;
     private readonly boundHandleSelectorChange;
+    private readonly boundHandleBundleSelectionChange;
     initialize(): Promise<void>;
     private setupSelectorListener;
+    private setupBundleSelectorListener;
+    private findBundleSelectorElement;
+    private readBundleItems;
+    private handleBundleSelectionChange;
     private findSelectorElement;
     private readSelectedItem;
     private handleSelectorChange;

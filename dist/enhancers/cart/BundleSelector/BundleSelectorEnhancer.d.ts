@@ -3,6 +3,7 @@ import { BundleCard, BundleCardPublicState } from './BundleSelectorEnhancer.type
 export declare class BundleSelectorEnhancer extends BaseEnhancer {
     private static readonly _instances;
     private mode;
+    private isUpsellContext;
     private template;
     private slotTemplate;
     private variantOptionTemplate;
@@ -16,6 +17,7 @@ export declare class BundleSelectorEnhancer extends BaseEnhancer {
     private boundCurrencyChangeHandler;
     private isApplyingRef;
     private includeShipping;
+    private selectorId;
     private externalSlotsEl;
     private classNames;
     private currencyChangeTimeout;
@@ -30,6 +32,7 @@ export declare class BundleSelectorEnhancer extends BaseEnhancer {
     private renderExternalSlots;
     getSelectedCard(): BundleCard | null;
     static getBundleState(bundleId: string): BundleCardPublicState | null;
+    private initializeBundleSelection;
     private syncWithCart;
     update(): void;
     private makeRenderContext;

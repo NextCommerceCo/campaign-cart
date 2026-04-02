@@ -15,6 +15,7 @@ export declare class UpsellEnhancer extends BaseEnhancer {
     private selectedPackageId?;
     private currentPagePath?;
     private packageSelectorId?;
+    private bundleSelectorId?;
     private quantityBySelectorId;
     private currentQuantitySelectorId?;
     constructor(element: HTMLElement);
@@ -30,6 +31,8 @@ export declare class UpsellEnhancer extends BaseEnhancer {
     private handleOrderUpdate;
     private updateUpsellDisplay;
     private resolveExternalSelection;
+    private resolveExternalBundleItems;
+    private resolveExternalBundleVouchers;
     private makeHandlerContext;
     update(): void;
     protected cleanupEventListeners(): void;
