@@ -244,6 +244,16 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     }
     if (card.bundlePrice) {
       updateCardDisplayElements(card, card.bundlePrice);
+      // When a selectorId is set, BundleDisplayEnhancer may use
+      // "bundle.{selectorId}.property" — fire an additional event so those
+      // displays update when the selected card's price resolves.
+      if (this.selectorId && card === this.selectedCard) {
+        document.dispatchEvent(
+          new CustomEvent('bundle:price-updated', {
+            detail: { bundleId: this.selectorId },
+          }),
+        );
+      }
     }
   }
 
@@ -402,6 +412,18 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
       items: getEffectiveItems(card),
     });
     this.renderExternalSlots(card);
+
+    // Notify BundleDisplayEnhancer (which listens on document, not EventBus).
+    // Fires bundle:price-updated with the selectorId so displays using
+    // "bundle.{selectorId}.property" immediately reflect the new selection.
+    // The card's bundlePrice is already populated from the init-time fetch.
+    if (this.selectorId) {
+      document.dispatchEvent(
+        new CustomEvent('bundle:price-updated', {
+          detail: { bundleId: this.selectorId },
+        }),
+      );
+    }
   }
 
   private renderExternalSlots(card: BundleCard): void {
