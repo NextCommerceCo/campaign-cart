@@ -350,6 +350,7 @@ export interface AddUpsellLine {
   lines: UpsellLineItem[];
   payment_detail?: PaymentDetail;
   currency?: string;
+  vouchers?: string[];
 }
 
 export interface UpsellLineItem {

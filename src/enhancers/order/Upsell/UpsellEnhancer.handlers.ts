@@ -152,6 +152,7 @@ export async function addUpsellToOrder(
       ? {
           lines: ctx.bundleItems.map(i => ({ package_id: i.packageId, quantity: i.quantity })),
           currency: getCurrency(),
+          ...(ctx.bundleVouchers?.length ? { vouchers: ctx.bundleVouchers } : {}),
         }
       : {
           lines: [{ package_id: packageToAdd!, quantity: quantityToUse }],

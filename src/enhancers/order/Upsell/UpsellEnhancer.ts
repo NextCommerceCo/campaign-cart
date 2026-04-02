@@ -347,6 +347,16 @@ export class UpsellEnhancer extends BaseEnhancer {
       : null;
   }
 
+  private resolveExternalBundleVouchers(): string[] {
+    if (!this.bundleSelectorId) return [];
+    const el = document.querySelector<HTMLElement>(
+      `[data-next-bundle-selector][data-next-selector-id="${this.bundleSelectorId}"]`,
+    );
+    if (!el) return [];
+    const fn = (el as unknown as Record<string, unknown>)['_getSelectedBundleVouchers'];
+    return typeof fn === 'function' ? (fn() as string[]) : [];
+  }
+
   private makeHandlerContext(): UpsellHandlerContext {
     const externalId = this.resolveExternalSelection();
     const externalBundleItems = this.resolveExternalBundleItems();
@@ -361,6 +371,7 @@ export class UpsellEnhancer extends BaseEnhancer {
       quantityBySelectorId: this.quantityBySelectorId,
       currentQuantitySelectorId: this.currentQuantitySelectorId,
       bundleItems: externalBundleItems,
+      bundleVouchers: this.resolveExternalBundleVouchers(),
       actionButtons: this.actionButtons,
       loadingOverlay: this.loadingOverlay,
       apiClient: this.apiClient,

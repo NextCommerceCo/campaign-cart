@@ -160,6 +160,9 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
       return needsVariant ? null : getEffectiveItems(this.selectedCard);
     };
 
+    (this.element as unknown as Record<string, unknown>)['_getSelectedBundleVouchers'] = () =>
+      this.selectedCard?.vouchers ?? [];
+
     if (this.isUpsellContext) {
       // No cart sync in upsell context — just pre-select the default card.
       this.initializeBundleSelection();
