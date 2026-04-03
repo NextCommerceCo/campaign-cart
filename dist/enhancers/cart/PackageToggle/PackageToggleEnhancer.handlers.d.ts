@@ -1,10 +1,10 @@
-import { CartState } from '../../../types/global';
+import { CartState, EventMap } from '../../../types/global';
 import { Logger } from '../../../utils/logger';
 import { ToggleCard } from './PackageToggleEnhancer.types';
 export declare const autoAddedPackages: Set<number>;
 export interface ToggleHandlerContext {
     logger: Logger;
-    emit: (event: string, detail: unknown) => void;
+    emit: <K extends keyof EventMap>(event: K, detail: EventMap[K]) => void;
     autoAddInProgress: Set<number>;
     isUpsellContext: boolean;
     isProcessingRef: {

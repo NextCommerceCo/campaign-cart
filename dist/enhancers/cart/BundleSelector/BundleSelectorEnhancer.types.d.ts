@@ -1,3 +1,4 @@
+import { default as Decimal } from 'decimal.js';
 import { EventMap } from '../../../types/global';
 import { Logger } from '../../../utils/logger';
 export interface ClassNames {
@@ -36,26 +37,33 @@ export interface BundlePackageState {
     packageId: number;
     name: string;
     image: string;
-    qty: number;
     productName: string;
     variantName: string;
     sku: string | null;
     isRecurring: boolean;
-    unitPrice: string;
-    packagePrice: string;
-    originalUnitPrice: string;
-    originalPackagePrice: string;
-    totalDiscount: string;
-    subtotal: string;
-    total: string;
+    interval: 'day' | 'month' | null;
+    intervalCount: number | null;
+    recurringPrice: Decimal;
+    originalRecurringPrice: Decimal;
+    unitPrice: Decimal;
+    originalUnitPrice: Decimal;
+    discountAmount: Decimal;
+    discountPercentage: Decimal;
+    originalPrice: Decimal;
+    price: Decimal;
     hasDiscount: boolean;
-    hasSavings: boolean;
+    currency: string;
 }
 export interface BundlePriceSummary {
-    total: number;
-    subtotal: number;
-    totalDiscount: number;
-    totalDiscountPercentage: number;
+    price: Decimal;
+    originalPrice: Decimal;
+    discountAmount: Decimal;
+    discountPercentage: Decimal;
+    unitPrice: Decimal;
+    originalUnitPrice: Decimal;
+    quantity: number;
+    hasDiscount: boolean;
+    currency: string;
 }
 export interface BundleCard {
     element: HTMLElement;
