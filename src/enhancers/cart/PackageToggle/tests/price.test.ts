@@ -30,7 +30,9 @@ function makeCard(packageId: number, quantity = 1): ToggleCard {
   return {
     element,
     packageId,
+    name: '',
     isPreSelected: false,
+    isSelected: false,
     quantity,
     isSyncMode: false,
     syncPackageIds: [],
@@ -38,6 +40,7 @@ function makeCard(packageId: number, quantity = 1): ToggleCard {
     stateContainer: element,
     addText: null,
     removeText: null,
+    togglePrice: null,
   };
 }
 
@@ -96,7 +99,7 @@ describe('fetchAndUpdateTogglePrice', () => {
     mockCartStore([{ packageId: 99, quantity: 2 }]);
     vi.mocked(calculateBundlePrice as any).mockResolvedValue({
       summary: {
-        lines: [{ package_id: 101, package_price: '5.00', original_package_price: '10.00', subtotal: '10.00', total: '5.00' }],
+        lines: [{ package_id: 101, package_price: '5.00', original_package_price: '10.00', subtotal: '10.00', total: '5.00', total_discount: '5.00' }],
       },
     });
 
@@ -140,7 +143,7 @@ describe('fetchAndUpdateTogglePrice', () => {
   it('renders price into [data-next-toggle-price] slots on success', async () => {
     vi.mocked(calculateBundlePrice as any).mockResolvedValue({
       summary: {
-        lines: [{ package_id: 101, package_price: '8.00', original_package_price: '10.00', subtotal: '10.00', total: '8.00' }],
+        lines: [{ package_id: 101, package_price: '8.00', original_package_price: '10.00', subtotal: '10.00', total: '8.00', total_discount: '2.00' }],
       },
     });
     const card = makeCard(101);

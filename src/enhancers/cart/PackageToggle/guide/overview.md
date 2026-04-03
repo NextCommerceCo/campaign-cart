@@ -1,7 +1,7 @@
 # PackageToggleEnhancer
 
 > Category: `cart`
-> Last reviewed: 2026-03-30
+> Last reviewed: 2026-04-03
 > Owner: campaign-cart
 
 A container that lets a user independently add or remove any combination of packages by clicking cards. Each card maps to one package; clicking toggles that package in or out of the cart without affecting any other card's state.

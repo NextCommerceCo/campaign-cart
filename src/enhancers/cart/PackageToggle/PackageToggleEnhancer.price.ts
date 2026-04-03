@@ -4,7 +4,7 @@ import { useCheckoutStore } from '@/stores/checkoutStore';
 import { calculateBundlePrice } from '@/utils/calculations/CartCalculator';
 import type { Logger } from '@/utils/logger';
 import type { ToggleCard } from './PackageToggleEnhancer.types';
-import { renderTogglePrice } from './PackageToggleEnhancer.renderer';
+import { renderTogglePrice, renderTogglePriceSlots } from './PackageToggleEnhancer.renderer';
 
 export async function fetchAndUpdateTogglePrice(
   card: ToggleCard,
@@ -25,13 +25,13 @@ export async function fetchAndUpdateTogglePrice(
     const cartState = useCartStore.getState();
     if (cartState.items.some(i => i.packageId === card.packageId)) {
       if (cartState.summary) {
-        const line = cartState.summary.lines.find(l => l.package_id === card.packageId) ?? null;
-        renderTogglePrice(card, line);
+        const line = cartState.summary.lines.find(l => l.package_id === card.packageId);
+        if (line) renderTogglePrice(card, line);
       }
       return;
     }
     const cartItems = cartState.items.map(i => ({ packageId: i.packageId, quantity: i.quantity }));
-    itemsToCalc = [...cartItems, { packageId: card.packageId, quantity: 1 }];
+    itemsToCalc = [...cartItems, { packageId: card.packageId, quantity: card.quantity || 1 }];
     const checkoutVouchers = useCheckoutStore.getState().vouchers;
     vouchers = checkoutVouchers.length ? checkoutVouchers : undefined;
   }
@@ -42,14 +42,14 @@ export async function fetchAndUpdateTogglePrice(
   try {
     const { summary } = await calculateBundlePrice(
       itemsToCalc,
-      { currency, exclude_shipping: !includeShipping, vouchers, upsell }
+      { currency, exclude_shipping: !includeShipping, vouchers, upsell },
     );
     if (!summary) return;
-    const line = summary.lines.find(l => l.package_id === card.packageId) ?? null;
-    renderTogglePrice(card, line);
+    const line = summary.lines.find(l => l.package_id === card.packageId);
+    if (line) renderTogglePrice(card, line);
   } catch (error) {
     logger.warn(`Failed to fetch toggle price for packageId ${card.packageId}`, error);
-    renderTogglePrice(card, null);
+    renderTogglePriceSlots(card); // push provisional state to DOM, leave card.togglePrice unchanged
   } finally {
     card.element.classList.remove('next-loading');
     card.element.setAttribute('data-next-loading', 'false');

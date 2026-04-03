@@ -184,74 +184,33 @@ Use `data-next-display="toggle.{packageId}.{property}"` on any element in the do
 
 ```html
 <!-- These can go anywhere in the document -->
-<span data-next-display="toggle.101.isInCart"></span>
+<span data-next-display="toggle.101.isSelected"></span>
 <span data-next-display="toggle.101.price"></span>
-<span data-next-display="toggle.101.savings" data-hide-if-zero="true"></span>
-<span data-next-display="toggle.101.savingsPercentage"></span>
+<span data-next-display="toggle.101.discountAmount" data-hide-if-zero="true"></span>
+<span data-next-display="toggle.101.discountPercentage"></span>
 ```
 
 **Supported properties:**
 
 | Property | Format | Description |
 |---|---|---|
-| `isInCart` | boolean | `true` when this card's package is currently in the cart |
-| `price` | currency | Total price for the card's quantity |
-| `compare` | currency | Retail / compare-at price |
-| `savings` | currency | Discount amount (compare minus total) |
-| `savingsPercentage` | percentage | Discount as a percentage of the compare price |
-| `hasSavings` | boolean | `true` when savings is greater than zero |
+| `isSelected` | boolean | `true` when this card's package is currently in the cart |
+| `name` | text | Display name from the campaign package |
+| `price` | currency | Total price for the card's quantity (unit price × quantity) |
+| `unitPrice` | currency | Per-unit price |
+| `originalPrice` | currency | Retail / compare-at total price |
+| `originalUnitPrice` | currency | Retail / compare-at per-unit price |
+| `discountAmount` | currency | Savings amount (compare minus total) |
+| `discountPercentage` | percentage | Savings as a percentage of the compare price |
+| `hasDiscount` | boolean | `true` when a discount is applied |
+| `isRecurring` | boolean | `true` when the package bills on a recurring schedule |
+| `recurringPrice` | currency | Recurring charge total (quantity-scaled) |
+| `interval` | text | Billing interval: `"day"` or `"month"` |
+| `intervalCount` | auto | Number of intervals between billing cycles |
+| `frequency` | text | Human-readable billing cadence: `"Per month"`, `"Every 3 months"`, `"One time"` |
+| `currency` | text | ISO 4217 currency code |
 
 Supports all standard display modifiers: `data-next-format`, `data-hide-if-zero`, `data-hide-if-false`.
-
----
-
-## Raw price data attributes *(set by enhancer)*
-
-The following attributes are written to card elements (`[data-next-toggle-card]`) after each price fetch. They hold the numeric values that `PackageToggleDisplayEnhancer` reads for `data-next-display="toggle.*"` elements.
-
----
-
-### `data-toggle-price-total`
-
-| | |
-|---|---|
-| Type | `string` (float) |
-| Set by | enhancer (after price fetch) |
-
-Raw numeric total price for the card's quantity.
-
----
-
-### `data-toggle-price-compare`
-
-| | |
-|---|---|
-| Type | `string` (float) |
-| Set by | enhancer (after price fetch) |
-
-Raw numeric retail / compare-at price. Empty string when no compare price is available.
-
----
-
-### `data-toggle-price-savings`
-
-| | |
-|---|---|
-| Type | `string` (float) |
-| Set by | enhancer (after price fetch) |
-
-Raw numeric savings amount (compare minus total). `0` when there are no savings.
-
----
-
-### `data-toggle-price-savings-pct`
-
-| | |
-|---|---|
-| Type | `string` (float) |
-| Set by | enhancer (after price fetch) |
-
-Raw numeric savings percentage (0–100). `0` when there are no savings.
 
 ---
 
@@ -271,11 +230,21 @@ Marks an element as a price display slot. The enhancer populates it with a forma
 
 | Value | Displays |
 |---|---|
-| `""` (empty / omitted) | Formatted total price for the card's quantity |
-| `"compare"` | Retail / compare-at price |
-| `"savings"` | Savings amount (compare price minus line price); empty if no savings |
-| `"savingsPercentage"` | Savings as a percentage (e.g. `"20%"`); empty if no savings |
-| `"subtotal"` | Subtotal from the cart summary line, or `price_total` from campaign data |
+| `""` (empty / omitted) or `"price"` | Formatted total price for the card's quantity |
+| `"unitPrice"` | Per-unit price |
+| `"originalPrice"` | Retail / compare-at total price |
+| `"originalUnitPrice"` | Retail / compare-at per-unit price |
+| `"hasDiscount"` | `"true"` or `"false"` |
+| `"discountAmount"` | Savings amount (compare price minus line price); empty if no discount |
+| `"discountPercentage"` | Savings as a percentage (e.g. `"20%"`); empty if no discount |
+| `"isRecurring"` | `"true"` or `"false"` |
+| `"recurringPrice"` | Recurring charge total (quantity-scaled); empty if not recurring |
+| `"interval"` | Billing interval: `"day"` or `"month"`; empty if not recurring |
+| `"intervalCount"` | Number of intervals between billing cycles; empty if not recurring |
+| `"frequency"` | Human-readable billing cadence: `"Per month"`, `"Every 3 months"`, `"One time"` |
+| `"currency"` | ISO 4217 currency code |
+
+Unrecognized values leave the element's content unchanged.
 
 ---
 

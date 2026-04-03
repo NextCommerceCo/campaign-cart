@@ -38,7 +38,7 @@ A card state indicating the package should be auto-added to the cart on init. Se
 
 ## Price slot
 
-An element inside a card with `data-next-toggle-price` that the enhancer populates with a formatted price. Different slot variants display the total price, compare-at price, savings amount, savings percentage, or subtotal.
+An element inside a card with `data-next-toggle-price` that the enhancer populates with a formatted price. Different slot variants display the total price, per-unit price, retail/compare-at price, discount amount, discount percentage, recurring price, billing frequency, or currency. Unrecognized values leave the element's content unchanged.
 
 ---
 

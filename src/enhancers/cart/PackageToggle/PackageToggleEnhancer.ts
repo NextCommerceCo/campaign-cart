@@ -38,11 +38,17 @@
  *
  * ─── Backend price slots ─────────────────────────────────────────────────────
  *
- *   data-next-toggle-price            — formatted total price (default)
- *   data-next-toggle-price="compare"  — retail/compare-at price
- *   data-next-toggle-price="savings"  — savings amount
- *   data-next-toggle-price="savingsPercentage" — savings percentage
- *   data-next-toggle-price="subtotal" — formatted subtotal
+ *   data-next-toggle-price                    — formatted total price (default)
+ *   data-next-toggle-price="unitPrice"        — per-unit price
+ *   data-next-toggle-price="originalPrice"    — retail/compare-at total price
+ *   data-next-toggle-price="originalUnitPrice" — retail/compare-at per-unit price
+ *   data-next-toggle-price="discountAmount"   — savings amount
+ *   data-next-toggle-price="discountPercentage" — savings percentage
+ *   data-next-toggle-price="hasDiscount"      — "true" / "false"
+ *   data-next-toggle-price="isRecurring"      — "true" / "false"
+ *   data-next-toggle-price="recurringPrice"   — recurring charge total
+ *   data-next-toggle-price="frequency"        — "Per month", "Every 3 months", "One time"
+ *   data-next-toggle-price="currency"         — ISO currency code
  *
  * ─── Auto-render mode ────────────────────────────────────────────────────────
  *
@@ -116,10 +122,12 @@
 import { BaseEnhancer } from '@/enhancers/base/BaseEnhancer';
 import { useCartStore } from '@/stores/cartStore';
 import { useCheckoutStore } from '@/stores/checkoutStore';
+import { useCampaignStore } from '@/stores/campaignStore';
 import type { CartState } from '@/types/global';
-import type { PackageDef, ToggleCard } from './PackageToggleEnhancer.types';
+import type { PackageDef, ToggleCard, ToggleCardPublicState } from './PackageToggleEnhancer.types';
 import type { ToggleHandlerContext } from './PackageToggleEnhancer.handlers';
-import { renderToggleTemplate, renderToggleImage, renderTogglePrice } from './PackageToggleEnhancer.renderer';
+import { renderToggleTemplate, renderToggleImage, renderTogglePrice, renderTogglePriceSlots } from './PackageToggleEnhancer.renderer';
+import { makeTogglePriceSummary } from './PackageToggleEnhancer.state';
 import { fetchAndUpdateTogglePrice } from './PackageToggleEnhancer.price';
 import {
   autoAddedPackages,
@@ -130,6 +138,26 @@ import {
 } from './PackageToggleEnhancer.handlers';
 
 export class PackageToggleEnhancer extends BaseEnhancer {
+  private static _instances = new Set<PackageToggleEnhancer>();
+
+  /**
+   * Returns display state for a toggle card by packageId, for use by
+   * PackageToggleDisplayEnhancer via toggle.{packageId}.{property} paths.
+   */
+  static getToggleState(packageId: number): ToggleCardPublicState | null {
+    for (const inst of PackageToggleEnhancer._instances) {
+      const card = inst.cards.find(c => c.packageId === packageId);
+      if (card) {
+        return {
+          name: card.name,
+          isSelected: card.isSelected,
+          togglePrice: card.togglePrice,
+        };
+      }
+    }
+    return null;
+  }
+
   private template: string = '';
   private cards: ToggleCard[] = [];
   private clickHandlers = new Map<HTMLElement, (e: Event) => void>();
@@ -144,6 +172,7 @@ export class PackageToggleEnhancer extends BaseEnhancer {
   private isProcessingRef = { value: false };
 
   public async initialize(): Promise<void> {
+    PackageToggleEnhancer._instances.add(this);
     this.validateElement();
 
     this.isUpsellContext = this.element.hasAttribute('data-next-upsell-context');
@@ -309,10 +338,16 @@ export class PackageToggleEnhancer extends BaseEnhancer {
       el.closest('[data-next-upsell-section]') !== null ||
       el.closest('[data-next-bump-section]') !== null;
 
+    const pkg = (useCampaignStore.getState().data?.packages ?? []).find(
+      p => p.ref_id === packageId,
+    );
+
     const card: ToggleCard = {
       element: el,
       packageId,
+      name: pkg?.name ?? '',
       isPreSelected,
+      isSelected: false,
       quantity,
       isSyncMode,
       syncPackageIds,
@@ -320,10 +355,12 @@ export class PackageToggleEnhancer extends BaseEnhancer {
       stateContainer,
       addText: el.getAttribute('data-add-text'),
       removeText: el.getAttribute('data-remove-text'),
+      togglePrice: pkg ? makeTogglePriceSummary(pkg) : null,
     };
 
     this.cards.push(card);
     el.classList.add('next-toggle-card');
+    renderTogglePriceSlots(card);
 
     const ctx = this.makeHandlerContext();
     const handler = (e: Event) => void handleCardClick(e, card, ctx);
@@ -409,6 +446,7 @@ export class PackageToggleEnhancer extends BaseEnhancer {
 
     for (const card of this.cards) {
       const inCart = cartState.items.some(i => i.packageId === card.packageId);
+      card.isSelected = inCart;
 
       card.element.classList.toggle('next-in-cart', inCart);
       card.element.classList.toggle('next-not-in-cart', !inCart);
@@ -434,8 +472,8 @@ export class PackageToggleEnhancer extends BaseEnhancer {
       if (inCart) {
         selectedPackageIds.push(card.packageId);
         if (cartState.summary) {
-          const line = cartState.summary.lines.find(l => l.package_id === card.packageId) ?? null;
-          renderTogglePrice(card, line);
+          const line = cartState.summary.lines.find(l => l.package_id === card.packageId);
+          if (line) renderTogglePrice(card, line);
         }
       }
 
@@ -503,6 +541,7 @@ export class PackageToggleEnhancer extends BaseEnhancer {
   }
 
   public override destroy(): void {
+    PackageToggleEnhancer._instances.delete(this);
     super.destroy();
     this.cleanupEventListeners();
     this.cards.forEach(c => {

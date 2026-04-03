@@ -21,7 +21,9 @@ function makeCard(packageId: number, quantity = 1): ToggleCard {
   return {
     element,
     packageId,
+    name: '',
     isPreSelected: false,
+    isSelected: false,
     quantity,
     isSyncMode: false,
     syncPackageIds: [],
@@ -29,6 +31,7 @@ function makeCard(packageId: number, quantity = 1): ToggleCard {
     stateContainer: element,
     addText: null,
     removeText: null,
+    togglePrice: null,
   };
 }
 
@@ -154,13 +157,22 @@ describe('renderToggleImage', () => {
 describe('renderTogglePrice', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  function makeLine(overrides: Partial<{ package_price: string; original_package_price: string; subtotal: string; total: string }> = {}) {
+  function makeLine(overrides: Partial<{
+    package_price: string;
+    original_package_price: string;
+    subtotal: string;
+    total: string;
+    total_discount: string;
+    price_recurring_total: string | null;
+  }> = {}) {
     return {
       package_id: 101,
       package_price: '8.00',
       original_package_price: '10.00',
       subtotal: '10.00',
       total: '8.00',
+      total_discount: '2.00',
+      price_recurring_total: null,
       ...overrides,
     } as any;
   }
@@ -177,11 +189,11 @@ describe('renderTogglePrice', () => {
     expect(slot.textContent).toBe('$8.00');
   });
 
-  it('renders compare price into compare slot', () => {
+  it('renders original price into originalPrice slot', () => {
     mockCampaignStore([]);
     const card = makeCard(101);
     const slot = document.createElement('span');
-    slot.setAttribute('data-next-toggle-price', 'compare');
+    slot.setAttribute('data-next-toggle-price', 'originalPrice');
     card.element.appendChild(slot);
 
     renderTogglePrice(card, makeLine());
@@ -189,51 +201,41 @@ describe('renderTogglePrice', () => {
     expect(slot.textContent).toBe('$10.00');
   });
 
-  it('renders savings amount into savings slot', () => {
+  it('renders discount amount into discountAmount slot', () => {
     mockCampaignStore([]);
     const card = makeCard(101);
     const slot = document.createElement('span');
-    slot.setAttribute('data-next-toggle-price', 'savings');
+    slot.setAttribute('data-next-toggle-price', 'discountAmount');
     card.element.appendChild(slot);
 
-    renderTogglePrice(card, makeLine({ package_price: '8.00', original_package_price: '10.00' }));
+    renderTogglePrice(card, makeLine({ total: '8.00', subtotal: '10.00', total_discount: '2.00' }));
 
     expect(slot.textContent).toBe('$2.00');
   });
 
-  it('renders savings percentage into savingsPercentage slot', () => {
+  it('renders discount percentage into discountPercentage slot', () => {
     mockCampaignStore([]);
     const card = makeCard(101);
     const slot = document.createElement('span');
-    slot.setAttribute('data-next-toggle-price', 'savingsPercentage');
+    slot.setAttribute('data-next-toggle-price', 'discountPercentage');
     card.element.appendChild(slot);
 
-    renderTogglePrice(card, makeLine({ package_price: '8.00', original_package_price: '10.00' }));
+    // 2 / 10 * 100 = 20%
+    renderTogglePrice(card, makeLine({ total: '8.00', subtotal: '10.00', total_discount: '2.00' }));
 
     expect(slot.textContent).toBe('20%');
   });
 
-  it('renders subtotal into subtotal slot', () => {
-    mockCampaignStore([]);
-    const card = makeCard(101);
-    const slot = document.createElement('span');
-    slot.setAttribute('data-next-toggle-price', 'subtotal');
-    card.element.appendChild(slot);
-
-    renderTogglePrice(card, makeLine({ subtotal: '10.00' }));
-
-    expect(slot.textContent).toBe('10.00');
-  });
-
-  it('stores raw numeric values as data attributes on card element', () => {
+  it('stores computed price state on card.togglePrice', () => {
     mockCampaignStore([]);
     const card = makeCard(101);
 
-    renderTogglePrice(card, makeLine({ package_price: '8.00', original_package_price: '10.00' }));
+    renderTogglePrice(card, makeLine({ total: '8.00', subtotal: '10.00', total_discount: '2.00' }));
 
-    expect(card.element.getAttribute('data-toggle-price-total')).toBe('8');
-    expect(card.element.getAttribute('data-toggle-price-compare')).toBe('10');
-    expect(parseFloat(card.element.getAttribute('data-toggle-price-savings') ?? '0')).toBeGreaterThan(0);
+    expect(card.togglePrice?.price).toBe(8);
+    expect(card.togglePrice?.originalPrice).toBe(10);
+    expect(card.togglePrice?.discountAmount).toBe(2);
+    expect(card.togglePrice?.hasDiscount).toBe(true);
   });
 
   it('dispatches toggle:price-updated event with packageId', () => {
@@ -242,34 +244,23 @@ describe('renderTogglePrice', () => {
     const listener = vi.fn();
     card.element.addEventListener('toggle:price-updated', listener);
 
-    renderTogglePrice(card, null);
+    renderTogglePrice(card, makeLine());
 
     expect(listener).toHaveBeenCalledOnce();
     const event = listener.mock.calls[0][0] as CustomEvent;
     expect(event.detail).toEqual({ packageId: 101 });
   });
 
-  it('scales price by quantity', () => {
+  it('uses line.total directly (qty baked in by price.ts)', () => {
     mockCampaignStore([]);
     const card = makeCard(101, 3);
     const slot = document.createElement('span');
     slot.setAttribute('data-next-toggle-price', '');
     card.element.appendChild(slot);
 
-    renderTogglePrice(card, makeLine({ package_price: '5.00' }));
+    // price.ts passes card.quantity to the API, so line.total already reflects qty=3
+    renderTogglePrice(card, makeLine({ package_price: '5.00', total: '15.00', subtotal: '30.00', total_discount: '15.00' }));
 
     expect(slot.textContent).toBe('$15.00');
-  });
-
-  it('falls back to campaign package price when no summary line', () => {
-    mockCampaignStore([{ ref_id: 101, price_total: '12.00', price_retail: '15.00' }]);
-    const card = makeCard(101);
-    const slot = document.createElement('span');
-    slot.setAttribute('data-next-toggle-price', '');
-    card.element.appendChild(slot);
-
-    renderTogglePrice(card, null);
-
-    expect(slot.textContent).toBe('$12.00');
   });
 });

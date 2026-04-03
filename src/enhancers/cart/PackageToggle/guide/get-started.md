@@ -20,7 +20,7 @@
   <div data-next-toggle-card data-next-package-id="101" data-next-selected="true">
     <span>Extra Battery</span>
     <span data-next-toggle-price></span>
-    <del data-next-toggle-price="compare"></del>
+    <del data-next-toggle-price="originalPrice"></del>
   </div>
   <div data-next-toggle-card data-next-package-id="102">
     <span>Carrying Case</span>
@@ -71,15 +71,15 @@ Use `data-next-display="toggle.{packageId}.{property}"` to bind any element on t
 
 ```html
 <!-- These can go anywhere in the document -->
-<span data-next-display="toggle.101.isInCart"></span>
+<span data-next-display="toggle.101.isSelected"></span>
 <span data-next-display="toggle.101.price"></span>
-<span data-next-display="toggle.101.savings" data-hide-if-zero="true"></span>
-<span data-next-display="toggle.101.savingsPercentage"></span>
+<span data-next-display="toggle.101.discountAmount" data-hide-if-zero="true"></span>
+<span data-next-display="toggle.101.discountPercentage"></span>
 ```
 
-**Supported properties:** `isInCart`, `price`, `compare`, `savings`, `savingsPercentage`, `hasSavings`
+**Supported properties:** `isSelected`, `name`, `price`, `unitPrice`, `originalPrice`, `originalUnitPrice`, `discountAmount`, `discountPercentage`, `hasDiscount`, `isRecurring`, `recurringPrice`, `interval`, `intervalCount`, `frequency`, `currency`
 
-`isInCart` updates on every cart sync. Prices update after the async price fetch completes.
+`isSelected` updates on every cart sync. Prices update after the async price fetch completes.
 
 ## Verify it is working
 

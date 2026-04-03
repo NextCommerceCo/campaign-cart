@@ -1,3 +1,4 @@
+import { Decimal } from 'decimal.js';
 import { useCampaignStore } from '@/stores/campaignStore';
 import { formatCurrency } from '@/utils/currencyFormatter';
 import { TemplateRenderer } from '@/shared/utils/TemplateRenderer';
@@ -64,60 +65,120 @@ export function renderToggleImage(card: ToggleCard): void {
   });
 }
 
-export function renderTogglePrice(card: ToggleCard, line: SummaryLine | null): void {
-  const allPackages = useCampaignStore.getState().data?.packages ?? [];
-  const pkg = allPackages.find(p => p.ref_id === card.packageId);
-  const qty = card.quantity || 1;
-
-  const scale = (price: string | undefined): string => {
-    if (!price) return '';
-    const num = parseFloat(price);
-    return isNaN(num) ? '' : formatCurrency(num * qty);
-  };
-
-  const comparePrice = line?.original_package_price ?? pkg?.price_total;
-  const basePrice = line?.package_price ?? pkg?.price_total ?? '0';
-  const savings = comparePrice && basePrice
-    ? (parseFloat(comparePrice) - parseFloat(basePrice))
-    : 0;
+/**
+ * Re-renders [data-next-toggle-price] slots from card.togglePrice as-is and
+ * dispatches toggle:price-updated. Called after a price fetch (success or error)
+ * so display enhancers always get a fresh signal.
+ */
+export function renderTogglePriceSlots(card: ToggleCard): void {
+  const tp = card.togglePrice;
+  if (!tp) return;
 
   card.element.querySelectorAll<HTMLElement>('[data-next-toggle-price]').forEach(el => {
-    const field = el.getAttribute('data-next-toggle-price') || 'total';
+    const field = el.getAttribute('data-next-toggle-price') || 'price';
 
     switch (field) {
-      case 'compare':
-        el.textContent = scale(comparePrice);
+      case 'price':
+        el.textContent = formatCurrency(tp.price);
         break;
-      case 'savings':
-        el.textContent = savings > 0 ? formatCurrency(savings) : '';
+      case 'originalPrice':
+        el.textContent = tp.originalPrice != null ? formatCurrency(tp.originalPrice) : '';
         break;
-      case 'savingsPercentage':
-        el.textContent = savings > 0 && comparePrice
-          ? `${Math.round((savings / parseFloat(comparePrice)) * 100)}%`
+      case 'unitPrice':
+        el.textContent = formatCurrency(tp.unitPrice);
+        break;
+      case 'originalUnitPrice':
+        el.textContent = tp.originalUnitPrice != null ? formatCurrency(tp.originalUnitPrice) : '';
+        break;
+      case 'hasDiscount':
+        el.textContent = String(tp.hasDiscount);
+        break;
+      case 'discountAmount':
+        el.textContent = tp.hasDiscount ? formatCurrency(tp.discountAmount) : '';
+        break;
+      case 'discountPercentage':
+        el.textContent = tp.discountPercentage > 0
+          ? `${Math.round(tp.discountPercentage)}%`
           : '';
         break;
-      case 'subtotal':
-        el.textContent = line?.subtotal ?? pkg?.price_total ?? '';
+      case 'isRecurring':
+        el.textContent = String(tp.isRecurring);
+        break;
+      case 'recurringPrice':
+        el.textContent = tp.recurringPrice != null ? formatCurrency(tp.recurringPrice) : '';
+        break;
+      case 'interval':
+        el.textContent = tp.interval ?? '';
+        break;
+      case 'intervalCount':
+        el.textContent = tp.intervalCount != null ? String(tp.intervalCount) : '';
+        break;
+      case 'frequency':
+        el.textContent = tp.frequency;
+        break;
+      case 'currency':
+        el.textContent = tp.currency;
         break;
       default:
-        el.textContent = scale(basePrice);
         break;
     }
   });
 
-  // Store raw numeric values for PackageToggleDisplayEnhancer
-  const baseNum = parseFloat(basePrice) * qty;
-  const compareNum = comparePrice ? parseFloat(comparePrice) * qty : null;
-  const savingsPct =
-    savings > 0 && compareNum ? (savings / compareNum) * 100 : 0;
-  card.element.setAttribute('data-toggle-price-total', isNaN(baseNum) ? '' : baseNum.toString());
-  card.element.setAttribute('data-toggle-price-compare', compareNum !== null ? compareNum.toString() : '');
-  card.element.setAttribute('data-toggle-price-savings', savings > 0 ? savings.toString() : '0');
-  card.element.setAttribute('data-toggle-price-savings-pct', savingsPct.toString());
   card.element.dispatchEvent(
     new CustomEvent('toggle:price-updated', {
       bubbles: true,
       detail: { packageId: card.packageId },
     }),
   );
+}
+
+/**
+ * Updates card.togglePrice from a SummaryLine (API data) then calls
+ * renderTogglePriceSlots to push the new state to the DOM.
+ */
+export function renderTogglePrice(card: ToggleCard, line: SummaryLine): void {
+  const allPackages = useCampaignStore.getState().data?.packages ?? [];
+  const pkg = allPackages.find(p => p.ref_id === card.packageId);
+
+  const price = new Decimal(line.total);
+  const unitPrice = new Decimal(line.package_price);
+  const originalPrice = new Decimal(line.subtotal);
+  const originalUnitPrice = new Decimal(line.original_package_price);
+  const discountAmount = new Decimal(line.total_discount);
+  const recurringPrice = line.price_recurring_total != null
+    ? new Decimal(line.price_recurring_total)
+    : null;
+
+  const hasDiscount = discountAmount.gt(0);
+  const discountPercentage = hasDiscount && originalPrice.gt(0)
+    ? discountAmount.div(originalPrice).times(100)
+    : new Decimal(0);
+
+  const currency = useCampaignStore.getState().currency ?? '';
+  const isRecurring = pkg?.is_recurring ?? false;
+  const interval = pkg?.interval ?? null;
+  const intervalCount = pkg?.interval_count ?? null;
+  const frequency = isRecurring
+    ? intervalCount != null && intervalCount > 1
+      ? `Every ${intervalCount} ${interval}s`
+      : `Per ${interval}`
+    : 'One time';
+
+  card.togglePrice = {
+    price: price.toNumber(),
+    unitPrice: unitPrice.toNumber(),
+    originalPrice: originalPrice.toNumber(),
+    originalUnitPrice: originalUnitPrice.toNumber(),
+    discountAmount: hasDiscount ? discountAmount.toNumber() : 0,
+    discountPercentage: discountPercentage.toNumber(),
+    hasDiscount,
+    currency,
+    isRecurring,
+    recurringPrice: recurringPrice?.toNumber() ?? null,
+    interval,
+    intervalCount,
+    frequency,
+  };
+
+  renderTogglePriceSlots(card);
 }
