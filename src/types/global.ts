@@ -372,6 +372,13 @@ export interface Package {
   is_recurring: boolean;
   interval?: 'day' | 'month' | null;
   interval_count?: number | null;
+  product_variant_id?: number;
+  product_variant_name?: string;
+  product_id?: number;
+  product_name?: string;
+  product_sku?: string | null;
+  product_purchase_availability?: string;
+  product_inventory_availability?: string;
 }
 
 export interface ShippingOption {

@@ -4,6 +4,22 @@ export interface PackageDef {
   [key: string]: unknown;
 }
 
+/** Static display data derived from a campaign Package at card registration time. */
+export interface TogglePackageState {
+  packageId: number;
+  name: string;
+  image: string;
+  quantity: number;
+  productId: number | null;
+  variantId: number | null;
+  variantName: string;
+  productName: string;
+  sku: string | null;
+  isRecurring: boolean;
+  interval: 'day' | 'month' | null;
+  intervalCount: number | null;
+}
+
 export interface TogglePriceSummary {
   price: number;
   unitPrice: number;

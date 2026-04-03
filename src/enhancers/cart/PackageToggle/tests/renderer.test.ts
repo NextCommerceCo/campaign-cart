@@ -48,14 +48,16 @@ const logger = { debug: vi.fn(), warn: vi.fn(), error: vi.fn() } as any;
 
 // ─── renderToggleTemplate ─────────────────────────────────────────────────────
 
+const PKG_STUB = { ref_id: 1, name: '', image: '', qty: 1, is_recurring: false };
+
 describe('renderToggleTemplate', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockCampaignStore();
+    mockCampaignStore([PKG_STUB]);
   });
 
   it('renders template with custom def fields as {toggle.*} vars', () => {
-    mockCampaignStore([]);
+    mockCampaignStore([{ ...PKG_STUB, ref_id: 101, name: 'Pkg 101' }]);
     const template = '<div data-next-toggle-card>{toggle.name}</div>';
     const el = renderToggleTemplate(template, { packageId: 101, name: 'Widget' }, logger);
 
@@ -64,6 +66,7 @@ describe('renderToggleTemplate', () => {
   });
 
   it('sets data-next-package-id on the card element', () => {
+    mockCampaignStore([{ ...PKG_STUB, ref_id: 42 }]);
     const template = '<div data-next-toggle-card></div>';
     const el = renderToggleTemplate(template, { packageId: 42 }, logger);
 
@@ -77,14 +80,46 @@ describe('renderToggleTemplate', () => {
     expect(el!.getAttribute('data-next-selected')).toBe('true');
   });
 
-  it('enriches from campaign store: name, image, price', () => {
-    mockCampaignStore([{ ref_id: 5, name: 'Gadget', image: 'img.jpg', price: '9.99', price_retail: '14.99', price_retail_total: '14.99' }]);
-    const template = '<div>{toggle.name} {toggle.image} {toggle.price}</div>';
+  it('enriches from campaign store: name and image', () => {
+    mockCampaignStore([{ ref_id: 5, name: 'Gadget', image: 'img.jpg' }]);
+    const template = '<div>{toggle.name} {toggle.image}</div>';
     const el = renderToggleTemplate(template, { packageId: 5 }, logger);
 
     expect(el!.textContent).toContain('Gadget');
     expect(el!.textContent).toContain('img.jpg');
-    expect(el!.textContent).toContain('9.99');
+  });
+
+  it('enriches from campaign store: product fields', () => {
+    mockCampaignStore([{
+      ref_id: 5,
+      name: 'Gadget',
+      image: 'img.jpg',
+      qty: 3,
+      product_name: 'Widget Pro',
+      product_variant_name: 'Red / Large',
+      product_sku: 'WP-RL-001',
+      is_recurring: true,
+      interval: 'month',
+      interval_count: 2,
+    }]);
+    const template = '<div>{toggle.quantity} {toggle.productName} {toggle.variantName} {toggle.sku} {toggle.isRecurring} {toggle.interval} {toggle.intervalCount} {toggle.frequency}</div>';
+    const el = renderToggleTemplate(template, { packageId: 5 }, logger);
+
+    expect(el!.textContent).toContain('3');
+    expect(el!.textContent).toContain('Widget Pro');
+    expect(el!.textContent).toContain('Red / Large');
+    expect(el!.textContent).toContain('WP-RL-001');
+    expect(el!.textContent).toContain('true');
+    expect(el!.textContent).toContain('month');
+    expect(el!.textContent).toContain('2');
+    expect(el!.textContent).toContain('Every 2 months');
+  });
+
+  it('returns null and warns when package not in campaign store', () => {
+    const el = renderToggleTemplate('<div></div>', { packageId: 999 }, logger);
+
+    expect(el).toBeNull();
+    expect(logger.warn).toHaveBeenCalled();
   });
 
   it('returns null and warns when template produces no element', () => {
@@ -95,6 +130,7 @@ describe('renderToggleTemplate', () => {
   });
 
   it('falls back to first child element when no [data-next-toggle-card] in template', () => {
+    mockCampaignStore([{ ...PKG_STUB, ref_id: 7 }]);
     const template = '<div class="my-card"></div>';
     const el = renderToggleTemplate(template, { packageId: 7 }, logger);
 

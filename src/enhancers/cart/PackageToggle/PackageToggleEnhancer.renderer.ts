@@ -4,7 +4,49 @@ import { formatCurrency, formatPercentage } from '@/utils/currencyFormatter';
 import { TemplateRenderer } from '@/shared/utils/TemplateRenderer';
 import type { Logger } from '@/utils/logger';
 import type { SummaryLine } from '@/types/api';
-import type { PackageDef, ToggleCard, TogglePriceSummary } from './PackageToggleEnhancer.types';
+import type { PackageDef, ToggleCard, TogglePackageState, TogglePriceSummary } from './PackageToggleEnhancer.types';
+import { makeTogglePackageState } from './PackageToggleEnhancer.state';
+
+// ─── Template vars builder ────────────────────────────────────────────────────
+
+/**
+ * Builds the template variable map for a toggle card.
+ * def fields always take priority — callers can override any pkg-derived value
+ * by including it in the PackageDef (e.g. via data-next-packages JSON).
+ */
+export function buildToggleVars(
+  def: PackageDef,
+  pkgState: TogglePackageState,
+): Record<string, string> {
+  const vars: Record<string, string> = {};
+
+  for (const [key, value] of Object.entries(def)) {
+    vars[key] = value != null ? String(value) : '';
+  }
+
+  vars['packageId'] ??= String(pkgState.packageId);
+  vars['name'] ??= pkgState.name;
+  vars['image'] ??= pkgState.image;
+  vars['quantity'] ??= String(pkgState.quantity);
+  vars['productId'] ??= pkgState.productId != null ? String(pkgState.productId) : '';
+  vars['variantId'] ??= pkgState.variantId != null ? String(pkgState.variantId) : '';
+  vars['variantName'] ??= pkgState.variantName;
+  vars['productName'] ??= pkgState.productName;
+  vars['sku'] ??= pkgState.sku ?? '';
+  vars['isRecurring'] ??= String(pkgState.isRecurring);
+  vars['interval'] ??= pkgState.interval ?? '';
+  vars['intervalCount'] ??=
+    pkgState.intervalCount != null ? String(pkgState.intervalCount) : '';
+  vars['frequency'] ??= pkgState.isRecurring
+    ? pkgState.intervalCount != null && pkgState.intervalCount > 1
+      ? `Every ${pkgState.intervalCount} ${pkgState.interval}s`
+      : `Per ${pkgState.interval}`
+    : 'One time';
+
+  return vars;
+}
+
+// ─── Card template ────────────────────────────────────────────────────────────
 
 export function renderToggleTemplate(
   template: string,
@@ -13,19 +55,11 @@ export function renderToggleTemplate(
 ): HTMLElement | null {
   const allPackages = useCampaignStore.getState().data?.packages ?? [];
   const pkg = allPackages.find(p => p.ref_id === def.packageId);
-
-  const toggleData: Record<string, string> = {};
-  for (const [key, value] of Object.entries(def)) {
-    toggleData[key] = value != null ? String(value) : '';
+  if (!pkg) {
+    logger.warn('No campaign package found for packageId', def.packageId);
+    return null;
   }
-  if (pkg) {
-    toggleData['packageId'] ??= String(pkg.ref_id);
-    toggleData['name'] ??= pkg.name ?? '';
-    toggleData['image'] ??= pkg.image ?? '';
-    toggleData['price'] ??= pkg.price ?? '';
-    toggleData['priceRetail'] ??= pkg.price_retail ?? '';
-    toggleData['priceRetailTotal'] ??= pkg.price_retail_total ?? '';
-  }
+  const toggleData = buildToggleVars(def, makeTogglePackageState(pkg));
 
   const html = TemplateRenderer.render(template, { data: { toggle: toggleData } });
   const wrapper = document.createElement('div');

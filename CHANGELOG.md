@@ -1,5 +1,54 @@
 # Changelog
 
+## [0.4.10] — 2026-04-03 — PackageToggle Display Slots & Pricing Refactor
+
+### Breaking
+
+- **`PackageToggleDisplayEnhancer` property names changed** — the set of properties available on `data-next-display="toggle.{packageId}.{property}"` has been renamed to align with the `TogglePriceSummary` shape:
+
+  | Old property | New property |
+  |---|---|
+  | `isInCart` | `isSelected` |
+  | `hasSavings` | `hasDiscount` |
+  | `compare` | `originalPrice` |
+  | `savings` | `discountAmount` |
+  | `savingsPercentage` | `discountPercentage` |
+
+  Any `data-next-display` bindings using the old names must be updated.
+
+- **`PackageToggleDisplayEnhancer` listens to `toggle:selection-changed` instead of `toggle:toggled`** — the display enhancer now subscribes to `toggle:selection-changed` for `isSelected` updates. Custom code that dispatched `toggle:toggled` to drive display updates must switch to emitting `toggle:selection-changed`.
+
+### New
+
+- **`data-next-toggle-display` attribute** — new primary display slot attribute for toggle cards. Replaces `data-next-toggle-price`. Accepts the same field names plus the following additions:
+
+  | Value | Effect |
+  |---|---|
+  | `"name"` | Package display name from the campaign store |
+  | `"isSelected"` | Shown (`display: ""`) when `data-next-selected` was `"true"` at last price update; hidden (`display: none`) otherwise |
+  | `"hasDiscount"` | Shown when a discount applies; hidden otherwise |
+  | `"isRecurring"` | Shown when the package bills on a recurring schedule; hidden otherwise |
+
+  All price values are formatted using the currency stored in `TogglePriceSummary` (set from `campaignStore.currency`, updated by the price fetch response). `discountPercentage` now uses `formatPercentage` for consistent formatting.
+
+- **`PackageToggleDisplayEnhancer` expanded property set** — the companion display enhancer (`data-next-display="toggle.{packageId}.{property}"`) now exposes the full `TogglePriceSummary` shape: `isSelected`, `name`, `price`, `unitPrice`, `originalPrice`, `originalUnitPrice`, `discountAmount`, `discountPercentage`, `hasDiscount`, `isRecurring`, `recurringPrice`, `interval`, `intervalCount`, `frequency`, `currency`.
+
+- **`TogglePriceSummary` interface** — the price shape used by `ToggleCard` is now a named interface in `PackageToggleEnhancer.types.ts`. Fields: `price`, `unitPrice`, `originalPrice`, `originalUnitPrice`, `discountAmount`, `discountPercentage`, `hasDiscount`, `currency`, `isRecurring`, `recurringPrice`, `interval`, `intervalCount`, `frequency`.
+
+- **`ToggleCardPublicState` interface** — typed shape for the value returned by `PackageToggleEnhancer.getToggleState()`: `name`, `isSelected`, `togglePrice`.
+
+- **`PackageToggleEnhancer.state.ts`** — new file exporting `makeTogglePriceSummary(pkg)`. Builds a provisional `TogglePriceSummary` from campaign package data at card registration so display slots render immediately before the async price fetch resolves.
+
+- **`ToggleCard.name` and `ToggleCard.isSelected` fields** — the card registration shape now carries the package display name and a live `isSelected` flag, read by `updateCardDisplayElements` on every price update.
+
+### Deprecated
+
+- **`data-next-toggle-price`** — kept for backward compatibility. Accepts the same field names as `data-next-toggle-display` and produces identical output. Prefer `data-next-toggle-display` in new markup.
+
+### Tests
+
+- **`PackageToggleEnhancer` renderer unit tests updated** — `renderer.test.ts` updated to cover `updateCardDisplayElements` (renamed from `renderTogglePriceSlots`), the `data-next-toggle-display` path, and the new `formatPercentage` mock.
+
 ## [0.4.9] — 2026-04-03 — Pricing Model Refactor & Unit Tests
 
 ### Breaking

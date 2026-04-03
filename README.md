@@ -22,7 +22,7 @@ Add the following code to your HTML page:
 
 ```html
 <!-- Load Campaign Cart SDK -->
-<script src="https://cdn.jsdelivr.net/gh/sellmore-co/campaign-cart@v0.2.28/dist/loader.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.3.12/dist/loader.js"></script>
 
 <!-- Required: Your Campaign API Key -->
 <meta name="next-api-key" content="your-api-key-here">

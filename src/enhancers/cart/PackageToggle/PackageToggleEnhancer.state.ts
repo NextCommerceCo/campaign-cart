@@ -1,6 +1,24 @@
 import { useCampaignStore } from '@/stores/campaignStore';
 import type { Package } from '@/types/campaign';
-import type { TogglePriceSummary } from './PackageToggleEnhancer.types';
+import type { TogglePackageState, TogglePriceSummary } from './PackageToggleEnhancer.types';
+
+/** Build a TogglePackageState from a campaign Package. */
+export function makeTogglePackageState(pkg: Package): TogglePackageState {
+  return {
+    packageId: pkg.ref_id,
+    name: pkg.name || '',
+    image: pkg.image || '',
+    quantity: pkg.qty,
+    productId: pkg.product_id ?? null,
+    variantId: pkg.product_variant_id ?? null,
+    variantName: pkg.product_variant_name || '',
+    productName: pkg.product_name || '',
+    sku: pkg.product_sku ?? null,
+    isRecurring: pkg.is_recurring,
+    interval: pkg.interval ?? null,
+    intervalCount: pkg.interval_count ?? null,
+  };
+}
 
 function buildFrequency(pkg: Package): string {
   if (!pkg.is_recurring) return 'One time';
