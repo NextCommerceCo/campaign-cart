@@ -32,19 +32,27 @@ export function buildSlotVars(
     'item.variantName': pkgState.variantName,
     'item.productName': pkgState.productName,
     'item.sku': pkgState.sku ?? '',
-    'item.qty': String(pkgState.qty),
     'item.isRecurring': pkgState.isRecurring ? 'true' : 'false',
-    'item.price': pkgState.unitPrice,
-    'item.priceTotal': pkgState.packagePrice,
-    'item.unitPrice': pkgState.unitPrice,
-    'item.originalUnitPrice': pkgState.originalUnitPrice,
-    'item.packagePrice': pkgState.packagePrice,
-    'item.originalPackagePrice': pkgState.originalPackagePrice,
-    'item.totalDiscount': pkgState.totalDiscount,
-    'item.subtotal': pkgState.subtotal,
-    'item.total': pkgState.total,
+    'item.interval': pkgState.interval ?? '',
+    'item.intervalCount': pkgState.intervalCount != null ? String(pkgState.intervalCount) : '',
+    'item.frequency': pkgState.isRecurring
+      ? pkgState.intervalCount != null && pkgState.intervalCount > 1
+        ? `Every ${pkgState.intervalCount} ${pkgState.interval}s`
+        : `Per ${pkgState.interval}`
+      : 'One time',
+    'item.recurringPrice': formatCurrency(pkgState.recurringPrice.toNumber(), pkgState.currency),
+    'item.originalRecurringPrice': formatCurrency(pkgState.originalRecurringPrice.toNumber(), pkgState.currency),
+    'item.price': formatCurrency(pkgState.unitPrice.times(slot.quantity).toNumber(), pkgState.currency),
+    'item.originalPrice': formatCurrency(pkgState.originalUnitPrice.times(slot.quantity).toNumber(), pkgState.currency),
+    'item.unitPrice': formatCurrency(pkgState.unitPrice.toNumber(), pkgState.currency),
+    'item.originalUnitPrice': formatCurrency(pkgState.originalUnitPrice.toNumber(), pkgState.currency),
+    'item.discountAmount': formatCurrency(
+      pkgState.originalUnitPrice.minus(pkgState.unitPrice).times(slot.quantity).toNumber(),
+      pkgState.currency,
+    ),
+    'item.discountPercentage': formatPercentage(pkgState.discountPercentage.toNumber()),
     'item.hasDiscount': pkgState.hasDiscount ? 'show' : 'hide',
-    'item.hasSavings': pkgState.hasSavings ? 'show' : 'hide',
+    'item.currency': pkgState.currency,
   };
 }
 
@@ -107,44 +115,46 @@ interface BundleFieldData {
   bundlePrice: BundlePriceSummary;
   isSelected: boolean;
   name: string;
-  unitPrice: number;
-  originalUnitPrice: number;
 }
 
 function applyBundleField(el: HTMLElement, field: string, data: BundleFieldData): void {
-  const { bundlePrice, isSelected, name, unitPrice, originalUnitPrice } = data;
+  const { bundlePrice, isSelected, name } = data;
+  const currency = bundlePrice.currency || undefined;
   switch (field) {
     case 'price':
     case 'total':
-      el.textContent = formatCurrency(bundlePrice.total);
+      el.textContent = formatCurrency(bundlePrice.price.toNumber(), currency);
       break;
     case 'compare':
     case 'originalPrice':
-      el.textContent = formatCurrency(bundlePrice.subtotal);
+      el.textContent = formatCurrency(bundlePrice.originalPrice.toNumber(), currency);
       break;
     case 'savings':
     case 'discountAmount':
-      el.textContent = formatCurrency(bundlePrice.totalDiscount);
+      el.textContent = formatCurrency(bundlePrice.discountAmount.toNumber(), currency);
       break;
     case 'unitPrice':
-      el.textContent = formatCurrency(unitPrice);
+      el.textContent = formatCurrency(bundlePrice.unitPrice.toNumber(), currency);
       break;
     case 'originalUnitPrice':
-      el.textContent = formatCurrency(originalUnitPrice);
+      el.textContent = formatCurrency(bundlePrice.originalUnitPrice.toNumber(), currency);
       break;
     case 'savingsPercentage':
     case 'discountPercentage':
-      el.textContent = formatPercentage(bundlePrice.totalDiscountPercentage);
+      el.textContent = formatPercentage(bundlePrice.discountPercentage.toNumber());
       break;
     case 'isSelected':
       el.style.display = isSelected ? '' : 'none';
       break;
     case 'hasDiscount':
     case 'hasSavings':
-      el.style.display = bundlePrice.totalDiscount > 0 ? '' : 'none';
+      el.style.display = bundlePrice.hasDiscount ? '' : 'none';
       break;
     case 'name':
       el.textContent = name;
+      break;
+    case 'currency':
+      el.textContent = bundlePrice.currency;
       break;
   }
 }
@@ -160,20 +170,10 @@ export function updateCardDisplayElements(
   bundlePrice: BundlePriceSummary,
 ): void {
   const isSelected = card.element.getAttribute('data-next-selected') === 'true';
-  const totalQuantity = card.slots
-    .filter(s => !s.noSlot)
-    .reduce((sum, s) => sum + s.quantity, 0);
-  const unitPrice =
-    totalQuantity > 0 ? bundlePrice.total / totalQuantity : bundlePrice.total;
-  const originalUnitPrice =
-    totalQuantity > 0 ? bundlePrice.subtotal / totalQuantity : bundlePrice.subtotal;
-
   const fieldData: BundleFieldData = {
     bundlePrice,
     isSelected,
     name: card.name,
-    unitPrice,
-    originalUnitPrice,
   };
 
   card.element.querySelectorAll<HTMLElement>('[data-next-bundle-display]').forEach(el => {

@@ -1,7 +1,7 @@
 # BundleSelectorEnhancer
 
 > Category: `cart`
-> Last reviewed: 2026-03-31
+> Last reviewed: 2026-04-03 (currency tracking added)
 > Owner: campaign-cart
 
 A container that lets a developer define named bundles — each bundle being a fixed set of packages and quantities — and lets a visitor pick one. In swap mode, selecting a bundle atomically replaces the previous bundle's cart items while leaving unrelated cart items untouched. Bundle vouchers are applied and removed automatically as the selection changes.
@@ -49,20 +49,22 @@ Visitor changes variant (select or custom option)
 
 - Exactly one bundle card is selected at all times. There is no "none selected" state after initialization.
 - On init, the first card with `data-next-selected="true"` is pre-selected and, in swap mode, its items are immediately added to the cart. If no card has `data-next-selected="true"`, the first registered card is auto-selected and a warning is logged.
-- In swap mode, bundle items are tagged in the cart with a `bundleId`. When a different bundle is selected, only the items sharing the previous bundle's `bundleId` are removed; unrelated cart items (upsells, standalone packages) are preserved.
+- In swap mode, bundle items are tagged in the cart with the selector's `selectorId` (from `data-next-selector-id`). When a different bundle is selected, only the items sharing that `selectorId` are removed; unrelated cart items (upsells, standalone packages) are preserved.
 - Vouchers declared on a bundle card via `data-next-bundle-vouchers` are automatically applied when that bundle is selected and removed when it is deselected. Vouchers shared between two bundles are not re-applied or re-removed. User-applied coupons (not bundle vouchers) are always preserved.
 - A `BundleItem` with `configurable: true` and `quantity > 1` is expanded into one slot per unit so the visitor can independently choose a variant (size, color) for each unit.
 - A `BundleItem` with `noSlot: true` is added to the cart silently without rendering a slot row. Use this for free gifts or add-ons that should not be visible in the slot list.
 - Variant selection within a slot resolves a matching package from the campaign store by matching all attribute values. If no package matches the selected attribute combination, the change is logged as a warning and ignored.
 - Unavailable variant options (package `product_purchase_availability === 'unavailable'`) are marked with `next-variant-unavailable` and `data-next-unavailable="true"` and are not selectable.
 - Price previews are fetched for all cards on init and re-fetched on currency change and on checkout voucher change (both debounced 150ms). During fetch, the card element gets `data-next-loading="true"` and class `next-loading`.
+- Each package state and the bundle price summary store the ISO 4217 currency code used to format their prices. The code is seeded from `campaignStore.currency` on card registration and updated to the currency returned by the price fetch API once the fetch resolves. All price template variables (`{item.price}`, `{item.unitPrice}`, etc.) and bundle display fields (`[data-next-bundle-display]`) are formatted using this stored currency rather than re-reading the store at render time.
+- Slot template price variables (`{item.price}`, `{item.originalPrice}`, `{item.discountAmount}`) are always **per-slot** amounts: `unitPrice × slot.quantity`. They are distinct from the bundle aggregate totals shown via `[data-next-bundle-display]`. The calculate API returns per-unit prices (`package_price`, `original_package_price`); slot prices are derived by multiplying those by the slot's own quantity.
 - Price comparison uses the campaign package `price_retail` as the compare-at value, not the API's compare total, so savings reflects the true retail-to-current-price difference.
 - If a cart write fails (network error or API rejection), the enhancer reverts the visual selection to match the actual cart state.
 - Dynamic cards added to the DOM after init are registered automatically via a mutation observer.
 
 ## Decisions
 
-- We chose to tag cart items with `bundleId` (rather than tracking them by package ID alone) because multiple bundles can share the same package. Without the tag, the enhancer could not determine which items belonged to the previous bundle when performing a swap.
+- We chose to tag cart items with `selectorId` (rather than tracking them by package ID alone) because multiple bundles within the same selector can share the same package. Without the tag, the enhancer could not determine which items belonged to this selector when performing a swap.
 - We chose `swapCart` (full cart replace, keeping non-bundle items) over individual add/remove calls because it is a single API round trip and avoids partial-state windows where the old bundle is removed but the new one is not yet added.
 - We chose to revert visual state on cart write failure so the UI always reflects the actual cart, preventing a mismatch where the card appears selected but its items are not in the cart.
 - We chose `configurable` as a per-item opt-in rather than auto-expanding all multi-quantity items, because most bundles with qty > 1 want a single slot (e.g., "6 bottles of the same product"), and expanding them all into individual slots would require template changes most implementations don't need.

@@ -232,8 +232,7 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
   /**
    * Phase 5 — RelenderVariable: updates all DOM that depends on calculated prices.
    * Covers slot {item.xxx} variables, [data-next-bundle-display] elements,
-   * data-bundle-price-* attributes, and the bundle:price-updated event for
-   * BundleDisplayEnhancer.
+   * and the bundle:price-updated event for BundleDisplayEnhancer.
    */
   private relenderVariables(card: BundleCard): void {
     if (this.slotTemplate) {

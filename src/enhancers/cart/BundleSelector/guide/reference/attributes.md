@@ -317,54 +317,6 @@ Placeholder element inside a bundle card where slot rows are injected. Required 
 
 ---
 
-### `data-bundle-price-total` *(set by enhancer)*
-
-| | |
-|---|---|
-| Type | `string` (float) |
-| Set by | enhancer (after price fetch) |
-| Default | — |
-
-Raw numeric total price written to the card element after each price fetch. Read by `BundleDisplayEnhancer` to populate `data-next-display="bundle.{selectorId}.price"` elements.
-
----
-
-### `data-bundle-price-compare` *(set by enhancer)*
-
-| | |
-|---|---|
-| Type | `string` (float) |
-| Set by | enhancer (after price fetch) |
-| Default | — |
-
-Raw numeric retail / compare-at price. Empty string when no compare price is available.
-
----
-
-### `data-bundle-price-savings` *(set by enhancer)*
-
-| | |
-|---|---|
-| Type | `string` (float) |
-| Set by | enhancer (after price fetch) |
-| Default | — |
-
-Raw numeric savings amount (compare minus total). `0` when there are no savings.
-
----
-
-### `data-bundle-price-savings-pct` *(set by enhancer)*
-
-| | |
-|---|---|
-| Type | `string` (float) |
-| Set by | enhancer (after price fetch) |
-| Default | — |
-
-Raw numeric savings percentage (0–100). `0` when there are no savings.
-
----
-
 ## External slots container
 
 ---
@@ -402,8 +354,8 @@ Use `data-next-display="bundle.{selectorId}.{property}"` on any element in the d
 | `discountAmount` | currency | Total discount applied to the bundle |
 | `discountPercentage` | percentage | Discount as a percentage of the original price |
 | `hasDiscount` | boolean | `true` when a discount is applied to the bundle |
-| `unitPrice` | currency | *(coming soon — not yet implemented)* |
-| `originalUnitPrice` | currency | *(coming soon — not yet implemented)* |
+| `unitPrice` | currency | Bundle total price divided by total visible slot quantity |
+| `originalUnitPrice` | currency | Original (pre-discount) price divided by total visible slot quantity |
 
 **Deprecated properties** (still supported for backwards compatibility):
 

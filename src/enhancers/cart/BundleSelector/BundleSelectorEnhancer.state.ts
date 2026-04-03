@@ -1,5 +1,7 @@
+import Decimal from 'decimal.js';
 import type { Logger } from '@/utils/logger';
 import type { Package } from '@/types/campaign';
+import { useCampaignStore } from '@/stores/campaignStore';
 import type { BundleCard, BundleItem, BundlePackageState } from './BundleSelectorEnhancer.types';
 
 /**
@@ -12,20 +14,22 @@ export function makePackageState(pkg: Package): BundlePackageState {
     packageId: pkg.ref_id,
     name: pkg.name || '',
     image: pkg.image || '',
-    qty: pkg.qty ?? 1,
     productName: pkg.product_name || '',
     variantName: pkg.product_variant_name || '',
     sku: pkg.product_sku ?? null,
     isRecurring: pkg.is_recurring,
-    unitPrice: pkg.price || '',
-    packagePrice: pkg.price_total || '',
-    originalUnitPrice: pkg.price || '',
-    originalPackagePrice: pkg.price_total || '',
-    totalDiscount: '0',
-    subtotal: pkg.price_total || '',
-    total: pkg.price_total || '',
+    interval: pkg.interval ?? null,
+    intervalCount: pkg.interval_count ?? null,
+    recurringPrice: new Decimal(pkg.price_recurring_total || 0),
+    originalRecurringPrice: new Decimal(pkg.price_recurring_total || 0),
+    unitPrice: new Decimal(pkg.price_total || 0),
+    originalUnitPrice: new Decimal(pkg.price_total || 0),
+    discountAmount: new Decimal(0),
+    discountPercentage: new Decimal(0),
+    originalPrice: new Decimal(pkg.price_total || 0),
+    price: new Decimal(pkg.price_total || 0),
     hasDiscount: false,
-    hasSavings: pkg.price_retail != null && pkg.price_retail !== pkg.price,
+    currency: useCampaignStore.getState().currency ?? '',
   };
 }
 

@@ -16,6 +16,7 @@ const FORMAT_MAP: Record<string, FormatType> = {
   hasSavings: 'boolean',
   unitPrice: 'currency',
   originalUnitPrice: 'currency',
+  currency: 'text',
 };
 
 export class BundleDisplayEnhancer extends BaseDisplayEnhancer {
@@ -58,27 +59,21 @@ export class BundleDisplayEnhancer extends BaseDisplayEnhancer {
       case 'name':
         return state.name;
       case 'price':
-        return state.bundlePrice?.total;
-      case 'compare': // deprecated - use originalPrice instead, but keep supporting for backwards compatibility
-        return state.bundlePrice?.subtotal;
+        return state.bundlePrice?.price;
       case 'originalPrice':
-        return state.bundlePrice?.subtotal;
-      case 'savings': // deprecated - use discountAmount instead, but keep supporting for backwards compatibility
-        return state.bundlePrice?.totalDiscount;
+        return state.bundlePrice?.originalPrice;
       case 'discountAmount':
-        return state.bundlePrice?.totalDiscount;
-      case 'savingsPercentage': // deprecated - use discountPercentage instead, but keep supporting for backwards compatibility
-        return state.bundlePrice?.totalDiscountPercentage;
+        return state.bundlePrice?.discountAmount;
       case 'discountPercentage':
-        return state.bundlePrice?.totalDiscountPercentage;
-      case 'hasSavings': // deprecated - use hasDiscount instead, but keep supporting for backwards compatibility
-        return (state.bundlePrice?.totalDiscount ?? 0) > 0;
+        return state.bundlePrice?.discountPercentage;
       case 'hasDiscount':
-        return (state.bundlePrice?.totalDiscount ?? 0) > 0;
+        return state.bundlePrice?.hasDiscount ?? false;
       case 'unitPrice':
-        return 0 // coming soon - not implemented yet
+        return state.bundlePrice?.unitPrice;
       case 'originalUnitPrice':
-        return 0 // coming soon - not implemented yet
+        return state.bundlePrice?.originalUnitPrice;
+      case 'currency':
+        return state.bundlePrice?.currency;
       default:
         this.logger.warn(`Unknown bundle display property: "${this.property}"`);
         return undefined;

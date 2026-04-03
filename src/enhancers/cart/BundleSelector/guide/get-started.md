@@ -146,8 +146,8 @@ Use `data-next-display="bundle.{bundleId}.{property}"` to bind any element on th
 <!-- These can go anywhere in the document -->
 <span data-next-display="bundle.starter.price"></span>
 <span data-next-display="bundle.starter.isSelected"></span>
-<span data-next-display="bundle.value.savings" data-hide-if-zero="true"></span>
-<span data-next-display="bundle.value.savingsPercentage"></span>
+<span data-next-display="bundle.value.discountAmount" data-hide-if-zero="true"></span>
+<span data-next-display="bundle.value.discountPercentage"></span>
 ```
 
 **Supported properties:** `isSelected`, `name`, `price`, `originalPrice`, `discountAmount`, `discountPercentage`, `hasDiscount`, `unitPrice`, `originalUnitPrice`

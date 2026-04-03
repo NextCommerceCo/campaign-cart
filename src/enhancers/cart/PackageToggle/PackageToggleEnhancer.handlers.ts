@@ -4,7 +4,7 @@ import { useOrderStore } from '@/stores/orderStore';
 import { useConfigStore } from '@/stores/configStore';
 import { ApiClient } from '@/api/client';
 import { preserveQueryParams } from '@/utils/url-utils';
-import type { CartState } from '@/types/global';
+import type { CartState, EventMap } from '@/types/global';
 import type { AddUpsellLine } from '@/types/api';
 import type { Logger } from '@/utils/logger';
 import type { ToggleCard } from './PackageToggleEnhancer.types';
@@ -21,7 +21,7 @@ if (typeof window !== 'undefined') {
 
 export interface ToggleHandlerContext {
   logger: Logger;
-  emit: (event: string, detail: unknown) => void;
+  emit: <K extends keyof EventMap>(event: K, detail: EventMap[K]) => void;
   autoAddInProgress: Set<number>;
   isUpsellContext: boolean;
   isProcessingRef: { value: boolean };
@@ -136,7 +136,7 @@ function navigatePreservingParams(url: string, logger: Logger): void {
 }
 
 export async function addToCart(card: ToggleCard): Promise<void> {
-  const allPackages = useCampaignStore.getState().data?.packages ?? [];
+  const allPackages = useCampaignStore.getState().packages;
   const pkg = allPackages.find(p => p.ref_id === card.packageId);
 
   await useCartStore.getState().addItem({
@@ -157,7 +157,7 @@ export function updateSyncedQuantity(card: ToggleCard, cartState: CartState): vo
       item => item.packageId === syncId || item.originalPackageId === syncId
     );
     if (syncedItem) {
-      const itemsPerPackage = (syncedItem as any).qty ?? 1;
+      const itemsPerPackage = syncedItem.qty ?? 1;
       totalQuantity += syncedItem.quantity * itemsPerPackage;
     }
   });
@@ -181,7 +181,7 @@ export async function handleSyncUpdate(
     );
     if (syncedItem) {
       anySyncedItemExists = true;
-      const itemsPerPackage = (syncedItem as any).qty ?? 1;
+      const itemsPerPackage = syncedItem.qty ?? 1;
       totalSyncQuantity += syncedItem.quantity * itemsPerPackage;
     }
   });

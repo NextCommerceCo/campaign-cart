@@ -46,6 +46,8 @@ The internal representation of a single renderable unit within a bundle card. Cr
 
 Variables available in `{curly.brace}` syntax inside the slot template (`data-next-bundle-slot-template-id`).
 
+Currency for all price variables is determined by the code returned from the bundle price fetch API (ISO 4217). Before the first fetch resolves, the campaign store's active currency is used as a provisional value.
+
 | Variable | Type | Description |
 |----------|------|-------------|
 | `slot.index` | `string` | 1-based slot index (`slotIndex + 1`). Use for display labels like "Item 1", "Item 2" |
@@ -66,11 +68,10 @@ Variables available in `{curly.brace}` syntax inside the slot template (`data-ne
 | `item.originalUnitPrice` | `string` | Unit price before any discount (formatted) |
 | `item.packagePrice` | `string` | Package-level price for this slot (formatted) |
 | `item.originalPackagePrice` | `string` | Package price before discount (formatted) |
-| `item.subtotal` | `string` | Subtotal for this line |
-| `item.totalDiscount` | `string` | Total discount amount for this line (formatted) |
-| `item.total` | `string` | Final line total after discount (formatted) |
-| `item.hasDiscount` | `'show' \| 'hide'` | `'show'` if a discount applies to this line; use with CSS `display` |
-| `item.hasSavings` | `'show' \| 'hide'` | `'show'` if the retail price exceeds the current price; use with CSS `display` |
+| `item.discountAmount` | `string` | Discount saved on this slot — `originalPrice - price` (formatted) |
+| `item.discountPercentage` | `string` | Discount percentage for this slot (formatted, e.g. `20%`) |
+| `item.hasDiscount` | `'show' \| 'hide'` | `'show'` if a discount applies to this slot; use with CSS `display` |
+| `item.currency` | `string` | ISO 4217 currency code for this slot's prices (e.g. `USD`). Seeded from the campaign; updated to the value returned by the price fetch API once it resolves |
 
 ---
 

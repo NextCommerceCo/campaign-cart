@@ -226,7 +226,7 @@ export class PackageToggleEnhancer extends BaseEnhancer {
   private makeHandlerContext(): ToggleHandlerContext {
     return {
       logger: this.logger,
-      emit: (e: string, d: unknown) => this.emit(e as any, d as any),
+      emit: (e, d) => this.emit(e, d),
       autoAddInProgress: this.autoAddInProgress,
       isUpsellContext: this.isUpsellContext,
       isProcessingRef: this.isProcessingRef,
@@ -461,7 +461,7 @@ export class PackageToggleEnhancer extends BaseEnhancer {
       }
     }
 
-    this.emit('toggle:selection-changed' as any, { selected: selectedPackageIds });
+    this.emit('toggle:selection-changed', { selected: selectedPackageIds });
 
     if (this.priceSyncDebounce !== null) clearTimeout(this.priceSyncDebounce);
     this.priceSyncDebounce = setTimeout(() => {
@@ -503,8 +503,9 @@ export class PackageToggleEnhancer extends BaseEnhancer {
   }
 
   public override destroy(): void {
+    super.destroy();
     this.cleanupEventListeners();
-    this.cards.forEach(c =>
+    this.cards.forEach(c => {
       c.element.classList.remove(
         'next-toggle-card',
         'next-in-cart',
@@ -512,9 +513,13 @@ export class PackageToggleEnhancer extends BaseEnhancer {
         'next-selected',
         'next-active',
         'next-loading',
-      )
-    );
+      );
+      if (c.stateContainer !== c.element) {
+        c.stateContainer.classList.remove('next-in-cart', 'next-not-in-cart', 'next-active', 'os--active');
+        c.stateContainer.removeAttribute('data-in-cart');
+        c.stateContainer.removeAttribute('data-next-active');
+      }
+    });
     this.cards = [];
-    super.destroy();
   }
 }

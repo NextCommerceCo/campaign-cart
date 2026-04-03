@@ -48,7 +48,7 @@
 
 ## `bundle:price-updated`
 
-**When:** A price fetch completes for a bundle card. Fires after `data-bundle-price-*` raw numeric attributes are written to the card element. Used internally by `BundleDisplayEnhancer` to refresh `data-next-display="bundle.{selectorId}.*"` elements.
+**When:** A price fetch completes for a bundle card and display elements have been updated. Used internally by `BundleDisplayEnhancer` to refresh `data-next-display="bundle.{selectorId}.*"` elements.
 
 **Payload:**
 

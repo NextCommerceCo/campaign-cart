@@ -1,3 +1,4 @@
+import type Decimal from 'decimal.js';
 import type { EventMap } from '@/types/global';
 import type { Logger } from '@/utils/logger';
 
@@ -65,29 +66,38 @@ export interface BundlePackageState {
   // Static display data from campaign package:
   name: string;
   image: string;
-  qty: number;
   productName: string;
   variantName: string;
   sku: string | null;
   isRecurring: boolean;
+  interval: 'day' | 'month' | null;
+  intervalCount: number | null;
+  recurringPrice: Decimal;
+  originalRecurringPrice: Decimal;
   // Prices — start as campaign package prices, replaced by bundle-computed after fetch:
-  unitPrice: string;
-  packagePrice: string;
-  originalUnitPrice: string;
-  originalPackagePrice: string;
-  totalDiscount: string;
-  subtotal: string;
-  total: string;
+  unitPrice: Decimal;
+  originalUnitPrice: Decimal;
+  discountAmount: Decimal;
+  discountPercentage: Decimal;
+  originalPrice: Decimal;
+  price: Decimal;
   hasDiscount: boolean;
-  hasSavings: boolean;
+  /** ISO 4217 currency code for price formatting. Seeded from campaignStore, updated by price fetch. */
+  currency: string;
 }
 
 /** Aggregate bundle price summary stored on BundleCard after price fetch. */
 export interface BundlePriceSummary {
-  total: number;
-  subtotal: number;
-  totalDiscount: number;
-  totalDiscountPercentage: number;
+  price: Decimal;
+  originalPrice: Decimal;
+  discountAmount: Decimal;
+  discountPercentage: Decimal;
+  unitPrice: Decimal;
+  originalUnitPrice: Decimal;
+  quantity: number;
+  hasDiscount: boolean;
+  /** ISO 4217 currency code returned by the price fetch API. */
+  currency: string;
 }
 
 export interface BundleCard {
