@@ -91,7 +91,7 @@
  *     <div data-next-toggle-card data-next-package-id="101" data-next-selected="true">
  *       <span>Extra Battery</span>
  *       <span data-next-toggle-price></span>
- *       <del data-next-toggle-price="compare"></del>
+ *       <del data-next-toggle-price="originalPrice"></del>
  *     </div>
  *   </div>
  *
@@ -126,7 +126,7 @@ import { useCampaignStore } from '@/stores/campaignStore';
 import type { CartState } from '@/types/global';
 import type { PackageDef, ToggleCard, ToggleCardPublicState } from './PackageToggleEnhancer.types';
 import type { ToggleHandlerContext } from './PackageToggleEnhancer.handlers';
-import { renderToggleTemplate, renderToggleImage, renderTogglePrice, renderTogglePriceSlots } from './PackageToggleEnhancer.renderer';
+import { renderToggleTemplate, renderToggleImage, renderTogglePrice, updateCardDisplayElements } from './PackageToggleEnhancer.renderer';
 import { makeTogglePriceSummary } from './PackageToggleEnhancer.state';
 import { fetchAndUpdateTogglePrice } from './PackageToggleEnhancer.price';
 import {
@@ -360,7 +360,7 @@ export class PackageToggleEnhancer extends BaseEnhancer {
 
     this.cards.push(card);
     el.classList.add('next-toggle-card');
-    renderTogglePriceSlots(card);
+    updateCardDisplayElements(card);
 
     const ctx = this.makeHandlerContext();
     const handler = (e: Event) => void handleCardClick(e, card, ctx);

@@ -4,7 +4,7 @@ import { useCheckoutStore } from '@/stores/checkoutStore';
 import { calculateBundlePrice } from '@/utils/calculations/CartCalculator';
 import type { Logger } from '@/utils/logger';
 import type { ToggleCard } from './PackageToggleEnhancer.types';
-import { renderTogglePrice, renderTogglePriceSlots } from './PackageToggleEnhancer.renderer';
+import { renderTogglePrice, updateCardDisplayElements } from './PackageToggleEnhancer.renderer';
 
 export async function fetchAndUpdateTogglePrice(
   card: ToggleCard,
@@ -49,7 +49,7 @@ export async function fetchAndUpdateTogglePrice(
     if (line) renderTogglePrice(card, line);
   } catch (error) {
     logger.warn(`Failed to fetch toggle price for packageId ${card.packageId}`, error);
-    renderTogglePriceSlots(card); // push provisional state to DOM, leave card.togglePrice unchanged
+    updateCardDisplayElements(card); // push provisional state to DOM, leave card.togglePrice unchanged
   } finally {
     card.element.classList.remove('next-loading');
     card.element.setAttribute('data-next-loading', 'false');

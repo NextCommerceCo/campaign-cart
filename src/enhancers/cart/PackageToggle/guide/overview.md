@@ -41,7 +41,7 @@ User clicks card
 - On init, any card with `data-next-selected="true"` is auto-added to the cart. Each package is auto-added at most once per page load, even if multiple elements on the page reference the same `packageId`.
 - In sync mode (`data-next-package-sync`), a card's quantity is derived from the sum of quantities of the listed synced packages. The sync card is added when any synced package is in the cart, and removed when all synced packages are removed.
 - For sync cards marked as upsell items, removal on sync loss is deferred by 500 ms to avoid race conditions during package swaps.
-- Price slots on a card show the backend-calculated line price when the package is in the cart, and the standalone package price (via `calculateBundlePrice`) when it is not.
+- Display slots on a card (`data-next-toggle-display`, or the deprecated `data-next-toggle-price`) show the backend-calculated line price when the package is in the cart, and the standalone package price (via `calculateBundlePrice`) when it is not. Boolean slots (`hasDiscount`, `isRecurring`, `isSelected`) show or hide the element rather than writing text.
 - Vouchers applied in the checkout store cause a price recalculation for all cards.
 - Currency changes trigger a debounced (150 ms) price refetch for all cards.
 - In upsell context, the click handler checks `orderStore.canAddUpsells()` before proceeding. If upsells are not available, it navigates to `data-next-url` (or the meta fallback) instead of throwing an error.
@@ -61,6 +61,7 @@ User clicks card
 - Does not support mutual exclusion between cards. If you need "pick exactly one", use `PackageSelectorEnhancer`.
 - In upsell context, toggle state is one-way: packages can be added but not removed through the toggle (there is no "un-upsell" flow).
 - Auto-render (`data-next-packages`) requires both `data-next-packages` and a template (`data-next-toggle-template-id` or `data-next-toggle-template`) to be present. Providing only one silently skips rendering.
-- Price slots show stale values until the `calculateBundlePrice` async fetch resolves. There is no built-in skeleton or placeholder state.
+- Display slots show stale values until the `calculateBundlePrice` async fetch resolves. There is no built-in skeleton or placeholder state.
+- `data-next-toggle-display="isSelected"` reflects the `data-next-selected` attribute at the time of the last price update, not live cart state. For an element that toggles visibility based on whether the package is currently in the cart, use `data-next-display="toggle.{packageId}.isSelected"` instead.
 - `data-next-package-sync` reads quantity from `syncedItem.qty` (an internal cart field). This field is not part of the public cart item interface and may not be set for all packages.
 - Sync removal for non-upsell cards is immediate and synchronous; it does not account for in-progress cart operations (`swapInProgress` is checked, but only one level deep).

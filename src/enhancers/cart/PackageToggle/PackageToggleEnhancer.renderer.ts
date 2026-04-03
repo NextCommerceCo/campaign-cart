@@ -1,10 +1,10 @@
 import { Decimal } from 'decimal.js';
 import { useCampaignStore } from '@/stores/campaignStore';
-import { formatCurrency } from '@/utils/currencyFormatter';
+import { formatCurrency, formatPercentage } from '@/utils/currencyFormatter';
 import { TemplateRenderer } from '@/shared/utils/TemplateRenderer';
 import type { Logger } from '@/utils/logger';
 import type { SummaryLine } from '@/types/api';
-import type { PackageDef, ToggleCard } from './PackageToggleEnhancer.types';
+import type { PackageDef, ToggleCard, TogglePriceSummary } from './PackageToggleEnhancer.types';
 
 export function renderToggleTemplate(
   template: string,
@@ -65,63 +65,94 @@ export function renderToggleImage(card: ToggleCard): void {
   });
 }
 
+// ─── Card display elements ────────────────────────────────────────────────────
+
+interface ToggleFieldData {
+  togglePrice: TogglePriceSummary;
+  isSelected: boolean;
+  name: string;
+}
+
+function applyToggleField(el: HTMLElement, field: string, data: ToggleFieldData): void {
+  const { togglePrice: tp, isSelected, name } = data;
+  const currency = tp.currency || undefined;
+  switch (field) {
+    case 'price':
+      el.textContent = formatCurrency(tp.price, currency);
+      break;
+    case 'originalPrice':
+      el.textContent = tp.originalPrice != null ? formatCurrency(tp.originalPrice, currency) : '';
+      break;
+    case 'unitPrice':
+      el.textContent = formatCurrency(tp.unitPrice, currency);
+      break;
+    case 'originalUnitPrice':
+      el.textContent = tp.originalUnitPrice != null
+        ? formatCurrency(tp.originalUnitPrice, currency)
+        : '';
+      break;
+    case 'discountAmount':
+      el.textContent = tp.hasDiscount ? formatCurrency(tp.discountAmount, currency) : '';
+      break;
+    case 'discountPercentage':
+      el.textContent = formatPercentage(tp.discountPercentage);
+      break;
+    case 'hasDiscount':
+      el.style.display = tp.hasDiscount ? '' : 'none';
+      break;
+    case 'isSelected':
+      el.style.display = isSelected ? '' : 'none';
+      break;
+    case 'isRecurring':
+      el.style.display = tp.isRecurring ? '' : 'none';
+      break;
+    case 'recurringPrice':
+      el.textContent = tp.recurringPrice != null ? formatCurrency(tp.recurringPrice, currency) : '';
+      break;
+    case 'interval':
+      el.textContent = tp.interval ?? '';
+      break;
+    case 'intervalCount':
+      el.textContent = tp.intervalCount != null ? String(tp.intervalCount) : '';
+      break;
+    case 'frequency':
+      el.textContent = tp.frequency;
+      break;
+    case 'name':
+      el.textContent = name;
+      break;
+    case 'currency':
+      el.textContent = tp.currency;
+      break;
+  }
+}
+
 /**
- * Re-renders [data-next-toggle-price] slots from card.togglePrice as-is and
- * dispatches toggle:price-updated. Called after a price fetch (success or error)
- * so display enhancers always get a fresh signal.
+ * Updates all display elements inside a toggle card after a price fetch resolves.
+ * Handles [data-next-toggle-display] (full field set) and the deprecated
+ * [data-next-toggle-price] (legacy, price fields only). Fires toggle:price-updated
+ * for PackageToggleDisplayEnhancer.
  */
-export function renderTogglePriceSlots(card: ToggleCard): void {
+export function updateCardDisplayElements(card: ToggleCard): void {
   const tp = card.togglePrice;
   if (!tp) return;
 
+  const isSelected = card.element.getAttribute('data-next-selected') === 'true';
+  const fieldData: ToggleFieldData = {
+    togglePrice: tp,
+    isSelected,
+    name: card.name,
+  };
+
+  card.element.querySelectorAll<HTMLElement>('[data-next-toggle-display]').forEach(el => {
+    const field = el.getAttribute('data-next-toggle-display') || 'price';
+    applyToggleField(el, field, fieldData);
+  });
+
+  // Deprecated: kept for backward compatibility
   card.element.querySelectorAll<HTMLElement>('[data-next-toggle-price]').forEach(el => {
     const field = el.getAttribute('data-next-toggle-price') || 'price';
-
-    switch (field) {
-      case 'price':
-        el.textContent = formatCurrency(tp.price);
-        break;
-      case 'originalPrice':
-        el.textContent = tp.originalPrice != null ? formatCurrency(tp.originalPrice) : '';
-        break;
-      case 'unitPrice':
-        el.textContent = formatCurrency(tp.unitPrice);
-        break;
-      case 'originalUnitPrice':
-        el.textContent = tp.originalUnitPrice != null ? formatCurrency(tp.originalUnitPrice) : '';
-        break;
-      case 'hasDiscount':
-        el.textContent = String(tp.hasDiscount);
-        break;
-      case 'discountAmount':
-        el.textContent = tp.hasDiscount ? formatCurrency(tp.discountAmount) : '';
-        break;
-      case 'discountPercentage':
-        el.textContent = tp.discountPercentage > 0
-          ? `${Math.round(tp.discountPercentage)}%`
-          : '';
-        break;
-      case 'isRecurring':
-        el.textContent = String(tp.isRecurring);
-        break;
-      case 'recurringPrice':
-        el.textContent = tp.recurringPrice != null ? formatCurrency(tp.recurringPrice) : '';
-        break;
-      case 'interval':
-        el.textContent = tp.interval ?? '';
-        break;
-      case 'intervalCount':
-        el.textContent = tp.intervalCount != null ? String(tp.intervalCount) : '';
-        break;
-      case 'frequency':
-        el.textContent = tp.frequency;
-        break;
-      case 'currency':
-        el.textContent = tp.currency;
-        break;
-      default:
-        break;
-    }
+    applyToggleField(el, field, fieldData);
   });
 
   card.element.dispatchEvent(
@@ -134,7 +165,7 @@ export function renderTogglePriceSlots(card: ToggleCard): void {
 
 /**
  * Updates card.togglePrice from a SummaryLine (API data) then calls
- * renderTogglePriceSlots to push the new state to the DOM.
+ * updateCardDisplayElements to push the new state to the DOM.
  */
 export function renderTogglePrice(card: ToggleCard, line: SummaryLine): void {
   const allPackages = useCampaignStore.getState().data?.packages ?? [];
@@ -180,5 +211,5 @@ export function renderTogglePrice(card: ToggleCard, line: SummaryLine): void {
     frequency,
   };
 
-  renderTogglePriceSlots(card);
+  updateCardDisplayElements(card);
 }

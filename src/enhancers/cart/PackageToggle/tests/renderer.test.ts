@@ -12,6 +12,7 @@ vi.mock('@/stores/campaignStore', () => ({
 }));
 vi.mock('@/utils/currencyFormatter', () => ({
   formatCurrency: (n: number) => `$${n.toFixed(2)}`,
+  formatPercentage: (n: number) => `${n}%`,
 }));
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

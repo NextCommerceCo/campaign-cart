@@ -214,35 +214,57 @@ Supports all standard display modifiers: `data-next-format`, `data-hide-if-zero`
 
 ---
 
-## Price slot attributes
+## Display slot attributes
+
+### `data-next-toggle-display`
+
+| | |
+|---|---|
+| Type | `string` (field name) |
+| Required | no |
+| Default | `"price"` |
+
+Marks an element inside a card as a display slot. The enhancer writes the named field's value to the element after every price update. This is the current primary display attribute — prefer it over `data-next-toggle-price`.
+
+For boolean fields (`hasDiscount`, `isRecurring`, `isSelected`), the element is shown or hidden via `style.display` rather than writing text.
+
+**Note on `isSelected`:** This field reflects the `data-next-selected` attribute state at the time of the last price update — not live cart state. For an element that shows or hides based on whether the package is currently in the cart, use `data-next-display="toggle.{packageId}.isSelected"` instead.
+
+**Valid values:**
+
+| Value | Effect |
+|---|---|
+| `"price"` | Formatted total price for the card's quantity |
+| `"unitPrice"` | Per-unit price |
+| `"originalPrice"` | Retail / compare-at total price; empty if not set |
+| `"originalUnitPrice"` | Retail / compare-at per-unit price; empty if not set |
+| `"discountAmount"` | Savings amount (compare price minus line price); empty if no discount |
+| `"discountPercentage"` | Savings as a percentage (e.g. `"20%"`); empty if no discount |
+| `"hasDiscount"` | Shown (`display: ""`) when discount applies; hidden (`display: none`) otherwise |
+| `"isRecurring"` | Shown when the package bills on a recurring schedule; hidden otherwise |
+| `"isSelected"` | Shown when `data-next-selected` was `"true"` at last price update; hidden otherwise |
+| `"recurringPrice"` | Recurring charge total (quantity-scaled); empty if not recurring |
+| `"interval"` | Billing interval: `"day"` or `"month"`; empty if not recurring |
+| `"intervalCount"` | Number of intervals between billing cycles; empty if not recurring |
+| `"frequency"` | Human-readable billing cadence: `"Per month"`, `"Every 3 months"`, `"One time"` |
+| `"name"` | Package display name from the campaign store |
+| `"currency"` | ISO 4217 currency code |
+
+Unrecognized values leave the element's content unchanged.
+
+---
 
 ### `data-next-toggle-price`
 
 | | |
 |---|---|
-| Type | `string` (variant) |
+| Type | `string` (field name) |
 | Required | no |
-| Default | `""` (total price) |
+| Default | `"price"` |
 
-Marks an element as a price display slot. The enhancer populates it with a formatted price value.
+**Deprecated.** Supported for backward compatibility. Use `data-next-toggle-display` in new markup — both attributes accept the same field names and produce identical output.
 
-**Valid values:**
-
-| Value | Displays |
-|---|---|
-| `""` (empty / omitted) or `"price"` | Formatted total price for the card's quantity |
-| `"unitPrice"` | Per-unit price |
-| `"originalPrice"` | Retail / compare-at total price |
-| `"originalUnitPrice"` | Retail / compare-at per-unit price |
-| `"hasDiscount"` | `"true"` or `"false"` |
-| `"discountAmount"` | Savings amount (compare price minus line price); empty if no discount |
-| `"discountPercentage"` | Savings as a percentage (e.g. `"20%"`); empty if no discount |
-| `"isRecurring"` | `"true"` or `"false"` |
-| `"recurringPrice"` | Recurring charge total (quantity-scaled); empty if not recurring |
-| `"interval"` | Billing interval: `"day"` or `"month"`; empty if not recurring |
-| `"intervalCount"` | Number of intervals between billing cycles; empty if not recurring |
-| `"frequency"` | Human-readable billing cadence: `"Per month"`, `"Every 3 months"`, `"One time"` |
-| `"currency"` | ISO 4217 currency code |
+**Valid values:** Same as `data-next-toggle-display`, including `isSelected` and `name`.
 
 Unrecognized values leave the element's content unchanged.
 

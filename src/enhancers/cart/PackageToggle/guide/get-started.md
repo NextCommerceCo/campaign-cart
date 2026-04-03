@@ -19,12 +19,12 @@
 <div data-next-package-toggle>
   <div data-next-toggle-card data-next-package-id="101" data-next-selected="true">
     <span>Extra Battery</span>
-    <span data-next-toggle-price></span>
-    <del data-next-toggle-price="originalPrice"></del>
+    <span data-next-toggle-display="price"></span>
+    <del data-next-toggle-display="originalPrice"></del>
   </div>
   <div data-next-toggle-card data-next-package-id="102">
     <span>Carrying Case</span>
-    <span data-next-toggle-price></span>
+    <span data-next-toggle-display="price"></span>
   </div>
 </div>
 ```
@@ -60,7 +60,7 @@ Provide a JSON array in `data-next-packages` and a `<template>` element. The enh
 <template id="toggle-tpl">
   <div data-next-toggle-card>
     <strong>{toggle.name}</strong>
-    <span data-next-toggle-price></span>
+    <span data-next-toggle-display="price"></span>
   </div>
 </template>
 ```

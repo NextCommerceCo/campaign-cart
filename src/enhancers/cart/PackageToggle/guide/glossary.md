@@ -36,9 +36,15 @@ A card state indicating the package should be auto-added to the cart on init. Se
 
 ---
 
+## Display slot
+
+An element inside a card with `data-next-toggle-display` (or the deprecated `data-next-toggle-price`) that the enhancer populates after every price update. Different slot variants display the total price, per-unit price, retail/compare-at price, discount amount, discount percentage, recurring price, billing frequency, currency, or package name. Boolean variants (`hasDiscount`, `isRecurring`, `isSelected`) show or hide the element rather than writing text. Unrecognized values leave the element's content unchanged.
+
+---
+
 ## Price slot
 
-An element inside a card with `data-next-toggle-price` that the enhancer populates with a formatted price. Different slot variants display the total price, per-unit price, retail/compare-at price, discount amount, discount percentage, recurring price, billing frequency, or currency. Unrecognized values leave the element's content unchanged.
+Older term for a display slot. Refers to elements marked with the now-deprecated `data-next-toggle-price` attribute. The attribute still works and accepts the same field names as `data-next-toggle-display`. Prefer `data-next-toggle-display` in new markup.
 
 ---
 
