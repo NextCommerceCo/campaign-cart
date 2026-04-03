@@ -41,7 +41,8 @@ User clicks card
 - On init, any card with `data-next-selected="true"` is auto-added to the cart. Each package is auto-added at most once per page load, even if multiple elements on the page reference the same `packageId`.
 - In sync mode (`data-next-package-sync`), a card's quantity is derived from the sum of quantities of the listed synced packages. The sync card is added when any synced package is in the cart, and removed when all synced packages are removed.
 - For sync cards marked as upsell items, removal on sync loss is deferred by 500 ms to avoid race conditions during package swaps.
-- Display slots on a card (`data-next-toggle-display`, or the deprecated `data-next-toggle-price`) show the backend-calculated line price when the package is in the cart, and the standalone package price (via `calculateBundlePrice`) when it is not. Boolean slots (`hasDiscount`, `isRecurring`, `isSelected`) show or hide the element rather than writing text.
+- The price displayed on a card is always the price the customer will pay if that package is in the cart. For cards not yet in the cart, this is fetched from `/calculate` with the package simulated alongside current cart items — so bundle or volume discounts are correctly reflected. For cards already in the cart, the price is read directly from the cart summary line (no extra API call). Both paths produce the same price: what's shown is what's charged.
+- Boolean display slots (`hasDiscount`, `isRecurring`, `isSelected`) show or hide the element rather than writing text.
 - Vouchers applied in the checkout store cause a price recalculation for all cards.
 - Currency changes trigger a debounced (150 ms) price refetch for all cards.
 - In upsell context, the click handler checks `orderStore.canAddUpsells()` before proceeding. If upsells are not available, it navigates to `data-next-url` (or the meta fallback) instead of throwing an error.

@@ -171,7 +171,7 @@ export function updateCardDisplayElements(card: ToggleCard): void {
   const tp = card.togglePrice;
   if (!tp) return;
 
-  const isSelected = card.element.getAttribute('data-next-selected') === 'true';
+  const isSelected = card.isSelected;
   const fieldData: ToggleFieldData = {
     togglePrice: tp,
     isSelected,

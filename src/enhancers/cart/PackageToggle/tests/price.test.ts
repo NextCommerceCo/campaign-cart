@@ -95,6 +95,35 @@ describe('fetchAndUpdateTogglePrice', () => {
     expect(calculateBundlePrice).not.toHaveBeenCalled();
   });
 
+  it('renders price from cart summary line when package is already in cart', async () => {
+    // The price shown on a selected toggle card must equal the cart line total,
+    // not a separate API fetch. This ensures the displayed price is always
+    // consistent with what the customer is actually paying.
+    vi.mocked(useCartStore.getState).mockReturnValue({
+      items: [{ packageId: 101, quantity: 1 }],
+      summary: {
+        lines: [
+          {
+            package_id: 101,
+            package_price: '12.00',
+            original_package_price: '15.00',
+            subtotal: '15.00',
+            total: '12.00',
+            total_discount: '3.00',
+          },
+        ],
+      },
+    } as any);
+
+    const card = makeCard(101);
+    const priceSlot = addPriceSlot(card);
+
+    await fetchAndUpdateTogglePrice(card, false, logger);
+
+    expect(calculateBundlePrice).not.toHaveBeenCalled();
+    expect(priceSlot.textContent).toBe('$12.00');
+  });
+
   it('merges current cart items with this package for price calculation', async () => {
     mockCartStore([{ packageId: 99, quantity: 2 }]);
     vi.mocked(calculateBundlePrice as any).mockResolvedValue({
