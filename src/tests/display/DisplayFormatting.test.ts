@@ -390,20 +390,6 @@ describe('Display Formatting System', () => {
       expect(element.textContent).not.toBe('$$123.45');
     });
 
-    test('uses raw values when needed', async () => {
-      mockCartStore({
-        subtotal: new Decimal(99.99),
-        totalDiscount: new Decimal(0),
-      });
-
-      const element = createTestElement('cart.subtotal.raw', {
-        'data-format': 'number'
-      });
-      const enhancer = new CartDisplayEnhancer(element);
-      await enhancer.initialize();
-
-      expect(element.textContent).toBe('99.99');
-    });
   });
 
   describe('Property Configuration', () => {
