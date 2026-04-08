@@ -697,16 +697,16 @@ describe('renderSummaryLine', () => {
       '{item.discountPercentage}',
       makeSummaryLine({ unit_price: '15.00', original_unit_price: '20.00' }),
     );
-    // (20 - 15) / 20 = 25%
-    expect(html).toBe('25');
+    // (20 - 15) / 20 = 25%, formatted via formatPercentage
+    expect(html).toBe('25%');
   });
 
-  it('discountPercentage is "0" when there is no discount', () => {
+  it('discountPercentage is "0%" when there is no discount', () => {
     const html = renderSummaryLine(
       '{item.discountPercentage}',
       makeSummaryLine({ unit_price: '20.00', original_unit_price: '20.00' }),
     );
-    expect(html).toBe('0');
+    expect(html).toBe('0%');
   });
 
   it('hasDiscount maps to "show" / "hide"', () => {

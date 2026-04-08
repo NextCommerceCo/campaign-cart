@@ -266,10 +266,11 @@ export function renderSummaryLine(template: string, line: SummaryLine): string {
 
   const origUnit = parseFloat(line.original_unit_price);
   const unit = parseFloat(line.unit_price);
-  const discountPct =
+  const discountPctNum =
     origUnit > 0 && origUnit > unit
-      ? String(Math.round(((origUnit - unit) / origUnit) * 100))
-      : '0';
+      ? Math.round(((origUnit - unit) / origUnit) * 100)
+      : 0;
+  const discountPct = formatPercentage(discountPctNum);
 
   const vars: Record<string, string> = {
     'item.packageId':             String(line.package_id),

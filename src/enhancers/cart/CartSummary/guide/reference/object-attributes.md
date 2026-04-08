@@ -28,7 +28,7 @@ Fields marked *campaign data* are empty strings when campaign data is unavailabl
 | `{item.unitPrice}` | `string` | no | Per-unit price after discounts (API). Formatted. |
 | `{item.originalUnitPrice}` | `string` | no | Per-unit price before discounts (API). Formatted. |
 | `{item.discountAmount}` | `string` | no | Total discount applied to this line. Formatted. |
-| `{item.discountPercentage}` | `string` | no | Discount as a percentage of the original unit price (e.g. `"20"`). `"0"` when no discount. |
+| `{item.discountPercentage}` | `string` | no | Discount as a percentage of the original unit price, formatted with `%` (e.g. `"20%"`). `"0%"` when no discount. |
 | `{item.hasDiscount}` | `"show" \| "hide"` | no | `"show"` when `discountAmount > 0`. Use as a CSS class or visibility flag. |
 | `{item.currency}` | `string` | yes | Active currency code for this line (e.g. `"USD"`). |
 
