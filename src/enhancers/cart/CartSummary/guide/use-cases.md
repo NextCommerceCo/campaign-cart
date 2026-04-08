@@ -113,6 +113,39 @@
 
 ---
 
+## Show a bulk-quantity badge only when an item has more than one unit
+
+> Effort: lightweight
+
+**When:** Each line in the summary should display an extra "×N" badge or "Bulk!" label, but only when the customer has more than one unit of that package. Lines with a single unit should render a clean row without the badge.
+
+**Why this enhancer:** `data-next-show` works directly inside line templates against the `item.*` namespace. Conditions are evaluated per-line at render time and hidden elements are removed from the DOM, so you do not pay the cost of attaching a `ConditionalDisplayEnhancer` per line.
+
+**Watch out for:** Use the no-braces syntax — write `item.quantity > 1`, not `{item.quantity} > 1`. The latter is substituted before evaluation and produces a malformed expression. Conditions referencing other namespaces (e.g. `cart.hasItems`) inside a line template are passed through to the global enhancer, which may thrash on frequent re-renders — keep cart-wide conditions outside the line template.
+
+```html
+<div data-next-cart-summary>
+  <template>
+    <ul data-summary-lines>
+      <template>
+        <li class="line-item">
+          <span>{item.name}</span>
+          <span class="bulk-badge" data-next-show="item.quantity > 1">×{item.quantity}</span>
+          <span data-next-hide="item.hasDiscount">{item.price}</span>
+          <span data-next-show="item.hasDiscount" class="strike">{item.originalPrice}</span>
+          <span data-next-show="item.hasDiscount">{item.price}</span>
+          <span data-next-show="item.isRecurring" class="renew">Renews {item.frequency}</span>
+        </li>
+      </template>
+    </ul>
+
+    <div class="summary-row total"><span>Total</span><span>{total}</span></div>
+  </template>
+</div>
+```
+
+---
+
 ## When NOT to use this
 
 ### Displaying a single cart value in isolation (e.g., just the total in a header badge)

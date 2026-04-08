@@ -71,3 +71,46 @@ One discount entry in an offer, voucher, or per-line discount list.
 | `{discount.name}` | `string` | yes | Display name of the discount (e.g., `"Bundle deal"`, `"SAVE20"`). Empty string when absent. |
 | `{discount.amount}` | `string` | no | Formatted discount amount (e.g., `"$10.00"`). |
 | `{discount.description}` | `string` | yes | Human-readable description of the discount. Empty string when absent. |
+
+---
+
+## `ItemContext` *(per-line condition shape)*
+
+The raw-typed object exposed to `data-next-show` / `data-next-hide` conditions inside `[data-summary-lines]` and `[data-line-discounts]` row templates. Distinct from the `{item.*}` text tokens above — values here are unformatted (real numbers, real booleans) so comparison operators work as expected.
+
+| Field | Type | Nullable | Description |
+|-------|------|----------|-------------|
+| `item.packageId` | `number` | no | Package `ref_id`. |
+| `item.name` | `string` | no | Package display name (empty string when absent). |
+| `item.image` | `string` | no | Product image URL (empty string when absent). |
+| `item.quantity` | `number` | no | Unit quantity for this line. |
+| `item.productName` | `string` | no | Product name (empty string when absent). |
+| `item.variantName` | `string` | no | Variant name (empty string when no variant). |
+| `item.sku` | `string` | no | Product SKU (empty string when absent). |
+| `item.isRecurring` | `boolean` | no | `true` when the line is a subscription. |
+| `item.interval` | `'day' \| 'month' \| null` | yes | Subscription interval. `null` for one-time purchases. |
+| `item.intervalCount` | `number \| null` | yes | Subscription interval count. `null` for one-time purchases. |
+| `item.recurringPrice` | `number \| null` | yes | Recurring unit price as a raw number. `null` when not set. |
+| `item.originalRecurringPrice` | `number \| null` | yes | Original recurring price as a raw number. `null` when not set. |
+| `item.price` | `number` | no | Package price after discounts as a raw number. |
+| `item.originalPrice` | `number` | no | Package price before discounts as a raw number. |
+| `item.unitPrice` | `number` | no | Per-unit price after discounts as a raw number. |
+| `item.originalUnitPrice` | `number` | no | Per-unit price before discounts as a raw number. |
+| `item.discountAmount` | `number` | no | Total discount on this line as a raw number. |
+| `item.discountPercentage` | `number` | no | Discount as an integer percentage of the original unit price (e.g. `25` for 25%). `0` when no discount. |
+| `item.hasDiscount` | `boolean` | no | `true` when `discountAmount > 0`. |
+| `item.currency` | `string` | no | Active currency code (empty string when absent). |
+| `item.frequency` | `string` | no | Human-readable billing frequency (`"Monthly"`, `"Every 3 months"`, etc.). Empty string for one-time purchases. |
+
+---
+
+## `DiscountContext` *(per-discount condition shape)*
+
+The raw-typed object exposed to `data-next-show` / `data-next-hide` conditions inside `[data-summary-offer-discounts]`, `[data-summary-voucher-discounts]`, and `[data-line-discounts]` row templates.
+
+| Field | Type | Nullable | Description |
+|-------|------|----------|-------------|
+| `discount.name` | `string` | no | Display name of the discount (empty string when absent). |
+| `discount.amount` | `number` | no | Discount amount as a raw number with currency formatting stripped. `0` when unparseable. |
+| `discount.amountFormatted` | `string` | no | Original currency-formatted amount string (matches the `{discount.amount}` text token). |
+| `discount.description` | `string` | no | Description of the discount (empty string when absent). |

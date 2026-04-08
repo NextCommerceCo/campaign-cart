@@ -135,6 +135,38 @@
  *   next-summary-empty      no items in the list
  *   next-summary-has-items  one or more items in the list
  *
+ * ─── PER-LINE CONDITIONAL DISPLAY ────────────────────────────────────────────
+ *
+ * Inside any line / discount template you can use `data-next-show` and
+ * `data-next-hide` with `item.*` and `discount.*` namespaces. Conditions are
+ * evaluated synchronously at render time against raw line / discount data.
+ * Hidden elements are removed from the DOM and their attributes are stripped.
+ *
+ *   <ul data-summary-lines>
+ *     <template>
+ *       <li>
+ *         <span>{item.name}</span>
+ *         <span data-next-show="item.quantity > 1">×{item.quantity}</span>
+ *         <span data-next-hide="item.hasDiscount">{item.price}</span>
+ *         <span data-next-show="item.isRecurring">Renews {item.frequency}</span>
+ *       </li>
+ *     </template>
+ *   </ul>
+ *
+ *   <ul data-summary-offer-discounts>
+ *     <template>
+ *       <li data-next-show="discount.amount > 5">{discount.name} -{discount.amount}</li>
+ *     </template>
+ *   </ul>
+ *
+ * Notes:
+ *   - Use the no-braces syntax — write `item.quantity > 1`, not `{item.quantity} > 1`.
+ *   - `item.*` is available inside `[data-summary-lines]` and `[data-line-discounts]`.
+ *   - `discount.*` is available inside any discount template; per-line discount
+ *     templates also expose the parent `item.*`.
+ *   - Conditions referencing other namespaces (e.g. `cart.hasItems`) are left
+ *     untouched and processed by the global ConditionalDisplayEnhancer flow.
+ *
  * @example Minimal
  * <div data-next-cart-summary></div>
  *

@@ -68,7 +68,38 @@ Inside a custom `<template>`, add list containers to render per-line breakdowns 
 </div>
 ```
 
-### Option D — Individual display values (`CartDisplayEnhancer`)
+### Option D — Conditional rows inside line / discount templates
+
+Use `data-next-show` and `data-next-hide` directly inside any line or discount `<template>`. Conditions are evaluated per row against the `item.*` and `discount.*` namespaces. Hidden elements are removed from the DOM and the attributes are stripped, so the global `ConditionalDisplayEnhancer` does not double-process them.
+
+Use the no-braces syntax — write `item.quantity > 1`, not `{item.quantity} > 1`.
+
+```html
+<div data-next-cart-summary>
+  <template>
+    <ul data-summary-lines>
+      <template>
+        <li>
+          <span>{item.name}</span>
+          <span data-next-show="item.quantity > 1">×{item.quantity}</span>
+          <span data-next-hide="item.hasDiscount">{item.price}</span>
+          <span data-next-show="item.isRecurring">Renews {item.frequency}</span>
+        </li>
+      </template>
+    </ul>
+
+    <ul data-summary-offer-discounts>
+      <template>
+        <li data-next-show="discount.amount > 5">
+          {discount.name} — -{discount.amount}
+        </li>
+      </template>
+    </ul>
+  </template>
+</div>
+```
+
+### Option E — Individual display values (`CartDisplayEnhancer`)
 
 Use `data-next-display="cart.{property}"` to place a single cart value on any element. Each element is an independent reactive display — no container or `<template>` needed.
 

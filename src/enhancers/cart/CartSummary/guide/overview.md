@@ -56,6 +56,7 @@ cartStore update
 - Line items are sorted by `package_id` ascending before rendering.
 - `{line.*}` tokens are deprecated. Templates using `{line.*}` tokens will trigger a console warning listing the equivalent `{item.*}` replacement for each token, and the tokens will render as empty strings. Migrate to `{item.*}` tokens.
 - `{item.hasDiscount}` outputs `"show"` or `"hide"` — intended as a CSS class or `data-` flag, not directly displayed. `{line.hasDiscount}` is a deprecated alias that triggers a console warning and renders as an empty string.
+- `data-next-show` and `data-next-hide` are evaluated locally inside line and discount templates against the `item.*` and `discount.*` namespaces. Hidden elements are removed from the DOM at render time and their attributes are stripped, so the global `ConditionalDisplayEnhancer` never re-processes them. Conditions referencing other namespaces (e.g. `cart.*`) are passed through untouched and handled by the global enhancer.
 
 ## Decisions
 
@@ -70,6 +71,7 @@ cartStore update
 - Does not support partial updates. The entire content is replaced on every render. Do not attach event listeners to elements inside the summary — they are destroyed on every re-render.
 - Does not render until the cart store is hydrated. If the cart takes time to initialize, the element is blank until the first cart response arrives.
 - Default template is fixed — subtotal, discounts (when non-zero), shipping, total rows in that order. To change the order, wording, or add custom rows, use a custom `<template>`.
+- The local `data-next-show` / `data-next-hide` evaluator does not support function calls (e.g. `item.hasFlag(x)`). Only property access, comparisons, and logical combinations are handled.
 - `{line.*}` tokens render as empty strings in all cases and trigger a console deprecation warning. Use `{item.*}` tokens instead.
 - List containers require a `<template>` child to define the row markup. A container without a `<template>` child is silently ignored.
 - Emits no events. If another component needs to react to cart total changes, subscribe to `cartStore` directly.

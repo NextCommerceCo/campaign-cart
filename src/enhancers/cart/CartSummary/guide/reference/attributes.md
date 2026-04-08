@@ -171,3 +171,78 @@ Place inside a `data-summary-lines` row template to render per-line discount bre
 **Row tokens:** `{discount.name}`, `{discount.amount}`, `{discount.description}`.
 
 Receives `next-summary-empty` / `next-summary-has-items` classes.
+
+---
+
+## Per-line conditional display
+
+Inside any line or discount template you can use `data-next-show` and `data-next-hide` to render rows conditionally per row. Conditions are evaluated at render time against the same data used for token replacement, so you do not need to instantiate `ConditionalDisplayEnhancer`. Hidden elements are removed from the DOM and the attribute is stripped, so the global enhancer never re-processes them.
+
+### Syntax rules
+
+- Use the **no-braces** syntax. Write `item.quantity > 1`, not `{item.quantity} > 1`. The latter is substituted before evaluation and produces a malformed expression.
+- Supported operators: `>`, `>=`, `<`, `<=`, `==`, `===`, `!=`, `!==`, `&&`, `||`, `!`, parentheses.
+- A bare property is interpreted as a truthy check: `data-next-show="item.isRecurring"`.
+- Conditions referencing other namespaces (e.g. `cart.hasItems`) are passed through untouched and processed by the global `ConditionalDisplayEnhancer`. **Avoid** using cart-wide conditions inside line templates — they thrash on every cart re-render. Place cart-wide conditions outside the `[data-summary-lines]` template instead.
+
+### `item.*` namespace
+
+Available in `[data-summary-lines]` row templates and inside any nested `[data-line-discounts]` template.
+
+| Path | Type | Description |
+|------|------|-------------|
+| `item.packageId` | number | Package ref_id |
+| `item.name` | string | Package display name |
+| `item.image` | string | Product image URL |
+| `item.quantity` | number | Unit quantity for this line |
+| `item.productName` | string | Product name |
+| `item.variantName` | string | Variant name (empty when no variant) |
+| `item.sku` | string | Product SKU |
+| `item.isRecurring` | boolean | Whether the line is a subscription |
+| `item.interval` | `'day' \| 'month' \| null` | Subscription interval |
+| `item.intervalCount` | number \| null | Subscription interval count |
+| `item.frequency` | string | Human-readable frequency (e.g. `"Monthly"`, `"Every 7 days"`) |
+| `item.recurringPrice` | number \| null | Recurring unit price |
+| `item.originalRecurringPrice` | number \| null | Original recurring unit price |
+| `item.price` | number | Package price after discounts |
+| `item.originalPrice` | number | Package price before discounts |
+| `item.unitPrice` | number | Unit price after discounts |
+| `item.originalUnitPrice` | number | Unit price before discounts |
+| `item.discountAmount` | number | Total discount amount on the line |
+| `item.discountPercentage` | number | Discount as a percentage of original (e.g. `25` for 25%) |
+| `item.hasDiscount` | boolean | Whether the line has any discount applied |
+| `item.currency` | string | Active currency code (e.g. `"USD"`) |
+
+> **Note**: These types are the *raw* condition values. The same `item.*` paths used as text tokens (`{item.price}`, `{item.hasDiscount}`) are still rendered as currency-formatted strings / `"show"` / `"hide"` for backwards compatibility.
+
+### `discount.*` namespace
+
+Available in `[data-summary-offer-discounts]`, `[data-summary-voucher-discounts]`, and `[data-line-discounts]` row templates.
+
+| Path | Type | Description |
+|------|------|-------------|
+| `discount.name` | string | Offer or voucher name |
+| `discount.amount` | number | Discount amount as a raw number (currency symbols stripped) |
+| `discount.amountFormatted` | string | Original currency-formatted amount string |
+| `discount.description` | string | Offer or voucher description |
+
+### Examples
+
+```html
+<!-- Show only if quantity > 1 -->
+<span data-next-show="item.quantity > 1">×{item.quantity}</span>
+
+<!-- Hide when the line has a discount -->
+<span data-next-hide="item.hasDiscount">{item.price}</span>
+
+<!-- Logical combinations -->
+<span data-next-show="item.isRecurring && item.discountPercentage >= 10">
+  Subscriber bonus
+</span>
+
+<!-- NOT operator -->
+<span data-next-show="!item.isRecurring">One-time purchase</span>
+
+<!-- Discount-side conditions -->
+<li data-next-show="discount.amount >= 5">{discount.name} -{discount.amountFormatted}</li>
+```
