@@ -204,8 +204,8 @@ Available in `[data-summary-lines]` row templates and inside any nested `[data-l
 | `item.frequency` | string | Human-readable frequency (e.g. `"Monthly"`, `"Every 7 days"`) |
 | `item.recurringPrice` | number \| null | Recurring unit price |
 | `item.originalRecurringPrice` | number \| null | Original recurring unit price |
-| `item.price` | number | Package price after discounts |
-| `item.originalPrice` | number | Package price before discounts |
+| `item.price` | number | Line total after discounts (`quantity × package_price`) |
+| `item.originalPrice` | number | Line subtotal before discounts (`quantity × original_package_price`) |
 | `item.unitPrice` | number | Unit price after discounts |
 | `item.originalUnitPrice` | number | Unit price before discounts |
 | `item.discountAmount` | number | Total discount amount on the line |

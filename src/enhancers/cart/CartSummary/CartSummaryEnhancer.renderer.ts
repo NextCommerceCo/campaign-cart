@@ -206,16 +206,16 @@ export function renderLines(
       'line.priceRecurringTotal': 'item.recurringPrice',
       'line.unitPrice': 'item.unitPrice',
       'line.originalUnitPrice': 'item.originalUnitPrice',
-      'line.packagePrice': 'item.price',
-      'line.originalPackagePrice': 'item.originalPrice',
+      'line.packagePrice': '(no equivalent — use item.unitPrice for per-unit, item.price is now the line total)',
+      'line.originalPackagePrice': '(no equivalent — use item.originalUnitPrice for per-unit, item.originalPrice is now the line subtotal)',
       'line.totalDiscount': 'item.discountAmount',
       'line.hasDiscount': 'item.hasDiscount',
-      'line.subtotal': 'item.price',
+      'line.subtotal': 'item.originalPrice',
       'line.total': 'item.price',
       'line.price': '(no equivalent — use item.unitPrice or item.price)',
-      'line.priceTotal': '(no equivalent — use item.price)',
-      'line.priceRetail': '(no equivalent — use item.originalUnitPrice)',
-      'line.priceRetailTotal': '(no equivalent — use item.originalPrice)',
+      'line.priceTotal': 'item.price',
+      'line.priceRetail': 'item.originalUnitPrice',
+      'line.priceRetailTotal': 'item.originalPrice',
       'line.hasSavings': '(no equivalent — derive from item.hasDiscount)',
     };
     const used = [...itemTemplate.matchAll(/\{(line\.[^}]+)\}/g)].map(
@@ -398,12 +398,9 @@ export function renderSummaryLine(template: string, line: SummaryLine): string {
             line.currency ?? undefined
           )
         : '',
-    'item.price': formatCurrency(
-      line.package_price,
-      line.currency ?? undefined
-    ),
+    'item.price': formatCurrency(line.total, line.currency ?? undefined),
     'item.originalPrice': formatCurrency(
-      line.original_package_price,
+      line.subtotal,
       line.currency ?? undefined
     ),
     'item.unitPrice': formatCurrency(

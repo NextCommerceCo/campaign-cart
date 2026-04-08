@@ -692,6 +692,39 @@ describe('renderSummaryLine', () => {
     expect(html).toContain('5.00');
   });
 
+  it('item.price uses line.total (line subtotal × qty after discounts), not package_price', () => {
+    const html = renderSummaryLine(
+      '{item.price}',
+      makeSummaryLine({
+        quantity: 3,
+        package_price: '15.00',
+        unit_price: '15.00',
+        total: '45.00',
+        subtotal: '60.00',
+        currency: 'USD',
+      }),
+    );
+    expect(html).toContain('45.00');
+    expect(html).not.toContain('15.00');
+  });
+
+  it('item.originalPrice uses line.subtotal (line total before discounts), not original_package_price', () => {
+    const html = renderSummaryLine(
+      '{item.originalPrice}',
+      makeSummaryLine({
+        quantity: 3,
+        original_package_price: '20.00',
+        original_unit_price: '20.00',
+        total: '45.00',
+        subtotal: '60.00',
+        currency: 'USD',
+      }),
+    );
+    expect(html).toContain('60.00');
+    expect(html).not.toContain('20.00');
+  });
+
+
   it('computes discountPercentage from unit and original price', () => {
     const html = renderSummaryLine(
       '{item.discountPercentage}',

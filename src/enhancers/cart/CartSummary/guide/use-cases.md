@@ -154,7 +154,7 @@
 
 **Why this enhancer:** `data-next-show="item.hasDiscount"` evaluates the boolean per row at render time, so the strikethrough markup is added only on discounted lines. The element is removed from the DOM (not just hidden), so screen readers and copy/paste do not pick up the original price on full-priced rows.
 
-**Watch out for:** `{item.unitPrice}` is the discounted unit price; `{item.originalUnitPrice}` is the price before discounts. Both come from the API. If you want package totals instead of per-unit prices, use `{item.price}` and `{item.originalPrice}`.
+**Watch out for:** `{item.unitPrice}` is the discounted unit price and `{item.originalUnitPrice}` is the per-unit price before discounts. If you want the line total (quantity × package price) instead, use `{item.price}` (line total after discounts) and `{item.originalPrice}` (line subtotal before discounts).
 
 ```html
 <div data-next-cart-summary>

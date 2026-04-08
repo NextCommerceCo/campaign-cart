@@ -23,8 +23,8 @@ Fields marked *campaign data* are empty strings when campaign data is unavailabl
 | `{item.frequency}` | `string` | yes | Human-readable billing frequency (e.g. `"Monthly"`, `"Every 3 months"`, `"Daily"`). Empty string for one-time. |
 | `{item.recurringPrice}` | `string` | yes* | Recurring unit price (subscriptions). Formatted. *campaign data* |
 | `{item.originalRecurringPrice}` | `string` | yes* | Original recurring price before any discount. Formatted. *campaign data* |
-| `{item.price}` | `string` | no | Package price after discounts (API). Formatted. |
-| `{item.originalPrice}` | `string` | no | Package price before discounts (API). Formatted. |
+| `{item.price}` | `string` | no | Line total after discounts — `quantity × package_price` (API `line.total`). Formatted. |
+| `{item.originalPrice}` | `string` | no | Line subtotal before discounts — `quantity × original_package_price` (API `line.subtotal`). Formatted. |
 | `{item.unitPrice}` | `string` | no | Per-unit price after discounts (API). Formatted. |
 | `{item.originalUnitPrice}` | `string` | no | Per-unit price before discounts (API). Formatted. |
 | `{item.discountAmount}` | `string` | no | Total discount applied to this line. Formatted. |
@@ -51,11 +51,12 @@ Fields marked *campaign data* are empty strings when campaign data is unavailabl
 | `{line.priceRecurring}` / `{line.priceRecurringTotal}` | `{item.recurringPrice}` |
 | `{line.unitPrice}` | `{item.unitPrice}` |
 | `{line.originalUnitPrice}` | `{item.originalUnitPrice}` |
-| `{line.packagePrice}` | `{item.price}` |
-| `{line.originalPackagePrice}` | `{item.originalPrice}` |
+| `{line.packagePrice}` | no equivalent — `{item.price}` is now the line total, not the per-package price |
+| `{line.originalPackagePrice}` | no equivalent — `{item.originalPrice}` is now the line subtotal |
 | `{line.totalDiscount}` | `{item.discountAmount}` |
 | `{line.hasDiscount}` | `{item.hasDiscount}` |
-| `{line.subtotal}` / `{line.total}` | `{item.price}` |
+| `{line.subtotal}` | `{item.originalPrice}` |
+| `{line.total}` | `{item.price}` |
 | `{line.price}` / `{line.priceTotal}` | `{item.unitPrice}` or `{item.price}` |
 | `{line.priceRetail}` / `{line.priceRetailTotal}` | `{item.originalUnitPrice}` or `{item.originalPrice}` |
 | `{line.hasSavings}` | derive from `{item.hasDiscount}` |
@@ -92,8 +93,8 @@ The raw-typed object exposed to `data-next-show` / `data-next-hide` conditions i
 | `item.intervalCount` | `number \| null` | yes | Subscription interval count. `null` for one-time purchases. |
 | `item.recurringPrice` | `number \| null` | yes | Recurring unit price as a raw number. `null` when not set. |
 | `item.originalRecurringPrice` | `number \| null` | yes | Original recurring price as a raw number. `null` when not set. |
-| `item.price` | `number` | no | Package price after discounts as a raw number. |
-| `item.originalPrice` | `number` | no | Package price before discounts as a raw number. |
+| `item.price` | `number` | no | Line total after discounts (`line.total`) as a raw number. |
+| `item.originalPrice` | `number` | no | Line subtotal before discounts (`line.subtotal`) as a raw number. |
 | `item.unitPrice` | `number` | no | Per-unit price after discounts as a raw number. |
 | `item.originalUnitPrice` | `number` | no | Per-unit price before discounts as a raw number. |
 | `item.discountAmount` | `number` | no | Total discount on this line as a raw number. |

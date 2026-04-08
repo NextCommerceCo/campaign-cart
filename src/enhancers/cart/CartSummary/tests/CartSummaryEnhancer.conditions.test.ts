@@ -82,18 +82,22 @@ describe('buildItemContext', () => {
     expect(ctx.sku).toBe('SKU-Z');
   });
 
-  it('parses prices to raw numbers', () => {
+  it('parses prices to raw numbers (price/originalPrice come from line totals)', () => {
     const ctx = buildItemContext(
       makeSummaryLine({
+        quantity: 3,
         unit_price: '15.50',
         original_unit_price: '20.00',
-        package_price: '46.50',
-        original_package_price: '60.00',
+        package_price: '15.50',
+        original_package_price: '20.00',
+        subtotal: '60.00',
+        total: '46.50',
         total_discount: '13.50',
       })
     );
     expect(ctx.unitPrice).toBe(15.5);
     expect(ctx.originalUnitPrice).toBe(20);
+    // price and originalPrice are LINE totals (qty × package price), not per-package
     expect(ctx.price).toBe(46.5);
     expect(ctx.originalPrice).toBe(60);
     expect(ctx.discountAmount).toBe(13.5);
