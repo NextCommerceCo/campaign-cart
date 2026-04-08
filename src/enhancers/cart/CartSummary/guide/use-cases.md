@@ -146,6 +146,124 @@
 
 ---
 
+## Show the final price with the original price struck through
+
+> Effort: lightweight
+
+**When:** A receipt-style summary should display the discounted unit price in bold, with the original price next to it as a strikethrough — but only when the line actually has a discount. Lines without a discount should render a single clean price.
+
+**Why this enhancer:** `data-next-show="item.hasDiscount"` evaluates the boolean per row at render time, so the strikethrough markup is added only on discounted lines. The element is removed from the DOM (not just hidden), so screen readers and copy/paste do not pick up the original price on full-priced rows.
+
+**Watch out for:** `{item.unitPrice}` is the discounted unit price; `{item.originalUnitPrice}` is the price before discounts. Both come from the API. If you want package totals instead of per-unit prices, use `{item.price}` and `{item.originalPrice}`.
+
+```html
+<div data-next-cart-summary>
+  <template>
+    <ul data-summary-lines>
+      <template>
+        <li class="line-item">
+          <span class="name">{item.name}</span>
+          <span class="qty">×{item.quantity}</span>
+          <span class="price-current">{item.unitPrice}</span>
+          <s class="price-original" data-next-show="item.hasDiscount">{item.originalUnitPrice}</s>
+        </li>
+      </template>
+    </ul>
+
+    <div class="summary-row total"><span>Total</span><span>{total}</span></div>
+  </template>
+</div>
+```
+
+---
+
+## Show savings amount and percentage on each line
+
+> Effort: lightweight
+
+**When:** Discounted lines should display both the absolute savings (e.g. `−$5.00`) and the percentage off (e.g. `25% off`) so customers immediately see the value of the deal. Full-priced lines should hide both fields entirely.
+
+**Why this enhancer:** Both `{item.discountAmount}` (currency) and `{item.discountPercentage}` (formatted percentage) are built-in tokens, and `data-next-show="item.hasDiscount"` removes the savings badge wrapper on lines without a discount in a single pass.
+
+**Watch out for:** `{item.discountPercentage}` is a formatted string (e.g. `"25%"`) — the same value is exposed as a raw number to the condition evaluator. Use `data-next-show="item.discountPercentage >= 20"` if you want the badge to appear only when the discount is meaningful, not on a 1% rounding error.
+
+```html
+<div data-next-cart-summary>
+  <template>
+    <ul data-summary-lines>
+      <template>
+        <li class="line-item">
+          <div class="line-info">
+            <span class="name">{item.name}</span>
+            <span class="qty">×{item.quantity}</span>
+          </div>
+
+          <div class="line-savings" data-next-show="item.hasDiscount">
+            <span class="savings-amount">−{item.discountAmount}</span>
+            <span class="savings-pct">{item.discountPercentage} off</span>
+          </div>
+        </li>
+      </template>
+    </ul>
+
+    <div class="summary-row total"><span>Total</span><span>{total}</span></div>
+  </template>
+</div>
+```
+
+---
+
+## Combine final price, original price, savings, and per-unit price into one rich row
+
+> Effort: moderate
+
+**When:** A flagship checkout receipt should expose the full pricing story for each line — final line total, struck-through original total, savings amount and percentage, and per-unit pricing — but only render the discount fields when the line is actually discounted.
+
+**Why this enhancer:** All seven `item.*` price tokens (`{item.price}`, `{item.originalPrice}`, `{item.unitPrice}`, `{item.originalUnitPrice}`, `{item.discountAmount}`, `{item.discountPercentage}`, plus `{item.hasDiscount}` as the gate) come from the same API summary calculation, so the numbers are guaranteed to add up. `data-next-show="item.hasDiscount"` and `data-next-hide="item.hasDiscount"` together produce a clean two-column "regular" / "on sale" layout without any JavaScript.
+
+**Watch out for:** Heavy templates re-render on every cart change. Keep the markup flat — avoid nesting more than one or two `data-next-show` levels deep so the per-row processing stays cheap. If you have many lines and a slow phone, prefer hiding wrappers (one condition per row) over hiding individual `<span>`s (many conditions per row).
+
+```html
+<div data-next-cart-summary>
+  <template>
+    <ul data-summary-lines>
+      <template>
+        <li class="line-item">
+          <img src="{item.image}" alt="{item.name}" />
+
+          <div class="line-details">
+            <span class="name">{item.name}</span>
+            <span class="qty">{item.quantity} × {item.unitPrice}</span>
+            <span class="qty-original" data-next-show="item.hasDiscount">
+              was {item.originalUnitPrice} per unit
+            </span>
+          </div>
+
+          <div class="line-pricing">
+            <span class="line-total">{item.price}</span>
+            <s class="line-original" data-next-show="item.hasDiscount">{item.originalPrice}</s>
+            <span class="line-savings" data-next-show="item.hasDiscount">
+              You save {item.discountAmount} ({item.discountPercentage})
+            </span>
+          </div>
+        </li>
+      </template>
+    </ul>
+
+    <div class="summary-row"><span>Subtotal</span><span>{subtotal}</span></div>
+    <div class="summary-row" data-next-show="cart.totalDiscount > 0">
+      <span>Total savings</span><span>−{totalDiscount} ({totalDiscountPercentage})</span>
+    </div>
+    <div class="summary-row"><span>Shipping</span><span>{shipping}</span></div>
+    <div class="summary-row total"><span>Total</span><span>{total}</span></div>
+  </template>
+</div>
+```
+
+The cart-wide `data-next-show="cart.totalDiscount > 0"` on the "Total savings" row sits *outside* the line template, so it is processed once by the global `ConditionalDisplayEnhancer` rather than per-line.
+
+---
+
 ## When NOT to use this
 
 ### Displaying a single cart value in isolation (e.g., just the total in a header badge)

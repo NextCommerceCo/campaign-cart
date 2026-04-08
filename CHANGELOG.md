@@ -1,5 +1,155 @@
 # Changelog
 
+## [0.4.11] — 2026-04-08 — CartSummary Display Refactor & PackageToggle Fix
+
+### Breaking
+
+- **`CartDisplayEnhancer` deprecated `data-include-discounts` attribute removed** — the attribute is no longer parsed. Use a separate `data-next-display="cart.totalDiscount"` element and hide it via the `.next-no-discounts` state class instead.
+- **`CartDisplayEnhancer` deprecated `cart-summary.*` display path removed** — `data-next-display="cart-summary.subtotal"` no longer falls back to `cart.subtotal`. Use the `cart.*` namespace directly.
+- **`CartDisplayEnhancer` deprecated properties removed** — `currencyCode`, `currencySymbol`, and the `.raw` suffix on numeric properties (`subtotal.raw`, `total.raw`, `totalDiscount.raw`, `shipping.raw`) are no longer supported. Use `currency` for the currency code, and read raw values from `cartStore` directly.
+- **`{item.discountPercentage}` token formatting changed** — now rendered through `formatPercentage` (e.g. `"25%"`, `"0%"`) instead of a bare integer string (`"25"`, `"0"`). Update any CSS or JS that parsed the bare value.
+- **`CartDisplayEnhancer` `shippingDiscountPercentage` format changed** — switched from `number` to `percentage`. The element now renders `"25%"` instead of `"25"`.
+
+### New
+
+- **Expanded CartSummary template variables** — `buildVars` now exposes the following additional `{token}` placeholders inside custom `<template>` markup:
+
+  | Token | Description |
+  |---|---|
+  | `{currency}` | Active currency code (e.g. `"USD"`) |
+  | `{shippingName}` | Display name of the selected shipping method |
+  | `{shippingCode}` | Code of the selected shipping method |
+  | `{shippingDiscountAmount}` | Absolute discount applied to shipping |
+  | `{shippingDiscountPercentage}` | Shipping discount as a formatted percentage |
+  | `{totalDiscount}` | Combined offer and voucher discount amount (canonical name; `{discounts}` kept as alias) |
+  | `{totalDiscountPercentage}` | Combined discount as a formatted percentage of subtotal |
+  | `{totalQuantity}` | Total unit quantity across all cart lines |
+  | `{isCalculating}` | `"true"` / `"false"` — totals recalculation in progress |
+  | `{isEmpty}` | `"true"` / `"false"` — cart has no items |
+  | `{isFreeShipping}` | `"true"` / `"false"` — shipping cost is zero |
+  | `{hasShippingDiscount}` | `"true"` / `"false"` — a shipping discount is applied |
+  | `{hasDiscounts}` | `"true"` / `"false"` — any discount is applied |
+
+- **Currency-aware formatting** — `buildVars` now accepts a `currency` parameter and formats every monetary token with that currency. The currency is resolved from `campaignStore.data.currency` first, then `configStore.selectedCurrency`, then `configStore.detectedCurrency`, falling back to `"USD"`. Previously prices were formatted without an explicit currency.
+
+- **Expanded `CartDisplayEnhancer` property set** — `data-next-display="cart.{property}"` now exposes `totalDiscountPercentage`, `totalQuantity`, `shippingName`, `shippingCode`, `shippingDiscountAmount`, and `shippingDiscountPercentage`. `totalDiscountPercentage` and `shippingDiscountPercentage` use the `percentage` format type.
+
+- **Renderer warn callback** — `renderCustom`, `renderListContainers`, and `renderLines` now accept an optional `warn` callback. `CartSummaryEnhancer` passes `this.logger.warn`, and `renderLines` uses it to surface deprecation warnings for `{line.*}` tokens with per-token `{item.*}` replacement hints.
+
+- **`SummaryLine` API fields** — `original_recurring_price?: string` and `currency?: string` added to the `SummaryLine` interface. The renderer uses `currency` for line-level currency formatting and exposes `{item.originalRecurringPrice}` and `{item.currency}` template tokens.
+
+- **Per-line `data-next-show` / `data-next-hide` inside CartSummary templates** — line and discount templates now support local conditional rendering against `item.*` and `discount.*` namespaces. Conditions are evaluated synchronously per row at render time using raw line / discount data (real numbers, real booleans), so comparison operators behave as expected. Hidden elements are removed from the DOM and the attributes are stripped, so the global `ConditionalDisplayEnhancer` does not double-process them.
+
+  Use the no-braces syntax — write `item.quantity > 1`, not `{item.quantity} > 1`. Supported operators: `>`, `>=`, `<`, `<=`, `==`, `===`, `!=`, `!==`, `&&`, `||`, `!`, parentheses.
+
+  **Example — final price with the original struck through (only on discounted lines):**
+
+  ```html
+  <ul data-summary-lines>
+    <template>
+      <li class="line-item">
+        <span class="name">{item.name}</span>
+        <span class="qty">×{item.quantity}</span>
+        <span class="price-current">{item.unitPrice}</span>
+        <s class="price-original" data-next-show="item.hasDiscount">{item.originalUnitPrice}</s>
+      </li>
+    </template>
+  </ul>
+  ```
+
+  **Example — savings amount and percentage badge per line:**
+
+  ```html
+  <ul data-summary-lines>
+    <template>
+      <li class="line-item">
+        <span class="name">{item.name}</span>
+        <span class="qty">×{item.quantity}</span>
+
+        <div class="line-savings" data-next-show="item.hasDiscount">
+          <span class="savings-amount">−{item.discountAmount}</span>
+          <span class="savings-pct">{item.discountPercentage} off</span>
+        </div>
+      </li>
+    </template>
+  </ul>
+  ```
+
+  Use `data-next-show="item.discountPercentage >= 20"` if you want the badge to appear only when the discount is meaningful.
+
+  **Example — full receipt row combining final, original, savings, and per-unit pricing:**
+
+  ```html
+  <ul data-summary-lines>
+    <template>
+      <li class="line-item">
+        <img src="{item.image}" alt="{item.name}" />
+
+        <div class="line-details">
+          <span class="name">{item.name}</span>
+          <span class="qty">{item.quantity} × {item.unitPrice}</span>
+          <span class="qty-original" data-next-show="item.hasDiscount">
+            was {item.originalUnitPrice} per unit
+          </span>
+        </div>
+
+        <div class="line-pricing">
+          <span class="line-total">{item.price}</span>
+          <s class="line-original" data-next-show="item.hasDiscount">{item.originalPrice}</s>
+          <span class="line-savings" data-next-show="item.hasDiscount">
+            You save {item.discountAmount} ({item.discountPercentage})
+          </span>
+        </div>
+      </li>
+    </template>
+  </ul>
+  ```
+
+  **Example — recurring (subscription) line with frequency, recurring price, and "one-time" fallback:**
+
+  ```html
+  <ul data-summary-lines>
+    <template>
+      <li class="line-item">
+        <img src="{item.image}" alt="{item.name}" />
+
+        <div class="line-details">
+          <span class="name">{item.name}</span>
+          <span class="qty">×{item.quantity}</span>
+
+          <span class="recurring-badge" data-next-show="item.isRecurring">
+            🔁 {item.frequency} · then {item.recurringPrice}
+          </span>
+          <span class="one-time-badge" data-next-hide="item.isRecurring">
+            One-time purchase
+          </span>
+        </div>
+
+        <span class="line-total">{item.price}</span>
+      </li>
+    </template>
+  </ul>
+  ```
+
+  `{item.frequency}` resolves to `"Daily"`, `"Monthly"`, `"Every 7 days"`, `"Every 3 months"`, etc. via the renderer's `computeFrequency` helper. `{item.recurringPrice}` is currency-formatted and empty when the line is not recurring. The two badges are mutually exclusive — `data-next-show="item.isRecurring"` and `data-next-hide="item.isRecurring"` are evaluated independently per line, so exactly one renders.
+
+  Conditions referencing other namespaces (e.g. `cart.hasItems`) are passed through untouched and processed by the global `ConditionalDisplayEnhancer` flow. Cart-wide conditions are best placed *outside* the line template to avoid thrashing on cart re-renders. Function-call conditions (`item.hasFlag(x)`) are not handled locally.
+
+- **`item.*` and `discount.*` raw-typed condition contexts** — both expose unformatted fields (real numbers, real booleans). `item.hasDiscount` is a boolean here (not the `'show'` / `'hide'` string used by the matching text token); `discount.amount` is parsed to a number while `discount.amountFormatted` retains the original currency-formatted string. Full field reference: [reference/object-attributes.md](src/enhancers/cart/CartSummary/guide/reference/object-attributes.md).
+
+### Fixed
+
+- **`PackageToggleEnhancer` card display reads live `card.isSelected`** — `updateCardDisplayElements` now reads `card.isSelected` instead of `card.element.getAttribute('data-next-selected')`. The DOM attribute can lag behind the in-memory state when the toggle changes mid-render, causing slot rendering to use a stale selection flag.
+
+- **`{item.discountPercentage}` formatted via `formatPercentage`** — previously rendered as a bare integer (`"25"`). Now produces `"25%"` for consistency with other percentage tokens.
+
+### Tests
+
+- **`CartSummaryEnhancer.renderer` unit tests** — significantly expanded (+819 lines) covering `buildFlags`, `buildVars`, `buildDefaultTemplate`, `renderDefault`, `renderCustom`, `renderListContainers`, `renderLines`, `buildLineElement`, `renderDiscountList`, `renderDiscountItem`, `renderSummaryLine`, `clearListItems`, and `updateStateClasses`. Includes a happy-dom polyfill for `:scope > template`.
+- **`CartDisplayEnhancer.display` unit tests** — rewritten to cover the trimmed property set, removing assertions for the dropped `currencyCode`, `currencySymbol`, `data-include-discounts`, and `.raw` paths.
+- **`PackageToggleEnhancer.renderer` unit tests** — added `tests/price.test.ts` and `src/tests/cart/PackageToggleRenderer.test.ts` covering the `card.isSelected` fix and toggle slot rendering.
+- **`CartSummaryEnhancer.conditions` unit tests** — added `tests/CartSummaryEnhancer.conditions.test.ts` (44 tests) covering `buildItemContext`, `buildDiscountContext`, `evaluateLocalCondition` (all five condition node types), `applyLocalConditions` descendant and root-element flows, attribute stripping, unknown-namespace passthrough, empty-attribute handling, and renderer integration through `buildLineElement` and `renderDiscountList`.
+
 ## [0.4.10] — 2026-04-03 — PackageToggle Display Slots & Pricing Refactor
 
 ### Breaking
