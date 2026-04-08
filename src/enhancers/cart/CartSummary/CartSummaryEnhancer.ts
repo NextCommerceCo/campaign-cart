@@ -19,15 +19,35 @@
  *
  * ─── TEMPLATE VARIABLES ──────────────────────────────────────────────────────
  *
- *   {subtotal}          Subtotal before shipping and discounts
- *   {total}             Grand total
- *   {shipping}          Shipping cost (formatted, or "Free" if zero)
- *   {shippingOriginal}  Original shipping before any shipping discount (empty if no discount)
- *   {tax}               Tax amount
- *   {discounts}         Total discount amount (offer + voucher)
- *   {savings}           Total savings: retail (compare-at minus price) + applied discounts
- *   {compareTotal}      Compare-at total (before savings)
- *   {itemCount}         Number of items in cart
+ *   Totals
+ *   {subtotal}                   Subtotal before shipping and discounts
+ *   {total}                      Grand total after all discounts and shipping
+ *
+ *   Shipping
+ *   {shippingName}               Display name of the selected shipping method
+ *   {shippingCode}               Code of the selected shipping method
+ *   {shipping}                   Shipping cost (formatted, or "Free" if zero)
+ *   {shippingOriginal}           Original shipping before a shipping discount (empty if no discount)
+ *   {shippingDiscountAmount}     Absolute discount applied to shipping
+ *   {shippingDiscountPercentage} Shipping discount as a percentage of the original price
+ *
+ *   Discounts
+ *   {totalDiscount}              Combined offer and voucher discount amount
+ *   {totalDiscountPercentage}    Combined discount as a percentage of the subtotal
+ *   {discounts}                  Alias for {totalDiscount} — kept for backwards compatibility
+ *
+ *   Currency
+ *   {currency}                   Active currency code (e.g. "USD")
+ *   {currencyCode}               Alias for {currency}
+ *
+ *   Cart utils
+ *   {isCalculating}              "true" | "false" — totals recalculation in progress
+ *   {isEmpty}                    "true" | "false" — cart has no items
+ *   {itemCount}                  Number of lines in the cart
+ *   {totalQuantity}              Total unit quantity across all cart lines
+ *   {isFreeShipping}             "true" | "false" — shipping cost is zero
+ *   {hasShippingDiscount}        "true" | "false" — a shipping discount is applied
+ *   {hasDiscounts}               "true" | "false" — any discount is applied
  *
  * ─── STATE CSS CLASSES (added to host element) ───────────────────────────────
  *
@@ -144,6 +164,8 @@
 
 import { BaseEnhancer } from '@/enhancers/base/BaseEnhancer';
 import { useCartStore } from '@/stores/cartStore';
+import { useCampaignStore } from '@/stores/campaignStore';
+import { useConfigStore } from '@/stores/configStore';
 import type { CartState } from '@/types/global';
 import type { CartSummary } from '@/types/api';
 import {
@@ -200,13 +222,20 @@ export class CartSummaryEnhancer extends BaseEnhancer {
   private render(): void {
     if (!this.cartState) return;
 
+    const campaign = useCampaignStore.getState().data;
+    const config   = useConfigStore.getState();
+    const currency =
+      campaign?.currency ??
+      config?.selectedCurrency ??
+      config?.detectedCurrency ??
+      'USD';
     const flags = buildFlags(this.cartState);
-    const vars  = buildVars(this.cartState, flags, this.itemCount);
+    const vars  = buildVars(this.cartState, flags, this.itemCount, currency);
 
     updateStateClasses(this.element, flags);
 
     if (this.customTemplate) {
-      renderCustom(this.element, this.customTemplate, vars, this.summary);
+      renderCustom(this.element, this.customTemplate, vars, this.summary, msg => this.logger.warn(msg));
     } else {
       renderDefault(this.element, vars, flags);
     }

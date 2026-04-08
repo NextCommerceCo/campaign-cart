@@ -41,11 +41,11 @@ Places a single reactive cart value on the element. Value is updated automatical
 | `subtotal` | currency | Subtotal before shipping and discounts |
 | `total` | currency | Grand total after all discounts and shipping |
 | `totalDiscount` | currency | Combined offer and voucher discount amount |
-| `discounts` | currency | **Deprecated** — use `totalDiscount` instead |
+| `totalDiscountPercentage` | percentage | Combined discount as a percentage of the subtotal; `0` when no discounts are applied |
 | `shipping` | currency | Shipping cost (`0` when free — pair with `isFreeShipping` for "Free" display) |
 | `shippingOriginal` | currency | Original shipping before a shipping discount; `0` when no shipping discount |
 | `shippingDiscountAmount` | currency | Absolute discount applied to shipping; `0` when no shipping discount |
-| `shippingDiscountPercentage` | number | Shipping discount as a percentage of the original price; `0` when no shipping discount |
+| `shippingDiscountPercentage` | percentage | Shipping discount as a percentage of the original price; `0` when no shipping discount |
 | `shippingName` | text | Display name of the selected shipping method; empty string when no method is selected |
 | `shippingCode` | text | Code of the selected shipping method (matches campaign API); empty string when no method is selected |
 | `itemCount` | number | Number of lines in the cart |
@@ -56,14 +56,11 @@ Places a single reactive cart value on the element. Value is updated automatical
 | `hasShippingDiscount` | boolean | `Yes` / `No` — whether a shipping discount is applied |
 | `isCalculating` | boolean | `Yes` / `No` — whether a totals recalculation is in progress |
 | `currency` | text | Active currency code (e.g. `USD`) |
-| `currencyCode` | text | Alias for `currency` |
-| `currencySymbol` | text | Symbol for the active currency (e.g. `$`) |
 
 Optional attributes:
 
 | Attribute | Effect |
 |-----------|--------|
-| `data-include-discounts` | **Deprecated.** Subtracts `totalDiscount` from `subtotal` before formatting. Logs a console warning. Migrate to a separate `data-next-display="cart.totalDiscount"` element hidden via `.next-no-discounts`. |
 | `data-next-format` | Override format type (`currency`, `number`, `boolean`, `percentage`, `text`, `auto`) |
 | `data-hide-if-zero` | Hide the element when the value is `0` |
 | `data-hide-if-false` | Hide the element when the value is falsy |
@@ -74,12 +71,7 @@ Optional attributes:
 <span data-next-display="cart.shipping" data-hide-if-zero="true"></span>
 ```
 
-**Example — raw numeric value (no formatting):**
-```html
-<span data-next-display="cart.total.raw"></span>
-```
 
-> **Deprecated prefix:** `cart-summary.{property}` still works but logs a deprecation warning. Migrate to `cart.{property}`.
 
 ---
 
@@ -111,41 +103,27 @@ Applied to the host element on every render. Use these in CSS to show or hide ro
 
 Tokens are replaced in a custom `<template>` child. Unrecognized tokens are left unchanged.
 
----
-
-### `{subtotal}`
-
-Subtotal before shipping and discounts. Formatted currency string (e.g., `$24.99`).
-
----
-
-### `{total}`
-
-Grand total after all discounts, shipping, and tax. Formatted currency string.
-
----
-
-### `{shipping}`
-
-Shipping cost. Formatted currency string, or `"Free"` when the shipping value is zero.
-
----
-
-### `{shippingOriginal}`
-
-Original shipping cost before a shipping discount was applied. Empty string when no shipping discount is active.
-
----
-
-### `{discounts}`
-
-Combined total of all offer and voucher discounts. Formatted currency string.
-
----
-
-### `{itemCount}`
-
-Number of items (lines) in the cart. Plain integer string (e.g., `"3"`).
+| Token | Format | Description |
+|-------|--------|-------------|
+| `{subtotal}` | currency | Subtotal before discounts and shipping (e.g. `$24.99`) |
+| `{total}` | currency | Grand total after all discounts and shipping |
+| `{shipping}` | currency / text | Shipping cost, or `"Free"` when shipping is zero |
+| `{shippingOriginal}` | currency | Original shipping before a discount; empty string when no shipping discount |
+| `{shippingDiscountAmount}` | currency | Absolute amount saved on shipping |
+| `{shippingDiscountPercentage}` | percentage | Shipping discount as a percentage (e.g. `"10%"`) |
+| `{shippingName}` | text | Display name of the selected shipping method |
+| `{shippingCode}` | text | Code of the selected shipping method |
+| `{totalDiscount}` | currency | Combined offer and voucher discount total |
+| `{totalDiscountPercentage}` | percentage | Total discount as a percentage of subtotal (e.g. `"20%"`) |
+| `{discounts}` | currency | **Deprecated alias** for `{totalDiscount}` — still rendered, use `{totalDiscount}` in new templates |
+| `{currency}` | text | Active currency code (e.g. `"USD"`) |
+| `{itemCount}` | text | Number of lines in the cart (e.g. `"3"`) |
+| `{totalQuantity}` | text | Total unit quantity across all lines (e.g. `"5"`) |
+| `{isEmpty}` | text | `"true"` or `"false"` — whether the cart has no items |
+| `{hasDiscounts}` | text | `"true"` or `"false"` — whether any discount is applied |
+| `{isFreeShipping}` | text | `"true"` or `"false"` — whether shipping cost is zero |
+| `{hasShippingDiscount}` | text | `"true"` or `"false"` — whether a shipping discount is applied |
+| `{isCalculating}` | text | `"true"` or `"false"` — whether a totals recalculation is in progress |
 
 ---
 

@@ -2,36 +2,63 @@
 
 ## `SummaryLine`
 
-One line in the cart summary. Corresponds to one package in the cart. Fields come from two sources: the API calculate endpoint (pricing, discounts) and campaign data enriched by the cart store (display fields like name and image).
+One line in the cart summary. Corresponds to one package in the cart. Pricing fields come from the API calculate endpoint; display fields (name, image, etc.) come from campaign data enriched by the cart store.
 
 Fields marked *campaign data* are empty strings when campaign data is unavailable.
 
+### `item.*` tokens — canonical (use these)
+
 | Token | Type | Nullable | Description |
 |-------|------|----------|-------------|
-| `{line.packageId}` | `string` | no | Package `ref_id`. Integer as a string. |
-| `{line.quantity}` | `string` | no | Quantity in cart. Integer as a string. |
-| `{line.qty}` | `string` | no | Display alias for `{line.quantity}`. |
-| `{line.name}` | `string` | yes* | Package display name. *campaign data* |
-| `{line.image}` | `string` | yes* | Product image URL. *campaign data* |
-| `{line.productName}` | `string` | yes* | Product name. *campaign data* |
-| `{line.variantName}` | `string` | yes* | Variant name, if applicable. *campaign data* |
-| `{line.sku}` | `string` | yes* | Product SKU. *campaign data* |
-| `{line.price}` | `string` | yes* | Unit price from campaign data. Formatted. *campaign data* |
-| `{line.priceTotal}` | `string` | yes* | Line total from campaign data. Formatted. *campaign data* |
-| `{line.priceRetail}` | `string` | yes* | Retail (compare-at) unit price. Formatted. *campaign data* |
-| `{line.priceRetailTotal}` | `string` | yes* | Retail line total. Formatted. *campaign data* |
-| `{line.priceRecurring}` | `string` | yes* | Recurring unit price (subscriptions). Formatted. *campaign data* |
-| `{line.priceRecurringTotal}` | `string` | yes* | Recurring line total (subscriptions). Formatted. *campaign data* |
-| `{line.isRecurring}` | `"true" \| "false"` | no | Whether this is a recurring/subscription line. |
-| `{line.unitPrice}` | `string` | no | Unit price after discounts, from the API calculate response. Formatted. |
-| `{line.originalUnitPrice}` | `string` | no | Unit price before discounts, from the API calculate response. Formatted. |
-| `{line.packagePrice}` | `string` | no | Package price after discounts, from the API calculate response. Formatted. |
-| `{line.originalPackagePrice}` | `string` | no | Package price before discounts, from the API calculate response. Formatted. |
-| `{line.subtotal}` | `string` | no | Line subtotal, from the API calculate response. Formatted. |
-| `{line.totalDiscount}` | `string` | no | Total discount applied to this line. Formatted. |
-| `{line.total}` | `string` | no | Line total after all discounts. Formatted. |
-| `{line.hasDiscount}` | `"show" \| "hide"` | no | `"show"` when `totalDiscount > 0`. Use as a CSS class or visibility flag. |
-| `{line.hasSavings}` | `"show" \| "hide"` | no | `"show"` when retail savings or a discount exists on this line. |
+| `{item.packageId}` | `string` | no | Package `ref_id`. Integer as a string. |
+| `{item.name}` | `string` | yes* | Package display name. *campaign data* |
+| `{item.image}` | `string` | yes* | Product image URL. *campaign data* |
+| `{item.quantity}` | `string` | no | Quantity in cart. Integer as a string. |
+| `{item.productName}` | `string` | yes* | Product name. *campaign data* |
+| `{item.variantName}` | `string` | yes* | Variant name, if applicable. *campaign data* |
+| `{item.sku}` | `string` | yes* | Product SKU. *campaign data* |
+| `{item.isRecurring}` | `"true" \| "false"` | no | Whether this is a recurring/subscription line. |
+| `{item.interval}` | `string` | yes | Billing interval: `"day"`, `"month"`, or empty string for one-time. |
+| `{item.intervalCount}` | `string` | yes | Number of intervals per billing cycle (e.g. `"3"` for every 3 months). Empty string for one-time. |
+| `{item.frequency}` | `string` | yes | Human-readable billing frequency (e.g. `"Monthly"`, `"Every 3 months"`, `"Daily"`). Empty string for one-time. |
+| `{item.recurringPrice}` | `string` | yes* | Recurring unit price (subscriptions). Formatted. *campaign data* |
+| `{item.originalRecurringPrice}` | `string` | yes* | Original recurring price before any discount. Formatted. *campaign data* |
+| `{item.price}` | `string` | no | Package price after discounts (API). Formatted. |
+| `{item.originalPrice}` | `string` | no | Package price before discounts (API). Formatted. |
+| `{item.unitPrice}` | `string` | no | Per-unit price after discounts (API). Formatted. |
+| `{item.originalUnitPrice}` | `string` | no | Per-unit price before discounts (API). Formatted. |
+| `{item.discountAmount}` | `string` | no | Total discount applied to this line. Formatted. |
+| `{item.discountPercentage}` | `string` | no | Discount as a percentage of the original unit price (e.g. `"20"`). `"0"` when no discount. |
+| `{item.hasDiscount}` | `"show" \| "hide"` | no | `"show"` when `discountAmount > 0`. Use as a CSS class or visibility flag. |
+| `{item.currency}` | `string` | yes | Active currency code for this line (e.g. `"USD"`). |
+
+---
+
+### `line.*` tokens — deprecated
+
+> **Deprecated.** Templates containing `{line.*}` tokens trigger a console warning on every render that lists the equivalent `{item.*}` replacement for each token. The tokens render as **empty strings** — migrate to `{item.*}` tokens to restore output.
+
+| Deprecated token | Replacement |
+|------------------|-------------|
+| `{line.packageId}` | `{item.packageId}` |
+| `{line.name}` | `{item.name}` |
+| `{line.image}` | `{item.image}` |
+| `{line.qty}` / `{line.quantity}` | `{item.quantity}` |
+| `{line.productName}` | `{item.productName}` |
+| `{line.variantName}` | `{item.variantName}` |
+| `{line.sku}` | `{item.sku}` |
+| `{line.isRecurring}` | `{item.isRecurring}` |
+| `{line.priceRecurring}` / `{line.priceRecurringTotal}` | `{item.recurringPrice}` |
+| `{line.unitPrice}` | `{item.unitPrice}` |
+| `{line.originalUnitPrice}` | `{item.originalUnitPrice}` |
+| `{line.packagePrice}` | `{item.price}` |
+| `{line.originalPackagePrice}` | `{item.originalPrice}` |
+| `{line.totalDiscount}` | `{item.discountAmount}` |
+| `{line.hasDiscount}` | `{item.hasDiscount}` |
+| `{line.subtotal}` / `{line.total}` | `{item.price}` |
+| `{line.price}` / `{line.priceTotal}` | `{item.unitPrice}` or `{item.price}` |
+| `{line.priceRetail}` / `{line.priceRetailTotal}` | `{item.originalUnitPrice}` or `{item.originalPrice}` |
+| `{line.hasSavings}` | derive from `{item.hasDiscount}` |
 
 ---
 

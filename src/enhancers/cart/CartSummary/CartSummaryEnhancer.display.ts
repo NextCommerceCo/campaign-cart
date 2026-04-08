@@ -1,62 +1,40 @@
 import { BaseDisplayEnhancer } from '@/enhancers/display/DisplayEnhancerCore';
 import type { FormatType } from '@/enhancers/display/DisplayEnhancerTypes';
 import { useCartStore } from '@/stores/cartStore';
-import { useCampaignStore } from '@/stores/campaignStore';
-import { useConfigStore } from '@/stores/configStore';
-import { formatCurrency, getCurrencySymbol } from '@/utils/currencyFormatter';
 import type { CartState } from '@/types/global';
 import { buildFlags } from './CartSummaryEnhancer.renderer';
 
 const FORMAT_MAP: Record<string, FormatType> = {
+  // totals info
   subtotal: 'currency',
   total: 'currency',
-  isFreeShipping: 'boolean',
-  shipping: 'currency',
-  shippingOriginal: 'currency',
-  hasShippingDiscount: 'boolean',
-  shippingDiscountAmount: 'currency',
-  shippingDiscountPercentage: 'number',
+
+  // shipping info
   shippingName: 'text',
   shippingCode: 'text',
-  hasDiscounts: 'boolean',
-  /** @deprecated use totalDiscount */
-  discounts: 'currency',
+  shipping: 'currency',
+  shippingOriginal: 'currency',
+  shippingDiscountAmount: 'currency',
+  shippingDiscountPercentage: 'percentage',
+
+  // discounts info
   totalDiscount: 'currency',
+  totalDiscountPercentage: 'percentage',
+
+  // currency info
+  currency: 'text',
+
+  // cart utils
+  isCalculating: 'boolean',
+  isEmpty: 'boolean',
   itemCount: 'number',
   totalQuantity: 'number',
-  isEmpty: 'boolean',
-  isCalculating: 'boolean',
-  currency: 'text',
-  currencyCode: 'text',
-  currencySymbol: 'text',
+  isFreeShipping: 'boolean',
+  hasShippingDiscount: 'boolean',
+  hasDiscounts: 'boolean',
 };
 
 export class CartDisplayEnhancer extends BaseDisplayEnhancer {
-  private includeDiscounts = false;
-
-  override async initialize(): Promise<void> {
-    this.includeDiscounts = this.element.hasAttribute('data-include-discounts');
-    if (this.includeDiscounts) {
-      this.logger.warn(
-        '`data-include-discounts` is deprecated. ' +
-          'Show discounts as a separate row using `data-next-display="cart.totalDiscount"` ' +
-          'and hide it with the `.next-no-discounts` CSS state class instead.',
-      );
-    }
-    await super.initialize();
-  }
-
-  protected override parseDisplayAttributes(): void {
-    super.parseDisplayAttributes();
-    const parts = this.displayPath?.split('.') ?? [];
-    if (parts.length >= 2 && parts[0] === 'cart-summary') {
-      this.logger.warn(
-        `"cart-summary.${parts.slice(1).join('.')}" is deprecated — use "cart.${parts.slice(1).join('.')}" instead`,
-      );
-      this.property = parts.slice(1).join('.');
-    }
-  }
-
   protected setupStoreSubscriptions(): void {
     this.subscribe(useCartStore, state => {
       this.toggleClass('next-cart-empty', state.isEmpty);
@@ -71,57 +49,6 @@ export class CartDisplayEnhancer extends BaseDisplayEnhancer {
   }
 
   private resolveValue(state: CartState, property: string): unknown {
-    // .raw suffix — return raw numeric value without formatting
-    if (property.endsWith('.raw')) {
-      const baseProp = property.slice(0, -4);
-      if (baseProp === 'subtotal') {
-        return this.includeDiscounts
-          ? state.subtotal.toNumber() - state.totalDiscount.toNumber()
-          : state.subtotal.toNumber();
-      }
-      if (baseProp === 'total') return state.total.toNumber();
-      if (baseProp === 'totalDiscount') return state.totalDiscount.toNumber();
-      if (baseProp === 'shipping') return state.shippingMethod?.price.toNumber() ?? 0;
-      return undefined;
-    }
-
-    // currency / currencyCode
-    if (property === 'currency' || property === 'currencyCode') {
-      const campaign = useCampaignStore.getState().data;
-      if (campaign?.currency) return campaign.currency;
-      const config = useConfigStore.getState();
-      return config?.selectedCurrency ?? config?.detectedCurrency ?? 'USD';
-    }
-
-    // currencySymbol
-    if (property === 'currencySymbol') {
-      const config = useConfigStore.getState();
-      if (config?.locationData?.detectedCountryConfig?.currencySymbol) {
-        return config.locationData.detectedCountryConfig.currencySymbol;
-      }
-      const campaign = useCampaignStore.getState().data;
-      const currency =
-        campaign?.currency ??
-        config?.selectedCurrency ??
-        config?.detectedCurrency ??
-        'USD';
-      return getCurrencySymbol(currency) || currency;
-    }
-
-    // subtotal with include-discounts applied
-    if (this.includeDiscounts && property === 'subtotal') {
-      const campaign = useCampaignStore.getState().data;
-      const config = useConfigStore.getState();
-      const currency =
-        campaign?.currency ??
-        config?.selectedCurrency ??
-        config?.detectedCurrency ??
-        'USD';
-      const discountedSubtotal =
-        state.subtotal.toNumber() - state.totalDiscount.toNumber();
-      return { _preformatted: true, value: formatCurrency(discountedSubtotal, currency) };
-    }
-
     const flags = buildFlags(state);
 
     switch (property) {
@@ -141,11 +68,8 @@ export class CartDisplayEnhancer extends BaseDisplayEnhancer {
         return state.total.toNumber();
       case 'totalDiscount':
         return state.totalDiscount.toNumber();
-      case 'discounts':
-        this.logger.warn(
-          '"cart.discounts" is deprecated — use "cart.totalDiscount" instead',
-        );
-        return state.totalDiscount.toNumber();
+      case 'totalDiscountPercentage':
+        return state.totalDiscountPercentage.toNumber();
       case 'shipping':
         return state.shippingMethod?.price.toNumber() ?? 0;
       case 'shippingOriginal':
@@ -158,6 +82,8 @@ export class CartDisplayEnhancer extends BaseDisplayEnhancer {
         return state.shippingMethod?.name ?? '';
       case 'shippingCode':
         return state.shippingMethod?.code ?? '';
+      case 'currency':
+        return state.currency ?? '';
       case 'itemCount':
         return state.items.length;
       case 'totalQuantity':
@@ -169,8 +95,7 @@ export class CartDisplayEnhancer extends BaseDisplayEnhancer {
   }
 
   protected override getDefaultFormatType(property: string): FormatType {
-    const base = property.endsWith('.raw') ? property.slice(0, -4) : property;
-    return FORMAT_MAP[base] ?? 'auto';
+    return FORMAT_MAP[property] ?? 'auto';
   }
 
   public getCartProperty(cartState: CartState, property: string): unknown {

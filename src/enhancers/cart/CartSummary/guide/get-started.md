@@ -9,7 +9,7 @@
 
 ### Option A — Default template
 
-Drop a single element with `data-next-cart-summary`. The enhancer renders a built-in layout with subtotal, discounts (when non-zero), shipping, tax (when non-zero), and total rows.
+Drop a single element with `data-next-cart-summary`. The enhancer renders a built-in layout with subtotal, discounts (when non-zero), shipping, and total rows.
 
 ```html
 <div data-next-cart-summary></div>
@@ -44,10 +44,10 @@ Inside a custom `<template>`, add list containers to render per-line breakdowns 
     <ul data-summary-lines>
       <template>
         <li>
-          <img src="{line.image}" alt="{line.name}" />
-          <span>{line.name}</span>
-          <span>{line.qty} × {line.unitPrice}</span>
-          <span>{line.total}</span>
+          <img src="{item.image}" alt="{item.name}" />
+          <span>{item.name}</span>
+          <span>{item.quantity} × {item.unitPrice}</span>
+          <span>{item.price}</span>
         </li>
       </template>
     </ul>
@@ -79,7 +79,7 @@ Use `data-next-display="cart.{property}"` to place a single cart value on any el
 <p>Items: <span data-next-display="cart.itemCount"></span></p>
 ```
 
-The element content updates automatically whenever the cart changes. Available properties: `subtotal`, `total`, `totalDiscount`, `shipping`, `shippingOriginal`, `itemCount`, `isEmpty`, `hasDiscounts`, `isFreeShipping`, `hasShippingDiscount`, `isCalculating`, `currency`, `currencySymbol`.
+The element content updates automatically whenever the cart changes. Available properties: `subtotal`, `total`, `totalDiscount`, `shipping`, `shippingOriginal`, `itemCount`, `isEmpty`, `hasDiscounts`, `isFreeShipping`, `hasShippingDiscount`, `isCalculating`, `currency`, `totalDiscountPercentage`, `totalQuantity`, `shippingName`, `shippingCode`, `shippingDiscountAmount`, `shippingDiscountPercentage`.
 
 ---
 
@@ -91,7 +91,7 @@ After the SDK initializes and the cart contains at least one item, you should se
 - Changing the cart (adding/removing items, applying a coupon) updates the displayed totals without a page reload.
 - The host element has state classes: `next-cart-has-items`, `next-has-discounts` or `next-no-discounts`, `next-free-shipping` or `next-has-shipping`, `next-not-calculating`.
 - While the cart is recalculating (e.g. after adding an item), the host briefly gets `next-calculating` then switches back to `next-not-calculating`.
-- In Option A, the discounts row is absent when no discount is active; the tax row is absent when tax is zero.
+- In Option A, the discounts row is absent when no discount is active.
 - In Option B, `.discount-row` is hidden when `next-no-discounts` is present on the host.
 
 ## Next steps

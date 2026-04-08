@@ -1,4 +1,4 @@
-import { formatCurrency } from '@/utils/currencyFormatter';
+import { formatCurrency, formatPercentage } from '@/utils/currencyFormatter';
 import type { CartState } from '@/types/global';
 import type { CartSummary, SummaryLine } from '@/types/api';
 import type { DiscountItem, SummaryFlags, TemplateVars } from './CartSummaryEnhancer.types';
@@ -19,16 +19,43 @@ export function buildVars(
   state: CartState,
   flags: SummaryFlags,
   itemCount: number,
+  currency: string,
 ): TemplateVars {
+  const fmt = (n: number) => formatCurrency(n, currency);
+  const pct = (n: number) => formatPercentage(n);
+  const totalQuantity = state.items.reduce((sum, item) => sum + item.quantity, 0);
+
   return {
-    subtotal:         formatCurrency(state.subtotal.toNumber()),
-    total:            formatCurrency(state.total.toNumber()),
-    shipping:         flags.isFreeShipping ? 'Free' : formatCurrency(state.shippingMethod?.price.toNumber() ?? 0),
-    shippingOriginal: flags.hasShippingDiscount
-      ? formatCurrency(state.shippingMethod?.originalPrice.toNumber() ?? 0)
+    // totals
+    subtotal: fmt(state.subtotal.toNumber()),
+    total:    fmt(state.total.toNumber()),
+
+    // shipping
+    shippingName:               state.shippingMethod?.name ?? '',
+    shippingCode:               state.shippingMethod?.code ?? '',
+    shipping:                   flags.isFreeShipping ? 'Free' : fmt(state.shippingMethod?.price.toNumber() ?? 0),
+    shippingOriginal:           flags.hasShippingDiscount
+      ? fmt(state.shippingMethod?.originalPrice.toNumber() ?? 0)
       : '',
-    discounts:        formatCurrency(state.totalDiscount.toNumber()),
-    itemCount:        String(itemCount),
+    shippingDiscountAmount:     fmt(state.shippingMethod?.discountAmount.toNumber() ?? 0),
+    shippingDiscountPercentage: pct(state.shippingMethod?.discountPercentage.toNumber() ?? 0),
+
+    // discounts
+    totalDiscount:           fmt(state.totalDiscount.toNumber()),
+    totalDiscountPercentage: pct(state.totalDiscountPercentage.toNumber()),
+    discounts:               fmt(state.totalDiscount.toNumber()),
+
+    // currency
+    currency:       currency,
+
+    // cart utils
+    isCalculating:      String(flags.isCalculating),
+    isEmpty:            String(flags.isEmpty),
+    itemCount:          String(itemCount),
+    totalQuantity:      String(totalQuantity),
+    isFreeShipping:     String(flags.isFreeShipping),
+    hasShippingDiscount: String(flags.hasShippingDiscount),
+    hasDiscounts:       String(flags.hasDiscounts),
   };
 }
 
@@ -79,19 +106,21 @@ export function renderCustom(
   template: string,
   vars: TemplateVars,
   summary: CartSummary | undefined,
+  warn?: (msg: string) => void,
 ): void {
   const html = template.replace(/\{([^}]+)\}/g, (match, key: string) =>
     key in vars ? vars[key] : match
   );
   element.innerHTML = html;
-  renderListContainers(element, summary);
+  renderListContainers(element, summary, warn);
 }
 
 export function renderListContainers(
   element: HTMLElement,
   summary: CartSummary | undefined,
+  warn?: (msg: string) => void,
 ): void {
-  renderLines(element, summary);
+  renderLines(element, summary, warn);
   renderDiscountList(element, '[data-summary-offer-discounts]', summary?.offer_discounts ?? []);
   renderDiscountList(element, '[data-summary-voucher-discounts]', summary?.voucher_discounts ?? []);
 }
@@ -99,6 +128,7 @@ export function renderListContainers(
 export function renderLines(
   element: HTMLElement,
   summary: CartSummary | undefined,
+  warn?: (msg: string) => void,
 ): void {
   const container = element.querySelector<HTMLElement>('[data-summary-lines]');
   if (!container) return;
@@ -106,6 +136,47 @@ export function renderLines(
   if (!templateEl) return;
 
   const itemTemplate = templateEl.innerHTML.trim();
+
+  if (warn && /\{line\./.test(itemTemplate)) {
+    const LINE_TO_ITEM: Record<string, string> = {
+      'line.packageId':            'item.packageId',
+      'line.name':                 'item.name',
+      'line.image':                'item.image',
+      'line.qty':                  'item.quantity',
+      'line.quantity':             'item.quantity',
+      'line.productName':          'item.productName',
+      'line.variantName':          'item.variantName',
+      'line.sku':                  'item.sku',
+      'line.isRecurring':          'item.isRecurring',
+      'line.priceRecurring':       'item.recurringPrice',
+      'line.priceRecurringTotal':  'item.recurringPrice',
+      'line.unitPrice':            'item.unitPrice',
+      'line.originalUnitPrice':    'item.originalUnitPrice',
+      'line.packagePrice':         'item.price',
+      'line.originalPackagePrice': 'item.originalPrice',
+      'line.totalDiscount':        'item.discountAmount',
+      'line.hasDiscount':          'item.hasDiscount',
+      'line.subtotal':             'item.price',
+      'line.total':                'item.price',
+      'line.price':                '(no equivalent — use item.unitPrice or item.price)',
+      'line.priceTotal':           '(no equivalent — use item.price)',
+      'line.priceRetail':          '(no equivalent — use item.originalUnitPrice)',
+      'line.priceRetailTotal':     '(no equivalent — use item.originalPrice)',
+      'line.hasSavings':           '(no equivalent — derive from item.hasDiscount)',
+    };
+    const used = [...itemTemplate.matchAll(/\{(line\.[^}]+)\}/g)].map(m => m[1]);
+    const unique = [...new Set(used)];
+    const fixes = unique.map(token => {
+      const replacement = LINE_TO_ITEM[token];
+      return replacement
+        ? `  {${token}} → {${replacement}}`
+        : `  {${token}} → (no direct equivalent)`;
+    });
+    warn(
+      `Deprecated line.* tokens found in [data-summary-lines] template:\n${fixes.join('\n')}`,
+    );
+  }
+
   clearListItems(container);
 
   const lines: SummaryLine[] = (summary?.lines ?? []).sort((a, b) => a.package_id - b.package_id);
@@ -179,37 +250,49 @@ export function renderDiscountItem(template: string, discount: DiscountItem): st
   });
 }
 
+function computeFrequency(
+  interval: 'day' | 'month' | null | undefined,
+  count: number | null | undefined,
+): string {
+  if (!interval) return '';
+  const n = count ?? 1;
+  if (interval === 'day') return n === 1 ? 'Daily' : `Every ${n} days`;
+  if (interval === 'month') return n === 1 ? 'Monthly' : `Every ${n} months`;
+  return '';
+}
+
 export function renderSummaryLine(template: string, line: SummaryLine): string {
   const hasDiscount = parseFloat(line.total_discount) > 0;
-  const hasSavings = line.price_retail_total != null
-    ? parseFloat(line.price_retail_total) > parseFloat(line.package_price)
-    : hasDiscount;
+
+  const origUnit = parseFloat(line.original_unit_price);
+  const unit = parseFloat(line.unit_price);
+  const discountPct =
+    origUnit > 0 && origUnit > unit
+      ? String(Math.round(((origUnit - unit) / origUnit) * 100))
+      : '0';
 
   const vars: Record<string, string> = {
-    'line.packageId':             String(line.package_id),
-    'line.quantity':              String(line.quantity),
-    'line.name':                  line.name                  ?? '',
-    'line.image':                 line.image                 ?? '',
-    'line.qty':                   line.qty != null ? String(line.qty) : '',
-    'line.productName':           line.product_name          ?? '',
-    'line.variantName':           line.product_variant_name  ?? '',
-    'line.sku':                   line.product_sku           ?? '',
-    'line.price':                 line.price                 ?? '',
-    'line.priceTotal':            line.price_total           ?? '',
-    'line.priceRetail':           line.price_retail          ?? '',
-    'line.priceRetailTotal':      line.price_retail_total    ?? '',
-    'line.priceRecurring':        line.price_recurring       ?? '',
-    'line.priceRecurringTotal':   line.price_recurring_total ?? '',
-    'line.isRecurring':           line.is_recurring ? 'true' : 'false',
-    'line.unitPrice':             line.unit_price,
-    'line.originalUnitPrice':     line.original_unit_price,
-    'line.packagePrice':          line.package_price,
-    'line.originalPackagePrice':  line.original_package_price,
-    'line.subtotal':              line.subtotal,
-    'line.totalDiscount':         line.total_discount,
-    'line.total':                 line.total,
-    'line.hasDiscount':           hasDiscount ? 'show' : 'hide',
-    'line.hasSavings':            hasSavings  ? 'show' : 'hide',
+    'item.packageId':             String(line.package_id),
+    'item.name':                  line.name                  ?? '',
+    'item.image':                 line.image                 ?? '',
+    'item.quantity':              String(line.quantity),
+    'item.variantName':           line.product_variant_name  ?? '',
+    'item.productName':           line.product_name          ?? '',
+    'item.sku':                   line.product_sku           ?? '',
+    'item.isRecurring':           line.is_recurring ? 'true' : 'false',
+    'item.interval':              line.interval              ?? '',
+    'item.intervalCount':         line.interval_count != null ? String(line.interval_count) : '',
+    'item.frequency':             computeFrequency(line.interval, line.interval_count),
+    'item.recurringPrice':        line.price_recurring != null ? formatCurrency(line.price_recurring, line.currency ?? undefined) : '',
+    'item.originalRecurringPrice': line.original_recurring_price != null ? formatCurrency(line.original_recurring_price, line.currency ?? undefined) : '',
+    'item.price':                 formatCurrency(line.package_price, line.currency ?? undefined),
+    'item.originalPrice':         formatCurrency(line.original_package_price, line.currency ?? undefined),
+    'item.unitPrice':             formatCurrency(line.unit_price, line.currency ?? undefined),
+    'item.originalUnitPrice':     formatCurrency(line.original_unit_price, line.currency ?? undefined),
+    'item.discountAmount':        formatCurrency(line.total_discount, line.currency ?? undefined),
+    'item.discountPercentage':    discountPct,
+    'item.hasDiscount':           hasDiscount ? 'show' : 'hide',
+    'item.currency':              line.currency              ?? '',
   };
 
   return template.replace(/\{([^}]+)\}/g, (_, key: string) => vars[key] ?? '');

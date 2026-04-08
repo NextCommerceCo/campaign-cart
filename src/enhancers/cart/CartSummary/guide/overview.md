@@ -1,12 +1,12 @@
 # CartSummaryEnhancer
 
 > Category: `cart`
-> Last reviewed: 2026-04-01
+> Last reviewed: 2026-04-08
 > Owner: campaign-cart
 
 Two enhancers cover cart summary display:
 
-- **`CartSummaryEnhancer`** — a reactive block that renders a full cart totals layout (subtotal, discounts, shipping, tax, grand total) into a container element. Supports a built-in default layout or a fully custom `<template>`.
+- **`CartSummaryEnhancer`** — a reactive block that renders a full cart totals layout (subtotal, discounts, shipping, grand total) into a container element. Supports a built-in default layout or a fully custom `<template>`.
 - **`CartDisplayEnhancer`** — renders a single cart value into any element, using `data-next-display="cart.{property}"`. Use this when you need individual values scattered across the page rather than a grouped block.
 
 ## Concept
@@ -15,7 +15,7 @@ Both enhancers subscribe to the cart store and are read-only observers — neith
 
 **`CartSummaryEnhancer`** rendering works in two paths depending on whether a `<template>` child is present:
 
-- **Default path**: the enhancer generates a standard row layout (subtotal, discounts, shipping, tax, total) using its built-in template. Optional rows (discounts, tax) are shown only when their values are non-zero.
+- **Default path**: the enhancer generates a standard row layout (subtotal, discounts, shipping, total) using its built-in template. The discounts row is shown only when the discount amount is non-zero.
 - **Custom path**: the enhancer uses the `<template>` child's markup as the layout. Token replacement (`{subtotal}`, `{total}`, etc.) fills in the formatted values. List containers for line items and discount breakdowns are wired up after token replacement.
 
 In both paths, state CSS classes are applied to the host element on every render so CSS can show or hide rows conditionally (e.g. `.next-no-discounts .discount-row { display: none }`).
@@ -47,15 +47,15 @@ cartStore update
 
 ## Business logic
 
-- Renders only when `cartStore.totals` is populated. Before the cart is initialized, the element is empty.
+- Renders only after the cart store has been hydrated. Before the cart is initialized (`cartState` undefined), the element is empty.
 - Re-renders on every change to `totals`, `summary`, item count, or `isCalculating` — not on every store tick. Reference equality is used to skip unnecessary renders.
 - While a totals recalculation is in progress, `isCalculating` is `true` and the host element gets the `next-calculating` class. When recalculation completes, `next-not-calculating` is applied instead.
 - Shipping is displayed as "Free" when its value is zero. `{shippingOriginal}` is empty when no shipping discount is applied.
-- Discounts combine offer and voucher discounts into a single `{discounts}` total. Separate breakdown lists (`data-summary-offer-discounts`, `data-summary-voucher-discounts`) are available in custom templates.
+- Discounts combine offer and voucher discounts into a single `{totalDiscount}` total (`{discounts}` is kept as a backwards-compatible alias). Separate breakdown lists (`data-summary-offer-discounts`, `data-summary-voucher-discounts`) are available in custom templates.
 - List containers (`data-summary-lines`, `data-summary-offer-discounts`, `data-summary-voucher-discounts`) replace their non-template children entirely on each render. Children are cleared and rebuilt from the list template.
 - Line items are sorted by `package_id` ascending before rendering.
-- `{line.hasDiscount}` outputs `"show"` or `"hide"` — intended as a CSS class or `data-` flag, not directly displayed.
-- `{line.hasSavings}` outputs `"show"` when the line has retail savings or a discount applied, `"hide"` otherwise.
+- `{line.*}` tokens are deprecated. Templates using `{line.*}` tokens will trigger a console warning listing the equivalent `{item.*}` replacement for each token, and the tokens will render as empty strings. Migrate to `{item.*}` tokens.
+- `{item.hasDiscount}` outputs `"show"` or `"hide"` — intended as a CSS class or `data-` flag, not directly displayed. `{line.hasDiscount}` is a deprecated alias that triggers a console warning and renders as an empty string.
 
 ## Decisions
 
@@ -68,8 +68,8 @@ cartStore update
 ## Limitations
 
 - Does not support partial updates. The entire content is replaced on every render. Do not attach event listeners to elements inside the summary — they are destroyed on every re-render.
-- Does not render until `cartStore.totals` is populated. If the cart takes time to initialize, the element is blank until the first cart response arrives.
-- Default template is fixed — subtotal, discounts, shipping, tax, total rows in that order. To change the order, wording, or add custom rows, use a custom `<template>`.
-- `{line.price}`, `{line.priceTotal}`, and related campaign-data fields are only populated when the cart store has enriched the summary lines with campaign data. If campaign data is unavailable, these fields render as empty strings.
+- Does not render until the cart store is hydrated. If the cart takes time to initialize, the element is blank until the first cart response arrives.
+- Default template is fixed — subtotal, discounts (when non-zero), shipping, total rows in that order. To change the order, wording, or add custom rows, use a custom `<template>`.
+- `{line.*}` tokens render as empty strings in all cases and trigger a console deprecation warning. Use `{item.*}` tokens instead.
 - List containers require a `<template>` child to define the row markup. A container without a `<template>` child is silently ignored.
 - Emits no events. If another component needs to react to cart total changes, subscribe to `cartStore` directly.

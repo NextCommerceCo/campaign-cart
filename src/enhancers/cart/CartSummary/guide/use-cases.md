@@ -54,9 +54,9 @@
 
 **When:** The summary should render a receipt-style list — one row per package, showing the product image, name, quantity, and line total — before the order totals.
 
-**Why this enhancer:** The `data-summary-lines` container renders one element per cart line using the enriched `SummaryLine` data, which includes campaign-sourced fields like `{line.image}` and `{line.name}` alongside API pricing fields.
+**Why this enhancer:** The `data-summary-lines` container renders one element per cart line using the enriched `SummaryLine` data, which includes campaign-sourced fields like `{item.image}` and `{item.name}` alongside API pricing fields.
 
-**Watch out for:** `{line.image}` and `{line.name}` are only populated when the cart store has enriched lines with campaign data. If campaign data is not loaded, these fields render as empty strings. Lines are sorted by `package_id` ascending — if your design requires a different sort order, you cannot change it without modifying the enhancer.
+**Watch out for:** `{item.image}` and `{item.name}` come from campaign data. If campaign data is not loaded, these fields render as empty strings. Lines are sorted by `package_id` ascending — if your design requires a different sort order, you cannot change it without modifying the enhancer. Note: the legacy `{line.*}` token set is deprecated and renders as empty strings — always use `{item.*}` in new templates.
 
 ```html
 <div data-next-cart-summary>
@@ -64,12 +64,12 @@
     <ul data-summary-lines>
       <template>
         <li class="line-item">
-          <img src="{line.image}" alt="{line.name}" />
+          <img src="{item.image}" alt="{item.name}" />
           <div class="line-details">
-            <span class="line-name">{line.name}</span>
-            <span class="line-qty">{line.qty} × {line.unitPrice}</span>
+            <span class="line-name">{item.name}</span>
+            <span class="line-qty">{item.quantity} × {item.unitPrice}</span>
           </div>
-          <span class="line-total">{line.total}</span>
+          <span class="line-total">{item.price}</span>
         </li>
       </template>
     </ul>
@@ -83,28 +83,31 @@
 
 ---
 
-## Show savings and compare-at pricing
+## Show a discount amount and percentage row
 
 > Effort: lightweight
 
-**When:** The checkout summary should show what the customer is saving — a "You save $X" row or a strikethrough compare-at total — to reinforce the deal.
+**When:** The summary needs a dedicated row that highlights the total discount applied — both as an absolute amount and as a percentage of subtotal — and hides itself when no discount is active.
 
-**Why this enhancer:** `{savings}` and `{compareTotal}` are built-in template tokens. The `next-has-savings` / `next-no-savings` state classes let you hide the savings row when no savings are available.
+**Why this enhancer:** `{totalDiscount}` and `{totalDiscountPercentage}` are built-in template tokens, and the `next-has-discounts` / `next-no-discounts` state classes let CSS hide the row when no discount is active without any JavaScript.
 
-**Watch out for:** `{savings}` includes both retail (compare-at) savings and applied discounts. If you want to show only retail savings, there is no separate token — use `{compareTotal}` alongside `{total}` and let the user compute the difference visually.
+**Watch out for:** `{totalDiscountPercentage}` is rendered as a formatted percentage string (e.g. `"20%"`) — it is not a raw number. If you need the numeric value for calculations, use `data-next-display="cart.totalDiscountPercentage"` on a separate element.
 
 ```html
 <div data-next-cart-summary>
   <template>
-    <div class="summary-row"><span>Retail total</span><span class="strike">{compareTotal}</span></div>
-    <div class="summary-row savings-row"><span>You save</span><span>{savings}</span></div>
+    <div class="summary-row"><span>Subtotal</span><span>{subtotal}</span></div>
+    <div class="summary-row discount-row">
+      <span>You save ({totalDiscountPercentage})</span>
+      <span>-{totalDiscount}</span>
+    </div>
     <div class="summary-row"><span>Shipping</span><span>{shipping}</span></div>
     <div class="summary-row total"><span>Total</span><span>{total}</span></div>
   </template>
 </div>
 
 <style>
-  .next-no-savings .savings-row { display: none; }
+  .next-no-discounts .discount-row { display: none; }
 </style>
 ```
 

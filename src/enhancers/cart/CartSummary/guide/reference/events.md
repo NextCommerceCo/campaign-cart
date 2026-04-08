@@ -8,6 +8,6 @@ To react to cart total changes from outside this enhancer, subscribe to `cartSto
 import { useCartStore } from '@/stores/cartStore';
 
 useCartStore.subscribe(state => {
-  console.log('Total changed:', state.totals.total.formatted);
+  console.log('Total changed:', state.total.toNumber());
 });
 ```
