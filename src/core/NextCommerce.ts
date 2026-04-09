@@ -314,8 +314,9 @@ export class NextCommerce {
   ): Promise<void> {
     queueMicrotask(async () => {
       try {
-        const { nextAnalytics, EcommerceEvents } =
-          await import('@/utils/analytics/index');
+        const { nextAnalytics, EcommerceEvents } = await import(
+          '@/utils/analytics/index'
+        );
         nextAnalytics.track(
           EcommerceEvents.createRemoveFromCartEvent({
             packageId,
@@ -608,8 +609,9 @@ export class NextCommerce {
     try {
       // Lazy load the enhancer
       if (!this.exitIntentEnhancer) {
-        const { ExitIntentEnhancer } =
-          await import('@/enhancers/behavior/SimpleExitIntentEnhancer');
+        const { ExitIntentEnhancer } = await import(
+          '@/enhancers/behavior/SimpleExitIntentEnhancer'
+        );
         this.exitIntentEnhancer = new ExitIntentEnhancer();
         await this.exitIntentEnhancer.initialize();
       }
@@ -643,8 +645,9 @@ export class NextCommerce {
     try {
       // Lazy load the enhancer
       if (!this.fomoEnhancer) {
-        const { FomoPopupEnhancer } =
-          await import('@/enhancers/behavior/FomoPopupEnhancer');
+        const { FomoPopupEnhancer } = await import(
+          '@/enhancers/behavior/FomoPopupEnhancer'
+        );
         this.fomoEnhancer = new FomoPopupEnhancer();
         await this.fomoEnhancer.initialize();
       }

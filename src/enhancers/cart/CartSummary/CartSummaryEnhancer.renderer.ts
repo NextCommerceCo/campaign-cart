@@ -191,48 +191,6 @@ export function renderLines(
 
   const itemTemplate = templateEl.innerHTML.trim();
 
-  if (warn && /\{line\./.test(itemTemplate)) {
-    const LINE_TO_ITEM: Record<string, string> = {
-      'line.packageId': 'item.packageId',
-      'line.name': 'item.name',
-      'line.image': 'item.image',
-      'line.qty': 'item.quantity',
-      'line.quantity': 'item.quantity',
-      'line.productName': 'item.productName',
-      'line.variantName': 'item.variantName',
-      'line.sku': 'item.sku',
-      'line.isRecurring': 'item.isRecurring',
-      'line.priceRecurring': 'item.recurringPrice',
-      'line.priceRecurringTotal': 'item.recurringPrice',
-      'line.unitPrice': 'item.unitPrice',
-      'line.originalUnitPrice': 'item.originalUnitPrice',
-      'line.packagePrice': '(no equivalent — use item.unitPrice for per-unit, item.price is now the line total)',
-      'line.originalPackagePrice': '(no equivalent — use item.originalUnitPrice for per-unit, item.originalPrice is now the line subtotal)',
-      'line.totalDiscount': 'item.discountAmount',
-      'line.hasDiscount': 'item.hasDiscount',
-      'line.subtotal': 'item.originalPrice',
-      'line.total': 'item.price',
-      'line.price': '(no equivalent — use item.unitPrice or item.price)',
-      'line.priceTotal': 'item.price',
-      'line.priceRetail': 'item.originalUnitPrice',
-      'line.priceRetailTotal': 'item.originalPrice',
-      'line.hasSavings': '(no equivalent — derive from item.hasDiscount)',
-    };
-    const used = [...itemTemplate.matchAll(/\{(line\.[^}]+)\}/g)].map(
-      m => m[1]
-    );
-    const unique = [...new Set(used)];
-    const fixes = unique.map(token => {
-      const replacement = LINE_TO_ITEM[token];
-      return replacement
-        ? `  {${token}} → {${replacement}}`
-        : `  {${token}} → (no direct equivalent)`;
-    });
-    warn(
-      `Deprecated line.* tokens found in [data-summary-lines] template:\n${fixes.join('\n')}`
-    );
-  }
-
   clearListItems(container);
 
   const lines: SummaryLine[] = (summary?.lines ?? []).sort(
@@ -257,10 +215,14 @@ export function buildLineElement(
   wrapper.innerHTML = renderSummaryLine(template, line);
   const el = wrapper.firstElementChild ?? wrapper;
 
-  // Evaluate item.* conditions on the line itself. The line discount template
-  // (still inside <template>) lives in an inert document fragment, so
+  // Evaluate item.* / line.* conditions on the line itself. The line discount
+  // template (still inside <template>) lives in an inert document fragment, so
   // querySelectorAll inside applyLocalConditions does not descend into it.
-  const visible = applyLocalConditions(el, { item: itemCtx }, warn);
+  const visible = applyLocalConditions(
+    el,
+    { item: itemCtx, line: itemCtx },
+    warn
+  );
   if (!visible) return null;
 
   const discountContainer = el.querySelector<HTMLElement>(
@@ -281,7 +243,11 @@ export function buildLineElement(
         if (!node) continue;
         const discountVisible = applyLocalConditions(
           node,
-          { item: itemCtx, discount: buildDiscountContext(d) },
+          {
+            item: itemCtx,
+            line: itemCtx,
+            discount: buildDiscountContext(d),
+          },
           warn
         );
         if (!discountVisible) continue;
@@ -419,6 +385,17 @@ export function renderSummaryLine(template: string, line: SummaryLine): string {
     'item.hasDiscount': hasDiscount ? 'show' : 'hide',
     'item.currency': line.currency ?? '',
   };
+
+  // Mirror every item.* token as a line.* alias so templates can use either
+  // vocabulary interchangeably. Pre-v0.4.11 legacy line.* names that no longer
+  // exist in the item.* namespace (line.qty, line.priceTotal, line.packagePrice,
+  // line.totalDiscount, line.subtotal, line.total, line.priceRetail, etc.) are
+  // intentionally NOT restored — they will resolve to empty strings.
+  for (const [key, value] of Object.entries(vars)) {
+    if (key.startsWith('item.')) {
+      vars[key.replace(/^item\./, 'line.')] = value;
+    }
+  }
 
   return template.replace(/\{([^}]+)\}/g, (_, key: string) => vars[key] ?? '');
 }

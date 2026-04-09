@@ -63,10 +63,14 @@ export interface DiscountContext {
 
 export interface LocalContext {
   item?: ItemContext;
+  // `line` is a 1:1 alias of `item` so templates can use invoice/order
+  // vocabulary interchangeably with the cart-shopper vocabulary. Both fields
+  // hold the same `ItemContext` value at the call site.
+  line?: ItemContext;
   discount?: DiscountContext;
 }
 
-const KNOWN_NAMESPACES = new Set(['item', 'discount']);
+const KNOWN_NAMESPACES = new Set(['item', 'line', 'discount']);
 
 // ─── Context builders ────────────────────────────────────────────────────────
 
@@ -210,6 +214,7 @@ export function evaluateLocalCondition(
 function isLocallyResolvable(object: string, ctx: LocalContext): boolean {
   if (!KNOWN_NAMESPACES.has(object)) return false;
   if (object === 'item' && !ctx.item) return false;
+  if (object === 'line' && !ctx.line) return false;
   if (object === 'discount' && !ctx.discount) return false;
   return true;
 }

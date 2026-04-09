@@ -34,32 +34,28 @@ Fields marked *campaign data* are empty strings when campaign data is unavailabl
 
 ---
 
-### `line.*` tokens — deprecated
+### `line.*` tokens — alias
 
-> **Deprecated.** Templates containing `{line.*}` tokens trigger a console warning on every render that lists the equivalent `{item.*}` replacement for each token. The tokens render as **empty strings** — migrate to `{item.*}` tokens to restore output.
-
-| Deprecated token | Replacement |
-|------------------|-------------|
-| `{line.packageId}` | `{item.packageId}` |
-| `{line.name}` | `{item.name}` |
-| `{line.image}` | `{item.image}` |
-| `{line.qty}` / `{line.quantity}` | `{item.quantity}` |
-| `{line.productName}` | `{item.productName}` |
-| `{line.variantName}` | `{item.variantName}` |
-| `{line.sku}` | `{item.sku}` |
-| `{line.isRecurring}` | `{item.isRecurring}` |
-| `{line.priceRecurring}` / `{line.priceRecurringTotal}` | `{item.recurringPrice}` |
-| `{line.unitPrice}` | `{item.unitPrice}` |
-| `{line.originalUnitPrice}` | `{item.originalUnitPrice}` |
-| `{line.packagePrice}` | no equivalent — `{item.price}` is now the line total, not the per-package price |
-| `{line.originalPackagePrice}` | no equivalent — `{item.originalPrice}` is now the line subtotal |
-| `{line.totalDiscount}` | `{item.discountAmount}` |
-| `{line.hasDiscount}` | `{item.hasDiscount}` |
-| `{line.subtotal}` | `{item.originalPrice}` |
-| `{line.total}` | `{item.price}` |
-| `{line.price}` / `{line.priceTotal}` | `{item.unitPrice}` or `{item.price}` |
-| `{line.priceRetail}` / `{line.priceRetailTotal}` | `{item.originalUnitPrice}` or `{item.originalPrice}` |
-| `{line.hasSavings}` | derive from `{item.hasDiscount}` |
+> Every `{item.X}` token above is also reachable as `{line.X}`. The two namespaces are 1:1 equivalents — pick whichever vocabulary fits your template:
+>
+> - `item` — the cart-shopper mental model (matches `cartStore.items`, `CartItemListEnhancer`, and the rest of the SDK).
+> - `line` — the invoice / order-row mental model (matches the API field `summary.lines`).
+>
+> Don't mix the two in the same template; pick one for consistency. The `{item.*}` examples in `use-cases.md` are equally valid as `{line.*}` if you prefer that vocabulary.
+>
+> **Legacy names from before v0.4.11 are NOT restored** by this alias and will render as empty strings. The following pre-v0.4.11 tokens were removed when the namespace was reorganized — migrate them to the current names:
+>
+> | Pre-v0.4.11 token | Current token |
+> |---|---|
+> | `{line.qty}` | `{item.quantity}` / `{line.quantity}` |
+> | `{line.priceTotal}` / `{line.total}` | `{item.price}` / `{line.price}` *(now the line total — `{line.price}` was per-unit pre-v0.4.11)* |
+> | `{line.subtotal}` | `{item.originalPrice}` / `{line.originalPrice}` |
+> | `{line.priceRetail}` | `{item.originalUnitPrice}` / `{line.originalUnitPrice}` |
+> | `{line.priceRetailTotal}` | `{item.originalPrice}` / `{line.originalPrice}` |
+> | `{line.priceRecurring}` / `{line.priceRecurringTotal}` | `{item.recurringPrice}` / `{line.recurringPrice}` |
+> | `{line.totalDiscount}` | `{item.discountAmount}` / `{line.discountAmount}` |
+> | `{line.packagePrice}` / `{line.originalPackagePrice}` | no direct equivalent — use `{item.unitPrice}` for per-unit prices |
+> | `{line.hasSavings}` | derive from `{item.hasDiscount}` / `{line.hasDiscount}` |
 
 ---
 
@@ -78,6 +74,8 @@ One discount entry in an offer, voucher, or per-line discount list.
 ## `ItemContext` *(per-line condition shape)*
 
 The raw-typed object exposed to `data-next-show` / `data-next-hide` conditions inside `[data-summary-lines]` and `[data-line-discounts]` row templates. Distinct from the `{item.*}` text tokens above — values here are unformatted (real numbers, real booleans) so comparison operators work as expected.
+
+> Conditions can use `line.X` interchangeably with `item.X` (e.g. `data-next-show="line.quantity > 1"`). The `line` namespace is a 1:1 alias of `item` — see the *`line.*` tokens — alias* note above.
 
 | Field | Type | Nullable | Description |
 |-------|------|----------|-------------|

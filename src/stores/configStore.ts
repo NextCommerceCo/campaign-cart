@@ -102,9 +102,12 @@ export const configStore = create<ConfigState & ConfigActions>((set, _get) => ({
     }
 
     // Load clear cart on init flag
-    const clearCartMeta = document.querySelector('meta[name="next-clear-cart"]');
+    const clearCartMeta = document.querySelector(
+      'meta[name="next-clear-cart"]'
+    );
     if (clearCartMeta) {
-      updates.clearCartOnInit = clearCartMeta.getAttribute('content') === 'true';
+      updates.clearCartOnInit =
+        clearCartMeta.getAttribute('content') === 'true';
     }
 
     // Load page type

@@ -100,8 +100,9 @@ export const useAttributionStore = create<
       initialize: async () => {
         try {
           // Import collector dynamically to avoid circular dependencies
-          const { AttributionCollector } =
-            await import('@/utils/attribution/AttributionCollector');
+          const { AttributionCollector } = await import(
+            '@/utils/attribution/AttributionCollector'
+          );
           const collector = new AttributionCollector();
           const data = await collector.collect();
 

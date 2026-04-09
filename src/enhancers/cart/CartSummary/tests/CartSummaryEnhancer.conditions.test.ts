@@ -602,3 +602,86 @@ describe('integration: buildLineElement honours item.* conditions on descendants
     expect(one.querySelectorAll('[data-line-discounts] .d')).toHaveLength(0);
   });
 });
+
+// ─── line.* alias namespace ──────────────────────────────────────────────────
+
+describe('line.* alias namespace', () => {
+  const itemCtx = buildItemContext(
+    makeSummaryLine({ quantity: 3, total_discount: '5.00' })
+  );
+  const ctx = { item: itemCtx, line: itemCtx };
+
+  it('evaluateLocalCondition resolves line.quantity equivalently to item.quantity', () => {
+    const itemResult = evaluateLocalCondition(
+      {
+        type: 'comparison',
+        left: { object: 'item', property: 'quantity' },
+        operator: '>',
+        right: 1,
+      },
+      ctx
+    );
+    const lineResult = evaluateLocalCondition(
+      {
+        type: 'comparison',
+        left: { object: 'line', property: 'quantity' },
+        operator: '>',
+        right: 1,
+      },
+      ctx
+    );
+    expect(lineResult).toEqual(itemResult);
+    expect(lineResult).toEqual({ handled: true, visible: true });
+  });
+
+  it('line.* property lookup mirrors item.* (hasDiscount)', () => {
+    const r = evaluateLocalCondition(
+      { type: 'property', object: 'line', property: 'hasDiscount' },
+      ctx
+    );
+    expect(r).toEqual({ handled: true, visible: true });
+  });
+
+  it('returns handled: false when ctx.line is absent', () => {
+    const r = evaluateLocalCondition(
+      { type: 'property', object: 'line', property: 'hasDiscount' },
+      { item: itemCtx } // line missing
+    );
+    expect(r).toEqual({ handled: false });
+  });
+
+  it('applyLocalConditions removes a descendant whose data-next-show=\"line.quantity > 100\" evaluates false', () => {
+    const root = el(`
+      <li>
+        <span class="bulk" data-next-show="line.quantity > 100">Bulk!</span>
+        <span class="name">x</span>
+      </li>
+    `);
+    applyLocalConditions(root, ctx);
+    expect(root.querySelector('.bulk')).toBeNull();
+    expect(root.querySelector('.name')).not.toBeNull();
+  });
+
+  it('buildLineElement integration: data-next-show=\"line.hasDiscount\" works', async () => {
+    const { buildLineElement } = await import(
+      '../CartSummaryEnhancer.renderer'
+    );
+    const html = `
+      <li>
+        <span class="save" data-next-show="line.hasDiscount">Save!</span>
+        <span class="name">{line.name}</span>
+      </li>
+    `;
+    const withDiscount = buildLineElement(
+      html,
+      makeSummaryLine({ total_discount: '5.00', name: 'Pack' })
+    ) as HTMLElement;
+    const withoutDiscount = buildLineElement(
+      html,
+      makeSummaryLine({ total_discount: '0', name: 'Pack' })
+    ) as HTMLElement;
+    expect(withDiscount.querySelector('.save')).not.toBeNull();
+    expect(withoutDiscount.querySelector('.save')).toBeNull();
+    expect(withDiscount.querySelector('.name')?.textContent).toBe('Pack');
+  });
+});

@@ -31,6 +31,7 @@ export interface DiscountContext {
 }
 export interface LocalContext {
     item?: ItemContext;
+    line?: ItemContext;
     discount?: DiscountContext;
 }
 export declare function buildItemContext(line: SummaryLine): ItemContext;

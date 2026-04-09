@@ -493,19 +493,32 @@ describe('renderLines', () => {
     expect(container.querySelectorAll('.line')).toHaveLength(0);
   });
 
-  it('warns about deprecated line.* tokens with replacement hints', () => {
-    const el = buildContainer('<div>{line.name} - {line.qty}</div>');
-    const warn = vi.fn();
-    renderLines(el, makeSummary({ lines: [makeSummaryLine()] }), warn);
-    expect(warn).toHaveBeenCalledTimes(1);
-    const message = warn.mock.calls[0]?.[0] as string;
-    expect(message).toContain('Deprecated line.* tokens');
-    expect(message).toContain('{line.name} → {item.name}');
-    expect(message).toContain('{line.qty} → {item.quantity}');
+  it('renders {line.*} tokens identically to {item.*} tokens', () => {
+    const itemEl = buildContainer(
+      '<div class="line">{item.name} x{item.quantity} {item.price}</div>'
+    );
+    const lineEl = buildContainer(
+      '<div class="line">{line.name} x{line.quantity} {line.price}</div>'
+    );
+    const fixture = makeSummary({
+      lines: [makeSummaryLine({ quantity: 2, total: '40.00' })],
+    });
+    renderLines(itemEl, fixture);
+    renderLines(lineEl, fixture);
+    const itemRow = itemEl.querySelector('.line')?.textContent;
+    const lineRow = lineEl.querySelector('.line')?.textContent;
+    expect(itemRow).toBe(lineRow);
+    expect(itemRow).toContain('x2');
   });
 
-  it('does not warn when only item.* tokens are used', () => {
-    const el = buildContainer('<div>{item.name}</div>');
+  it('renders unknown legacy {line.qty} as empty (no auto-restore)', () => {
+    const el = buildContainer('<div class="line">[{line.qty}]</div>');
+    renderLines(el, makeSummary({ lines: [makeSummaryLine({ quantity: 5 })] }));
+    expect(el.querySelector('.line')?.textContent).toBe('[]');
+  });
+
+  it('does not fire warn for {line.*} or {item.*} tokens', () => {
+    const el = buildContainer('<div>{item.name} {line.name} {line.qty}</div>');
     const warn = vi.fn();
     renderLines(el, makeSummary({ lines: [makeSummaryLine()] }), warn);
     expect(warn).not.toHaveBeenCalled();

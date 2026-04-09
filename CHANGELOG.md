@@ -10,7 +10,7 @@
 - **`{item.discountPercentage}` token formatting changed** — now rendered through `formatPercentage` (e.g. `"25%"`, `"0%"`) instead of a bare integer string (`"25"`, `"0"`). Update any CSS or JS that parsed the bare value.
 - **`CartDisplayEnhancer` `shippingDiscountPercentage` format changed** — switched from `number` to `percentage`. The element now renders `"25%"` instead of `"25"`.
 - **`{item.price}` and `{item.originalPrice}` now resolve to line totals, not per-package prices** — inside `[data-summary-lines]` row templates and the raw-typed `item.*` condition context, `{item.price}` is now `line.total` (`quantity × package_price` after discounts) and `{item.originalPrice}` is `line.subtotal` (`quantity × original_package_price` before discounts). Previously both tokens rendered the per-package price. Use `{item.unitPrice}` and `{item.originalUnitPrice}` for per-unit values. Templates that rendered `{item.price}` expecting a single-unit value will now show the full line total.
-- **Legacy `{line.*}` deprecation hint map updated** — `renderLines` now points `{line.subtotal}` at `{item.originalPrice}` (previously `{item.price}`) and resolves `{line.priceTotal}` → `{item.price}`, `{line.priceRetail}` → `{item.originalUnitPrice}`, `{line.priceRetailTotal}` → `{item.originalPrice}` (previously all three were marked "no equivalent"). `{line.packagePrice}` and `{line.originalPackagePrice}` now have no direct equivalent because `{item.price}` / `{item.originalPrice}` are no longer per-package.
+- **`{line.price}` and `{line.subtotal}` semantics changed when used as aliases** — the `{line.*}` namespace is now a 1:1 alias of `{item.*}` (see "New" below), which means pre-v0.4.11 templates using `{line.price}` (which resolved to per-unit price) will now resolve to the line total, and `{line.subtotal}` will resolve to the line subtotal. Several pre-v0.4.11 names are no longer recognized at all and will render as empty strings: `{line.qty}`, `{line.priceTotal}`, `{line.packagePrice}`, `{line.originalPackagePrice}`, `{line.totalDiscount}`, `{line.priceRetail}`, `{line.priceRetailTotal}`, `{line.priceRecurring}`, `{line.priceRecurringTotal}`, `{line.hasSavings}`. See [src/enhancers/cart/CartSummary/guide/reference/object-attributes.md](src/enhancers/cart/CartSummary/guide/reference/object-attributes.md) for the migration table.
 
 ### New
 
@@ -36,7 +36,9 @@
 
 - **Expanded `CartDisplayEnhancer` property set** — `data-next-display="cart.{property}"` now exposes `totalDiscountPercentage`, `totalQuantity`, `shippingName`, `shippingCode`, `shippingDiscountAmount`, and `shippingDiscountPercentage`. `totalDiscountPercentage` and `shippingDiscountPercentage` use the `percentage` format type.
 
-- **Renderer warn callback** — `renderCustom`, `renderListContainers`, and `renderLines` now accept an optional `warn` callback. `CartSummaryEnhancer` passes `this.logger.warn`, and `renderLines` uses it to surface deprecation warnings for `{line.*}` tokens with per-token `{item.*}` replacement hints.
+- **`{line.*}` alias namespace** — every `{item.X}` token and `item.X` condition property is also reachable as `{line.X}` / `line.X`. The two namespaces are 1:1 equivalents — template authors can pick whichever vocabulary fits their mental model (`item` for the cart-shopper view, `line` for the invoice/order-row view). Conditions like `data-next-show="line.quantity > 1"` work identically to `data-next-show="item.quantity > 1"`. Pre-v0.4.11 legacy names that were removed in this release (`{line.qty}`, `{line.priceTotal}`, `{line.packagePrice}`, etc.) are **not** restored — see the Breaking note above and the migration table in [reference/object-attributes.md](src/enhancers/cart/CartSummary/guide/reference/object-attributes.md).
+
+- **Renderer warn callback** — `renderCustom`, `renderListContainers`, and `renderLines` now accept an optional `warn` callback. `CartSummaryEnhancer` passes `this.logger.warn`. `applyLocalConditions` uses it to forward parser/eval errors when a per-line `data-next-show` / `data-next-hide` expression is malformed.
 
 - **`SummaryLine` API fields** — `original_recurring_price?: string` and `currency?: string` added to the `SummaryLine` interface. The renderer uses `currency` for line-level currency formatting and exposes `{item.originalRecurringPrice}` and `{item.currency}` template tokens.
 
@@ -145,7 +147,7 @@
 
 - **`{item.discountPercentage}` formatted via `formatPercentage`** — previously rendered as a bare integer (`"25"`). Now produces `"25%"` for consistency with other percentage tokens.
 
-- **CartSummary line price tokens reflected wrong amounts on multi-quantity rows** — `buildItemContext`, `renderSummaryLine`, and the legacy `{line.*}` mapping all read `package_price` / `original_package_price` for `{item.price}` / `{item.originalPrice}`, so a quantity-3 line showed the price of one unit instead of the line total. They now read `line.total` / `line.subtotal` so the rendered values match what the cart actually charges. Guide files (`reference/attributes.md`, `reference/object-attributes.md`, `use-cases.md`) updated to describe the new line-total semantics.
+- **CartSummary line price tokens reflected wrong amounts on multi-quantity rows** — `buildItemContext` and `renderSummaryLine` both read `package_price` / `original_package_price` for `{item.price}` / `{item.originalPrice}`, so a quantity-3 line showed the price of one unit instead of the line total. They now read `line.total` / `line.subtotal` so the rendered values match what the cart actually charges. Guide files (`reference/attributes.md`, `reference/object-attributes.md`, `use-cases.md`) updated to describe the new line-total semantics.
 
 ### Tests
 

@@ -5,7 +5,7 @@
 import type { Decimal } from 'decimal.js';
 import type { Offer } from './campaign';
 
-import { AddressAutocompleteResult } from "./api";
+import { AddressAutocompleteResult } from './api';
 
 // Event Map for type-safe event handling
 export interface EventMap {
@@ -169,8 +169,14 @@ export interface EventMap {
   'offer:applied': { offerId: number };
 
   // Bundle Events
-  'bundle:selected': { selectorId: string; items: { packageId: number; quantity: number }[] };
-  'bundle:selection-changed': { selectorId: string; items: { packageId: number; quantity: number }[] };
+  'bundle:selected': {
+    selectorId: string;
+    items: { packageId: number; quantity: number }[];
+  };
+  'bundle:selection-changed': {
+    selectorId: string;
+    items: { packageId: number; quantity: number }[];
+  };
   'bundle:price-updated': { selectorId: string };
   'selector:price-updated': { selectorId: string; packageId: number };
   'toggle:price-updated': { packageId: number };

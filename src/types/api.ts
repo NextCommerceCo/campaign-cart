@@ -83,7 +83,11 @@ export interface SummaryLine {
   product_name?: string;
   product_variant_name?: string;
   product_sku?: string | null;
-  product_variant_attribute_values?: Array<{ code: string; name: string; value: string }>;
+  product_variant_attribute_values?: Array<{
+    code: string;
+    name: string;
+    value: string;
+  }>;
 }
 
 export interface ShippingMethodSummary {
