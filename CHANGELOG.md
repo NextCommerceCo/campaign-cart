@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.4.11] — 2026-04-08 — CartSummary Display Refactor & PackageToggle Fix
+## [0.4.11] — 2026-04-09 — CartSummary Display Refactor & PackageToggle Fix
 
 ### Breaking
 
@@ -9,6 +9,8 @@
 - **`CartDisplayEnhancer` deprecated properties removed** — `currencyCode`, `currencySymbol`, and the `.raw` suffix on numeric properties (`subtotal.raw`, `total.raw`, `totalDiscount.raw`, `shipping.raw`) are no longer supported. Use `currency` for the currency code, and read raw values from `cartStore` directly.
 - **`{item.discountPercentage}` token formatting changed** — now rendered through `formatPercentage` (e.g. `"25%"`, `"0%"`) instead of a bare integer string (`"25"`, `"0"`). Update any CSS or JS that parsed the bare value.
 - **`CartDisplayEnhancer` `shippingDiscountPercentage` format changed** — switched from `number` to `percentage`. The element now renders `"25%"` instead of `"25"`.
+- **`{item.price}` and `{item.originalPrice}` now resolve to line totals, not per-package prices** — inside `[data-summary-lines]` row templates and the raw-typed `item.*` condition context, `{item.price}` is now `line.total` (`quantity × package_price` after discounts) and `{item.originalPrice}` is `line.subtotal` (`quantity × original_package_price` before discounts). Previously both tokens rendered the per-package price. Use `{item.unitPrice}` and `{item.originalUnitPrice}` for per-unit values. Templates that rendered `{item.price}` expecting a single-unit value will now show the full line total.
+- **Legacy `{line.*}` deprecation hint map updated** — `renderLines` now points `{line.subtotal}` at `{item.originalPrice}` (previously `{item.price}`) and resolves `{line.priceTotal}` → `{item.price}`, `{line.priceRetail}` → `{item.originalUnitPrice}`, `{line.priceRetailTotal}` → `{item.originalPrice}` (previously all three were marked "no equivalent"). `{line.packagePrice}` and `{line.originalPackagePrice}` now have no direct equivalent because `{item.price}` / `{item.originalPrice}` are no longer per-package.
 
 ### New
 
@@ -143,12 +145,15 @@
 
 - **`{item.discountPercentage}` formatted via `formatPercentage`** — previously rendered as a bare integer (`"25"`). Now produces `"25%"` for consistency with other percentage tokens.
 
+- **CartSummary line price tokens reflected wrong amounts on multi-quantity rows** — `buildItemContext`, `renderSummaryLine`, and the legacy `{line.*}` mapping all read `package_price` / `original_package_price` for `{item.price}` / `{item.originalPrice}`, so a quantity-3 line showed the price of one unit instead of the line total. They now read `line.total` / `line.subtotal` so the rendered values match what the cart actually charges. Guide files (`reference/attributes.md`, `reference/object-attributes.md`, `use-cases.md`) updated to describe the new line-total semantics.
+
 ### Tests
 
 - **`CartSummaryEnhancer.renderer` unit tests** — significantly expanded (+819 lines) covering `buildFlags`, `buildVars`, `buildDefaultTemplate`, `renderDefault`, `renderCustom`, `renderListContainers`, `renderLines`, `buildLineElement`, `renderDiscountList`, `renderDiscountItem`, `renderSummaryLine`, `clearListItems`, and `updateStateClasses`. Includes a happy-dom polyfill for `:scope > template`.
 - **`CartDisplayEnhancer.display` unit tests** — rewritten to cover the trimmed property set, removing assertions for the dropped `currencyCode`, `currencySymbol`, `data-include-discounts`, and `.raw` paths.
 - **`PackageToggleEnhancer.renderer` unit tests** — added `tests/price.test.ts` and `src/tests/cart/PackageToggleRenderer.test.ts` covering the `card.isSelected` fix and toggle slot rendering.
 - **`CartSummaryEnhancer.conditions` unit tests** — added `tests/CartSummaryEnhancer.conditions.test.ts` (44 tests) covering `buildItemContext`, `buildDiscountContext`, `evaluateLocalCondition` (all five condition node types), `applyLocalConditions` descendant and root-element flows, attribute stripping, unknown-namespace passthrough, empty-attribute handling, and renderer integration through `buildLineElement` and `renderDiscountList`.
+- **CartSummary line-total regression coverage** — `CartSummaryEnhancer.renderer.test.ts` adds two `renderSummaryLine` cases asserting `{item.price}` resolves to `line.total` and `{item.originalPrice}` resolves to `line.subtotal` on multi-quantity rows (not `package_price` / `original_package_price`). `buildItemContext` test in `CartSummaryEnhancer.conditions.test.ts` updated to seed both `total` / `subtotal` and `package_price` / `original_package_price`, confirming `ctx.price` and `ctx.originalPrice` come from the line totals.
 
 ## [0.4.10] — 2026-04-03 — PackageToggle Display Slots & Pricing Refactor
 

@@ -2,9 +2,6 @@ import { BaseDisplayEnhancer } from '../../display/DisplayEnhancerCore';
 import { FormatType } from '../../display/DisplayEnhancerTypes';
 import { CartState } from '../../../types/global';
 export declare class CartDisplayEnhancer extends BaseDisplayEnhancer {
-    private includeDiscounts;
-    initialize(): Promise<void>;
-    protected parseDisplayAttributes(): void;
     protected setupStoreSubscriptions(): void;
     protected getPropertyValue(): unknown;
     private resolveValue;

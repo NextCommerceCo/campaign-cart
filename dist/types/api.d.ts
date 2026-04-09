@@ -74,6 +74,8 @@ export interface SummaryLine {
     is_recurring?: boolean;
     interval?: 'day' | 'month' | null;
     interval_count?: number | null;
+    original_recurring_price?: string;
+    currency?: string;
     product_name?: string;
     product_variant_name?: string;
     product_sku?: string | null;
