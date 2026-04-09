@@ -5,6 +5,36 @@
 ### New
 
 - **`data-next-shipping-id` attribute on bundle cards** — when set on a bundle card (or provided as `shippingId` in the `data-next-bundles` JSON), the specified shipping method is automatically applied via `cartStore.setShippingMethod()` after the bundle items are written to the cart in swap mode. Not applied in select mode or upsell context.
+
+  **Manual card:**
+  ```html
+  <div data-next-bundle-card
+       data-next-bundle-id="premium"
+       data-next-bundle-items='[{"packageId":101,"quantity":1}]'
+       data-next-shipping-id="2">
+  </div>
+  ```
+
+  **Auto-rendered via JSON:**
+  ```html
+  <div data-next-bundle-selector
+       data-next-selection-mode="swap"
+       data-next-bundles='[
+         {
+           "id": "basic-set",
+           "shippingId": "2",
+           "items": [{"packageId":1,"quantity":1,"configurable":true}],
+           "selected": true
+         },
+         {
+           "id": "premium-set",
+           "shippingId": "5",
+           "items": [{"packageId":1,"quantity":3,"configurable":true}]
+         }
+       ]'>
+  </div>
+  ```
+
 - **`shippingId` field in `BundleDef` object** — auto-rendered bundles (`data-next-bundles`) now accept `shippingId` as an optional string field. The value is rendered as `data-next-shipping-id` on the card element.
 
 ### Fixed
