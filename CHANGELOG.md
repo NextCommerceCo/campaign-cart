@@ -18,18 +18,19 @@
   **Auto-rendered via JSON:**
   ```html
   <div data-next-bundle-selector
+       data-next-selector-id="skincare"
        data-next-selection-mode="swap"
        data-next-bundles='[
          {
            "id": "basic-set",
            "shippingId": "2",
-           "items": [{"packageId":1,"quantity":1,"configurable":true}],
+           "items": [{"packageId":1,"quantity":1}],
            "selected": true
          },
          {
            "id": "premium-set",
            "shippingId": "5",
-           "items": [{"packageId":1,"quantity":3,"configurable":true}]
+           "items": [{"packageId":1,"quantity":3}]
          }
        ]'>
   </div>
