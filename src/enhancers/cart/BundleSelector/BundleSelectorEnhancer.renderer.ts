@@ -105,6 +105,9 @@ export function renderBundleTemplate(
   if (bundle.vouchers?.length) {
     cardEl.setAttribute('data-next-bundle-vouchers', JSON.stringify(bundle.vouchers));
   }
+  if (bundle.shippingId) {
+    cardEl.setAttribute('data-next-shipping-id', bundle.shippingId);
+  }
 
   return cardEl;
 }

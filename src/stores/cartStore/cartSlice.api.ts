@@ -327,7 +327,7 @@ export const createCartApiSlice: StateCreator<
             })),
             vouchers: [...checkoutState.vouchers],
             currency: campaignState.currency ?? null,
-            shippingMethod: 1,
+            shippingMethod: state.shippingMethod?.id ?? 1,
             signal,
           });
 

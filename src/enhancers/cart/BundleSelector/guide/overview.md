@@ -1,7 +1,7 @@
 # BundleSelectorEnhancer
 
 > Category: `cart`
-> Last reviewed: 2026-04-03 (currency tracking added)
+> Last reviewed: 2026-04-09 (shipping-id support added)
 > Owner: campaign-cart
 
 A container that lets a developer define named bundles — each bundle being a fixed set of packages and quantities — and lets a visitor pick one. In swap mode, selecting a bundle atomically replaces the previous bundle's cart items while leaving unrelated cart items untouched. Bundle vouchers are applied and removed automatically as the selection changes.
@@ -51,6 +51,7 @@ Visitor changes variant (select or custom option)
 - On init, the first card with `data-next-selected="true"` is pre-selected and, in swap mode, its items are immediately added to the cart. If no card has `data-next-selected="true"`, the first registered card is auto-selected and a warning is logged.
 - In swap mode, bundle items are tagged in the cart with the selector's `selectorId` (from `data-next-selector-id`). When a different bundle is selected, only the items sharing that `selectorId` are removed; unrelated cart items (upsells, standalone packages) are preserved.
 - Vouchers declared on a bundle card via `data-next-bundle-vouchers` are automatically applied when that bundle is selected and removed when it is deselected. Vouchers shared between two bundles are not re-applied or re-removed. User-applied coupons (not bundle vouchers) are always preserved.
+- When a bundle card has `data-next-shipping-id`, the specified shipping method is automatically applied after the bundle items are written to the cart in swap mode. Shipping is not applied in upsell context or select mode. If the selected card does not have a shipping ID, the previously set shipping method persists.
 - A `BundleItem` with `configurable: true` and `quantity > 1` is expanded into one slot per unit so the visitor can independently choose a variant (size, color) for each unit.
 - A `BundleItem` with `noSlot: true` is added to the cart silently without rendering a slot row. Use this for free gifts or add-ons that should not be visible in the slot list.
 - Variant selection within a slot resolves a matching package from the campaign store by matching all attribute values. If no package matches the selected attribute combination, the change is logged as a warning and ignored.

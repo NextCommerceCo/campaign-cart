@@ -23,6 +23,7 @@ The shape of each object in the `data-next-bundles` JSON array. Used for auto-re
 | `items` | `BundleItem[]` | no | The packages and quantities that make up this bundle |
 | `selected` | `boolean` | yes | When `true`, pre-selects this card on init. Equivalent to `data-next-selected="true"` on the rendered element. Only the first selected bundle wins |
 | `vouchers` | `string[]` | yes | Coupon codes to apply when this bundle is selected. Omit if no vouchers |
+| `shippingId` | `string` | yes | Shipping method `ref_id` to auto-apply when this bundle is selected. Sets `data-next-shipping-id` on the rendered card |
 | `[key]` | `unknown` | yes | Any additional fields are available as `{bundle.key}` template variables in the card template |
 
 ---

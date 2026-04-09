@@ -31,6 +31,8 @@ export interface BundleDef {
   id: string;
   items: BundleItem[];
   vouchers?: string[];
+  /** Shipping method ref_id to auto-apply when this bundle is selected. */
+  shippingId?: string;
   /** When true, pre-selects this card on init. Equivalent to data-next-selected="true" on the rendered element. */
   selected?: boolean;
   [key: string]: unknown;
@@ -110,6 +112,8 @@ export interface BundleCard {
   isPreSelected: boolean;
   /** Voucher/coupon codes to apply when this bundle is selected. */
   vouchers: string[];
+  /** Shipping method ref_id to auto-apply when this bundle is selected. */
+  shippingId?: string;
   /**
    * Bundle-owned package data. Keyed by packageId (= campaign Package.ref_id).
    * Initially populated from campaign packages on card registration.

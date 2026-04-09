@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.4.12] — 2026-04-09 — BundleSelector Shipping Method Support
+
+### New
+
+- **`data-next-shipping-id` attribute on bundle cards** — when set on a bundle card (or provided as `shippingId` in the `data-next-bundles` JSON), the specified shipping method is automatically applied via `cartStore.setShippingMethod()` after the bundle items are written to the cart in swap mode. Not applied in select mode or upsell context.
+- **`shippingId` field in `BundleDef` object** — auto-rendered bundles (`data-next-bundles`) now accept `shippingId` as an optional string field. The value is rendered as `data-next-shipping-id` on the card element.
+
+### Fixed
+
+- **`calculateTotals` now uses the selected shipping method** — previously hardcoded to `shippingMethod: 1`, ignoring the user's selection. Now reads `state.shippingMethod?.id ?? 1` so the calculate API receives the actual shipping method.
+- **Shipping not applied when bundle swap fails** — `applyBundle` now returns `boolean` success status; `setShippingMethod` is only called when the cart write succeeds.
+- **Unhandled promise rejections in `setShippingMethod`** — the handler now wraps `cartStore.setShippingMethod()` in try/catch with `logger.error`, preventing silent failures on both card click and init paths.
+
+---
+
 ## [0.4.11] — 2026-04-09 — Cart Summary Display Refactor & Package Toggle Fix
 
 ### Breaking

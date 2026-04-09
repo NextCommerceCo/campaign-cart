@@ -253,6 +253,28 @@ data-next-bundle-vouchers="SAVE10,FREESHIP"
 
 ---
 
+### `data-next-shipping-id`
+
+| | |
+|---|---|
+| Type | `string` (shipping method ref_id) |
+| Required | no |
+| Default | — |
+
+Shipping method to auto-apply when this bundle is selected in swap mode. The value must be a valid `ref_id` from `campaignStore.data.shipping_methods`. When set, selecting this card calls `cartStore.setShippingMethod(id)` after the bundle items are written to the cart.
+
+Not applied in upsell context or select mode — shipping is only set after a successful cart write.
+
+```html
+<div data-next-bundle-card
+     data-next-bundle-id="premium"
+     data-next-bundle-items='[{"packageId":101,"quantity":1}]'
+     data-next-shipping-id="5">
+</div>
+```
+
+---
+
 ### `data-next-bundle-name`
 
 | | |

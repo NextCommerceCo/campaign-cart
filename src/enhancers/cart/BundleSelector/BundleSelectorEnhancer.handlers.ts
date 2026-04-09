@@ -29,7 +29,8 @@ export async function handleCardClick(
     await applyVoucherSwap(previousCard, card);
   }
   if (ctx.mode === 'swap') {
-    await applyBundle(previousCard, card, ctx);
+    const success = await applyBundle(previousCard, card, ctx);
+    if (success && card.shippingId) await setShippingMethod(card.shippingId, ctx);
   }
 }
 
@@ -46,8 +47,8 @@ export async function applyBundle(
   previous: BundleCard | null,
   selected: BundleCard,
   ctx: HandlerContext,
-): Promise<void> {
-  if (ctx.isApplyingRef.value) return;
+): Promise<boolean> {
+  if (ctx.isApplyingRef.value) return false;
   ctx.isApplyingRef.value = true;
   const { selectorId } = ctx;
   const cartStore = useCartStore.getState();
@@ -66,6 +67,7 @@ export async function applyBundle(
       }));
     await cartStore.swapCart([...retained, ...newItems]);
     ctx.logger.debug(`Applied bundle "${selected.bundleId}" (selector "${selectorId}")`, newItems);
+    return true;
   } catch (error) {
     // Revert visual selection so UI stays consistent with cart state
     if (previous) {
@@ -78,6 +80,7 @@ export async function applyBundle(
     }
     const msg = error instanceof Error ? error.message : String(error);
     ctx.logger.error('Error in applyBundle:', msg);
+    return false;
   } finally {
     ctx.isApplyingRef.value = false;
   }
@@ -344,4 +347,23 @@ export async function handleSelectVariantChange(
   if (changedCode) selectedAttrs[changedCode] = _select.value;
 
   await applyVariantChange(card, slotIndex, selectedAttrs, ctx);
+}
+
+// ─── Shipping method ──────────────────────────────────────────────────────────
+
+export async function setShippingMethod(
+  shippingId: string,
+  ctx: Pick<HandlerContext, 'logger'>,
+): Promise<void> {
+  const id = parseInt(shippingId, 10);
+  if (isNaN(id)) {
+    ctx.logger.warn('Invalid shipping ID:', shippingId);
+    return;
+  }
+  try {
+    await useCartStore.getState().setShippingMethod(id);
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    ctx.logger.error('Failed to set shipping method:', msg);
+  }
 }

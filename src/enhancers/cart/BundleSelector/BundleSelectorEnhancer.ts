@@ -40,6 +40,7 @@ import {
   handleSelectVariantChange,
   handleVariantOptionClick,
   onVoucherApplied,
+  setShippingMethod,
 } from './BundleSelectorEnhancer.handlers';
 import { fetchAndUpdateBundlePrice } from './BundleSelectorEnhancer.price';
 import { getEffectiveItems, makePackageState, parseVouchers } from './BundleSelectorEnhancer.state';
@@ -293,6 +294,7 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     const name = el.getAttribute('data-next-bundle-name') ?? '';
     const isPreSelected = el.getAttribute('data-next-selected') === 'true';
     const vouchers = parseVouchers(el.getAttribute('data-next-bundle-vouchers'), this.logger);
+    const shippingId = el.getAttribute('data-next-shipping-id') ?? undefined;
 
     const slots: BundleSlot[] = [];
     let slotIdx = 0;
@@ -355,6 +357,7 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
       slots,
       isPreSelected,
       vouchers,
+      shippingId,
       packageStates,
       bundlePrice: null,
       slotVarsCache: new Map(),
@@ -514,7 +517,12 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
           ? applyVoucherSwap(null, cardToSelect)
           : Promise.resolve();
         if (this.mode === 'swap') {
-          void initVouchers.then(() => applyBundle(null, cardToSelect, this.makeHandlerContext()));
+          void initVouchers.then(async () => {
+            const success = await applyBundle(null, cardToSelect, this.makeHandlerContext());
+            if (success && cardToSelect.shippingId) {
+              await setShippingMethod(cardToSelect.shippingId, { logger: this.logger });
+            }
+          });
         } else {
           void initVouchers;
         }
