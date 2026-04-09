@@ -20,6 +20,7 @@ export interface BundleDef {
     id: string;
     items: BundleItem[];
     vouchers?: string[];
+    shippingId?: string;
     selected?: boolean;
     [key: string]: unknown;
 }
@@ -73,6 +74,7 @@ export interface BundleCard {
     slots: BundleSlot[];
     isPreSelected: boolean;
     vouchers: string[];
+    shippingId?: string;
     packageStates: Map<number, BundlePackageState>;
     bundlePrice: BundlePriceSummary | null;
     slotVarsCache: Map<number, Record<string, string>>;
