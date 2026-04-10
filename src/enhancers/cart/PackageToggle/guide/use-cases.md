@@ -32,7 +32,9 @@
 
 **Why this enhancer:** `data-next-package-sync` mirrors the total quantity of the listed packages. When the main product quantity changes, the warranty quantity updates automatically. When the main product is removed entirely, the warranty is removed too.
 
-**Watch out for:** The sync logic reads an internal `qty` field from the cart item. Verify that the synced package sets this field correctly. If the package has no `qty` override, each unit counts as 1 (the default).
+**Watch out for:** The sync logic reads an internal `qty` field from the cart item. Verify that the synced package sets this field correctly. If the package has no `qty` override, each unit counts as 1 (the default). A sync card cannot be added (by click or auto-add) until at least one synced package is in the cart — this is intentional to prevent adding a warranty for a product that is not ordered.
+
+**Static markup:**
 
 ```html
 <div data-next-toggle-card
@@ -40,7 +42,20 @@
      data-next-package-sync="101,102"
      data-next-is-upsell="true">
   <span>Extended Warranty (matched to your order)</span>
-  <span data-next-toggle-price></span>
+  <span data-next-toggle-display="price"></span>
+</div>
+```
+
+**Auto-render from JSON:**
+
+```html
+<div
+  data-next-package-toggle
+  data-next-packages='[
+    {"packageId": 101, "name": "Widget"},
+    {"packageId": 999, "name": "Extended Warranty", "packageSync": [101, 102], "selected": true}
+  ]'
+  data-next-toggle-template-id="warranty-tpl">
 </div>
 ```
 

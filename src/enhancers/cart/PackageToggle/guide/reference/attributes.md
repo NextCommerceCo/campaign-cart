@@ -22,11 +22,20 @@ Marks the container element (or the single toggle element in single-element mode
 | Required | no |
 | Default | — |
 
-A JSON array of package definition objects used in auto-render mode. Each object must include `packageId` (number). All other keys are available as `{toggle.<key>}` template variables. Set `"selected": true` on an entry to pre-select it on init.
+A JSON array of package definition objects used in auto-render mode. Each object must include `packageId` (number). All other keys are available as `{toggle.<key>}` template variables. Set `"selected": true` on an entry to pre-select it on init. Set `"packageSync"` to a comma-separated string or array of package IDs to enable sync mode on the rendered card.
 
 Requires `data-next-toggle-template-id` or `data-next-toggle-template` to also be set.
 
 **Valid values:** Valid JSON array. Invalid JSON is ignored with a warning log.
+
+**Example with sync mode:**
+
+```json
+[
+  {"packageId": 101, "name": "Widget"},
+  {"packageId": 200, "name": "Extended Warranty", "packageSync": [101]}
+]
+```
 
 ---
 
@@ -136,9 +145,13 @@ The quantity to add when this card is toggled in. Ignored when `data-next-packag
 | Required | no |
 | Default | — |
 
-A comma-separated list of `packageId` values to sync this card's quantity against. The card's quantity becomes the sum of all synced packages' quantities in the cart. The card is added when any synced package is in the cart, and removed when all are removed.
+A comma-separated list of `packageId` values to sync this card's quantity against. The card's quantity becomes the sum of all synced packages' quantities in the cart. When all synced packages are removed from the cart, the sync card is automatically removed too.
+
+Clicking a sync card when no synced packages are in the cart is a no-op — the card cannot be added without a synced package present. Similarly, a pre-selected sync card defers its auto-add until at least one synced package appears in the cart.
 
 **Example:** `"101,102"` — quantity = (qty of 101) + (qty of 102)
+
+Also available in auto-render mode via the `packageSync` field in `data-next-packages` JSON (accepts a string or array of numbers).
 
 ---
 

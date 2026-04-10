@@ -65,6 +65,30 @@ Provide a JSON array in `data-next-packages` and a `<template>` element. The enh
 </template>
 ```
 
+### Option D — Auto-render with quantity sync
+
+Combine auto-render with `packageSync` to render a sync card from JSON. The warranty card below mirrors the quantity of package 101.
+
+```html
+<div
+  data-next-package-toggle
+  data-next-packages='[
+    {"packageId": 101, "name": "Widget"},
+    {"packageId": 200, "name": "Extended Warranty", "packageSync": [101]}
+  ]'
+  data-next-toggle-template-id="toggle-tpl">
+</div>
+
+<template id="toggle-tpl">
+  <div data-next-toggle-card>
+    <strong>{toggle.name}</strong>
+    <span data-next-toggle-display="price"></span>
+  </div>
+</template>
+```
+
+The `packageSync` field accepts a comma-separated string (`"101,102"`) or an array (`[101, 102]`). The rendered card receives `data-next-package-sync` and activates sync mode automatically.
+
 ### Display card data outside the toggle container
 
 Use `data-next-display="toggle.{packageId}.{property}"` to bind any element on the page to a specific toggle card's state. The element does not need to be inside the card or the container.

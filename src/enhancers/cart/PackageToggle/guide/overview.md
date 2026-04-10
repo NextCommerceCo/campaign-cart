@@ -25,7 +25,9 @@ User clicks card
  │                                                  emit toggle:toggled
  └── normal context
      ├── in cart? → removeItem() → emit toggle:toggled {added:false}
-     └── not in cart? → addItem() → emit toggle:toggled {added:true}
+     └── not in cart?
+         ├── sync mode + zero synced qty? → no-op (warn log)
+         └── addItem() → emit toggle:toggled {added:true}
              │
              ▼
      cartStore update → syncWithCart()
@@ -39,8 +41,10 @@ User clicks card
 
 - Any combination of cards can be active simultaneously. There is no mutual exclusion between cards.
 - On init, any card with `data-next-selected="true"` is auto-added to the cart. Each package is auto-added at most once per page load, even if multiple elements on the page reference the same `packageId`.
-- In sync mode (`data-next-package-sync`), a card's quantity is derived from the sum of quantities of the listed synced packages. The sync card is added when any synced package is in the cart, and removed when all synced packages are removed.
+- In sync mode (`data-next-package-sync`), a card's quantity is derived from the sum of quantities of the listed synced packages. When all synced packages are removed from the cart, the sync card is automatically removed too.
+- A sync card cannot be added to the cart (by click or auto-add) when no synced packages are present. Clicking a sync card with zero synced quantity is a no-op. A pre-selected sync card defers its auto-add until at least one synced package appears in the cart.
 - For sync cards marked as upsell items, removal on sync loss is deferred by 500 ms to avoid race conditions during package swaps.
+- In auto-render mode, sync mode can be configured via the `packageSync` field in the `data-next-packages` JSON (accepts a comma-separated string or an array of package IDs).
 - The price displayed on a card is always the price the customer will pay if that package is in the cart. For cards not yet in the cart, this is fetched from `/calculate` with the package simulated alongside current cart items — so bundle or volume discounts are correctly reflected. For cards already in the cart, the price is read directly from the cart summary line (no extra API call). Both paths produce the same price: what's shown is what's charged.
 - Boolean display slots (`hasDiscount`, `isRecurring`, `isSelected`) show or hide the element rather than writing text. The `image` display slot sets `src` on `<img>` elements.
 - Display slots cover the full card data: package metadata (`packageId`, `name`, `image`, `quantity`, `productId`, `variantId`, `variantName`, `productName`, `sku`), all price fields, boolean visibility fields, and recurring billing fields.

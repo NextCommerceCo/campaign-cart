@@ -170,6 +170,28 @@ describe('handleCardClick — normal context', () => {
     expect(ctx.logger.error).toHaveBeenCalled();
     expect(card.element.classList.contains('next-loading')).toBe(false);
   });
+
+  it('skips add for sync card when no synced packages in cart', async () => {
+    const { addItem } = mockCartStore([]);
+    const card = makeCard(200, { isSyncMode: true, syncPackageIds: [101], quantity: 0 });
+    const ctx = makeCtx();
+
+    await handleCardClick(new Event('click'), card, ctx);
+
+    expect(addItem).not.toHaveBeenCalled();
+    expect(ctx.logger.warn).toHaveBeenCalled();
+    expect(card.element.classList.contains('next-loading')).toBe(false);
+  });
+
+  it('allows removal of sync card even when synced packages are gone', async () => {
+    const { removeItem } = mockCartStore([makeCartItem(200)]);
+    const card = makeCard(200, { isSyncMode: true, syncPackageIds: [101], quantity: 0 });
+    const ctx = makeCtx();
+
+    await handleCardClick(new Event('click'), card, ctx);
+
+    expect(removeItem).toHaveBeenCalledWith(200);
+  });
 });
 
 // ─── handleCardClick — upsell context ────────────────────────────────────────
@@ -363,6 +385,32 @@ describe('handleSyncUpdate', () => {
     await handleSyncUpdate(card, cartState, vi.fn() as any);
 
     expect(removeItem).not.toHaveBeenCalled();
+  });
+
+  it('updates card.quantity to match synced total', async () => {
+    mockCartStore([makeCartItem(200, 1)]);
+    const card = makeCard(200, { isSyncMode: true, syncPackageIds: [101, 102], quantity: 0 });
+    const cartState = {
+      items: [makeCartItem(101, 2), makeCartItem(102, 3), makeCartItem(200, 1)],
+      swapInProgress: false,
+    } as unknown as CartState;
+
+    await handleSyncUpdate(card, cartState, vi.fn() as any);
+
+    expect(card.quantity).toBe(5);
+  });
+
+  it('sets card.quantity to 0 when no synced packages in cart', async () => {
+    mockCartStore([makeCartItem(200, 1)]);
+    const card = makeCard(200, { isSyncMode: true, syncPackageIds: [101], quantity: 3 });
+    const cartState = {
+      items: [makeCartItem(200, 1)],
+      swapInProgress: false,
+    } as unknown as CartState;
+
+    await handleSyncUpdate(card, cartState, vi.fn() as any);
+
+    expect(card.quantity).toBe(0);
   });
 });
 

@@ -8,6 +8,7 @@ A single entry in the `data-next-packages` JSON array. Defines one card in auto-
 |-------|------|----------|-------------|
 | `packageId` | `number` | no | The `ref_id` of the package this card represents. Must match a package in the campaign store. |
 | `selected` | `boolean` | yes | `true` to pre-select (auto-add) this card on init. `null` / absent means not pre-selected. |
+| `packageSync` | `string \| number[]` | yes | Comma-separated package IDs (string) or array of package IDs to sync quantity with. Sets `data-next-package-sync` on the rendered card. `null` / absent means no sync. |
 | `[key: string]` | `unknown` | yes | Any additional keys are available as `{toggle.<key>}` template variables. The enhancer coerces all values to strings. |
 
 ---

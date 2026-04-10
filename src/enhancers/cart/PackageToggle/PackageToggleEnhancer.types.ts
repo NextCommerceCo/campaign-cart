@@ -1,6 +1,8 @@
 export interface PackageDef {
   packageId: number;
   selected?: boolean;
+  /** Comma-separated package IDs or array to sync quantity with. */
+  packageSync?: string | number[];
   [key: string]: unknown;
 }
 

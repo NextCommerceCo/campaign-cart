@@ -45,6 +45,11 @@ export async function handleCardClick(
 
   if (card.isSyncMode) updateSyncedQuantity(card, cartState);
 
+  if (card.isSyncMode && !isInCart && card.quantity === 0) {
+    ctx.logger.warn('Sync card skipped — no synced packages in cart', card.packageId);
+    return;
+  }
+
   card.element.classList.add('next-loading');
   card.element.setAttribute('data-next-loading', 'true');
 
@@ -185,6 +190,8 @@ export async function handleSyncUpdate(
       totalSyncQuantity += syncedItem.quantity * itemsPerPackage;
     }
   });
+
+  card.quantity = totalSyncQuantity;
 
   const currentItem = cartState.items.find(item => item.packageId === card.packageId);
 

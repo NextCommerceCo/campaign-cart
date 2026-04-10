@@ -88,6 +88,16 @@ If a card is pre-selected and auto-add fires, the cart action is logged by `cart
 
 ---
 
+### `Sync card skipped — no synced packages in cart`
+
+**When:** A user clicks a sync-mode card but none of the packages listed in `data-next-package-sync` are currently in the cart.
+
+**Meaning:** The add is intentionally blocked. The sync card cannot be added without at least one synced package present in the cart.
+
+**Action:** No action required. The synced packages must be added to the cart first. The sync card will become clickable once a synced package is present.
+
+---
+
 ### `Order does not support upsells at this time`
 
 **When:** A card click fires in upsell context and `orderStore.canAddUpsells()` returns false.
@@ -123,3 +133,11 @@ If a card is pre-selected and auto-add fires, the cart action is logged by `cart
 **When:** `initialize()` completes.
 
 **Meaning:** Expected. The `cardCount` field shows how many cards are registered. If `cardCount` is 0, check that `[data-next-toggle-card]` elements are present or that auto-render attributes are correct.
+
+---
+
+### `Skipping pre-selected sync card — no synced packages in cart`
+
+**When:** A sync-mode card has `data-next-selected="true"` but none of the synced packages are in the cart yet during a `syncWithCart` cycle.
+
+**Meaning:** Expected. The auto-add is deferred. The card retains its pre-selected state and will auto-add on the next cart update once a synced package appears.

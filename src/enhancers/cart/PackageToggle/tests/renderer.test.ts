@@ -157,6 +157,27 @@ describe('renderToggleTemplate', () => {
     expect(el).not.toBeNull();
     expect(el!.classList.contains('my-card')).toBe(true);
   });
+
+  it('sets data-next-package-sync from string packageSync', () => {
+    const template = '<div data-next-toggle-card></div>';
+    const el = renderToggleTemplate(template, { packageId: 1, packageSync: '101,102' }, logger);
+
+    expect(el!.getAttribute('data-next-package-sync')).toBe('101,102');
+  });
+
+  it('sets data-next-package-sync from array packageSync', () => {
+    const template = '<div data-next-toggle-card></div>';
+    const el = renderToggleTemplate(template, { packageId: 1, packageSync: [101, 102] }, logger);
+
+    expect(el!.getAttribute('data-next-package-sync')).toBe('101,102');
+  });
+
+  it('does not set data-next-package-sync when packageSync is absent', () => {
+    const template = '<div data-next-toggle-card></div>';
+    const el = renderToggleTemplate(template, { packageId: 1 }, logger);
+
+    expect(el!.hasAttribute('data-next-package-sync')).toBe(false);
+  });
 });
 
 // ─── renderToggleImage ────────────────────────────────────────────────────────

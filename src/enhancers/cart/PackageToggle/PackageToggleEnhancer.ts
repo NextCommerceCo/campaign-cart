@@ -488,11 +488,16 @@ export class PackageToggleEnhancer extends BaseEnhancer {
         !this.autoAddInProgress.has(card.packageId) &&
         !autoAddedPackages.has(card.packageId)
       ) {
+        if (card.isSyncMode) updateSyncedQuantity(card, cartState);
+
+        if (card.isSyncMode && card.quantity === 0) {
+          this.logger.debug('Skipping pre-selected sync card — no synced packages in cart', card.packageId);
+          continue;
+        }
+
         card.isPreSelected = false;
         autoAddedPackages.add(card.packageId);
         this.autoAddInProgress.add(card.packageId);
-
-        if (card.isSyncMode) updateSyncedQuantity(card, cartState);
 
         void addToCart(card).finally(() => {
           this.autoAddInProgress.delete(card.packageId);

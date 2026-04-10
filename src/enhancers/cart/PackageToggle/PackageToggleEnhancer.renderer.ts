@@ -122,6 +122,12 @@ export function renderToggleTemplate(
   if (def.selected) {
     cardEl.setAttribute('data-next-selected', 'true');
   }
+  if (def.packageSync != null) {
+    const syncValue = Array.isArray(def.packageSync)
+      ? def.packageSync.join(',')
+      : String(def.packageSync);
+    cardEl.setAttribute('data-next-package-sync', syncValue);
+  }
 
   return cardEl;
 }
