@@ -1,6 +1,7 @@
 import type Decimal from 'decimal.js';
 import type { EventMap } from '@/types/global';
 import type { Logger } from '@/utils/logger';
+import type { DiscountItem } from '@/shared/utils/discountRenderer';
 
 export interface ClassNames {
   bundleCard: string;
@@ -86,6 +87,8 @@ export interface BundlePackageState {
   hasDiscount: boolean;
   /** ISO 4217 currency code for price formatting. Seeded from campaignStore, updated by price fetch. */
   currency: string;
+  /** Per-line discounts from the bundle price calculation. */
+  discounts: DiscountItem[];
 }
 
 /** Aggregate bundle price summary stored on BundleCard after price fetch. */
@@ -124,6 +127,10 @@ export interface BundleCard {
   bundlePrice: BundlePriceSummary | null;
   /** Cached template vars from the last render of each slot. Key = slotIndex. */
   slotVarsCache: Map<number, Record<string, string>>;
+  /** Offer discounts from the bundle price calculation. */
+  offerDiscounts: DiscountItem[];
+  /** Voucher discounts from the bundle price calculation. */
+  voucherDiscounts: DiscountItem[];
 }
 
 /** Read-only view of a BundleCard's state exposed to BundleDisplayEnhancer. */

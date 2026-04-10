@@ -69,6 +69,7 @@ export async function fetchAndUpdateBundlePrice(
             price: new Decimal(line.total),
             hasDiscount,
             currency: result.currency ?? state.currency,
+            discounts: line.discounts ?? [],
           });
         }
       }
@@ -96,6 +97,9 @@ export async function fetchAndUpdateBundlePrice(
       hasDiscount: discountAmount.gt(0),
       currency: result.currency ?? currency ?? '',
     };
+
+    card.offerDiscounts = result.summary?.offer_discounts ?? [];
+    card.voucherDiscounts = result.summary?.voucher_discounts ?? [];
 
   } catch (error) {
     ctx.logger.warn(`Failed to fetch bundle price for "${card.bundleId}"`, error);

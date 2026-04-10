@@ -6,6 +6,7 @@ import type { Logger } from '@/utils/logger';
 import type { SummaryLine } from '@/types/api';
 import type { PackageDef, ToggleCard, TogglePackageState, TogglePriceSummary } from './PackageToggleEnhancer.types';
 import { makeTogglePackageState } from './PackageToggleEnhancer.state';
+import { renderFlatDiscountContainers } from '@/shared/utils/discountRenderer';
 
 // ─── Template vars builder ────────────────────────────────────────────────────
 
@@ -189,6 +190,8 @@ export function updateCardDisplayElements(card: ToggleCard): void {
     applyToggleField(el, field, fieldData);
   });
 
+  renderFlatDiscountContainers(card.element, card.discounts);
+
   card.element.dispatchEvent(
     new CustomEvent('toggle:price-updated', {
       bubbles: true,
@@ -244,6 +247,7 @@ export function renderTogglePrice(card: ToggleCard, line: SummaryLine): void {
     intervalCount,
     frequency,
   };
+  card.discounts = line.discounts ?? [];
 
   updateCardDisplayElements(card);
 }

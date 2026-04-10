@@ -56,4 +56,6 @@ export interface ToggleCard {
   addText: string | null;
   removeText: string | null;
   togglePrice: TogglePriceSummary | null;
+  /** Per-line discounts from the price calculation. */
+  discounts: import('@/shared/utils/discountRenderer').DiscountItem[];
 }

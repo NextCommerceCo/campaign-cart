@@ -361,6 +361,8 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
       packageStates,
       bundlePrice: null,
       slotVarsCache: new Map(),
+      offerDiscounts: [],
+      voucherDiscounts: [],
     };
     this.cards.push(card);
     el.classList.add(this.classNames.bundleCard);

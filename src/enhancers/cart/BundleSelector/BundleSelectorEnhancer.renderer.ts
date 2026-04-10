@@ -11,6 +11,10 @@ import type {
   RenderContext,
 } from './BundleSelectorEnhancer.types';
 import { applySlotConditionals } from './BundleSelectorEnhancer.conditions';
+import {
+  renderDiscountContainers,
+  renderFlatDiscountContainers,
+} from '@/shared/utils/discountRenderer';
 
 // ─── Slot vars builder ────────────────────────────────────────────────────────
 
@@ -191,6 +195,11 @@ export function updateCardDisplayElements(
     applyBundleField(el, field, fieldData);
   });
 
+  renderDiscountContainers(card.element, {
+    offerDiscounts: card.offerDiscounts,
+    voucherDiscounts: card.voucherDiscounts,
+  });
+
   card.element.dispatchEvent(
     new CustomEvent('bundle:price-updated', {
       bubbles: true,
@@ -244,7 +253,7 @@ export function renderSlotsForCard(
     // Skip only when the element already exists in this placeholder AND vars haven't changed.
     if (existing && cachedVars && varsEqual(cachedVars, newVars)) continue;
 
-    const newSlotEl = createSlotElement(card.bundleId, slot, newVars, ctx);
+    const newSlotEl = createSlotElement(card.bundleId, slot, newVars, ctx, pkgState.discounts);
 
     const variantPlaceholder =
       newSlotEl.querySelector<HTMLElement>('[data-next-variant-selectors]');
@@ -300,6 +309,7 @@ function createSlotElement(
   slot: BundleSlot,
   vars: Record<string, string>,
   ctx: RenderContext,
+  discounts?: import('@/shared/utils/discountRenderer').DiscountItem[],
 ): HTMLElement {
   const wrapper = document.createElement('div');
   wrapper.className = ctx.classNames.bundleSlot;
@@ -307,6 +317,7 @@ function createSlotElement(
   wrapper.dataset.nextSlotIndex = String(slot.slotIndex);
   wrapper.innerHTML = ctx.slotTemplate.replace(/\{([^}]+)\}/g, (_, key) => vars[key] ?? '');
   applySlotConditionals(wrapper, vars);
+  if (discounts) renderFlatDiscountContainers(wrapper, discounts);
   return wrapper;
 }
 

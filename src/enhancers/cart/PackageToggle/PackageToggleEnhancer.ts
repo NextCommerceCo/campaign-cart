@@ -356,6 +356,7 @@ export class PackageToggleEnhancer extends BaseEnhancer {
       addText: el.getAttribute('data-add-text'),
       removeText: el.getAttribute('data-remove-text'),
       togglePrice: pkg ? makeTogglePriceSummary(pkg) : null,
+      discounts: [],
     };
 
     this.cards.push(card);

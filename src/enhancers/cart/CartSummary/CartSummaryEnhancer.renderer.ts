@@ -11,6 +11,10 @@ import {
   buildDiscountContext,
   applyLocalConditions,
 } from './CartSummaryEnhancer.conditions';
+import {
+  renderDiscountContainers,
+  renderFlatDiscountContainers,
+} from '@/shared/utils/discountRenderer';
 
 // ─── Data builders ────────────────────────────────────────────────────────────
 
@@ -175,6 +179,10 @@ export function renderListContainers(
     summary?.voucher_discounts ?? [],
     warn
   );
+  renderDiscountContainers(element, {
+    offerDiscounts: summary?.offer_discounts ?? [],
+    voucherDiscounts: summary?.voucher_discounts ?? [],
+  });
 }
 
 export function renderLines(
@@ -255,6 +263,8 @@ export function buildLineElement(
       }
     }
   }
+
+  renderFlatDiscountContainers(el as HTMLElement, line.discounts);
 
   return el;
 }

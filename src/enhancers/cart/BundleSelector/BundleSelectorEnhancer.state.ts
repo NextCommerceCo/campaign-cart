@@ -30,6 +30,7 @@ export function makePackageState(pkg: Package): BundlePackageState {
     price: new Decimal(pkg.price_total || 0),
     hasDiscount: false,
     currency: useCampaignStore.getState().currency ?? '',
+    discounts: [],
   };
 }
 
