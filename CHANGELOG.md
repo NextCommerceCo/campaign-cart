@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.4.15] — 2026-04-10 — PackageToggle Sync Re-entrancy Guard & Fresh State Reads
+
+### Fixed
+
+- **Sync cards reading stale cart state** — when multiple sync cards update in sequence, each card now reads the latest cart state instead of a shared snapshot. Previously the second card could see pre-write state from the first, leading to wrong quantities or missed removals.
+
+- **Infinite sync loop** — a sync card's cart write re-triggered its own sync handler before the first write finished, looping forever. Added a per-package guard that skips re-entrant calls until the in-flight write completes.
+
+---
+
 ## [0.4.14] — 2026-04-10 — PackageToggle Provisional Pricing, Expanded Card State & Quantity Sync
 
 ### New

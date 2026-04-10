@@ -9,10 +9,13 @@ import type { AddUpsellLine } from '@/types/api';
 import type { Logger } from '@/utils/logger';
 import type { ToggleCard } from './PackageToggleEnhancer.types';
 
-// ─── Global auto-add deduplication ───────────────────────────────────────────
+// ─── Global deduplication sets ───────────────────────────────────────────────
 
 /** Prevents two elements from auto-adding the same package on page load. */
 export const autoAddedPackages = new Set<number>();
+
+/** Prevents re-entrant handleSyncUpdate calls while an async cart write is in-flight. */
+const syncUpdateInProgress = new Set<number>();
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', () => autoAddedPackages.clear());
 }
@@ -172,16 +175,21 @@ export function updateSyncedQuantity(card: ToggleCard, cartState: CartState): vo
 
 export async function handleSyncUpdate(
   card: ToggleCard,
-  cartState: CartState,
-  logger: Logger,
+  _cartState: CartState,
+  _logger: Logger,
 ): Promise<void> {
   if (!card.isSyncMode || card.syncPackageIds.length === 0) return;
+  if (syncUpdateInProgress.has(card.packageId)) return;
+
+  // Always read fresh state — the snapshot passed by syncWithCart can be stale
+  // when multiple sync cards trigger sequential updates in the same for-loop.
+  const freshState = useCartStore.getState();
 
   let totalSyncQuantity = 0;
   let anySyncedItemExists = false;
 
   card.syncPackageIds.forEach(syncId => {
-    const syncedItem = cartState.items.find(
+    const syncedItem = freshState.items.find(
       item => item.packageId === syncId || item.originalPackageId === syncId
     );
     if (syncedItem) {
@@ -193,28 +201,33 @@ export async function handleSyncUpdate(
 
   card.quantity = totalSyncQuantity;
 
-  const currentItem = cartState.items.find(item => item.packageId === card.packageId);
+  const currentItem = freshState.items.find(item => item.packageId === card.packageId);
 
-  if (anySyncedItemExists && totalSyncQuantity > 0) {
-    if (currentItem && currentItem.quantity !== totalSyncQuantity) {
-      await useCartStore.getState().updateQuantity(card.packageId, totalSyncQuantity);
+  syncUpdateInProgress.add(card.packageId);
+  try {
+    if (anySyncedItemExists && totalSyncQuantity > 0) {
+      if (currentItem && currentItem.quantity !== totalSyncQuantity) {
+        await useCartStore.getState().updateQuantity(card.packageId, totalSyncQuantity);
+      }
+    } else if (currentItem && !freshState.swapInProgress) {
+      if (currentItem.is_upsell) {
+        setTimeout(async () => {
+          const updatedState = useCartStore.getState();
+          const stillNoSyncedPackages = card.syncPackageIds.every(syncId =>
+            !updatedState.items.find(
+              item => item.packageId === syncId || item.originalPackageId === syncId
+            )
+          );
+          const itemStillExists = updatedState.items.find(i => i.packageId === card.packageId);
+          if (stillNoSyncedPackages && itemStillExists && !updatedState.swapInProgress) {
+            await useCartStore.getState().removeItem(card.packageId);
+          }
+        }, 500);
+      } else {
+        await useCartStore.getState().removeItem(card.packageId);
+      }
     }
-  } else if (currentItem && !cartState.swapInProgress) {
-    if (currentItem.is_upsell) {
-      setTimeout(async () => {
-        const updatedState = useCartStore.getState();
-        const stillNoSyncedPackages = card.syncPackageIds.every(syncId =>
-          !updatedState.items.find(
-            item => item.packageId === syncId || item.originalPackageId === syncId
-          )
-        );
-        const itemStillExists = updatedState.items.find(i => i.packageId === card.packageId);
-        if (stillNoSyncedPackages && itemStillExists && !updatedState.swapInProgress) {
-          await useCartStore.getState().removeItem(card.packageId);
-        }
-      }, 500);
-    } else {
-      await useCartStore.getState().removeItem(card.packageId);
-    }
+  } finally {
+    syncUpdateInProgress.delete(card.packageId);
   }
 }

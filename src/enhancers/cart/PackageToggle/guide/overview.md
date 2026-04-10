@@ -41,7 +41,7 @@ User clicks card
 
 - Any combination of cards can be active simultaneously. There is no mutual exclusion between cards.
 - On init, any card with `data-next-selected="true"` is auto-added to the cart. Each package is auto-added at most once per page load, even if multiple elements on the page reference the same `packageId`.
-- In sync mode (`data-next-package-sync`), a card's quantity is derived from the sum of quantities of the listed synced packages. When all synced packages are removed from the cart, the sync card is automatically removed too.
+- In sync mode (`data-next-package-sync`), a card's quantity is derived from the sum of quantities of the listed synced packages. When all synced packages are removed from the cart, the sync card is automatically removed too. Only one sync update runs per card at a time — if a cart write is already in-flight for a given card, additional sync callbacks for that card are skipped until the write completes.
 - A sync card cannot be added to the cart (by click or auto-add) when no synced packages are present. Clicking a sync card with zero synced quantity is a no-op. A pre-selected sync card defers its auto-add until at least one synced package appears in the cart.
 - For sync cards marked as upsell items, removal on sync loss is deferred by 500 ms to avoid race conditions during package swaps.
 - In auto-render mode, sync mode can be configured via the `packageSync` field in the `data-next-packages` JSON (accepts a comma-separated string or an array of package IDs).
@@ -62,6 +62,8 @@ User clicks card
 - We chose `cartStore` as the source of truth rather than tracking selected state internally so that external cart mutations (another enhancer, a remove button) are reflected without any additional coordination.
 - We chose a module-level `autoAddedPackages` set (not per-instance) to prevent two `PackageToggleEnhancer` instances on the same page from both auto-adding the same package on init.
 - We chose to defer sync-card removal by 500 ms for upsell items because a package swap briefly removes the synced package before adding the replacement, which would otherwise falsely trigger removal.
+- We chose a module-level re-entrancy guard (not per-instance) for sync updates because a cart write triggers a store subscription, which re-invokes the sync handler before the first write resolves — without the guard this produces an infinite loop.
+- We chose to read fresh cart state on every sync update rather than using the subscription snapshot, because when multiple sync cards process sequentially each card's cart write makes the original snapshot stale for the next card.
 - We chose to calculate prices by merging the toggle package with current cart items (not standalone) so that any bundle pricing rules apply correctly to the preview price.
 - We chose to flatten all price fields directly onto `ToggleCard` (instead of a nested `TogglePriceSummary`) to eliminate null checks throughout the rendering pipeline. Price fields are always initialized from `makeProvisionalPrices` at registration time.
 - We chose to share the `applySlotConditionals` utility with `BundleSelectorEnhancer` so that `data-next-show`/`data-next-hide` behaves identically in both template systems.
@@ -74,4 +76,4 @@ User clicks card
 - Display slots show stale values until the `calculateBundlePrice` async fetch resolves. There is no built-in skeleton or placeholder state.
 - `data-next-toggle-display="isSelected"` reflects the `data-next-selected` attribute at the time of the last price update, not live cart state. For an element that toggles visibility based on whether the package is currently in the cart, use `data-next-display="toggle.{packageId}.isSelected"` instead.
 - `data-next-package-sync` reads quantity from `syncedItem.qty` (an internal cart field). This field is not part of the public cart item interface and may not be set for all packages.
-- Sync removal for non-upsell cards is immediate and synchronous; it does not account for in-progress cart operations (`swapInProgress` is checked, but only one level deep).
+- Sync removal for non-upsell cards is immediate; it checks the `swapInProgress` flag but does not coordinate with other concurrent cart mutations. The re-entrancy guard prevents duplicate removals within the same sync cycle but not across independent external writes.
