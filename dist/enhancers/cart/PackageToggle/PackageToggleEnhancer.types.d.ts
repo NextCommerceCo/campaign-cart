@@ -51,5 +51,6 @@ export interface ToggleCard {
     addText: string | null;
     removeText: string | null;
     togglePrice: TogglePriceSummary | null;
+    discounts: import('../../../shared/utils/discountRenderer').DiscountItem[];
 }
 //# sourceMappingURL=PackageToggleEnhancer.types.d.ts.map

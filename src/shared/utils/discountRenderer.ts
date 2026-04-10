@@ -7,6 +7,8 @@
  * Template variables: `{discount.name}`, `{discount.amount}`, `{discount.description}`
  */
 
+import { formatCurrency } from '@/utils/currencyFormatter';
+
 // ─── Template-safe variable replacement ───────────────────────────────────────
 
 /**
@@ -57,7 +59,6 @@ export function renderDiscountContainers(
   root: HTMLElement,
   data: DiscountsByType,
 ): void {
-  console.log('renderDiscountContainers', data);
   root
     .querySelectorAll<HTMLElement>('[data-next-discounts]')
     .forEach(container => {
@@ -117,13 +118,12 @@ function renderInto(container: HTMLElement, items: DiscountItem[]): void {
 }
 
 function renderItem(template: string, d: DiscountItem): string {
-  console.log('renderItem', template, d); 
   return template.replace(/\{([^}]+)\}/g, (_, key: string) => {
     switch (key) {
       case 'discount.name':
         return d.name ?? '';
       case 'discount.amount':
-        return d.amount ?? '';
+        return formatCurrency(d.amount);
       case 'discount.description':
         return d.description ?? '';
       default:

@@ -36,6 +36,7 @@ export interface CalculateCartResult {
     summary?: CartSummary;
 }
 export declare function calculateCart(params: CalculateCartParams): Promise<CalculateCartResult>;
+export declare function clearCalculateCache(): void;
 export declare function calculateBundlePrice(items: BundlePriceItem[], options?: BundlePriceOptions): Promise<CalculateCartResult>;
 export declare function buildCartFields(response: CartSummary): Omit<CalculateCartResult, 'summary' | 'vouchers'>;
 //# sourceMappingURL=CartCalculator.d.ts.map

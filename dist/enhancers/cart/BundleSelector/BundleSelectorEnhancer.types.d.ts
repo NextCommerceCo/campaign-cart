@@ -1,6 +1,7 @@
 import { default as Decimal } from 'decimal.js';
 import { EventMap } from '../../../types/global';
 import { Logger } from '../../../utils/logger';
+import { DiscountItem } from '../../../shared/utils/discountRenderer';
 export interface ClassNames {
     bundleCard: string;
     selected: string;
@@ -54,6 +55,7 @@ export interface BundlePackageState {
     price: Decimal;
     hasDiscount: boolean;
     currency: string;
+    discounts: DiscountItem[];
 }
 export interface BundlePriceSummary {
     price: Decimal;
@@ -78,6 +80,8 @@ export interface BundleCard {
     packageStates: Map<number, BundlePackageState>;
     bundlePrice: BundlePriceSummary | null;
     slotVarsCache: Map<number, Record<string, string>>;
+    offerDiscounts: DiscountItem[];
+    voucherDiscounts: DiscountItem[];
 }
 export interface BundleCardPublicState {
     name: string;

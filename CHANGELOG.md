@@ -1,5 +1,57 @@
 # Changelog
 
+## [0.4.13] — 2026-04-10 — Discount Rendering, Slot Conditionals & Calculate Caching
+
+### New
+
+- **Shared discount rendering utility** — a centralized `renderDiscountContainers()` system now renders discounts across CartSummary, BundleSelector, and PackageToggle components. Add `[data-next-discounts]` to any container inside these components with an optional type filter:
+
+  ```html
+  <!-- All discounts (offer + voucher) -->
+  <div data-next-discounts>
+    <template><span>{discount.name}: -{discount.amount}</span></template>
+  </div>
+
+  <!-- Only offer discounts -->
+  <div data-next-discounts="offer">
+    <template><span>{discount.name}: -{discount.amount}</span></template>
+  </div>
+
+  <!-- Only voucher discounts -->
+  <div data-next-discounts="voucher">
+    <template><span>{discount.name}: -{discount.amount}</span></template>
+  </div>
+  ```
+
+  Template variables: `{discount.name}`, `{discount.amount}`, `{discount.description}`. CSS classes `next-discounts-empty` and `next-discounts-has-items` are applied automatically for styling.
+
+- **`data-next-show` / `data-next-hide` in BundleSelector slot templates** — slot templates now support conditional visibility against slot-local variables. Elements are shown/hidden at render time based on the variable's truthiness.
+
+  ```html
+  <template id="slot-tpl">
+    <div class="slot-row">
+      <span>{item.name} — {item.price}</span>
+      <div data-next-show="item.hasDiscount">
+        Save {item.discountPercentage}! <del>{item.originalPrice}</del>
+      </div>
+      <div data-next-hide="item.isRecurring">One-time purchase</div>
+      <div data-next-show="item.isRecurring">Billed {item.frequency}</div>
+    </div>
+  </template>
+  ```
+
+  Truthy: `"show"`, `"true"`, or any non-empty string not equal to `"hide"` or `"false"`. Store-based conditions (e.g. `cart.hasCoupon`) are left untouched for the global `ConditionalDisplayEnhancer`.
+
+- **In-memory caching and request deduplication for `calculateCart()`** — calculation results are now cached for 30 seconds with LRU eviction (max 20 entries). Concurrent calls with identical payloads share a single in-flight request instead of firing duplicate API calls. Failed requests automatically evict their cache entry so retries proceed immediately. Call `clearCalculateCache()` to manually invalidate when server-side state changes independently.
+
+- **Discount fields on BundleCard and PackageToggle** — `BundleCard` now carries `offerDiscounts` and `voucherDiscounts` arrays; `BundlePackageState` and `ToggleCard` carry a `discounts` array. These are populated from the calculate API response and fed into the discount rendering system.
+
+### Refactored
+
+- **Template variable replacement preserves nested `<template>` blocks** — the `replaceVarsPreservingTemplates()` utility splits HTML by `<template>...</template>` blocks and only substitutes variables in non-template content. This fixes a bug where `{key}` placeholders inside nested templates (e.g. discount row templates inside slot templates) were wiped out by the parent template's replacement pass.
+
+---
+
 ## [0.4.12] — 2026-04-09 — BundleSelector Shipping Method Support
 
 ### New
