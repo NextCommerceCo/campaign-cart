@@ -10,6 +10,7 @@ import type {
   BundleSlot,
   RenderContext,
 } from './BundleSelectorEnhancer.types';
+import { applySlotConditionals } from './BundleSelectorEnhancer.conditions';
 
 // ─── Slot vars builder ────────────────────────────────────────────────────────
 
@@ -305,6 +306,7 @@ function createSlotElement(
   wrapper.dataset.nextBundleId = bundleId;
   wrapper.dataset.nextSlotIndex = String(slot.slotIndex);
   wrapper.innerHTML = ctx.slotTemplate.replace(/\{([^}]+)\}/g, (_, key) => vars[key] ?? '');
+  applySlotConditionals(wrapper, vars);
   return wrapper;
 }
 

@@ -486,3 +486,38 @@ Set on custom variant option elements rendered from `data-next-variant-option-te
 | Default | — |
 
 Set on custom variant option elements. Value is the attribute value this option represents (e.g., `red`).
+
+---
+
+### `data-next-show` / `data-next-hide` *(inside slot templates)*
+
+| | |
+|---|---|
+| Type | `string` (slot variable key) |
+| Required | no |
+| Default | — |
+
+Toggles element visibility based on a slot template variable's value.
+
+- `data-next-show`: element is visible when the variable is truthy, hidden when falsy.
+- `data-next-hide`: element is hidden when the variable is truthy, visible when falsy.
+
+**Truthy values:** `"show"`, `"true"`, or any non-empty string that is not `"hide"` or `"false"`.
+**Falsy values:** `"hide"`, `"false"`, `""` (empty string), or missing key.
+
+Only slot-local variables (`item.*`, `slot.*`) are processed. Store-based conditions (e.g., `cart.hasCoupon`) are left untouched for the global `ConditionalDisplayEnhancer`.
+
+Processed attributes are removed from the element after evaluation to prevent the `ConditionalDisplayEnhancer` from re-processing them.
+
+```html
+<template id="slot-tpl">
+  <div class="slot-row">
+    <span>{item.name} — {item.price}</span>
+    <div data-next-show="item.hasDiscount">
+      Save {item.discountPercentage}! <del>{item.originalPrice}</del>
+    </div>
+    <div data-next-hide="item.isRecurring">One-time purchase</div>
+    <div data-next-show="item.isRecurring">Billed {item.frequency}</div>
+  </div>
+</template>
+```
