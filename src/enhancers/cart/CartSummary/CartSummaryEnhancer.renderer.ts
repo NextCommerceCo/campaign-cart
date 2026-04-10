@@ -14,6 +14,7 @@ import {
 import {
   renderDiscountContainers,
   renderFlatDiscountContainers,
+  replaceVarsPreservingTemplates,
 } from '@/shared/utils/discountRenderer';
 
 // ─── Data builders ────────────────────────────────────────────────────────────
@@ -407,5 +408,5 @@ export function renderSummaryLine(template: string, line: SummaryLine): string {
     }
   }
 
-  return template.replace(/\{([^}]+)\}/g, (_, key: string) => vars[key] ?? '');
+  return replaceVarsPreservingTemplates(template, vars);
 }

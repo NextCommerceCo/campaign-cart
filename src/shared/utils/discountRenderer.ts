@@ -7,6 +7,31 @@
  * Template variables: `{discount.name}`, `{discount.amount}`, `{discount.description}`
  */
 
+// ─── Template-safe variable replacement ───────────────────────────────────────
+
+/**
+ * Replaces `{key}` placeholders in an HTML string while preserving content
+ * inside `<template>` tags. Without this, nested `<template>` content (e.g.
+ * discount row templates) has its placeholders wiped by the outer replacement
+ * because unknown keys fall back to `''`.
+ */
+export function replaceVarsPreservingTemplates(
+  html: string,
+  vars: Record<string, string>,
+): string {
+  // Split by <template>...</template> blocks; odd indices are template blocks
+  const parts = html.split(/(<template[\s\S]*?<\/template>)/gi);
+  return parts
+    .map((part, i) =>
+      i % 2 === 1
+        ? part
+        : part.replace(/\{([^}]+)\}/g, (_, k) => vars[k] ?? ''),
+    )
+    .join('');
+}
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 export type DiscountItem = {
   name?: string;
   amount: string;
@@ -32,6 +57,7 @@ export function renderDiscountContainers(
   root: HTMLElement,
   data: DiscountsByType,
 ): void {
+  console.log('renderDiscountContainers', data);
   root
     .querySelectorAll<HTMLElement>('[data-next-discounts]')
     .forEach(container => {
@@ -91,6 +117,7 @@ function renderInto(container: HTMLElement, items: DiscountItem[]): void {
 }
 
 function renderItem(template: string, d: DiscountItem): string {
+  console.log('renderItem', template, d); 
   return template.replace(/\{([^}]+)\}/g, (_, key: string) => {
     switch (key) {
       case 'discount.name':

@@ -29,23 +29,42 @@ export class TemplateRenderer {
    */
   static render(template: string, options: TemplateRenderOptions): string {
     const { data, formatters = {}, defaultValues = {} } = options;
-    
-    return template.replace(/\{([^}]+)\}/g, (_, placeholder) => {
-      try {
-        const value = this.getValue(data, placeholder);
-        const formattedValue = this.formatValue(value, placeholder, formatters);
-        
-        // Return default value if result is empty/null/undefined
-        if (formattedValue === '' || formattedValue === null || formattedValue === undefined) {
+
+    const replacer = (part: string) =>
+      part.replace(/\{([^}]+)\}/g, (_, placeholder) => {
+        try {
+          const value = this.getValue(data, placeholder);
+          const formattedValue = this.formatValue(
+            value,
+            placeholder,
+            formatters,
+          );
+
+          // Return default value if result is empty/null/undefined
+          if (
+            formattedValue === '' ||
+            formattedValue === null ||
+            formattedValue === undefined
+          ) {
+            return defaultValues[placeholder] || '';
+          }
+
+          return String(formattedValue);
+        } catch (error) {
+          console.warn(
+            `Template rendering error for placeholder ${placeholder}:`,
+            error,
+          );
           return defaultValues[placeholder] || '';
         }
-        
-        return String(formattedValue);
-      } catch (error) {
-        console.warn(`Template rendering error for placeholder ${placeholder}:`, error);
-        return defaultValues[placeholder] || '';
-      }
-    });
+      });
+
+    // Split by <template>...</template> blocks to preserve nested templates
+    // (e.g. discount row templates inside card/slot templates).
+    const parts = template.split(/(<template[\s\S]*?<\/template>)/gi);
+    return parts
+      .map((part, i) => (i % 2 === 1 ? part : replacer(part)))
+      .join('');
   }
 
   /**

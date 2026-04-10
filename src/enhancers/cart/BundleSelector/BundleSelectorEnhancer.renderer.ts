@@ -14,6 +14,7 @@ import { applySlotConditionals } from './BundleSelectorEnhancer.conditions';
 import {
   renderDiscountContainers,
   renderFlatDiscountContainers,
+  replaceVarsPreservingTemplates,
 } from '@/shared/utils/discountRenderer';
 
 // ─── Slot vars builder ────────────────────────────────────────────────────────
@@ -87,7 +88,7 @@ export function renderBundleTemplate(
     }
   }
 
-  const html = template.replace(/\{([^}]+)\}/g, (_, k: string) => vars[k] ?? '');
+  const html = replaceVarsPreservingTemplates(template, vars);
   const wrapper = document.createElement('div');
   wrapper.innerHTML = html.trim();
 
@@ -315,7 +316,7 @@ function createSlotElement(
   wrapper.className = ctx.classNames.bundleSlot;
   wrapper.dataset.nextBundleId = bundleId;
   wrapper.dataset.nextSlotIndex = String(slot.slotIndex);
-  wrapper.innerHTML = ctx.slotTemplate.replace(/\{([^}]+)\}/g, (_, key) => vars[key] ?? '');
+  wrapper.innerHTML = replaceVarsPreservingTemplates(ctx.slotTemplate, vars);
   applySlotConditionals(wrapper, vars);
   if (discounts) renderFlatDiscountContainers(wrapper, discounts);
   return wrapper;
