@@ -1,2 +1,2 @@
-export declare function applySlotConditionals(root: HTMLElement, vars: Record<string, string>): void;
+export { applySlotConditionals, isTruthyVar } from '../../../shared/utils/slotConditionals';
 //# sourceMappingURL=BundleSelectorEnhancer.conditions.d.ts.map

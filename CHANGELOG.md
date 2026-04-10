@@ -1,5 +1,77 @@
 # Changelog
 
+## [0.4.14] — 2026-04-10 — PackageToggle Provisional Pricing, Expanded Card State & Quantity Sync
+
+### New
+
+- **Provisional pricing on toggle cards** — cards now render with baseline prices from campaign package data at registration time, before the calculate API responds. Price slots (`{toggle.price}`, `{toggle.unitPrice}`, etc.) display immediately instead of remaining blank until the first API round-trip.
+
+- **Expanded card state attributes** — `ToggleCard` now carries the full set of product and price fields directly on the card object. All fields are available as `{toggle.*}` template placeholders and via `PackageToggleDisplayEnhancer` display paths (`toggle.{packageId}.{property}`):
+
+  | Variable | Description |
+  |---|---|
+  | `{toggle.packageId}` | Package `ref_id` |
+  | `{toggle.name}` | Package name |
+  | `{toggle.image}` | Package image URL |
+  | `{toggle.quantity}` | Package quantity |
+  | `{toggle.productId}` | Product ID |
+  | `{toggle.variantId}` | Product variant ID |
+  | `{toggle.variantName}` | Variant display name |
+  | `{toggle.productName}` | Product display name |
+  | `{toggle.sku}` | Product SKU |
+  | `{toggle.price}` | Formatted total price |
+  | `{toggle.unitPrice}` | Formatted per-unit price |
+  | `{toggle.originalPrice}` | Retail / compare-at total price |
+  | `{toggle.originalUnitPrice}` | Retail / compare-at per-unit price |
+  | `{toggle.discountAmount}` | Savings amount (empty when no discount) |
+  | `{toggle.discountPercentage}` | Discount percentage (e.g. `20.00%`) |
+  | `{toggle.hasDiscount}` | `"true"` / `"false"` |
+  | `{toggle.recurringPrice}` | Recurring charge total |
+  | `{toggle.originalRecurringPrice}` | Original recurring price before discounts |
+  | `{toggle.isRecurring}` | `"true"` / `"false"` |
+  | `{toggle.interval}` | Billing interval: `"day"` or `"month"` |
+  | `{toggle.intervalCount}` | Number of intervals between billing cycles |
+  | `{toggle.frequency}` | Human-readable cadence: `"Per month"`, `"Every 3 months"`, `"One time"` |
+  | `{toggle.currency}` | ISO 4217 currency code |
+  | `{toggle.isSelected}` | `"true"` / `"false"` — whether the card is in the cart |
+
+- **`data-next-show` / `data-next-hide` conditionals in PackageToggle templates** — toggle card templates now support conditional visibility against card-local variables (e.g. `hasDiscount`, `isRecurring`, `isSelected`). Shared `applySlotConditionals` utility extracted to `src/shared/utils/slotConditionals.ts` for reuse across BundleSelector and PackageToggle.
+
+  ```html
+  <template id="toggle-tpl">
+    <div>
+      <span>{toggle.name} — {toggle.price}</span>
+      <div data-next-show="hasDiscount">
+        Save {toggle.discountPercentage}! <del>{toggle.originalPrice}</del>
+      </div>
+      <div data-next-show="isRecurring">Billed {toggle.frequency}</div>
+    </div>
+  </template>
+  ```
+
+- **`data-next-package-sync` on auto-rendered toggle cards** — when `packageSync` is provided in the `data-next-packages` JSON definition, the sync attribute is automatically rendered onto the generated card element. Cards with quantity sync now also update `card.quantity` to reflect the actual synced total on every cart change.
+
+  ```html
+  <div data-next-package-toggle
+       data-next-packages='[
+         {"packageId": 5, "packageSync": "2,4,9"}
+       ]'>
+    <template>...</template>
+  </div>
+  ```
+
+- **Sync card zero-quantity guard** — sync-mode toggle cards skip the add-to-cart action when no synced packages are present in the cart (quantity resolves to 0). Pre-selected sync cards also evaluate synced quantity before the auto-add decision, preventing empty cart writes.
+
+### Refactored
+
+- **Flattened `ToggleCard` type** — the intermediate `TogglePackageState`, `TogglePriceSummary`, and `ToggleCardPublicState` interfaces were merged into a single `ToggleCard` interface. Price, product, and selection fields now live directly on the card object instead of nested under `togglePrice`.
+
+- **Unified `buildToggleVars()` for initial render and live updates** — both `renderToggleTemplate` (initial card creation) and `updateCardDisplayElements` (live DOM updates) now use the same `buildToggleVars()` function to produce template variables. The old switch-based `applyToggleField` function was replaced by a data-driven `applyDisplayVar` that reads from the shared vars map.
+
+- **`getToggleState()` returns full `ToggleCard`** — `PackageToggleEnhancer.getToggleState()` now returns the complete card object instead of a limited `ToggleCardPublicState` subset, giving `PackageToggleDisplayEnhancer` access to all card fields through `toggle.{packageId}.{property}` display paths.
+
+---
+
 ## [0.4.13] — 2026-04-10 — Discount Rendering, Slot Conditionals & Calculate Caching
 
 ### New

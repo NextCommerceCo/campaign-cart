@@ -1,8 +1,8 @@
 import { BaseEnhancer } from '../../base/BaseEnhancer';
-import { ToggleCardPublicState } from './PackageToggleEnhancer.types';
+import { ToggleCard } from './PackageToggleEnhancer.types';
 export declare class PackageToggleEnhancer extends BaseEnhancer {
     private static _instances;
-    static getToggleState(packageId: number): ToggleCardPublicState | null;
+    static getToggleState(packageId: number): ToggleCard | null;
     private template;
     private cards;
     private clickHandlers;
