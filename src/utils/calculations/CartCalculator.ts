@@ -13,9 +13,57 @@ import type { CartCalculateSummary, CartSummary, Discount, LineWithUpsell } from
 import type { ShippingMethod } from '@/types/global';
 import { sessionStorageManager } from '@/utils/storage';
 
+// ─── In-memory calculate cache ────────────────────────────────────────────────
+
+const CALC_CACHE_TTL_MS = 30_000;
+const CALC_CACHE_MAX_ENTRIES = 20;
+
+interface CalcCacheEntry {
+  promise: Promise<CalculateCartResult>;
+  expiresAt: number;
+  settled: boolean;
+}
+
+const calcCache = new Map<string, CalcCacheEntry>();
+
+const CALC_CACHE_PREFIX = 'next-price-';
+
+async function calcCacheKey(
+  params: CalculateCartParams,
+  apiKey: string,
+): Promise<string> {
+  const lines = [...params.lines].sort((a, b) => {
+    const pkgDiff = a.package_id - b.package_id;
+    if (pkgDiff !== 0) return pkgDiff;
+    return a.quantity - b.quantity;
+  });
+  const data = JSON.stringify({
+    l: lines,
+    v: params.vouchers ? [...params.vouchers].sort() : [],
+    c: params.currency ?? null,
+    sm: params.shippingMethod ?? null,
+    es: params.exclude_shipping ?? false,
+    u: params.upsell ?? false,
+    k: apiKey,
+  });
+  const bytes = await crypto.subtle.digest(
+    'SHA-1',
+    new TextEncoder().encode(data),
+  );
+  const hex = Array.from(new Uint8Array(bytes))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+  return CALC_CACHE_PREFIX + hex;
+}
+
+function evictCalcCache(): void {
+  if (calcCache.size <= CALC_CACHE_MAX_ENTRIES) return;
+  const oldest = calcCache.keys().next().value;
+  if (oldest !== undefined) calcCache.delete(oldest);
+}
+
 // ─── Bundle price cache ───────────────────────────────────────────────────────
 
-const BUNDLE_PRICE_CACHE_PREFIX = 'next-price-';
 /** Default TTL matches the campaign cache (10 minutes). */
 const BUNDLE_PRICE_CACHE_TTL_MS = 10 * 60 * 1000;
 
@@ -41,24 +89,6 @@ interface CachedBundlePrice {
   expiresAt: number;
 }
 
-async function bundleCacheKey(
-  items: BundlePriceItem[],
-  currency?: string | null,
-  vouchers?: string[],
-  apiKey?: string,
-  upsell?: boolean,
-): Promise<string> {
-  const data = JSON.stringify({
-    items: [...items].sort((a, b) => a.packageId - b.packageId),
-    currency: currency ?? null,
-    vouchers: vouchers ? [...vouchers].sort() : [],
-    apiKey: apiKey ?? '',
-    upsell: upsell ?? false,
-  });
-  const bytes = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(data));
-  const hex = Array.from(new Uint8Array(bytes)).map(b => b.toString(16).padStart(2, '0')).join('');
-  return BUNDLE_PRICE_CACHE_PREFIX + hex;
-}
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -101,6 +131,9 @@ export interface CalculateCartResult {
 /**
  * Call the /calculate API with arbitrary lines and return totals + raw summary.
  * Lazily imports ApiClient and configStore to avoid circular dependencies.
+ *
+ * Results are cached in-memory by payload (30s TTL). Concurrent calls with the
+ * same payload share a single in-flight request (promise dedup).
  */
 export async function calculateCart(
   params: CalculateCartParams
@@ -108,7 +141,26 @@ export async function calculateCart(
   const { ApiClient } = await import('@/api/client');
   const { useConfigStore } = await import('@/stores/configStore');
 
-  const client = new ApiClient(useConfigStore.getState().apiKey);
+  const apiKey = useConfigStore.getState().apiKey;
+  const key = await calcCacheKey(params, apiKey);
+
+  const existing = calcCache.get(key);
+  if (existing) {
+    if (existing.settled && existing.expiresAt > Date.now()) {
+      // LRU touch: move to end of Map iteration order
+      calcCache.delete(key);
+      calcCache.set(key, existing);
+      return existing.promise;
+    }
+    if (!existing.settled) {
+      // In-flight dedup: return the same pending promise
+      return existing.promise;
+    }
+    // Expired
+    calcCache.delete(key);
+  }
+
+  const client = new ApiClient(apiKey);
 
   const cartData: CartCalculateSummary = {
     lines: params.lines,
@@ -117,9 +169,44 @@ export async function calculateCart(
     shipping_method: params.shippingMethod,
   };
 
-  const summary = await client.calculateSummary(cartData, params.signal, { upsell: params.upsell });
+  const promise = client
+    .calculateSummary(cartData, params.signal, {
+      upsell: params.upsell,
+    })
+    .then(summary => {
+      const result: CalculateCartResult = {
+        ...buildCartFields(summary),
+        vouchers: params.vouchers ?? [],
+        summary,
+      };
+      const entry = calcCache.get(key);
+      if (entry && entry.promise === promise) {
+        entry.settled = true;
+        entry.expiresAt = Date.now() + CALC_CACHE_TTL_MS;
+      }
+      return result;
+    })
+    .catch(err => {
+      // Remove failed/aborted entries so next call retries
+      const entry = calcCache.get(key);
+      if (entry && entry.promise === promise) {
+        calcCache.delete(key);
+      }
+      throw err;
+    });
 
-  return { ...buildCartFields(summary), vouchers: params.vouchers ?? [], summary };
+  calcCache.set(key, { promise, expiresAt: 0, settled: false });
+  evictCalcCache();
+
+  return promise;
+}
+
+/**
+ * Clear the in-memory calculateCart cache.
+ * Call when server-side state may have changed independently of the payload.
+ */
+export function clearCalculateCache(): void {
+  calcCache.clear();
 }
 
 /**
@@ -139,7 +226,22 @@ export async function calculateBundlePrice(
   const { useConfigStore } = await import('@/stores/configStore');
   const apiKey = useConfigStore.getState().apiKey;
   const ttl = options.ttl ?? BUNDLE_PRICE_CACHE_TTL_MS;
-  const cacheKey = await bundleCacheKey(items, options.currency, options.vouchers, apiKey, options.upsell);
+
+  const lines: LineWithUpsell[] = items.map(item => ({
+    package_id: item.packageId,
+    quantity: item.quantity,
+  }));
+
+  const params: CalculateCartParams = {
+    lines,
+    vouchers: options.vouchers,
+    currency: options.currency,
+    shippingMethod: options.shippingMethod,
+    exclude_shipping: options.exclude_shipping,
+    upsell: options.upsell,
+  };
+
+  const cacheKey = await calcCacheKey(params, apiKey);
 
   if (ttl > 0) {
     const cached = sessionStorageManager.get<CachedBundlePrice>(cacheKey);
@@ -148,19 +250,7 @@ export async function calculateBundlePrice(
     }
   }
 
-  const lines: LineWithUpsell[] = items.map(item => ({
-    package_id: item.packageId,
-    quantity: item.quantity,
-  }));
-
-  const result = await calculateCart({
-    lines,
-    vouchers: options.vouchers,
-    currency: options.currency,
-    shippingMethod: options.shippingMethod,
-    exclude_shipping: options.exclude_shipping,
-    upsell: options.upsell,
-  });
+  const result = await calculateCart(params);
 
   if (ttl > 0) {
     sessionStorageManager.set<CachedBundlePrice>(cacheKey, {
