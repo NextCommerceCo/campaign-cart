@@ -1,24 +1,13 @@
 import { useCampaignStore } from '@/stores/campaignStore';
 import type { Package } from '@/types/campaign';
-import type { TogglePackageState, TogglePriceSummary } from './PackageToggleEnhancer.types';
+import type { ToggleCard } from './PackageToggleEnhancer.types';
 
-/** Build a TogglePackageState from a campaign Package. */
-export function makeTogglePackageState(pkg: Package): TogglePackageState {
-  return {
-    packageId: pkg.ref_id,
-    name: pkg.name || '',
-    image: pkg.image || '',
-    quantity: pkg.qty,
-    productId: pkg.product_id ?? null,
-    variantId: pkg.product_variant_id ?? null,
-    variantName: pkg.product_variant_name || '',
-    productName: pkg.product_name || '',
-    sku: pkg.product_sku ?? null,
-    isRecurring: pkg.is_recurring,
-    interval: pkg.interval ?? null,
-    intervalCount: pkg.interval_count ?? null,
-  };
-}
+type PriceFields = Pick<ToggleCard,
+  | 'price' | 'unitPrice' | 'originalPrice' | 'originalUnitPrice'
+  | 'discountAmount' | 'discountPercentage' | 'hasDiscount'
+  | 'isRecurring' | 'recurringPrice' | 'originalRecurringPrice'
+  | 'interval' | 'intervalCount' | 'frequency' | 'currency'
+>;
 
 function buildFrequency(pkg: Package): string {
   if (!pkg.is_recurring) return 'One time';
@@ -29,26 +18,27 @@ function buildFrequency(pkg: Package): string {
 }
 
 /**
- * Build a provisional TogglePriceSummary from campaign package data.
+ * Build provisional price fields from campaign package data.
  * Used at card registration so price slots render immediately with baseline
  * prices before fetchAndUpdateTogglePrice resolves.
  */
-export function makeTogglePriceSummary(pkg: Package): TogglePriceSummary {
+export function makeProvisionalPrices(pkg?: Package | null): PriceFields {
   return {
-    price: parseFloat(pkg.price_total || '0'),
-    unitPrice: parseFloat(pkg.price || '0'),
+    price: pkg ? parseFloat(pkg.price_total || '0') : 0,
+    unitPrice: pkg ? parseFloat(pkg.price || '0') : 0,
     originalPrice: null,
     originalUnitPrice: null,
     discountAmount: 0,
     discountPercentage: 0,
     hasDiscount: false,
     currency: useCampaignStore.getState().currency ?? '',
-    isRecurring: pkg.is_recurring,
-    recurringPrice: pkg.price_recurring_total != null
+    isRecurring: pkg?.is_recurring ?? false,
+    recurringPrice: pkg?.price_recurring_total != null
       ? parseFloat(pkg.price_recurring_total)
       : null,
-    interval: pkg.interval ?? null,
-    intervalCount: pkg.interval_count ?? null,
-    frequency: buildFrequency(pkg),
+    originalRecurringPrice: null,
+    interval: pkg?.interval ?? null,
+    intervalCount: pkg?.interval_count ?? null,
+    frequency: pkg ? buildFrequency(pkg) : 'One time',
   };
 }

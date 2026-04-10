@@ -3,21 +3,30 @@ import type { FormatType } from '@/enhancers/display/DisplayEnhancerTypes';
 import { PackageToggleEnhancer } from './PackageToggleEnhancer';
 
 const FORMAT_MAP: Record<string, FormatType> = {
-  isSelected: 'boolean',
-  hasDiscount: 'boolean',
-  isRecurring: 'boolean',
+  packageId: 'auto',
   name: 'text',
-  price: 'currency',
-  unitPrice: 'currency',
-  originalPrice: 'currency',
-  originalUnitPrice: 'currency',
-  discountAmount: 'currency',
-  discountPercentage: 'percentage',
-  recurringPrice: 'currency',
-  currency: 'text',
+  image: 'text',
+  quantity: 'auto',
+  productId: 'auto',
+  variantId: 'auto',
+  variantName: 'text',
+  productName: 'text',
+  sku: 'text',
+  isRecurring: 'boolean',
   interval: 'text',
   intervalCount: 'auto',
   frequency: 'text',
+  price: 'currency',
+  originalPrice: 'currency',
+  unitPrice: 'currency',
+  originalUnitPrice: 'currency',
+  discountAmount: 'currency',
+  discountPercentage: 'percentage',
+  hasDiscount: 'boolean',
+  recurringPrice: 'currency',
+  originalRecurringPrice: 'currency',
+  currency: 'text',
+  isSelected: 'boolean',
 };
 
 /**
@@ -26,21 +35,30 @@ const FORMAT_MAP: Record<string, FormatType> = {
  * Path format: data-next-display="toggle.{packageId}.{property}"
  *
  * Properties:
- *   isSelected                         — boolean: package is in the cart
+ *   packageId                          — package ref_id
  *   name                               — display name from campaign package
+ *   image                              — package image URL
+ *   quantity                           — quantity added to cart
+ *   productId                          — product ID
+ *   variantId                          — product variant ID
+ *   variantName                        — variant display name
+ *   productName                        — product display name
+ *   sku                                — product SKU
+ *   isRecurring                        — boolean: package bills on a recurring schedule
+ *   interval                           — billing interval: "day" or "month"
+ *   intervalCount                      — number of intervals between billing cycles
+ *   frequency                          — human-readable billing cadence: "Per month", "Every 3 months", "One time"
  *   price                              — total price (unit price × quantity)
- *   unitPrice                          — per-unit price
  *   originalPrice                      — retail/compare-at total price
+ *   unitPrice                          — per-unit price
  *   originalUnitPrice                  — retail/compare-at per-unit price
  *   discountAmount                     — total savings amount
  *   discountPercentage                 — savings as a percentage
  *   hasDiscount                        — boolean: discount is applied
- *   isRecurring                        — boolean: package bills on a recurring schedule
  *   recurringPrice                     — recurring charge total (quantity-scaled)
- *   interval                           — billing interval: "day" or "month"
- *   intervalCount                      — number of intervals between billing cycles
- *   frequency                          — human-readable billing cadence: "Per month", "Every 3 months", "One time"
+ *   originalRecurringPrice             — original recurring charge total
  *   currency                           — ISO 4217 currency code
+ *   isSelected                         — boolean: package is in the cart
  */
 export class PackageToggleDisplayEnhancer extends BaseDisplayEnhancer {
   private packageId?: number;
@@ -77,41 +95,36 @@ export class PackageToggleDisplayEnhancer extends BaseDisplayEnhancer {
     const state = PackageToggleEnhancer.getToggleState(this.packageId);
     if (!state) return undefined;
 
-    switch (this.property) {
-      case 'isSelected':
-        return state.isSelected;
-      case 'name':
-        return state.name;
-      case 'price':
-        return state.togglePrice?.price;
-      case 'unitPrice':
-        return state.togglePrice?.unitPrice;
-      case 'originalPrice':
-        return state.togglePrice?.originalPrice ?? undefined;
-      case 'originalUnitPrice':
-        return state.togglePrice?.originalUnitPrice ?? undefined;
-      case 'discountAmount':
-        return state.togglePrice?.discountAmount;
-      case 'discountPercentage':
-        return state.togglePrice?.discountPercentage;
-      case 'hasDiscount':
-        return state.togglePrice?.hasDiscount ?? false;
-      case 'isRecurring':
-        return state.togglePrice?.isRecurring ?? false;
-      case 'recurringPrice':
-        return state.togglePrice?.recurringPrice ?? undefined;
-      case 'interval':
-        return state.togglePrice?.interval ?? undefined;
-      case 'intervalCount':
-        return state.togglePrice?.intervalCount ?? undefined;
-      case 'frequency':
-        return state.togglePrice?.frequency;
-      case 'currency':
-        return state.togglePrice?.currency;
-      default:
-        this.logger.warn(`Unknown toggle display property: "${this.property}"`);
-        return undefined;
-    }
+    const values: Record<string, unknown> = {
+      packageId: state.packageId,
+      name: state.name,
+      image: state.image,
+      quantity: state.quantity,
+      productId: state.productId,
+      variantId: state.variantId,
+      variantName: state.variantName,
+      productName: state.productName,
+      sku: state.sku,
+      isRecurring: state.isRecurring,
+      interval: state.interval,
+      intervalCount: state.intervalCount,
+      frequency: state.frequency,
+      price: state.price,
+      originalPrice: state.originalPrice,
+      unitPrice: state.unitPrice,
+      originalUnitPrice: state.originalUnitPrice,
+      discountAmount: state.discountAmount,
+      discountPercentage: state.discountPercentage,
+      hasDiscount: state.hasDiscount,
+      recurringPrice: state.recurringPrice,
+      originalRecurringPrice: state.originalRecurringPrice,
+      currency: state.currency,
+      isSelected: state.isSelected,
+    };
+
+    if (this.property in values) return values[this.property];
+    this.logger.warn(`Unknown toggle display property: "${this.property}"`);
+    return undefined;
   }
 
   protected override getDefaultFormatType(property: string): FormatType {

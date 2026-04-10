@@ -30,9 +30,21 @@ A single optional product offered on the checkout or cart page, styled as a chec
 
 ---
 
+## Provisional price
+
+A price value derived from campaign package data (retail price, quantity) and available immediately at card registration time, before any `/calculate` API call. Template placeholders (`{toggle.price}`, `{toggle.originalPrice}`, etc.) are filled with provisional values. Live, cart-aware prices arrive after the first price fetch and are applied to `data-next-toggle-display` slots.
+
+---
+
 ## Pre-selected
 
 A card state indicating the package should be auto-added to the cart on init. Set via `data-next-selected="true"` on the card element or in the `data-next-packages` JSON (`"selected": true`).
+
+---
+
+## Conditional display (slot)
+
+The ability to show or hide elements inside a card template based on template variables using `data-next-show` and `data-next-hide` attributes. Only variables that exist in the template vars map (e.g. `hasDiscount`, `isRecurring`, `isSelected`) are evaluated locally at render time. Store-based conditions (e.g. `cart.itemCount > 0`) are left for the global `ConditionalDisplayEnhancer`.
 
 ---
 

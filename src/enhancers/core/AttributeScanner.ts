@@ -337,7 +337,7 @@ export class AttributeScanner {
           return new TimerEnhancer(element);
           
         case 'conditional':
-          this.logger.info('Creating ConditionalDisplayEnhancer for element:', {
+          this.logger.debug('Creating ConditionalDisplayEnhancer for element:', {
             element: element.tagName,
             class: element.className,
             showAttr: element.getAttribute('data-next-show'),

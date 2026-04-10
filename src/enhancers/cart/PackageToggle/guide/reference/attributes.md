@@ -194,17 +194,24 @@ Use `data-next-display="toggle.{packageId}.{property}"` on any element in the do
 
 | Property | Format | Description |
 |---|---|---|
-| `isSelected` | boolean | `true` when this card's package is currently in the cart |
+| `packageId` | text | Package `ref_id` |
 | `name` | text | Display name from the campaign package |
+| `image` | image | Package image URL (sets `src` on `<img>` elements) |
+| `quantity` | text | Package quantity |
+| `variantName` | text | Product variant name |
+| `productName` | text | Product name |
+| `sku` | text | Product SKU (empty if not set) |
 | `price` | currency | Total price for the card's quantity (unit price × quantity) |
 | `unitPrice` | currency | Per-unit price |
 | `originalPrice` | currency | Retail / compare-at total price |
 | `originalUnitPrice` | currency | Retail / compare-at per-unit price |
 | `discountAmount` | currency | Savings amount (compare minus total) |
 | `discountPercentage` | percentage | Savings as a percentage of the compare price |
+| `isSelected` | boolean | `true` when this card's package is currently in the cart |
 | `hasDiscount` | boolean | `true` when a discount is applied |
 | `isRecurring` | boolean | `true` when the package bills on a recurring schedule |
 | `recurringPrice` | currency | Recurring charge total (quantity-scaled) |
+| `originalRecurringPrice` | currency | Original recurring price before discounts |
 | `interval` | text | Billing interval: `"day"` or `"month"` |
 | `intervalCount` | auto | Number of intervals between billing cycles |
 | `frequency` | text | Human-readable billing cadence: `"Per month"`, `"Every 3 months"`, `"One time"` |
@@ -234,6 +241,13 @@ For boolean fields (`hasDiscount`, `isRecurring`, `isSelected`), the element is 
 
 | Value | Effect |
 |---|---|
+| `"packageId"` | Package `ref_id` |
+| `"name"` | Package display name from the campaign store |
+| `"image"` | Package image URL — sets `src` on `<img>` elements, `textContent` otherwise |
+| `"quantity"` | Package quantity |
+| `"variantName"` | Product variant name |
+| `"productName"` | Product name |
+| `"sku"` | Product SKU; empty if not set |
 | `"price"` | Formatted total price for the card's quantity |
 | `"unitPrice"` | Per-unit price |
 | `"originalPrice"` | Retail / compare-at total price; empty if not set |
@@ -244,10 +258,10 @@ For boolean fields (`hasDiscount`, `isRecurring`, `isSelected`), the element is 
 | `"isRecurring"` | Shown when the package bills on a recurring schedule; hidden otherwise |
 | `"isSelected"` | Shown when `data-next-selected` was `"true"` at last price update; hidden otherwise |
 | `"recurringPrice"` | Recurring charge total (quantity-scaled); empty if not recurring |
+| `"originalRecurringPrice"` | Original recurring price before discounts; empty if not available |
 | `"interval"` | Billing interval: `"day"` or `"month"`; empty if not recurring |
 | `"intervalCount"` | Number of intervals between billing cycles; empty if not recurring |
 | `"frequency"` | Human-readable billing cadence: `"Per month"`, `"Every 3 months"`, `"One time"` |
-| `"name"` | Package display name from the campaign store |
 | `"currency"` | ISO 4217 currency code |
 
 Unrecognized values leave the element's content unchanged.

@@ -1,25 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { updateCardDisplayElements } from '@/enhancers/cart/PackageToggle/PackageToggleEnhancer.renderer';
-import type { ToggleCard, TogglePriceSummary } from '@/enhancers/cart/PackageToggle/PackageToggleEnhancer.types';
-
-function makeTogglePrice(overrides: Partial<TogglePriceSummary> = {}): TogglePriceSummary {
-  return {
-    price: 9.99,
-    unitPrice: 9.99,
-    originalPrice: null,
-    originalUnitPrice: null,
-    discountAmount: 0,
-    discountPercentage: 0,
-    hasDiscount: false,
-    currency: 'USD',
-    isRecurring: false,
-    recurringPrice: null,
-    interval: null,
-    intervalCount: null,
-    frequency: 'One time',
-    ...overrides,
-  };
-}
+import type { ToggleCard } from '@/enhancers/cart/PackageToggle/PackageToggleEnhancer.types';
 
 function makeCard(isSelected: boolean): ToggleCard {
   const element = document.createElement('div');
@@ -32,6 +13,12 @@ function makeCard(isSelected: boolean): ToggleCard {
     element,
     packageId: 1,
     name: 'Test Package',
+    image: '',
+    productId: null,
+    variantId: null,
+    variantName: '',
+    productName: '',
+    sku: null,
     isPreSelected: false,
     isSelected,
     quantity: 1,
@@ -41,7 +28,21 @@ function makeCard(isSelected: boolean): ToggleCard {
     stateContainer: element,
     addText: null,
     removeText: null,
-    togglePrice: makeTogglePrice(),
+    price: 9.99,
+    unitPrice: 9.99,
+    originalPrice: null,
+    originalUnitPrice: null,
+    discountAmount: 0,
+    discountPercentage: 0,
+    hasDiscount: false,
+    currency: 'USD',
+    isRecurring: false,
+    recurringPrice: null,
+    originalRecurringPrice: null,
+    interval: null,
+    intervalCount: null,
+    frequency: 'One time',
+    discounts: [],
   };
 }
 

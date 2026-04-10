@@ -23,6 +23,12 @@ function makeCard(packageId: number, quantity = 1): ToggleCard {
     element,
     packageId,
     name: '',
+    image: '',
+    productId: null,
+    variantId: null,
+    variantName: '',
+    productName: '',
+    sku: null,
     isPreSelected: false,
     isSelected: false,
     quantity,
@@ -32,7 +38,21 @@ function makeCard(packageId: number, quantity = 1): ToggleCard {
     stateContainer: element,
     addText: null,
     removeText: null,
-    togglePrice: null,
+    price: 0,
+    unitPrice: 0,
+    originalPrice: null,
+    originalUnitPrice: null,
+    discountAmount: 0,
+    discountPercentage: 0,
+    hasDiscount: false,
+    currency: 'USD',
+    isRecurring: false,
+    recurringPrice: null,
+    originalRecurringPrice: null,
+    interval: null,
+    intervalCount: null,
+    frequency: 'One time',
+    discounts: [],
   };
 }
 
@@ -263,16 +283,16 @@ describe('renderTogglePrice', () => {
     expect(slot.textContent).toBe('20%');
   });
 
-  it('stores computed price state on card.togglePrice', () => {
+  it('stores computed price state on card', () => {
     mockCampaignStore([]);
     const card = makeCard(101);
 
     renderTogglePrice(card, makeLine({ total: '8.00', subtotal: '10.00', total_discount: '2.00' }));
 
-    expect(card.togglePrice?.price).toBe(8);
-    expect(card.togglePrice?.originalPrice).toBe(10);
-    expect(card.togglePrice?.discountAmount).toBe(2);
-    expect(card.togglePrice?.hasDiscount).toBe(true);
+    expect(card.price).toBe(8);
+    expect(card.originalPrice).toBe(10);
+    expect(card.discountAmount).toBe(2);
+    expect(card.hasDiscount).toBe(true);
   });
 
   it('dispatches toggle:price-updated event with packageId', () => {

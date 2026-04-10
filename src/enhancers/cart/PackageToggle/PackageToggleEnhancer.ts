@@ -124,10 +124,10 @@ import { useCartStore } from '@/stores/cartStore';
 import { useCheckoutStore } from '@/stores/checkoutStore';
 import { useCampaignStore } from '@/stores/campaignStore';
 import type { CartState } from '@/types/global';
-import type { PackageDef, ToggleCard, ToggleCardPublicState } from './PackageToggleEnhancer.types';
+import type { PackageDef, ToggleCard } from './PackageToggleEnhancer.types';
 import type { ToggleHandlerContext } from './PackageToggleEnhancer.handlers';
 import { renderToggleTemplate, renderToggleImage, renderTogglePrice, updateCardDisplayElements } from './PackageToggleEnhancer.renderer';
-import { makeTogglePriceSummary } from './PackageToggleEnhancer.state';
+import { makeProvisionalPrices } from './PackageToggleEnhancer.state';
 import { fetchAndUpdateTogglePrice } from './PackageToggleEnhancer.price';
 import {
   autoAddedPackages,
@@ -144,16 +144,10 @@ export class PackageToggleEnhancer extends BaseEnhancer {
    * Returns display state for a toggle card by packageId, for use by
    * PackageToggleDisplayEnhancer via toggle.{packageId}.{property} paths.
    */
-  static getToggleState(packageId: number): ToggleCardPublicState | null {
+  static getToggleState(packageId: number): ToggleCard | null {
     for (const inst of PackageToggleEnhancer._instances) {
       const card = inst.cards.find(c => c.packageId === packageId);
-      if (card) {
-        return {
-          name: card.name,
-          isSelected: card.isSelected,
-          togglePrice: card.togglePrice,
-        };
-      }
+      if (card) return card;
     }
     return null;
   }
@@ -346,6 +340,12 @@ export class PackageToggleEnhancer extends BaseEnhancer {
       element: el,
       packageId,
       name: pkg?.name ?? '',
+      image: pkg?.image ?? '',
+      productId: pkg?.product_id ?? null,
+      variantId: pkg?.product_variant_id ?? null,
+      variantName: pkg?.product_variant_name ?? '',
+      productName: pkg?.product_name ?? '',
+      sku: pkg?.product_sku ?? null,
       isPreSelected,
       isSelected: false,
       quantity,
@@ -355,7 +355,7 @@ export class PackageToggleEnhancer extends BaseEnhancer {
       stateContainer,
       addText: el.getAttribute('data-add-text'),
       removeText: el.getAttribute('data-remove-text'),
-      togglePrice: pkg ? makeTogglePriceSummary(pkg) : null,
+      ...makeProvisionalPrices(pkg),
       discounts: [],
     };
 

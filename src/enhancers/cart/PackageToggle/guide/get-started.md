@@ -77,7 +77,7 @@ Use `data-next-display="toggle.{packageId}.{property}"` to bind any element on t
 <span data-next-display="toggle.101.discountPercentage"></span>
 ```
 
-**Supported properties:** `isSelected`, `name`, `price`, `unitPrice`, `originalPrice`, `originalUnitPrice`, `discountAmount`, `discountPercentage`, `hasDiscount`, `isRecurring`, `recurringPrice`, `interval`, `intervalCount`, `frequency`, `currency`
+**Supported properties:** `packageId`, `name`, `image`, `quantity`, `productId`, `variantName`, `productName`, `sku`, `price`, `unitPrice`, `originalPrice`, `originalUnitPrice`, `discountAmount`, `discountPercentage`, `isSelected`, `hasDiscount`, `isRecurring`, `recurringPrice`, `originalRecurringPrice`, `interval`, `intervalCount`, `frequency`, `currency`
 
 `isSelected` updates on every cart sync. Prices update after the async price fetch completes.
 

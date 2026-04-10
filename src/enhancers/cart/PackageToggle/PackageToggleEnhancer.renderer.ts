@@ -4,20 +4,28 @@ import { formatCurrency, formatPercentage } from '@/utils/currencyFormatter';
 import { TemplateRenderer } from '@/shared/utils/TemplateRenderer';
 import type { Logger } from '@/utils/logger';
 import type { SummaryLine } from '@/types/api';
-import type { PackageDef, ToggleCard, TogglePackageState, TogglePriceSummary } from './PackageToggleEnhancer.types';
-import { makeTogglePackageState } from './PackageToggleEnhancer.state';
+import type { PackageDef, ToggleCard } from './PackageToggleEnhancer.types';
+import { makeProvisionalPrices } from './PackageToggleEnhancer.state';
 import { renderFlatDiscountContainers } from '@/shared/utils/discountRenderer';
+import { applySlotConditionals, isTruthyVar } from '@/shared/utils/slotConditionals';
+
+// ─── Shared helpers ───────────────────────────────────────────────────────────
+
+/** Fields that toggle element visibility rather than setting text content. */
+const VISIBILITY_FIELDS = new Set(['hasDiscount', 'isSelected', 'isRecurring']);
 
 // ─── Template vars builder ────────────────────────────────────────────────────
 
 /**
- * Builds the template variable map for a toggle card.
- * def fields always take priority — callers can override any pkg-derived value
- * by including it in the PackageDef (e.g. via data-next-packages JSON).
+ * Single source of truth for all toggle card template variables.
+ *
+ * Used by both renderToggleTemplate (initial render) and updateCardDisplayElements
+ * (live DOM updates). def fields take priority — callers can override any
+ * pkg-derived value by including it in the PackageDef JSON.
  */
 export function buildToggleVars(
   def: PackageDef,
-  pkgState: TogglePackageState,
+  card: Omit<ToggleCard, 'element' | 'isPreSelected' | 'isSyncMode' | 'syncPackageIds' | 'isUpsell' | 'stateContainer' | 'addText' | 'removeText' | 'discounts'>,
 ): Record<string, string> {
   const vars: Record<string, string> = {};
 
@@ -25,24 +33,43 @@ export function buildToggleVars(
     vars[key] = value != null ? String(value) : '';
   }
 
-  vars['packageId'] ??= String(pkgState.packageId);
-  vars['name'] ??= pkgState.name;
-  vars['image'] ??= pkgState.image;
-  vars['quantity'] ??= String(pkgState.quantity);
-  vars['productId'] ??= pkgState.productId != null ? String(pkgState.productId) : '';
-  vars['variantId'] ??= pkgState.variantId != null ? String(pkgState.variantId) : '';
-  vars['variantName'] ??= pkgState.variantName;
-  vars['productName'] ??= pkgState.productName;
-  vars['sku'] ??= pkgState.sku ?? '';
-  vars['isRecurring'] ??= String(pkgState.isRecurring);
-  vars['interval'] ??= pkgState.interval ?? '';
-  vars['intervalCount'] ??=
-    pkgState.intervalCount != null ? String(pkgState.intervalCount) : '';
-  vars['frequency'] ??= pkgState.isRecurring
-    ? pkgState.intervalCount != null && pkgState.intervalCount > 1
-      ? `Every ${pkgState.intervalCount} ${pkgState.interval}s`
-      : `Per ${pkgState.interval}`
-    : 'One time';
+  const currency = card.currency || undefined;
+
+  // Card fields
+  vars['packageId'] ??= String(card.packageId);
+  vars['name'] ??= card.name;
+  vars['image'] ??= card.image;
+  vars['quantity'] ??= String(card.quantity);
+  vars['productId'] ??= card.productId != null ? String(card.productId) : '';
+  vars['variantId'] ??= card.variantId != null ? String(card.variantId) : '';
+  vars['variantName'] ??= card.variantName;
+  vars['productName'] ??= card.productName;
+  vars['sku'] ??= card.sku ?? '';
+
+  // Price + recurring fields
+  vars['isRecurring'] ??= String(card.isRecurring);
+  vars['interval'] ??= card.interval ?? '';
+  vars['intervalCount'] ??= card.intervalCount != null
+    ? String(card.intervalCount) : '';
+  vars['frequency'] ??= card.frequency;
+  vars['price'] ??= formatCurrency(card.price, currency);
+  vars['originalPrice'] ??= card.originalPrice != null
+    ? formatCurrency(card.originalPrice, currency) : '';
+  vars['unitPrice'] ??= formatCurrency(card.unitPrice, currency);
+  vars['originalUnitPrice'] ??= card.originalUnitPrice != null
+    ? formatCurrency(card.originalUnitPrice, currency) : '';
+  vars['discountAmount'] ??= card.hasDiscount
+    ? formatCurrency(card.discountAmount, currency) : '';
+  vars['discountPercentage'] ??= formatPercentage(card.discountPercentage);
+  vars['hasDiscount'] ??= String(card.hasDiscount);
+  vars['recurringPrice'] ??= card.recurringPrice != null
+    ? formatCurrency(card.recurringPrice, currency) : '';
+  vars['originalRecurringPrice'] ??= card.originalRecurringPrice != null
+    ? formatCurrency(card.originalRecurringPrice, currency) : '';
+  vars['currency'] ??= card.currency;
+
+  // Selection state
+  vars['isSelected'] ??= String(card.isSelected);
 
   return vars;
 }
@@ -60,7 +87,19 @@ export function renderToggleTemplate(
     logger.warn('No campaign package found for packageId', def.packageId);
     return null;
   }
-  const toggleData = buildToggleVars(def, makeTogglePackageState(pkg));
+  const toggleData = buildToggleVars(def, {
+    packageId: pkg.ref_id,
+    name: pkg.name || '',
+    image: pkg.image || '',
+    quantity: pkg.qty,
+    productId: pkg.product_id ?? null,
+    variantId: pkg.product_variant_id ?? null,
+    variantName: pkg.product_variant_name || '',
+    productName: pkg.product_name || '',
+    sku: pkg.product_sku ?? null,
+    isSelected: def.selected ?? false,
+    ...makeProvisionalPrices(pkg),
+  });
 
   const html = TemplateRenderer.render(template, { data: { toggle: toggleData } });
   const wrapper = document.createElement('div');
@@ -75,6 +114,8 @@ export function renderToggleTemplate(
     logger.warn('Toggle template produced no root element for packageId', def.packageId);
     return null;
   }
+
+  applySlotConditionals(cardEl, toggleData);
 
   cardEl.setAttribute('data-next-toggle-card', '');
   cardEl.setAttribute('data-next-package-id', String(def.packageId));
@@ -102,92 +143,47 @@ export function renderToggleImage(card: ToggleCard): void {
 
 // ─── Card display elements ────────────────────────────────────────────────────
 
-interface ToggleFieldData {
-  togglePrice: TogglePriceSummary;
-  isSelected: boolean;
-  name: string;
-}
+/** Apply a single var to a DOM element — visibility toggle or text/image. */
+function applyDisplayVar(
+  el: HTMLElement,
+  field: string,
+  vars: Record<string, string>,
+): void {
+  const value = vars[field];
+  if (value === undefined) return;
 
-function applyToggleField(el: HTMLElement, field: string, data: ToggleFieldData): void {
-  const { togglePrice: tp, isSelected, name } = data;
-  const currency = tp.currency || undefined;
-  switch (field) {
-    case 'price':
-      el.textContent = formatCurrency(tp.price, currency);
-      break;
-    case 'originalPrice':
-      el.textContent = tp.originalPrice != null ? formatCurrency(tp.originalPrice, currency) : '';
-      break;
-    case 'unitPrice':
-      el.textContent = formatCurrency(tp.unitPrice, currency);
-      break;
-    case 'originalUnitPrice':
-      el.textContent = tp.originalUnitPrice != null
-        ? formatCurrency(tp.originalUnitPrice, currency)
-        : '';
-      break;
-    case 'discountAmount':
-      el.textContent = tp.hasDiscount ? formatCurrency(tp.discountAmount, currency) : '';
-      break;
-    case 'discountPercentage':
-      el.textContent = formatPercentage(tp.discountPercentage);
-      break;
-    case 'hasDiscount':
-      el.style.display = tp.hasDiscount ? '' : 'none';
-      break;
-    case 'isSelected':
-      el.style.display = isSelected ? '' : 'none';
-      break;
-    case 'isRecurring':
-      el.style.display = tp.isRecurring ? '' : 'none';
-      break;
-    case 'recurringPrice':
-      el.textContent = tp.recurringPrice != null ? formatCurrency(tp.recurringPrice, currency) : '';
-      break;
-    case 'interval':
-      el.textContent = tp.interval ?? '';
-      break;
-    case 'intervalCount':
-      el.textContent = tp.intervalCount != null ? String(tp.intervalCount) : '';
-      break;
-    case 'frequency':
-      el.textContent = tp.frequency;
-      break;
-    case 'name':
-      el.textContent = name;
-      break;
-    case 'currency':
-      el.textContent = tp.currency;
-      break;
+  if (VISIBILITY_FIELDS.has(field)) {
+    el.style.display = isTruthyVar(value) ? '' : 'none';
+    return;
   }
+
+  if (field === 'image' && el instanceof HTMLImageElement) {
+    el.src = value;
+    if (!el.alt) el.alt = vars['name'] ?? '';
+    return;
+  }
+
+  el.textContent = value;
 }
 
 /**
- * Updates all display elements inside a toggle card after a price fetch resolves.
+ * Updates all display elements inside a toggle card.
  * Handles [data-next-toggle-display] (full field set) and the deprecated
  * [data-next-toggle-price] (legacy, price fields only). Fires toggle:price-updated
  * for PackageToggleDisplayEnhancer.
  */
 export function updateCardDisplayElements(card: ToggleCard): void {
-  const tp = card.togglePrice;
-  if (!tp) return;
-
-  const isSelected = card.isSelected;
-  const fieldData: ToggleFieldData = {
-    togglePrice: tp,
-    isSelected,
-    name: card.name,
-  };
+  const vars = buildToggleVars({ packageId: card.packageId }, card);
 
   card.element.querySelectorAll<HTMLElement>('[data-next-toggle-display]').forEach(el => {
     const field = el.getAttribute('data-next-toggle-display') || 'price';
-    applyToggleField(el, field, fieldData);
+    applyDisplayVar(el, field, vars);
   });
 
   // Deprecated: kept for backward compatibility
   card.element.querySelectorAll<HTMLElement>('[data-next-toggle-price]').forEach(el => {
     const field = el.getAttribute('data-next-toggle-price') || 'price';
-    applyToggleField(el, field, fieldData);
+    applyDisplayVar(el, field, vars);
   });
 
   renderFlatDiscountContainers(card.element, card.discounts);
@@ -201,7 +197,7 @@ export function updateCardDisplayElements(card: ToggleCard): void {
 }
 
 /**
- * Updates card.togglePrice from a SummaryLine (API data) then calls
+ * Updates card price fields from a SummaryLine (API data) then calls
  * updateCardDisplayElements to push the new state to the DOM.
  */
 export function renderTogglePrice(card: ToggleCard, line: SummaryLine): void {
@@ -216,37 +212,33 @@ export function renderTogglePrice(card: ToggleCard, line: SummaryLine): void {
   const recurringPrice = line.price_recurring_total != null
     ? new Decimal(line.price_recurring_total)
     : null;
+  const originalRecurringPrice = line.original_recurring_price != null
+    ? new Decimal(line.original_recurring_price)
+    : null;
 
   const hasDiscount = discountAmount.gt(0);
   const discountPercentage = hasDiscount && originalPrice.gt(0)
     ? discountAmount.div(originalPrice).times(100)
     : new Decimal(0);
 
-  const currency = useCampaignStore.getState().currency ?? '';
-  const isRecurring = pkg?.is_recurring ?? false;
-  const interval = pkg?.interval ?? null;
-  const intervalCount = pkg?.interval_count ?? null;
-  const frequency = isRecurring
-    ? intervalCount != null && intervalCount > 1
-      ? `Every ${intervalCount} ${interval}s`
-      : `Per ${interval}`
+  card.price = price.toNumber();
+  card.unitPrice = unitPrice.toNumber();
+  card.originalPrice = originalPrice.toNumber();
+  card.originalUnitPrice = originalUnitPrice.toNumber();
+  card.discountAmount = hasDiscount ? discountAmount.toNumber() : 0;
+  card.discountPercentage = discountPercentage.toNumber();
+  card.hasDiscount = hasDiscount;
+  card.currency = useCampaignStore.getState().currency ?? '';
+  card.isRecurring = pkg?.is_recurring ?? false;
+  card.recurringPrice = recurringPrice?.toNumber() ?? null;
+  card.originalRecurringPrice = originalRecurringPrice?.toNumber() ?? null;
+  card.interval = pkg?.interval ?? null;
+  card.intervalCount = pkg?.interval_count ?? null;
+  card.frequency = card.isRecurring
+    ? card.intervalCount != null && card.intervalCount > 1
+      ? `Every ${card.intervalCount} ${card.interval}s`
+      : `Per ${card.interval}`
     : 'One time';
-
-  card.togglePrice = {
-    price: price.toNumber(),
-    unitPrice: unitPrice.toNumber(),
-    originalPrice: originalPrice.toNumber(),
-    originalUnitPrice: originalUnitPrice.toNumber(),
-    discountAmount: hasDiscount ? discountAmount.toNumber() : 0,
-    discountPercentage: discountPercentage.toNumber(),
-    hasDiscount,
-    currency,
-    isRecurring,
-    recurringPrice: recurringPrice?.toNumber() ?? null,
-    interval,
-    intervalCount,
-    frequency,
-  };
   card.discounts = line.discounts ?? [];
 
   updateCardDisplayElements(card);

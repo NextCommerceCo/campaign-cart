@@ -1,7 +1,7 @@
 # PackageToggleEnhancer
 
 > Category: `cart`
-> Last reviewed: 2026-04-03
+> Last reviewed: 2026-04-10
 > Owner: campaign-cart
 
 A container that lets a user independently add or remove any combination of packages by clicking cards. Each card maps to one package; clicking toggles that package in or out of the cart without affecting any other card's state.
@@ -42,7 +42,10 @@ User clicks card
 - In sync mode (`data-next-package-sync`), a card's quantity is derived from the sum of quantities of the listed synced packages. The sync card is added when any synced package is in the cart, and removed when all synced packages are removed.
 - For sync cards marked as upsell items, removal on sync loss is deferred by 500 ms to avoid race conditions during package swaps.
 - The price displayed on a card is always the price the customer will pay if that package is in the cart. For cards not yet in the cart, this is fetched from `/calculate` with the package simulated alongside current cart items — so bundle or volume discounts are correctly reflected. For cards already in the cart, the price is read directly from the cart summary line (no extra API call). Both paths produce the same price: what's shown is what's charged.
-- Boolean display slots (`hasDiscount`, `isRecurring`, `isSelected`) show or hide the element rather than writing text.
+- Boolean display slots (`hasDiscount`, `isRecurring`, `isSelected`) show or hide the element rather than writing text. The `image` display slot sets `src` on `<img>` elements.
+- Display slots cover the full card data: package metadata (`packageId`, `name`, `image`, `quantity`, `productId`, `variantId`, `variantName`, `productName`, `sku`), all price fields, boolean visibility fields, and recurring billing fields.
+- In auto-render mode, all card fields (including provisional prices from campaign data) are available as `{toggle.*}` template placeholders. `data-next-toggle-display` slots inside the rendered card still receive live, cart-aware prices after each fetch.
+- Card templates support `data-next-show` and `data-next-hide` for conditional visibility based on template variables (e.g. `data-next-show="hasDiscount"`). These are evaluated locally at render time; store-based conditions are left for the global `ConditionalDisplayEnhancer`.
 - Vouchers applied in the checkout store cause a price recalculation for all cards.
 - Currency changes trigger a debounced (150 ms) price refetch for all cards.
 - In upsell context, the click handler checks `orderStore.canAddUpsells()` before proceeding. If upsells are not available, it navigates to `data-next-url` (or the meta fallback) instead of throwing an error.
@@ -56,6 +59,8 @@ User clicks card
 - We chose a module-level `autoAddedPackages` set (not per-instance) to prevent two `PackageToggleEnhancer` instances on the same page from both auto-adding the same package on init.
 - We chose to defer sync-card removal by 500 ms for upsell items because a package swap briefly removes the synced package before adding the replacement, which would otherwise falsely trigger removal.
 - We chose to calculate prices by merging the toggle package with current cart items (not standalone) so that any bundle pricing rules apply correctly to the preview price.
+- We chose to flatten all price fields directly onto `ToggleCard` (instead of a nested `TogglePriceSummary`) to eliminate null checks throughout the rendering pipeline. Price fields are always initialized from `makeProvisionalPrices` at registration time.
+- We chose to share the `applySlotConditionals` utility with `BundleSelectorEnhancer` so that `data-next-show`/`data-next-hide` behaves identically in both template systems.
 
 ## Limitations
 

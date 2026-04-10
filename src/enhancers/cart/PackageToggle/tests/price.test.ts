@@ -19,6 +19,7 @@ vi.mock('@/utils/calculations/CartCalculator', () => ({
 }));
 vi.mock('@/utils/currencyFormatter', () => ({
   formatCurrency: (n: number) => `$${n.toFixed(2)}`,
+  formatPercentage: (n: number) => `${n}%`,
 }));
 
 import { calculateBundlePrice } from '@/utils/calculations/CartCalculator';
@@ -31,6 +32,12 @@ function makeCard(packageId: number, quantity = 1): ToggleCard {
     element,
     packageId,
     name: '',
+    image: '',
+    productId: null,
+    variantId: null,
+    variantName: '',
+    productName: '',
+    sku: null,
     isPreSelected: false,
     isSelected: false,
     quantity,
@@ -40,7 +47,21 @@ function makeCard(packageId: number, quantity = 1): ToggleCard {
     stateContainer: element,
     addText: null,
     removeText: null,
-    togglePrice: null,
+    price: 0,
+    unitPrice: 0,
+    originalPrice: null,
+    originalUnitPrice: null,
+    discountAmount: 0,
+    discountPercentage: 0,
+    hasDiscount: false,
+    currency: 'USD',
+    isRecurring: false,
+    recurringPrice: null,
+    originalRecurringPrice: null,
+    interval: null,
+    intervalCount: null,
+    frequency: 'One time',
+    discounts: [],
   };
 }
 

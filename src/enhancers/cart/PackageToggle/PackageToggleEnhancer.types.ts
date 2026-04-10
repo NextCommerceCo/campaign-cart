@@ -4,23 +4,26 @@ export interface PackageDef {
   [key: string]: unknown;
 }
 
-/** Static display data derived from a campaign Package at card registration time. */
-export interface TogglePackageState {
+export interface ToggleCard {
+  element: HTMLElement;
   packageId: number;
   name: string;
   image: string;
-  quantity: number;
   productId: number | null;
   variantId: number | null;
   variantName: string;
   productName: string;
   sku: string | null;
-  isRecurring: boolean;
-  interval: 'day' | 'month' | null;
-  intervalCount: number | null;
-}
-
-export interface TogglePriceSummary {
+  isPreSelected: boolean;
+  isSelected: boolean;
+  quantity: number;
+  isSyncMode: boolean;
+  syncPackageIds: number[];
+  isUpsell: boolean;
+  stateContainer: HTMLElement;
+  addText: string | null;
+  removeText: string | null;
+  // Price fields (initialized from campaign data, updated by API)
   price: number;
   unitPrice: number;
   originalPrice: number | null;
@@ -31,31 +34,10 @@ export interface TogglePriceSummary {
   currency: string;
   isRecurring: boolean;
   recurringPrice: number | null;
+  originalRecurringPrice: number | null;
   interval: 'day' | 'month' | null;
   intervalCount: number | null;
   frequency: string;
-}
-
-export interface ToggleCardPublicState {
-  name: string;
-  isSelected: boolean;
-  togglePrice: TogglePriceSummary | null;
-}
-
-export interface ToggleCard {
-  element: HTMLElement;
-  packageId: number;
-  name: string;
-  isPreSelected: boolean;
-  isSelected: boolean;
-  quantity: number;
-  isSyncMode: boolean;
-  syncPackageIds: number[];
-  isUpsell: boolean;
-  stateContainer: HTMLElement;
-  addText: string | null;
-  removeText: string | null;
-  togglePrice: TogglePriceSummary | null;
   /** Per-line discounts from the price calculation. */
   discounts: import('@/shared/utils/discountRenderer').DiscountItem[];
 }

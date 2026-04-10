@@ -7,6 +7,7 @@
 - `orderStore` — required in upsell context (`data-next-upsell-context`) only. Provides `canAddUpsells()` gating and the `addUpsell()` action.
 - `checkoutStore` — subscribed to in normal (non-upsell) context to detect voucher changes that require a price recalculation.
 - `calculateBundlePrice` utility — used to fetch accurate preview prices for cards not currently in the cart.
+- `applySlotConditionals` (shared utility at `@/shared/utils/slotConditionals`) — processes `data-next-show`/`data-next-hide` in card templates. Shared with `BundleSelectorEnhancer`.
 - `PackageToggleDisplayEnhancer` — the companion display enhancer that handles `data-next-display="toggle.{packageId}.{property}"` bindings anywhere in the document. It listens to `toggle:selection-changed` and `toggle:price-updated` events emitted by this enhancer and calls `PackageToggleEnhancer.getToggleState()` to read card state. No explicit wiring is required — both enhancers activate from their own `data-next-*` attributes.
 
 ## Conflicts
