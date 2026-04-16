@@ -1,7 +1,7 @@
 # PackageToggleEnhancer
 
 > Category: `cart`
-> Last reviewed: 2026-04-10
+> Last reviewed: 2026-04-16 (voucher recalculation in upsell context)
 > Owner: campaign-cart
 
 A container that lets a user independently add or remove any combination of packages by clicking cards. Each card maps to one package; clicking toggles that package in or out of the cart without affecting any other card's state.
@@ -50,7 +50,7 @@ User clicks card
 - Display slots cover the full card data: package metadata (`packageId`, `name`, `image`, `quantity`, `productId`, `variantId`, `variantName`, `productName`, `sku`), all price fields, boolean visibility fields, and recurring billing fields.
 - In auto-render mode, all card fields (including provisional prices from campaign data) are available as `{toggle.*}` template placeholders. `data-next-toggle-display` slots inside the rendered card still receive live, cart-aware prices after each fetch.
 - Card templates support `data-next-show` and `data-next-hide` for conditional visibility based on template variables (e.g. `data-next-show="hasDiscount"`). These are evaluated locally at render time; store-based conditions are left for the global `ConditionalDisplayEnhancer`.
-- Vouchers applied in the checkout store cause a price recalculation for all cards.
+- Vouchers applied in the checkout store cause a price recalculation for all cards. This applies in both normal and upsell contexts — coupons applied from an exit-intent popup on a post-purchase page trigger a price re-fetch with the updated voucher list.
 - Currency changes trigger a debounced (150 ms) price refetch for all cards.
 - In upsell context, the click handler checks `orderStore.canAddUpsells()` before proceeding. If upsells are not available, it navigates to `data-next-url` (or the meta fallback) instead of throwing an error.
 - After a successful upsell add, the enhancer navigates to `data-next-url` (with a 100 ms delay to allow the event to propagate).

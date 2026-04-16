@@ -25,7 +25,7 @@ export async function fetchAndUpdateBundlePrice(
   try {
     const checkoutVouchers = useCheckoutStore.getState().vouchers;
     const userCoupons = checkoutVouchers.filter(v => !ctx.allBundleVouchers.has(v));
-    const merged = [...new Set([...userCoupons, ...card.vouchers])];
+    const merged = [...new Set([...card.vouchers, ...userCoupons])];
     const vouchers = merged.length ? merged : undefined;
 
     const result = await calculateBundlePrice(items, {

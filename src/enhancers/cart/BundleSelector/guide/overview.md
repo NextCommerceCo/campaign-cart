@@ -1,7 +1,7 @@
 # BundleSelectorEnhancer
 
 > Category: `cart`
-> Last reviewed: 2026-04-09 (shipping-id support added)
+> Last reviewed: 2026-04-16 (voucher recalculation in upsell context)
 > Owner: campaign-cart
 
 A container that lets a developer define named bundles — each bundle being a fixed set of packages and quantities — and lets a visitor pick one. In swap mode, selecting a bundle atomically replaces the previous bundle's cart items while leaving unrelated cart items untouched. Bundle vouchers are applied and removed automatically as the selection changes.
@@ -56,7 +56,8 @@ Visitor changes variant (select or custom option)
 - A `BundleItem` with `noSlot: true` is added to the cart silently without rendering a slot row. Use this for free gifts or add-ons that should not be visible in the slot list.
 - Variant selection within a slot resolves a matching package from the campaign store by matching all attribute values. If no package matches the selected attribute combination, the change is logged as a warning and ignored.
 - Unavailable variant options (package `product_purchase_availability === 'unavailable'`) are marked with `next-variant-unavailable` and `data-next-unavailable="true"` and are not selectable.
-- Price previews are fetched for all cards on init and re-fetched on currency change and on checkout voucher change (both debounced 150ms). During fetch, the card element gets `data-next-loading="true"` and class `next-loading`.
+- Price previews are fetched for all cards on init and re-fetched on currency change and on checkout voucher change (both debounced 150ms). Voucher-triggered re-fetches run in both normal and upsell contexts so that coupons applied from exit-intent popups or other sources are reflected in bundle prices on upsell pages. During fetch, the card element gets `data-next-loading="true"` and class `next-loading`.
+- When merging bundle-managed vouchers with user-applied coupons for a price fetch, bundle vouchers are sent first and user coupons are appended on top. This ordering affects percentage-based discount stacking.
 - Each package state and the bundle price summary store the ISO 4217 currency code used to format their prices. The code is seeded from `campaignStore.currency` on card registration and updated to the currency returned by the price fetch API once the fetch resolves. All price template variables (`{item.price}`, `{item.unitPrice}`, etc.) and bundle display fields (`[data-next-bundle-display]`) are formatted using this stored currency rather than re-reading the store at render time.
 - Slot template price variables (`{item.price}`, `{item.originalPrice}`, `{item.discountAmount}`) are always **per-slot** amounts: `unitPrice × slot.quantity`. They are distinct from the bundle aggregate totals shown via `[data-next-bundle-display]`. The calculate API returns per-unit prices (`package_price`, `original_package_price`); slot prices are derived by multiplying those by the slot's own quantity.
 - Price comparison uses the campaign package `price_retail` as the compare-at value, not the API's compare total, so savings reflects the true retail-to-current-price difference.

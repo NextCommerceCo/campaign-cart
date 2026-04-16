@@ -21,6 +21,8 @@ export async function fetchAndUpdateTogglePrice(
 
   if (upsell) {
     itemsToCalc = [{ packageId: card.packageId, quantity: card.quantity || 1 }];
+    const checkoutVouchers = useCheckoutStore.getState().vouchers;
+    vouchers = checkoutVouchers.length ? checkoutVouchers : undefined;
   } else {
     const cartState = useCartStore.getState();
     if (cartState.items.some(i => i.packageId === card.packageId)) {

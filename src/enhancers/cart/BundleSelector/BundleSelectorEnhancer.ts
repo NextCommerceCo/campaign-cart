@@ -170,29 +170,31 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     } else {
       this.subscribe(useCartStore, this.syncWithCart.bind(this));
       this.syncWithCart(useCartStore.getState());
-
-      // Re-fetch bundle prices whenever user-entered coupons change (debounced).
-      // onVoucherApplied skips the re-fetch when only bundle-managed vouchers changed
-      // (e.g. during a bundle swap), avoiding redundant API calls.
-      let prevCheckoutVouchers = useCheckoutStore.getState().vouchers;
-      this.subscribe(useCheckoutStore, state => {
-        const next = state.vouchers;
-        const prev = prevCheckoutVouchers;
-        const changed =
-          next.length !== prev.length || next.some((v, i) => v !== prev[i]);
-        if (!changed) return;
-
-        prevCheckoutVouchers = next;
-        if (this.voucherChangeTimeout !== null) clearTimeout(this.voucherChangeTimeout);
-        this.voucherChangeTimeout = setTimeout(() => {
-          this.voucherChangeTimeout = null;
-          const allBundleVouchers = this.getAllKnownBundleVouchers();
-          onVoucherApplied(next, prev, this.cards, allBundleVouchers, card =>
-            this.calculateAndRenderPrice(card),
-          );
-        }, 150);
-      });
     }
+
+    // Re-fetch bundle prices whenever user-entered coupons change (debounced).
+    // Runs in both normal and upsell contexts so exit-intent vouchers
+    // trigger a price recalculation on upsell pages too.
+    // onVoucherApplied skips the re-fetch when only bundle-managed vouchers changed
+    // (e.g. during a bundle swap), avoiding redundant API calls.
+    let prevCheckoutVouchers = useCheckoutStore.getState().vouchers;
+    this.subscribe(useCheckoutStore, state => {
+      const next = state.vouchers;
+      const prev = prevCheckoutVouchers;
+      const changed =
+        next.length !== prev.length || next.some((v, i) => v !== prev[i]);
+      if (!changed) return;
+
+      prevCheckoutVouchers = next;
+      if (this.voucherChangeTimeout !== null) clearTimeout(this.voucherChangeTimeout);
+      this.voucherChangeTimeout = setTimeout(() => {
+        this.voucherChangeTimeout = null;
+        const allBundleVouchers = this.getAllKnownBundleVouchers();
+        onVoucherApplied(next, prev, this.cards, allBundleVouchers, card =>
+          this.calculateAndRenderPrice(card),
+        );
+      }, 150);
+    });
 
     // Re-fetch prices when the active currency changes (debounced)
     this.boundCurrencyChangeHandler = () => {

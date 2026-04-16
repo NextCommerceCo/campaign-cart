@@ -207,21 +207,24 @@ export class PackageToggleEnhancer extends BaseEnhancer {
     if (!this.isUpsellContext) {
       this.subscribe(useCartStore, this.syncWithCart.bind(this));
       this.syncWithCart(useCartStore.getState());
-
-      let prevVouchers = useCheckoutStore.getState().vouchers;
-      this.subscribe(useCheckoutStore, state => {
-        const next = state.vouchers;
-        if (
-          next.length !== prevVouchers.length ||
-          next.some((v, i) => v !== prevVouchers[i])
-        ) {
-          prevVouchers = next;
-          for (const card of this.cards) {
-            void fetchAndUpdateTogglePrice(card, this.includeShipping, this.logger);
-          }
-        }
-      });
     }
+
+    // Re-fetch prices whenever user-entered coupons change.
+    // Runs in both normal and upsell contexts so exit-intent vouchers
+    // trigger a price recalculation on upsell pages too.
+    let prevVouchers = useCheckoutStore.getState().vouchers;
+    this.subscribe(useCheckoutStore, state => {
+      const next = state.vouchers;
+      if (
+        next.length !== prevVouchers.length ||
+        next.some((v, i) => v !== prevVouchers[i])
+      ) {
+        prevVouchers = next;
+        for (const card of this.cards) {
+          void fetchAndUpdateTogglePrice(card, this.includeShipping, this.logger, this.isUpsellContext);
+        }
+      }
+    });
 
     this.boundCurrencyChangeHandler = () => {
       if (this.currencyChangeTimeout !== null) clearTimeout(this.currencyChangeTimeout);
