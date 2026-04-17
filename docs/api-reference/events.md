@@ -116,12 +116,33 @@ next.on('checkout:form-initialized', () => {
 
 ### order:completed
 
-Fired when order is successfully completed:
+Fired when the order has been successfully created (before redirect):
 
 ```javascript
 next.on('order:completed', (order) => {
   console.log('Order completed:', order);
   // order includes: ref_id, total, lines, customer info
+});
+```
+
+**After this event fires**, the SDK performs the following in `handleOrderRedirect()` before navigating to the success URL:
+
+1. Resolves the redirect URL from `order.payment_complete_url`, the `os-next-page` meta tag, `order.order_status_url`, or a confirmation-URL fallback.
+2. **Resets `cartStore` and `checkoutStore`** — items, vouchers, shipping method, totals, form data, billing address, and payment token are cleared. Zustand’s `persist` middleware flushes the cleared state to `sessionStorage` synchronously.
+3. Assigns `window.location.href` to navigate to the resolved URL.
+
+If you need to read cart or voucher data (for analytics, custom cleanup, etc.), do it inside the `order:completed` handler — the stores are reset on the next microtask.
+
+### order:redirect-missing
+
+Fired when the order was created successfully but no redirect URL could be resolved:
+
+```javascript
+next.on('order:redirect-missing', ({ order }) => {
+  // Custom redirect logic — cartStore and checkoutStore are NOT reset in this branch
+  // so the merchant can retry or recover. Reset manually after your own redirect:
+  // next.clearCart();
+  window.location.href = `/thank-you?ref_id=`;
 });
 ```
 

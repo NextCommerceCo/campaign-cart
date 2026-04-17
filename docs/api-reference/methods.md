@@ -119,6 +119,8 @@ await next.clearCart();
 
 **Returns:** `Promise<void>`
 
+> Note: after a successful checkout, the SDK automatically resets both `cartStore` and `checkoutStore` (items, vouchers, shipping method, form data, payment token, billing address) before redirecting to the success URL. You only need to call `clearCart()` manually for custom flows — for example, inside an `order:redirect-missing` handler where the automatic reset is skipped so you can recover.
+
 ### hasItemInCart
 
 Checks if an item is in the cart. **Requires an options object.**

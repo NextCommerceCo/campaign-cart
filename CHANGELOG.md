@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.17] — 2026-04-17 — Reset Cart & Vouchers After Checkout
+
+### Fixed
+
+- **Cart and vouchers not cleared after a successful order** — the cart and any applied coupons stayed in `sessionStorage` after checkout, so reloading the confirmation page or returning to a cart-displaying page showed the old order. Both are now cleared right before the post-checkout redirect.
+
+---
+
 ## [0.4.16] — 2026-04-16 — Voucher Price Fix
 
 ### Fixed

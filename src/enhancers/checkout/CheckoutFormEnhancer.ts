@@ -2091,6 +2091,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     if (redirectUrl) {
       const finalUrl = this.preserveQueryParams(redirectUrl);
+      // Clear cart items, vouchers, and checkout form state before navigating
+      // away from the checkout. Zustand's persist middleware writes to
+      // sessionStorage synchronously so the next page loads with a fresh cart.
+      useCartStore.getState().reset();
+      useCheckoutStore.getState().reset();
       // Keep the loading state active during redirect
       // The browser will handle clearing it when the page unloads
       window.location.href = finalUrl;
