@@ -1,14 +1,14 @@
 # Changelog
 
-## [0.4.16] — 2026-04-16 — Voucher Recalculation in Upsell Context & Voucher Ordering Fix
+## [0.4.16] — 2026-04-16 — Voucher Price Fix
 
 ### Fixed
 
-- **Bundle and toggle prices not recalculating when a voucher is applied from exit-intent popup on upsell pages** — both `BundleSelectorEnhancer` and `PackageToggleEnhancer` subscribed to checkout store voucher changes only in the normal (non-upsell) code path. Voucher changes are now detected and trigger a price re-fetch in both normal and upsell contexts.
+- **Exit popup voucher not updating prices** — applying a voucher from exit-intent popup did not recalculate bundle or toggle card prices. Now works on both checkout and upsell pages.
 
-- **Toggle price fetch ignoring vouchers in upsell context** — `fetchAndUpdateTogglePrice` never read checkout vouchers when called with `upsell=true`, so the API always calculated prices without any applied coupons. The upsell path now reads and passes vouchers to the price calculation API.
+- **Voucher ordering in bundles** — user-applied coupons (e.g. from exit popup) were sent before bundle vouchers to the API. Reordered so bundle vouchers apply first and user coupons stack on top, fixing incorrect discount percentages.
 
-- **Bundle voucher ordering** — user-applied coupons (e.g. from exit-intent popup) were merged before bundle-managed vouchers in the API request. Reordered so bundle vouchers are sent first and user coupons are applied on top, preserving correct discount percentage stacking.
+---
 
 ## [0.4.15] — 2026-04-10 — PackageToggle Sync Re-entrancy Guard & Fresh State Reads
 
