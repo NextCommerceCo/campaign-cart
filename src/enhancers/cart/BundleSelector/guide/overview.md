@@ -63,6 +63,9 @@ Visitor changes variant (select or custom option)
 - Price comparison uses the campaign package `price_retail` as the compare-at value, not the API's compare total, so savings reflects the true retail-to-current-price difference.
 - If a cart write fails (network error or API rejection), the enhancer reverts the visual selection to match the actual cart state.
 - Dynamic cards added to the DOM after init are registered automatically via a mutation observer.
+- A bundle card carries a `bundleQuantity` multiplier (default 1). Inline stepper controls (`data-next-quantity-increase` / `-decrease` / `-display`) bump it into the range `[minQuantity, maxQuantity]`. The multiplier is applied inside `getEffectiveItems`, so every effective item sent to the cart or to the `/calculate` API is `slot.quantity × bundleQuantity`. Slot rendering is unaffected — a `configurable: true, quantity: 1` item with `bundleQuantity: 5` still renders one variant-picker slot and adds five units of the chosen variant to the cart.
+- Bundle-quantity changes write through to the cart in swap mode (only when the card is currently selected) and emit `bundle:quantity-changed` in every mode. The price refetch is debounced 150ms; `bundle:selection-changed` fires alongside so `AddToCartEnhancer` and display bindings refresh immediately.
+- Variant changes never reset `bundleQuantity` — the user-chosen multiplier survives a color/size swap on the same bundle.
 
 ## Decisions
 
@@ -71,6 +74,7 @@ Visitor changes variant (select or custom option)
 - We chose to revert visual state on cart write failure so the UI always reflects the actual cart, preventing a mismatch where the card appears selected but its items are not in the cart.
 - We chose `configurable` as a per-item opt-in rather than auto-expanding all multi-quantity items, because most bundles with qty > 1 want a single slot (e.g., "6 bottles of the same product"), and expanding them all into individual slots would require template changes most implementations don't need.
 - We chose to debounce currency and voucher re-fetches by 150ms to avoid one price API call per card per rapid change event.
+- We chose `bundleQuantity` as a multiplier applied inside `getEffectiveItems` rather than a second axis of slot expansion, because the two intents are orthogonal: per-unit variant picking already has `items[].quantity > 1 + configurable: true`, and a PDP-style "pick one color, buy N" only needs one variant slot + a multiplier. Folding the multiplier into `getEffectiveItems` means every downstream consumer (cart write, price fetch, `_getSelectedBundleItems()`, event payloads, `syncWithCart`) is correct with zero per-site-specific code.
 
 ## Limitations
 

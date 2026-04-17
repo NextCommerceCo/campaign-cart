@@ -62,3 +62,30 @@
   "selectorId": "upsellBundleMV"
 }
 ```
+
+---
+
+## `bundle:quantity-changed`
+
+**When:** The visitor changes a bundle's `bundleQuantity` via the inline stepper (`data-next-quantity-increase` / `data-next-quantity-decrease`). Fires after the new value has been committed to the card state but *before* the debounced price refetch starts; in swap mode also fires before the cart write begins. `bundle:selection-changed` is emitted immediately after so downstream listeners (e.g. `AddToCartEnhancer`, `BundleDisplayEnhancer`) pick up the new effective items.
+
+**Payload:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `selectorId` | `string` | ID of the bundle selector whose quantity changed, matching `data-next-selector-id` |
+| `bundleId` | `string` | ID of the bundle card whose quantity changed, matching `data-next-bundle-id` |
+| `quantity` | `number` | New `bundleQuantity` on the card |
+| `items` | `BundleItem[]` | Effective items after the multiplier — the same shape the cart write / `_getSelectedBundleItems()` will use |
+
+**Example:**
+```json
+{
+  "selectorId": "main",
+  "bundleId": "tshirt",
+  "quantity": 3,
+  "items": [
+    { "packageId": 101, "quantity": 3 }
+  ]
+}
+```

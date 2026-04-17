@@ -35,6 +35,7 @@ import {
 } from './BundleSelectorEnhancer.renderer';
 import {
   applyBundle,
+  applyBundleQuantityChange,
   applyVoucherSwap,
   handleCardClick,
   handleSelectVariantChange,
@@ -44,6 +45,7 @@ import {
 } from './BundleSelectorEnhancer.handlers';
 import { fetchAndUpdateBundlePrice } from './BundleSelectorEnhancer.price';
 import { getEffectiveItems, makePackageState, parseVouchers } from './BundleSelectorEnhancer.state';
+import { setupQuantityControls } from '@/enhancers/cart/shared/quantityControls';
 
 export class BundleSelectorEnhancer extends BaseEnhancer {
   private static readonly _instances = new Set<BundleSelectorEnhancer>();
@@ -59,6 +61,9 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
   private selectedCard: BundleCard | null = null;
   private clickHandlers = new Map<HTMLElement, (e: Event) => void>();
   private selectHandlers = new Map<HTMLSelectElement, EventListener>();
+  private quantityHandlers = new Map<HTMLElement, (e: Event) => void>();
+  /** Map card → its stepper display-refresh callback (returned by setupQuantityControls). */
+  private quantityRefreshers = new Map<HTMLElement, () => void>();
   private mutationObserver: MutationObserver | null = null;
   private boundVariantOptionClick: ((e: Event) => void) | null = null;
   private boundCurrencyChangeHandler: (() => void) | null = null;
@@ -298,6 +303,18 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     const vouchers = parseVouchers(el.getAttribute('data-next-bundle-vouchers'), this.logger);
     const shippingId = el.getAttribute('data-next-shipping-id') ?? undefined;
 
+    // Bundle-level quantity. Defaults preserve today's behavior when the
+    // new attrs are absent: multiplier = 1, stepper stays disabled because
+    // no stepper controls exist in the DOM.
+    const parsePositiveInt = (attr: string | null, fallback: number): number => {
+      const n = attr != null ? parseInt(attr, 10) : NaN;
+      return Number.isFinite(n) && n > 0 ? n : fallback;
+    };
+    const minQuantity = parsePositiveInt(el.getAttribute('data-next-min-quantity'), 1);
+    const maxQuantity = parsePositiveInt(el.getAttribute('data-next-max-quantity'), 999);
+    const initialQty = parsePositiveInt(el.getAttribute('data-next-quantity'), 1);
+    const bundleQuantity = Math.min(Math.max(initialQty, minQuantity), maxQuantity);
+
     const slots: BundleSlot[] = [];
     let slotIdx = 0;
     for (const item of items) {
@@ -365,6 +382,10 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
       slotVarsCache: new Map(),
       offerDiscounts: [],
       voucherDiscounts: [],
+      bundleQuantity,
+      minQuantity,
+      maxQuantity,
+      qtyDebounceTimeout: null,
     };
     this.cards.push(card);
     el.classList.add(this.classNames.bundleCard);
@@ -375,11 +396,47 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
 
     const handler = (e: Event) => {
       const target = e.target as HTMLElement;
-      if (target.closest('select, [data-next-variant-option]')) return;
+      if (
+        target.closest(
+          'select, [data-next-variant-option], [data-next-quantity-increase], [data-next-quantity-decrease], [data-next-quantity-display]',
+        )
+      ) {
+        return;
+      }
       void handleCardClick(e, card, this.selectedCard, this.makeHandlerContext());
     };
     this.clickHandlers.set(el, handler);
     el.addEventListener('click', handler);
+
+    // Wire inline bundle-quantity controls. Host lookup covers three locations:
+    // the card element itself, the external slots container (for pages that
+    // render slots outside the selector), and any element marked
+    // `[data-next-bundle-qty-for="{selectorId}"]` (for steppers sitting
+    // entirely outside both — e.g. a product-detail page where the selector
+    // is hidden and the stepper lives next to an Add-to-Cart button).
+    const hostEls: HTMLElement[] = [el];
+    if (this.externalSlotsEl) hostEls.push(this.externalSlotsEl);
+    if (this.selectorId) {
+      document
+        .querySelectorAll<HTMLElement>(`[data-next-bundle-qty-for="${this.selectorId}"]`)
+        .forEach(host => {
+          if (!hostEls.includes(host)) hostEls.push(host);
+        });
+    }
+    const refresh = setupQuantityControls({
+      hostEls,
+      getQty: () => card.bundleQuantity,
+      setQty: n => {
+        card.bundleQuantity = n;
+      },
+      min: minQuantity,
+      max: maxQuantity,
+      onChange: () => {
+        void applyBundleQuantityChange(card, this.makeHandlerContext());
+      },
+      handlers: this.quantityHandlers,
+    });
+    this.quantityRefreshers.set(el, refresh);
 
     this.logger.debug(`Registered bundle card "${bundleId}"`, { itemCount: items.length });
   }
@@ -615,6 +672,15 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     this.clickHandlers.clear();
     this.selectHandlers.forEach((h, sel) => sel.removeEventListener('change', h));
     this.selectHandlers.clear();
+    this.quantityHandlers.forEach((h, el) => el.removeEventListener('click', h));
+    this.quantityHandlers.clear();
+    this.quantityRefreshers.clear();
+    for (const card of this.cards) {
+      if (card.qtyDebounceTimeout !== null) {
+        clearTimeout(card.qtyDebounceTimeout);
+        card.qtyDebounceTimeout = null;
+      }
+    }
     if (this.boundVariantOptionClick) {
       this.element.removeEventListener('click', this.boundVariantOptionClick);
       this.externalSlotsEl?.removeEventListener('click', this.boundVariantOptionClick);

@@ -1,10 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   handleCardClick,
   applyVoucherSwap,
   onVoucherApplied,
   applyVariantChange,
   applyEffectiveChange,
+  applyBundleQuantityChange,
   handleSelectVariantChange,
 } from '../BundleSelectorEnhancer.handlers';
 import type { BundleCard, BundleSlot, HandlerContext } from '../BundleSelectorEnhancer.types';
@@ -711,5 +712,191 @@ describe('handleSelectVariantChange', () => {
 
     // Should match the package with size=L and color=blue
     expect(card.slots[0].variantSelected).toBe(true);
+  });
+});
+
+// ─── applyBundleQuantityChange ────────────────────────────────────────────────
+
+describe('applyBundleQuantityChange', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function makeQtyCard(bundleQuantity: number): BundleCard {
+    return makeCard('bundle-a', {
+      slots: [makeSlot({ activePackageId: 1, quantity: 1 })],
+      bundleQuantity,
+      minQuantity: 1,
+      maxQuantity: 10,
+      qtyDebounceTimeout: null,
+    } as Partial<BundleCard>);
+  }
+
+  it('in swap mode, when card is selected, writes multiplied items to cart', async () => {
+    const card = makeQtyCard(4);
+    const swapCart = vi.fn();
+    (useCartStore.getState as any).mockReturnValue({ items: [], swapCart });
+    const ctx = makeCtx({
+      mode: 'swap',
+      getSelectedCard: vi.fn(() => card),
+    });
+
+    await applyBundleQuantityChange(card, ctx);
+
+    expect(swapCart).toHaveBeenCalledWith([
+      { packageId: 1, quantity: 4, isUpsell: undefined, selectorId: 'sel-1' },
+    ]);
+  });
+
+  it('in swap mode, when card is NOT selected, does not write to cart', async () => {
+    const card = makeQtyCard(3);
+    const otherCard = makeCard('other');
+    const swapCart = vi.fn();
+    (useCartStore.getState as any).mockReturnValue({ items: [], swapCart });
+    const ctx = makeCtx({
+      mode: 'swap',
+      getSelectedCard: vi.fn(() => otherCard),
+    });
+
+    await applyBundleQuantityChange(card, ctx);
+
+    expect(swapCart).not.toHaveBeenCalled();
+  });
+
+  it('in select mode, never writes to cart', async () => {
+    const card = makeQtyCard(2);
+    const swapCart = vi.fn();
+    (useCartStore.getState as any).mockReturnValue({ items: [], swapCart });
+    const ctx = makeCtx({
+      mode: 'select',
+      getSelectedCard: vi.fn(() => card),
+    });
+
+    await applyBundleQuantityChange(card, ctx);
+
+    expect(swapCart).not.toHaveBeenCalled();
+  });
+
+  it('in upsell context, never writes to cart even in swap mode', async () => {
+    const card = makeQtyCard(2);
+    const swapCart = vi.fn();
+    (useCartStore.getState as any).mockReturnValue({ items: [], swapCart });
+    const ctx = makeCtx({
+      mode: 'swap',
+      isUpsellContext: true,
+      getSelectedCard: vi.fn(() => card),
+    });
+
+    await applyBundleQuantityChange(card, ctx);
+
+    expect(swapCart).not.toHaveBeenCalled();
+  });
+
+  it('emits bundle:quantity-changed with the post-multiplier items', async () => {
+    const card = makeQtyCard(3);
+    (useCartStore.getState as any).mockReturnValue({ items: [], swapCart: vi.fn() });
+    const ctx = makeCtx({
+      mode: 'select',
+      getSelectedCard: vi.fn(() => card),
+    });
+
+    await applyBundleQuantityChange(card, ctx);
+
+    expect(ctx.emit).toHaveBeenCalledWith('bundle:quantity-changed', {
+      selectorId: 'sel-1',
+      bundleId: 'bundle-a',
+      quantity: 3,
+      items: [{ packageId: 1, quantity: 3 }],
+    });
+  });
+
+  it('emits bundle:selection-changed so AddToCart/displays refresh', async () => {
+    const card = makeQtyCard(5);
+    (useCartStore.getState as any).mockReturnValue({ items: [], swapCart: vi.fn() });
+    const ctx = makeCtx({
+      mode: 'select',
+      getSelectedCard: vi.fn(() => card),
+    });
+
+    await applyBundleQuantityChange(card, ctx);
+
+    expect(ctx.emit).toHaveBeenCalledWith('bundle:selection-changed', {
+      selectorId: 'sel-1',
+      items: [{ packageId: 1, quantity: 5 }],
+    });
+  });
+
+  it('schedules a debounced price refetch and coalesces rapid clicks', async () => {
+    const card = makeQtyCard(1);
+    (useCartStore.getState as any).mockReturnValue({ items: [], swapCart: vi.fn() });
+    const ctx = makeCtx({
+      mode: 'select',
+      getSelectedCard: vi.fn(() => card),
+    });
+
+    // Three rapid quantity changes
+    card.bundleQuantity = 2;
+    await applyBundleQuantityChange(card, ctx);
+    card.bundleQuantity = 3;
+    await applyBundleQuantityChange(card, ctx);
+    card.bundleQuantity = 4;
+    await applyBundleQuantityChange(card, ctx);
+
+    // Not fired yet — debounce is pending
+    expect(ctx.fetchAndUpdateBundlePrice).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(150);
+
+    // Exactly one price refetch for the settled value
+    expect(ctx.fetchAndUpdateBundlePrice).toHaveBeenCalledTimes(1);
+    expect(ctx.fetchAndUpdateBundlePrice).toHaveBeenCalledWith(card);
+  });
+
+  it('preserves bundleQuantity across a variant change', async () => {
+    // Setup: a configurable slot where the variant swap should keep qty=5
+    const campaignPkg1 = {
+      ref_id: 101,
+      product_id: 7,
+      product_variant_attribute_values: [
+        { code: 'color', name: 'Color', value: 'red' },
+      ],
+    };
+    const campaignPkg2 = {
+      ref_id: 102,
+      product_id: 7,
+      product_variant_attribute_values: [
+        { code: 'color', name: 'Color', value: 'blue' },
+      ],
+    };
+    (useCampaignStore.getState as any).mockReturnValue({
+      packages: [campaignPkg1, campaignPkg2],
+      currency: 'USD',
+    });
+    (useCartStore.getState as any).mockReturnValue({ items: [], swapCart: vi.fn() });
+
+    const card = makeCard('bundle-a', {
+      slots: [
+        makeSlot({ activePackageId: 101, quantity: 1, configurable: true }),
+      ],
+      bundleQuantity: 5,
+      minQuantity: 1,
+      maxQuantity: 10,
+      qtyDebounceTimeout: null,
+    } as Partial<BundleCard>);
+
+    const ctx = makeCtx({ mode: 'swap', getSelectedCard: vi.fn(() => card) });
+
+    await applyVariantChange(card, 0, { color: 'blue' }, ctx);
+
+    // The bundle qty multiplier is untouched — the emitted items carry qty=5
+    expect(card.bundleQuantity).toBe(5);
+    expect(ctx.emit).toHaveBeenCalledWith('bundle:selection-changed', {
+      selectorId: 'sel-1',
+      items: [{ packageId: 102, quantity: 5 }],
+    });
   });
 });

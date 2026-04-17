@@ -177,6 +177,12 @@ export interface EventMap {
     selectorId: string;
     items: { packageId: number; quantity: number }[];
   };
+  'bundle:quantity-changed': {
+    selectorId: string;
+    bundleId: string;
+    quantity: number;
+    items: { packageId: number; quantity: number }[];
+  };
   'bundle:price-updated': { selectorId: string };
   'selector:price-updated': { selectorId: string; packageId: number };
   'toggle:price-updated': { packageId: number };

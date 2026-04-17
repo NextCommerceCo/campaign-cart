@@ -79,9 +79,13 @@ export async function fetchAndUpdateBundlePrice(
     // result fields are Decimal instances from a live fetch, but plain
     // numbers/strings when rehydrated from the sessionStorage cache — use
     // parseFloat(String()) to handle both cases safely.
-    const totalQuantity = card.slots
-      .filter(s => !s.noSlot)
-      .reduce((sum, s) => sum + s.quantity, 0);
+    // Multiply by bundleQuantity so unitPrice = total / (slot units × multiplier)
+    // reflects the real per-unit price at the current bundle qty.
+    const multiplier = card.bundleQuantity > 0 ? card.bundleQuantity : 1;
+    const totalQuantity =
+      card.slots
+        .filter(s => !s.noSlot)
+        .reduce((sum, s) => sum + s.quantity, 0) * multiplier;
     const price = new Decimal(result.total);
     const originalPrice = new Decimal(result.subtotal);
     const discountAmount = new Decimal(result.totalDiscount);

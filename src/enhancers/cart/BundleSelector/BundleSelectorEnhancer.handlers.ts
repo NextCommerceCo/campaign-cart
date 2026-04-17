@@ -350,6 +350,56 @@ export async function handleSelectVariantChange(
   await applyVariantChange(card, slotIndex, selectedAttrs, ctx);
 }
 
+// ─── Bundle quantity change ───────────────────────────────────────────────────
+
+/**
+ * Called by the shared inline-stepper util when the user changes the bundle
+ * quantity. Writes through to cart in swap mode (only when this card is
+ * currently selected), emits `bundle:quantity-changed`, and schedules a
+ * debounced price refetch.
+ *
+ * Rapid clicks are handled three ways simultaneously:
+ *   - `isApplyingRef` serializes overlapping cart writes in applyEffectiveChange
+ *   - 150ms debounce coalesces price refetches
+ *   - the stale-items guard inside fetchAndUpdateBundlePrice drops
+ *     out-of-order results by comparing getEffectiveItems() post-await
+ */
+export async function applyBundleQuantityChange(
+  card: BundleCard,
+  ctx: HandlerContext,
+): Promise<void> {
+  const effectiveItems = getEffectiveItems(card);
+
+  ctx.emit('bundle:quantity-changed', {
+    selectorId: ctx.selectorId ?? '',
+    bundleId: card.bundleId,
+    quantity: card.bundleQuantity,
+    items: effectiveItems,
+  });
+  ctx.emit('bundle:selection-changed', {
+    selectorId: ctx.selectorId ?? '',
+    items: effectiveItems,
+  });
+
+  // Cart sync only when in swap mode and this card is the currently selected one.
+  // Upsell context never writes to cart.
+  if (ctx.mode === 'swap' && !ctx.isUpsellContext && ctx.getSelectedCard() === card) {
+    await applyEffectiveChange(card, ctx);
+  }
+
+  // Debounced price refetch — each rapid click resets the timer so we only
+  // hit /calculate once the user settles on a value.
+  if (card.qtyDebounceTimeout !== null) clearTimeout(card.qtyDebounceTimeout);
+  card.qtyDebounceTimeout = setTimeout(() => {
+    card.qtyDebounceTimeout = null;
+    void ctx.fetchAndUpdateBundlePrice(card);
+  }, 150);
+
+  ctx.logger.debug(`Bundle quantity changed for "${card.bundleId}"`, {
+    quantity: card.bundleQuantity,
+  });
+}
+
 // ─── Shipping method ──────────────────────────────────────────────────────────
 
 export async function setShippingMethod(

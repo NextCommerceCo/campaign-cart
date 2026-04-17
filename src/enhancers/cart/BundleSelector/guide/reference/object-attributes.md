@@ -24,6 +24,9 @@ The shape of each object in the `data-next-bundles` JSON array. Used for auto-re
 | `selected` | `boolean` | yes | When `true`, pre-selects this card on init. Equivalent to `data-next-selected="true"` on the rendered element. Only the first selected bundle wins |
 | `vouchers` | `string[]` | yes | Coupon codes to apply when this bundle is selected. Omit if no vouchers |
 | `shippingId` | `string` | yes | Shipping method `ref_id` to auto-apply when this bundle is selected. Sets `data-next-shipping-id` on the rendered card |
+| `quantity` | `number` | yes | Initial bundle-level quantity multiplier. Defaults to 1. Mirrored to `data-next-quantity` on the rendered card |
+| `minQuantity` | `number` | yes | Minimum `bundleQuantity` the inline stepper allows. Defaults to 1 |
+| `maxQuantity` | `number` | yes | Maximum `bundleQuantity` the inline stepper allows. Defaults to 999 |
 | `[key]` | `unknown` | yes | Any additional fields are available as `{bundle.key}` template variables in the card template |
 
 ---
@@ -111,4 +114,19 @@ Variables available inside the bundle card template (`data-next-bundle-template-
 | `bundle.id` | `string` | Bundle ID |
 | `bundle.itemCount` | `string` | Number of distinct visible items (excludes `noSlot` items) |
 | `bundle.totalQuantity` | `string` | Sum of all visible item quantities — excludes `noSlot` items |
+| `bundle.quantity` | `string` | Initial `bundleQuantity` multiplier, when set on the bundle def |
+| `bundle.minQuantity` | `string` | Minimum allowed `bundleQuantity`, when set on the bundle def |
+| `bundle.maxQuantity` | `string` | Maximum allowed `bundleQuantity`, when set on the bundle def |
 | `bundle.{key}` | `string` | Any additional field declared in the bundle definition object |
+
+---
+
+## Runtime card state (read-only)
+
+Fields on the internal `BundleCard` that consumers can inspect via `bundle:*` events or — for the currently selected card — via `element._getSelectedBundleItems()`. Not HTML-settable.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `bundleQuantity` | `number` | Current multiplier. Equals the last-set value of `data-next-quantity`, clamped into `[minQuantity, maxQuantity]` |
+| `minQuantity` | `number` | Resolved minimum, from `data-next-min-quantity` / `BundleDef.minQuantity` / default `1` |
+| `maxQuantity` | `number` | Resolved maximum, from `data-next-max-quantity` / `BundleDef.maxQuantity` / default `999` |

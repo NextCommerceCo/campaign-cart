@@ -236,6 +236,69 @@ describe('getEffectiveItems', () => {
     expect(items).toHaveLength(1);
     expect(items[0]).toEqual({ packageId: 7, quantity: 3 });
   });
+
+  // ─── Bundle-level quantity multiplier ───────────────────────────────────────
+
+  it('applies bundleQuantity multiplier to a single slot', () => {
+    const card = makeCard([makeSlot({ activePackageId: 5, quantity: 1 })]);
+    (card as any).bundleQuantity = 4;
+
+    const items = getEffectiveItems(card);
+
+    expect(items).toEqual([{ packageId: 5, quantity: 4 }]);
+  });
+
+  it('multiplies bundleQuantity after slot aggregation (configurable slots share packageId)', () => {
+    const card = makeCard([
+      makeSlot({ slotIndex: 0, activePackageId: 9, quantity: 1, configurable: true }),
+      makeSlot({ slotIndex: 1, activePackageId: 9, quantity: 1, configurable: true }),
+    ]);
+    (card as any).bundleQuantity = 3;
+
+    const items = getEffectiveItems(card);
+
+    // Per-slot aggregation collapses to {9,2}; multiplier then gives {9,6}.
+    expect(items).toEqual([{ packageId: 9, quantity: 6 }]);
+  });
+
+  it('multiplies bundleQuantity across a mixed bundle', () => {
+    const card = makeCard([
+      makeSlot({ slotIndex: 0, activePackageId: 1, quantity: 1 }),
+      makeSlot({ slotIndex: 1, activePackageId: 2, quantity: 2 }),
+    ]);
+    (card as any).bundleQuantity = 5;
+
+    const items = getEffectiveItems(card);
+
+    expect(items).toEqual([
+      { packageId: 1, quantity: 5 },
+      { packageId: 2, quantity: 10 },
+    ]);
+  });
+
+  it('is an identity when bundleQuantity is 1 (regression)', () => {
+    const card = makeCard([
+      makeSlot({ slotIndex: 0, activePackageId: 1, quantity: 2 }),
+      makeSlot({ slotIndex: 1, activePackageId: 2, quantity: 1 }),
+    ]);
+    (card as any).bundleQuantity = 1;
+
+    const items = getEffectiveItems(card);
+
+    expect(items).toEqual([
+      { packageId: 1, quantity: 2 },
+      { packageId: 2, quantity: 1 },
+    ]);
+  });
+
+  it('falls back to multiplier=1 when bundleQuantity is undefined/0 (safety net)', () => {
+    const card = makeCard([makeSlot({ activePackageId: 4, quantity: 2 })]);
+    // Not setting bundleQuantity at all — simulates older code paths.
+
+    const items = getEffectiveItems(card);
+
+    expect(items).toEqual([{ packageId: 4, quantity: 2 }]);
+  });
 });
 
 // ─── parseVouchers ────────────────────────────────────────────────────────────

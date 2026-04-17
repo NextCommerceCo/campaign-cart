@@ -54,9 +54,15 @@ Operating mode set via `data-next-selection-mode="select"`. The enhancer tracks 
 
 ---
 
+## Bundle quantity
+
+The runtime multiplier for an entire bundle, separate from per-item `quantity`. Adjustable at runtime via the inline stepper (`data-next-quantity-increase` / `-decrease`). A single-variant t-shirt bundle with `items: [{packageId:1,quantity:1,configurable:true}]` and `bundleQuantity: 5` renders one color-and-size picker and adds five units of the chosen variant to the cart. Contrast with per-item `quantity`, which drives slot expansion.
+
+---
+
 ## Effective items
 
-The actual set of packages and quantities the bundle will add to the cart after accounting for any variant overrides. If a visitor changes a slot's variant, the `activePackageId` for that slot changes; effective items reflects those changes, not the original bundle definition.
+The actual set of packages and quantities the bundle will add to the cart after accounting for any variant overrides **and** the `bundleQuantity` multiplier. If a visitor changes a slot's variant, the `activePackageId` for that slot changes; effective items reflects those changes, not the original bundle definition. Effective-item quantities are always `slot.quantity × bundleQuantity`.
 
 ---
 

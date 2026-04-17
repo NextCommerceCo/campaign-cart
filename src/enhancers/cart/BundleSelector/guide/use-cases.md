@@ -36,6 +36,18 @@
 
 ---
 
+## Single-product PDP with variants and adjustable quantity
+
+> Effort: moderate
+
+**When:** A classic product-detail page: one product, the visitor picks one variant (color + size), chooses a quantity with a `− / qty / +` stepper, and sees the real price (including any volume-tier offer discount) update live before clicking Add-to-Cart. Works in both `swap` and `select` modes.
+
+**Why this enhancer:** Define a single bundle with one `configurable: true` item at `quantity: 1`. Add `data-next-min-quantity`, `data-next-max-quantity`, and `data-next-quantity-increase` / `-decrease` / `-display` elements — the enhancer multiplies the bundle by the stepper value inside `getEffectiveItems`, refetches the bundle price on each change, and (in swap mode) keeps the cart in sync. In select mode, `_getSelectedBundleItems()` already carries the multiplied quantity so `AddToCartEnhancer` writes the right amount without any extra wiring.
+
+**Watch out for:** Hide the selector container itself (`hidden`) if you only have one bundle — the shopper only sees the stepper + variant pills + CTA. If the stepper lives outside both the card and the external slots container, mark its wrapper with `data-next-bundle-qty-for="{selectorId}"`.
+
+---
+
 ## Bundles with auto-applied discount vouchers
 
 > Effort: lightweight

@@ -1,6 +1,7 @@
 import { useCartStore } from '@/stores/cartStore';
 import type { SelectorItem } from '@/types/global';
 import type { SelectorHandlerContext } from './PackageSelectorEnhancer.types';
+import { setupQuantityControls as setupSharedQuantityControls } from '@/enhancers/cart/shared/quantityControls';
 
 export function selectItem(item: SelectorItem, ctx: SelectorHandlerContext): void {
   for (const i of ctx.items) {
@@ -111,63 +112,33 @@ export async function handleQuantityChange(
   }
 }
 
+/**
+ * Wire inline per-card quantity controls onto a SelectorItem.
+ * Thin wrapper around the shared stepper util; attribute naming
+ * (`data-next-quantity-increase` / `-decrease` / `-display`,
+ * `data-next-min-quantity` / `-max-quantity`) stays identical to the
+ * pre-refactor behavior.
+ */
 export function setupQuantityControls(
   item: SelectorItem,
   ctx: SelectorHandlerContext,
   quantityHandlers: Map<HTMLElement, (e: Event) => void>,
 ): void {
   const el = item.element;
-  const increaseBtn = el.querySelector<HTMLElement>('[data-next-quantity-increase]');
-  const decreaseBtn = el.querySelector<HTMLElement>('[data-next-quantity-decrease]');
-  const displayEl = el.querySelector<HTMLElement>('[data-next-quantity-display]');
-
-  if (!increaseBtn && !decreaseBtn) return;
-
   const min = parseInt(el.getAttribute('data-next-min-quantity') ?? '1', 10);
   const max = parseInt(el.getAttribute('data-next-max-quantity') ?? '999', 10);
 
-  const updateDisplay = () => {
-    if (displayEl) displayEl.textContent = String(item.quantity);
-    el.setAttribute('data-next-quantity', String(item.quantity));
-    if (decreaseBtn) {
-      const atMin = item.quantity <= min;
-      decreaseBtn.toggleAttribute('disabled', atMin);
-      decreaseBtn.classList.toggle('next-disabled', atMin);
-    }
-    if (increaseBtn) {
-      const atMax = item.quantity >= max;
-      increaseBtn.toggleAttribute('disabled', atMax);
-      increaseBtn.classList.toggle('next-disabled', atMax);
-    }
-  };
-
-  if (increaseBtn) {
-    const h = (e: Event) => {
-      e.stopPropagation();
-      e.preventDefault();
-      if (item.quantity < max) {
-        item.quantity++;
-        updateDisplay();
-        void handleQuantityChange(item, ctx);
-      }
-    };
-    quantityHandlers.set(increaseBtn, h);
-    increaseBtn.addEventListener('click', h);
-  }
-
-  if (decreaseBtn) {
-    const h = (e: Event) => {
-      e.stopPropagation();
-      e.preventDefault();
-      if (item.quantity > min) {
-        item.quantity--;
-        updateDisplay();
-        void handleQuantityChange(item, ctx);
-      }
-    };
-    quantityHandlers.set(decreaseBtn, h);
-    decreaseBtn.addEventListener('click', h);
-  }
-
-  updateDisplay();
+  setupSharedQuantityControls({
+    hostEls: [el],
+    getQty: () => item.quantity,
+    setQty: n => {
+      item.quantity = n;
+    },
+    min,
+    max,
+    onChange: () => {
+      void handleQuantityChange(item, ctx);
+    },
+    handlers: quantityHandlers,
+  });
 }

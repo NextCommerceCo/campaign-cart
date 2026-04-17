@@ -36,6 +36,12 @@ export interface BundleDef {
   shippingId?: string;
   /** When true, pre-selects this card on init. Equivalent to data-next-selected="true" on the rendered element. */
   selected?: boolean;
+  /** Initial bundle quantity — multiplier applied to every effective item when written to cart. Defaults to 1. */
+  quantity?: number;
+  /** Minimum bundle quantity the user can set via inline stepper controls. Defaults to 1. */
+  minQuantity?: number;
+  /** Maximum bundle quantity the user can set via inline stepper controls. Defaults to 999. */
+  maxQuantity?: number;
   [key: string]: unknown;
 }
 
@@ -118,6 +124,19 @@ export interface BundleCard {
   /** Shipping method ref_id to auto-apply when this bundle is selected. */
   shippingId?: string;
   /**
+   * Bundle-level quantity multiplier. Applied to every effective item when written
+   * to cart or sent to the calculate API. Independent of per-item `quantity` —
+   * a configurable item with `quantity: 1` and `bundleQuantity: 5` renders one
+   * slot and adds 5 units of the selected variant to cart.
+   */
+  bundleQuantity: number;
+  /** Minimum bundleQuantity the inline stepper can set. */
+  minQuantity: number;
+  /** Maximum bundleQuantity the inline stepper can set. */
+  maxQuantity: number;
+  /** Debounce timer handle for price refetch on rapid stepper clicks. */
+  qtyDebounceTimeout: ReturnType<typeof setTimeout> | null;
+  /**
    * Bundle-owned package data. Keyed by packageId (= campaign Package.ref_id).
    * Initially populated from campaign packages on card registration.
    * Updated with bundle-computed prices after fetchAndUpdateBundlePrice.
@@ -173,7 +192,7 @@ export interface HandlerContext {
   selectCard: (card: BundleCard) => void;
   getSelectedCard: () => BundleCard | null;
   fetchAndUpdateBundlePrice: (card: BundleCard) => Promise<void>;
-  emit: <K extends 'bundle:selected' | 'bundle:selection-changed'>(
+  emit: <K extends 'bundle:selected' | 'bundle:selection-changed' | 'bundle:quantity-changed'>(
     event: K,
     detail: EventMap[K],
   ) => void;

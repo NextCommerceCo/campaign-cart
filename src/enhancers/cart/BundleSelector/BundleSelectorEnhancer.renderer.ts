@@ -114,6 +114,18 @@ export function renderBundleTemplate(
   if (bundle.shippingId) {
     cardEl.setAttribute('data-next-shipping-id', bundle.shippingId);
   }
+  // Mirror bundle-level quantity fields onto the card element so the
+  // enhancer picks them up on registerCard. Absent fields keep today's
+  // defaults (bundleQuantity=1, min=1, max=999).
+  if (bundle.quantity != null) {
+    cardEl.setAttribute('data-next-quantity', String(bundle.quantity));
+  }
+  if (bundle.minQuantity != null) {
+    cardEl.setAttribute('data-next-min-quantity', String(bundle.minQuantity));
+  }
+  if (bundle.maxQuantity != null) {
+    cardEl.setAttribute('data-next-max-quantity', String(bundle.maxQuantity));
+  }
 
   return cardEl;
 }

@@ -521,3 +521,142 @@ Processed attributes are removed from the element after evaluation to prevent th
   </div>
 </template>
 ```
+
+---
+
+## Inline bundle-quantity controls
+
+These attributes let the visitor change the **bundle's** quantity at runtime via a stepper, with an automatic price refetch on each change. The new quantity is a multiplier — it applies to every effective item the bundle sends to the cart, without expanding the slot list. A `configurable` item with `quantity: 1` and `bundleQuantity: 5` still renders one slot (one variant pick) and adds five units of the chosen variant to the cart.
+
+Defaults preserve pre-existing behavior: if none of these attributes are set, `bundleQuantity` is `1` and no stepper wiring runs.
+
+### Card-level
+
+---
+
+### `data-next-quantity`
+
+| | |
+|---|---|
+| Type | `string` (integer ≥ 1) |
+| Required | no |
+| Default | `'1'` |
+
+Initial bundle quantity. Clamped into `[data-next-min-quantity, data-next-max-quantity]` on init. Written back by the enhancer when the stepper changes the value.
+
+---
+
+### `data-next-min-quantity`
+
+| | |
+|---|---|
+| Type | `string` (integer ≥ 1) |
+| Required | no |
+| Default | `'1'` |
+
+Minimum bundle quantity. The decrease button is disabled when the current quantity equals this value. `0` is not allowed — removing the bundle is the job of a separate action.
+
+---
+
+### `data-next-max-quantity`
+
+| | |
+|---|---|
+| Type | `string` (integer ≥ 1) |
+| Required | no |
+| Default | `'999'` |
+
+Maximum bundle quantity. The increase button is disabled when the current quantity equals this value.
+
+---
+
+### Stepper elements
+
+The enhancer looks for these three elements inside, in order:
+
+1. The bundle card element (`[data-next-bundle-card]`)
+2. The external slots container (`[data-next-bundle-slots-for="{selectorId}"]`)
+3. Any element marked `[data-next-bundle-qty-for="{selectorId}"]` — useful when the stepper lives entirely outside the card, e.g. next to an Add-to-Cart button on a product-detail page
+
+All three lookups are combined; displays and buttons can coexist across locations.
+
+---
+
+### `data-next-quantity-increase`
+
+| | |
+|---|---|
+| Type | `boolean` (presence) |
+| Required | no |
+| Default | — |
+
+Button that increments the card's `bundleQuantity` by 1. Disabled (via `disabled` attribute and the `next-disabled` class) when quantity equals `data-next-max-quantity`.
+
+---
+
+### `data-next-quantity-decrease`
+
+| | |
+|---|---|
+| Type | `boolean` (presence) |
+| Required | no |
+| Default | — |
+
+Button that decrements the card's `bundleQuantity` by 1. Disabled when quantity equals `data-next-min-quantity`.
+
+---
+
+### `data-next-quantity-display`
+
+| | |
+|---|---|
+| Type | `boolean` (presence) |
+| Required | no |
+| Default | — |
+
+Element whose `textContent` is kept in sync with the current `bundleQuantity`.
+
+---
+
+### `data-next-bundle-qty-for`
+
+| | |
+|---|---|
+| Type | `string` (selector ID) |
+| Required | no |
+| Default | — |
+
+Marks an element outside the selector (and outside the external slots container) as a stepper host for this selector. Must match `data-next-selector-id` on the selector container.
+
+```html
+<div hidden data-next-selector-id="main" data-next-bundle-selector ...></div>
+
+<div data-next-bundle-qty-for="main">
+  <button data-next-quantity-decrease>−</button>
+  <span data-next-quantity-display>1</span>
+  <button data-next-quantity-increase>+</button>
+</div>
+```
+
+---
+
+### Auto-render fields (`BundleDef`)
+
+When using `data-next-bundles` (JSON) auto-render, the following optional fields on each bundle object are mirrored onto the rendered card's `data-next-*` attributes:
+
+- `quantity` → `data-next-quantity`
+- `minQuantity` → `data-next-min-quantity`
+- `maxQuantity` → `data-next-max-quantity`
+
+```html
+data-next-bundles='[
+  {
+    "id":"tshirt",
+    "items":[{"packageId":1,"quantity":1,"configurable":true}],
+    "quantity":1,
+    "minQuantity":1,
+    "maxQuantity":10,
+    "selected":true
+  }
+]'
+```

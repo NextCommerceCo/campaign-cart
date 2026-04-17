@@ -34,7 +34,14 @@ export function makePackageState(pkg: Package): BundlePackageState {
   };
 }
 
-/** Derive the effective BundleItem list from a card's current slot state. */
+/**
+ * Derive the effective BundleItem list from a card's current slot state.
+ * Applies the card's `bundleQuantity` multiplier to every aggregated line —
+ * this is the single load-bearing point where the multiplier is folded in,
+ * so every downstream consumer (applyBundle, applyEffectiveChange, price
+ * fetch, cart sync, event payloads, AddToCart's _getSelectedBundleItems)
+ * sees the correctly-multiplied quantities without special-casing.
+ */
 export function getEffectiveItems(card: BundleCard): BundleItem[] {
   const qtyCounts = new Map<number, number>();
   for (const slot of card.slots) {
@@ -43,9 +50,10 @@ export function getEffectiveItems(card: BundleCard): BundleItem[] {
       (qtyCounts.get(slot.activePackageId) ?? 0) + slot.quantity,
     );
   }
+  const multiplier = card.bundleQuantity > 0 ? card.bundleQuantity : 1;
   return Array.from(qtyCounts.entries()).map(([packageId, quantity]) => ({
     packageId,
-    quantity,
+    quantity: quantity * multiplier,
   }));
 }
 

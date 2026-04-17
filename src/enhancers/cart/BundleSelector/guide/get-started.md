@@ -183,6 +183,39 @@ In the browser console with debug logging enabled, you should see:
 [BundleSelectorEnhancer] BundleSelectorEnhancer initialized { mode: "swap", cardCount: 2 }
 ```
 
+
+## Adjustable bundle quantity (optional)
+
+For PDP-style pages where the visitor picks a quantity before (or while) adding to cart, declare the bundle's `minQuantity` / `maxQuantity` and drop a stepper anywhere on the page:
+
+```html
+<div
+  data-next-selector-id="main"
+  data-next-bundle-selector
+  data-next-selection-mode="select"
+  data-next-bundle-template-id="card-tpl"
+  data-next-bundles='[
+    {
+      "id":"tshirt",
+      "items":[{"packageId":1,"quantity":1,"configurable":true}],
+      "quantity":1,
+      "minQuantity":1,
+      "maxQuantity":10,
+      "selected":true
+    }
+  ]'
+></div>
+
+<!-- Stepper outside the card: link it via data-next-bundle-qty-for -->
+<div data-next-bundle-qty-for="main">
+  <button data-next-quantity-decrease>−</button>
+  <span data-next-quantity-display>1</span>
+  <button data-next-quantity-increase>+</button>
+</div>
+```
+
+The stepper mutates the card's `bundleQuantity` multiplier and the price refetches automatically (debounced 150ms). In swap mode the cart syncs on every change; in select mode the multiplier is applied when `AddToCartEnhancer` reads `_getSelectedBundleItems()`.
+
 ## Next steps
 
 - Explore use cases: [use-cases.md](./use-cases.md)

@@ -104,18 +104,49 @@ export class AddToCartEnhancer extends BaseActionEnhancer {
 
     this.eventBus.on('selector:item-selected', this.selectorChangeHandler);
     this.eventBus.on('selector:selection-changed', this.selectorChangeHandler);
+    // Mirror the bundle-selector lifecycle — keeps the button's selectedItemRef
+    // fresh when the visitor changes a variant or bumps the bundle-quantity
+    // stepper. The handler filters by selectorId so other bundles' events are
+    // ignored.
+    this.eventBus.on('bundle:selected', this.selectorChangeHandler);
+    this.eventBus.on('bundle:selection-changed', this.selectorChangeHandler);
+    this.eventBus.on('bundle:quantity-changed', this.selectorChangeHandler);
   }
 
   private findSelectorElement(): HTMLElement | null {
     return document.querySelector(
       `[data-next-cart-selector][data-next-selector-id="${this.selectorId}"],` +
-        `[data-next-package-selector][data-next-selector-id="${this.selectorId}"]`,
+        `[data-next-package-selector][data-next-selector-id="${this.selectorId}"],` +
+        `[data-next-bundle-selector][data-next-selector-id="${this.selectorId}"]`,
     );
   }
 
   private getSelectedItemFromElement(el: HTMLElement): SelectorItem | null {
+    // PackageSelector / CartSelector: single-item getter.
     const getter = (el as unknown as Record<string, unknown>)['_getSelectedItem'];
     if (typeof getter === 'function') return getter() as SelectorItem | null;
+
+    // BundleSelector: array-returning getter. A button bound to a bundle
+    // selector fires a single addItem per click, so we use the first effective
+    // item (post-multiplier) as the target. Bundles with multiple distinct
+    // packages are better served by swap mode; if a consumer really needs the
+    // full list, they should call cart.swapCart() themselves.
+    const bundleGetter = (el as unknown as Record<string, unknown>)['_getSelectedBundleItems'];
+    if (typeof bundleGetter === 'function') {
+      const items = bundleGetter() as Array<{ packageId: number; quantity: number }> | null;
+      if (items && items.length > 0) {
+        return {
+          packageId: items[0].packageId,
+          quantity: items[0].quantity,
+          element: null as unknown as HTMLElement,
+          price: undefined,
+          name: undefined,
+          isPreSelected: false,
+          shippingId: undefined,
+        };
+      }
+      return null;
+    }
 
     const direct = (el as unknown as Record<string, unknown>)['_selectedItem'];
     if (direct) return direct as SelectorItem;
@@ -140,9 +171,14 @@ export class AddToCartEnhancer extends BaseActionEnhancer {
     if (this.selectorId) {
       const el = this.findSelectorElement();
       const isSelectMode = el?.getAttribute('data-next-selection-mode') === 'select';
+      // In select mode the DOM carries the current selection via
+      // `data-selected-package` (PackageSelector) or `data-selected-bundle`
+      // (BundleSelector). Either is enough to enable the button.
       const hasSelection =
         this.selectedItemRef.value != null ||
-        (isSelectMode && !!el?.getAttribute('data-selected-package'));
+        (isSelectMode &&
+          (!!el?.getAttribute('data-selected-package') ||
+            !!el?.getAttribute('data-selected-bundle')));
       this.setEnabled(hasSelection);
     } else if (this.packageId) {
       this.setEnabled(true);
@@ -206,6 +242,9 @@ export class AddToCartEnhancer extends BaseActionEnhancer {
     if (this.selectorChangeHandler) {
       this.eventBus.off('selector:item-selected', this.selectorChangeHandler);
       this.eventBus.off('selector:selection-changed', this.selectorChangeHandler);
+      this.eventBus.off('bundle:selected', this.selectorChangeHandler);
+      this.eventBus.off('bundle:selection-changed', this.selectorChangeHandler);
+      this.eventBus.off('bundle:quantity-changed', this.selectorChangeHandler);
     }
     super.destroy();
   }

@@ -180,3 +180,11 @@ Price fetches run asynchronously after init. No additional logs appear for a suc
 **Meaning:** The cart was not updated to reflect the variant change. The slot UI has already re-rendered to show the new variant, but the cart still contains the old items. The state is temporarily inconsistent until the next cart sync.
 
 **Action:** Check network requests. Same root causes as `Error in applyBundle`.
+
+---
+
+## Debug — `Bundle quantity changed for "{bundleId}"`
+
+**When:** The visitor changes a bundle's `bundleQuantity` via the inline stepper and `applyBundleQuantityChange` runs.
+
+**Meaning:** Expected behavior. Second-argument object carries `{ quantity: newBundleQuantity }`. Useful for correlating a stepper click with the downstream `bundle:quantity-changed` event, the cart write (swap mode only), and the debounced price refetch.
