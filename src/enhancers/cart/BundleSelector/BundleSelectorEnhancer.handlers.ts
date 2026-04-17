@@ -288,13 +288,14 @@ export async function handleVariantOptionClick(
   optionEl.classList.add(ctx.classNames.variantSelected);
 
   // Read all currently selected values across groups for this slot.
-  // Slots may be in an external container (data-next-bundle-slots-for), not inside card.element.
-  const slotEl =
-    card.element.querySelector<HTMLElement>(`[data-next-slot-index="${slotIndex}"]`) ??
-    ctx.externalSlotsEl?.querySelector<HTMLElement>(
-      `[data-next-bundle-id="${bundleId}"][data-next-slot-index="${slotIndex}"]:not([data-next-variant-code])`,
-    ) ??
-    null;
+  // Walk up from the clicked option so we find the slot wrapper the click
+  // actually happened in — the same card can have slots rendered in both a
+  // hidden card-internal [data-next-bundle-slots] and an external
+  // [data-next-bundle-slots-for] container, and only the clicked slot's
+  // groups carry the updated selection.
+  const slotEl = optionEl.closest<HTMLElement>(
+    `[data-next-bundle-id="${bundleId}"][data-next-slot-index="${slotIndex}"]:not([data-next-variant-code])`,
+  );
   if (!slotEl) return;
 
   const selectedAttrs: Record<string, string> = {};
