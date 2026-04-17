@@ -4,6 +4,7 @@ import {
   makePackageState,
   getEffectiveItems,
   parseVouchers,
+  extractNestedVariantTemplates,
 } from '../BundleSelectorEnhancer.state';
 import type { Package } from '@/types/campaign';
 import type { BundleCard, BundleSlot } from '../BundleSelectorEnhancer.types';
@@ -357,5 +358,59 @@ describe('parseVouchers', () => {
 
   it('single code without comma → single-element array', () => {
     expect(parseVouchers('SINGLE', mockLogger as any)).toEqual(['SINGLE']);
+  });
+});
+
+// ─── extractNestedVariantTemplates ────────────────────────────────────────────
+
+describe('extractNestedVariantTemplates', () => {
+  it('pulls variant-selector and variant-option templates out of a slot template', () => {
+    const slotTemplate = `
+      <div class="slot">
+        <div data-next-variant-selectors>
+          <template>
+            <div class="group">
+              <span>{attr.name}</span>
+              <div data-next-variant-options>
+                <template>
+                  <button>{option.value}</button>
+                </template>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    `;
+
+    const { slot, variantSelector, variantOption } = extractNestedVariantTemplates(slotTemplate);
+
+    expect(variantOption).toContain('<button>{option.value}</button>');
+    expect(variantSelector).toContain('{attr.name}');
+    expect(variantSelector).toContain('data-next-variant-options');
+    expect(variantSelector).not.toContain('<template>');
+    expect(slot).toContain('data-next-variant-selectors');
+    expect(slot).not.toContain('<template>');
+  });
+
+  it('returns empty variant strings when slot template has no nested templates', () => {
+    const slotTemplate = '<div class="slot">plain</div>';
+    const { slot, variantSelector, variantOption } = extractNestedVariantTemplates(slotTemplate);
+
+    expect(variantSelector).toBe('');
+    expect(variantOption).toBe('');
+    expect(slot.trim()).toBe('<div class="slot">plain</div>');
+  });
+
+  it('extracts only variant-selector when no option template is nested', () => {
+    const slotTemplate = `
+      <div data-next-variant-selectors>
+        <template><div>{attr.name}</div></template>
+      </div>
+    `;
+
+    const { variantSelector, variantOption } = extractNestedVariantTemplates(slotTemplate);
+
+    expect(variantSelector).toContain('{attr.name}');
+    expect(variantOption).toBe('');
   });
 });

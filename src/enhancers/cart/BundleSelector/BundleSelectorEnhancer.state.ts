@@ -74,3 +74,41 @@ export function parseVouchers(attr: string | null, logger: Logger): string[] {
   }
   return trimmed.split(',').map(s => s.trim()).filter(Boolean);
 }
+
+/**
+ * Extracts nested <template> elements for variant-selector and variant-option
+ * wrappers out of a slot template HTML string, returning the stripped slot
+ * template plus the extracted template strings (empty when not present).
+ *
+ * The variant-option template is read from inside the variant-selector
+ * template's content because that is the legal authoring structure —
+ * [data-next-variant-options] lives inside the variant-selector wrapper.
+ */
+export function extractNestedVariantTemplates(slotTemplate: string): {
+  slot: string;
+  variantSelector: string;
+  variantOption: string;
+} {
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = slotTemplate;
+
+  let variantSelector = '';
+  let variantOption = '';
+
+  const vsTemplate = wrapper.querySelector<HTMLTemplateElement>(
+    '[data-next-variant-selectors] > template',
+  );
+  if (vsTemplate) {
+    const voTemplate = vsTemplate.content.querySelector<HTMLTemplateElement>(
+      '[data-next-variant-options] > template',
+    );
+    if (voTemplate) {
+      variantOption = voTemplate.innerHTML.trim();
+      voTemplate.remove();
+    }
+    variantSelector = vsTemplate.innerHTML.trim();
+    vsTemplate.remove();
+  }
+
+  return { slot: wrapper.innerHTML, variantSelector, variantOption };
+}

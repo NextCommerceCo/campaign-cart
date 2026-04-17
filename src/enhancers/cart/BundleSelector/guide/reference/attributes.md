@@ -84,7 +84,7 @@ data-next-bundles='[
 | Required | no (auto-render only) |
 | Default | — |
 
-ID of a `<template>` element whose `innerHTML` is used as the card template for auto-rendering. Takes precedence over `data-next-bundle-template` if both are present.
+ID of a `<template>` element whose `innerHTML` is used as the card template for auto-rendering. Highest precedence — takes priority over `data-next-bundle-template` and any inline `<template>` child.
 
 ---
 
@@ -100,6 +100,22 @@ Inline HTML string used as the card template for auto-rendering. Used when `data
 
 ---
 
+### Inline `<template>` child *(card template)*
+
+As a third option, place a direct `<template>` child inside the bundle selector container. The enhancer reads its `innerHTML` when neither `data-next-bundle-template-id` nor `data-next-bundle-template` is set.
+
+```html
+<div data-next-bundle-selector data-next-bundles='[...]'>
+  <template>
+    <div data-next-bundle-card data-next-bundle-id="{bundle.id}">...</div>
+  </template>
+</div>
+```
+
+Resolution order (highest precedence first): `data-next-bundle-template-id` → `data-next-bundle-template` → direct `<template>` child.
+
+---
+
 ### `data-next-bundle-slot-template-id`
 
 | | |
@@ -108,7 +124,7 @@ Inline HTML string used as the card template for auto-rendering. Used when `data
 | Required | no |
 | Default | — |
 
-ID of a `<template>` element whose `innerHTML` is used to render individual product slots within a bundle card. When set, `[data-next-bundle-slots]` placeholders inside card elements are replaced with rendered slots. Takes precedence over `data-next-bundle-slot-template`.
+ID of a `<template>` element whose `innerHTML` is used to render individual product slots within a bundle card. When set, `[data-next-bundle-slots]` placeholders inside card elements are replaced with rendered slots. Highest precedence — takes priority over `data-next-bundle-slot-template` and any inline `<template>` child of the external slots container.
 
 ---
 
@@ -121,6 +137,35 @@ ID of a `<template>` element whose `innerHTML` is used to render individual prod
 | Default | — |
 
 Inline HTML string used as the slot template. Used when `data-next-bundle-slot-template-id` is not set.
+
+---
+
+### Inline `<template>` child *(slot template)*
+
+When an external slots container (`[data-next-bundle-slots-for="{selectorId}"]`) is present, its direct `<template>` child is used as the slot template when neither `data-next-bundle-slot-template-id` nor `data-next-bundle-slot-template` is set.
+
+```html
+<div data-next-bundle-slots-for="main">
+  <template>
+    <div class="slot">
+      <img src="{item.image}">
+      <span>{item.unitPrice}</span>
+      <div data-next-variant-selectors>
+        <template><!-- variant-selector template (see below) --></template>
+      </div>
+    </div>
+  </template>
+</div>
+```
+
+Resolution order (highest precedence first): `data-next-bundle-slot-template-id` → `data-next-bundle-slot-template` → direct `<template>` child of the external slots container.
+
+Nested `<template>` elements inside the slot template are auto-extracted:
+
+- `[data-next-variant-selectors] > template` → populates the variant-selector template when `data-next-variant-selector-template-id` is not set.
+- Inside that variant-selector template, `[data-next-variant-options] > template` → populates the variant-option template when `data-next-variant-option-template-id` is not set.
+
+Extracted templates are stripped from the slot HTML so they don't render inline.
 
 ---
 

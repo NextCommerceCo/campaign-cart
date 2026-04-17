@@ -44,7 +44,12 @@ import {
   setShippingMethod,
 } from './BundleSelectorEnhancer.handlers';
 import { fetchAndUpdateBundlePrice } from './BundleSelectorEnhancer.price';
-import { getEffectiveItems, makePackageState, parseVouchers } from './BundleSelectorEnhancer.state';
+import {
+  extractNestedVariantTemplates,
+  getEffectiveItems,
+  makePackageState,
+  parseVouchers,
+} from './BundleSelectorEnhancer.state';
 import { setupQuantityControls } from '@/enhancers/cart/shared/quantityControls';
 
 export class BundleSelectorEnhancer extends BaseEnhancer {
@@ -97,16 +102,33 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     }
 
     // ── Card template ──────────────────────────────────────────────────────────
+    // Resolution order: id attribute → inline HTML attribute → direct <template>
+    // child of the container (`this.element`). The child fallback lets authors
+    // write native HTML without assigning template ids.
     const templateId = this.getAttribute('data-next-bundle-template-id');
-    this.template = templateId
-      ? (document.getElementById(templateId)?.innerHTML.trim() ?? '')
-      : (this.getAttribute('data-next-bundle-template') ?? '');
+    const templateAttr = this.getAttribute('data-next-bundle-template');
+    if (templateId) {
+      this.template = document.getElementById(templateId)?.innerHTML.trim() ?? '';
+    } else if (templateAttr != null) {
+      this.template = templateAttr;
+    } else {
+      const inline = this.element.querySelector<HTMLTemplateElement>(':scope > template');
+      this.template = inline?.innerHTML.trim() ?? '';
+    }
 
     // ── Slot template ──────────────────────────────────────────────────────────
+    // Same three-tier resolution as the card template. When an external slots
+    // container is present, its direct <template> child is the inline fallback.
     const slotTemplateId = this.getAttribute('data-next-bundle-slot-template-id');
-    this.slotTemplate = slotTemplateId
-      ? (document.getElementById(slotTemplateId)?.innerHTML.trim() ?? '')
-      : (this.getAttribute('data-next-bundle-slot-template') ?? '');
+    const slotTemplateAttr = this.getAttribute('data-next-bundle-slot-template');
+    if (slotTemplateId) {
+      this.slotTemplate = document.getElementById(slotTemplateId)?.innerHTML.trim() ?? '';
+    } else if (slotTemplateAttr != null) {
+      this.slotTemplate = slotTemplateAttr;
+    } else if (this.externalSlotsEl) {
+      const inline = this.externalSlotsEl.querySelector<HTMLTemplateElement>(':scope > template');
+      this.slotTemplate = inline?.innerHTML.trim() ?? '';
+    }
 
     // ── Custom variant option template ─────────────────────────────────────────
     const variantOptionTemplateId = this.getAttribute('data-next-variant-option-template-id');
@@ -122,6 +144,24 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     if (variantSelectorTemplateId) {
       this.variantSelectorTemplate =
         document.getElementById(variantSelectorTemplateId)?.innerHTML.trim() ?? '';
+    }
+
+    // ── Extract variant templates nested inside the slot template ──────────────
+    // When authors nest <template>s inside [data-next-variant-selectors] and
+    // [data-next-variant-options] within the slot template, pull them out and
+    // strip them from the slot template HTML. Explicit id/attribute templates
+    // take precedence and suppress extraction.
+    if (this.slotTemplate && (!this.variantSelectorTemplate || !this.variantOptionTemplate)) {
+      const { slot, variantSelector, variantOption } = extractNestedVariantTemplates(
+        this.slotTemplate,
+      );
+      this.slotTemplate = slot;
+      if (!this.variantSelectorTemplate && variantSelector) {
+        this.variantSelectorTemplate = variantSelector;
+      }
+      if (!this.variantOptionTemplate && variantOption) {
+        this.variantOptionTemplate = variantOption;
+      }
     }
 
     // ── Auto-render bundle cards from JSON ─────────────────────────────────────
