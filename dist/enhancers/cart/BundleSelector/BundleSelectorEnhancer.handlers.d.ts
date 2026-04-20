@@ -7,5 +7,6 @@ export declare function onVoucherApplied(newVouchers: string[], prevVouchers: st
 export declare function applyVariantChange(card: BundleCard, slotIndex: number, selectedAttrs: Record<string, string>, ctx: HandlerContext): Promise<void>;
 export declare function handleVariantOptionClick(e: Event, cards: BundleCard[], ctx: HandlerContext): Promise<void>;
 export declare function handleSelectVariantChange(_select: HTMLSelectElement, bundleId: string, slotIndex: number, cards: BundleCard[], ctx: HandlerContext): Promise<void>;
+export declare function applyBundleQuantityChange(card: BundleCard, ctx: HandlerContext): Promise<void>;
 export declare function setShippingMethod(shippingId: string, ctx: Pick<HandlerContext, 'logger'>): Promise<void>;
 //# sourceMappingURL=BundleSelectorEnhancer.handlers.d.ts.map

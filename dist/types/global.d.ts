@@ -258,6 +258,15 @@ export interface EventMap {
             quantity: number;
         }[];
     };
+    'bundle:quantity-changed': {
+        selectorId: string;
+        bundleId: string;
+        quantity: number;
+        items: {
+            packageId: number;
+            quantity: number;
+        }[];
+    };
     'bundle:price-updated': {
         selectorId: string;
     };

@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.4.18] — 2026-04-20 — Bundle Quantity Controls & Simpler Templates
+
+![alt text](docs/images/image.png)
+
+### New
+
+- **Bundle quantity picker** — bundle cards can now show a `+` / `−` stepper so shoppers can choose how many bundles to add. Pick 3 and the cart gets 3× of everything in the bundle. Prices and totals update automatically as the number changes, and the buttons disable themselves at the minimum or maximum.
+
+- **Quantity picker can live outside the card** — useful for product pages where the `+` / `−` buttons sit next to the "Add to Cart" button instead of inside the bundle card itself.
+
+- **"Add to Cart" button now works with bundle selectors** — you can point an Add-to-Cart button at a bundle selector the same way you already do with package selectors. The button stays in sync when the shopper picks a different bundle, changes a variant, or adjusts the quantity.
+
+- **Inline templates for bundles** — you can now drop a `<template>` directly inside the bundle container instead of referencing one by ID. Makes simple setups quicker — no need to give every template a unique `id` just to hook it up.
+
+
 ## [0.4.17] — 2026-04-17 — Reset Cart & Vouchers After Checkout
 
 ### Fixed

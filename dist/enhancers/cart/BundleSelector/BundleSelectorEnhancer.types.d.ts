@@ -23,6 +23,9 @@ export interface BundleDef {
     vouchers?: string[];
     shippingId?: string;
     selected?: boolean;
+    quantity?: number;
+    minQuantity?: number;
+    maxQuantity?: number;
     [key: string]: unknown;
 }
 export interface BundleSlot {
@@ -77,6 +80,10 @@ export interface BundleCard {
     isPreSelected: boolean;
     vouchers: string[];
     shippingId?: string;
+    bundleQuantity: number;
+    minQuantity: number;
+    maxQuantity: number;
+    qtyDebounceTimeout: ReturnType<typeof setTimeout> | null;
     packageStates: Map<number, BundlePackageState>;
     bundlePrice: BundlePriceSummary | null;
     slotVarsCache: Map<number, Record<string, string>>;
@@ -111,7 +118,7 @@ export interface HandlerContext {
     selectCard: (card: BundleCard) => void;
     getSelectedCard: () => BundleCard | null;
     fetchAndUpdateBundlePrice: (card: BundleCard) => Promise<void>;
-    emit: <K extends 'bundle:selected' | 'bundle:selection-changed'>(event: K, detail: EventMap[K]) => void;
+    emit: <K extends 'bundle:selected' | 'bundle:selection-changed' | 'bundle:quantity-changed'>(event: K, detail: EventMap[K]) => void;
 }
 export interface PriceContext {
     includeShipping: boolean;

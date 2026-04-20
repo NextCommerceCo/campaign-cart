@@ -12,6 +12,8 @@ export declare class BundleSelectorEnhancer extends BaseEnhancer {
     private selectedCard;
     private clickHandlers;
     private selectHandlers;
+    private quantityHandlers;
+    private quantityRefreshers;
     private mutationObserver;
     private boundVariantOptionClick;
     private boundCurrencyChangeHandler;
