@@ -60,8 +60,6 @@ export class AttributeScanner {
         '[data-next-timer]',
         '[data-next-show]',
         '[data-next-hide]',
-        '[data-next-show-if-profile]',
-        '[data-next-hide-if-profile]',
         'form[data-next-checkout]',
         '[data-next-express-checkout]',
         '[data-next-timer-display]',
@@ -84,9 +82,7 @@ export class AttributeScanner {
         '[data-next-tooltip]',
         '[data-next-express-checkout="container"]',
         '[data-next-component="scroll-hint"]',
-        '[data-next-quantity-text]',
-        '[data-next-profile]',
-        'select[data-next-profile-selector]'
+        '[data-next-quantity-text]'
       ].join(', ');
       
       const elements = root.querySelectorAll(selector);
@@ -252,9 +248,9 @@ export class AttributeScanner {
             elementHtml: element.outerHTML.substring(0, 200) + '...'
           });
           
-          if (parsed.object === 'cart') {
+          if (parsed.object === 'cart' || parsed.object === 'cart-summary') {
             this.logger.debug('Using CartDisplayEnhancer');
-            const { CartDisplayEnhancer } = await import('@/enhancers/display/CartDisplayEnhancer');
+            const { CartDisplayEnhancer } = await import('@/enhancers/cart/CartSummary');
             return new CartDisplayEnhancer(element);
           } else if (parsed.object === 'selection') {
             this.logger.debug('Using SelectionDisplayEnhancer');
@@ -272,6 +268,18 @@ export class AttributeScanner {
             this.logger.debug('Using ShippingDisplayEnhancer');
             const { ShippingDisplayEnhancer } = await import('@/enhancers/display/ShippingDisplayEnhancer');
             return new ShippingDisplayEnhancer(element);
+          } else if (parsed.object === 'bundle') {
+            this.logger.debug('Using BundleDisplayEnhancer');
+            const { BundleDisplayEnhancer } = await import('@/enhancers/cart/BundleSelector');
+            return new BundleDisplayEnhancer(element);
+          } else if (parsed.object === 'selector') {
+            this.logger.debug('Using PackageSelectorDisplayEnhancer');
+            const { PackageSelectorDisplayEnhancer } = await import('@/enhancers/cart/PackageSelector');
+            return new PackageSelectorDisplayEnhancer(element);
+          } else if (parsed.object === 'toggle') {
+            this.logger.debug('Using PackageToggleDisplayEnhancer');
+            const { PackageToggleDisplayEnhancer } = await import('@/enhancers/cart/PackageToggle');
+            return new PackageToggleDisplayEnhancer(element);
           } else {
             // Check for context-based package detection
             let currentElement: HTMLElement | null = element.parentElement;
@@ -293,13 +301,13 @@ export class AttributeScanner {
             } else {
               // Default to cart display
               this.logger.debug(`Using CartDisplayEnhancer (fallback without package context)`);
-              const { CartDisplayEnhancer } = await import('@/enhancers/display/CartDisplayEnhancer');
+              const { CartDisplayEnhancer } = await import('@/enhancers/cart/CartSummary');
               return new CartDisplayEnhancer(element);
             }
           }
           
         case 'package-toggle':
-          const { PackageToggleEnhancer } = await import('@/enhancers/cart/PackageToggleEnhancer');
+          const { PackageToggleEnhancer } = await import('@/enhancers/cart/PackageToggle');
           return new PackageToggleEnhancer(element);
 
         case 'action':
@@ -308,11 +316,11 @@ export class AttributeScanner {
           
           switch (action) {
             case 'add-to-cart':
-              const { AddToCartEnhancer } = await import('@/enhancers/cart/AddToCartEnhancer');
+              const { AddToCartEnhancer } = await import('@/enhancers/cart/AddToCart');
               return new AddToCartEnhancer(element);
               
             case 'accept-upsell':
-              const { AcceptUpsellEnhancer } = await import('@/enhancers/cart/AcceptUpsellEnhancer');
+              const { AcceptUpsellEnhancer } = await import('@/enhancers/cart/AcceptUpsell');
               return new AcceptUpsellEnhancer(element);
               
             default:
@@ -321,7 +329,7 @@ export class AttributeScanner {
           }
 
         case 'package-selector':
-          const { PackageSelectorEnhancer } = await import('@/enhancers/cart/PackageSelectorEnhancer');
+          const { PackageSelectorEnhancer } = await import('@/enhancers/cart/PackageSelector');
           return new PackageSelectorEnhancer(element);
           
         case 'timer':
@@ -329,7 +337,7 @@ export class AttributeScanner {
           return new TimerEnhancer(element);
           
         case 'conditional':
-          this.logger.info('Creating ConditionalDisplayEnhancer for element:', {
+          this.logger.debug('Creating ConditionalDisplayEnhancer for element:', {
             element: element.tagName,
             class: element.className,
             showAttr: element.getAttribute('data-next-show'),
@@ -366,15 +374,15 @@ export class AttributeScanner {
         // These are now handled by the main CheckoutFormEnhancer (simplified approach)
           
         case 'cart-items':
-          const { CartItemListEnhancer } = await import('@/enhancers/cart/CartItemListEnhancer');
+          const { CartItemListEnhancer } = await import('@/enhancers/cart/CartItemList');
           return new CartItemListEnhancer(element);
 
         case 'cart-summary':
-          const { CartSummaryEnhancer } = await import('@/enhancers/cart/CartSummaryEnhancer');
+          const { CartSummaryEnhancer } = await import('@/enhancers/cart/CartSummary');
           return new CartSummaryEnhancer(element);
 
         case 'bundle-selector':
-          const { BundleSelectorEnhancer } = await import('@/enhancers/cart/BundleSelectorEnhancer');
+          const { BundleSelectorEnhancer } = await import('@/enhancers/cart/BundleSelector');
           return new BundleSelectorEnhancer(element);
 
 
@@ -383,17 +391,17 @@ export class AttributeScanner {
           return new OrderItemListEnhancer(element);
 
         case 'quantity':
-          const { QuantityControlEnhancer } = await import('@/enhancers/cart/QuantityControlEnhancer');
+          const { QuantityControlEnhancer } = await import('@/enhancers/cart/QuantityControl');
           return new QuantityControlEnhancer(element);
 
         case 'remove-item':
-          const { RemoveItemEnhancer } = await import('@/enhancers/cart/RemoveItemEnhancer');
+          const { RemoveItemEnhancer } = await import('@/enhancers/cart/RemoveItem');
           return new RemoveItemEnhancer(element);
 
         // 'order' case removed - order display now handled via data-next-display="order.xxx" pattern
 
         case 'upsell':
-          const { UpsellEnhancer } = await import('@/enhancers/order/UpsellEnhancer');
+          const { UpsellEnhancer } = await import('@/enhancers/order/Upsell');
           return new UpsellEnhancer(element);
 
         case 'coupon':
@@ -416,14 +424,6 @@ export class AttributeScanner {
           const { QuantityTextEnhancer } = await import('@/enhancers/display/QuantityTextEnhancer');
           return new QuantityTextEnhancer(element);
         
-        case 'profile-switcher':
-          const { ProfileSwitcherEnhancer } = await import('@/enhancers/profile/ProfileSwitcherEnhancer');
-          return new ProfileSwitcherEnhancer(element);
-        
-        case 'profile-selector':
-          const { ProfileSelectorEnhancer } = await import('@/enhancers/profile/ProfileSwitcherEnhancer');
-          return new ProfileSelectorEnhancer(element);
-          
         default:
           this.logger.warn(`Unknown enhancer type: ${type}`);
           return null;

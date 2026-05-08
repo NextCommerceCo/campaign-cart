@@ -100,7 +100,8 @@ export class TestModeManager {
   private checkUrlTestMode(): void {
     const params = new URLSearchParams(window.location.search);
     const windowConfig = (window as any).nextConfig;
-    const debugMode = params.get('debugger') === 'true' || windowConfig?.debugger === true;
+    const debugMode =
+      params.get('debugger') === 'true' || windowConfig?.debugger === true;
     const testMode = params.get('test') === 'true';
 
     if (debugMode || testMode) {

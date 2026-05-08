@@ -1,0 +1,209 @@
+import type Decimal from 'decimal.js';
+import type { EventMap } from '@/types/global';
+import type { Logger } from '@/utils/logger';
+import type { DiscountItem } from '@/shared/utils/discountRenderer';
+
+export interface ClassNames {
+  bundleCard: string;
+  selected: string;
+  inCart: string;
+  variantSelected: string;
+  variantUnavailable: string;
+  bundleSlot: string;
+  slotVariantGroup: string;
+}
+
+export interface BundleItem {
+  packageId: number;
+  quantity: number;
+  /**
+   * When true, a quantity > 1 is expanded into individual slots so the visitor
+   * can configure color / size (or any variant) independently per unit.
+   */
+  configurable?: boolean;
+  /**
+   * When true, no slot row is rendered for this item even when a slot template
+   * is configured. Useful for silent add-ons like free gifts.
+   */
+  noSlot?: boolean;
+}
+
+export interface BundleDef {
+  id: string;
+  items: BundleItem[];
+  vouchers?: string[];
+  /** Shipping method ref_id to auto-apply when this bundle is selected. */
+  shippingId?: string;
+  /** When true, pre-selects this card on init. Equivalent to data-next-selected="true" on the rendered element. */
+  selected?: boolean;
+  /** Initial bundle quantity — multiplier applied to every effective item when written to cart. Defaults to 1. */
+  quantity?: number;
+  /** Minimum bundle quantity the user can set via inline stepper controls. Defaults to 1. */
+  minQuantity?: number;
+  /** Maximum bundle quantity the user can set via inline stepper controls. Defaults to 999. */
+  maxQuantity?: number;
+  [key: string]: unknown;
+}
+
+/** Tracks one item slot within a bundle card, with variant override support. */
+export interface BundleSlot {
+  slotIndex: number;
+  /** 0-based index within the units expanded from this item. Always 0 for non-configurable. */
+  unitIndex: number;
+  /** Package as originally defined in the bundle. */
+  originalPackageId: number;
+  /** Currently active package (may differ after the user selects a variant). */
+  activePackageId: number;
+  quantity: number;
+  /** When true, no slot row is rendered for this slot. */
+  noSlot?: boolean;
+  /** When true, the user must select a variant before this slot can be submitted. */
+  configurable: boolean;
+  /** Set to true once the user has explicitly selected a variant for this slot. */
+  variantSelected: boolean;
+}
+
+/**
+ * Per-package state owned by a BundleCard.
+ * Initially populated from campaign package base data (provisional prices).
+ * Updated with bundle-computed prices after fetchAndUpdateBundlePrice resolves.
+ * This is the single source of truth for slot rendering — no campaign store
+ * fallback, no separate previewLines map.
+ */
+export interface BundlePackageState {
+  packageId: number;
+  // Static display data from campaign package:
+  name: string;
+  image: string;
+  productName: string;
+  variantName: string;
+  sku: string | null;
+  isRecurring: boolean;
+  interval: 'day' | 'month' | null;
+  intervalCount: number | null;
+  recurringPrice: Decimal;
+  originalRecurringPrice: Decimal;
+  // Prices — start as campaign package prices, replaced by bundle-computed after fetch:
+  unitPrice: Decimal;
+  originalUnitPrice: Decimal;
+  discountAmount: Decimal;
+  discountPercentage: Decimal;
+  originalPrice: Decimal;
+  price: Decimal;
+  hasDiscount: boolean;
+  /** ISO 4217 currency code for price formatting. Seeded from campaignStore, updated by price fetch. */
+  currency: string;
+  /** Per-line discounts from the bundle price calculation. */
+  discounts: DiscountItem[];
+}
+
+/** Aggregate bundle price summary stored on BundleCard after price fetch. */
+export interface BundlePriceSummary {
+  price: Decimal;
+  originalPrice: Decimal;
+  discountAmount: Decimal;
+  discountPercentage: Decimal;
+  unitPrice: Decimal;
+  originalUnitPrice: Decimal;
+  quantity: number;
+  hasDiscount: boolean;
+  /** ISO 4217 currency code returned by the price fetch API. */
+  currency: string;
+}
+
+export interface BundleCard {
+  element: HTMLElement;
+  bundleId: string;
+  /** Display name from data-next-bundle-name on the card element. */
+  name: string;
+  items: BundleItem[];
+  slots: BundleSlot[];
+  isPreSelected: boolean;
+  /** Voucher/coupon codes to apply when this bundle is selected. */
+  vouchers: string[];
+  /** Shipping method ref_id to auto-apply when this bundle is selected. */
+  shippingId?: string;
+  /**
+   * Bundle-level quantity multiplier. Applied to every effective item when written
+   * to cart or sent to the calculate API. Independent of per-item `quantity` —
+   * a configurable item with `quantity: 1` and `bundleQuantity: 5` renders one
+   * slot and adds 5 units of the selected variant to cart.
+   */
+  bundleQuantity: number;
+  /** Minimum bundleQuantity the inline stepper can set. */
+  minQuantity: number;
+  /** Maximum bundleQuantity the inline stepper can set. */
+  maxQuantity: number;
+  /** Debounce timer handle for price refetch on rapid stepper clicks. */
+  qtyDebounceTimeout: ReturnType<typeof setTimeout> | null;
+  /**
+   * Bundle-owned package data. Keyed by packageId (= campaign Package.ref_id).
+   * Initially populated from campaign packages on card registration.
+   * Updated with bundle-computed prices after fetchAndUpdateBundlePrice.
+   */
+  packageStates: Map<number, BundlePackageState>;
+  /** Aggregate bundle price. Null until first price fetch completes. */
+  bundlePrice: BundlePriceSummary | null;
+  /** Cached template vars from the last render of each slot. Key = slotIndex. */
+  slotVarsCache: Map<number, Record<string, string>>;
+  /** Offer discounts from the bundle price calculation. */
+  offerDiscounts: DiscountItem[];
+  /** Voucher discounts from the bundle price calculation. */
+  voucherDiscounts: DiscountItem[];
+}
+
+/** Read-only view of a BundleCard's state exposed to BundleDisplayEnhancer. */
+export interface BundleCardPublicState {
+  name: string;
+  isSelected: boolean;
+  bundlePrice: BundlePriceSummary | null;
+}
+
+/** Shared context passed to renderer functions. */
+export interface RenderContext {
+  slotTemplate: string;
+  variantOptionTemplate: string;
+  variantSelectorTemplate: string;
+  selectHandlers: Map<HTMLSelectElement, EventListener>;
+  logger: Logger;
+  classNames: ClassNames;
+  onSelectChange: (
+    select: HTMLSelectElement,
+    bundleId: string,
+    slotIndex: number,
+  ) => Promise<void>;
+}
+
+/** Shared context passed to handler functions. */
+export interface HandlerContext {
+  mode: 'swap' | 'select';
+  logger: Logger;
+  classNames: ClassNames;
+  /** Mutable ref so handlers can guard against re-entrant cart updates. */
+  isApplyingRef: { value: boolean };
+  /** External slots container, when slots are rendered outside the bundle selector element. */
+  externalSlotsEl: HTMLElement | null;
+  /** The root element of the BundleSelectorEnhancer, used for URL resolution in upsell context. */
+  containerElement: HTMLElement;
+  /** When true, card clicks submit bundle items to orderStore instead of writing to cart. */
+  isUpsellContext: boolean;
+  /** The selector's own ID (data-next-selector-id). Used to tag and filter cart items. */
+  selectorId: string | null;
+  selectCard: (card: BundleCard) => void;
+  getSelectedCard: () => BundleCard | null;
+  fetchAndUpdateBundlePrice: (card: BundleCard) => Promise<void>;
+  emit: <K extends 'bundle:selected' | 'bundle:selection-changed' | 'bundle:quantity-changed'>(
+    event: K,
+    detail: EventMap[K],
+  ) => void;
+}
+
+/** Shared context passed to the price fetcher. */
+export interface PriceContext {
+  includeShipping: boolean;
+  /** Union of every bundle voucher across ALL live BundleSelectorEnhancer instances. */
+  allBundleVouchers: Set<string>;
+  /** When true, passes ?upsell=true to the calculate API for post-purchase pricing. */
+  isUpsellContext: boolean;
+  logger: Logger;
+}

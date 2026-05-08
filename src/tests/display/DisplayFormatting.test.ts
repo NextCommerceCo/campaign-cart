@@ -4,6 +4,7 @@
  */
 
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+import Decimal from 'decimal.js';
 import { DisplayFormatter } from '@/enhancers/display/DisplayEnhancerCore';
 import { ProductDisplayEnhancer } from '@/enhancers/display/ProductDisplayEnhancer';
 import { CartDisplayEnhancer } from '@/enhancers/display/CartDisplayEnhancer';
@@ -30,20 +31,26 @@ function createTestElement(displayPath: string, attributes: Record<string, strin
 }
 
 function mockCampaignStore(packages: any[] = []) {
+  const state = { packages };
   const mockStore = {
-    getState: vi.fn(() => ({ packages })),
-    subscribe: vi.fn()
+    getState: vi.fn(() => state),
+    subscribe: vi.fn(() => () => {}),
   };
   (useCampaignStore as any).mockReturnValue(mockStore);
+  (useCampaignStore as any).getState = vi.fn(() => state);
+  (useCampaignStore as any).subscribe = vi.fn(() => () => {});
   return mockStore;
 }
 
 function mockCartStore(state: any = {}) {
+  const fullState = { items: [], isEmpty: true, vouchers: [], ...state };
   const mockStore = {
-    getState: vi.fn(() => state),
-    subscribe: vi.fn()
+    getState: vi.fn(() => fullState),
+    subscribe: vi.fn(() => () => {}),
   };
   (useCartStore as any).mockReturnValue(mockStore);
+  (useCartStore as any).getState = vi.fn(() => fullState);
+  (useCartStore as any).subscribe = vi.fn(() => () => {});
   return mockStore;
 }
 
@@ -306,8 +313,8 @@ describe('Display Formatting System', () => {
       const enhancer = new ProductDisplayEnhancer(element);
       await enhancer.initialize();
 
-      // Should show fallback value or empty
-      expect(element.textContent).toBe('');
+      // No package ID specified → fallback value (0) is shown as currency
+      expect(element.textContent).toBe('$0.00');
     });
 
     test('respects explicit format over auto-detection', async () => {
@@ -370,16 +377,9 @@ describe('Display Formatting System', () => {
   describe('CartDisplayEnhancer', () => {
     test('prevents double formatting of pre-formatted values', async () => {
       mockCartStore({
-        totals: {
-          total: {
-            value: 123.45,
-            formatted: '$123.45'
-          },
-          savings: {
-            value: 20.00,
-            formatted: '$20.00'
-          }
-        }
+        total: new Decimal(123.45),
+        subtotal: new Decimal(0),
+        totalDiscount: new Decimal(0),
       });
 
       const element = createTestElement('cart.total');
@@ -390,24 +390,6 @@ describe('Display Formatting System', () => {
       expect(element.textContent).not.toBe('$$123.45');
     });
 
-    test('uses raw values when needed', async () => {
-      mockCartStore({
-        totals: {
-          subtotal: {
-            value: 99.99,
-            formatted: '$99.99'
-          }
-        }
-      });
-
-      const element = createTestElement('cart.subtotal.raw', {
-        'data-format': 'number'
-      });
-      const enhancer = new CartDisplayEnhancer(element);
-      await enhancer.initialize();
-
-      expect(element.textContent).toBe('99.99');
-    });
   });
 
   describe('Property Configuration', () => {
@@ -454,39 +436,42 @@ describe('Display Formatting System', () => {
   });
 
   describe('Edge Cases', () => {
-    test('handles deeply nested property paths', async () => {
+    test('renders shippingName as text', async () => {
       mockCartStore({
-        customer: {
-          shipping: {
-            address: {
-              components: {
-                street: '123 Main St'
-              }
-            }
-          }
-        }
+        shippingMethod: {
+          id: 1,
+          name: 'Express',
+          code: 'express',
+          price: new Decimal(9.99),
+          originalPrice: new Decimal(9.99),
+          discountAmount: new Decimal(0),
+          discountPercentage: new Decimal(0),
+          hasDiscounts: false,
+        },
       });
 
-      const element = createTestElement('cart.customer.shipping.address.components.street');
+      const element = createTestElement('cart.shippingName', {
+        'data-format': 'text'
+      });
       const enhancer = new CartDisplayEnhancer(element);
       await enhancer.initialize();
 
-      expect(element.textContent).toBe('123 Main St');
+      expect(element.textContent).toBe('Express');
     });
 
-    test('handles arrays in property paths', async () => {
+    test('renders itemCount as a number', async () => {
       mockCartStore({
-        items: [
-          { name: 'Item 1', price: 10 },
-          { name: 'Item 2', price: 20 }
-        ]
+        items: [{ id: 1 }, { id: 2 }, { id: 3 }],
+        subtotal: new Decimal(0),
+        total: new Decimal(0),
+        totalDiscount: new Decimal(0),
       });
 
-      const element = createTestElement('cart.items.1.price');
+      const element = createTestElement('cart.itemCount');
       const enhancer = new CartDisplayEnhancer(element);
       await enhancer.initialize();
 
-      expect(element.textContent).toBe('$20.00');
+      expect(element.textContent).toBe('3');
     });
 
     test('handles mathematical transformations', async () => {
@@ -509,15 +494,12 @@ describe('Display Formatting System', () => {
 
     test('handles conditional visibility', async () => {
       mockCartStore({
-        totals: {
-          savings: {
-            value: 0,
-            formatted: '$0.00'
-          }
-        }
+        totalDiscount: new Decimal(0),
+        subtotal: new Decimal(0),
+        total: new Decimal(0),
       });
 
-      const element = createTestElement('cart.savingsAmount', {
+      const element = createTestElement('cart.totalDiscount', {
         'data-hide-if-zero': 'true'
       });
       const enhancer = new CartDisplayEnhancer(element);

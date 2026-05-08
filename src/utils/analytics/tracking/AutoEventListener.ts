@@ -107,7 +107,7 @@ export class AutoEventListener {
       const item = {
         item_id: packageData.external_id.toString(), // Use external_id for analytics
         item_name: packageData.name || `Package ${packageId}`,
-        currency: campaignStore.data?.currency || 'USD',
+        currency: campaignStore.currency ?? 'USD',
         price: parseFloat(packageData.price_total || '0'), // Use total package price
         quantity: 1, // Always 1 for package-based pricing
         item_category: campaignStore.data?.name || 'Campaign',
@@ -175,7 +175,7 @@ export class AutoEventListener {
       const item = {
         item_id: packageData.external_id.toString(), // Use external_id for analytics
         item_name: packageData.name || `Package ${packageId}`,
-        currency: campaignStore.data?.currency || 'USD',
+        currency: campaignStore.currency ?? 'USD',
         price: parseFloat(packageData.price_total || '0'), // Use total package price
         quantity: 1, // Always 1 for package-based pricing
         item_category: campaignStore.data?.name || 'Campaign',
@@ -222,7 +222,7 @@ export class AutoEventListener {
       const previousItemFormatted = {
         item_id: previousPackageData.external_id.toString(),
         item_name: previousPackageData.name || `Package ${previousPackageId}`,
-        currency: campaignStore.data?.currency || 'USD',
+        currency: campaignStore.currency ?? 'USD',
         price: parseFloat(previousPackageData.price_total || '0'),
         quantity: 1,
         item_category: campaignStore.data?.name || 'Campaign',
@@ -235,7 +235,7 @@ export class AutoEventListener {
       const newItemFormatted = {
         item_id: newPackageData.external_id.toString(),
         item_name: newPackageData.name || `Package ${newPackageId}`,
-        currency: campaignStore.data?.currency || 'USD',
+        currency: campaignStore.currency ?? 'USD',
         price: parseFloat(newPackageData.price_total || '0'),
         quantity: 1,
         item_category: campaignStore.data?.name || 'Campaign',
@@ -252,7 +252,7 @@ export class AutoEventListener {
         event_action: 'swap',
         event_label: `${previousItemFormatted.item_name} → ${newItemFormatted.item_name}`,
         ecommerce: {
-          currency: campaignStore.data?.currency || 'USD',
+          currency: campaignStore.currency ?? 'USD',
           value_change: priceDifference,
           items_removed: [previousItemFormatted],
           items_added: [newItemFormatted]
@@ -308,7 +308,7 @@ export class AutoEventListener {
           upsell: {
             package_id: 'page_view',
             package_name: 'Upsell Page View',
-            currency: useCampaignStore.getState().data?.currency || 'USD'
+            currency: useCampaignStore.getState().currency ?? 'USD'
           }
         });
         
@@ -333,7 +333,7 @@ export class AutoEventListener {
           package_id: packageId.toString(),
           package_name: packageData.name || `Package ${packageId}`,
           price: parseFloat(packageData.price || '0'),
-          currency: campaignStore.data?.currency || 'USD'
+          currency: campaignStore.currency ?? 'USD'
         }
       });
 
@@ -389,7 +389,7 @@ export class AutoEventListener {
         packageName: data.packageName || packageData?.name || `Package ${packageId}`,
         quantity,
         value: value || 0,
-        currency: data.currency || campaignStore.data?.currency || 'USD',
+        currency: data.currency || (campaignStore.currency ?? 'USD'),
         upsellNumber,
         item: cartItem
       });
@@ -450,7 +450,7 @@ export class AutoEventListener {
         return {
           item_id: packageData?.external_id?.toString() || item.packageId.toString(), // Use external_id for analytics
           item_name: packageData?.name || `Package ${item.packageId}`,
-          currency: campaignStore.data?.currency || 'USD',
+          currency: campaignStore.currency ?? 'USD',
           price: parseFloat(packageData?.price_total || '0'), // Use total package price
           quantity: item.quantity, // This is the number of packages in cart
           item_category: campaignStore.data?.name || 'uncategorized',
@@ -463,7 +463,7 @@ export class AutoEventListener {
       });
 
       const event = dataLayer.formatEcommerceEvent('dl_begin_checkout', {
-        currency: campaignStore.data?.currency || 'USD',
+        currency: campaignStore.currency ?? 'USD',
         value: cartStore.total || cartStore.subtotal || 0,
         items: items,
         coupon: data.coupon
@@ -490,7 +490,7 @@ export class AutoEventListener {
         return {
           item_id: packageData?.external_id?.toString() || item.packageId.toString(),
           item_name: packageData?.name || `Package ${item.packageId}`,
-          currency: campaignStore.data?.currency || 'USD',
+          currency: campaignStore.currency ?? 'USD',
           price: parseFloat(packageData?.price_total || '0'),
           quantity: item.quantity,
           item_category: campaignStore.data?.name || 'uncategorized',
@@ -501,7 +501,7 @@ export class AutoEventListener {
       });
 
       const event = dataLayer.formatEcommerceEvent('dl_begin_checkout', {
-        currency: campaignStore.data?.currency || 'USD',
+        currency: campaignStore.currency ?? 'USD',
         value: cartStore.total || cartStore.subtotal || 0,
         items: items,
         coupon: cartStore.appliedCoupons?.[0]?.code,
@@ -547,7 +547,7 @@ export class AutoEventListener {
           return {
             item_id: packageData?.external_id?.toString() || item.packageId.toString(), // Use external_id for analytics
             item_name: packageData?.name || `Package ${item.packageId}`,
-            currency: campaignStore.data?.currency || 'USD',
+            currency: campaignStore.currency ?? 'USD',
             price: parseFloat(packageData?.price_total || '0'), // Use total package price
             quantity: item.quantity, // This is the number of packages in cart
             item_category: campaignStore.data?.name || 'uncategorized',
@@ -737,7 +737,7 @@ export class AutoEventListener {
       return {
         total_value: cartStore.total || cartStore.subtotal || 0,
         total_items: cartStore.totalQuantity || 0,
-        currency: campaignStore.data?.currency || 'USD',
+        currency: campaignStore.currency ?? 'USD',
         items: cartStore.items.map(item => ({
           package_id: item.packageId,
           quantity: item.quantity,

@@ -18,8 +18,8 @@ export class CurrencyFormatter {
   private static getCurrentCurrency(): string {
     // Try to get from campaign data first (most accurate)
     const campaignStore = useCampaignStore.getState();
-    if (campaignStore?.data?.currency) {
-      return campaignStore.data.currency;
+    if (campaignStore?.currency) {
+      return campaignStore.currency;
     }
 
     // Fallback to config store

@@ -1,0 +1,1 @@
+{"version":3,"file":"campaignSlice.api.d.ts","sourceRoot":"","sources":["../../../src/stores/campaignStore/campaignSlice.api.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,YAAY,EAAE,MAAM,SAAS,CAAC;AAG5C,OAAO,KAAK,EACV,gBAAgB,EAChB,aAAa,EAEd,MAAM,uBAAuB,CAAC;AAM/B,eAAO,MAAM,sBAAsB,EAAE,YAAY,CAC/C,aAAa,EACb;CAAE,EACF;CAAE,EACF,gBAAgB,CA0NhB,CAAC"}

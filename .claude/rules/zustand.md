@@ -1,4 +1,4 @@
-# Zustand Store Rules
+# Zustand Rules
 
 ## File structure
 
@@ -9,11 +9,12 @@ src/
 ├── api/
 │   └── {feature}.api.ts        # Pure fetch/axios calls only
 ├── store/
-│   ├── {feature}Store.ts       # create() + compose slices + middleware
-│   ├── {feature}Store.types.ts # All TS interfaces for this store
-│   ├── {feature}Slice.items.ts # Sync state mutations
-│   ├── {feature}Slice.ui.ts    # UI-only state (open, loading flags, step)
-│   └── {feature}Slice.api.ts   # Async actions that call the API layer
+│   └── {feature}/
+│       ├── {feature}Store.ts       # create() + compose slices + middleware
+│       ├── {feature}Store.types.ts # All TS interfaces for this store
+│       ├── {feature}Slice.items.ts # Sync state mutations
+│       ├── {feature}Slice.ui.ts    # UI-only state (open, loading flags, step)
+│       └── {feature}Slice.api.ts   # Async actions that call the API layer
 └── index.ts                    # Re-export public API only
 ```
 

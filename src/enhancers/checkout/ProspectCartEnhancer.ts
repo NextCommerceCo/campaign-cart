@@ -552,8 +552,8 @@ export class ProspectCartEnhancer extends BaseEnhancer {
   private getCurrency(): string {
     // Get currency from campaign or config store (same logic as cart store)
     const campaignState = useCampaignStore.getState();
-    if (campaignState?.data?.currency) {
-      return campaignState.data.currency;
+    if (campaignState?.currency) {
+      return campaignState.currency;
     }
     
     const configStore = useConfigStore.getState();

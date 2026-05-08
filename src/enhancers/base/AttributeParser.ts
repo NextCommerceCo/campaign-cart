@@ -176,7 +176,7 @@ export class AttributeParser {
     // No separate 'order' enhancer type needed
 
     // Check for upsell enhancer (handles both direct and selector modes)
-    // Only data-next-upsell="offer" should create an enhancer
+    // data-next-upsell (any value or no value) creates the enhancer
     // data-next-upsell-selector is just a marker for option groups
     // data-next-upsell-select is for select dropdowns within an upsell
     if (element.hasAttribute('data-next-upsell')) {

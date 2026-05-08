@@ -179,11 +179,9 @@ export class OrderManager {
         throw new Error('Cannot create express order with empty cart');
       }
       
-      // Get vouchers from cart store
-      const { useCartStore } = await import('@/stores/cartStore');
-      const cartStore = useCartStore.getState();
-      const vouchers = (cartStore.appliedCoupons || []).map((coupon: any) => coupon.code);
-      
+      const { useCheckoutStore } = await import('@/stores/checkoutStore');
+      const vouchers = useCheckoutStore.getState().vouchers;
+
       // Build minimal order data for express checkout
       const orderData = this.orderBuilder.buildExpressOrder(cartItems, paymentMethod, vouchers);
       
@@ -226,10 +224,8 @@ export class OrderManager {
     });
     
     try {
-      // Get vouchers from cart store
-      const { useCartStore } = await import('@/stores/cartStore');
-      const cartStore = useCartStore.getState();
-      const vouchers = (cartStore.appliedCoupons || []).map((coupon: any) => coupon.code);
+      const { useCheckoutStore } = await import('@/stores/checkoutStore');
+      const vouchers = useCheckoutStore.getState().vouchers;
       
       // Build test order data
       const testOrderData = this.orderBuilder.buildTestOrder(cartItems, vouchers);

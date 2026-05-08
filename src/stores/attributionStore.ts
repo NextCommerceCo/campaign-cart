@@ -28,7 +28,6 @@ export interface AttributionMetadata {
 
   // Everflow tracking
   everflow_transaction_id?: string;
-  sg_evclid?: string;
 
   // Custom tracking tags
   [key: string]: any;
@@ -101,8 +100,9 @@ export const useAttributionStore = create<
       initialize: async () => {
         try {
           // Import collector dynamically to avoid circular dependencies
-          const { AttributionCollector } =
-            await import('@/utils/attribution/AttributionCollector');
+          const { AttributionCollector } = await import(
+            '@/utils/attribution/AttributionCollector'
+          );
           const collector = new AttributionCollector();
           const data = await collector.collect();
 
@@ -280,7 +280,6 @@ export const useAttributionStore = create<
           '- Transaction ID:',
           state.metadata.everflow_transaction_id || '(not set)'
         );
-        console.log('- SG EVCLID:', state.metadata.sg_evclid || '(not set)');
         console.log(
           '- localStorage evclid:',
           localStorage.getItem('evclid') || '(not set)'

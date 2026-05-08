@@ -3,6 +3,7 @@
  * Displays cart state, items, and provides cart manipulation controls
  */
 
+import { formatCurrency } from '../../currencyFormatter';
 import { useCartStore } from '../../../stores/cartStore';
 import { DebugPanel, PanelAction, PanelTab } from '../DebugPanels';
 import { RawDataHelper } from './RawDataHelper';
@@ -64,28 +65,28 @@ export class CartPanel implements DebugPanel {
           <div class="metric-card">
             <div class="metric-icon">💰</div>
             <div class="metric-content">
-              <div class="metric-value">${cartState.totals.subtotal.formatted}</div>
+              <div class="metric-value">${formatCurrency(cartState.subtotal.toNumber())}</div>
               <div class="metric-label">Subtotal</div>
             </div>
           </div>
           <div class="metric-card">
             <div class="metric-icon">🚚</div>
             <div class="metric-content">
-              <div class="metric-value">${cartState.totals.shipping.formatted}</div>
+              <div class="metric-value">${formatCurrency(cartState.shippingMethod?.price.toNumber() ?? 0)}</div>
               <div class="metric-label">Shipping</div>
             </div>
           </div>
           <div class="metric-card">
             <div class="metric-icon">📊</div>
             <div class="metric-content">
-              <div class="metric-value">${cartState.totals.tax.formatted}</div>
+              <div class="metric-value">$0.00</div>
               <div class="metric-label">Tax</div>
             </div>
           </div>
           <div class="metric-card">
             <div class="metric-icon">💳</div>
             <div class="metric-content">
-              <div class="metric-value">${cartState.totals.total.formatted}</div>
+              <div class="metric-value">${formatCurrency(cartState.total.toNumber())}</div>
               <div class="metric-label">Total</div>
             </div>
           </div>

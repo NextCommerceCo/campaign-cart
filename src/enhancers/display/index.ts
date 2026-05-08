@@ -6,7 +6,7 @@
 // Core functionality
 export { BaseDisplayEnhancer, DisplayFormatter, PropertyResolver } from './DisplayEnhancerCore';
 export { ProductDisplayEnhancer } from './ProductDisplayEnhancer';
-export { CartDisplayEnhancer } from './CartDisplayEnhancer';
+export { CartDisplayEnhancer } from '@/enhancers/cart/CartSummary';
 export { SelectionDisplayEnhancer } from './SelectionDisplayEnhancer';
 export { OrderDisplayEnhancer } from './OrderDisplayEnhancer';
 
