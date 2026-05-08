@@ -43,9 +43,13 @@ export class ApiClient {
 
   public async calculateSummary(
     data: CartCalculateSummary,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    options?: { upsell?: boolean }
   ): Promise<CartSummary> {
-    return this.request<CartSummary>('/api/v1/carts/calculate/', {
+    const endpoint = options?.upsell
+      ? '/api/v1/carts/calculate/?upsell=true'
+      : '/api/v1/carts/calculate/';
+    return this.request<CartSummary>(endpoint, {
       method: 'POST',
       body: JSON.stringify(data),
       signal,
@@ -104,13 +108,21 @@ export class ApiClient {
     });
   }
 
-  public async getAddressesAutocomplete(query_text: string, country?: string, language?: string, signal?: AbortSignal): Promise<any> {
+  public async getAddressesAutocomplete(
+    query_text: string,
+    country?: string,
+    language?: string,
+    signal?: AbortSignal
+  ): Promise<any> {
     const params = new URLSearchParams({ query_text });
 
     if (country) params.append('country', country);
     if (language) params.append('language', language);
 
-    return this.request<AddressAutocomplete>(`/api/v1/addresses/autocomplete/?${params.toString()}`, { signal });
+    return this.request<AddressAutocomplete>(
+      `/api/v1/addresses/autocomplete/?${params.toString()}`,
+      { signal }
+    );
   }
 
   // Get request type from endpoint
@@ -144,13 +156,11 @@ export class ApiClient {
     const method = options?.method || 'GET';
     const url = `${this.baseURL}${endpoint}`;
 
-
     const headers = {
       Authorization: this.apiKey,
       'Content-Type': 'application/json',
       ...options?.headers,
     };
-
 
     this.logger.debug(`API Request: ${method} ${url}`);
 
@@ -189,7 +199,6 @@ export class ApiClient {
         errorMessage = `API Error: ${response.status} ${response.statusText}`;
         errorType = this.getErrorType(response.status);
 
-
         // Try to parse error response body
         let errorData: any = {};
         try {
@@ -200,7 +209,6 @@ export class ApiClient {
         } catch (parseError) {
           this.logger.warn('Failed to parse error response body');
         }
-
 
         this.logger.error(errorMessage, errorData);
 
@@ -223,7 +231,6 @@ export class ApiClient {
       } else {
         this.logger.error('API request failed:', String(error));
       }
-
 
       throw error;
     }

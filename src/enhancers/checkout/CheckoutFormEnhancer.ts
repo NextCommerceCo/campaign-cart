@@ -1839,8 +1839,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const attributionStore = useAttributionStore.getState();
     const attribution = attributionStore.getAttributionForApi();
 
-    // Extract coupon codes from cart's appliedCoupons
-    const vouchers = (cartStore.appliedCoupons || []).map((coupon: any) => coupon.code);
+    const vouchers = useCheckoutStore.getState().vouchers;
 
     return {
       lines: cartStore.items.map((item: any) => ({
@@ -1996,8 +1995,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const cartStore = useCartStore.getState();
 
     try {
-      // Extract coupon codes from cart's appliedCoupons
-      const vouchers = (cartStore.appliedCoupons || []).map((coupon: any) => coupon.code);
+      const vouchers = useCheckoutStore.getState().vouchers;
 
       const testOrderData = {
         lines: cartStore.items.length > 0
@@ -2093,6 +2091,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     if (redirectUrl) {
       const finalUrl = this.preserveQueryParams(redirectUrl);
+      // Clear cart items, vouchers, and checkout form state before navigating
+      // away from the checkout. Zustand's persist middleware writes to
+      // sessionStorage synchronously so the next page loads with a fresh cart.
+      useCartStore.getState().reset();
+      useCheckoutStore.getState().reset();
       // Keep the loading state active during redirect
       // The browser will handle clearing it when the page unloads
       window.location.href = finalUrl;
@@ -2177,8 +2180,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private getCurrency(): string {
     // Get currency from campaign or config store (same logic as cart store)
     const campaignState = useCampaignStore.getState();
-    if (campaignState?.data?.currency) {
-      return campaignState.data.currency;
+    if (campaignState?.currency) {
+      return campaignState.currency;
     }
 
     const configStore = useConfigStore.getState();
@@ -3505,7 +3508,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         checkoutStore.setSameAsShipping(true);
         // Use existing shipping method from cart if available
         const cartStore = useCartStore.getState();
-        const existingShipping = cartStore.shippingMethod || checkoutStore.shippingMethod;
+        const cartShipping = cartStore.shippingMethod;
+        const existingShipping = cartShipping
+          ? { id: cartShipping.id, name: cartShipping.name, price: cartShipping.price.toNumber(), code: cartShipping.code }
+          : checkoutStore.shippingMethod;
         if (existingShipping) {
           checkoutStore.setShippingMethod(existingShipping);
         } else {

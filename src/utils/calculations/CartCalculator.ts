@@ -8,14 +8,62 @@
  * - Voucher recalculation (pass updated vouchers, get new totals back)
  */
 
-import type { CartCalculateSummary, CartSummary, LineWithUpsell } from '@/types/api';
-import type { CartTotals } from '@/types/global';
-import { formatCurrency, formatPercentage } from '@/utils/currencyFormatter';
+import Decimal from 'decimal.js';
+import type { CartCalculateSummary, CartSummary, Discount, LineWithUpsell } from '@/types/api';
+import type { ShippingMethod } from '@/types/global';
 import { sessionStorageManager } from '@/utils/storage';
+
+// ─── In-memory calculate cache ────────────────────────────────────────────────
+
+const CALC_CACHE_TTL_MS = 30_000;
+const CALC_CACHE_MAX_ENTRIES = 20;
+
+interface CalcCacheEntry {
+  promise: Promise<CalculateCartResult>;
+  expiresAt: number;
+  settled: boolean;
+}
+
+const calcCache = new Map<string, CalcCacheEntry>();
+
+const CALC_CACHE_PREFIX = 'next-price-';
+
+async function calcCacheKey(
+  params: CalculateCartParams,
+  apiKey: string,
+): Promise<string> {
+  const lines = [...params.lines].sort((a, b) => {
+    const pkgDiff = a.package_id - b.package_id;
+    if (pkgDiff !== 0) return pkgDiff;
+    return a.quantity - b.quantity;
+  });
+  const data = JSON.stringify({
+    l: lines,
+    v: params.vouchers ? [...params.vouchers].sort() : [],
+    c: params.currency ?? null,
+    sm: params.shippingMethod ?? null,
+    es: params.exclude_shipping ?? false,
+    u: params.upsell ?? false,
+    k: apiKey,
+  });
+  const bytes = await crypto.subtle.digest(
+    'SHA-1',
+    new TextEncoder().encode(data),
+  );
+  const hex = Array.from(new Uint8Array(bytes))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+  return CALC_CACHE_PREFIX + hex;
+}
+
+function evictCalcCache(): void {
+  if (calcCache.size <= CALC_CACHE_MAX_ENTRIES) return;
+  const oldest = calcCache.keys().next().value;
+  if (oldest !== undefined) calcCache.delete(oldest);
+}
 
 // ─── Bundle price cache ───────────────────────────────────────────────────────
 
-const BUNDLE_PRICE_CACHE_PREFIX = 'next-bundle-price-';
 /** Default TTL matches the campaign cache (10 minutes). */
 const BUNDLE_PRICE_CACHE_TTL_MS = 10 * 60 * 1000;
 
@@ -32,6 +80,8 @@ export interface BundlePriceOptions {
   ttl?: number;
   /** When true, shipping is excluded from the returned total. Default false. */
   exclude_shipping?: boolean;
+  /** When true, passes ?upsell=true to the calculate API for post-purchase pricing. */
+  upsell?: boolean;
 }
 
 interface CachedBundlePrice {
@@ -39,22 +89,6 @@ interface CachedBundlePrice {
   expiresAt: number;
 }
 
-async function bundleCacheKey(
-  items: BundlePriceItem[],
-  currency?: string | null,
-  vouchers?: string[],
-  apiKey?: string,
-): Promise<string> {
-  const data = JSON.stringify({
-    items: [...items].sort((a, b) => a.packageId - b.packageId),
-    currency: currency ?? null,
-    vouchers: vouchers ? [...vouchers].sort() : [],
-    apiKey: apiKey ?? '',
-  });
-  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(data));
-  const hex = Array.from(new Uint8Array(bytes)).map(b => b.toString(16).padStart(2, '0')).join('');
-  return BUNDLE_PRICE_CACHE_PREFIX + hex;
-}
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -64,17 +98,42 @@ export interface CalculateCartParams {
   currency?: string | null;
   shippingMethod?: number;
   exclude_shipping?: boolean;
+  /** When true, passes ?upsell=true to the calculate API for post-purchase pricing. */
+  upsell?: boolean;
   signal?: AbortSignal;
 }
 
 export interface CalculateCartResult {
-  totals: CartTotals;
-  summary: CartSummary;
+  /** List of applied coupon codes. */
+  vouchers: string[];
+  /** ISO currency code of cart data. */
+  currency?: string;
+  /** Detailed offer information for offers applied to the cart. */
+  offerDiscounts?: Discount[];
+  /** Detailed voucher information for vouchers applied to the cart. */
+  voucherDiscounts?: Discount[];
+  /** Cart subtotal before shipping and discounts. */
+  subtotal: Decimal;
+  /** The currently selected shipping method and its pricing details. */
+  shippingMethod?: ShippingMethod;
+  /** `true` when any discount (coupon or offer) is applied. */
+  hasDiscounts: boolean;
+  /** Total discount amount from coupons and offers. */
+  totalDiscount: Decimal;
+  /** Total discount as a percentage of the subtotal. */
+  totalDiscountPercentage: Decimal;
+  /** Cart grand total (subtotal + shipping − discounts). */
+  total: Decimal;
+  /** Raw CartSummary response from the API calculate endpoint. */
+  summary?: CartSummary;
 }
 
 /**
  * Call the /calculate API with arbitrary lines and return totals + raw summary.
  * Lazily imports ApiClient and configStore to avoid circular dependencies.
+ *
+ * Results are cached in-memory by payload (30s TTL). Concurrent calls with the
+ * same payload share a single in-flight request (promise dedup).
  */
 export async function calculateCart(
   params: CalculateCartParams
@@ -82,7 +141,26 @@ export async function calculateCart(
   const { ApiClient } = await import('@/api/client');
   const { useConfigStore } = await import('@/stores/configStore');
 
-  const client = new ApiClient(useConfigStore.getState().apiKey);
+  const apiKey = useConfigStore.getState().apiKey;
+  const key = await calcCacheKey(params, apiKey);
+
+  const existing = calcCache.get(key);
+  if (existing) {
+    if (existing.settled && existing.expiresAt > Date.now()) {
+      // LRU touch: move to end of Map iteration order
+      calcCache.delete(key);
+      calcCache.set(key, existing);
+      return existing.promise;
+    }
+    if (!existing.settled) {
+      // In-flight dedup: return the same pending promise
+      return existing.promise;
+    }
+    // Expired
+    calcCache.delete(key);
+  }
+
+  const client = new ApiClient(apiKey);
 
   const cartData: CartCalculateSummary = {
     lines: params.lines,
@@ -91,9 +169,44 @@ export async function calculateCart(
     shipping_method: params.shippingMethod,
   };
 
-  const summary = await client.calculateSummary(cartData, params.signal);
+  const promise = client
+    .calculateSummary(cartData, params.signal, {
+      upsell: params.upsell,
+    })
+    .then(summary => {
+      const result: CalculateCartResult = {
+        ...buildCartFields(summary),
+        vouchers: params.vouchers ?? [],
+        summary,
+      };
+      const entry = calcCache.get(key);
+      if (entry && entry.promise === promise) {
+        entry.settled = true;
+        entry.expiresAt = Date.now() + CALC_CACHE_TTL_MS;
+      }
+      return result;
+    })
+    .catch(err => {
+      // Remove failed/aborted entries so next call retries
+      const entry = calcCache.get(key);
+      if (entry && entry.promise === promise) {
+        calcCache.delete(key);
+      }
+      throw err;
+    });
 
-  return { totals: buildCartTotals(summary, { exclude_shipping: params.exclude_shipping }), summary };
+  calcCache.set(key, { promise, expiresAt: 0, settled: false });
+  evictCalcCache();
+
+  return promise;
+}
+
+/**
+ * Clear the in-memory calculateCart cache.
+ * Call when server-side state may have changed independently of the payload.
+ */
+export function clearCalculateCache(): void {
+  calcCache.clear();
 }
 
 /**
@@ -113,7 +226,22 @@ export async function calculateBundlePrice(
   const { useConfigStore } = await import('@/stores/configStore');
   const apiKey = useConfigStore.getState().apiKey;
   const ttl = options.ttl ?? BUNDLE_PRICE_CACHE_TTL_MS;
-  const cacheKey = await bundleCacheKey(items, options.currency, options.vouchers, apiKey);
+
+  const lines: LineWithUpsell[] = items.map(item => ({
+    package_id: item.packageId,
+    quantity: item.quantity,
+  }));
+
+  const params: CalculateCartParams = {
+    lines,
+    vouchers: options.vouchers,
+    currency: options.currency,
+    shippingMethod: options.shippingMethod,
+    exclude_shipping: options.exclude_shipping,
+    upsell: options.upsell,
+  };
+
+  const cacheKey = await calcCacheKey(params, apiKey);
 
   if (ttl > 0) {
     const cached = sessionStorageManager.get<CachedBundlePrice>(cacheKey);
@@ -122,18 +250,7 @@ export async function calculateBundlePrice(
     }
   }
 
-  const lines: LineWithUpsell[] = items.map(item => ({
-    package_id: item.packageId,
-    quantity: item.quantity,
-  }));
-
-  const result = await calculateCart({
-    lines,
-    vouchers: options.vouchers,
-    currency: options.currency,
-    shippingMethod: options.shippingMethod,
-    exclude_shipping: options.exclude_shipping,
-  });
+  const result = await calculateCart(params);
 
   if (ttl > 0) {
     sessionStorageManager.set<CachedBundlePrice>(cacheKey, {
@@ -146,64 +263,56 @@ export async function calculateBundlePrice(
 }
 
 /**
- * Transform a raw CartSummary API response into a CartTotals object.
+ * Transform a raw CartSummary API response into flat CartState fields.
  * Pure function – no side effects, easy to test.
+ * All price fields are Decimal instances for precision arithmetic.
  */
-export function buildCartTotals(
+export function buildCartFields(
   response: CartSummary,
-  options?: { exclude_shipping?: boolean; compareTotal?: number }
-): CartTotals {
-  const subtotal = parseFloat(response.subtotal);
-  const total = parseFloat(response.total);
-  const discount = parseFloat(response.total_discount);
+): Omit<CalculateCartResult, 'summary' | 'vouchers'> {
+  const subtotal = new Decimal(response.subtotal);
+  const total = new Decimal(response.total);
+  const totalDiscount = new Decimal(response.total_discount);
 
-  const shippingPrice = parseFloat(response.shipping_method?.price ?? '0');
-  const shippingOriginalPrice = parseFloat(response.shipping_method?.original_price ?? '0');
-  const shippingDiscount = shippingOriginalPrice > shippingPrice
-    ? shippingOriginalPrice - shippingPrice
-    : 0;
+  const totalDiscountPercentage = subtotal.gt(0)
+    ? totalDiscount.div(subtotal).times(100)
+    : new Decimal(0);
 
-  const effectiveTotal = options?.exclude_shipping ? total - shippingPrice : total;
+  let shippingMethod: ShippingMethod | undefined;
+  if (response.shipping_method) {
+    const sm = response.shipping_method;
+    const shippingPrice = new Decimal(sm.price);
+    const shippingOriginalPrice = new Decimal(sm.original_price);
+    const shippingDiscountAmount = Decimal.max(
+      0,
+      shippingOriginalPrice.minus(shippingPrice),
+    );
+    const shippingDiscountPercentage = shippingOriginalPrice.gt(0)
+      ? shippingDiscountAmount.div(shippingOriginalPrice).times(100)
+      : new Decimal(0);
 
-  // compareTotal: use provided retail/compare-at total when available (e.g. from
-  // campaign package price_retail fields), otherwise fall back to the undiscounted
-  // campaign subtotal so savings only reflects coupon/offer discounts.
-  const compareTotal = options?.compareTotal ?? subtotal;
-  const retailSavings = Math.max(0, compareTotal - subtotal);
-  const totalSavingsValue = Math.max(0, compareTotal - effectiveTotal);
-  const savingsPercentage = compareTotal > 0 ? (retailSavings / compareTotal) * 100 : 0;
-  const totalSavingsPercentage = compareTotal > 0 ? (totalSavingsValue / compareTotal) * 100 : 0;
-  const hasSavings = retailSavings > 0;
-  const hasTotalSavings = totalSavingsValue > 0;
-
-  const count = response.lines.reduce((sum, line) => sum + line.quantity, 0);
-  const isEmpty = response.lines.length === 0;
+    shippingMethod = {
+      id: sm.id,
+      name: sm.name,
+      code: sm.code,
+      originalPrice: shippingOriginalPrice,
+      price: shippingPrice,
+      discountAmount: shippingDiscountAmount,
+      discountPercentage: shippingDiscountPercentage,
+      hasDiscounts: shippingDiscountAmount.gt(0),
+      discounts: sm.discounts,
+    };
+  }
 
   return {
-    subtotal: { value: subtotal, formatted: formatCurrency(subtotal) },
-    shipping: {
-      value: shippingPrice,
-      formatted: shippingPrice === 0 ? 'FREE' : formatCurrency(shippingPrice),
-    },
-    shippingDiscount: {
-      value: shippingDiscount,
-      formatted: formatCurrency(shippingDiscount),
-    },
-    tax: { value: 0, formatted: formatCurrency(0) },
-    discounts: { value: discount, formatted: formatCurrency(discount) },
-    total: { value: effectiveTotal, formatted: formatCurrency(effectiveTotal) },
-    totalExclShipping: {
-      value: total - shippingPrice,
-      formatted: formatCurrency(total - shippingPrice),
-    },
-    count,
-    isEmpty,
-    compareTotal: { value: compareTotal, formatted: formatCurrency(compareTotal) },
-    savings: { value: retailSavings, formatted: formatCurrency(retailSavings) },
-    savingsPercentage: { value: savingsPercentage, formatted: formatPercentage(savingsPercentage) },
-    hasSavings,
-    totalSavings: { value: totalSavingsValue, formatted: formatCurrency(totalSavingsValue) },
-    totalSavingsPercentage: { value: totalSavingsPercentage, formatted: formatPercentage(totalSavingsPercentage) },
-    hasTotalSavings,
+    currency: response.currency,
+    offerDiscounts: response.offer_discounts,
+    voucherDiscounts: response.voucher_discounts,
+    subtotal,
+    total,
+    hasDiscounts: totalDiscount.gt(0),
+    totalDiscount,
+    totalDiscountPercentage,
+    shippingMethod,
   };
 }

@@ -204,7 +204,7 @@ export class EventBuilder {
     try {
       if (typeof window !== 'undefined') {
         const campaignState = useCampaignStore.getState();
-        return campaignState.data?.currency || 'USD';
+        return campaignState.currency ?? 'USD';
       }
     } catch (error) {
       console.warn('Could not access campaign store for currency:', error);

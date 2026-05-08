@@ -31,7 +31,7 @@ export class UserEvents {
           const cartState = useCartStore.getState();
           const campaignState = useCampaignStore.getState();
 
-          const currency = campaignState?.data?.currency || 'USD';
+          const currency = campaignState?.currency ?? 'USD';
           // Use items from cart store - they already have all the fields we need
           const cartItems = cartState?.items || [];
 
@@ -41,7 +41,7 @@ export class UserEvents {
             : [];
 
           // Calculate cart total
-          const cartTotal = cartState?.totals?.total?.value || cartState?.total || 0;
+          const cartTotal = cartState?.total?.toNumber() ?? 0;
 
           // Build GA4 ecommerce object
           const ecommerce: EcommerceData = {

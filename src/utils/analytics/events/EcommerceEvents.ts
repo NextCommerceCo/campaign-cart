@@ -202,18 +202,18 @@ export class EcommerceEvents {
 
     const ecommerce: EcommerceData = {
       currency,
-      value: cartState.totals.total.value || 0,
+      value: cartState.total.toNumber() || 0,
       items
     };
 
     // Add coupon if applied
-    if (cartState.appliedCoupons?.[0]?.code) {
-      ecommerce.coupon = cartState.appliedCoupons[0].code;
+    if (cartState.vouchers?.[0]) {
+      ecommerce.coupon = cartState.vouchers[0];
     }
 
     return EventBuilder.createEvent('dl_begin_checkout', {
       user_properties: EventBuilder.getUserProperties(),
-      cart_total: String(cartState.totals.total.value || '0.00'),
+      cart_total: String(cartState.total.toNumber() || '0.00'),
       ecommerce
     });
   }
@@ -234,14 +234,14 @@ export class EcommerceEvents {
     // Parse order totals
     const orderTotal = parseFloat(
       order.total_incl_tax || order.total || orderData.total ||
-      cartState.totals.total.value || 0
+      cartState.total.toNumber() || 0
     );
     const orderTax = parseFloat(
-      order.total_tax || orderData.tax || cartState.totals.tax.value || 0
+      order.total_tax || orderData.tax || 0 || 0
     );
     const orderShipping = parseFloat(
       order.shipping_incl_tax || orderData.shipping ||
-      cartState.totals.shipping.value || 0
+      cartState.shippingMethod?.price.toNumber() || 0
     );
 
     // Format order items as GA4 items
@@ -292,7 +292,7 @@ export class EcommerceEvents {
 
     // Add coupon if present
     const coupon = order.vouchers?.[0]?.code || orderData.coupon ||
-                  cartState.appliedCoupons?.[0]?.code;
+                  cartState.vouchers?.[0];
     if (coupon) {
       ecommerce.coupon = coupon;
     }
@@ -382,13 +382,13 @@ export class EcommerceEvents {
 
     const ecommerce: EcommerceData = {
       currency,
-      value: cartState.totals.total.value || 0,
+      value: cartState.total.toNumber() || 0,
       items
     };
 
     return EventBuilder.createEvent('dl_view_cart', {
       user_properties: EventBuilder.getUserProperties(),
-      cart_total: String(cartState.totals.total.value || '0.00'),
+      cart_total: String(cartState.total.toNumber() || '0.00'),
       ecommerce
     });
   }
@@ -409,20 +409,20 @@ export class EcommerceEvents {
     const ecommerce: EcommerceData = {
       currency,
       currencyCode: currency, // Add currencyCode for Elevar compatibility
-      value: cartState.totals.total.value,
+      value: cartState.total.toNumber(),
       items: formattedItems,
       ...(shippingTier && { shipping_tier: shippingTier })
     };
 
     // Add coupon if applied
-    if (cartState.appliedCoupons?.[0]?.code) {
-      ecommerce.coupon = cartState.appliedCoupons[0].code;
+    if (cartState.vouchers?.[0]) {
+      ecommerce.coupon = cartState.vouchers[0];
     }
 
     return EventBuilder.createEvent('dl_add_shipping_info', {
       ecommerce,
       event_category: 'ecommerce',
-      event_value: cartState.totals.total.value,
+      event_value: cartState.total.toNumber(),
       shipping_tier: shippingTier
     });
   }
@@ -442,20 +442,20 @@ export class EcommerceEvents {
 
     const ecommerce: EcommerceData = {
       currency,
-      value: cartState.totals.total.value,
+      value: cartState.total.toNumber(),
       items: formattedItems,
       ...(paymentType && { payment_type: paymentType })
     };
 
     // Add coupon if applied
-    if (cartState.appliedCoupons?.[0]?.code) {
-      ecommerce.coupon = cartState.appliedCoupons[0].code;
+    if (cartState.vouchers?.[0]) {
+      ecommerce.coupon = cartState.vouchers[0];
     }
 
     return EventBuilder.createEvent('dl_add_payment_info', {
       ecommerce,
       event_category: 'ecommerce',
-      event_value: cartState.totals.total.value,
+      event_value: cartState.total.toNumber(),
       payment_type: paymentType
     });
   }

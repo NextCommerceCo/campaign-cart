@@ -45,25 +45,6 @@ export abstract class BaseCartEnhancer extends BaseEnhancer {
   }
   
   /**
-   * Get cart totals
-   */
-  protected getCartTotals() {
-    return this.cartState?.totals ?? {
-      subtotal: { value: 0, formatted: '$0.00' },
-      shipping: { value: 0, formatted: '$0.00' },
-      tax: { value: 0, formatted: '$0.00' },
-      discounts: { value: 0, formatted: '$0.00' },
-      total: { value: 0, formatted: '$0.00' },
-      count: 0,
-      isEmpty: true,
-      savings: { value: 0, formatted: '$0.00' },
-      savingsPercentage: { value: 0, formatted: '0%' },
-      compareTotal: { value: 0, formatted: '$0.00' },
-      hasSavings: false,
-    };
-  }
-  
-  /**
    * Get all cart items
    */
   protected getCartItems(): CartItem[] {

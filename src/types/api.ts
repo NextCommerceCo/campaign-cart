@@ -78,10 +78,16 @@ export interface SummaryLine {
   is_recurring?: boolean;
   interval?: 'day' | 'month' | null;
   interval_count?: number | null;
+  original_recurring_price?: string;
+  currency?: string;
   product_name?: string;
   product_variant_name?: string;
   product_sku?: string | null;
-  product_variant_attribute_values?: Array<{ code: string; name: string; value: string }>;
+  product_variant_attribute_values?: Array<{
+    code: string;
+    name: string;
+    value: string;
+  }>;
 }
 
 export interface ShippingMethodSummary {
@@ -350,6 +356,7 @@ export interface AddUpsellLine {
   lines: UpsellLineItem[];
   payment_detail?: PaymentDetail;
   currency?: string;
+  vouchers?: string[];
 }
 
 export interface UpsellLineItem {

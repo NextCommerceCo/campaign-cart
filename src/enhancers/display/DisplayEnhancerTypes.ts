@@ -122,56 +122,38 @@ export const PROPERTY_MAPPINGS: Record<string, PropertyMap> = {
     // Booleans
     isEmpty: 'isEmpty',
     hasItems: '!isEmpty', // Negation
-    hasSavings: 'totals.hasSavings',
-    hasTotalSavings: 'totals.hasTotalSavings',
-    
-    // Quantities (number of packages in cart)
+    hasDiscounts: 'hasDiscounts',
+    hasShippingDiscount: 'shippingMethod.hasDiscounts',
+
+    // Quantities
     quantity: 'totalQuantity',
     itemCount: 'items.length',
-    count: 'totals.count',
-    
-    // Pre-formatted financial values from store
-    subtotal: { path: 'totals.subtotal.formatted', preformatted: true },
-    total: { path: 'totals.total.formatted', preformatted: true },
-    totalExclShipping: { path: 'totals.totalExclShipping.formatted', preformatted: true },
-    shipping: { path: 'totals.shipping.formatted', preformatted: true },
-    tax: { path: 'totals.tax.formatted', preformatted: true },
-    discounts: { path: 'totals.discounts.formatted', preformatted: true },
-    savingsAmount: { path: 'totals.savings.formatted', preformatted: true, fallback: '$0.00' },
-    savingsPercentage: { path: 'totals.savingsPercentage.formatted', preformatted: true, fallback: '0%' },
-    compareTotal: { path: 'totals.compareTotal.formatted', preformatted: true },
-    totalSavingsAmount: { path: 'totals.totalSavings.formatted', preformatted: true, fallback: '$0.00' },
-    totalSavingsPercentage: { path: 'totals.totalSavingsPercentage.formatted', preformatted: true, fallback: '0%' },
-    
-    // Raw numeric values that need formatting
-    'subtotal.raw': { path: 'totals.subtotal.value', format: 'currency' },
-    'total.raw': { path: 'totals.total.value', format: 'currency' },
-    'totalExclShipping.raw': { path: 'totals.totalExclShipping.value', format: 'currency' },
-    'shipping.raw': { path: 'totals.shipping.value', format: 'currency' },
-    'tax.raw': { path: 'totals.tax.value', format: 'currency' },
-    'discounts.raw': { path: 'totals.discounts.value', format: 'currency' },
-    'savingsAmount.raw': { path: 'totals.savings.value', format: 'currency' },
-    'savingsPercentage.raw': { path: 'totals.savingsPercentage.value', format: 'percentage' },
-    'compareTotal.raw': { path: 'totals.compareTotal.value', format: 'currency' },
-    'totalSavingsAmount.raw': { path: 'totals.totalSavings.value', format: 'currency' },
-    'totalSavingsPercentage.raw': { path: 'totals.totalSavingsPercentage.value', format: 'percentage' },
-    
+
+    // Financial values — Decimal objects, formatted by data-next-format="money"
+    subtotal:                  { path: 'subtotal',                        format: 'currency' },
+    total:                     { path: 'total',                           format: 'currency' },
+    shipping:                  { path: 'shippingMethod.price',            format: 'currency' },
+    shippingOriginal:          { path: 'shippingMethod.originalPrice',    format: 'currency' },
+    shippingDiscountAmount:    { path: 'shippingMethod.discountAmount',   format: 'currency' },
+    shippingDiscountPercentage:{ path: 'shippingMethod.discountPercentage', format: 'percentage' },
+    totalDiscount:             { path: 'totalDiscount',                  format: 'currency' },
+    discounts:                 { path: 'totalDiscount',                  format: 'currency' }, // alias
+    totalDiscountPercentage:   { path: 'totalDiscountPercentage',        format: 'percentage' },
+
     // Coupon/discount code properties
-    hasCoupons: { path: 'appliedCoupons.length', format: 'boolean', validator: (v) => v > 0 },
-    hasCoupon: { path: 'appliedCoupons.length', format: 'boolean', validator: (v) => v > 0 }, // Alias for hasCoupons
-    couponCount: { path: 'appliedCoupons.length', format: 'number' },
-    'coupons[0].code': { path: 'appliedCoupons.0.code', format: 'text' },
-    'coupons[0].discount': { path: 'appliedCoupons.0.discount', format: 'currency' },
-    'coupons[1].code': { path: 'appliedCoupons.1.code', format: 'text' },
-    'coupons[1].discount': { path: 'appliedCoupons.1.discount', format: 'currency' },
+    hasCoupons: { path: 'vouchers.length', format: 'boolean', validator: (v) => v > 0 },
+    hasCoupon: { path: 'vouchers.length', format: 'boolean', validator: (v) => v > 0 }, // Alias for hasCoupons
+    couponCount: { path: 'vouchers.length', format: 'number' },
+    'coupons[0].code': { path: 'vouchers.0', format: 'text' },
+    'coupons[1].code': { path: 'vouchers.1', format: 'text' },
     // Convenience aliases
-    discountCode: { path: 'appliedCoupons.0.code', format: 'text', fallback: '' },
-    discountCodes: { 
-      path: 'appliedCoupons', 
+    discountCode: { path: 'vouchers.0', format: 'text', fallback: '' },
+    discountCodes: {
+      path: 'vouchers',
       format: 'text',
-      validator: (coupons) => {
-        if (!Array.isArray(coupons) || coupons.length === 0) return '';
-        return coupons.map(c => c.code).join(', ');
+      validator: (codes) => {
+        if (!Array.isArray(codes) || codes.length === 0) return '';
+        return codes.join(', ');
       }
     }
   },

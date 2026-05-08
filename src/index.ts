@@ -21,9 +21,6 @@ export { useCampaignStore } from './stores/campaignStore';
 export { useConfigStore } from './stores/configStore';
 export { useCheckoutStore } from './stores/checkoutStore';
 export { useOrderStore } from './stores/orderStore';
-export { useProfileStore } from './stores/profileStore';
-export type { Profile, ProfileMapping, ProfileState, ProfileActions } from './stores/profileStore';
-
 // Type exports
 export type * from './types/global';
 
@@ -33,11 +30,6 @@ export { EventBus } from './utils/events';
 
 // API client export
 export { ApiClient } from './api/client';
-
-// Profile management exports
-export { ProfileManager } from './core/ProfileManager';
-export { ProfileMapper } from './utils/profiles/ProfileMapper';
-export { ProfileSwitcherEnhancer, ProfileSelectorEnhancer } from './enhancers/profile/ProfileSwitcherEnhancer';
 
 // Version - use runtime detected version from loader, fallback to build-time version
 declare global {
@@ -71,9 +63,9 @@ if (typeof window !== 'undefined') {
       // Phase 1: Critical modules (preload immediately)
       requestIdleCallback(() => {
         // Cart enhancers - most commonly used
-        import('./enhancers/display/CartDisplayEnhancer');
-        import('./enhancers/cart/PackageToggleEnhancer');
-        import('./enhancers/cart/PackageSelectorEnhancer');
+        import('./enhancers/cart/CartSummary');
+        import('./enhancers/cart/PackageToggle');
+        import('./enhancers/cart/PackageSelector');
         
         // Display enhancers
         import('./enhancers/display/ProductDisplayEnhancer');
@@ -89,14 +81,14 @@ if (typeof window !== 'undefined') {
 
         // Order/Upsell
         import('./enhancers/display/OrderDisplayEnhancer');
-        import('./enhancers/order/UpsellEnhancer');
+        import('./enhancers/order/Upsell');
 
         // Attribution
         import('./utils/attribution/AttributionCollector');
 
         // Cart UI components
-        import('./enhancers/cart/CartItemListEnhancer');
-        import('./enhancers/cart/QuantityControlEnhancer');
+        import('./enhancers/cart/CartItemList');
+        import('./enhancers/cart/QuantityControl');
       }, { timeout: 5000 });
       
       // Phase 3: Tertiary modules (preload when truly idle)
@@ -108,16 +100,12 @@ if (typeof window !== 'undefined') {
         // Behavior enhancers
         import('./enhancers/behavior/SimpleExitIntentEnhancer');
         
-        // Profile management (if profiles are configured)
-        import('./core/ProfileManager');
-        import('./enhancers/profile/ProfileSwitcherEnhancer');
-
       }, { timeout: 5000 });
     } else {
       // Fallback for browsers without requestIdleCallback
       setTimeout(() => {
         // Just preload critical modules
-        import('./enhancers/display/CartDisplayEnhancer');
+        import('./enhancers/cart/CartSummary');
         import('./enhancers/display/ProductDisplayEnhancer');
         import('./utils/analytics');
       }, 1000);

@@ -389,107 +389,25 @@ export class SelectionDisplayEnhancer extends BaseDisplayEnhancer {
 
   // Discount calculation methods
   private calculateSelectionDiscountAmount(): number {
-    if (!this.selectedItem || !this.packageData || !this.cartState?.appliedCoupons?.length) {
-      return 0;
-    }
-
-    let totalDiscount = 0;
-    const basePrice = this.getSelectionPrice();
-    const quantity = this.selectedItem.quantity;
-
-    // Check each applied coupon to see if it applies to this package
-    for (const coupon of this.cartState.appliedCoupons) {
-      // Package-specific discount
-      if (coupon.definition.packageIds && coupon.definition.packageIds.includes(this.selectedItem.packageId)) {
-        if (coupon.definition.type === 'percentage') {
-          totalDiscount += (basePrice * quantity * coupon.definition.value) / 100;
-        } else if (coupon.definition.type === 'fixed') {
-          totalDiscount += coupon.definition.value * quantity;
-        }
-      }
-      // Order-level discount
-      else if (!coupon.definition.packageIds || coupon.definition.packageIds.length === 0) {
-        if (coupon.definition.type === 'percentage') {
-          totalDiscount += (basePrice * quantity * coupon.definition.value) / 100;
-        } else if (coupon.definition.type === 'fixed') {
-          // For fixed order-level discounts, distribute proportionally
-          const packageTotal = basePrice * quantity;
-          const cartSubtotal = this.cartState.totals.subtotal.value;
-          if (cartSubtotal > 0) {
-            const proportion = packageTotal / cartSubtotal;
-            totalDiscount += coupon.definition.value * proportion;
-          }
-        }
-      }
-    }
-
-    return totalDiscount;
+    // Discount amounts are computed server-side and returned in cartState.voucherDiscounts /
+    // offerDiscounts. Per-selection breakdown is not available here.
+    return 0;
   }
 
   private calculateSelectionDiscountedPrice(): number {
-    const unitPrice = this.getSelectionPrice();
-    const discountAmount = this.calculateSelectionDiscountAmount();
-    const quantity = this.selectedItem?.quantity || 1;
-    
-    // Calculate the unit price after discounts
-    const discountPerUnit = quantity > 0 ? discountAmount / quantity : 0;
-    return Math.max(0, unitPrice - discountPerUnit);
+    return this.getSelectionPrice();
   }
 
   private getSelectionHasDiscount(): boolean {
-    return this.calculateSelectionDiscountAmount() > 0;
+    return (this.cartState?.hasDiscounts ?? false) && !this.cartState?.isEmpty;
   }
 
   private getSelectionDiscountPercentage(): number {
-    const total = this.getSelectionTotal();
-    const discount = this.calculateSelectionDiscountAmount();
-    
-    if (total <= 0) return 0;
-    return (discount / total) * 100;
+    return 0;
   }
 
-  private getSelectionAppliedDiscounts(): Array<{code: string; amount: number}> {
-    if (!this.selectedItem || !this.packageData || !this.cartState?.appliedCoupons?.length) {
-      return [];
-    }
-
-    const discounts: Array<{code: string; amount: number}> = [];
-    
-    for (const coupon of this.cartState.appliedCoupons) {
-      let discountAmount = 0;
-      
-      // Package-specific discount
-      if (coupon.definition.packageIds && coupon.definition.packageIds.includes(this.selectedItem.packageId)) {
-        if (coupon.definition.type === 'percentage') {
-          discountAmount = (this.getSelectionTotal() * coupon.definition.value) / 100;
-        } else if (coupon.definition.type === 'fixed') {
-          discountAmount = coupon.definition.value * this.selectedItem.quantity;
-        }
-      }
-      // Order-level discount
-      else if (!coupon.definition.packageIds || coupon.definition.packageIds.length === 0) {
-        if (coupon.definition.type === 'percentage') {
-          discountAmount = (this.getSelectionTotal() * coupon.definition.value) / 100;
-        } else if (coupon.definition.type === 'fixed') {
-          // Proportional distribution
-          const packageTotal = this.getSelectionTotal();
-          const cartSubtotal = this.cartState.totals.subtotal.value;
-          if (cartSubtotal > 0) {
-            const proportion = packageTotal / cartSubtotal;
-            discountAmount = coupon.definition.value * proportion;
-          }
-        }
-      }
-      
-      if (discountAmount > 0) {
-        discounts.push({
-          code: coupon.code,
-          amount: discountAmount
-        });
-      }
-    }
-    
-    return discounts;
+  private getSelectionAppliedDiscounts(): Array<{ code: string; amount: number }> {
+    return [];
   }
 
   // Parse custom calculated fields with mathematical expressions

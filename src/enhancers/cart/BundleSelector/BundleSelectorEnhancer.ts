@@ -1,0 +1,759 @@
+/**
+ * Bundle Selector Enhancer
+ *
+ * Lets the developer define named bundles — each bundle being a fixed set of
+ * packages + quantities — and lets the visitor pick one. When a bundle is
+ * selected in **swap** mode the enhancer atomically replaces the previous
+ * bundle's cart items with the new bundle's items while leaving unrelated
+ * cart items untouched.
+ *
+ * See the original file-level JSDoc for full attribute documentation.
+ */
+
+import { BaseEnhancer } from '@/enhancers/base/BaseEnhancer';
+import { useCartStore } from '@/stores/cartStore';
+import { useCheckoutStore } from '@/stores/checkoutStore';
+import { useCampaignStore } from '@/stores/campaignStore';
+import type { CartState } from '@/types/global';
+
+import type {
+  BundleCard,
+  BundleCardPublicState,
+  BundleDef,
+  BundleItem,
+  BundlePackageState,
+  BundleSlot,
+  ClassNames,
+  HandlerContext,
+  PriceContext,
+  RenderContext,
+} from './BundleSelectorEnhancer.types';
+import {
+  renderBundleTemplate,
+  renderSlotsForCard,
+  updateCardDisplayElements,
+} from './BundleSelectorEnhancer.renderer';
+import {
+  applyBundle,
+  applyBundleQuantityChange,
+  applyVoucherSwap,
+  handleCardClick,
+  handleSelectVariantChange,
+  handleVariantOptionClick,
+  onVoucherApplied,
+  setShippingMethod,
+} from './BundleSelectorEnhancer.handlers';
+import { fetchAndUpdateBundlePrice } from './BundleSelectorEnhancer.price';
+import {
+  extractNestedVariantTemplates,
+  getEffectiveItems,
+  makePackageState,
+  parseVouchers,
+} from './BundleSelectorEnhancer.state';
+import { setupQuantityControls } from '@/enhancers/cart/shared/quantityControls';
+
+export class BundleSelectorEnhancer extends BaseEnhancer {
+  private static readonly _instances = new Set<BundleSelectorEnhancer>();
+
+  private mode: 'swap' | 'select' = 'swap';
+  /** When true, operates in post-purchase upsell context: clicks add to order, not cart. */
+  private isUpsellContext: boolean = false;
+  private template: string = '';
+  private slotTemplate: string = '';
+  private variantOptionTemplate: string = '';
+  private variantSelectorTemplate: string = '';
+  private cards: BundleCard[] = [];
+  private selectedCard: BundleCard | null = null;
+  private clickHandlers = new Map<HTMLElement, (e: Event) => void>();
+  private selectHandlers = new Map<HTMLSelectElement, EventListener>();
+  private quantityHandlers = new Map<HTMLElement, (e: Event) => void>();
+  /** Map card → its stepper display-refresh callback (returned by setupQuantityControls). */
+  private quantityRefreshers = new Map<HTMLElement, () => void>();
+  private mutationObserver: MutationObserver | null = null;
+  private boundVariantOptionClick: ((e: Event) => void) | null = null;
+  private boundCurrencyChangeHandler: (() => void) | null = null;
+  private isApplyingRef = { value: false };
+  private includeShipping: boolean = false;
+  private selectorId: string | null = null;
+  private externalSlotsEl: HTMLElement | null = null;
+  private classNames!: ClassNames;
+  private currencyChangeTimeout: ReturnType<typeof setTimeout> | null = null;
+  private voucherChangeTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  public async initialize(): Promise<void> {
+    this.validateElement();
+    BundleSelectorEnhancer._instances.add(this);
+    this.classNames = this.parseClassNames();
+
+    this.isUpsellContext = this.element.hasAttribute('data-next-upsell-context');
+    // Upsell context is always select mode — no cart writes on selection.
+    this.mode = this.isUpsellContext
+      ? 'select'
+      : ((this.getAttribute('data-next-selection-mode') ?? 'swap') as 'swap' | 'select');
+    this.includeShipping = this.getAttribute('data-next-include-shipping') === 'true';
+
+    // ── External slots container ────────────────────────────────────────────────
+    const selectorId = this.getAttribute('data-next-selector-id');
+    this.selectorId = selectorId;
+    if (selectorId) {
+      this.externalSlotsEl = document.querySelector<HTMLElement>(
+        `[data-next-bundle-slots-for="${selectorId}"]`,
+      );
+    }
+
+    // ── Card template ──────────────────────────────────────────────────────────
+    // Resolution order: id attribute → inline HTML attribute → direct <template>
+    // child of the container (`this.element`). The child fallback lets authors
+    // write native HTML without assigning template ids.
+    const templateId = this.getAttribute('data-next-bundle-template-id');
+    const templateAttr = this.getAttribute('data-next-bundle-template');
+    if (templateId) {
+      this.template = document.getElementById(templateId)?.innerHTML.trim() ?? '';
+    } else if (templateAttr != null) {
+      this.template = templateAttr;
+    } else {
+      const inline = this.element.querySelector<HTMLTemplateElement>(':scope > template');
+      this.template = inline?.innerHTML.trim() ?? '';
+    }
+
+    // ── Slot template ──────────────────────────────────────────────────────────
+    // Same three-tier resolution as the card template. When an external slots
+    // container is present, its direct <template> child is the inline fallback.
+    const slotTemplateId = this.getAttribute('data-next-bundle-slot-template-id');
+    const slotTemplateAttr = this.getAttribute('data-next-bundle-slot-template');
+    if (slotTemplateId) {
+      this.slotTemplate = document.getElementById(slotTemplateId)?.innerHTML.trim() ?? '';
+    } else if (slotTemplateAttr != null) {
+      this.slotTemplate = slotTemplateAttr;
+    } else if (this.externalSlotsEl) {
+      const inline = this.externalSlotsEl.querySelector<HTMLTemplateElement>(':scope > template');
+      this.slotTemplate = inline?.innerHTML.trim() ?? '';
+    }
+
+    // ── Custom variant option template ─────────────────────────────────────────
+    const variantOptionTemplateId = this.getAttribute('data-next-variant-option-template-id');
+    if (variantOptionTemplateId) {
+      this.variantOptionTemplate =
+        document.getElementById(variantOptionTemplateId)?.innerHTML.trim() ?? '';
+    }
+
+    // ── Custom variant selector template ───────────────────────────────────────
+    const variantSelectorTemplateId = this.getAttribute(
+      'data-next-variant-selector-template-id',
+    );
+    if (variantSelectorTemplateId) {
+      this.variantSelectorTemplate =
+        document.getElementById(variantSelectorTemplateId)?.innerHTML.trim() ?? '';
+    }
+
+    // ── Extract variant templates nested inside the slot template ──────────────
+    // When authors nest <template>s inside [data-next-variant-selectors] and
+    // [data-next-variant-options] within the slot template, pull them out and
+    // strip them from the slot template HTML. Explicit id/attribute templates
+    // take precedence and suppress extraction.
+    if (this.slotTemplate && (!this.variantSelectorTemplate || !this.variantOptionTemplate)) {
+      const { slot, variantSelector, variantOption } = extractNestedVariantTemplates(
+        this.slotTemplate,
+      );
+      this.slotTemplate = slot;
+      if (!this.variantSelectorTemplate && variantSelector) {
+        this.variantSelectorTemplate = variantSelector;
+      }
+      if (!this.variantOptionTemplate && variantOption) {
+        this.variantOptionTemplate = variantOption;
+      }
+    }
+
+    // ── Auto-render bundle cards from JSON ─────────────────────────────────────
+    const bundlesAttr = this.getAttribute('data-next-bundles');
+    if (bundlesAttr && this.template) {
+      try {
+        const parsed: unknown = JSON.parse(bundlesAttr);
+        if (!Array.isArray(parsed)) {
+          this.logger.warn('data-next-bundles must be a JSON array, ignoring auto-render');
+        } else {
+          this.element.innerHTML = '';
+          for (const def of parsed as BundleDef[]) {
+            const el = renderBundleTemplate(this.template, def, this.logger);
+            if (el) this.element.appendChild(el);
+          }
+        }
+      } catch {
+        this.logger.warn('Invalid JSON in data-next-bundles, ignoring auto-render', bundlesAttr);
+      }
+    }
+
+    // ── Delegated click handler for custom variant options ─────────────────────
+    if (this.slotTemplate) {
+      const handler = (e: Event) =>
+        void handleVariantOptionClick(e, this.cards, this.makeHandlerContext());
+      this.boundVariantOptionClick = handler;
+      this.element.addEventListener('click', handler);
+      // External slots are outside this.element — attach there too
+      if (this.externalSlotsEl) {
+        this.externalSlotsEl.addEventListener('click', handler);
+      }
+    }
+
+    this.scanCards();
+    this.setupMutationObserver();
+
+    (this.element as unknown as Record<string, unknown>)['_getSelectedBundleItems'] = () => {
+      if (!this.selectedCard) return null;
+      const needsVariant = this.selectedCard.slots.some(
+        s => s.configurable && !s.variantSelected,
+      );
+      return needsVariant ? null : getEffectiveItems(this.selectedCard);
+    };
+
+    (this.element as unknown as Record<string, unknown>)['_getSelectedBundleVouchers'] = () =>
+      this.selectedCard?.vouchers ?? [];
+
+    if (this.isUpsellContext) {
+      // No cart sync in upsell context — just pre-select the default card.
+      this.initializeBundleSelection();
+    } else {
+      this.subscribe(useCartStore, this.syncWithCart.bind(this));
+      this.syncWithCart(useCartStore.getState());
+    }
+
+    // Re-fetch bundle prices whenever user-entered coupons change (debounced).
+    // Runs in both normal and upsell contexts so exit-intent vouchers
+    // trigger a price recalculation on upsell pages too.
+    // onVoucherApplied skips the re-fetch when only bundle-managed vouchers changed
+    // (e.g. during a bundle swap), avoiding redundant API calls.
+    let prevCheckoutVouchers = useCheckoutStore.getState().vouchers;
+    this.subscribe(useCheckoutStore, state => {
+      const next = state.vouchers;
+      const prev = prevCheckoutVouchers;
+      const changed =
+        next.length !== prev.length || next.some((v, i) => v !== prev[i]);
+      if (!changed) return;
+
+      prevCheckoutVouchers = next;
+      if (this.voucherChangeTimeout !== null) clearTimeout(this.voucherChangeTimeout);
+      this.voucherChangeTimeout = setTimeout(() => {
+        this.voucherChangeTimeout = null;
+        const allBundleVouchers = this.getAllKnownBundleVouchers();
+        onVoucherApplied(next, prev, this.cards, allBundleVouchers, card =>
+          this.calculateAndRenderPrice(card),
+        );
+      }, 150);
+    });
+
+    // Re-fetch prices when the active currency changes (debounced)
+    this.boundCurrencyChangeHandler = () => {
+      if (this.currencyChangeTimeout !== null) clearTimeout(this.currencyChangeTimeout);
+      this.currencyChangeTimeout = setTimeout(() => {
+        this.currencyChangeTimeout = null;
+        for (const card of this.cards) {
+          void this.calculateAndRenderPrice(card);
+        }
+      }, 150);
+    };
+    document.addEventListener('next:currency-changed', this.boundCurrencyChangeHandler);
+
+    for (const card of this.cards) {
+      void this.calculateAndRenderPrice(card);
+    }
+
+    this.logger.debug('BundleSelectorEnhancer initialized', {
+      mode: this.mode,
+      cardCount: this.cards.length,
+      isUpsellContext: this.isUpsellContext,
+    });
+  }
+
+  // ─── Price fetch + slot re-render ─────────────────────────────────────────────
+
+  /**
+   * Phases 3+4+5: fetch prices (CalculatePrices), write state (UpdateBundleState),
+   * then update all variable parts of the DOM (RelenderVariable).
+   * Entry point for onVariantChanged and onVoucherApplied — skips RenderBundleCard
+   * and RenderBundleCardItems.
+   */
+  private async calculateAndRenderPrice(card: BundleCard): Promise<void> {
+    await fetchAndUpdateBundlePrice(card, this.makePriceContext());
+    this.relenderVariables(card);
+  }
+
+  /**
+   * Phase 5 — RelenderVariable: updates all DOM that depends on calculated prices.
+   * Covers slot {item.xxx} variables, [data-next-bundle-display] elements,
+   * and the bundle:price-updated event for BundleDisplayEnhancer.
+   */
+  private relenderVariables(card: BundleCard): void {
+    if (this.slotTemplate) {
+      renderSlotsForCard(card, this.makeRenderContext());
+      if (this.externalSlotsEl && card === this.selectedCard) {
+        renderSlotsForCard(card, this.makeRenderContext(), this.externalSlotsEl);
+      }
+    }
+    if (card.bundlePrice) {
+      updateCardDisplayElements(card, card.bundlePrice);
+      // When a selectorId is set, BundleDisplayEnhancer may use
+      // "bundle.{selectorId}.property" — fire an additional event so those
+      // displays update when the selected card's price resolves.
+      if (this.selectorId && card === this.selectedCard) {
+        document.dispatchEvent(
+          new CustomEvent('bundle:price-updated', {
+            detail: { selectorId: this.selectorId },
+          }),
+        );
+      }
+    }
+  }
+
+  // ─── Card registration ────────────────────────────────────────────────────────
+
+  private scanCards(): void {
+    this.element.querySelectorAll<HTMLElement>('[data-next-bundle-card]').forEach(el => {
+      if (!this.cards.find(c => c.element === el)) this.registerCard(el);
+    });
+  }
+
+  private registerCard(el: HTMLElement): void {
+    const bundleId = el.getAttribute('data-next-bundle-id');
+    if (!bundleId) {
+      this.logger.warn('Bundle card is missing data-next-bundle-id', el);
+      return;
+    }
+
+    const itemsAttr = el.getAttribute('data-next-bundle-items');
+    if (!itemsAttr) {
+      this.logger.warn(`Bundle card "${bundleId}" is missing data-next-bundle-items`, el);
+      return;
+    }
+
+    let items: BundleItem[];
+    try {
+      items = JSON.parse(itemsAttr);
+    } catch {
+      this.logger.warn(`Invalid JSON in data-next-bundle-items for bundle "${bundleId}"`, el);
+      return;
+    }
+
+    if (!Array.isArray(items) || items.length === 0) {
+      this.logger.warn(`Bundle "${bundleId}" has no items`, el);
+      return;
+    }
+
+    const name = el.getAttribute('data-next-bundle-name') ?? '';
+    const isPreSelected = el.getAttribute('data-next-selected') === 'true';
+    const vouchers = parseVouchers(el.getAttribute('data-next-bundle-vouchers'), this.logger);
+    const shippingId = el.getAttribute('data-next-shipping-id') ?? undefined;
+
+    // Bundle-level quantity. Defaults preserve today's behavior when the
+    // new attrs are absent: multiplier = 1, stepper stays disabled because
+    // no stepper controls exist in the DOM.
+    const parsePositiveInt = (attr: string | null, fallback: number): number => {
+      const n = attr != null ? parseInt(attr, 10) : NaN;
+      return Number.isFinite(n) && n > 0 ? n : fallback;
+    };
+    const minQuantity = parsePositiveInt(el.getAttribute('data-next-min-quantity'), 1);
+    const maxQuantity = parsePositiveInt(el.getAttribute('data-next-max-quantity'), 999);
+    const initialQty = parsePositiveInt(el.getAttribute('data-next-quantity'), 1);
+    const bundleQuantity = Math.min(Math.max(initialQty, minQuantity), maxQuantity);
+
+    const slots: BundleSlot[] = [];
+    let slotIdx = 0;
+    for (const item of items) {
+      if (item.configurable && item.quantity > 1) {
+        for (let u = 0; u < item.quantity; u++) {
+          slots.push({
+            slotIndex: slotIdx++,
+            unitIndex: u,
+            originalPackageId: item.packageId,
+            activePackageId: item.packageId,
+            quantity: 1,
+            noSlot: item.noSlot,
+            configurable: true,
+            variantSelected: false,
+          });
+        }
+      } else {
+        slots.push({
+          slotIndex: slotIdx++,
+          unitIndex: 0,
+          originalPackageId: item.packageId,
+          activePackageId: item.packageId,
+          quantity: item.quantity,
+          noSlot: item.noSlot,
+          configurable: !!item.configurable,
+          variantSelected: false,
+        });
+      }
+    }
+
+    // Populate bundle-owned package states from campaign packages (provisional baseline)
+    const allPackages = useCampaignStore.getState().packages ?? [];
+    const packageStates = new Map<number, BundlePackageState>();
+    for (const slot of slots) {
+      if (!packageStates.has(slot.activePackageId)) {
+        const pkg = allPackages.find(p => p.ref_id === slot.activePackageId);
+        if (pkg) packageStates.set(slot.activePackageId, makePackageState(pkg));
+      }
+    }
+
+    // A configurable slot whose initial package already has specific variant
+    // attribute values is already a concrete selection — mark it as selected so
+    // _getSelectedBundleItems() doesn't block submission before the user
+    // interacts with any dropdown.
+    for (const slot of slots) {
+      if (slot.configurable && !slot.variantSelected) {
+        const pkg = allPackages.find(p => p.ref_id === slot.activePackageId);
+        if ((pkg?.product_variant_attribute_values?.length ?? 0) > 0) {
+          slot.variantSelected = true;
+        }
+      }
+    }
+
+    const card: BundleCard = {
+      element: el,
+      bundleId,
+      name,
+      items,
+      slots,
+      isPreSelected,
+      vouchers,
+      shippingId,
+      packageStates,
+      bundlePrice: null,
+      slotVarsCache: new Map(),
+      offerDiscounts: [],
+      voucherDiscounts: [],
+      bundleQuantity,
+      minQuantity,
+      maxQuantity,
+      qtyDebounceTimeout: null,
+    };
+    this.cards.push(card);
+    el.classList.add(this.classNames.bundleCard);
+
+    if (this.slotTemplate) {
+      renderSlotsForCard(card, this.makeRenderContext());
+    }
+
+    const handler = (e: Event) => {
+      const target = e.target as HTMLElement;
+      if (
+        target.closest(
+          'select, [data-next-variant-option], [data-next-quantity-increase], [data-next-quantity-decrease], [data-next-quantity-display]',
+        )
+      ) {
+        return;
+      }
+      void handleCardClick(e, card, this.selectedCard, this.makeHandlerContext());
+    };
+    this.clickHandlers.set(el, handler);
+    el.addEventListener('click', handler);
+
+    // Wire inline bundle-quantity controls. Host lookup covers three locations:
+    // the card element itself, the external slots container (for pages that
+    // render slots outside the selector), and any element marked
+    // `[data-next-bundle-qty-for="{selectorId}"]` (for steppers sitting
+    // entirely outside both — e.g. a product-detail page where the selector
+    // is hidden and the stepper lives next to an Add-to-Cart button).
+    const hostEls: HTMLElement[] = [el];
+    if (this.externalSlotsEl) hostEls.push(this.externalSlotsEl);
+    if (this.selectorId) {
+      document
+        .querySelectorAll<HTMLElement>(`[data-next-bundle-qty-for="${this.selectorId}"]`)
+        .forEach(host => {
+          if (!hostEls.includes(host)) hostEls.push(host);
+        });
+    }
+    const refresh = setupQuantityControls({
+      hostEls,
+      getQty: () => card.bundleQuantity,
+      setQty: n => {
+        card.bundleQuantity = n;
+      },
+      min: minQuantity,
+      max: maxQuantity,
+      onChange: () => {
+        void applyBundleQuantityChange(card, this.makeHandlerContext());
+      },
+      handlers: this.quantityHandlers,
+    });
+    this.quantityRefreshers.set(el, refresh);
+
+    this.logger.debug(`Registered bundle card "${bundleId}"`, { itemCount: items.length });
+  }
+
+  private setupMutationObserver(): void {
+    this.mutationObserver = new MutationObserver(mutations => {
+      for (const mutation of mutations) {
+        if (mutation.type !== 'childList') continue;
+        mutation.addedNodes.forEach(node => {
+          if (!(node instanceof HTMLElement)) return;
+          if (node.hasAttribute('data-next-bundle-card')) {
+            if (!this.cards.find(c => c.element === node)) this.registerCard(node);
+          }
+          node.querySelectorAll<HTMLElement>('[data-next-bundle-card]').forEach(el => {
+            if (!this.cards.find(c => c.element === el)) this.registerCard(el);
+          });
+        });
+      }
+    });
+    this.mutationObserver.observe(this.element, { childList: true, subtree: true });
+  }
+
+  // ─── Selection state ──────────────────────────────────────────────────────────
+
+  public selectCard(card: BundleCard): void {
+    this.cards.forEach(c => {
+      c.element.classList.remove(this.classNames.selected);
+      c.element.setAttribute('data-next-selected', 'false');
+    });
+    card.element.classList.add(this.classNames.selected);
+    card.element.setAttribute('data-next-selected', 'true');
+    this.selectedCard = card;
+    this.element.setAttribute('data-selected-bundle', card.bundleId);
+    this.emit('bundle:selection-changed', {
+      selectorId: this.selectorId ?? '',
+      items: getEffectiveItems(card),
+    });
+    this.renderExternalSlots(card);
+
+    // Notify BundleDisplayEnhancer (which listens on document, not EventBus).
+    // Fires bundle:price-updated with the selectorId so displays using
+    // "bundle.{selectorId}.property" immediately reflect the new selection.
+    // The card's bundlePrice is already populated from the init-time fetch.
+    if (this.selectorId) {
+      document.dispatchEvent(
+        new CustomEvent('bundle:price-updated', {
+          detail: { selectorId: this.selectorId },
+        }),
+      );
+    }
+  }
+
+  private renderExternalSlots(card: BundleCard): void {
+    if (!this.externalSlotsEl || !this.slotTemplate) return;
+    renderSlotsForCard(card, this.makeRenderContext(), this.externalSlotsEl);
+  }
+
+  public getSelectedCard(): BundleCard | null {
+    return this.selectedCard;
+  }
+
+  /**
+   * Returns display state for a bundle card by id, for use by BundleDisplayEnhancer.
+   * If `selectorId` matches a selector's `data-next-selector-id`, returns the currently
+   * selected card's state — enabling `bundle.{selectorId}.property` to always reflect
+   * the active selection.
+   */
+  static getBundleState(selectorId: string): BundleCardPublicState | null {
+    for (const inst of BundleSelectorEnhancer._instances) {
+      const card = inst.cards.find(c => c.bundleId === selectorId);
+      if (card) {
+        return {
+          name: card.name,
+          isSelected: inst.selectedCard?.bundleId === selectorId,
+          bundlePrice: card.bundlePrice,
+        };
+      }
+    }
+    // Fall back: if the id matches a selector id, return the selected card's state
+    for (const inst of BundleSelectorEnhancer._instances) {
+      if (inst.selectorId === selectorId && inst.selectedCard) {
+        return {
+          name: inst.selectedCard.name,
+          isSelected: true,
+          bundlePrice: inst.selectedCard.bundlePrice,
+        };
+      }
+    }
+    return null;
+  }
+
+  // ─── Upsell context selection ─────────────────────────────────────────────────
+
+  /**
+   * Pre-selects the default card without writing to the cart.
+   * Used when isUpsellContext is true to give the user a visual starting selection.
+   */
+  private initializeBundleSelection(): void {
+    const preSelected = this.cards.find(c => c.isPreSelected);
+    const cardToSelect = preSelected ?? this.cards[0] ?? null;
+    if (!preSelected && cardToSelect) {
+      this.logger.warn(
+        'No card has data-next-selected="true" — auto-selecting first card. ' +
+        'Add data-next-selected="true" to the default card to suppress this warning.',
+      );
+    }
+    if (cardToSelect) this.selectCard(cardToSelect);
+  }
+
+  // ─── Cart sync ────────────────────────────────────────────────────────────────
+
+  private syncWithCart(cartState: CartState): void {
+    for (const card of this.cards) {
+      const effectiveItems = getEffectiveItems(card);
+      // Check both packageId AND selectorId so a package shared across selectors
+      // doesn't cause incorrect "in cart" state on the wrong selector.
+      const allItemsInCart = effectiveItems.every(bi => {
+        const ci = cartState.items.find(
+          i => i.packageId === bi.packageId && i.selectorId === this.selectorId,
+        );
+        return ci != null && ci.quantity >= bi.quantity;
+      });
+      card.element.classList.toggle(this.classNames.inCart, allItemsInCart);
+      card.element.setAttribute('data-next-in-cart', String(allItemsInCart));
+    }
+
+    if (!this.selectedCard) {
+      const preSelected = this.cards.find(c => c.isPreSelected);
+      const cardToSelect = preSelected ?? this.cards[0] ?? null;
+      if (!preSelected && cardToSelect) {
+        this.logger.warn(
+          'No card has data-next-selected="true" — auto-selecting first card. ' +
+          'Add data-next-selected="true" to the default card to suppress this warning.',
+        );
+      }
+      if (cardToSelect) {
+        this.selectCard(cardToSelect);
+        const initVouchers = cardToSelect.vouchers.length
+          ? applyVoucherSwap(null, cardToSelect)
+          : Promise.resolve();
+        if (this.mode === 'swap') {
+          void initVouchers.then(async () => {
+            const success = await applyBundle(null, cardToSelect, this.makeHandlerContext());
+            if (success && cardToSelect.shippingId) {
+              await setShippingMethod(cardToSelect.shippingId, { logger: this.logger });
+            }
+          });
+        } else {
+          void initVouchers;
+        }
+      }
+    }
+  }
+
+  public update(): void {
+    if (!this.isUpsellContext) this.syncWithCart(useCartStore.getState());
+  }
+
+  // ─── Context factories ────────────────────────────────────────────────────────
+
+  private makeRenderContext(): RenderContext {
+    return {
+      slotTemplate: this.slotTemplate,
+      variantOptionTemplate: this.variantOptionTemplate,
+      variantSelectorTemplate: this.variantSelectorTemplate,
+      selectHandlers: this.selectHandlers,
+      logger: this.logger,
+      classNames: this.classNames,
+      onSelectChange: (select, bundleId, slotIndex) =>
+        handleSelectVariantChange(select, bundleId, slotIndex, this.cards, this.makeHandlerContext()),
+    };
+  }
+
+  private makeHandlerContext(): HandlerContext {
+    return {
+      mode: this.mode,
+      logger: this.logger,
+      classNames: this.classNames,
+      isApplyingRef: this.isApplyingRef,
+      externalSlotsEl: this.externalSlotsEl,
+      containerElement: this.element,
+      isUpsellContext: this.isUpsellContext,
+      selectorId: this.selectorId,
+      selectCard: card => this.selectCard(card),
+      getSelectedCard: () => this.selectedCard,
+      fetchAndUpdateBundlePrice: card => this.calculateAndRenderPrice(card),
+      emit: (event, detail) => this.emit(event, detail),
+    };
+  }
+
+  private makePriceContext(): PriceContext {
+    return {
+      includeShipping: this.includeShipping,
+      allBundleVouchers: this.getAllKnownBundleVouchers(),
+      isUpsellContext: this.isUpsellContext,
+      logger: this.logger,
+    };
+  }
+
+  // ─── Small helpers ────────────────────────────────────────────────────────────
+
+  private parseClassNames(): ClassNames {
+    const get = (key: string, fallback: string) =>
+      this.getAttribute(`data-next-class-${key}`) ?? fallback;
+    return {
+      bundleCard: get('bundle-card', 'next-bundle-card'),
+      selected: get('selected', 'next-selected'),
+      inCart: get('in-cart', 'next-in-cart'),
+      variantSelected: get('variant-selected', 'next-variant-selected'),
+      variantUnavailable: get('variant-unavailable', 'next-variant-unavailable'),
+      bundleSlot: get('bundle-slot', 'next-bundle-slot'),
+      slotVariantGroup: get('slot-variant-group', 'next-slot-variant-group'),
+    };
+  }
+
+  /** Vouchers defined across this instance's bundle cards. */
+  private getBundleVouchers(): string[] {
+    return this.cards.flatMap(c => c.vouchers);
+  }
+
+  /** Vouchers defined across ALL live BundleSelectorEnhancer instances. */
+  private getAllKnownBundleVouchers(): Set<string> {
+    return new Set(
+      [...BundleSelectorEnhancer._instances].flatMap(inst => inst.getBundleVouchers()),
+    );
+  }
+
+
+  // ─── Cleanup ──────────────────────────────────────────────────────────────────
+
+  protected override cleanupEventListeners(): void {
+    this.clickHandlers.forEach((h, el) => el.removeEventListener('click', h));
+    this.clickHandlers.clear();
+    this.selectHandlers.forEach((h, sel) => sel.removeEventListener('change', h));
+    this.selectHandlers.clear();
+    this.quantityHandlers.forEach((h, el) => el.removeEventListener('click', h));
+    this.quantityHandlers.clear();
+    this.quantityRefreshers.clear();
+    for (const card of this.cards) {
+      if (card.qtyDebounceTimeout !== null) {
+        clearTimeout(card.qtyDebounceTimeout);
+        card.qtyDebounceTimeout = null;
+      }
+    }
+    if (this.boundVariantOptionClick) {
+      this.element.removeEventListener('click', this.boundVariantOptionClick);
+      this.externalSlotsEl?.removeEventListener('click', this.boundVariantOptionClick);
+      this.boundVariantOptionClick = null;
+    }
+    if (this.voucherChangeTimeout !== null) {
+      clearTimeout(this.voucherChangeTimeout);
+      this.voucherChangeTimeout = null;
+    }
+    if (this.currencyChangeTimeout !== null) {
+      clearTimeout(this.currencyChangeTimeout);
+      this.currencyChangeTimeout = null;
+    }
+    if (this.boundCurrencyChangeHandler) {
+      document.removeEventListener('next:currency-changed', this.boundCurrencyChangeHandler);
+      this.boundCurrencyChangeHandler = null;
+    }
+    if (this.mutationObserver) {
+      this.mutationObserver.disconnect();
+      this.mutationObserver = null;
+    }
+  }
+
+  public override destroy(): void {
+    BundleSelectorEnhancer._instances.delete(this);
+    super.destroy();
+    this.cards.forEach(c =>
+      c.element.classList.remove(
+        this.classNames.bundleCard,
+        this.classNames.selected,
+        this.classNames.inCart,
+      ),
+    );
+    this.cards = [];
+  }
+}

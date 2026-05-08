@@ -117,6 +117,16 @@ User submits form
   → CreditCardService.tokenize()   (if credit card payment)
   → OrderBuilder.build()           (assemble CreateOrder payload)
   → ApiClient.createOrder()
-  → On success: redirect or emit purchase event
+  → emit('order:completed', order)
+  → handleOrderRedirect(order):
+      • resolve redirect URL (payment_complete_url > meta > order_status_url > fallback)
+      • cartStore.reset() + checkoutStore.reset()  ← clears items, vouchers, form state
+      • window.location.href = finalUrl
   → Analytics: nextAnalytics + EcommerceEvents.purchase()
 ```
+
+### Post-success state reset
+
+Immediately before navigation, `handleOrderRedirect()` resets `cartStore` (items, vouchers, shipping method, totals) and `checkoutStore` (form data, payment token, billing address, vouchers). Zustand’s `persist` middleware writes the cleared state to `sessionStorage` synchronously, so the confirmation / upsell page loads with an empty cart and no leftover coupons.
+
+Reset runs only when a redirect URL is resolved. If none is available the `order:redirect-missing` event is emitted with cart and checkout state intact, so a merchant’s fallback handler can retry or recover.
