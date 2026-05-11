@@ -20,6 +20,7 @@ class AddressAutocomplete {
   private _abortController: AbortController | null = null;
   private _lastData: AddressAutocompleteData | null = null;
   private _lastSearchText: string | null = null;
+  private _documentClickHandler: ((e: MouseEvent) => void) | null = null;
 
   constructor(
     input: HTMLInputElement,
@@ -68,6 +69,10 @@ class AddressAutocomplete {
       this.input.value = this._originalSearchText;
       this._originalSearchText = null;
     }
+    if (this._documentClickHandler) {
+      document.removeEventListener('click', this._documentClickHandler);
+      this._documentClickHandler = null;
+    }
     this._addressSuggestionContainer?.remove();
     this._addressSuggestionContainer = null;
     this._activeIndex = -1;
@@ -87,11 +92,12 @@ class AddressAutocomplete {
     container.style.cssText = 'display:none; position:absolute; z-index:9999';
     document.body.appendChild(container);
     container.addEventListener('mousedown', e => e.preventDefault());
-    document.addEventListener('click', e => {
+    this._documentClickHandler = e => {
       if (!container.contains(e.target as Node) && e.target !== this.input) {
         container.style.display = 'none';
       }
-    });
+    };
+    document.addEventListener('click', this._documentClickHandler);
     return container;
   }
 
