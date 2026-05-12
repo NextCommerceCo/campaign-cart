@@ -82,13 +82,14 @@ function mockCartStore(
   addItem = vi.fn().mockResolvedValue(undefined),
   removeItem = vi.fn().mockResolvedValue(undefined),
   updateQuantity = vi.fn().mockResolvedValue(undefined),
+  swapInProgress = false,
 ) {
   vi.mocked(useCartStore.getState).mockReturnValue({
     items,
     addItem,
     removeItem,
     updateQuantity,
-    swapInProgress: false,
+    swapInProgress,
     summary: null,
   } as any);
   return { addItem, removeItem, updateQuantity };
@@ -349,7 +350,7 @@ describe('handleSyncUpdate', () => {
   });
 
   it('updates quantity when synced item is in cart and quantity differs', async () => {
-    const { updateQuantity } = mockCartStore([makeCartItem(200, 1)]);
+    const { updateQuantity } = mockCartStore([makeCartItem(101, 3), makeCartItem(200, 1)]);
     const card = makeCard(200, { isSyncMode: true, syncPackageIds: [101] });
     const cartState = {
       items: [makeCartItem(101, 3), makeCartItem(200, 1)],
@@ -375,7 +376,7 @@ describe('handleSyncUpdate', () => {
   });
 
   it('skips removal when swapInProgress is true', async () => {
-    const { removeItem } = mockCartStore([makeCartItem(200, 1)]);
+    const { removeItem } = mockCartStore([makeCartItem(200, 1)], undefined, undefined, undefined, true);
     const card = makeCard(200, { isSyncMode: true, syncPackageIds: [101] });
     const cartState = {
       items: [makeCartItem(200, 1)],
@@ -388,7 +389,7 @@ describe('handleSyncUpdate', () => {
   });
 
   it('updates card.quantity to match synced total', async () => {
-    mockCartStore([makeCartItem(200, 1)]);
+    mockCartStore([makeCartItem(101, 2), makeCartItem(102, 3), makeCartItem(200, 1)]);
     const card = makeCard(200, { isSyncMode: true, syncPackageIds: [101, 102], quantity: 0 });
     const cartState = {
       items: [makeCartItem(101, 2), makeCartItem(102, 3), makeCartItem(200, 1)],
