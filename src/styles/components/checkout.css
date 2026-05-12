@@ -334,7 +334,8 @@
 }
 
 .pac-item-nextcommerce:hover,
-.pac-item-nextcommerce.pac-item-selected {
+.pac-item-nextcommerce.pac-item-selected,
+.pac-item-nextcommerce--active {
   background-color: #f9fafb;
 }
 
