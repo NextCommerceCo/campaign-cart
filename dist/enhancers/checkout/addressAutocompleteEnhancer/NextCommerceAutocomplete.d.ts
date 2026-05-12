@@ -5,10 +5,5 @@ export declare class NextCommerceAutocomplete {
     private apiClient;
     constructor(ctx: AutocompleteContext, apiClient: ApiClient);
     setup(): void;
-    private createInstance;
-    private buildItem;
-    private buildHighlightedLabel;
-    private fillAddress;
-    private setStateWithRetry;
 }
 //# sourceMappingURL=NextCommerceAutocomplete.d.ts.map

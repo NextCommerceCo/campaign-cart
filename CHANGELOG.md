@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.19] — 2026-05-12 — Arrow Key Navigation for Address Autocomplete
+
+### New
+
+- **Arrow key navigation in address suggestions** — shoppers can now use the Up / Down arrow keys to cycle through suggestions in the address autocomplete dropdown and press Enter to confirm, without touching the mouse.
+
+---
+
 ## [0.4.18] — 2026-04-20 — Bundle Quantity Controls & Simpler Templates
 
 ![alt text](docs/images/image.png)
