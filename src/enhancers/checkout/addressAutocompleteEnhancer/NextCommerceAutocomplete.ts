@@ -1,167 +1,267 @@
 import { ApiClient } from '@/api/client';
 import { useCheckoutStore } from '@/stores/checkoutStore';
-import type { AddressAutocompleteResult } from '@/types/api';
+import type { AddressAutocomplete as AddressAutocompleteData, AddressAutocompleteResult } from '@/types/api';
 import { nextAnalytics, EcommerceEvents } from '@/utils/analytics/index';
 import type { AutocompleteContext } from '../types';
 import { createCloseButton } from '../utils/create-close-button';
 
-export class NextCommerceAutocomplete {
+class AddressAutocomplete {
+  private input: HTMLInputElement;
   private ctx: AutocompleteContext;
   private apiClient: ApiClient;
+  private type: 'shipping' | 'billing';
+  private defaultCountry: string;
 
-  constructor(ctx: AutocompleteContext, apiClient: ApiClient) {
+  private _addressSuggestionContainer: HTMLElement | null = null;
+  private _activeIndex = -1;
+  private _keyNavigating = false;
+  private _currentAddresses: AddressAutocompleteResult[] = [];
+  private _originalSearchText: string | null = null;
+  private _abortController: AbortController | null = null;
+  private _lastData: AddressAutocompleteData | null = null;
+  private _lastSearchText: string | null = null;
+  private _documentClickHandler: ((e: MouseEvent) => void) | null = null;
+
+  constructor(
+    input: HTMLInputElement,
+    ctx: AutocompleteContext,
+    apiClient: ApiClient,
+    type: 'shipping' | 'billing',
+    defaultCountry: string
+  ) {
+    this.input = input;
     this.ctx = ctx;
     this.apiClient = apiClient;
+    this.type = type;
+    this.defaultCountry = defaultCountry;
+    this._init();
   }
 
-  public setup(): void {
-    const { fields, billingFields, getDetectedCountryCode } = this.ctx;
-    const defaultCountry = getDetectedCountryCode() || 'US';
+  private _getCountryValue(): string {
+    const { fields, billingFields } = this.ctx;
+    const key = this.type === 'shipping' ? 'country' : 'billing-country';
+    const fieldMap = this.type === 'shipping' ? fields : billingFields;
+    const field = fieldMap.get(key);
+    return (field instanceof HTMLSelectElement && field.value) ? field.value : this.defaultCountry;
+  }
 
-    const addressField = fields.get('address1');
-    if (addressField instanceof HTMLInputElement) {
-      this.createInstance(addressField, 'address1', defaultCountry, 'shipping');
+  private _isValidSearchText(text: string): boolean {
+    return /\S\s+\S/.test(text);
+  }
+
+  private _getAddressItems(): HTMLElement[] {
+    return this._addressSuggestionContainer
+      ? Array.from(this._addressSuggestionContainer.querySelectorAll<HTMLElement>('.pac-item-nextcommerce'))
+      : [];
+  }
+
+  private _setActiveIndex(index: number): void {
+    const items = this._getAddressItems();
+    items.forEach((item, i) => item.classList.toggle('pac-item-nextcommerce--active', i === index));
+    this._activeIndex = index;
+    this.input.value = (index >= 0 && this._currentAddresses[index])
+      ? this._currentAddresses[index].label
+      : (this._originalSearchText ?? '');
+  }
+
+  private _tearDownAddressSuggestion(): void {
+    if (this._originalSearchText !== null) {
+      this.input.value = this._originalSearchText;
+      this._originalSearchText = null;
     }
-
-    const billingAddressField = billingFields.get('billing-address1');
-    if (billingAddressField instanceof HTMLInputElement) {
-      this.createInstance(billingAddressField, 'billing-address1', defaultCountry, 'billing');
+    if (this._documentClickHandler) {
+      document.removeEventListener('click', this._documentClickHandler);
+      this._documentClickHandler = null;
     }
+    this._addressSuggestionContainer?.remove();
+    this._addressSuggestionContainer = null;
+    this._activeIndex = -1;
+    this._currentAddresses = [];
   }
 
-  // ============================================================================
-  // AUTOCOMPLETE INSTANCE
-  // ============================================================================
-
-  private createInstance(
-    input: HTMLInputElement,
-    fieldKey: string,
-    defaultCountry: string,
-    type: 'shipping' | 'billing'
-  ): void {
-    try {
-      const { fields, billingFields } = this.ctx;
-      const countryField = type === 'shipping' ? fields.get('country') : billingFields.get('billing-country');
-      let countryValue = (countryField instanceof HTMLSelectElement && countryField.value)
-        ? countryField.value
-        : defaultCountry;
-
-      let abortController: AbortController | null = null;
-      let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-
-      const addCloseButtonToContainer = () => {
-        const pacContainer = document.querySelector('.pac-container-nextcommerce:not([data-close-added])') as HTMLElement;
-        if (!pacContainer) return;
-        pacContainer.setAttribute('data-close-added', 'true');
-        pacContainer.appendChild(createCloseButton(() => {
-          pacContainer.style.display = 'none';
-          input.blur();
-        }));
-      };
-
-      const getOrCreatePacContainer = (): HTMLElement => {
-        let pac = document.querySelector<HTMLElement>('.pac-container-nextcommerce.pac-logo');
-        if (!pac) {
-          pac = document.createElement('div');
-          pac.className = 'pac-container-nextcommerce pac-logo';
-          pac.style.cssText = 'display:block; position:absolute';
-          pac.addEventListener('mousedown', (e) => e.preventDefault());
-          document.body.appendChild(pac);
-        } else {
-          pac.removeAttribute('data-close-added');
-        }
-        return pac;
-      };
-
-      const showSuggestions = async () => {
-        abortController?.abort();
-        abortController = new AbortController();
-        countryValue = (countryField instanceof HTMLSelectElement && countryField.value)
-          ? countryField.value
-          : defaultCountry;
-
-        const rect = input.getBoundingClientRect();
-
-        try {
-          if (!input.value) return;
-          const result = await this.apiClient.getAddressesAutocomplete(
-            input.value, countryValue, undefined, abortController.signal
-          );
-
-          if (!result.results.length) {
-            document.querySelector('.pac-container-nextcommerce.pac-logo')?.remove();
-            return;
-          }
-
-          const pacContainer = getOrCreatePacContainer();
-          pacContainer.style.left = `${rect.left + window.scrollX}px`;
-          pacContainer.style.top = `${rect.bottom + window.scrollY}px`;
-          pacContainer.style.width = `${rect.width}px`;
-          pacContainer.replaceChildren(...result.results.map((r: AddressAutocompleteResult) => this.buildItem(r, input, type)));
-          addCloseButtonToContainer();
-        } catch (e) {
-          if (e instanceof DOMException && e.name === 'AbortError') return;
-          throw e;
-        }
-      };
-
-      input.addEventListener('focus', showSuggestions);
-      input.addEventListener('blur', () => {
-        setTimeout(() => document.querySelector('.pac-container-nextcommerce.pac-logo')?.remove(), 150);
-      });
-      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') e.preventDefault(); });
-      input.addEventListener('input', () => {
-        if (debounceTimer) clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(showSuggestions, 300);
-      });
-
-    } catch (error) {
-      this.ctx.logger.error(`Failed to create autocomplete for ${fieldKey}:`, error);
-    }
+  private _positionContainer(container: HTMLElement): void {
+    const rect = this.input.getBoundingClientRect();
+    container.style.top = `${rect.bottom + window.scrollY}px`;
+    container.style.left = `${rect.left + window.scrollX}px`;
+    container.style.width = `${rect.width}px`;
   }
 
-  private buildItem(r: AddressAutocompleteResult, input: HTMLInputElement, type: 'shipping' | 'billing'): HTMLDivElement {
-    const item = document.createElement('div');
-    item.className = 'pac-item-nextcommerce';
-
-    const icon = document.createElement('span');
-    icon.className = 'pac-icon pac-icon-marker';
-
-    item.append(icon, this.buildHighlightedLabel(r.label, input.value));
-    item.addEventListener('click', () => {
-      this.fillAddress(r, type);
-      input.blur();
-    });
-    return item;
+  private _createAddressSuggestionContainer(): HTMLElement {
+    const container = document.createElement('div');
+    container.className = 'pac-container-nextcommerce pac-logo';
+    container.style.cssText = 'display:none; position:absolute; z-index:9999';
+    document.body.appendChild(container);
+    container.addEventListener('mousedown', e => e.preventDefault());
+    this._documentClickHandler = e => {
+      if (!container.contains(e.target as Node) && e.target !== this.input) {
+        container.style.display = 'none';
+      }
+    };
+    document.addEventListener('click', this._documentClickHandler);
+    return container;
   }
 
-  private buildHighlightedLabel(text: string, query: string): HTMLSpanElement {
-    const label = document.createElement('span');
-    label.className = 'pac-item-query';
-    const words = query.split(/\s+/).filter(Boolean);
+  private _buildHighlightedLabel(searchText: string, label: string): HTMLSpanElement {
+    const span = document.createElement('span');
+    span.className = 'pac-item-query';
+    const words = searchText.split(/\s+/).filter(Boolean);
     if (!words.length) {
-      label.textContent = text;
-      return label;
+      span.textContent = label;
+      return span;
     }
     const escaped = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
     const pattern = new RegExp(`(${escaped.join('|')})`, 'gi');
-    label.append(...text.split(pattern).map(part =>
+    span.append(...label.split(pattern).map(part =>
       words.some(w => w.toLowerCase() === part.toLowerCase())
         ? Object.assign(document.createElement('b'), { textContent: part })
         : document.createTextNode(part)
     ));
-    return label;
+    return span;
   }
 
-  // ============================================================================
-  // ADDRESS FILL
-  // ============================================================================
+  private _createAddressSuggestionChoices(container: HTMLElement, searchText: string, data: AddressAutocompleteData): void {
+    const addresses = data?.results ?? [];
+    container.innerHTML = '';
+    this._activeIndex = -1;
+    this._currentAddresses = addresses;
+    this._originalSearchText = this.input.value;
 
-  private async fillAddress(place: AddressAutocompleteResult, type: 'shipping' | 'billing'): Promise<void> {
-    if (!place) return;
+    addresses.forEach(addr => {
+      const div = document.createElement('div');
+      div.className = 'pac-item-nextcommerce';
+      const icon = document.createElement('span');
+      icon.className = 'pac-icon pac-icon-marker';
+      div.appendChild(icon);
+      div.appendChild(this._buildHighlightedLabel(searchText, addr.label));
+      div.addEventListener('click', () => {
+        this._originalSearchText = null;
+        this.input.value = addr.label;
+        this._fillAddress(addr);
+        container.style.display = 'none';
+      });
+      container.appendChild(div);
+    });
 
+    container.appendChild(createCloseButton(() => {
+      container.style.display = 'none';
+    }));
+
+    if (addresses.length) {
+      this._positionContainer(container);
+      container.style.display = 'block';
+    } else {
+      container.style.display = 'none';
+    }
+  }
+
+  private _createAddressSuggestion(searchText: string, data: AddressAutocompleteData): void {
+    if (!this._addressSuggestionContainer) {
+      this._addressSuggestionContainer = this._createAddressSuggestionContainer();
+    }
+    this._createAddressSuggestionChoices(this._addressSuggestionContainer, searchText, data);
+  }
+
+  private async _getAddressSuggestionData(searchText: string): Promise<AddressAutocompleteData> {
+    this._abortController?.abort();
+    this._abortController = new AbortController();
+    const data: AddressAutocompleteData = await this.apiClient.getAddressesAutocomplete(
+      searchText, this._getCountryValue(), undefined, this._abortController.signal
+    );
+    this._lastData = data;
+    this._lastSearchText = searchText;
+    return data;
+  }
+
+  private _init(): void {
+    let debounceTimer: ReturnType<typeof setTimeout>;
+
+    this.input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const items = this._getAddressItems();
+        if (this._activeIndex >= 0 && items[this._activeIndex]) {
+          items[this._activeIndex].click();
+        }
+        return;
+      }
+      if (e.key === 'Escape') {
+        this._tearDownAddressSuggestion();
+        return;
+      }
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        this._keyNavigating = true;
+        const isOpen = this._addressSuggestionContainer !== null &&
+          this._addressSuggestionContainer.style.display !== 'none';
+        if (!isOpen) return;
+        const items = this._getAddressItems();
+        if (!items.length) return;
+        if (e.key === 'ArrowDown') {
+          this._setActiveIndex(this._activeIndex >= items.length - 1 ? 0 : this._activeIndex + 1);
+        } else {
+          this._setActiveIndex(this._activeIndex <= 0 ? items.length - 1 : this._activeIndex - 1);
+        }
+        return;
+      }
+      this._keyNavigating = false;
+    });
+
+    this.input.addEventListener('focus', async () => {
+      if (this._addressSuggestionContainer && this._lastData?.results?.length) {
+        this._addressSuggestionContainer.style.display = 'block';
+      } else if (this._lastData?.results?.length && this._lastSearchText) {
+        this._createAddressSuggestion(this._lastSearchText, this._lastData);
+      } else if (this._isValidSearchText(this.input.value)) {
+        try {
+          const data = await this._getAddressSuggestionData(this.input.value);
+          this._tearDownAddressSuggestion();
+          this._createAddressSuggestion(this.input.value, data);
+        } catch (e) {
+          if (e instanceof DOMException && e.name === 'AbortError') return;
+          throw e;
+        }
+      }
+    });
+
+    this.input.addEventListener('blur', () => {
+      if (!this._keyNavigating) this._tearDownAddressSuggestion();
+      this._keyNavigating = false;
+    });
+
+    this.input.addEventListener('input', event => {
+      if (this._keyNavigating) {
+        this._keyNavigating = false;
+        return;
+      }
+      this._originalSearchText = null;
+      if (this._activeIndex >= 0) {
+        this._getAddressItems().forEach(item => item.classList.remove('pac-item-nextcommerce--active'));
+        this._activeIndex = -1;
+      }
+      const target = event.target as HTMLInputElement;
+      if (!this._isValidSearchText(target.value)) {
+        if (this._addressSuggestionContainer) {
+          this._addressSuggestionContainer.style.display = 'none';
+        }
+        return;
+      }
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(async () => {
+        try {
+          const data = await this._getAddressSuggestionData(target.value);
+          this._tearDownAddressSuggestion();
+          this._createAddressSuggestion(target.value, data);
+        } catch (e) {
+          if (e instanceof DOMException && e.name === 'AbortError') return;
+          throw e;
+        }
+      }, 300);
+    });
+  }
+
+  private async _fillAddress(place: AddressAutocompleteResult): Promise<void> {
     const { fields, billingFields, eventBus } = this.ctx;
-    const isShipping = type === 'shipping';
+    const isShipping = this.type === 'shipping';
     const fieldPrefix = isShipping ? '' : 'billing-';
     const fieldMap = isShipping ? fields : billingFields;
     const { line1, city, state, state_code, postcode, country, country_code } = place.address;
@@ -188,7 +288,7 @@ export class NextCommerceAutocomplete {
 
       const stateField = fieldMap.get(`${fieldPrefix}province`);
       if (stateField instanceof HTMLSelectElement && (state || state_code)) {
-        this.setStateWithRetry(stateField, state_code, state);
+        this._setStateWithRetry(stateField, state_code, state);
       }
     }
 
@@ -216,16 +316,16 @@ export class NextCommerceAutocomplete {
         }
       }
     } else {
-      const currentBillingData = checkoutStore.billingAddress || {
-        first_name: '', last_name: '', address1: '', city: '', province: '', postal: '', country: '', phone: ''
+      const currentBillingData = checkoutStore.billingAddress ?? {
+        first_name: '', last_name: '', address1: '', city: '', province: '', postal: '', country: '', phone: '',
       };
       checkoutStore.setBillingAddress({ ...currentBillingData, ...addressUpdates });
     }
 
-    eventBus.emit('address:autocomplete-filled', { type, components: place });
+    eventBus.emit('address:autocomplete-filled', { type: this.type, components: place });
   }
 
-  private async setStateWithRetry(
+  private async _setStateWithRetry(
     stateSelect: HTMLSelectElement,
     stateCode: string,
     stateName: string,
@@ -247,7 +347,32 @@ export class NextCommerceAutocomplete {
       stateSelect.dispatchEvent(new Event('change', { bubbles: true }));
       this.ctx.logger.debug(`State set to ${(match as HTMLOptionElement).value}`);
     } else {
-      this.setStateWithRetry(stateSelect, stateCode, stateName, attempt + 1);
+      this._setStateWithRetry(stateSelect, stateCode, stateName, attempt + 1);
+    }
+  }
+}
+
+export class NextCommerceAutocomplete {
+  private ctx: AutocompleteContext;
+  private apiClient: ApiClient;
+
+  constructor(ctx: AutocompleteContext, apiClient: ApiClient) {
+    this.ctx = ctx;
+    this.apiClient = apiClient;
+  }
+
+  public setup(): void {
+    const { fields, billingFields, getDetectedCountryCode } = this.ctx;
+    const defaultCountry = getDetectedCountryCode() || 'US';
+
+    const addressField = fields.get('address1');
+    if (addressField instanceof HTMLInputElement) {
+      new AddressAutocomplete(addressField, this.ctx, this.apiClient, 'shipping', defaultCountry);
+    }
+
+    const billingAddressField = billingFields.get('billing-address1');
+    if (billingAddressField instanceof HTMLInputElement) {
+      new AddressAutocomplete(billingAddressField, this.ctx, this.apiClient, 'billing', defaultCountry);
     }
   }
 }
