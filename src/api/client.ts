@@ -226,10 +226,11 @@ export class ApiClient {
 
       return data;
     } catch (error) {
-      if (error instanceof Error) {
-        this.logger.error('API request failed:', error.message);
+      const message = error instanceof Error ? error.message : String(error);
+      if (isAbortError(error, options?.signal)) {
+        this.logger.debug('API request aborted:', message);
       } else {
-        this.logger.error('API request failed:', String(error));
+        this.logger.error('API request failed:', message);
       }
 
       throw error;
@@ -245,4 +246,10 @@ export class ApiClient {
   public getApiKey(): string {
     return this.apiKey;
   }
+}
+
+function isAbortError(error: unknown, signal?: AbortSignal | null): boolean {
+  if (signal?.aborted) return true;
+  if (!(error instanceof Error)) return false;
+  return error.name === 'AbortError' || /aborted|abort/i.test(error.message);
 }
