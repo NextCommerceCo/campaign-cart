@@ -3484,7 +3484,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const customEvent = event as CustomEvent;
     const activationMethod = customEvent.detail?.method;
 
-    if (activationMethod === 'konami') {
+    if (activationMethod) {
       try {
         const testFormData = {
           email: 'test@test.com',
@@ -3540,18 +3540,15 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
         this.populateFormData();
 
-        setTimeout(async () => {
-          try {
-            const order = await this.createTestOrder();
-            this.emit('order:completed', order);
-            this.handleOrderRedirect(order);
-          } catch (error) {
-            this.logger.error('Failed to create test order:', error);
-          }
-        }, 1000);
+        document.dispatchEvent(
+          new CustomEvent('next:test-checkout-data-filled', {
+            detail: { method: activationMethod }
+          })
+        );
+        this.logger.info('Test checkout data filled; submit still requires an explicit user or automation action.');
 
       } catch (error) {
-        this.logger.error('Error filling test data for Konami order:', error);
+        this.logger.error('Error filling test data for test mode:', error);
       }
     }
   }

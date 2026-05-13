@@ -11,6 +11,14 @@ export interface TestCard {
   type: 'visa' | 'mastercard' | 'amex' | 'discover';
 }
 
+export interface TestModeActivationDetail {
+  method?: string;
+  persist?: boolean;
+  showMessage?: boolean;
+  fillCard?: boolean;
+  cardType?: string;
+}
+
 export class TestModeManager {
   private static instance: TestModeManager;
   private isTestMode = false;
@@ -28,6 +36,8 @@ export class TestModeManager {
   ];
   private keySequence: string[] = [];
   private konamiCallback?: () => void;
+  private boundHandleActivateEvent = this.handleActivateEvent.bind(this);
+  private boundHandleFillCardEvent = this.handleFillCardEvent.bind(this);
 
   private testCards: TestCard[] = [
     {
@@ -69,11 +79,41 @@ export class TestModeManager {
 
   private constructor() {
     this.initializeKonamiCode();
+    this.initializePublicEvents();
     this.checkUrlTestMode();
   }
 
   private initializeKonamiCode(): void {
     document.addEventListener('keydown', this.handleKeyDown.bind(this));
+  }
+
+  private initializePublicEvents(): void {
+    document.addEventListener(
+      'next:test-mode-activate',
+      this.boundHandleActivateEvent as EventListener
+    );
+    document.addEventListener(
+      'next:test-card-fill',
+      this.boundHandleFillCardEvent as EventListener
+    );
+  }
+
+  private handleActivateEvent(event: Event): void {
+    const detail = (event as CustomEvent<TestModeActivationDetail>).detail || {};
+    this.activateTestMode({
+      method: detail.method || 'operator',
+      persist: detail.persist !== false,
+      showMessage: detail.showMessage === true,
+    });
+
+    if (detail.fillCard === true) {
+      this.fillTestCardData(detail.cardType);
+    }
+  }
+
+  private handleFillCardEvent(event: Event): void {
+    const detail = (event as CustomEvent<TestModeActivationDetail>).detail || {};
+    this.fillTestCardData(detail.cardType);
   }
 
   private handleKeyDown(event: KeyboardEvent): void {
@@ -112,13 +152,11 @@ export class TestModeManager {
   private activateKonamiCode(): void {
     console.log('🎮 Konami Code activated!');
 
-    this.isTestMode = true;
-    this.showKonamiMessage();
-
-    // Add URL parameter to maintain test mode
-    const url = new URL(window.location.href);
-    url.searchParams.set('test', 'true');
-    window.history.replaceState({}, '', url.toString());
+    this.activateTestMode({
+      method: 'konami',
+      persist: true,
+      showMessage: true,
+    });
 
     // Call callback if registered
     if (this.konamiCallback) {
@@ -126,11 +164,25 @@ export class TestModeManager {
         this.konamiCallback?.();
       }, 2000);
     }
+  }
 
-    // Emit event
+  public activateTestMode(detail: TestModeActivationDetail = {}): void {
+    const method = detail.method || 'operator';
+    this.isTestMode = true;
+
+    if (detail.showMessage === true) {
+      this.showKonamiMessage();
+    }
+
+    if (detail.persist !== false) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('test', 'true');
+      window.history.replaceState({}, '', url.toString());
+    }
+
     document.dispatchEvent(
       new CustomEvent('next:test-mode-activated', {
-        detail: { method: 'konami' },
+        detail: { method },
       })
     );
   }
@@ -204,9 +256,7 @@ export class TestModeManager {
     this.isTestMode = enabled;
 
     if (enabled) {
-      const url = new URL(window.location.href);
-      url.searchParams.set('test', 'true');
-      window.history.replaceState({}, '', url.toString());
+      this.activateTestMode({ method: 'programmatic', persist: true });
     }
   }
 
