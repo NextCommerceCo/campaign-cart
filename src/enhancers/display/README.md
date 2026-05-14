@@ -223,6 +223,7 @@ Shows or hides elements based on conditions evaluated against store state.
 
 <!-- Function call -->
 <div data-next-show="cart.hasItem(123)">You have the basic package</div>
+<div data-next-show='cart.hasCoupon("FREESHIP")'>Free shipping applied</div>
 
 <!-- Profile-based -->
 <div data-next-show-if-profile="wholesale">Wholesale Price</div>

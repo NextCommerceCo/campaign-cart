@@ -1044,6 +1044,14 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
         
         case 'hasItems':
           return !cartState.isEmpty;
+
+        case 'hasCoupon':
+          if (args.length > 0) {
+            const code = this.normalizeCouponCode(args[0]);
+            if (!code) return false;
+            return (cartState.vouchers ?? []).some(voucher => this.normalizeCouponCode(voucher) === code);
+          }
+          return (cartState.vouchers ?? []).length > 0;
         
         default:
           this.logger.warn(`Unknown cart method: ${method}`);
@@ -1052,6 +1060,14 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
     }
     
     return false;
+  }
+
+  private normalizeCouponCode(value: unknown): string {
+    const raw = String(value ?? '').trim();
+    const unquoted = (raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))
+      ? raw.slice(1, -1)
+      : raw;
+    return unquoted.trim().toUpperCase();
   }
 
   private evaluateComparison(cartState: CartState, condition: any): boolean {
