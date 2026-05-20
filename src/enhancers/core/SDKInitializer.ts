@@ -159,6 +159,20 @@ export class SDKInitializer {
       // Only initialize if currencyBehavior is explicitly set to 'auto'
       if (!configStore.currencyBehavior || configStore.currencyBehavior !== 'auto') {
         this.logger.info('Skipping location/currency detection (currencyBehavior is not set to auto)');
+        // Even when auto-detection is disabled, restore a previously chosen
+        // currency from session so subsequent page loads (post-checkout,
+        // upsells, etc.) keep the same currency the user paid in.
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlCurrency = urlParams.get('currency');
+        const savedCurrency = sessionStorage.getItem('next_selected_currency');
+        const restored =
+          (urlCurrency && urlCurrency.toUpperCase()) || savedCurrency || '';
+        if (restored) {
+          if (urlCurrency) {
+            sessionStorage.setItem('next_selected_currency', restored);
+          }
+          configStore.updateConfig({ selectedCurrency: restored });
+        }
         return;
       }
 
@@ -309,7 +323,14 @@ export class SDKInitializer {
           selectedCurrency = detectedCurrency;
           this.logger.info('Using detected currency:', selectedCurrency);
         }
-        
+
+        // Lock the currency in for the session so later page loads
+        // (success page, upsells) cannot drift to a different currency if
+        // geo-detection returns a different result or is skipped.
+        if (selectedCurrency) {
+          sessionStorage.setItem('next_selected_currency', selectedCurrency);
+        }
+
         configStore.updateConfig({
           selectedCurrency
         });
