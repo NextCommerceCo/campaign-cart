@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.20] — 2026-05-20 — Currency Persistence Fix & Offers Debugger
+
+### Fixed
+
+- **Currency drifting between checkout, success page, and upsells** — the currency a shopper paid in could change on the post-checkout pages if geo-detection returned a different result or `currencyBehavior` was not set to `auto`. The selected currency is now locked into `sessionStorage` once chosen and restored on every page load, so the cart, upsells, and order confirmation all stay in the original currency for the full session. A `currency` URL parameter is also honored and persisted.
+
+### New
+
+- **`cart.hasCoupon()` conditional** — `ConditionalDisplayEnhancer` now supports `cart.hasCoupon()` (true when any coupon is applied) and `cart.hasCoupon("CODE")` (true when a specific code is in the cart's vouchers). Codes are compared case-insensitively and surrounding quotes are stripped, so `data-next-show='cart.hasCoupon("FREESHIP")'` works without extra escaping. Use it to reveal banners or messaging only when a coupon is active.
+
+- **Offers & Discounts debug panel** — a new tab in the debug overlay (`🏷️ Offers & Discounts`) shows applied coupons, the offer / voucher discount breakdown, totals, and a live log of the last 20 coupon attempts (applied, removed, or rejected with the failure message). Useful when diagnosing why a coupon did not stack or why a bundle voucher did not apply. Updates reactively from store changes instead of polling.
+
+---
+
 ## [0.4.19] — 2026-05-12 — Arrow Key Navigation for Address Autocomplete
 
 ### New

@@ -57,6 +57,7 @@ export declare class ConditionalDisplayEnhancer extends BaseEnhancer {
     private evaluateShippingComparison;
     private evaluateProperty;
     private evaluateFunction;
+    private normalizeCouponCode;
     private evaluateComparison;
     private getPropertyValue;
     private getSelectionPropertyValue;
