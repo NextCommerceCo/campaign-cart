@@ -12,10 +12,10 @@ let pageViewTracked = false;
 let trackedPagePath: string | null = null;
 
 function getCurrency(): string {
-  const campaign = useCampaignStore.getState();
-  if (campaign?.currency) return campaign.currency;
-  const config = useConfigStore.getState();
-  return config?.selectedCurrency ?? config?.detectedCurrency ?? 'USD';
+  return (
+    useCampaignStore.getState().currency ??
+    useConfigStore.getState().getCurrency()
+  );
 }
 
 export function checkIfUpsellAlreadyAccepted(packageId: number): boolean {

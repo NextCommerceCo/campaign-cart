@@ -93,7 +93,8 @@ async function handleUpsellCardClick(
 
   try {
     const campaign = useCampaignStore.getState().data;
-    const currency = campaign?.currency ?? useConfigStore.getState().selectedCurrency ?? 'USD';
+    const currency =
+      campaign?.currency ?? useConfigStore.getState().getCurrency();
     const apiClient = new ApiClient(useConfigStore.getState().apiKey);
 
     const upsellData: AddUpsellLine = {

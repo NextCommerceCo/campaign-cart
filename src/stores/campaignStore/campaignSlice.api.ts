@@ -26,8 +26,7 @@ export const createCampaignApiSlice: StateCreator<
     try {
       const { useConfigStore } = await import('@/stores/configStore');
       const configStore = useConfigStore.getState();
-      const requestedCurrency =
-        configStore.selectedCurrency ?? configStore.detectedCurrency ?? 'USD';
+      const requestedCurrency = configStore.getCurrency();
 
       const now = Date.now();
       const requestedCacheKey = `${CAMPAIGN_STORAGE_KEY}_${requestedCurrency}`;

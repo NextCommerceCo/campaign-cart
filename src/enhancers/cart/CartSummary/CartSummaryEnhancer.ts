@@ -255,12 +255,8 @@ export class CartSummaryEnhancer extends BaseEnhancer {
     if (!this.cartState) return;
 
     const campaign = useCampaignStore.getState().data;
-    const config   = useConfigStore.getState();
     const currency =
-      campaign?.currency ??
-      config?.selectedCurrency ??
-      config?.detectedCurrency ??
-      'USD';
+      campaign?.currency ?? useConfigStore.getState().getCurrency();
     const flags = buildFlags(this.cartState);
     const vars  = buildVars(this.cartState, flags, this.itemCount, currency);
 

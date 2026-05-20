@@ -21,10 +21,10 @@ function resolveQuantity(ctx: UpsellHandlerContext): number {
 }
 
 function getCurrency(): string {
-  const campaign = useCampaignStore.getState().data;
-  if (campaign?.currency) return campaign.currency;
-  const config = useConfigStore.getState();
-  return config?.selectedCurrency ?? config?.detectedCurrency ?? 'USD';
+  return (
+    useCampaignStore.getState().data?.currency ??
+    useConfigStore.getState().getCurrency()
+  );
 }
 
 function isAlreadyAccepted(packageId: number): boolean {

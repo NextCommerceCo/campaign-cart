@@ -550,14 +550,10 @@ export class ProspectCartEnhancer extends BaseEnhancer {
   }
 
   private getCurrency(): string {
-    // Get currency from campaign or config store (same logic as cart store)
-    const campaignState = useCampaignStore.getState();
-    if (campaignState?.currency) {
-      return campaignState.currency;
-    }
-    
-    const configStore = useConfigStore.getState();
-    return configStore?.selectedCurrency || configStore?.detectedCurrency || 'USD';
+    return (
+      useCampaignStore.getState()?.currency ??
+      useConfigStore.getState().getCurrency()
+    );
   }
 
   private isValidEmail(email: string): boolean {

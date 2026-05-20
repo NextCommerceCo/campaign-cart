@@ -116,7 +116,7 @@ export class CurrencySelector {
 
     const configStore = useConfigStore.getState();
     const campaignStore = useCampaignStore.getState();
-    const currentCurrency = configStore.selectedCurrency || configStore.detectedCurrency || 'USD';
+    const currentCurrency = configStore.getCurrency();
     const availableCurrencies = this.getAvailableCurrencies();
     
     // Don't render if no campaign data yet
@@ -354,7 +354,7 @@ export class CurrencySelector {
       const cartStore = useCartStore.getState();
       
       // Store the old currency for event
-      const oldCurrency = configStore.selectedCurrency || configStore.detectedCurrency || 'USD';
+      const oldCurrency = configStore.getCurrency();
       
       // Don't clear cache - the campaignStore already caches per currency
       // and will reuse cached data if available for each currency

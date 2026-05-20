@@ -16,16 +16,9 @@ export class CurrencyFormatter {
    * Get the current currency from stores
    */
   private static getCurrentCurrency(): string {
-    // Try to get from campaign data first (most accurate)
-    const campaignStore = useCampaignStore.getState();
-    if (campaignStore?.currency) {
-      return campaignStore.currency;
-    }
-
-    // Fallback to config store
-    const configStore = useConfigStore.getState();
     return (
-      configStore?.selectedCurrency || configStore?.detectedCurrency || 'USD'
+      useCampaignStore.getState()?.currency ??
+      useConfigStore.getState().getCurrency()
     );
   }
 

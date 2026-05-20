@@ -9,6 +9,7 @@ export { EventTimelinePanel } from './EventTimelinePanel';
 export { ConfigPanel } from './ConfigPanel';
 export { CheckoutPanel } from './CheckoutPanel';
 export { StoragePanel } from './StoragePanel';
+export { OffersPanel } from './OffersPanel';
 export { EnhancedCampaignPanel } from '../EnhancedCampaignPanel';
 export { RawDataHelper } from './RawDataHelper';
 

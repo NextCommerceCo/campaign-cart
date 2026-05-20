@@ -13,14 +13,10 @@ import type { CreateOrder, Address, Payment, Attribution } from '@/types/api';
 
 export class OrderBuilder {
   private getCurrency(): string {
-    // Get currency from campaign or config store (same logic as cart store)
-    const campaignState = useCampaignStore.getState();
-    if (campaignState?.currency) {
-      return campaignState.currency;
-    }
-    
-    const configStore = useConfigStore.getState();
-    return configStore?.selectedCurrency || configStore?.detectedCurrency || 'USD';
+    return (
+      useCampaignStore.getState()?.currency ??
+      useConfigStore.getState().getCurrency()
+    );
   }
 
   public buildOrder(

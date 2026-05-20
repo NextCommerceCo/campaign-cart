@@ -206,6 +206,11 @@ export default defineConfig({
         // Choose either preserveModules OR manualChunks, not both
         // Option 1: Use manual chunks (recommended for better control)
         manualChunks: (id: string) => {
+          // Debug-only deps stay in the debug chunk so they don't bloat the always-loaded vendor bundle
+          if (id.includes('highlight.js')) {
+            return 'debug';
+          }
+
           // Split node_modules into vendor chunk
           if (id.includes('node_modules')) {
             // Further split large libraries

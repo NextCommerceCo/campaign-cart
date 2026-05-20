@@ -21,8 +21,10 @@ import {
   ConfigPanel,
   CheckoutPanel,
   StoragePanel,
+  OffersPanel,
   EnhancedCampaignPanel,
-  DebugPanel
+  DebugPanel,
+  RawDataHelper
 } from './panels';
 
 export class DebugOverlay {
@@ -85,6 +87,7 @@ export class DebugOverlay {
   private initializePanels(): void {
     this.panels = [
       new CartPanel(),
+      new OffersPanel(),
       new OrderPanel(),
       new ConfigPanel(),
       new EnhancedCampaignPanel(),
@@ -285,6 +288,7 @@ export class DebugOverlay {
       this.activePanelTab
     );
 
+    RawDataHelper.bindCopyHandlers(overlayContainer);
     this.addEventListeners();
 
     // Restore button states
@@ -305,10 +309,12 @@ export class DebugOverlay {
           const activeTab = tabs.find(tab => tab.id === activeTabId) || tabs[0];
           if (activeTab) {
             panelContent.innerHTML = activeTab.getContent();
+            RawDataHelper.bindCopyHandlers(panelContent);
           }
         } else {
           // Panel doesn't have horizontal tabs - use regular content
           panelContent.innerHTML = activePanel.getContent();
+          RawDataHelper.bindCopyHandlers(panelContent);
         }
       }
     }

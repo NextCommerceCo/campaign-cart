@@ -204,6 +204,7 @@ describe('handleCardClick — upsell context', () => {
     vi.mocked(useConfigStore.getState).mockReturnValue({
       apiKey: 'test-key',
       selectedCurrency: 'USD',
+      getCurrency: () => 'USD',
     } as any);
   });
 

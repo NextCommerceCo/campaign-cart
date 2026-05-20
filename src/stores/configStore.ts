@@ -18,6 +18,7 @@ interface ConfigActions {
   updateConfig: (config: Partial<ConfigState>) => void;
   setSpreedlyEnvironmentKey: (key: string) => void;
   reset: () => void;
+  getCurrency: () => string;
 }
 
 const initialState: ConfigState = {
@@ -73,7 +74,7 @@ const initialState: ConfigState = {
   // Error monitoring removed - add externally via HTML/scripts
 };
 
-export const configStore = create<ConfigState & ConfigActions>((set, _get) => ({
+export const configStore = create<ConfigState & ConfigActions>((set, get) => ({
   ...(initialState as ConfigState),
 
   loadFromMeta: () => {
@@ -282,6 +283,11 @@ export const configStore = create<ConfigState & ConfigActions>((set, _get) => ({
 
   reset: () => {
     set(initialState);
+  },
+
+  getCurrency: () => {
+    const state = get();
+    return state.selectedCurrency || state.detectedCurrency || 'USD';
   },
 }));
 
