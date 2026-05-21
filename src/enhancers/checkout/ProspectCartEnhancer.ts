@@ -13,8 +13,9 @@ import type { CartBase, UserCreateCart } from '@/types/api';
 
 export interface ProspectCartConfig {
   autoCreate?: boolean;
-  triggerOn?: 'formStart' | 'emailEntry' | 'manual';
+  triggerOn?: 'formStart' | 'emailEntry' | 'phoneEntry' | 'emailAndPhone' | 'manual';
   emailField?: string;
+  phoneField?: string;
   includeUtmData?: boolean;
   sessionTimeout?: number; // minutes
 }
@@ -34,13 +35,15 @@ export class ProspectCartEnhancer extends BaseEnhancer {
     autoCreate: true,
     triggerOn: 'emailEntry',
     emailField: 'email',
+    phoneField: 'phone',
     includeUtmData: true,
     sessionTimeout: 30
   };
-  
+
   private apiClient!: ApiClient;
   private prospectCart: ProspectCart | undefined;
   private emailField?: HTMLInputElement;
+  private phoneField?: HTMLInputElement;
   private hasTriggered = false;
 
   public async initialize(): Promise<void> {
@@ -60,6 +63,9 @@ export class ProspectCartEnhancer extends BaseEnhancer {
 
     // Find email field
     this.findEmailField();
+
+    // Find phone field
+    this.findPhoneField();
 
     // Subscribe to cart changes
     this.subscribe(useCartStore, this.handleCartUpdate.bind(this));
@@ -103,7 +109,14 @@ export class ProspectCartEnhancer extends BaseEnhancer {
 
     if (this.hasAttribute('data-trigger-on')) {
       const triggerOn = this.getAttribute('data-trigger-on');
-      if (triggerOn && (triggerOn === 'formStart' || triggerOn === 'emailEntry' || triggerOn === 'manual')) {
+      if (
+        triggerOn &&
+        (triggerOn === 'formStart' ||
+          triggerOn === 'emailEntry' ||
+          triggerOn === 'phoneEntry' ||
+          triggerOn === 'emailAndPhone' ||
+          triggerOn === 'manual')
+      ) {
         this.config.triggerOn = triggerOn;
       }
     }
@@ -112,6 +125,13 @@ export class ProspectCartEnhancer extends BaseEnhancer {
       const emailField = this.getAttribute('data-email-field');
       if (emailField) {
         this.config.emailField = emailField;
+      }
+    }
+
+    if (this.hasAttribute('data-phone-field')) {
+      const phoneField = this.getAttribute('data-phone-field');
+      if (phoneField) {
+        this.config.phoneField = phoneField;
       }
     }
   }
@@ -139,7 +159,31 @@ export class ProspectCartEnhancer extends BaseEnhancer {
       this.logger.warn('Email field not found for prospect cart');
     }
   }
-  
+
+  private findPhoneField(): void {
+    const selectors = [
+      '[data-next-checkout-field="phone"]',
+      '[os-checkout-field="phone"]',
+      `input[name="${this.config.phoneField}"]`,
+      'input[type="tel"]',
+      'input[data-field="phone"]',
+      'input[name*="phone"]'
+    ];
+
+    for (const selector of selectors) {
+      const field = this.element.querySelector(selector) as HTMLInputElement;
+      if (field) {
+        this.phoneField = field;
+        this.logger.debug('Found phone field with selector:', selector);
+        break;
+      }
+    }
+
+    if (!this.phoneField) {
+      this.logger.warn('Phone field not found for prospect cart');
+    }
+  }
+
   /**
    * Get formatted phone number in E.164 format from existing intlTelInput instance
    */
@@ -180,6 +224,13 @@ export class ProspectCartEnhancer extends BaseEnhancer {
         break;
       case 'emailEntry':
         this.setupEmailEntryTrigger();
+        break;
+      case 'phoneEntry':
+        this.setupPhoneEntryTrigger();
+        break;
+      case 'emailAndPhone':
+        this.setupEmailEntryTrigger();
+        this.setupPhoneEntryTrigger();
         break;
       case 'manual':
         // No automatic triggers, only manual creation
@@ -292,7 +343,7 @@ export class ProspectCartEnhancer extends BaseEnhancer {
           checkForCartCreation();
         }
       });
-      
+
       lastNameField.addEventListener('change', () => {
         const lastName = lastNameField.value.trim();
         if (this.isValidName(lastName)) {
@@ -301,6 +352,50 @@ export class ProspectCartEnhancer extends BaseEnhancer {
         }
       });
     }
+  }
+
+  private phoneBlurTimeout: number | undefined;
+
+  private setupPhoneEntryTrigger(): void {
+    if (!this.phoneField) {
+      this.logger.warn('Cannot setup phone entry trigger - phone field not found');
+      return;
+    }
+
+    this.logger.debug('Setting up phone entry trigger on field:', this.phoneField);
+
+    let lastPhoneValue = '';
+
+    const scheduleCheck = () => {
+      if (this.phoneBlurTimeout) {
+        clearTimeout(this.phoneBlurTimeout);
+      }
+      this.phoneBlurTimeout = window.setTimeout(() => {
+        this.logger.debug('Checking if required fields are valid for cart creation (phone trigger)');
+        this.checkAndCreateCart();
+      }, 300);
+    };
+
+    this.phoneField.addEventListener('blur', () => {
+      const currentPhone = this.phoneField!.value.trim();
+      if (currentPhone !== lastPhoneValue && currentPhone.length > 0) {
+        lastPhoneValue = currentPhone;
+        if (this.isValidPhone(currentPhone)) {
+          this.logger.debug('Phone blur event processed, value:', currentPhone);
+          scheduleCheck();
+        } else {
+          this.logger.debug('Phone appears incomplete, skipping cart creation:', currentPhone);
+        }
+      }
+    });
+
+    this.phoneField.addEventListener('change', () => {
+      const currentPhone = this.phoneField!.value.trim();
+      if (this.isValidPhone(currentPhone)) {
+        this.logger.debug('Valid phone detected on change event:', currentPhone);
+        scheduleCheck();
+      }
+    });
   }
 
   private checkExistingProspectCart(): void {
@@ -593,6 +688,28 @@ export class ProspectCartEnhancer extends BaseEnhancer {
     return true;
   }
 
+  private isValidPhone(phone: string): boolean {
+    if (!phone || phone.trim().length === 0) {
+      return false;
+    }
+
+    // Prefer intlTelInput validation when available
+    if (this.phoneField) {
+      const intlTelInputInstance = (window as any).intlTelInputGlobals?.getInstance?.(this.phoneField);
+      if (intlTelInputInstance && typeof intlTelInputInstance.isValidNumber === 'function') {
+        try {
+          return intlTelInputInstance.isValidNumber();
+        } catch (error) {
+          this.logger.debug('intlTelInput isValidNumber threw, falling back:', error);
+        }
+      }
+    }
+
+    // Fallback: require at least 7 digits (covers most national/international formats)
+    const digits = phone.replace(/\D/g, '');
+    return digits.length >= 7;
+  }
+
   private isValidName(name: string): boolean {
     // Name must not be empty
     if (!name || name.trim().length === 0) {
@@ -684,50 +801,57 @@ export class ProspectCartEnhancer extends BaseEnhancer {
    * Check if we have enough data to create prospect cart and create it immediately
    */
   public checkAndCreateCart(): void {
-    // Get current form values
-    const email = (this.element.querySelector('[data-next-checkout-field="email"], [os-checkout-field="email"], input[type="email"]') as HTMLInputElement)?.value?.trim() || '';
-    const firstName = (this.element.querySelector('[data-next-checkout-field="fname"], [os-checkout-field="fname"], input[name="first_name"]') as HTMLInputElement)?.value?.trim() || '';
-    const lastName = (this.element.querySelector('[data-next-checkout-field="lname"], [os-checkout-field="lname"], input[name="last_name"]') as HTMLInputElement)?.value?.trim() || '';
-    
-    // Validate all required fields
-    const hasValidEmail = this.isValidEmail(email);
-    const hasValidFirstName = this.isValidName(firstName);
-    const hasValidLastName = this.isValidName(lastName);
-    
-    // Note: begin_checkout event is now tracked in CheckoutFormEnhancer on initialization
-    
     // Check if prospect cart has already been created
     if (this.hasTriggered) {
       return;
     }
-    
+
+    // Get current form values
+    const email = (this.element.querySelector('[data-next-checkout-field="email"], [os-checkout-field="email"], input[type="email"]') as HTMLInputElement)?.value?.trim() || '';
+    const firstName = (this.element.querySelector('[data-next-checkout-field="fname"], [os-checkout-field="fname"], input[name="first_name"]') as HTMLInputElement)?.value?.trim() || '';
+    const lastName = (this.element.querySelector('[data-next-checkout-field="lname"], [os-checkout-field="lname"], input[name="last_name"]') as HTMLInputElement)?.value?.trim() || '';
+    const phone = this.phoneField?.value?.trim() || '';
+
+    // Decide which contact fields are required based on the configured trigger
+    const trigger = this.config.triggerOn;
+    const requiresEmail = trigger === 'emailEntry' || trigger === 'emailAndPhone' || trigger === 'formStart' || trigger === 'manual';
+    const requiresPhone = trigger === 'phoneEntry' || trigger === 'emailAndPhone';
+
+    const hasValidEmail = requiresEmail ? this.isValidEmail(email) : true;
+    const hasValidPhone = requiresPhone ? this.isValidPhone(phone) : true;
+    const hasValidFirstName = this.isValidName(firstName);
+    const hasValidLastName = this.isValidName(lastName);
+
     // Log validation status
     this.logger.debug('Field validation status for cart creation:', {
-      email: { value: email, valid: hasValidEmail },
+      trigger,
+      email: { value: email, required: requiresEmail, valid: hasValidEmail },
+      phone: { value: phone, required: requiresPhone, valid: hasValidPhone },
       firstName: { value: firstName, valid: hasValidFirstName },
       lastName: { value: lastName, valid: hasValidLastName }
     });
-    
-    // Clear any pending timeout if any field is invalid
-    if (!hasValidEmail || !hasValidFirstName || !hasValidLastName) {
+
+    // Clear any pending timeout if any required field is invalid
+    if (!hasValidEmail || !hasValidPhone || !hasValidFirstName || !hasValidLastName) {
       if (this.updateEmailTimeout !== undefined) {
         clearTimeout(this.updateEmailTimeout);
         this.updateEmailTimeout = undefined;
       }
-      
-      // Log why we're not creating cart
+
       if (!hasValidEmail) {
         this.logger.debug('Invalid or incomplete email, skipping cart creation:', email);
+      } else if (!hasValidPhone) {
+        this.logger.debug('Invalid or incomplete phone, skipping cart creation:', phone);
       } else if (!hasValidFirstName) {
         this.logger.debug('Invalid or missing first name, waiting for valid name:', firstName);
       } else if (!hasValidLastName) {
         this.logger.debug('Invalid or missing last name, waiting for valid name:', lastName);
       }
-      
+
       return;
     }
-    
-    // All fields are valid - create cart immediately
+
+    // All required fields are valid - create cart immediately
     // Clear any pending timeouts
     if (this.updateEmailTimeout !== undefined) {
       clearTimeout(this.updateEmailTimeout);
@@ -739,13 +863,18 @@ export class ProspectCartEnhancer extends BaseEnhancer {
     if (this.emailInputTimeout !== undefined) {
       clearTimeout(this.emailInputTimeout);
     }
-    
-    this.logger.info('All required fields valid (email, fname, lname), creating prospect cart immediately', {
+    if (this.phoneBlurTimeout !== undefined) {
+      clearTimeout(this.phoneBlurTimeout);
+    }
+
+    this.logger.info('All required fields valid, creating prospect cart immediately', {
+      trigger,
       email,
+      phone,
       firstName,
       lastName
     });
-    
+
     this.createProspectCart();
     this.hasTriggered = true;
   }
