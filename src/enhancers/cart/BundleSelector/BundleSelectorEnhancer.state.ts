@@ -112,3 +112,52 @@ export function extractNestedVariantTemplates(slotTemplate: string): {
 
   return { slot: wrapper.innerHTML, variantSelector, variantOption };
 }
+
+export interface ForceBundleSpec {
+  selectorId: string | null;
+  bundleId: string;
+}
+
+/**
+ * Parse a `forceBundleId` URL-parameter value into per-selector specs.
+ *
+ * Accepted forms (comma-separated):
+ *   "premium"                       → unscoped: matches the first selector containing a card with this id
+ *   "tier-selector:premium"         → scoped to selectorId "tier-selector"
+ *   "tier:premium,gift:luxury"      → multiple scoped specs
+ *
+ * Whitespace around tokens is tolerated. Empty/malformed entries are dropped silently
+ * (the caller logs at a higher level when nothing matches).
+ */
+export function parseForceBundleId(raw: string | null | undefined): ForceBundleSpec[] {
+  if (!raw) return [];
+  return raw
+    .split(',')
+    .map(part => part.trim())
+    .filter(Boolean)
+    .map(part => {
+      const colonIdx = part.indexOf(':');
+      if (colonIdx === -1) {
+        return { selectorId: null, bundleId: part };
+      }
+      const selectorId = part.slice(0, colonIdx).trim();
+      const bundleId = part.slice(colonIdx + 1).trim();
+      if (!bundleId) return null;
+      return { selectorId: selectorId || null, bundleId };
+    })
+    .filter((s): s is ForceBundleSpec => s !== null);
+}
+
+/**
+ * Pick the bundleId from a parsed force-spec list that applies to a given selector.
+ * Prefers a scoped match (`selectorId:bundleId`) over an unscoped one.
+ */
+export function resolveForcedBundleId(
+  specs: ForceBundleSpec[],
+  selectorId: string | null,
+): string | null {
+  const scoped = specs.find(s => s.selectorId !== null && s.selectorId === selectorId);
+  if (scoped) return scoped.bundleId;
+  const unscoped = specs.find(s => s.selectorId === null);
+  return unscoped ? unscoped.bundleId : null;
+}

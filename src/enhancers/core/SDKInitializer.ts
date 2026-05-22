@@ -384,11 +384,12 @@ export class SDKInitializer {
     // NEW: Capture ALL URL parameters for session use
     await this.captureUrlParameters(urlParams);
 
-    // Check URL parameters for debug mode, forcePackageId, and forceShippingId
+    // Check URL parameters for debug mode, forcePackageId, forceShippingId, and forceBundleId
     const windowConfig = (window as any).nextConfig;
     const debugMode = urlParams.get('debugger') === 'true' || windowConfig?.debugger === true;
     const forcePackageId = urlParams.get('forcePackageId');
     const forceShippingId = urlParams.get('forceShippingId');
+    const forceBundleId = urlParams.get('forceBundleId');
     
     // Load from window.nextConfig first (as defaults)
     configStore.loadFromWindow();
@@ -414,7 +415,15 @@ export class SDKInitializer {
       // Store for later processing after campaign data is loaded
       (window as any)._nextForceShippingId = forceShippingId;
     }
-    
+
+    // Handle forceBundleId parameter
+    // Format: "bundleId" or "selectorId:bundleId" or comma-separated for multi-selector pages
+    // Consumed by BundleSelectorEnhancer when picking its default card (overrides data-next-selected).
+    if (forceBundleId) {
+      this.logger.info('forceBundleId parameter detected:', forceBundleId);
+      (window as any)._nextForceBundleId = forceBundleId;
+    }
+
     this.logger.debug('Configuration loaded (metatags have priority):', configStore);
   }
 

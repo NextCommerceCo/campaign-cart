@@ -5,6 +5,8 @@ import {
   getEffectiveItems,
   parseVouchers,
   extractNestedVariantTemplates,
+  parseForceBundleId,
+  resolveForcedBundleId,
 } from '../BundleSelectorEnhancer.state';
 import type { Package } from '@/types/campaign';
 import type { BundleCard, BundleSlot } from '../BundleSelectorEnhancer.types';
@@ -412,5 +414,85 @@ describe('extractNestedVariantTemplates', () => {
 
     expect(variantSelector).toContain('{attr.name}');
     expect(variantOption).toBe('');
+  });
+});
+
+describe('parseForceBundleId', () => {
+  it('returns [] for null/empty/undefined', () => {
+    expect(parseForceBundleId(null)).toEqual([]);
+    expect(parseForceBundleId(undefined)).toEqual([]);
+    expect(parseForceBundleId('')).toEqual([]);
+  });
+
+  it('parses a single unscoped bundleId', () => {
+    expect(parseForceBundleId('premium')).toEqual([
+      { selectorId: null, bundleId: 'premium' },
+    ]);
+  });
+
+  it('parses a scoped selectorId:bundleId pair', () => {
+    expect(parseForceBundleId('tier:premium')).toEqual([
+      { selectorId: 'tier', bundleId: 'premium' },
+    ]);
+  });
+
+  it('parses comma-separated scoped specs', () => {
+    expect(parseForceBundleId('tier:premium,gift:luxury')).toEqual([
+      { selectorId: 'tier', bundleId: 'premium' },
+      { selectorId: 'gift', bundleId: 'luxury' },
+    ]);
+  });
+
+  it('tolerates whitespace around tokens', () => {
+    expect(parseForceBundleId(' tier : premium , gift : luxury ')).toEqual([
+      { selectorId: 'tier', bundleId: 'premium' },
+      { selectorId: 'gift', bundleId: 'luxury' },
+    ]);
+  });
+
+  it('drops entries with empty bundleId', () => {
+    expect(parseForceBundleId('tier:,valid')).toEqual([
+      { selectorId: null, bundleId: 'valid' },
+    ]);
+  });
+
+  it('drops empty comma-separated segments', () => {
+    expect(parseForceBundleId('a,,b')).toEqual([
+      { selectorId: null, bundleId: 'a' },
+      { selectorId: null, bundleId: 'b' },
+    ]);
+  });
+});
+
+describe('resolveForcedBundleId', () => {
+  it('returns null when no specs are given', () => {
+    expect(resolveForcedBundleId([], 'tier')).toBeNull();
+    expect(resolveForcedBundleId([], null)).toBeNull();
+  });
+
+  it('prefers a scoped match over an unscoped one', () => {
+    const specs = [
+      { selectorId: null, bundleId: 'fallback' },
+      { selectorId: 'tier', bundleId: 'premium' },
+    ];
+    expect(resolveForcedBundleId(specs, 'tier')).toBe('premium');
+  });
+
+  it('falls back to an unscoped spec when no scoped match exists', () => {
+    const specs = [
+      { selectorId: null, bundleId: 'fallback' },
+      { selectorId: 'gift', bundleId: 'luxury' },
+    ];
+    expect(resolveForcedBundleId(specs, 'tier')).toBe('fallback');
+  });
+
+  it('returns null when only mismatched scoped specs are present', () => {
+    const specs = [{ selectorId: 'gift', bundleId: 'luxury' }];
+    expect(resolveForcedBundleId(specs, 'tier')).toBeNull();
+  });
+
+  it('matches an unscoped spec when the selector has no id', () => {
+    const specs = [{ selectorId: null, bundleId: 'premium' }];
+    expect(resolveForcedBundleId(specs, null)).toBe('premium');
   });
 });

@@ -72,6 +72,21 @@
 
 ---
 
+## Deep-linking to a specific bundle tier from an ad
+
+> Effort: lightweight
+
+**When:** A marketing campaign sends visitors to the landing page with a pre-decided tier (e.g., "Premium" or "3-pack"). The visitor should land with that tier already selected and, in swap mode, already in the cart.
+
+**Why this enhancer:** Pass `?forceBundleId=<bundleId>` (matching a card's `data-next-bundle-id`) on the landing URL. The enhancer pre-selects that card in place of `data-next-selected="true"` on init, and in swap mode applies it to the cart. For multi-selector pages (e.g., a main tier + a gift box), scope by `selectorId`: `?forceBundleId=tier:premium,gift:luxury`.
+
+**Watch out for:**
+- If the `bundleId` doesn't match any card on this selector, the enhancer falls back to the normal default and logs a warning — verify your ad-link `bundleId` matches the card id exactly.
+- The param wins over `data-next-selected="true"` — if you also test the page directly, the URL-driven selection will override your HTML default.
+- Only the first matching unscoped spec is honored when multiple selectors are present. Prefer scoped form (`selectorId:bundleId`) on pages with more than one bundle selector.
+
+---
+
 ## When NOT to use this
 
 ### Adding optional extras alongside a fixed base product
