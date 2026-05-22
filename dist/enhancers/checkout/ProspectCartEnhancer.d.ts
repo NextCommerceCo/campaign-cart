@@ -1,10 +1,12 @@
 import { BaseEnhancer } from '../base/BaseEnhancer';
 export interface ProspectCartConfig {
     autoCreate?: boolean;
-    triggerOn?: 'formStart' | 'emailEntry' | 'manual';
+    triggerOn?: 'formStart' | 'emailEntry' | 'phoneEntry' | 'emailAndPhone' | 'manual';
     emailField?: string;
+    phoneField?: string;
     includeUtmData?: boolean;
     sessionTimeout?: number;
+    minPhoneDigits?: number;
 }
 export interface ProspectCart {
     id: string;
@@ -20,23 +22,28 @@ export declare class ProspectCartEnhancer extends BaseEnhancer {
     private apiClient;
     private prospectCart;
     private emailField?;
+    private phoneField?;
     private hasTriggered;
     initialize(): Promise<void>;
     update(data?: any): void;
     private loadConfig;
     private findEmailField;
+    private findPhoneField;
     private getFormattedPhoneNumber;
     private setupTriggers;
     private setupFormStartTrigger;
     private emailInputTimeout;
     private emailBlurTimeout;
     private setupEmailEntryTrigger;
+    private phoneBlurTimeout;
+    private setupPhoneEntryTrigger;
     private checkExistingProspectCart;
     private createProspectCart;
     private updateProspectCart;
     private collectUtmData;
     private getCurrency;
     private isValidEmail;
+    private isValidPhone;
     private isValidName;
     private handleCartUpdate;
     private updateTimeout;
