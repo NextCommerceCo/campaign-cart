@@ -1,5 +1,42 @@
 # Changelog
 
+## [0.4.21] — 2026-05-22 — Prospect Cart Phone Triggers & E.164 Fix
+
+`ProspectCartEnhancer` can now create the prospect cart from a phone number, not only from email. This unlocks SMS-led funnels and flows that ask for phone before email.
+
+### New trigger modes
+
+Pick when the prospect cart is created by setting `data-trigger-on` on the prospect cart element:
+
+| `data-trigger-on` | Fires when… | Email required | Phone required |
+|---|---|---|---|
+| `formStart` | The shopper first interacts with the form | yes | no |
+| `emailEntry` *(default)* | A valid email is entered (blur or change) | yes | no |
+| `phoneEntry` **(new)** | A valid phone is entered (blur or change) | no | yes |
+| `emailAndPhone` **(new)** | Both email and phone are valid — fires once both are filled | yes | yes |
+| `manual` | Never automatically — only via `window.next.createProspectCart()` | yes | no |
+
+First name and last name are always required, regardless of the trigger mode.
+
+A field marked "not required" is still validated when the shopper *does* type into it — half-typed input is never sent to the API.
+
+### Phone field configuration
+
+Two new attributes for tuning phone detection and validation:
+
+| Attribute | Default | What it does |
+|---|---|---|
+| `data-phone-field` | `phone` | The input `name` to locate when no `data-next-checkout-field="phone"` element is present. Mirrors the existing `data-email-field`. |
+| `data-min-phone-digits` | `7` | Minimum digit count for the fallback validator used when `intlTelInput` is not initialized on the page. Set higher or lower for markets with different valid-number lengths. Also available as `minPhoneDigits` in `ProspectCartConfig`. |
+
+### Fixed
+
+- **E.164 phone formatting broken with `intl-tel-input` v19+** — the prospect cart payload was falling back to the raw input value because it looked up the instance via the removed `window.intlTelInputGlobals` global. It now reads the instance directly from the input (`input.iti`) and falls back to `window.intlTelInput.getInstance()`, so phone numbers are submitted in E.164 again.
+
+- **Partial phone or email forwarded to the API** — under `formStart` and `manual` triggers, a few typed digits of phone (or a half-typed email) used to be sent to the cart-create endpoint. Optional contact fields are now validated whenever the shopper has typed into them: empty stays empty, but a non-empty value must be valid before the cart is created.
+
+---
+
 ## [0.4.20] — 2026-05-20 — Currency Persistence Fix & Offers Debugger
 
 ### Fixed
