@@ -18,6 +18,7 @@ export interface ProspectCartConfig {
   phoneField?: string;
   includeUtmData?: boolean;
   sessionTimeout?: number; // minutes
+  minPhoneDigits?: number;
 }
 
 export interface ProspectCart {
@@ -37,7 +38,8 @@ export class ProspectCartEnhancer extends BaseEnhancer {
     emailField: 'email',
     phoneField: 'phone',
     includeUtmData: true,
-    sessionTimeout: 30
+    sessionTimeout: 30,
+    minPhoneDigits: 7
   };
 
   private apiClient!: ApiClient;
@@ -132,6 +134,16 @@ export class ProspectCartEnhancer extends BaseEnhancer {
       const phoneField = this.getAttribute('data-phone-field');
       if (phoneField) {
         this.config.phoneField = phoneField;
+      }
+    }
+
+    if (this.hasAttribute('data-min-phone-digits')) {
+      const raw = this.getAttribute('data-min-phone-digits');
+      const parsed = raw !== null ? parseInt(raw, 10) : NaN;
+      if (Number.isFinite(parsed) && parsed > 0) {
+        this.config.minPhoneDigits = parsed;
+      } else {
+        this.logger.warn('Invalid data-min-phone-digits value, using default:', raw);
       }
     }
   }
@@ -510,9 +522,13 @@ export class ProspectCartEnhancer extends BaseEnhancer {
         user.email = email;
       }
       
-      // Add phone if it exists (in E.164 format)
-      if (phone) {
+      // Add phone only when it passes validation. Without this guard, trigger
+      // modes that don't require phone (formStart, manual, emailEntry) would
+      // forward raw partial input to the API.
+      if (phone && this.isValidPhone(phone)) {
         user.phone_number = phone;
+      } else if (phone) {
+        this.logger.debug('Skipping phone on prospect cart payload — failed validation:', phone);
       }
       
       // Build cart data according to CartBase interface
@@ -714,9 +730,13 @@ export class ProspectCartEnhancer extends BaseEnhancer {
       }
     }
 
-    // Fallback: require at least 7 digits (covers most national/international formats)
+    // Fallback when intlTelInput is unavailable: require a minimum digit count.
+    // Default 7 covers most national/international formats; override via
+    // ProspectCartConfig.minPhoneDigits or the data-min-phone-digits attribute
+    // when the page targets a country with shorter/longer valid numbers.
+    const minDigits = this.config.minPhoneDigits ?? 7;
     const digits = phone.replace(/\D/g, '');
-    return digits.length >= 7;
+    return digits.length >= minDigits;
   }
 
   private isValidName(name: string): boolean {
