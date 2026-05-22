@@ -190,14 +190,19 @@ export class ProspectCartEnhancer extends BaseEnhancer {
   private getFormattedPhoneNumber(): string {
     // Find the phone field
     const phoneField = this.element.querySelector('[data-next-checkout-field="phone"], [os-checkout-field="phone"], input[name="phone"], input[type="tel"]') as HTMLInputElement;
-    
+
     if (!phoneField) {
       return '';
     }
-    
-    // Check if intlTelInput instance exists on the element (created by CheckoutFormEnhancer)
-    const intlTelInputInstance = (window as any).intlTelInputGlobals?.getInstance?.(phoneField);
-    
+
+    // intl-tel-input attaches the instance directly as `input.iti`, and also
+    // exposes `intlTelInput.getInstance(input)` on the global. Prefer the direct
+    // reference — the legacy `window.intlTelInputGlobals` global no longer exists
+    // in v19+ of the library.
+    const intlTelInputInstance =
+      (phoneField as any).iti ||
+      (window as any).intlTelInput?.getInstance?.(phoneField);
+
     if (intlTelInputInstance && typeof intlTelInputInstance.getNumber === 'function') {
       try {
         const e164Number = intlTelInputInstance.getNumber();
@@ -209,7 +214,7 @@ export class ProspectCartEnhancer extends BaseEnhancer {
         this.logger.warn('Failed to get E.164 formatted phone from existing instance:', error);
       }
     }
-    
+
     // Fallback to raw phone value if intlTelInput not available or not initialized
     this.logger.debug('Using raw phone value (intlTelInput instance not found)');
     return phoneField.value || '';
@@ -693,9 +698,13 @@ export class ProspectCartEnhancer extends BaseEnhancer {
       return false;
     }
 
-    // Prefer intlTelInput validation when available
+    // Prefer intlTelInput validation when available. The instance is attached
+    // to the input as `.iti` by the library (v19+); fall back to the global
+    // getter. The legacy `window.intlTelInputGlobals` global is gone in v19+.
     if (this.phoneField) {
-      const intlTelInputInstance = (window as any).intlTelInputGlobals?.getInstance?.(this.phoneField);
+      const intlTelInputInstance =
+        (this.phoneField as any).iti ||
+        (window as any).intlTelInput?.getInstance?.(this.phoneField);
       if (intlTelInputInstance && typeof intlTelInputInstance.isValidNumber === 'function') {
         try {
           return intlTelInputInstance.isValidNumber();
