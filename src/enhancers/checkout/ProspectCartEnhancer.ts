@@ -846,12 +846,18 @@ export class ProspectCartEnhancer extends BaseEnhancer {
     const requiresEmail = trigger === 'emailEntry' || trigger === 'emailAndPhone' || trigger === 'formStart' || trigger === 'manual';
     const requiresPhone = trigger === 'phoneEntry' || trigger === 'emailAndPhone';
 
-    const hasValidEmail = requiresEmail ? this.isValidEmail(email) : true;
-    const hasValidPhone = requiresPhone ? this.isValidPhone(phone) : true;
+    const hasValidEmail = this.isValidEmail(email);
+    const hasValidPhone = this.isValidPhone(phone);
     const hasValidFirstName = this.isValidName(firstName);
     const hasValidLastName = this.isValidName(lastName);
 
-    // Log validation status
+    // Gate rule per field:
+    //  - if required: value must be valid
+    //  - if optional: empty is fine, but a non-empty value must still be valid
+    //    (blocks half-typed phone/email from slipping through formStart/manual)
+    const emailBlocks = requiresEmail ? !hasValidEmail : email.length > 0 && !hasValidEmail;
+    const phoneBlocks = requiresPhone ? !hasValidPhone : phone.length > 0 && !hasValidPhone;
+
     this.logger.debug('Field validation status for cart creation:', {
       trigger,
       email: { value: email, required: requiresEmail, valid: hasValidEmail },
@@ -860,16 +866,15 @@ export class ProspectCartEnhancer extends BaseEnhancer {
       lastName: { value: lastName, valid: hasValidLastName }
     });
 
-    // Clear any pending timeout if any required field is invalid
-    if (!hasValidEmail || !hasValidPhone || !hasValidFirstName || !hasValidLastName) {
+    if (emailBlocks || phoneBlocks || !hasValidFirstName || !hasValidLastName) {
       if (this.updateEmailTimeout !== undefined) {
         clearTimeout(this.updateEmailTimeout);
         this.updateEmailTimeout = undefined;
       }
 
-      if (!hasValidEmail) {
+      if (emailBlocks) {
         this.logger.debug('Invalid or incomplete email, skipping cart creation:', email);
-      } else if (!hasValidPhone) {
+      } else if (phoneBlocks) {
         this.logger.debug('Invalid or incomplete phone, skipping cart creation:', phone);
       } else if (!hasValidFirstName) {
         this.logger.debug('Invalid or missing first name, waiting for valid name:', firstName);

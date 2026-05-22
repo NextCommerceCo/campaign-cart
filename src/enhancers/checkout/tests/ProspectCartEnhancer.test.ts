@@ -498,6 +498,29 @@ describe('ProspectCartEnhancer', () => {
       expect(createCartMock).toHaveBeenCalledTimes(1);
     });
 
+    it('blocks cart creation when an optional phone is partially typed (emailEntry trigger)', async () => {
+      const container = makeContainer('emailEntry');
+      const enhancer = new ProspectCartEnhancer(container);
+      await enhancer.initialize();
+
+      const phone = container.querySelector(
+        '[data-next-checkout-field="phone"]'
+      ) as any;
+      phone.iti = { isValidNumber: () => false, getNumber: () => '' };
+
+      setFieldValues(container, {
+        email: 'user@example.com',
+        phone: '+1555',
+        fname: 'Jane',
+        lname: 'Doe',
+      });
+
+      enhancer.checkAndCreateCart();
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(createCartMock).not.toHaveBeenCalled();
+    });
+
     it('emailAndPhone trigger requires both email and phone', async () => {
       const container = makeContainer('emailAndPhone');
       const enhancer = new ProspectCartEnhancer(container);
