@@ -161,3 +161,56 @@ export function resolveForcedBundleId(
   const unscoped = specs.find(s => s.selectorId === null);
   return unscoped ? unscoped.bundleId : null;
 }
+
+export interface DefaultCardChoice {
+  card: BundleCard | null;
+  /** Came from a successful `forceBundleId` match. */
+  fromForce: boolean;
+  /** A `forceBundleId` resolved for this selector but no card matched. Carries the attempted bundleId. */
+  forcedMiss: string | null;
+  /** No card had `isPreSelected` and we fell back to `cards[0]`. Only set when card came from the first-card fallback. */
+  usedFirstCardFallback: boolean;
+}
+
+/**
+ * Pick the card that should be selected when no user interaction has happened yet.
+ *
+ * Precedence:
+ *   1. `forceBundleId` URL param (after parsing + selector scoping) — wins over everything
+ *   2. `isPreSelected` (i.e. `data-next-selected="true"`)
+ *   3. First registered card
+ *
+ * When the param resolves to a bundleId but no matching card exists in this selector,
+ * `forcedMiss` carries that bundleId so the caller can log a warning before falling
+ * through to (2) and (3).
+ */
+export function pickDefaultCard(
+  cards: BundleCard[],
+  rawForceBundleId: string | null | undefined,
+  selectorId: string | null,
+): DefaultCardChoice {
+  const specs = parseForceBundleId(rawForceBundleId);
+  const forcedId = resolveForcedBundleId(specs, selectorId);
+
+  let forcedMiss: string | null = null;
+  if (forcedId) {
+    const match = cards.find(c => c.bundleId === forcedId) ?? null;
+    if (match) {
+      return { card: match, fromForce: true, forcedMiss: null, usedFirstCardFallback: false };
+    }
+    forcedMiss = forcedId;
+  }
+
+  const preSelected = cards.find(c => c.isPreSelected);
+  if (preSelected) {
+    return { card: preSelected, fromForce: false, forcedMiss, usedFirstCardFallback: false };
+  }
+
+  const first = cards[0] ?? null;
+  return {
+    card: first,
+    fromForce: false,
+    forcedMiss,
+    usedFirstCardFallback: first !== null,
+  };
+}

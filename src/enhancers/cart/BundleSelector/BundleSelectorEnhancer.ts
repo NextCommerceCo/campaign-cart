@@ -48,9 +48,8 @@ import {
   extractNestedVariantTemplates,
   getEffectiveItems,
   makePackageState,
-  parseForceBundleId,
   parseVouchers,
-  resolveForcedBundleId,
+  pickDefaultCard,
 } from './BundleSelectorEnhancer.state';
 import { setupQuantityControls } from '@/enhancers/cart/shared/quantityControls';
 
@@ -573,27 +572,29 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
   // ─── Upsell context selection ─────────────────────────────────────────────────
 
   /**
-   * Resolve the card pre-selected via the `forceBundleId` URL parameter, if any.
-   * Returns null when the param is absent, doesn't target this selector, or no card matches.
+   * Run the default-card precedence (forceBundleId → data-next-selected → cards[0])
+   * and emit the appropriate log messages for the outcome.
    */
-  private resolveForcedCard(): BundleCard | null {
+  private pickAndLogDefaultCard(): BundleCard | null {
     const raw = (window as any)._nextForceBundleId;
-    if (typeof raw !== 'string' || !raw) return null;
-    const specs = parseForceBundleId(raw);
-    const targetBundleId = resolveForcedBundleId(specs, this.selectorId);
-    if (!targetBundleId) return null;
-    const match = this.cards.find(c => c.bundleId === targetBundleId);
-    if (!match) {
+    const choice = pickDefaultCard(this.cards, typeof raw === 'string' ? raw : null, this.selectorId);
+    if (choice.forcedMiss) {
       this.logger.warn(
-        `forceBundleId="${targetBundleId}" did not match any card in this selector — falling back to default`,
+        `forceBundleId="${choice.forcedMiss}" did not match any card in this selector — falling back to default`,
       );
-      return null;
     }
-    this.logger.info(
-      `Bundle pre-selected via forceBundleId: "${match.bundleId}"`,
-      this.selectorId ? { selectorId: this.selectorId } : undefined,
-    );
-    return match;
+    if (choice.fromForce && choice.card) {
+      this.logger.info(
+        `Bundle pre-selected via forceBundleId: "${choice.card.bundleId}"`,
+        this.selectorId ? { selectorId: this.selectorId } : undefined,
+      );
+    } else if (choice.usedFirstCardFallback) {
+      this.logger.warn(
+        'No card has data-next-selected="true" — auto-selecting first card. ' +
+        'Add data-next-selected="true" to the default card to suppress this warning.',
+      );
+    }
+    return choice.card;
   }
 
   /**
@@ -601,15 +602,7 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
    * Used when isUpsellContext is true to give the user a visual starting selection.
    */
   private initializeBundleSelection(): void {
-    const forced = this.resolveForcedCard();
-    const preSelected = this.cards.find(c => c.isPreSelected);
-    const cardToSelect = forced ?? preSelected ?? this.cards[0] ?? null;
-    if (!forced && !preSelected && cardToSelect) {
-      this.logger.warn(
-        'No card has data-next-selected="true" — auto-selecting first card. ' +
-        'Add data-next-selected="true" to the default card to suppress this warning.',
-      );
-    }
+    const cardToSelect = this.pickAndLogDefaultCard();
     if (cardToSelect) this.selectCard(cardToSelect);
   }
 
@@ -631,15 +624,7 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     }
 
     if (!this.selectedCard) {
-      const forced = this.resolveForcedCard();
-      const preSelected = this.cards.find(c => c.isPreSelected);
-      const cardToSelect = forced ?? preSelected ?? this.cards[0] ?? null;
-      if (!forced && !preSelected && cardToSelect) {
-        this.logger.warn(
-          'No card has data-next-selected="true" — auto-selecting first card. ' +
-          'Add data-next-selected="true" to the default card to suppress this warning.',
-        );
-      }
+      const cardToSelect = this.pickAndLogDefaultCard();
       if (cardToSelect) {
         this.selectCard(cardToSelect);
         const initVouchers = cardToSelect.vouchers.length
