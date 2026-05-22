@@ -1538,6 +1538,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         formatOnDisplay: true
       });
 
+      // remove padding left set by intl-tel-input
+      phoneField.style.removeProperty('padding-left');
+
       this.phoneInputs.set(type, instance);
 
       // Auto-format as user types
