@@ -34,6 +34,7 @@ export declare class BundleSelectorEnhancer extends BaseEnhancer {
     private renderExternalSlots;
     getSelectedCard(): BundleCard | null;
     static getBundleState(selectorId: string): BundleCardPublicState | null;
+    private pickAndLogDefaultCard;
     private initializeBundleSelection;
     private syncWithCart;
     update(): void;

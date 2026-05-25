@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.4.22] — 2026-05-25 — Deep-link Bundle Pre-selection & Phone Field Padding Fix
+
+### New
+
+- **`forceBundleId` URL parameter** — `BundleSelectorEnhancer` now accepts a `?forceBundleId=<bundleId>` query param to deep-link into a specific bundle on page load. The enhancer pre-selects the card whose `data-next-bundle-id` matches and, in swap mode, applies it to the cart immediately. Useful for ads, emails, or affiliate links that should land the shopper on a specific tier.
+
+  Three formats are supported:
+  - `?forceBundleId=premium` — unscoped, matches any selector on the page
+  - `?forceBundleId=tier:premium` — scoped to a selector with `data-next-selector-id="tier"`
+  - `?forceBundleId=tier:premium,gift:luxury` — multiple selectors at once
+
+  Precedence on init: `forceBundleId` → `data-next-selected="true"` → first card. When the bundleId does not match any card in a selector, the enhancer falls back to the standard default-selection rules and logs a warning.
+
+- **Debug Xray styling for bundles** — the debug overlay's Xray mode now outlines `BundleSelectorEnhancer` containers and their cards alongside existing package selector outlines, making bundle layouts easier to inspect on a live page.
+
+### Fixed
+
+- **Excess left padding on phone input (`intl-tel-input` v19+ regression)** — `intl-tel-input` v19+ injects an inline `padding-left` on the phone input to make room for the country flag, which clashed with the SDK's own field styling and pushed the cursor too far right. The SDK now strips that inline style after initialization, so the phone field renders with the same padding as the rest of the form.
+
+---
+
 ## [0.4.21] — 2026-05-22 — Prospect Cart Phone Triggers & E.164 Fix
 
 `ProspectCartEnhancer` can now create the prospect cart from a phone number, not only from email. This unlocks SMS-led funnels and flows that ask for phone before email.

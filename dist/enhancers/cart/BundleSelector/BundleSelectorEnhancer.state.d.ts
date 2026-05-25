@@ -9,4 +9,17 @@ export declare function extractNestedVariantTemplates(slotTemplate: string): {
     variantSelector: string;
     variantOption: string;
 };
+export interface ForceBundleSpec {
+    selectorId: string | null;
+    bundleId: string;
+}
+export declare function parseForceBundleId(raw: string | null | undefined): ForceBundleSpec[];
+export declare function resolveForcedBundleId(specs: ForceBundleSpec[], selectorId: string | null): string | null;
+export interface DefaultCardChoice {
+    card: BundleCard | null;
+    fromForce: boolean;
+    forcedMiss: string | null;
+    usedFirstCardFallback: boolean;
+}
+export declare function pickDefaultCard(cards: BundleCard[], rawForceBundleId: string | null | undefined, selectorId: string | null): DefaultCardChoice;
 //# sourceMappingURL=BundleSelectorEnhancer.state.d.ts.map
