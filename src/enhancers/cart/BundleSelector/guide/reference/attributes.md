@@ -705,3 +705,29 @@ data-next-bundles='[
   }
 ]'
 ```
+
+---
+
+## URL parameters
+
+### `forceBundleId`
+
+| | |
+|---|---|
+| Type | `string` (URL query parameter) |
+| Required | no |
+| Default | — |
+
+Pre-selects a bundle card on page load, overriding `data-next-selected="true"`. In swap mode the bundle is also written to the cart. Captured by `SDKInitializer` and consumed by every `BundleSelectorEnhancer` when it picks its default card.
+
+**Valid values:**
+
+| Form | Example | Meaning |
+|---|---|---|
+| Unscoped | `?forceBundleId=premium` | Matches the first selector that contains a card with `data-next-bundle-id="premium"` |
+| Scoped | `?forceBundleId=tier:premium` | Matches only the selector with `data-next-selector-id="tier"` |
+| Multi-selector | `?forceBundleId=tier:premium,gift:luxury` | Applies one spec per selector |
+
+When the bundleId doesn't match any card in this selector, the enhancer logs a warning and falls back to `data-next-selected="true"` → first card. Scoped specs take precedence over unscoped ones for the same selector.
+
+---

@@ -59,7 +59,27 @@ Price fetches run asynchronously after init. No additional logs appear for a suc
 
 ---
 
+## Info
+
+### `Bundle pre-selected via forceBundleId: "{bundleId}"`
+
+**When:** A `?forceBundleId=...` URL parameter matched a card in this selector and overrode the `data-next-selected` default.
+
+**Meaning:** Expected behavior when deep-linking to a specific bundle tier. In swap mode the matched bundle is also written to the cart as part of the normal default-selection flow.
+
+---
+
 ## Warn
+
+### `forceBundleId="{bundleId}" did not match any card in this selector — falling back to default`
+
+**When:** `?forceBundleId=...` resolved to a bundleId for this selector (either scoped or unscoped) but no card on this selector exposes that `data-next-bundle-id`.
+
+**Meaning:** The enhancer fell back to the standard default-selection rules (`data-next-selected="true"` → first card). The page is functional; the URL param was simply ignored for this selector.
+
+**Action:** Verify the `bundleId` in the ad link matches the card's `data-next-bundle-id` exactly (case-sensitive). For multi-selector pages, prefer the scoped form `selectorId:bundleId` so the param is only applied where it makes sense.
+
+---
 
 ### `data-next-bundles must be a JSON array, ignoring auto-render`
 

@@ -5,6 +5,9 @@ import {
   getEffectiveItems,
   parseVouchers,
   extractNestedVariantTemplates,
+  parseForceBundleId,
+  resolveForcedBundleId,
+  pickDefaultCard,
 } from '../BundleSelectorEnhancer.state';
 import type { Package } from '@/types/campaign';
 import type { BundleCard, BundleSlot } from '../BundleSelectorEnhancer.types';
@@ -412,5 +415,211 @@ describe('extractNestedVariantTemplates', () => {
 
     expect(variantSelector).toContain('{attr.name}');
     expect(variantOption).toBe('');
+  });
+});
+
+describe('parseForceBundleId', () => {
+  it('returns [] for null/empty/undefined', () => {
+    expect(parseForceBundleId(null)).toEqual([]);
+    expect(parseForceBundleId(undefined)).toEqual([]);
+    expect(parseForceBundleId('')).toEqual([]);
+  });
+
+  it('parses a single unscoped bundleId', () => {
+    expect(parseForceBundleId('premium')).toEqual([
+      { selectorId: null, bundleId: 'premium' },
+    ]);
+  });
+
+  it('parses a scoped selectorId:bundleId pair', () => {
+    expect(parseForceBundleId('tier:premium')).toEqual([
+      { selectorId: 'tier', bundleId: 'premium' },
+    ]);
+  });
+
+  it('parses comma-separated scoped specs', () => {
+    expect(parseForceBundleId('tier:premium,gift:luxury')).toEqual([
+      { selectorId: 'tier', bundleId: 'premium' },
+      { selectorId: 'gift', bundleId: 'luxury' },
+    ]);
+  });
+
+  it('tolerates whitespace around tokens', () => {
+    expect(parseForceBundleId(' tier : premium , gift : luxury ')).toEqual([
+      { selectorId: 'tier', bundleId: 'premium' },
+      { selectorId: 'gift', bundleId: 'luxury' },
+    ]);
+  });
+
+  it('drops entries with empty bundleId', () => {
+    expect(parseForceBundleId('tier:,valid')).toEqual([
+      { selectorId: null, bundleId: 'valid' },
+    ]);
+  });
+
+  it('drops empty comma-separated segments', () => {
+    expect(parseForceBundleId('a,,b')).toEqual([
+      { selectorId: null, bundleId: 'a' },
+      { selectorId: null, bundleId: 'b' },
+    ]);
+  });
+});
+
+describe('pickDefaultCard', () => {
+  function card(bundleId: string, isPreSelected = false): BundleCard {
+    return {
+      element: document.createElement('div'),
+      bundleId,
+      name: bundleId,
+      items: [],
+      slots: [],
+      isPreSelected,
+      vouchers: [],
+      packageStates: new Map(),
+      bundlePrice: null,
+      slotVarsCache: new Map(),
+    };
+  }
+
+  it('returns null card when cards array is empty', () => {
+    const result = pickDefaultCard([], null, null);
+    expect(result.card).toBeNull();
+    expect(result.fromForce).toBe(false);
+    expect(result.forcedMiss).toBeNull();
+    expect(result.usedFirstCardFallback).toBe(false);
+  });
+
+  it('falls back to first card when no force param and no preselected exists', () => {
+    const cards = [card('a'), card('b')];
+    const result = pickDefaultCard(cards, null, null);
+    expect(result.card).toBe(cards[0]);
+    expect(result.fromForce).toBe(false);
+    expect(result.forcedMiss).toBeNull();
+    expect(result.usedFirstCardFallback).toBe(true);
+  });
+
+  it('picks the preselected card over the first card when no force param', () => {
+    const cards = [card('a'), card('b', true), card('c')];
+    const result = pickDefaultCard(cards, null, null);
+    expect(result.card).toBe(cards[1]);
+    expect(result.fromForce).toBe(false);
+    expect(result.usedFirstCardFallback).toBe(false);
+  });
+
+  it('forceBundleId wins over the preselected card (unscoped)', () => {
+    const cards = [card('a', true), card('b'), card('c')];
+    const result = pickDefaultCard(cards, 'c', null);
+    expect(result.card).toBe(cards[2]);
+    expect(result.fromForce).toBe(true);
+    expect(result.forcedMiss).toBeNull();
+    expect(result.usedFirstCardFallback).toBe(false);
+  });
+
+  it('honors a scoped forceBundleId that targets this selector', () => {
+    const cards = [card('a', true), card('premium'), card('basic')];
+    const result = pickDefaultCard(cards, 'tier:premium', 'tier');
+    expect(result.card).toBe(cards[1]);
+    expect(result.fromForce).toBe(true);
+  });
+
+  it('ignores a scoped forceBundleId aimed at a different selector', () => {
+    const cards = [card('a'), card('b', true)];
+    const result = pickDefaultCard(cards, 'gift:luxury', 'tier');
+    // No spec applies → falls through to preselected
+    expect(result.card).toBe(cards[1]);
+    expect(result.fromForce).toBe(false);
+    expect(result.forcedMiss).toBeNull();
+  });
+
+  it('scoped match beats unscoped match for the same selector', () => {
+    const cards = [card('fallback'), card('premium')];
+    const result = pickDefaultCard(cards, 'fallback,tier:premium', 'tier');
+    expect(result.card).toBe(cards[1]);
+    expect(result.fromForce).toBe(true);
+  });
+
+  it('reports forcedMiss when force resolves but no card matches — falls back to preselected', () => {
+    const cards = [card('a'), card('b', true)];
+    const result = pickDefaultCard(cards, 'nonexistent', null);
+    expect(result.card).toBe(cards[1]);
+    expect(result.fromForce).toBe(false);
+    expect(result.forcedMiss).toBe('nonexistent');
+    expect(result.usedFirstCardFallback).toBe(false);
+  });
+
+  it('reports forcedMiss when force resolves but no card matches — falls back to first card', () => {
+    const cards = [card('a'), card('b')];
+    const result = pickDefaultCard(cards, 'nonexistent', null);
+    expect(result.card).toBe(cards[0]);
+    expect(result.fromForce).toBe(false);
+    expect(result.forcedMiss).toBe('nonexistent');
+    expect(result.usedFirstCardFallback).toBe(true);
+  });
+
+  it('does not set usedFirstCardFallback when the force match itself is the first card', () => {
+    const cards = [card('a'), card('b')];
+    const result = pickDefaultCard(cards, 'a', null);
+    expect(result.card).toBe(cards[0]);
+    expect(result.fromForce).toBe(true);
+    expect(result.usedFirstCardFallback).toBe(false);
+  });
+
+  it('treats null/undefined/empty raw force values as no force', () => {
+    const cards = [card('a'), card('b', true)];
+    for (const raw of [null, undefined, '']) {
+      const result = pickDefaultCard(cards, raw, null);
+      expect(result.card).toBe(cards[1]);
+      expect(result.fromForce).toBe(false);
+      expect(result.forcedMiss).toBeNull();
+    }
+  });
+
+  it('multi-selector raw spec applies the right card per selector', () => {
+    const tierCards = [card('basic'), card('premium')];
+    const giftCards = [card('standard'), card('luxury')];
+    const raw = 'tier:premium,gift:luxury';
+
+    expect(pickDefaultCard(tierCards, raw, 'tier').card).toBe(tierCards[1]);
+    expect(pickDefaultCard(giftCards, raw, 'gift').card).toBe(giftCards[1]);
+
+    // A third selector with no matching spec falls through to first card
+    const otherCards = [card('x'), card('y')];
+    const otherResult = pickDefaultCard(otherCards, raw, 'other');
+    expect(otherResult.card).toBe(otherCards[0]);
+    expect(otherResult.fromForce).toBe(false);
+    expect(otherResult.forcedMiss).toBeNull();
+  });
+});
+
+describe('resolveForcedBundleId', () => {
+  it('returns null when no specs are given', () => {
+    expect(resolveForcedBundleId([], 'tier')).toBeNull();
+    expect(resolveForcedBundleId([], null)).toBeNull();
+  });
+
+  it('prefers a scoped match over an unscoped one', () => {
+    const specs = [
+      { selectorId: null, bundleId: 'fallback' },
+      { selectorId: 'tier', bundleId: 'premium' },
+    ];
+    expect(resolveForcedBundleId(specs, 'tier')).toBe('premium');
+  });
+
+  it('falls back to an unscoped spec when no scoped match exists', () => {
+    const specs = [
+      { selectorId: null, bundleId: 'fallback' },
+      { selectorId: 'gift', bundleId: 'luxury' },
+    ];
+    expect(resolveForcedBundleId(specs, 'tier')).toBe('fallback');
+  });
+
+  it('returns null when only mismatched scoped specs are present', () => {
+    const specs = [{ selectorId: 'gift', bundleId: 'luxury' }];
+    expect(resolveForcedBundleId(specs, 'tier')).toBeNull();
+  });
+
+  it('matches an unscoped spec when the selector has no id', () => {
+    const specs = [{ selectorId: null, bundleId: 'premium' }];
+    expect(resolveForcedBundleId(specs, null)).toBe('premium');
   });
 });

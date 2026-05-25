@@ -49,6 +49,7 @@ import {
   getEffectiveItems,
   makePackageState,
   parseVouchers,
+  pickDefaultCard,
 } from './BundleSelectorEnhancer.state';
 import { setupQuantityControls } from '@/enhancers/cart/shared/quantityControls';
 
@@ -571,18 +572,37 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
   // ─── Upsell context selection ─────────────────────────────────────────────────
 
   /**
-   * Pre-selects the default card without writing to the cart.
-   * Used when isUpsellContext is true to give the user a visual starting selection.
+   * Run the default-card precedence (forceBundleId → data-next-selected → cards[0])
+   * and emit the appropriate log messages for the outcome.
    */
-  private initializeBundleSelection(): void {
-    const preSelected = this.cards.find(c => c.isPreSelected);
-    const cardToSelect = preSelected ?? this.cards[0] ?? null;
-    if (!preSelected && cardToSelect) {
+  private pickAndLogDefaultCard(): BundleCard | null {
+    const raw = (window as any)._nextForceBundleId;
+    const choice = pickDefaultCard(this.cards, typeof raw === 'string' ? raw : null, this.selectorId);
+    if (choice.forcedMiss) {
+      this.logger.warn(
+        `forceBundleId="${choice.forcedMiss}" did not match any card in this selector — falling back to default`,
+      );
+    }
+    if (choice.fromForce && choice.card) {
+      this.logger.info(
+        `Bundle pre-selected via forceBundleId: "${choice.card.bundleId}"`,
+        this.selectorId ? { selectorId: this.selectorId } : undefined,
+      );
+    } else if (choice.usedFirstCardFallback) {
       this.logger.warn(
         'No card has data-next-selected="true" — auto-selecting first card. ' +
         'Add data-next-selected="true" to the default card to suppress this warning.',
       );
     }
+    return choice.card;
+  }
+
+  /**
+   * Pre-selects the default card without writing to the cart.
+   * Used when isUpsellContext is true to give the user a visual starting selection.
+   */
+  private initializeBundleSelection(): void {
+    const cardToSelect = this.pickAndLogDefaultCard();
     if (cardToSelect) this.selectCard(cardToSelect);
   }
 
@@ -604,14 +624,7 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     }
 
     if (!this.selectedCard) {
-      const preSelected = this.cards.find(c => c.isPreSelected);
-      const cardToSelect = preSelected ?? this.cards[0] ?? null;
-      if (!preSelected && cardToSelect) {
-        this.logger.warn(
-          'No card has data-next-selected="true" — auto-selecting first card. ' +
-          'Add data-next-selected="true" to the default card to suppress this warning.',
-        );
-      }
+      const cardToSelect = this.pickAndLogDefaultCard();
       if (cardToSelect) {
         this.selectCard(cardToSelect);
         const initVouchers = cardToSelect.vouchers.length

@@ -306,7 +306,9 @@ export function generateXrayStyles(): string {
     [data-next-express-checkout],
     [data-next-payment-method],
     [data-next-checkout-field],
-    [data-next-payment-form] {
+    [data-next-payment-form],
+    [data-next-bundle-id],
+    [data-next-bundle-card] {
       position: relative !important;
       outline: 1px dashed rgba(0, 0, 0, 0.3) !important;
       outline-offset: -1px !important;
@@ -345,6 +347,11 @@ export function generateXrayStyles(): string {
       outline-color: #ff8b94 !important;
     }
 
+    [data-next-bundle-id],
+    [data-next-bundle-card] {
+      outline-color: #8e44ad !important;
+    }
+
     /* Small corner labels */
     [data-next-selector-id]::before {
       content: attr(data-next-selector-id) !important;
@@ -379,6 +386,23 @@ export function generateXrayStyles(): string {
       z-index: 10 !important;
     }
 
+    [data-next-bundle-id]::before {
+      content: "BUNDLE " attr(data-next-bundle-id) !important;
+      position: absolute !important;
+      top: 2px !important;
+      left: 2px !important;
+      background: rgba(142, 68, 173, 0.9) !important;
+      color: white !important;
+      padding: 2px 4px !important;
+      font-size: 9px !important;
+      font-family: monospace !important;
+      font-weight: bold !important;
+      line-height: 1 !important;
+      border-radius: 2px !important;
+      pointer-events: none !important;
+      z-index: 10 !important;
+    }
+
     /* Special highlighting for active states */
     [data-next-selected="true"] {
       outline-width: 2px !important;
@@ -392,7 +416,8 @@ export function generateXrayStyles(): string {
     /* Hover tooltips */
     [data-next-display]:hover::after,
     [data-next-show]:hover::after,
-    [data-next-selector-card]:hover::after {
+    [data-next-selector-card]:hover::after,
+    [data-next-bundle-id]:hover::after {
       position: absolute !important;
       z-index: 99999 !important;
       pointer-events: none !important;
