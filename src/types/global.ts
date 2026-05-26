@@ -282,6 +282,8 @@ export interface Discount {
   description?: string;
   /** Optional name of the discount (e.g. "Spring Sale"). */
   name?: string;
+  /** Optional discount percentage as a numeric string (e.g. "10" or "10.00"). */
+  percentage?: string;
 }
 
 // Selector-specific types with explicit undefined handling

@@ -323,10 +323,19 @@ export function renderDiscountItem(
         return discount.amount ?? '';
       case 'discount.description':
         return discount.description ?? '';
+      case 'discount.percentage':
+        return formatDiscountPercentage(discount.percentage);
       default:
         return '';
     }
   });
+}
+
+function formatDiscountPercentage(value: string | undefined): string {
+  if (value == null || value === '') return '';
+  const n = parseFloat(value);
+  if (!Number.isFinite(n)) return '';
+  return formatPercentage(n, Number.isInteger(n) ? 0 : 2);
 }
 
 function computeFrequency(

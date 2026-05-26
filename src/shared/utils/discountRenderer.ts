@@ -4,10 +4,11 @@
  * Used by CartSummary, BundleSelector, and PackageToggle renderers to populate
  * discount lists from a `<template>` child element.
  *
- * Template variables: `{discount.name}`, `{discount.amount}`, `{discount.description}`
+ * Template variables: `{discount.name}`, `{discount.amount}`,
+ * `{discount.description}`, `{discount.percentage}`.
  */
 
-import { formatCurrency } from '@/utils/currencyFormatter';
+import { formatCurrency, formatPercentage } from '@/utils/currencyFormatter';
 
 // ─── Template-safe variable replacement ───────────────────────────────────────
 
@@ -38,6 +39,7 @@ export type DiscountItem = {
   name?: string;
   amount: string;
   description?: string;
+  percentage?: string;
 };
 
 interface DiscountsByType {
@@ -97,6 +99,13 @@ export function renderFlatDiscountContainers(
 
 // ─── Internals ────────────────────────────────────────────────────────────────
 
+function formatDiscountPercentage(value: string | undefined): string {
+  if (value == null || value === '') return '';
+  const n = parseFloat(value);
+  if (!Number.isFinite(n)) return '';
+  return formatPercentage(n, Number.isInteger(n) ? 0 : 2);
+}
+
 function renderInto(container: HTMLElement, items: DiscountItem[]): void {
   const tpl = container.querySelector(
     ':scope > template',
@@ -126,6 +135,8 @@ function renderItem(template: string, d: DiscountItem): string {
         return formatCurrency(d.amount);
       case 'discount.description':
         return d.description ?? '';
+      case 'discount.percentage':
+        return formatDiscountPercentage(d.percentage);
       default:
         return '';
     }

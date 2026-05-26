@@ -152,7 +152,7 @@ Renders one row per cart line. Uses the `<template>` child as the row template. 
 
 Renders one row per offer discount. Uses the `<template>` child as the row template.
 
-**Row tokens:** `{discount.name}`, `{discount.amount}`, `{discount.description}`.
+**Row tokens:** `{discount.name}`, `{discount.amount}`, `{discount.description}`, `{discount.percentage}`.
 
 ---
 
@@ -160,7 +160,7 @@ Renders one row per offer discount. Uses the `<template>` child as the row templ
 
 Renders one row per voucher (coupon) discount. Uses the `<template>` child as the row template.
 
-**Row tokens:** `{discount.name}`, `{discount.amount}`, `{discount.description}`.
+**Row tokens:** `{discount.name}`, `{discount.amount}`, `{discount.description}`, `{discount.percentage}`.
 
 ---
 
@@ -168,7 +168,7 @@ Renders one row per voucher (coupon) discount. Uses the `<template>` child as th
 
 Place inside a `data-summary-lines` row template to render per-line discount breakdowns. Uses its own `<template>` child.
 
-**Row tokens:** `{discount.name}`, `{discount.amount}`, `{discount.description}`.
+**Row tokens:** `{discount.name}`, `{discount.amount}`, `{discount.description}`, `{discount.percentage}`.
 
 Receives `next-summary-empty` / `next-summary-has-items` classes.
 
@@ -225,6 +225,7 @@ Available in `[data-summary-offer-discounts]`, `[data-summary-voucher-discounts]
 | `discount.amount` | number | Discount amount as a raw number (currency symbols stripped) |
 | `discount.amountFormatted` | string | Original currency-formatted amount string |
 | `discount.description` | string | Offer or voucher description |
+| `discount.percentage` | number | Discount percentage as a raw number (e.g., `10` for `"10%"`). `0` when absent |
 
 ### Examples
 
