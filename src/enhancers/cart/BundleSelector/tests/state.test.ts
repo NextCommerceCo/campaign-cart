@@ -4,6 +4,7 @@ import {
   makePackageState,
   getEffectiveItems,
   parseVouchers,
+  extractNestedSlotTemplate,
   extractNestedVariantTemplates,
   parseForceBundleId,
   resolveForcedBundleId,
@@ -361,6 +362,90 @@ describe('parseVouchers', () => {
 
   it('single code without comma → single-element array', () => {
     expect(parseVouchers('SINGLE', mockLogger as any)).toEqual(['SINGLE']);
+  });
+});
+
+// ─── extractNestedSlotTemplate ────────────────────────────────────────────────
+
+describe('extractNestedSlotTemplate', () => {
+  it('pulls the slot template out of [data-next-bundle-slots] > template', () => {
+    const cardTemplate = `
+      <div class="card">
+        <h3>{bundle.name}</h3>
+        <div class="items" data-next-bundle-slots>
+          <template>
+            <div class="item">
+              <img src="{item.image}">
+              <span>{item.name}</span>
+            </div>
+          </template>
+        </div>
+      </div>
+    `;
+
+    const { card, slot } = extractNestedSlotTemplate(cardTemplate);
+
+    expect(slot).toContain('<div class="item">');
+    expect(slot).toContain('{item.image}');
+    expect(slot).toContain('{item.name}');
+    // The inner <template> is stripped from the card so the live render
+    // target stays empty for slot rows.
+    expect(card).toContain('data-next-bundle-slots');
+    expect(card).not.toContain('<template>');
+    expect(card).not.toContain('{item.image}');
+  });
+
+  it('returns the original card template and empty slot when no nested template exists', () => {
+    const cardTemplate =
+      '<div class="card"><div data-next-bundle-slots></div></div>';
+
+    const { card, slot } = extractNestedSlotTemplate(cardTemplate);
+
+    expect(slot).toBe('');
+    expect(card).toBe(cardTemplate);
+  });
+
+  it('returns empty slot when the card template has no [data-next-bundle-slots] placeholder', () => {
+    const cardTemplate = '<div class="card"><span>plain</span></div>';
+
+    const { card, slot } = extractNestedSlotTemplate(cardTemplate);
+
+    expect(slot).toBe('');
+    expect(card).toBe(cardTemplate);
+  });
+
+  it('only extracts a direct child <template>, not deeply nested ones', () => {
+    const cardTemplate = `
+      <div class="card">
+        <div data-next-bundle-slots>
+          <div class="wrap">
+            <template><div>nested deeper</div></template>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const { card, slot } = extractNestedSlotTemplate(cardTemplate);
+
+    expect(slot).toBe('');
+    // The unrelated nested <template> remains untouched in the card.
+    expect(card).toContain('<template>');
+    expect(card).toContain('nested deeper');
+  });
+
+  it('trims whitespace around the extracted slot HTML', () => {
+    const cardTemplate = `
+      <div data-next-bundle-slots>
+        <template>
+          <div class="item">{item.name}</div>
+        </template>
+      </div>
+    `;
+
+    const { slot } = extractNestedSlotTemplate(cardTemplate);
+
+    expect(slot.startsWith('<div')).toBe(true);
+    expect(slot.endsWith('</div>')).toBe(true);
   });
 });
 

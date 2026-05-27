@@ -47,7 +47,7 @@ Requires `data-next-toggle-template-id` or `data-next-toggle-template` to also b
 | Required | no |
 | Default | — |
 
-The `id` of a `<template>` element whose `innerHTML` is used as the card template in auto-render mode. Takes precedence over `data-next-toggle-template` if both are set.
+The `id` of a `<template>` element whose `innerHTML` is used as the card template in auto-render mode. Highest precedence — takes priority over `data-next-toggle-template` and any inline `<template>` child.
 
 ---
 
@@ -60,6 +60,24 @@ The `id` of a `<template>` element whose `innerHTML` is used as the card templat
 | Default | — |
 
 An inline HTML string used as the card template in auto-render mode. Use `data-next-toggle-template-id` when the template is more than a few elements.
+
+---
+
+### Inline `<template>` child *(no attribute)*
+
+As a third option, place a direct `<template>` child inside the toggle container. The enhancer reads its `innerHTML` when neither `data-next-toggle-template-id` nor `data-next-toggle-template` is set.
+
+```html
+<div data-next-package-toggle data-next-packages='[{"packageId":101},{"packageId":102}]'>
+  <template>
+    <div data-next-toggle-card data-next-package-id="{package.packageId}">
+      {package.name} — {package.price}
+    </div>
+  </template>
+</div>
+```
+
+Resolution order (highest precedence first): `data-next-toggle-template-id` → `data-next-toggle-template` → direct `<template>` child.
 
 ---
 

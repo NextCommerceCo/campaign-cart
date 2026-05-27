@@ -76,6 +76,30 @@ export function parseVouchers(attr: string | null, logger: Logger): string[] {
 }
 
 /**
+ * Extracts a slot template nested inside the card template HTML via a
+ * <template> child of [data-next-bundle-slots]. Returns the stripped card
+ * template (with the inner <template> removed so the live render target
+ * stays empty) and the extracted slot template HTML — empty when no nested
+ * template is present.
+ */
+export function extractNestedSlotTemplate(cardTemplate: string): {
+  card: string;
+  slot: string;
+} {
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = cardTemplate;
+
+  const slotTpl = wrapper.querySelector<HTMLTemplateElement>(
+    '[data-next-bundle-slots] > template',
+  );
+  if (!slotTpl) return { card: cardTemplate, slot: '' };
+
+  const slot = slotTpl.innerHTML.trim();
+  slotTpl.remove();
+  return { card: wrapper.innerHTML, slot };
+}
+
+/**
  * Extracts nested <template> elements for variant-selector and variant-option
  * wrappers out of a slot template HTML string, returning the stripped slot
  * template plus the extracted template strings (empty when not present).

@@ -24,6 +24,9 @@
  *
  *   data-next-package-template="<html>"  — inline card template string
  *
+ *   (Inline fallback) — a direct <template> child of the container element is
+ *   used when neither -template-id nor -template is set.
+ *
  * ─── Card attributes ─────────────────────────────────────────────────────────
  *
  *   data-next-selector-card           — marks a card element
@@ -136,11 +139,18 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
       : ((this.getAttribute('data-next-selection-mode') ?? 'swap') as 'swap' | 'select');
     this.includeShipping = this.getAttribute('data-next-include-shipping') === 'true';
 
+    // Resolution order: id attribute → inline HTML attribute → direct <template>
+    // child of the container (`this.element`). The child fallback lets authors
+    // write native HTML without assigning template ids.
     const templateId = this.getAttribute('data-next-package-template-id');
+    const templateAttr = this.getAttribute('data-next-package-template');
     if (templateId) {
       this.template = document.getElementById(templateId)?.innerHTML.trim() ?? '';
+    } else if (templateAttr != null) {
+      this.template = templateAttr;
     } else {
-      this.template = this.getAttribute('data-next-package-template') ?? '';
+      const inline = this.element.querySelector<HTMLTemplateElement>(':scope > template');
+      this.template = inline?.innerHTML.trim() ?? '';
     }
 
     const packagesAttr = this.getAttribute('data-next-packages');

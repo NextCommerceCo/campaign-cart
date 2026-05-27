@@ -59,6 +59,14 @@ Price fetches run asynchronously after init. No additional logs appear for a suc
 
 ---
 
+### `Extracted nested slot template from card template [data-next-bundle-slots]`
+
+**When:** No `data-next-bundle-slot-template-id`, `data-next-bundle-slot-template`, or external slots container is configured, but the card template contains a `<template>` nested inside `[data-next-bundle-slots]`. The enhancer extracts that nested template as the slot template and strips it from the card template HTML.
+
+**Meaning:** Expected behavior when the author co-locates card and slot markup. Confirms the nested fallback was used.
+
+---
+
 ## Info
 
 ### `Bundle pre-selected via forceBundleId: "{bundleId}"`

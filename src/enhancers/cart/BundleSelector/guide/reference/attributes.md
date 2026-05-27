@@ -158,12 +158,34 @@ When an external slots container (`[data-next-bundle-slots-for="{selectorId}"]`)
 </div>
 ```
 
-Resolution order (highest precedence first): `data-next-bundle-slot-template-id` → `data-next-bundle-slot-template` → direct `<template>` child of the external slots container.
+As a final fallback, a `<template>` nested inside the card template's `[data-next-bundle-slots]` placeholder is extracted and used as the slot template. The inner `<template>` is stripped before render so the live placeholder stays empty for slot rows.
+
+```html
+<div data-next-bundle-selector>
+  <template> <!-- card template -->
+    <div class="card">
+      <h3>{bundle.name}</h3>
+      <div class="items" data-next-bundle-slots>
+        <template>
+          <div class="item">
+            <img src="{item.image}" alt="{item.productName}">
+            <span class="qty">x{item.quantity}</span>
+            <p>{item.name}</p>
+            <span>{item.unitPrice}/ea</span>
+          </div>
+        </template>
+      </div>
+    </div>
+  </template>
+</div>
+```
+
+Resolution order (highest precedence first): `data-next-bundle-slot-template-id` → `data-next-bundle-slot-template` → direct `<template>` child of the external slots container → nested `<template>` inside `[data-next-bundle-slots]` in the card template.
 
 Nested `<template>` elements inside the slot template are auto-extracted:
 
-- `[data-next-variant-selectors] > template` → populates the variant-selector template when `data-next-variant-selector-template-id` is not set.
-- Inside that variant-selector template, `[data-next-variant-options] > template` → populates the variant-option template when `data-next-variant-option-template-id` is not set.
+- `[data-next-variant-selectors] > template` → populates the variant-selector template when neither `data-next-variant-selector-template-id` nor `data-next-variant-selector-template` is set.
+- Inside that variant-selector template, `[data-next-variant-options] > template` → populates the variant-option template when neither `data-next-variant-option-template-id` nor `data-next-variant-option-template` is set.
 
 Extracted templates are stripped from the slot HTML so they don't render inline.
 
@@ -177,9 +199,21 @@ Extracted templates are stripped from the slot HTML so they don't render inline.
 | Required | no |
 | Default | — |
 
-ID of a `<template>` element used to render individual variant option elements (e.g., color swatches, size buttons). When set, the default `<select>` dropdown is replaced with custom option elements rendered from this template.
+ID of a `<template>` element used to render individual variant option elements (e.g., color swatches, size buttons). When set, the default `<select>` dropdown is replaced with custom option elements rendered from this template. Highest precedence — takes priority over `data-next-variant-option-template` and the nested-template fallback.
 
 Template variables: `{attr.code}`, `{attr.name}`, `{option.value}`, `{option.selected}`, `{option.available}`.
+
+---
+
+### `data-next-variant-option-template`
+
+| | |
+|---|---|
+| Type | `string` (HTML) |
+| Required | no |
+| Default | — |
+
+Inline HTML string used as the variant option template. Used when `data-next-variant-option-template-id` is not set. The nested-template extraction (`[data-next-variant-options] > template` inside the slot template) is used as a final fallback when neither attribute is set.
 
 ---
 
@@ -191,9 +225,21 @@ Template variables: `{attr.code}`, `{attr.name}`, `{option.value}`, `{option.sel
 | Required | no |
 | Default | — |
 
-ID of a `<template>` element used to render the outer wrapper for a single variant attribute (e.g., a labeled group). When set alongside `data-next-variant-option-template-id`, the wrapper is rendered first and option elements are injected into `[data-next-variant-options]` inside it.
+ID of a `<template>` element used to render the outer wrapper for a single variant attribute (e.g., a labeled group). When set alongside `data-next-variant-option-template-id`, the wrapper is rendered first and option elements are injected into `[data-next-variant-options]` inside it. Highest precedence — takes priority over `data-next-variant-selector-template` and the nested-template fallback.
 
 Template variables: `{attr.code}`, `{attr.name}`, `{attr.selectedValue}`.
+
+---
+
+### `data-next-variant-selector-template`
+
+| | |
+|---|---|
+| Type | `string` (HTML) |
+| Required | no |
+| Default | — |
+
+Inline HTML string used as the variant selector wrapper template. Used when `data-next-variant-selector-template-id` is not set. The nested-template extraction (`[data-next-variant-selectors] > template` inside the slot template) is used as a final fallback when neither attribute is set.
 
 ---
 

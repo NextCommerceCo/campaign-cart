@@ -23,6 +23,9 @@
  *
  *   data-next-toggle-template="<html>"  — inline card template string
  *
+ *   (Inline fallback) — a direct <template> child of the container element is
+ *   used when neither -template-id nor -template is set.
+ *
  *   data-next-include-shipping="true"   — include shipping in price calculation
  *
  * ─── Card attributes ─────────────────────────────────────────────────────────
@@ -172,11 +175,18 @@ export class PackageToggleEnhancer extends BaseEnhancer {
     this.isUpsellContext = this.element.hasAttribute('data-next-upsell-context');
     this.includeShipping = this.getAttribute('data-next-include-shipping') === 'true';
 
+    // Resolution order: id attribute → inline HTML attribute → direct <template>
+    // child of the container (`this.element`). The child fallback lets authors
+    // write native HTML without assigning template ids.
     const templateId = this.getAttribute('data-next-toggle-template-id');
+    const templateAttr = this.getAttribute('data-next-toggle-template');
     if (templateId) {
       this.template = document.getElementById(templateId)?.innerHTML.trim() ?? '';
+    } else if (templateAttr != null) {
+      this.template = templateAttr;
     } else {
-      this.template = this.getAttribute('data-next-toggle-template') ?? '';
+      const inline = this.element.querySelector<HTMLTemplateElement>(':scope > template');
+      this.template = inline?.innerHTML.trim() ?? '';
     }
 
     const packagesAttr = this.getAttribute('data-next-packages');

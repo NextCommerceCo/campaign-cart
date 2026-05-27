@@ -170,3 +170,16 @@ export const formatPercentage =
   CurrencyFormatter.formatPercentage.bind(CurrencyFormatter);
 export const getCurrencySymbol =
   CurrencyFormatter.getCurrencySymbol.bind(CurrencyFormatter);
+
+/**
+ * Formats a discount percentage string (e.g., `"10"` or `"10.5"`) as a
+ * percentage label (`"10%"`, `"10.50%"`). Returns an empty string when the
+ * input is missing or unparseable. Integers render with zero decimals;
+ * fractional values render with two.
+ */
+export function formatDiscountPercentage(value: string | undefined): string {
+  if (value == null || value === '') return '';
+  const n = parseFloat(value);
+  if (!Number.isFinite(n)) return '';
+  return formatPercentage(n, Number.isInteger(n) ? 0 : 2);
+}

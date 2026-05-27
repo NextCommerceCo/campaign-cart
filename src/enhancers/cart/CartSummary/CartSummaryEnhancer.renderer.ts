@@ -1,4 +1,8 @@
-import { formatCurrency, formatPercentage } from '@/utils/currencyFormatter';
+import {
+  formatCurrency,
+  formatDiscountPercentage,
+  formatPercentage,
+} from '@/utils/currencyFormatter';
 import type { CartState } from '@/types/global';
 import type { CartSummary, SummaryLine } from '@/types/api';
 import type {
@@ -329,13 +333,6 @@ export function renderDiscountItem(
         return '';
     }
   });
-}
-
-function formatDiscountPercentage(value: string | undefined): string {
-  if (value == null || value === '') return '';
-  const n = parseFloat(value);
-  if (!Number.isFinite(n)) return '';
-  return formatPercentage(n, Number.isInteger(n) ? 0 : 2);
 }
 
 function computeFrequency(

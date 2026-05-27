@@ -45,6 +45,7 @@ import {
 } from './BundleSelectorEnhancer.handlers';
 import { fetchAndUpdateBundlePrice } from './BundleSelectorEnhancer.price';
 import {
+  extractNestedSlotTemplate,
   extractNestedVariantTemplates,
   getEffectiveItems,
   makePackageState,
@@ -118,8 +119,11 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     }
 
     // ── Slot template ──────────────────────────────────────────────────────────
-    // Same three-tier resolution as the card template. When an external slots
-    // container is present, its direct <template> child is the inline fallback.
+    // Resolution order: id attribute → inline HTML attribute → direct <template>
+    // child of an external slots container → nested <template> inside the card
+    // template's [data-next-bundle-slots] placeholder. The nested fallback lets
+    // authors keep card and slot markup co-located without setting any
+    // template id or HTML string attribute.
     const slotTemplateId = this.getAttribute('data-next-bundle-slot-template-id');
     const slotTemplateAttr = this.getAttribute('data-next-bundle-slot-template');
     if (slotTemplateId) {
@@ -129,6 +133,17 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     } else if (this.externalSlotsEl) {
       const inline = this.externalSlotsEl.querySelector<HTMLTemplateElement>(':scope > template');
       this.slotTemplate = inline?.innerHTML.trim() ?? '';
+    }
+
+    if (!this.slotTemplate && this.template) {
+      const { card, slot } = extractNestedSlotTemplate(this.template);
+      if (slot) {
+        this.template = card;
+        this.slotTemplate = slot;
+        this.logger.debug(
+          'Extracted nested slot template from card template [data-next-bundle-slots]',
+        );
+      }
     }
 
     // ── Custom variant option template ─────────────────────────────────────────
