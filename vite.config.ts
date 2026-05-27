@@ -206,12 +206,11 @@ export default defineConfig({
         // Choose either preserveModules OR manualChunks, not both
         // Option 1: Use manual chunks (recommended for better control)
         manualChunks: (id: string) => {
-          // Debug-only deps stay in the debug chunk so they don't bloat the always-loaded vendor bundle
-          if (id.includes('highlight.js')) {
-            return 'debug';
-          }
-
-          // Split node_modules into vendor chunk
+          // Split node_modules into vendor chunk.
+          // Note: highlight.js used to be routed to `debug` here, but Rollup
+          // placed shared CJS-interop helpers into the debug chunk, creating
+          // a vendor → debug → stores → vendor cycle. Keep all node_modules
+          // together; the size cost is paid back by avoiding TDZ bugs.
           if (id.includes('node_modules')) {
             // Further split large libraries
             if (id.includes('lodash')) {
@@ -231,6 +230,16 @@ export default defineConfig({
           // Split analytics into separate chunk for lazy loading
           if (id.includes('/analytics/')) {
             return 'analytics';
+          }
+
+          // Co-locate stores with the leaf utils they require at module-init time
+          // (logger/storage/events). Without this, a `utils` ↔ `stores` chunk
+          // cycle triggers a TDZ on Zustand's `create` import in production.
+          if (
+            id.includes('/src/stores/') ||
+            /\/utils\/(logger|storage|events)\.ts$/.test(id)
+          ) {
+            return 'stores';
           }
 
           // Split utilities into separate chunk (excluding debug and analytics)
