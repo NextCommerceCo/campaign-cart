@@ -59,6 +59,7 @@ export interface DiscountContext {
   amount: number;
   amountFormatted: string;
   description: string;
+  percentage: number;
 }
 
 export interface LocalContext {
@@ -126,11 +127,13 @@ export function buildDiscountContext(d: DiscountItem): DiscountContext {
   const amountFormatted = d.amount ?? '';
   const stripped = amountFormatted.replace(/[^0-9.\-]/g, '');
   const amount = stripped ? parseFloat(stripped) : 0;
+  const percentage = num(d.percentage);
   return {
     name: d.name ?? '',
     amount: Number.isFinite(amount) ? amount : 0,
     amountFormatted,
     description: d.description ?? '',
+    percentage,
   };
 }
 

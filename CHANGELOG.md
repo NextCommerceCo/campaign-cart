@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.4.23] — 2026-05-27 — Show Discount Percentages & CDN Loader Fix
+
+### New
+
+- **Show the discount percentage in cart and bundle templates** — discount lists rendered by `CartSummaryEnhancer`, `BundleSelectorEnhancer`, and `PackageToggleEnhancer` now support a new template token: `{discount.percentage}`.
+
+  Use it alongside the existing tokens to display things like *"Save 15% — Spring Sale"* without hard-coding the number in your HTML:
+
+  ```html
+  <template>
+    <li>{discount.name} — {discount.percentage} off ({discount.amount})</li>
+  </template>
+  ```
+
+  Whole numbers render as `15%`, fractional values as `15.50%`. If the discount has no percentage value, nothing is shown — you won't see `NaN%` in the UI.
+
+### Fixed
+
+- **Console error when loading the SDK from the CDN** (issue [#40](https://github.com/NextCommerceCo/campaign-cart/issues/40)) — pages loading `loader.js` from jsDelivr saw `ReferenceError: Cannot access 'create' before initialization` in the console. The SDK still worked because it automatically recovered via the UMD fallback, but the error created noise in error monitoring and QA logs.
+
+  The CDN bundle now loads cleanly, with no console error and no fallback needed. Existing installs benefit automatically on next page load — no integration changes required.
+
+---
+
 ## [0.4.22] — 2026-05-25 — Deep-link Bundle Pre-selection & Phone Field Padding Fix
 
 ### New

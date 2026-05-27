@@ -4,10 +4,11 @@
  * Used by CartSummary, BundleSelector, and PackageToggle renderers to populate
  * discount lists from a `<template>` child element.
  *
- * Template variables: `{discount.name}`, `{discount.amount}`, `{discount.description}`
+ * Template variables: `{discount.name}`, `{discount.amount}`,
+ * `{discount.description}`, `{discount.percentage}`.
  */
 
-import { formatCurrency } from '@/utils/currencyFormatter';
+import { formatCurrency, formatDiscountPercentage } from '@/utils/currencyFormatter';
 
 // ─── Template-safe variable replacement ───────────────────────────────────────
 
@@ -38,6 +39,7 @@ export type DiscountItem = {
   name?: string;
   amount: string;
   description?: string;
+  percentage?: string;
 };
 
 interface DiscountsByType {
@@ -126,6 +128,8 @@ function renderItem(template: string, d: DiscountItem): string {
         return formatCurrency(d.amount);
       case 'discount.description':
         return d.description ?? '';
+      case 'discount.percentage':
+        return formatDiscountPercentage(d.percentage);
       default:
         return '';
     }

@@ -4,6 +4,10 @@ import { BundleCard, BundleItem, BundlePackageState } from './BundleSelectorEnha
 export declare function makePackageState(pkg: Package): BundlePackageState;
 export declare function getEffectiveItems(card: BundleCard): BundleItem[];
 export declare function parseVouchers(attr: string | null, logger: Logger): string[];
+export declare function extractNestedSlotTemplate(cardTemplate: string): {
+    card: string;
+    slot: string;
+};
 export declare function extractNestedVariantTemplates(slotTemplate: string): {
     slot: string;
     variantSelector: string;

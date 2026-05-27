@@ -68,6 +68,7 @@ One discount entry in an offer, voucher, or per-line discount list.
 | `{discount.name}` | `string` | yes | Display name of the discount (e.g., `"Bundle deal"`, `"SAVE20"`). Empty string when absent. |
 | `{discount.amount}` | `string` | no | Formatted discount amount (e.g., `"$10.00"`). |
 | `{discount.description}` | `string` | yes | Human-readable description of the discount. Empty string when absent. |
+| `{discount.percentage}` | `string` | yes | Discount percentage applied (e.g., `"10%"`). Empty string when absent. |
 
 ---
 
@@ -113,3 +114,4 @@ The raw-typed object exposed to `data-next-show` / `data-next-hide` conditions i
 | `discount.amount` | `number` | no | Discount amount as a raw number with currency formatting stripped. `0` when unparseable. |
 | `discount.amountFormatted` | `string` | no | Original currency-formatted amount string (matches the `{discount.amount}` text token). |
 | `discount.description` | `string` | no | Description of the discount (empty string when absent). |
+| `discount.percentage` | `number` | no | Discount percentage as a raw number (e.g., `10` for `"10%"`). `0` when absent or unparseable. |

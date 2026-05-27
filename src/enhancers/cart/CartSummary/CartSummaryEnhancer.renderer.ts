@@ -1,4 +1,8 @@
-import { formatCurrency, formatPercentage } from '@/utils/currencyFormatter';
+import {
+  formatCurrency,
+  formatDiscountPercentage,
+  formatPercentage,
+} from '@/utils/currencyFormatter';
 import type { CartState } from '@/types/global';
 import type { CartSummary, SummaryLine } from '@/types/api';
 import type {
@@ -323,6 +327,8 @@ export function renderDiscountItem(
         return discount.amount ?? '';
       case 'discount.description':
         return discount.description ?? '';
+      case 'discount.percentage':
+        return formatDiscountPercentage(discount.percentage);
       default:
         return '';
     }

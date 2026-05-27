@@ -19,4 +19,5 @@ export declare const formatCurrency: typeof CurrencyFormatter.formatCurrency;
 export declare const formatNumber: typeof CurrencyFormatter.formatNumber;
 export declare const formatPercentage: typeof CurrencyFormatter.formatPercentage;
 export declare const getCurrencySymbol: typeof CurrencyFormatter.getCurrencySymbol;
+export declare function formatDiscountPercentage(value: string | undefined): string;
 //# sourceMappingURL=currencyFormatter.d.ts.map

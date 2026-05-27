@@ -3,6 +3,7 @@ export type DiscountItem = {
     name?: string;
     amount: string;
     description?: string;
+    percentage?: string;
 };
 interface DiscountsByType {
     offerDiscounts: DiscountItem[];

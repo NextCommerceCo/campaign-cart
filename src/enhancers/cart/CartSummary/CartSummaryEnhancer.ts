@@ -74,7 +74,8 @@
  * Inside a custom <template> you can include list containers. Each container
  * uses a dedicated attribute and must include a <template> child for its row.
  *
- * Discount lists — {discount.name}, {discount.amount}, {discount.description}:
+ * Discount lists — {discount.name}, {discount.amount}, {discount.description},
+ * {discount.percentage}:
  *
  *   <ul data-summary-offer-discounts>
  *     <template><li>{discount.name} — -{discount.amount}</li></template>
@@ -102,7 +103,8 @@
  *   </ul>
  *
  * data-line-discounts renders each individual Discount on the line.
- * Variables: {discount.name}, {discount.amount}, {discount.description}
+ * Variables: {discount.name}, {discount.amount}, {discount.description},
+ * {discount.percentage}.
  * Receives next-summary-empty / next-summary-has-items classes.
  *
  *   Line item variables:

@@ -52,6 +52,7 @@ export interface Discount {
   amount: string;
   description?: string;
   name?: string;
+  percentage?: string;
 }
 
 export interface SummaryLine {

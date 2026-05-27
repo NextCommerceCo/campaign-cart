@@ -28,6 +28,7 @@ export interface DiscountContext {
     amount: number;
     amountFormatted: string;
     description: string;
+    percentage: number;
 }
 export interface LocalContext {
     item?: ItemContext;

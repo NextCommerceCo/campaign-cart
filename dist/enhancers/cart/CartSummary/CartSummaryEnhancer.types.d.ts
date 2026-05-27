@@ -3,6 +3,7 @@ export type DiscountItem = {
     name?: string;
     amount: string;
     description?: string;
+    percentage?: string;
 };
 export interface SummaryFlags {
     isEmpty: boolean;

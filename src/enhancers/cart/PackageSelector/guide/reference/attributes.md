@@ -97,7 +97,7 @@ data-next-packages='[{"packageId":101,"selected":true},{"packageId":102},{"packa
 | Required | no (auto-render only) |
 | Default | — |
 
-ID of a `<template>` element whose `innerHTML` is used as the card template for auto-rendering. Takes precedence over `data-next-package-template` if both are present.
+ID of a `<template>` element whose `innerHTML` is used as the card template for auto-rendering. Highest precedence — takes priority over `data-next-package-template` and any inline `<template>` child.
 
 ---
 
@@ -110,6 +110,24 @@ ID of a `<template>` element whose `innerHTML` is used as the card template for 
 | Default | — |
 
 Inline HTML string used as the card template for auto-rendering. Used when `data-next-package-template-id` is not set.
+
+---
+
+### Inline `<template>` child *(no attribute)*
+
+As a third option, place a direct `<template>` child inside the package selector container. The enhancer reads its `innerHTML` when neither `data-next-package-template-id` nor `data-next-package-template` is set.
+
+```html
+<div data-next-package-selector data-next-packages='[{"packageId":101},{"packageId":102}]'>
+  <template>
+    <div data-next-selector-card data-next-package-id="{package.packageId}">
+      {package.name} — {package.price}
+    </div>
+  </template>
+</div>
+```
+
+Resolution order (highest precedence first): `data-next-package-template-id` → `data-next-package-template` → direct `<template>` child.
 
 ---
 
