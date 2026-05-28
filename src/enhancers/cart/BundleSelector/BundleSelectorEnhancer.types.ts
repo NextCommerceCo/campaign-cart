@@ -93,8 +93,10 @@ export interface BundlePackageState {
   hasDiscount: boolean;
   /** ISO 4217 currency code for price formatting. Seeded from campaignStore, updated by price fetch. */
   currency: string;
-  /** Per-line discounts from the bundle price calculation. */
-  discounts: DiscountItem[];
+  /** Per-line offer discounts (matched against summary.offer_discounts by offer_id). */
+  offerDiscounts: DiscountItem[];
+  /** Per-line voucher discounts (matched against summary.voucher_discounts by offer_id). */
+  voucherDiscounts: DiscountItem[];
 }
 
 /** Aggregate bundle price summary stored on BundleCard after price fetch. */

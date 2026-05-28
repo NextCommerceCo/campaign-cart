@@ -130,3 +130,18 @@ Fields on the internal `BundleCard` that consumers can inspect via `bundle:*` ev
 | `bundleQuantity` | `number` | Current multiplier. Equals the last-set value of `data-next-quantity`, clamped into `[minQuantity, maxQuantity]` |
 | `minQuantity` | `number` | Resolved minimum, from `data-next-min-quantity` / `BundleDef.minQuantity` / default `1` |
 | `maxQuantity` | `number` | Resolved maximum, from `data-next-max-quantity` / `BundleDef.maxQuantity` / default `999` |
+
+---
+
+## Discount row variables
+
+Available inside the `<template>` child of a `[data-next-discounts]` container. Each row is rendered once per discount returned by the price calculation.
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `{discount.name}` | `string` | Offer or voucher display name. Empty when the API does not provide one |
+| `{discount.amount}` | `string` | Discount amount, formatted as currency |
+| `{discount.description}` | `string` | Free-form description from the API. May be empty |
+| `{discount.percentage}` | `string` | Discount percentage formatted (e.g. `15%`) |
+
+At both scopes the rows are filtered by the `data-next-discounts` value (`""` for all, `"offer"` for offers only, `"voucher"` for vouchers only). At slot scope each per-line discount is classified by matching its `offer_id` against the bundle-aggregate `offer_discounts` and `voucher_discounts` returned by the price API; unmatched ids fall through to the offer bucket.

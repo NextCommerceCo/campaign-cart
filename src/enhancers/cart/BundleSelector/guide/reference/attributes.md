@@ -615,6 +615,79 @@ Processed attributes are removed from the element after evaluation to prevent th
 
 ---
 
+## Discount list
+
+Containers populated by the enhancer with one rendered row per discount returned by the price calculation. The container must contain a single `<template>` child whose innerHTML defines the row markup. Rows are replaced on every price update.
+
+The same attribute is supported at two scopes with different data sources:
+
+- **Inside the bundle card** (top-level of the card template, outside `[data-next-bundle-slots]`) — populated from the bundle-level discount lists, split by offer/voucher.
+- **Inside the slot template** — populated from the per-line discounts on the slot's active package, split by offer/voucher using the same `offer_id` matching as the card level.
+
+---
+
+### `data-next-discounts`
+
+| | |
+|---|---|
+| Type | `'' \| 'offer' \| 'voucher'` |
+| Required | no |
+| Default | `''` (all discounts) |
+
+Marks a container as a discount list. The value selects which discounts are rendered:
+
+- `data-next-discounts` or `data-next-discounts=""` → all discounts
+- `data-next-discounts="offer"` → offer discounts only
+- `data-next-discounts="voucher"` → voucher discounts only
+
+At slot scope the per-line discounts are classified by matching each discount's `offer_id` against the bundle-aggregate `offer_discounts` / `voucher_discounts` returned by the price API. Discounts whose `offer_id` is not in either aggregate fall through to the offer bucket so they still render under the default unfiltered container.
+
+When the list is empty the container receives the `next-discounts-empty` class; when populated it receives `next-discounts-has-items`. Use these classes to hide or restyle the container without a separate `data-next-show` attribute.
+
+**Row template variables:**
+
+| Variable | Description |
+|---|---|
+| `{discount.name}` | Coupon code or offer name |
+| `{discount.amount}` | Discount amount, currency-formatted |
+| `{discount.description}` | Free-form description from the API (may be empty) |
+| `{discount.percentage}` | Discount percentage, formatted (e.g. `15%`) |
+
+**Card-level example:**
+
+```html
+<div data-next-bundle-card data-next-bundle-id="trio">
+  <h3>{bundle.label}</h3>
+  <div data-next-discounts="offer">
+    <template>
+      <li class="offer-discount">{discount.name}: <strong>−{discount.amount}</strong></template>
+    </template>
+  </div>
+  <div data-next-discounts="voucher">
+    <template>
+      <li class="voucher-discount">{discount.name}: <strong>−{discount.amount}</strong></li>
+    </template>
+  </div>
+</div>
+```
+
+**Slot-level example:**
+
+```html
+<template id="slot-tpl">
+  <div class="slot">
+    <span>{item.name} — {item.price}</span>
+    <ul data-next-discounts class="line-discounts">
+      <template>
+        <li>{discount.name} (−{discount.amount})</li>
+      </template>
+    </ul>
+  </div>
+</template>
+```
+
+---
+
 ## Inline bundle-quantity controls
 
 These attributes let the visitor change the **bundle's** quantity at runtime via a stepper, with an automatic price refetch on each change. The new quantity is a multiplier — it applies to every effective item the bundle sends to the cart, without expanding the slot list. A `configurable` item with `quantity: 1` and `bundleQuantity: 5` still renders one slot (one variant pick) and adds five units of the chosen variant to the cart.
