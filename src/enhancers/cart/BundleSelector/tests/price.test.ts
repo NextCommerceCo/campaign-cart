@@ -231,6 +231,8 @@ describe('fetchAndUpdateBundlePrice', () => {
       price: new Decimal(10),
       hasDiscount: false,
       currency: 'USD',
+      offerDiscounts: [],
+      voucherDiscounts: [],
     };
     const card = makeCard();
     card.packageStates.set(1, packageState);
@@ -258,6 +260,71 @@ describe('fetchAndUpdateBundlePrice', () => {
     expect(updated.originalUnitPrice.toNumber()).toBe(25);
     expect(updated.hasDiscount).toBe(true);
     expect(updated.discountAmount.toNumber()).toBe(5);
+  });
+
+  it('classifies per-line discounts as offer vs voucher by matching offer_id against summary aggregates', async () => {
+    mockStores();
+    const packageState = {
+      packageId: 1,
+      name: 'Widget',
+      image: '',
+      productName: '',
+      variantName: '',
+      sku: null,
+      isRecurring: false,
+      interval: null,
+      intervalCount: null,
+      recurringPrice: new Decimal(0),
+      originalRecurringPrice: new Decimal(0),
+      unitPrice: new Decimal(10),
+      originalUnitPrice: new Decimal(10),
+      discountAmount: new Decimal(0),
+      discountPercentage: new Decimal(0),
+      originalPrice: new Decimal(10),
+      price: new Decimal(10),
+      hasDiscount: false,
+      currency: 'USD',
+      offerDiscounts: [],
+      voucherDiscounts: [],
+    };
+    const card = makeCard();
+    card.packageStates.set(1, packageState);
+
+    vi.mocked(calculateBundlePrice).mockResolvedValue(
+      makeApiResult({
+        summary: {
+          offer_discounts: [
+            { offer_id: 100, amount: '10', name: 'Tier 50% OFF', percentage: '50' },
+          ],
+          voucher_discounts: [
+            { offer_id: 200, amount: '2', name: 'EXTRA10', percentage: '10' },
+          ],
+          lines: [{
+            package_id: 1,
+            total_discount: '12',
+            subtotal: '24',
+            price_recurring_total: '0',
+            package_price: '12',
+            original_package_price: '24',
+            total: '12',
+            discounts: [
+              { offer_id: 100, amount: '10', name: 'Tier 50% OFF', percentage: '50' },
+              { offer_id: 200, amount: '2', name: 'EXTRA10', percentage: '10' },
+              { offer_id: 999, amount: '0.01', name: 'Mystery', percentage: '0' },
+            ],
+          }],
+        },
+      }) as any,
+    );
+
+    await fetchAndUpdateBundlePrice(card, makeCtx());
+
+    const updated = card.packageStates.get(1)!;
+    expect(updated.offerDiscounts).toHaveLength(2); // tier + unknown fallback
+    expect(updated.offerDiscounts[0]!.name).toBe('Tier 50% OFF');
+    expect(updated.offerDiscounts[1]!.name).toBe('Mystery');
+    expect(updated.voucherDiscounts).toHaveLength(1);
+    expect(updated.voucherDiscounts[0]!.name).toBe('EXTRA10');
   });
 
   it('passes upsell=true to calculateBundlePrice when isUpsellContext=true', async () => {

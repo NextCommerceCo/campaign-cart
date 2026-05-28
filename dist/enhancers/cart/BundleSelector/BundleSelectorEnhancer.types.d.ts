@@ -58,7 +58,8 @@ export interface BundlePackageState {
     price: Decimal;
     hasDiscount: boolean;
     currency: string;
-    discounts: DiscountItem[];
+    offerDiscounts: DiscountItem[];
+    voucherDiscounts: DiscountItem[];
 }
 export interface BundlePriceSummary {
     price: Decimal;

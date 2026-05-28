@@ -48,6 +48,16 @@ export async function fetchAndUpdateBundlePrice(
 
     // Update per-package states with bundle-computed prices
     if (result.summary) {
+      // Build offer_id → source maps from the bundle-aggregate discount lists,
+      // so per-line discounts can be classified the same way the card-level
+      // [data-next-discounts="offer"|"voucher"] filter classifies them.
+      const voucherOfferIds = new Set(
+        (result.summary.voucher_discounts ?? []).map(d => d.offer_id),
+      );
+      const offerOfferIds = new Set(
+        (result.summary.offer_discounts ?? []).map(d => d.offer_id),
+      );
+
       for (const line of result.summary.lines) {
         const state = card.packageStates.get(line.package_id);
         if (state) {
@@ -57,6 +67,21 @@ export async function fetchAndUpdateBundlePrice(
             ? discountAmount.div(originalPrice).times(100)
             : new Decimal(0);
           const hasDiscount = discountAmount.gt(0);
+
+          const lineOfferDiscounts: import('@/shared/utils/discountRenderer').DiscountItem[] = [];
+          const lineVoucherDiscounts: import('@/shared/utils/discountRenderer').DiscountItem[] = [];
+          for (const d of line.discounts ?? []) {
+            if (voucherOfferIds.has(d.offer_id)) {
+              lineVoucherDiscounts.push(d);
+            } else if (offerOfferIds.has(d.offer_id)) {
+              lineOfferDiscounts.push(d);
+            } else {
+              // Unknown offer_id — fall back to offer bucket so it still
+              // renders under the default (unfiltered) container.
+              lineOfferDiscounts.push(d);
+            }
+          }
+
           card.packageStates.set(line.package_id, {
             ...state,
             recurringPrice: new Decimal(line.price_recurring_total || 0),
@@ -69,7 +94,8 @@ export async function fetchAndUpdateBundlePrice(
             price: new Decimal(line.total),
             hasDiscount,
             currency: result.currency ?? state.currency,
-            discounts: line.discounts ?? [],
+            offerDiscounts: lineOfferDiscounts,
+            voucherDiscounts: lineVoucherDiscounts,
           });
         }
       }

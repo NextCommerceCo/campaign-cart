@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.4.24] — 2026-05-28 — Split Offer & Coupon Savings on Bundle Slots
+
+### Fixed
+
+- **Bundle slots showed the same discount twice when an offer and a coupon were both active** (issue [#22](https://github.com/NextCommerceCo/campaign-cart/issues/22)) — on bundle cards you can list automatic offer savings and coupon savings in separate spots by setting `data-next-discounts="offer"` or `data-next-discounts="voucher"`. Inside the slot template (the per-item rows below the cards) that filter was being ignored, so both spots showed the full list. Shoppers saw "Save 50% OFF" twice instead of "Save 50% OFF" and "+10% SP10D" side by side.
+
+  Slot templates now respect the filter the same way bundle cards do. You can use the same three forms in your slot template:
+
+  ```html
+  <ul data-next-discounts="offer">
+    <template><li>Save {discount.percentage}</li></template>
+  </ul>
+  <ul data-next-discounts="voucher">
+    <template><li>+{discount.percentage} {discount.name}</li></template>
+  </ul>
+  ```
+
+  Existing pages that use the unfiltered `data-next-discounts` form keep working — they still show the full list. If you built a JavaScript workaround that copied rows from the card into the slot on `bundle:price-updated`, you can remove it.
+
+---
+
 ## [0.4.23] — 2026-05-27 — Show Discount Percentages & CDN Loader Fix
 
 ### New
