@@ -22,6 +22,43 @@ interface FomoConfig {
   country?: string;
 }
 
+/**
+ * Shows rotating social-proof ("FOMO") popups of recent purchases.
+ *
+ * Unlike most enhancers, this is NOT activated by a `data-next-*` attribute and
+ * is not registered in `AttributeScanner`. It is configured and controlled
+ * programmatically through the SDK, typically `next.fomo({ ... })`, which
+ * constructs the enhancer (bound to `document.body`), calls `setup(config)`,
+ * and `start()`. Once started it injects its own styles, builds a fixed-position
+ * popup element, and cycles through purchase items at timed intervals, picking a
+ * random product and a random customer name per show. Products default to the
+ * first packages from the campaign store (those with images); customer names
+ * default to a per-country list with country auto-detected from the browser
+ * timezone. On mobile it stops after `maxMobileShows`. Emits `fomo:shown` each
+ * time a popup is displayed. Configuration is passed in code (items, customers,
+ * durations, delays, country) rather than via attributes.
+ *
+ * ## Attributes
+ *
+ * | Attribute | Type | Required | Default | Description |
+ * |---|---|---|---|---|
+ * | _(none)_ | — | — | — | This enhancer reads no `data-next-*` attributes. Configure it programmatically via `next.fomo({ ... })`. |
+ *
+ * @example
+ * ```html
+ * <!-- No markup needed; configured in JavaScript -->
+ * <script>
+ *   window.nextReady = window.nextReady || [];
+ *   window.nextReady.push(function (next) {
+ *     next.fomo({
+ *       maxMobileShows: 2,
+ *       displayDuration: 5000,
+ *       delayBetween: 12000,
+ *     });
+ *   });
+ * </script>
+ * ```
+ */
 export class FomoPopupEnhancer extends BaseEnhancer {
   private config: FomoConfig;
   private isActive = false;

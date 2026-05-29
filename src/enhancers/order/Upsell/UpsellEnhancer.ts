@@ -38,6 +38,60 @@ import {
 } from './UpsellEnhancer.handlers';
 import type { UpsellHandlerContext } from './UpsellEnhancer.types';
 
+/**
+ * Drives post-purchase upsell offers that add packages to a completed order
+ * (not to the cart).
+ *
+ * Activated by `data-next-upsell`. Runs in one of two modes: **direct** mode,
+ * where the element declares a single `data-next-package-id` with yes/no
+ * action buttons; and **selector** mode, where the visitor picks among options.
+ * Selector mode is entered when the element has a `data-next-selector-id`,
+ * contains/links a `data-next-package-selector` or `data-next-bundle-selector`,
+ * or carries the corresponding `*-selector-id` attributes. It scans for action
+ * buttons (`data-next-upsell-action`), quantity controls
+ * (`data-next-upsell-quantity` increase/decrease and
+ * `data-next-upsell-quantity-toggle`), and option elements
+ * (`data-next-upsell-option` or a `data-next-upsell-select` `<select>`),
+ * tracking per-selector quantities. On action click it writes the selected
+ * package(s) to the order via the post-purchase API, showing a loading overlay
+ * and processing state, and only operates while `orderStore.canAddUpsells()` is
+ * true. Emits events including `upsell:initialized`, `upsell:quantity-changed`,
+ * `upsell:option-selected`, and `upsell-selector:item-selected`.
+ *
+ * Because it writes to the order rather than the cart, never pair it with
+ * `cartStore` actions for the same package. When linked to an external
+ * `PackageSelectorEnhancer` or `BundleSelectorEnhancer`, the current selection
+ * is resolved at click time from that element.
+ *
+ * ## Attributes
+ *
+ * | Attribute | Type | Required | Default | Description |
+ * |---|---|---|---|---|
+ * | `data-next-upsell` | `string` | yes | — | Activation attribute. Marks the upsell offer container. |
+ * | `data-next-package-id` | `number` | conditional | — | Required in direct mode; the package added to the order. Not used when in selector mode. |
+ * | `data-next-selector-id` | `string` | no | — | Enables selector mode and identifies this upsell selector group. |
+ * | `data-next-quantity` | `number` | no | `1` | Initial quantity for the offer. |
+ * | `data-next-package-selector-id` | `string` | no | auto-detected | ID of an external `PackageSelectorEnhancer` whose selection feeds this upsell. Auto-detected from a child `[data-next-package-selector]` when present. |
+ * | `data-next-bundle-selector-id` | `string` | no | auto-detected | ID of an external `BundleSelectorEnhancer` whose selected items/vouchers feed this upsell. Auto-detected from a child `[data-next-bundle-selector]` when present. |
+ *
+ * @example
+ * ```html
+ * <div data-next-upsell="offer" data-next-package-id="123">
+ *   <span data-next-display="package.name">Product Name</span>
+ *   <span data-next-display="package.price">$19.99</span>
+ *   <button data-next-upsell-action="add">Add to Order</button>
+ * </div>
+ * ```
+ *
+ * @example
+ * ```html
+ * <div data-next-upsell data-next-selector-id="protection">
+ *   <div data-next-upsell-option data-next-package-id="123">Option 1</div>
+ *   <div data-next-upsell-option data-next-package-id="456">Option 2</div>
+ *   <button data-next-upsell-action="add">Add Selected</button>
+ * </div>
+ * ```
+ */
 export class UpsellEnhancer extends BaseEnhancer {
   private apiClient!: ApiClient;
   private packageId?: number;

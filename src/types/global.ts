@@ -7,16 +7,34 @@ import type { Offer } from './campaign';
 
 import { AddressAutocompleteResult } from './api';
 
-// Event Map for type-safe event handling
+/**
+ * Type-safe map of every SDK event name to its payload shape.
+ *
+ * Used by {@link NextCommerce.on} / {@link NextCommerce.off} and the EventBus so
+ * that subscribing to an event gives you a correctly-typed payload. Events are
+ * grouped by domain below (cart, checkout, order, selector, upsell, …).
+ *
+ * @example
+ * ```ts
+ * next.on('cart:updated', (cart) => {
+ *   console.log('New total quantity:', cart.totalQuantity);
+ * });
+ * ```
+ */
 export interface EventMap {
+  /** Fires whenever the cart store changes — items, quantities, coupons, shipping, or recalculated totals. Payload is the full cart state. */
   'cart:updated': CartState;
+  /** A package was added to the cart (or its quantity increased from zero). */
   'cart:item-added': { packageId: number; quantity?: number; source?: string };
+  /** A package was removed from the cart entirely. */
   'cart:item-removed': { packageId: number };
+  /** The quantity of an existing cart line changed. Includes both the new and previous quantity. */
   'cart:quantity-changed': {
     packageId: number;
     quantity: number;
     oldQuantity: number;
   };
+  /** One package was swapped for another in place (e.g. a selector switching the chosen offer), with the price delta between them. */
   'cart:package-swapped': {
     previousPackageId: number;
     newPackageId: number;
@@ -25,24 +43,39 @@ export interface EventMap {
     priceDifference: number;
     source?: string;
   };
+  /** The campaign (packages, offers, shipping methods) finished loading into the campaign store. */
   'campaign:loaded': Campaign;
+  /** The checkout flow has begun. Payload carries the captured checkout data. */
   'checkout:started': CheckoutData;
+  /** The checkout `<form>` has been found and wired up by the checkout enhancer. */
   'checkout:form-initialized': { form: HTMLFormElement };
+  /** The Spreedly card-tokenization iframe is ready to accept input. */
   'checkout:spreedly-ready': {};
+  /** An express-checkout flow (PayPal / Apple Pay / Google Pay) was initiated. */
   'checkout:express-started': { method: 'paypal' | 'apple_pay' | 'google_pay' };
+  /** An order was successfully created. Payload carries the completed order data. */
   'order:completed': OrderData;
+  /** The order completed but no redirect URL was available to send the shopper onward. */
   'order:redirect-missing': { order: any };
+  /** A recoverable or fatal error occurred somewhere in the SDK. */
   'error:occurred': ErrorData;
+  /** The requested currency was unavailable, so the SDK fell back to another. `reason` says whether the fallback came from cache or the API. */
   'currency:fallback': {
     requested: string;
     actual: string;
     reason: 'cached' | 'api';
   };
+  /** A persistent countdown timer reached zero. Identified by its persistence id. */
   'timer:expired': { persistenceId: string };
+  /** SDK configuration changed. Payload is the full config state. */
   'config:updated': ConfigState;
+  /** A coupon was successfully applied to the cart. Payload is either the resolved coupon or just the code. */
   'coupon:applied': { coupon: AppliedCoupon } | { code: string };
+  /** A previously applied coupon was removed from the cart. */
   'coupon:removed': { code: string };
+  /** A coupon code was rejected. `message` is a human-readable reason suitable for display. */
   'coupon:validation-failed': { code: string; message: string };
+  /** A card within a package selector became the active selection. */
   'selector:item-selected': {
     selectorId: string;
     packageId: number;
@@ -51,90 +84,119 @@ export interface EventMap {
     pendingAction: boolean | undefined;
     item?: SelectorItem;
   };
+  /** A selector's deferred action (e.g. add-to-cart in select mode) finished after selection. */
   'selector:action-completed': {
     selectorId: string;
     packageId: number;
     previousPackageId: number | undefined;
     mode: string;
   };
+  /** A selector's current selection changed (package and/or quantity). */
   'selector:selection-changed': {
     selectorId: string;
     packageId?: number;
     quantity?: number;
     item?: SelectorItem;
   };
+  /** The quantity associated with a selector's current selection changed. */
   'selector:quantity-changed': {
     selectorId: string;
     packageId: number;
     quantity: number;
   };
+  /** A shipping method was selected via a selector element. */
   'shipping:method-selected': { shippingId: string; selectorId: string };
+  /** The active shipping method changed; payload carries the resolved method. */
   'shipping:method-changed': { methodId: number; method: any };
 
   // Action Events
+  /** An async action (e.g. add-to-cart) fired from a `BaseActionEnhancer` completed successfully. */
   'action:success': { action: string; data?: any };
+  /** An async action fired from a `BaseActionEnhancer` threw. Payload carries the action name and error. */
   'action:failed': { action: string; error: Error };
 
   // Upsell Events
+  /** A post-purchase upsell was accepted and added to the order. */
   'upsell:accepted': {
     packageId: number;
     quantity: number;
     orderId: string;
     value?: number;
   };
+  /** A card within an upsell selector became the active selection. */
   'upsell-selector:item-selected': { selectorId: string; packageId: number };
+  /** The quantity for an upsell selection changed. */
   'upsell:quantity-changed': {
     selectorId?: string | undefined;
     quantity: number;
     packageId?: number | undefined;
   };
+  /** An upsell option was selected within an upsell selector. */
   'upsell:option-selected': { selectorId: string; packageId: number };
 
   // Message Events
+  /** A user-facing message was displayed (e.g. a coupon or validation notice). `type` indicates its severity/category. */
   'message:displayed': { message: string; type: string };
 
   // Payment Events
+  /** A payment method was tokenized and is ready to submit with the order. */
   'payment:tokenized': { token: string; pmData: any; paymentMethod: string };
+  /** Payment processing failed. `errors` holds the human-readable messages. */
   'payment:error': { errors: string[] };
+  /** An express-checkout flow finished; `success` indicates the outcome. */
   'checkout:express-completed': { method: string; success: boolean };
+  /** An express-checkout flow failed before completion. */
   'checkout:express-failed': { method: string; error: string };
 
   // Express Checkout Events
+  /** An express-checkout button (PayPal / Apple Pay / Google Pay) was rendered and is ready. */
   'express-checkout:initialized': {
     method: 'paypal' | 'apple_pay' | 'google_pay';
     element: HTMLElement;
   };
+  /** An express-checkout button errored during setup or rendering. */
   'express-checkout:error': {
     method: 'paypal' | 'apple_pay' | 'google_pay';
     error: string;
   };
+  /** The shopper started an express-checkout flow; payload includes the cart total and item count at that moment. */
   'express-checkout:started': {
     method: 'paypal' | 'apple_pay' | 'google_pay';
     cartTotal: { value: number; formatted: string };
     itemCount: number;
   };
+  /** An express-checkout flow failed before producing an order. */
   'express-checkout:failed': {
     method: 'paypal' | 'apple_pay' | 'google_pay';
     error: string;
   };
+  /** An express-checkout flow produced a completed order. */
   'express-checkout:completed': {
     method: 'paypal' | 'apple_pay' | 'google_pay';
     order: any;
   };
+  /** An express-checkout order completed but no redirect URL was available. */
   'express-checkout:redirect-missing': { order: any };
 
   // Address Autocomplete Events
+  /** Address autocomplete populated a shipping or billing address. `components` holds the resolved address parts. */
   'address:autocomplete-filled': {
     type: 'shipping' | 'billing';
     components: any;
   };
+  /** The manual address-entry (location) fields were revealed by the autocomplete enhancer. */
   'address:location-fields-shown': {};
+  /** The checkout's shipping location fields were revealed. */
   'checkout:location-fields-shown': {};
+  /** The checkout's billing location fields were revealed. */
   'checkout:billing-location-fields-shown': {};
 
   // Upsell Events
+  /** A post-purchase upsell enhancer finished initializing on its element. */
   'upsell:initialized': { packageId: number; element: HTMLElement };
+  /** An upsell add request is in flight (button clicked, awaiting the order API). */
   'upsell:adding': { packageId: number };
+  /** An upsell was added to the order. `willRedirect` indicates whether the page will navigate afterward. */
   'upsell:added': {
     packageId: number;
     quantity: number;
@@ -142,53 +204,76 @@ export interface EventMap {
     value?: number;
     willRedirect?: boolean;
   };
+  /** Adding an upsell to the order failed. */
   'upsell:error': { packageId: number; error: string };
 
   // Accordion Events
+  /** An accordion section toggled. `isOpen` reflects its new state. */
   'accordion:toggled': { id: string; isOpen: boolean; element: HTMLElement };
+  /** An accordion section opened. */
   'accordion:opened': { id: string; element: HTMLElement };
+  /** An accordion section closed. */
   'accordion:closed': { id: string; element: HTMLElement };
+  /** A post-purchase upsell was skipped/declined by the shopper. */
   'upsell:skipped': { packageId?: number; orderId?: string };
+  /** A post-purchase upsell offer was viewed (impression), keyed by package and/or page path. */
   'upsell:viewed': { packageId?: number; pagePath?: string; orderId?: string };
 
   // Exit Intent Events (simplified)
+  /** The exit-intent popup was shown. */
   'exit-intent:shown': { imageUrl?: string; template?: string };
+  /** The exit-intent popup image/content was clicked. */
   'exit-intent:clicked': { imageUrl?: string; template?: string };
+  /** The exit-intent popup was dismissed (e.g. overlay click or close). */
   'exit-intent:dismissed': { imageUrl?: string; template?: string };
+  /** The exit-intent popup was closed via its close control. */
   'exit-intent:closed': { imageUrl?: string; template?: string };
+  /** An exit-intent action fired (e.g. an embedded CTA), optionally carrying a coupon code to apply. */
   'exit-intent:action': { action: string; couponCode?: string };
 
   // FOMO Events
+  /** A FOMO social-proof notification was shown, naming the customer, product, and image used. */
   'fomo:shown': { customer: string; product: string; image: string };
 
   // SDK Events
+  /** The SDK finished reading and storing URL parameters at startup. */
   'sdk:url-parameters-processed': {};
 
   // Offer Events
+  /** An offer was selected (chosen but not yet applied). */
   'offer:selected': { offerId: number };
+  /** An offer was applied to the cart. */
   'offer:applied': { offerId: number };
 
   // Bundle Events
+  /** A bundle was selected; payload lists the packages and quantities that make up the bundle. */
   'bundle:selected': {
     selectorId: string;
     items: { packageId: number; quantity: number }[];
   };
+  /** The active bundle selection changed; payload lists the new bundle's packages and quantities. */
   'bundle:selection-changed': {
     selectorId: string;
     items: { packageId: number; quantity: number }[];
   };
+  /** A bundle's quantity changed; payload includes the bundle id and its resulting package lines. */
   'bundle:quantity-changed': {
     selectorId: string;
     bundleId: string;
     quantity: number;
     items: { packageId: number; quantity: number }[];
   };
+  /** A bundle selector recalculated and refreshed its displayed price. */
   'bundle:price-updated': { selectorId: string };
+  /** A package selector recalculated and refreshed the displayed price for a card. */
   'selector:price-updated': { selectorId: string; packageId: number };
+  /** A package toggle recalculated and refreshed its displayed price. */
   'toggle:price-updated': { packageId: number };
 
   // Package Toggle Events
+  /** A package toggle flipped state. `added` is `true` when the package was added, `false` when removed. */
   'toggle:toggled': { packageId: number; added: boolean };
+  /** The set of toggled-on packages changed; payload lists all currently selected package ids. */
   'toggle:selection-changed': { selected: number[] };
 }
 

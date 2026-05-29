@@ -2,6 +2,26 @@ import { BaseEnhancer } from './BaseEnhancer';
 import { useCartStore } from '@/stores/cartStore';
 import type { CartState, CartItem } from '@/types/global';
 
+/**
+ * Base class for enhancers that need to read cart state reactively.
+ *
+ * Extends `BaseEnhancer` and adds awareness of `useCartStore`. Subclasses call
+ * `setupCartSubscription()` (typically from `initialize()`) to subscribe to
+ * cart updates via the inherited `subscribe()` helper and seed the cached
+ * `cartState` with the current store snapshot.
+ *
+ * Provides to subclasses:
+ * - `setupCartSubscription()` — subscribes to `useCartStore` and caches state.
+ * - `handleCartUpdate(state)` — abstract; subclasses implement it to react to
+ *   cart changes.
+ * - Read helpers over the cached state: `isCartEmpty()`, `getCartItem()`,
+ *   `getTotalQuantity()`, `getCartItems()`, and `hasPackageInCart()`.
+ *
+ * @remarks
+ * The cart subscription is registered through `BaseEnhancer.subscribe()`, so it
+ * is released automatically by `destroy()`. Subclasses overriding `destroy()`
+ * must call `super.destroy()` first.
+ */
 export abstract class BaseCartEnhancer extends BaseEnhancer {
   protected cartState?: CartState;
   

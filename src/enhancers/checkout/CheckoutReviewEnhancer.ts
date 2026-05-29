@@ -14,6 +14,39 @@ interface CheckoutReviewConfig {
   fallback?: string;
 }
 
+/**
+ * Read-only display of checkout data captured on earlier steps, for an
+ * order-review screen in a multi-step checkout.
+ *
+ * Activated by `data-next-enhancer="checkout-review"` on a container element.
+ * On init it scans its own subtree for descendants carrying
+ * `data-next-checkout-review="<field>"` and binds each to a value from
+ * `useCheckoutStore` — either a `formData` field or a root store property via
+ * dot notation (`shippingMethod.name`, `billingAddress.city`, `paymentMethod`).
+ * It subscribes to the checkout store and re-renders the bound elements'
+ * `textContent` whenever the data changes; empty values fall back to
+ * `data-next-fallback` and the element gets the `next-review-empty` class. This
+ * enhancer never writes to the store.
+ *
+ * The activation attribute goes on the bound container; the per-value
+ * `data-next-checkout-review`, `data-next-format`, and `data-next-fallback`
+ * attributes live on descendant elements, not on this element.
+ *
+ * ## Attributes
+ *
+ * | Attribute | Type | Required | Default | Description |
+ * |---|---|---|---|---|
+ * | `data-next-enhancer` | `"checkout-review"` | yes | — | Activation attribute on the review container. |
+ *
+ * @example
+ * ```html
+ * <div data-next-enhancer="checkout-review">
+ *   <span data-next-checkout-review="email"></span>
+ *   <span data-next-checkout-review="address" data-next-format="address"></span>
+ *   <span data-next-checkout-review="shippingMethod.name" data-next-fallback="Standard"></span>
+ * </div>
+ * ```
+ */
 export class CheckoutReviewEnhancer extends BaseEnhancer {
   private configs: CheckoutReviewConfig[] = [];
   private unsubscribe?: () => void;

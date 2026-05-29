@@ -11,6 +11,51 @@ import { useConfigStore } from '@/stores/configStore';
 import { ApiClient } from '@/api/client';
 import type { Order, OrderLine } from '@/types/api';
 
+/**
+ * Renders a single value from the loaded post-purchase order into an element.
+ *
+ * Activated by `data-next-display="order.*"`, which `AttributeScanner` routes
+ * here based on the `order` path prefix. It subscribes to `useOrderStore`,
+ * resolves the requested property from the order, and writes the formatted result
+ * into the element via the `BaseDisplayEnhancer` rendering pipeline. Before normal
+ * initialization it inspects the URL for a `ref_id` or `order_ref_id` query
+ * parameter and, if found and no order is loaded yet, auto-loads the order through
+ * `orderStore.loadOrder` using an `ApiClient` built from `useConfigStore`.
+ *
+ * The display path after `order.` selects what to show: order totals
+ * (`order.total`, `order.subtotal`, `order.shipping`, `order.tax`,
+ * `order.discounts`), customer fields (`order.customer.name`, `order.user.email`),
+ * addresses (`order.shippingAddress.full`, `order.billingAddress.city`), line-item
+ * aggregates (`order.lines.count`, `order.lines.mainProduct`, `order.lines[0].title`),
+ * attribution (`order.attribution.utm_source`), calculated values
+ * (`order.savings`, `order.savingsPercentage`), and flags such as
+ * `order.testBadge`. Payment-method values are beautified (e.g. `card_token` →
+ * "Credit Card"). Loading and error states toggle the `next-loading`,
+ * `next-loaded`, and `next-error` CSS classes. When bound to an `<a>` element with
+ * a `statusUrl` path, the resolved value is set as the link `href`.
+ *
+ * ## Attributes
+ *
+ * | Attribute | Type | Required | Default | Description |
+ * |---|---|---|---|---|
+ * | `data-next-display` | `string` | yes | — | Order property path to render, e.g. `order.total` or `order.customer.name`. |
+ * | `data-next-format` / `data-format` | `"currency" \| "number" \| "boolean" \| "date" \| "percentage" \| "auto"` | no | auto-detected | Forces value formatting. |
+ * | `data-hide-if-zero` | `"true" \| "false"` | no | `false` | Hides the element when the value is zero. |
+ * | `data-hide-if-false` | `"true" \| "false"` | no | `false` | Hides the element when the value is falsy. |
+ * | `data-hide-zero-cents` | `"true" \| "false"` | no | `false` | Drops `.00` cents from formatted currency. |
+ * | `data-divide-by` | `number` | no | — | Divides a numeric value before formatting. |
+ * | `data-multiply-by` | `number` | no | — | Multiplies a numeric value before formatting. |
+ *
+ * @example
+ * ```html
+ * <span data-next-display="order.total"></span>
+ * ```
+ *
+ * @example
+ * ```html
+ * <a data-next-display="order.statusUrl">View Order Status</a>
+ * ```
+ */
 export class OrderDisplayEnhancer extends BaseDisplayEnhancer {
   private apiClient?: ApiClient;
   private orderState: any = {};

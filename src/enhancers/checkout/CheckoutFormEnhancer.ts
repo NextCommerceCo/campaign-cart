@@ -63,6 +63,49 @@ const BILLING_ADDRESS_FIELD_MAP: Record<string, string> = {
   'phone': 'phone'
 };
 
+/**
+ * The full checkout form controller — turns a plain HTML `<form>` into a
+ * working NextCommerce checkout, handling field scanning, validation, address
+ * and country/state management, phone inputs, billing-address cloning, payment
+ * tokenization, and order submission.
+ *
+ * Activated by `data-next-checkout` on a `<form>` element (the attribute is
+ * only honoured on forms; individual fields are discovered by scanning, not by
+ * their own enhancers). On init it scans for fields marked with
+ * `data-next-checkout-field` / `os-checkout-field`, finds the submit and
+ * payment buttons, populates country/state/expiry dropdowns, clones the
+ * shipping form into the billing section when a different-billing container is
+ * present, and wires submit, change, and bfcache/focus handlers. It owns
+ * several sub-services and enhancers internally — `CheckoutValidator`,
+ * `CreditCardService`, `UIService`, `OrderManager`, `ExpressCheckoutProcessor`,
+ * `AddressAutocompleteEnhancer`, and `ProspectCartEnhancer` — none of which are
+ * registered separately. It reads form state from and writes it to
+ * `useCheckoutStore`, and reacts to `useCartStore` and `useConfigStore`.
+ *
+ * The only configurable attribute on the bound element is the activation
+ * attribute itself; everything else is configured via `data-next-checkout-field`
+ * markers on descendant inputs and via SDK config (Spreedly key, address /
+ * Google Maps config). Multi-step checkout is auto-detected from the form
+ * markup rather than from an attribute on this element.
+ *
+ * ## Attributes
+ *
+ * | Attribute | Type | Required | Default | Description |
+ * |---|---|---|---|---|
+ * | `data-next-checkout` | `string` | yes | — | Activation attribute. Must be on a `<form>`; its value is not read for configuration. |
+ *
+ * @example
+ * ```html
+ * <form data-next-checkout="combo">
+ *   <input data-next-checkout-field="email" type="email" />
+ *   <input data-next-checkout-field="fname" />
+ *   <input data-next-checkout-field="lname" />
+ *   <input data-next-checkout-field="address1" />
+ *   <select data-next-checkout-field="country"></select>
+ *   <button type="submit">Complete order</button>
+ * </form>
+ * ```
+ */
 export class CheckoutFormEnhancer extends BaseEnhancer {
   private form!: HTMLFormElement;
   private apiClient!: ApiClient;

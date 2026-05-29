@@ -95,6 +95,23 @@ const initialState: OrderState = {
   upsellJourney: [],
 };
 
+/**
+ * Zustand store for post-purchase state: the completed order and the
+ * upsell journey (what has been offered, viewed, accepted, or skipped).
+ * Persisted to `sessionStorage` with a 15-minute expiry — reads after that
+ * window are treated as expired.
+ *
+ * @example
+ * ```ts
+ * const orders = useOrderStore.getState();
+ * await orders.loadOrder(refId, apiClient);
+ * if (orders.canAddUpsells()) {
+ *   // safe to offer a post-purchase upsell
+ * }
+ * ```
+ *
+ * @see {@link OrderState} and {@link OrderActions} for the full shape.
+ */
 export const useOrderStore = create<OrderState & OrderActions>()(
   persist(
     (set, get) => ({

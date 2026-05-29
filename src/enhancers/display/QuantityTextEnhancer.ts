@@ -14,6 +14,39 @@
 
 import { BaseEnhancer } from '@/enhancers/base/BaseEnhancer';
 
+/**
+ * Renders a text template whose tokens are substituted from the current quantity.
+ *
+ * Activated by `data-next-quantity-text`, whose value is the template string. The
+ * template supports quantity tokens — `{qty}` for the current quantity and
+ * `{qty*N}`, `{qty+N}`, `{qty-N}` for arithmetic variants (subtraction is clamped
+ * at zero) — plus singular/plural selection via `{singular|plural}`, which picks
+ * the first form when the quantity is exactly 1 and the second otherwise. The
+ * rendered result is written to the element's `textContent`.
+ *
+ * It tracks quantity by listening for `upsell:quantity-changed` events, matching
+ * them by `data-next-quantity-selector-id`, by an enclosing
+ * `data-next-selector-id` container, or by the package id read from a
+ * `data-next-package-id` ancestor. An initial quantity is read from a sibling
+ * `[data-next-upsell-quantity="display"]` element when present.
+ *
+ * ## Attributes
+ *
+ * | Attribute | Type | Required | Default | Description |
+ * |---|---|---|---|---|
+ * | `data-next-quantity-text` | `string` | yes | — | Template string with `{qty}`, `{qty*N}`, `{qty+N}`, `{qty-N}`, and `{singular\|plural}` tokens. |
+ * | `data-next-quantity-selector-id` | `string` | no | — | Links the element to a specific quantity control so only matching `upsell:quantity-changed` events update it. |
+ *
+ * @example
+ * ```html
+ * <div data-next-quantity-text="{qty} Pack, Get {qty*2} Pillowcases">1 Pack, Get 2 Pillowcases</div>
+ * ```
+ *
+ * @example
+ * ```html
+ * <div data-next-quantity-text="{qty} {item|items} selected"></div>
+ * ```
+ */
 export class QuantityTextEnhancer extends BaseEnhancer {
   private template: string = '';
   private currentQuantity: number = 1;

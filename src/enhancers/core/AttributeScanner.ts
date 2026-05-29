@@ -405,7 +405,7 @@ export class AttributeScanner {
           return new UpsellEnhancer(element);
 
         case 'coupon':
-          const { CouponEnhancer } = await import('@/enhancers/CouponEnhancer');
+          const { CouponEnhancer } = await import('@/enhancers/cart/CouponEnhancer');
           return new CouponEnhancer(element);
 
         case 'accordion':

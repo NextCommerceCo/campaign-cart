@@ -19,6 +19,44 @@ import {
   handleQuantityChange,
 } from './QuantityControlEnhancer.handlers';
 
+/**
+ * Adjusts the quantity of a single cart line item.
+ *
+ * Activated by `data-next-quantity` with a value of `"increase"`, `"decrease"`,
+ * or `"set"`. It binds to the bound element and reflects the current cart
+ * quantity reactively (disabling/enabling, updating button content and
+ * `next-in-cart` state) by subscribing to the cart store. For `"set"` on an
+ * `<input>`/`<select>` it listens to `change`/`blur` (and `input` on number
+ * inputs); otherwise it listens to `click`. Quantities are clamped to the
+ * configured min/max, and a quantity of `0` removes the item.
+ *
+ * Typically auto-instantiated by `CartItemListEnhancer` on rendered items — do
+ * not manually instantiate inside an item template.
+ *
+ * ## Attributes
+ *
+ * | Attribute | Type | Required | Default | Description |
+ * |---|---|---|---|---|
+ * | `data-next-quantity` | `"increase" \| "decrease" \| "set"` | yes | — | Activation + action. Throws if any other value. |
+ * | `data-package-id` | `number` | yes | — | Cart line package `ref_id` this control adjusts. Throws if missing or non-numeric. |
+ * | `data-step` | `number` | no | `1` | Amount to add/subtract per increase/decrease. |
+ * | `data-min` | `number` | no | `0` | Minimum quantity. Going below removes the item. |
+ * | `data-max` | `number` | no | `99` | Maximum quantity the control will set. |
+ *
+ * @example
+ * Increase / decrease buttons for a cart line:
+ * ```html
+ * <button data-next-quantity="decrease" data-package-id="2">-</button>
+ * <button data-next-quantity="increase" data-package-id="2">+</button>
+ * ```
+ *
+ * @example
+ * Direct quantity entry via an input:
+ * ```html
+ * <input type="number" data-next-quantity="set" data-package-id="2"
+ *        data-min="1" data-max="10" />
+ * ```
+ */
 export class QuantityControlEnhancer extends BaseCartEnhancer {
   private action!: QuantityAction;
   private packageId!: number;

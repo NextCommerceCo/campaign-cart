@@ -5,6 +5,66 @@
 
 import { BaseEnhancer } from '@/enhancers/base/BaseEnhancer';
 
+/**
+ * Shows an exit-intent popup (image or DOM template) when the visitor signals
+ * they are about to leave.
+ *
+ * Unlike most enhancers, this is NOT activated by a `data-next-*` attribute and
+ * is not registered in `AttributeScanner`. It is configured and controlled
+ * programmatically through the SDK, typically `next.exitIntent({ ... })`, which
+ * constructs the enhancer (bound to `document.body`), calls `initialize()`, then
+ * `setup(options)`. On desktop it triggers when the mouse leaves the top of the
+ * viewport; on mobile it is disabled by default but can trigger on 50% scroll
+ * when `mobileScrollTrigger` is enabled. Trigger count and last-trigger time are
+ * persisted in sessionStorage (so the popup respects `maxTriggers` across page
+ * loads) and there is a cooldown between triggers. The popup can render either a
+ * provided image URL or the content of a `<template data-template="<name>">`;
+ * template content supports `data-exit-intent-action` hooks (`close`,
+ * `apply-coupon` with `data-coupon-code`, and `custom`). Emits
+ * `exit-intent:shown`, `:clicked`, `:dismissed`, `:closed`, and `:action`.
+ *
+ * The DOM hooks below are read from the chosen `<template>` content at popup
+ * render time, not from the enhancer's own host element.
+ *
+ * ## Attributes
+ *
+ * | Attribute | Type | Required | Default | Description |
+ * |---|---|---|---|---|
+ * | _(none on host)_ | — | — | — | This enhancer reads no `data-next-*` attributes on a host element. Configure it programmatically via `next.exitIntent({ ... })`. |
+ * | `data-template` | `string` | no | — | On a `<template>` element — names a template referenced by the `template` option. |
+ * | `data-exit-intent-action` | `"close" \| "apply-coupon" \| "custom"` | no | — | On an element inside the template — wires a click action when the popup renders. |
+ * | `data-coupon-code` | `string` | no | — | On a `data-exit-intent-action="apply-coupon"` element — the coupon code to apply on click. |
+ *
+ * @example
+ * ```html
+ * <!-- Image popup, configured in JavaScript -->
+ * <script>
+ *   window.nextReady = window.nextReady || [];
+ *   window.nextReady.push(function (next) {
+ *     next.exitIntent({ image: 'https://cdn.example.com/offer.png' });
+ *   });
+ * </script>
+ * ```
+ *
+ * @example
+ * ```html
+ * <!-- Template popup with action hooks -->
+ * <template data-template="exit-intent">
+ *   <div class="offer">
+ *     <button data-exit-intent-action="apply-coupon" data-coupon-code="SAVE10">
+ *       Apply 10% off
+ *     </button>
+ *     <button data-exit-intent-action="close">No thanks</button>
+ *   </div>
+ * </template>
+ * <script>
+ *   window.nextReady = window.nextReady || [];
+ *   window.nextReady.push(function (next) {
+ *     next.exitIntent({ template: 'exit-intent' });
+ *   });
+ * </script>
+ * ```
+ */
 export class ExitIntentEnhancer extends BaseEnhancer {
   private isEnabled = false;
   private triggerCount = 0;

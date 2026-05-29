@@ -9,6 +9,44 @@ import { useCampaignStore } from '@/stores/campaignStore';
 // import { useCartStore } from '@/stores/cartStore'; - removed unused import
 import type { ShippingOption } from '@/types/api';
 
+/**
+ * Renders a value from a campaign shipping method into an element.
+ *
+ * Activated by `data-next-display="shipping.*"`, routed here by `AttributeScanner`.
+ * It resolves which shipping method to read by walking up to the nearest ancestor
+ * carrying `data-next-shipping-id` and matching that id against
+ * `useCampaignStore().data.shipping_methods` (by `ref_id`). It subscribes to the
+ * campaign store and re-renders through the `BaseDisplayEnhancer` pipeline when
+ * shipping data changes.
+ *
+ * The property after `shipping.` selects what to show: `price` / `cost` (formatted
+ * currency) and `price.raw` / `cost.raw` (numeric), `isFree` (true when price is
+ * zero), `name` / `code`, `id` / `refId`, and `method` (the full object). If no
+ * `data-next-shipping-id` context is found the enhancer logs a warning and does
+ * not render.
+ *
+ * ## Attributes
+ *
+ * | Attribute | Type | Required | Default | Description |
+ * |---|---|---|---|---|
+ * | `data-next-display` | `string` | yes | — | Shipping property path, e.g. `shipping.price` or `shipping.isFree`. |
+ * | `data-next-format` / `data-format` | `"currency" \| "number" \| "boolean" \| "date" \| "percentage" \| "auto"` | no | auto-detected | Forces value formatting. |
+ * | `data-hide-if-zero` | `"true" \| "false"` | no | `false` | Hides the element when the value is zero. |
+ * | `data-hide-if-false` | `"true" \| "false"` | no | `false` | Hides the element when the value is falsy. |
+ * | `data-hide-zero-cents` | `"true" \| "false"` | no | `false` | Drops `.00` cents from formatted currency. |
+ * | `data-divide-by` | `number` | no | — | Divides a numeric value before formatting. |
+ * | `data-multiply-by` | `number` | no | — | Multiplies a numeric value before formatting. |
+ *
+ * Note: the shipping method is identified by a `data-next-shipping-id` ancestor,
+ * not by an attribute on this element.
+ *
+ * @example
+ * ```html
+ * <div data-next-shipping-id="3">
+ *   <span data-next-display="shipping.price"></span>
+ * </div>
+ * ```
+ */
 export class ShippingDisplayEnhancer extends BaseDisplayEnhancer {
   private shippingId?: number;
   private shippingMethod?: ShippingOption;

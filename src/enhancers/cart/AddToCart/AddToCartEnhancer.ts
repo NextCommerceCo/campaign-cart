@@ -3,6 +3,53 @@ import type { EventMap, SelectorItem } from '@/types/global';
 import { handleSelectorChange, addToCart } from './AddToCartEnhancer.handlers';
 import type { AddToCartHandlerContext } from './AddToCartEnhancer.types';
 
+/**
+ * Turns any element into an add-to-cart trigger.
+ *
+ * Activated by `data-next-action="add-to-cart"`. On click it writes one package
+ * to the cart, sourced one of two ways:
+ * - **Direct** — `data-next-package-id` is set, so the package is fixed.
+ * - **Selector-linked** — `data-next-selector-id` points at a
+ *   `PackageSelectorEnhancer` / `BundleSelectorEnhancer`; the button reads that
+ *   selector's current selection at click time and stays disabled until a
+ *   selection exists.
+ *
+ * One of `data-next-package-id` or `data-next-selector-id` must be present, or
+ * the button never writes to the cart.
+ *
+ * ## Attributes
+ *
+ * | Attribute | Type | Required | Default | Description |
+ * |---|---|---|---|---|
+ * | `data-next-action` | `"add-to-cart"` | yes | — | Activation attribute. |
+ * | `data-next-package-id` | `number` | conditional | — | Package `ref_id` to add. Required unless `data-next-selector-id` is set. |
+ * | `data-next-selector-id` | `string` | conditional | — | Id of a selector enhancer to read the selection from. Required unless `data-next-package-id` is set. |
+ * | `data-next-quantity` | `number` | no | `1` | Quantity to add. A quantity on the selected card takes precedence. |
+ * | `data-next-url` | `string` | no | — | URL to redirect to after a successful add; current query params are preserved. |
+ * | `data-next-clear-cart` | `"true" \| "false"` | no | `"false"` | When `"true"`, empties the cart before adding. |
+ *
+ * @example
+ * Direct add of a fixed package:
+ * ```html
+ * <button data-next-action="add-to-cart" data-next-package-id="2">
+ *   Add to cart
+ * </button>
+ * ```
+ *
+ * @example
+ * Add whatever a selector currently has chosen, then redirect to checkout:
+ * ```html
+ * <button
+ *   data-next-action="add-to-cart"
+ *   data-next-selector-id="main-offer"
+ *   data-next-url="/checkout"
+ * >
+ *   Buy now
+ * </button>
+ * ```
+ *
+ * @see `PackageSelectorEnhancer` for the selector this can read from.
+ */
 export class AddToCartEnhancer extends BaseActionEnhancer {
   private packageId?: number;
   private quantity = 1;

@@ -1,5 +1,28 @@
 import { BaseEnhancer } from './BaseEnhancer';
 
+/**
+ * Base class for enhancers that fire async actions (e.g. add-to-cart,
+ * accept-upsell) in response to user interaction.
+ *
+ * Extends `BaseEnhancer` and adds an `isProcessing` guard with run management
+ * on top of the inherited lifecycle. Use this base for any button/trigger that
+ * performs an asynchronous cart or order operation.
+ *
+ * Provides to subclasses:
+ * - `executeAction()` — runs an async action while rejecting concurrent calls
+ *   via the `isProcessing` guard, optionally toggling loading/disabled state,
+ *   and emitting `action:success` or `action:failed`.
+ * - `setLoadingState()` — toggles `loading`/`next-loading` classes, `aria-busy`,
+ *   and the native `disabled` flag on button/input/select elements.
+ * - `isActionProcessing()` — reports whether an action is currently in flight.
+ * - `setLoadingContent()` — sets or clears the `data-loading-text` attribute.
+ * - `debounceAction()` and `throttleAction()` — wrap a function to limit call
+ *   frequency.
+ *
+ * @remarks
+ * Inherits the `destroy()` cleanup contract from `BaseEnhancer`: subclasses
+ * overriding `destroy()` must call `super.destroy()` first.
+ */
 export abstract class BaseActionEnhancer extends BaseEnhancer {
   protected isProcessing = false;
   

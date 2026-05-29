@@ -7,6 +7,53 @@ import { acceptUpsell } from './AcceptUpsellEnhancer.handlers';
 import type { SelectorItem } from '@/types/global';
 import type { BundleLineItem, UpsellHandlerContext } from './AcceptUpsellEnhancer.types';
 
+/**
+ * Turns any element into a post-purchase upsell "accept" trigger.
+ *
+ * Activated by `data-next-action="accept-upsell"`. On click it adds one or more
+ * packages to the **existing order** (post-purchase API) — never to the cart —
+ * then optionally redirects. The package(s) are sourced one of three ways:
+ * - **Direct** — `data-next-package-id` fixes a single package.
+ * - **Upsell-selector-linked** — `data-next-selector-id` points at an upsell
+ *   `PackageSelectorEnhancer`; the button reads its current selection at click
+ *   time.
+ * - **Bundle-linked** — `data-next-upsell-action-for` points at a
+ *   `BundleSelectorEnhancer` by its `data-next-selector-id`; the button reads
+ *   that bundle's selected line items at click time.
+ *
+ * The button is only enabled while `orderStore.canAddUpsells()` is true and a
+ * package/selection/bundle is resolved; otherwise it stays `disabled`. After a
+ * bfcache restore (`pageshow` with `persisted`) the loading state is cleared and
+ * the button re-enabled.
+ *
+ * ## Attributes
+ *
+ * | Attribute | Type | Required | Default | Description |
+ * |---|---|---|---|---|
+ * | `data-next-action` | `"accept-upsell"` | yes | — | Activation attribute. |
+ * | `data-next-package-id` | `number` | conditional | — | Package `ref_id` to add. Used when not linked to a selector or bundle. |
+ * | `data-next-quantity` | `number` | no | `1` | Quantity to add for the direct package. |
+ * | `data-next-selector-id` | `string` | conditional | — | ID of an upsell `PackageSelectorEnhancer` to read the selection from. |
+ * | `data-next-upsell-action-for` | `string` | conditional | — | `data-next-selector-id` of a `BundleSelectorEnhancer` whose selected items are added. |
+ * | `data-next-url` | `string` | no | — | URL to navigate to after the upsell is accepted. |
+ *
+ * @example
+ * Direct accept of a fixed upsell package, then redirect:
+ * ```html
+ * <button data-next-action="accept-upsell" data-next-package-id="42"
+ *         data-next-url="/thank-you">
+ *   Yes, add this to my order
+ * </button>
+ * ```
+ *
+ * @example
+ * Accept the package currently selected in an upsell selector:
+ * ```html
+ * <button data-next-action="accept-upsell" data-next-selector-id="upsell-choice">
+ *   Add selected upgrade
+ * </button>
+ * ```
+ */
 export class AcceptUpsellEnhancer extends BaseActionEnhancer {
   private packageId?: number;
   private quantity = 1;

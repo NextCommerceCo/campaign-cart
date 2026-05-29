@@ -1,2 +1,9 @@
 export { campaignStore, useCampaignStore } from './campaignStore';
-export type { CampaignStore, CampaignState, VariantGroup } from './campaignStore.types';
+export type {
+  CampaignStore,
+  CampaignState,
+  VariantGroup,
+  CampaignItemsSlice,
+  CampaignVariantsSlice,
+  CampaignApiSlice,
+} from './campaignStore.types';

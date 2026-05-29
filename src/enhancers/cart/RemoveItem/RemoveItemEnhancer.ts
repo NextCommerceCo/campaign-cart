@@ -11,6 +11,43 @@ import {
 } from './RemoveItemEnhancer.renderer';
 import { handleClick } from './RemoveItemEnhancer.handlers';
 
+/**
+ * Removes a single line item from the cart on click.
+ *
+ * Activated by `data-next-remove-item`. It binds a click handler that removes
+ * the package identified by `data-package-id` from the cart, optionally behind a
+ * `confirm()` prompt. It subscribes to the cart store to reflect whether the
+ * item is currently in the cart (button enabled/disabled, `next-in-cart` state,
+ * quantity data) and shows brief removal feedback on the element.
+ *
+ * Typically auto-instantiated by `CartItemListEnhancer` on rendered items — do
+ * not manually instantiate inside an item template.
+ *
+ * ## Attributes
+ *
+ * | Attribute | Type | Required | Default | Description |
+ * |---|---|---|---|---|
+ * | `data-next-remove-item` | `string` | yes | — | Activation attribute. |
+ * | `data-package-id` | `number` | yes | — | Cart line package `ref_id` to remove. Throws if missing or non-numeric. |
+ * | `data-next-confirm` | `"true" \| "false"` | no | `false` | When `"true"`, shows a confirmation prompt before removing. |
+ * | `data-next-confirm-message` | `string` | no | `Are you sure you want to remove this item?` | Message shown in the confirmation prompt. |
+ *
+ * @example
+ * Plain remove button:
+ * ```html
+ * <button data-next-remove-item data-package-id="2">Remove</button>
+ * ```
+ *
+ * @example
+ * Remove with a confirmation prompt:
+ * ```html
+ * <button data-next-remove-item data-package-id="2"
+ *         data-next-confirm="true"
+ *         data-next-confirm-message="Remove this from your cart?">
+ *   Remove
+ * </button>
+ * ```
+ */
 export class RemoveItemEnhancer extends BaseCartEnhancer {
   private packageId!: number;
   private confirmRemoval = false;

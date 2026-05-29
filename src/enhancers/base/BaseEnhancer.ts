@@ -7,6 +7,31 @@ import { Logger, createLogger } from '@/utils/logger';
 import { EventBus } from '@/utils/events';
 import type { EventMap } from '@/types/global';
 
+/**
+ * Root abstract base class for all DOM-bound enhancers.
+ *
+ * Every concrete enhancer (and the specialized bases `BaseActionEnhancer` and
+ * `BaseCartEnhancer`) extends this class. It binds to a single `element`,
+ * exposes the `initialize()` → `update()` → `destroy()` lifecycle, and supplies
+ * the shared plumbing subclasses rely on:
+ *
+ * - Scoped `logger` (named after the subclass) and the singleton `eventBus`.
+ * - Event helpers `emit()` and `on()` for typed `EventMap` events.
+ * - Auto-cleaned store subscriptions via `subscribe()` — every subscription is
+ *   tracked and torn down in `destroy()`.
+ * - Attribute helpers `getAttribute()`, `getRequiredAttribute()` (throws when
+ *   missing), `hasAttribute()`, `setAttribute()`, `removeAttribute()`.
+ * - Class/state helpers `addClass()`, `removeClass()`, `toggleClass()`,
+ *   `setLoading()`, plus `updateTextContent()` and `updateInnerHTML()`.
+ * - Error handling via `handleError()`, which logs and emits `error:occurred`.
+ *
+ * Subclasses must implement `initialize()` and `update()`. Override
+ * `cleanupEventListeners()` to release any manually attached DOM listeners.
+ *
+ * @remarks
+ * Subclasses overriding `destroy()` must call `super.destroy()` first so the
+ * tracked store subscriptions and element event listeners are released.
+ */
 export abstract class BaseEnhancer {
   protected logger: Logger;
   protected eventBus: EventBus;

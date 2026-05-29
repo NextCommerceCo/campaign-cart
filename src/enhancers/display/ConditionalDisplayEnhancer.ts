@@ -19,6 +19,44 @@ import { useParameterStore } from '@/stores/parameterStore';
 import type { CartState } from '@/types/global';
 import type { Package } from '@/types/campaign';
 
+/**
+ * Shows or hides an element based on a boolean condition evaluated against store state.
+ *
+ * Activated by `data-next-show` or `data-next-hide`, whose value is a condition
+ * expression (e.g. `cart.hasItems`, `cart.total > 100`, `package.hasSavings`,
+ * `order.hasUpsells`, `param.seen == 'n'`, or logical combinations with `&&` /
+ * `||` / `!`). The expression is parsed by `AttributeParser.parseCondition`, then
+ * analysed to discover which domain it reads from — cart, package, selection,
+ * order, shipping, or URL params — and only the matching store(s) are subscribed
+ * to. When no domain is detected the enhancer defaults to the cart store.
+ *
+ * On every relevant state change it re-evaluates the condition and toggles the
+ * element's inline `display` style. `data-next-show` shows when the condition is
+ * true; `data-next-hide` hides when it is true. It also reflects state through the
+ * CSS classes `next-condition-met` / `next-condition-not-met` and
+ * `next-visible` / `next-hidden`. Package, selection, and shipping conditions
+ * resolve their context from the surrounding DOM (`data-next-package-id`,
+ * `data-next-selector-id`, `data-next-shipping-id`); selection conditions also
+ * listen for `selector:selection-changed` / `selector:item-selected` events.
+ *
+ * ## Attributes
+ *
+ * | Attribute | Type | Required | Default | Description |
+ * |---|---|---|---|---|
+ * | `data-next-show` | `string` | one of show/hide | — | Condition expression; element is shown when it evaluates true. |
+ * | `data-next-hide` | `string` | one of show/hide | — | Condition expression; element is hidden when it evaluates true. |
+ * | `data-next-selector-id` | `string` | no | — | Explicit selector id for `selection.*` conditions when not embedded in the path or inferable from DOM ancestry. |
+ *
+ * @example
+ * ```html
+ * <div data-next-show="cart.hasItems">You have items in your cart</div>
+ * ```
+ *
+ * @example
+ * ```html
+ * <div data-next-hide="cart.total > 100">Spend over $100 for free shipping</div>
+ * ```
+ */
 export class ConditionalDisplayEnhancer extends BaseEnhancer {
   private condition: any;
   private showCondition!: boolean;

@@ -31,6 +31,49 @@ export interface ProspectCart {
   cart_data?: any;
 }
 
+/**
+ * Captures an abandoned-cart "prospect" by creating a server-side cart as soon
+ * as a shopper supplies enough contact detail on the checkout form, so the
+ * order can be recovered later even if checkout is never completed.
+ *
+ * This is not registered in `AttributeScanner` — `CheckoutFormEnhancer`
+ * constructs it directly on the checkout `<form>` and calls `initialize()`. It
+ * scans its bound element for the email and phone inputs, then attaches blur/
+ * change triggers per the configured `triggerOn` mode (`emailEntry` by
+ * default). When the required contact fields (plus first/last name) validate,
+ * it builds a `CartBase` payload from `useCartStore` items, attribution from
+ * `useAttributionStore`, and currency from campaign/config, and POSTs it via the
+ * API client. The resulting cart is cached in `sessionStorage`
+ * (`next_prospect_cart`) for the configured timeout, and lifecycle events
+ * (`next:prospect-cart-created`, `-abandoned`, `-converted`) are dispatched on
+ * the element. It only ever creates one prospect cart per session and skips
+ * creation when the cart is empty.
+ *
+ * Configuration is read from this enhancer's bound element (the checkout form):
+ * a JSON blob in `data-prospect-config` is merged first, then individual
+ * attributes override specific keys.
+ *
+ * ## Attributes
+ *
+ * | Attribute | Type | Required | Default | Description |
+ * |---|---|---|---|---|
+ * | `data-prospect-config` | `JSON` | no | — | JSON object merged into the config (any `ProspectCartConfig` key). Invalid JSON is logged and ignored. |
+ * | `data-auto-create` | `boolean` | no | `true` | When `"false"`, disables all automatic triggers (manual creation only). |
+ * | `data-trigger-on` | `"formStart" \| "emailEntry" \| "phoneEntry" \| "emailAndPhone" \| "manual"` | no | `"emailEntry"` | Which interaction triggers cart creation. |
+ * | `data-email-field` | `string` | no | `"email"` | `name` of the email input to watch when no `data-next-checkout-field="email"` is found. |
+ * | `data-phone-field` | `string` | no | `"phone"` | `name` of the phone input to watch when no `data-next-checkout-field="phone"` is found. |
+ * | `data-min-phone-digits` | `number` | no | `7` | Minimum digit count for the fallback phone validity check (used when intl-tel-input is unavailable). Non-positive/invalid values are ignored. |
+ *
+ * @example
+ * ```html
+ * <form data-next-checkout="combo"
+ *       data-trigger-on="emailAndPhone"
+ *       data-min-phone-digits="8">
+ *   <input data-next-checkout-field="email" type="email" />
+ *   <input data-next-checkout-field="phone" type="tel" />
+ * </form>
+ * ```
+ */
 export class ProspectCartEnhancer extends BaseEnhancer {
   private config: ProspectCartConfig = {
     autoCreate: true,

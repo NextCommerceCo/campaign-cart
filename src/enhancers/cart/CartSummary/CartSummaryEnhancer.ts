@@ -210,6 +210,46 @@ import {
   updateStateClasses,
 } from './CartSummaryEnhancer.renderer';
 
+/**
+ * Renders a reactive cart summary block (totals, discounts, shipping, line lists).
+ *
+ * Activated by `data-next-cart-summary`. It subscribes to `useCartStore` and
+ * re-renders whenever totals, the API summary, item count, or calculating state
+ * change. With no markup it renders a built-in default summary; if the element
+ * contains a direct `<template>` child, that template's inner HTML is used
+ * instead and `{...}` variables are interpolated (see the file-level comment
+ * above for the full variable, state-class, and summary-list reference).
+ *
+ * Like `CartItemListEnhancer`, this enhancer replaces its `innerHTML` on every
+ * update — do not attach listeners directly to its rendered children.
+ *
+ * ## Attributes
+ *
+ * | Attribute | Type | Required | Default | Description |
+ * |---|---|---|---|---|
+ * | `data-next-cart-summary` | `string` | yes | — | Activation attribute (marks the summary container). |
+ *
+ * The summary's markup is configured via a child `<template>` element (and the
+ * `data-summary-*` / `data-line-discounts` list containers inside it), not via
+ * attributes on the host element. See the file-level documentation above.
+ *
+ * @example
+ * Minimal — built-in default summary:
+ * ```html
+ * <div data-next-cart-summary></div>
+ * ```
+ *
+ * @example
+ * Custom template:
+ * ```html
+ * <div data-next-cart-summary>
+ *   <template>
+ *     <div class="row"><span>Subtotal</span><span>{subtotal}</span></div>
+ *     <div class="row"><span>Total</span><span>{total}</span></div>
+ *   </template>
+ * </div>
+ * ```
+ */
 export class CartSummaryEnhancer extends BaseEnhancer {
   private customTemplate?: string;
   private cartState?: CartState;

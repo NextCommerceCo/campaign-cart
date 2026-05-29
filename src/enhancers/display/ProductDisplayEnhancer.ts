@@ -13,6 +13,59 @@ import { useCampaignStore } from '@/stores/campaignStore';
 import { useCartStore } from '@/stores/cartStore';
 import type { Package } from '@/types/global';
 
+/**
+ * Renders a single value from a campaign package (or campaign-level data) into an element.
+ *
+ * Activated by `data-next-display="package.*"` or `data-next-display="campaign.*"`,
+ * routed here by `AttributeScanner`. It resolves the target package from the
+ * display path (e.g. `package.2.price`) or from surrounding DOM context
+ * (`data-next-package-id` via `DisplayContextProvider` / `PackageContextResolver`),
+ * subscribes to `useCampaignStore` for package data and to `useCartStore` so
+ * discount-affected prices re-render, then writes the formatted value through the
+ * `BaseDisplayEnhancer` pipeline.
+ *
+ * Beyond raw package fields, it computes pricing metrics via `PriceCalculator`:
+ * unit and total savings (`savingsAmount`, `savingsPercentage`, `unitSavings`),
+ * retail comparisons (`hasRetailPrice`, `unitRetailPrice`), discount-adjusted
+ * prices (`discountedPrice`, `finalPrice`, `finalPriceTotal`), combined retail +
+ * coupon savings (`totalSavingsAmount`, `totalSavingsPercentage`), and boolean
+ * helpers (`hasSavings`, `isBundle`, `isRecurring`). `campaign.*` paths expose
+ * `name`, `currency`, and `language`. When `data-next-multiply-quantity` is set,
+ * price-type values are multiplied by the current quantity, which is tracked from
+ * `upsell:quantity-changed` events (optionally scoped by
+ * `data-next-quantity-selector-id`). Image elements get their `src` set; inputs
+ * get their `value` set; a `data-container="true"` ancestor is hidden/shown
+ * alongside the element.
+ *
+ * ## Attributes
+ *
+ * | Attribute | Type | Required | Default | Description |
+ * |---|---|---|---|---|
+ * | `data-next-display` | `string` | yes | — | Package/campaign property path, e.g. `package.price` or `campaign.name`. |
+ * | `data-next-multiply-quantity` | boolean (presence) | no | `false` | Multiplies price-type values by the current quantity. |
+ * | `data-next-quantity-selector-id` | `string` | no | — | Scopes quantity tracking to a specific selector/upsell when multiplying. |
+ * | `data-next-format` / `data-format` | `"currency" \| "number" \| "boolean" \| "date" \| "percentage" \| "auto"` | no | auto-detected | Forces value formatting. |
+ * | `data-hide-if-zero` | `"true" \| "false"` | no | `false` | Hides the element when the value is zero. |
+ * | `data-hide-if-false` | `"true" \| "false"` | no | `false` | Hides the element when the value is falsy. |
+ * | `data-hide-zero-cents` | `"true" \| "false"` | no | `false` | Drops `.00` cents from formatted currency. |
+ * | `data-divide-by` | `number` | no | — | Divides a numeric value before formatting. |
+ * | `data-multiply-by` | `number` | no | — | Multiplies a numeric value before formatting. |
+ *
+ * Note: the package context is usually supplied by a `data-next-package-id`
+ * ancestor rather than an attribute on this element.
+ *
+ * @example
+ * ```html
+ * <div data-next-package-id="2">
+ *   <span data-next-display="package.price"></span>
+ * </div>
+ * ```
+ *
+ * @example
+ * ```html
+ * <span data-next-display="package.2.savingsPercentage"></span>
+ * ```
+ */
 export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
   private campaignState?: any;
   private packageId?: number;

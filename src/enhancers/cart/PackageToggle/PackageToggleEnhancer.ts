@@ -140,6 +140,60 @@ import {
   handleSyncUpdate,
 } from './PackageToggleEnhancer.handlers';
 
+/**
+ * Manages independently toggleable package cards (any combination can be active).
+ *
+ * Activated by `data-next-package-toggle`. Each `[data-next-toggle-card]` child
+ * maps to one package; clicking a card adds its package to the cart, clicking
+ * again removes it — unlike `PackageSelectorEnhancer`, multiple toggles can be
+ * active at once. The attribute can also be placed directly on a button/element
+ * (single-element mode) when it carries `data-next-package-id`. Cart membership
+ * is reflected via `next-in-cart` / `next-not-in-cart` (and `next-selected` /
+ * `next-active` aliases). When `data-next-upsell-context` is present, clicks add
+ * to the order rather than the cart. The full card, price-slot, auto-render, CSS
+ * class, and event reference lives in the file-level comment above.
+ *
+ * For multi-package bundles use `BundleSelectorEnhancer` instead — toggles are
+ * not atomic across packages.
+ *
+ * ## Attributes
+ *
+ * Read on the toggle container (or the single toggle element). Card-level
+ * attributes (`data-next-toggle-card`, `data-next-package-id`,
+ * `data-next-selected`, `data-next-quantity`, `data-next-package-sync`,
+ * `data-next-is-upsell`, `data-add-text`, `data-remove-text`) are set on each
+ * card — in single-element mode they may sit on the toggle element itself. See
+ * the file-level documentation above.
+ *
+ * | Attribute | Type | Required | Default | Description |
+ * |---|---|---|---|---|
+ * | `data-next-package-toggle` | `string` | yes | — | Activation attribute (container or single toggle element). |
+ * | `data-next-include-shipping` | `"true" \| "false"` | no | `false` | Include shipping when fetching backend prices. |
+ * | `data-next-upsell-context` | `boolean` (presence) | no | absent | Post-purchase mode: clicks add to the order, not the cart. |
+ * | `data-next-toggle-template-id` | `string` | no | — | ID of a `<template>` whose inner HTML is the card template (auto-render). |
+ * | `data-next-toggle-template` | `string` | no | — | Inline card template HTML (auto-render). |
+ * | `data-next-packages` | `JSON array` | no | — | Package definitions rendered into cards using the template. |
+ *
+ * @example
+ * Single-element toggle button:
+ * ```html
+ * <button data-next-package-toggle data-next-package-id="123"
+ *         data-add-text="Add to Cart" data-remove-text="✓ In Cart">
+ *   Add to Cart
+ * </button>
+ * ```
+ *
+ * @example
+ * Container with toggle cards:
+ * ```html
+ * <div data-next-package-toggle>
+ *   <div data-next-toggle-card data-next-package-id="101" data-next-selected="true">
+ *     <span>Extra Battery</span>
+ *     <span data-next-toggle-price></span>
+ *   </div>
+ * </div>
+ * ```
+ */
 export class PackageToggleEnhancer extends BaseEnhancer {
   private static _instances = new Set<PackageToggleEnhancer>();
 
