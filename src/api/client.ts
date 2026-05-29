@@ -1,7 +1,3 @@
-/**
- * API Client for NextCommerce Campaigns API
- */
-
 import type {
   Campaign,
   Cart,
@@ -15,6 +11,20 @@ import type {
 } from '@/types/api';
 import { Logger, createLogger } from '@/utils/logger';
 
+/**
+ * Thin, store-free HTTP client for the NextCommerce Campaigns API.
+ *
+ * `ApiClient` wraps the REST endpoints (campaigns, carts, orders, prospect
+ * carts, address autocomplete) with auth, JSON encoding, rate-limit handling,
+ * and abort support. It holds no application state — the SDK's Zustand stores
+ * call it and own the resulting data. Construct one with your public API key.
+ *
+ * @example
+ * ```ts
+ * const client = new ApiClient('pk_live_...');
+ * const campaign = await client.getCampaigns('USD');
+ * ```
+ */
 export class ApiClient {
   private baseURL = 'https://campaigns.apps.29next.com';
   private apiKey: string;
@@ -26,12 +36,42 @@ export class ApiClient {
   }
 
   // Campaign endpoints
+  /**
+   * Fetches the campaign for the configured API key, including its packages,
+   * offers, and shipping methods.
+   *
+   * @param currency - Optional ISO 4217 code (e.g. `'USD'`) to price the
+   *                   campaign in. Defaults to the campaign's base currency.
+   * @returns The campaign data.
+   *
+   * @example
+   * ```ts
+   * const campaign = await client.getCampaigns('EUR');
+   * console.log(campaign.packages.length);
+   * ```
+   */
   public async getCampaigns(currency?: string): Promise<Campaign> {
     const queryString = currency ? `?currency=${currency}` : '';
     return this.request<Campaign>(`/api/v1/campaigns/${queryString}`);
   }
 
   // Cart endpoints
+  /**
+   * Creates a server-side cart from a set of lines.
+   *
+   * @param data - The cart payload (lines and optional attribution), plus an
+   *               optional `currency` ISO 4217 code.
+   * @returns The created cart, including server-calculated totals.
+   *
+   * @example
+   * ```ts
+   * const cart = await client.createCart({
+   *   lines: [{ package_id: 2, quantity: 1 }],
+   *   user: { first_name: 'Ada', last_name: 'Lovelace', language: 'en' },
+   *   currency: 'USD',
+   * });
+   * ```
+   */
   public async createCart(
     data: CartBase & { currency?: string }
   ): Promise<Cart> {
@@ -41,6 +81,26 @@ export class ApiClient {
     });
   }
 
+  /**
+   * Calculates cart totals (subtotal, discounts, shipping, tax) server-side
+   * without creating a persistent cart. Useful for live previews as the user
+   * changes lines, quantities, or vouchers.
+   *
+   * @param data - The lines, optional vouchers, currency, and shipping method.
+   * @param signal - Optional `AbortSignal` to cancel a superseded request.
+   * @param options - Set `upsell: true` to price the summary as a
+   *                  post-purchase upsell.
+   * @returns The calculated summary.
+   *
+   * @example
+   * ```ts
+   * const controller = new AbortController();
+   * const summary = await client.calculateSummary(
+   *   { lines: [{ package_id: 2, quantity: 2 }], vouchers: ['SAVE10'] },
+   *   controller.signal
+   * );
+   * ```
+   */
   public async calculateSummary(
     data: CartCalculateSummary,
     signal?: AbortSignal,
@@ -57,6 +117,25 @@ export class ApiClient {
   }
 
   // Order endpoints
+  /**
+   * Creates an order from the cart lines and checkout details. This is the
+   * call that takes payment and produces a confirmable order.
+   *
+   * @param data - The full order payload: lines, addresses, shipping method,
+   *               payment detail, and `success_url` / `payment_failed_url`.
+   * @returns The created order, including its `ref_id` and line items.
+   *
+   * @example
+   * ```ts
+   * const order = await client.createOrder({
+   *   lines: [{ package_id: 2, quantity: 1 }],
+   *   shipping_method: 1,
+   *   payment_detail: { payment_method: 'card_token', card_token: 'tok_...' },
+   *   success_url: 'https://shop.example/receipt',
+   * });
+   * console.log(order.ref_id);
+   * ```
+   */
   public async createOrder(
     data: CreateOrder & { currency?: string }
   ): Promise<Order> {
@@ -66,10 +145,35 @@ export class ApiClient {
     });
   }
 
+  /**
+   * Retrieves an existing order by its reference id.
+   *
+   * @param refId - The order's `ref_id` returned by {@link ApiClient.createOrder}.
+   * @returns The order.
+   *
+   * @example
+   * ```ts
+   * const order = await client.getOrder(order.ref_id);
+   * ```
+   */
   public async getOrder(refId: string): Promise<Order> {
     return this.request<Order>(`/api/v1/orders/${refId}/`);
   }
 
+  /**
+   * Adds post-purchase upsell line(s) to an existing order.
+   *
+   * @param refId - The order's `ref_id`.
+   * @param data - The upsell lines to add (and optional payment detail).
+   * @returns The updated order, with the new upsell lines marked `is_upsell`.
+   *
+   * @example
+   * ```ts
+   * const updated = await client.addUpsell(order.ref_id, {
+   *   lines: [{ package_id: 7, quantity: 1 }],
+   * });
+   * ```
+   */
   public async addUpsell(refId: string, data: AddUpsellLine): Promise<Order> {
     return this.request<Order>(`/api/v1/orders/${refId}/upsells/`, {
       method: 'POST',
@@ -78,6 +182,14 @@ export class ApiClient {
   }
 
   // Prospect Cart endpoints
+  /**
+   * Creates a prospect (abandoned-cart) record server-side from partial shopper
+   * detail, before a real order exists. Used to capture leads for
+   * cart-abandonment flows.
+   *
+   * @param data - The prospect cart payload (contact fields and cart lines).
+   * @returns The created prospect cart, including its id.
+   */
   public async createProspectCart(data: any): Promise<any> {
     return this.request('/api/v1/prospect-carts/', {
       method: 'POST',
@@ -85,6 +197,14 @@ export class ApiClient {
     });
   }
 
+  /**
+   * Updates an existing prospect cart — e.g. as the shopper fills in more
+   * fields or changes their cart.
+   *
+   * @param cartId - The prospect cart id.
+   * @param data - The fields to update.
+   * @returns The updated prospect cart.
+   */
   public async updateProspectCart(cartId: string, data: any): Promise<any> {
     return this.request(`/api/v1/prospect-carts/${cartId}/`, {
       method: 'PATCH',
@@ -92,22 +212,55 @@ export class ApiClient {
     });
   }
 
+  /**
+   * Retrieves an existing prospect cart by id.
+   *
+   * @param cartId - The prospect cart id.
+   * @returns The prospect cart.
+   */
   public async getProspectCart(cartId: string): Promise<any> {
     return this.request(`/api/v1/prospect-carts/${cartId}/`);
   }
 
+  /**
+   * Marks a prospect cart as abandoned, signalling the shopper did not convert.
+   *
+   * @param cartId - The prospect cart id.
+   * @returns The updated prospect cart.
+   */
   public async abandonProspectCart(cartId: string): Promise<any> {
     return this.request(`/api/v1/prospect-carts/${cartId}/abandon/`, {
       method: 'POST',
     });
   }
 
+  /**
+   * Marks a prospect cart as converted once the shopper completes an order.
+   *
+   * @param cartId - The prospect cart id.
+   * @returns The updated prospect cart.
+   */
   public async convertProspectCart(cartId: string): Promise<any> {
     return this.request(`/api/v1/prospect-carts/${cartId}/convert/`, {
       method: 'POST',
     });
   }
 
+  /**
+   * Fetches address autocomplete suggestions for a partial query, via
+   * NextCommerce's address lookup endpoint.
+   *
+   * @param query_text - The partial address the shopper has typed.
+   * @param country - Optional ISO country code to bias results.
+   * @param language - Optional language code for localized results.
+   * @param signal - Optional `AbortSignal` to cancel a superseded request.
+   * @returns The autocomplete suggestions.
+   *
+   * @example
+   * ```ts
+   * const results = await client.getAddressesAutocomplete('1600 Amphi', 'US');
+   * ```
+   */
   public async getAddressesAutocomplete(
     query_text: string,
     country?: string,
@@ -237,12 +390,20 @@ export class ApiClient {
     }
   }
 
-  // Update API key
+  /**
+   * Replaces the API key used for subsequent requests.
+   *
+   * @param apiKey - The new public API key.
+   */
   public setApiKey(apiKey: string): void {
     this.apiKey = apiKey;
   }
 
-  // Get current API key
+  /**
+   * Returns the API key currently configured on this client.
+   *
+   * @returns The public API key.
+   */
   public getApiKey(): string {
     return this.apiKey;
   }

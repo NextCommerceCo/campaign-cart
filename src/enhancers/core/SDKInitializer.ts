@@ -19,6 +19,23 @@ import { ApiClient } from '@/api/client';
 import { CART_STORAGE_KEY } from '@/utils/storage';
 import { CountryService, Country, LocationData } from '@/utils/countryService';
 
+/**
+ * Bootstraps the SDK on the page.
+ *
+ * A static orchestrator that runs once on load: it loads configuration, scans
+ * the DOM for `data-next-*` attributes and instantiates the matching enhancers,
+ * exposes the {@link NextCommerce} singleton on `window.next`, and flushes the
+ * `window.nextReady` callback queue. Page authors normally never call this
+ * directly — the bundle invokes {@link SDKInitializer.initialize} automatically
+ * once the DOM is ready.
+ *
+ * @example
+ * ```ts
+ * // Manual initialization (rarely needed — the SDK auto-initializes on load):
+ * await SDKInitializer.initialize();
+ * console.log(SDKInitializer.isInitialized()); // true
+ * ```
+ */
 export class SDKInitializer {
   private static logger = createLogger('SDKInitializer');
   private static initialized = false;

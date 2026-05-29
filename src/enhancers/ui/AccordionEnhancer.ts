@@ -27,6 +27,43 @@ interface AccordionConfig {
   animationDuration?: number;
 }
 
+/**
+ * Turns a container into a collapsible accordion with smooth height animation.
+ *
+ * Activated by `data-next-accordion="<id>"` on the container. Within that
+ * container it wires up children marked with `data-next-accordion-trigger`,
+ * `data-next-accordion-panel`, and `data-next-accordion-text` (each matching
+ * the same `<id>`). Clicking or pressing Enter/Space on a trigger toggles the
+ * panel open/closed, animating its height, swapping the trigger label between
+ * the open/close text, and maintaining ARIA attributes (`aria-expanded`,
+ * `aria-controls`). The initial open/closed state is detected from the DOM
+ * (presence of the toggle class) or falls back to the configured initial
+ * state. Emits `accordion:toggled`, `accordion:opened`, and
+ * `accordion:closed` on the EventBus.
+ *
+ * ## Attributes
+ *
+ * | Attribute | Type | Required | Default | Description |
+ * |---|---|---|---|---|
+ * | `data-next-accordion` | `string` | yes | — | Activation attribute. The accordion ID; trigger/panel/text children must reference the same ID. |
+ * | `data-open-text` | `string` | no | `Hide` | Trigger label text shown while the accordion is open. |
+ * | `data-close-text` | `string` | no | `Show` | Trigger label text shown while the accordion is closed. |
+ * | `data-toggle-class` | `string` | no | `next-expanded` | CSS class applied to the container and panels when open. |
+ * | `data-initial-state` | `"open" \| "closed"` | no | `closed` | Initial state used when the DOM does not already show the toggle class. |
+ * | `data-animation-duration` | `number` | no | `300` | Height-animation duration in milliseconds. |
+ *
+ * @example
+ * ```html
+ * <div data-next-accordion="order-summary"
+ *      data-open-text="Hide Order Summary"
+ *      data-close-text="Show Order Summary">
+ *   <div data-next-accordion-trigger="order-summary">
+ *     <span data-next-accordion-text="order-summary">Show Order Summary</span>
+ *   </div>
+ *   <div data-next-accordion-panel="order-summary">Content here</div>
+ * </div>
+ * ```
+ */
 export class AccordionEnhancer extends BaseEnhancer {
   static selector = '[data-next-accordion]';
   

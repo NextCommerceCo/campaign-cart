@@ -11,15 +11,35 @@ export interface AddressAutocompleteOptions {
 }
 
 /**
- * Orchestrates address autocomplete providers (NextCommerce / Google Maps).
+ * Wires address-field autocomplete into the checkout form using one of two
+ * providers: Google Maps Places or NextCommerce's own address lookup.
  *
- * Usage:
- *   const enhancer = new AddressAutocompleteEnhancer({ fields, billingFields, apiClient, ... });
- *   await enhancer.initialize({ enableNextCommerce: true, enableGoogleMaps: false });
- *   // Call enhancer.destroy() when the checkout form is torn down.
+ * This is not a `data-next-*` enhancer — it has no activation attribute and is
+ * not registered in `AttributeScanner`. `CheckoutFormEnhancer` constructs it
+ * directly, passing in the already-scanned shipping/billing field maps, and
+ * decides which providers to enable from SDK config (`googleMapsConfig` and
+ * `addressConfig.enableAutocomplete`). When both are enabled Google Maps wins.
+ * Either provider is loaded lazily on the first `focus` of the `address1` (or
+ * `billing-address1`) input, so the autocomplete script is never fetched until
+ * the shopper actually starts entering an address. On selection it fills the
+ * mapped address fields and emits `address:autocomplete-filled` so the form can
+ * reveal its location (city/state/zip) fields.
  *
- * Provider priority: Google Maps > NextCommerce.
- * Both providers load lazily on first focus of an address field.
+ * Configuration comes entirely from constructor dependencies and the
+ * `initialize` options object — it reads no attributes off any DOM element.
+ *
+ * @example
+ * ```ts
+ * const autocomplete = new AddressAutocompleteEnhancer({
+ *   fields,
+ *   billingFields,
+ *   apiClient,
+ *   getDetectedCountryCode: () => 'US',
+ *   getHasTrackedShippingInfo: () => false,
+ *   setHasTrackedShippingInfo: () => {},
+ * });
+ * await autocomplete.initialize({ enableNextCommerce: true, enableGoogleMaps: false });
+ * ```
  */
 export class AddressAutocompleteEnhancer {
   private ctx: AutocompleteContext;

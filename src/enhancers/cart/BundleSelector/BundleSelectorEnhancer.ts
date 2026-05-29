@@ -54,6 +54,59 @@ import {
 } from './BundleSelectorEnhancer.state';
 import { setupQuantityControls } from '@/enhancers/cart/shared/quantityControls';
 
+/**
+ * Lets a visitor pick one named bundle (a fixed set of packages + quantities).
+ *
+ * Activated by `data-next-bundle-selector`. Each `[data-next-bundle-card]` child
+ * declares a bundle via `data-next-bundle-id` and a `data-next-bundle-items`
+ * JSON array. In **swap** mode (default) selecting a bundle atomically replaces
+ * the previously selected bundle's cart items with the new bundle's items,
+ * leaving unrelated cart items untouched; in **select** mode it only tracks the
+ * selection. Vouchers declared per card via `data-next-bundle-vouchers` are
+ * applied/removed automatically with the selection — do not manage them through
+ * `CouponEnhancer`. When `data-next-upsell-context` is present the enhancer is
+ * forced into select mode with no cart writes. Bundles support per-slot variant
+ * selection and quantity controls; see the sibling renderer/handlers files for
+ * the full slot and variant template model.
+ *
+ * Use this rather than multiple `PackageToggleEnhancer` instances for any
+ * multi-package bundle — toggles are not atomic and cannot cleanly swap bundles.
+ *
+ * ## Attributes
+ *
+ * Read on the bundle-selector container (the bound element). Card-level
+ * attributes (`data-next-bundle-card`, `data-next-bundle-id`,
+ * `data-next-bundle-items`, `data-next-bundle-name`, `data-next-bundle-vouchers`,
+ * `data-next-selected`) are set on each card. `data-next-class-{key}` overrides
+ * individual managed class names. See the sibling files for the full reference.
+ *
+ * | Attribute | Type | Required | Default | Description |
+ * |---|---|---|---|---|
+ * | `data-next-bundle-selector` | `string` | yes | — | Activation attribute (marks the container). |
+ * | `data-next-selector-id` | `string` | no | — | Links external slots / quantity containers and identifies the selector to other enhancers. |
+ * | `data-next-selection-mode` | `"swap" \| "select"` | no | `"swap"` | `swap` replaces cart items atomically on selection; `select` only tracks selection. |
+ * | `data-next-include-shipping` | `"true" \| "false"` | no | `false` | Include shipping when fetching backend prices. |
+ * | `data-next-upsell-context` | `boolean` (presence) | no | absent | Post-purchase mode: forces select mode and disables cart writes. |
+ * | `data-next-bundle-template-id` | `string` | no | — | ID of a `<template>` whose inner HTML is the card template (auto-render). |
+ * | `data-next-bundle-template` | `string` | no | — | Inline card template HTML (auto-render). |
+ * | `data-next-bundle-slot-template-id` | `string` | no | — | ID of a `<template>` supplying the per-slot template. |
+ * | `data-next-bundle-slot-template` | `string` | no | — | Inline per-slot template HTML. |
+ * | `data-next-variant-option-template-id` | `string` | no | — | ID of a `<template>` for a single variant option. |
+ * | `data-next-variant-selector-template-id` | `string` | no | — | ID of a `<template>` for a variant selector. |
+ * | `data-next-bundles` | `JSON array` | no | — | Bundle definitions rendered into cards using the template. |
+ * | `data-next-class-{key}` | `string` | no | (built-in) | Overrides a managed CSS class name (e.g. `data-next-class-selected`). |
+ *
+ * @example
+ * Two static bundle cards in swap mode:
+ * ```html
+ * <div data-next-bundle-selector data-next-selector-id="kit">
+ *   <div data-next-bundle-card data-next-bundle-id="starter" data-next-selected="true"
+ *        data-next-bundle-items='[{"packageId":10,"quantity":1}]'>Starter</div>
+ *   <div data-next-bundle-card data-next-bundle-id="pro"
+ *        data-next-bundle-items='[{"packageId":11,"quantity":2}]'>Pro</div>
+ * </div>
+ * ```
+ */
 export class BundleSelectorEnhancer extends BaseEnhancer {
   private static readonly _instances = new Set<BundleSelectorEnhancer>();
 

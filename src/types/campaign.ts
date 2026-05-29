@@ -2,6 +2,7 @@
  * Campaign-specific type definitions
  */
 
+/** Top-level campaign configuration — currency, language, packages, shipping, offers, and enabled payment methods. */
 export interface Campaign {
   /** Active currency for the campaign as an ISO 4217 code (e.g. `'USD'`). */
   currency: string;
@@ -27,6 +28,7 @@ export interface Campaign {
   available_payment_methods?: Array<{ code: string; label: string }>;
 }
 
+/** A single attribute (e.g. color, size) that helps define a product variant. */
 export interface VariantAttribute {
   /** Machine-readable attribute key (e.g. `'color'`, `'size'`). */
   code: string;
@@ -36,6 +38,7 @@ export interface VariantAttribute {
   value: string;
 }
 
+/** A specific purchasable variation of a product, distinguished by its attribute values. */
 export interface ProductVariant {
   /** Variant ID. */
   id: number;
@@ -47,6 +50,7 @@ export interface ProductVariant {
   sku?: string | null;
 }
 
+/** A sellable product and the variant tied to a package, including its purchase and inventory availability. */
 export interface Product {
   /** Product ID. */
   id: number;
@@ -60,6 +64,7 @@ export interface Product {
   inventory_availability: 'untracked' | 'tracked' | 'out_of_stock' | string;
 }
 
+/** A purchasable bundle of one or more product units with its own pricing, quantity, and optional recurring billing. */
 export interface Package {
   /** Unique package identifier used throughout the SDK (e.g. in `data-next-package-id`). */
   ref_id: number;
@@ -109,6 +114,7 @@ export interface Package {
   product_variant_attribute_values?: VariantAttribute[];
 }
 
+/** A shipping method a shopper can choose at checkout, with its identifier, code, and price. */
 export interface ShippingOption {
   /** Unique shipping method ID used when selecting a method at checkout. */
   ref_id: number;

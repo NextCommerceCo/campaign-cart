@@ -1,8 +1,3 @@
-/**
- * Main SDK class providing programmatic API access
- * This is the public interface for advanced users who need direct access to SDK functionality
- */
-
 declare global {
   interface Window {
     __NEXT_SDK_VERSION__?: string;
@@ -27,6 +22,28 @@ import { EventBus } from '@/utils/events';
 import { Logger } from '@/utils/logger';
 import { ApiClient } from '@/api/client';
 
+/**
+ * Programmatic entry point to the SDK.
+ *
+ * `NextCommerce` is the public façade that page authors use to drive the cart,
+ * read campaign data, register event/callback handlers, apply coupons, and add
+ * post-purchase upsells without touching the underlying stores directly. It is a
+ * singleton: at runtime the SDK assigns the instance to `window.next`, so most
+ * code never calls {@link NextCommerce.getInstance} itself.
+ *
+ * @remarks
+ * Cart-mutating methods ({@link NextCommerce.addItem | addItem},
+ * {@link NextCommerce.removeItem | removeItem}, etc.) are async — they resolve
+ * once the cart store has applied the change and recalculated totals.
+ *
+ * @example
+ * Access the singleton on the page and add an item to the cart:
+ * ```ts
+ * window.nextReady.push(async (next) => {
+ *   await next.addItem({ packageId: 2, quantity: 1 });
+ * });
+ * ```
+ */
 export class NextCommerce {
   private static instance: NextCommerce;
   private logger: Logger;
@@ -39,6 +56,23 @@ export class NextCommerce {
     this.eventBus = EventBus.getInstance();
   }
 
+  /**
+   * Returns the shared {@link NextCommerce} singleton, creating it on first call.
+   *
+   * At runtime the SDK assigns this instance to `window.next`, so page code
+   * usually reads `window.next` (or queues via `window.nextReady.push`) rather
+   * than calling `getInstance` directly. Use it from TypeScript modules that
+   * need a typed reference.
+   *
+   * @returns The singleton SDK instance.
+   *
+   * @example
+   * ```ts
+   * import { NextCommerce } from '@NextCommerce/campaign-cart';
+   * const next = NextCommerce.getInstance();
+   * await next.addItem({ packageId: 2 });
+   * ```
+   */
   public static getInstance(): NextCommerce {
     if (!NextCommerce.instance) {
       NextCommerce.instance = new NextCommerce();
@@ -47,6 +81,20 @@ export class NextCommerce {
   }
 
   // Cart manipulation methods
+  /**
+   * Checks whether a package is currently in the cart.
+   *
+   * @param options - The package to look for.
+   * @param options.packageId - Campaign package id. Returns `false` if omitted.
+   * @returns `true` if a line for the package exists in the cart.
+   *
+   * @example
+   * ```ts
+   * if (next.hasItemInCart({ packageId: 2 })) {
+   *   console.log('Already in cart');
+   * }
+   * ```
+   */
   public hasItemInCart(options: { packageId?: number }): boolean {
     const cartStore = useCartStore.getState();
 
@@ -57,6 +105,19 @@ export class NextCommerce {
     return false;
   }
 
+  /**
+   * Adds a package to the cart, or increases its quantity if already present.
+   *
+   * @param options - The package to add.
+   * @param options.packageId - Campaign package id to add. No-op if omitted.
+   * @param options.quantity - Units to add. Defaults to `1`.
+   * @returns Resolves once the cart store has applied the change.
+   *
+   * @example
+   * ```ts
+   * await next.addItem({ packageId: 2, quantity: 2 });
+   * ```
+   */
   public async addItem(options: {
     packageId?: number;
     quantity?: number;
@@ -73,6 +134,18 @@ export class NextCommerce {
     }
   }
 
+  /**
+   * Removes a package from the cart entirely, regardless of its quantity.
+   *
+   * @param options - The package to remove.
+   * @param options.packageId - Campaign package id to remove. No-op if omitted.
+   * @returns Resolves once the cart store has applied the change.
+   *
+   * @example
+   * ```ts
+   * await next.removeItem({ packageId: 2 });
+   * ```
+   */
   public async removeItem(options: { packageId?: number }): Promise<void> {
     const cartStore = useCartStore.getState();
 
@@ -81,6 +154,19 @@ export class NextCommerce {
     }
   }
 
+  /**
+   * Sets the exact quantity for a package already in the cart.
+   *
+   * @param options - The package and its new quantity.
+   * @param options.packageId - Campaign package id. No-op if omitted.
+   * @param options.quantity - The absolute quantity to set (not a delta).
+   * @returns Resolves once the cart store has applied the change.
+   *
+   * @example
+   * ```ts
+   * await next.updateQuantity({ packageId: 2, quantity: 3 });
+   * ```
+   */
   public async updateQuantity(options: {
     packageId?: number;
     quantity: number;
@@ -92,11 +178,35 @@ export class NextCommerce {
     }
   }
 
+  /**
+   * Removes every line from the cart.
+   *
+   * @returns Resolves once the cart store is empty.
+   *
+   * @example
+   * ```ts
+   * await next.clearCart();
+   * ```
+   */
   public async clearCart(): Promise<void> {
     const cartStore = useCartStore.getState();
     await cartStore.clear();
   }
 
+  /**
+   * Replaces the entire cart contents with the given items in one operation.
+   *
+   * @param items - The full set of lines the cart should contain afterwards.
+   * @returns Resolves once the swap is complete.
+   *
+   * @example
+   * ```ts
+   * await next.swapCart([
+   *   { packageId: 2, quantity: 1 },
+   *   { packageId: 5, quantity: 2 },
+   * ]);
+   * ```
+   */
   public async swapCart(
     items: Array<{ packageId: number; quantity: number }>
   ): Promise<void> {
@@ -123,6 +233,18 @@ export class NextCommerce {
   }
 
   // Cart data access
+  /**
+   * Returns a snapshot of the current cart: enriched line items, totals, the
+   * active campaign data, and any applied vouchers.
+   *
+   * @returns The cart snapshot used by callbacks and analytics.
+   *
+   * @example
+   * ```ts
+   * const { cartLines, cartTotals } = next.getCartData();
+   * console.log(`${cartLines.length} lines, total ${cartTotals.total}`);
+   * ```
+   */
   public getCartData(): CallbackData {
     const cartStore = useCartStore.getState();
     const campaignStore = useCampaignStore.getState();
@@ -142,6 +264,18 @@ export class NextCommerce {
     };
   }
 
+  /**
+   * Returns just the cart totals (subtotal, total, discounts, shipping method),
+   * without the line items or campaign data that {@link NextCommerce.getCartData}
+   * includes.
+   *
+   * @returns The current cart totals.
+   *
+   * @example
+   * ```ts
+   * const { subtotal, total, totalDiscount } = next.getCartTotals();
+   * ```
+   */
   public getCartTotals() {
     const cartStore = useCartStore.getState();
     return {
@@ -154,28 +288,87 @@ export class NextCommerce {
     };
   }
 
+  /**
+   * Returns the total number of units across all cart lines.
+   *
+   * @returns The summed quantity of every line in the cart.
+   *
+   * @example
+   * ```ts
+   * badge.textContent = String(next.getCartCount());
+   * ```
+   */
   public getCartCount(): number {
     const cartStore = useCartStore.getState();
     return cartStore.totalQuantity;
   }
 
   // Campaign data access
+  /**
+   * Returns the loaded campaign, or `null` if it has not loaded yet.
+   *
+   * @returns The campaign data, or `null` before the campaign has loaded.
+   *
+   * @example
+   * ```ts
+   * const campaign = next.getCampaignData();
+   * if (campaign) console.log(campaign.name);
+   * ```
+   */
   public getCampaignData(): Campaign | null {
     const campaignStore = useCampaignStore.getState();
     return campaignStore.data;
   }
 
+  /**
+   * Looks up a single package from the loaded campaign by its id.
+   *
+   * @param id - The campaign package id.
+   * @returns The package, or `null` if no package with that id exists.
+   *
+   * @example
+   * ```ts
+   * const pkg = next.getPackage(2);
+   * if (pkg) console.log(pkg.price);
+   * ```
+   */
   public getPackage(id: number): any | null {
     const campaignStore = useCampaignStore.getState();
     return campaignStore.getPackage(id);
   }
 
   // Product variant methods
+  /**
+   * Returns the variant grouping for a product — its variant attributes and the
+   * packages that back each variant combination.
+   *
+   * @param productId - The product id to resolve variants for.
+   * @returns The product's variant group, or `null` if the product has none.
+   *
+   * @example
+   * ```ts
+   * const variants = next.getVariantsByProductId(10);
+   * ```
+   */
   public getVariantsByProductId(productId: number): any | null {
     const campaignStore = useCampaignStore.getState();
     return campaignStore.getVariantsByProductId(productId);
   }
 
+  /**
+   * Lists the available values for one variant attribute of a product — e.g.
+   * every selectable `color` or `size`.
+   *
+   * @param productId - The product id.
+   * @param attributeCode - The attribute to enumerate, e.g. `'color'`.
+   * @returns The distinct values available for that attribute.
+   *
+   * @example
+   * ```ts
+   * const colors = next.getAvailableVariantAttributes(10, 'color');
+   * // ['Black', 'White', 'Blue']
+   * ```
+   */
   public getAvailableVariantAttributes(
     productId: number,
     attributeCode: string
@@ -187,6 +380,24 @@ export class NextCommerce {
     );
   }
 
+  /**
+   * Resolves the concrete package that matches a full variant selection for a
+   * product.
+   *
+   * @param productId - The product id.
+   * @param selectedAttributes - The chosen value for each variant attribute,
+   *                             keyed by attribute code.
+   * @returns The matching package, or `null` if no package matches the selection.
+   *
+   * @example
+   * ```ts
+   * const pkg = next.getPackageByVariantSelection(10, {
+   *   color: 'Black',
+   *   size: 'L',
+   * });
+   * // pkg is the package for the Black / L variant, or null if unavailable
+   * ```
+   */
   public getPackageByVariantSelection(
     productId: number,
     selectedAttributes: Record<string, string>
@@ -198,6 +409,19 @@ export class NextCommerce {
     );
   }
 
+  /**
+   * Builds a stable, order-independent key string from a set of variant
+   * attributes. Useful for indexing or comparing variant selections.
+   *
+   * @param attributes - The variant attribute values, keyed by attribute code.
+   * @returns A canonical key, e.g. `'color:Black|size:L'`.
+   *
+   * @example
+   * ```ts
+   * next.createVariantKey({ size: 'L', color: 'Black' });
+   * // 'color:Black|size:L'  (sorted, so input order does not matter)
+   * ```
+   */
   public createVariantKey(attributes: Record<string, string>): string {
     // Helper method to create consistent variant keys
     return Object.entries(attributes)
@@ -207,6 +431,23 @@ export class NextCommerce {
   }
 
   // Event and callback registration
+  /**
+   * Subscribes to an SDK event. Event names and payload shapes are defined by
+   * {@link EventMap}.
+   *
+   * @typeParam K - The event name, constrained to keys of {@link EventMap}.
+   * @param event - The event to listen for, e.g. `'cart:updated'`.
+   * @param handler - Invoked with the event payload each time the event fires.
+   *
+   * @example
+   * ```ts
+   * next.on('cart:updated', (cart) => {
+   *   console.log('Cart changed, total quantity:', cart.totalQuantity);
+   * });
+   * ```
+   *
+   * @see {@link NextCommerce.off} to remove the handler.
+   */
   public on<K extends keyof EventMap>(
     event: K,
     handler: (data: EventMap[K]) => void
@@ -214,10 +455,40 @@ export class NextCommerce {
     this.eventBus.on(event, handler);
   }
 
+  /**
+   * Removes a previously registered event handler.
+   *
+   * @typeParam K - The event name, constrained to keys of {@link EventMap}.
+   * @param event - The event the handler was registered for.
+   * @param handler - The exact handler reference passed to {@link NextCommerce.on}.
+   *
+   * @example
+   * ```ts
+   * const onUpdate = (cart) => console.log(cart.total);
+   * next.on('cart:updated', onUpdate);
+   * // later…
+   * next.off('cart:updated', onUpdate);
+   * ```
+   */
   public off<K extends keyof EventMap>(event: K, handler: Function): void {
     this.eventBus.off(event, handler);
   }
 
+  /**
+   * Registers a callback for a lifecycle hook. Unlike {@link NextCommerce.on}
+   * events, callbacks fire at fixed points in the render/checkout flow and all
+   * receive the same {@link CallbackData} cart snapshot.
+   *
+   * @param type - The lifecycle hook, e.g. `'beforeCheckout'` or `'itemAdded'`.
+   * @param callback - Invoked with the current cart snapshot when the hook fires.
+   *
+   * @example
+   * ```ts
+   * next.registerCallback('beforeCheckout', (data) => {
+   *   console.log('Checking out with', data.cartLines.length, 'lines');
+   * });
+   * ```
+   */
   public registerCallback(
     type: CallbackType,
     callback: (data: CallbackData) => void
@@ -228,10 +499,34 @@ export class NextCommerce {
     this.callbacks.get(type)!.add(callback);
   }
 
+  /**
+   * Removes a callback previously added with {@link NextCommerce.registerCallback}.
+   *
+   * @param type - The lifecycle hook the callback was registered for.
+   * @param callback - The exact callback reference that was registered.
+   *
+   * @example
+   * ```ts
+   * next.unregisterCallback('beforeCheckout', myCallback);
+   * ```
+   */
   public unregisterCallback(type: CallbackType, callback: Function): void {
     this.callbacks.get(type)?.delete(callback);
   }
 
+  /**
+   * Manually fires all callbacks registered for a hook. Primarily used
+   * internally by the SDK at the relevant lifecycle points; rarely called by
+   * page authors directly.
+   *
+   * @param type - The lifecycle hook to trigger.
+   * @param data - The cart snapshot to pass to each callback.
+   *
+   * @example
+   * ```ts
+   * next.triggerCallback('afterRender', next.getCartData());
+   * ```
+   */
   public triggerCallback(type: CallbackType, data: CallbackData): void {
     this.callbacks.get(type)?.forEach(callback => {
       try {
@@ -243,6 +538,19 @@ export class NextCommerce {
   }
 
   // Analytics methods (v2 system)
+  /**
+   * Tracks a `view_item_list` analytics event for a set of packages (e.g. a
+   * product grid impression). Tracking runs in the background and never throws.
+   *
+   * @param packageIds - The package ids shown in the list.
+   * @param _listId - Reserved list identifier (currently unused).
+   * @param listName - Human-readable list name, e.g. `'Upsell offers'`.
+   *
+   * @example
+   * ```ts
+   * next.trackViewItemList([2, 5, 7], undefined, 'Bestsellers');
+   * ```
+   */
   public async trackViewItemList(
     packageIds: (string | number)[],
     _listId?: string,
@@ -258,6 +566,17 @@ export class NextCommerce {
     });
   }
 
+  /**
+   * Tracks a `view_item` analytics event for a single package. The package must
+   * exist in the loaded campaign; otherwise the event is skipped with a warning.
+   *
+   * @param packageId - The package id being viewed.
+   *
+   * @example
+   * ```ts
+   * next.trackViewItem(2);
+   * ```
+   */
   public async trackViewItem(packageId: string | number): Promise<void> {
     queueMicrotask(async () => {
       try {
@@ -288,6 +607,18 @@ export class NextCommerce {
     });
   }
 
+  /**
+   * Tracks an `add_to_cart` analytics event. Call this for manual add flows;
+   * attribute-driven add-to-cart buttons emit it automatically.
+   *
+   * @param packageId - The package id added.
+   * @param quantity - Units added. Defaults to `1`.
+   *
+   * @example
+   * ```ts
+   * next.trackAddToCart(2, 3);
+   * ```
+   */
   public async trackAddToCart(
     packageId: string | number,
     quantity?: number
@@ -308,6 +639,17 @@ export class NextCommerce {
     });
   }
 
+  /**
+   * Tracks a `remove_from_cart` analytics event.
+   *
+   * @param packageId - The package id removed.
+   * @param quantity - Units removed. Defaults to `1`.
+   *
+   * @example
+   * ```ts
+   * next.trackRemoveFromCart(2);
+   * ```
+   */
   public async trackRemoveFromCart(
     packageId: string | number,
     quantity?: number
@@ -329,6 +671,14 @@ export class NextCommerce {
     });
   }
 
+  /**
+   * Tracks a `begin_checkout` analytics event for the current cart.
+   *
+   * @example
+   * ```ts
+   * next.trackBeginCheckout();
+   * ```
+   */
   public async trackBeginCheckout(): Promise<void> {
     queueMicrotask(async () => {
       try {
@@ -340,6 +690,17 @@ export class NextCommerce {
     });
   }
 
+  /**
+   * Tracks a `purchase` analytics event for a completed order.
+   *
+   * @param orderData - The completed order to report (as returned by the order
+   *                    API / order store).
+   *
+   * @example
+   * ```ts
+   * next.trackPurchase(useOrderStore.getState().order);
+   * ```
+   */
   public async trackPurchase(orderData: any): Promise<void> {
     queueMicrotask(async () => {
       try {
@@ -351,6 +712,17 @@ export class NextCommerce {
     });
   }
 
+  /**
+   * Tracks an arbitrary custom analytics event with an optional payload.
+   *
+   * @param eventName - The event name to emit to the analytics layer.
+   * @param data - Optional additional properties merged into the event.
+   *
+   * @example
+   * ```ts
+   * next.trackCustomEvent('promo_banner_click', { campaign: 'summer' });
+   * ```
+   */
   public async trackCustomEvent(
     eventName: string,
     data?: Record<string, any>
@@ -366,6 +738,16 @@ export class NextCommerce {
   }
 
   // User tracking methods
+  /**
+   * Tracks a `sign_up` analytics event and associates the user.
+   *
+   * @param email - The email address the user signed up with.
+   *
+   * @example
+   * ```ts
+   * next.trackSignUp('ada@example.com');
+   * ```
+   */
   public async trackSignUp(email: string): Promise<void> {
     queueMicrotask(async () => {
       try {
@@ -377,6 +759,16 @@ export class NextCommerce {
     });
   }
 
+  /**
+   * Tracks a `login` analytics event and associates the user.
+   *
+   * @param email - The email address the user logged in with.
+   *
+   * @example
+   * ```ts
+   * next.trackLogin('ada@example.com');
+   * ```
+   */
   public async trackLogin(email: string): Promise<void> {
     queueMicrotask(async () => {
       try {
@@ -389,6 +781,16 @@ export class NextCommerce {
   }
 
   // Advanced analytics methods
+  /**
+   * Toggles verbose analytics debug logging at runtime.
+   *
+   * @param enabled - `true` to log analytics activity to the console.
+   *
+   * @example
+   * ```ts
+   * next.setDebugMode(true);
+   * ```
+   */
   public async setDebugMode(enabled: boolean): Promise<void> {
     queueMicrotask(async () => {
       try {
@@ -400,6 +802,15 @@ export class NextCommerce {
     });
   }
 
+  /**
+   * Invalidates the cached analytics context so the next event rebuilds it from
+   * current state. Call after changing user, currency, or campaign context.
+   *
+   * @example
+   * ```ts
+   * next.invalidateAnalyticsContext();
+   * ```
+   */
   public async invalidateAnalyticsContext(): Promise<void> {
     queueMicrotask(async () => {
       try {
@@ -415,6 +826,18 @@ export class NextCommerce {
   }
 
   // Attribution metadata methods
+  /**
+   * Adds or overwrites a single custom metadata field on the attribution
+   * record, preserving the automatically collected fields.
+   *
+   * @param key - The metadata key to set.
+   * @param value - The value to store under that key.
+   *
+   * @example
+   * ```ts
+   * next.addMetadata('funnel_step', 'landing');
+   * ```
+   */
   public addMetadata(key: string, value: any): void {
     try {
       const store = useAttributionStore.getState();
@@ -433,6 +856,18 @@ export class NextCommerce {
     }
   }
 
+  /**
+   * Merges multiple custom metadata fields into the attribution record at once.
+   * Existing automatic fields are preserved; provided keys are added or
+   * overwritten.
+   *
+   * @param metadata - The metadata key/value pairs to merge in.
+   *
+   * @example
+   * ```ts
+   * next.setMetadata({ funnel: 'spring', variant: 'B' });
+   * ```
+   */
   public setMetadata(metadata: Record<string, any>): void {
     try {
       const store = useAttributionStore.getState();
@@ -452,6 +887,15 @@ export class NextCommerce {
     }
   }
 
+  /**
+   * Clears all custom metadata fields while retaining the automatically
+   * collected ones (landing page, referrer, device, domain, timestamp).
+   *
+   * @example
+   * ```ts
+   * next.clearMetadata();
+   * ```
+   */
   public clearMetadata(): void {
     try {
       const store = useAttributionStore.getState();
@@ -474,6 +918,16 @@ export class NextCommerce {
     }
   }
 
+  /**
+   * Returns the current attribution metadata, including automatic fields.
+   *
+   * @returns The metadata object, or `undefined` if it could not be read.
+   *
+   * @example
+   * ```ts
+   * const meta = next.getMetadata();
+   * ```
+   */
   public getMetadata(): Record<string, any> | undefined {
     try {
       const store = useAttributionStore.getState();
@@ -484,6 +938,17 @@ export class NextCommerce {
     }
   }
 
+  /**
+   * Updates top-level attribution fields (e.g. UTM parameters, funnel id).
+   * Merges into the existing attribution record.
+   *
+   * @param attribution - The attribution fields to set.
+   *
+   * @example
+   * ```ts
+   * next.setAttribution({ utm_source: 'newsletter', utm_campaign: 'spring' });
+   * ```
+   */
   public setAttribution(attribution: Record<string, any>): void {
     try {
       const store = useAttributionStore.getState();
@@ -495,6 +960,17 @@ export class NextCommerce {
     }
   }
 
+  /**
+   * Returns the attribution payload formatted for submission to the API
+   * (the shape attached to cart and order requests).
+   *
+   * @returns The API-ready attribution object, or `undefined` on error.
+   *
+   * @example
+   * ```ts
+   * const attribution = next.getAttribution();
+   * ```
+   */
   public getAttribution(): Record<string, any> | undefined {
     try {
       const store = useAttributionStore.getState();
@@ -505,6 +981,14 @@ export class NextCommerce {
     }
   }
 
+  /**
+   * Logs the current attribution state to the console for debugging.
+   *
+   * @example
+   * ```ts
+   * next.debugAttribution();
+   * ```
+   */
   public debugAttribution(): void {
     try {
       const store = useAttributionStore.getState();
@@ -515,6 +999,18 @@ export class NextCommerce {
   }
 
   // Shipping methods
+  /**
+   * Returns the shipping methods available on the loaded campaign.
+   *
+   * @returns The available shipping methods, or an empty array if the campaign
+   *          has not loaded or defines none.
+   *
+   * @example
+   * ```ts
+   * const methods = next.getShippingMethods();
+   * methods.forEach(m => console.log(m.ref_id, m.code, m.price));
+   * ```
+   */
   public getShippingMethods(): Array<{
     ref_id: number;
     code: string;
@@ -524,6 +1020,17 @@ export class NextCommerce {
     return campaignStore.data?.shipping_methods || [];
   }
 
+  /**
+   * Returns the shipping method currently selected in checkout.
+   *
+   * @returns The selected method, or `null` if none has been chosen yet.
+   *
+   * @example
+   * ```ts
+   * const selected = next.getSelectedShippingMethod();
+   * if (selected) console.log('Shipping:', selected.name);
+   * ```
+   */
   public getSelectedShippingMethod(): {
     id: number;
     name: string;
@@ -534,6 +1041,18 @@ export class NextCommerce {
     return checkoutStore.shippingMethod || null;
   }
 
+  /**
+   * Selects a shipping method by id. The cart store validates the id against the
+   * campaign and recalculates totals.
+   *
+   * @param methodId - The `ref_id` of the shipping method to select.
+   * @returns Resolves once the method is applied and totals are recalculated.
+   *
+   * @example
+   * ```ts
+   * await next.setShippingMethod(1);
+   * ```
+   */
   public async setShippingMethod(methodId: number): Promise<void> {
     // Delegate to cart store which handles validation and syncing
     const cartStore = useCartStore.getState();
@@ -541,6 +1060,16 @@ export class NextCommerce {
   }
 
   // Utility methods
+  /**
+   * Returns the running SDK version string.
+   *
+   * @returns The SDK version detected at runtime (or the build-time fallback).
+   *
+   * @example
+   * ```ts
+   * console.log('SDK version', next.getVersion());
+   * ```
+   */
   public getVersion(): string {
     // Return the runtime detected version from loader, or fallback to build version
     if (typeof window !== 'undefined' && window.__NEXT_SDK_VERSION__) {
@@ -549,6 +1078,20 @@ export class NextCommerce {
     return '__VERSION__'; // Will be replaced at build time
   }
 
+  /**
+   * Formats a numeric amount as a localized currency string.
+   *
+   * @param amount - The amount to format.
+   * @param currency - ISO 4217 code. Defaults to the campaign's currency, then
+   *                   `'USD'`.
+   * @returns The formatted price, e.g. `'$19.99'`.
+   *
+   * @example
+   * ```ts
+   * next.formatPrice(19.99);        // '$19.99' (campaign currency)
+   * next.formatPrice(19.99, 'EUR'); // '€19.99'
+   * ```
+   */
   public formatPrice(amount: number, currency?: string): string {
     const { formatCurrency } = require('@/utils/currencyFormatter');
     const campaignStore = useCampaignStore.getState();
@@ -557,6 +1100,19 @@ export class NextCommerce {
     return formatCurrency(amount, useCurrency);
   }
 
+  /**
+   * Runs basic pre-checkout validation against the current cart (e.g. rejects an
+   * empty cart).
+   *
+   * @returns `valid: true` when checkout may proceed; otherwise `errors`
+   *          contains human-readable reasons.
+   *
+   * @example
+   * ```ts
+   * const { valid, errors } = next.validateCheckout();
+   * if (!valid) showErrors(errors);
+   * ```
+   */
   public validateCheckout(): { valid: boolean; errors: string[] } {
     const cartStore = useCartStore.getState();
     const errors: string[] = [];
@@ -574,6 +1130,20 @@ export class NextCommerce {
   }
 
   // Coupon methods
+  /**
+   * Applies a discount coupon to the cart. The cart store validates the code
+   * against the campaign and recalculates totals on success.
+   *
+   * @param code - The coupon code to apply (case-sensitive).
+   * @returns An object describing whether the code was accepted and a
+   *          human-readable message suitable for display.
+   *
+   * @example
+   * ```ts
+   * const result = await next.applyCoupon('SAVE10');
+   * if (!result.success) showError(result.message);
+   * ```
+   */
   public async applyCoupon(
     code: string
   ): Promise<{ success: boolean; message: string }> {
@@ -581,17 +1151,56 @@ export class NextCommerce {
     return await cartStore.applyCoupon(code);
   }
 
+  /**
+   * Removes a previously applied coupon from the cart and recalculates totals.
+   *
+   * @param code - The coupon code to remove.
+   *
+   * @example
+   * ```ts
+   * next.removeCoupon('SAVE10');
+   * ```
+   */
   public removeCoupon(code: string): void {
     const cartStore = useCartStore.getState();
     cartStore.removeCoupon(code);
   }
 
+  /**
+   * Returns the coupon codes currently applied to the cart.
+   *
+   * @returns The applied coupon codes (empty if none).
+   *
+   * @example
+   * ```ts
+   * const hasCoupon = next.getCoupons().length > 0;
+   * ```
+   */
   public getCoupons(): string[] {
     const cartStore = useCartStore.getState();
     return cartStore.getCoupons();
   }
 
   // Exit Intent - Simple approach
+  /**
+   * Configures and arms an exit-intent popup. The popup shows an image (and
+   * optional action) when the user signals they are about to leave. Lazily
+   * loads the exit-intent enhancer on first call.
+   *
+   * @param options - Exit-intent configuration (image/template, trigger limits,
+   *                  mobile behavior, session persistence, and an optional
+   *                  `action` callback).
+   * @returns Resolves once the popup is configured and armed.
+   *
+   * @example
+   * ```ts
+   * await next.exitIntent({
+   *   image: 'https://cdn.example/save10.png',
+   *   action: () => next.applyCoupon('SAVE10'),
+   *   maxTriggers: 1,
+   * });
+   * ```
+   */
   public async exitIntent(options: {
     image?: string;
     template?: string;
@@ -625,6 +1234,14 @@ export class NextCommerce {
     }
   }
 
+  /**
+   * Disables a previously configured exit-intent popup so it stops triggering.
+   *
+   * @example
+   * ```ts
+   * next.disableExitIntent();
+   * ```
+   */
   public disableExitIntent(): void {
     if (this.exitIntentEnhancer) {
       this.exitIntentEnhancer.disable();
@@ -634,6 +1251,23 @@ export class NextCommerce {
   // FOMO Popup - Simple social proof
   private fomoEnhancer: any = null;
 
+  /**
+   * Configures and starts a FOMO (social-proof) popup that cycles through recent
+   * "purchase" notifications. Lazily loads the FOMO enhancer on first call.
+   *
+   * @param config - Optional FOMO settings: the notification `items`, per-country
+   *                 `customers`, display timing, and mobile show cap.
+   * @returns Resolves once the popup has started.
+   *
+   * @example
+   * ```ts
+   * await next.fomo({
+   *   items: [{ text: 'Someone just bought the Starter Kit', image: '/p.png' }],
+   *   displayDuration: 4000,
+   *   delayBetween: 8000,
+   * });
+   * ```
+   */
   public async fomo(config?: {
     items?: Array<{ text: string; image: string }>;
     customers?: { [country: string]: string[] };
@@ -662,6 +1296,14 @@ export class NextCommerce {
     }
   }
 
+  /**
+   * Stops a running FOMO popup.
+   *
+   * @example
+   * ```ts
+   * next.stopFomo();
+   * ```
+   */
   public stopFomo(): void {
     if (this.fomoEnhancer) {
       this.fomoEnhancer.stop();
@@ -669,6 +1311,28 @@ export class NextCommerce {
   }
 
   // Upsell methods
+  /**
+   * Adds one or more post-purchase upsell items to the completed order.
+   *
+   * Unlike {@link NextCommerce.addItem}, this writes to the order via the
+   * post-purchase API — not the cart. It is only valid after an order exists
+   * and while the order still accepts upsells
+   * (see {@link NextCommerce.canAddUpsells}).
+   *
+   * @param options - A single package (`packageId` + optional `quantity`) or a
+   *                  batch via `items`. One of the two must be provided.
+   * @returns The updated order, the newly added lines, and their total value.
+   * @throws If no order exists, the order no longer accepts upsells, or neither
+   *         `packageId` nor `items` was supplied.
+   *
+   * @example
+   * ```ts
+   * if (next.canAddUpsells()) {
+   *   const { totalValue } = await next.addUpsell({ packageId: 7, quantity: 1 });
+   *   console.log('Upsell added, value:', totalValue);
+   * }
+   * ```
+   */
   public async addUpsell(options: {
     packageId?: number;
     quantity?: number;
@@ -770,16 +1434,49 @@ export class NextCommerce {
     }
   }
 
+  /**
+   * Reports whether the current order can still accept post-purchase upsells.
+   * Guard {@link NextCommerce.addUpsell} calls with this.
+   *
+   * @returns `true` if an order exists and still accepts upsells.
+   *
+   * @example
+   * ```ts
+   * if (next.canAddUpsells()) await next.addUpsell({ packageId: 7 });
+   * ```
+   */
   public canAddUpsells(): boolean {
     const orderStore = useOrderStore.getState();
     return orderStore.canAddUpsells();
   }
 
+  /**
+   * Returns the package ids of upsells already added to the current order.
+   *
+   * @returns The completed upsell package ids (as strings).
+   *
+   * @example
+   * ```ts
+   * const done = next.getCompletedUpsells();
+   * ```
+   */
   public getCompletedUpsells(): string[] {
     const orderStore = useOrderStore.getState();
     return orderStore.completedUpsells;
   }
 
+  /**
+   * Checks whether a package has already been added as an upsell, or accepted in
+   * the upsell journey — useful to avoid offering the same upsell twice.
+   *
+   * @param packageId - The upsell package id to check.
+   * @returns `true` if the upsell was already added or accepted.
+   *
+   * @example
+   * ```ts
+   * if (!next.isUpsellAlreadyAdded(7)) showUpsellOffer(7);
+   * ```
+   */
   public isUpsellAlreadyAdded(packageId: number): boolean {
     const orderStore = useOrderStore.getState();
 
@@ -798,34 +1495,97 @@ export class NextCommerce {
   }
 
   // URL Parameter Methods
+  /**
+   * Sets a single tracked URL parameter in the parameter store.
+   *
+   * @param key - The parameter name.
+   * @param value - The parameter value.
+   *
+   * @example
+   * ```ts
+   * next.setParam('ref', 'newsletter');
+   * ```
+   */
   public setParam(key: string, value: string): void {
     const paramStore = useParameterStore.getState();
     paramStore.updateParam(key, value);
     this.logger.debug(`URL parameter set: ${key}=${value}`);
   }
 
+  /**
+   * Replaces all tracked URL parameters with the provided set.
+   *
+   * @param params - The complete set of parameters to store.
+   *
+   * @example
+   * ```ts
+   * next.setParams({ ref: 'newsletter', variant: 'B' });
+   * ```
+   */
   public setParams(params: Record<string, string>): void {
     const paramStore = useParameterStore.getState();
     paramStore.updateParams(params);
     this.logger.debug('URL parameters set:', params);
   }
 
+  /**
+   * Reads a single tracked URL parameter.
+   *
+   * @param key - The parameter name.
+   * @returns The value, or `null` if the parameter is not set.
+   *
+   * @example
+   * ```ts
+   * const ref = next.getParam('ref');
+   * ```
+   */
   public getParam(key: string): string | null {
     const paramStore = useParameterStore.getState();
     const value = paramStore.getParam(key);
     return value !== undefined ? value : null;
   }
 
+  /**
+   * Returns all tracked URL parameters.
+   *
+   * @returns A map of every stored parameter name to its value.
+   *
+   * @example
+   * ```ts
+   * const all = next.getAllParams();
+   * ```
+   */
   public getAllParams(): Record<string, string> {
     const paramStore = useParameterStore.getState();
     return paramStore.params;
   }
 
+  /**
+   * Checks whether a tracked URL parameter is set.
+   *
+   * @param key - The parameter name.
+   * @returns `true` if the parameter exists.
+   *
+   * @example
+   * ```ts
+   * if (next.hasParam('ref')) trackReferral();
+   * ```
+   */
   public hasParam(key: string): boolean {
     const paramStore = useParameterStore.getState();
     return paramStore.hasParam(key);
   }
 
+  /**
+   * Removes a single tracked URL parameter.
+   *
+   * @param key - The parameter name to remove.
+   *
+   * @example
+   * ```ts
+   * next.clearParam('ref');
+   * ```
+   */
   public clearParam(key: string): void {
     const paramStore = useParameterStore.getState();
     const newParams = { ...paramStore.params };
@@ -834,12 +1594,31 @@ export class NextCommerce {
     this.logger.debug(`URL parameter cleared: ${key}`);
   }
 
+  /**
+   * Removes all tracked URL parameters.
+   *
+   * @example
+   * ```ts
+   * next.clearAllParams();
+   * ```
+   */
   public clearAllParams(): void {
     const paramStore = useParameterStore.getState();
     paramStore.updateParams({});
     this.logger.debug('All URL parameters cleared');
   }
 
+  /**
+   * Merges the given parameters into the existing tracked set, overwriting any
+   * keys that already exist and keeping the rest.
+   *
+   * @param params - The parameters to merge in.
+   *
+   * @example
+   * ```ts
+   * next.mergeParams({ variant: 'C' }); // keeps other existing params
+   * ```
+   */
   public mergeParams(params: Record<string, string>): void {
     const paramStore = useParameterStore.getState();
     paramStore.mergeParams(params);

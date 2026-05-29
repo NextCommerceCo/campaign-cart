@@ -14,6 +14,42 @@ export interface TooltipConfig {
   className?: string;
 }
 
+/**
+ * Attaches a positioned tooltip to any element, powered by Floating UI.
+ *
+ * Activated by `data-next-tooltip="<text>"`, where the attribute value is the
+ * tooltip text. The tooltip is created lazily and appended to `document.body`,
+ * positioned with Floating UI middleware (offset, flip, shift, arrow). It shows
+ * on hover/focus (after a configurable delay) and toggles on touch, hides on
+ * mouse leave/blur/Escape, and manages `aria-describedby` on the bound element.
+ * Tooltip styles are injected once into the document head; visual variants
+ * (e.g. `next-tooltip--light`, `--error`, `--success`, `--warning`, `--large`,
+ * `--small`) can be applied through `data-next-tooltip-class`.
+ *
+ * ## Attributes
+ *
+ * | Attribute | Type | Required | Default | Description |
+ * |---|---|---|---|---|
+ * | `data-next-tooltip` | `string` | yes | — | Activation attribute. The tooltip text content; empty value means no tooltip is shown. |
+ * | `data-next-tooltip-placement` | `"top" \| "bottom" \| "left" \| "right"` | no | `top` | Preferred placement; Floating UI may flip it to fit the viewport. |
+ * | `data-next-tooltip-offset` | `number` | no | `8` | Distance in pixels between the element and the tooltip. |
+ * | `data-next-tooltip-delay` | `number` | no | `500` | Delay in milliseconds before the tooltip appears on hover/focus. |
+ * | `data-next-tooltip-max-width` | `string` (CSS length) | no | `200px` | Maximum width of the tooltip content box. |
+ * | `data-next-tooltip-class` | `string` | no | `""` | Extra CSS class(es) added to the tooltip, e.g. a variant modifier. |
+ *
+ * @example
+ * ```html
+ * <span data-next-tooltip="Includes free shipping">Shipping info</span>
+ * ```
+ *
+ * @example
+ * ```html
+ * <button data-next-tooltip="Applied at checkout"
+ *         data-next-tooltip-placement="bottom"
+ *         data-next-tooltip-delay="200"
+ *         data-next-tooltip-class="next-tooltip--light">?</button>
+ * ```
+ */
 export class TooltipEnhancer extends BaseEnhancer {
   private tooltip: HTMLElement | null = null;
   private arrow: HTMLElement | null = null;

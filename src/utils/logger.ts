@@ -2,10 +2,19 @@
  * Logger utility with different log levels and debugging support
  */
 
+/**
+ * Severity levels for the SDK {@link Logger}, ordered most to least severe.
+ * Setting the global level (via `Logger.setLogLevel`) suppresses anything less
+ * severe — e.g. `WARN` hides `INFO` and `DEBUG`.
+ */
 export enum LogLevel {
+  /** Errors only — failures that need attention. */
   ERROR = 0,
+  /** Warnings and errors. */
   WARN = 1,
+  /** Informational messages, warnings, and errors. The default level. */
   INFO = 2,
+  /** Everything, including verbose debug output. Enabled by `?debug=true`. */
   DEBUG = 3,
 }
 
@@ -33,6 +42,22 @@ interface ILogger {
   debug(message: string, ...args: any[]): void;
 }
 
+/**
+ * Leveled, context-scoped logger used throughout the SDK.
+ *
+ * Each instance carries a context label (usually the class name) that prefixes
+ * its output. Messages are gated by a global {@link LogLevel} and are quietened
+ * in production unless debug mode is on (`?debug=true` or
+ * `window.nextConfig.debug`). Enhancers use the inherited `this.logger` rather
+ * than constructing one directly.
+ *
+ * @example
+ * ```ts
+ * const logger = new Logger('MyEnhancer');
+ * logger.debug('Initialized with package', packageId);
+ * Logger.setLogLevel(LogLevel.DEBUG); // raise verbosity globally
+ * ```
+ */
 export class Logger implements ILogger {
   private context: string;
   private static globalLevel: LogLevel = LogLevel.INFO;

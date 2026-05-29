@@ -74,6 +74,21 @@ const initialState: ConfigState = {
   // Error monitoring removed - add externally via HTML/scripts
 };
 
+/**
+ * Zustand store holding SDK configuration: API key, campaign id, feature
+ * flags, payment / maps / address settings, and detected location. Populated
+ * from page `<meta>` tags and the `window.nextConfig` object at startup.
+ *
+ * Exported to consumers as `useConfigStore`.
+ *
+ * @example
+ * ```ts
+ * const { apiKey } = useConfigStore.getState();
+ * useConfigStore.getState().updateConfig({ debug: true });
+ * ```
+ *
+ * @see {@link ConfigState} for the full configuration shape.
+ */
 export const configStore = create<ConfigState & ConfigActions>((set, get) => ({
   ...(initialState as ConfigState),
 

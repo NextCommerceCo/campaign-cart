@@ -3,6 +3,10 @@ node_modules/
 
 
 
+# Generated API docs (TypeDoc)
+docs/api/
+docs/api-html/
+
 # Logs
 *.log
 npm-debug.log*

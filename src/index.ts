@@ -1,12 +1,29 @@
 /**
- * NextCommerce Campaign Cart SDK v2
+ * NextCommerce Campaign Cart SDK
  *
- * Modern TypeScript SDK for seamless e-commerce integration via data attributes.
- * Provides progressive enhancement without disrupting existing HTML/CSS.
+ * Modern TypeScript SDK for NextCommerce campaign landing pages. It wires plain
+ * HTML to a cart / checkout / order API through progressive enhancement: markup
+ * is annotated with `data-next-*` attributes and the SDK enhances it on load —
+ * no manual wiring required.
  *
- * @version 0.2.0
+ * The bundle auto-initializes when the DOM is ready and exposes the
+ * {@link NextCommerce} singleton on `window.next` for programmatic access. Queue
+ * work that depends on initialization with `window.nextReady.push()` — it runs
+ * immediately if the SDK is already initialized, otherwise as soon as it is.
+ *
+ * @example
+ * Run code once the SDK has initialized:
+ * ```ts
+ * window.nextReady = window.nextReady || [];
+ * window.nextReady.push(async (next) => {
+ *   await next.addItem({ packageId: 2, quantity: 1 });
+ *   console.log('Cart total:', next.getCartTotals().total);
+ * });
+ * ```
+ *
  * @author NextCommerce
  * @license MIT
+ * @packageDocumentation
  */
 
 // Import styles
@@ -24,8 +41,34 @@ export { useOrderStore } from './stores/orderStore';
 // Type exports
 export type * from './types/global';
 
+// Store state/action types referenced by the exported store hooks,
+// including the slice interfaces that compose the store types.
+export type {
+  CartStore,
+  CartItemsSlice,
+  CartUiSlice,
+  CartApiSlice,
+} from './stores/cartStore';
+export type {
+  CampaignStore,
+  CampaignState,
+  VariantGroup,
+  CampaignItemsSlice,
+  CampaignVariantsSlice,
+  CampaignApiSlice,
+} from './stores/campaignStore';
+export type { CheckoutState } from './stores/checkoutStore';
+export type { OrderState, OrderActions } from './stores/orderStore';
+
+// API request/response types (parameter and return types of ApiClient) and
+// campaign domain types (Offer and its sub-shapes), grouped under namespaces
+// to avoid name collisions with the SDK-level types re-exported from
+// ./types/global (e.g. Campaign, Package, ShippingOption).
+export type * as ApiTypes from './types/api';
+export type * as CampaignTypes from './types/campaign';
+
 // Utility exports
-export { Logger } from './utils/logger';
+export { Logger, LogLevel } from './utils/logger';
 export { EventBus } from './utils/events';
 
 // API client export
@@ -95,7 +138,7 @@ if (typeof window !== 'undefined') {
       requestIdleCallback(() => {
         // Less common enhancers
         import('./enhancers/ui/AccordionEnhancer');
-        import('./enhancers/CouponEnhancer');
+        import('./enhancers/cart/CouponEnhancer');
         
         // Behavior enhancers
         import('./enhancers/behavior/SimpleExitIntentEnhancer');

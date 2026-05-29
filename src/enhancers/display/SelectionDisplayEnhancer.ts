@@ -9,6 +9,51 @@ import { useCampaignStore } from '@/stores/campaignStore';
 import { useCartStore } from '@/stores/cartStore';
 import type { Package, SelectorItem, CartState } from '@/types/global';
 
+/**
+ * Renders a value derived from the package currently selected in a selector.
+ *
+ * Activated by `data-next-display="selection.*"`, routed here by
+ * `AttributeScanner`. It binds to a `PackageSelectorEnhancer` identified either by
+ * an embedded id in the path (`selection.{selectorId}.{property}`), an explicit
+ * `data-next-selector-id` / `data-selector-id` attribute, or by walking up the DOM
+ * to the nearest selector context. It reads the selector's `_getSelectedItem()`
+ * and re-renders on `selector:selection-changed` / `selector:item-selected`
+ * events, subscribing to `useCampaignStore` for package data (and `useCartStore`
+ * only when a discount-related property is requested).
+ *
+ * The property after `selection.` chooses what to show: identity and quantity
+ * (`packageId`, `quantity`, `name`, `hasSelection`), pricing (`price`, `total`,
+ * `compareTotal`, `unitPrice`), savings via `PriceCalculator` (`savings`,
+ * `savingsPercentage`, `hasSavings`), bundle flags (`isBundle`, `isSingleUnit`,
+ * `totalUnits`), and discount placeholders (`discountedPrice`, `hasDiscount`).
+ * Custom arithmetic expressions such as `total*0.1` are also supported. When no
+ * selection exists the element is hidden unless the property is `hasSelection`.
+ *
+ * ## Attributes
+ *
+ * | Attribute | Type | Required | Default | Description |
+ * |---|---|---|---|---|
+ * | `data-next-display` | `string` | yes | — | Selection property path, e.g. `selection.total` or `selection.{selectorId}.name`. |
+ * | `data-next-selector-id` / `data-selector-id` | `string` | no | — | Identifies the source selector when not embedded in the path or inferable from DOM ancestry. |
+ * | `data-next-format` / `data-format` | `"currency" \| "number" \| "boolean" \| "date" \| "percentage" \| "auto"` | no | auto-detected | Forces value formatting. |
+ * | `data-hide-if-zero` | `"true" \| "false"` | no | `false` | Hides the element when the value is zero. |
+ * | `data-hide-if-false` | `"true" \| "false"` | no | `false` | Hides the element when the value is falsy. |
+ * | `data-hide-zero-cents` | `"true" \| "false"` | no | `false` | Drops `.00` cents from formatted currency. |
+ * | `data-divide-by` | `number` | no | — | Divides a numeric value before formatting. |
+ * | `data-multiply-by` | `number` | no | — | Multiplies a numeric value before formatting. |
+ *
+ * @example
+ * ```html
+ * <div data-next-selector-id="upsell-1">
+ *   <span data-next-display="selection.total"></span>
+ * </div>
+ * ```
+ *
+ * @example
+ * ```html
+ * <span data-next-display="selection.upsell-1.savingsPercentage"></span>
+ * ```
+ */
 export class SelectionDisplayEnhancer extends BaseDisplayEnhancer {
   private selectorId?: string;
   private selectedItem: SelectorItem | null = null;

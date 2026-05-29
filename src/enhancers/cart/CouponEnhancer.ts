@@ -8,9 +8,50 @@
  * - data-next-coupon="display" (on display area)
  */
 
-import { BaseActionEnhancer } from './base/BaseActionEnhancer';
+import { BaseActionEnhancer } from '@/enhancers/base/BaseActionEnhancer';
 import { useCartStore } from '@/stores/cartStore';
 
+/**
+ * Wires a coupon input + apply button to the cart store's voucher actions.
+ *
+ * Activated by `data-next-coupon=""` (an empty value) on the container, or by
+ * `data-next-coupon="input"` on an input. Within the container it locates the
+ * input, the apply button, and an optional display area for listing applied
+ * coupons. Typing enables/disables the button; clicking it (or pressing Enter)
+ * calls `cartStore.applyCoupon()` and shows a success/error message. Applied
+ * coupons are rendered by cloning a template card and given working remove
+ * buttons that call `cartStore.removeCoupon()`. It subscribes to the cart
+ * store's `vouchers` and re-renders on change. Emits `coupon:applied`,
+ * `coupon:validation-failed`, and `coupon:removed`.
+ *
+ * Note: the input/apply/display roles below are read from descendant elements
+ * within the container, not from the container's own activation attribute.
+ *
+ * ## Attributes
+ *
+ * | Attribute | Type | Required | Default | Description |
+ * |---|---|---|---|---|
+ * | `data-next-coupon` | `"" \| "input"` | yes | — | Activation attribute. Empty value marks the coupon container; `"input"` marks the input element. |
+ * | `data-next-coupon="input"` | marker | no | — | On a descendant input — identifies the coupon code input. Falls back to any text input in the container. |
+ * | `data-next-coupon="apply"` | marker | no | — | On a descendant element — identifies the apply button. Falls back to the first `<button>` in the container. |
+ * | `data-next-coupon="display"` | marker | no | — | On a descendant (or sibling) element — the area where applied coupon cards are rendered. |
+ * | `data-next-coupon="messages"` | marker | no | — | On a descendant element — where success/error/info messages are shown (falls back to `.coupon-messages`). |
+ *
+ * @example
+ * ```html
+ * <div data-next-coupon="">
+ *   <input data-next-coupon="input" type="text" placeholder="Coupon code">
+ *   <button data-next-coupon="apply">Apply</button>
+ *   <div data-next-coupon="messages"></div>
+ *   <div data-next-coupon="display">
+ *     <div pb-checkout="coupon-card">
+ *       <span pb-checkout="coupon-title"></span>
+ *       <button pb-checkout="coupon-remove">Remove</button>
+ *     </div>
+ *   </div>
+ * </div>
+ * ```
+ */
 export class CouponEnhancer extends BaseActionEnhancer {
   private input: HTMLInputElement | null = null;
   private button: HTMLButtonElement | null = null;

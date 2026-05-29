@@ -25,6 +25,42 @@ import { isApplePayAvailable, isGooglePayAvailable, isPayPalAvailable, getPaymen
 import type { PaymentConfig, CartState } from '@/types/global';
 import type { PaymentMethodOption } from '@/types/api';
 
+/**
+ * Renders and manages the express-checkout button row (PayPal, Apple Pay,
+ * Google Pay), dynamically showing only the methods that are both enabled and
+ * actually supported by the shopper's device/browser.
+ *
+ * Activated by `data-next-express-checkout="container"`. On init it looks
+ * inside itself for a `data-next-express-checkout="buttons"` element (the inject
+ * target) and optional `data-next-component="express-error"` /
+ * `"express-error-text"` elements anywhere in the document for error display.
+ * It subscribes to `useConfigStore`, `useCampaignStore`, and `useCartStore`:
+ * available methods come from campaign data
+ * (`available_express_payment_methods`) when present, otherwise from
+ * `paymentConfig.expressCheckout`, ordered by an optional `methodOrder`. Each
+ * created button is gated by a device-capability check, so an enabled method
+ * with no device support is silently skipped and the whole container is hidden
+ * if nothing renders. Clicking a button drives `ExpressCheckoutProcessor` via
+ * `OrderManager`; buttons disable while processing and when the cart is empty.
+ *
+ * The activation attribute is the only configurable attribute on the bound
+ * element. The `="buttons"` target and `express-error` elements are queried on
+ * other elements, and individual `data-next-express-checkout="paypal|apple_pay|
+ * google_pay"` buttons are created by this enhancer, not bound directly.
+ *
+ * ## Attributes
+ *
+ * | Attribute | Type | Required | Default | Description |
+ * |---|---|---|---|---|
+ * | `data-next-express-checkout` | `"container"` | yes | — | Activation attribute. Must equal `"container"` or initialization throws. |
+ *
+ * @example
+ * ```html
+ * <div data-next-express-checkout="container">
+ *   <div data-next-express-checkout="buttons"></div>
+ * </div>
+ * ```
+ */
 export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
   private buttonsContainer?: HTMLElement;
   private buttonInstances: Map<string, HTMLElement> = new Map();

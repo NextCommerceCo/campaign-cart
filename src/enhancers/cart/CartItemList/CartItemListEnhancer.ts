@@ -8,6 +8,52 @@ import {
   getDefaultItemTemplate,
 } from './CartItemListEnhancer.renderer';
 
+/**
+ * Renders the list of cart line items and keeps it in sync with the cart store.
+ *
+ * Activated by `data-next-cart-items`. It subscribes to `useCartStore` and
+ * replaces the host element's `innerHTML` whenever the cart changes, rendering
+ * one block per item from a template. The template is resolved in this order:
+ * `data-item-template-id` → `data-item-template-selector` → `data-item-template`
+ * → the element's own inner HTML → a built-in default. When the cart is empty it
+ * renders `data-empty-template` instead.
+ *
+ * After each render it auto-initializes `QuantityControlEnhancer` and
+ * `RemoveItemEnhancer` on any `[data-next-quantity]` / `[data-next-remove-item]`
+ * elements inside the rendered items. Because the list re-renders by replacing
+ * `innerHTML`, never attach your own listeners directly to the rendered children.
+ *
+ * ## Attributes
+ *
+ * | Attribute | Type | Required | Default | Description |
+ * |---|---|---|---|---|
+ * | `data-next-cart-items` | `string` | yes | — | Activation attribute (marks the list container). |
+ * | `data-item-template-id` | `string` | no | — | ID of an element whose inner HTML is the per-item template. |
+ * | `data-item-template-selector` | `string` | no | — | CSS selector for the element supplying the per-item template. |
+ * | `data-item-template` | `string` | no | — | Inline per-item template HTML. |
+ * | `data-empty-template` | `string` | no | `<div class="cart-empty">Your cart is empty</div>` | HTML shown when the cart is empty. |
+ * | `data-title-map` | `JSON object` | no | — | Map of package id/title overrides applied when rendering item titles. |
+ * | `data-group-items` | `boolean` (presence) | no | absent | When present, identical items are grouped into a single rendered line. |
+ *
+ * @example
+ * Default rendering with the built-in template:
+ * ```html
+ * <div data-next-cart-items></div>
+ * ```
+ *
+ * @example
+ * Custom per-item template referenced by id:
+ * ```html
+ * <div data-next-cart-items data-item-template-id="cart-line"></div>
+ * <template id="cart-line">
+ *   <div data-cart-item-id="{item.packageId}">
+ *     <span>{item.name}</span>
+ *     <button data-next-quantity="decrease" data-package-id="{item.packageId}">-</button>
+ *     <button data-next-remove-item data-package-id="{item.packageId}">Remove</button>
+ *   </div>
+ * </template>
+ * ```
+ */
 export class CartItemListEnhancer extends BaseEnhancer {
   private template?: string;
   private emptyTemplate?: string;

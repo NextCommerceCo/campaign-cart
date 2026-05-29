@@ -109,6 +109,60 @@ import {
   setupQuantityControls,
 } from './PackageSelectorEnhancer.handlers';
 
+/**
+ * Manages a group of mutually-exclusive selectable package cards (pick exactly one).
+ *
+ * Activated by `data-next-package-selector`. Each `[data-next-selector-card]`
+ * child maps to one package; selecting a card marks it `next-selected` and
+ * exposes the choice to `AddToCartEnhancer` via `element._getSelectedItem()`,
+ * `element._getSelectedPackageId()`, and the `data-selected-package` attribute.
+ * In **swap** mode (default) selecting a card immediately updates the cart; in
+ * **select** mode it only tracks the selection for an external button. When
+ * `data-next-upsell-context` is present the enhancer is forced into select mode
+ * and performs no cart writes. The full card, price-slot, auto-render, CSS
+ * class, and event reference lives in the file-level comment above.
+ *
+ * Do not pair swap mode with an `AddToCartEnhancer` on the same selector — that
+ * causes double cart writes.
+ *
+ * ## Attributes
+ *
+ * These are read on the selector container (the bound element). Card-level
+ * attributes (`data-next-selector-card`, `data-next-package-id`,
+ * `data-next-selected`, `data-next-quantity`, `data-next-shipping-id`, etc.) are
+ * set on child elements — see the file-level documentation above.
+ *
+ * | Attribute | Type | Required | Default | Description |
+ * |---|---|---|---|---|
+ * | `data-next-package-selector` | `string` | yes | — | Activation attribute (marks the container). |
+ * | `data-next-selector-id` | `string` | no | `selector-{timestamp}` | ID used by `AddToCartEnhancer` to read the current selection. Falls back to `data-next-id`. |
+ * | `data-next-selection-mode` | `"swap" \| "select"` | no | `"swap"` | `swap` updates the cart on selection; `select` defers to an external button. |
+ * | `data-next-include-shipping` | `"true" \| "false"` | no | `false` | Include shipping when fetching backend prices. |
+ * | `data-next-upsell-context` | `boolean` (presence) | no | absent | Post-purchase upsell mode: forces select mode and disables cart writes. |
+ * | `data-next-package-template-id` | `string` | no | — | ID of a `<template>` whose inner HTML is the card template (auto-render). |
+ * | `data-next-package-template` | `string` | no | — | Inline card template HTML (auto-render). |
+ * | `data-next-packages` | `JSON array` | no | — | Package definitions rendered into cards using the template. |
+ *
+ * @example
+ * Static swap-mode selector with two cards:
+ * ```html
+ * <div data-next-package-selector data-next-selector-id="main">
+ *   <div data-next-selector-card data-next-package-id="10" data-next-selected="true">1 Bottle</div>
+ *   <div data-next-selector-card data-next-package-id="11">3 Bottles</div>
+ * </div>
+ * ```
+ *
+ * @example
+ * Select mode feeding an external add-to-cart button:
+ * ```html
+ * <div data-next-package-selector data-next-selector-id="main"
+ *      data-next-selection-mode="select">
+ *   <div data-next-selector-card data-next-package-id="10">1 Bottle</div>
+ *   <div data-next-selector-card data-next-package-id="11">3 Bottles</div>
+ * </div>
+ * <button data-next-action="add-to-cart" data-next-selector-id="main">Add to cart</button>
+ * ```
+ */
 export class PackageSelectorEnhancer extends BaseEnhancer {
   private selectorId: string = '';
   private mode: 'swap' | 'select' = 'swap';

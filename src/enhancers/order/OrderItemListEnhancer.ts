@@ -14,6 +14,57 @@ import type { OrderLine } from '@/types/api';
 // Order type is imported but not used in this file
 // import type { Order, OrderLine } from '@/types/api';
 
+/**
+ * Renders the line items of a completed order from the `orderStore`.
+ *
+ * Activated by `data-next-order-items`. On initialize it reads `ref_id` from
+ * the URL query string and, if present and no order is loaded yet, auto-loads
+ * that order via the order store. It then renders each order line into the
+ * bound element using a `{item.xxx}` placeholder template, re-rendering
+ * reactively whenever the order store changes (loading, error, empty, and
+ * populated states each get their own markup and CSS state classes such as
+ * `order-loading`, `order-error`, `order-empty`, `order-has-items`).
+ *
+ * The template may be supplied inline (the element's own innerHTML), via a
+ * referenced template element, or fall back to a built-in default template.
+ * Each line exposes fields like `name`, `sku`, `quantity`, `price`,
+ * `lineTotal`, tax/discount amounts, and `show*` conditional-display helpers.
+ *
+ * Note: the template/config attributes below use the `data-` prefix (not
+ * `data-next-`); only the activation attribute carries the `data-next-`
+ * prefix.
+ *
+ * ## Attributes
+ *
+ * | Attribute | Type | Required | Default | Description |
+ * |---|---|---|---|---|
+ * | `data-next-order-items` | `string` | yes | — | Activation attribute. Marks the container that renders order line items. |
+ * | `data-item-template-id` | `string` | no | — | ID of an element whose innerHTML is used as the per-item template. |
+ * | `data-item-template-selector` | `string` | no | — | CSS selector for an element whose innerHTML is used as the per-item template. |
+ * | `data-item-template` | `string` | no | — | Inline per-item template string. Falls back to the element's own innerHTML, then a built-in default. |
+ * | `data-empty-template` | `string` | no | `<div class="order-empty">No items found in order</div>` | Markup shown when the order has no lines. |
+ *
+ * @example
+ * ```html
+ * <div data-next-order-items>
+ *   <div class="order-item">
+ *     <span>{item.name}</span>
+ *     <span>Qty: {item.quantity}</span>
+ *     <span>{item.lineTotal}</span>
+ *   </div>
+ * </div>
+ * ```
+ *
+ * @example
+ * ```html
+ * <div data-next-order-items
+ *      data-item-template-id="order-line-tpl"
+ *      data-empty-template="<p>No items in this order.</p>"></div>
+ * <template id="order-line-tpl">
+ *   <div class="line">{item.name} — {item.price} each</div>
+ * </template>
+ * ```
+ */
 export class OrderItemListEnhancer extends BaseEnhancer {
   private template?: string;
   private emptyTemplate?: string;

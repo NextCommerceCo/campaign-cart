@@ -5,6 +5,40 @@
 
 import { BaseEnhancer } from '@/enhancers/base/BaseEnhancer';
 
+/**
+ * Drives a persistent countdown timer that survives page reloads.
+ *
+ * Activated by `data-next-timer`. On initialize it reads a required duration (in
+ * seconds), records a start time in `localStorage` keyed by a persistence id, and
+ * ticks once per second. On each tick it computes the remaining time from the
+ * stored start time — so the countdown resumes correctly after a reload — and
+ * writes the formatted value into a child `[data-next-timer-display]` element if
+ * present, otherwise into the bound element itself.
+ *
+ * When the countdown reaches zero it clears the interval, removes the persisted
+ * start time, hides the timer element, reveals any
+ * `[data-next-timer-expired][data-persistence-id="{id}"]` elements, and emits the
+ * `timer:expired` event with the persistence id.
+ *
+ * ## Attributes
+ *
+ * | Attribute | Type | Required | Default | Description |
+ * |---|---|---|---|---|
+ * | `data-next-timer` | boolean (presence) | yes | — | Activation attribute that marks the element as a timer. |
+ * | `data-duration` | `number` (seconds) | yes | — | Countdown length in seconds. |
+ * | `data-persistence-id` | `string` | no | `"default-timer"` | `localStorage` key suffix; also links the timer to matching `data-next-timer-expired` elements. |
+ * | `data-format` | `"hh:mm:ss" \| "mm:ss" \| "ss"` | no | `"mm:ss"` | Output format for the remaining time. |
+ *
+ * @example
+ * ```html
+ * <div data-next-timer data-duration="600" data-persistence-id="sale" data-format="mm:ss">
+ *   <span data-next-timer-display></span>
+ * </div>
+ * <div data-next-timer-expired data-persistence-id="sale" style="display:none">
+ *   This offer has expired.
+ * </div>
+ * ```
+ */
 export class TimerEnhancer extends BaseEnhancer {
   private duration: number = 0;
   private persistenceId: string = '';

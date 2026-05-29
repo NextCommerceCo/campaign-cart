@@ -1,0 +1,41 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "plugin": ["typedoc-plugin-markdown"],
+  "entryPoints": [
+    "src/index.ts",
+    "src/enhancers/**/*Enhancer.ts",
+    "src/enhancers/display/DisplayEnhancerTypes.ts"
+  ],
+  "entryPointStrategy": "resolve",
+  "tsconfig": "tsconfig.json",
+  "out": "docs/api",
+  "readme": "README.md",
+  "projectDocuments": ["src/enhancers/display/expressions.generated.md"],
+  "name": "Campaign Cart SDK",
+  "excludeInternal": true,
+  "excludePrivate": true,
+  "excludeProtected": false,
+  "excludeExternals": true,
+  "categorizeByGroup": true,
+  "sort": ["source-order"],
+  "validation": {
+    "notExported": true,
+    "invalidLink": true,
+    "rewrittenLink": true,
+    "notDocumented": false,
+    "unusedMergeModuleWith": true
+  },
+  "intentionallyNotExported": [
+    "ILogger",
+    "CheckoutActions",
+    "ConfigActions",
+    "AttributeScanner",
+    "BundleCard",
+    "BundleCardPublicState",
+    "ToggleCard",
+    "QuantityConstraints",
+    "FomoConfig"
+  ],
+  "treatWarningsAsErrors": true,
+  "skipErrorChecking": false
+}

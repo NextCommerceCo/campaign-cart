@@ -73,6 +73,19 @@ const initialState: CheckoutState = {
   vouchers: [],
 };
 
+/**
+ * Zustand store for the checkout flow: the current step, form field values,
+ * validation errors, the selected shipping method, and processing flags.
+ * Persisted to `sessionStorage`.
+ *
+ * @example
+ * ```ts
+ * const { step, isProcessing } = useCheckoutStore.getState();
+ * useCheckoutStore.getState().setStep(2);
+ * ```
+ *
+ * @see {@link CheckoutState} for the persisted state shape.
+ */
 export const useCheckoutStore = create<CheckoutState & CheckoutActions>()(
   persist(
     set => ({

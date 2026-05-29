@@ -15,6 +15,45 @@
 
 import { BaseEnhancer } from '@/enhancers/base/BaseEnhancer';
 
+/**
+ * Shows or hides a "scroll for more" hint based on whether a target container
+ * overflows and where it is scrolled.
+ *
+ * Activated by `data-next-component="scroll-hint"`. It resolves a scrollable
+ * target (an explicit selector via `data-next-scroll-target`, otherwise an
+ * auto-discovered nearby list such as `.cart-items__list`,
+ * `[data-next-cart-items]`, or `[data-next-order-items]`). The hint element
+ * gets the active class (`cart-items__scroll-hint--active`) when the target is
+ * scrollable AND scrolled to the top within the threshold, and is hidden
+ * otherwise. It listens to scroll and resize events and uses a MutationObserver
+ * to re-evaluate when the target's content changes, keeping `aria-hidden` in
+ * sync and emitting `scroll-hint:updated`.
+ *
+ * ## Attributes
+ *
+ * | Attribute | Type | Required | Default | Description |
+ * |---|---|---|---|---|
+ * | `data-next-component` | `"scroll-hint"` | yes | — | Activation attribute. Marks the element as a scroll hint. |
+ * | `data-next-scroll-target` | `string` (CSS selector) | no | auto-discovered | Selector for the scrollable container to watch. When omitted, a nearby list element is found automatically. |
+ * | `data-next-scroll-threshold` | `number` | no | `5` | Scroll-top distance in pixels under which the target is still considered "at the top". |
+ *
+ * @example
+ * ```html
+ * <div class="cart-items">
+ *   <div class="cart-items__list">...</div>
+ *   <div data-next-component="scroll-hint" class="cart-items__scroll-hint">
+ *     Scroll for more items
+ *   </div>
+ * </div>
+ * ```
+ *
+ * @example
+ * ```html
+ * <div data-next-component="scroll-hint"
+ *      data-next-scroll-target="#order-lines"
+ *      data-next-scroll-threshold="10">Scroll for more</div>
+ * ```
+ */
 export class ScrollHintEnhancer extends BaseEnhancer {
   private scrollTarget?: HTMLElement;
   private scrollThreshold: number = 5;
