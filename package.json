@@ -39,9 +39,10 @@
     "lint:fix": "eslint src --ext .ts --fix",
     "format": "prettier --write src/**/*.ts",
     "type-check": "tsc --noEmit",
-    "docs": "typedoc",
+    "docs:expressions": "node scripts/gen-expression-docs.mjs",
+    "docs": "npm run docs:expressions && typedoc",
     "docs:watch": "typedoc --watch",
-    "docs:html": "typedoc --options typedoc.html.json",
+    "docs:html": "npm run docs:expressions && typedoc --options typedoc.html.json",
     "docs:dev": "npm run docs:html && concurrently -k -n typedoc,serve -c blue,green \"typedoc --watch --options typedoc.html.json\" \"live-server docs/api-html --port=8080\"",
     "validate:display": "ts-node scripts/validate-display-config.ts",
     "clean": "rimraf dist"

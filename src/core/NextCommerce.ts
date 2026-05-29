@@ -1,26 +1,3 @@
-/**
- * Programmatic entry point to the SDK.
- *
- * `NextCommerce` is the public façade that page authors use to drive the cart,
- * read campaign data, register event/callback handlers, apply coupons, and add
- * post-purchase upsells without touching the underlying stores directly. It is a
- * singleton: at runtime the SDK assigns the instance to `window.next`, so most
- * code never calls {@link NextCommerce.getInstance} itself.
- *
- * @remarks
- * Cart-mutating methods ({@link NextCommerce.addItem | addItem},
- * {@link NextCommerce.removeItem | removeItem}, etc.) are async — they resolve
- * once the cart store has applied the change and recalculated totals.
- *
- * @example
- * Access the singleton on the page and add an item to the cart:
- * ```ts
- * window.nextReady.push(async (next) => {
- *   await next.addItem({ packageId: 2, quantity: 1 });
- * });
- * ```
- */
-
 declare global {
   interface Window {
     __NEXT_SDK_VERSION__?: string;
@@ -45,6 +22,28 @@ import { EventBus } from '@/utils/events';
 import { Logger } from '@/utils/logger';
 import { ApiClient } from '@/api/client';
 
+/**
+ * Programmatic entry point to the SDK.
+ *
+ * `NextCommerce` is the public façade that page authors use to drive the cart,
+ * read campaign data, register event/callback handlers, apply coupons, and add
+ * post-purchase upsells without touching the underlying stores directly. It is a
+ * singleton: at runtime the SDK assigns the instance to `window.next`, so most
+ * code never calls {@link NextCommerce.getInstance} itself.
+ *
+ * @remarks
+ * Cart-mutating methods ({@link NextCommerce.addItem | addItem},
+ * {@link NextCommerce.removeItem | removeItem}, etc.) are async — they resolve
+ * once the cart store has applied the change and recalculated totals.
+ *
+ * @example
+ * Access the singleton on the page and add an item to the cart:
+ * ```ts
+ * window.nextReady.push(async (next) => {
+ *   await next.addItem({ packageId: 2, quantity: 1 });
+ * });
+ * ```
+ */
 export class NextCommerce {
   private static instance: NextCommerce;
   private logger: Logger;

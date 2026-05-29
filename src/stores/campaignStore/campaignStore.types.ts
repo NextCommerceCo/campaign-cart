@@ -88,6 +88,11 @@ export interface CampaignApiSlice {
   ) => Promise<void>;
 }
 
+/**
+ * Full shape of the campaign store: campaign state combined with its items,
+ * variants, and API action slices. This is the type returned by
+ * `useCampaignStore.getState()`.
+ */
 export type CampaignStore = CampaignState &
   CampaignItemsSlice &
   CampaignVariantsSlice &

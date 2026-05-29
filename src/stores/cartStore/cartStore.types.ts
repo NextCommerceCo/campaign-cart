@@ -39,4 +39,8 @@ export interface CartApiSlice {
   removeCoupon: (code: string) => Promise<void>;
 }
 
+/**
+ * Full shape of the cart store: cart state combined with its items, UI, and API
+ * action slices. This is the type returned by `useCartStore.getState()`.
+ */
 export type CartStore = CartState & CartItemsSlice & CartUiSlice & CartApiSlice;

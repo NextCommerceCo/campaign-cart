@@ -1092,6 +1092,7 @@ export interface CartItem {
   selectorId?: string | undefined;
 }
 
+/** A single discount applied to the cart (from an offer or voucher), with its amount and optional metadata. */
 export interface Discount {
   /** ID of the offer that generated this discount. */
   offer_id?: number;
@@ -1106,13 +1107,21 @@ export interface Discount {
 }
 
 // Selector-specific types with explicit undefined handling
+/** A single selectable card within a package selector, with its resolved package, quantity, and pricing. */
 export interface SelectorItem {
+  /** The card's DOM element that the selector binds to. */
   element: HTMLElement;
+  /** Campaign package `ref_id` this card selects. */
   packageId: number;
+  /** Number of packages this card adds when selected. */
   quantity: number;
+  /** Total package price as a raw number; `undefined` when not yet resolved from campaign data. */
   price: number | undefined;
+  /** Package display name; `undefined` when not yet resolved. */
   name: string | undefined;
+  /** `true` when this card is the selector's default selection on load. */
   isPreSelected: boolean;
+  /** Shipping method id tied to this card; `undefined` when the card sets no shipping. */
   shippingId: string | undefined;
 }
 
@@ -1153,82 +1162,144 @@ export interface CartState {
   isCalculating: boolean;
 }
 
+/** A cart line expanded with a full pricing breakdown and product details, ready for display templates. */
 export interface EnrichedCartLine {
+  /** Unique cart line id returned by the API. */
   id: number;
+  /** Campaign package `ref_id` for this line. */
   packageId: number;
+  /** Number of packages on this line. */
   quantity: number;
+  /** Pricing breakdown for the line, each amount given as both a raw `value` and a `formatted` string. */
   price: {
+    /** Line price excluding tax. */
     excl_tax: { value: number; formatted: string };
+    /** Line price including tax. */
     incl_tax: { value: number; formatted: string };
+    /** Original (pre-discount) line price. */
     original: { value: number; formatted: string };
+    /** Amount saved versus the original price. */
     savings: { value: number; formatted: string };
   };
+  /** Product display fields for rendering the line. */
   product: {
+    /** Package/product display name. */
     title: string;
+    /** Product SKU. */
     sku: string;
+    /** Product image URL. */
     image: string;
   };
+  /** `true` when this line was added via a post-purchase upsell. */
   is_upsell: boolean;
+  /** `true` for subscription/recurring lines. */
   is_recurring: boolean;
+  /** Billing interval for recurring lines; absent for one-time purchases. */
   interval?: 'day' | 'month';
+  /** `true` when this line represents a multi-package bundle. */
   is_bundle: boolean;
+  /** Package ids that make up the bundle; present only when `is_bundle` is `true`. */
   bundleComponents?: number[];
 }
 
 // Campaign types
+/** A loaded campaign: its packages, offers, shipping methods, and storefront settings. */
 export interface Campaign {
+  /** ISO currency code the campaign prices are quoted in. */
   currency: string;
+  /** Language/locale code for campaign copy (e.g. `'en'`). */
   language: string;
+  /** Campaign display name. */
   name: string;
+  /** All purchasable packages defined for this campaign. */
   packages: Package[];
+  /** Public payment environment key (e.g. Spreedly env key) used to tokenize cards. */
   payment_env_key: string;
+  /** Shipping methods available for this campaign. */
   shipping_methods: ShippingOption[];
+  /** Offers (discounts/promotions) configured for the campaign; absent when none are defined. */
   offers?: Offer[];
+  /** Currencies the shopper may switch between, each with a display label. */
   available_currencies?: Array<{ code: string; label: string }>;
+  /** Countries the campaign can ship to, each with a display label. */
   available_shipping_countries?: Array<{ code: string; label: string }>;
+  /** Express payment methods (PayPal/Apple Pay/Google Pay) enabled for the campaign. */
   available_express_payment_methods?: Array<{ code: string; label: string }>;
+  /** Standard payment methods enabled for the campaign. */
   available_payment_methods?: Array<{ code: string; label: string }>;
 }
 
+/** A purchasable package in a campaign — a product/variant bundled at a set quantity and price. */
 export interface Package {
+  /** Campaign-internal package id; the value referenced everywhere as `packageId`. */
   ref_id: number;
+  /** The store's external/platform product id this package maps to. */
   external_id: number;
+  /** Package display name. */
   name: string;
+  /** Per-unit price as a formatted string. */
   price: string;
+  /** Total package price as a formatted string (per-unit price × `qty`). */
   price_total: string;
+  /** Per-unit retail/compare-at price as a formatted string; absent when no compare-at price is set. */
   price_retail?: string;
+  /** Total retail/compare-at price as a formatted string; absent when no compare-at price is set. */
   price_retail_total?: string;
+  /** Per-unit recurring price string; present for subscription packages. */
   price_recurring?: string;
+  /** Total recurring price string; present for subscription packages. */
   price_recurring_total?: string;
+  /** Number of product units included in the package. */
   qty: number;
+  /** Package/product image URL. */
   image: string;
+  /** `true` for subscription/recurring packages. */
   is_recurring: boolean;
+  /** Billing interval for recurring packages; `null` or absent for one-time purchases. */
   interval?: 'day' | 'month' | null;
+  /** Number of intervals between billing cycles; `null` or absent for one-time purchases. */
   interval_count?: number | null;
+  /** Product variant id this package maps to; absent when the product has no variants. */
   product_variant_id?: number;
+  /** Product variant display name; absent when the product has no variants. */
   product_variant_name?: string;
+  /** Underlying product id; absent when not provided. */
   product_id?: number;
+  /** Underlying product display name; absent when not provided. */
   product_name?: string;
+  /** Product SKU; `null` when the product has no SKU. */
   product_sku?: string | null;
+  /** Whether the product can currently be purchased (e.g. `'available'`); absent when unspecified. */
   product_purchase_availability?: string;
+  /** Whether the product is currently in stock; absent when unspecified. */
   product_inventory_availability?: string;
 }
 
+/** A shipping method offered by a campaign, as returned by the campaign API. */
 export interface ShippingOption {
+  /** Campaign-internal shipping method id; the value referenced as `shippingId`. */
   ref_id: number;
+  /** Shipping method code (e.g. `'standard'`). */
   code: string;
+  /** Shipping price as a formatted string. */
   price: string;
 }
 
 // Google Maps configuration interface
+/** Configuration for Google Maps-powered address autocomplete. */
 export interface GoogleMapsConfig {
+  /** Google Maps API key; absent disables the integration. */
   apiKey?: string;
+  /** Region bias for autocomplete results (ISO country code, e.g. `'US'`). */
   region?: string;
+  /** `true` enables address autocomplete on checkout fields. */
   enableAutocomplete?: boolean;
+  /** Raw options passed through to the Google Places Autocomplete widget. */
   autocompleteOptions?: any;
 }
 
 // Address configuration interface
+/** Controls which countries/states appear in checkout address dropdowns and how fallbacks resolve. */
 export interface AddressConfig {
   /**
    * Fallback country when detected country is not available (Low priority fallback).
@@ -1267,93 +1338,157 @@ export interface AddressConfig {
     name: string;
   }>;
 
+  /** `true` enables address autocomplete on the address fields. */
   enableAutocomplete?: boolean;
 }
 
 // Configuration types
+/** The SDK's runtime configuration: credentials, page context, payment/address setup, detection results, and feature toggles. */
 export interface ConfigState {
+  /** Public API key used to authenticate campaign/cart API calls. */
   apiKey: string;
+  /** Identifier of the campaign this page belongs to. */
   campaignId: string;
+  /** `true` enables verbose SDK logging. */
   debug: boolean;
+  /** `true` enables the on-page debug overlay; `undefined` leaves it off. */
   debugger: boolean | undefined;
+  /** Which campaign page type the SDK is running on. */
   pageType: PageType;
+  /** Store display name; absent when not configured. */
   storeName?: string;
+  /** Spreedly environment key for card tokenization; absent when card payments are not configured. */
   spreedlyEnvironmentKey?: string | undefined;
+  /** Payment method and express-checkout configuration. */
   paymentConfig: PaymentConfig;
+  /** Google Maps autocomplete configuration. */
   googleMapsConfig: GoogleMapsConfig;
+  /** Address dropdown/fallback configuration. */
   addressConfig: AddressConfig;
 
   // Location and currency detection
+  /** Country detected for the visitor (ISO code); absent when detection has not run. */
   detectedCountry?: string;
+  /** Currency detected for the visitor (ISO code); absent when detection has not run. */
   detectedCurrency?: string;
+  /** User's IP address from location detection. */
   detectedIp?: string; // User's IP address from location detection
+  /** Currency the shopper has explicitly chosen; absent when relying on detection. */
   selectedCurrency?: string;
+  /** Raw location-detection response payload. */
   locationData?: any;
+  /** How currency follows country changes: `'auto'` switches with country, `'manual'` never auto-changes. */
   currencyBehavior?: 'auto' | 'manual'; // auto: change currency when country changes, manual: never auto-change
+  /** `true` when the requested currency was unavailable and a fallback currency was used. */
   currencyFallbackOccurred?: boolean; // Track if currency fallback happened
 
   // Additional configuration properties for complete type coverage
+  /** `true` auto-initializes the SDK on load; `undefined` uses the default behavior. */
   autoInit: boolean | undefined;
+  /** Max API requests allowed per interval; `undefined` for no client-side limit. */
   rateLimit: number | undefined;
+  /** Cache time-to-live in milliseconds; `undefined` uses the default. */
   cacheTtl: number | undefined;
+  /** Number of times to retry a failed request; `undefined` uses the default. */
   retryAttempts: number | undefined;
+  /** Request timeout in milliseconds; `undefined` uses the default. */
   timeout: number | undefined;
+  /** `true` runs the SDK in test mode (test orders/payments); `undefined` for live mode. */
   testMode: boolean | undefined;
 
   // API and performance settings
+  /** Maximum retry count for API calls; `undefined` uses the default. */
   maxRetries: number | undefined;
+  /** Per-request timeout in milliseconds; `undefined` uses the default. */
   requestTimeout: number | undefined;
+  /** `true` enables analytics tracking; `undefined` uses the default. */
   enableAnalytics: boolean | undefined;
+  /** `true` enables debug-mode behavior; `undefined` uses the default. */
   enableDebugMode: boolean | undefined;
 
   // Environment and deployment settings
+  /** Deployment environment the SDK is running in; `undefined` when unspecified. */
   environment: 'development' | 'staging' | 'production' | undefined;
+  /** SDK version string; absent when not stamped into the build. */
   version?: string | undefined;
+  /** Build timestamp; absent when not stamped into the build. */
   buildTimestamp?: string | undefined;
 
   // Discount system
+  /** Locally-defined discounts keyed by coupon code. */
   discounts: Record<string, DiscountDefinition>;
 
   // Attribution configuration
+  /** UTM-forwarding settings controlling how tracking params propagate to links. */
   utmTransfer?: {
+    /** `true` enables forwarding UTM parameters. */
     enabled: boolean;
+    /** `true` also appends params to external (off-domain) links. */
     applyToExternalLinks?: boolean;
+    /** Domains excluded from UTM forwarding. */
     excludedDomains?: string[];
+    /** Specific parameter names to copy; absent copies the default set. */
     paramsToCopy?: string[];
   };
 
   // Tracking configuration (legacy)
+  /** Legacy tracking mode; superseded by `analytics`. */
   tracking?: 'auto' | 'manual' | 'disabled';
 
   // New analytics configuration
+  /** Analytics configuration covering mode and per-provider settings. */
   analytics?: {
+    /** `true` enables analytics. */
     enabled: boolean;
+    /** How events are dispatched: automatically, manually, or disabled. */
     mode: 'auto' | 'manual' | 'disabled';
+    /** `true` logs analytics events for debugging. */
     debug: boolean;
+    /** Per-provider analytics configuration. */
     providers: {
+      /** Google Tag Manager provider settings. */
       gtm: {
+        /** `true` enables the GTM provider. */
         enabled: boolean;
+        /** GTM container and data-layer settings. */
         settings: {
+          /** GTM container id (e.g. `GTM-XXXX`); absent when not set. */
           containerId?: string;
+          /** Custom dataLayer variable name; absent uses the default. */
           dataLayerName?: string;
+          /** GTM environment string; absent uses the default. */
           environment?: string;
         };
       };
+      /** Facebook (Meta) Pixel provider settings. */
       facebook: {
+        /** `true` enables the Facebook provider. */
         enabled: boolean;
+        /** Facebook pixel and Conversions API settings. */
         settings: {
+          /** Facebook Pixel id. */
           pixelId: string;
+          /** Conversions API access token; absent when server-side events are not used. */
           accessToken?: string;
+          /** Test event code for validating events in the Events Manager. */
           testEventCode?: string;
         };
+        /** Event names to suppress for this provider. */
         blockedEvents?: string[];
       };
+      /** Custom HTTP endpoint provider settings. */
       custom: {
+        /** `true` enables the custom provider. */
         enabled: boolean;
+        /** Endpoint and request settings for the custom provider. */
         settings: {
+          /** URL events are POSTed to. */
           endpoint: string;
+          /** API key sent with custom-provider requests; absent when not required. */
           apiKey?: string;
+          /** Number of events to batch per request; absent sends individually. */
           batchSize?: number;
+          /** Request timeout in milliseconds; absent uses the default. */
           timeout?: number;
         };
       };
@@ -1364,93 +1499,137 @@ export interface ConfigState {
   // Error tracking can be added externally via HTML/scripts
 
   // Cart initialization behavior
+  /** `true` empties the cart on SDK init; absent preserves any persisted cart. */
   clearCartOnInit?: boolean;
 }
 
+/**
+ * The kind of campaign page the SDK is running on. Drives page-specific
+ * behavior such as which analytics events fire and which enhancers apply.
+ */
 export type PageType = 'product' | 'cart' | 'checkout' | 'upsell' | 'receipt';
 
 // Card input configuration interface
 // Generic configuration for credit card input fields (iFrame-based)
 // Previously named SpreedlyConfig - alias maintained for backward compatibility
+/** Configuration for the iframe-based credit-card input fields (card number and CVV). */
 export interface CardInputConfig {
-  // Field type configuration - controls keyboard display on mobile
+  /** Input type per field — controls the mobile keyboard shown for card number and CVV. */
   fieldType?: {
+    /** Input type for the card-number field. */
     number?: 'number' | 'text' | 'tel';
+    /** Input type for the CVV field. */
     cvv?: 'number' | 'text' | 'tel';
   };
 
-  // Number format configuration
+  /** How the card number is displayed as the shopper types. */
   numberFormat?: 'prettyFormat' | 'plainFormat' | 'maskedFormat';
 
-  // Label configuration for accessibility
+  /** Accessible labels for the iframe fields. */
   labels?: {
+    /** Accessible label for the card-number field. */
     number?: string;
+    /** Accessible label for the CVV field. */
     cvv?: string;
   };
 
-  // Title attribute for accessibility
+  /** `title` attribute text for the iframe fields (accessibility). */
   titles?: {
+    /** Title for the card-number field. */
     number?: string;
+    /** Title for the CVV field. */
     cvv?: string;
   };
 
-  // Placeholder text
+  /** Placeholder text for the iframe fields. */
   placeholders?: {
+    /** Placeholder for the card-number field. */
     number?: string;
+    /** Placeholder for the CVV field. */
     cvv?: string;
   };
 
-  // CSS styling for iFrame fields
+  /** Inline CSS applied inside the iframe fields. */
   styles?: {
+    /** CSS for the card-number field. */
     number?: string;
+    /** CSS for the CVV field. */
     cvv?: string;
+    /** CSS for field placeholders. */
     placeholder?: string;
   };
 
   // Security parameters - REQUIRED for authentication
+  /** Single-use value unique per session (e.g. a UUID), required for tokenization auth. */
   nonce?: string; // Unique per session (e.g., UUID)
+  /** Epoch timestamp used in the tokenization signature. */
   timestamp?: string; // Epoch time
+  /** Spreedly certificate token identifying the signing certificate. */
   certificateToken?: string; // Spreedly certificate token
+  /** Server-generated signature authenticating the tokenization request. */
   signature?: string; // Server-generated signature
 
-  // Fraud detection
+  /** Enable fraud detection, or pass `{ siteId }` to use a bring-your-own fraud site id. */
   fraud?: boolean | { siteId: string }; // Enable fraud detection or specify BYOC fraud site ID
 
-  // Other options
+  /** `true` enables browser autocomplete on the card fields. */
   enableAutoComplete?: boolean; // Toggle autocomplete functionality
+  /** Marks individual fields as required for submission. */
   requiredAttributes?: {
+    /** `true` requires the card-number field. */
     number?: boolean;
+    /** `true` requires the CVV field. */
     cvv?: boolean;
   };
 
-  // Validation parameters
+  /** `true` skips cardholder-name validation. */
   allowBlankName?: boolean; // Skip name validation
+  /** `true` allows submitting an expired card date. */
   allowExpiredDate?: boolean; // Allow expired dates
 }
 
 // Backward compatibility alias - SpreedlyConfig is now CardInputConfig
+/**
+ * Configuration for the Spreedly hosted card-input fields. Alias of
+ * {@link CardInputConfig}.
+ */
 export type SpreedlyConfig = CardInputConfig;
 
+/** Payment configuration: card-input fields and express-checkout setup. */
 export interface PaymentConfig {
-  // Generic card input configuration (preferred)
+  /** Card-input field configuration (preferred field name). */
   cardInputConfig?: CardInputConfig;
-  // Legacy naming - maintained for backward compatibility
+  /** Legacy alias for `cardInputConfig`; kept for backward compatibility. */
   spreedly?: CardInputConfig;
 
+  /** Express-checkout (PayPal/Apple Pay/Google Pay) configuration. */
   expressCheckout?: {
+    /** `true` enables express checkout. */
     enabled: boolean;
+    /** Which express methods are turned on. */
     methods: {
+      /** `true` shows the PayPal button. */
       paypal?: boolean;
+      /** `true` shows the Apple Pay button. */
       applePay?: boolean;
+      /** `true` shows the Google Pay button. */
       googlePay?: boolean;
     };
+    /** Display order of the express methods; absent uses the default order. */
     methodOrder?: ('paypal' | 'apple_pay' | 'google_pay')[]; // Order in which payment methods should be displayed
+    /** `true` requires form validation before an in-form express payment proceeds. */
     requireValidation?: boolean; // If true, express payment methods in combo form will require form validation
+    /** Field names that must be filled before express checkout (e.g. `['email', 'fname', 'lname']`). */
     requiredFields?: string[]; // List of fields required for express checkout (e.g., ['email', 'fname', 'lname'])
   };
 }
 
 // Callback types
+/**
+ * Lifecycle hook names accepted by {@link NextCommerce.registerCallback}. Each
+ * fires at a fixed point in the render / checkout flow and receives the current
+ * cart snapshot as {@link CallbackData}.
+ */
 export type CallbackType =
   | 'beforeRender'
   | 'afterRender'
@@ -1461,8 +1640,11 @@ export type CallbackType =
   | 'itemRemoved'
   | 'cartCleared';
 
+/** Snapshot of cart and campaign state passed to lifecycle callbacks (see `CallbackType`). */
 export interface CallbackData {
+  /** Current cart lines with full pricing breakdown. */
   cartLines: EnrichedCartLine[];
+  /** Cart totals subset: subtotal, total, discount flags/amounts, and selected shipping method (all monetary values are `Decimal`). */
   cartTotals: Pick<
     CartState,
     | 'subtotal'
@@ -1472,37 +1654,59 @@ export interface CallbackData {
     | 'totalDiscountPercentage'
     | 'shippingMethod'
   >;
+  /** Loaded campaign data, or `null` when the campaign has not yet loaded. */
   campaignData: Campaign | null;
+  /** Currently applied coupon codes. */
   vouchers: string[];
 }
 
 // Coupon system types
+/** Rules defining a locally-configured coupon: its type, value, scope, and eligibility constraints. */
 export interface DiscountDefinition {
+  /** Coupon code that triggers this discount. */
   code: string;
+  /** Whether the discount is a percentage off or a fixed amount. */
   type: 'percentage' | 'fixed';
+  /** Discount magnitude — a percent when `type` is `'percentage'`, otherwise a currency amount. */
   value: number;
+  /** Whether the discount applies to the whole order or only specific packages. */
   scope: 'order' | 'package';
+  /** Package ids the discount applies to; used when `scope` is `'package'`. */
   packageIds?: number[]; // For package-specific discounts
+  /** Minimum order value required for the coupon to apply; absent means no minimum. */
   minOrderValue?: number;
+  /** Cap on the discount amount for percentage coupons; absent means uncapped. */
   maxDiscount?: number; // For percentage discounts
+  /** Human-readable description of the coupon; absent when none is set. */
   description?: string;
+  /** Maximum number of times the coupon may be used; absent means unlimited. */
   usageLimit?: number;
+  /** `true` if the coupon can stack with other coupons; absent treated as not combinable. */
   combinable?: boolean; // Can be combined with other coupons
 }
 
+/** A coupon that has been applied to the cart, with its resolved discount amount and source definition. */
 export interface AppliedCoupon {
+  /** The applied coupon code. */
   code: string;
+  /** Discount amount calculated for this coupon against the current cart. */
   discount: number; // Calculated discount amount
+  /** The rule definition this applied coupon was resolved from. */
   definition: DiscountDefinition;
 }
 
 // Legacy coupon interface - kept for backwards compatibility
+/** Legacy coupon shape; retained for backward compatibility. Prefer `AppliedCoupon`/`DiscountDefinition`. */
 export interface Coupon {
+  /** Coupon code. */
   code: string;
+  /** Discount magnitude — a percent when `type` is `'percentage'`, otherwise a currency amount. */
   amount: number;
+  /** Whether the discount is a fixed amount or a percentage. */
   type: 'fixed' | 'percentage';
 }
 
+/** The shipping method currently selected on the cart, with its discounted pricing (monetary values are `Decimal`). */
 export interface ShippingMethod {
   /** Shipping method ID. */
   id: number;
@@ -1524,8 +1728,11 @@ export interface ShippingMethod {
   discounts?: Discount[];
 }
 
+/** State captured for the checkout flow: collected form values, chosen payment method, and progress. */
 export interface CheckoutData {
+  /** Checkout form field values keyed by field name (e.g. `email`, `fname`, `lname`). */
   formData: Record<string, any>;
+  /** Payment method the shopper is checking out with. */
   paymentMethod:
     | 'card_token'
     | 'paypal'
@@ -1533,23 +1740,38 @@ export interface CheckoutData {
     | 'google_pay'
     | 'credit-card'
     | 'klarna';
+  /** `true` while the order is being submitted; absent before submission starts. */
   isProcessing?: boolean;
+  /** Current step index in a multi-step checkout; absent for single-step flows. */
   step?: number;
 }
 
+/** A completed order as returned by the order API. */
 export interface OrderData {
+  /** Unique order reference id assigned by the API. */
   ref_id: string;
+  /** Human-facing order number shown to the shopper. */
   number: string;
+  /** ISO currency code the order was placed in. */
   currency: string;
+  /** Order grand total including tax, as a formatted string. */
   total_incl_tax: string;
+  /** URL of the shopper-facing order status/confirmation page. */
   order_status_url: string;
+  /** `true` when the order was placed in test mode. */
   is_test: boolean;
+  /** Order line items; shape varies by API response, absent when not returned. */
   lines?: any[];
+  /** Customer/user details attached to the order; absent when not returned. */
   user?: any;
 }
 
+/** Payload describing an error surfaced by the SDK (emitted via the `error:occurred` event). */
 export interface ErrorData {
+  /** Human-readable error message suitable for logging or display. */
   message: string;
+  /** Machine-readable error code; absent when the error is uncategorized. */
   code?: string;
+  /** Extra context about the error (e.g. the offending package id); absent when none. */
   details?: any;
 }

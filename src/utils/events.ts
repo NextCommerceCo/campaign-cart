@@ -4,6 +4,22 @@
 
 import type { EventMap } from '@/types/global';
 
+/**
+ * Typed publish/subscribe hub for SDK events.
+ *
+ * A singleton (obtain via {@link EventBus.getInstance}) that brokers the events
+ * declared in {@link EventMap}, giving subscribers correctly-typed payloads.
+ * Inside enhancers prefer `this.emit` / `this.on` (auto-cleaned on destroy); use
+ * the EventBus directly only from non-enhancer code.
+ *
+ * @example
+ * ```ts
+ * const bus = EventBus.getInstance();
+ * const handler = (cart) => console.log(cart.total);
+ * bus.on('cart:updated', handler);
+ * bus.off('cart:updated', handler);
+ * ```
+ */
 export class EventBus {
   private static instance: EventBus;
   private listeners = new Map<keyof EventMap, Set<Function>>();

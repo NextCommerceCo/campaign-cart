@@ -116,7 +116,7 @@ export interface PropertyConfig {
 // Type helper for property mappings
 type PropertyMap = Record<string, string | PropertyConfig | boolean>;
 
-export const PROPERTY_MAPPINGS: Record<string, PropertyMap> = {
+export const PROPERTY_MAPPINGS = {
   // Cart properties
   cart: {
     // Booleans
@@ -362,7 +362,40 @@ export const PROPERTY_MAPPINGS: Record<string, PropertyMap> = {
     'total.formatted': '_formatted.total',
     'createdAt.formatted': '_formatted.createdAt',
   }
-};
+} satisfies Record<string, PropertyMap>;
+
+// =====================
+// DERIVED EXPRESSION TYPES
+// =====================
+// These unions are derived from PROPERTY_MAPPINGS above, so they are a
+// compile-time-enforced, single source of truth: add a property to the map and
+// it appears here (and in the generated docs) automatically. They describe the
+// vocabulary usable in `data-next-display` and `data-next-show` / `data-next-hide`.
+
+/** Top-level objects addressable in display/conditional expressions, e.g. the `cart` in `cart.total`. */
+export type DisplayObjectType = keyof typeof PROPERTY_MAPPINGS;
+
+/** Every `cart.*` property usable in `data-next-display` / conditional expressions. */
+export type CartDisplayProperty = keyof (typeof PROPERTY_MAPPINGS)['cart'];
+/** Every `package.*` property usable in `data-next-display` / conditional expressions. */
+export type PackageDisplayProperty = keyof (typeof PROPERTY_MAPPINGS)['package'];
+/** Every `selection.*` property usable in `data-next-display` / conditional expressions. */
+export type SelectionDisplayProperty = Exclude<
+  keyof (typeof PROPERTY_MAPPINGS)['selection'],
+  '_expression'
+>;
+/** Every `shipping.*` property usable within a `data-next-shipping-id` context. */
+export type ShippingDisplayProperty = keyof (typeof PROPERTY_MAPPINGS)['shipping'];
+/** Every `order.*` property usable in `data-next-display` / conditional expressions. */
+export type OrderDisplayProperty = keyof (typeof PROPERTY_MAPPINGS)['order'];
+
+/** Any display property across every object type. */
+export type AnyDisplayProperty =
+  | CartDisplayProperty
+  | PackageDisplayProperty
+  | SelectionDisplayProperty
+  | ShippingDisplayProperty
+  | OrderDisplayProperty;
 
 // =====================
 // PROPERTY MAPPING UTILITIES
@@ -376,9 +409,9 @@ export function getPropertyConfig(
   objectType: keyof typeof PROPERTY_MAPPINGS,
   propertyName: string
 ): PropertyConfig | null {
-  const mappings = PROPERTY_MAPPINGS[objectType];
+  const mappings = PROPERTY_MAPPINGS[objectType] as PropertyMap;
   if (!mappings) return null;
-  
+
   const mapping = mappings[propertyName];
   if (!mapping || typeof mapping === 'boolean') return null;
   
@@ -426,7 +459,7 @@ export function getBasePropertyName(propertyName: string): string {
  * Check if expression evaluation is enabled for an object type
  */
 export function supportsExpressions(objectType: keyof typeof PROPERTY_MAPPINGS): boolean {
-  const mappings = PROPERTY_MAPPINGS[objectType];
+  const mappings = PROPERTY_MAPPINGS[objectType] as PropertyMap;
   return Boolean(mappings && '_expression' in mappings && mappings._expression === true);
 }
 

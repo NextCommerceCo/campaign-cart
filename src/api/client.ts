@@ -1,3 +1,16 @@
+import type {
+  Campaign,
+  Cart,
+  Order,
+  CartBase,
+  CreateOrder,
+  AddUpsellLine,
+  AddressAutocomplete,
+  CartCalculateSummary,
+  CartSummary,
+} from '@/types/api';
+import { Logger, createLogger } from '@/utils/logger';
+
 /**
  * Thin, store-free HTTP client for the NextCommerce Campaigns API.
  *
@@ -12,20 +25,6 @@
  * const campaign = await client.getCampaigns('USD');
  * ```
  */
-
-import type {
-  Campaign,
-  Cart,
-  Order,
-  CartBase,
-  CreateOrder,
-  AddUpsellLine,
-  AddressAutocomplete,
-  CartCalculateSummary,
-  CartSummary,
-} from '@/types/api';
-import { Logger, createLogger } from '@/utils/logger';
-
 export class ApiClient {
   private baseURL = 'https://campaigns.apps.29next.com';
   private apiKey: string;
@@ -183,6 +182,14 @@ export class ApiClient {
   }
 
   // Prospect Cart endpoints
+  /**
+   * Creates a prospect (abandoned-cart) record server-side from partial shopper
+   * detail, before a real order exists. Used to capture leads for
+   * cart-abandonment flows.
+   *
+   * @param data - The prospect cart payload (contact fields and cart lines).
+   * @returns The created prospect cart, including its id.
+   */
   public async createProspectCart(data: any): Promise<any> {
     return this.request('/api/v1/prospect-carts/', {
       method: 'POST',
@@ -190,6 +197,14 @@ export class ApiClient {
     });
   }
 
+  /**
+   * Updates an existing prospect cart — e.g. as the shopper fills in more
+   * fields or changes their cart.
+   *
+   * @param cartId - The prospect cart id.
+   * @param data - The fields to update.
+   * @returns The updated prospect cart.
+   */
   public async updateProspectCart(cartId: string, data: any): Promise<any> {
     return this.request(`/api/v1/prospect-carts/${cartId}/`, {
       method: 'PATCH',
@@ -197,22 +212,55 @@ export class ApiClient {
     });
   }
 
+  /**
+   * Retrieves an existing prospect cart by id.
+   *
+   * @param cartId - The prospect cart id.
+   * @returns The prospect cart.
+   */
   public async getProspectCart(cartId: string): Promise<any> {
     return this.request(`/api/v1/prospect-carts/${cartId}/`);
   }
 
+  /**
+   * Marks a prospect cart as abandoned, signalling the shopper did not convert.
+   *
+   * @param cartId - The prospect cart id.
+   * @returns The updated prospect cart.
+   */
   public async abandonProspectCart(cartId: string): Promise<any> {
     return this.request(`/api/v1/prospect-carts/${cartId}/abandon/`, {
       method: 'POST',
     });
   }
 
+  /**
+   * Marks a prospect cart as converted once the shopper completes an order.
+   *
+   * @param cartId - The prospect cart id.
+   * @returns The updated prospect cart.
+   */
   public async convertProspectCart(cartId: string): Promise<any> {
     return this.request(`/api/v1/prospect-carts/${cartId}/convert/`, {
       method: 'POST',
     });
   }
 
+  /**
+   * Fetches address autocomplete suggestions for a partial query, via
+   * NextCommerce's address lookup endpoint.
+   *
+   * @param query_text - The partial address the shopper has typed.
+   * @param country - Optional ISO country code to bias results.
+   * @param language - Optional language code for localized results.
+   * @param signal - Optional `AbortSignal` to cancel a superseded request.
+   * @returns The autocomplete suggestions.
+   *
+   * @example
+   * ```ts
+   * const results = await client.getAddressesAutocomplete('1600 Amphi', 'US');
+   * ```
+   */
   public async getAddressesAutocomplete(
     query_text: string,
     country?: string,
@@ -342,12 +390,20 @@ export class ApiClient {
     }
   }
 
-  // Update API key
+  /**
+   * Replaces the API key used for subsequent requests.
+   *
+   * @param apiKey - The new public API key.
+   */
   public setApiKey(apiKey: string): void {
     this.apiKey = apiKey;
   }
 
-  // Get current API key
+  /**
+   * Returns the API key currently configured on this client.
+   *
+   * @returns The public API key.
+   */
   public getApiKey(): string {
     return this.apiKey;
   }
