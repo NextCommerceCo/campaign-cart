@@ -22,19 +22,69 @@ import { AddressAutocompleteResult } from './api';
  * ```
  */
 export interface EventMap {
-  /** Fires whenever the cart store changes — items, quantities, coupons, shipping, or recalculated totals. Payload is the full cart state. */
+  /**
+   * Fires whenever the cart store changes — items, quantities, coupons, shipping, or recalculated totals. Payload is the full cart state.
+   *
+   * @example
+   * ```ts
+   * next.on('cart:updated', (cart) => {
+   *   // cart.items, cart.totalQuantity, cart.total, cart.vouchers, cart.isEmpty
+   * });
+   * ```
+   */
   'cart:updated': CartState;
-  /** A package was added to the cart (or its quantity increased from zero). */
+  /**
+   * A package was added to the cart (or its quantity increased from zero).
+   *
+   * @example
+   * ```ts
+   * next.on('cart:item-added', (payload) => {
+   *   // payload = { packageId: 2, quantity: 1, source: 'selector' }
+   * });
+   * ```
+   */
   'cart:item-added': { packageId: number; quantity?: number; source?: string };
-  /** A package was removed from the cart entirely. */
+  /**
+   * A package was removed from the cart entirely.
+   *
+   * @example
+   * ```ts
+   * next.on('cart:item-removed', (payload) => {
+   *   // payload = { packageId: 2 }
+   * });
+   * ```
+   */
   'cart:item-removed': { packageId: number };
-  /** The quantity of an existing cart line changed. Includes both the new and previous quantity. */
+  /**
+   * The quantity of an existing cart line changed. Includes both the new and previous quantity.
+   *
+   * @example
+   * ```ts
+   * next.on('cart:quantity-changed', (payload) => {
+   *   // payload = { packageId: 2, quantity: 3, oldQuantity: 1 }
+   * });
+   * ```
+   */
   'cart:quantity-changed': {
     packageId: number;
     quantity: number;
     oldQuantity: number;
   };
-  /** One package was swapped for another in place (e.g. a selector switching the chosen offer), with the price delta between them. */
+  /**
+   * One package was swapped for another in place (e.g. a selector switching the chosen offer), with the price delta between them.
+   *
+   * @example
+   * ```ts
+   * next.on('cart:package-swapped', (payload) => {
+   *   // payload = {
+   *   //   previousPackageId: 2,
+   *   //   newPackageId: 5,
+   *   //   priceDifference: 10,
+   *   //   source: 'selector'
+   *   // }
+   * });
+   * ```
+   */
   'cart:package-swapped': {
     previousPackageId: number;
     newPackageId: number;
@@ -43,39 +93,180 @@ export interface EventMap {
     priceDifference: number;
     source?: string;
   };
-  /** The campaign (packages, offers, shipping methods) finished loading into the campaign store. */
+  /**
+   * The campaign (packages, offers, shipping methods) finished loading into the campaign store.
+   *
+   * @example
+   * ```ts
+   * next.on('campaign:loaded', (campaign) => {
+   *   // campaign.name, campaign.currency, campaign.packages, campaign.shipping_methods, campaign.offers
+   * });
+   * ```
+   */
   'campaign:loaded': Campaign;
-  /** The checkout flow has begun. Payload carries the captured checkout data. */
+  /**
+   * The checkout flow has begun. Payload carries the captured checkout data.
+   *
+   * @example
+   * ```ts
+   * next.on('checkout:started', (checkout) => {
+   *   // checkout.formData, checkout.paymentMethod, checkout.step
+   * });
+   * ```
+   */
   'checkout:started': CheckoutData;
-  /** The checkout `<form>` has been found and wired up by the checkout enhancer. */
+  /**
+   * The checkout `<form>` has been found and wired up by the checkout enhancer.
+   *
+   * @example
+   * ```ts
+   * next.on('checkout:form-initialized', (payload) => {
+   *   // payload = { form: <HTMLFormElement> }
+   * });
+   * ```
+   */
   'checkout:form-initialized': { form: HTMLFormElement };
-  /** The Spreedly card-tokenization iframe is ready to accept input. */
+  /**
+   * The Spreedly card-tokenization iframe is ready to accept input.
+   *
+   * @example
+   * ```ts
+   * next.on('checkout:spreedly-ready', (payload) => {
+   *   // payload = {}
+   * });
+   * ```
+   */
   'checkout:spreedly-ready': {};
-  /** An express-checkout flow (PayPal / Apple Pay / Google Pay) was initiated. */
+  /**
+   * An express-checkout flow (PayPal / Apple Pay / Google Pay) was initiated.
+   *
+   * @example
+   * ```ts
+   * next.on('checkout:express-started', (payload) => {
+   *   // payload = { method: 'paypal' }
+   * });
+   * ```
+   */
   'checkout:express-started': { method: 'paypal' | 'apple_pay' | 'google_pay' };
-  /** An order was successfully created. Payload carries the completed order data. */
+  /**
+   * An order was successfully created. Payload carries the completed order data.
+   *
+   * @example
+   * ```ts
+   * next.on('order:completed', (order) => {
+   *   // order.ref_id, order.number, order.total_incl_tax, order.currency, order.order_status_url, order.lines
+   * });
+   * ```
+   */
   'order:completed': OrderData;
-  /** The order completed but no redirect URL was available to send the shopper onward. */
+  /**
+   * The order completed but no redirect URL was available to send the shopper onward.
+   *
+   * @example
+   * ```ts
+   * next.on('order:redirect-missing', (payload) => {
+   *   // payload = { order: { ref_id: 'abc123', number: 'abc123' } }
+   * });
+   * ```
+   */
   'order:redirect-missing': { order: any };
-  /** A recoverable or fatal error occurred somewhere in the SDK. */
+  /**
+   * A recoverable or fatal error occurred somewhere in the SDK.
+   *
+   * @example
+   * ```ts
+   * next.on('error:occurred', (error) => {
+   *   // error.message, error.code, error.details
+   * });
+   * ```
+   */
   'error:occurred': ErrorData;
-  /** The requested currency was unavailable, so the SDK fell back to another. `reason` says whether the fallback came from cache or the API. */
+  /**
+   * The requested currency was unavailable, so the SDK fell back to another. `reason` says whether the fallback came from cache or the API.
+   *
+   * @example
+   * ```ts
+   * next.on('currency:fallback', (payload) => {
+   *   // payload = { requested: 'EUR', actual: 'USD', reason: 'cached' }
+   * });
+   * ```
+   */
   'currency:fallback': {
     requested: string;
     actual: string;
     reason: 'cached' | 'api';
   };
-  /** A persistent countdown timer reached zero. Identified by its persistence id. */
+  /**
+   * A persistent countdown timer reached zero. Identified by its persistence id.
+   *
+   * @example
+   * ```ts
+   * next.on('timer:expired', (payload) => {
+   *   // payload = { persistenceId: 'main-offer' }
+   * });
+   * ```
+   */
   'timer:expired': { persistenceId: string };
-  /** SDK configuration changed. Payload is the full config state. */
+  /**
+   * SDK configuration changed. Payload is the full config state.
+   *
+   * @example
+   * ```ts
+   * next.on('config:updated', (config) => {
+   *   // config.apiKey, config.campaignId, config.debug, config.pageType
+   * });
+   * ```
+   */
   'config:updated': ConfigState;
-  /** A coupon was successfully applied to the cart. Payload is either the resolved coupon or just the code. */
+  /**
+   * A coupon was successfully applied to the cart. Payload is either the resolved coupon or just the code.
+   *
+   * @example
+   * ```ts
+   * next.on('coupon:applied', (payload) => {
+   *   // payload = { code: 'SAVE10' }
+   * });
+   * ```
+   */
   'coupon:applied': { coupon: AppliedCoupon } | { code: string };
-  /** A previously applied coupon was removed from the cart. */
+  /**
+   * A previously applied coupon was removed from the cart.
+   *
+   * @example
+   * ```ts
+   * next.on('coupon:removed', (payload) => {
+   *   // payload = { code: 'SAVE10' }
+   * });
+   * ```
+   */
   'coupon:removed': { code: string };
-  /** A coupon code was rejected. `message` is a human-readable reason suitable for display. */
+  /**
+   * A coupon code was rejected. `message` is a human-readable reason suitable for display.
+   *
+   * @example
+   * ```ts
+   * next.on('coupon:validation-failed', (payload) => {
+   *   // payload = { code: 'SAVE10', message: 'Coupon expired' }
+   * });
+   * ```
+   */
   'coupon:validation-failed': { code: string; message: string };
-  /** A card within a package selector became the active selection. */
+  /**
+   * A card within a package selector became the active selection.
+   *
+   * @example
+   * ```ts
+   * next.on('selector:item-selected', (payload) => {
+   *   // payload = {
+   *   //   selectorId: 'main-offer',
+   *   //   packageId: 2,
+   *   //   previousPackageId: 5,
+   *   //   mode: 'swap',
+   *   //   pendingAction: false
+   *   // }
+   * });
+   * ```
+   */
   'selector:item-selected': {
     selectorId: string;
     packageId: number;
@@ -84,119 +275,395 @@ export interface EventMap {
     pendingAction: boolean | undefined;
     item?: SelectorItem;
   };
-  /** A selector's deferred action (e.g. add-to-cart in select mode) finished after selection. */
+  /**
+   * A selector's deferred action (e.g. add-to-cart in select mode) finished after selection.
+   *
+   * @example
+   * ```ts
+   * next.on('selector:action-completed', (payload) => {
+   *   // payload = {
+   *   //   selectorId: 'main-offer',
+   *   //   packageId: 2,
+   *   //   previousPackageId: 5,
+   *   //   mode: 'select'
+   *   // }
+   * });
+   * ```
+   */
   'selector:action-completed': {
     selectorId: string;
     packageId: number;
     previousPackageId: number | undefined;
     mode: string;
   };
-  /** A selector's current selection changed (package and/or quantity). */
+  /**
+   * A selector's current selection changed (package and/or quantity).
+   *
+   * @example
+   * ```ts
+   * next.on('selector:selection-changed', (payload) => {
+   *   // payload = { selectorId: 'main-offer', packageId: 2, quantity: 1 }
+   * });
+   * ```
+   */
   'selector:selection-changed': {
     selectorId: string;
     packageId?: number;
     quantity?: number;
     item?: SelectorItem;
   };
-  /** The quantity associated with a selector's current selection changed. */
+  /**
+   * The quantity associated with a selector's current selection changed.
+   *
+   * @example
+   * ```ts
+   * next.on('selector:quantity-changed', (payload) => {
+   *   // payload = { selectorId: 'main-offer', packageId: 2, quantity: 3 }
+   * });
+   * ```
+   */
   'selector:quantity-changed': {
     selectorId: string;
     packageId: number;
     quantity: number;
   };
-  /** A shipping method was selected via a selector element. */
+  /**
+   * A shipping method was selected via a selector element.
+   *
+   * @example
+   * ```ts
+   * next.on('shipping:method-selected', (payload) => {
+   *   // payload = { shippingId: '2', selectorId: 'main-offer' }
+   * });
+   * ```
+   */
   'shipping:method-selected': { shippingId: string; selectorId: string };
-  /** The active shipping method changed; payload carries the resolved method. */
+  /**
+   * The active shipping method changed; payload carries the resolved method.
+   *
+   * @example
+   * ```ts
+   * next.on('shipping:method-changed', (payload) => {
+   *   // payload = { methodId: 2, method: { id: 2, name: 'Standard', price: 10 } }
+   * });
+   * ```
+   */
   'shipping:method-changed': { methodId: number; method: any };
 
   // Action Events
-  /** An async action (e.g. add-to-cart) fired from a `BaseActionEnhancer` completed successfully. */
+  /**
+   * An async action (e.g. add-to-cart) fired from a `BaseActionEnhancer` completed successfully.
+   *
+   * @example
+   * ```ts
+   * next.on('action:success', (payload) => {
+   *   // payload = { action: 'add-to-cart', data: { packageId: 2 } }
+   * });
+   * ```
+   */
   'action:success': { action: string; data?: any };
-  /** An async action fired from a `BaseActionEnhancer` threw. Payload carries the action name and error. */
+  /**
+   * An async action fired from a `BaseActionEnhancer` threw. Payload carries the action name and error.
+   *
+   * @example
+   * ```ts
+   * next.on('action:failed', (payload) => {
+   *   // payload = { action: 'add-to-cart', error: new Error('Network error') }
+   * });
+   * ```
+   */
   'action:failed': { action: string; error: Error };
 
   // Upsell Events
-  /** A post-purchase upsell was accepted and added to the order. */
+  /**
+   * A post-purchase upsell was accepted and added to the order.
+   *
+   * @example
+   * ```ts
+   * next.on('upsell:accepted', (payload) => {
+   *   // payload = { packageId: 2, quantity: 1, orderId: 'abc123', value: 49.99 }
+   * });
+   * ```
+   */
   'upsell:accepted': {
     packageId: number;
     quantity: number;
     orderId: string;
     value?: number;
   };
-  /** A card within an upsell selector became the active selection. */
+  /**
+   * A card within an upsell selector became the active selection.
+   *
+   * @example
+   * ```ts
+   * next.on('upsell-selector:item-selected', (payload) => {
+   *   // payload = { selectorId: 'main-offer', packageId: 2 }
+   * });
+   * ```
+   */
   'upsell-selector:item-selected': { selectorId: string; packageId: number };
-  /** The quantity for an upsell selection changed. */
+  /**
+   * The quantity for an upsell selection changed.
+   *
+   * @example
+   * ```ts
+   * next.on('upsell:quantity-changed', (payload) => {
+   *   // payload = { selectorId: 'main-offer', quantity: 3, packageId: 2 }
+   * });
+   * ```
+   */
   'upsell:quantity-changed': {
     selectorId?: string | undefined;
     quantity: number;
     packageId?: number | undefined;
   };
-  /** An upsell option was selected within an upsell selector. */
+  /**
+   * An upsell option was selected within an upsell selector.
+   *
+   * @example
+   * ```ts
+   * next.on('upsell:option-selected', (payload) => {
+   *   // payload = { selectorId: 'main-offer', packageId: 2 }
+   * });
+   * ```
+   */
   'upsell:option-selected': { selectorId: string; packageId: number };
 
   // Message Events
-  /** A user-facing message was displayed (e.g. a coupon or validation notice). `type` indicates its severity/category. */
+  /**
+   * A user-facing message was displayed (e.g. a coupon or validation notice). `type` indicates its severity/category.
+   *
+   * @example
+   * ```ts
+   * next.on('message:displayed', (payload) => {
+   *   // payload = { message: 'Coupon SAVE10 applied', type: 'success' }
+   * });
+   * ```
+   */
   'message:displayed': { message: string; type: string };
 
   // Payment Events
-  /** A payment method was tokenized and is ready to submit with the order. */
+  /**
+   * A payment method was tokenized and is ready to submit with the order.
+   *
+   * @example
+   * ```ts
+   * next.on('payment:tokenized', (payload) => {
+   *   // payload = { token: 'abc123', pmData: { last_four: '4242' }, paymentMethod: 'paypal' }
+   * });
+   * ```
+   */
   'payment:tokenized': { token: string; pmData: any; paymentMethod: string };
-  /** Payment processing failed. `errors` holds the human-readable messages. */
+  /**
+   * Payment processing failed. `errors` holds the human-readable messages.
+   *
+   * @example
+   * ```ts
+   * next.on('payment:error', (payload) => {
+   *   // payload = { errors: ['Card declined'] }
+   * });
+   * ```
+   */
   'payment:error': { errors: string[] };
-  /** An express-checkout flow finished; `success` indicates the outcome. */
+  /**
+   * An express-checkout flow finished; `success` indicates the outcome.
+   *
+   * @example
+   * ```ts
+   * next.on('checkout:express-completed', (payload) => {
+   *   // payload = { method: 'paypal', success: true }
+   * });
+   * ```
+   */
   'checkout:express-completed': { method: string; success: boolean };
-  /** An express-checkout flow failed before completion. */
+  /**
+   * An express-checkout flow failed before completion.
+   *
+   * @example
+   * ```ts
+   * next.on('checkout:express-failed', (payload) => {
+   *   // payload = { method: 'paypal', error: 'User cancelled' }
+   * });
+   * ```
+   */
   'checkout:express-failed': { method: string; error: string };
 
   // Express Checkout Events
-  /** An express-checkout button (PayPal / Apple Pay / Google Pay) was rendered and is ready. */
+  /**
+   * An express-checkout button (PayPal / Apple Pay / Google Pay) was rendered and is ready.
+   *
+   * @example
+   * ```ts
+   * next.on('express-checkout:initialized', (payload) => {
+   *   // payload = { method: 'paypal', element: <HTMLElement> }
+   * });
+   * ```
+   */
   'express-checkout:initialized': {
     method: 'paypal' | 'apple_pay' | 'google_pay';
     element: HTMLElement;
   };
-  /** An express-checkout button errored during setup or rendering. */
+  /**
+   * An express-checkout button errored during setup or rendering.
+   *
+   * @example
+   * ```ts
+   * next.on('express-checkout:error', (payload) => {
+   *   // payload = { method: 'paypal', error: 'Failed to render button' }
+   * });
+   * ```
+   */
   'express-checkout:error': {
     method: 'paypal' | 'apple_pay' | 'google_pay';
     error: string;
   };
-  /** The shopper started an express-checkout flow; payload includes the cart total and item count at that moment. */
+  /**
+   * The shopper started an express-checkout flow; payload includes the cart total and item count at that moment.
+   *
+   * @example
+   * ```ts
+   * next.on('express-checkout:started', (payload) => {
+   *   // payload = {
+   *   //   method: 'paypal',
+   *   //   cartTotal: { value: 49.99, formatted: '$49.99' },
+   *   //   itemCount: 1
+   *   // }
+   * });
+   * ```
+   */
   'express-checkout:started': {
     method: 'paypal' | 'apple_pay' | 'google_pay';
     cartTotal: { value: number; formatted: string };
     itemCount: number;
   };
-  /** An express-checkout flow failed before producing an order. */
+  /**
+   * An express-checkout flow failed before producing an order.
+   *
+   * @example
+   * ```ts
+   * next.on('express-checkout:failed', (payload) => {
+   *   // payload = { method: 'paypal', error: 'Payment declined' }
+   * });
+   * ```
+   */
   'express-checkout:failed': {
     method: 'paypal' | 'apple_pay' | 'google_pay';
     error: string;
   };
-  /** An express-checkout flow produced a completed order. */
+  /**
+   * An express-checkout flow produced a completed order.
+   *
+   * @example
+   * ```ts
+   * next.on('express-checkout:completed', (payload) => {
+   *   // payload = { method: 'paypal', order: { ref_id: 'abc123', number: 'abc123' } }
+   * });
+   * ```
+   */
   'express-checkout:completed': {
     method: 'paypal' | 'apple_pay' | 'google_pay';
     order: any;
   };
-  /** An express-checkout order completed but no redirect URL was available. */
+  /**
+   * An express-checkout order completed but no redirect URL was available.
+   *
+   * @example
+   * ```ts
+   * next.on('express-checkout:redirect-missing', (payload) => {
+   *   // payload = { order: { ref_id: 'abc123', number: 'abc123' } }
+   * });
+   * ```
+   */
   'express-checkout:redirect-missing': { order: any };
 
   // Address Autocomplete Events
-  /** Address autocomplete populated a shipping or billing address. `components` holds the resolved address parts. */
+  /**
+   * Address autocomplete populated a shipping or billing address. `components` holds the resolved address parts.
+   *
+   * @example
+   * ```ts
+   * next.on('address:autocomplete-filled', (payload) => {
+   *   // payload = { type: 'shipping', components: { city: 'Austin', postal_code: '78701' } }
+   * });
+   * ```
+   */
   'address:autocomplete-filled': {
     type: 'shipping' | 'billing';
     components: any;
   };
-  /** The manual address-entry (location) fields were revealed by the autocomplete enhancer. */
+  /**
+   * The manual address-entry (location) fields were revealed by the autocomplete enhancer.
+   *
+   * @example
+   * ```ts
+   * next.on('address:location-fields-shown', (payload) => {
+   *   // payload = {}
+   * });
+   * ```
+   */
   'address:location-fields-shown': {};
-  /** The checkout's shipping location fields were revealed. */
+  /**
+   * The checkout's shipping location fields were revealed.
+   *
+   * @example
+   * ```ts
+   * next.on('checkout:location-fields-shown', (payload) => {
+   *   // payload = {}
+   * });
+   * ```
+   */
   'checkout:location-fields-shown': {};
-  /** The checkout's billing location fields were revealed. */
+  /**
+   * The checkout's billing location fields were revealed.
+   *
+   * @example
+   * ```ts
+   * next.on('checkout:billing-location-fields-shown', (payload) => {
+   *   // payload = {}
+   * });
+   * ```
+   */
   'checkout:billing-location-fields-shown': {};
 
   // Upsell Events
-  /** A post-purchase upsell enhancer finished initializing on its element. */
+  /**
+   * A post-purchase upsell enhancer finished initializing on its element.
+   *
+   * @example
+   * ```ts
+   * next.on('upsell:initialized', (payload) => {
+   *   // payload = { packageId: 2, element: <HTMLElement> }
+   * });
+   * ```
+   */
   'upsell:initialized': { packageId: number; element: HTMLElement };
-  /** An upsell add request is in flight (button clicked, awaiting the order API). */
+  /**
+   * An upsell add request is in flight (button clicked, awaiting the order API).
+   *
+   * @example
+   * ```ts
+   * next.on('upsell:adding', (payload) => {
+   *   // payload = { packageId: 2 }
+   * });
+   * ```
+   */
   'upsell:adding': { packageId: number };
-  /** An upsell was added to the order. `willRedirect` indicates whether the page will navigate afterward. */
+  /**
+   * An upsell was added to the order. `willRedirect` indicates whether the page will navigate afterward.
+   *
+   * @example
+   * ```ts
+   * next.on('upsell:added', (payload) => {
+   *   // payload = {
+   *   //   packageId: 2,
+   *   //   quantity: 1,
+   *   //   order: { ref_id: 'abc123' },
+   *   //   value: 49.99,
+   *   //   willRedirect: true
+   *   // }
+   * });
+   * ```
+   */
   'upsell:added': {
     packageId: number;
     quantity: number;
@@ -204,76 +671,298 @@ export interface EventMap {
     value?: number;
     willRedirect?: boolean;
   };
-  /** Adding an upsell to the order failed. */
+  /**
+   * Adding an upsell to the order failed.
+   *
+   * @example
+   * ```ts
+   * next.on('upsell:error', (payload) => {
+   *   // payload = { packageId: 2, error: 'Order no longer accepts upsells' }
+   * });
+   * ```
+   */
   'upsell:error': { packageId: number; error: string };
 
   // Accordion Events
-  /** An accordion section toggled. `isOpen` reflects its new state. */
+  /**
+   * An accordion section toggled. `isOpen` reflects its new state.
+   *
+   * @example
+   * ```ts
+   * next.on('accordion:toggled', (payload) => {
+   *   // payload = { id: 'main-offer', isOpen: true, element: <HTMLElement> }
+   * });
+   * ```
+   */
   'accordion:toggled': { id: string; isOpen: boolean; element: HTMLElement };
-  /** An accordion section opened. */
+  /**
+   * An accordion section opened.
+   *
+   * @example
+   * ```ts
+   * next.on('accordion:opened', (payload) => {
+   *   // payload = { id: 'main-offer', element: <HTMLElement> }
+   * });
+   * ```
+   */
   'accordion:opened': { id: string; element: HTMLElement };
-  /** An accordion section closed. */
+  /**
+   * An accordion section closed.
+   *
+   * @example
+   * ```ts
+   * next.on('accordion:closed', (payload) => {
+   *   // payload = { id: 'main-offer', element: <HTMLElement> }
+   * });
+   * ```
+   */
   'accordion:closed': { id: string; element: HTMLElement };
-  /** A post-purchase upsell was skipped/declined by the shopper. */
+  /**
+   * A post-purchase upsell was skipped/declined by the shopper.
+   *
+   * @example
+   * ```ts
+   * next.on('upsell:skipped', (payload) => {
+   *   // payload = { packageId: 2, orderId: 'abc123' }
+   * });
+   * ```
+   */
   'upsell:skipped': { packageId?: number; orderId?: string };
-  /** A post-purchase upsell offer was viewed (impression), keyed by package and/or page path. */
+  /**
+   * A post-purchase upsell offer was viewed (impression), keyed by package and/or page path.
+   *
+   * @example
+   * ```ts
+   * next.on('upsell:viewed', (payload) => {
+   *   // payload = { packageId: 2, pagePath: '/upsell-1', orderId: 'abc123' }
+   * });
+   * ```
+   */
   'upsell:viewed': { packageId?: number; pagePath?: string; orderId?: string };
 
   // Exit Intent Events (simplified)
-  /** The exit-intent popup was shown. */
+  /**
+   * The exit-intent popup was shown.
+   *
+   * @example
+   * ```ts
+   * next.on('exit-intent:shown', (payload) => {
+   *   // payload = { imageUrl: 'https://cdn.example.com/exit.png', template: 'default' }
+   * });
+   * ```
+   */
   'exit-intent:shown': { imageUrl?: string; template?: string };
-  /** The exit-intent popup image/content was clicked. */
+  /**
+   * The exit-intent popup image/content was clicked.
+   *
+   * @example
+   * ```ts
+   * next.on('exit-intent:clicked', (payload) => {
+   *   // payload = { imageUrl: 'https://cdn.example.com/exit.png', template: 'default' }
+   * });
+   * ```
+   */
   'exit-intent:clicked': { imageUrl?: string; template?: string };
-  /** The exit-intent popup was dismissed (e.g. overlay click or close). */
+  /**
+   * The exit-intent popup was dismissed (e.g. overlay click or close).
+   *
+   * @example
+   * ```ts
+   * next.on('exit-intent:dismissed', (payload) => {
+   *   // payload = { imageUrl: 'https://cdn.example.com/exit.png', template: 'default' }
+   * });
+   * ```
+   */
   'exit-intent:dismissed': { imageUrl?: string; template?: string };
-  /** The exit-intent popup was closed via its close control. */
+  /**
+   * The exit-intent popup was closed via its close control.
+   *
+   * @example
+   * ```ts
+   * next.on('exit-intent:closed', (payload) => {
+   *   // payload = { imageUrl: 'https://cdn.example.com/exit.png', template: 'default' }
+   * });
+   * ```
+   */
   'exit-intent:closed': { imageUrl?: string; template?: string };
-  /** An exit-intent action fired (e.g. an embedded CTA), optionally carrying a coupon code to apply. */
+  /**
+   * An exit-intent action fired (e.g. an embedded CTA), optionally carrying a coupon code to apply.
+   *
+   * @example
+   * ```ts
+   * next.on('exit-intent:action', (payload) => {
+   *   // payload = { action: 'apply-coupon', couponCode: 'SAVE10' }
+   * });
+   * ```
+   */
   'exit-intent:action': { action: string; couponCode?: string };
 
   // FOMO Events
-  /** A FOMO social-proof notification was shown, naming the customer, product, and image used. */
+  /**
+   * A FOMO social-proof notification was shown, naming the customer, product, and image used.
+   *
+   * @example
+   * ```ts
+   * next.on('fomo:shown', (payload) => {
+   *   // payload = {
+   *   //   customer: 'Jane from Austin',
+   *   //   product: 'Premium Bundle',
+   *   //   image: 'https://cdn.example.com/product.png'
+   *   // }
+   * });
+   * ```
+   */
   'fomo:shown': { customer: string; product: string; image: string };
 
   // SDK Events
-  /** The SDK finished reading and storing URL parameters at startup. */
+  /**
+   * The SDK finished reading and storing URL parameters at startup.
+   *
+   * @example
+   * ```ts
+   * next.on('sdk:url-parameters-processed', (payload) => {
+   *   // payload = {}
+   * });
+   * ```
+   */
   'sdk:url-parameters-processed': {};
 
   // Offer Events
-  /** An offer was selected (chosen but not yet applied). */
+  /**
+   * An offer was selected (chosen but not yet applied).
+   *
+   * @example
+   * ```ts
+   * next.on('offer:selected', (payload) => {
+   *   // payload = { offerId: 2 }
+   * });
+   * ```
+   */
   'offer:selected': { offerId: number };
-  /** An offer was applied to the cart. */
+  /**
+   * An offer was applied to the cart.
+   *
+   * @example
+   * ```ts
+   * next.on('offer:applied', (payload) => {
+   *   // payload = { offerId: 2 }
+   * });
+   * ```
+   */
   'offer:applied': { offerId: number };
 
   // Bundle Events
-  /** A bundle was selected; payload lists the packages and quantities that make up the bundle. */
+  /**
+   * A bundle was selected; payload lists the packages and quantities that make up the bundle.
+   *
+   * @example
+   * ```ts
+   * next.on('bundle:selected', (payload) => {
+   *   // payload = {
+   *   //   selectorId: 'main-offer',
+   *   //   items: [{ packageId: 2, quantity: 1 }, { packageId: 5, quantity: 1 }]
+   *   // }
+   * });
+   * ```
+   */
   'bundle:selected': {
     selectorId: string;
     items: { packageId: number; quantity: number }[];
   };
-  /** The active bundle selection changed; payload lists the new bundle's packages and quantities. */
+  /**
+   * The active bundle selection changed; payload lists the new bundle's packages and quantities.
+   *
+   * @example
+   * ```ts
+   * next.on('bundle:selection-changed', (payload) => {
+   *   // payload = {
+   *   //   selectorId: 'main-offer',
+   *   //   items: [{ packageId: 2, quantity: 1 }, { packageId: 5, quantity: 1 }]
+   *   // }
+   * });
+   * ```
+   */
   'bundle:selection-changed': {
     selectorId: string;
     items: { packageId: number; quantity: number }[];
   };
-  /** A bundle's quantity changed; payload includes the bundle id and its resulting package lines. */
+  /**
+   * A bundle's quantity changed; payload includes the bundle id and its resulting package lines.
+   *
+   * @example
+   * ```ts
+   * next.on('bundle:quantity-changed', (payload) => {
+   *   // payload = {
+   *   //   selectorId: 'main-offer',
+   *   //   bundleId: 'abc123',
+   *   //   quantity: 3,
+   *   //   items: [{ packageId: 2, quantity: 3 }]
+   *   // }
+   * });
+   * ```
+   */
   'bundle:quantity-changed': {
     selectorId: string;
     bundleId: string;
     quantity: number;
     items: { packageId: number; quantity: number }[];
   };
-  /** A bundle selector recalculated and refreshed its displayed price. */
+  /**
+   * A bundle selector recalculated and refreshed its displayed price.
+   *
+   * @example
+   * ```ts
+   * next.on('bundle:price-updated', (payload) => {
+   *   // payload = { selectorId: 'main-offer' }
+   * });
+   * ```
+   */
   'bundle:price-updated': { selectorId: string };
-  /** A package selector recalculated and refreshed the displayed price for a card. */
+  /**
+   * A package selector recalculated and refreshed the displayed price for a card.
+   *
+   * @example
+   * ```ts
+   * next.on('selector:price-updated', (payload) => {
+   *   // payload = { selectorId: 'main-offer', packageId: 2 }
+   * });
+   * ```
+   */
   'selector:price-updated': { selectorId: string; packageId: number };
-  /** A package toggle recalculated and refreshed its displayed price. */
+  /**
+   * A package toggle recalculated and refreshed its displayed price.
+   *
+   * @example
+   * ```ts
+   * next.on('toggle:price-updated', (payload) => {
+   *   // payload = { packageId: 2 }
+   * });
+   * ```
+   */
   'toggle:price-updated': { packageId: number };
 
   // Package Toggle Events
-  /** A package toggle flipped state. `added` is `true` when the package was added, `false` when removed. */
+  /**
+   * A package toggle flipped state. `added` is `true` when the package was added, `false` when removed.
+   *
+   * @example
+   * ```ts
+   * next.on('toggle:toggled', (payload) => {
+   *   // payload = { packageId: 2, added: true }
+   * });
+   * ```
+   */
   'toggle:toggled': { packageId: number; added: boolean };
-  /** The set of toggled-on packages changed; payload lists all currently selected package ids. */
+  /**
+   * The set of toggled-on packages changed; payload lists all currently selected package ids.
+   *
+   * @example
+   * ```ts
+   * next.on('toggle:selection-changed', (payload) => {
+   *   // payload = { selected: [2, 5] }
+   * });
+   * ```
+   */
   'toggle:selection-changed': { selected: number[] };
 }
 
