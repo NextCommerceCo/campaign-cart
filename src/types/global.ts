@@ -28,7 +28,20 @@ export interface EventMap {
    * @example
    * ```ts
    * next.on('cart:updated', (cart) => {
-   *   // cart.items, cart.totalQuantity, cart.total, cart.vouchers, cart.isEmpty
+   *   // cart = {
+   *   //   items: [{ id: 101, packageId: 2, quantity: 1, price: 49.99, title: 'Starter Kit', qty: 1, sku: 'SK-2', is_upsell: false }],
+   *   //   enrichedItems: [],
+   *   //   totalQuantity: 1,
+   *   //   isEmpty: false,
+   *   //   vouchers: ['SAVE10'],
+   *   //   currency: 'USD',
+   *   //   subtotal: 49.99,               // Decimal
+   *   //   hasDiscounts: true,
+   *   //   totalDiscount: 5,              // Decimal
+   *   //   totalDiscountPercentage: 10,   // Decimal
+   *   //   total: 44.99,                  // Decimal
+   *   //   isCalculating: false
+   *   // }
    * });
    * ```
    */
@@ -99,7 +112,15 @@ export interface EventMap {
    * @example
    * ```ts
    * next.on('campaign:loaded', (campaign) => {
-   *   // campaign.name, campaign.currency, campaign.packages, campaign.shipping_methods, campaign.offers
+   *   // campaign = {
+   *   //   name: 'Summer Sale',
+   *   //   currency: 'USD',
+   *   //   language: 'en',
+   *   //   payment_env_key: 'pk_abc123',
+   *   //   packages: [{ ref_id: 2, name: 'Starter Kit', price: '49.99', price_total: '49.99', qty: 1, image: 'https://cdn.example/sk.png', is_recurring: false }],
+   *   //   shipping_methods: [{ ref_id: 1, code: 'standard', price: '4.99' }],
+   *   //   offers: []
+   *   // }
    * });
    * ```
    */
@@ -110,7 +131,12 @@ export interface EventMap {
    * @example
    * ```ts
    * next.on('checkout:started', (checkout) => {
-   *   // checkout.formData, checkout.paymentMethod, checkout.step
+   *   // checkout = {
+   *   //   formData: { email: 'ada@example.com', fname: 'Ada', lname: 'Lovelace' },
+   *   //   paymentMethod: 'card_token',
+   *   //   isProcessing: false,
+   *   //   step: 2
+   *   // }
    * });
    * ```
    */
@@ -154,7 +180,16 @@ export interface EventMap {
    * @example
    * ```ts
    * next.on('order:completed', (order) => {
-   *   // order.ref_id, order.number, order.total_incl_tax, order.currency, order.order_status_url, order.lines
+   *   // order = {
+   *   //   ref_id: 'abc123',
+   *   //   number: 'NC-1001',
+   *   //   currency: 'USD',
+   *   //   total_incl_tax: '49.99',        // note: string, not number
+   *   //   order_status_url: 'https://shop.example/order/abc123',
+   *   //   is_test: false,
+   *   //   lines: [{ package_id: 2, quantity: 1 }],
+   *   //   user: { email: 'ada@example.com' }
+   *   // }
    * });
    * ```
    */
@@ -176,7 +211,11 @@ export interface EventMap {
    * @example
    * ```ts
    * next.on('error:occurred', (error) => {
-   *   // error.message, error.code, error.details
+   *   // error = {
+   *   //   message: 'Failed to add item to cart',
+   *   //   code: 'CART_WRITE_FAILED',
+   *   //   details: { packageId: 2 }
+   *   // }
    * });
    * ```
    */
@@ -213,7 +252,13 @@ export interface EventMap {
    * @example
    * ```ts
    * next.on('config:updated', (config) => {
-   *   // config.apiKey, config.campaignId, config.debug, config.pageType
+   *   // config = {
+   *   //   apiKey: 'pk_live_abc123',
+   *   //   campaignId: 'camp_123',
+   *   //   debug: false,
+   *   //   pageType: 'product'   // 'product' | 'cart' | 'checkout' | 'upsell' | 'receipt'
+   *   //   // ...plus paymentConfig, addressConfig, detected country/currency, etc.
+   *   // }
    * });
    * ```
    */
