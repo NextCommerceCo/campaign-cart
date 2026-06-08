@@ -158,18 +158,24 @@ export async function addToCart(card: ToggleCard): Promise<void> {
 }
 
 export function updateSyncedQuantity(card: ToggleCard, cartState: CartState): void {
-  if (card.syncPackageIds.length === 0) return;
+  if (card.syncPackageIds.length === 0 && card.syncProductIds.length === 0) return;
 
   let totalQuantity = 0;
+
   card.syncPackageIds.forEach(syncId => {
     const syncedItem = cartState.items.find(
       item => item.packageId === syncId || item.originalPackageId === syncId
     );
     if (syncedItem) {
-      const itemsPerPackage = syncedItem.qty ?? 1;
-      totalQuantity += syncedItem.quantity * itemsPerPackage;
+      totalQuantity += syncedItem.quantity * (syncedItem.qty ?? 1);
     }
   });
+
+  if (card.syncProductIds.length > 0) {
+    totalQuantity += cartState.items
+      .filter(item => card.syncProductIds.includes(Number(item.productId)))
+      .reduce((sum, item) => sum + item.quantity * (item.qty ?? 1), 0);
+  }
 
   card.quantity = totalQuantity;
 }
@@ -179,7 +185,7 @@ export async function handleSyncUpdate(
   _cartState: CartState,
   _logger: Logger,
 ): Promise<void> {
-  if (!card.isSyncMode || card.syncPackageIds.length === 0) return;
+  if (!card.isSyncMode || (card.syncPackageIds.length === 0 && card.syncProductIds.length === 0)) return;
   if (syncUpdateInProgress.has(card.packageId)) return;
 
   // Always read fresh state — the snapshot passed by syncWithCart can be stale
@@ -195,10 +201,22 @@ export async function handleSyncUpdate(
     );
     if (syncedItem) {
       anySyncedItemExists = true;
-      const itemsPerPackage = syncedItem.qty ?? 1;
-      totalSyncQuantity += syncedItem.quantity * itemsPerPackage;
+      totalSyncQuantity += syncedItem.quantity * (syncedItem.qty ?? 1);
     }
   });
+
+  if (card.syncProductIds.length > 0) {
+    const productItems = freshState.items.filter(
+      item => card.syncProductIds.includes(Number(item.productId))
+    );
+    if (productItems.length > 0) {
+      anySyncedItemExists = true;
+      totalSyncQuantity += productItems.reduce(
+        (sum, item) => sum + item.quantity * (item.qty ?? 1),
+        0,
+      );
+    }
+  }
 
   card.quantity = totalSyncQuantity;
 
@@ -214,11 +232,16 @@ export async function handleSyncUpdate(
       if (currentItem.is_upsell) {
         setTimeout(async () => {
           const updatedState = useCartStore.getState();
-          const stillNoSyncedPackages = card.syncPackageIds.every(syncId =>
-            !updatedState.items.find(
-              item => item.packageId === syncId || item.originalPackageId === syncId
-            )
-          );
+          const stillNoSyncedPackages =
+            card.syncPackageIds.every(syncId =>
+              !updatedState.items.find(
+                item => item.packageId === syncId || item.originalPackageId === syncId
+              )
+            ) &&
+            (card.syncProductIds.length === 0 ||
+              !updatedState.items.some(item =>
+                card.syncProductIds.includes(Number(item.productId))
+              ));
           const itemStillExists = updatedState.items.find(i => i.packageId === card.packageId);
           if (stillNoSyncedPackages && itemStillExists && !updatedState.swapInProgress) {
             await useCartStore.getState().removeItem(card.packageId);

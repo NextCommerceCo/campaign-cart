@@ -25,7 +25,7 @@ const VISIBILITY_FIELDS = new Set(['hasDiscount', 'isSelected', 'isRecurring']);
  */
 export function buildToggleVars(
   def: PackageDef,
-  card: Omit<ToggleCard, 'element' | 'isPreSelected' | 'isSyncMode' | 'syncPackageIds' | 'isUpsell' | 'stateContainer' | 'addText' | 'removeText' | 'discounts'>,
+  card: Omit<ToggleCard, 'element' | 'isPreSelected' | 'isSyncMode' | 'syncPackageIds' | 'syncProductIds' | 'isUpsell' | 'stateContainer' | 'addText' | 'removeText' | 'discounts'>,
 ): Record<string, string> {
   const vars: Record<string, string> = {};
 
