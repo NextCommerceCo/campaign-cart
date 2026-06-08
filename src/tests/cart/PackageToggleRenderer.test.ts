@@ -24,6 +24,7 @@ function makeCard(isSelected: boolean): ToggleCard {
     quantity: 1,
     isSyncMode: false,
     syncPackageIds: [],
+    syncProductIds: [],
     isUpsell: false,
     stateContainer: element,
     addText: null,
