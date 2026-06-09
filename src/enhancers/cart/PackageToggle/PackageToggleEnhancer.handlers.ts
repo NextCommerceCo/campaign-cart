@@ -161,6 +161,7 @@ export function updateSyncedQuantity(card: ToggleCard, cartState: CartState): vo
   if (card.syncPackageIds.length === 0 && card.syncProductIds.length === 0) return;
 
   let totalQuantity = 0;
+  const countedIds = new Set<number>();
 
   card.syncPackageIds.forEach(syncId => {
     const syncedItem = cartState.items.find(
@@ -168,12 +169,16 @@ export function updateSyncedQuantity(card: ToggleCard, cartState: CartState): vo
     );
     if (syncedItem) {
       totalQuantity += syncedItem.quantity * (syncedItem.qty ?? 1);
+      countedIds.add(syncedItem.id);
     }
   });
 
   if (card.syncProductIds.length > 0) {
     totalQuantity += cartState.items
-      .filter(item => card.syncProductIds.includes(Number(item.productId)))
+      .filter(item =>
+        card.syncProductIds.includes(Number(item.productId)) &&
+        !countedIds.has(item.id)
+      )
       .reduce((sum, item) => sum + item.quantity * (item.qty ?? 1), 0);
   }
 
@@ -194,6 +199,7 @@ export async function handleSyncUpdate(
 
   let totalSyncQuantity = 0;
   let anySyncedItemExists = false;
+  const countedIds = new Set<number>();
 
   card.syncPackageIds.forEach(syncId => {
     const syncedItem = freshState.items.find(
@@ -202,12 +208,15 @@ export async function handleSyncUpdate(
     if (syncedItem) {
       anySyncedItemExists = true;
       totalSyncQuantity += syncedItem.quantity * (syncedItem.qty ?? 1);
+      countedIds.add(syncedItem.id);
     }
   });
 
   if (card.syncProductIds.length > 0) {
     const productItems = freshState.items.filter(
-      item => card.syncProductIds.includes(Number(item.productId))
+      item =>
+        card.syncProductIds.includes(Number(item.productId)) &&
+        !countedIds.has(item.id)
     );
     if (productItems.length > 0) {
       anySyncedItemExists = true;

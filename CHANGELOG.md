@@ -1,5 +1,45 @@
 # Changelog
 
+## [0.4.25] — 2026-06-09 — Product-level Sync for Multi-Variant Order Bumps
+
+### Fixed
+
+- **Order bump silently undercounts after a variant swap on configurable (MV) products** (issue [#44](https://github.com/NextCommerceCo/campaign-cart/issues/44)) — a real-money correctness issue: a synced warranty or add-on bump attached fewer units than the customer was actually buying.
+
+  In the MV model each variant is a distinct package with its own `ref_id`. When a customer swaps one unit to a different variant, `swapPackage` replaces that cart line's `packageId` with the new variant's ID. But `data-next-package-sync` matches lines by `packageId` only — the swapped unit became invisible to the sync calculation.
+
+  **Reproduction:** select 7 units all on the same variant → bump syncs to 7 ✓. Change one unit to a different variant (cart is now pkg 1 × 6 + pkg 4 × 1) → bump drops to 6 ✗.
+
+### New
+
+- **`data-next-product-sync="<productId>"`** — syncs a bump card's quantity against all cart lines that share a `product_id`, covering every variant of that product in a single attribute.
+
+  The previous workaround was to enumerate every variant `ref_id` in `data-next-package-sync`. This was brittle — the list had to be updated whenever variants were added or removed, and it still broke silently if any ID was missed:
+
+  ```html
+  <!-- Workaround (brittle): list every variant package ID by hand -->
+  <div data-next-toggle-card data-next-package-id="200"
+       data-next-package-sync="1,2,3,4,5,6,7,8,9,66,67,68,69,70,71,72,73,74">
+    Extended Warranty
+  </div>
+  ```
+
+  `data-next-product-sync` replaces the entire list with the single `product_id` shared by all variants:
+
+  ```html
+  <!-- Fixed: one ID covers every variant, present and future -->
+  <div data-next-toggle-card data-next-package-id="200"
+       data-next-product-sync="400">
+    Extended Warranty
+  </div>
+  ```
+
+  Find the `product_id` in the campaign API response under `packages[].product_id` — it is the same value for every variant of the same product.
+
+  `data-next-package-sync` continues to work unchanged for single-package products. Both attributes may be set on the same card — items already counted by `data-next-package-sync` are automatically excluded from the `data-next-product-sync` pass, so there is no double-counting.
+
+---
+
 ## [0.4.24] — 2026-05-28 — Split Offer & Coupon Savings on Bundle Slots
 
 ### Fixed

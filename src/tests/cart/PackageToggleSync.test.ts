@@ -221,7 +221,21 @@ describe('updateSyncedQuantity', () => {
       expect(card.quantity).toBe(0);
     });
 
-    it('does not pick up items already covered by package sync (no double-count)', () => {
+    it('does not double-count items already covered by package sync when product sync overlaps', () => {
+      // pkg 1 matches BOTH packageId-sync AND productId-sync (same product)
+      // without the guard this would count pkg1 twice
+      const card = makeSyncCard({ syncPackageIds: [1], syncProductIds: [55] });
+      updateSyncedQuantity(card, makeCartState([
+        makeItem({ packageId: 1, productId: 55, quantity: 6 }),
+        makeItem({ packageId: 4, productId: 55, quantity: 1 }),
+      ]));
+      // package-sync: pkg1 → 6 (marked counted)
+      // product-sync: pkg1 skipped (already counted), pkg4 → 1
+      // total = 7, not 6+6+1=13
+      expect(card.quantity).toBe(7);
+    });
+
+  it('does not pick up items already covered by package sync (no double-count, different products)', () => {
       // pkg 1 matches packageId-sync only (different productId)
       // pkg 4 matches productId-sync only (different packageId)
       const card = makeSyncCard({ syncPackageIds: [1], syncProductIds: [55] });
