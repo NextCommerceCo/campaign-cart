@@ -19,6 +19,7 @@ export interface ToggleCard {
     quantity: number;
     isSyncMode: boolean;
     syncPackageIds: number[];
+    syncProductIds: number[];
     isUpsell: boolean;
     stateContainer: HTMLElement;
     addText: string | null;
