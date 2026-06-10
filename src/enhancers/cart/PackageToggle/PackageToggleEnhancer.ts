@@ -317,8 +317,13 @@ export class PackageToggleEnhancer extends BaseEnhancer {
       el.getAttribute('data-next-package-sync') ??
       stateContainer.getAttribute('data-next-package-sync');
 
+    const productSyncAttr =
+      el.getAttribute('data-next-product-sync') ??
+      stateContainer.getAttribute('data-next-product-sync');
+
     let isSyncMode = false;
     let syncPackageIds: number[] = [];
+    let syncProductIds: number[] = [];
     let quantity = 1;
 
     if (packageSyncAttr) {
@@ -330,7 +335,20 @@ export class PackageToggleEnhancer extends BaseEnhancer {
         isSyncMode = true;
         quantity = 0;
       }
-    } else {
+    }
+
+    if (productSyncAttr) {
+      syncProductIds = productSyncAttr
+        .split(',')
+        .map(id => parseInt(id.trim(), 10))
+        .filter(id => !isNaN(id));
+      if (syncProductIds.length > 0) {
+        isSyncMode = true;
+        quantity = 0;
+      }
+    }
+
+    if (!isSyncMode) {
       const qtyAttr =
         el.getAttribute('data-next-quantity') ??
         el.getAttribute('data-quantity') ??
@@ -364,6 +382,7 @@ export class PackageToggleEnhancer extends BaseEnhancer {
       quantity,
       isSyncMode,
       syncPackageIds,
+      syncProductIds,
       isUpsell,
       stateContainer,
       addText: el.getAttribute('data-add-text'),
@@ -384,6 +403,7 @@ export class PackageToggleEnhancer extends BaseEnhancer {
     this.logger.debug(`Registered toggle card for packageId ${packageId}`, {
       isSyncMode,
       syncPackageIds,
+      syncProductIds,
       isUpsell,
       quantity,
     });

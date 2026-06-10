@@ -1,7 +1,7 @@
 # PackageToggleEnhancer
 
 > Category: `cart`
-> Last reviewed: 2026-04-16 (voucher recalculation in upsell context)
+> Last reviewed: 2026-06-04 (data-next-product-sync for multi-variant products)
 > Owner: campaign-cart
 
 A container that lets a user independently add or remove any combination of packages by clicking cards. Each card maps to one package; clicking toggles that package in or out of the cart without affecting any other card's state.
@@ -42,6 +42,7 @@ User clicks card
 - Any combination of cards can be active simultaneously. There is no mutual exclusion between cards.
 - On init, any card with `data-next-selected="true"` is auto-added to the cart. Each package is auto-added at most once per page load, even if multiple elements on the page reference the same `packageId`.
 - In sync mode (`data-next-package-sync`), a card's quantity is derived from the sum of quantities of the listed synced packages. When all synced packages are removed from the cart, the sync card is automatically removed too. Only one sync update runs per card at a time — if a cart write is already in-flight for a given card, additional sync callbacks for that card are skipped until the write completes.
+- In product-sync mode (`data-next-product-sync`), the quantity is derived from the sum of **all** cart lines whose `productId` matches any listed value — covering every variant of that product. Use this for multi-variant (configurable) products where swapping a variant replaces the line's `packageId` but keeps the same `productId`. Both sync modes can be active on the same card; their totals are summed.
 - A sync card cannot be added to the cart (by click or auto-add) when no synced packages are present. Clicking a sync card with zero synced quantity is a no-op. A pre-selected sync card defers its auto-add until at least one synced package appears in the cart.
 - For sync cards marked as upsell items, removal on sync loss is deferred by 500 ms to avoid race conditions during package swaps.
 - In auto-render mode, sync mode can be configured via the `packageSync` field in the `data-next-packages` JSON (accepts a comma-separated string or an array of package IDs).
@@ -75,5 +76,6 @@ User clicks card
 - Auto-render (`data-next-packages`) requires both `data-next-packages` and a template (`data-next-toggle-template-id` or `data-next-toggle-template`) to be present. Providing only one silently skips rendering.
 - Display slots show stale values until the `calculateBundlePrice` async fetch resolves. There is no built-in skeleton or placeholder state.
 - `data-next-toggle-display="isSelected"` reflects the `data-next-selected` attribute at the time of the last price update, not live cart state. For an element that toggles visibility based on whether the package is currently in the cart, use `data-next-display="toggle.{packageId}.isSelected"` instead.
-- `data-next-package-sync` reads quantity from `syncedItem.qty` (an internal cart field). This field is not part of the public cart item interface and may not be set for all packages.
+- `data-next-package-sync` matches by `packageId` only. It cannot follow a variant swap — after a swap the new line has a different `packageId` and is not counted. Use `data-next-product-sync` for multi-variant products.
+- `data-next-package-sync` and `data-next-product-sync` both read `qty` from cart items (units per package). This field may not be set for all packages; it defaults to 1 when absent.
 - Sync removal for non-upsell cards is immediate; it checks the `swapInProgress` flag but does not coordinate with other concurrent cart mutations. The re-entrancy guard prevents duplicate removals within the same sync cycle but not across independent external writes.

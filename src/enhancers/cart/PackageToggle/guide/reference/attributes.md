@@ -163,13 +163,33 @@ The quantity to add when this card is toggled in. Ignored when `data-next-packag
 | Required | no |
 | Default | — |
 
-A comma-separated list of `packageId` values to sync this card's quantity against. The card's quantity becomes the sum of all synced packages' quantities in the cart. When all synced packages are removed from the cart, the sync card is automatically removed too.
+A comma-separated list of `packageId` values to sync this card's quantity against. The card's quantity becomes the sum of all matching cart lines' quantities. When all synced packages are removed from the cart, the sync card is automatically removed too.
 
 Clicking a sync card when no synced packages are in the cart is a no-op — the card cannot be added without a synced package present. Similarly, a pre-selected sync card defers its auto-add until at least one synced package appears in the cart.
 
 **Example:** `"101,102"` — quantity = (qty of 101) + (qty of 102)
 
+Use `data-next-product-sync` instead when the target product has multiple variant packages and the customer may swap variants — package IDs change on swap, but the product ID does not.
+
 Also available in auto-render mode via the `packageSync` field in `data-next-packages` JSON (accepts a string or array of numbers).
+
+---
+
+### `data-next-product-sync`
+
+| | |
+|---|---|
+| Type | `string` (comma-separated integers) |
+| Required | no |
+| Default | — |
+
+A comma-separated list of `productId` values to sync this card's quantity against. The card's quantity becomes the sum of **all** cart lines whose `productId` matches any listed value, regardless of which variant package they belong to.
+
+Use this attribute (instead of `data-next-package-sync`) when the synced product has multiple variant packages (e.g., a configurable multi-variant bundle). When a customer swaps one unit to a different variant, that swap replaces the cart line's `packageId` but keeps the same `productId`, so product-level sync always counts the full quantity correctly.
+
+Both `data-next-package-sync` and `data-next-product-sync` may be set on the same card; the totals are summed.
+
+**Example:** `"55"` — quantity = sum of all cart lines with productId 55, across all its variants.
 
 ---
 

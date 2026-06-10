@@ -43,6 +43,7 @@ function makeCard(packageId: number, quantity = 1): ToggleCard {
     quantity,
     isSyncMode: false,
     syncPackageIds: [],
+    syncProductIds: [],
     isUpsell: false,
     stateContainer: element,
     addText: null,

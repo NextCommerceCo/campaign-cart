@@ -43,6 +43,7 @@ function makeCard(packageId: number, overrides: Partial<ToggleCard> = {}): Toggl
     quantity: 1,
     isSyncMode: false,
     syncPackageIds: [],
+    syncProductIds: [],
     isUpsell: false,
     stateContainer: element,
     addText: null,
