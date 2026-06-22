@@ -271,6 +271,8 @@ export interface CartItem {
   groupedItemIds?: number[] | undefined;
   /** Selector ID this item belongs to (set by BundleSelectorEnhancer via data-next-selector-id). */
   selectorId?: string | undefined;
+  /** Custom key-value properties for this line item. Two items with the same packageId but different properties are treated as separate lines. */
+  properties?: Record<string, string>;
 }
 
 export interface Discount {

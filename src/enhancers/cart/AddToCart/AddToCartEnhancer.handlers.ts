@@ -45,7 +45,7 @@ export async function addToCart(
     await cartStore.clear();
   }
 
-  await cartStore.addItem({ packageId, quantity, isUpsell: undefined });
+  await cartStore.addItem({ packageId, quantity, isUpsell: undefined, properties: ctx.properties });
 
   ctx.emit('cart:item-added', {
     packageId,

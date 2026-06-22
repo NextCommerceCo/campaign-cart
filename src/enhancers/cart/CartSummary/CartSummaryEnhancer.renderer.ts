@@ -271,6 +271,26 @@ export function buildLineElement(
 
   renderFlatDiscountContainers(el as HTMLElement, line.discounts);
 
+  // Render dynamic property list — [data-next-item-properties] with <template> child.
+  // Template tokens: {property.key}, {property.value}
+  const propertiesContainer = el.querySelector<HTMLElement>('[data-next-item-properties]');
+  if (propertiesContainer) {
+    const propTemplate = propertiesContainer.querySelector(':scope > template') as HTMLTemplateElement | null;
+    if (propTemplate) {
+      const tmpl = propTemplate.innerHTML.trim();
+      const entries = Object.entries(line.properties ?? {});
+      propertiesContainer.classList.toggle('next-summary-empty', entries.length === 0);
+      propertiesContainer.classList.toggle('next-summary-has-items', entries.length > 0);
+      for (const [key, value] of entries) {
+        const html = tmpl
+          .replace(/\{property\.key\}/g, key)
+          .replace(/\{property\.value\}/g, value);
+        const node = htmlToElement(html);
+        if (node) propertiesContainer.appendChild(node);
+      }
+    }
+  }
+
   return el;
 }
 
@@ -402,6 +422,12 @@ export function renderSummaryLine(template: string, line: SummaryLine): string {
     'item.hasDiscount': hasDiscount ? 'show' : 'hide',
     'item.currency': line.currency ?? '',
   };
+
+  if (line.properties) {
+    for (const [key, value] of Object.entries(line.properties)) {
+      vars[`item.property.${key}`] = value;
+    }
+  }
 
   // Mirror every item.* token as a line.* alias so templates can use either
   // vocabulary interchangeably. Pre-v0.4.11 legacy line.* names that no longer

@@ -44,17 +44,33 @@ export function makePackageState(pkg: Package): BundlePackageState {
  * sees the correctly-multiplied quantities without special-casing.
  */
 export function getEffectiveItems(card: BundleCard): BundleItem[] {
-  const qtyCounts = new Map<number, number>();
+  const propertiesKey = (p?: Record<string, string>): string =>
+    p && Object.keys(p).length > 0
+      ? JSON.stringify(Object.fromEntries(Object.entries(p).sort()))
+      : '';
+
+  type GroupEntry = { packageId: number; quantity: number; properties?: Record<string, string> };
+  const groups = new Map<string, GroupEntry>();
+
   for (const slot of card.slots) {
-    qtyCounts.set(
-      slot.activePackageId,
-      (qtyCounts.get(slot.activePackageId) ?? 0) + slot.quantity,
-    );
+    const pk = propertiesKey(slot.properties);
+    const key = `${slot.activePackageId}|${pk}`;
+    const existing = groups.get(key);
+    if (existing) {
+      existing.quantity += slot.quantity;
+    } else {
+      groups.set(key, {
+        packageId: slot.activePackageId,
+        quantity: slot.quantity,
+        ...(slot.properties !== undefined && { properties: slot.properties }),
+      });
+    }
   }
+
   const multiplier = card.bundleQuantity > 0 ? card.bundleQuantity : 1;
-  return Array.from(qtyCounts.entries()).map(([packageId, quantity]) => ({
-    packageId,
-    quantity: quantity * multiplier,
+  return Array.from(groups.values()).map(g => ({
+    ...g,
+    quantity: g.quantity * multiplier,
   }));
 }
 

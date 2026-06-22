@@ -26,6 +26,8 @@ export interface BundleItem {
    * is configured. Useful for silent add-ons like free gifts.
    */
   noSlot?: boolean;
+  /** Custom key-value properties for this line item. */
+  properties?: Record<string, string>;
 }
 
 export interface BundleDef {
@@ -61,6 +63,8 @@ export interface BundleSlot {
   configurable: boolean;
   /** Set to true once the user has explicitly selected a variant for this slot. */
   variantSelected: boolean;
+  /** User-entered key-value properties for this slot (synced live as the visitor types). */
+  properties?: Record<string, string>;
 }
 
 /**
@@ -174,6 +178,8 @@ export interface RenderContext {
     bundleId: string,
     slotIndex: number,
   ) => Promise<void>;
+  /** Called when the user blurs a property input so the cart is updated immediately. */
+  onPropertyBlur?: (card: BundleCard) => void;
 }
 
 /** Shared context passed to handler functions. */
