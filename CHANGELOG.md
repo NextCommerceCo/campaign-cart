@@ -1,5 +1,45 @@
 # Changelog
 
+## [0.4.26] — 2026-06-23 — Unique Line Items by Properties
+
+### New
+
+- **`data-next-property-key` on inputs inside bundle slots** — attach this attribute to any `<input>`, `<textarea>`, or `<select>` inside a slot template to bind that field as a named property on that specific slot. The cart item for the slot carries the value as a `properties` entry and sends it to the order API on checkout.
+
+  ```html
+  <input data-next-property-key="back_text" placeholder="Back text" />
+  ```
+
+  Values are captured live on the `input` event and the cart syncs on `blur`, so the customer sees the total update as they type.
+
+- **`data-next-default-property-key` — page-level property defaults** — place this attribute on any input outside the bundle to apply a single value to every line item. Per-slot values override the default when both are set.
+
+  ```html
+  <!-- Applies to every slot unless the slot has its own value -->
+  <input data-next-default-property-key="gift_message" placeholder="Gift message" />
+  ```
+
+- **Unique line items for personalised slots** — when two slots carry the same `package_id` but different properties (e.g. two shirts with different back-text), the cart and the order API treat them as separate line items rather than merging them into one with a higher quantity. The cart summary also renders a separate row per unique property set.
+
+- **`{property.key}` / `{property.value}` tokens in `[data-next-item-properties]`** — add a container with this attribute and a `<template>` child to your cart summary line template to render a row for every property on that item dynamically. No hardcoding required regardless of how many properties an item has.
+
+  ```html
+  <div data-next-item-properties>
+    <template>
+      <div class="cart-item__property">
+        <span>{property.key}</span>
+        <span>{property.value}</span>
+      </div>
+    </template>
+  </div>
+  ```
+
+  The container receives `next-summary-empty` when the item has no properties and `next-summary-has-items` otherwise, so you can show or hide it with CSS.
+
+- **Properties forwarded through the full order lifecycle** — properties are included in every API call where line items appear: `/calculate`, create-cart (ProspectCartEnhancer), create-order, express checkout, and test orders. No extra configuration is required.
+
+---
+
 ## [0.4.25] — 2026-06-09 — Product-level Sync for Multi-Variant Order Bumps
 
 ### Fixed
