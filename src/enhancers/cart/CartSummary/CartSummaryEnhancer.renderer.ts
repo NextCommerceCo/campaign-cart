@@ -166,6 +166,15 @@ function htmlToElement(html: string): Element | null {
   return wrapper.firstElementChild;
 }
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export function renderListContainers(
   element: HTMLElement,
   summary: CartSummary | undefined,
@@ -283,8 +292,8 @@ export function buildLineElement(
       propertiesContainer.classList.toggle('next-summary-has-items', entries.length > 0);
       for (const [key, value] of entries) {
         const html = tmpl
-          .replace(/\{property\.key\}/g, key)
-          .replace(/\{property\.value\}/g, value);
+          .replace(/\{property\.key\}/g, escapeHtml(key))
+          .replace(/\{property\.value\}/g, escapeHtml(value));
         const node = htmlToElement(html);
         if (node) propertiesContainer.appendChild(node);
       }

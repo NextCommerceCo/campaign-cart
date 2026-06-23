@@ -689,8 +689,8 @@ export class DebugOverlay {
             <li class="prop-card-item">
               <span class="discount-card-bullet">•</span>
               <span class="prop-card-body">
-                <span class="prop-card-key">${k}</span>
-                <span class="prop-card-value">${v}</span>
+                <span class="prop-card-key">${escapeHtml(k)}</span>
+                <span class="prop-card-value">${escapeHtml(v)}</span>
               </span>
             </li>`).join('')}
           </ul>`
@@ -1048,6 +1048,15 @@ export class DebugOverlay {
     if (cartTotalEl) cartTotalEl.textContent = formatCurrency(cartState.total.toNumber());
     if (enhancedElementsEl) enhancedElementsEl.textContent = document.querySelectorAll('[data-next-]').length.toString();
   }
+}
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // Global instance
