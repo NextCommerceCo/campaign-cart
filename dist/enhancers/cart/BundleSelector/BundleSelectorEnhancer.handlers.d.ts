@@ -1,4 +1,6 @@
 import { BundleCard, HandlerContext } from './BundleSelectorEnhancer.types';
+export declare function collectDefaultProperties(): Record<string, string>;
+export declare function mergeWithDefaults(itemProperties: Record<string, string> | undefined): Record<string, string> | undefined;
 export declare function handleCardClick(e: Event, card: BundleCard, previousCard: BundleCard | null, ctx: HandlerContext): Promise<void>;
 export declare function applyBundle(previous: BundleCard | null, selected: BundleCard, ctx: HandlerContext): Promise<boolean>;
 export declare function applyEffectiveChange(card: BundleCard, ctx: HandlerContext): Promise<void>;

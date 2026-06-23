@@ -6,6 +6,8 @@ export declare class AddToCartEnhancer extends BaseActionEnhancer {
     private redirectUrl?;
     private clearCart;
     private selectedItemRef;
+    private propertyContainerSelector?;
+    private propertyListenerCleanups;
     private clickHandler?;
     private selectorChangeHandler?;
     initialize(): Promise<void>;
@@ -16,6 +18,11 @@ export declare class AddToCartEnhancer extends BaseActionEnhancer {
     private setEnabled;
     private handleClick;
     private resolveAddTarget;
+    private attachPropertyInputListeners;
+    private syncPropertiesToCart;
+    private collectDefaultProperties;
+    private collectContainerProperties;
+    private resolveProperties;
     private makeHandlerContext;
     update(_data?: unknown): void;
     destroy(): void;

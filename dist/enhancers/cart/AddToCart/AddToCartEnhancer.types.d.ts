@@ -17,5 +17,6 @@ export interface AddToCartHandlerContext {
     };
     updateButtonState: () => void;
     emit: (event: string, detail: unknown) => void;
+    properties: Record<string, string> | undefined;
 }
 //# sourceMappingURL=AddToCartEnhancer.types.d.ts.map
