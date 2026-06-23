@@ -682,8 +682,22 @@ export class DebugOverlay {
         });
       }
 
-      // Only show hover card if we have discount info or item has discount pricing
-      if (itemHasDiscount || (item.discounts && item.discounts.length > 0)) {
+      const hasProperties = item.properties && Object.keys(item.properties).length > 0;
+      const propertiesHtml = hasProperties
+        ? `<ul class="discount-card-list">
+            ${Object.entries(item.properties!).map(([k, v]) => `
+            <li class="prop-card-item">
+              <span class="discount-card-bullet">•</span>
+              <span class="prop-card-body">
+                <span class="prop-card-key">${escapeHtml(k)}</span>
+                <span class="prop-card-value">${escapeHtml(v)}</span>
+              </span>
+            </li>`).join('')}
+          </ul>`
+        : '';
+
+      // Only show hover card if we have discount info, discount pricing, or properties
+      if (itemHasDiscount || (item.discounts && item.discounts.length > 0) || hasProperties) {
         let discountItemsHtml = '';
 
         if (item.discounts && item.discounts.length > 0) {
@@ -696,7 +710,7 @@ export class DebugOverlay {
               </span>
             </li>
           `).join('');
-        } else {
+        } else if (itemHasDiscount) {
           // Show a generic message if we detect discount but no details
           discountItemsHtml = `
             <li class="discount-card-item">
@@ -706,13 +720,26 @@ export class DebugOverlay {
           `;
         }
 
+        const discountSection = discountItemsHtml ? `
+          <div class="discount-card-header">
+            <span class="discount-card-icon">🎯</span>
+            <span class="discount-card-title">Applied Discounts</span>
+          </div>
+          <ul class="discount-card-list">${discountItemsHtml}</ul>
+        ` : '';
+
+        const propertiesSection = propertiesHtml ? `
+          <div class="discount-card-header${discountSection ? ' discount-card-header--separator' : ''}">
+            <span class="discount-card-icon">🏷️</span>
+            <span class="discount-card-title">Properties</span>
+          </div>
+          ${propertiesHtml}
+        ` : '';
+
         discountDetailsCard = `
           <div class="mini-cart-discount-details-card">
-            <div class="discount-card-header">
-              <span class="discount-card-icon">🎯</span>
-              <span class="discount-card-title">Applied Discounts</span>
-            </div>
-            <ul class="discount-card-list">${discountItemsHtml}</ul>
+            ${discountSection}
+            ${propertiesSection}
           </div>
         `;
       }
@@ -900,9 +927,62 @@ export class DebugOverlay {
           <span>${cartState.totalQuantity}</span>
         </div>
       </div>
+      <div class="debug-mini-cart-resize-handle" title="Drag to resize"></div>
     `;
+
+    this.bindResizeHandle(miniCart);
   }
 
+  private bindResizeHandle(miniCart: HTMLElement): void {
+    const handle = miniCart.querySelector(
+      '.debug-mini-cart-resize-handle'
+    ) as HTMLElement | null;
+    const items = miniCart.querySelector(
+      '.debug-mini-cart-items'
+    ) as HTMLElement | null;
+    if (!handle || !items) return;
+
+    const savedHeight = localStorage.getItem('debug-mini-cart-height');
+    if (savedHeight) {
+      items.style.maxHeight = `${savedHeight}px`;
+      items.style.height = `${savedHeight}px`;
+    }
+
+    const firstItem = items.querySelector(
+      '.debug-mini-cart-item'
+    ) as HTMLElement | null;
+    const minHeight = firstItem
+      ? firstItem.offsetHeight + parseInt(getComputedStyle(items).paddingTop) + parseInt(getComputedStyle(items).paddingBottom)
+      : 40;
+
+    let startY = 0;
+    let startHeight = 0;
+
+    const clamp = (h: number) => Math.max(minHeight, Math.min(600, h));
+
+    const onMouseMove = (e: MouseEvent) => {
+      const newHeight = clamp(startHeight + (e.clientY - startY));
+      items.style.maxHeight = `${newHeight}px`;
+      items.style.height = `${newHeight}px`;
+    };
+
+    const onMouseUp = (e: MouseEvent) => {
+      const newHeight = clamp(startHeight + (e.clientY - startY));
+      localStorage.setItem('debug-mini-cart-height', String(newHeight));
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      handle.classList.remove('dragging');
+    };
+
+    handle.addEventListener('mousedown', (e: MouseEvent) => {
+      e.preventDefault();
+      startY = e.clientY;
+      startHeight = items.offsetHeight;
+      handle.classList.add('dragging');
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+  }
 
   private toggleXray(): void {
     const isActive = XrayManager.toggle();
@@ -968,6 +1048,15 @@ export class DebugOverlay {
     if (cartTotalEl) cartTotalEl.textContent = formatCurrency(cartState.total.toNumber());
     if (enhancedElementsEl) enhancedElementsEl.textContent = document.querySelectorAll('[data-next-]').length.toString();
   }
+}
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // Global instance

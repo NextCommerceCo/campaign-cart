@@ -1848,7 +1848,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       lines: cartStore.items.map((item: any) => ({
         package_id: item.packageId,
         quantity: item.quantity,
-        is_upsell: item.is_upsell || false
+        is_upsell: item.is_upsell || false,
+        ...(item.properties !== undefined && { properties: item.properties }),
       })),
       shipping_address: shippingAddress,
       ...(billingAddressData && { billing_address: billingAddressData }),
@@ -2005,7 +2006,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           ? cartStore.items.map((item: any) => ({
             package_id: item.packageId,
             quantity: item.quantity,
-            is_upsell: item.is_upsell || false
+            is_upsell: item.is_upsell || false,
+            ...(item.properties !== undefined && { properties: item.properties }),
           }))
           : [{ package_id: 1, quantity: 1, is_upsell: false }],
 

@@ -17,6 +17,7 @@ export declare class BundleSelectorEnhancer extends BaseEnhancer {
     private mutationObserver;
     private boundVariantOptionClick;
     private boundCurrencyChangeHandler;
+    private boundDefaultPropertyBlurHandler;
     private isApplyingRef;
     private includeShipping;
     private selectorId;

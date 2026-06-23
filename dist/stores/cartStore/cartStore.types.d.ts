@@ -8,6 +8,7 @@ export interface CartItemsSlice {
     getTotalWeight: () => number;
     getTotalItemCount: () => number;
     getCoupons: () => string[];
+    setItemProperties: (packageId: number, properties: Record<string, string> | undefined) => void;
 }
 export interface CartUiSlice {
     swapInProgress: boolean;
@@ -26,6 +27,7 @@ export interface CartApiSlice {
     swapCart: (items: Array<{
         packageId: number;
         quantity: number;
+        properties?: Record<string, string>;
     }>) => Promise<void>;
     clear: () => void;
     syncWithAPI: () => Promise<void>;

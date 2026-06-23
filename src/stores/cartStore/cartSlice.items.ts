@@ -43,4 +43,11 @@ export const createCartItemsSlice: StateCreator<
     get().items.reduce((sum, item) => sum + item.quantity, 0),
 
   getCoupons: () => get().vouchers ?? [],
+
+  setItemProperties: (packageId, properties) =>
+    set(state => ({
+      items: state.items.map(item =>
+        item.packageId === packageId ? { ...item, properties } : item,
+      ),
+    })),
 });

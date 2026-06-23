@@ -329,6 +329,7 @@ export interface CartItem {
     variantSku?: string | undefined;
     groupedItemIds?: number[] | undefined;
     selectorId?: string | undefined;
+    properties?: Record<string, string>;
 }
 export interface Discount {
     offer_id?: number;
