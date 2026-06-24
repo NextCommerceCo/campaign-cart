@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.4.27] — 2026-06-24 — Post-purchase Upsell Properties & Bundle CORS
+
+### Fixed
+
+- **Post-purchase upsell did not send `properties` to the API** — when a upsell page used `[data-next-property-key]` or `[data-next-default-property-key]` inputs, the values were collected locally but never included in the `POST /api/v1/orders/{ref_id}/upsells/` payload. Orders placed through the upsell flow silently lost all personalisation data.
+
+  The `lines` array in the upsell request now carries a `properties` object on every item, matching the behaviour of the regular order-creation flow.
+
+---
+
 ## [0.4.26] — 2026-06-23 — Unique Line Items by Properties
 
 ### New
