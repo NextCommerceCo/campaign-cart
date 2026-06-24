@@ -335,7 +335,7 @@ export class UpsellEnhancer extends BaseEnhancer {
     return typeof fn === 'function' ? (fn() as number | undefined) : undefined;
   }
 
-  private resolveExternalBundleItems(): { packageId: number; quantity: number }[] | null {
+  private resolveExternalBundleItems(): { packageId: number; quantity: number; properties?: Record<string, string> }[] | null {
     if (!this.bundleSelectorId) return null;
     const el = document.querySelector<HTMLElement>(
       `[data-next-bundle-selector][data-next-selector-id="${this.bundleSelectorId}"]`,
@@ -343,7 +343,7 @@ export class UpsellEnhancer extends BaseEnhancer {
     if (!el) return null;
     const fn = (el as unknown as Record<string, unknown>)['_getSelectedBundleItems'];
     return typeof fn === 'function'
-      ? (fn() as { packageId: number; quantity: number }[] | null)
+      ? (fn() as { packageId: number; quantity: number; properties?: Record<string, string> }[] | null)
       : null;
   }
 
@@ -355,6 +355,40 @@ export class UpsellEnhancer extends BaseEnhancer {
     if (!el) return [];
     const fn = (el as unknown as Record<string, unknown>)['_getSelectedBundleVouchers'];
     return typeof fn === 'function' ? (fn() as string[]) : [];
+  }
+
+  private collectDefaultProperties(): Record<string, string> {
+    const result: Record<string, string> = {};
+    document
+      .querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
+        '[data-next-default-property-key]',
+      )
+      .forEach(el => {
+        const key = el.getAttribute('data-next-default-property-key');
+        if (key && el.value) result[key] = el.value;
+      });
+    return result;
+  }
+
+  private collectContainerProperties(): Record<string, string> {
+    const result: Record<string, string> = {};
+    this.element
+      .querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
+        '[data-next-property-key]',
+      )
+      .forEach(el => {
+        const key = el.getAttribute('data-next-property-key');
+        if (key && el.value) result[key] = el.value;
+      });
+    return result;
+  }
+
+  private resolveProperties(): Record<string, string> | undefined {
+    const merged = {
+      ...this.collectDefaultProperties(),
+      ...this.collectContainerProperties(),
+    };
+    return Object.keys(merged).length > 0 ? merged : undefined;
   }
 
   private makeHandlerContext(): UpsellHandlerContext {
@@ -372,6 +406,8 @@ export class UpsellEnhancer extends BaseEnhancer {
       currentQuantitySelectorId: this.currentQuantitySelectorId,
       bundleItems: externalBundleItems,
       bundleVouchers: this.resolveExternalBundleVouchers(),
+      defaultProperties: this.collectDefaultProperties(),
+      properties: this.resolveProperties(),
       actionButtons: this.actionButtons,
       loadingOverlay: this.loadingOverlay,
       apiClient: this.apiClient,

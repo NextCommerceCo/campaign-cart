@@ -150,12 +150,19 @@ export async function addUpsellToOrder(
 
     const upsellData: AddUpsellLine = ctx.bundleItems?.length
       ? {
-          lines: ctx.bundleItems.map(i => ({ package_id: i.packageId, quantity: i.quantity })),
+          lines: ctx.bundleItems.map(i => {
+            const merged = { ...(ctx.defaultProperties ?? {}), ...(i.properties ?? {}) };
+            return {
+              package_id: i.packageId,
+              quantity: i.quantity,
+              ...(Object.keys(merged).length > 0 && { properties: merged }),
+            };
+          }),
           currency: getCurrency(),
           ...(ctx.bundleVouchers?.length ? { vouchers: ctx.bundleVouchers } : {}),
         }
       : {
-          lines: [{ package_id: packageToAdd!, quantity: quantityToUse }],
+          lines: [{ package_id: packageToAdd!, quantity: quantityToUse, ...(ctx.properties !== undefined && { properties: ctx.properties }) }],
           currency: getCurrency(),
         };
     ctx.logger.info('Adding upsell to order:', upsellData);

@@ -366,6 +366,7 @@ export interface AddUpsellLine {
 export interface UpsellLineItem {
   package_id: number;
   quantity: number;
+  properties?: Record<string, string>;
 }
 
 export interface PaymentDetail {
