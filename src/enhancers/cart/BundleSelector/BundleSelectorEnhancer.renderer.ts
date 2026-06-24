@@ -223,7 +223,7 @@ export function updateCardDisplayElements(
 // ─── Slot property listeners ──────────────────────────────────────────────────
 
 /**
- * Attaches live `input` listeners to all `[data-next-property-key]` elements
+ * Attaches live `input` listeners to all `[data-next-property]` elements
  * inside a slot element. Every keystroke keeps `slot.properties` current so
  * that the next `getEffectiveItems` call — triggered by a variant change or
  * cart write — carries the correct values through.
@@ -236,10 +236,10 @@ function attachPropertyListeners(
 ): void {
   slotEl
     .querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
-      'input[data-next-property-key], textarea[data-next-property-key], select[data-next-property-key]',
+      'input[data-next-property], textarea[data-next-property], select[data-next-property]',
     )
     .forEach(el => {
-      const key = el.getAttribute('data-next-property-key');
+      const key = el.getAttribute('data-next-property');
       if (!key) return;
       el.addEventListener('input', () => {
         if (el.value) {
@@ -327,10 +327,10 @@ export function renderSlotsForCard(
       const savedPropertyValues: Record<string, string> = {};
       existing
         .querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
-          'input[data-next-property-key], textarea[data-next-property-key], select[data-next-property-key]',
+          'input[data-next-property], textarea[data-next-property], select[data-next-property]',
         )
         .forEach(el => {
-          const key = el.getAttribute('data-next-property-key');
+          const key = el.getAttribute('data-next-property');
           if (key && el.value) savedPropertyValues[key] = el.value;
         });
 
@@ -349,7 +349,7 @@ export function renderSlotsForCard(
         Object.entries(savedPropertyValues).forEach(([key, value]) => {
           const el = newSlotEl.querySelector<
             HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-          >(`[data-next-property-key="${key}"]`);
+          >(`[data-next-property="${key}"]`);
           if (el) el.value = value;
         });
         slot.properties = { ...(slot.properties ?? {}), ...savedPropertyValues };
@@ -358,7 +358,7 @@ export function renderSlotsForCard(
       placeholder.appendChild(newSlotEl);
     }
 
-    attachPropertyListeners(newSlotEl, slot, card, ctx.onPropertyBlur);
+    if (slot.excludeProperties !== '*') attachPropertyListeners(newSlotEl, slot, card, ctx.onPropertyBlur);
     if (!targetEl) card.slotVarsCache.set(slot.slotIndex, newVars);
   }
 

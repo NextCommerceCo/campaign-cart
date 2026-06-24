@@ -361,10 +361,10 @@ export class UpsellEnhancer extends BaseEnhancer {
     const result: Record<string, string> = {};
     document
       .querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
-        '[data-next-default-property-key]',
+        '[data-next-default-property]',
       )
       .forEach(el => {
-        const key = el.getAttribute('data-next-default-property-key');
+        const key = el.getAttribute('data-next-default-property');
         if (key && el.value) result[key] = el.value;
       });
     return result;
@@ -374,10 +374,10 @@ export class UpsellEnhancer extends BaseEnhancer {
     const result: Record<string, string> = {};
     this.element
       .querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
-        '[data-next-property-key]',
+        '[data-next-property]',
       )
       .forEach(el => {
-        const key = el.getAttribute('data-next-property-key');
+        const key = el.getAttribute('data-next-property');
         if (key && el.value) result[key] = el.value;
       });
     return result;

@@ -3,35 +3,14 @@ import { useCheckoutStore } from '@/stores/checkoutStore';
 import { useCampaignStore } from '@/stores/campaignStore';
 import type { BundleCard, HandlerContext } from './BundleSelectorEnhancer.types';
 import { getEffectiveItems, makePackageState } from './BundleSelectorEnhancer.state';
+import {
+  collectDefaultProperties,
+  mergeWithDefaults,
+  parseExcludeProperty,
+  applyPropertyExclusion,
+} from '@/enhancers/cart/shared/properties';
 
-// ─── Default property collection ─────────────────────────────────────────────
-
-/**
- * Reads all `[data-next-default-property-key]` inputs on the page and returns
- * their current values. These are page-level defaults applied to every bundle
- * line item, merged with (and overridden by) any per-slot properties.
- */
-export function collectDefaultProperties(): Record<string, string> {
-  const result: Record<string, string> = {};
-  document
-    .querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
-      '[data-next-default-property-key]',
-    )
-    .forEach(el => {
-      const key = el.getAttribute('data-next-default-property-key');
-      if (key && el.value) result[key] = el.value;
-    });
-  return result;
-}
-
-/** Merges page-level default properties with per-slot properties (slot overrides defaults). */
-export function mergeWithDefaults(
-  itemProperties: Record<string, string> | undefined,
-): Record<string, string> | undefined {
-  const defaults = collectDefaultProperties();
-  const merged = { ...defaults, ...(itemProperties ?? {}) };
-  return Object.keys(merged).length > 0 ? merged : undefined;
-}
+export { collectDefaultProperties, mergeWithDefaults };
 
 // ─── Card click / bundle selection ───────────────────────────────────────────
 
@@ -81,9 +60,9 @@ export async function applyBundle(
   ctx.isApplyingRef.value = true;
   const { selectorId } = ctx;
   const cartStore = useCartStore.getState();
-  const newItems = getEffectiveItems(selected).map(i => {
-    const properties = mergeWithDefaults(i.properties);
-    return { ...i, selectorId, ...(properties !== undefined && { properties }) };
+  const newItems = getEffectiveItems(selected).map(({ excludeProperties, properties: slotProps, ...rest }) => {
+    const properties = applyPropertyExclusion(mergeWithDefaults(slotProps), parseExcludeProperty(excludeProperties));
+    return { ...rest, selectorId, ...(properties !== undefined && { properties }) };
   });
   try {
     const retained = cartStore.items
@@ -141,9 +120,9 @@ export async function applyEffectiveChange(
             selectorId: ci.selectorId,
             ...(ci.properties !== undefined && { properties: ci.properties }),
           }));
-    const newItems = getEffectiveItems(card).map(i => {
-      const properties = mergeWithDefaults(i.properties);
-      return { ...i, selectorId, ...(properties !== undefined && { properties }) };
+    const newItems = getEffectiveItems(card).map(({ excludeProperties, properties: slotProps, ...rest }) => {
+      const properties = applyPropertyExclusion(mergeWithDefaults(slotProps), parseExcludeProperty(excludeProperties));
+      return { ...rest, selectorId, ...(properties !== undefined && { properties }) };
     });
     await cartStore.swapCart([...retained, ...newItems]);
     ctx.logger.debug(`Variant change synced for bundle "${card.bundleId}" (selector "${selectorId}")`, newItems);

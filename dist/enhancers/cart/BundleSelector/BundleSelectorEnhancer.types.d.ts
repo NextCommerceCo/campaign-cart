@@ -17,6 +17,7 @@ export interface BundleItem {
     configurable?: boolean;
     noSlot?: boolean;
     properties?: Record<string, string>;
+    excludeProperties?: string;
 }
 export interface BundleDef {
     id: string;
@@ -36,6 +37,7 @@ export interface BundleSlot {
     activePackageId: number;
     quantity: number;
     noSlot?: boolean;
+    excludeProperties?: string;
     configurable: boolean;
     variantSelected: boolean;
     properties?: Record<string, string>;

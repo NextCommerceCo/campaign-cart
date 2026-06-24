@@ -128,6 +128,9 @@ export function renderToggleTemplate(
       : String(def.packageSync);
     cardEl.setAttribute('data-next-package-sync', syncValue);
   }
+  if (def.excludeProperties != null) {
+    cardEl.setAttribute('data-next-exclude-property', def.excludeProperties);
+  }
 
   return cardEl;
 }
