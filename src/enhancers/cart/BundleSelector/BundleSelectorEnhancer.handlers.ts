@@ -130,15 +130,17 @@ export async function applyEffectiveChange(
   const slotSnapshot = card.slots.map(s => s.activePackageId);
   try {
     const cartStore = useCartStore.getState();
-    const retained = cartStore.items
-      .filter(ci => ci.selectorId !== selectorId)
-      .map(ci => ({
-        packageId: ci.packageId,
-        quantity: ci.quantity,
-        isUpsell: ci.is_upsell,
-        selectorId: ci.selectorId,
-        ...(ci.properties !== undefined && { properties: ci.properties }),
-      }));
+    const retained = ctx.isUpsellContext
+      ? []
+      : cartStore.items
+          .filter(ci => ci.selectorId !== selectorId)
+          .map(ci => ({
+            packageId: ci.packageId,
+            quantity: ci.quantity,
+            isUpsell: ci.is_upsell,
+            selectorId: ci.selectorId,
+            ...(ci.properties !== undefined && { properties: ci.properties }),
+          }));
     const newItems = getEffectiveItems(card).map(i => {
       const properties = mergeWithDefaults(i.properties);
       return { ...i, selectorId, ...(properties !== undefined && { properties }) };
