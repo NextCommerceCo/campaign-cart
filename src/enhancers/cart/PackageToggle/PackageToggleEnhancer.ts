@@ -138,7 +138,9 @@ import {
   addToCart,
   updateSyncedQuantity,
   handleSyncUpdate,
+  updateCartItemProperties,
 } from './PackageToggleEnhancer.handlers';
+import { attachPropertyListeners } from '@/enhancers/cart/shared/properties';
 
 export class PackageToggleEnhancer extends BaseEnhancer {
   private static _instances = new Set<PackageToggleEnhancer>();
@@ -363,6 +365,11 @@ export class PackageToggleEnhancer extends BaseEnhancer {
       el.closest('[data-next-upsell-section]') !== null ||
       el.closest('[data-next-bump-section]') !== null;
 
+    const excludeProperties =
+      el.getAttribute('data-next-exclude-property') ??
+      stateContainer.getAttribute('data-next-exclude-property') ??
+      undefined;
+
     const pkg = (useCampaignStore.getState().data?.packages ?? []).find(
       p => p.ref_id === packageId,
     );
@@ -389,6 +396,8 @@ export class PackageToggleEnhancer extends BaseEnhancer {
       removeText: el.getAttribute('data-remove-text'),
       ...makeProvisionalPrices(pkg),
       discounts: [],
+      properties: undefined,
+      excludeProperties,
     };
 
     this.cards.push(card);
@@ -399,6 +408,11 @@ export class PackageToggleEnhancer extends BaseEnhancer {
     const handler = (e: Event) => void handleCardClick(e, card, ctx);
     this.clickHandlers.set(el, handler);
     el.addEventListener('click', handler);
+
+    if (excludeProperties !== '*') {
+      card.properties = {};
+      attachPropertyListeners(el, card.properties, () => void updateCartItemProperties(card));
+    }
 
     this.logger.debug(`Registered toggle card for packageId ${packageId}`, {
       isSyncMode,

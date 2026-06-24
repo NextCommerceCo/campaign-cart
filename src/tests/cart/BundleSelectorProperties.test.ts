@@ -8,7 +8,7 @@ import {
 
 function addDefaultInput(key: string, value: string): HTMLInputElement {
   const el = document.createElement('input');
-  el.setAttribute('data-next-default-property-key', key);
+  el.setAttribute('data-next-default-property', key);
   el.value = value;
   document.body.appendChild(el);
   return el;
@@ -16,7 +16,7 @@ function addDefaultInput(key: string, value: string): HTMLInputElement {
 
 function addDefaultTextarea(key: string, value: string): HTMLTextAreaElement {
   const el = document.createElement('textarea');
-  el.setAttribute('data-next-default-property-key', key);
+  el.setAttribute('data-next-default-property', key);
   el.value = value;
   document.body.appendChild(el);
   return el;
@@ -27,7 +27,7 @@ function addDefaultSelect(
   value: string,
 ): HTMLSelectElement {
   const el = document.createElement('select');
-  el.setAttribute('data-next-default-property-key', key);
+  el.setAttribute('data-next-default-property', key);
   const option = document.createElement('option');
   option.value = value;
   option.selected = true;
@@ -82,7 +82,7 @@ describe('collectDefaultProperties', () => {
 
   it('skips elements with the attribute but no value', () => {
     const el = document.createElement('input');
-    el.setAttribute('data-next-default-property-key', 'key');
+    el.setAttribute('data-next-default-property', 'key');
     // value intentionally left empty (default '')
     document.body.appendChild(el);
     expect(collectDefaultProperties()).toEqual({});

@@ -33,6 +33,9 @@ export declare class UpsellEnhancer extends BaseEnhancer {
     private resolveExternalSelection;
     private resolveExternalBundleItems;
     private resolveExternalBundleVouchers;
+    private collectDefaultProperties;
+    private collectContainerProperties;
+    private resolveProperties;
     private makeHandlerContext;
     update(): void;
     protected cleanupEventListeners(): void;

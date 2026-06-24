@@ -2,6 +2,7 @@ export interface PackageDef {
     packageId: number;
     selected?: boolean;
     packageSync?: string | number[];
+    excludeProperties?: string;
     [key: string]: unknown;
 }
 export interface ToggleCard {
@@ -39,5 +40,7 @@ export interface ToggleCard {
     intervalCount: number | null;
     frequency: string;
     discounts: import('../../../shared/utils/discountRenderer').DiscountItem[];
+    properties?: Record<string, string>;
+    excludeProperties?: string;
 }
 //# sourceMappingURL=PackageToggleEnhancer.types.d.ts.map

@@ -28,6 +28,11 @@ export interface BundleItem {
   noSlot?: boolean;
   /** Custom key-value properties for this line item. */
   properties?: Record<string, string>;
+  /**
+   * Property exclusion rule for this line item.
+   * `"*"` excludes all properties; `"team, number"` excludes specific keys.
+   */
+  excludeProperties?: string;
 }
 
 export interface BundleDef {
@@ -59,6 +64,11 @@ export interface BundleSlot {
   quantity: number;
   /** When true, no slot row is rendered for this slot. */
   noSlot?: boolean;
+  /**
+   * Property exclusion rule for this slot, inherited from the bundle item definition.
+   * `"*"` excludes all; `"team, number"` excludes specific keys.
+   */
+  excludeProperties?: string;
   /** When true, the user must select a variant before this slot can be submitted. */
   configurable: boolean;
   /** Set to true once the user has explicitly selected a variant for this slot. */

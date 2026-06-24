@@ -8,6 +8,7 @@ import type { CartState, EventMap } from '@/types/global';
 import type { AddUpsellLine } from '@/types/api';
 import type { Logger } from '@/utils/logger';
 import type { ToggleCard } from './PackageToggleEnhancer.types';
+import { mergeWithDefaults, parseExcludeProperty, applyPropertyExclusion } from '@/enhancers/cart/shared/properties';
 
 // ─── Global deduplication sets ───────────────────────────────────────────────
 
@@ -97,8 +98,9 @@ async function handleUpsellCardClick(
       campaign?.currency ?? useConfigStore.getState().getCurrency();
     const apiClient = new ApiClient(useConfigStore.getState().apiKey);
 
+    const properties = applyPropertyExclusion(mergeWithDefaults(card.properties), parseExcludeProperty(card.excludeProperties));
     const upsellData: AddUpsellLine = {
-      lines: [{ package_id: card.packageId, quantity: card.quantity || 1 }],
+      lines: [{ package_id: card.packageId, quantity: card.quantity || 1, ...(properties !== undefined && { properties }) }],
       currency,
     };
     ctx.logger.info('Adding upsell to order from toggle:', upsellData);
@@ -147,6 +149,7 @@ function navigatePreservingParams(url: string, logger: Logger): void {
 export async function addToCart(card: ToggleCard): Promise<void> {
   const allPackages = useCampaignStore.getState().packages;
   const pkg = allPackages.find(p => p.ref_id === card.packageId);
+  const properties = applyPropertyExclusion(mergeWithDefaults(card.properties), parseExcludeProperty(card.excludeProperties));
 
   await useCartStore.getState().addItem({
     packageId: card.packageId,
@@ -154,7 +157,22 @@ export async function addToCart(card: ToggleCard): Promise<void> {
     title: pkg?.name ?? `Package ${card.packageId}`,
     price: pkg ? parseFloat(pkg.price) : 0,
     isUpsell: card.isUpsell,
+    ...(properties !== undefined && { properties }),
   });
+}
+
+export async function updateCartItemProperties(card: ToggleCard): Promise<void> {
+  const cartStore = useCartStore.getState();
+  const existing = cartStore.items.find(i => i.packageId === card.packageId);
+  if (!existing) return;
+
+  const properties = applyPropertyExclusion(mergeWithDefaults(card.properties), parseExcludeProperty(card.excludeProperties));
+  const updated = cartStore.items.map(i =>
+    i.packageId === card.packageId
+      ? { packageId: i.packageId, quantity: i.quantity, isUpsell: i.is_upsell, selectorId: i.selectorId, ...(i.properties !== undefined && { properties: i.properties }), ...(properties !== undefined ? { properties } : {}) }
+      : { packageId: i.packageId, quantity: i.quantity, isUpsell: i.is_upsell, selectorId: i.selectorId, ...(i.properties !== undefined && { properties: i.properties }) },
+  );
+  await cartStore.swapCart(updated);
 }
 
 export function updateSyncedQuantity(card: ToggleCard, cartState: CartState): void {

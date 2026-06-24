@@ -16,8 +16,10 @@ export interface UpsellHandlerContext {
   actionButtons: HTMLElement[];
   loadingOverlay: LoadingOverlay;
   apiClient: ApiClient;
-  bundleItems?: { packageId: number; quantity: number }[] | null;
+  bundleItems?: { packageId: number; quantity: number; properties?: Record<string, string> }[] | null;
   bundleVouchers?: string[];
+  defaultProperties?: Record<string, string>;
+  properties?: Record<string, string>;
   currentPagePath: string | undefined;
   logger: Logger;
   emit: <K extends keyof EventMap>(event: K, detail: EventMap[K]) => void;

@@ -276,7 +276,7 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     if (this.mode === 'swap' && !this.isUpsellContext) {
       this.boundDefaultPropertyBlurHandler = (e: FocusEvent) => {
         const target = e.target as HTMLElement;
-        if (!target.hasAttribute('data-next-default-property-key')) return;
+        if (!target.hasAttribute('data-next-default-property')) return;
         const card = this.selectedCard;
         if (!card) return;
         void applyEffectiveChange(card, this.makeHandlerContext());
@@ -398,6 +398,7 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
             activePackageId: item.packageId,
             quantity: 1,
             noSlot: item.noSlot,
+            excludeProperties: item.excludeProperties,
             configurable: true,
             variantSelected: false,
           });
@@ -410,6 +411,7 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
           activePackageId: item.packageId,
           quantity: item.quantity,
           noSlot: item.noSlot,
+          excludeProperties: item.excludeProperties,
           configurable: !!item.configurable,
           variantSelected: false,
         });

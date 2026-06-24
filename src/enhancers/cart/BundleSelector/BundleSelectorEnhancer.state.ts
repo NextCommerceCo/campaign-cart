@@ -49,7 +49,7 @@ export function getEffectiveItems(card: BundleCard): BundleItem[] {
       ? JSON.stringify(Object.fromEntries(Object.entries(p).sort()))
       : '';
 
-  type GroupEntry = { packageId: number; quantity: number; properties?: Record<string, string> };
+  type GroupEntry = { packageId: number; quantity: number; properties?: Record<string, string>; excludeProperties?: string };
   const groups = new Map<string, GroupEntry>();
 
   for (const slot of card.slots) {
@@ -63,6 +63,7 @@ export function getEffectiveItems(card: BundleCard): BundleItem[] {
         packageId: slot.activePackageId,
         quantity: slot.quantity,
         ...(slot.properties !== undefined && { properties: slot.properties }),
+        ...(slot.excludeProperties && { excludeProperties: slot.excludeProperties }),
       });
     }
   }
