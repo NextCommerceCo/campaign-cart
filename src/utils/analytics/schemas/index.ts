@@ -488,6 +488,38 @@ export const eventSchemas: Record<string, EventSchema> = {
         }
       }
     }
+  },
+
+  // Accepted upsell in GA4 purchase format (counterpart to dl_accepted_upsell).
+  dl_upsell_purchase: {
+    name: 'dl_upsell_purchase',
+    fields: {
+      event: { type: 'string', required: true },
+      ecommerce: {
+        type: 'object',
+        required: true,
+        properties: {
+          ...ecommerceWithItemsFields,
+          transaction_id: { type: 'string', required: true },
+          affiliation: { type: 'string' },
+          tax: { type: 'number' },
+          shipping: { type: 'number' }
+        }
+      },
+      upsell_metadata: {
+        type: 'object',
+        properties: {
+          original_order_id: { type: 'string' },
+          upsell_number: { type: 'number' },
+          package_id: { type: 'string' },
+          package_name: { type: 'string' }
+        }
+      },
+      user_properties: {
+        type: 'object',
+        properties: userPropertiesFields
+      }
+    }
   }
 };
 
