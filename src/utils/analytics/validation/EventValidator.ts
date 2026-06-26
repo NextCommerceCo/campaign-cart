@@ -5,6 +5,9 @@ import {
   EventSchema,
   FieldDefinition 
 } from '../schemas';
+import { createLogger } from '@/utils/logger';
+
+const logger = createLogger('EventValidator');
 
 export interface ValidationResult {
   valid: boolean;
@@ -60,7 +63,7 @@ export class EventValidator {
 
     // Log validation results in debug mode
     if (this.debug && !result.valid) {
-      console.error(`[EventValidator] Validation failed for ${eventData.event}:`, result.errors);
+      logger.error(`Validation failed for ${eventData.event}:`, result.errors);
     }
 
     return result;

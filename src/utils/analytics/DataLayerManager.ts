@@ -14,6 +14,9 @@ import type {
 } from './types';
 import { DEFAULT_CONFIG, STORAGE_KEYS, EVENT_VALIDATION_RULES } from './config';
 import { pendingEventsHandler } from './tracking/PendingEventsHandler';
+import { createLogger } from '@/utils/logger';
+
+const logger = createLogger('NextDataLayer');
 
 declare global {
   interface Window {
@@ -140,7 +143,7 @@ export class DataLayerManager {
       try {
         localStorage.setItem(STORAGE_KEYS.DEBUG_MODE, JSON.stringify({ enabled, options }));
       } catch (e) {
-        console.error('Failed to persist debug mode', e);
+        logger.error('Failed to persist debug mode', e);
       }
     }
 
@@ -244,7 +247,8 @@ export class DataLayerManager {
       sequence_number: ++this.sequenceNumber,
       debug_mode: this.debugMode,
       source: 'NextDataLayer',
-      version: '0.2.0',
+      // Replaced at build time with the package.json version (__VERSION__ define).
+      version: __VERSION__,
     };
 
     // Get attribution data
@@ -410,12 +414,11 @@ export class DataLayerManager {
    */
   private debug(message: string, data?: any): void {
     if (!this.debugMode || !this.config.debug?.logEvents) return;
-    
-    const prefix = '[NextDataLayer]';
+
     if (this.config.debug?.verbose && data) {
-      console.log(`${prefix} ${message}`, data);
+      logger.debug(message, data);
     } else {
-      console.log(`${prefix} ${message}`);
+      logger.debug(message);
     }
   }
 
@@ -424,9 +427,8 @@ export class DataLayerManager {
    */
   private error(message: string, error: any, data?: any): void {
     if (!this.config.debug?.logErrors) return;
-    
-    const prefix = '[NextDataLayer ERROR]';
-    console.error(`${prefix} ${message}`, { error, data });
+
+    logger.error(message, { error, data });
   }
 
   /**

@@ -38,9 +38,9 @@ declare global {
   }
 }
 
-export const VERSION = typeof window !== 'undefined' && window.__NEXT_SDK_VERSION__ 
-  ? window.__NEXT_SDK_VERSION__ 
-  : '__VERSION__';
+export const VERSION = typeof window !== 'undefined' && window.__NEXT_SDK_VERSION__
+  ? window.__NEXT_SDK_VERSION__
+  : __VERSION__;
 
 // Auto-initialization
 import { SDKInitializer } from './enhancers/core/SDKInitializer';

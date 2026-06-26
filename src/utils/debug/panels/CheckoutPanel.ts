@@ -6,11 +6,12 @@
 import { useCheckoutStore } from '../../../stores/checkoutStore';
 import { DebugPanel, PanelAction, PanelTab } from '../DebugPanels';
 import { RawDataHelper } from './RawDataHelper';
+import { lucide } from '../icons';
 
 export class CheckoutPanel implements DebugPanel {
   id = 'checkout';
   title = 'Checkout State';
-  icon = '💳';
+  icon = lucide('card');
 
   getContent(): string {
     // Fallback to first tab's content if tabs are not being used

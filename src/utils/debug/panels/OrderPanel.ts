@@ -6,11 +6,12 @@
 import { useOrderStore } from '../../../stores/orderStore';
 import { DebugPanel, PanelAction, PanelTab } from '../DebugPanels';
 import { RawDataHelper } from './RawDataHelper';
+import { lucide } from '../icons';
 
 export class OrderPanel implements DebugPanel {
   id = 'order';
   title = 'Order State';
-  icon = '📦';
+  icon = lucide('package');
 
   getContent(): string {
     // Fallback to first tab's content if tabs are not being used

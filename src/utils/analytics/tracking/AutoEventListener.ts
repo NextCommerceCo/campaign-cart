@@ -81,6 +81,31 @@ export class AutoEventListener {
   }
 
   /**
+   * Resolve once the cart calculation triggered by a mutation has settled.
+   *
+   * Cart mutations emit their event (e.g. `cart:item-added`) BEFORE the async,
+   * debounced `calculateTotals()` runs, so at emit time the line has only
+   * catalog prices and not yet the discounted `unit_price` / `total`. Waiting
+   * for the next `cart:updated` (emitted after calculation) lets the analytics
+   * event report the final, calculated line price. Falls back after `timeoutMs`
+   * so tracking never hangs if no calculation occurs.
+   */
+  private waitForCartCalculation(timeoutMs = 3000): Promise<void> {
+    return new Promise<void>(resolve => {
+      let settled = false;
+      const finish = (): void => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        this.eventBus.off('cart:updated', finish);
+        resolve();
+      };
+      const timer = setTimeout(finish, timeoutMs);
+      this.eventBus.on('cart:updated', finish);
+    });
+  }
+
+  /**
    * Set up cart event listeners
    */
   private setupCartEventListeners(): void {
@@ -104,24 +129,15 @@ export class AutoEventListener {
       // Get list attribution
       const listContext = listAttributionTracker.getCurrentList();
 
-      const item = {
-        item_id: packageData.external_id.toString(), // Use external_id for analytics
-        item_name: packageData.name || `Package ${packageId}`,
-        currency: campaignStore.currency ?? 'USD',
-        price: parseFloat(packageData.price_total || '0'), // Use total package price
-        quantity: 1, // Always 1 for package-based pricing
-        item_category: campaignStore.data?.name || 'Campaign',
-        item_variant: packageData.product_variant_name || packageData.product?.variant?.name,
-        item_brand: packageData.product_name || packageData.product?.name,
-        item_sku: packageData.product_sku || packageData.product?.variant?.sku,
-        ...(packageData.image && { item_image: packageData.image }),
-        ...(listContext && {
-          item_list_id: listContext.listId,
-          item_list_name: listContext.listName
-        })
-      };
+      // Wait for the debounced cart calculation to settle so the event reports
+      // the final, discounted line price rather than the catalog price. On a
+      // redirect we cannot wait — the page may navigate before calc completes,
+      // so we fall back to the package data below.
+      if (!data.willRedirect) {
+        await this.waitForCartCalculation();
+      }
 
-      // Get the cart item to use EcommerceEvents method
+      // Get the (now calculated) cart item to use EcommerceEvents method
       const cartStore = useCartStore.getState();
       const cartItem = cartStore.getItem(packageId);
 
@@ -171,19 +187,6 @@ export class AutoEventListener {
         logger.warn('Package not found for remove from cart:', packageId);
         return;
       }
-
-      const item = {
-        item_id: packageData.external_id.toString(), // Use external_id for analytics
-        item_name: packageData.name || `Package ${packageId}`,
-        currency: campaignStore.currency ?? 'USD',
-        price: parseFloat(packageData.price_total || '0'), // Use total package price
-        quantity: 1, // Always 1 for package-based pricing
-        item_category: campaignStore.data?.name || 'Campaign',
-        item_variant: packageData.product_variant_name || packageData.product?.variant?.name,
-        item_brand: packageData.product_name || packageData.product?.name,
-        item_sku: packageData.product_sku || packageData.product?.variant?.sku,
-        ...(packageData.image && { item_image: packageData.image })
-      };
 
       // Create proper remove from cart event using EcommerceEvents
       const event = EcommerceEvents.createRemoveFromCartEvent({
@@ -734,15 +737,56 @@ export class AutoEventListener {
       const cartStore = useCartStore.getState();
       const campaignStore = useCampaignStore.getState();
       
-      return {
-        total_value: cartStore.total || cartStore.subtotal || 0,
-        total_items: cartStore.totalQuantity || 0,
-        currency: campaignStore.currency ?? 'USD',
-        items: cartStore.items.map(item => ({
+      const toNum = (v: unknown): number => {
+        if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+        if (typeof v === 'string') {
+          const n = parseFloat(v);
+          return Number.isFinite(n) ? n : 0;
+        }
+        return 0;
+      };
+
+      const items = cartStore.items.map(item => {
+        // `quantity` is the number of packages, so `price` is the final
+        // per-package price AFTER discounts. Prefer the calculated figures the
+        // cart store writes onto the line (`package_price`, or `total` /
+        // quantity); fall back to the catalog package total only before the
+        // calculation has run.
+        let price = 0;
+        if (item.package_price !== undefined && item.package_price !== null) {
+          price = toNum(item.package_price);
+        } else if (
+          item.total !== undefined &&
+          item.total !== null &&
+          item.quantity > 0
+        ) {
+          price = toNum(item.total) / item.quantity;
+        } else {
+          const pkg = campaignStore.getPackage(item.packageId);
+          price = toNum(pkg?.price_total ?? pkg?.price);
+        }
+
+        return {
           package_id: item.packageId,
           quantity: item.quantity,
-          price: campaignStore.getPackage(item.packageId)?.price || 0
-        }))
+          price,
+        };
+      });
+
+      // total_value is the item revenue as a plain number. The store's `total`
+      // is a Decimal (serializes to a string) and includes shipping, so derive
+      // the value from the items instead — keeps it numeric and reconciled with
+      // `price * quantity`.
+      const totalValue =
+        Math.round(
+          items.reduce((sum, i) => sum + i.price * i.quantity, 0) * 100
+        ) / 100;
+
+      return {
+        total_value: totalValue,
+        total_items: cartStore.totalQuantity || 0,
+        currency: campaignStore.currency ?? 'USD',
+        items,
       };
     } catch (error) {
       logger.error('Error getting cart data:', error);

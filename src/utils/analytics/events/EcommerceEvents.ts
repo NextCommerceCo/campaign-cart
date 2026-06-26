@@ -8,8 +8,38 @@ import { EventBuilder } from './EventBuilder';
 import { useCartStore } from '@/stores/cartStore';
 import { useCampaignStore } from '@/stores/campaignStore';
 import type { CartItem, EnrichedCartLine } from '@/types/global';
+import { createLogger } from '@/utils/logger';
+
+const logger = createLogger('EcommerceEvents');
 
 export class EcommerceEvents {
+  /**
+   * Build the GA4 `ecommerce` payload for the current cart: formatted items,
+   * the cart total as `value`, and the applied coupon. Shared by view_cart,
+   * begin_checkout, add_shipping_info and add_payment_info so they stay
+   * consistent (same items, same value, same coupon handling).
+   *
+   * Uses `cartState.items` directly — `enrichedItems` is never populated by the
+   * store, so mapping over it would emit an empty items array.
+   */
+  private static buildCartEcommerce(): EcommerceData {
+    const cartState = useCartStore.getState();
+    const items = cartState.items.map((item, index) =>
+      EventBuilder.formatEcommerceItem(item, index)
+    );
+    const ecommerce: EcommerceData = {
+      currency: EventBuilder.getCurrency(),
+      // Item revenue (Σ price × quantity), not the cart store `total` which
+      // includes shipping — keeps `value` reconciled with `items` (GA4 semantics).
+      value: EventBuilder.sumItemsValue(items),
+      items,
+    };
+    if (cartState.vouchers?.[0]) {
+      ecommerce.coupon = cartState.vouchers[0];
+    }
+    return ecommerce;
+  }
+
   /**
    * Create view_item_list event (GA4 format)
    */
@@ -193,23 +223,7 @@ export class EcommerceEvents {
    */
   static createBeginCheckoutEvent(): DataLayerEvent {
     const cartState = useCartStore.getState();
-    const currency = EventBuilder.getCurrency();
-
-    // Use raw cart items, not enrichedItems, as they have the proper package data
-    const items = cartState.items.map((item, index) =>
-      EventBuilder.formatEcommerceItem(item, index)
-    );
-
-    const ecommerce: EcommerceData = {
-      currency,
-      value: cartState.total.toNumber() || 0,
-      items
-    };
-
-    // Add coupon if applied
-    if (cartState.vouchers?.[0]) {
-      ecommerce.coupon = cartState.vouchers[0];
-    }
+    const ecommerce = this.buildCartEcommerce();
 
     return EventBuilder.createEvent('dl_begin_checkout', {
       user_properties: EventBuilder.getUserProperties(),
@@ -237,7 +251,7 @@ export class EcommerceEvents {
       cartState.total.toNumber() || 0
     );
     const orderTax = parseFloat(
-      order.total_tax || orderData.tax || 0 || 0
+      order.total_tax || orderData.tax || 0
     );
     const orderShipping = parseFloat(
       order.shipping_incl_tax || orderData.shipping ||
@@ -260,21 +274,27 @@ export class EcommerceEvents {
 
         const item: EcommerceItem = {
           item_id: line.product_sku || packageData?.product_sku || line.sku || `SKU-${line.product_id || line.id}`,
-          item_name: line.product_title || line.name || 'Unknown Product',
+          item_name: line.product_title || packageData?.product_name || line.name || 'Unknown Product',
           item_brand: packageData?.product_name || campaignStore.data?.name || '',
           item_category: line.campaign_name || campaignStore.data?.name || 'Campaign',
-          item_variant: line.package_profile || line.variant || '',
+          item_variant: line.package_profile || packageData?.product_variant_name || line.variant || '',
           price: perUnitPrice,
           quantity: lineQuantity,
           currency: order.currency || currency,
           index
         };
 
+        // Carry product/variant ids when known, matching formatEcommerceItem's shape.
+        const productId = line.product_id ?? packageData?.product_id;
+        const variantId = line.variant_id ?? packageData?.product_variant_id;
+        if (productId != null) item.item_product_id = String(productId);
+        if (variantId != null) item.item_variant_id = String(variantId);
+
         return item;
       });
-    } else if (orderData.items || cartState.enrichedItems.length > 0) {
-      // Fallback to provided items or cart items
-      items = (orderData.items || cartState.enrichedItems).map(
+    } else if (orderData.items || cartState.items.length > 0) {
+      // Fallback to provided items or cart items (enrichedItems is never populated)
+      items = (orderData.items || cartState.items).map(
         (item: any, index: number) => EventBuilder.formatEcommerceItem(item, index)
       );
     }
@@ -373,18 +393,7 @@ export class EcommerceEvents {
    */
   static createViewCartEvent(): DataLayerEvent {
     const cartState = useCartStore.getState();
-    const currency = EventBuilder.getCurrency();
-
-    // Format all cart items as GA4 items
-    const items = cartState.enrichedItems.map((item, index) =>
-      EventBuilder.formatEcommerceItem(item, index)
-    );
-
-    const ecommerce: EcommerceData = {
-      currency,
-      value: cartState.total.toNumber() || 0,
-      items
-    };
+    const ecommerce = this.buildCartEcommerce();
 
     return EventBuilder.createEvent('dl_view_cart', {
       user_properties: EventBuilder.getUserProperties(),
@@ -399,25 +408,9 @@ export class EcommerceEvents {
    */
   static createAddShippingInfoEvent(shippingTier?: string): DataLayerEvent {
     const cartState = useCartStore.getState();
-    const currency = EventBuilder.getCurrency();
-
-    // Format all cart items
-    const formattedItems = cartState.enrichedItems.map((item, index) =>
-      EventBuilder.formatEcommerceItem(item, index)
-    );
-
-    const ecommerce: EcommerceData = {
-      currency,
-      currencyCode: currency, // Add currencyCode for Elevar compatibility
-      value: cartState.total.toNumber(),
-      items: formattedItems,
-      ...(shippingTier && { shipping_tier: shippingTier })
-    };
-
-    // Add coupon if applied
-    if (cartState.vouchers?.[0]) {
-      ecommerce.coupon = cartState.vouchers[0];
-    }
+    const ecommerce = this.buildCartEcommerce();
+    ecommerce.currencyCode = ecommerce.currency; // Elevar compatibility
+    if (shippingTier) ecommerce.shipping_tier = shippingTier;
 
     return EventBuilder.createEvent('dl_add_shipping_info', {
       ecommerce,
@@ -433,24 +426,8 @@ export class EcommerceEvents {
    */
   static createAddPaymentInfoEvent(paymentType?: string): DataLayerEvent {
     const cartState = useCartStore.getState();
-    const currency = EventBuilder.getCurrency();
-
-    // Format all cart items
-    const formattedItems = cartState.enrichedItems.map((item, index) =>
-      EventBuilder.formatEcommerceItem(item, index)
-    );
-
-    const ecommerce: EcommerceData = {
-      currency,
-      value: cartState.total.toNumber(),
-      items: formattedItems,
-      ...(paymentType && { payment_type: paymentType })
-    };
-
-    // Add coupon if applied
-    if (cartState.vouchers?.[0]) {
-      ecommerce.coupon = cartState.vouchers[0];
-    }
+    const ecommerce = this.buildCartEcommerce();
+    if (paymentType) ecommerce.payment_type = paymentType;
 
     return EventBuilder.createEvent('dl_add_payment_info', {
       ecommerce,
@@ -489,24 +466,24 @@ export class EcommerceEvents {
     // Format upsell order ID with -US suffix (US1, US2, etc.)
     const upsellOrderId = `${orderId}-US${upsellNumber}`;
 
-    // Get campaign store for additional product data
-    let campaignStore: any;
+    // Get campaign store for additional product data.
     let packageData: any;
+    let campaignName = 'Campaign';
     try {
-      if (typeof window !== 'undefined') {
-        campaignStore = (window as any).campaignStore;
-        if (campaignStore) {
-          const campaign = campaignStore.getState().data;
-          if (campaign?.packages) {
-            packageData = campaign.packages.find((p: any) =>
-              String(p.ref_id) === String(packageId)
-            );
-          }
-        }
+      const campaign = useCampaignStore.getState().data;
+      if (campaign) {
+        campaignName = campaign.name || 'Campaign';
+        packageData = campaign.packages?.find((p: any) =>
+          String(p.ref_id) === String(packageId)
+        );
       }
     } catch (error) {
-      console.warn('Could not access campaign store for upsell data:', error);
+      logger.warn('Could not access campaign store for upsell data:', error);
     }
+
+    // Per-unit price so that price × quantity reconciles to the line total
+    // (`value`). The order API returns line totals, so divide by quantity.
+    const perUnitPrice = quantity > 0 ? value / quantity : value;
 
     // Format the upsell item as a GA4 item
     const upsellItem: EcommerceItem = item ?
@@ -514,16 +491,25 @@ export class EcommerceEvents {
       {
         item_id: packageData?.product_sku || `SKU-${packageId}`,
         item_name: packageName || packageData?.product_name || `Package ${packageId}`,
-        item_brand: packageData?.product_name || campaignStore?.getState().data?.name || '',
-        item_category: campaignStore?.getState().data?.name || 'Campaign',
+        item_brand: packageData?.product_name || campaignName,
+        item_category: campaignName,
         item_variant: packageData?.product_variant_name || '',
-        price: value,
+        price: perUnitPrice,
         quantity,
         currency
       };
 
-    // Calculate the additional revenue (just the upsell value, not total order)
-    const additionalRevenue = value * quantity;
+    // formatEcommerceItem derives price/quantity from campaign list data, which
+    // ignores the accepted bundle quantity and per-line (discounted) pricing.
+    // Force the accepted quantity and per-unit price so price × quantity === value.
+    if (item) {
+      upsellItem.quantity = quantity;
+      upsellItem.price = perUnitPrice;
+    }
+
+    // `value` is already the full revenue for the accepted line(s) across all
+    // units, so it is the transaction value as-is (do not multiply by quantity).
+    const additionalRevenue = value;
 
     // Build GA4 ecommerce structure for upsell
     const ecommerce: EcommerceData = {

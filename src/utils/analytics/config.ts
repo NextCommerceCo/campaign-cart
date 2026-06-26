@@ -4,6 +4,9 @@
  */
 
 import type { DataLayerConfig, DebugOptions, AnalyticsProvider } from './types';
+import { createLogger } from '@/utils/logger';
+
+const logger = createLogger('AnalyticsConfig');
 
 /**
  * Default debug configuration
@@ -174,14 +177,14 @@ export function getProviderConfig(providerName: keyof typeof PROVIDER_SETTINGS):
  */
 export function validateProviderConfig(provider: AnalyticsProvider, settings: typeof PROVIDER_SETTINGS[keyof typeof PROVIDER_SETTINGS]): boolean {
   if (!provider.config) {
-    console.error(`Missing config for provider "${provider.name}"`);
+    logger.error(`Missing config for provider "${provider.name}"`);
     return false;
   }
   
   // Check required fields
   for (const field of settings.requiredConfig) {
     if (!provider.config[field]) {
-      console.error(`Missing required field "${field}" for provider "${provider.name}"`);
+      logger.error(`Missing required field "${field}" for provider "${provider.name}"`);
       return false;
     }
   }

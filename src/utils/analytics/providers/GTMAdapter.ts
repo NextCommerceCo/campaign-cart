@@ -13,34 +13,27 @@ declare global {
  * Google Tag Manager adapter
  */
 export class GTMAdapter extends ProviderAdapter {
-  private blockedEvents: string[] = [];
-
-  constructor(config?: any) {
-    super('GTM');
-    if (config?.blockedEvents) {
-      this.blockedEvents = config.blockedEvents;
-    }
+  constructor(config?: { blockedEvents?: string[] }) {
+    super('GTM', { blockedEvents: config?.blockedEvents });
   }
 
-  /**
-   * Track event - called by DataLayerManager
-   */
-  override trackEvent(event: DataLayerEvent): void {
-    this.sendEvent(event);
+  protected override isReady(): boolean {
+    return this.isBrowser() && Array.isArray(window.dataLayer);
+  }
+
+  protected override getDebugDetails(): Record<string, string | number | boolean> {
+    return {
+      dataLayer: this.isBrowser() && Array.isArray(window.dataLayer),
+      elevarDataLayer: this.isBrowser() && Array.isArray(window.ElevarDataLayer),
+    };
   }
 
   /**
    * Send event to Google Tag Manager
    */
-  sendEvent(event: DataLayerEvent): void {
-    if (!this.enabled || !this.isBrowser()) {
-      return;
-    }
-
-    // Check if this event is blocked
-    if (this.blockedEvents.includes(event.event)) {
-      this.debug(`Event ${event.event} is blocked for GTM`);
-      return;
+  sendEvent(event: DataLayerEvent): unknown {
+    if (!this.isBrowser()) {
+      return undefined;
     }
 
     // Ensure dataLayers exist
@@ -57,7 +50,8 @@ export class GTMAdapter extends ProviderAdapter {
       window.dataLayer.push(event);
 
       this.debug('Elevar event sent to both ElevarDataLayer and dataLayer', event);
-      return;
+      // dl_* events are pushed to the dataLayer as-is.
+      return event;
     }
 
     // For non-Elevar events, use existing transformation
@@ -72,6 +66,7 @@ export class GTMAdapter extends ProviderAdapter {
     window.dataLayer.push(gtmEvent);
 
     this.debug('Event sent to GTM', gtmEvent);
+    return gtmEvent;
   }
 
   /**

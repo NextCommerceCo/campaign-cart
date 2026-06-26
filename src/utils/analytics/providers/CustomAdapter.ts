@@ -50,6 +50,18 @@ export class CustomAdapter extends ProviderAdapter {
     }
   }
 
+  protected override isReady(): boolean {
+    return Boolean(this.config.endpoint);
+  }
+
+  protected override getDebugDetails(): Record<string, string | number | boolean> {
+    return {
+      endpoint: this.config.endpoint || '(none)',
+      queued: this.eventQueue.length,
+      batchSize: this.config.batchSize,
+    };
+  }
+
   /**
    * Send event to custom endpoint
    */
@@ -129,7 +141,7 @@ export class CustomAdapter extends ProviderAdapter {
 
       this.debug(`Batch sent successfully`);
     } catch (error) {
-      console.error('Error sending batch to custom endpoint:', error);
+      this.logger.error('Error sending batch to custom endpoint:', error);
       
       // Add events to retry queue
       eventsToSend.forEach(event => {
@@ -186,7 +198,7 @@ export class CustomAdapter extends ProviderAdapter {
       if (event.id) {
         this.retryQueue.delete(event.id);
       }
-      console.error(`Failed to send event after ${this.config.maxRetries} attempts:`, event);
+      this.logger.error(`Failed to send event after ${this.config.maxRetries} attempts:`, event);
     }
   }
 

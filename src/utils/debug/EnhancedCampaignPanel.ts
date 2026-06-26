@@ -7,6 +7,7 @@ import { useCartStore } from '../../stores/cartStore';
 import { useConfigStore } from '../../stores/configStore';
 import { DebugPanel, PanelAction, PanelTab } from './DebugPanels';
 import { RawDataHelper } from './panels/RawDataHelper';
+import { lucide } from './icons';
 
 interface Package {
   ref_id: number;
@@ -43,7 +44,7 @@ interface CampaignData {
 export class EnhancedCampaignPanel implements DebugPanel {
   id = 'campaign';
   title = 'Campaign Data';
-  icon = '📊';
+  icon = lucide('megaphone');
 
   getContent(): string {
     // Fallback to first tab's content if tabs are not being used

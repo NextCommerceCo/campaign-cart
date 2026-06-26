@@ -7,6 +7,9 @@ import type { DataLayerEvent, UserProperties, EcommerceItem, EcommerceData } fro
 import { EventBuilder } from './EventBuilder';
 import { useCartStore } from '@/stores/cartStore';
 import { useCampaignStore } from '@/stores/campaignStore';
+import { createLogger } from '@/utils/logger';
+
+const logger = createLogger('UserEvents');
 
 export class UserEvents {
   /**
@@ -40,13 +43,17 @@ export class UserEvents {
             ? cartItems.map((item: any, idx: number) => EventBuilder.formatEcommerceItem(item, idx))
             : [];
 
-          // Calculate cart total
+          // ecommerce.value is the item revenue (Σ price × quantity), so it
+          // reconciles with `items` and excludes shipping (GA4 semantics). The
+          // separate `cart_total` keeps the full cart total (which can include
+          // shipping) for backward compatibility.
+          const cartValue = EventBuilder.sumItemsValue(items);
           const cartTotal = cartState?.total?.toNumber() ?? 0;
 
           // Build GA4 ecommerce object
           const ecommerce: EcommerceData = {
             currency,
-            value: cartTotal,
+            value: cartValue,
             items // GA4 expects items array (can be empty)
           };
 
@@ -59,7 +66,7 @@ export class UserEvents {
           });
         }
       } catch (error) {
-        console.warn('Could not add cart contents to user data event:', error);
+        logger.warn('Could not add cart contents to user data event:', error);
       }
     }
 

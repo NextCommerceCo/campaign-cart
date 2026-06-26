@@ -546,7 +546,7 @@ export class NextCommerce {
     if (typeof window !== 'undefined' && window.__NEXT_SDK_VERSION__) {
       return window.__NEXT_SDK_VERSION__;
     }
-    return '__VERSION__'; // Will be replaced at build time
+    return __VERSION__; // Replaced at build time with the package.json version
   }
 
   public formatPrice(amount: number, currency?: string): string {

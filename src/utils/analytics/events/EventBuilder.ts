@@ -6,6 +6,9 @@
 import type { DataLayerEvent, UserProperties, EventContext, EventMetadata, EcommerceItem, ElevarProduct, ElevarImpression } from '../types';
 import { useCampaignStore } from '@/stores/campaignStore';
 import { useCheckoutStore } from '@/stores/checkoutStore';
+import { createLogger } from '@/utils/logger';
+
+const logger = createLogger('EventBuilder');
 
 // Define minimal types to avoid external dependencies
 interface MinimalCartItem {
@@ -129,7 +132,7 @@ export class EventBuilder {
       }
     } catch (error) {
       // Fallback to default properties if store access fails
-      console.warn('Could not access store state for user properties:', error);
+      logger.warn('Could not access store state for user properties:', error);
     }
 
     return userProperties;
@@ -165,7 +168,9 @@ export class EventBuilder {
       session_id: this.getSessionId(),
       sequence_number: this.getNextSequenceNumber(),
       source: 'next-campaign-cart',
-      version: '0.2.0'
+      // Replaced at build time with the package.json version (see __VERSION__
+      // define in vite.config.ts); falls back to '0.2.0' when unset.
+      version: __VERSION__
     };
   }
 
@@ -198,6 +203,32 @@ export class EventBuilder {
   }
 
   /**
+   * Sum a formatted item list to the cart's item revenue (Σ price × quantity).
+   *
+   * This is the correct GA4 `value` for cart-contents events (dl_user_data,
+   * dl_view_cart, dl_begin_checkout, …): item revenue only, excluding shipping
+   * and tax. Deriving it from the items — rather than the cart store `total`,
+   * which includes shipping — keeps `value` reconciled with the items array and
+   * matches GA4 semantics (shipping is reported separately on add_shipping_info
+   * and purchase).
+   */
+  static sumItemsValue(items: EcommerceItem[]): number {
+    const total = items.reduce((sum, item) => {
+      const price =
+        typeof item.price === 'number'
+          ? item.price
+          : parseFloat(String(item.price)) || 0;
+      const quantity =
+        typeof item.quantity === 'number'
+          ? item.quantity
+          : parseFloat(String(item.quantity)) || 0;
+      return sum + price * quantity;
+    }, 0);
+    // Round to cents to avoid floating-point drift (e.g. 0.1 + 0.2).
+    return Math.round(total * 100) / 100;
+  }
+
+  /**
    * Get currency from campaign store
    */
   static getCurrency(): string {
@@ -207,7 +238,7 @@ export class EventBuilder {
         return campaignState.currency ?? 'USD';
       }
     } catch (error) {
-      console.warn('Could not access campaign store for currency:', error);
+      logger.warn('Could not access campaign store for currency:', error);
     }
     return 'USD';
   }
@@ -245,7 +276,7 @@ export class EventBuilder {
         }
       }
     } catch (error) {
-      console.warn('Could not access campaign store for item formatting:', error);
+      logger.warn('Could not access campaign store for item formatting:', error);
     }
 
     // Handle different item formats
@@ -274,7 +305,7 @@ export class EventBuilder {
             productId = String((packageData as any).product_id || '');
             variantId = String((packageData as any).product_variant_id || '');
           } else {
-            console.warn(`Could not find package data for packageId: ${packageId}`, {
+            logger.warn(`Could not find package data for packageId: ${packageId}`, {
               packageId,
               availablePackages: campaign.packages.map((p: any) => ({ ref_id: p.ref_id, name: p.name }))
             });
@@ -282,7 +313,7 @@ export class EventBuilder {
         }
       }
     } catch (error) {
-      console.warn('Could not access campaign store for product data:', error);
+      logger.warn('Could not access campaign store for product data:', error);
     }
 
     // Fallback if campaign store lookup failed or variables not set
@@ -305,8 +336,12 @@ export class EventBuilder {
                  (item as any).image_url;
     }
 
-    // Get actual product quantity from package
-    let quantity = 1;
+    // Quantity = total product units across every package in this cart line.
+    // `item.quantity` is the number of packages added; `qty` is the units per
+    // package (e.g. 2 packages of a "3x Drone" pack => 6 units). The previous
+    // implementation reported only `packageData.qty` and dropped the package
+    // count entirely, so multi-package lines were undercounted.
+    let unitsPerPackage = 1;
     try {
       if (typeof window !== 'undefined') {
         const campaignState = useCampaignStore.getState();
@@ -319,51 +354,80 @@ export class EventBuilder {
           );
 
           if (packageData?.qty) {
-            quantity = packageData.qty; // Use package qty (3 for "3x Drone")
+            unitsPerPackage = packageData.qty;
           }
         }
       }
     } catch (error) {
-      console.warn('Could not access campaign store for quantity:', error);
+      logger.warn('Could not access campaign store for quantity:', error);
     }
 
-    // Fallback to item quantity
-    if (quantity === 1 && (item.quantity || item.qty)) {
-      quantity = item.quantity || item.qty || 1;
+    // Fall back to the units carried on the item when no package match was found.
+    if (unitsPerPackage === 1 && typeof item.qty === 'number' && item.qty > 0) {
+      unitsPerPackage = item.qty;
     }
 
-    // Get price per unit (not package total)
-    let price: number = 0;
-    try {
-      if (typeof window !== 'undefined') {
-        const campaignState = useCampaignStore.getState();
-        const campaign = campaignState.data;
-        const packageId = item.packageId || item.package_id || item.id;
+    const packageCount =
+      typeof item.quantity === 'number' && item.quantity > 0 ? item.quantity : 1;
+    const quantity = unitsPerPackage * packageCount;
 
-        if (packageId && campaign?.packages) {
-          const packageData = campaign.packages.find((p: any) =>
-            String(p.ref_id) === String(packageId) || String(p.external_id) === String(packageId)
-          );
+    // Price = final per-unit price for this line, AFTER offer/voucher discounts.
+    // GA4 `price` is the price of a single unit, so price * quantity equals the
+    // line's final total. The cart store writes the calculated, discount-aware
+    // figures onto each item (`unit_price`, `package_price`, `total`); prefer
+    // them over the catalog price so discounts are reflected. Per unit they are
+    // interchangeable:
+    //   unit_price === package_price / unitsPerPackage === total / quantity
+    const toNum = (v: unknown): number => {
+      if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+      if (typeof v === 'string') {
+        const n = parseFloat(v);
+        return Number.isFinite(n) ? n : 0;
+      }
+      return 0;
+    };
 
-          if (packageData) {
-            // Use the per-unit price (packageData.price is already per-unit, not total)
-            price = typeof packageData.price === 'string' ? parseFloat(packageData.price) : packageData.price;
+    let price = 0;
+    if (item.unit_price !== undefined && item.unit_price !== null && item.unit_price !== '') {
+      price = toNum(item.unit_price);
+    } else if (item.package_price !== undefined && item.package_price !== null && unitsPerPackage > 0) {
+      price = toNum(item.package_price) / unitsPerPackage;
+    } else if (item.total !== undefined && item.total !== null && quantity > 0) {
+      price = toNum(item.total) / quantity;
+    }
+
+    // No calculated figures on the line (e.g. read before cart calculation, or a
+    // plain product / impression) — fall back to the catalog per-unit price.
+    if (price === 0) {
+      try {
+        if (typeof window !== 'undefined') {
+          const campaign = useCampaignStore.getState().data;
+          const packageId = item.packageId || item.package_id || item.id;
+
+          if (packageId && campaign?.packages) {
+            const packageData = campaign.packages.find((p: any) =>
+              String(p.ref_id) === String(packageId) ||
+              String(p.external_id) === String(packageId)
+            );
+            if (packageData?.price) {
+              price = toNum(packageData.price); // catalog per-unit price
+            }
           }
         }
+      } catch (error) {
+        logger.warn('Could not access campaign store for price:', error);
       }
-    } catch (error) {
-      console.warn('Could not access campaign store for price:', error);
     }
 
-    // Fallback to item price
+    // Last-resort fallbacks for non-cart item shapes.
     if (price === 0) {
       if (item.price_incl_tax) {
-        price = typeof item.price_incl_tax === 'string' ? parseFloat(item.price_incl_tax) : item.price_incl_tax;
-      } else if (item.price) {
+        price = toNum(item.price_incl_tax);
+      } else if (item.price !== undefined && item.price !== null) {
         if (typeof item.price === 'object' && 'incl_tax' in item.price) {
-          price = item.price.incl_tax.value;
+          price = item.price.incl_tax?.value ?? 0;
         } else {
-          price = typeof item.price === 'string' ? parseFloat(item.price) : item.price;
+          price = toNum(item.price);
         }
       }
     }
@@ -372,7 +436,7 @@ export class EventBuilder {
       item_id: itemId,
       item_name: itemName,
       item_category: campaignName,
-      price: typeof price === 'string' ? parseFloat(price) : price,
+      price,
       quantity,
       currency,
     };
@@ -502,7 +566,7 @@ export class EventBuilder {
         }
       }
     } catch (error) {
-      console.warn('Could not access campaign store:', error);
+      logger.warn('Could not access campaign store:', error);
     }
 
     // Get price value - handle various price formats
