@@ -3,6 +3,14 @@ import { useCheckoutStore } from '@/stores/checkoutStore';
 import { useCampaignStore } from '@/stores/campaignStore';
 import type { BundleCard, HandlerContext } from './BundleSelectorEnhancer.types';
 import { getEffectiveItems, makePackageState } from './BundleSelectorEnhancer.state';
+import {
+  collectDefaultProperties,
+  mergeWithDefaults,
+  parseExcludeProperty,
+  applyPropertyExclusion,
+} from '@/enhancers/cart/shared/properties';
+
+export { collectDefaultProperties, mergeWithDefaults };
 
 // ─── Card click / bundle selection ───────────────────────────────────────────
 
@@ -52,10 +60,10 @@ export async function applyBundle(
   ctx.isApplyingRef.value = true;
   const { selectorId } = ctx;
   const cartStore = useCartStore.getState();
-  const newItems = getEffectiveItems(selected).map(i => ({
-    ...i,
-    selectorId,
-  }));
+  const newItems = getEffectiveItems(selected).map(({ excludeProperties, properties: slotProps, ...rest }) => {
+    const properties = applyPropertyExclusion(mergeWithDefaults(slotProps), parseExcludeProperty(excludeProperties));
+    return { ...rest, selectorId, ...(properties !== undefined && { properties }) };
+  });
   try {
     const retained = cartStore.items
       .filter(ci => ci.selectorId !== selectorId)
@@ -64,6 +72,7 @@ export async function applyBundle(
         quantity: ci.quantity,
         isUpsell: ci.is_upsell,
         selectorId: ci.selectorId,
+        ...(ci.properties !== undefined && { properties: ci.properties }),
       }));
     await cartStore.swapCart([...retained, ...newItems]);
     ctx.logger.debug(`Applied bundle "${selected.bundleId}" (selector "${selectorId}")`, newItems);
@@ -100,18 +109,21 @@ export async function applyEffectiveChange(
   const slotSnapshot = card.slots.map(s => s.activePackageId);
   try {
     const cartStore = useCartStore.getState();
-    const retained = cartStore.items
-      .filter(ci => ci.selectorId !== selectorId)
-      .map(ci => ({
-        packageId: ci.packageId,
-        quantity: ci.quantity,
-        isUpsell: ci.is_upsell,
-        selectorId: ci.selectorId,
-      }));
-    const newItems = getEffectiveItems(card).map(i => ({
-      ...i,
-      selectorId,
-    }));
+    const retained = ctx.isUpsellContext
+      ? []
+      : cartStore.items
+          .filter(ci => ci.selectorId !== selectorId)
+          .map(ci => ({
+            packageId: ci.packageId,
+            quantity: ci.quantity,
+            isUpsell: ci.is_upsell,
+            selectorId: ci.selectorId,
+            ...(ci.properties !== undefined && { properties: ci.properties }),
+          }));
+    const newItems = getEffectiveItems(card).map(({ excludeProperties, properties: slotProps, ...rest }) => {
+      const properties = applyPropertyExclusion(mergeWithDefaults(slotProps), parseExcludeProperty(excludeProperties));
+      return { ...rest, selectorId, ...(properties !== undefined && { properties }) };
+    });
     await cartStore.swapCart([...retained, ...newItems]);
     ctx.logger.debug(`Variant change synced for bundle "${card.bundleId}" (selector "${selectorId}")`, newItems);
   } catch (error) {

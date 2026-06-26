@@ -536,7 +536,8 @@ export class ProspectCartEnhancer extends BaseEnhancer {
         lines: cartState.items.map(item => ({
           package_id: item.packageId,
           quantity: item.quantity,
-          is_upsell: item.is_upsell || false
+          is_upsell: item.is_upsell || false,
+          ...(item.properties !== undefined && { properties: item.properties }),
         })),
         user,
         currency: this.getCurrency()
@@ -576,7 +577,8 @@ export class ProspectCartEnhancer extends BaseEnhancer {
         const minimalCartData: CartBase = {
           lines: cartState.items.map((item: any) => ({
             package_id: item.packageId,
-            quantity: item.quantity
+            quantity: item.quantity,
+            ...(item.properties !== undefined && { properties: item.properties }),
           })),
           user: {
             email: email,

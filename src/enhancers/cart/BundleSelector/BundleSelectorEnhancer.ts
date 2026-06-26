@@ -36,6 +36,7 @@ import {
 import {
   applyBundle,
   applyBundleQuantityChange,
+  applyEffectiveChange,
   applyVoucherSwap,
   handleCardClick,
   handleSelectVariantChange,
@@ -74,6 +75,7 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
   private mutationObserver: MutationObserver | null = null;
   private boundVariantOptionClick: ((e: Event) => void) | null = null;
   private boundCurrencyChangeHandler: (() => void) | null = null;
+  private boundDefaultPropertyBlurHandler: ((e: FocusEvent) => void) | null = null;
   private isApplyingRef = { value: false };
   private includeShipping: boolean = false;
   private selectorId: string | null = null;
@@ -269,6 +271,19 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     };
     document.addEventListener('next:currency-changed', this.boundCurrencyChangeHandler);
 
+    // Trigger applyEffectiveChange when user blurs a page-level default property input.
+    // Uses capture phase so the blur event (which doesn't bubble) is caught.
+    if (this.mode === 'swap' && !this.isUpsellContext) {
+      this.boundDefaultPropertyBlurHandler = (e: FocusEvent) => {
+        const target = e.target as HTMLElement;
+        if (!target.hasAttribute('data-next-default-property')) return;
+        const card = this.selectedCard;
+        if (!card) return;
+        void applyEffectiveChange(card, this.makeHandlerContext());
+      };
+      document.addEventListener('blur', this.boundDefaultPropertyBlurHandler, true);
+    }
+
     for (const card of this.cards) {
       void this.calculateAndRenderPrice(card);
     }
@@ -383,6 +398,7 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
             activePackageId: item.packageId,
             quantity: 1,
             noSlot: item.noSlot,
+            excludeProperties: item.excludeProperties,
             configurable: true,
             variantSelected: false,
           });
@@ -395,6 +411,7 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
           activePackageId: item.packageId,
           quantity: item.quantity,
           noSlot: item.noSlot,
+          excludeProperties: item.excludeProperties,
           configurable: !!item.configurable,
           variantSelected: false,
         });
@@ -675,6 +692,7 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
       classNames: this.classNames,
       onSelectChange: (select, bundleId, slotIndex) =>
         handleSelectVariantChange(select, bundleId, slotIndex, this.cards, this.makeHandlerContext()),
+      onPropertyBlur: card => void applyEffectiveChange(card, this.makeHandlerContext()),
     };
   }
 
@@ -765,6 +783,10 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     if (this.boundCurrencyChangeHandler) {
       document.removeEventListener('next:currency-changed', this.boundCurrencyChangeHandler);
       this.boundCurrencyChangeHandler = null;
+    }
+    if (this.boundDefaultPropertyBlurHandler) {
+      document.removeEventListener('blur', this.boundDefaultPropertyBlurHandler, true);
+      this.boundDefaultPropertyBlurHandler = null;
     }
     if (this.mutationObserver) {
       this.mutationObserver.disconnect();

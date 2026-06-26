@@ -484,6 +484,38 @@
   position: relative;
 }
 
+.debug-mini-cart-resize-handle {
+  height: 8px;
+  cursor: ns-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0 0 8px 8px;
+  flex-shrink: 0;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.debug-mini-cart-resize-handle:hover,
+.debug-mini-cart-resize-handle.dragging {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.debug-mini-cart-resize-handle::after {
+  content: '';
+  width: 28px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+  transition: background 0.15s;
+}
+
+.debug-mini-cart-resize-handle:hover::after,
+.debug-mini-cart-resize-handle.dragging::after {
+  background: rgba(255, 255, 255, 0.35);
+}
+
 .debug-mini-cart-item {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.05);
@@ -564,6 +596,38 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin: 0 4px;
+}
+
+.mini-cart-item-properties {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 6px;
+}
+
+.mini-cart-property-tag {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border-radius: 3px;
+  overflow: hidden;
+  font-size: 9px;
+  line-height: 1;
+}
+
+.mini-cart-property-key {
+  background: #2d4a7a;
+  color: #90b8f8;
+  padding: 2px 5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.mini-cart-property-value {
+  background: rgba(255, 255, 255, 0.08);
+  color: #e0e0e0;
+  padding: 2px 5px;
 }
 
 .mini-cart-item-discount-badge {
@@ -690,6 +754,12 @@
   border-bottom: 1px solid rgba(0, 255, 136, 0.2);
 }
 
+.discount-card-header--separator {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 .discount-card-icon {
   font-size: 16px;
 }
@@ -747,6 +817,39 @@
   color: #00ff88;
   font-weight: 700;
   font-size: 12px;
+}
+
+.prop-card-item {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  background: rgba(144, 184, 248, 0.05);
+  border-radius: 5px;
+  border: 1px solid rgba(144, 184, 248, 0.15);
+}
+
+.prop-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.prop-card-key {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #888;
+}
+
+.prop-card-value {
+  font-size: 11px;
+  color: #90b8f8;
+  word-break: break-word;
+  line-height: 1.4;
 }
 
 .mini-cart-line-total {

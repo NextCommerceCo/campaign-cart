@@ -220,6 +220,41 @@ export function updateCardDisplayElements(
   );
 }
 
+// ─── Slot property listeners ──────────────────────────────────────────────────
+
+/**
+ * Attaches live `input` listeners to all `[data-next-property]` elements
+ * inside a slot element. Every keystroke keeps `slot.properties` current so
+ * that the next `getEffectiveItems` call — triggered by a variant change or
+ * cart write — carries the correct values through.
+ */
+function attachPropertyListeners(
+  slotEl: HTMLElement,
+  slot: BundleSlot,
+  card: BundleCard,
+  onBlur?: (card: BundleCard) => void,
+): void {
+  slotEl
+    .querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
+      'input[data-next-property], textarea[data-next-property], select[data-next-property]',
+    )
+    .forEach(el => {
+      const key = el.getAttribute('data-next-property');
+      if (!key) return;
+      el.addEventListener('input', () => {
+        if (el.value) {
+          slot.properties = { ...(slot.properties ?? {}), [key]: el.value };
+        } else {
+          const { [key]: _removed, ...rest } = slot.properties ?? {};
+          slot.properties = Object.keys(rest).length > 0 ? rest : undefined;
+        }
+      });
+      if (onBlur) {
+        el.addEventListener('blur', () => onBlur(card));
+      }
+    });
+}
+
 // ─── Slot rendering ───────────────────────────────────────────────────────────
 
 /**
@@ -288,6 +323,17 @@ export function renderSlotsForCard(
     }
 
     if (existing) {
+      // Preserve user-typed property values before the slot element is replaced.
+      const savedPropertyValues: Record<string, string> = {};
+      existing
+        .querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
+          'input[data-next-property], textarea[data-next-property], select[data-next-property]',
+        )
+        .forEach(el => {
+          const key = el.getAttribute('data-next-property');
+          if (key && el.value) savedPropertyValues[key] = el.value;
+        });
+
       // Clean up select handlers attached to the outgoing slot element
       existing.querySelectorAll<HTMLSelectElement>('select').forEach(s => {
         const h = ctx.selectHandlers.get(s);
@@ -297,10 +343,22 @@ export function renderSlotsForCard(
         }
       });
       placeholder.replaceChild(newSlotEl, existing);
+
+      // Restore saved values into the new slot element and sync back to slot state.
+      if (Object.keys(savedPropertyValues).length > 0) {
+        Object.entries(savedPropertyValues).forEach(([key, value]) => {
+          const el = newSlotEl.querySelector<
+            HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+          >(`[data-next-property="${key}"]`);
+          if (el) el.value = value;
+        });
+        slot.properties = { ...(slot.properties ?? {}), ...savedPropertyValues };
+      }
     } else {
       placeholder.appendChild(newSlotEl);
     }
 
+    if (slot.excludeProperties !== '*') attachPropertyListeners(newSlotEl, slot, card, ctx.onPropertyBlur);
     if (!targetEl) card.slotVarsCache.set(slot.slotIndex, newVars);
   }
 

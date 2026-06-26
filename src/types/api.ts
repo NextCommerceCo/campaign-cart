@@ -89,6 +89,8 @@ export interface SummaryLine {
     name: string;
     value: string;
   }>;
+  /** Custom key-value properties — enriched from cart item after calculate. */
+  properties?: Record<string, string>;
 }
 
 export interface ShippingMethodSummary {
@@ -294,6 +296,7 @@ export interface LineWithUpsell {
   is_upsell?: boolean;
   package_id: number;
   quantity: number;
+  properties?: Record<string, string>;
 }
 
 export interface UserCreateCart {
@@ -363,6 +366,7 @@ export interface AddUpsellLine {
 export interface UpsellLineItem {
   package_id: number;
   quantity: number;
+  properties?: Record<string, string>;
 }
 
 export interface PaymentDetail {

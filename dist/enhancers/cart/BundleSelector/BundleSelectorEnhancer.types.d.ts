@@ -16,6 +16,8 @@ export interface BundleItem {
     quantity: number;
     configurable?: boolean;
     noSlot?: boolean;
+    properties?: Record<string, string>;
+    excludeProperties?: string;
 }
 export interface BundleDef {
     id: string;
@@ -35,8 +37,10 @@ export interface BundleSlot {
     activePackageId: number;
     quantity: number;
     noSlot?: boolean;
+    excludeProperties?: string;
     configurable: boolean;
     variantSelected: boolean;
+    properties?: Record<string, string>;
 }
 export interface BundlePackageState {
     packageId: number;
@@ -104,6 +108,7 @@ export interface RenderContext {
     logger: Logger;
     classNames: ClassNames;
     onSelectChange: (select: HTMLSelectElement, bundleId: string, slotIndex: number) => Promise<void>;
+    onPropertyBlur?: (card: BundleCard) => void;
 }
 export interface HandlerContext {
     mode: 'swap' | 'select';

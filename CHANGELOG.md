@@ -1,5 +1,91 @@
 # Changelog
 
+## [0.4.27] — 2026-06-24 — Properties: Upsell Fix, PackageToggle Support & Exclusion Rules
+
+### Fixed
+
+- **Post-purchase upsell did not send `properties` to the API** — when a upsell page used `[data-next-property]` or `[data-next-default-property]` inputs, the values were collected locally but never included in the `POST /api/v1/orders/{ref_id}/upsells/` payload. Orders placed through the upsell flow silently lost all personalisation data.
+
+  The `lines` array in the upsell request now carries a `properties` object on every item, matching the behaviour of the regular order-creation flow.
+
+### New
+
+- **`data-next-exclude-property` — per-slot/card property exclusion** — prevents specific properties from being sent to the API for a given line item without removing the inputs from the page.
+
+  | Value | Effect |
+  |---|---|
+  | `"team"` | Excludes the `team` property key from this line |
+  | `"team, number"` | Excludes multiple keys |
+  | `"*"` | Excludes all properties from this line |
+
+  For BundleSelector, set `excludeProperties` inside the bundle item JSON. For PackageToggle, set the attribute on the card element, its state container, or via `data-next-packages` JSON.
+
+  ```html
+  <!-- PackageToggle — HTML attribute -->
+  <div data-next-toggle-card data-next-exclude-property="team, number">
+  ```
+
+  ```json
+  // PackageToggle — data-next-packages JSON
+  { "packageId": 123, "quantity": 1, "excludeProperties": "team, number" }
+
+  // BundleSelector — data-next-bundle-items JSON
+  { "packageId": 123, "quantity": 1, "excludeProperties": "team, number" }
+  ```
+
+  When `"*"` is set, property listeners are not attached at all. For specific-key exclusions, values are still collected live but filtered out at send time.
+
+- **PackageToggle property support** — `[data-next-property]` and `[data-next-default-property]` now work on toggle cards the same way they do on bundle slots, including upsell pages.
+
+- **`data-next-property` / `data-next-default-property` attribute names** — renamed from `data-next-property-key` / `data-next-default-property-key` for cleaner, more readable templates.
+
+  | Old | New |
+  |---|---|
+  | `data-next-property-key` | `data-next-property` |
+  | `data-next-default-property-key` | `data-next-default-property` |
+
+---
+
+## [0.4.26] — 2026-06-23 — Unique Line Items by Properties
+
+### New
+
+- **`data-next-property` on inputs inside bundle slots** — attach this attribute to any `<input>`, `<textarea>`, or `<select>` inside a slot template to bind that field as a named property on that specific slot. The cart item for the slot carries the value as a `properties` entry and sends it to the order API on checkout.
+
+  ```html
+  <input data-next-property="back_text" placeholder="Back text" />
+  ```
+
+  Values are captured live on the `input` event and the cart syncs on `blur`, so the customer sees the total update as they type.
+
+- **`data-next-default-property` — page-level property defaults** — place this attribute on any input outside the bundle to apply a single value to every line item. Per-slot values override the default when both are set.
+
+  ```html
+  <!-- Applies to every slot unless the slot has its own value -->
+  <input data-next-default-property="gift_message" placeholder="Gift message" />
+  ```
+
+- **Unique line items for personalised slots** — when two slots carry the same `package_id` but different properties (e.g. two shirts with different back-text), the cart and the order API treat them as separate line items rather than merging them into one with a higher quantity. The cart summary also renders a separate row per unique property set.
+
+- **`{property.key}` / `{property.value}` tokens in `[data-next-item-properties]`** — add a container with this attribute and a `<template>` child to your cart summary line template to render a row for every property on that item dynamically. No hardcoding required regardless of how many properties an item has.
+
+  ```html
+  <div data-next-item-properties>
+    <template>
+      <div class="cart-item__property">
+        <span>{property.key}</span>
+        <span>{property.value}</span>
+      </div>
+    </template>
+  </div>
+  ```
+
+  The container receives `next-summary-empty` when the item has no properties and `next-summary-has-items` otherwise, so you can show or hide it with CSS.
+
+- **Properties forwarded through the full order lifecycle** — properties are included in every API call where line items appear: `/calculate`, create-cart (ProspectCartEnhancer), create-order, express checkout, and test orders. No extra configuration is required.
+
+---
+
 ## [0.4.25] — 2026-06-09 — Product-level Sync for Multi-Variant Order Bumps
 
 ### Fixed

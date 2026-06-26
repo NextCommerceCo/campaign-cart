@@ -466,6 +466,55 @@ describe('applyEffectiveChange', () => {
 
     expect(ctx.isApplyingRef.value).toBe(false);
   });
+
+  it('upsell context — clears all cart items (retained=[]) regardless of selectorId', async () => {
+    const card = makeCard('a', {
+      slots: [makeSlot({ activePackageId: 7, quantity: 1 })],
+    });
+    const existingItem = makeCartItem(99, 1, 'other-sel');
+    const originalItem = makeCartItem(1, 1, undefined);
+    const swapCart = mockCartStore([existingItem, originalItem]);
+    const ctx = makeCtx({ selectorId: 'upsell-sel', isUpsellContext: true });
+
+    await applyEffectiveChange(card, ctx);
+
+    const [payload] = swapCart.mock.calls[0];
+    expect(payload).toHaveLength(1);
+    expect(payload[0]).toMatchObject({ packageId: 7, selectorId: 'upsell-sel' });
+  });
+
+  it('upsell context — includes slot properties in swapCart call', async () => {
+    const card = makeCard('a', {
+      slots: [makeSlot({ activePackageId: 5, quantity: 1, properties: { name: 'Alice' } })],
+    });
+    const swapCart = mockCartStore([]);
+    const ctx = makeCtx({ selectorId: 'upsell-sel', isUpsellContext: true });
+
+    await applyEffectiveChange(card, ctx);
+
+    expect(swapCart).toHaveBeenCalledWith([
+      expect.objectContaining({ packageId: 5, properties: expect.objectContaining({ name: 'Alice' }) }),
+    ]);
+  });
+
+  it('non-upsell context — retains items from other selectors as before', async () => {
+    const card = makeCard('a', {
+      slots: [makeSlot({ activePackageId: 5, quantity: 1 })],
+    });
+    const other = makeCartItem(99, 1, 'other-sel');
+    const swapCart = mockCartStore([other]);
+    const ctx = makeCtx({ selectorId: 'sel-x', isUpsellContext: false });
+
+    await applyEffectiveChange(card, ctx);
+
+    const [payload] = swapCart.mock.calls[0];
+    expect(payload).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ packageId: 99, selectorId: 'other-sel' }),
+        expect.objectContaining({ packageId: 5, selectorId: 'sel-x' }),
+      ]),
+    );
+  });
 });
 
 // ─── applyVariantChange ───────────────────────────────────────────────────────

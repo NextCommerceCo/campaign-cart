@@ -1,5 +1,6 @@
 import { BaseActionEnhancer } from '@/enhancers/base/BaseActionEnhancer';
 import type { EventMap, SelectorItem } from '@/types/global';
+import { useCartStore } from '@/stores/cartStore';
 import { handleSelectorChange, addToCart } from './AddToCartEnhancer.handlers';
 import type { AddToCartHandlerContext } from './AddToCartEnhancer.types';
 
@@ -10,6 +11,8 @@ export class AddToCartEnhancer extends BaseActionEnhancer {
   private redirectUrl?: string;
   private clearCart = false;
   private selectedItemRef: { value: SelectorItem | null | undefined } = { value: undefined };
+  private propertyContainerSelector?: string;
+  private propertyListenerCleanups: Array<() => void> = [];
   private clickHandler?: (event: Event) => void;
   private selectorChangeHandler?: (event: unknown) => void;
 
@@ -30,6 +33,11 @@ export class AddToCartEnhancer extends BaseActionEnhancer {
 
     const clearCartAttr = this.getAttribute('data-next-clear-cart');
     this.clearCart = clearCartAttr === 'true';
+
+    const containerAttr = this.getAttribute('data-next-property-container');
+    if (containerAttr) this.propertyContainerSelector = containerAttr;
+
+    this.attachPropertyInputListeners();
 
     this.clickHandler = this.handleClick.bind(this);
     this.element.addEventListener('click', this.clickHandler);
@@ -220,6 +228,65 @@ export class AddToCartEnhancer extends BaseActionEnhancer {
     return { packageId: this.packageId, quantity: this.quantity };
   }
 
+  private attachPropertyInputListeners(): void {
+    const handler = (e: Event) => {
+      const target = e.target as HTMLElement;
+      const isDefault = target.hasAttribute('data-next-default-property');
+      const isContainer =
+        this.propertyContainerSelector &&
+        target.hasAttribute('data-next-property') &&
+        !!target.closest(this.propertyContainerSelector);
+      if (isDefault || isContainer) this.syncPropertiesToCart();
+    };
+    document.addEventListener('input', handler);
+    this.propertyListenerCleanups.push(() => document.removeEventListener('input', handler));
+  }
+
+  private syncPropertiesToCart(): void {
+    const packageId = this.packageId ?? this.selectedItemRef.value?.packageId;
+    if (!packageId) return;
+    const cartStore = useCartStore.getState();
+    if (!cartStore.hasItem(packageId)) return;
+    cartStore.setItemProperties(packageId, this.resolveProperties());
+  }
+
+  private collectDefaultProperties(): Record<string, string> {
+    const result: Record<string, string> = {};
+    document
+      .querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
+        '[data-next-default-property]',
+      )
+      .forEach(el => {
+        const key = el.getAttribute('data-next-default-property');
+        if (key && el.value) result[key] = el.value;
+      });
+    return result;
+  }
+
+  private collectContainerProperties(): Record<string, string> {
+    if (!this.propertyContainerSelector) return {};
+    const container = document.querySelector(this.propertyContainerSelector);
+    if (!container) return {};
+    const result: Record<string, string> = {};
+    container
+      .querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
+        '[data-next-property]',
+      )
+      .forEach(el => {
+        const key = el.getAttribute('data-next-property');
+        if (key && el.value) result[key] = el.value;
+      });
+    return result;
+  }
+
+  private resolveProperties(): Record<string, string> | undefined {
+    const merged = {
+      ...this.collectDefaultProperties(),
+      ...this.collectContainerProperties(),
+    };
+    return Object.keys(merged).length > 0 ? merged : undefined;
+  }
+
   private makeHandlerContext(): AddToCartHandlerContext {
     return {
       selectorId: this.selectorId,
@@ -230,12 +297,15 @@ export class AddToCartEnhancer extends BaseActionEnhancer {
       selectedItemRef: this.selectedItemRef,
       updateButtonState: () => this.updateButtonState(),
       emit: (event, detail) => this.emit(event as keyof EventMap, detail as EventMap[keyof EventMap]),
+      properties: this.resolveProperties(),
     };
   }
 
   public update(_data?: unknown): void {}
 
   public override destroy(): void {
+    this.propertyListenerCleanups.forEach(cleanup => cleanup());
+    this.propertyListenerCleanups = [];
     if (this.clickHandler) {
       this.element.removeEventListener('click', this.clickHandler);
     }

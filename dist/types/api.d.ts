@@ -85,6 +85,7 @@ export interface SummaryLine {
         name: string;
         value: string;
     }>;
+    properties?: Record<string, string>;
 }
 export interface ShippingMethodSummary {
     id: number;
@@ -261,6 +262,7 @@ export interface LineWithUpsell {
     is_upsell?: boolean;
     package_id: number;
     quantity: number;
+    properties?: Record<string, string>;
 }
 export interface UserCreateCart {
     accepts_marketing?: boolean;
@@ -323,6 +325,7 @@ export interface AddUpsellLine {
 export interface UpsellLineItem {
     package_id: number;
     quantity: number;
+    properties?: Record<string, string>;
 }
 export interface PaymentDetail {
     payment_gateway?: number;

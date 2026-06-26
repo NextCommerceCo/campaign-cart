@@ -14,6 +14,7 @@ export interface ToggleHandlerContext {
 }
 export declare function handleCardClick(e: Event, card: ToggleCard, ctx: ToggleHandlerContext): Promise<void>;
 export declare function addToCart(card: ToggleCard): Promise<void>;
+export declare function updateCartItemProperties(card: ToggleCard): Promise<void>;
 export declare function updateSyncedQuantity(card: ToggleCard, cartState: CartState): void;
 export declare function handleSyncUpdate(card: ToggleCard, _cartState: CartState, _logger: Logger): Promise<void>;
 //# sourceMappingURL=PackageToggleEnhancer.handlers.d.ts.map

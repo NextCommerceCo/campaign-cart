@@ -17,4 +17,5 @@ export interface AddToCartHandlerContext {
   selectedItemRef: { value: SelectorItem | null | undefined };
   updateButtonState: () => void;
   emit: (event: string, detail: unknown) => void;
+  properties: Record<string, string> | undefined;
 }

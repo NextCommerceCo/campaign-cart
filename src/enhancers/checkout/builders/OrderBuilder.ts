@@ -73,7 +73,8 @@ export class OrderBuilder {
       lines: cartItems.map(item => ({
         package_id: item.packageId,
         quantity: item.quantity,
-        is_upsell: item.is_upsell || false
+        is_upsell: item.is_upsell || false,
+        ...(item.properties !== undefined && { properties: item.properties }),
       })),
       shipping_address: shippingAddress,
       ...(billingAddressData && { billing_address: billingAddressData }),
@@ -112,7 +113,8 @@ export class OrderBuilder {
       lines: cartItems.map(item => ({
         package_id: item.packageId,
         quantity: item.quantity,
-        is_upsell: item.is_upsell || false
+        is_upsell: item.is_upsell || false,
+        ...(item.properties !== undefined && { properties: item.properties }),
       })),
       payment_detail: {
         payment_method: paymentMethod
@@ -131,11 +133,12 @@ export class OrderBuilder {
   public buildTestOrder(cartItems: any[], vouchers: string[] = []): any {
     // Build test order data (similar to createOrder but with test card token)
     const testOrderData: any = {
-      lines: cartItems.length > 0 
+      lines: cartItems.length > 0
         ? cartItems.map(item => ({
             package_id: item.packageId,
             quantity: item.quantity,
-            is_upsell: item.is_upsell || false
+            is_upsell: item.is_upsell || false,
+            ...(item.properties !== undefined && { properties: item.properties }),
           }))
         : [{ package_id: 1, quantity: 1, is_upsell: false }], // Default package if cart empty
       

@@ -3,6 +3,8 @@ export interface PackageDef {
   selected?: boolean;
   /** Comma-separated package IDs or array to sync quantity with. */
   packageSync?: string | number[];
+  /** Property exclusion rule. `"*"` excludes all; `"team, number"` excludes specific keys. */
+  excludeProperties?: string;
   [key: string]: unknown;
 }
 
@@ -43,4 +45,11 @@ export interface ToggleCard {
   frequency: string;
   /** Per-line discounts from the price calculation. */
   discounts: import('@/shared/utils/discountRenderer').DiscountItem[];
+  /** User-entered key-value properties for this toggle card (synced live as the visitor types). */
+  properties?: Record<string, string>;
+  /**
+   * Property exclusion rule from `data-next-exclude-property`.
+   * `"*"` excludes all; `"team, number"` excludes specific keys.
+   */
+  excludeProperties?: string;
 }
