@@ -27,6 +27,7 @@ import {
   faBolt,
   faCheck,
   faCircleCheck,
+  faCircleMinus,
   faBan,
   faCircleXmark,
   faClock,
@@ -54,6 +55,7 @@ export type IconName =
   | 'bolt'
   | 'check'
   | 'check-circle'
+  | 'minus-circle'
   | 'ban'
   | 'x-circle'
   | 'clock'
@@ -77,6 +79,7 @@ const ICONS: Record<IconName, IconDefinition> = {
   bolt: faBolt,
   check: faCheck,
   'check-circle': faCircleCheck,
+  'minus-circle': faCircleMinus,
   ban: faBan,
   'x-circle': faCircleXmark,
   clock: faClock,

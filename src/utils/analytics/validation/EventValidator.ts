@@ -1,11 +1,12 @@
-import { 
-  eventSchemas, 
-  validateEventSchema, 
-  getEventSchema, 
+import {
+  eventSchemas,
+  validateEventSchema,
+  getEventSchema,
   EventSchema,
-  FieldDefinition 
+  FieldDefinition,
 } from '../schemas';
 import { createLogger } from '@/utils/logger';
+import { reconcileValue } from './reconcileValue';
 
 const logger = createLogger('EventValidator');
 
@@ -22,10 +23,6 @@ const ITEMS_OPTIONAL_EVENTS = [
 
 /** Strings that mean a value never resolved. */
 const UNRESOLVED_TOKENS = ['', 'undefined', 'null', 'nan'];
-
-/** Absolute floor + relative tolerance for the revenue reconciliation check. */
-const RECONCILE_TOLERANCE_ABS = 0.01;
-const RECONCILE_TOLERANCE_REL = 0.005; // 0.5%
 
 function toNumber(value: unknown): number {
   if (typeof value === 'number') return value;
@@ -75,7 +72,7 @@ export class EventValidator {
     const result: ValidationResult = {
       valid: true,
       errors: [],
-      warnings: []
+      warnings: [],
     };
 
     // Check if event has a name
@@ -117,7 +114,10 @@ export class EventValidator {
   /**
    * Performs additional validation beyond schema validation
    */
-  private performAdditionalValidation(eventData: any, result: ValidationResult): void {
+  private performAdditionalValidation(
+    eventData: any,
+    result: ValidationResult
+  ): void {
     const eventName = String(eventData.event);
     const isPurchase = PURCHASE_EVENTS.includes(eventName);
     const ecommerce = eventData.ecommerce;
@@ -137,7 +137,9 @@ export class EventValidator {
         result.warnings.push('Ecommerce value should not be negative');
       }
 
-      const items: any[] = Array.isArray(ecommerce.items) ? ecommerce.items : [];
+      const items: any[] = Array.isArray(ecommerce.items)
+        ? ecommerce.items
+        : [];
       const impressions: any[] = Array.isArray(ecommerce.impressions)
         ? ecommerce.impressions
         : [];
@@ -148,11 +150,18 @@ export class EventValidator {
         impressions.length === 0 &&
         !ITEMS_OPTIONAL_EVENTS.includes(eventName)
       ) {
-        result.warnings.push(`${eventName} has no items in the ecommerce payload`);
+        result.warnings.push(
+          `${eventName} has no items in the ecommerce payload`
+        );
       }
 
       items.forEach((item, index) =>
-        this.validateProduct(item, `ecommerce.items[${index}]`, result, currency)
+        this.validateProduct(
+          item,
+          `ecommerce.items[${index}]`,
+          result,
+          currency
+        )
       );
       impressions.forEach((impression, index) =>
         this.validateProduct(
@@ -163,7 +172,7 @@ export class EventValidator {
         )
       );
 
-      // Revenue reconciliation: Σ(price × quantity) ≈ value (tax/shipping aware)
+      // Revenue reconciliation: Σ(price × quantity) === value
       this.validateRevenueReconciliation(ecommerce, items, result);
     }
 
@@ -192,7 +201,9 @@ export class EventValidator {
 
       case 'dl_view_search_results':
         if (!eventData.search_term) {
-          result.errors.push('dl_view_search_results event must have search_term');
+          result.errors.push(
+            'dl_view_search_results event must have search_term'
+          );
           result.valid = false;
         }
         break;
@@ -206,10 +217,9 @@ export class EventValidator {
   }
 
   /**
-   * Σ(items[].price × quantity) must reconcile to ecommerce.value. `value`
-   * follows one of two conventions: item revenue only (add_to_cart, view_cart)
-   * or order total incl. tax + shipping (purchase). Accept whichever the event
-   * used by reconciling against both `value` and `value − tax − shipping`.
+   * Σ(items[].price × quantity) must equal ecommerce.value (GA4: value excludes
+   * tax and shipping). {@link reconcileValue} owns the rule so it stays identical
+   * to the debug validator and diagnoses a value that wrongly includes them.
    */
   private validateRevenueReconciliation(
     ecommerce: any,
@@ -224,24 +234,24 @@ export class EventValidator {
     for (const item of items) {
       const price = toNumber(item?.price);
       const quantity = toNumber(item?.quantity);
-      if (!Number.isFinite(price) || !Number.isFinite(quantity)) return; // not computable
+      // Not computable — bail rather than reconcile against a bad total. Sign /
+      // min-quantity problems are flagged per-item in validateProduct.
+      if (!Number.isFinite(price) || !Number.isFinite(quantity)) return;
+      if (price < 0 || quantity < 1) return;
       itemsTotal += price * quantity;
     }
 
-    const tax = toNumberOrZero(ecommerce.tax);
-    const shipping = toNumberOrZero(ecommerce.shipping);
-    const diff = Math.min(
-      Math.abs(itemsTotal - value),
-      Math.abs(itemsTotal - (value - tax - shipping))
+    const { reconciles, diagnosis } = reconcileValue(
+      itemsTotal,
+      value,
+      toNumberOrZero(ecommerce.tax),
+      toNumberOrZero(ecommerce.shipping)
     );
-    const tolerance = Math.max(
-      RECONCILE_TOLERANCE_ABS,
-      Math.abs(value) * RECONCILE_TOLERANCE_REL
-    );
-    if (diff > tolerance) {
+    if (!reconciles) {
       result.warnings.push(
-        `Items total ${itemsTotal.toFixed(2)} does not reconcile to ecommerce.value ` +
-          `${value.toFixed(2)} — item price × quantity mismatch`
+        `ecommerce.value ${value.toFixed(2)} does not reconcile with items total ` +
+          `${itemsTotal.toFixed(2)} — value must equal Σ(price × quantity)` +
+          (diagnosis ? `; ${diagnosis}` : '')
       );
     }
   }
@@ -301,7 +311,10 @@ export class EventValidator {
     const numericFields = ['price', 'quantity', 'discount', 'index'];
     for (const field of numericFields) {
       if (product[field] !== undefined) {
-        if (typeof product[field] !== 'number' || !Number.isFinite(product[field])) {
+        if (
+          typeof product[field] !== 'number' ||
+          !Number.isFinite(product[field])
+        ) {
           result.errors.push(`${path}.${field} must be a finite number`);
           result.valid = false;
         } else if (field !== 'discount' && product[field] < 0) {
@@ -311,7 +324,10 @@ export class EventValidator {
     }
 
     // Quantity must be a whole number ≥ 1.
-    if (typeof product.quantity === 'number' && Number.isFinite(product.quantity)) {
+    if (
+      typeof product.quantity === 'number' &&
+      Number.isFinite(product.quantity)
+    ) {
       if (!Number.isInteger(product.quantity)) {
         result.warnings.push(`${path}.quantity should be an integer`);
       }
@@ -336,7 +352,10 @@ export class EventValidator {
   /**
    * Validates user properties
    */
-  private validateUserProperties(userProperties: any, result: ValidationResult): void {
+  private validateUserProperties(
+    userProperties: any,
+    result: ValidationResult
+  ): void {
     if (typeof userProperties !== 'object') {
       result.errors.push('user_properties must be an object');
       result.valid = false;
@@ -344,13 +363,19 @@ export class EventValidator {
     }
 
     // Validate email format
-    if (userProperties.customer_email && !this.isValidEmail(userProperties.customer_email)) {
+    if (
+      userProperties.customer_email &&
+      !this.isValidEmail(userProperties.customer_email)
+    ) {
       result.warnings.push('customer_email is not a valid email address');
     }
 
     // Validate numeric fields
     if (userProperties.customer_order_count !== undefined) {
-      if (typeof userProperties.customer_order_count !== 'number' || !Number.isInteger(userProperties.customer_order_count)) {
+      if (
+        typeof userProperties.customer_order_count !== 'number' ||
+        !Number.isInteger(userProperties.customer_order_count)
+      ) {
         result.warnings.push('customer_order_count should be an integer');
       }
     }
@@ -362,11 +387,19 @@ export class EventValidator {
     }
 
     // Validate country and province codes
-    if (userProperties.customer_address_country_code && userProperties.customer_address_country_code.length !== 2) {
-      result.warnings.push('customer_address_country_code should be a 2-letter ISO code');
+    if (
+      userProperties.customer_address_country_code &&
+      userProperties.customer_address_country_code.length !== 2
+    ) {
+      result.warnings.push(
+        'customer_address_country_code should be a 2-letter ISO code'
+      );
     }
 
-    if (userProperties.customer_address_province_code && userProperties.customer_address_province_code.length > 3) {
+    if (
+      userProperties.customer_address_province_code &&
+      userProperties.customer_address_province_code.length > 3
+    ) {
       result.warnings.push('customer_address_province_code seems too long');
     }
   }
@@ -409,23 +442,35 @@ export class EventValidator {
     }
 
     // For accepted upsell, value is required
-    if (eventData.event === 'dl_accepted_upsell' && eventData.upsell.value === undefined) {
+    if (
+      eventData.event === 'dl_accepted_upsell' &&
+      eventData.upsell.value === undefined
+    ) {
       result.errors.push('dl_accepted_upsell.upsell.value is required');
       result.valid = false;
     }
 
     // Validate numeric fields
-    if (eventData.upsell.price !== undefined && typeof eventData.upsell.price !== 'number') {
+    if (
+      eventData.upsell.price !== undefined &&
+      typeof eventData.upsell.price !== 'number'
+    ) {
       result.errors.push(`${eventData.event}.upsell.price must be a number`);
       result.valid = false;
     }
 
-    if (eventData.upsell.quantity !== undefined && typeof eventData.upsell.quantity !== 'number') {
+    if (
+      eventData.upsell.quantity !== undefined &&
+      typeof eventData.upsell.quantity !== 'number'
+    ) {
       result.errors.push(`${eventData.event}.upsell.quantity must be a number`);
       result.valid = false;
     }
 
-    if (eventData.upsell.value !== undefined && typeof eventData.upsell.value !== 'number') {
+    if (
+      eventData.upsell.value !== undefined &&
+      typeof eventData.upsell.value !== 'number'
+    ) {
       result.errors.push(`${eventData.event}.upsell.value must be a number`);
       result.valid = false;
     }
@@ -457,7 +502,7 @@ export class EventValidator {
     const sample: any = {
       event: eventName,
       event_id: 'sample_' + Date.now(),
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
     // Generate sample data based on schema
@@ -469,17 +514,26 @@ export class EventValidator {
   /**
    * Helper to generate sample data from schema
    */
-  private generateSampleFromSchema(fields: Record<string, FieldDefinition>, target: any): void {
+  private generateSampleFromSchema(
+    fields: Record<string, FieldDefinition>,
+    target: any
+  ): void {
     for (const [fieldName, fieldDef] of Object.entries(fields)) {
       if (fieldName === 'event') continue; // Skip event field as it's already set
 
-      if (fieldDef.required || Math.random() > 0.5) { // Include required fields and randomly include optional ones
+      if (fieldDef.required || Math.random() > 0.5) {
+        // Include required fields and randomly include optional ones
         switch (fieldDef.type) {
           case 'string':
-            target[fieldName] = fieldDef.enum ? fieldDef.enum[0] : `sample_${fieldName}`;
+            target[fieldName] = fieldDef.enum
+              ? fieldDef.enum[0]
+              : `sample_${fieldName}`;
             break;
           case 'number':
-            target[fieldName] = fieldName.includes('price') || fieldName.includes('value') ? 99.99 : 1;
+            target[fieldName] =
+              fieldName.includes('price') || fieldName.includes('value')
+                ? 99.99
+                : 1;
             break;
           case 'boolean':
             target[fieldName] = true;
@@ -487,12 +541,19 @@ export class EventValidator {
           case 'object':
             target[fieldName] = {};
             if (fieldDef.properties) {
-              this.generateSampleFromSchema(fieldDef.properties, target[fieldName]);
+              this.generateSampleFromSchema(
+                fieldDef.properties,
+                target[fieldName]
+              );
             }
             break;
           case 'array':
             target[fieldName] = [];
-            if (fieldDef.items && fieldDef.items.type === 'object' && fieldDef.items.properties) {
+            if (
+              fieldDef.items &&
+              fieldDef.items.type === 'object' &&
+              fieldDef.items.properties
+            ) {
               const item: any = {};
               this.generateSampleFromSchema(fieldDef.items.properties, item);
               target[fieldName].push(item);

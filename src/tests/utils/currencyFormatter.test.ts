@@ -148,7 +148,10 @@ describe('formatCurrency', () => {
     it('keeps two decimal places for non-zero cents', () => {
       const result = formatCurrency(10.99, 'USD', { hideZeroCents: true });
       expect(result).toBe(
-        intl(10.99, 'USD', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+        intl(10.99, 'USD', {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 2,
+        })
       );
     });
 
@@ -404,7 +407,9 @@ describe('CurrencyFormatter.isAlreadyFormatted', () => {
 
   it('is case-sensitive for symbol matching (no false positives)', () => {
     // "USD 10.00" doesn't contain "$" — should be false
-    expect(CurrencyFormatter.isAlreadyFormatted('USD 10.00', 'USD')).toBe(false);
+    expect(CurrencyFormatter.isAlreadyFormatted('USD 10.00', 'USD')).toBe(
+      false
+    );
   });
 });
 

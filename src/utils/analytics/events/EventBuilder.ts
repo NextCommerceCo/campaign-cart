@@ -3,7 +3,15 @@
  * Base class for creating standardized analytics events
  */
 
-import type { DataLayerEvent, UserProperties, EventContext, EventMetadata, EcommerceItem, ElevarProduct, ElevarImpression } from '../types';
+import type {
+  DataLayerEvent,
+  UserProperties,
+  EventContext,
+  EventMetadata,
+  EcommerceItem,
+  ElevarProduct,
+  ElevarImpression,
+} from '../types';
 import { useCampaignStore } from '@/stores/campaignStore';
 import { useCheckoutStore } from '@/stores/checkoutStore';
 import { createLogger } from '@/utils/logger';
@@ -18,13 +26,16 @@ interface MinimalCartItem {
   title?: string;
   name?: string;
   product_title?: string;
-  price?: number | string | {
-    excl_tax: { value: number; formatted: string };
-    incl_tax: { value: number; formatted: string };
-    original: { value: number; formatted: string };
-    savings: { value: number; formatted: string };
-    value?: number;
-  };
+  price?:
+    | number
+    | string
+    | {
+        excl_tax: { value: number; formatted: string };
+        incl_tax: { value: number; formatted: string };
+        original: { value: number; formatted: string };
+        savings: { value: number; formatted: string };
+        value?: number;
+      };
   price_incl_tax?: number | string;
   price_retail?: number | string;
   quantity?: number;
@@ -64,7 +75,7 @@ export class EventBuilder {
       user_properties: this.getUserProperties(),
       ...this.getEventContext(),
       ...eventData,
-      _metadata: this.getEventMetadata()
+      _metadata: this.getEventMetadata(),
     };
 
     return event;
@@ -115,16 +126,22 @@ export class EventBuilder {
 
         // Add customer ID if available (from order or other sources)
         if (checkoutState.formData?.customerId) {
-          userProperties.customer_id = String(checkoutState.formData.customerId);
+          userProperties.customer_id = String(
+            checkoutState.formData.customerId
+          );
           userProperties.visitor_type = 'logged_in'; // Elevar uses 'logged_in' not 'customer'
         }
 
         // Add customer metrics if available (convert to string for Elevar)
         if (checkoutState.formData?.orderCount !== undefined) {
-          userProperties.customer_order_count = String(checkoutState.formData.orderCount);
+          userProperties.customer_order_count = String(
+            checkoutState.formData.orderCount
+          );
         }
         if (checkoutState.formData?.totalSpent !== undefined) {
-          userProperties.customer_total_spent = String(checkoutState.formData.totalSpent);
+          userProperties.customer_total_spent = String(
+            checkoutState.formData.totalSpent
+          );
         }
         if (checkoutState.formData?.tags) {
           userProperties.customer_tags = String(checkoutState.formData.tags);
@@ -170,7 +187,7 @@ export class EventBuilder {
       source: 'next-campaign-cart',
       // Replaced at build time with the package.json version (see __VERSION__
       // define in vite.config.ts); falls back to '0.2.0' when unset.
-      version: __VERSION__
+      version: __VERSION__,
     };
   }
 
@@ -194,7 +211,10 @@ export class EventBuilder {
    */
   private static getNextSequenceNumber(): number {
     if (typeof window !== 'undefined') {
-      const current = parseInt(sessionStorage.getItem('analytics_sequence') || '0', 10);
+      const current = parseInt(
+        sessionStorage.getItem('analytics_sequence') || '0',
+        10
+      );
       const next = current + 1;
       sessionStorage.setItem('analytics_sequence', String(next));
       return next;
@@ -266,8 +286,8 @@ export class EventBuilder {
           // Try to get image from campaign packages
           const packageId = item.packageId || item.package_id || item.id;
           if (packageId && campaign.packages) {
-            const packageData = campaign.packages.find((p: any) =>
-              p.ref_id === packageId || p.external_id === packageId
+            const packageData = campaign.packages.find(
+              (p: any) => p.ref_id === packageId || p.external_id === packageId
             );
             if (packageData?.image) {
               imageUrl = packageData.image;
@@ -276,7 +296,10 @@ export class EventBuilder {
         }
       }
     } catch (error) {
-      logger.warn('Could not access campaign store for item formatting:', error);
+      logger.warn(
+        'Could not access campaign store for item formatting:',
+        error
+      );
     }
 
     // Handle different item formats
@@ -294,21 +317,31 @@ export class EventBuilder {
         const packageId = item.packageId || item.package_id || item.id;
 
         if (packageId && campaign?.packages) {
-          const packageData = campaign.packages.find((p: any) =>
-            String(p.ref_id) === String(packageId) || String(p.external_id) === String(packageId)
+          const packageData = campaign.packages.find(
+            (p: any) =>
+              String(p.ref_id) === String(packageId) ||
+              String(p.external_id) === String(packageId)
           );
 
           if (packageData) {
             // Use product SKU as item_id (matches purchase event format)
-            itemId = (packageData as any).product_sku || String(packageData.external_id);
+            itemId =
+              (packageData as any).product_sku ||
+              String(packageData.external_id);
             itemName = (packageData as any).product_name || packageData.name;
             productId = String((packageData as any).product_id || '');
             variantId = String((packageData as any).product_variant_id || '');
           } else {
-            logger.warn(`Could not find package data for packageId: ${packageId}`, {
-              packageId,
-              availablePackages: campaign.packages.map((p: any) => ({ ref_id: p.ref_id, name: p.name }))
-            });
+            logger.warn(
+              `Could not find package data for packageId: ${packageId}`,
+              {
+                packageId,
+                availablePackages: campaign.packages.map((p: any) => ({
+                  ref_id: p.ref_id,
+                  name: p.name,
+                })),
+              }
+            );
           }
         }
       }
@@ -321,19 +354,21 @@ export class EventBuilder {
       itemId = String(item.packageId || item.package_id || item.id);
     }
     if (!itemName) {
-      itemName = item.product?.title ||
-                item.title ||
-                item.product_title ||
-                item.name ||
-                `Package ${itemId}`;
+      itemName =
+        item.product?.title ||
+        item.title ||
+        item.product_title ||
+        item.name ||
+        `Package ${itemId}`;
     }
 
     // Get image from various possible sources
     if (!imageUrl) {
-      imageUrl = (item as any).image ||
-                 (item as any).product?.image ||
-                 (item as any).imageUrl ||
-                 (item as any).image_url;
+      imageUrl =
+        (item as any).image ||
+        (item as any).product?.image ||
+        (item as any).imageUrl ||
+        (item as any).image_url;
     }
 
     // Quantity = total product units across every package in this cart line.
@@ -349,8 +384,10 @@ export class EventBuilder {
         const packageId = item.packageId || item.package_id || item.id;
 
         if (packageId && campaign?.packages) {
-          const packageData = campaign.packages.find((p: any) =>
-            String(p.ref_id) === String(packageId) || String(p.external_id) === String(packageId)
+          const packageData = campaign.packages.find(
+            (p: any) =>
+              String(p.ref_id) === String(packageId) ||
+              String(p.external_id) === String(packageId)
           );
 
           if (packageData?.qty) {
@@ -368,7 +405,9 @@ export class EventBuilder {
     }
 
     const packageCount =
-      typeof item.quantity === 'number' && item.quantity > 0 ? item.quantity : 1;
+      typeof item.quantity === 'number' && item.quantity > 0
+        ? item.quantity
+        : 1;
     const quantity = unitsPerPackage * packageCount;
 
     // Price = final per-unit price for this line, AFTER offer/voucher discounts.
@@ -388,11 +427,23 @@ export class EventBuilder {
     };
 
     let price = 0;
-    if (item.unit_price !== undefined && item.unit_price !== null && item.unit_price !== '') {
+    if (
+      item.unit_price !== undefined &&
+      item.unit_price !== null &&
+      item.unit_price !== ''
+    ) {
       price = toNum(item.unit_price);
-    } else if (item.package_price !== undefined && item.package_price !== null && unitsPerPackage > 0) {
+    } else if (
+      item.package_price !== undefined &&
+      item.package_price !== null &&
+      unitsPerPackage > 0
+    ) {
       price = toNum(item.package_price) / unitsPerPackage;
-    } else if (item.total !== undefined && item.total !== null && quantity > 0) {
+    } else if (
+      item.total !== undefined &&
+      item.total !== null &&
+      quantity > 0
+    ) {
       price = toNum(item.total) / quantity;
     }
 
@@ -405,9 +456,10 @@ export class EventBuilder {
           const packageId = item.packageId || item.package_id || item.id;
 
           if (packageId && campaign?.packages) {
-            const packageData = campaign.packages.find((p: any) =>
-              String(p.ref_id) === String(packageId) ||
-              String(p.external_id) === String(packageId)
+            const packageData = campaign.packages.find(
+              (p: any) =>
+                String(p.ref_id) === String(packageId) ||
+                String(p.external_id) === String(packageId)
             );
             if (packageData?.price) {
               price = toNum(packageData.price); // catalog per-unit price
@@ -441,6 +493,41 @@ export class EventBuilder {
       currency,
     };
 
+    // Per-unit discount (GA4 `discount`): the amount knocked off a single unit.
+    // Prefer the offer discount (price before offers − final price); fall back to
+    // the per-unit compare-at retail on the line, then to the campaign package's
+    // catalog retail (mirrors how `price` falls back to the catalog price above).
+    // `price` here is the final per-unit price, so this stays consistent with
+    // price × quantity = line revenue. Omitted when there is no discount, so GA4
+    // doesn't record a spurious 0.
+    let priceBeforeDiscount =
+      toNum((item as any).original_unit_price) ||
+      toNum((item as any).price_retail);
+    if (priceBeforeDiscount === 0) {
+      try {
+        if (typeof window !== 'undefined') {
+          const campaign = useCampaignStore.getState().data;
+          const packageId = item.packageId || item.package_id || item.id;
+          if (packageId && campaign?.packages) {
+            const packageData = campaign.packages.find(
+              (p: any) =>
+                String(p.ref_id) === String(packageId) ||
+                String(p.external_id) === String(packageId)
+            );
+            if ((packageData as any)?.price_retail) {
+              priceBeforeDiscount = toNum((packageData as any).price_retail);
+            }
+          }
+        }
+      } catch (error) {
+        logger.warn('Could not access campaign store for retail price:', error);
+      }
+    }
+    if (priceBeforeDiscount > price) {
+      ecommerceItem.discount =
+        Math.round((priceBeforeDiscount - price) * 100) / 100;
+    }
+
     // Add product_id and variant_id if available
     if (productId) {
       ecommerceItem.item_product_id = productId;
@@ -450,25 +537,26 @@ export class EventBuilder {
     }
 
     // Add variant information - prefer product_variant_name over package_profile
-    const variant = (item as any).product_variant_name ||
-                   (item as any).product?.variant?.name ||
-                   item.package_profile ||
-                   item.variant;
+    const variant =
+      (item as any).product_variant_name ||
+      (item as any).product?.variant?.name ||
+      item.package_profile ||
+      item.variant;
     if (variant !== undefined) {
       ecommerceItem.item_variant = variant;
     }
 
     // Add brand information (using product name as brand)
-    const brand = (item as any).product_name ||
-                  (item as any).product?.name;
+    const brand = (item as any).product_name || (item as any).product?.name;
     if (brand) {
       ecommerceItem.item_brand = brand;
     }
 
     // Add SKU as a custom dimension (can be tracked in GTM)
-    const sku = (item as any).product_sku ||
-                (item as any).product?.variant?.sku ||
-                (item as any).sku;
+    const sku =
+      (item as any).product_sku ||
+      (item as any).product?.variant?.sku ||
+      (item as any).sku;
     if (sku) {
       ecommerceItem.item_sku = sku;
     }
@@ -500,7 +588,7 @@ export class EventBuilder {
     if (typeof window !== 'undefined') {
       const listId = sessionStorage.getItem('analytics_list_id');
       const listName = sessionStorage.getItem('analytics_list_name');
-      
+
       if (listId || listName) {
         const result: { id?: string; name?: string } = {};
         if (listId) result.id = listId;
@@ -559,8 +647,8 @@ export class EventBuilder {
           // Find package data
           const packageId = item.packageId || item.package_id || item.id;
           if (packageId && campaign?.packages) {
-            packageData = campaign.packages.find((p: any) =>
-              String(p.ref_id) === String(packageId)
+            packageData = campaign.packages.find(
+              (p: any) => String(p.ref_id) === String(packageId)
             );
           }
         }
@@ -572,9 +660,15 @@ export class EventBuilder {
     // Get price value - handle various price formats
     let priceValue: number = 0;
     if (packageData?.price) {
-      priceValue = typeof packageData.price === 'string' ? parseFloat(packageData.price) : packageData.price;
+      priceValue =
+        typeof packageData.price === 'string'
+          ? parseFloat(packageData.price)
+          : packageData.price;
     } else if (item.price_incl_tax) {
-      priceValue = typeof item.price_incl_tax === 'string' ? parseFloat(item.price_incl_tax) : item.price_incl_tax;
+      priceValue =
+        typeof item.price_incl_tax === 'string'
+          ? parseFloat(item.price_incl_tax)
+          : item.price_incl_tax;
     } else if (item.price) {
       if (typeof item.price === 'object') {
         // Handle nested price structure
@@ -582,11 +676,15 @@ export class EventBuilder {
           priceValue = item.price.incl_tax.value;
         } else if ('excl_tax' in item.price && item.price.excl_tax?.value) {
           priceValue = item.price.excl_tax.value;
-        } else if ('value' in item.price && typeof item.price.value === 'number') {
+        } else if (
+          'value' in item.price &&
+          typeof item.price.value === 'number'
+        ) {
           priceValue = item.price.value;
         }
       } else {
-        priceValue = typeof item.price === 'string' ? parseFloat(item.price) : item.price;
+        priceValue =
+          typeof item.price === 'string' ? parseFloat(item.price) : item.price;
       }
     }
 
@@ -594,66 +692,63 @@ export class EventBuilder {
     // Prioritize cart store fields (productName, variantSku, etc.) which are directly on the item
     const product: ElevarProduct = {
       // Use SKU as id (Elevar expects SKU here)
-      id: item.variantSku ||
-          item.sku ||
-          item.product?.sku ||
-          packageData?.product_sku ||
-          `SKU-${item.packageId || item.id}`,
+      id:
+        item.variantSku ||
+        item.sku ||
+        item.product?.sku ||
+        packageData?.product_sku ||
+        `SKU-${item.packageId || item.id}`,
 
-      name: item.productName ||
-            item.product?.title ||
-            packageData?.product_name ||
-            item.title ||
-            '',
+      name:
+        item.productName ||
+        item.product?.title ||
+        packageData?.product_name ||
+        item.title ||
+        '',
 
       product_id: String(
-        item.productId ||
-        packageData?.product_id ||
-        item.packageId ||
-        ''
+        item.productId || packageData?.product_id || item.packageId || ''
       ),
 
       variant_id: String(
-        item.variantId ||
-        packageData?.product_variant_id ||
-        ''
+        item.variantId || packageData?.product_variant_id || ''
       ),
 
-      brand: item.productName ||
-             packageData?.product_name ||
-             campaignName,
+      brand: item.productName || packageData?.product_name || campaignName,
 
       category: campaignName,
 
-      variant: item.variantName ||
-               packageData?.product_variant_name ||
-               item.package_profile ||
-               '',
+      variant:
+        item.variantName ||
+        packageData?.product_variant_name ||
+        item.package_profile ||
+        '',
 
       price: priceValue.toFixed(2), // Format as string with 2 decimals
-      quantity: String(item.quantity || item.qty || 1)
+      quantity: String(item.quantity || item.qty || 1),
     };
 
     // Add optional fields
     // Always add compare_at_price (use "0.0" if not available as per Elevar docs)
-    let comparePrice = "0.0";
+    let comparePrice = '0.0';
     if (item.price_retail) {
       comparePrice = String(item.price_retail);
     } else if (packageData?.price_retail) {
       comparePrice = String(packageData.price_retail);
-    } else if (typeof item.price === 'object' && item.price && 'original' in item.price && item.price.original?.value) {
+    } else if (
+      typeof item.price === 'object' &&
+      item.price &&
+      'original' in item.price &&
+      item.price.original?.value
+    ) {
       comparePrice = String(item.price.original.value);
     }
     product.compare_at_price = comparePrice;
 
     // Handle image from various sources
-    if (item.image ||
-        packageData?.image ||
-        item.product?.image) {
-      product.image = item.image ||
-                     packageData?.image ||
-                     item.product?.image ||
-                     '';
+    if (item.image || packageData?.image || item.product?.image) {
+      product.image =
+        item.image || packageData?.image || item.product?.image || '';
     }
 
     // Add position (1-based for Elevar)
@@ -662,7 +757,8 @@ export class EventBuilder {
     }
 
     // Add URL if this is add to cart
-    const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
+    const currentUrl =
+      typeof window !== 'undefined' ? window.location.href : '';
     product.url = currentUrl;
 
     // Add list if available
@@ -693,7 +789,7 @@ export class EventBuilder {
       price: product.price,
       brand: product.brand,
       category: product.category,
-      variant: product.variant
+      variant: product.variant,
     };
 
     // Add optional fields

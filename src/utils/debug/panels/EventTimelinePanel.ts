@@ -1,6 +1,6 @@
 /**
  * Event Timeline Panel - Advanced debugging for events and dataLayer
- * 
+ *
  * Provides real-time monitoring of:
  * - GTM dataLayer events
  * - Internal SDK events
@@ -12,9 +12,12 @@ import { DebugPanel, PanelAction } from '../DebugPanels';
 import { EventBus } from '../../events';
 import { RawDataHelper } from './RawDataHelper';
 import {
-  validateEcommerceEvent,
+  validateDataLayerEvent,
+  auditDataLayerEvent,
   worstLevel,
   type EventValidationIssue,
+  type EventCheck,
+  type CheckStatus,
 } from './EcommerceEventValidator';
 import {
   analyticsDebug,
@@ -56,7 +59,7 @@ interface TimelineEvent {
 // Map internal events from global.ts EventMap
 const INTERNAL_EVENT_PATTERNS = [
   'cart:updated',
-  'cart:item-added', 
+  'cart:item-added',
   'cart:item-removed',
   'cart:quantity-changed',
   'cart:package-swapped',
@@ -113,7 +116,7 @@ const INTERNAL_EVENT_PATTERNS = [
   'exit-intent:dismissed',
   'exit-intent:closed',
   'exit-intent:action',
-  'fomo:shown'
+  'fomo:shown',
 ];
 
 // Events to filter out (noise events)
@@ -127,7 +130,7 @@ const FILTERED_EVENTS = [
   'gtm.scrollDepth',
   'gtm.timer',
   'gtm.historyChange',
-  'gtm.video'
+  'gtm.video',
 ];
 
 export class EventTimelinePanel implements DebugPanel {
@@ -168,7 +171,7 @@ export class EventTimelinePanel implements DebugPanel {
   private filterDrawerOpen = false;
 
   private eventBus = EventBus.getInstance();
-  
+
   // Storage keys
   private static readonly EVENTS_STORAGE_KEY = 'debug-events-history';
   private static readonly SHOW_INTERNAL_KEY = 'debug-events-show-internal';
@@ -181,8 +184,12 @@ export class EventTimelinePanel implements DebugPanel {
     // Check if debug mode is actually enabled before initializing
     const urlParams = new URLSearchParams(window.location.search);
     const windowConfig = (window as any).nextConfig;
-    const isDebugMode = urlParams.get('debugger') === 'true' || urlParams.get('debug') === 'true' || windowConfig?.debugger === true || windowConfig?.debug === true;
-    
+    const isDebugMode =
+      urlParams.get('debugger') === 'true' ||
+      urlParams.get('debug') === 'true' ||
+      windowConfig?.debugger === true ||
+      windowConfig?.debug === true;
+
     if (isDebugMode) {
       this.loadSavedState();
       this.initializeEventWatching();
@@ -193,9 +200,11 @@ export class EventTimelinePanel implements DebugPanel {
   private loadSavedState(): void {
     // Check if stored events have expired
     this.checkAndCleanExpiredStorage();
-    
+
     // Load show internal events preference
-    const savedShowInternal = localStorage.getItem(EventTimelinePanel.SHOW_INTERNAL_KEY);
+    const savedShowInternal = localStorage.getItem(
+      EventTimelinePanel.SHOW_INTERNAL_KEY
+    );
     if (savedShowInternal !== null) {
       this.showInternalEvents = savedShowInternal === 'true';
     }
@@ -205,21 +214,23 @@ export class EventTimelinePanel implements DebugPanel {
     if (savedView === 'analytics' || savedView === 'events') {
       this.view = savedView;
     }
-    
+
     // Load saved events
     try {
-      const savedEvents = localStorage.getItem(EventTimelinePanel.EVENTS_STORAGE_KEY);
+      const savedEvents = localStorage.getItem(
+        EventTimelinePanel.EVENTS_STORAGE_KEY
+      );
       if (savedEvents) {
         const parsed = JSON.parse(savedEvents);
         if (Array.isArray(parsed)) {
           // Only load recent events (last hour)
-          const oneHourAgo = Date.now() - (60 * 60 * 1000);
+          const oneHourAgo = Date.now() - 60 * 60 * 1000;
           this.events = parsed
             .filter(event => event.timestamp > oneHourAgo)
             .slice(0, EventTimelinePanel.MAX_STORED_EVENTS)
             .map(event => ({
               ...event,
-              relativeTime: this.formatRelativeTime(event.timestamp)
+              relativeTime: this.formatRelativeTime(event.timestamp),
             }));
         }
       }
@@ -229,39 +240,45 @@ export class EventTimelinePanel implements DebugPanel {
       localStorage.removeItem(EventTimelinePanel.EVENTS_STORAGE_KEY);
     }
   }
-  
+
   private checkAndCleanExpiredStorage(): void {
     try {
-      const expiryTime = localStorage.getItem(EventTimelinePanel.STORAGE_EXPIRY_KEY);
+      const expiryTime = localStorage.getItem(
+        EventTimelinePanel.STORAGE_EXPIRY_KEY
+      );
       const now = Date.now();
-      
+
       if (!expiryTime || parseInt(expiryTime) < now) {
         // Clear expired events
         localStorage.removeItem(EventTimelinePanel.EVENTS_STORAGE_KEY);
-        
+
         // Set new expiry time
-        const newExpiry = now + (EventTimelinePanel.STORAGE_EXPIRY_HOURS * 60 * 60 * 1000);
-        localStorage.setItem(EventTimelinePanel.STORAGE_EXPIRY_KEY, newExpiry.toString());
+        const newExpiry =
+          now + EventTimelinePanel.STORAGE_EXPIRY_HOURS * 60 * 60 * 1000;
+        localStorage.setItem(
+          EventTimelinePanel.STORAGE_EXPIRY_KEY,
+          newExpiry.toString()
+        );
       }
     } catch (error) {
       console.error('Failed to check storage expiry:', error);
     }
   }
-  
+
   private saveEvents(): void {
     // Debounce saves to avoid too many localStorage writes
     if (this.saveTimeout) {
       clearTimeout(this.saveTimeout);
     }
-    
+
     this.saveTimeout = setTimeout(() => {
       try {
         // Filter out old events (only keep last hour) and limit count
-        const oneHourAgo = Date.now() - (60 * 60 * 1000);
+        const oneHourAgo = Date.now() - 60 * 60 * 1000;
         const recentEvents = this.events
           .filter(event => event.timestamp > oneHourAgo)
           .slice(0, EventTimelinePanel.MAX_STORED_EVENTS);
-        
+
         // Only save if we have events
         if (recentEvents.length > 0) {
           // Simplify event data to reduce size
@@ -271,34 +288,53 @@ export class EventTimelinePanel implements DebugPanel {
             type: event.type,
             name: event.name,
             // Limit data size to first 200 chars if it's a string
-            data: typeof event.data === 'string' && event.data.length > 200 
-              ? event.data.substring(0, 200) + '...' 
-              : event.data,
+            data:
+              typeof event.data === 'string' && event.data.length > 200
+                ? event.data.substring(0, 200) + '...'
+                : event.data,
             source: event.source,
-            isInternal: event.isInternal
+            isInternal: event.isInternal,
           }));
-          
+
           const serialized = this.safeStringify(simplifiedEvents);
-          
+
           // Check size before saving (localStorage typically has 5-10MB limit)
-          if (serialized.length > 500000) { // 500KB limit per key
+          if (serialized.length > 500000) {
+            // 500KB limit per key
             // If still too large, save only half the events
-            const halfEvents = simplifiedEvents.slice(0, Math.floor(simplifiedEvents.length / 2));
-            localStorage.setItem(EventTimelinePanel.EVENTS_STORAGE_KEY, this.safeStringify(halfEvents));
+            const halfEvents = simplifiedEvents.slice(
+              0,
+              Math.floor(simplifiedEvents.length / 2)
+            );
+            localStorage.setItem(
+              EventTimelinePanel.EVENTS_STORAGE_KEY,
+              this.safeStringify(halfEvents)
+            );
           } else {
-            localStorage.setItem(EventTimelinePanel.EVENTS_STORAGE_KEY, serialized);
+            localStorage.setItem(
+              EventTimelinePanel.EVENTS_STORAGE_KEY,
+              serialized
+            );
           }
         }
-        
+
         // Update expiry if not set
         if (!localStorage.getItem(EventTimelinePanel.STORAGE_EXPIRY_KEY)) {
-          const expiry = Date.now() + (EventTimelinePanel.STORAGE_EXPIRY_HOURS * 60 * 60 * 1000);
-          localStorage.setItem(EventTimelinePanel.STORAGE_EXPIRY_KEY, expiry.toString());
+          const expiry =
+            Date.now() +
+            EventTimelinePanel.STORAGE_EXPIRY_HOURS * 60 * 60 * 1000;
+          localStorage.setItem(
+            EventTimelinePanel.STORAGE_EXPIRY_KEY,
+            expiry.toString()
+          );
         }
       } catch (error) {
         console.error('Failed to save events:', error);
         // If we hit quota exceeded, clear the events
-        if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+        if (
+          error instanceof DOMException &&
+          error.name === 'QuotaExceededError'
+        ) {
           localStorage.removeItem(EventTimelinePanel.EVENTS_STORAGE_KEY);
         }
       }
@@ -315,7 +351,7 @@ export class EventTimelinePanel implements DebugPanel {
         }
         seen.add(value);
       }
-      
+
       // Filter out DOM elements and Window objects
       if (value instanceof Window) return '[Window]';
       if (value instanceof Document) return '[Document]';
@@ -328,20 +364,23 @@ export class EventTimelinePanel implements DebugPanel {
           target: value.target ? '[EventTarget]' : undefined,
           timeStamp: value.timeStamp,
           bubbles: value.bubbles,
-          cancelable: value.cancelable
+          cancelable: value.cancelable,
         };
       }
-      
+
       // Filter out functions
       if (typeof value === 'function') return '[Function]';
-      
+
       return value;
     });
   }
-  
+
   public toggleInternalEvents(): void {
     this.showInternalEvents = !this.showInternalEvents;
-    localStorage.setItem(EventTimelinePanel.SHOW_INTERNAL_KEY, String(this.showInternalEvents));
+    localStorage.setItem(
+      EventTimelinePanel.SHOW_INTERNAL_KEY,
+      String(this.showInternalEvents)
+    );
   }
 
   public setView(view: 'analytics' | 'events'): void {
@@ -372,7 +411,7 @@ export class EventTimelinePanel implements DebugPanel {
           // Determine source based on event content
           let source = 'GTM DataLayer';
           let isInternal = false;
-          
+
           if (event.event && event.event.startsWith('gtm_')) {
             source = 'GTM Internal';
             isInternal = true;
@@ -390,7 +429,7 @@ export class EventTimelinePanel implements DebugPanel {
             name: event.event || 'dataLayer.push',
             data: event,
             source,
-            isInternal
+            isInternal,
           });
         });
       }
@@ -399,14 +438,14 @@ export class EventTimelinePanel implements DebugPanel {
 
     // Watch for existing events
     if (window.dataLayer.length > 0) {
-      window.dataLayer.forEach((event) => {
+      window.dataLayer.forEach(event => {
         if (typeof event === 'object' && event.event) {
           this.addEvent({
             type: 'dataLayer',
             name: event.event,
             data: event,
             source: 'GTM DataLayer (Historical)',
-            isInternal: INTERNAL_EVENT_PATTERNS.includes(event.event)
+            isInternal: INTERNAL_EVENT_PATTERNS.includes(event.event),
           });
         }
       });
@@ -420,14 +459,14 @@ export class EventTimelinePanel implements DebugPanel {
       if (eventName.includes('error') || eventName.includes('Error')) {
         return;
       }
-      
+
       if (this.isRecording) {
         this.addEvent({
           type: 'internal',
           name: eventName,
           data: data,
           source: 'SDK EventBus',
-          isInternal: true
+          isInternal: true,
         });
       }
     };
@@ -444,11 +483,17 @@ export class EventTimelinePanel implements DebugPanel {
     if (typeof window === 'undefined') return;
 
     const eventsToWatch = [
-      'click', 'submit', 'change', 'focus', 'blur',
-      'scroll', 'resize', 'load'
+      'click',
+      'submit',
+      'change',
+      'focus',
+      'blur',
+      'scroll',
+      'resize',
+      'load',
       // Removed 'error' to prevent infinite loops
     ];
-    
+
     // Events to ignore (debug panel internal events and Webflow events)
     const eventsToIgnore = [
       'debug:event-added',
@@ -477,21 +522,23 @@ export class EventTimelinePanel implements DebugPanel {
       'w-tab-active',
       'w-tab-inactive',
       'w-slider-move',
-      'w-dropdown-toggle'
+      'w-dropdown-toggle',
     ];
 
     // Override dispatchEvent for CustomEvents
     const originalDispatch = EventTarget.prototype.dispatchEvent;
-    EventTarget.prototype.dispatchEvent = function(event: Event) {
+    EventTarget.prototype.dispatchEvent = function (event: Event) {
       // Skip error events, debug events, and Webflow events to prevent infinite loops and noise
-      if (event instanceof CustomEvent && 
-          !eventsToWatch.includes(event.type) && 
-          !eventsToIgnore.includes(event.type) &&
-          !event.type.startsWith('debug:') &&
-          !event.type.startsWith('ix2-') &&
-          !event.type.startsWith('w-') &&
-          !event.type.includes('error') &&
-          !event.type.includes('Error')) {
+      if (
+        event instanceof CustomEvent &&
+        !eventsToWatch.includes(event.type) &&
+        !eventsToIgnore.includes(event.type) &&
+        !event.type.startsWith('debug:') &&
+        !event.type.startsWith('ix2-') &&
+        !event.type.startsWith('w-') &&
+        !event.type.includes('error') &&
+        !event.type.includes('Error')
+      ) {
         const self = EventTimelinePanel.getInstance();
         if (self && self.isRecording) {
           try {
@@ -500,7 +547,7 @@ export class EventTimelinePanel implements DebugPanel {
               name: event.type,
               data: event.detail || {},
               source: 'DOM CustomEvent',
-              isInternal: INTERNAL_EVENT_PATTERNS.includes(event.type)
+              isInternal: INTERNAL_EVENT_PATTERNS.includes(event.type),
             });
           } catch (e) {
             // Silently ignore errors in event tracking to prevent loops
@@ -512,7 +559,7 @@ export class EventTimelinePanel implements DebugPanel {
   }
 
   private static instance: EventTimelinePanel | null = null;
-  
+
   private static getInstance(): EventTimelinePanel | null {
     return EventTimelinePanel.instance;
   }
@@ -521,10 +568,10 @@ export class EventTimelinePanel implements DebugPanel {
     if (typeof window === 'undefined' || !window.performance) return;
 
     const self = this;
-    
+
     // Watch performance marks
     const originalMark = performance.mark;
-    performance.mark = function(name: string) {
+    performance.mark = function (name: string) {
       const result = originalMark.call(performance, name);
       if (self.isRecording) {
         self.addEvent({
@@ -532,7 +579,7 @@ export class EventTimelinePanel implements DebugPanel {
           name: `mark: ${name}`,
           data: { markName: name },
           source: 'Performance API',
-          isInternal: true
+          isInternal: true,
         });
       }
       return result;
@@ -540,15 +587,24 @@ export class EventTimelinePanel implements DebugPanel {
 
     // Watch performance measures
     const originalMeasure = performance.measure;
-    performance.measure = function(name: string, startMark?: string, endMark?: string) {
-      const result = originalMeasure.call(performance, name, startMark, endMark);
+    performance.measure = function (
+      name: string,
+      startMark?: string,
+      endMark?: string
+    ) {
+      const result = originalMeasure.call(
+        performance,
+        name,
+        startMark,
+        endMark
+      );
       if (self.isRecording) {
         self.addEvent({
           type: 'performance',
           name: `measure: ${name}`,
           data: { measureName: name, startMark, endMark },
           source: 'Performance API',
-          isInternal: true
+          isInternal: true,
         });
       }
       return result;
@@ -560,7 +616,7 @@ export class EventTimelinePanel implements DebugPanel {
     if (FILTERED_EVENTS.includes(eventData.name || '')) {
       return;
     }
-    
+
     const now = Date.now();
     const event: TimelineEvent = {
       id: `event_${now}_${Math.random().toString(36).substr(2, 9)}`,
@@ -570,7 +626,7 @@ export class EventTimelinePanel implements DebugPanel {
       data: eventData.data || {},
       source: eventData.source || 'Unknown',
       relativeTime: this.formatRelativeTime(eventData.timestamp || now),
-      isInternal: eventData.isInternal || false
+      isInternal: eventData.isInternal || false,
     };
 
     this.events.unshift(event); // Add to beginning for chronological order
@@ -589,15 +645,17 @@ export class EventTimelinePanel implements DebugPanel {
       if (this.updateTimeout) {
         clearTimeout(this.updateTimeout);
       }
-      
+
       this.updateTimeout = setTimeout(() => {
         // Dispatch event to update content
-        document.dispatchEvent(new CustomEvent('debug:event-added', { 
-          detail: { 
-            panelId: this.id,
-            event: event 
-          } 
-        }));
+        document.dispatchEvent(
+          new CustomEvent('debug:event-added', {
+            detail: {
+              panelId: this.id,
+              event: event,
+            },
+          })
+        );
       }, 100); // Small delay to batch rapid events
     }
   }
@@ -616,11 +674,11 @@ export class EventTimelinePanel implements DebugPanel {
 
   private formatTimestamp(timestamp: number): string {
     const date = new Date(timestamp);
-    const time = date.toLocaleTimeString('en-US', { 
+    const time = date.toLocaleTimeString('en-US', {
       hour12: false,
       hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit'
+      second: '2-digit',
     });
     const ms = date.getMilliseconds().toString().padStart(3, '0');
     return `${time}.${ms}`;
@@ -687,9 +745,9 @@ export class EventTimelinePanel implements DebugPanel {
   private getEventTypeColor(type: string): string {
     const colors = {
       dataLayer: '#4CAF50',
-      internal: '#2196F3', 
+      internal: '#2196F3',
       dom: '#FF9800',
-      performance: '#9C27B0'
+      performance: '#9C27B0',
     };
     return colors[type as keyof typeof colors] || '#666';
   }
@@ -697,9 +755,9 @@ export class EventTimelinePanel implements DebugPanel {
   private getEventTypeBadge(type: string): string {
     const badges = {
       dataLayer: 'GTM',
-      internal: 'SDK', 
+      internal: 'SDK',
       dom: 'DOM',
-      performance: 'PERF'
+      performance: 'PERF',
     };
     return badges[type as keyof typeof badges] || type.toUpperCase();
   }
@@ -707,7 +765,21 @@ export class EventTimelinePanel implements DebugPanel {
   /** Validation issues for an event's ecommerce payload (dataLayer only). */
   private getEventIssues(event: TimelineEvent): EventValidationIssue[] {
     if (event.type !== 'dataLayer') return [];
-    return validateEcommerceEvent(event.data);
+    return validateDataLayerEvent(event.data);
+  }
+
+  /** Full validation checklist (pass + fail + skipped) for the detail view. */
+  private getEventChecks(event: TimelineEvent): EventCheck[] {
+    if (event.type !== 'dataLayer') return [];
+    return auditDataLayerEvent(event.data);
+  }
+
+  /** Why a given event has no checklist — shown in the empty Validation tab. */
+  private noValidationReason(event: TimelineEvent): string {
+    if (event.type !== 'dataLayer') {
+      return `Validation applies to dataLayer (<code>dl_</code>) events. This is a ${event.type} event — nothing to validate.`;
+    }
+    return `Not a <code>dl_</code> event, so there is no dataLayer contract to validate.`;
   }
 
   private renderValidationBadge(event: TimelineEvent): string {
@@ -721,32 +793,61 @@ export class EventTimelinePanel implements DebugPanel {
     return `<span class="${cls}">${ico} ${isError ? 'INVALID' : 'CHECK'}</span>`;
   }
 
-  private renderValidationSection(event: TimelineEvent): string {
-    const issues = this.getEventIssues(event);
-    if (issues.length === 0) {
-      if (event.type !== 'dataLayer' || !event.data?.ecommerce) return '';
-      return `
-        <div class="event-validation event-validation-ok">
-          <span class="event-validation-icon">${lucide('check-circle', { size: 14 })}</span>
-          Ecommerce payload looks valid \u2014 package resolved and price \u00d7 quantity reconciles to value.
-        </div>`;
-    }
-    const rows = issues
-      .map(
-        i => `
-        <li class="event-validation-issue event-validation-issue-${i.level}">
-          <span class="event-validation-issue-level">${lucide(i.level === 'error' ? 'x-circle' : 'alert', { size: 13 })}</span>
-          <code class="event-validation-issue-field">${this.escapeHtml(i.field)}</code>
-          <span class="event-validation-issue-msg">${this.escapeHtml(i.message)}</span>
-        </li>`,
-      )
-      .join('');
+  private static readonly CHECK_ICON: Record<CheckStatus, IconName> = {
+    pass: 'check-circle',
+    warning: 'alert',
+    error: 'x-circle',
+    skipped: 'minus-circle',
+  };
+
+  private renderCheckRow(check: EventCheck): string {
+    const icon = EventTimelinePanel.CHECK_ICON[check.status];
     return `
-      <div class="event-validation event-validation-fail">
-        <div class="event-validation-title">${issues.length} validation issue${
-          issues.length === 1 ? '' : 's'
-        }</div>
-        <ul class="event-validation-list">${rows}</ul>
+      <li class="event-check event-check-${check.status}">
+        <span class="event-check-status">${lucide(icon, { size: 14 })}</span>
+        <div class="event-check-body">
+          <div class="event-check-head">
+            <span class="event-check-label">${this.escapeHtml(check.label)}</span>
+            <code class="event-check-field">${this.escapeHtml(check.field)}</code>
+          </div>
+          <div class="event-check-detail">${this.escapeHtml(check.detail)}</div>
+        </div>
+      </li>`;
+  }
+
+  private renderValidationSection(event: TimelineEvent): string {
+    const checks = this.getEventChecks(event);
+    if (checks.length === 0) return '';
+
+    const errors = checks.filter(c => c.status === 'error').length;
+    const warnings = checks.filter(c => c.status === 'warning').length;
+    const passed = checks.filter(c => c.status === 'pass').length;
+    const checked = checks.filter(c => c.status !== 'skipped').length;
+
+    const summaryClass = errors
+      ? 'event-validation-fail'
+      : warnings
+        ? 'event-validation-warn'
+        : 'event-validation-ok';
+    const summaryIcon = errors
+      ? 'x-circle'
+      : warnings
+        ? 'alert'
+        : 'check-circle';
+    const summaryText = errors
+      ? `${errors} failed, ${warnings} warning${warnings === 1 ? '' : 's'} of ${checked} checks`
+      : warnings
+        ? `${warnings} warning${warnings === 1 ? '' : 's'} of ${checked} checks`
+        : `All ${passed} checks passed`;
+
+    const rows = checks.map(c => this.renderCheckRow(c)).join('');
+    return `
+      <div class="event-validation ${summaryClass}">
+        <div class="event-validation-summary">
+          <span class="event-validation-icon">${lucide(summaryIcon, { size: 14 })}</span>
+          <span class="event-validation-summary-text">${summaryText}</span>
+        </div>
+        <ul class="event-check-list">${rows}</ul>
       </div>`;
   }
 
@@ -833,7 +934,9 @@ export class EventTimelinePanel implements DebugPanel {
         // Raw data this provider handled: the transformed payload it dispatched
         // when reported, otherwise the original event it received.
         const payload =
-          record.sentPayload !== undefined ? record.sentPayload : record.payload;
+          record.sentPayload !== undefined
+            ? record.sentPayload
+            : record.payload;
         const canExpand = payload !== undefined;
         const expanded = this.expandedDeliveries.has(record.id);
         const payloadLabel =
@@ -857,11 +960,15 @@ export class EventTimelinePanel implements DebugPanel {
                 </span>
               </span>
             </div>
-            ${expanded && canExpand ? `
+            ${
+              expanded && canExpand
+                ? `
               <div class="delivery-payload">
                 <div class="delivery-payload-label">${payloadLabel}</div>
                 <div class="delivery-payload-view">${RawDataHelper.generateRawDataContent(payload)}</div>
-              </div>` : ''}
+              </div>`
+                : ''
+            }
           </div>`;
       })
       .join('');
@@ -876,7 +983,9 @@ export class EventTimelinePanel implements DebugPanel {
     const issueLevel = worstLevel(issues);
 
     const deliveryBadge =
-      deliveryCount > 0 ? `<span class="tab-count">${deliveryCount}</span>` : '';
+      deliveryCount > 0
+        ? `<span class="tab-count">${deliveryCount}</span>`
+        : '';
     const validationBadge = issueLevel
       ? `<span class="tab-count tab-count-${issueLevel}">${issues.length}</span>`
       : '';
@@ -892,8 +1001,9 @@ export class EventTimelinePanel implements DebugPanel {
     if (this.selectedDetailTab === 'delivery') {
       body = this.renderDeliveryDetail(event);
     } else if (this.selectedDetailTab === 'validation') {
-      body = this.renderValidationSection(event) ||
-        `<div class="delivery-empty">No validation checks apply to this event.</div>`;
+      body =
+        this.renderValidationSection(event) ||
+        `<div class="delivery-empty">${this.noValidationReason(event)}</div>`;
     } else {
       body = `<div class="event-modal-data-content">${RawDataHelper.generateRawDataContent(event.data)}</div>`;
     }
@@ -961,7 +1071,8 @@ export class EventTimelinePanel implements DebugPanel {
 
     // Analytics view shows only dl_ events; surface non-dl_ events captured.
     const hiddenByView =
-      this.view === 'analytics' && this.events.some(e => !e.name.startsWith('dl_'));
+      this.view === 'analytics' &&
+      this.events.some(e => !e.name.startsWith('dl_'));
     if (hiddenByView && !this.hasActiveFilters()) {
       const other = this.events.filter(e => !e.name.startsWith('dl_')).length;
       return `
@@ -977,10 +1088,14 @@ export class EventTimelinePanel implements DebugPanel {
       <div class="empty-state">
         <div class="empty-state-icon">${lucide('search-x', { size: 44 })}</div>
         <div class="empty-state-text">No events match the current filters</div>
-        ${this.hasActiveFilters() ? `
+        ${
+          this.hasActiveFilters()
+            ? `
           <button class="filter-clear" onclick="window.eventTimelinePanel_clearFilters()">
             Clear filters
-          </button>` : ''}
+          </button>`
+            : ''
+        }
       </div>`;
   }
 
@@ -1107,7 +1222,11 @@ export class EventTimelinePanel implements DebugPanel {
           .join('')
       : `<span class="filter-hint">No providers registered.</span>`;
 
-    const toggle = (active: boolean, label: string, onclick: string): string => `
+    const toggle = (
+      active: boolean,
+      label: string,
+      onclick: string
+    ): string => `
       <button class="filter-row-toggle ${active ? 'active' : ''}" onclick="${onclick}">
         <span class="filter-checkbox">${active ? lucide('check', { size: 12 }) : ''}</span>
         ${label}
@@ -1143,11 +1262,15 @@ export class EventTimelinePanel implements DebugPanel {
             <div class="filter-chips">${providerSection}</div>
           </div>
 
-          ${this.view === 'events' ? `
+          ${
+            this.view === 'events'
+              ? `
             <div class="filter-section">
               <label class="filter-label">Events</label>
               ${toggle(this.showInternalEvents, 'Include internal SDK events', 'window.eventTimelinePanel_toggleInternal()')}
-            </div>` : ''}
+            </div>`
+              : ''
+          }
 
           <div class="filter-section">
             <label class="filter-label">Status</label>
@@ -1157,9 +1280,11 @@ export class EventTimelinePanel implements DebugPanel {
 
         <footer class="filter-drawer-footer">
           <span class="filter-hint">${this.activeFilterCount()} active</span>
-          ${this.hasActiveFilters()
-            ? `<button class="filter-clear" onclick="window.eventTimelinePanel_clearFilters()">Clear all</button>`
-            : ''}
+          ${
+            this.hasActiveFilters()
+              ? `<button class="filter-clear" onclick="window.eventTimelinePanel_clearFilters()">Clear all</button>`
+              : ''
+          }
         </footer>
       </aside>`;
   }
@@ -1171,9 +1296,11 @@ export class EventTimelinePanel implements DebugPanel {
   /** Ask the overlay to re-render this panel's content. */
   private requestRerender(): void {
     if (typeof document !== 'undefined') {
-      document.dispatchEvent(new CustomEvent('debug:update-content', {
-        detail: { panelId: this.id }
-      }));
+      document.dispatchEvent(
+        new CustomEvent('debug:update-content', {
+          detail: { panelId: this.id },
+        })
+      );
     }
   }
 
@@ -1181,9 +1308,11 @@ export class EventTimelinePanel implements DebugPanel {
     this.selectedEventId = eventId;
     // Trigger re-render
     if (typeof document !== 'undefined') {
-      document.dispatchEvent(new CustomEvent('debug:update-content', {
-        detail: { panelId: this.id }
-      }));
+      document.dispatchEvent(
+        new CustomEvent('debug:update-content', {
+          detail: { panelId: this.id },
+        })
+      );
     }
   }
 
@@ -1191,22 +1320,26 @@ export class EventTimelinePanel implements DebugPanel {
     this.selectedEventId = null;
     // Trigger re-render
     if (typeof document !== 'undefined') {
-      document.dispatchEvent(new CustomEvent('debug:update-content', {
-        detail: { panelId: this.id }
-      }));
+      document.dispatchEvent(
+        new CustomEvent('debug:update-content', {
+          detail: { panelId: this.id },
+        })
+      );
     }
   }
 
   getContent(): string {
     const filteredEvents = this.getFilteredEvents();
     const invalidCount = filteredEvents.filter(
-      e => worstLevel(this.getEventIssues(e)) === 'error',
+      e => worstLevel(this.getEventIssues(e)) === 'error'
     ).length;
-    const selectedEvent = this.selectedEventId ? 
-      this.events.find(e => e.id === this.selectedEventId) : null;
+    const selectedEvent = this.selectedEventId
+      ? this.events.find(e => e.id === this.selectedEventId)
+      : null;
 
     // Add modal HTML if an event is selected
-    const modalHtml = selectedEvent ? `
+    const modalHtml = selectedEvent
+      ? `
       <div class="event-modal-overlay" onclick="window.eventTimelinePanel_closeModal()">
         <div class="event-modal" onclick="event.stopPropagation()">
           <div class="event-modal-header">
@@ -1238,7 +1371,8 @@ export class EventTimelinePanel implements DebugPanel {
           </div>
         </div>
       </div>
-    ` : '';
+    `
+      : '';
 
     // Setup global functions for modal interaction
     if (typeof window !== 'undefined') {
@@ -1261,7 +1395,9 @@ export class EventTimelinePanel implements DebugPanel {
         this.searchTerm = value;
         this.requestRerender();
       };
-      (window as any).eventTimelinePanel_filterProvider = (provider: string) => {
+      (window as any).eventTimelinePanel_filterProvider = (
+        provider: string
+      ) => {
         // Toggle: clicking the active provider clears the filter.
         this.providerFilter =
           this.providerFilter === provider ? null : provider;
@@ -1285,7 +1421,9 @@ export class EventTimelinePanel implements DebugPanel {
         this.toggleInternalEvents();
         this.requestRerender();
       };
-      (window as any).eventTimelinePanel_setView = (view: 'analytics' | 'events') => {
+      (window as any).eventTimelinePanel_setView = (
+        view: 'analytics' | 'events'
+      ) => {
         this.setView(view);
         this.requestRerender();
       };
@@ -1982,26 +2120,57 @@ export class EventTimelinePanel implements DebugPanel {
           color: #81c784;
           border: 1px solid rgba(76, 175, 80, 0.3);
         }
+        .event-validation-warn {
+          background: rgba(255, 152, 0, 0.1);
+          border: 1px solid rgba(255, 152, 0, 0.3);
+        }
         .event-validation-fail {
           background: rgba(244, 67, 54, 0.1);
           border: 1px solid rgba(244, 67, 54, 0.3);
         }
-        .event-validation-title { font-weight: 700; color: #f44336; margin-bottom: 8px; }
-        .event-validation-list { list-style: none; margin: 0; padding: 0; }
-        .event-validation-issue {
+        .event-validation-summary {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-weight: 700;
+          margin-bottom: 10px;
+        }
+        .event-validation-ok .event-validation-summary { color: #81c784; }
+        .event-validation-warn .event-validation-summary { color: #ffb74d; }
+        .event-validation-fail .event-validation-summary { color: #ef5350; }
+        .event-check-list { list-style: none; margin: 0; padding: 0; }
+        .event-check {
+          display: flex;
+          gap: 8px;
+          align-items: flex-start;
+          padding: 6px 0;
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .event-check:first-child { border-top: none; }
+        .event-check-status { flex: 0 0 auto; line-height: 1; margin-top: 1px; }
+        .event-check-pass .event-check-status { color: #66bb6a; }
+        .event-check-warning .event-check-status { color: #ffa726; }
+        .event-check-error .event-check-status { color: #ef5350; }
+        .event-check-skipped { opacity: 0.55; }
+        .event-check-skipped .event-check-status { color: rgba(255, 255, 255, 0.5); }
+        .event-check-body { flex: 1 1 auto; min-width: 0; }
+        .event-check-head {
           display: flex;
           gap: 8px;
           align-items: baseline;
-          padding: 4px 0;
-          color: rgba(255, 255, 255, 0.85);
+          flex-wrap: wrap;
         }
-        .event-validation-issue-error .event-validation-issue-level { color: #f44336; }
-        .event-validation-issue-warning .event-validation-issue-level { color: #ff9800; }
-        .event-validation-issue-field {
+        .event-check-label { font-weight: 600; color: rgba(255, 255, 255, 0.92); }
+        .event-check-field {
           color: #4fc3f7;
           font-family: 'SF Mono', monospace;
-          font-size: 0.9em;
+          font-size: 0.85em;
           white-space: nowrap;
+        }
+        .event-check-detail {
+          color: rgba(255, 255, 255, 0.7);
+          font-size: 0.88em;
+          margin-top: 2px;
         }
       </style>
       
@@ -2014,17 +2183,21 @@ export class EventTimelinePanel implements DebugPanel {
               <span class="event-stat-value">${filteredEvents.length}</span>
               <span class="event-stat-label">${this.view === 'analytics' ? 'dl_ events' : 'Events'}</span>
             </div>
-            ${this.view === 'analytics' ? `
+            ${
+              this.view === 'analytics'
+                ? `
               <div class="event-stat">
                 <span class="event-stat-value" style="color: ${invalidCount > 0 ? '#f44336' : 'inherit'};">${invalidCount}</span>
                 <span class="event-stat-label">Invalid</span>
               </div>
-            ` : `
+            `
+                : `
               <div class="event-stat">
                 <span class="event-stat-value">${this.events.length}</span>
                 <span class="event-stat-label">Total captured</span>
               </div>
-            `}
+            `
+            }
           </div>
 
           <div class="events-controls">
@@ -2033,9 +2206,11 @@ export class EventTimelinePanel implements DebugPanel {
                     onclick="window.eventTimelinePanel_toggleDrawer()">
               ${lucide('filter', { size: 15 })}
               <span>Filters</span>
-              ${this.activeFilterCount() > 0
-                ? `<span class="filter-button-badge">${this.activeFilterCount()}</span>`
-                : ''}
+              ${
+                this.activeFilterCount() > 0
+                  ? `<span class="filter-button-badge">${this.activeFilterCount()}</span>`
+                  : ''
+              }
             </button>
 
             <div class="recording-status">
@@ -2045,16 +2220,23 @@ export class EventTimelinePanel implements DebugPanel {
           </div>
         </div>
 
-        ${filteredEvents.length === 0 ? this.renderEmptyState() : `
+        ${
+          filteredEvents.length === 0
+            ? this.renderEmptyState()
+            : `
           <div style="flex: 1; overflow-y: auto;">
             <table class="events-table">
               ${this.renderTableHead()}
               <tbody>
-                ${filteredEvents.slice(0, 100).map(event => this.renderEventRow(event)).join('')}
+                ${filteredEvents
+                  .slice(0, 100)
+                  .map(event => this.renderEventRow(event))
+                  .join('')}
               </tbody>
             </table>
           </div>
-        `}
+        `
+        }
         ${this.renderFilterDrawer()}
       </div>
       ${modalHtml}
@@ -2068,7 +2250,7 @@ export class EventTimelinePanel implements DebugPanel {
         variant: this.isRecording ? 'secondary' : 'primary',
         action: () => {
           this.isRecording = !this.isRecording;
-        }
+        },
       },
       {
         label: 'Clear Events',
@@ -2077,7 +2259,7 @@ export class EventTimelinePanel implements DebugPanel {
           this.events = [];
           localStorage.removeItem(EventTimelinePanel.EVENTS_STORAGE_KEY);
           analyticsDebug.clear();
-        }
+        },
       },
       {
         label: 'Export Events',
@@ -2091,8 +2273,8 @@ export class EventTimelinePanel implements DebugPanel {
           link.download = `events-${Date.now()}.json`;
           link.click();
           URL.revokeObjectURL(url);
-        }
-      }
+        },
+      },
     ];
   }
 }

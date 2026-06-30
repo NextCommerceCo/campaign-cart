@@ -19,7 +19,11 @@ describe('EventValidator', () => {
   it('passes a well-formed dl_add_to_cart', () => {
     const r = validator.validateEvent({
       event: 'dl_add_to_cart',
-      ecommerce: { currency: 'USD', value: 20, items: [item({ price: 10, quantity: 2 })] },
+      ecommerce: {
+        currency: 'USD',
+        value: 20,
+        items: [item({ price: 10, quantity: 2 })],
+      },
     });
     expect(r.valid).toBe(true);
     expect(r.errors).toEqual([]);
@@ -51,8 +55,12 @@ describe('EventValidator', () => {
     });
     expect(r.valid).toBe(false);
     expect(r.errors.some(e => e.includes('transaction_id'))).toBe(true);
-    expect(r.errors.some(e => e.includes('upsell_metadata.package_id'))).toBe(true);
-    expect(r.errors.some(e => e.includes('upsell_metadata.package_name'))).toBe(true);
+    expect(r.errors.some(e => e.includes('upsell_metadata.package_id'))).toBe(
+      true
+    );
+    expect(r.errors.some(e => e.includes('upsell_metadata.package_name'))).toBe(
+      true
+    );
   });
 
   it('requires transaction_id and value on purchase events', () => {
@@ -68,18 +76,22 @@ describe('EventValidator', () => {
   it('warns when price × quantity does not reconcile to value', () => {
     const r = validator.validateEvent({
       event: 'dl_add_to_cart',
-      ecommerce: { currency: 'USD', value: 70, items: [item({ price: 70, quantity: 5 })] },
+      ecommerce: {
+        currency: 'USD',
+        value: 70,
+        items: [item({ price: 70, quantity: 5 })],
+      },
     });
     expect(r.warnings.some(w => w.includes('reconcile'))).toBe(true);
   });
 
-  it('reconciles a purchase value that includes tax and shipping', () => {
+  it('reconciles a compliant purchase: value = item revenue, tax/shipping separate', () => {
     const r = validator.validateEvent({
       event: 'dl_purchase',
       ecommerce: {
         currency: 'USD',
         transaction_id: 'ORD-1',
-        value: 115, // 100 items + 10 tax + 5 shipping
+        value: 100, // GA4: item revenue only; tax + shipping are separate fields
         tax: 10,
         shipping: 5,
         items: [item({ price: 50, quantity: 2 })],
@@ -110,13 +122,21 @@ describe('EventValidator', () => {
       event: 'dl_add_to_cart',
       ecommerce: { value: 10, items: [item()] },
     });
-    expect(missing.warnings.some(w => w.includes('currency is missing'))).toBe(true);
+    expect(missing.warnings.some(w => w.includes('currency is missing'))).toBe(
+      true
+    );
 
     const mismatch = validator.validateEvent({
       event: 'dl_add_to_cart',
-      ecommerce: { currency: 'USD', value: 10, items: [item({ currency: 'CAD' })] },
+      ecommerce: {
+        currency: 'USD',
+        value: 10,
+        items: [item({ currency: 'CAD' })],
+      },
     });
-    expect(mismatch.warnings.some(w => w.includes('differs from ecommerce.currency'))).toBe(true);
+    expect(
+      mismatch.warnings.some(w => w.includes('differs from ecommerce.currency'))
+    ).toBe(true);
   });
 
   it('still reports a missing event name as an error', () => {
