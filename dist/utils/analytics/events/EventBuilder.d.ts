@@ -55,6 +55,7 @@ export declare class EventBuilder {
     private static getEventMetadata;
     static getSessionId(): string;
     private static getNextSequenceNumber;
+    static sumItemsValue(items: EcommerceItem[]): number;
     static getCurrency(): string;
     static formatEcommerceItem(item: MinimalCartItem, index?: number, list?: {
         id?: string;

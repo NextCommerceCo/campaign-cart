@@ -8,14 +8,17 @@ declare global {
     }
 }
 export declare class FacebookAdapter extends ProviderAdapter {
-    private blockedEvents;
     private storeName?;
     private eventMapping;
     private customEvents;
-    constructor(config?: any);
-    trackEvent(event: DataLayerEvent): void;
+    constructor(config?: {
+        blockedEvents?: string[];
+        storeName?: string;
+    });
     private isFbqLoaded;
-    sendEvent(event: DataLayerEvent): void;
+    protected isReady(): boolean;
+    protected getDebugDetails(): Record<string, string | number | boolean>;
+    sendEvent(event: DataLayerEvent): unknown;
     private waitForFbq;
     private sendEventInternal;
     private mapEventName;

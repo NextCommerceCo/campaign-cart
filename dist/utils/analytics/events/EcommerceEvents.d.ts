@@ -1,6 +1,7 @@
 import { DataLayerEvent } from '../types';
 import { CartItem, EnrichedCartLine } from '../../../types/global';
 export declare class EcommerceEvents {
+    private static buildCartEcommerce;
     static createViewItemListEvent(items: (CartItem | EnrichedCartLine | any)[], listId?: string, listName?: string): DataLayerEvent;
     static createViewItemEvent(item: CartItem | EnrichedCartLine | any): DataLayerEvent;
     static createAddToCartEvent(item: CartItem | EnrichedCartLine | any, listId?: string, listName?: string): DataLayerEvent;
@@ -19,6 +20,8 @@ export declare class EcommerceEvents {
         packageName?: string;
         quantity?: number;
         value?: number;
+        discount?: number;
+        coupon?: string;
         currency?: string;
         upsellNumber?: number;
         item?: any;

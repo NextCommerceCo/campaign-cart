@@ -9,6 +9,8 @@ export declare class EventValidator {
     constructor(debug?: boolean);
     validateEvent(eventData: any): ValidationResult;
     private performAdditionalValidation;
+    private validateRevenueReconciliation;
+    private validateUpsellMetadata;
     private validateProduct;
     private validateUserProperties;
     private isValidCurrency;
