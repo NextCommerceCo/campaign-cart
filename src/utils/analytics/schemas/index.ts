@@ -1,5 +1,9 @@
 // Event schema types and definitions for analytics v2
 
+// Canonical dl_* event vocabulary (the full firable superset). `eventSchemas`
+// below defines field-level validation for the subset that carries one.
+export * from './events';
+
 export interface ProductSchema {
   item_id: string;
   item_name: string;
@@ -92,7 +96,7 @@ const userPropertiesFields: Record<string, FieldDefinition> = {
   customer_address_zip: { type: 'string' },
   customer_order_count: { type: 'number' },
   customer_total_spent: { type: 'number' },
-  customer_tags: { type: 'string' }
+  customer_tags: { type: 'string' },
 };
 
 const productFields: Record<string, FieldDefinition> = {
@@ -115,7 +119,7 @@ const productFields: Record<string, FieldDefinition> = {
   item_image: { type: 'string' },
   location_id: { type: 'string' },
   price: { type: 'number' },
-  quantity: { type: 'number' }
+  quantity: { type: 'number' },
 };
 
 const ecommerceWithItemsFields: Record<string, FieldDefinition> = {
@@ -126,9 +130,9 @@ const ecommerceWithItemsFields: Record<string, FieldDefinition> = {
     type: 'array',
     items: {
       type: 'object',
-      properties: productFields
-    }
-  }
+      properties: productFields,
+    },
+  },
 };
 
 const ecommerceWithImpressionsFields: Record<string, FieldDefinition> = {
@@ -138,9 +142,9 @@ const ecommerceWithImpressionsFields: Record<string, FieldDefinition> = {
     type: 'array',
     items: {
       type: 'object',
-      properties: productFields
-    }
-  }
+      properties: productFields,
+    },
+  },
 };
 
 // Event schemas definitions
@@ -152,7 +156,7 @@ export const eventSchemas: Record<string, EventSchema> = {
       user_properties: {
         type: 'object',
         required: true,
-        properties: userPropertiesFields
+        properties: userPropertiesFields,
       },
       ecommerce: {
         type: 'object',
@@ -163,12 +167,12 @@ export const eventSchemas: Record<string, EventSchema> = {
             type: 'array',
             items: {
               type: 'object',
-              properties: productFields
-            }
-          }
-        }
-      }
-    }
+              properties: productFields,
+            },
+          },
+        },
+      },
+    },
   },
 
   dl_sign_up: {
@@ -177,10 +181,10 @@ export const eventSchemas: Record<string, EventSchema> = {
       event: { type: 'string', required: true },
       user_properties: {
         type: 'object',
-        properties: userPropertiesFields
+        properties: userPropertiesFields,
       },
-      method: { type: 'string' }
-    }
+      method: { type: 'string' },
+    },
   },
 
   dl_login: {
@@ -189,10 +193,10 @@ export const eventSchemas: Record<string, EventSchema> = {
       event: { type: 'string', required: true },
       user_properties: {
         type: 'object',
-        properties: userPropertiesFields
+        properties: userPropertiesFields,
       },
-      method: { type: 'string' }
-    }
+      method: { type: 'string' },
+    },
   },
 
   dl_view_item_list: {
@@ -211,16 +215,16 @@ export const eventSchemas: Record<string, EventSchema> = {
             type: 'array',
             items: {
               type: 'object',
-              properties: productFields
-            }
-          }
-        }
+              properties: productFields,
+            },
+          },
+        },
       },
       user_properties: {
         type: 'object',
-        properties: userPropertiesFields
-      }
-    }
+        properties: userPropertiesFields,
+      },
+    },
   },
 
   dl_view_search_results: {
@@ -238,16 +242,16 @@ export const eventSchemas: Record<string, EventSchema> = {
             type: 'array',
             items: {
               type: 'object',
-              properties: productFields
-            }
-          }
-        }
+              properties: productFields,
+            },
+          },
+        },
       },
       user_properties: {
         type: 'object',
-        properties: userPropertiesFields
-      }
-    }
+        properties: userPropertiesFields,
+      },
+    },
   },
 
   dl_select_item: {
@@ -260,14 +264,14 @@ export const eventSchemas: Record<string, EventSchema> = {
         properties: {
           ...ecommerceWithItemsFields,
           item_list_id: { type: 'string' },
-          item_list_name: { type: 'string' }
-        }
+          item_list_name: { type: 'string' },
+        },
       },
       user_properties: {
         type: 'object',
-        properties: userPropertiesFields
-      }
-    }
+        properties: userPropertiesFields,
+      },
+    },
   },
 
   dl_view_item: {
@@ -277,13 +281,13 @@ export const eventSchemas: Record<string, EventSchema> = {
       ecommerce: {
         type: 'object',
         required: true,
-        properties: ecommerceWithItemsFields
+        properties: ecommerceWithItemsFields,
       },
       user_properties: {
         type: 'object',
-        properties: userPropertiesFields
-      }
-    }
+        properties: userPropertiesFields,
+      },
+    },
   },
 
   dl_add_to_cart: {
@@ -293,13 +297,13 @@ export const eventSchemas: Record<string, EventSchema> = {
       ecommerce: {
         type: 'object',
         required: true,
-        properties: ecommerceWithItemsFields
+        properties: ecommerceWithItemsFields,
       },
       user_properties: {
         type: 'object',
-        properties: userPropertiesFields
-      }
-    }
+        properties: userPropertiesFields,
+      },
+    },
   },
 
   dl_remove_from_cart: {
@@ -309,13 +313,13 @@ export const eventSchemas: Record<string, EventSchema> = {
       ecommerce: {
         type: 'object',
         required: true,
-        properties: ecommerceWithItemsFields
+        properties: ecommerceWithItemsFields,
       },
       user_properties: {
         type: 'object',
-        properties: userPropertiesFields
-      }
-    }
+        properties: userPropertiesFields,
+      },
+    },
   },
 
   dl_view_cart: {
@@ -325,13 +329,13 @@ export const eventSchemas: Record<string, EventSchema> = {
       ecommerce: {
         type: 'object',
         required: true,
-        properties: ecommerceWithItemsFields
+        properties: ecommerceWithItemsFields,
       },
       user_properties: {
         type: 'object',
-        properties: userPropertiesFields
-      }
-    }
+        properties: userPropertiesFields,
+      },
+    },
   },
 
   dl_begin_checkout: {
@@ -344,14 +348,14 @@ export const eventSchemas: Record<string, EventSchema> = {
         properties: {
           ...ecommerceWithItemsFields,
           checkout_id: { type: 'string' },
-          checkout_step: { type: 'number' }
-        }
+          checkout_step: { type: 'number' },
+        },
       },
       user_properties: {
         type: 'object',
-        properties: userPropertiesFields
-      }
-    }
+        properties: userPropertiesFields,
+      },
+    },
   },
 
   dl_add_shipping_info: {
@@ -363,15 +367,15 @@ export const eventSchemas: Record<string, EventSchema> = {
         required: true,
         properties: {
           ...ecommerceWithItemsFields,
-          shipping_tier: { type: 'string' }
-        }
+          shipping_tier: { type: 'string' },
+        },
       },
       shipping_tier: { type: 'string' },
       user_properties: {
         type: 'object',
-        properties: userPropertiesFields
-      }
-    }
+        properties: userPropertiesFields,
+      },
+    },
   },
 
   dl_add_payment_info: {
@@ -383,15 +387,15 @@ export const eventSchemas: Record<string, EventSchema> = {
         required: true,
         properties: {
           ...ecommerceWithItemsFields,
-          payment_type: { type: 'string' }
-        }
+          payment_type: { type: 'string' },
+        },
       },
       payment_type: { type: 'string' },
       user_properties: {
         type: 'object',
-        properties: userPropertiesFields
-      }
-    }
+        properties: userPropertiesFields,
+      },
+    },
   },
 
   dl_purchase: {
@@ -407,14 +411,14 @@ export const eventSchemas: Record<string, EventSchema> = {
           affiliation: { type: 'string' },
           tax: { type: 'number' },
           shipping: { type: 'number' },
-          discount: { type: 'number' }
-        }
+          discount: { type: 'number' },
+        },
       },
       user_properties: {
         type: 'object',
-        properties: userPropertiesFields
-      }
-    }
+        properties: userPropertiesFields,
+      },
+    },
   },
 
   dl_subscribe: {
@@ -426,14 +430,14 @@ export const eventSchemas: Record<string, EventSchema> = {
         properties: {
           ...ecommerceWithItemsFields,
           subscription_id: { type: 'string' },
-          subscription_status: { type: 'string' }
-        }
+          subscription_status: { type: 'string' },
+        },
       },
       user_properties: {
         type: 'object',
-        properties: userPropertiesFields
-      }
-    }
+        properties: userPropertiesFields,
+      },
+    },
   },
 
   // Upsell events
@@ -449,10 +453,10 @@ export const eventSchemas: Record<string, EventSchema> = {
           package_id: { type: 'string', required: true },
           package_name: { type: 'string', required: true },
           price: { type: 'number' },
-          currency: { type: 'string' }
-        }
-      }
-    }
+          currency: { type: 'string' },
+        },
+      },
+    },
   },
 
   dl_accepted_upsell: {
@@ -468,10 +472,10 @@ export const eventSchemas: Record<string, EventSchema> = {
           package_name: { type: 'string' },
           quantity: { type: 'number' },
           value: { type: 'number', required: true },
-          currency: { type: 'string' }
-        }
-      }
-    }
+          currency: { type: 'string' },
+        },
+      },
+    },
   },
 
   dl_skipped_upsell: {
@@ -484,10 +488,10 @@ export const eventSchemas: Record<string, EventSchema> = {
         required: true,
         properties: {
           package_id: { type: 'string' },
-          package_name: { type: 'string' }
-        }
-      }
-    }
+          package_name: { type: 'string' },
+        },
+      },
+    },
   },
 
   // Accepted upsell in GA4 purchase format (counterpart to dl_accepted_upsell).
@@ -503,8 +507,8 @@ export const eventSchemas: Record<string, EventSchema> = {
           transaction_id: { type: 'string', required: true },
           affiliation: { type: 'string' },
           tax: { type: 'number' },
-          shipping: { type: 'number' }
-        }
+          shipping: { type: 'number' },
+        },
       },
       upsell_metadata: {
         type: 'object',
@@ -512,22 +516,29 @@ export const eventSchemas: Record<string, EventSchema> = {
           original_order_id: { type: 'string' },
           upsell_number: { type: 'number' },
           package_id: { type: 'string' },
-          package_name: { type: 'string' }
-        }
+          package_name: { type: 'string' },
+        },
       },
       user_properties: {
         type: 'object',
-        properties: userPropertiesFields
-      }
-    }
-  }
+        properties: userPropertiesFields,
+      },
+    },
+  },
 };
 
 // Validation function
-export function validateEventSchema(eventData: any, schema: EventSchema): { valid: boolean; errors: string[] } {
+export function validateEventSchema(
+  eventData: any,
+  schema: EventSchema
+): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
-  function validateField(value: any, fieldDef: FieldDefinition, path: string): void {
+  function validateField(
+    value: any,
+    fieldDef: FieldDefinition,
+    path: string
+  ): void {
     // Check if required field is missing
     if (fieldDef.required && (value === undefined || value === null)) {
       errors.push(`Missing required field: ${path}`);
@@ -542,13 +553,17 @@ export function validateEventSchema(eventData: any, schema: EventSchema): { vali
     // Validate type
     const actualType = Array.isArray(value) ? 'array' : typeof value;
     if (actualType !== fieldDef.type) {
-      errors.push(`Invalid type for ${path}: expected ${fieldDef.type}, got ${actualType}`);
+      errors.push(
+        `Invalid type for ${path}: expected ${fieldDef.type}, got ${actualType}`
+      );
       return;
     }
 
     // Validate enum values
     if (fieldDef.enum && !fieldDef.enum.includes(value)) {
-      errors.push(`Invalid value for ${path}: must be one of ${fieldDef.enum.join(', ')}`);
+      errors.push(
+        `Invalid value for ${path}: must be one of ${fieldDef.enum.join(', ')}`
+      );
     }
 
     // Validate object properties
@@ -573,7 +588,7 @@ export function validateEventSchema(eventData: any, schema: EventSchema): { vali
 
   return {
     valid: errors.length === 0,
-    errors
+    errors,
   };
 }
 
@@ -581,4 +596,3 @@ export function validateEventSchema(eventData: any, schema: EventSchema): { vali
 export function getEventSchema(eventName: string): EventSchema | undefined {
   return eventSchemas[eventName];
 }
-
