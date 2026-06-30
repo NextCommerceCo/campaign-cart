@@ -1,6 +1,6 @@
 /**
  * Next Analytics v2 - Clean, Elevar-inspired analytics system
- *
+ * 
  * This is the main entry point for the analytics system.
  * It provides a simple API for tracking events following industry best practices.
  */
@@ -94,7 +94,7 @@ export class NextAnalytics {
     try {
       const urlParams = new URLSearchParams(window.location.search);
       const ignoreParam = urlParams.get('ignore');
-
+      
       if (ignoreParam === 'true') {
         // Set session storage flag
         sessionStorage.setItem('analytics_ignore', 'true');
@@ -152,7 +152,7 @@ export class NextAnalytics {
 
     try {
       const config = useConfigStore.getState();
-
+      
       // Check if analytics is enabled
       if (!config.analytics?.enabled) {
         logger.info('Analytics disabled in configuration');
@@ -189,13 +189,9 @@ export class NextAnalytics {
         this.viewTracker.initialize();
         this.autoListener.initialize();
 
-        logger.info(
-          'Auto-tracking initialized (user data fired first, meta tags processed)'
-        );
+        logger.info('Auto-tracking initialized (user data fired first, meta tags processed)');
       } else {
-        logger.info(
-          'Manual mode - meta tags processed, auto-tracking disabled'
-        );
+        logger.info('Manual mode - meta tags processed, auto-tracking disabled');
       }
 
       // Process any pending events from previous page AFTER everything is initialized
@@ -207,7 +203,7 @@ export class NextAnalytics {
       this.initialized = true;
       logger.info('NextAnalytics initialized successfully', {
         providers: Array.from(this.providers.keys()),
-        mode: config.analytics.mode,
+        mode: config.analytics.mode
       });
     } catch (error) {
       logger.error('Failed to initialize analytics:', error);
@@ -223,10 +219,7 @@ export class NextAnalytics {
    * layer. Each adapter's {@link ProviderAdapter.initialize} hook is awaited so
    * script-loading providers (e.g. NextCampaign) are ready before events flow.
    */
-  private async initializeProviders(
-    config: any,
-    storeName?: string
-  ): Promise<void> {
+  private async initializeProviders(config: any, storeName?: string): Promise<void> {
     const providerConfigs = config.providers ?? {};
     const ctx: ProviderContext = { storeName };
 
@@ -246,7 +239,7 @@ export class NextAnalytics {
       this.providers.set(key, adapter);
       dataLayer.addProvider(adapter);
       logger.info(`${key} adapter initialized`, {
-        blockedEvents: providerConfig.blockedEvents ?? [],
+        blockedEvents: providerConfig.blockedEvents ?? []
       });
     }
   }
@@ -292,9 +285,7 @@ export class NextAnalytics {
   /**
    * Set transform function for events
    */
-  public setTransformFunction(
-    fn: (event: DataLayerEvent) => DataLayerEvent | null
-  ): void {
+  public setTransformFunction(fn: (event: DataLayerEvent) => DataLayerEvent | null): void {
     dataLayer.setTransformFunction(fn);
   }
 
@@ -326,7 +317,7 @@ export class NextAnalytics {
       debugMode: dataLayer.isDebugMode(),
       providers: Array.from(this.providers.keys()),
       eventsTracked: dataLayer.getEventCount(),
-      ignored: this.shouldIgnoreAnalytics(),
+      ignored: this.shouldIgnoreAnalytics()
     };
   }
 
@@ -347,25 +338,15 @@ export class NextAnalytics {
   /**
    * Convenience methods for common events
    */
-  public trackViewItemList(
-    items: (CartItem | EnrichedCartLine | any)[],
-    listId?: string,
-    listName?: string
-  ): void {
-    this.track(
-      EcommerceEvents.createViewItemListEvent(items, listId, listName)
-    );
+  public trackViewItemList(items: (CartItem | EnrichedCartLine | any)[], listId?: string, listName?: string): void {
+    this.track(EcommerceEvents.createViewItemListEvent(items, listId, listName));
   }
 
   public trackViewItem(item: CartItem | EnrichedCartLine | any): void {
     this.track(EcommerceEvents.createViewItemEvent(item));
   }
 
-  public trackAddToCart(
-    item: CartItem | EnrichedCartLine | any,
-    listId?: string,
-    listName?: string
-  ): void {
+  public trackAddToCart(item: CartItem | EnrichedCartLine | any, listId?: string, listName?: string): void {
     this.track(EcommerceEvents.createAddToCartEvent(item, listId, listName));
   }
 
@@ -393,26 +374,11 @@ export const nextAnalytics = NextAnalytics.getInstance();
 
 // Export types and utilities
 export * from './types';
-// Canonical dl_* event vocabulary — single source of truth for consumers
-export {
-  DL_EVENTS,
-  DL_EVENT_NAMES,
-  DL_EVENT_NAME_SET,
-  isKnownDlEvent,
-} from './schemas/events';
-export type {
-  DlEventName,
-  DlEventCategory,
-  DlEventDefinition,
-} from './schemas/events';
 export { EventValidator } from './validation/EventValidator';
 export { EcommerceEvents } from './events/EcommerceEvents';
 export { UserEvents } from './events/UserEvents';
 export { dataLayer } from './DataLayerManager';
-export {
-  MetaTagController,
-  metaTagController,
-} from './tracking/MetaTagController';
+export { MetaTagController, metaTagController } from './tracking/MetaTagController';
 
 // Set up global access for debugging
 if (typeof window !== 'undefined') {
