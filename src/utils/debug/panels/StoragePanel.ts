@@ -4,11 +4,12 @@
  */
 
 import { DebugPanel, PanelAction, PanelTab } from '../DebugPanels';
+import { lucide } from '../icons';
 
 export class StoragePanel implements DebugPanel {
   id = 'storage';
   title = 'Storage';
-  icon = '💾';
+  icon = lucide('database');
 
   getContent(): string {
     // Fallback to first tab's content if tabs are not being used

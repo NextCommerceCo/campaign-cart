@@ -11,7 +11,6 @@ declare global {
  * Facebook Pixel adapter
  */
 export class FacebookAdapter extends ProviderAdapter {
-  private blockedEvents: string[] = [];
   private storeName?: string;
   private eventMapping: Record<string, string> = {
     // Data layer events to Facebook events
@@ -67,21 +66,11 @@ export class FacebookAdapter extends ProviderAdapter {
     'SkippedUpsell'       // Custom upsell event
   ];
 
-  constructor(config?: any) {
-    super('Facebook');
-    if (config?.blockedEvents) {
-      this.blockedEvents = config.blockedEvents;
-    }
+  constructor(config?: { blockedEvents?: string[]; storeName?: string }) {
+    super('Facebook', { blockedEvents: config?.blockedEvents });
     if (config?.storeName) {
       this.storeName = config.storeName;
     }
-  }
-
-  /**
-   * Track event - called by DataLayerManager
-   */
-  override trackEvent(event: DataLayerEvent): void {
-    this.sendEvent(event);
   }
 
   /**
@@ -91,32 +80,33 @@ export class FacebookAdapter extends ProviderAdapter {
     return this.isBrowser() && typeof window.fbq === 'function';
   }
 
+  protected override isReady(): boolean {
+    return this.isFbqLoaded();
+  }
+
+  protected override getDebugDetails(): Record<string, string | number | boolean> {
+    return {
+      fbqLoaded: this.isFbqLoaded(),
+      storeName: this.storeName ?? '(none)',
+    };
+  }
+
   /**
    * Send event to Facebook Pixel
    */
-  sendEvent(event: DataLayerEvent): void {
-    if (!this.enabled) {
-      this.debug('Facebook adapter disabled');
-      return;
-    }
-
-    // Check if this event is blocked
-    if (this.blockedEvents.includes(event.event)) {
-      this.debug(`Event ${event.event} is blocked for Facebook`);
-      return;
-    }
-
-    // If fbq is not loaded yet, wait for it
+  sendEvent(event: DataLayerEvent): unknown {
+    // If fbq is not loaded yet, wait for it. The actual send happens after this
+    // returns, so the transformed payload can't be reported for that path.
     if (!this.isFbqLoaded()) {
       this.waitForFbq().then(() => {
         this.sendEventInternal(event);
       }).catch((error) => {
         this.debug('Facebook Pixel failed to load, skipping event:', event.event);
       });
-      return;
+      return undefined;
     }
 
-    this.sendEventInternal(event);
+    return this.sendEventInternal(event);
   }
 
   /**
@@ -141,11 +131,11 @@ export class FacebookAdapter extends ProviderAdapter {
   /**
    * Internal method to send event after fbq is confirmed loaded
    */
-  private sendEventInternal(event: DataLayerEvent): void {
+  private sendEventInternal(event: DataLayerEvent): unknown {
     const fbEventName = this.mapEventName(event.event);
     if (!fbEventName) {
       this.debug(`No Facebook mapping for event: ${event.event}`);
-      return;
+      return undefined;
     }
 
     const parameters = this.transformParameters(event, fbEventName);
@@ -179,6 +169,9 @@ export class FacebookAdapter extends ProviderAdapter {
     } catch (error) {
       this.debug('Error sending event to Facebook:', error);
     }
+
+    // Report the exact shape dispatched to fbq for the debug overlay.
+    return { method: 'fbq', event: fbEventName, parameters };
   }
 
   /**

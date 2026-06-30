@@ -22,27 +22,11 @@ export interface ProductSchema {
   quantity?: number;
 }
 
-export interface ImpressionSchema {
-  item_id: string;
-  item_name: string;
-  affiliation?: string;
-  coupon?: string;
-  currency?: string;
-  discount?: number;
-  index?: number;
-  item_brand?: string;
-  item_category?: string;
-  item_category2?: string;
-  item_category3?: string;
-  item_category4?: string;
-  item_category5?: string;
-  item_list_id?: string;
-  item_list_name?: string;
-  item_variant?: string;
-  location_id?: string;
-  price?: number;
-  quantity?: number;
-}
+/**
+ * Identical to {@link ProductSchema}; retained as a named alias so list
+ * impressions read clearly at call sites.
+ */
+export type ImpressionSchema = ProductSchema;
 
 export interface UserPropertiesSchema {
   visitor_type?: string;
@@ -502,6 +486,38 @@ export const eventSchemas: Record<string, EventSchema> = {
           package_id: { type: 'string' },
           package_name: { type: 'string' }
         }
+      }
+    }
+  },
+
+  // Accepted upsell in GA4 purchase format (counterpart to dl_accepted_upsell).
+  dl_upsell_purchase: {
+    name: 'dl_upsell_purchase',
+    fields: {
+      event: { type: 'string', required: true },
+      ecommerce: {
+        type: 'object',
+        required: true,
+        properties: {
+          ...ecommerceWithItemsFields,
+          transaction_id: { type: 'string', required: true },
+          affiliation: { type: 'string' },
+          tax: { type: 'number' },
+          shipping: { type: 'number' }
+        }
+      },
+      upsell_metadata: {
+        type: 'object',
+        properties: {
+          original_order_id: { type: 'string' },
+          upsell_number: { type: 'number' },
+          package_id: { type: 'string' },
+          package_name: { type: 'string' }
+        }
+      },
+      user_properties: {
+        type: 'object',
+        properties: userPropertiesFields
       }
     }
   }

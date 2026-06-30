@@ -7,11 +7,12 @@ import { formatCurrency } from '../../currencyFormatter';
 import { useCartStore } from '../../../stores/cartStore';
 import { DebugPanel, PanelAction, PanelTab } from '../DebugPanels';
 import { RawDataHelper } from './RawDataHelper';
+import { lucide } from '../icons';
 
 export class CartPanel implements DebugPanel {
   id = 'cart';
   title = 'Cart State';
-  icon = '🛒';
+  icon = lucide('cart');
 
   getContent(): string {
     // Fallback to first tab's content if tabs are not being used

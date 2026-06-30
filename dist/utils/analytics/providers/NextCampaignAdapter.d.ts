@@ -11,15 +11,15 @@ declare global {
     }
 }
 export declare class NextCampaignAdapter extends ProviderAdapter {
-    private logger;
     private scriptLoaded;
     private scriptLoading;
     private loadPromise;
     private apiKey;
     constructor();
     initialize(config?: any): Promise<void>;
-    trackEvent(event: DataLayerEvent): void;
-    sendEvent(event: DataLayerEvent): Promise<void>;
+    protected isReady(): boolean;
+    protected getDebugDetails(): Record<string, string | number | boolean>;
+    sendEvent(event: DataLayerEvent): Promise<unknown>;
     private loadScript;
     private performLoad;
     private fireInitialPageView;

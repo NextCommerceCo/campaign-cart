@@ -16,6 +16,8 @@ export declare class CustomAdapter extends ProviderAdapter {
     private retryQueue;
     constructor(config?: CustomAdapterConfig);
     updateConfig(config: Partial<CustomAdapterConfig>): void;
+    protected isReady(): boolean;
+    protected getDebugDetails(): Record<string, string | number | boolean>;
     sendEvent(event: DataLayerEvent): void;
     private scheduleBatch;
     private sendBatch;

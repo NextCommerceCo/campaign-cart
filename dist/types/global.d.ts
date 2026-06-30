@@ -104,6 +104,8 @@ export interface EventMap {
         quantity: number;
         orderId: string;
         value?: number;
+        discount?: number;
+        coupon?: string;
     };
     'upsell-selector:item-selected': {
         selectorId: string;

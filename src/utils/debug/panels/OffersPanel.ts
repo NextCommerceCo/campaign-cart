@@ -10,6 +10,7 @@ import { useCampaignStore } from '../../../stores/campaignStore';
 import { EventBus } from '../../events';
 import type { Offer } from '../../../types/campaign';
 import { DebugPanel, PanelAction, PanelTab } from '../DebugPanels';
+import { lucide } from '../icons';
 import { RawDataHelper } from './RawDataHelper';
 
 type AttemptResult = 'applied' | 'failed' | 'removed';
@@ -26,7 +27,7 @@ const ATTEMPT_LIMIT = 20;
 export class OffersPanel implements DebugPanel {
   id = 'offers';
   title = 'Offers & Discounts';
-  icon = '🏷️';
+  icon = lucide('tag');
 
   private attempts: CouponAttempt[] = [];
 

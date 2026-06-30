@@ -17,7 +17,6 @@ export declare class NextAnalytics {
     isInitialized(): boolean;
     initialize(): Promise<void>;
     private initializeProviders;
-    private initializeAutoTracking;
     track(event: DataLayerEvent): void;
     setDebugMode(enabled: boolean): void;
     setTransformFunction(fn: (event: DataLayerEvent) => DataLayerEvent | null): void;

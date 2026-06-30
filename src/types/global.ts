@@ -80,7 +80,12 @@ export interface EventMap {
     packageId: number;
     quantity: number;
     orderId: string;
+    /** Item revenue for the accepted line(s), after discounts (post-discount). */
     value?: number;
+    /** Total discount applied to the accepted line(s) (pre-discount − value). */
+    discount?: number;
+    /** Voucher/coupon code applied to the order, when present. */
+    coupon?: string;
   };
   'upsell-selector:item-selected': { selectorId: string; packageId: number };
   'upsell:quantity-changed': {

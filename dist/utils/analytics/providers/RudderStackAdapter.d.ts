@@ -14,8 +14,9 @@ declare global {
 export declare class RudderStackAdapter extends ProviderAdapter {
     private pageViewSent;
     constructor();
-    trackEvent(event: DataLayerEvent): void;
     private isRudderStackLoaded;
+    protected isReady(): boolean;
+    protected getDebugDetails(): Record<string, string | number | boolean>;
     sendEvent(event: DataLayerEvent): void;
     private waitForRudderStack;
     private sendEventInternal;

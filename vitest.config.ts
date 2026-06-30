@@ -2,6 +2,11 @@ import { defineConfig } from 'vitest/config';
 import { resolve } from 'path';
 
 export default defineConfig({
+  // Mirror the build's __VERSION__ replacement so code using the bare
+  // `__VERSION__` identifier (e.g. event metadata) resolves under Vitest too.
+  define: {
+    __VERSION__: JSON.stringify(process.env.npm_package_version || '0.0.0-test'),
+  },
   test: {
     environment: 'happy-dom',
     globals: true,

@@ -11,6 +11,7 @@ import { FacebookAdapter } from './providers/FacebookAdapter';
 import { RudderStackAdapter } from './providers/RudderStackAdapter';
 import { NextCampaignAdapter } from './providers/NextCampaignAdapter';
 import { CustomAdapter } from './providers/CustomAdapter';
+import type { ProviderAdapter } from './providers/ProviderAdapter';
 import { ListAttributionTracker } from './tracking/ListAttributionTracker';
 import { ViewItemListTracker } from './tracking/ViewItemListTracker';
 import { UserDataTracker } from './tracking/UserDataTracker';
@@ -27,10 +28,40 @@ import type { CartItem, EnrichedCartLine } from '@/types/global';
 
 const logger = createLogger('NextAnalytics');
 
+/** Per-initialization context passed to provider factories. */
+interface ProviderContext {
+  storeName?: string;
+}
+
+/**
+ * Builds a provider adapter from its config, or returns `null` when the
+ * provider is enabled but its preconditions (e.g. a pixel id) are not met.
+ */
+type ProviderFactory = (
+  config: any,
+  ctx: ProviderContext
+) => ProviderAdapter | null;
+
+/**
+ * Registry of supported analytics providers. To add a provider, add one entry
+ * here and create its adapter — `NextAnalytics` itself needs no changes.
+ */
+const PROVIDER_FACTORIES: Record<string, ProviderFactory> = {
+  nextCampaign: () => new NextCampaignAdapter(),
+  gtm: config => new GTMAdapter(config),
+  facebook: (config, ctx) =>
+    config.settings?.pixelId
+      ? new FacebookAdapter({ ...config, storeName: ctx.storeName })
+      : null,
+  rudderstack: () => new RudderStackAdapter(),
+  custom: config =>
+    config.settings?.endpoint ? new CustomAdapter(config.settings) : null,
+};
+
 export class NextAnalytics {
   private static instance: NextAnalytics;
   private initialized = false;
-  private providers: Map<string, any> = new Map();
+  private providers: Map<string, ProviderAdapter> = new Map();
   private validator = new EventValidator();
   private metaTagController = MetaTagController.getInstance();
   private listTracker = ListAttributionTracker.getInstance();
@@ -181,71 +212,36 @@ export class NextAnalytics {
   }
 
   /**
-   * Initialize analytics providers
+   * Initialize analytics providers from configuration.
+   *
+   * Iterates the {@link PROVIDER_FACTORIES} registry, instantiating every
+   * enabled provider whose preconditions are met and wiring it into the data
+   * layer. Each adapter's {@link ProviderAdapter.initialize} hook is awaited so
+   * script-loading providers (e.g. NextCampaign) are ready before events flow.
    */
   private async initializeProviders(config: any, storeName?: string): Promise<void> {
-    // NextCampaign Adapter (NextCommerce's own analytics)
-    if (config.providers?.nextCampaign?.enabled) {
-      const nextCampaignAdapter = new NextCampaignAdapter();
-      await nextCampaignAdapter.initialize();
-      this.providers.set('nextCampaign', nextCampaignAdapter);
-      dataLayer.addProvider(nextCampaignAdapter);
-      logger.info('NextCampaign adapter initialized');
-    }
+    const providerConfigs = config.providers ?? {};
+    const ctx: ProviderContext = { storeName };
 
-    // GTM Adapter
-    if (config.providers?.gtm?.enabled) {
-      const gtmAdapter = new GTMAdapter(config.providers.gtm);
-      this.providers.set('gtm', gtmAdapter);
-      dataLayer.addProvider(gtmAdapter);
-      logger.info('GTM adapter initialized', {
-        blockedEvents: config.providers.gtm.blockedEvents || []
+    for (const [key, factory] of Object.entries(PROVIDER_FACTORIES)) {
+      const providerConfig = providerConfigs[key];
+      if (!providerConfig?.enabled) continue;
+
+      const adapter = factory(providerConfig, ctx);
+      if (!adapter) {
+        logger.warn(
+          `Provider "${key}" is enabled but its preconditions are not met; skipping`
+        );
+        continue;
+      }
+
+      await adapter.initialize(providerConfig.settings);
+      this.providers.set(key, adapter);
+      dataLayer.addProvider(adapter);
+      logger.info(`${key} adapter initialized`, {
+        blockedEvents: providerConfig.blockedEvents ?? []
       });
     }
-
-    // Facebook Pixel Adapter
-    if (config.providers?.facebook?.enabled && config.providers.facebook.settings?.pixelId) {
-      const fbConfig = {
-        ...config.providers.facebook,
-        storeName: storeName  // Pass storeName from root config
-      };
-      const fbAdapter = new FacebookAdapter(fbConfig);
-      this.providers.set('facebook', fbAdapter);
-      dataLayer.addProvider(fbAdapter);
-      logger.info('Facebook Pixel adapter initialized', {
-        blockedEvents: config.providers.facebook.blockedEvents || [],
-        storeName: storeName
-      });
-
-      // DO NOT process historical events - this causes duplicates
-      // Events will be tracked properly as they occur
-    }
-
-    // RudderStack Adapter
-    if (config.providers?.rudderstack?.enabled) {
-      const rudderAdapter = new RudderStackAdapter();
-      this.providers.set('rudderstack', rudderAdapter);
-      dataLayer.addProvider(rudderAdapter);
-      logger.info('RudderStack adapter initialized');
-    }
-
-    // Custom Adapter
-    if (config.providers?.custom?.enabled && config.providers.custom.settings?.endpoint) {
-      const customAdapter = new CustomAdapter(config.providers.custom.settings);
-      this.providers.set('custom', customAdapter);
-      dataLayer.addProvider(customAdapter);
-      logger.info('Custom adapter initialized');
-    }
-  }
-
-  /**
-   * Initialize automatic tracking features
-   * NOTE: This method is no longer used - tracking is initialized inline
-   * in the initialize() method to ensure proper ordering
-   */
-  private initializeAutoTracking(): void {
-    // Deprecated - see initialize() method for current implementation
-    logger.warn('initializeAutoTracking called but is deprecated');
   }
 
   /**

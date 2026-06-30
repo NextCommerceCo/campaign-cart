@@ -28,18 +28,22 @@ export class RudderStackAdapter extends ProviderAdapter {
   }
 
   /**
-   * Track event - called by DataLayerManager
-   */
-  override trackEvent(event: DataLayerEvent): void {
-    this.sendEvent(event);
-  }
-
-  /**
    * Check if RudderStack is loaded
    */
   private isRudderStackLoaded(): boolean {
     return this.isBrowser() && typeof window.rudderanalytics === 'object' && 
            typeof window.rudderanalytics.track === 'function';
+  }
+
+  protected override isReady(): boolean {
+    return this.isRudderStackLoaded();
+  }
+
+  protected override getDebugDetails(): Record<string, string | number | boolean> {
+    return {
+      scriptLoaded: this.isRudderStackLoaded(),
+      pageViewSent: this.pageViewSent,
+    };
   }
 
   /**
@@ -131,7 +135,7 @@ export class RudderStackAdapter extends ProviderAdapter {
           }
       }
     } catch (error) {
-      console.error('Error sending event to RudderStack:', error);
+      this.logger.error('Error sending event to RudderStack:', error);
     }
   }
 

@@ -172,28 +172,52 @@ export async function addUpsellToOrder(
     ctx.logger.info('Upsell added successfully');
     renderSuccess(ctx.element);
 
-    let upsellValue = 0;
     const prevLineIds = orderStore.order?.lines?.map((l: { id: unknown }) => l.id) ?? [];
-    const addedLine = updatedOrder.lines?.find(
-      (l: { is_upsell: boolean; id: unknown; price_incl_tax?: string }) =>
-        l.is_upsell && !prevLineIds.includes(l.id),
-    );
-    if (addedLine?.price_incl_tax) upsellValue = parseFloat(addedLine.price_incl_tax);
-    const resolvedPackageId = packageToAdd ?? ctx.bundleItems?.[0]?.packageId;
-    const pkgData = resolvedPackageId != null
-      ? useCampaignStore.getState().getPackage(resolvedPackageId)
-      : undefined;
-    if (pkgData && !upsellValue && pkgData.price) {
-      upsellValue = parseFloat(pkgData.price) * ctx.quantity;
-    }
+    const addedLines: { is_upsell: boolean; id: unknown; price_incl_tax?: string }[] =
+      updatedOrder.lines?.filter(
+        (l: { is_upsell: boolean; id: unknown; price_incl_tax?: string }) =>
+          l.is_upsell && !prevLineIds.includes(l.id),
+      ) ?? [];
 
-    ctx.emit('upsell:added', {
-      packageId: packageToAdd ?? 0,
-      quantity: quantityToUse,
-      order: updatedOrder,
-      value: upsellValue,
-      willRedirect: !!nextUrl,
-    });
+    if (ctx.bundleItems?.length) {
+      // Bundle accept: emit one event per bundle item carrying its real
+      // package_id and quantity. upsellData.lines preserves bundleItems order,
+      // so match each item to its added order line by index to read the actual
+      // per-line value. This keeps the GTM dataLayer item-level data accurate
+      // (real package, real quantity, per-line value) instead of a single
+      // unresolved item at quantity 1.
+      ctx.bundleItems.forEach((item, index) => {
+        const addedLine = addedLines[index];
+        const lineValue = addedLine?.price_incl_tax
+          ? parseFloat(addedLine.price_incl_tax)
+          : parseFloat(
+              useCampaignStore.getState().getPackage(item.packageId)?.price ?? '0',
+            ) * item.quantity;
+        ctx.emit('upsell:added', {
+          packageId: item.packageId,
+          quantity: item.quantity,
+          order: updatedOrder,
+          value: lineValue,
+          willRedirect: !!nextUrl,
+        });
+      });
+    } else {
+      let upsellValue = 0;
+      const addedLine = addedLines[0];
+      if (addedLine?.price_incl_tax) upsellValue = parseFloat(addedLine.price_incl_tax);
+      if (!upsellValue && packageToAdd != null) {
+        const pkgData = useCampaignStore.getState().getPackage(packageToAdd);
+        if (pkgData?.price) upsellValue = parseFloat(pkgData.price) * quantityToUse;
+      }
+
+      ctx.emit('upsell:added', {
+        packageId: packageToAdd ?? 0,
+        quantity: quantityToUse,
+        order: updatedOrder,
+        value: upsellValue,
+        willRedirect: !!nextUrl,
+      });
+    }
 
     if (nextUrl) {
       setTimeout(() => navigateToUrl(nextUrl, updatedOrder.ref_id, ctx.logger), 100);

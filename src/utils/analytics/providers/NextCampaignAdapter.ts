@@ -1,6 +1,5 @@
 import { ProviderAdapter } from './ProviderAdapter';
 import { DataLayerEvent } from '../types';
-import { createLogger } from '@/utils/logger';
 import { useConfigStore } from '@/stores/configStore';
 
 declare global {
@@ -17,7 +16,6 @@ declare global {
  * Integrates with NextCommerce's campaign analytics platform
  */
 export class NextCampaignAdapter extends ProviderAdapter {
-  private logger = createLogger('NextCampaignAdapter');
   private scriptLoaded = false;
   private scriptLoading = false;
   private loadPromise: Promise<void> | null = null;
@@ -55,20 +53,24 @@ export class NextCampaignAdapter extends ProviderAdapter {
     await this.loadScript();
   }
 
-  /**
-   * Track event - called by DataLayerManager
-   */
-  override trackEvent(event: DataLayerEvent): void {
-    this.sendEvent(event);
+  protected override isReady(): boolean {
+    return this.scriptLoaded;
+  }
+
+  protected override getDebugDetails(): Record<string, string | number | boolean> {
+    return {
+      scriptLoaded: this.scriptLoaded,
+      apiKeySet: Boolean(this.apiKey),
+    };
   }
 
   /**
    * Send event to NextCampaign
    */
-  async sendEvent(event: DataLayerEvent): Promise<void> {
+  async sendEvent(event: DataLayerEvent): Promise<unknown> {
     if (!this.enabled) {
       this.debug('NextCampaign adapter disabled');
-      return;
+      return undefined;
     }
 
     // Ensure script is loaded
@@ -88,6 +90,9 @@ export class NextCampaignAdapter extends ProviderAdapter {
         this.logger.error('Error sending event to NextCampaign:', error);
       }
     }
+
+    // Report the mapped {name, data} dispatched to NextCampaign for the overlay.
+    return mappedEvent ?? undefined;
   }
 
   /**

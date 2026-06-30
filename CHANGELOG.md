@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.4.28] — 2026-06-30 — Accurate Purchase Tracking & a Clearer Debug Panel
+
+### Fixed
+
+- **Upsell purchase tracking reported the wrong numbers** (issue [#54](https://github.com/NextCommerceCo/campaign-cart/issues/54)) — when a shopper accepted an upsell, the tracking event always reported a quantity of 1, and on bundle-style upsells the product showed up as "unresolved". Both now report the real quantity and the correct product for every upsell.
+
+- **Purchase value matched the grand total instead of product revenue** — analytics events were counting tax and shipping in the purchase value, which over-reported sales. The reported value is now the value of the products sold, with tax and shipping kept as their own separate fields. This applies to both regular and upsell purchases.
+
+### Improved
+
+- **Tracking events now carry coupon and discount details** — applied coupons and discount amounts are included with the events sent to your analytics tools, so you can see them in your reports.
+
+- **Redesigned debug panel** — the in-page debug overlay now shows each analytics provider with its own branding, marks whether each event was delivered with status chips, and presents the event timeline in a much easier-to-read layout. Handy for confirming tracking is firing correctly before going live.
+
+---
+
 ## [0.4.27] — 2026-06-24 — Properties: Upsell Fix, PackageToggle Support & Exclusion Rules
 
 ### Fixed

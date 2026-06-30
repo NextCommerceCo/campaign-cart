@@ -6,11 +6,12 @@
 import { useConfigStore } from '../../../stores/configStore';
 import { DebugPanel, PanelAction, PanelTab } from '../DebugPanels';
 import { RawDataHelper } from './RawDataHelper';
+import { lucide } from '../icons';
 
 export class ConfigPanel implements DebugPanel {
   id = 'config';
   title = 'Configuration';
-  icon = '⚙️';
+  icon = lucide('settings');
 
   getContent(): string {
     // Fallback to first tab's content if tabs are not being used

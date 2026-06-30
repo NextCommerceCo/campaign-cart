@@ -12,6 +12,7 @@ export declare class AutoEventListener {
     static getInstance(): AutoEventListener;
     initialize(): void;
     private shouldProcessEvent;
+    private waitForCartCalculation;
     private setupCartEventListeners;
     private setupUpsellEventListeners;
     private setupCheckoutEventListeners;

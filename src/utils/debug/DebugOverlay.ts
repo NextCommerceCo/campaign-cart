@@ -14,6 +14,7 @@ import { XrayManager } from './XrayStyles';
 import { selectorContainer } from './SelectorContainer';
 import { upsellSelector } from './UpsellSelector';
 import { formatCurrency } from '../currencyFormatter';
+import { analyticsDebug } from '../analytics/debug/AnalyticsDebugTracker';
 import {
   CartPanel,
   OrderPanel,
@@ -36,6 +37,10 @@ export class DebugOverlay {
   private activePanel = 'cart';
   private activePanelTab: string | undefined;
   private updateInterval: number | null = null;
+  /** Unsubscribe from the analytics delivery tracker (event-driven refresh). */
+  private analyticsDebugUnsub: (() => void) | null = null;
+  /** Pending coalesced refresh for the provider panels. */
+  private providerRefreshTimer: number | null = null;
   private logger = new Logger('DebugOverlay');
 
   private eventManager: DebugEventManager | null = null;
@@ -108,17 +113,39 @@ export class DebugOverlay {
       const customEvent = e as CustomEvent;
       const { panelId } = customEvent.detail;
 
-      // Debug logging
-      console.log('[Debug] Event added:', panelId, 'Active panel:', this.activePanel, 'Expanded:', this.isExpanded);
-
       // Only update if the event panel is currently active
       if (this.activePanel === panelId && this.isExpanded) {
         // For the events panel, always update regardless of input focus
         // since it's read-only content and won't disrupt user input
-        console.log('[Debug] Updating content for events panel (forced update)');
         this.updateContent();
       }
     });
+
+    // The Analytics panel shows provider delivery alongside the event timeline.
+    // Deliveries arrive asynchronously after the dataLayer event (e.g. Facebook
+    // resolves once fbq loads), so re-render when the delivery tracker changes —
+    // event-driven, not on the 1-second poll. The tracker fires once per provider
+    // per event, so the refresh is coalesced into a single render below.
+    this.analyticsDebugUnsub?.();
+    this.analyticsDebugUnsub = analyticsDebug.subscribe(() => {
+      this.scheduleAnalyticsPanelRefresh();
+    });
+  }
+
+  /**
+   * Coalesce a burst of tracker notifications (one per provider per event) into
+   * a single re-render on the next tick, and only when the Analytics panel is
+   * the active, expanded view.
+   */
+  private scheduleAnalyticsPanelRefresh(): void {
+    if (this.providerRefreshTimer !== null) return;
+    this.providerRefreshTimer = window.setTimeout(() => {
+      this.providerRefreshTimer = null;
+      if (!this.isExpanded) return;
+      if (this.activePanel === 'event-timeline') {
+        this.updateContent();
+      }
+    }, 80);
   }
 
   public initialize(): void {
@@ -299,22 +326,45 @@ export class DebugOverlay {
     if (!this.shadowRoot) return;
 
     const panelContent = this.shadowRoot.querySelector('.panel-content');
-    if (panelContent) {
-      const activePanel = this.panels.find(p => p.id === this.activePanel);
-      if (activePanel) {
-        const tabs = activePanel.getTabs?.() || [];
-        if (tabs.length > 0) {
-          // Panel has horizontal tabs - get content from active tab
-          const activeTabId = this.activePanelTab || tabs[0]?.id;
-          const activeTab = tabs.find(tab => tab.id === activeTabId) || tabs[0];
-          if (activeTab) {
-            panelContent.innerHTML = activeTab.getContent();
-            RawDataHelper.bindCopyHandlers(panelContent);
-          }
-        } else {
-          // Panel doesn't have horizontal tabs - use regular content
-          panelContent.innerHTML = activePanel.getContent();
-          RawDataHelper.bindCopyHandlers(panelContent);
+    if (!panelContent) return;
+    const activePanel = this.panels.find(p => p.id === this.activePanel);
+    if (!activePanel) return;
+
+    // A panel that re-renders on every keystroke (e.g. the Analytics search
+    // box) would otherwise lose focus and caret position. Capture them before
+    // swapping innerHTML and restore afterwards.
+    const focused = this.shadowRoot.activeElement as HTMLInputElement | null;
+    const search =
+      focused && focused.matches?.('[data-debug-search]')
+        ? { start: focused.selectionStart, end: focused.selectionEnd }
+        : null;
+
+    const tabs = activePanel.getTabs?.() || [];
+    if (tabs.length > 0) {
+      // Panel has horizontal tabs - get content from active tab
+      const activeTabId = this.activePanelTab || tabs[0]?.id;
+      const activeTab = tabs.find(tab => tab.id === activeTabId) || tabs[0];
+      if (activeTab) {
+        panelContent.innerHTML = activeTab.getContent();
+        RawDataHelper.bindCopyHandlers(panelContent);
+      }
+    } else {
+      // Panel doesn't have horizontal tabs - use regular content
+      panelContent.innerHTML = activePanel.getContent();
+      RawDataHelper.bindCopyHandlers(panelContent);
+    }
+
+    if (search) {
+      const input = panelContent.querySelector<HTMLInputElement>(
+        '[data-debug-search]'
+      );
+      if (input) {
+        input.focus();
+        const end = input.value.length;
+        try {
+          input.setSelectionRange(search.start ?? end, search.end ?? end);
+        } catch {
+          // Some input types don't support selection ranges; focus is enough.
         }
       }
     }
@@ -424,8 +474,12 @@ export class DebugOverlay {
 
       if (panelAction) {
         panelAction.action();
-        // Update content after action
-        setTimeout(() => this.updateContent(), 100);
+        // Re-render the whole overlay (not just content): actions whose label
+        // toggles with state — e.g. Pause/Resume — live in the chrome, and the
+        // click handler matches by label, so the buttons must be re-rendered to
+        // stay in sync. updateContent() alone leaves a stale "Pause" button that
+        // no longer matches the now-"Resume" action.
+        setTimeout(() => this.updateOverlay(), 100);
       }
       return;
     }
@@ -487,7 +541,9 @@ export class DebugOverlay {
       this.updateQuickStats();
 
       // Only update content for specific panels that need real-time updates
-      // Skip updates if viewing raw data tab to prevent constant re-renders
+      // Skip updates if viewing raw data tab to prevent constant re-renders.
+      // Provider panels are intentionally excluded — they refresh on tracker
+      // changes via scheduleProviderPanelRefresh(), not on this poll.
       if ((this.activePanel === 'cart' || this.activePanel === 'config' || this.activePanel === 'campaign') && this.activePanelTab !== 'raw') {
         this.updateContent();
       }
@@ -498,6 +554,10 @@ export class DebugOverlay {
     if (this.updateInterval) {
       clearInterval(this.updateInterval);
       this.updateInterval = null;
+    }
+    if (this.providerRefreshTimer !== null) {
+      clearTimeout(this.providerRefreshTimer);
+      this.providerRefreshTimer = null;
     }
   }
 
