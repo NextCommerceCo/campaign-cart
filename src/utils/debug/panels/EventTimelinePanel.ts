@@ -136,7 +136,7 @@ const FILTERED_EVENTS = [
 export class EventTimelinePanel implements DebugPanel {
   id = 'event-timeline';
   title = 'Analytics & Events';
-  icon = lucide('chart');
+  icon = lucide('activity');
 
   private events: TimelineEvent[] = [];
   private maxEvents = 1000;
@@ -159,6 +159,10 @@ export class EventTimelinePanel implements DebugPanel {
   private selectedDetailTab: DetailTab = 'payload';
   /** Delivery-record ids whose per-provider payload is expanded in the modal. */
   private expandedDeliveries = new Set<string>();
+  /** Active provider sub-tab in the modal's Delivery tab. null = "All". */
+  private selectedDeliveryProvider: string | null = null;
+  /** Provider-name filter for the Delivery tab sub-tabs (many-provider case). */
+  private deliveryProviderSearch = '';
 
   // ── Timeline filters (transient — reset on reload) ──
   /** Case-insensitive substring match on event name / source. */
@@ -881,30 +885,65 @@ export class EventTimelinePanel implements DebugPanel {
     return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(2)}s`;
   }
 
-  /** Compact "(check)3 (ban)1" delivery-status summary shown on an event row. */
+  /**
+   * Per-provider delivery chips shown on an event row — one chip per provider
+   * that handled the event, tinted by its delivery status (sent/failed/…), so
+   * you can see at a glance who received it without opening the modal.
+   */
   private renderDeliverySummary(event: TimelineEvent): string {
     const deliveries = this.getDeliveriesForEvent(event);
     if (deliveries.length === 0) return '';
 
-    const counts: Record<DeliveryStatus, number> = {
-      sent: 0,
-      blocked: 0,
-      failed: 0,
-      pending: 0,
+    const chips = deliveries
+      .map(d => {
+        const color = DELIVERY_STATUS_COLOR[d.status];
+        const duration = this.formatDeliveryDuration(d.durationMs);
+        const title =
+          `${d.provider}: ${d.status}` +
+          (duration ? ` · ${duration}` : '') +
+          (d.error ? ` · ${d.error}` : d.detail ? ` · ${d.detail}` : '');
+        // Lead with the provider's brand glyph when it has one; otherwise the
+        // status icon. Either way the chip colour still encodes delivery status.
+        const brand = this.providerIcon(d.provider);
+        const glyph = brand
+          ? lucide(brand, { size: 11 })
+          : lucide(DELIVERY_STATUS_ICON[d.status], { size: 11 });
+        return `<span class="delivery-chip" style="--chip:${color}" title="${this.escapeAttr(title)}">${glyph}<span class="delivery-chip-name">${this.escapeHtml(this.providerAbbrev(d.provider))}</span></span>`;
+      })
+      .join('');
+
+    return `<span class="delivery-summary" title="Provider delivery">${chips}</span>`;
+  }
+
+  /**
+   * Short provider label for compact row chips (Facebook → FB, RudderStack → RS).
+   * Falls back to the capital-letter acronym, then the first 3 characters.
+   */
+  private providerAbbrev(name: string): string {
+    const known: Record<string, string> = {
+      NextCampaign: 'NEXT',
+      GTM: 'GTM',
+      Facebook: 'FB',
+      RudderStack: 'RS',
     };
-    deliveries.forEach(d => {
-      counts[d.status] += 1;
-    });
+    if (known[name]) return known[name];
+    const caps = name.replace(/[^A-Z]/g, '');
+    return (caps.length >= 2 ? caps : name.slice(0, 3)).toUpperCase();
+  }
 
-    const parts = (['sent', 'pending', 'failed', 'blocked'] as DeliveryStatus[])
-      .filter(status => counts[status] > 0)
-      .map(
-        status =>
-          `<span class="delivery-count" style="color:${DELIVERY_STATUS_COLOR[status]}">${lucide(DELIVERY_STATUS_ICON[status], { size: 13 })}${counts[status]}</span>`
-      )
-      .join(' ');
-
-    return `<span class="delivery-summary" title="Provider delivery">${parts}</span>`;
+  /**
+   * Brand icon for a provider, when one exists (GTM → Google, Facebook → its
+   * logo). Returns null for providers without a brand glyph (e.g. RudderStack),
+   * so callers fall back to a generic/status icon.
+   */
+  private providerIcon(name: string): IconName | null {
+    const map: Record<string, IconName> = {
+      // NextCampaign is the SDK's own provider — its "N" brand mark.
+      NextCampaign: 'next',
+      GTM: 'gtm',
+      Facebook: 'facebook',
+    };
+    return map[name] ?? null;
   }
 
   /** Per-provider delivery breakdown for the modal's Delivery tab. */
@@ -922,58 +961,112 @@ export class EventTimelinePanel implements DebugPanel {
         </div>`;
     }
 
-    const rows = deliveries
-      .map(record => {
-        const note = record.error
-          ? `<span class="delivery-note delivery-note-error">${this.escapeHtml(record.error)}</span>`
-          : record.detail
-            ? `<span class="delivery-note">${this.escapeHtml(record.detail)}</span>`
-            : '';
-        const duration = this.formatDeliveryDuration(record.durationMs);
+    // Provider sub-tabs derived from this event's own deliveries. Selecting one
+    // narrows the list to that provider's record + dispatched payload.
+    const providers = Array.from(new Set(deliveries.map(d => d.provider)));
+    const search = this.deliveryProviderSearch.trim().toLowerCase();
+    const showSearch = providers.length > 4;
+    const visibleProviders =
+      showSearch && search
+        ? providers.filter(p => p.toLowerCase().includes(search))
+        : providers;
 
-        // Raw data this provider handled: the transformed payload it dispatched
-        // when reported, otherwise the original event it received.
-        const payload =
-          record.sentPayload !== undefined
-            ? record.sentPayload
-            : record.payload;
-        const canExpand = payload !== undefined;
-        const expanded = this.expandedDeliveries.has(record.id);
-        const payloadLabel =
-          record.sentPayload !== undefined
-            ? `Payload dispatched to ${this.escapeHtml(record.provider)}`
-            : 'Original event received (provider reported no transformed payload)';
+    // The remembered provider only applies if this event was delivered to it.
+    const selected =
+      this.selectedDeliveryProvider &&
+      providers.includes(this.selectedDeliveryProvider)
+        ? this.selectedDeliveryProvider
+        : null;
 
-        return `
-          <div class="delivery-item">
-            <div class="delivery-row ${canExpand ? 'delivery-row-clickable' : ''}"
-                 ${canExpand ? `onclick="window.eventTimelinePanel_toggleDelivery('${this.escapeAttr(record.id)}')"` : ''}>
-              <span class="delivery-provider">
-                ${canExpand ? `<span class="delivery-caret">${expanded ? '▾' : '▸'}</span>` : '<span class="delivery-caret-spacer"></span>'}
-                ${this.escapeHtml(record.provider)}
-              </span>
-              <span class="delivery-right">
-                ${note}
-                ${duration ? `<span class="delivery-duration">${duration}</span>` : ''}
-                <span class="delivery-status" style="color:${DELIVERY_STATUS_COLOR[record.status]}">
-                  ${lucide(DELIVERY_STATUS_ICON[record.status], { size: 14 })} ${record.status}
-                </span>
-              </span>
-            </div>
-            ${
-              expanded && canExpand
-                ? `
-              <div class="delivery-payload">
-                <div class="delivery-payload-label">${payloadLabel}</div>
-                <div class="delivery-payload-view">${RawDataHelper.generateRawDataContent(payload)}</div>
-              </div>`
-                : ''
-            }
-          </div>`;
-      })
-      .join('');
+    const shown = selected
+      ? deliveries.filter(d => d.provider === selected)
+      : deliveries.filter(d => visibleProviders.includes(d.provider));
 
-    return `<div class="delivery-list">${rows}</div>`;
+    const subTab = (
+      id: string | null,
+      label: string,
+      count: number
+    ): string => {
+      const isActive = selected === id || (id === null && selected === null);
+      const arg = id === null ? 'null' : `'${this.escapeAttr(id)}'`;
+      return `
+        <button class="delivery-subtab ${isActive ? 'active' : ''}"
+                onclick="window.eventTimelinePanel_setDeliveryProvider(${arg})">
+          ${this.escapeHtml(label)}<span class="delivery-subtab-count">${count}</span>
+        </button>`;
+    };
+
+    const tabs =
+      subTab(null, 'All', deliveries.length) +
+      visibleProviders
+        .map(p =>
+          subTab(p, p, deliveries.filter(d => d.provider === p).length)
+        )
+        .join('');
+
+    const searchBox = showSearch
+      ? `<input class="delivery-subtab-search" type="text"
+                placeholder="Filter providers…"
+                value="${this.escapeAttr(this.deliveryProviderSearch)}"
+                oninput="window.eventTimelinePanel_searchDeliveryProvider(this.value)" />`
+      : '';
+
+    const rows = shown.map(record => this.renderDeliveryRow(record)).join('');
+
+    return `
+      <div class="delivery-subtabs">
+        <div class="delivery-subtab-strip">${tabs}</div>
+        ${searchBox}
+      </div>
+      <div class="delivery-list">${rows}</div>`;
+  }
+
+  /** A single provider's delivery row + its expandable dispatched payload. */
+  private renderDeliveryRow(record: DeliveryRecord): string {
+    const note = record.error
+      ? `<span class="delivery-note delivery-note-error">${this.escapeHtml(record.error)}</span>`
+      : record.detail
+        ? `<span class="delivery-note">${this.escapeHtml(record.detail)}</span>`
+        : '';
+    const duration = this.formatDeliveryDuration(record.durationMs);
+
+    // Raw data this provider handled: the transformed payload it dispatched
+    // when reported, otherwise the original event it received.
+    const payload =
+      record.sentPayload !== undefined ? record.sentPayload : record.payload;
+    const canExpand = payload !== undefined;
+    const expanded = this.expandedDeliveries.has(record.id);
+    const payloadLabel =
+      record.sentPayload !== undefined
+        ? `Payload dispatched to ${this.escapeHtml(record.provider)}`
+        : 'Original event received (provider reported no transformed payload)';
+
+    return `
+      <div class="delivery-item">
+        <div class="delivery-row ${canExpand ? 'delivery-row-clickable' : ''}"
+             ${canExpand ? `onclick="window.eventTimelinePanel_toggleDelivery('${this.escapeAttr(record.id)}')"` : ''}>
+          <span class="delivery-provider">
+            ${canExpand ? `<span class="delivery-caret">${expanded ? '▾' : '▸'}</span>` : '<span class="delivery-caret-spacer"></span>'}
+            ${this.escapeHtml(record.provider)}
+          </span>
+          <span class="delivery-right">
+            ${note}
+            ${duration ? `<span class="delivery-duration">${duration}</span>` : ''}
+            <span class="delivery-status" style="color:${DELIVERY_STATUS_COLOR[record.status]}">
+              ${lucide(DELIVERY_STATUS_ICON[record.status], { size: 14 })} ${record.status}
+            </span>
+          </span>
+        </div>
+        ${
+          expanded && canExpand
+            ? `
+          <div class="delivery-payload">
+            <div class="delivery-payload-label">${payloadLabel}</div>
+            <div class="delivery-payload-view">${RawDataHelper.generateRawDataContent(payload)}</div>
+          </div>`
+            : ''
+        }
+      </div>`;
   }
 
   /** Tabbed detail body for the event modal: Payload / Delivery / Validation. */
@@ -1029,11 +1122,17 @@ export class EventTimelinePanel implements DebugPanel {
 
     const chips = providers
       .map((p: ProviderDebugInfo) => {
-        const icon = !p.enabled
+        const status = !p.enabled
           ? lucide('pause', { size: 13, style: 'color:#9aa0a6' })
           : p.ready
             ? lucide('check-circle', { size: 13, style: 'color:#1f9d55' })
             : lucide('clock', { size: 13, style: 'color:#d6a700' });
+        // Lead with the provider's brand glyph when it has one; the ready/
+        // disabled state stays as a trailing status icon.
+        const brand = this.providerIcon(p.name);
+        const brandIcon = brand
+          ? `<span class="provider-chip-brand">${lucide(brand, { size: 13 })}</span>`
+          : '';
         const state = !p.enabled ? 'disabled' : p.ready ? 'ready' : 'not ready';
         const blocked =
           p.blockedEvents.length > 0
@@ -1046,8 +1145,9 @@ export class EventTimelinePanel implements DebugPanel {
             class="provider-chip${active}"
             title="${this.escapeHtml(hint)}"
             onclick="window.eventTimelinePanel_filterProvider('${this.escapeAttr(p.name)}')">
-            <span class="provider-chip-icon">${icon}</span>
+            ${brandIcon}
             <span class="provider-chip-name">${this.escapeHtml(p.name)}</span>
+            <span class="provider-chip-icon">${status}</span>
           </button>`;
       })
       .join('');
@@ -1391,6 +1491,20 @@ export class EventTimelinePanel implements DebugPanel {
         else this.expandedDeliveries.add(id);
         this.requestRerender();
       };
+      (window as any).eventTimelinePanel_setDeliveryProvider = (
+        provider: string | null
+      ) => {
+        // Toggle: clicking the active provider sub-tab returns to "All".
+        this.selectedDeliveryProvider =
+          this.selectedDeliveryProvider === provider ? null : provider;
+        this.requestRerender();
+      };
+      (window as any).eventTimelinePanel_searchDeliveryProvider = (
+        value: string
+      ) => {
+        this.deliveryProviderSearch = value;
+        this.requestRerender();
+      };
       (window as any).eventTimelinePanel_search = (value: string) => {
         this.searchTerm = value;
         this.requestRerender();
@@ -1576,6 +1690,11 @@ export class EventTimelinePanel implements DebugPanel {
           color: #fff;
         }
         .provider-chip-icon { font-size: 0.9em; }
+        .provider-chip-brand {
+          display: inline-flex;
+          align-items: center;
+          opacity: 0.95;
+        }
         /* ── Filter controls ── */
         .events-search-wrap {
           display: inline-flex;
@@ -1785,15 +1904,29 @@ export class EventTimelinePanel implements DebugPanel {
         }
         .filter-hint { color: rgba(255, 255, 255, 0.45); font-size: 0.8em; }
         .delivery-count { display: inline-flex; align-items: center; gap: 2px; }
-        /* ── Per-row delivery summary ── */
+        /* ── Per-row delivery summary (provider chips) ── */
         .delivery-summary {
           display: inline-flex;
-          gap: 6px;
+          flex-wrap: wrap;
+          gap: 4px;
           margin-left: 8px;
-          font-size: 0.85em;
-          font-family: 'SF Mono', monospace;
           vertical-align: middle;
         }
+        .delivery-chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 3px;
+          padding: 1px 6px;
+          border-radius: 9px;
+          font-size: 0.72em;
+          font-weight: 600;
+          line-height: 1.5;
+          color: var(--chip, #9aa0a6);
+          background: color-mix(in srgb, var(--chip, #9aa0a6) 16%, transparent);
+          border: 1px solid
+            color-mix(in srgb, var(--chip, #9aa0a6) 38%, transparent);
+        }
+        .delivery-chip-name { letter-spacing: 0.02em; }
         /* ── Detail modal tabs ── */
         .detail-tabs {
           display: flex;
@@ -1834,6 +1967,63 @@ export class EventTimelinePanel implements DebugPanel {
         .tab-count-error { background: #e3342f; }
         .tab-count-warning { background: #d6a700; color: #1a1a1a; }
         .detail-tab-body { min-height: 80px; }
+        /* ── Delivery tab: provider sub-tabs ── */
+        .delivery-subtabs {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          margin-bottom: 8px;
+        }
+        .delivery-subtab-strip {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 4px;
+        }
+        .delivery-subtab {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid transparent;
+          border-radius: 6px;
+          color: rgba(255, 255, 255, 0.6);
+          padding: 3px 9px;
+          cursor: pointer;
+          font-size: 0.82em;
+          transition: color 0.15s, background 0.15s, border-color 0.15s;
+        }
+        .delivery-subtab:hover {
+          color: rgba(255, 255, 255, 0.9);
+          background: rgba(255, 255, 255, 0.09);
+        }
+        .delivery-subtab.active {
+          color: #fff;
+          background: rgba(60, 125, 255, 0.18);
+          border-color: rgba(60, 125, 255, 0.6);
+        }
+        .delivery-subtab-count {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 16px;
+          height: 16px;
+          padding: 0 4px;
+          border-radius: 8px;
+          background: rgba(255, 255, 255, 0.12);
+          font-size: 0.85em;
+        }
+        .delivery-subtab-search {
+          flex: 0 0 auto;
+          width: 140px;
+          background: rgba(255, 255, 255, 0.06);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          border-radius: 6px;
+          color: #fff;
+          padding: 3px 8px;
+          font-size: 0.82em;
+        }
+        .delivery-subtab-search::placeholder { color: rgba(255, 255, 255, 0.4); }
         /* ── Delivery tab body ── */
         .delivery-list { display: flex; flex-direction: column; gap: 4px; }
         .delivery-item {

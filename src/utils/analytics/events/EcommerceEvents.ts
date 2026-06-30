@@ -527,6 +527,10 @@ export class EcommerceEvents {
     packageName?: string;
     quantity?: number;
     value?: number;
+    /** Total discount applied to the accepted line(s) (pre-discount − value). */
+    discount?: number;
+    /** Voucher/coupon code applied to the order, when present. */
+    coupon?: string;
     currency?: string;
     upsellNumber?: number;
     item?: any;
@@ -537,6 +541,8 @@ export class EcommerceEvents {
       packageName,
       quantity = 1,
       value = 0,
+      discount,
+      coupon,
       currency = 'USD',
       upsellNumber = 1,
       item,
@@ -563,6 +569,11 @@ export class EcommerceEvents {
     // Per-unit price so that price × quantity reconciles to the line total
     // (`value`). The order API returns line totals, so divide by quantity.
     const perUnitPrice = quantity > 0 ? value / quantity : value;
+    // Per-unit discount from the actual order line (pre-discount − value). GA4
+    // `discount` is the per-unit amount knocked off, so price + discount equals
+    // the original per-unit price.
+    const perUnitDiscount =
+      discount !== undefined && quantity > 0 ? discount / quantity : discount;
 
     // Format the upsell item as a GA4 item
     const upsellItem: EcommerceItem = item
@@ -577,14 +588,25 @@ export class EcommerceEvents {
           price: perUnitPrice,
           quantity,
           currency,
+          ...(perUnitDiscount && perUnitDiscount > 0
+            ? { discount: Math.round(perUnitDiscount * 100) / 100 }
+            : {}),
         };
 
     // formatEcommerceItem derives price/quantity from campaign list data, which
     // ignores the accepted bundle quantity and per-line (discounted) pricing.
-    // Force the accepted quantity and per-unit price so price × quantity === value.
+    // Force the accepted quantity, per-unit price and the real per-unit discount
+    // so price × quantity === value and the discount matches what was charged
+    // (overriding any catalog-derived discount from formatEcommerceItem).
     if (item) {
       upsellItem.quantity = quantity;
       upsellItem.price = perUnitPrice;
+      // The order-line discount is authoritative when present; otherwise keep
+      // the compare-at discount formatEcommerceItem derived from the catalog
+      // retail price (don't wipe it just because there's no order-level voucher).
+      if (perUnitDiscount && perUnitDiscount > 0) {
+        upsellItem.discount = Math.round(perUnitDiscount * 100) / 100;
+      }
     }
 
     // `value` is already the full revenue for the accepted line(s) across all
@@ -601,6 +623,12 @@ export class EcommerceEvents {
       affiliation: 'Upsell',
       items: [upsellItem],
     };
+
+    // Coupon applied to the order, when present (GA4-recommended on purchase
+    // events). Offer-priced upsells carry no code, so this stays absent.
+    if (coupon) {
+      ecommerce.coupon = coupon;
+    }
 
     // Get user properties to match Elevar standard
     const userProperties = EventBuilder.getUserProperties();

@@ -362,6 +362,10 @@ export class AutoEventListener {
         value = parseFloat(packageData.price) * quantity;
       }
 
+      // Coupon: the order response carries no voucher code, so fall back to the
+      // applied cart voucher (mirrors how the purchase event resolves coupon).
+      const coupon = data.coupon ?? useCartStore.getState().vouchers?.[0];
+
       // Get or increment upsell number (track how many upsells have been accepted)
       const upsellNumber = data.upsellNumber ||
         (sessionStorage.getItem(`upsells_${orderId}`) ?
@@ -392,6 +396,8 @@ export class AutoEventListener {
         packageName: data.packageName || packageData?.name || `Package ${packageId}`,
         quantity,
         value: value || 0,
+        discount: data.discount,
+        coupon,
         currency: data.currency || (campaignStore.currency ?? 'USD'),
         upsellNumber,
         item: cartItem

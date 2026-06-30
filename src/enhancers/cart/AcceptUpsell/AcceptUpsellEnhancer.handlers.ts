@@ -114,6 +114,25 @@ async function acceptBundleUpsell(ctx: UpsellHandlerContext): Promise<void> {
         ),
       0
     );
+    // Pre-discount total on the same tax basis; the difference is the discount
+    // the customer received, surfaced as GA4 item `discount`.
+    const totalValueExclDiscounts = addedLines.reduce(
+      (sum: number, line: any) =>
+        sum +
+        parseFloat(
+          (inclusive
+            ? line.price_incl_tax_excl_discounts
+            : line.price_excl_tax_excl_discounts) ??
+            line.price_incl_tax_excl_discounts ??
+            '0'
+        ),
+      0
+    );
+    const totalDiscount = Math.max(0, totalValueExclDiscounts - totalValue);
+    // Coupon applied to the order, if any (read from the order, not the cart).
+    const coupon =
+      (updatedOrder as any).vouchers?.[0]?.code ??
+      (updatedOrder as any).vouchers?.[0];
 
     for (const item of items) {
       ctx.emit('upsell:accepted', {
@@ -121,6 +140,8 @@ async function acceptBundleUpsell(ctx: UpsellHandlerContext): Promise<void> {
         quantity: item.quantity,
         orderId: useOrderStore.getState().refId,
         value: totalValue,
+        discount: totalDiscount,
+        ...(coupon ? { coupon: String(coupon) } : {}),
       });
     }
 
@@ -206,12 +227,30 @@ export async function acceptUpsell(ctx: UpsellHandlerContext): Promise<void> {
         addedLine?.price_incl_tax ??
         '0'
     );
+    // Pre-discount line total on the same tax basis; the difference is the
+    // discount the customer received, surfaced as GA4 item `discount`.
+    const upsellValueExclDiscounts = parseFloat(
+      (inclusive
+        ? addedLine?.price_incl_tax_excl_discounts
+        : addedLine?.price_excl_tax_excl_discounts) ??
+        addedLine?.price_incl_tax_excl_discounts ??
+        '0'
+    );
+    const upsellDiscount = Math.max(0, upsellValueExclDiscounts - upsellValue);
+    // Coupon applied to the order, if any. Read from the order itself (not the
+    // cart) so a main-order promo code isn't mis-attributed to the upsell;
+    // offer-priced upsells carry no code and leave this undefined.
+    const coupon =
+      (updatedOrder as any).vouchers?.[0]?.code ??
+      (updatedOrder as any).vouchers?.[0];
 
     ctx.emit('upsell:accepted', {
       packageId: packageIdToAdd,
       quantity: quantityToAdd,
       orderId: useOrderStore.getState().refId,
       value: upsellValue,
+      discount: upsellDiscount,
+      ...(coupon ? { coupon: String(coupon) } : {}),
     });
 
     const acceptUrl = resolveRedirectUrl(
