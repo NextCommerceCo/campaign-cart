@@ -29,7 +29,15 @@ export type DlEventCategory =
   | 'engagement';
 
 export interface DlEventDefinition {
-  /** Exact dataLayer event name the SDK pushes — matched verbatim by `blockedEvents`. */
+  /**
+   * Exact dataLayer event name the SDK pushes — matched verbatim by
+   * `blockedEvents`. Kept as `string` (not the `DlEventName` union) to avoid a
+   * circular self-reference: `DlEventName` is derived FROM `DL_EVENTS`, which is
+   * `satisfies readonly DlEventDefinition[]`. Validity of each name is instead
+   * enforced at test time — see the emit-site drift scan in
+   * `src/tests/utils/analyticsVocabulary.test.ts`, which fails on a name that no
+   * source site actually emits (catching typos a `string` type cannot).
+   */
   name: string;
   /** Coarse grouping for picker UIs and docs. */
   category: DlEventCategory;

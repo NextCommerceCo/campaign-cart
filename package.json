@@ -28,7 +28,7 @@
     "build:window": "tsc && vite build && copy public\\loader.js dist\\",
     "build:cf:window": "vite build && vite build -c vite.config.legacy.ts && npm run build:config && copy public\\loader.js dist\\",
     "build:config": "node scripts/build-config.js",
-    "analytics:manifest": "UPDATE_ANALYTICS_MANIFEST=1 vitest run src/tests/utils/analyticsVocabulary.test.ts",
+    "analytics:manifest": "UPDATE_ANALYTICS_MANIFEST=1 vitest run src/tests/utils/analyticsVocabulary.test.ts; vitest run src/tests/utils/analyticsVocabulary.test.ts",
     "build:dev": "vite build --mode development --watch",
     "preview": "vite preview",
     "test": "vitest",

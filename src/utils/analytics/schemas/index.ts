@@ -1,5 +1,9 @@
 // Event schema types and definitions for analytics v2
 
+// Canonical dl_* event vocabulary (the full firable superset). `eventSchemas`
+// below defines field-level validation for the subset that carries one.
+export * from './events';
+
 export interface ProductSchema {
   item_id: string;
   item_name: string;
