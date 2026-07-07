@@ -374,6 +374,18 @@ export const nextAnalytics = NextAnalytics.getInstance();
 
 // Export types and utilities
 export * from './types';
+// Canonical dl_* event vocabulary — single source of truth for consumers
+export {
+  DL_EVENTS,
+  DL_EVENT_NAMES,
+  DL_EVENT_NAME_SET,
+  isKnownDlEvent,
+} from './schemas/events';
+export type {
+  DlEventName,
+  DlEventCategory,
+  DlEventDefinition,
+} from './schemas/events';
 export { EventValidator } from './validation/EventValidator';
 export { EcommerceEvents } from './events/EcommerceEvents';
 export { UserEvents } from './events/UserEvents';
