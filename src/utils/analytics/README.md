@@ -119,6 +119,41 @@ Analytics is configured via the main SDK config:
 }
 ```
 
+## Campaign identifiers on every event
+
+For analytics segmentation and cross-system joins (e.g. RudderStack → Mixpanel →
+NEXT order attribution), every event carries these identifiers.
+
+**How to configure:** set the campaign **API key** — everything else derives from
+the campaign data it loads (no per-identifier config). Set it **before** the SDK
+loads, via a `<meta>` tag or `window.nextConfig`:
+
+```html
+<meta name="next-api-key" content="YOUR_CAMPAIGN_API_KEY" />
+```
+```js
+window.nextConfig = { apiKey: 'YOUR_CAMPAIGN_API_KEY' };
+```
+
+If `apiKey` is missing, the SDK logs a console warning at init (visible in debug
+mode) explaining how to set it — and events go out without campaign identifiers.
+
+| Identifier | Source |
+|---|---|
+| `campaign_id` | campaign data `id` (from the API) |
+| `campaign_name` | campaign data |
+| `campaign_currency` | campaign data |
+| `campaign_language` | campaign data |
+| `campaign_api_key` | the configured API key |
+| `campaign_session_id` | `ncsid` cookie set by the nextCampaign script (read automatically) |
+
+Built by `EventBuilder.getCampaignContext()` and stamped centrally in
+`DataLayerManager.enrichEvent`, so **every** event — including those that bypass
+`EventBuilder.createEvent` (page views, upsell, route changes) — carries them for
+**all** providers. On the event they are `snake_case`; the RudderStack adapter
+remaps them to camelCase (`campaignName`, `campaignApiKey`, `campaignCurrency`,
+`campaignLanguage`, `campaignId`, `campaignSessionId`) on every `track`/`page` call.
+
 ## Automatic Tracking
 
 When `mode: 'auto'`, the system automatically tracks:

@@ -50,6 +50,30 @@ export class RudderStackAdapter extends ProviderAdapter {
   }
 
   /**
+   * Forward the campaign_* identifiers stamped on the event by DataLayerManager
+   * (issue #473), remapped to camelCase for the RudderStack/Mixpanel payload.
+   * Empty values omitted.
+   */
+  private buildContextProps(event: DataLayerEvent): Record<string, string> {
+    const map: Record<string, string> = {
+      campaign_name: 'campaignName',
+      campaign_api_key: 'campaignApiKey',
+      campaign_currency: 'campaignCurrency',
+      campaign_language: 'campaignLanguage',
+      campaign_id: 'campaignId',
+      campaign_session_id: 'campaignSessionId',
+    };
+    const out: Record<string, string> = {};
+    for (const [src, dest] of Object.entries(map)) {
+      const value = (event as Record<string, any>)[src];
+      if (value !== undefined && value !== null && value !== '') {
+        out[dest] = String(value);
+      }
+    }
+    return out;
+  }
+
+  /**
    * Check if RudderStack is loaded
    */
   private isRudderStackLoaded(): boolean {
@@ -202,17 +226,12 @@ export class RudderStackAdapter extends ProviderAdapter {
     // store (pageType) and the document title, never a hard-coded 'unknown'.
     const { pageType, pageName } = this.getPageMetadata();
 
-    const campaignData = this.getCampaignData(page);
-
     const properties = {
       path: page.path || window.location.pathname,
       url: page.url || page.page_location || window.location.href,
       title: page.title || document.title,
       referrer: page.referrer || document.referrer,
-      campaignName: campaignData.campaignName,
-      campaignApiKey: campaignData.campaignApiKey,
-      campaignCurrency: campaignData.campaignCurrency,
-      campaignLanguage: campaignData.campaignLanguage,
+      ...this.buildContextProps(event),
     };
 
     const pageTypeCapitalized =
@@ -344,14 +363,12 @@ export class RudderStackAdapter extends ProviderAdapter {
   ): any {
     const data = event.data || event.ecommerce || {};
     const pageMetadata = this.getPageMetadata();
-    const campaignData = this.getCampaignData(data);
 
-    // Base properties
+    // Page context + campaign_* identifiers on every track event.
     const baseProps = {
       pageType: pageMetadata.pageType,
       pageName: pageMetadata.pageName,
-      campaignName: campaignData.campaignName,
-      campaignApiKey: campaignData.campaignApiKey,
+      ...this.buildContextProps(event),
     };
 
     // Stable per-session id (survives the whole funnel) used for the spec's

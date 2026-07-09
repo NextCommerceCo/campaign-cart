@@ -58,6 +58,15 @@ const PROVIDER_FACTORIES: Record<string, ProviderFactory> = {
     config.settings?.endpoint ? new CustomAdapter(config.settings) : null,
 };
 
+/**
+ * Required setting per provider, shown as an actionable warning when the
+ * provider is enabled but the setting is missing (factory returns null).
+ */
+const PROVIDER_REQUIRED_SETTINGS: Record<string, string> = {
+  facebook: 'analytics.providers.facebook.settings.pixelId',
+  custom: 'analytics.providers.custom.settings.endpoint',
+};
+
 export class NextAnalytics {
   private static instance: NextAnalytics;
   private initialized = false;
@@ -159,6 +168,8 @@ export class NextAnalytics {
         return;
       }
 
+      this.warnMissingConfig(config);
+
       // Initialize data layer
       dataLayer.initialize();
 
@@ -212,6 +223,22 @@ export class NextAnalytics {
   }
 
   /**
+   * Warn (once) when config needed for campaign identifiers is missing, telling
+   * the dev how to set it. Without `apiKey` the campaign never loads, so events
+   * go out without campaign_id/name/currency/language. See the analytics README
+   * ("Campaign identifiers on every event").
+   */
+  private warnMissingConfig(config: any): void {
+    if (!config.apiKey) {
+      logger.warn(
+        'No campaign apiKey configured — analytics events will lack campaign ' +
+          'identifiers. Set <meta name="next-api-key" content="..."> or ' +
+          'window.nextConfig.apiKey.'
+      );
+    }
+  }
+
+  /**
    * Initialize analytics providers from configuration.
    *
    * Iterates the {@link PROVIDER_FACTORIES} registry, instantiating every
@@ -229,8 +256,11 @@ export class NextAnalytics {
 
       const adapter = factory(providerConfig, ctx);
       if (!adapter) {
+        const required = PROVIDER_REQUIRED_SETTINGS[key];
         logger.warn(
-          `Provider "${key}" is enabled but its preconditions are not met; skipping`
+          required
+            ? `Provider "${key}" is enabled but ${required} is missing — set it to enable ${key}; skipping.`
+            : `Provider "${key}" is enabled but its preconditions are not met; skipping.`
         );
         continue;
       }

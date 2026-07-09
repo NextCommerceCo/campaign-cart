@@ -365,6 +365,8 @@ export interface EnrichedCartLine {
 
 // Campaign types
 export interface Campaign {
+  /** Internal NEXT campaign id. */
+  id?: number;
   currency: string;
   language: string;
   name: string;

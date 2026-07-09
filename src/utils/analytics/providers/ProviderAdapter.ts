@@ -179,13 +179,20 @@ export abstract class ProviderAdapter implements AnalyticsProvider {
     // payload before failing ({@link DispatchError}), the attempted payload too,
     // so the overlay can show what it *would* have sent.
     const reject = (error: unknown): void => {
-      const attempted =
-        error instanceof DispatchError ? error.attemptedPayload : undefined;
+      const isDispatch = error instanceof DispatchError;
+      const attempted = isDispatch ? error.attemptedPayload : undefined;
+      const message = error instanceof Error ? error.message : String(error);
       analyticsDebug.update(recordId, 'failed', {
-        error: String(error instanceof Error ? error.message : error),
+        error: message,
         ...(attempted !== undefined ? { sentPayload: attempted } : {}),
       });
-      this.logger.error(`Failed to send event "${event.event}"`, error);
+      // DispatchError is an expected delivery outcome (e.g. pixel never loaded):
+      // warn, not error. Reserve error() for unexpected throws.
+      if (isDispatch) {
+        this.logger.warn(`Event "${event.event}" not delivered: ${message}`);
+      } else {
+        this.logger.error(`Failed to send event "${event.event}"`, error);
+      }
     };
 
     try {

@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.30] — 2026-07-09 — Campaign Identifiers on Every Event
+
+### New
+
+- **Every analytics event now carries the campaign identifiers** — `campaign_id`, `campaign_name`, `campaign_currency`, `campaign_language`, `campaign_api_key`, and `campaign_session_id` (from the nextCampaign `ncsid` cookie) are attached to every event across all providers, so analytics data can be segmented by campaign and joined back to Campaigns App sessions and order attribution. RudderStack receives these in camelCase (`campaignName`, `campaignId`, `campaignSessionId`, …).
+
+- **Setup warnings that tell you how to fix them** — if the campaign API key is missing, a console warning explains how to set it (`<meta name="next-api-key">` or `window.nextConfig.apiKey`). If a provider is enabled but its required setting is missing (e.g. Facebook without a `pixelId`), the warning names the exact setting to add.
+
+### Improved
+
+- **Failed sends are reported honestly** — when a provider's dispatch call throws, the event is marked `failed` (not a misleading `sent`) in the debug overlay, consistently across RudderStack, Facebook, and NextCampaign.
+
+---
+
 ## [0.4.29] — 2026-07-09 — RudderStack Tracking, Done Right
 
 The RudderStack integration now sends complete, correct data that matches the [RudderStack Ecommerce Events spec](https://www.rudderstack.com/docs/event-spec/ecommerce-events-spec/).

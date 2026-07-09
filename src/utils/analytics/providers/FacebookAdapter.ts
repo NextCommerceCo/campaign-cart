@@ -181,7 +181,11 @@ export class FacebookAdapter extends ProviderAdapter {
         }
       }
     } catch (error) {
-      this.debug('Error sending event to Facebook:', error);
+      // Re-throw so the base records `failed`, not a misleading `sent`.
+      throw new DispatchError(
+        `Facebook dispatch failed: ${error instanceof Error ? error.message : String(error)}`,
+        { method: 'fbq', event: fbEventName, parameters }
+      );
     }
 
     // Report the exact shape dispatched to fbq for the debug overlay.

@@ -52,6 +52,7 @@ export declare class EventBuilder {
     private static generateEventId;
     static getUserProperties(): UserProperties;
     static getEventContext(): EventContext;
+    static getCampaignContext(): Record<string, string>;
     private static getEventMetadata;
     static getSessionId(): string;
     private static getNextSequenceNumber;

@@ -186,6 +186,57 @@ describe('RudderStackAdapter mapping', () => {
     expect(payment.payment_method).toBe('card');
   });
 
+  it('forwards campaign_* identifiers as camelCase onto every call', () => {
+    // DataLayerManager stamps these snake_case on the event; the RudderStack
+    // adapter remaps them to camelCase in the payload.
+    const eventContext = {
+      campaign_name: 'Summer Sale',
+      campaign_api_key: 'key-123',
+      campaign_currency: 'USD',
+      campaign_language: 'en',
+      campaign_id: '42',
+      campaign_session_id: 'ncsid-abc',
+    };
+    const expected = {
+      campaignName: 'Summer Sale',
+      campaignApiKey: 'key-123',
+      campaignCurrency: 'USD',
+      campaignLanguage: 'en',
+      campaignId: '42',
+      campaignSessionId: 'ncsid-abc',
+    };
+
+    adapter.sendEvent({
+      event: 'dl_add_to_cart',
+      ecommerce: { currency: 'USD', value: 27, items: [ga4Item] },
+      ...eventContext,
+    } as DataLayerEvent);
+
+    const track = propsFor('Product Added');
+    expect(track).toMatchObject(expected);
+
+    // Also present on the page-view page() call.
+    const page = (window as any).rudderanalytics.page as ReturnType<typeof vi.fn>;
+    adapter.sendEvent({
+      event: 'dl_page_view',
+      page: { title: 'T', url: 'https://x/', path: '/', referrer: '' },
+      ...eventContext,
+    } as DataLayerEvent);
+    expect(page.mock.calls[0]?.[2]).toMatchObject(expected);
+  });
+
+  it('omits identifiers when the event has none', () => {
+    adapter.sendEvent({
+      event: 'dl_add_to_cart',
+      ecommerce: { currency: 'USD', value: 27, items: [ga4Item] },
+    } as DataLayerEvent);
+
+    const track = propsFor('Product Added');
+    expect(track.campaignSessionId).toBeUndefined();
+    expect(track.campaignId).toBeUndefined();
+    expect(track.campaignName).toBeUndefined();
+  });
+
   it('populates Cart Viewed products from the ecommerce block (dl_cart_updated)', () => {
     // dl_cart_updated now carries a full ecommerce block (createCartUpdatedEvent),
     // so Cart Viewed must have line items — not the previous empty products [].

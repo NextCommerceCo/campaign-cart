@@ -109,7 +109,11 @@ export class NextCampaignAdapter extends ProviderAdapter {
         );
       }
     } catch (error) {
-      this.logger.error('Error sending event to NextCampaign:', error);
+      // Re-throw so the base records `failed`, not a misleading `sent`.
+      throw new DispatchError(
+        `NextCampaign dispatch failed: ${error instanceof Error ? error.message : String(error)}`,
+        mappedEvent
+      );
     }
 
     // Report the mapped {name, data} dispatched to NextCampaign for the overlay.
