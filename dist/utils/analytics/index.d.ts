@@ -33,6 +33,8 @@ export declare class NextAnalytics {
 }
 export declare const nextAnalytics: NextAnalytics;
 export * from './types';
+export { DL_EVENTS, DL_EVENT_NAMES, DL_EVENT_NAME_SET, isKnownDlEvent, } from './schemas/events';
+export type { DlEventName, DlEventCategory, DlEventDefinition, } from './schemas/events';
 export { EventValidator } from './validation/EventValidator';
 export { EcommerceEvents } from './events/EcommerceEvents';
 export { UserEvents } from './events/UserEvents';

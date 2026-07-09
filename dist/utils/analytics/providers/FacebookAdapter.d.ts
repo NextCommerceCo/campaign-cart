@@ -18,7 +18,7 @@ export declare class FacebookAdapter extends ProviderAdapter {
     private isFbqLoaded;
     protected isReady(): boolean;
     protected getDebugDetails(): Record<string, string | number | boolean>;
-    sendEvent(event: DataLayerEvent): unknown;
+    sendEvent(event: DataLayerEvent): unknown | Promise<unknown>;
     private waitForFbq;
     private sendEventInternal;
     private mapEventName;

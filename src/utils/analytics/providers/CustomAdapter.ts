@@ -1,4 +1,4 @@
-import { ProviderAdapter } from './ProviderAdapter';
+import { ProviderAdapter, notSupported } from './ProviderAdapter';
 import { DataLayerEvent } from '../types';
 
 interface CustomAdapterConfig {
@@ -18,23 +18,24 @@ export class CustomAdapter extends ProviderAdapter {
   private config: Required<CustomAdapterConfig>;
   private eventQueue: DataLayerEvent[] = [];
   private batchTimer: number | null = null;
-  private retryQueue: Map<string, { event: DataLayerEvent; attempts: number }> = new Map();
+  private retryQueue: Map<string, { event: DataLayerEvent; attempts: number }> =
+    new Map();
 
   constructor(config: CustomAdapterConfig = {}) {
     super('Custom');
-    
+
     // Set default configuration
     this.config = {
       endpoint: config.endpoint || '',
       headers: {
         'Content-Type': 'application/json',
-        ...config.headers
+        ...config.headers,
       },
       batchSize: config.batchSize || 10,
       batchIntervalMs: config.batchIntervalMs || 5000,
       maxRetries: config.maxRetries || 3,
       retryDelayMs: config.retryDelayMs || 1000,
-      transformFunction: config.transformFunction || ((event) => event)
+      transformFunction: config.transformFunction || (event => event),
     };
   }
 
@@ -43,7 +44,7 @@ export class CustomAdapter extends ProviderAdapter {
    */
   updateConfig(config: Partial<CustomAdapterConfig>): void {
     this.config = { ...this.config, ...config };
-    
+
     // Update headers separately to merge them
     if (config.headers) {
       this.config.headers = { ...this.config.headers, ...config.headers };
@@ -54,7 +55,10 @@ export class CustomAdapter extends ProviderAdapter {
     return Boolean(this.config.endpoint);
   }
 
-  protected override getDebugDetails(): Record<string, string | number | boolean> {
+  protected override getDebugDetails(): Record<
+    string,
+    string | number | boolean
+  > {
     return {
       endpoint: this.config.endpoint || '(none)',
       queued: this.eventQueue.length,
@@ -63,12 +67,21 @@ export class CustomAdapter extends ProviderAdapter {
   }
 
   /**
-   * Send event to custom endpoint
+   * Send event to custom endpoint.
+   *
+   * Events are batched, so the actual HTTP POST happens later; the returned
+   * value is this event's transformed payload — the exact per-event shape that
+   * gets wrapped into the batch body — so the debug overlay can show what the
+   * Custom endpoint will receive for it.
    */
-  sendEvent(event: DataLayerEvent): void {
-    if (!this.enabled || !this.config.endpoint) {
-      this.debug('Custom adapter disabled or no endpoint configured');
-      return;
+  sendEvent(event: DataLayerEvent): unknown {
+    if (!this.enabled) {
+      this.debug('Custom adapter disabled');
+      return undefined;
+    }
+    if (!this.config.endpoint) {
+      // Nothing is dispatched without a target — record as skipped, not sent.
+      return notSupported('no endpoint configured');
     }
 
     // Add event to queue
@@ -82,6 +95,9 @@ export class CustomAdapter extends ProviderAdapter {
       // Schedule batch send if not already scheduled
       this.scheduleBatch();
     }
+
+    // The transformed shape this event contributes to the batch POST body.
+    return this.config.transformFunction(event);
   }
 
   /**
@@ -109,7 +125,7 @@ export class CustomAdapter extends ProviderAdapter {
 
     // Get events to send
     const eventsToSend = this.eventQueue.splice(0, this.config.batchSize);
-    
+
     if (eventsToSend.length === 0) {
       return;
     }
@@ -118,7 +134,7 @@ export class CustomAdapter extends ProviderAdapter {
 
     try {
       // Transform events
-      const transformedEvents = eventsToSend.map(event => 
+      const transformedEvents = eventsToSend.map(event =>
         this.config.transformFunction(event)
       );
 
@@ -128,13 +144,13 @@ export class CustomAdapter extends ProviderAdapter {
         batch_info: {
           size: transformedEvents.length,
           timestamp: new Date().toISOString(),
-          source: 'next-campaign-cart'
-        }
+          source: 'next-campaign-cart',
+        },
       };
 
       // Send request
       const response = await this.sendRequest(body);
-      
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
@@ -142,7 +158,7 @@ export class CustomAdapter extends ProviderAdapter {
       this.debug(`Batch sent successfully`);
     } catch (error) {
       this.logger.error('Error sending batch to custom endpoint:', error);
-      
+
       // Add events to retry queue
       eventsToSend.forEach(event => {
         this.addToRetryQueue(event);
@@ -163,7 +179,7 @@ export class CustomAdapter extends ProviderAdapter {
       const response = await fetch(this.config.endpoint, {
         method: 'POST',
         headers: this.config.headers,
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
       });
 
       return response;
@@ -182,7 +198,7 @@ export class CustomAdapter extends ProviderAdapter {
    */
   private addToRetryQueue(event: DataLayerEvent): void {
     const retryInfo = event.id ? this.retryQueue.get(event.id) : undefined;
-    
+
     if (!retryInfo) {
       if (event.id) {
         this.retryQueue.set(event.id, { event, attempts: 1 });
@@ -198,7 +214,10 @@ export class CustomAdapter extends ProviderAdapter {
       if (event.id) {
         this.retryQueue.delete(event.id);
       }
-      this.logger.error(`Failed to send event after ${this.config.maxRetries} attempts:`, event);
+      this.logger.error(
+        `Failed to send event after ${this.config.maxRetries} attempts:`,
+        event
+      );
     }
   }
 
@@ -210,7 +229,7 @@ export class CustomAdapter extends ProviderAdapter {
     if (!retryInfo) return;
 
     const delay = this.config.retryDelayMs * retryInfo.attempts;
-    
+
     setTimeout(() => {
       const info = this.retryQueue.get(eventId);
       if (info) {
@@ -232,7 +251,7 @@ export class CustomAdapter extends ProviderAdapter {
    */
   async flush(): Promise<void> {
     this.debug('Flushing all queued events');
-    
+
     // Cancel scheduled batch
     if (this.batchTimer) {
       clearTimeout(this.batchTimer as unknown as NodeJS.Timeout);
@@ -265,7 +284,7 @@ export class CustomAdapter extends ProviderAdapter {
   clearQueue(): void {
     this.eventQueue = [];
     this.retryQueue.clear();
-    
+
     if (this.batchTimer) {
       clearTimeout(this.batchTimer as unknown as NodeJS.Timeout);
       this.batchTimer = null;

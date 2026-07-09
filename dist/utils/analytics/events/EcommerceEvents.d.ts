@@ -12,6 +12,7 @@ export declare class EcommerceEvents {
     static createPurchaseEvent(orderData: any): DataLayerEvent;
     static createViewSearchResultsEvent(items: (CartItem | EnrichedCartLine | any)[], searchTerm?: string): DataLayerEvent;
     static createViewCartEvent(): DataLayerEvent;
+    static createCartUpdatedEvent(): DataLayerEvent;
     static createAddShippingInfoEvent(shippingTier?: string): DataLayerEvent;
     static createAddPaymentInfoEvent(paymentType?: string): DataLayerEvent;
     static createAcceptedUpsellEvent(data: {

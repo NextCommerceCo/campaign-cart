@@ -18,7 +18,7 @@ export declare class CustomAdapter extends ProviderAdapter {
     updateConfig(config: Partial<CustomAdapterConfig>): void;
     protected isReady(): boolean;
     protected getDebugDetails(): Record<string, string | number | boolean>;
-    sendEvent(event: DataLayerEvent): void;
+    sendEvent(event: DataLayerEvent): unknown;
     private scheduleBatch;
     private sendBatch;
     private sendRequest;

@@ -28,11 +28,12 @@ import {
 import { lucide, type IconName } from '../icons';
 
 /** Which detail tab is shown in the event modal. */
-type DetailTab = 'payload' | 'delivery' | 'validation';
+type DetailTab = 'flow' | 'validation';
 
 const DELIVERY_STATUS_ICON: Record<DeliveryStatus, IconName> = {
   sent: 'check-circle',
   blocked: 'ban',
+  skipped: 'minus-circle',
   failed: 'x-circle',
   pending: 'clock',
 };
@@ -40,9 +41,18 @@ const DELIVERY_STATUS_ICON: Record<DeliveryStatus, IconName> = {
 const DELIVERY_STATUS_COLOR: Record<DeliveryStatus, string> = {
   sent: '#1f9d55',
   blocked: '#9aa0a6',
+  skipped: '#6b7280',
   failed: '#e3342f',
   pending: '#d6a700',
 };
+
+// Flow-graph geometry for the event modal: fixed provider-node height/gap and
+// the connector-wire column width, all in px. The SVG connectors are drawn from
+// these numbers, so they must stay in sync with the .flow-node / .flow-col-wire
+// CSS further down.
+const FLOW_NODE_H = 42;
+const FLOW_NODE_GAP = 8;
+const FLOW_WIRE_W = 44;
 
 interface TimelineEvent {
   id: string;
@@ -156,13 +166,13 @@ export class EventTimelinePanel implements DebugPanel {
   private saveTimeout: NodeJS.Timeout | null = null;
   private selectedEventId: string | null = null;
   /** Active tab in the event detail modal. */
-  private selectedDetailTab: DetailTab = 'payload';
-  /** Delivery-record ids whose per-provider payload is expanded in the modal. */
-  private expandedDeliveries = new Set<string>();
-  /** Active provider sub-tab in the modal's Delivery tab. null = "All". */
-  private selectedDeliveryProvider: string | null = null;
-  /** Provider-name filter for the Delivery tab sub-tabs (many-provider case). */
-  private deliveryProviderSearch = '';
+  private selectedDetailTab: DetailTab = 'flow';
+  /**
+   * Selected node in the Flow tab's graph. `null` = the source ("Original
+   * event") node; otherwise a delivery-record id (one provider node). Drives
+   * which payload the detail panel below the graph shows.
+   */
+  private selectedFlowNode: string | null = null;
 
   // ── Timeline filters (transient — reset on reload) ──
   /** Case-insensitive substring match on event name / source. */
@@ -932,9 +942,9 @@ export class EventTimelinePanel implements DebugPanel {
   }
 
   /**
-   * Brand icon for a provider, when one exists (GTM → Google, Facebook → its
-   * logo). Returns null for providers without a brand glyph (e.g. RudderStack),
-   * so callers fall back to a generic/status icon.
+   * Brand icon for a provider, when one exists (GTM, Facebook, RudderStack,
+   * NextCampaign). Returns null for providers without a brand glyph (e.g.
+   * Custom), so callers fall back to a generic/status icon.
    */
   private providerIcon(name: string): IconName | null {
     const map: Record<string, IconName> = {
@@ -942,140 +952,279 @@ export class EventTimelinePanel implements DebugPanel {
       NextCampaign: 'next',
       GTM: 'gtm',
       Facebook: 'facebook',
+      RudderStack: 'rudderstack',
     };
     return map[name] ?? null;
   }
 
-  /** Per-provider delivery breakdown for the modal's Delivery tab. */
-  private renderDeliveryDetail(event: TimelineEvent): string {
+  /**
+   * The Flow tab: a node graph of the event. The source ("Original event") node
+   * on the left fans out to one node per provider that handled it; the panel
+   * below shows the selected node's payload — the original event for the source
+   * node, the transformed payload each provider actually dispatched otherwise.
+   */
+  private renderFlowDetail(event: TimelineEvent): string {
     const deliveries = this.getDeliveriesForEvent(event);
+
+    // No provider deliveries: still show the source node + original event, plus
+    // why nothing fanned out.
     if (deliveries.length === 0) {
       return `
-        <div class="delivery-empty">
-          No provider deliveries recorded for this event.
-          ${
-            this.getEventId(event)
-              ? 'Providers may have been disabled, or this event is not dispatched to the provider layer.'
-              : 'This event has no <code>event_id</code>, so it cannot be matched to a provider delivery.'
-          }
+        <div class="flow">
+          <div class="flow-graph flow-graph-solo">
+            ${this.renderFlowSourceNode(event, [], true)}
+          </div>
+          <div class="flow-detail">
+            <div class="delivery-empty">
+              No provider deliveries recorded for this event.
+              ${
+                this.getEventId(event)
+                  ? 'Providers may have been disabled, or this event is not dispatched to the provider layer.'
+                  : 'This event has no <code>event_id</code>, so it cannot be matched to a provider delivery.'
+              }
+            </div>
+            <div class="flow-detail-view">${RawDataHelper.generateRawDataContent(event.data)}</div>
+          </div>
         </div>`;
     }
 
-    // Provider sub-tabs derived from this event's own deliveries. Selecting one
-    // narrows the list to that provider's record + dispatched payload.
-    const providers = Array.from(new Set(deliveries.map(d => d.provider)));
-    const search = this.deliveryProviderSearch.trim().toLowerCase();
-    const showSearch = providers.length > 4;
-    const visibleProviders =
-      showSearch && search
-        ? providers.filter(p => p.toLowerCase().includes(search))
-        : providers;
+    // The remembered node only applies if it belongs to this event; otherwise
+    // fall back to the source node.
+    const selected = this.selectedFlowNode
+      ? (deliveries.find(d => d.id === this.selectedFlowNode) ?? null)
+      : null;
 
-    // The remembered provider only applies if this event was delivered to it.
-    const selected =
-      this.selectedDeliveryProvider &&
-      providers.includes(this.selectedDeliveryProvider)
-        ? this.selectedDeliveryProvider
-        : null;
+    const providerNodes = deliveries
+      .map(d => this.renderFlowProviderNode(d, selected?.id === d.id))
+      .join('');
 
-    const shown = selected
-      ? deliveries.filter(d => d.provider === selected)
-      : deliveries.filter(d => visibleProviders.includes(d.provider));
-
-    const subTab = (
-      id: string | null,
-      label: string,
-      count: number
-    ): string => {
-      const isActive = selected === id || (id === null && selected === null);
-      const arg = id === null ? 'null' : `'${this.escapeAttr(id)}'`;
-      return `
-        <button class="delivery-subtab ${isActive ? 'active' : ''}"
-                onclick="window.eventTimelinePanel_setDeliveryProvider(${arg})">
-          ${this.escapeHtml(label)}<span class="delivery-subtab-count">${count}</span>
-        </button>`;
-    };
-
-    const tabs =
-      subTab(null, 'All', deliveries.length) +
-      visibleProviders
-        .map(p =>
-          subTab(p, p, deliveries.filter(d => d.provider === p).length)
-        )
-        .join('');
-
-    const searchBox = showSearch
-      ? `<input class="delivery-subtab-search" type="text"
-                placeholder="Filter providers…"
-                value="${this.escapeAttr(this.deliveryProviderSearch)}"
-                oninput="window.eventTimelinePanel_searchDeliveryProvider(this.value)" />`
-      : '';
-
-    const rows = shown.map(record => this.renderDeliveryRow(record)).join('');
+    const detail = selected
+      ? this.renderFlowProviderPanel(selected)
+      : this.renderFlowSourcePanel(event, deliveries.length);
 
     return `
-      <div class="delivery-subtabs">
-        <div class="delivery-subtab-strip">${tabs}</div>
-        ${searchBox}
-      </div>
-      <div class="delivery-list">${rows}</div>`;
-  }
-
-  /** A single provider's delivery row + its expandable dispatched payload. */
-  private renderDeliveryRow(record: DeliveryRecord): string {
-    const note = record.error
-      ? `<span class="delivery-note delivery-note-error">${this.escapeHtml(record.error)}</span>`
-      : record.detail
-        ? `<span class="delivery-note">${this.escapeHtml(record.detail)}</span>`
-        : '';
-    const duration = this.formatDeliveryDuration(record.durationMs);
-
-    // Raw data this provider handled: the transformed payload it dispatched
-    // when reported, otherwise the original event it received.
-    const payload =
-      record.sentPayload !== undefined ? record.sentPayload : record.payload;
-    const canExpand = payload !== undefined;
-    const expanded = this.expandedDeliveries.has(record.id);
-    const payloadLabel =
-      record.sentPayload !== undefined
-        ? `Payload dispatched to ${this.escapeHtml(record.provider)}`
-        : 'Original event received (provider reported no transformed payload)';
-
-    return `
-      <div class="delivery-item">
-        <div class="delivery-row ${canExpand ? 'delivery-row-clickable' : ''}"
-             ${canExpand ? `onclick="window.eventTimelinePanel_toggleDelivery('${this.escapeAttr(record.id)}')"` : ''}>
-          <span class="delivery-provider">
-            ${canExpand ? `<span class="delivery-caret">${expanded ? '▾' : '▸'}</span>` : '<span class="delivery-caret-spacer"></span>'}
-            ${this.escapeHtml(record.provider)}
-          </span>
-          <span class="delivery-right">
-            ${note}
-            ${duration ? `<span class="delivery-duration">${duration}</span>` : ''}
-            <span class="delivery-status" style="color:${DELIVERY_STATUS_COLOR[record.status]}">
-              ${lucide(DELIVERY_STATUS_ICON[record.status], { size: 14 })} ${record.status}
-            </span>
-          </span>
+      <div class="flow">
+        <div class="flow-graph">
+          <div class="flow-col flow-col-source">
+            ${this.renderFlowSourceNode(event, deliveries, selected === null)}
+          </div>
+          <div class="flow-col flow-col-wire">
+            ${this.renderFlowWire(deliveries, selected?.id ?? null)}
+          </div>
+          <div class="flow-col flow-col-providers">
+            ${providerNodes}
+          </div>
         </div>
-        ${
-          expanded && canExpand
-            ? `
-          <div class="delivery-payload">
-            <div class="delivery-payload-label">${payloadLabel}</div>
-            <div class="delivery-payload-view">${RawDataHelper.generateRawDataContent(payload)}</div>
-          </div>`
-            : ''
-        }
+        <div class="flow-detail">${detail}</div>
       </div>`;
   }
 
-  /** Tabbed detail body for the event modal: Payload / Delivery / Validation. */
+  /**
+   * The source node — the original event every provider branches from. Shows a
+   * per-status delivery summary (e.g. "3 sent · 1 skipped") so you can gauge the
+   * fan-out without clicking each provider.
+   */
+  private renderFlowSourceNode(
+    event: TimelineEvent,
+    deliveries: DeliveryRecord[],
+    active: boolean
+  ): string {
+    const count = deliveries.length;
+    const sub =
+      count > 0 ? `${count} provider${count === 1 ? '' : 's'}` : 'no providers';
+
+    // One chip per status present, in a stable order, tinted by status colour.
+    const order: DeliveryStatus[] = [
+      'sent',
+      'skipped',
+      'blocked',
+      'failed',
+      'pending',
+    ];
+    const summary = order
+      .map(status => ({
+        status,
+        n: deliveries.filter(d => d.status === status).length,
+      }))
+      .filter(({ n }) => n > 0)
+      .map(
+        ({ status, n }) =>
+          `<span class="flow-summary-item">
+             <span class="flow-summary-dot" style="background:${DELIVERY_STATUS_COLOR[status]}"></span>${n} ${status}
+           </span>`
+      )
+      .join('');
+
+    return `
+      <button class="flow-node flow-node-source ${active ? 'active' : ''}"
+              onclick="window.eventTimelinePanel_selectFlowNode(null)">
+        <span class="flow-node-kind">Original event</span>
+        <span class="flow-node-name">${this.escapeHtml(event.name)}</span>
+        <span class="flow-node-sub">${sub}</span>
+        ${summary ? `<span class="flow-summary">${summary}</span>` : ''}
+      </button>`;
+  }
+
+  /**
+   * One provider node as a single table-like row: brand + name on the left,
+   * status + duration right-aligned. Tinted by status, clickable for its payload.
+   */
+  private renderFlowProviderNode(
+    record: DeliveryRecord,
+    active: boolean
+  ): string {
+    const color = DELIVERY_STATUS_COLOR[record.status];
+    const brand = this.providerIcon(record.provider);
+    const glyph = brand ? `${lucide(brand, { size: 14 })} ` : '';
+    const duration = this.formatDeliveryDuration(record.durationMs);
+    return `
+      <button class="flow-node flow-node-provider ${active ? 'active' : ''}"
+              style="--accent:${color}"
+              onclick="window.eventTimelinePanel_selectFlowNode('${this.escapeAttr(record.id)}')">
+        <span class="flow-node-dot" style="background:${color}"></span>
+        <span class="flow-node-name">${glyph}${this.escapeHtml(record.provider)}</span>
+        <span class="flow-node-status" style="color:${color}">
+          ${lucide(DELIVERY_STATUS_ICON[record.status], { size: 12 })} ${record.status}${duration ? ` · ${duration}` : ''}
+        </span>
+      </button>`;
+  }
+
+  /**
+   * SVG connectors from the source node to each provider node. Geometry is
+   * arithmetic: provider node `i` sits at `i * (H + GAP) + H/2`, and the source
+   * connects to the vertical centre of the whole column. The selected branch is
+   * drawn thicker and in its status colour; branches that never carried the
+   * event (blocked/failed) are dashed so it's clear it did not flow there.
+   */
+  private renderFlowWire(
+    deliveries: DeliveryRecord[],
+    selectedId: string | null
+  ): string {
+    const n = deliveries.length;
+    const colH = n * FLOW_NODE_H + (n - 1) * FLOW_NODE_GAP;
+    const sourceY = colH / 2;
+    const w = FLOW_WIRE_W;
+    const cx = w / 2;
+    const paths = deliveries
+      .map((d, i) => {
+        const y = i * (FLOW_NODE_H + FLOW_NODE_GAP) + FLOW_NODE_H / 2;
+        const active = selectedId === d.id;
+        const stroke = active
+          ? DELIVERY_STATUS_COLOR[d.status]
+          : 'rgba(255,255,255,0.18)';
+        const didNotFlow =
+          d.status === 'blocked' ||
+          d.status === 'skipped' ||
+          d.status === 'failed';
+        const dash = didNotFlow ? ' stroke-dasharray="4 3"' : '';
+        return `<path d="M0,${sourceY} C${cx},${sourceY} ${cx},${y} ${w},${y}" fill="none" stroke="${stroke}" stroke-width="${active ? 2 : 1.5}"${dash} />`;
+      })
+      .join('');
+    return `<svg class="flow-wire" width="${w}" height="${colH}" viewBox="0 0 ${w} ${colH}" preserveAspectRatio="none">${paths}</svg>`;
+  }
+
+  /** Detail panel for the source node: the original event payload. */
+  private renderFlowSourcePanel(
+    event: TimelineEvent,
+    providerCount: number
+  ): string {
+    return `
+      <div class="flow-detail-head">
+        <span class="flow-detail-title">Original event · ${this.escapeHtml(event.name)}</span>
+        <span class="flow-detail-meta">Dispatched to ${providerCount} provider${providerCount === 1 ? '' : 's'}</span>
+      </div>
+      <div class="flow-detail-view">${RawDataHelper.generateRawDataContent(event.data)}</div>`;
+  }
+
+  /**
+   * Detail panel for a provider node, framed by delivery outcome:
+   * - `sent` → the transformed payload the provider dispatched.
+   * - `blocked` / `skipped` → nothing was sent, so no provider payload exists;
+   *   show only the reason (the original event lives on the source node).
+   * - `failed` → the error plus whatever it attempted.
+   */
+  private renderFlowProviderPanel(record: DeliveryRecord): string {
+    const provider = this.escapeHtml(record.provider);
+    const dispatched = record.sentPayload !== undefined;
+    // Blocked/skipped mean the provider dispatched nothing — there is no
+    // provider-side payload to inspect.
+    const nothingSent =
+      record.status === 'blocked' || record.status === 'skipped';
+
+    const noteHtml = (text: string): string =>
+      `<div class="flow-detail-note">${text}</div>`;
+    let title: string;
+    let note = '';
+    switch (record.status) {
+      case 'blocked':
+        title = `Blocked — nothing sent to ${provider}`;
+        note = noteHtml(this.escapeHtml(record.detail || 'blocked by config'));
+        break;
+      case 'skipped':
+        title = `Skipped — nothing sent to ${provider}`;
+        note = noteHtml(
+          this.escapeHtml(record.detail || 'not handled by this provider')
+        );
+        break;
+      case 'failed':
+        title = `Failed — ${provider} errored`;
+        if (dispatched)
+          note = noteHtml(
+            'Prepared payload below — dispatch failed, so it was not confirmed delivered.'
+          );
+        break;
+      case 'pending':
+        title = `Sending to ${provider}…`;
+        break;
+      default:
+        title = `Sent to ${provider}`;
+        if (!dispatched)
+          note = noteHtml('No payload reported — showing original event.');
+    }
+
+    const meta = [
+      `<span class="flow-detail-status" style="color:${DELIVERY_STATUS_COLOR[record.status]}">${lucide(DELIVERY_STATUS_ICON[record.status], { size: 12 })} ${record.status}</span>`,
+      record.durationMs !== undefined
+        ? `<span>${this.formatDeliveryDuration(record.durationMs)}</span>`
+        : '',
+    ]
+      .filter(Boolean)
+      .join('');
+
+    const error = record.error
+      ? `<div class="flow-detail-error">${this.escapeHtml(record.error)}</div>`
+      : '';
+
+    // No provider payload for nothing-sent outcomes — point at the source node
+    // instead of repeating the original event.
+    let body: string;
+    if (nothingSent) {
+      body = `<div class="delivery-empty">Nothing was dispatched. Select the <strong>Original event</strong> node to inspect the payload.</div>`;
+    } else {
+      const payload = dispatched ? record.sentPayload : record.payload;
+      body =
+        payload !== undefined
+          ? `<div class="flow-detail-view">${RawDataHelper.generateRawDataContent(payload)}</div>`
+          : `<div class="delivery-empty">This provider reported no payload for this event.</div>`;
+    }
+
+    return `
+      <div class="flow-detail-head">
+        <span class="flow-detail-title">${title}</span>
+        <span class="flow-detail-meta">${meta}</span>
+      </div>
+      ${note}
+      ${error}
+      ${body}`;
+  }
+
+  /** Tabbed detail body for the event modal: Flow / Validation. */
   private renderDetailTabs(event: TimelineEvent): string {
     const deliveryCount = this.getDeliveriesForEvent(event).length;
     const issues = this.getEventIssues(event);
     const issueLevel = worstLevel(issues);
 
-    const deliveryBadge =
+    const flowBadge =
       deliveryCount > 0
         ? `<span class="tab-count">${deliveryCount}</span>`
         : '';
@@ -1090,21 +1239,15 @@ export class EventTimelinePanel implements DebugPanel {
         ${label}${badge}
       </button>`;
 
-    let body = '';
-    if (this.selectedDetailTab === 'delivery') {
-      body = this.renderDeliveryDetail(event);
-    } else if (this.selectedDetailTab === 'validation') {
-      body =
-        this.renderValidationSection(event) ||
-        `<div class="delivery-empty">${this.noValidationReason(event)}</div>`;
-    } else {
-      body = `<div class="event-modal-data-content">${RawDataHelper.generateRawDataContent(event.data)}</div>`;
-    }
+    const body =
+      this.selectedDetailTab === 'validation'
+        ? this.renderValidationSection(event) ||
+          `<div class="delivery-empty">${this.noValidationReason(event)}</div>`
+        : this.renderFlowDetail(event);
 
     return `
       <div class="detail-tabs">
-        ${tab('payload', 'Payload')}
-        ${tab('delivery', 'Delivery', deliveryBadge)}
+        ${tab('flow', 'Flow', flowBadge)}
         ${tab('validation', 'Validation', validationBadge)}
       </div>
       <div class="detail-tab-body detail-tab-body-${this.selectedDetailTab}">${body}</div>`;
@@ -1406,6 +1549,8 @@ export class EventTimelinePanel implements DebugPanel {
 
   private showEventModal(eventId: string): void {
     this.selectedEventId = eventId;
+    // Each freshly opened event starts on its source node.
+    this.selectedFlowNode = null;
     // Trigger re-render
     if (typeof document !== 'undefined') {
       document.dispatchEvent(
@@ -1448,24 +1593,20 @@ export class EventTimelinePanel implements DebugPanel {
           </div>
           <div class="event-modal-body">
             <div class="event-modal-meta">
-              <div class="event-modal-meta-item">
-                <span class="event-modal-meta-label">Type:</span>
+              <span class="event-modal-meta-item">
                 <span class="event-type-badge" style="background: ${this.getEventTypeColor(selectedEvent.type)}22; color: ${this.getEventTypeColor(selectedEvent.type)};">
                   ${this.getEventTypeBadge(selectedEvent.type)}
                 </span>
-              </div>
-              <div class="event-modal-meta-item">
-                <span class="event-modal-meta-label">Source:</span>
+              </span>
+              <span class="event-modal-meta-item">
+                <span class="event-modal-meta-label">Source</span>
                 <span>${selectedEvent.source}</span>
-              </div>
-              <div class="event-modal-meta-item">
-                <span class="event-modal-meta-label">Time:</span>
+              </span>
+              <span class="event-modal-meta-item">
+                <span class="event-modal-meta-label">Time</span>
                 <span>${this.formatTimestamp(selectedEvent.timestamp)}</span>
-              </div>
-              <div class="event-modal-meta-item">
-                <span class="event-modal-meta-label">Relative:</span>
-                <span>${selectedEvent.relativeTime}</span>
-              </div>
+                <span class="event-modal-meta-muted">· ${selectedEvent.relativeTime}</span>
+              </span>
             </div>
             ${this.renderDetailTabs(selectedEvent)}
           </div>
@@ -1486,23 +1627,11 @@ export class EventTimelinePanel implements DebugPanel {
         this.selectedDetailTab = tab;
         this.requestRerender();
       };
-      (window as any).eventTimelinePanel_toggleDelivery = (id: string) => {
-        if (this.expandedDeliveries.has(id)) this.expandedDeliveries.delete(id);
-        else this.expandedDeliveries.add(id);
-        this.requestRerender();
-      };
-      (window as any).eventTimelinePanel_setDeliveryProvider = (
-        provider: string | null
+      (window as any).eventTimelinePanel_selectFlowNode = (
+        id: string | null
       ) => {
-        // Toggle: clicking the active provider sub-tab returns to "All".
-        this.selectedDeliveryProvider =
-          this.selectedDeliveryProvider === provider ? null : provider;
-        this.requestRerender();
-      };
-      (window as any).eventTimelinePanel_searchDeliveryProvider = (
-        value: string
-      ) => {
-        this.deliveryProviderSearch = value;
+        // null = the source node; any other id = one provider node.
+        this.selectedFlowNode = id;
         this.requestRerender();
       };
       (window as any).eventTimelinePanel_search = (value: string) => {
@@ -1572,7 +1701,10 @@ export class EventTimelinePanel implements DebugPanel {
           border-radius: 12px;
           width: 90%;
           max-width: 800px;
-          max-height: 80vh;
+          /* Definite height (not just max) so the flex chain has room to give
+             the payload viewer — otherwise it collapses to its min-height. */
+          height: 85vh;
+          max-height: 820px;
           display: flex;
           flex-direction: column;
           box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
@@ -1611,46 +1743,36 @@ export class EventTimelinePanel implements DebugPanel {
         }
         .event-modal-body {
           flex: 1;
-          overflow-y: auto;
+          min-height: 0;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
           padding: 20px;
         }
+        /* Compact single-row meta strip with divider between items. */
         .event-modal-meta {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 12px;
-          margin-bottom: 20px;
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          row-gap: 6px;
+          margin-bottom: 18px;
+          font-size: 0.85em;
         }
         .event-modal-meta-item {
-          display: flex;
+          display: inline-flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
+          padding: 0 14px;
+          color: #e6e6e6;
+        }
+        .event-modal-meta-item:first-child { padding-left: 0; }
+        .event-modal-meta-item + .event-modal-meta-item {
+          border-left: 1px solid rgba(255, 255, 255, 0.12);
         }
         .event-modal-meta-label {
-          color: rgba(255, 255, 255, 0.5);
-          font-size: 0.9em;
+          color: rgba(255, 255, 255, 0.45);
         }
-        .event-modal-data {
-          background: rgba(0, 0, 0, 0.3);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 8px;
-          overflow: hidden;
-        }
-        .event-modal-data-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 12px 16px;
-          background: rgba(255, 255, 255, 0.02);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .event-modal-data-content {
-          /* Wraps RawDataHelper's viewer, which is height:100% — needs a
-             definite height here so the JSON scrolls inside the modal. */
-          height: min(400px, 55vh);
-          margin: 0;
-          border-radius: 6px;
-          overflow: hidden;
-        }
+        .event-modal-meta-muted { color: rgba(255, 255, 255, 0.4); }
         /* ── Provider strip ── */
         .provider-strip {
           display: flex;
@@ -1966,113 +2088,206 @@ export class EventTimelinePanel implements DebugPanel {
         }
         .tab-count-error { background: #e3342f; }
         .tab-count-warning { background: #d6a700; color: #1a1a1a; }
-        .detail-tab-body { min-height: 80px; }
-        /* ── Delivery tab: provider sub-tabs ── */
-        .delivery-subtabs {
+        /* Fills the modal below the tabs so the payload viewer can grow. */
+        .detail-tab-body {
+          flex: 1;
+          min-height: 0;
+          display: flex;
+          flex-direction: column;
+        }
+        /* Flow: the JSON viewer is the single scroll region — a scroll container
+           here would break the flex height chain the viewer depends on. */
+        .detail-tab-body-flow {
+          overflow: hidden;
+        }
+        /* Validation: content is a plain list, so this tab scrolls itself. */
+        .detail-tab-body-validation {
+          overflow-y: auto;
+        }
+        /* ── Flow tab: node graph (source → providers) ── */
+        /* Column that lets the payload viewer below the graph grow to fill. */
+        .flow {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+          flex: 1;
+          min-height: 0;
+        }
+        .flow-graph {
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          gap: 8px;
-          margin-bottom: 8px;
+          gap: 0;
         }
-        .delivery-subtab-strip {
+        .flow-graph-solo { justify-content: flex-start; }
+        .flow-col { display: flex; flex-direction: column; }
+        .flow-col-source { flex: 0 0 auto; }
+        .flow-col-wire { flex: 0 0 auto; }
+        .flow-col-providers {
+          flex: 1 1 auto;
+          gap: 8px; /* == FLOW_NODE_GAP */
+          min-width: 0;
+        }
+        .flow-wire { display: block; }
+        .flow-node {
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          text-align: left;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 8px;
+          color: #e6e6e6;
+          padding: 8px 12px;
+          cursor: pointer;
+          font: inherit;
+          transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+        }
+        .flow-node:hover { background: rgba(255, 255, 255, 0.07); }
+        .flow-node.active {
+          border-color: rgba(60, 125, 255, 0.7);
+          background: rgba(60, 125, 255, 0.12);
+          box-shadow: 0 0 0 1px rgba(60, 125, 255, 0.4);
+        }
+        .flow-node-source {
+          width: 210px;
+          gap: 3px;
+          padding: 11px 14px;
+          border-left: 3px solid rgba(60, 125, 255, 0.7);
+        }
+        .flow-node-kind {
+          color: rgba(255, 255, 255, 0.4);
+          font-size: 0.66em;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+        }
+        .flow-node-name {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          color: #fff;
+          font-size: 0.92em;
+          font-weight: 600;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .flow-node-sub { color: rgba(255, 255, 255, 0.5); font-size: 0.76em; }
+        /* Per-status delivery summary on the source node */
+        .flow-summary {
           display: flex;
           flex-wrap: wrap;
-          gap: 4px;
+          gap: 4px 10px;
+          margin-top: 6px;
         }
-        .delivery-subtab {
+        .flow-summary-item {
           display: inline-flex;
           align-items: center;
           gap: 5px;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid transparent;
-          border-radius: 6px;
-          color: rgba(255, 255, 255, 0.6);
-          padding: 3px 9px;
-          cursor: pointer;
-          font-size: 0.82em;
-          transition: color 0.15s, background 0.15s, border-color 0.15s;
+          color: rgba(255, 255, 255, 0.7);
+          font-size: 0.72em;
+          font-weight: 600;
         }
-        .delivery-subtab:hover {
-          color: rgba(255, 255, 255, 0.9);
-          background: rgba(255, 255, 255, 0.09);
+        .flow-summary-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
         }
-        .delivery-subtab.active {
-          color: #fff;
-          background: rgba(60, 125, 255, 0.18);
-          border-color: rgba(60, 125, 255, 0.6);
+        /* Provider node: single table-like row, status right-aligned */
+        .flow-node-provider {
+          flex-direction: row;
+          align-items: center;
+          gap: 9px;
+          height: 42px; /* == FLOW_NODE_H */
+          padding: 0 14px;
+          box-sizing: border-box;
         }
-        .delivery-subtab-count {
+        .flow-node-provider.active { border-color: var(--accent, #3C7DFF); }
+        .flow-node-provider .flow-node-name { flex: 0 1 auto; }
+        .flow-node-dot {
+          flex: 0 0 auto;
+          width: 9px;
+          height: 9px;
+          border-radius: 50%;
+          box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #9aa0a6) 22%, transparent);
+        }
+        .flow-node-status {
           display: inline-flex;
           align-items: center;
-          justify-content: center;
-          min-width: 16px;
-          height: 16px;
-          padding: 0 4px;
-          border-radius: 8px;
-          background: rgba(255, 255, 255, 0.12);
-          font-size: 0.85em;
+          gap: 4px;
+          margin-left: auto; /* push status + duration to the right edge */
+          padding-left: 10px;
+          white-space: nowrap;
+          font-size: 0.76em;
+          font-weight: 600;
         }
-        .delivery-subtab-search {
-          flex: 0 0 auto;
-          width: 140px;
-          background: rgba(255, 255, 255, 0.06);
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          border-radius: 6px;
-          color: #fff;
-          padding: 3px 8px;
-          font-size: 0.82em;
+        /* ── Flow tab: selected-node detail panel ── */
+        .flow-detail {
+          border-top: 1px solid rgba(255, 255, 255, 0.08);
+          padding-top: 12px;
+          flex: 1;
+          min-height: 0;
+          display: flex;
+          flex-direction: column;
         }
-        .delivery-subtab-search::placeholder { color: rgba(255, 255, 255, 0.4); }
-        /* ── Delivery tab body ── */
-        .delivery-list { display: flex; flex-direction: column; gap: 4px; }
-        .delivery-item {
-          border-radius: 6px;
-          background: rgba(255, 255, 255, 0.03);
-          overflow: hidden;
-        }
-        .delivery-row {
+        .flow-detail-head {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 7px 10px;
+          gap: 10px;
+          flex-wrap: wrap;
+          margin-bottom: 8px;
         }
-        .delivery-row-clickable { cursor: pointer; }
-        .delivery-row-clickable:hover { background: rgba(255, 255, 255, 0.05); }
-        .delivery-provider {
+        .flow-detail-title {
+          color: #fff;
+          font-size: 0.86em;
+          font-weight: 600;
+        }
+        .flow-detail-meta {
           display: inline-flex;
           align-items: center;
-          gap: 7px;
-          color: #e6e6e6;
-          font-size: 0.9em;
+          gap: 10px;
+          color: rgba(255, 255, 255, 0.5);
+          font-size: 0.8em;
         }
-        .delivery-caret { color: rgba(255, 255, 255, 0.4); font-size: 0.8em; width: 10px; }
-        .delivery-caret-spacer { display: inline-block; width: 10px; }
-        .delivery-payload {
-          padding: 0 10px 10px;
+        .flow-detail-status {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-weight: 600;
         }
-        .delivery-payload-label {
-          color: rgba(255, 255, 255, 0.45);
-          font-size: 0.75em;
-          text-transform: uppercase;
-          letter-spacing: 0.04em;
-          margin: 2px 0 6px;
+        .flow-detail-error {
+          color: #e3342f;
+          font-size: 0.82em;
+          margin-bottom: 8px;
         }
-        .delivery-payload-view {
-          height: 220px;
+        .flow-detail-note {
+          color: rgba(255, 255, 255, 0.6);
+          background: rgba(154, 160, 166, 0.12);
+          border-left: 3px solid #9aa0a6;
+          border-radius: 4px;
+          font-size: 0.82em;
+          line-height: 1.45;
+          padding: 8px 10px;
+          margin-bottom: 8px;
+        }
+        .flow-detail-view {
+          flex: 1;
+          min-height: 200px;
           border: 1px solid rgba(255, 255, 255, 0.1);
           border-radius: 6px;
           overflow: hidden;
+          /* Anchor for the absolutely-filled viewer below. */
+          position: relative;
         }
-        .delivery-right { display: flex; align-items: center; gap: 10px; }
-        .delivery-note { color: rgba(255, 255, 255, 0.55); font-size: 0.82em; }
-        .delivery-note-error { color: #e3342f; }
-        .delivery-duration { color: rgba(255, 255, 255, 0.4); font-size: 0.82em; }
-        .delivery-status {
-          font-size: 0.85em;
-          font-weight: 600;
-          min-width: 84px;
-          text-align: right;
+        /* RawDataHelper's viewer uses height:100%, which doesn't resolve through
+           a flex chain capped by max-height — so it grows and gets clipped with
+           no scroll. Fill the box by absolute positioning instead, so the pre's
+           own overflow:auto scrolls. */
+        .flow-detail-view > .raw-data-wrapper {
+          position: absolute;
+          inset: 0;
+          height: auto;
         }
         .delivery-empty {
           color: rgba(255, 255, 255, 0.5);

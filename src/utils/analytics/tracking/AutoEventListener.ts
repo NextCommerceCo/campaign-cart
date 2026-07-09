@@ -280,11 +280,12 @@ export class AutoEventListener {
         return;
       }
 
-      // Push a custom event for cart updates
-      dataLayer.push({
-        event: 'dl_cart_updated',
-        cart: this.getCartData()
-      });
+      // Full GA4 ecommerce block (line items + value) so every analytics
+      // provider gets the cart contents; keep the thin `cart` summary attached
+      // for backward-compatible consumers.
+      const event = EcommerceEvents.createCartUpdatedEvent();
+      (event as any).cart = this.getCartData();
+      dataLayer.push(event);
     };
 
     this.eventBus.on('cart:updated', handleCartUpdated);
