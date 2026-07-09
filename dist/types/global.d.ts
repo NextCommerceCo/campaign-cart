@@ -402,6 +402,7 @@ export interface EnrichedCartLine {
     bundleComponents?: number[];
 }
 export interface Campaign {
+    id?: number;
     currency: string;
     language: string;
     name: string;

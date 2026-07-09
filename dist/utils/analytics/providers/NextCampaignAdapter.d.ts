@@ -15,7 +15,9 @@ export declare class NextCampaignAdapter extends ProviderAdapter {
     private scriptLoading;
     private loadPromise;
     private apiKey;
+    private loadWarned;
     constructor();
+    private warnScriptMissing;
     initialize(config?: any): Promise<void>;
     protected isReady(): boolean;
     protected getDebugDetails(): Record<string, string | number | boolean>;

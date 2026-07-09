@@ -66,11 +66,24 @@ export class FacebookAdapter extends ProviderAdapter {
     'SkippedUpsell'       // Custom upsell event
   ];
 
+  private loadWarned = false;
+
   constructor(config?: { blockedEvents?: string[]; storeName?: string }) {
     super('Facebook', { blockedEvents: config?.blockedEvents });
     if (config?.storeName) {
       this.storeName = config.storeName;
     }
+  }
+
+  /** Warn once, with the fix, when the Meta Pixel never loads. */
+  private warnScriptMissing(): void {
+    if (this.loadWarned) return;
+    this.loadWarned = true;
+    this.logger.warn(
+      'Meta Pixel (fbq) not found — add the Meta Pixel base code to the page ' +
+        'so events can be delivered. See ' +
+        'https://www.facebook.com/business/help/952192354843755'
+    );
   }
 
   /**
@@ -116,6 +129,7 @@ export class FacebookAdapter extends ProviderAdapter {
       return this.waitForFbq()
         .then(() => this.sendEventInternal(event))
         .catch(() => {
+          this.warnScriptMissing();
           throw new DispatchError('Facebook Pixel load timeout', prepared);
         });
     }
@@ -181,7 +195,11 @@ export class FacebookAdapter extends ProviderAdapter {
         }
       }
     } catch (error) {
-      this.debug('Error sending event to Facebook:', error);
+      // Re-throw so the base records `failed`, not a misleading `sent`.
+      throw new DispatchError(
+        `Facebook dispatch failed: ${error instanceof Error ? error.message : String(error)}`,
+        { method: 'fbq', event: fbEventName, parameters }
+      );
     }
 
     // Report the exact shape dispatched to fbq for the debug overlay.

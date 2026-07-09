@@ -16,6 +16,7 @@ export declare class NextAnalytics {
     private shouldIgnoreAnalytics;
     isInitialized(): boolean;
     initialize(): Promise<void>;
+    private warnMissingConfig;
     private initializeProviders;
     track(event: DataLayerEvent): void;
     setDebugMode(enabled: boolean): void;

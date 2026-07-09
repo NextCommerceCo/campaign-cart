@@ -15,6 +15,7 @@ import type {
 import { DEFAULT_CONFIG, STORAGE_KEYS, EVENT_VALIDATION_RULES } from './config';
 import { pendingEventsHandler } from './tracking/PendingEventsHandler';
 import { createLogger } from '@/utils/logger';
+import { EventBuilder } from './events/EventBuilder';
 
 const logger = createLogger('NextDataLayer');
 
@@ -278,6 +279,15 @@ export class DataLayerManager {
     // Only add attribution if it has data
     if (attribution && Object.keys(attribution).length > 0) {
       enrichedEvent.attribution = attribution;
+    }
+
+    // campaign_* identifiers on every event (issue #473). Applied here (not just
+    // in createEvent) so events that bypass it get them too; presets preserved.
+    const campaignContext = EventBuilder.getCampaignContext();
+    for (const [key, value] of Object.entries(campaignContext)) {
+      if ((enrichedEvent as Record<string, any>)[key] === undefined) {
+        (enrichedEvent as Record<string, any>)[key] = value;
+      }
     }
 
     // Add context if enrichment is enabled

@@ -14,7 +14,9 @@ import type {
 } from '../types';
 import { useCampaignStore } from '@/stores/campaignStore';
 import { useCheckoutStore } from '@/stores/checkoutStore';
+import { useConfigStore } from '@/stores/configStore';
 import { createLogger } from '@/utils/logger';
+import { getCookie } from '@/utils/cookies';
 
 const logger = createLogger('EventBuilder');
 
@@ -173,6 +175,35 @@ export class EventBuilder {
     }
 
     return context;
+  }
+
+  /**
+   * campaign_* identifiers attached to every event (issue #473). Applied in
+   * `DataLayerManager.enrichEvent` so events that bypass `createEvent`
+   * (page_view, upsell, route change) get them too. Read fresh — campaign data
+   * and the `ncsid` cookie load async; empty values omitted.
+   */
+  static getCampaignContext(): Record<string, string> {
+    const ctx: Record<string, string> = {};
+    if (typeof window === 'undefined') return ctx;
+
+    try {
+      const campaign = useCampaignStore.getState().data;
+      const config = useConfigStore.getState();
+
+      if (campaign?.name) ctx.campaign_name = campaign.name;
+      if (config.apiKey) ctx.campaign_api_key = config.apiKey;
+      if (campaign?.currency) ctx.campaign_currency = campaign.currency;
+      if (campaign?.language) ctx.campaign_language = campaign.language;
+      if (campaign?.id) ctx.campaign_id = String(campaign.id);
+
+      const sessionId = getCookie('ncsid');
+      if (sessionId) ctx.campaign_session_id = sessionId;
+    } catch (error) {
+      logger.warn('Could not build campaign context:', error);
+    }
+
+    return ctx;
   }
 
   /**
