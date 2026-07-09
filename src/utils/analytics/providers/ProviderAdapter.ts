@@ -1,6 +1,9 @@
 import type { AnalyticsProvider, DataLayerEvent } from '../types';
 import { createLogger, type Logger } from '@/utils/logger';
-import { analyticsDebug, type ProviderDebugInfo } from '../debug/AnalyticsDebugTracker';
+import {
+  analyticsDebug,
+  type ProviderDebugInfo,
+} from '../debug/AnalyticsDebugTracker';
 
 /**
  * Construction options shared by every provider adapter.
@@ -8,6 +11,59 @@ import { analyticsDebug, type ProviderDebugInfo } from '../debug/AnalyticsDebugT
 export interface ProviderAdapterOptions {
   /** Event names that must never reach this provider. */
   blockedEvents?: string[];
+}
+
+/** Marker key identifying a {@link SkipResult}. */
+const SKIP_TAG = '__analyticsSkip';
+
+/**
+ * Result signalling that the provider dispatched nothing for this event, with a
+ * short human reason (e.g. "no RudderStack mapping", "no identifiable user").
+ * The base records it as `skipped` — not a misleading `sent` — and surfaces the
+ * reason in the debug overlay.
+ */
+export interface SkipResult {
+  readonly [SKIP_TAG]: true;
+  readonly reason: string;
+}
+
+/**
+ * Return this (or {@link NOT_SUPPORTED}) from `sendEvent` when the provider sent
+ * nothing for this event. Prefer a specific `reason` — return this instead of
+ * `undefined`, which the base treats as "sent, no payload".
+ */
+export function notSupported(
+  reason = 'event not handled by this provider'
+): SkipResult {
+  return { [SKIP_TAG]: true, reason };
+}
+
+/** Shorthand skip with the generic reason. */
+export const NOT_SUPPORTED: SkipResult = notSupported();
+
+/** Narrow a `sendEvent` result to a {@link SkipResult}, if it is one. */
+export function asSkipResult(result: unknown): SkipResult | null {
+  return typeof result === 'object' &&
+    result !== null &&
+    (result as Record<string, unknown>)[SKIP_TAG] === true
+    ? (result as SkipResult)
+    : null;
+}
+
+/**
+ * Error a `sendEvent` implementation throws/rejects with when dispatch fails but
+ * the provider-specific payload was already built. Carries that payload so the
+ * debug overlay can show what the provider *would* have sent (for verifying the
+ * mapping) alongside the failure — instead of falling back to the raw event.
+ */
+export class DispatchError extends Error {
+  constructor(
+    message: string,
+    readonly attemptedPayload?: unknown
+  ) {
+    super(message);
+    this.name = 'DispatchError';
+  }
 }
 
 /**
@@ -107,21 +163,40 @@ export abstract class ProviderAdapter implements AnalyticsProvider {
       payload: event,
     });
 
-    try {
-      const result = this.sendEvent(event);
-      if (result instanceof Promise) {
-        result
-          .then(sent => analyticsDebug.update(recordId, 'sent', { sentPayload: sent }))
-          .catch(error => {
-            analyticsDebug.update(recordId, 'failed', { error: String(error) });
-            this.logger.error(`Failed to send event "${event.event}"`, error);
-          });
+    // A skip result means the provider dispatched nothing — record it as
+    // `skipped` (with its reason), not `sent`, so the overlay doesn't imply a
+    // dispatch that never happened.
+    const resolve = (result: unknown): void => {
+      const skip = asSkipResult(result);
+      if (skip) {
+        analyticsDebug.update(recordId, 'skipped', { detail: skip.reason });
       } else {
         analyticsDebug.update(recordId, 'sent', { sentPayload: result });
       }
-    } catch (error) {
-      analyticsDebug.update(recordId, 'failed', { error: String(error) });
+    };
+
+    // A failed dispatch records the error — and, when the provider built its
+    // payload before failing ({@link DispatchError}), the attempted payload too,
+    // so the overlay can show what it *would* have sent.
+    const reject = (error: unknown): void => {
+      const attempted =
+        error instanceof DispatchError ? error.attemptedPayload : undefined;
+      analyticsDebug.update(recordId, 'failed', {
+        error: String(error instanceof Error ? error.message : error),
+        ...(attempted !== undefined ? { sentPayload: attempted } : {}),
+      });
       this.logger.error(`Failed to send event "${event.event}"`, error);
+    };
+
+    try {
+      const result = this.sendEvent(event);
+      if (result instanceof Promise) {
+        result.then(resolve).catch(reject);
+      } else {
+        resolve(result);
+      }
+    } catch (error) {
+      reject(error);
     }
   }
 

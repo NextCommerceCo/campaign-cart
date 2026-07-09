@@ -13,8 +13,23 @@
 
 import type { ProviderAdapter } from '../providers/ProviderAdapter';
 
-/** Outcome of handing one event to one provider. */
-export type DeliveryStatus = 'pending' | 'sent' | 'blocked' | 'failed';
+/**
+ * Outcome of handing one event to one provider.
+ *
+ * - `pending` — dispatched, awaiting async resolution.
+ * - `sent` — delivered to the provider's destination.
+ * - `blocked` — suppressed by config (`blockedEvents`) or a disabled provider;
+ *   the provider *would* handle this event but was told not to.
+ * - `skipped` — the provider does not handle this event type at all (e.g.
+ *   NextCampaign only sends `page_view`); nothing was dispatched, by design.
+ * - `failed` — dispatch was attempted and errored.
+ */
+export type DeliveryStatus =
+  | 'pending'
+  | 'sent'
+  | 'blocked'
+  | 'skipped'
+  | 'failed';
 
 /** A single provider's handling of a single event. */
 export interface DeliveryRecord {

@@ -1,3 +1,4 @@
+export * from './events';
 export interface ProductSchema {
     item_id: string;
     item_name: string;

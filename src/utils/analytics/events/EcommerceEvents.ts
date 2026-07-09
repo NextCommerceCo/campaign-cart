@@ -482,6 +482,23 @@ export class EcommerceEvents {
   }
 
   /**
+   * Create cart_updated event (GA4 format). Fires on any cart change and carries
+   * the same GA4 `ecommerce` block as view_cart, so every provider receives the
+   * full line items — not just the thin `cart` summary the AutoEventListener
+   * attaches for backward compatibility.
+   */
+  static createCartUpdatedEvent(): DataLayerEvent {
+    const cartState = useCartStore.getState();
+    const ecommerce = this.buildCartEcommerce();
+
+    return EventBuilder.createEvent('dl_cart_updated', {
+      user_properties: EventBuilder.getUserProperties(),
+      cart_total: String(cartState.total.toNumber() || '0.00'),
+      ecommerce,
+    });
+  }
+
+  /**
    * Create add_shipping_info event
    * Fires when user enters or confirms shipping details
    */

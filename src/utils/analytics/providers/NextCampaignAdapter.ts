@@ -1,4 +1,8 @@
-import { ProviderAdapter } from './ProviderAdapter';
+import {
+  ProviderAdapter,
+  notSupported,
+  DispatchError,
+} from './ProviderAdapter';
 import { DataLayerEvent } from '../types';
 import { useConfigStore } from '@/stores/configStore';
 
@@ -39,7 +43,9 @@ export class NextCampaignAdapter extends ProviderAdapter {
       // Get from the proper config store
       const configStore = useConfigStore.getState();
       this.apiKey = configStore.apiKey || '';
-      this.logger.info(`API key from config store: ${this.apiKey ? 'found' : 'not found'}`);
+      this.logger.info(
+        `API key from config store: ${this.apiKey ? 'found' : 'not found'}`
+      );
     }
 
     if (!this.apiKey) {
@@ -47,7 +53,9 @@ export class NextCampaignAdapter extends ProviderAdapter {
       return;
     }
 
-    this.logger.info(`NextCampaign API key found: ${this.apiKey.substring(0, 8)}...${this.apiKey.substring(this.apiKey.length - 4)}`);
+    this.logger.info(
+      `NextCampaign API key found: ${this.apiKey.substring(0, 8)}...${this.apiKey.substring(this.apiKey.length - 4)}`
+    );
 
     // Load the NextCampaign SDK script
     await this.loadScript();
@@ -57,7 +65,10 @@ export class NextCampaignAdapter extends ProviderAdapter {
     return this.scriptLoaded;
   }
 
-  protected override getDebugDetails(): Record<string, string | number | boolean> {
+  protected override getDebugDetails(): Record<
+    string,
+    string | number | boolean
+  > {
     return {
       scriptLoaded: this.scriptLoaded,
       apiKeySet: Boolean(this.apiKey),
@@ -73,26 +84,36 @@ export class NextCampaignAdapter extends ProviderAdapter {
       return undefined;
     }
 
-    // Ensure script is loaded
-    if (!this.scriptLoaded) {
-      await this.loadScript();
+    // Map first (SDK-independent) so the prepared payload survives a load
+    // failure. NextCampaign only tracks page_view — everything else is skipped.
+    const mappedEvent = this.mapEvent(event);
+    if (!mappedEvent) {
+      return notSupported('NextCampaign only tracks page_view');
     }
 
-    // Map and send the event
-    const mappedEvent = this.mapEvent(event);
-    if (mappedEvent) {
+    // Ensure script is loaded; if it never loads, surface the prepared payload.
+    if (!this.scriptLoaded) {
       try {
-        if (window.nextCampaign) {
-          window.nextCampaign.event(mappedEvent.name, mappedEvent.data);
-          this.debug(`Event sent to NextCampaign: ${mappedEvent.name}`, mappedEvent.data);
-        }
-      } catch (error) {
-        this.logger.error('Error sending event to NextCampaign:', error);
+        await this.loadScript();
+      } catch {
+        throw new DispatchError('NextCampaign SDK load failed', mappedEvent);
       }
     }
 
+    try {
+      if (window.nextCampaign) {
+        window.nextCampaign.event(mappedEvent.name, mappedEvent.data);
+        this.debug(
+          `Event sent to NextCampaign: ${mappedEvent.name}`,
+          mappedEvent.data
+        );
+      }
+    } catch (error) {
+      this.logger.error('Error sending event to NextCampaign:', error);
+    }
+
     // Report the mapped {name, data} dispatched to NextCampaign for the overlay.
-    return mappedEvent ?? undefined;
+    return mappedEvent;
   }
 
   /**
@@ -113,7 +134,9 @@ export class NextCampaignAdapter extends ProviderAdapter {
     try {
       await this.loadPromise;
       this.scriptLoaded = true;
-      this.logger.info('NextCampaign SDK loaded and initialized successfully ✅');
+      this.logger.info(
+        'NextCampaign SDK loaded and initialized successfully ✅'
+      );
     } catch (error) {
       this.logger.error('Failed to load NextCampaign SDK:', error);
       throw error;
@@ -191,12 +214,15 @@ export class NextCampaignAdapter extends ProviderAdapter {
       if (window.nextCampaign) {
         window.nextCampaign.event('page_view', {
           title: document.title,
-          url: window.location.href
+          url: window.location.href,
         });
         this.logger.info('Initial page_view event sent to NextCampaign');
       }
     } catch (error) {
-      this.logger.error('Error sending initial page view to NextCampaign:', error);
+      this.logger.error(
+        'Error sending initial page view to NextCampaign:',
+        error
+      );
     }
   }
 
@@ -232,8 +258,8 @@ export class NextCampaignAdapter extends ProviderAdapter {
           name: 'page_view',
           data: {
             title: document.title,
-            url: window.location.href
-          }
+            url: window.location.href,
+          },
         };
 
       default:
@@ -241,5 +267,4 @@ export class NextCampaignAdapter extends ProviderAdapter {
         return null;
     }
   }
-
 }

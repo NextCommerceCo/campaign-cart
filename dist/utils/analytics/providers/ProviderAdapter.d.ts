@@ -4,6 +4,18 @@ import { ProviderDebugInfo } from '../debug/AnalyticsDebugTracker';
 export interface ProviderAdapterOptions {
     blockedEvents?: string[];
 }
+declare const SKIP_TAG = "__analyticsSkip";
+export interface SkipResult {
+    readonly [SKIP_TAG]: true;
+    readonly reason: string;
+}
+export declare function notSupported(reason?: string): SkipResult;
+export declare const NOT_SUPPORTED: SkipResult;
+export declare function asSkipResult(result: unknown): SkipResult | null;
+export declare class DispatchError extends Error {
+    readonly attemptedPayload?: unknown | undefined;
+    constructor(message: string, attemptedPayload?: unknown | undefined);
+}
 export declare abstract class ProviderAdapter implements AnalyticsProvider {
     readonly name: string;
     enabled: boolean;
@@ -26,4 +38,5 @@ export declare abstract class ProviderAdapter implements AnalyticsProvider {
     protected formatCurrency(value: number): string;
     protected extractEcommerceData(event: DataLayerEvent): any;
 }
+export {};
 //# sourceMappingURL=ProviderAdapter.d.ts.map

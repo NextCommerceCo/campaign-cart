@@ -1,4 +1,4 @@
-import { ProviderAdapter } from './ProviderAdapter';
+import { ProviderAdapter, notSupported, DispatchError } from './ProviderAdapter';
 import { DataLayerEvent } from '../types';
 
 declare global {
@@ -92,18 +92,32 @@ export class FacebookAdapter extends ProviderAdapter {
   }
 
   /**
-   * Send event to Facebook Pixel
+   * Send event to Facebook Pixel.
+   *
+   * Returns the transformed fbq payload actually dispatched. When the pixel is
+   * not loaded yet, returns the promise that resolves to that payload once it
+   * loads — or rejects (recorded as `failed`) if the pixel never loads, e.g. a
+   * missing/misconfigured pixel. Returning a resolved-but-empty value here would
+   * wrongly show a green `sent` for a pixel that never fired.
    */
-  sendEvent(event: DataLayerEvent): unknown {
-    // If fbq is not loaded yet, wait for it. The actual send happens after this
-    // returns, so the transformed payload can't be reported for that path.
+  sendEvent(event: DataLayerEvent): unknown | Promise<unknown> {
     if (!this.isFbqLoaded()) {
-      this.waitForFbq().then(() => {
-        this.sendEventInternal(event);
-      }).catch((error) => {
-        this.debug('Facebook Pixel failed to load, skipping event:', event.event);
-      });
-      return undefined;
+      const fbEventName = this.mapEventName(event.event);
+      if (!fbEventName) {
+        return notSupported('no Facebook mapping for this event');
+      }
+      // Build the payload now (mapping is pixel-independent) so the overlay can
+      // show what we'd send even if the pixel never loads.
+      const prepared = {
+        method: 'fbq',
+        event: fbEventName,
+        parameters: this.transformParameters(event, fbEventName),
+      };
+      return this.waitForFbq()
+        .then(() => this.sendEventInternal(event))
+        .catch(() => {
+          throw new DispatchError('Facebook Pixel load timeout', prepared);
+        });
     }
 
     return this.sendEventInternal(event);
@@ -135,7 +149,7 @@ export class FacebookAdapter extends ProviderAdapter {
     const fbEventName = this.mapEventName(event.event);
     if (!fbEventName) {
       this.debug(`No Facebook mapping for event: ${event.event}`);
-      return undefined;
+      return notSupported('no Facebook mapping for this event');
     }
 
     const parameters = this.transformParameters(event, fbEventName);

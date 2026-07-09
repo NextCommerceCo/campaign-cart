@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.4.29] — 2026-07-09 — RudderStack Tracking, Done Right
+
+The RudderStack integration now sends complete, correct data that matches the [RudderStack Ecommerce Events spec](https://www.rudderstack.com/docs/event-spec/ecommerce-events-spec/).
+
+### Fixed
+
+- **Products showed up empty or with wrong details** — items sent to RudderStack had the product ID and SKU swapped, and the image and list position were always blank. Every event now sends the correct product ID, SKU, name, brand, variant, price, quantity, image, and position.
+
+- **Cart Viewed had no products** — when the cart changed, the "Cart Viewed" event went out with an empty product list and a value of 0. It now includes the full cart contents and value (and this fix reaches every analytics provider, not just RudderStack).
+
+- **Accepted upsells were not tracked** — accepting a post-purchase upsell sent nothing to RudderStack. It now records as an order with the correct products and totals.
+
+- **Order totals were wrong** — the order total left out tax and shipping. Now `total` is the full amount the shopper paid, while `revenue` and `subtotal` stay as the product revenue, with tax and shipping in their own fields.
+
+- **Page name and type showed "unknown"** — page views reported `unknown` for the page name and type. They now report the real page type and page title.
+
+### Improved
+
+- **Correct RudderStack event names** — payment and shipping steps now use the spec's official names (`Payment Info Entered`, `Checkout Step Completed`), and product clicks are tracked as `Product Clicked`.
+
+- **Cart and checkout events are now linkable** — added a session-based `cart_id` and `checkout_id` so RudderStack can follow a shopper from cart → checkout → order as one journey.
+
+---
+
 ## [0.4.28] — 2026-06-30 — Accurate Purchase Tracking & a Clearer Debug Panel
 
 ### Fixed
