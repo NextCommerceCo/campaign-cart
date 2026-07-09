@@ -13,7 +13,9 @@ declare global {
 }
 export declare class RudderStackAdapter extends ProviderAdapter {
     private pageViewSent;
+    private loadWarned;
     constructor();
+    private warnScriptMissing;
     private buildContextProps;
     private isRudderStackLoaded;
     protected isReady(): boolean;

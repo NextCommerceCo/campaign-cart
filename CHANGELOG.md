@@ -4,7 +4,7 @@
 
 ### New
 
-- **Every analytics event now carries the campaign identifiers** — `campaign_id`, `campaign_name`, `campaign_currency`, `campaign_language`, `campaign_api_key`, and `campaign_session_id` (from the nextCampaign `ncsid` cookie) are attached to every event across all providers, so analytics data can be segmented by campaign and joined back to Campaigns App sessions and order attribution. RudderStack receives these in camelCase (`campaignName`, `campaignId`, `campaignSessionId`, …).
+- **Every analytics event now carries the campaign identifiers** — `campaign_id`, `campaign_name`, `campaign_currency`, `campaign_language`, `campaign_api_key`, and `campaign_session_id` (from the nextCampaign `ncsid` cookie) are attached to every event across all providers, so analytics data can be segmented by campaign and joined back to Campaigns App sessions and order attribution. RudderStack receives these with their original snake_case names (`campaign_name`, `campaign_id`, `campaign_session_id`, …), alongside `page_type` and `page_name` page context on every event.
 
 - **Setup warnings that tell you how to fix them** — if the campaign API key is missing, a console warning explains how to set it (`<meta name="next-api-key">` or `window.nextConfig.apiKey`). If a provider is enabled but its required setting is missing (e.g. Facebook without a `pixelId`), the warning names the exact setting to add.
 

@@ -11,10 +11,12 @@ export declare class FacebookAdapter extends ProviderAdapter {
     private storeName?;
     private eventMapping;
     private customEvents;
+    private loadWarned;
     constructor(config?: {
         blockedEvents?: string[];
         storeName?: string;
     });
+    private warnScriptMissing;
     private isFbqLoaded;
     protected isReady(): boolean;
     protected getDebugDetails(): Record<string, string | number | boolean>;
