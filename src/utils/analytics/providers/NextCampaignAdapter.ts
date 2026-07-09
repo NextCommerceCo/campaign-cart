@@ -24,9 +24,20 @@ export class NextCampaignAdapter extends ProviderAdapter {
   private scriptLoading = false;
   private loadPromise: Promise<void> | null = null;
   private apiKey: string = '';
+  private loadWarned = false;
 
   constructor() {
     super('NextCampaign');
+  }
+
+  /** Warn once, with the fix, when the NextCampaign SDK fails to load. */
+  private warnScriptMissing(): void {
+    if (this.loadWarned) return;
+    this.loadWarned = true;
+    this.logger.warn(
+      'NextCampaign SDK failed to load — check that a valid apiKey is set and ' +
+        'that campaigns.apps.29next.com is reachable.'
+    );
   }
 
   /**
@@ -96,6 +107,7 @@ export class NextCampaignAdapter extends ProviderAdapter {
       try {
         await this.loadScript();
       } catch {
+        this.warnScriptMissing();
         throw new DispatchError('NextCampaign SDK load failed', mappedEvent);
       }
     }

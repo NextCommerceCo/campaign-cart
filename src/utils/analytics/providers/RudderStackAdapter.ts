@@ -44,30 +44,42 @@ interface RudderPlan {
  */
 export class RudderStackAdapter extends ProviderAdapter {
   private pageViewSent = false;
+  private loadWarned = false;
 
   constructor() {
     super('RudderStack');
   }
 
+  /** Warn once, with the fix, when the RudderStack SDK never loads. */
+  private warnScriptMissing(): void {
+    if (this.loadWarned) return;
+    this.loadWarned = true;
+    this.logger.warn(
+      'rudderanalytics not found — add the RudderStack JavaScript SDK snippet ' +
+        'to the page so events can be delivered. See ' +
+        'https://www.rudderstack.com/docs/sources/event-streams/sdks/rudderstack-javascript-sdk/'
+    );
+  }
+
   /**
    * Forward the campaign_* identifiers stamped on the event by DataLayerManager
-   * (issue #473), remapped to camelCase for the RudderStack/Mixpanel payload.
+   * (issue #473) onto the RudderStack payload, keeping their snake_case names.
    * Empty values omitted.
    */
   private buildContextProps(event: DataLayerEvent): Record<string, string> {
-    const map: Record<string, string> = {
-      campaign_name: 'campaignName',
-      campaign_api_key: 'campaignApiKey',
-      campaign_currency: 'campaignCurrency',
-      campaign_language: 'campaignLanguage',
-      campaign_id: 'campaignId',
-      campaign_session_id: 'campaignSessionId',
-    };
+    const keys = [
+      'campaign_name',
+      'campaign_api_key',
+      'campaign_currency',
+      'campaign_language',
+      'campaign_id',
+      'campaign_session_id',
+    ];
     const out: Record<string, string> = {};
-    for (const [src, dest] of Object.entries(map)) {
-      const value = (event as Record<string, any>)[src];
+    for (const key of keys) {
+      const value = (event as Record<string, any>)[key];
       if (value !== undefined && value !== null && value !== '') {
-        out[dest] = String(value);
+        out[key] = String(value);
       }
     }
     return out;
@@ -134,6 +146,7 @@ export class RudderStackAdapter extends ProviderAdapter {
           return ready.descriptor;
         })
         .catch(() => {
+          this.warnScriptMissing();
           throw new DispatchError('RudderStack load timeout', ready.descriptor);
         });
     }
@@ -237,7 +250,7 @@ export class RudderStackAdapter extends ProviderAdapter {
     const pageTypeCapitalized =
       pageType.charAt(0).toUpperCase() + pageType.slice(1);
     const eventName = `${pageTypeCapitalized} Page View`;
-    const customProperties = { pageName, ...properties };
+    const customProperties = { page_name: pageName, ...properties };
 
     return {
       descriptor: {
@@ -366,8 +379,8 @@ export class RudderStackAdapter extends ProviderAdapter {
 
     // Page context + campaign_* identifiers on every track event.
     const baseProps = {
-      pageType: pageMetadata.pageType,
-      pageName: pageMetadata.pageName,
+      page_type: pageMetadata.pageType,
+      page_name: pageMetadata.pageName,
       ...this.buildContextProps(event),
     };
 
@@ -448,7 +461,6 @@ export class RudderStackAdapter extends ProviderAdapter {
     const props: any = {
       products: this.formatProducts(data.items || []),
       currency: data.currency || campaignData.campaignCurrency || 'USD',
-      ...baseProps,
     };
 
     const listId = data.item_list_id || data.list_id;
@@ -456,7 +468,7 @@ export class RudderStackAdapter extends ProviderAdapter {
     const category = data.item_list_name || data.item_list_id;
     if (category) props.category = category;
 
-    return props;
+    return { ...props, ...baseProps };
   }
 
   /**
@@ -509,10 +521,9 @@ export class RudderStackAdapter extends ProviderAdapter {
     const props: any = {
       ...(checkoutId ? { checkout_id: checkoutId } : {}),
       step: 2,
-      ...baseProps,
     };
     if (data.shipping_tier) props.shipping_method = data.shipping_tier;
-    return props;
+    return { ...props, ...baseProps };
   }
 
   /**
@@ -527,10 +538,9 @@ export class RudderStackAdapter extends ProviderAdapter {
     const props: any = {
       ...(checkoutId ? { checkout_id: checkoutId } : {}),
       step: 3,
-      ...baseProps,
     };
     if (data.payment_type) props.payment_method = data.payment_type;
-    return props;
+    return { ...props, ...baseProps };
   }
 
   /**
@@ -550,7 +560,6 @@ export class RudderStackAdapter extends ProviderAdapter {
       currency: data.currency || campaignData.campaignCurrency || 'USD',
       affiliation: data.affiliation || campaignData.campaignName || 'Funnels',
       products: this.formatProducts(data.items || []),
-      ...baseProps,
     };
 
     if (data.shipping !== undefined)
@@ -559,7 +568,7 @@ export class RudderStackAdapter extends ProviderAdapter {
     if (data.discount) props.discount = this.toNumber(data.discount);
     if (data.coupon) props.coupon = data.coupon;
 
-    return props;
+    return { ...props, ...baseProps };
   }
 
   /**
@@ -593,13 +602,12 @@ export class RudderStackAdapter extends ProviderAdapter {
       tax,
       currency: data.currency || campaignData.campaignCurrency || 'USD',
       products: this.formatProducts(data.items || []),
-      ...baseProps,
     };
 
     if (data.discount) props.discount = this.toNumber(data.discount);
     if (data.coupon) props.coupon = data.coupon;
 
-    return props;
+    return { ...props, ...baseProps };
   }
 
   /**
@@ -617,12 +625,11 @@ export class RudderStackAdapter extends ProviderAdapter {
       name: upsell.package_name || '',
       quantity: 1,
       currency: upsell.currency || campaignData.campaignCurrency || 'USD',
-      ...baseProps,
     };
 
     if (upsell.price !== undefined) props.price = this.toNumber(upsell.price);
 
-    return props;
+    return { ...props, ...baseProps };
   }
 
   /**

@@ -186,9 +186,9 @@ describe('RudderStackAdapter mapping', () => {
     expect(payment.payment_method).toBe('card');
   });
 
-  it('forwards campaign_* identifiers as camelCase onto every call', () => {
+  it('forwards campaign_* identifiers as snake_case onto every call', () => {
     // DataLayerManager stamps these snake_case on the event; the RudderStack
-    // adapter remaps them to camelCase in the payload.
+    // adapter forwards them unchanged in the payload.
     const eventContext = {
       campaign_name: 'Summer Sale',
       campaign_api_key: 'key-123',
@@ -197,14 +197,7 @@ describe('RudderStackAdapter mapping', () => {
       campaign_id: '42',
       campaign_session_id: 'ncsid-abc',
     };
-    const expected = {
-      campaignName: 'Summer Sale',
-      campaignApiKey: 'key-123',
-      campaignCurrency: 'USD',
-      campaignLanguage: 'en',
-      campaignId: '42',
-      campaignSessionId: 'ncsid-abc',
-    };
+    const expected = { ...eventContext };
 
     adapter.sendEvent({
       event: 'dl_add_to_cart',
@@ -232,9 +225,9 @@ describe('RudderStackAdapter mapping', () => {
     } as DataLayerEvent);
 
     const track = propsFor('Product Added');
-    expect(track.campaignSessionId).toBeUndefined();
-    expect(track.campaignId).toBeUndefined();
-    expect(track.campaignName).toBeUndefined();
+    expect(track.campaign_session_id).toBeUndefined();
+    expect(track.campaign_id).toBeUndefined();
+    expect(track.campaign_name).toBeUndefined();
   });
 
   it('populates Cart Viewed products from the ecommerce block (dl_cart_updated)', () => {
@@ -279,7 +272,7 @@ describe('RudderStackAdapter mapping', () => {
 
     // Custom "<Type> Page View" track carries a real page name too.
     const custom = propsFor('Checkout Page View');
-    expect(custom.pageName).toBe('Secure Checkout');
+    expect(custom.page_name).toBe('Secure Checkout');
   });
 
   it('reads upsell viewed payload from event.upsell', () => {

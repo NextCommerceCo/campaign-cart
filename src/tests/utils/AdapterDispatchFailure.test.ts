@@ -43,4 +43,33 @@ describe('adapter dispatch failures are surfaced, not swallowed', () => {
       adapter.sendEvent({ event: 'dl_page_view' } as DataLayerEvent)
     ).rejects.toBeInstanceOf(DispatchError);
   });
+
+  it('FacebookAdapter warns once with the fix when the pixel never loads', async () => {
+    const adapter = new FacebookAdapter();
+    const warn = vi.spyOn((adapter as any).logger, 'warn');
+    (adapter as any).waitForFbq = vi.fn().mockRejectedValue(new Error('timeout'));
+
+    await expect(
+      adapter.sendEvent({
+        event: 'dl_add_to_cart',
+        ecommerce: { currency: 'USD', value: 10, items: [] },
+      } as DataLayerEvent)
+    ).rejects.toBeInstanceOf(DispatchError);
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toContain('Meta Pixel base code');
+  });
+
+  it('NextCampaignAdapter warns with the fix when the SDK fails to load', async () => {
+    const adapter = new NextCampaignAdapter();
+    const warn = vi.spyOn((adapter as any).logger, 'warn');
+    (adapter as any).loadScript = vi.fn().mockRejectedValue(new Error('load fail'));
+
+    await expect(
+      adapter.sendEvent({ event: 'dl_page_view' } as DataLayerEvent)
+    ).rejects.toBeInstanceOf(DispatchError);
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toContain('NextCampaign SDK failed to load');
+  });
 });
