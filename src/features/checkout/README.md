@@ -56,8 +56,50 @@ Each has a colocated test in `checkout-form/tests/`.
   regenerating (`UPDATE_DOCS=1 npm run docs:reference`). That regeneration is the drift test
   telling you the docs followed the code — not a nuisance.
 
-Still in the enhancer: field scanning/population, address and country management, payment,
-and order submission. The money path (order submission) is deliberately last.
+### What is left, and the proposed seams
+
+The seven modules above came out **verbatim** — they were cohesive clusters with 1–8
+dependencies, so lifting them changed no behaviour by construction. The three biggest
+remaining methods are not like that: their coupling is 9–23, and each needs a *designed*
+seam rather than a move. Measured, not estimated:
+
+| Method | Lines | `this.` fields | `this.` calls |
+|---|---|---|---|
+| `handleFieldChange` | 291 | 9 | 7 |
+| `handleFormSubmit` | 240 | 11 | 5 |
+| `initialize` | 228 | **23** | **18** |
+
+**`handleFieldChange` — split by concern, not by field.** It looks like one big switch but
+is really **two** fused: the top half branches on the *field name* to route a value into
+the store (billing-prefixed vs shipping, with per-field handling for postal, phone,
+country, address1), and the bottom half branches on the *event type* (`blur` / `input` /
+`change`) to run validation and show or clear errors. Those are independent jobs sharing
+one entry point. Two modules — value routing and field validation — each keyed on the thing
+it actually dispatches on. Lowest risk of the three and the biggest line win.
+
+**`handleFormSubmit` — split by submit path.** Its five calls
+(`validateExpressCheckoutFields`, `processOrder`, `handleStepNavigation`,
+`displayPaymentError`, `handleError`) reveal three distinct routes: express checkout,
+multi-step navigation, and the normal order submit. Extract one function per route behind a
+thin dispatcher. **This is the money path** — each route needs its own E2E before and after,
+not just the suite as a whole.
+
+**`initialize` — do not extract it; re-sequence it.** With 23 fields and 18 calls it touches
+nearly the whole class, so pulling pieces out would produce a context object that is simply
+the enhancer again. What it actually is, is a **boot sequence**: an ordered list of named
+steps. `core/sdk-initializer.ts` already has exactly this shape, and the docs generator
+reads that order to publish `core/guide/reference/boot-sequence.md`. Give this the same
+treatment — a flat, ordered list of well-named private steps, each doing one thing — and it
+becomes readable without moving a line out of the file. Extraction is the wrong tool here.
+
+Also still in the enhancer: field scanning/population, address management, payment, and
+order submission itself.
+
+**Blocked, needs a decision:** `OrderBuilder.buildOrder` and the enhancer's own
+`buildOrderData` are **two live implementations of the order payload** that disagree about
+the shipping-method fallback — see [code-findings.md](../../../docs/code-findings.md).
+Reconciling them is a money decision, not a refactor, and it should happen before anyone
+extracts either one.
 
 ### Shared by the features above
 
