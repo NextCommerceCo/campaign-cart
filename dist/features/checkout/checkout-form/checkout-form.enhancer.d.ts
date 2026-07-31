@@ -68,9 +68,8 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private hideBillingLocationFields;
     private showBillingLocationFields;
     private initializeProspectCart;
-    private injectIntlTelInputStyles;
+    private phoneInputContext;
     private initializePhoneInputs;
-    private initializePhoneInput;
     private initializeCreditCard;
     private clearAllCheckoutFields;
     private handlePurchaseEvent;

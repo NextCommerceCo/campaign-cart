@@ -24,7 +24,11 @@ import { ExpressCheckoutProcessor } from '../processors/express-checkout-process
 import { OrderManager } from '../managers/order-manager';
 import { nextAnalytics, EcommerceEvents } from '@/core/analytics/index';
 import { userDataStorage } from '@/core/analytics/userDataStorage';
-import intlTelInput from 'intl-tel-input';
+import {
+  injectIntlTelInputStyles,
+  initializePhoneInputs,
+  type PhoneInputContext,
+} from './phone-input';
 import 'intl-tel-input/build/css/intlTelInput.css';
 
 // Consolidated constants
@@ -138,7 +142,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     this.form.noValidate = true;
 
     // Inject intl-tel-input CSS variables for flag/globe images
-    this.injectIntlTelInputStyles();
+    injectIntlTelInputStyles();
 
     // Check if this is a multi-step checkout
     this.detectMultiStepCheckout();
@@ -1460,123 +1464,30 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // PHONE INPUT MANAGEMENT
   // ============================================================================
 
+
   /**
-   * Inject CSS variables for intl-tel-input flag and globe images
-   * This ensures the bundled images are properly loaded
+   * The seven things `phone-input.ts` needs from this form.
+   *
+   * Built fresh per call rather than cached: `fields` and `billingFields` are repopulated
+   * as the form scans the DOM, and `detectedCountryCode` changes once location resolves,
+   * so a context captured at construction would be stale by the time billing is revealed.
    */
-  private injectIntlTelInputStyles(): void {
-    const styleId = 'intl-tel-input-paths';
-
-    // Don't inject if already exists
-    if (document.getElementById(styleId)) return;
-
-    // Check if we're in dev mode by looking for debug param
-    const isDebug = new URLSearchParams(window.location.search).get('debug') === 'true';
-
-    // Use non-versioned CDN path for better caching across SDK versions
-    const baseUrl = isDebug
-      ? 'http://localhost:3000'
-      : 'https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart/dist';
-
-    const style = document.createElement('style');
-    style.id = styleId;
-    style.textContent = `
-      .iti {
-        --iti-path-flags-1x: url('${baseUrl}/intl-tel-input/img/flags.webp');
-        --iti-path-flags-2x: url('${baseUrl}/intl-tel-input/img/flags@2x.webp');
-        --iti-path-globe-1x: url('${baseUrl}/intl-tel-input/img/globe.webp');
-        --iti-path-globe-2x: url('${baseUrl}/intl-tel-input/img/globe@2x.webp');
-      }
-    `;
-    document.head.appendChild(style);
+  private phoneInputContext(): PhoneInputContext {
+    return {
+      isIntlTelInputAvailable: this.isIntlTelInputAvailable,
+      fields: this.fields,
+      billingFields: this.billingFields,
+      phoneInputs: this.phoneInputs,
+      detectedCountryCode: this.detectedCountryCode,
+      updateFormData: data => this.updateFormData(data),
+      logger: this.logger,
+    };
   }
 
   private initializePhoneInputs(): void {
-    if (!this.isIntlTelInputAvailable) return;
-
-    const shippingPhoneField = this.fields.get('phone');
-    const billingPhoneField = this.billingFields.get('billing-phone');
-
-    if (shippingPhoneField instanceof HTMLInputElement) {
-      this.initializePhoneInput('shipping', shippingPhoneField);
-    }
-
-    if (billingPhoneField instanceof HTMLInputElement) {
-      this.initializePhoneInput('billing', billingPhoneField);
-    }
+    initializePhoneInputs(this.phoneInputContext());
   }
 
-
-  private initializePhoneInput(type: 'shipping' | 'billing', phoneField: HTMLInputElement): void {
-    try {
-      const existingInstance = this.phoneInputs.get(type);
-      if (existingInstance) {
-        existingInstance.destroy();
-      }
-
-      // Get initial country from country field or use detected country
-      const countryFieldName = type === 'shipping' ? 'country' : 'billing-country';
-      const countryField = type === 'shipping' ? this.fields.get(countryFieldName) : this.billingFields.get(countryFieldName);
-      const initialCountry = (countryField instanceof HTMLSelectElement && countryField.value)
-        ? countryField.value.toLowerCase()
-        : this.detectedCountryCode.toLowerCase();
-
-      // Set placeholder based on required attribute
-      const isRequired = phoneField.getAttribute('data-next-required') === 'true' ||
-        phoneField.hasAttribute('required');
-      phoneField.placeholder = isRequired ? 'Phone*' : 'Phone (Optional)';
-
-      const instance = intlTelInput(phoneField, {
-        separateDialCode: false,
-        nationalMode: true,
-        autoPlaceholder: 'off',  // Turn off auto placeholder to use our custom one
-        loadUtils: () => import('intl-tel-input/utils'), // Enable formatting/validation
-        countryOrder: ['us', 'ca', 'gb', 'au'],
-        allowDropdown: false,  // Disable dropdown
-        showFlags: true,       // Display flag on the right (since allowDropdown is false)
-        initialCountry: initialCountry.toLowerCase() as any,
-        formatOnDisplay: true
-      });
-
-      // remove padding left set by intl-tel-input
-      phoneField.style.removeProperty('padding-left');
-
-      this.phoneInputs.set(type, instance);
-
-      // Auto-format as user types
-      phoneField.addEventListener('input', () => {
-        if (instance) {
-          // Get the full international number for storage
-          const fullNumber = instance.getNumber();
-          if (type === 'shipping') {
-            this.updateFormData({ phone: fullNumber });
-          } else {
-            const checkoutStore = useCheckoutStore.getState();
-            const currentBillingData = checkoutStore.billingAddress || {
-              first_name: '', last_name: '', address1: '', city: '', province: '', postal: '', country: '', phone: ''
-            };
-            checkoutStore.setBillingAddress({ ...currentBillingData, phone: fullNumber });
-          }
-        }
-      });
-
-      // Listen for country changes to update phone country
-      if (countryField instanceof HTMLSelectElement) {
-        const updatePhoneCountry = () => {
-          const countryCode = countryField.value;
-          if (countryCode && instance) {
-            instance.setCountry(countryCode.toLowerCase() as any);
-          }
-        };
-
-        // Listen for country changes
-        countryField.addEventListener('change', updatePhoneCountry);
-      }
-
-    } catch (error) {
-      this.logger.error(`Failed to initialize ${type} phone field:`, error);
-    }
-  }
 
   // ============================================================================
   // CREDIT CARD MANAGEMENT

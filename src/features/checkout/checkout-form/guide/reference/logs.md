@@ -22,7 +22,6 @@ Something did not work. Each of these means a visitor saw the wrong thing, or no
 | `Failed to re-initialize credit card service:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initialize` | yes |
 | `Failed to load country data:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | yes |
 | `Failed to load states:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.updateStateOptions` | yes |
-| `Failed to initialize {type} phone field:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializePhoneInput` | yes |
 | `Failed to initialize credit card service:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeCreditCard` | yes |
 | `Error clearing checkout fields:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.clearAllCheckoutFields` | yes |
 | `Failed to parse order data from sessionStorage:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handlePurchaseEvent` | yes |
@@ -36,6 +35,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or no
 | `Error filling test data for Konami order:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleKonamiActivation` | yes |
 | `Error handling config update:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleConfigUpdate` | yes |
 | `[Payment Error] Could not find error container element` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.displayPaymentError` | — |
+| `Failed to initialize {type} phone field:` | `phone-input.ts › initializePhoneInput` | yes |
 | `Error populating expiration fields:` | `field-manager.ts › FieldManager.populateExpirationFields` | yes |
 | `Failed to create express order:` | `order-manager.ts › OrderManager.createExpressOrder` | yes |
 | `Cannot redirect: order missing ref_id` | `order-manager.ts › OrderManager.handleOrderRedirect` | — |
