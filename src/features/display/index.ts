@@ -6,7 +6,11 @@
 // Core functionality
 export { BaseDisplayEnhancer, DisplayFormatter, PropertyResolver } from '@/core/base/base-display-enhancer';
 export { ProductDisplayEnhancer } from './product-display';
-export { CartDisplayEnhancer } from '@/features/cart/cart-summary';
+// `CartDisplayEnhancer` is deliberately NOT re-exported here. It lives in
+// `features/cart/cart-summary`, and re-exporting it made this barrel the last
+// cross-feature import in `src/features/` — the thing `sdk-structure` §2 forbids — for no
+// benefit: nothing imported it through this path. Import it from its own feature, as
+// `core/attribute-scanner.ts` and the tests already do.
 export { SelectionDisplayEnhancer } from './selection-display';
 export { OrderDisplayEnhancer } from './order-display';
 

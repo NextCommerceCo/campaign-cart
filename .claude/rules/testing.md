@@ -14,6 +14,11 @@
   - `src/tests/analytics/` — analytics validators, event builders, provider adapters. Cross-cutting because one event is produced by several features and consumed by several providers.
   - `src/tests/contract/` — the gates: public export surface, dynamic-import resolution, store identity + `persist` keys, production-bundle contents. These fail on a whole-repo invariant, not on one unit.
   - `src/tests/docs/` — documentation drift checks: every generated page must still match the source it was generated from.
+  - `src/tests/display/` — the display **system**: `DisplayFormatter` in `core/base/` exercised
+    through real enhancers from two different feature categories (`features/display/*` and
+    `features/cart/cart-summary`). Cross-cutting because the formatter is shared base-layer
+    code and the point of the test is that it behaves the same whichever feature drives it —
+    colocating it under one of those features would hide that.
   - Do NOT unit-test per-feature code here; that belongs colocated with the feature.
 - Setup file: `src/tests/setup.ts` (DOM reset, window cleanup runs before each test) — the path `vitest.config.ts` actually registers in `setupFiles`
 - Import from `vitest` — not `jest`: `import { describe, it, expect, vi } from 'vitest'`
