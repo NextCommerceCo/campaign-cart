@@ -53,7 +53,7 @@ The package `ref_id` to add to the order. Use this when the offer is a fixed pac
 
 Id of an upsell selector on the page. The button reads its current selection at click time, so the visitor can pick a size or tier before accepting.
 
-> **Watch out:** The selector must carry `data-next-upsell-context`, or it will write to the cart instead of leaving the choice to this button. Treat the visitor's click on a card as what arms this button: a selector in upsell context pre-selects a card while booting, but this button does not reliably hear that, so it can start out disabled beside a card that looks chosen.
+> **Watch out:** The selector must carry `data-next-upsell-context`, or it will write to the cart instead of leaving the choice to this button. A selector in upsell context pre-selects a card while booting, and this button reads that pre-selection when it initialises, so it arms itself without waiting for a click. A selector container that renders more than 100ms after the button is the exception — then the button starts disabled and arms on the first card click.
 
 ---
 

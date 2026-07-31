@@ -58,19 +58,20 @@ Place a `PackageSelectorEnhancer` in upsell context alongside the button:
 The `data-next-selector-id` value must match between the selector container and the button.
 
 The selector pre-selects a card on its own as it boots (the one marked
-`data-next-selected="true"`, else the first), but **the accept button does not reliably
-hear that** — it can boot enabled or disabled on this same markup, and a visitor's click
-on any card always arms it. Design the step so the click is expected rather than
-assuming the pre-selection carries it; [overview.md](./overview.md) Limitations has the
-mechanism. Expect `[AcceptUpsellEnhancer] Selector "upsell-pkg" not found` in the
-console at boot even when the markup is right — [reference/logs.md](./reference/logs.md)
-explains why.
+`data-next-selected="true"`, else the first), and the button reads that pre-selection when it
+initialises — so it arms itself without waiting for a click. A visitor's click on any card
+arms it too.
+
+The one case where it starts disabled is a selector container that reaches the DOM later
+than 100 ms after the button — rendered into a tab or a modal, or behind a deferred script.
+Then you will see `[AcceptUpsellEnhancer] Selector "upsell-pkg" not found` in the console and
+the button arms on the first card click; [reference/logs.md](./reference/logs.md) covers it.
 
 ## Verify it is working
 
 After the page loads with a valid `?ref_id=` in the URL, you should see:
 
-- The button is **enabled** (no `disabled` attribute, no `next-disabled` class). With Option B it may start disabled and enable on the first card click — that is the pre-selection gap above, not a broken setup.
+- The button is **enabled** (no `disabled` attribute, no `next-disabled` class) — with Option B too, because the button reads the selector's pre-selection at startup.
 - In the browser console: `[AcceptUpsellEnhancer] Initialized { packageId: 42, ... }` (or `selectorId` if using Option B).
 - Clicking the button shows a full-page loading overlay, then navigates to `data-next-url`.
 

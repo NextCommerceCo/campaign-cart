@@ -63,5 +63,10 @@ acceptUpsell()
 - Does not support adding multiple packages in a single click. Each button targets one package.
 - Does not validate that the package exists in the campaign. If the package ID is wrong, the API call will fail.
 - Does not handle payment re-collection for upsells. Upsell payment is handled server-side on the existing order's stored payment method.
-- The 100 ms delay in `setupSelectorListener` is a heuristic. If the linked selector takes longer than 100 ms to initialize (e.g., very slow DOM or deferred render), the initial selection read will return null.
-- Cannot reliably see the selector's start-up selection. A `PackageSelectorEnhancer` in upsell context always pre-selects a card as it initializes (the one marked `data-next-selected="true"`, else the first), and it announces that with `selector:item-selected`. The button hears it only if it subscribed first, which depends on which enhancer the scanner finished initializing first — so the same page can boot with the accept button enabled or disabled. The 100 ms element read that exists to close exactly this gap never fires here: `findSelectorElement()` (`accept-upsell.enhancer.ts:125`) matches `[data-next-upsell-selector]`, `[data-next-upsell-select="<id>"]`, and `[data-next-upsell][data-next-selector-id="<id>"]` — never `[data-next-package-selector]`, which is the container this setup uses, so `Selector "<id>" not found` is logged even on a correct page. **Symptom:** a card that looks selected next to an accept button that does nothing. **What to do as an author:** do not rely on the pre-selection — make the visitor's click the thing that arms the button (any click on a card enables it), and keep the button visible only where that is acceptable. The lookup itself needs a code change.
+- The 100 ms delay in `setupSelectorListener` is a heuristic. It now finds every supported
+  selector container, including `[data-next-package-selector]`, so a selection made while the
+  page booted is picked up — but a container that only reaches the DOM *later* than 100 ms
+  (rendered into a tab, a modal, or behind a deferred script) still misses that read. When it
+  does, `Selector "<id>" not found` is logged and the button falls back to arming on the
+  visitor's first click on a card. **What to do as an author:** if your selector renders late,
+  expect the button to start disabled and to enable on the first card click.

@@ -83,7 +83,27 @@ the page believes it removed.
 
 **Fix:** normalise in `removeVoucher`, the same way `applyCoupon` does.
 
-### 24. A selector-driven accept button boots enabled or disabled at random — *verified 2026-07-31 in a browser*
+### 24. ~~A selector-driven accept button boots enabled or disabled at random~~ — **FIXED 2026-07-31**
+
+Fixed in code, and the docs that had been corrected *to describe the bug* were corrected back.
+The fix is the one line this entry predicted: `[data-next-package-selector][data-next-selector-id]`
+added at the front of `findSelectorElement()`'s query.
+
+Reproduced first. The new `tests/accept-upsell.enhancer.test.ts` arms `_getSelectedPackageId`
+on the container **before** constructing the enhancer — which is the ordering hazard, not just
+the missing selector — and failed with `expected true to be false` on
+`button.hasAttribute('disabled')` plus `expected "spy" to be called … Number of calls: 0` on
+the order call, both alongside the `Selector "upsell-pkg" not found` warn.
+
+**The warn stays**, because it can still fire for real: an id mismatch, or a container that
+renders later than the 100 ms init read (a tab, a modal, a deferred script). In that case the
+button still recovers on the visitor's first click. `overview.md`'s Limitations now says that
+narrower thing instead of "cannot reliably see the selection", and `get-started.md`,
+`reference/logs.md` and the manifest note on `data-next-selector-id` were rewritten to match.
+
+The original diagnosis follows.
+
+
 
 Numbered 24 to keep the existing numbers stable; by impact it belongs with the P1s
 above — the failing outcome is a dead accept button on a post-purchase page.
@@ -1411,7 +1431,46 @@ is the one that is mechanically checkable, which is an argument for keeping it; 
 argument is that 16 of its 18 violations are noise, and a gate that mostly reports noise gets
 ignored. Recorded 2026-07-31.
 
-### 103. `this.subscribe()` auto-cleans and `this.on()` silently does not — *verified*
+### 103. ~~`this.subscribe()` auto-cleans and `this.on()` silently does not~~ — **FIXED 2026-07-31**
+
+`EventBus.on()` now returns `() => this.off(event, handler)`, and `BaseEnhancer.on()` pushes
+that onto the same `subscriptions` array `subscribe()` uses, so base `destroy()` runs both.
+Headline failing assertion beforehand: `expected "spy" to be called 1 times, but got 2 times`
+— a handler still firing after `destroy()`. 18 new tests across `core/tests/events.test.ts`
+and `core/tests/base-enhancer.test.ts`, including a `HandRolledEnhancer` that reproduces the
+six features' stored-reference-plus-`off()` pattern and proves a double unsubscribe in either
+order is harmless.
+
+**The public surface did not change.** Only the type of `EventBus.prototype.on` widened,
+`void` → `() => void`, which is additive; `src/index.ts` is untouched and the contract gates
+stay green. `NextCommerce.on()` — i.e. `window.next.on` — deliberately still returns `void`,
+since widening the facade is a public-API decision.
+
+**Nothing relied on a handler surviving `destroy()`**, verified three ways rather than assumed:
+no `destroy()` or `cleanupEventListeners()` body in `src/` contains an `emit(` (AST-walked, 0
+hits), so teardown cannot drop an event it needed; `this.destroy()` appears nowhere and
+`AttributeScanner`'s three `destroy()` call sites all construct a fresh instance on
+re-enhancement, so the old behaviour was strictly worse — an attribute change or DOM move left
+double-firing zombie handlers; and only `UpsellEnhancer` used `this.on()`, so the live delta is
+confined to its two handlers, whose `cleanupEventListeners` only removes DOM listeners.
+
+**One caveat, pinned by a test:** subscribers live in a `Set`, so the same function *reference*
+registered twice is a single entry and the first unsubscribe removes it for both registrants.
+Harmless today because every `this.on()` caller passes a per-instance closure, but a
+module-level handler shared by two instances would now die on the first `destroy()`.
+
+**Still open, and now cheap** — five hand-rolled `on`/`off` pairs that can collapse to
+`this.on(...)` (`add-to-cart`, `accept-upsell`, `selection-display`, `conditional-display`, and
+`checkout-form/autofill-detection.ts`), plus four handlers that are still never removed because
+they are inline arrows nothing can reference: `product-display.enhancer.ts:112`,
+`quantity-text.enhancer.ts:63`, `conditional-display.enhancer.ts:118` (its third handler — only
+two of three are cleaned), and `checkout-form.enhancer.ts:317, :715`. Switching each to
+`this.on()` fixes them for free. Outside `features/`, `core/debug/UpsellSelector.ts` and
+`core/sdk-initializer.ts` register inline arrows that are never removed either.
+
+The original diagnosis follows.
+
+
 
 `BaseEnhancer` offers two ways to react to something, and only one of them cleans up:
 

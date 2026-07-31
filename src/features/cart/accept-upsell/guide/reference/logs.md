@@ -67,9 +67,9 @@ On click (with redirect):
 
 **When:** `data-next-selector-id` is set but the 100 ms initialization read matched no element.
 
-**Meaning:** Expected on a correctly built page, and not by itself a fault. The lookup only matches a container carrying `data-next-upsell-selector`, `data-next-upsell-select`, or `data-next-upsell`, so the recommended `data-next-package-selector` setup always logs it — verified against `accept-upsell.enhancer.ts:125`. The button still works from the visitor's first card click, which arrives as `selector:item-selected`. What it loses is the selector's own start-up pre-selection: the button may or may not have heard that, so it can boot enabled or disabled on the same markup. See [overview.md](../overview.md) Limitations.
+**Meaning:** A real fault, not routine noise. The lookup matches every supported container — `data-next-package-selector`, `data-next-upsell-selector`, `data-next-upsell-select` and `data-next-upsell` — so on a correctly built page it finds one and this does not fire. Two things still produce it: the two `data-next-selector-id` values do not match exactly, or the selector container reaches the DOM later than 100 ms after the button (rendered into a tab or modal, or behind a deferred script). In the second case the button recovers on the visitor's first card click, which arrives as `selector:item-selected`.
 
-**Action:** Ignore it unless the accept button never enables. If it does not, check that the two `data-next-selector-id` values match exactly, and click a card — if that enables it, you are looking at the pre-selection gap above rather than a wiring mistake.
+**Action:** Check that the two `data-next-selector-id` values match exactly. If they do, the container is rendering late — move the button inside the same container so both are scanned together, and expect the button to start disabled until the first card click.
 
 ### `No package ID available for accept-upsell action`
 

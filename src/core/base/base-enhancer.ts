@@ -38,11 +38,20 @@ export abstract class BaseEnhancer {
     this.eventBus.emit(event, detail);
   }
 
+  /**
+   * Listens for an SDK event for as long as this enhancer is alive.
+   *
+   * The unsubscribe is recorded alongside store subscriptions and run by
+   * {@link BaseEnhancer.destroy}, so an inline arrow is safe here. Calling
+   * `this.eventBus.on(...)` directly instead bypasses that cleanup, and because the
+   * bus is a page-lifetime singleton the handler would keep firing on a destroyed
+   * enhancer.
+   */
   protected on<K extends keyof EventMap>(
-    event: K, 
+    event: K,
     handler: (data: EventMap[K]) => void
   ): void {
-    this.eventBus.on(event, handler);
+    this.subscriptions.push(this.eventBus.on(event, handler));
   }
 
   // Store subscription helper

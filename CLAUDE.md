@@ -70,7 +70,7 @@ Cross-cutting rules stay under [.claude/rules/](.claude/rules/):
 
 - **Campaign store field is `.data`** — `useCampaignStore.getState().data`. `.campaign` is undefined and will silently break code.
 - **Path aliases, not relatives across boundaries** — use `@/state/...`, not `../../state/...`.
-- **Subscribe via `this.subscribe(store, fn)` inside enhancers** — direct `store.subscribe()` bypasses auto-cleanup on `destroy()`.
+- **Subscribe via `this.subscribe(store, fn)` and listen via `this.on(event, fn)` inside enhancers** — both record an unsubscribe that `destroy()` runs. Calling `store.subscribe()` or `this.eventBus.on()` directly bypasses that cleanup, and because `EventBus` is a page-lifetime singleton, a bus handler left behind keeps firing on a destroyed enhancer. `EventBus.on()` returns an unsubscribe function — use it (or `this.on`) rather than stashing a bound reference for `EventBus.off()`.
 - **Call `super.destroy()` first** when overriding `destroy()`.
 - **No `console.log`** — use `this.logger.{debug,warn,error}`; ESLint will flag it.
 - **Register new enhancers** in [src/core/attribute-scanner.ts](src/core/attribute-scanner.ts) with their activation attribute, or they never instantiate.

@@ -125,7 +125,11 @@ export class AcceptUpsellEnhancer extends BaseActionEnhancer {
 
   private findSelectorElement(): HTMLElement | null {
     return document.querySelector(
-      `[data-next-upsell-selector][data-next-selector-id="${this.selectorId}"],` +
+      // `[data-next-package-selector]` first: it is the container this feature's
+      // get-started guide recommends, and omitting it made the init read always miss,
+      // leaving the button's state up to enhancer init order (finding 24).
+      `[data-next-package-selector][data-next-selector-id="${this.selectorId}"],` +
+        `[data-next-upsell-selector][data-next-selector-id="${this.selectorId}"],` +
         `[data-next-upsell-select="${this.selectorId}"],` +
         `[data-next-upsell][data-next-selector-id="${this.selectorId}"]`,
     );

@@ -122,8 +122,11 @@ is the answer to "which channel carries this".
 
 - **No `once`, no wildcard, no pattern matching.** Unsubscribe yourself inside the
   handler if you want a single delivery.
-- **`on()` returns nothing** — there is no unsubscribe handle. Keep the function
-  reference for `next.off()`.
+- **`next.on()` returns nothing** — the facade hands back no unsubscribe handle, so keep
+  the function reference for `next.off()`. The bus underneath it does return one:
+  `EventBus.on()` gives you an unsubscribe function, which is what makes an enhancer's
+  `this.on(...)` clean up automatically. Widening the `next` facade to forward it would be a
+  public-API change and has not been made.
 - **No introspection.** There is no public way to list subscribers or to ask whether an
   event has ever fired. `removeAllListeners` exists on the bus class but is not on the
   `next` facade.
