@@ -13,6 +13,7 @@ export interface TemplateRenderOptions {
     defaultValues?: Record<string, string>;
 }
 export declare class TemplateRenderer {
+    private static logger;
     static render(template: string, options: TemplateRenderOptions): string;
     private static getValue;
     private static formatValue;

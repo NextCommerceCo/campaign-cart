@@ -16,12 +16,9 @@ export declare class PackageToggleEnhancer extends BaseEnhancer {
     private isProcessingRef;
     initialize(): Promise<void>;
     private makeHandlerContext;
-    private scanCards;
-    private registerCard;
-    private findStateContainer;
-    private resolvePackageId;
+    private cardContext;
+    private syncContext;
     private setupMutationObserver;
-    private syncWithCart;
     update(): void;
     protected cleanupEventListeners(): void;
     destroy(): void;

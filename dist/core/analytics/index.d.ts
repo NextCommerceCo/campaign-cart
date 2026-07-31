@@ -40,5 +40,5 @@ export { EventValidator } from './validation/EventValidator';
 export { EcommerceEvents } from './events/EcommerceEvents';
 export { UserEvents } from './events/UserEvents';
 export { dataLayer } from './DataLayerManager';
-export { MetaTagController, metaTagController } from './tracking/MetaTagController';
+export { MetaTagController, metaTagController, } from './tracking/MetaTagController';
 //# sourceMappingURL=index.d.ts.map

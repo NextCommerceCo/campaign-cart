@@ -14,15 +14,8 @@ export declare class PackageSelectorEnhancer extends BaseEnhancer {
     private includeShipping;
     private isUpsellContext;
     initialize(): Promise<void>;
-    private initializeSelection;
     private makeHandlerContext;
-    private scanCards;
-    private registerCard;
-    private updateItemPackageData;
     private setupMutationObserver;
-    private handlePackageIdChange;
-    private handleCardRemoval;
-    private syncWithCart;
     update(): void;
     getSelectedItem(): SelectorItem | null;
     protected cleanupEventListeners(): void;

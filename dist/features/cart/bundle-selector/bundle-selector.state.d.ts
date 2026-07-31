@@ -1,29 +1,15 @@
 import { Logger } from '../../../core/logger';
 import { Package } from '../../../types/campaign';
-import { BundleCard, BundleItem, BundlePackageState } from './bundle-selector.types';
+import { BundleCard, BundleItem, BundlePackageState, ClassNames } from './bundle-selector.types';
+export { extractNestedSlotTemplate, extractNestedVariantTemplates, resolveBundleTemplates, } from './bundle-selector.template-state';
+export type { ResolvedBundleTemplates } from './bundle-selector.template-state';
+export { parseForceBundleId, resolveForcedBundleId, pickDefaultCard, pickAndLogDefaultCard, } from './bundle-selector.selection-state';
+export type { ForceBundleSpec, DefaultCardChoice, } from './bundle-selector.selection-state';
 export declare function makePackageState(pkg: Package): BundlePackageState;
 export declare function getEffectiveItems(card: BundleCard): BundleItem[];
+export declare function attachBundleAccessors(element: HTMLElement, getSelectedCard: () => BundleCard | null): void;
+export declare function parseClassNames(element: HTMLElement): ClassNames;
 export declare function parseVouchers(attr: string | null, logger: Logger): string[];
-export declare function extractNestedSlotTemplate(cardTemplate: string): {
-    card: string;
-    slot: string;
-};
-export declare function extractNestedVariantTemplates(slotTemplate: string): {
-    slot: string;
-    variantSelector: string;
-    variantOption: string;
-};
-export interface ForceBundleSpec {
-    selectorId: string | null;
-    bundleId: string;
-}
-export declare function parseForceBundleId(raw: string | null | undefined): ForceBundleSpec[];
-export declare function resolveForcedBundleId(specs: ForceBundleSpec[], selectorId: string | null): string | null;
-export interface DefaultCardChoice {
-    card: BundleCard | null;
-    fromForce: boolean;
-    forcedMiss: string | null;
-    usedFirstCardFallback: boolean;
-}
-export declare function pickDefaultCard(cards: BundleCard[], rawForceBundleId: string | null | undefined, selectorId: string | null): DefaultCardChoice;
+export declare function getBundleVouchers(cards: BundleCard[]): string[];
+export declare function getAllKnownBundleVouchers(allCards: BundleCard[][]): Set<string>;
 //# sourceMappingURL=bundle-selector.state.d.ts.map

@@ -17,4 +17,14 @@ export declare function addToCart(card: ToggleCard): Promise<void>;
 export declare function updateCartItemProperties(card: ToggleCard): Promise<void>;
 export declare function updateSyncedQuantity(card: ToggleCard, cartState: CartState): void;
 export declare function handleSyncUpdate(card: ToggleCard, _cartState: CartState, _logger: Logger): Promise<void>;
+export interface ToggleSyncContext {
+    cards: ToggleCard[];
+    autoAddInProgress: Set<number>;
+    emit: <K extends keyof EventMap>(event: K, detail: EventMap[K]) => void;
+    logger: Logger;
+    includeShipping: boolean;
+    getPriceSyncDebounce: () => ReturnType<typeof setTimeout> | null;
+    setPriceSyncDebounce: (handle: ReturnType<typeof setTimeout> | null) => void;
+}
+export declare function syncWithCart(cartState: CartState, ctx: ToggleSyncContext): void;
 //# sourceMappingURL=package-toggle.handlers.d.ts.map

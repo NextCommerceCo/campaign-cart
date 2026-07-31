@@ -16,7 +16,9 @@ export declare class NextCampaignAdapter extends ProviderAdapter {
     private loadPromise;
     private apiKey;
     private loadWarned;
-    constructor();
+    constructor(config?: {
+        blockedEvents?: string[];
+    });
     private warnScriptMissing;
     initialize(config?: any): Promise<void>;
     protected isReady(): boolean;

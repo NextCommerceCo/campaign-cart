@@ -23,8 +23,6 @@ export declare class ApiClient implements IApiClient {
     abandonProspectCart(cartId: string): Promise<any>;
     convertProspectCart(cartId: string): Promise<any>;
     getAddressesAutocomplete(query_text: string, country?: string, language?: string, signal?: AbortSignal): Promise<any>;
-    private getRequestType;
-    private getErrorType;
     private request;
     setApiKey(apiKey: string): void;
     getApiKey(): string;

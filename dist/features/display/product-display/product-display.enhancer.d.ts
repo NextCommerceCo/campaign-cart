@@ -16,25 +16,10 @@ export declare class ProductDisplayEnhancer extends BaseDisplayEnhancer {
     private detectPackageContext;
     private loadPackageData;
     protected getPropertyValue(): any;
-    private isPriceProperty;
-    private parseNumericValue;
     protected updateElementContent(value: string): void;
     protected hideElement(): void;
     protected showElement(): void;
     update(data?: any): void;
-    private getCalculatedProperty;
-    private calculatePackageDiscountAmount;
-    private calculateDiscountedPrice;
-    private calculateDiscountedPriceTotal;
-    private calculateFinalPrice;
-    private calculateFinalPriceTotal;
-    private calculateTotalSavingsAmount;
-    private calculateTotalSavingsAmountRaw;
-    private calculateTotalSavingsPercentage;
-    private calculateTotalSavingsPercentageRaw;
-    private calculateHasTotalSavings;
-    private getPackageValue;
-    private getCampaignProperty;
     getPackageProperty(property: string): any;
     setPackageContext(packageId: number): void;
 }

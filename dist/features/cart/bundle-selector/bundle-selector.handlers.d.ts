@@ -1,3 +1,4 @@
+import { CartState } from '../../../types/global';
 import { BundleCard, HandlerContext } from './bundle-selector.types';
 import { collectDefaultProperties, mergeWithDefaults } from '../shared/properties';
 export { collectDefaultProperties, mergeWithDefaults };
@@ -11,4 +12,5 @@ export declare function handleVariantOptionClick(e: Event, cards: BundleCard[], 
 export declare function handleSelectVariantChange(_select: HTMLSelectElement, bundleId: string, slotIndex: number, cards: BundleCard[], ctx: HandlerContext): Promise<void>;
 export declare function applyBundleQuantityChange(card: BundleCard, ctx: HandlerContext): Promise<void>;
 export declare function setShippingMethod(shippingId: string, ctx: Pick<HandlerContext, 'logger'>): Promise<void>;
+export declare function syncCardsWithCart(cartState: CartState, cards: BundleCard[], pickDefaultCard: () => BundleCard | null, ctx: HandlerContext): void;
 //# sourceMappingURL=bundle-selector.handlers.d.ts.map

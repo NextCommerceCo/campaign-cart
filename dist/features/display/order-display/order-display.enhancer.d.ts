@@ -9,15 +9,5 @@ export declare class OrderDisplayEnhancer extends BaseDisplayEnhancer {
     private checkAndLoadOrderFromUrl;
     private handleOrderUpdate;
     protected updateElementContent(value: string): void;
-    private getDisplayValue;
-    private getOrderUserProperty;
-    private getOrderAddressProperty;
-    private getOrderLinesProperty;
-    private getOrderLineProperty;
-    private getOrderAttributionProperty;
-    private formatAddress;
-    private beautifyPaymentMethod;
-    private isComplexOrderProperty;
-    private getCalculatedProperty;
 }
 //# sourceMappingURL=order-display.enhancer.d.ts.map

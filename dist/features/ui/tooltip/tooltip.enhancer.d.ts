@@ -1,26 +1,15 @@
 import { BaseEnhancer } from '../../../core/base/base-enhancer';
-export interface TooltipConfig {
-    placement?: 'top' | 'bottom' | 'left' | 'right';
-    offset?: number;
-    delay?: number;
-    maxWidth?: string;
-    className?: string;
-}
+export type { TooltipConfig } from './tooltip.types';
 export declare class TooltipEnhancer extends BaseEnhancer {
     private tooltip;
     private arrow;
-    private showTimeout;
-    private hideTimeout;
+    private timers;
     private config;
     private isVisible;
-    private static stylesInjected;
     constructor(element: HTMLElement);
     initialize(): Promise<void>;
     update(): void;
     destroy(): void;
-    private parseConfig;
-    private injectStyles;
-    private setupEventListeners;
     protected cleanupEventListeners(): void;
     private handleMouseEnter;
     private handleMouseLeave;
@@ -28,14 +17,8 @@ export declare class TooltipEnhancer extends BaseEnhancer {
     private handleBlur;
     private handleTouchStart;
     private handleKeydown;
-    private scheduleShow;
-    private scheduleHide;
-    private cleanupTimeouts;
+    private finalizeStaleDismissal;
     private show;
     private hide;
-    private getTooltipContent;
-    private updateTooltipContent;
-    private createTooltip;
-    private positionTooltip;
 }
 //# sourceMappingURL=tooltip.enhancer.d.ts.map

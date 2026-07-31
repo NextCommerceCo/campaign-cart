@@ -32,6 +32,7 @@ export declare class DataLayerManager {
     private generateEventId;
     private generateSessionId;
     private getNestedValue;
+    private isFieldMissing;
     private debug;
     private error;
     initialize(): void;

@@ -132,4 +132,16 @@ export interface PriceContext {
     isUpsellContext: boolean;
     logger: Logger;
 }
+export interface CardRegistrationContext {
+    classNames: ClassNames;
+    slotTemplate: string;
+    externalSlotsEl: HTMLElement | null;
+    selectorId: string | null;
+    logger: Logger;
+    clickHandlers: Map<HTMLElement, (e: Event) => void>;
+    quantityHandlers: Map<HTMLElement, (e: Event) => void>;
+    quantityRefreshers: Map<HTMLElement, () => void>;
+    makeRenderContext: () => RenderContext;
+    makeHandlerContext: () => HandlerContext;
+}
 //# sourceMappingURL=bundle-selector.types.d.ts.map

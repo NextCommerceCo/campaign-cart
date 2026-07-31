@@ -8,6 +8,7 @@ interface CustomAdapterConfig {
     maxRetries?: number;
     retryDelayMs?: number;
     transformFunction?: (event: DataLayerEvent) => any;
+    blockedEvents?: string[];
 }
 export declare class CustomAdapter extends ProviderAdapter {
     private config;
