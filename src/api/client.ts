@@ -138,29 +138,6 @@ export class ApiClient implements IApiClient {
     );
   }
 
-  // Get request type from endpoint
-  private getRequestType(endpoint: string): string {
-    if (endpoint.includes('/campaigns')) return 'campaign';
-    if (endpoint.includes('/upsells')) return 'upsell';
-    if (endpoint.includes('/orders')) return 'order';
-    if (endpoint.includes('/prospect-carts')) return 'prospect_cart';
-    if (endpoint.includes('/carts')) return 'cart';
-    if (endpoint.includes('/addresses')) return 'addresses';
-    return 'campaign'; // default
-  }
-
-  // Get error type from status code
-  private getErrorType(
-    status: number
-  ): 'network' | 'rate_limit' | 'auth' | 'server_error' | 'client_error' {
-    if (status === 0) return 'network';
-    if (status === 429) return 'rate_limit';
-    if (status === 401 || status === 403) return 'auth';
-    if (status >= 500) return 'server_error';
-    if (status >= 400) return 'client_error';
-    return 'network';
-  }
-
   // Generic request handler with error handling and rate limiting
   private async request<T>(
     endpoint: string,
@@ -177,16 +154,7 @@ export class ApiClient implements IApiClient {
 
     this.logger.debug(`API Request: ${method} ${url}`);
 
-    const startTime = performance.now();
-    let statusCode = 0;
     let errorMessage: string | undefined;
-    let errorType:
-      | 'network'
-      | 'rate_limit'
-      | 'auth'
-      | 'server_error'
-      | 'client_error'
-      | undefined;
     let retryAfter: number | undefined;
 
     try {
@@ -194,14 +162,11 @@ export class ApiClient implements IApiClient {
         ...options,
         headers,
       });
-      const duration = performance.now() - startTime;
-      statusCode = response.status;
 
       // Handle rate limiting
       if (response.status === 429) {
         retryAfter = parseInt(response.headers.get('Retry-After') || '60');
         errorMessage = `Rate limited. Retry after ${retryAfter} seconds`;
-        errorType = 'rate_limit';
         this.logger.warn(errorMessage);
 
         throw new Error(errorMessage);
@@ -210,7 +175,6 @@ export class ApiClient implements IApiClient {
       // Handle other errors
       if (!response.ok) {
         errorMessage = `API Error: ${response.status} ${response.statusText}`;
-        errorType = this.getErrorType(response.status);
 
         // Try to parse error response body
         let errorData: any = {};

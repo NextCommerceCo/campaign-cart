@@ -3,6 +3,8 @@
  * Handles placeholder replacement for both cart and order item templates
  */
 
+import { Logger } from '@/core/logger';
+
 export interface TemplateData {
   [key: string]: any;
 }
@@ -21,6 +23,8 @@ export interface TemplateRenderOptions {
 }
 
 export class TemplateRenderer {
+  private static logger = new Logger('TemplateRenderer');
+
   /**
    * Renders a template string by replacing {placeholder} patterns with actual values
    * @param template - Template string with {key.subkey} placeholders
@@ -51,7 +55,7 @@ export class TemplateRenderer {
 
           return String(formattedValue);
         } catch (error) {
-          console.warn(
+          this.logger.warn(
             `Template rendering error for placeholder ${placeholder}:`,
             error,
           );

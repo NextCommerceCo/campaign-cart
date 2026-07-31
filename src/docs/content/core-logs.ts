@@ -265,6 +265,12 @@ export const CORE_LOG_SOURCES: CoreLogSource[] = [
     what: 'Contains a failure inside one display binding so it cannot blank out the rest of the page. A line here means one element gave up, not that the SDK stopped — which is exactly the distinction to establish first when "some prices are missing".',
   },
   {
+    prefix: 'TemplateRenderer',
+    file: 'rendering/template-renderer.ts',
+    area: 'Shared base',
+    what: 'Renders the `data-next-*` placeholder templates that cart, package, and order item rows are built from. A line here means one field in one row could not be formatted — the row still renders, with that field blank.',
+  },
+  {
     prefix: 'DisplayValueValidator',
     file: 'base/display-value-validator.ts',
     area: 'Shared base',
@@ -1573,6 +1579,16 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
       'Fix the handler — it is your code, registered via the boundary’s handler list. Look for the preceding `[Display Error]` line to see what it was reacting to. A handler that throws can hide the real problem, so it should never do more than report.',
   },
 
+  // ── rendering/template-renderer.ts ─────────────────────────────────────────
+  {
+    level: 'warn',
+    message: 'Template rendering error for placeholder {placeholder}:',
+    meaning:
+      'One placeholder in a cart, package, or order item template threw while being formatted. That placeholder falls back to its default — usually an empty string — so the row still renders with one field blank or stale, and the rest of the template is unaffected.',
+    action:
+      'Read the attached error and check the named placeholder against the data the row was given; a missing price or currency on the item is the usual cause. Note this used to print through `console.warn` and so appeared on production pages regardless of log level — it is now gated like every other warning, so reproduce it with `?debug=true` if a field is blank on a live page.',
+  },
+
   // ── base/display-value-validator.ts ────────────────────────────────────────
   // Every line here means the element rendered a fallback. None of them break the
   // page, which is exactly why they are worth reading: the symptom is a wrong number,
@@ -1940,18 +1956,5 @@ export const CORE_CONSOLE_LOGS: CoreConsoleLog[] = [
       'A target URL could not be parsed, so the visitor is sent there with none of the tracking parameters carried over. Navigation still happens — the original URL is used unchanged — but the next page starts with no UTM tags, so an order placed after it can be attributed to nothing.',
     action:
       'Read the attached error and check the URL that was passed — a relative path with a stray space or an unencoded template placeholder left in the markup is the usual cause. On paid traffic, confirm the destination page still receives its parameters before spending more on the campaign.',
-  },
-
-  // ── rendering/template-renderer.ts ─────────────────────────────────────────
-  {
-    file: 'rendering/template-renderer.ts',
-    level: 'warn',
-    anchor: 'Template rendering error for placeholder ${placeholder}:',
-    message: 'Template rendering error for placeholder {placeholder}:',
-    hasContext: true,
-    meaning:
-      'One placeholder in a cart, package, or order item template threw while being formatted. That placeholder falls back to its default value — usually an empty string — so the row still renders but one field is blank or stale. The rest of the template is unaffected.',
-    action:
-      'Read the attached error and check the placeholder named against the data the row was given; a missing price or currency on the item is the usual cause. A blank field on a live page is worth fixing even though nothing crashes.',
   },
 ];

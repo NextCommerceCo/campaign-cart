@@ -10,7 +10,7 @@ category: "Core Reference"
      src/docs/content/core-logs.ts. Do not edit by hand: change the log line in the
      code or the note in core-logs.ts, then run `npm run docs:reference`. -->
 
-Every message the SDK's own machinery can print — 494 of them, across 39 console prefixes plus 14 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
+Every message the SDK's own machinery can print — 494 of them, across 40 console prefixes plus 13 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
 
 Messages are listed at the wording the code uses. A `{name}` inside one is a value filled in at runtime, so search for the text on either side of it. **Extra context** means the call passes a second argument — an object or an error logged beside the message; expand that entry in the console, because the message alone will not tell you which element, package, or event was involved.
 
@@ -84,6 +84,7 @@ Console lines are prefixed with the part of the SDK that produced them. Find the
 | `[AttributeParser]` | Turns attribute text into something the features can act on — including the comparison expressions behind `data-next-show` and `data-next-hide`. | 1 | — | — | 2 |
 | `[{DisplayEnhancerClassName}]` | Everything behind a `data-next-display` binding: resolving the namespaced path to a value, formatting it, and re-rendering when the value or the currency changes. Four `features/cart/**` display files extend it as well as the display features, which is why it is a base class here rather than a file in the display folder. | — | 1 | — | 2 |
 | `[DisplayErrorBoundary]` | Contains a failure inside one display binding so it cannot blank out the rest of the page. A line here means one element gave up, not that the SDK stopped — which is exactly the distinction to establish first when "some prices are missing". | 2 | — | — | — |
+| `[TemplateRenderer]` | Renders the `data-next-*` placeholder templates that cart, package, and order item rows are built from. A line here means one field in one row could not be formatted — the row still renders, with that field blank. | — | 1 | — | — |
 | `[DisplayValueValidator]` | Coerces a resolved value into the shape its format needs — a price to a 2-decimal number, a date string to a `Date`. Every line here means a value was replaced by a fallback, so the element rendered something plausible instead of the truth. These are the quietest wrong-number bugs in the SDK. | — | 5 | — | — |
 
 ### Location and currency
@@ -873,6 +874,24 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 **Meaning:** A custom handler registered on the display error boundary threw while handling another error. The original error was still logged; this is the handler failing on top of it.
 
 **Action:** Fix the handler — it is your code, registered via the boundary’s handler list. Look for the preceding `[Display Error]` line to see what it was reacting to. A handler that throws can hide the real problem, so it should never do more than report.
+
+## `[TemplateRenderer]`
+
+Renders the `data-next-*` placeholder templates that cart, package, and order item rows are built from. A line here means one field in one row could not be formatted — the row still renders, with that field blank.
+
+Logged from `rendering/template-renderer.ts`.
+
+### Warn
+
+The SDK carried on, but something in the markup, the configuration, or the campaign data was not what it expected. Worth fixing even when the page looks right — several of these are how tracking goes quietly wrong.
+
+#### `Template rendering error for placeholder {placeholder}:`
+
+`rendering/template-renderer.ts › replacer` · extra context attached
+
+**Meaning:** One placeholder in a cart, package, or order item template threw while being formatted. That placeholder falls back to its default — usually an empty string — so the row still renders with one field blank or stale, and the rest of the template is unaffected.
+
+**Action:** Read the attached error and check the named placeholder against the data the row was given; a missing price or currency on the item is the usual cause. Note this used to print through `console.warn` and so appeared on production pages regardless of log level — it is now gated like every other warning, so reproduce it with `?debug=true` if a field is blank on a live page.
 
 ## `[DisplayValueValidator]`
 
@@ -2421,13 +2440,13 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 ## Lines that bypass the logger
 
-14 messages in `src/core` are printed with a bare `console.error` or `console.warn` instead of through `Logger`. They behave differently from everything above, and the difference matters when you are reading a console:
+13 messages in `src/core` are printed with a bare `console.error` or `console.warn` instead of through `Logger`. They behave differently from everything above, and the difference matters when you are reading a console:
 
 - **No `[Prefix]`**, unless the message writes one out by hand — which the attribution collector does and the event bus does not. An unprefixed error line from the SDK is one of these.
 - **Not gated by debug mode or the log level.** On the module bundle they print for every visitor. On the UMD bundle they are stripped like everything else.
 - **`Logger.setLogLevel()` cannot silence them.**
 
-They come from `attribution/attribution-collector.ts`, `events.ts`, `storage.ts`, `sdk-initializer.ts`, `url-utils.ts`, `rendering/template-renderer.ts`. The debug tooling under `core/debug/` also writes to the console directly; that output is the tool talking to whoever opened it, so it is not listed here.
+They come from `attribution/attribution-collector.ts`, `events.ts`, `storage.ts`, `sdk-initializer.ts`, `url-utils.ts`. The debug tooling under `core/debug/` also writes to the console directly; that output is the tool talking to whoever opened it, so it is not listed here.
 
 ### `[AttributionCollector] Error storing {key} in sessionStorage:`
 
@@ -2532,11 +2551,3 @@ They come from `attribution/attribution-collector.ts`, `events.ts`, `storage.ts`
 **Meaning:** A target URL could not be parsed, so the visitor is sent there with none of the tracking parameters carried over. Navigation still happens — the original URL is used unchanged — but the next page starts with no UTM tags, so an order placed after it can be attributed to nothing.
 
 **Action:** Read the attached error and check the URL that was passed — a relative path with a stray space or an unencoded template placeholder left in the markup is the usual cause. On paid traffic, confirm the destination page still receives its parameters before spending more on the campaign.
-
-### `Template rendering error for placeholder {placeholder}:`
-
-`rendering/template-renderer.ts › replacer` · `console.warn` · extra context attached
-
-**Meaning:** One placeholder in a cart, package, or order item template threw while being formatted. That placeholder falls back to its default value — usually an empty string — so the row still renders but one field is blank or stale. The rest of the template is unaffected.
-
-**Action:** Read the attached error and check the placeholder named against the data the row was given; a missing price or currency on the item is the usual cause. A blank field on a live page is worth fixing even though nothing crashes.
