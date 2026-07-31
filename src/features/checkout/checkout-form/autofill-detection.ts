@@ -104,6 +104,10 @@ function snapshot(
  *   autocomplete, schedule its own resume timer, and re-snapshot a `fieldValues` map that
  *   no longer matched any live field. (Before that it was stashed on the enhancer via
  *   `(this as any).autofillInterval`, which type-checked at neither the set nor the clear.)
+ *
+ *   This is a module function rather than an enhancer method, so it cannot use
+ *   `this.on(...)` — which is the normal way to get automatic cleanup. Hence the explicit
+ *   teardown, which the enhancer calls from its own `destroy()`.
  */
 export function setupAutofillDetection(
   ctx: AutofillDetectionContext
@@ -122,7 +126,13 @@ export function setupAutofillDetection(
       snapshot(ctx.fields, fieldValues);
     }, AUTOCOMPLETE_PAUSE_MS);
   };
-  ctx.eventBus.on('address:autocomplete-filled', onAutocompleteFilled);
+  // The unsubscribe `on` returns, not a stashed reference for `off` — see the TSDoc on
+  // `EventBus.on`. `off` needs the exact handler reference, so keeping one around is both
+  // more to get wrong and unnecessary.
+  const unsubscribeAutocomplete = ctx.eventBus.on(
+    'address:autocomplete-filled',
+    onAutocompleteFilled
+  );
 
   snapshot(ctx.fields, fieldValues);
 
@@ -214,6 +224,6 @@ export function setupAutofillDetection(
 
   return () => {
     clearInterval(checkInterval);
-    ctx.eventBus.off('address:autocomplete-filled', onAutocompleteFilled);
+    unsubscribeAutocomplete();
   };
 }

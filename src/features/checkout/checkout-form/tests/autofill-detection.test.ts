@@ -51,25 +51,25 @@ function createCtx(
 ): {
   ctx: AutofillDetectionContext;
   onSpy: ReturnType<typeof vi.fn>;
-  offSpy: ReturnType<typeof vi.fn>;
+  unsubSpy: ReturnType<typeof vi.fn>;
   logger: ReturnType<typeof createMockLogger>;
   hasTrackedShippingInfo: { value: boolean };
 } {
-  const onSpy = vi.fn();
-  const offSpy = vi.fn();
+  // `on` returns an unsubscribe, matching the real `EventBus.on` — a fake that returns
+  // nothing would make the teardown throw rather than fail a meaningful assertion.
+  const unsubSpy = vi.fn();
+  const onSpy = vi.fn(() => unsubSpy);
   const logger = createMockLogger();
   const hasTrackedShippingInfo = {
     value: options.hasTrackedShippingInfo ?? false,
   };
   const ctx: AutofillDetectionContext = {
-    // `off` as well as `on`: the teardown returned by `setupAutofillDetection`
-    // unsubscribes, so a fake without it throws on cleanup.
-    eventBus: { on: onSpy, off: offSpy } as unknown as EventBus,
+    eventBus: { on: onSpy } as unknown as EventBus,
     fields,
     hasTrackedShippingInfo,
     logger: logger as unknown as Logger,
   };
-  return { ctx, onSpy, offSpy, logger, hasTrackedShippingInfo };
+  return { ctx, onSpy, unsubSpy, logger, hasTrackedShippingInfo };
 }
 
 /** Pulls the handler registered for `address:autocomplete-filled` out of the fake bus. */
@@ -330,17 +330,17 @@ describe('teardown', () => {
   // no longer matches any live field. The returned teardown used to be a bare interval
   // handle, which could only stop the poll.
   it('unsubscribes from the event bus as well as stopping the poll', () => {
-    const { ctx, onSpy, offSpy } = createCtx(new Map());
+    const { ctx, onSpy, unsubSpy } = createCtx(new Map());
 
     const stop = setupAutofillDetection(ctx);
     expect(onSpy).toHaveBeenCalledTimes(1);
+    expect(onSpy.mock.calls[0]?.[0]).toBe('address:autocomplete-filled');
+    expect(unsubSpy).not.toHaveBeenCalled();
 
     stop();
 
-    expect(offSpy).toHaveBeenCalledTimes(1);
-    // Same event name and the *same handler reference* — passing a different function to
-    // `off` would silently leave the original attached.
-    expect(offSpy.mock.calls[0]?.[0]).toBe('address:autocomplete-filled');
-    expect(offSpy.mock.calls[0]?.[1]).toBe(onSpy.mock.calls[0]?.[1]);
+    // Calls the unsubscribe `on` handed back, rather than reaching for `EventBus.off`
+    // with a stashed handler reference — see the TSDoc on `EventBus.on`.
+    expect(unsubSpy).toHaveBeenCalledTimes(1);
   });
 });
