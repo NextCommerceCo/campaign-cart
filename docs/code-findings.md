@@ -16,8 +16,7 @@ documentation fix, so it was made. Both are kept in place so the reasoning is no
 line. **Reported** means it came out of a parallel review and is precise enough to act
 on, but I have not personally confirmed it — check before scheduling.
 
-Nothing in this file authorises a commit, a push, or a deploy. See
-[`.claude/rules/no-commit-no-deploy.md`](../.claude/rules/no-commit-no-deploy.md).
+Nothing in this file authorises a push or a deploy.
 
 ---
 

@@ -6,8 +6,8 @@
  * into a real directory, writes the files Cloudflare reads (`_headers`, `robots.txt`,
  * `404.html`), then counts what would be uploaded and fails if it does not fit.
  *
- * It never deploys. The last thing it prints is the command a human runs — see
- * `.claude/rules/no-commit-no-deploy.md`, and `docs/wrangler.jsonc` for the target.
+ * It never deploys — deploying is a human's command, never an agent's. The last thing it
+ * prints is the command a human runs; see `docs/wrangler.jsonc` for the target.
  *
  * Usage:
  *   node scripts/docs-publish.mjs                # every eligible tag, assemble, check

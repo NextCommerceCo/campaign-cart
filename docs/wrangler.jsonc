@@ -18,8 +18,7 @@
  * Pages build aborts on a root config that has no `pages_build_output_dir`.
  * Scoping it to `docs/` keeps the two deploy targets from colliding.
  *
- * Deploy (a human runs this, never an agent — see
- * .claude/rules/no-commit-no-deploy.md):
+ * Deploy (a human runs this, never an agent):
  *
  *   npm run docs:publish
  *   npx wrangler deploy -c docs/wrangler.jsonc

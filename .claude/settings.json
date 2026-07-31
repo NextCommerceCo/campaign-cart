@@ -1,15 +1,15 @@
 {
   "$comment": [
-    "Shared, checked-in settings. The deny list makes .claude/rules/no-commit-no-deploy.md",
-    "enforced rather than merely written down: an agent cannot commit, push, or publish",
-    "even if some task description tells it to.",
+    "Shared, checked-in settings. The deny list enforces the rule rather than merely",
+    "writing it down: an agent may commit locally, but it cannot push or publish even",
+    "if some task description tells it to. History-rewriting commands stay denied too —",
+    "'commit' means adding a commit, not rewriting existing ones.",
     "",
-    "This constrains Claude's tool calls only. Committing and deploying from your own",
+    "This constrains Claude's tool calls only. Pushing and deploying from your own",
     "terminal is unaffected — those actions stay yours."
   ],
   "permissions": {
     "deny": [
-      "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(git merge:*)",
       "Bash(git rebase:*)",

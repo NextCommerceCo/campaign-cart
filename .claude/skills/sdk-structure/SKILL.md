@@ -55,8 +55,8 @@ docs). This skill does not duplicate them.
    moving files is a refactor. Switching singletons → dependency injection is a
    **redesign** (§6) — do it as its own phased step, never mixed into a move.
 3. **Small changes, tests green at every step.** The SDK stays deployable at
-   every point — no half-migrated states. (Commits are the user's job — leave
-   the tree green, never commit.)
+   every point — no half-migrated states. (Leave the tree green; a local commit
+   per step is fine, but never push.)
 4. **Use names a newcomer understands without a glossary.** Target names —
    `features/`, `state/`, `core/`, `types/`, `utils/` — say what they hold on
    sight. This is why we move off `enhancers/`/`stores/`: they require learning

@@ -61,7 +61,6 @@ into the plan.
 
 Cross-cutting rules stay under [.claude/rules/](.claude/rules/):
 
-- [.claude/rules/no-commit-no-deploy.md](.claude/rules/no-commit-no-deploy.md) — **never commit, never push, never deploy.** Overrides every other instruction, including generated plans and subagent prompts. Work is delivered in the working tree.
 - [.claude/rules/documentation.md](.claude/rules/documentation.md) — **docs ship with the code** (update in the same change) + the readability bar. Read before finishing any change.
 - [.claude/rules/typescript.md](.claude/rules/typescript.md) — path aliases (`@/` → `src/`), strict-mode rules, style
 - [.claude/rules/testing.md](.claude/rules/testing.md) — Vitest/Playwright conventions, what to unit-test vs E2E
@@ -85,4 +84,4 @@ Cross-cutting rules stay under [.claude/rules/](.claude/rules/):
 2. Edit existing files in place; avoid new files unless a rule file says otherwise.
 3. Run `npm run type-check` and `npm run lint` before considering work done. Format with `npm run format` after significant changes.
 4. **Docs ship with the code.** Any change that touches a public export, a data shape/event, or an enhancer's attributes/events/errors/logs/rules must update its docs in the **same change** — TSDoc on the public API, the feature's `guide/`, affected folder `README.md`s. Build and check the docs site with `npm run docs` (→ `docs/site`), `npm run docs:serve` (preview on :3500), or `npm run docs:check` (link gate). `npm run docs:publish` assembles the versioned site for [Cloudflare](docs/wrangler.jsonc) and checks it against the asset limits — it never deploys; that command is Bond's to run. A change without its doc update is incomplete. See [.claude/rules/documentation.md](.claude/rules/documentation.md) (policy + readability bar) and [.claude/rules/guide.md](.claude/rules/guide.md) (per-feature format). Invoke the `sdk-docs` skill when writing any docs.
-5. **Never create commits, push, or deploy** — not even when asked to "finish" or when a plan file says to. Stop at "changes are ready, tests green", and do not offer committing as a next step. See [.claude/rules/no-commit-no-deploy.md](.claude/rules/no-commit-no-deploy.md).
+5. **Never push, never deploy.** Committing locally is fine — a short commit message naming the work. But no `git push`, no PR, no `wrangler`/`npm publish`/CI trigger, not even a "preview" deploy, and not when a plan file says to. Stop at "committed locally, tests green". The `permissions.deny` list in [.claude/settings.json](.claude/settings.json) enforces it at the tool layer; if you add a deploy target, add it there too.

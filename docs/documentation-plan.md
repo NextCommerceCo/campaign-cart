@@ -1907,10 +1907,9 @@ since it was a one-line level change rather than a behaviour change.
 - Policy: [`.claude/rules/documentation.md`](../.claude/rules/documentation.md)
 - Structure: [`.claude/skills/sdk-structure/SKILL.md`](../.claude/skills/sdk-structure/SKILL.md)
 - Code defects found while documenting: [`code-findings.md`](./code-findings.md)
-- **No commits, no deploys:** [`.claude/rules/no-commit-no-deploy.md`](../.claude/rules/no-commit-no-deploy.md)
-  — nothing in this plan authorises a commit, a push, or a deploy, including the
-  redirect step in Phase 4. Enforced by the `permissions.deny` list in
-  [`.claude/settings.json`](../.claude/settings.json).
+- **No pushes, no deploys:** nothing in this plan authorises a push or a deploy,
+  including the redirect step in Phase 4. Local commits are fine. Enforced by the
+  `permissions.deny` list in [`.claude/settings.json`](../.claude/settings.json).
 
 ---
 
@@ -2177,8 +2176,7 @@ Work items:
    generated artifact here.
 7. **CI:** build `dev` on every PR with `docs:check` as the gate; build a version folder
    when a `v*` tag appears. **Build only — no publish step.** `docs/site/` stays
-   gitignored and putting it online is Bond's call
-   ([no-commit-no-deploy](../.claude/rules/no-commit-no-deploy.md)).
+   gitignored and putting it online is Bond's call.
 
 ### Phase 11 — what publishing core actually changes
 
@@ -2312,9 +2310,8 @@ name is picked; that flips `robots.txt` to indexing the current version folder (
 what `latest/`'s canonical tags nominate) and excluding the older ones.
 
 Still open from [Phase 10](#phase-10--versioning) item 7: **CI**. Nothing builds versions
-automatically yet, and per
-[no-commit-no-deploy](../.claude/rules/no-commit-no-deploy.md) a CI job may build but must
-not publish. `npx wrangler` is on the `permissions.deny` list in
+automatically yet, and a CI job may build but must not publish. `npx wrangler` is on the
+`permissions.deny` list in
 [`.claude/settings.json`](../.claude/settings.json) alongside `wrangler`, so the deploy
 step cannot be taken by an agent by accident.
 
@@ -2480,8 +2477,8 @@ Cloudflare's ceiling (Workers static assets, because Pages caps a deployment at 
 files on every plan and a run of releases at today's working-tree size — ~904 files each —
 passes that; see [Phase 13](#phase-13--hosting-decided-2026-07-31)). **It never deploys** —
 it prints the
-`npx wrangler deploy -c docs/wrangler.jsonc` command for a human, per
-[no-commit-no-deploy](../.claude/rules/no-commit-no-deploy.md). This goes past §8
+`npx wrangler deploy -c docs/wrangler.jsonc` command for a human, because deploying is
+never an agent's step to take. This goes past §8
 decision 3 ("local dev server only"); it is kept because it is inert until a human runs
 that command, and hosting is still an open decision.
 
