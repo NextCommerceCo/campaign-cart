@@ -7,8 +7,8 @@ import {
   getCurrencySymbol,
   formatDiscountPercentage,
 } from '@/utils/currencyFormatter';
-import { useCampaignStore } from '@/stores/campaignStore/index';
-import { useConfigStore } from '@/stores/configStore';
+import { useCampaignStore } from '@/state/campaign/index';
+import { useConfigStore } from '@/state/config.state';
 
 // Pin locale so Intl output is deterministic across environments.
 const LOCALE = 'en-US';

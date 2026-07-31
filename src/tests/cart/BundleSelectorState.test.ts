@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { getEffectiveItems } from '@/enhancers/cart/BundleSelector/BundleSelectorEnhancer.state';
+import { getEffectiveItems } from '@/features/cart/bundle-selector/bundle-selector.state';
 import type {
   BundleCard,
   BundleSlot,
-} from '@/enhancers/cart/BundleSelector/BundleSelectorEnhancer.types';
+} from '@/features/cart/bundle-selector/bundle-selector.types';
 
 // ─── Factories ────────────────────────────────────────────────────────────────
 

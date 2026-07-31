@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Shipping display</title>
+  </head>
+  <body>
+    <h1>Shipping display fixture</h1>
+
+    <!-- docs:example Two shipping methods, each showing its own values -->
+    <!-- Standard shipping (ref_id 1, $5.99). -->
+    <div data-next-shipping-id="1">
+      <span id="s1-cost" data-next-display="shipping.cost">?</span>
+      <span id="s1-name" data-next-display="shipping.name">?</span>
+      <span id="s1-free" data-next-display="shipping.isFree">?</span>
+    </div>
+
+    <!-- Free shipping (ref_id 2, $0.00). -->
+    <div data-next-shipping-id="2">
+      <span id="s2-cost" data-next-display="shipping.cost">?</span>
+      <span id="s2-name" data-next-display="shipping.name">?</span>
+      <span id="s2-free" data-next-display="shipping.isFree">?</span>
+    </div>
+    <!-- /docs:example -->
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

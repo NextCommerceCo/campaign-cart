@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { OrderBuilder } from '@/enhancers/checkout/builders/OrderBuilder';
-import { useAttributionStore } from '@/stores/attributionStore';
-import { useCampaignStore } from '@/stores/campaignStore';
-import { useConfigStore } from '@/stores/configStore';
+import { OrderBuilder } from '@/features/checkout/builders/order-builder';
+import { useAttributionStore } from '@/state/attribution.state';
+import { useCampaignStore } from '@/state/campaign';
+import { useConfigStore } from '@/state/config.state';
 
 // ─── Module mocks ─────────────────────────────────────────────────────────────
 
-vi.mock('@/enhancers/checkout/utils/url-utils', () => ({
+vi.mock('@/features/checkout/utils/url-utils', () => ({
   getSuccessUrl: () => 'https://example.com/success',
   getFailureUrl: () => 'https://example.com/failed',
 }));

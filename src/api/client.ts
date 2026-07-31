@@ -13,7 +13,7 @@ import type {
   CartCalculateSummary,
   CartSummary,
 } from '@/types/api';
-import { Logger, createLogger } from '@/utils/logger';
+import { Logger, createLogger } from '@/core/logger';
 
 export class ApiClient {
   private baseURL = 'https://campaigns.apps.29next.com';

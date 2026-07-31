@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { EcommerceEvents } from '@/utils/analytics/events/EcommerceEvents';
-import { useCampaignStore } from '@/stores/campaignStore';
+import { EcommerceEvents } from '@/core/analytics/events/EcommerceEvents';
+import { useCampaignStore } from '@/state/campaign';
 
 // Regression tests for issue #54: accepted-upsell GTM dataLayer event
 // (dl_upsell_purchase) for bundle-path upsells reported quantity 1 and an

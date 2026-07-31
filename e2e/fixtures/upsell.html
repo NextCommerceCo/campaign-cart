@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Upsell</title>
+  </head>
+  <body>
+    <h1>Upsell fixture</h1>
+
+    <!-- docs:example A post-purchase offer with an accept button -->
+    <!-- An upsell can only be added to an order that is already loaded. The SDK
+         loads it from the ?ref_id query parameter the order page is opened with,
+         so this page must be reached from a completed order, not visited cold. -->
+    <div data-next-display="order.number">…</div>
+
+    <!-- Direct-mode upsell: a single package with an accept button. -->
+    <div data-next-upsell="offer" data-next-package-id="1">
+      <span data-next-display="package.name">Widget</span>
+      <button data-next-upsell-action="add">Add to order</button>
+    </div>
+    <!-- /docs:example -->
+
+    <!-- Capture init-time EventBus events before the SDK boots. `*:initialized`
+         events fire during the DOM scan, which completes before window.next is
+         exposed, so a post-boot listener would miss them. This inline module
+         grabs the same EventBus singleton index.ts uses and buffers the event
+         into window.__capturedEvents for the spec to read. -->
+    <script type="module">
+      import { EventBus } from '/src/core/events.ts';
+      const bus = EventBus.getInstance();
+      window.__capturedEvents = window.__capturedEvents || {};
+      window.__capturedEvents['upsell:initialized'] = [];
+      bus.on('upsell:initialized', d =>
+        window.__capturedEvents['upsell:initialized'].push({
+          packageId: d.packageId,
+          hasElement: d.element instanceof HTMLElement,
+        })
+      );
+    </script>
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

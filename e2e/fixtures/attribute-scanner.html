@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — attribute scanner</title>
+  </head>
+  <body>
+    <h1>Attribute scanner fixture</h1>
+
+    <!-- Static elements the initial scan must enhance. -->
+    <button data-next-action="add-to-cart" data-next-package-id="1">
+      Add to cart
+    </button>
+    <span data-next-display="cart.totalQuantity">0</span>
+
+    <!-- Empty region a spec injects dynamic nodes into after boot. -->
+    <div id="dynamic-host"></div>
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

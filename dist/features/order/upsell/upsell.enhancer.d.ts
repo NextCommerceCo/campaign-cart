@@ -1,0 +1,44 @@
+import { BaseEnhancer } from '../../../core/base/base-enhancer';
+export declare class UpsellEnhancer extends BaseEnhancer {
+    private apiClient;
+    private packageId?;
+    private quantity;
+    private actionButtons;
+    private clickHandler?;
+    private keydownHandler?;
+    private pageShowHandler?;
+    private loadingOverlay;
+    private isProcessingRef;
+    private isSelector;
+    private selectorId?;
+    private options;
+    private selectedPackageId?;
+    private currentPagePath?;
+    private packageSelectorId?;
+    private bundleSelectorId?;
+    private quantityBySelectorId;
+    private currentQuantitySelectorId?;
+    constructor(element: HTMLElement);
+    initialize(): Promise<void>;
+    private setupPageShowHandler;
+    private initializeSelectorMode;
+    private scanUpsellElements;
+    private adjustQuantity;
+    private selectOption;
+    private setupEventHandlers;
+    private onQuantityChanged;
+    private onOptionSelected;
+    private handleOrderUpdate;
+    private updateUpsellDisplay;
+    private resolveExternalSelection;
+    private resolveExternalBundleItems;
+    private resolveExternalBundleVouchers;
+    private collectDefaultProperties;
+    private collectContainerProperties;
+    private resolveProperties;
+    private makeHandlerContext;
+    update(): void;
+    protected cleanupEventListeners(): void;
+    destroy(): void;
+}
+//# sourceMappingURL=upsell.enhancer.d.ts.map

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- The SDK requires an API key at boot; the spec mocks the campaign API. -->
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Add to cart</title>
+  </head>
+  <body>
+    <h1>Add to cart fixture</h1>
+
+    <!-- docs:example A button that adds one fixed package -->
+    <!-- Direct add-to-cart button bound to a fixed package. -->
+    <button data-next-action="add-to-cart" data-next-package-id="1">
+      Add to cart
+    </button>
+
+    <!-- Live cart values, updated by the SDK. -->
+    <span data-next-display="cart.totalQuantity">0</span>
+    <!-- /docs:example -->
+
+    <!-- Vite dev server serves the SDK entry as an ES module. -->
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

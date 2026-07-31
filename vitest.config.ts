@@ -10,13 +10,17 @@ export default defineConfig({
   test: {
     environment: 'happy-dom',
     globals: true,
-    setupFiles: ['src/test/setup.ts'],
+    setupFiles: ['src/tests/setup.ts'],
+    // Unit tests live under src/ only. Playwright owns e2e/ (root) — scoping
+    // discovery here keeps Vitest from picking up *.spec.ts E2E files and
+    // trying to run them in happy-dom.
+    include: ['src/**/*.{test,spec}.{ts,js}'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'json-summary', 'html', 'lcov'],
       exclude: [
         'node_modules/',
-        'src/test/',
+        'src/tests/setup.ts',
         '**/*.d.ts',
         '**/*.test.{ts,js}',
         '**/*.spec.{ts,js}',
@@ -38,9 +42,10 @@ export default defineConfig({
       '@': resolve(__dirname, 'src'),
       '@/types': resolve(__dirname, 'src/types'),
       '@/utils': resolve(__dirname, 'src/utils'),
-      '@/stores': resolve(__dirname, 'src/stores'),
-      '@/enhancers': resolve(__dirname, 'src/enhancers'),
+      '@/state': resolve(__dirname, 'src/state'),
+      '@/features': resolve(__dirname, 'src/features'),
       '@/api': resolve(__dirname, 'src/api'),
+      '@/core': resolve(__dirname, 'src/core'),
     },
   },
 });

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Order item list</title>
+  </head>
+  <body>
+    <h1>Order item list fixture</h1>
+
+    <!-- docs:example Order lines using the built-in row template -->
+    <!-- Loaded with ?ref_id=test-order-ref so the SDK auto-loads the order.
+         Left empty so the enhancer renders lines with its default template
+         (.order-item / .order-item-name / .line-total). -->
+    <div data-next-order-items></div>
+    <!-- /docs:example -->
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

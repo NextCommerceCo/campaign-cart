@@ -1,0 +1,11 @@
+dist
+coverage
+node_modules
+test-results
+playwright-report
+public/loader.js
+docs/html-custom-data.json
+CHANGELOG.md
+package-lock.json
+bun.lock
+skills-lock.json

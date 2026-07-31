@@ -6,8 +6,9 @@
 - **Coverage target**: 80% branches / functions / lines / statements
 
 ## Unit Tests
-- Test files: `src/tests/**/*.test.ts`
-- Setup file: `src/test/setup.ts` (DOM reset, window cleanup runs before each test)
+- **Feature/store tests are colocated** with their code — `features/<cat>/<feature>/tests/*.test.ts`, one `<source>.test.ts` per source file. They move with the feature. (See the `sdk-structure` skill.)
+- `src/tests/**/*.test.ts` is for **cross-cutting / integration** tests only (analytics, multi-feature flows) — not per-feature units.
+- Setup file: `src/tests/setup.ts` (DOM reset, window cleanup runs before each test) — the path `vitest.config.ts` actually registers in `setupFiles`
 - Import from `vitest` — not `jest`: `import { describe, it, expect, vi } from 'vitest'`
 - Use `vi.fn()` for mocks, `vi.spyOn()` for spies
 - Test pure utils and store logic; enhancer DOM tests belong in E2E

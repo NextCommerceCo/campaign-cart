@@ -1,0 +1,1 @@
+{"version":3,"file":"core-errors.d.ts","sourceRoot":"","sources":["../../../src/core/docs/core-errors.ts"],"names":[],"mappings":"AAwBA,OAAO,KAAK,EAAE,QAAQ,EAAE,MAAM,oBAAoB,CAAC;AAGnD,MAAM,WAAW,YAAa,SAAQ,QAAQ;IAM5C,KAAK,EAAE,MAAM,CAAC;IAKd,IAAI,EAAE,MAAM,CAAC;IAKb,MAAM,CAAC,EAAE,MAAM,CAAC;IAYhB,SAAS,CAAC,EAAE,MAAM,CAAC;CACpB;AAOD,eAAO,MAAM,WAAW,EAAE,YAAY,EA6QrC,CAAC"}

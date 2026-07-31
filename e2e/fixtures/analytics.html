@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — analytics dataLayer</title>
+    <!-- Analytics is off by default; enable it in auto mode with the GTM
+         provider so dl_* events forward to window.dataLayer. Must run before
+         the module script auto-inits. -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      window.nextConfig = {
+        analytics: {
+          enabled: true,
+          mode: 'auto',
+          providers: { gtm: { enabled: true } },
+        },
+      };
+    </script>
+  </head>
+  <body>
+    <h1>Analytics fixture</h1>
+
+    <button data-next-action="add-to-cart" data-next-package-id="1">
+      Add to cart
+    </button>
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   AnalyticsDebugTracker,
   type ProviderDebugInfo,
-} from '@/utils/analytics/debug/AnalyticsDebugTracker';
-import type { ProviderAdapter } from '@/utils/analytics/providers/ProviderAdapter';
+} from '@/core/analytics/debug/AnalyticsDebugTracker';
+import type { ProviderAdapter } from '@/core/analytics/providers/ProviderAdapter';
 
 // Minimal stand-in for a registered adapter — only getDebugInfo is read.
 function fakeProvider(info: ProviderDebugInfo): ProviderAdapter {

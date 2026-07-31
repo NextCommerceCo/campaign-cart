@@ -1,5 +1,62 @@
 # Changelog
 
+## [0.4.31] — 2026-07-31 — Versioned Documentation Site & Public Order Types
+
+The SDK's documentation is now a site built from the source it describes, versioned the
+same way the SDK itself is. The order types you receive after a purchase are part of the
+public API for the first time.
+
+### New
+
+- **A documentation site that ships with the SDK** — every feature guide, the state
+  reference, the engine's behaviour (boot order, meta tags, URL parameters, storage keys
+  and their TTLs, analytics events), and the full type reference are now one searchable
+  site generated from the source. Run `npm run docs:serve` to read it locally on
+  `:3500`. Because it is generated, a guide cannot quietly fall out of step with the code
+  that it documents.
+
+- **Documentation per released version** — the site builds one folder per release, so a
+  page pinned to `v0.4.28` reads that version's documentation rather than the newest. A
+  version selector moves between them, and landing on a page that a version does not have
+  takes you to that version's index instead of a dead end.
+
+- **The order types are now importable** — `Order`, `OrderLine`, `OrderUser`,
+  `OrderAddress` and `MarketingAttribution` are exported with a description on every
+  field, so the object you get from `order:completed`, `useOrderStore`, and the order API
+  can be typed properly. Previously only `OrderData` was exported, which described six of
+  the order's fields and typed its line items as `any[]`.
+
+  `OrderData` keeps exactly the same fields and types it had — nothing you compile against
+  changes — but it is now derived from `Order`, so the two can no longer drift apart. When
+  you need totals, tax, shipping, addresses or typed line items, read the order from
+  `useOrderStore`, where it is a full `Order`.
+
+### Fixed
+
+- **Reference tables were missing their last column** — on 9 guide pages, 15 rows lost
+  their description because a `|` inside a type such as `number | undefined` ended the
+  table cell early. Affected the attribute and event references for package-selector,
+  package-toggle, cart-item-list, prospect-cart, accordion, quantity-text,
+  express-checkout-container and upsell.
+
+- **Documentation links that went nowhere** — links pointing at pages on the retired docs
+  site, including from the attribute index, whose entries were all dead.
+
+- **The upsell and order-store references described the wrong shape** — the upsell result
+  was documented as `OrderData` including a field that type does not have, and the order
+  store's example order used a `total` field that does not exist with cart-shaped line
+  items. Both now match `Order`.
+
+### Improved
+
+- **Quieter console on live pages** — the order manager was printing 24 raw console
+  messages, including a set of emoji-prefixed step-by-step breadcrumbs, on every checkout.
+  These now go through the SDK's logger, so they appear when debugging is on and stay
+  silent in production. Errors are still always reported, and payment tokens are still
+  truncated in every log that mentions one.
+
+---
+
 ## [0.4.30] — 2026-07-09 — Campaign Identifiers on Every Event
 
 ### New

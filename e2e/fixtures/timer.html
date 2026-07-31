@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Timer</title>
+  </head>
+  <body>
+    <h1>Timer fixture</h1>
+
+    <!-- docs:example A countdown that reveals an expiry message -->
+    <!-- 2-second countdown, persisted under localStorage key next-timer-e2e. -->
+    <div id="timer" data-next-timer data-duration="2" data-persistence-id="e2e">
+      <span data-next-timer-display>--:--</span>
+    </div>
+
+    <!-- Revealed by the enhancer when the timer above expires. -->
+    <div
+      id="expired"
+      data-next-timer-expired
+      data-persistence-id="e2e"
+      style="display: none"
+    >
+      Offer expired
+    </div>
+    <!-- /docs:example -->
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { dataLayer } from '@/utils/analytics/DataLayerManager';
-import { useConfigStore } from '@/stores/configStore';
-import { useCampaignStore } from '@/stores/campaignStore';
+import { dataLayer } from '@/core/analytics/DataLayerManager';
+import { useConfigStore } from '@/state/config.state';
+import { useCampaignStore } from '@/state/campaign';
 
 /**
  * Issue #473: every event dispatched through the data layer must carry the NEXT

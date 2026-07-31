@@ -2,11 +2,11 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   updateSyncedQuantity,
   handleSyncUpdate,
-} from '@/enhancers/cart/PackageToggle/PackageToggleEnhancer.handlers';
-import type { ToggleCard } from '@/enhancers/cart/PackageToggle/PackageToggleEnhancer.types';
+} from '@/features/cart/package-toggle/package-toggle.handlers';
+import type { ToggleCard } from '@/features/cart/package-toggle/package-toggle.types';
 import type { CartState, CartItem } from '@/types/global';
-import { createLogger } from '@/utils/logger';
-import { useCartStore } from '@/stores/cartStore';
+import { createLogger } from '@/core/logger';
+import { useCartStore } from '@/state/cart';
 
 // ─── Factories ────────────────────────────────────────────────────────────────
 

@@ -3,8 +3,8 @@
  * Ensures consistent currency formatting across the entire application
  */
 
-import { useCampaignStore } from '@/stores/campaignStore';
-import { useConfigStore } from '@/stores/configStore';
+import { useCampaignStore } from '@/state/campaign';
+import { useConfigStore } from '@/state/config.state';
 
 export class CurrencyFormatter {
   private static formatters: Map<string, Intl.NumberFormat> = new Map();

@@ -1,0 +1,39 @@
+# state/
+
+**Mutable reactive state** — Zustand stores shared across features (checkout
+reads cart; upsell reads cart + campaign). This is the SDK's single source of
+truth for runtime data.
+
+## Stores
+
+| Store | File | Purpose |
+|-------|------|---------|
+| `useCartStore` | `cart/` (+ `operations/`) | Cart items, totals, coupons, shipping. Async logic in `operations/`; `cart-calculator.ts` wraps the calculate API (used by `operations/` and cart features) |
+| `useCampaignStore` | `campaign/` | Campaign/package data (10-min cache). Field is **`.data`**, not `.campaign` |
+| `useOrderStore` | `order.state.ts` | Post-purchase order/upsell (15-min expiry) |
+| `useCheckoutStore` | `checkout.state.ts` | Checkout form state & validation |
+| `useConfigStore` | `config.state.ts` | SDK configuration |
+| `useAttributionStore` | `attribution.state.ts` | UTM & referral tracking |
+| `useParameterStore` | `parameter.state.ts` | URL parameters |
+
+Single-file stores are `*.state.ts`; a store grows into a `<domain>/` folder only
+when it earns it (`cart/`, `campaign/`).
+
+## Thin-state convention
+
+A store is a **state container**: state fields + sync setters only. Async /
+business logic lives **outside** the store — in the feature, or in an
+`operations/` module (see `cart/operations/`, exposed as `sdk.cart.*`). Keep
+`state/` thin and event-driven.
+
+## Rules that bite
+
+- **`persist` keys are permanent** — renaming one invalidates live customer
+  sessions. Never change them during a move.
+- **Same instance** — every import must resolve to one store instance; two
+  instances split state silently.
+- `state/` must not import `features/`. It may read `utils/` and `core/` infra.
+
+Full authoring rules: the `sdk-structure` skill →
+`references/state-authoring.md`. Docs for state internals live here + in the
+skill, not in TypeDoc (which covers the public `index.ts` surface only).

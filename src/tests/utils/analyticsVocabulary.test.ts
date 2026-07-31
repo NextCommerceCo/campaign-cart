@@ -7,15 +7,15 @@ import {
   DL_EVENT_NAMES,
   DL_EVENT_NAME_SET,
   isKnownDlEvent,
-} from '@/utils/analytics/schemas/events';
-import { eventSchemas } from '@/utils/analytics/schemas';
+} from '@/core/analytics/schemas/events';
+import { eventSchemas } from '@/core/analytics/schemas';
 
 // Committed manifest = the cross-repo carrier. campaigns-os
 // (campaign-spec/analytics-vocabulary.ts) syncs its copy from this file, so it
 // must stay byte-identical to the DL_EVENTS const. Regenerate after editing the
 // vocabulary with:  UPDATE_ANALYTICS_MANIFEST=1 npm run test -- analyticsVocabulary
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ANALYTICS_SRC = join(__dirname, '../../utils/analytics');
+const ANALYTICS_SRC = join(__dirname, '../../core/analytics');
 // The vocabulary declaration itself lists every name, so it must be excluded
 // from the emit-site scan below — otherwise a typo'd entry in DL_EVENTS would
 // appear as a literal here and hide from the drift check.
@@ -23,7 +23,7 @@ const SCHEMAS_DIR = join(ANALYTICS_SRC, 'schemas');
 const MANIFEST_PATH = join(SCHEMAS_DIR, 'events.manifest.json');
 
 // Recursively collect the analytics emit-site source files: every .ts under
-// src/utils/analytics EXCEPT the schemas/ vocabulary declaration and test files.
+// src/core/analytics EXCEPT the schemas/ vocabulary declaration and test files.
 function collectEmitSiteFiles(dir: string): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -38,12 +38,15 @@ function collectEmitSiteFiles(dir: string): string[] {
   return out;
 }
 
-// Every dl_* string literal emitted anywhere in the analytics source.
+// Every dl_* name referenced anywhere in the analytics source — as a string literal
+// (`push('dl_view_item')`) or as an object key in an adapter's mapping table. Bare
+// identifiers count on purpose: Prettier drops unnecessary quotes from object keys, so
+// a quoted-only match reports a name as stale purely because a file was reformatted.
 function scanEmittedEventNames(): Set<string> {
   const found = new Set<string>();
   for (const file of collectEmitSiteFiles(ANALYTICS_SRC)) {
     const src = readFileSync(file, 'utf8');
-    for (const m of src.matchAll(/['"](dl_[a-z_]+)['"]/g)) {
+    for (const m of src.matchAll(/\b(dl_[a-z_]+)\b/g)) {
       found.add(m[1]);
     }
   }
@@ -55,7 +58,7 @@ function buildManifest(): string {
     JSON.stringify(
       {
         $comment:
-          'AUTO-GENERATED from src/utils/analytics/schemas/events.ts (DL_EVENTS). ' +
+          'AUTO-GENERATED from src/core/analytics/schemas/events.ts (DL_EVENTS). ' +
           'Do not hand-edit. Regenerate: UPDATE_ANALYTICS_MANIFEST=1 npm run test -- analyticsVocabulary',
         events: DL_EVENTS,
       },

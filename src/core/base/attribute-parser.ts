@@ -1,0 +1,440 @@
+/**
+ * Attribute Parser
+ * Parses and validates data attributes for enhancers
+ */
+
+import { createLogger } from '@/core/logger';
+
+export interface ParsedAttribute {
+  raw: string | null;
+  parsed: any;
+  type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+}
+
+export class AttributeParser {
+  private static logger = createLogger('AttributeParser');
+
+  public static parseDataAttribute(element: HTMLElement, attribute: string): ParsedAttribute {
+    const value = element.getAttribute(attribute);
+    
+    return {
+      raw: value,
+      parsed: this.parseValue(value),
+      type: this.inferType(value),
+    };
+  }
+
+  public static parseValue(value: string | null): any {
+    if (value === null || value === '') {
+      return null;
+    }
+
+    // Try to parse as JSON first
+    if (value.startsWith('{') || value.startsWith('[')) {
+      try {
+        return JSON.parse(value);
+      } catch {
+        // Fall through to other parsing
+      }
+    }
+
+    // Parse boolean
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+
+    // Parse number
+    if (/^-?\d+(\.\d+)?$/.test(value)) {
+      const num = parseFloat(value);
+      return Number.isNaN(num) ? value : num;
+    }
+
+    // Return as string
+    return value;
+  }
+
+  public static inferType(value: string | null): ParsedAttribute['type'] {
+    if (value === null || value === '') {
+      return 'string';
+    }
+
+    if (value === 'true' || value === 'false') {
+      return 'boolean';
+    }
+
+    if (/^-?\d+(\.\d+)?$/.test(value)) {
+      return 'number';
+    }
+
+    if (value.startsWith('{') && value.endsWith('}')) {
+      return 'object';
+    }
+
+    if (value.startsWith('[') && value.endsWith(']')) {
+      return 'array';
+    }
+
+    return 'string';
+  }
+
+  public static getEnhancerTypes(element: HTMLElement): string[] {
+    const types: string[] = [];
+
+    // Check for generic enhancer attribute (e.g., data-next-enhancer="checkout-review")
+    if (element.hasAttribute('data-next-enhancer')) {
+      const enhancerType = element.getAttribute('data-next-enhancer');
+      if (enhancerType) {
+        types.push(enhancerType);
+      }
+    }
+
+    // Check for display enhancer
+    if (element.hasAttribute('data-next-display')) {
+      types.push('display');
+    }
+
+    // Check for package toggle enhancer
+    if (element.hasAttribute('data-next-package-toggle')) {
+      types.push('package-toggle');
+    }
+
+    // Check for action button enhancer
+    if (element.hasAttribute('data-next-action')) {
+      types.push('action');
+    }
+
+    // Check for timer enhancer
+    if (element.hasAttribute('data-next-timer')) {
+      types.push('timer');
+    }
+
+    // Check for conditional display enhancer
+    if (element.hasAttribute('data-next-show') ||
+        element.hasAttribute('data-next-hide')) {
+      types.push('conditional');
+    }
+
+    // Check for checkout form enhancer - ONLY apply to form elements
+    // Individual fields are handled by the form enhancer, not separately
+    if (element instanceof HTMLFormElement && element.hasAttribute('data-next-checkout')) {
+      types.push('checkout');
+    }
+    
+    // Check for express checkout enhancer
+    if (element.hasAttribute('data-next-express-checkout')) {
+      const checkoutType = element.getAttribute('data-next-express-checkout');
+      if (checkoutType === 'container') {
+        types.push('express-checkout-container');
+      } else if (checkoutType === 'paypal' || checkoutType === 'apple_pay' || checkoutType === 'google_pay') {
+        types.push('express-checkout');
+      }
+    }
+
+
+
+    // Check for cart items list enhancer
+    if (element.hasAttribute('data-next-cart-items')) {
+      types.push('cart-items');
+    }
+    
+    // Check for order items list enhancer
+    if (element.hasAttribute('data-next-order-items')) {
+      types.push('order-items');
+    }
+
+    // Check for quantity control enhancer - only if it has a control action
+    if (element.hasAttribute('data-next-quantity')) {
+      const quantityAction = element.getAttribute('data-next-quantity');
+      // Only treat as quantity control if it has control actions, not just numeric values
+      if (quantityAction && ['increase', 'decrease', 'set'].includes(quantityAction)) {
+        types.push('quantity');
+      }
+    }
+
+    // Check for remove item enhancer
+    if (element.hasAttribute('data-next-remove-item')) {
+      types.push('remove-item');
+    }
+
+    // Check for package selector enhancer
+    if (element.hasAttribute('data-next-package-selector')) {
+      types.push('package-selector');
+    }
+
+    // Order display is now handled via data-next-display="order.xxx" pattern
+    // No separate 'order' enhancer type needed
+
+    // Check for upsell enhancer (handles both direct and selector modes)
+    // data-next-upsell (any value or no value) creates the enhancer
+    // data-next-upsell-selector is just a marker for option groups
+    // data-next-upsell-select is for select dropdowns within an upsell
+    if (element.hasAttribute('data-next-upsell')) {
+      types.push('upsell');
+    }
+
+    // Check for coupon enhancer - only apply to input containers, not display containers
+    if (element.hasAttribute('data-next-coupon')) {
+      const couponType = element.getAttribute('data-next-coupon');
+      if (couponType === 'input' || couponType === '') {
+        types.push('coupon');
+      }
+    }
+
+    // Check for accordion enhancer
+    if (element.hasAttribute('data-next-accordion')) {
+      types.push('accordion');
+    }
+
+    // Check for tooltip enhancer
+    if (element.hasAttribute('data-next-tooltip')) {
+      types.push('tooltip');
+    }
+
+    // Check for scroll hint enhancer
+    if (element.hasAttribute('data-next-component') && 
+        element.getAttribute('data-next-component') === 'scroll-hint') {
+      types.push('scroll-hint');
+    }
+    
+    // Check for quantity text enhancer
+    if (element.hasAttribute('data-next-quantity-text')) {
+      types.push('quantity-text');
+    }
+
+    // Check for cart summary enhancer
+    if (element.hasAttribute('data-next-cart-summary')) {
+      types.push('cart-summary');
+    }
+
+    // Check for bundle selector enhancer
+    if (element.hasAttribute('data-next-bundle-selector')) {
+      types.push('bundle-selector');
+    }
+
+
+
+    // Remove duplicates (just in case)
+    return [...new Set(types)];
+  }
+
+  public static parseDisplayPath(path: string): { object: string; property: string } {
+    const parts = path.split('.');
+    
+    if (parts.length === 1) {
+      // Single property without explicit prefix - default to cart
+      return { object: 'cart', property: parts[0] ?? '' };
+    }
+    
+    return {
+      object: parts[0] ?? 'cart',
+      property: parts.slice(1).join('.'),
+    };
+  }
+
+
+  public static parseCondition(condition: string): any {
+    try {
+      this.logger.debug('Parsing condition:', condition);
+
+      // Trim the condition
+      condition = condition.trim();
+
+      // Check for logical operators (|| and &&)
+      // We need to split while respecting parentheses and function calls
+      const logicalSplit = this.splitByLogicalOperator(condition);
+
+      if (logicalSplit) {
+        // We have a compound condition
+        const { operator, parts } = logicalSplit;
+
+        return {
+          type: 'logical',
+          operator: operator,
+          conditions: parts.map(part => this.parseCondition(part))
+        };
+      }
+
+      // Check for NOT operator (!)
+      if (condition.startsWith('!')) {
+        const innerCondition = condition.slice(1).trim();
+        return {
+          type: 'not',
+          condition: this.parseCondition(innerCondition)
+        };
+      }
+
+      // Remove outer parentheses if present
+      if (condition.startsWith('(') && condition.endsWith(')')) {
+        const innerCondition = condition.slice(1, -1);
+        // Make sure these are matching outer parentheses, not part of a function call
+        if (!innerCondition.includes('(') || this.hasMatchingParentheses(innerCondition)) {
+          return this.parseCondition(innerCondition);
+        }
+      }
+
+      // Support simple conditions like "cart.hasItems" or complex ones like "cart.total > 50"
+      if (condition.includes('(') && condition.includes(')')) {
+        // Function call format: cart.hasItem(123)
+        const match = condition.match(/^(\w+)\.(\w+)\(([^)]*)\)$/);
+        if (match) {
+          return {
+            type: 'function',
+            object: match[1] ?? '',
+            method: match[2] ?? '',
+            args: match[3] ? match[3].split(',').map(arg => this.parseValue(arg.trim())) : [],
+          };
+        }
+      }
+
+      if (condition.includes(' ') || condition.includes('==') || condition.includes('!=')) {
+        // Comparison format: cart.total > 50 or param.timer==n (without spaces)
+        const operators = ['>=', '<=', '>', '<', '===', '==', '!==', '!='];
+        for (const op of operators) {
+          if (condition.includes(op)) {
+            const parts = condition.split(op);
+            if (parts.length === 2) {
+              const left = parts[0].trim();
+              const right = parts[1].trim();
+
+              // Special handling for param comparisons with unquoted values
+              // If left side is param.* and right side doesn't look like a number/boolean,
+              // treat it as a string literal
+              const leftPath = this.parseDisplayPath(left ?? '');
+              let rightValue;
+
+              // Check if the right side has quotes
+              const rightTrimmed = right.trim();
+              const hasQuotes = (rightTrimmed.startsWith('"') && rightTrimmed.endsWith('"')) ||
+                               (rightTrimmed.startsWith("'") && rightTrimmed.endsWith("'"));
+
+              if (hasQuotes) {
+                // Remove quotes and use the inner value
+                rightValue = rightTrimmed.slice(1, -1);
+              } else {
+                // No quotes - parse normally
+                rightValue = this.parseValue(right ?? '');
+
+                // If it's a param comparison and the right value is a string that's not a boolean/number,
+                // keep it as-is (it's an unquoted string value like 'n' or 'y')
+                if ((leftPath.object === 'param' || leftPath.object === 'params') &&
+                    typeof rightValue === 'string' &&
+                    right !== 'true' &&
+                    right !== 'false' &&
+                    !/^-?\d+(\.\d+)?$/.test(right)) {
+                  // It's already a string, just use it
+                  rightValue = right;
+                }
+              }
+
+              const result = {
+                type: 'comparison',
+                left: leftPath,
+                operator: op,
+                right: rightValue,
+              };
+
+              this.logger.debug('Parsed comparison:', {
+                original: condition,
+                leftPart: left,
+                rightPart: right,
+                hasQuotes,
+                result,
+                leftObject: leftPath.object,
+                rightValue,
+                rightType: typeof rightValue
+              });
+
+              return result;
+            }
+          }
+        }
+      }
+
+      // Simple property access: cart.hasItems
+      return {
+        type: 'property',
+        ...this.parseDisplayPath(condition),
+      };
+    } catch (error) {
+      this.logger.error('Failed to parse condition:', condition, error);
+      return { type: 'property', object: 'cart', property: 'isEmpty' };
+    }
+  }
+
+  /**
+   * Split a condition by logical operators (|| or &&) while respecting parentheses
+   * Returns null if no logical operators are found at the top level
+   */
+  private static splitByLogicalOperator(condition: string): { operator: '||' | '&&', parts: string[] } | null {
+    // Check for || first (lower precedence)
+    const orParts = this.splitByOperator(condition, '||');
+    if (orParts.length > 1) {
+      return { operator: '||', parts: orParts };
+    }
+
+    // Check for && (higher precedence)
+    const andParts = this.splitByOperator(condition, '&&');
+    if (andParts.length > 1) {
+      return { operator: '&&', parts: andParts };
+    }
+
+    return null;
+  }
+
+  /**
+   * Split a string by an operator while respecting parentheses and function calls
+   */
+  private static splitByOperator(text: string, operator: string): string[] {
+    const parts: string[] = [];
+    let currentPart = '';
+    let depth = 0;
+    let i = 0;
+
+    while (i < text.length) {
+      const char = text[i];
+      // Track parentheses depth
+      if (char === '(') {
+        depth++;
+        currentPart += char;
+        i++;
+        continue;
+      } else if (char === ')') {
+        depth--;
+        currentPart += char;
+        i++;
+        continue;
+      }
+
+      // Check if we're at the operator and at depth 0
+      if (depth === 0 && text.slice(i, i + operator.length) === operator) {
+        // Found the operator at top level
+        parts.push(currentPart.trim());
+        currentPart = '';
+        i += operator.length;
+        continue;
+      }
+
+      currentPart += char;
+      i++;
+    }
+
+    // Add the last part
+    if (currentPart.trim()) {
+      parts.push(currentPart.trim());
+    }
+
+    return parts;
+  }
+
+  /**
+   * Check if a string has matching parentheses
+   */
+  private static hasMatchingParentheses(text: string): boolean {
+    let depth = 0;
+    for (const char of text) {
+      if (char === '(') depth++;
+      if (char === ')') depth--;
+      if (depth < 0) return false;
+    }
+    return depth === 0;
+  }
+}

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   collectDefaultProperties,
   mergeWithDefaults,
-} from '@/enhancers/cart/BundleSelector/BundleSelectorEnhancer.handlers';
+} from '@/features/cart/bundle-selector/bundle-selector.handlers';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 

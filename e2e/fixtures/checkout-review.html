@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Checkout review</title>
+  </head>
+  <body>
+    <h1>Checkout review fixture</h1>
+
+    <!-- docs:example Playing back what the visitor typed -->
+    <!-- Reads the persisted checkout store's formData and renders each field as
+         textContent. Empty fields get the next-review-empty class. -->
+    <div data-next-enhancer="checkout-review">
+      <span data-next-checkout-review="email"></span>
+      <span data-next-checkout-review="fname"></span>
+      <span data-next-checkout-review="lname"></span>
+      <span data-next-checkout-review="city"></span>
+    </div>
+    <!-- /docs:example -->
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

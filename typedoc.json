@@ -1,0 +1,59 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [
+    "src/index.ts",
+    "src/core",
+    "src/state"
+  ],
+  "entryPointStrategy": "expand",
+  "exclude": [
+    "**/*.test.ts",
+    "**/tests/**",
+    "**/*.state-manifest.ts",
+    "**/*.manifest.ts"
+  ],
+  "tsconfig": "tsconfig.json",
+  "out": "docs/site",
+  "name": "Campaign Cart SDK",
+  "readme": "docs/site-home.md",
+  "projectDocuments": [
+    "src/features/**/guide/*.md",
+    "src/features/**/guide/reference/*.md",
+    "src/state/**/guide/*.md",
+    "src/state/**/guide/reference/*.md",
+    "src/core/guide/**/*.md",
+    "docs/attribute-index.md",
+    "docs/sdk-attributes.md"
+  ],
+  "searchInDocuments": true,
+  "ignoredHighlightLanguages": [
+    "mermaid"
+  ],
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "excludeExternals": true,
+  "sort": [
+    "source-order"
+  ],
+  "gitRevision": "main",
+  "categorizeByGroup": false,
+  "categoryOrder": [
+    "SDK",
+    "Cart",
+    "Campaign",
+    "Events",
+    "Shipping",
+    "Coupons",
+    "Analytics",
+    "Stores",
+    "Advanced",
+    "*"
+  ],
+  "validation": {
+    "invalidLink": true,
+    "notExported": false,
+    "notDocumented": false
+  },
+  "customCss": "docs/assets/typedoc.css",
+  "customJs": "docs/assets/site.js"
+}

@@ -5,17 +5,17 @@
 
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import Decimal from 'decimal.js';
-import { DisplayFormatter } from '@/enhancers/display/DisplayEnhancerCore';
-import { ProductDisplayEnhancer } from '@/enhancers/display/ProductDisplayEnhancer';
-import { CartDisplayEnhancer } from '@/enhancers/display/CartDisplayEnhancer';
-import { DisplayContextProvider } from '@/enhancers/display/DisplayContextProvider';
-import { DisplayErrorBoundary } from '@/enhancers/display/DisplayErrorBoundary';
-import { useCampaignStore } from '@/stores/campaignStore';
-import { useCartStore } from '@/stores/cartStore';
+import { DisplayFormatter } from '@/features/display/display-core';
+import { ProductDisplayEnhancer } from '@/features/display/product-display.enhancer';
+import { CartDisplayEnhancer } from '@/features/display/cart-display.enhancer';
+import { DisplayContextProvider } from '@/features/display/display-context';
+import { DisplayErrorBoundary } from '@/features/display/display-error-boundary';
+import { useCampaignStore } from '@/state/campaign';
+import { useCartStore } from '@/state/cart';
 
 // Mock stores
-vi.mock('@/stores/campaignStore');
-vi.mock('@/stores/cartStore');
+vi.mock('@/state/campaign');
+vi.mock('@/state/cart');
 
 // Test utilities
 function createTestElement(displayPath: string, attributes: Record<string, string> = {}): HTMLElement {

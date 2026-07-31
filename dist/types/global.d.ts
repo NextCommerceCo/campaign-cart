@@ -286,6 +286,12 @@ export interface EventMap {
     'toggle:selection-changed': {
         selected: number[];
     };
+    'scroll-hint:updated': {
+        isVisible: boolean;
+        scrollTop: number;
+        scrollHeight: number;
+        clientHeight: number;
+    };
 }
 export interface CartItem {
     id: number;

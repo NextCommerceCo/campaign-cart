@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Coupon</title>
+  </head>
+  <body>
+    <h1>Coupon fixture</h1>
+
+    <!-- docs:example A coupon input with an apply button -->
+    <button data-next-action="add-to-cart" data-next-package-id="1">
+      Add to cart
+    </button>
+
+    <div data-next-coupon="input">
+      <input type="text" data-next-coupon="input" placeholder="Coupon code" />
+      <button data-next-coupon="apply">Apply</button>
+    </div>
+    <!-- /docs:example -->
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

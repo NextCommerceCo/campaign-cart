@@ -1,0 +1,40 @@
+{
+  "$comment": [
+    "Shared, checked-in settings. The deny list makes .claude/rules/no-commit-no-deploy.md",
+    "enforced rather than merely written down: an agent cannot commit, push, or publish",
+    "even if some task description tells it to.",
+    "",
+    "This constrains Claude's tool calls only. Committing and deploying from your own",
+    "terminal is unaffected — those actions stay yours."
+  ],
+  "permissions": {
+    "deny": [
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git merge:*)",
+      "Bash(git rebase:*)",
+      "Bash(git cherry-pick:*)",
+      "Bash(git revert:*)",
+      "Bash(git tag:*)",
+      "Bash(git am:*)",
+      "Bash(git apply:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh release:*)",
+      "Bash(npm publish:*)",
+      "Bash(npm version:*)",
+      "Bash(yarn publish:*)",
+      "Bash(pnpm publish:*)",
+      "Bash(netlify deploy:*)",
+      "Bash(netlify:*)",
+      "Bash(vercel:*)",
+      "Bash(wrangler:*)",
+      "Bash(npx wrangler:*)",
+      "Bash(bunx wrangler:*)",
+      "Bash(gcloud:*)",
+      "Bash(aws s3:*)",
+      "Bash(firebase deploy:*)",
+      "Bash(surge:*)"
+    ]
+  }
+}

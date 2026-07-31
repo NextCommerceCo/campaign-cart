@@ -1,32 +1,89 @@
 /**
- * NextCommerce Campaign Cart SDK v2
+ * # Campaign Cart SDK
  *
- * Modern TypeScript SDK for seamless e-commerce integration via data attributes.
- * Provides progressive enhancement without disrupting existing HTML/CSS.
+ * The SDK that turns a plain HTML campaign page into a working cart and checkout.
+ * You mark up your page with `data-next-*` attributes; the SDK finds them on load,
+ * fetches the campaign, keeps the cart and its totals in sync, and runs the
+ * checkout. There is no framework to adopt and no build step on your page — the
+ * markup *is* the configuration.
  *
- * @version 0.2.0
- * @author NextCommerce
- * @license MIT
+ * ```html
+ * <head>
+ *   <meta name="next-api-key" content="{YOUR_CAMPAIGN_API_KEY}">
+ *   <!-- plus the SDK loader script for your campaign -->
+ * </head>
+ * <body>
+ *   <div data-next-package-selector data-next-selector-id="main">
+ *     <div data-next-selector-card data-next-package-id="2">
+ *       <span data-next-display="package.price">$0.00</span>
+ *     </div>
+ *   </div>
+ *   <button data-next-action="add-to-cart" data-next-selector-id="main">Buy</button>
+ * </body>
+ * ```
+ *
+ * ## Where to go from here
+ *
+ * | You want to… | Start at |
+ * |---|---|
+ * | Put a cart on a page for the first time | [Package Selector › Get Started](./features/cart/package-selector/guide/get-started.md), then [Add to Cart › Get Started](./features/cart/add-to-cart/guide/get-started.md) |
+ * | See every feature and the attribute that turns it on | **Features** in the sidebar — each feature has an Overview, a Get Started, Use Cases, and a reference for its attributes, events, logs and errors |
+ * | Call the SDK from your own JavaScript | [JavaScript API — `window.next`](./core/guide/reference/javascript-api.md) |
+ * | Understand what happens on page load | [Boot sequence](./core/guide/reference/boot-sequence.md) and [Core › Overview](./core/guide/overview.md) |
+ * | Configure the SDK from the page | [Meta tags](./core/guide/reference/meta-tags.md) and [URL parameters](./core/guide/reference/url-parameters.md) |
+ * | Read live cart, campaign, or order state | **State** in the sidebar — one guide per store, each with its full field schema |
+ * | Subscribe to an event | {@link EventMap} for every event name and its payload, and [Analytics events](./core/guide/reference/analytics-events.md) for what is sent to GA4 and friends |
+ * | Work out why nothing rendered | the feature's `Logs` and `Errors` pages, and [Logging and debug](./core/guide/subsystems/logging-and-debug.md) |
+ *
+ * ## The data shapes on this page
+ *
+ * Everything below is the SDK's **public type surface** — the objects you receive
+ * in events, read from a store, or pass into a method. It is generated from the
+ * source, so it matches the shipped code rather than describing it.
+ *
+ * - **Cart** — {@link CartItem}, {@link CartState}, {@link EnrichedCartLine},
+ *   {@link ShippingMethod}, {@link Coupon}
+ * - **Campaign** — {@link Campaign}, {@link Package}, {@link SelectorItem}
+ * - **Checkout & order** — {@link CheckoutData}, {@link Order} (the placed order,
+ *   with {@link OrderLine}, {@link OrderUser}, {@link OrderAddress}),
+ *   {@link OrderData} (the guaranteed subset in the `order:completed` payload)
+ * - **Events** — {@link EventMap}: every event name mapped to its payload shape
+ * - **Stores** — read live values through {@link useCartStore},
+ *   {@link useCampaignStore}, {@link useCheckoutStore}, {@link useOrderStore},
+ *   {@link useConfigStore}. The campaign store keeps its data on **`.data`**, not
+ *   `.campaign` — see [State › Campaign](./state/campaign/guide/overview.md).
+ * - **Version** — {@link VERSION}, the SDK build the page is running
+ *
+ * @packageDocumentation
  */
 
 // Import styles
 import './styles';
 
-export { NextCommerce } from './core/NextCommerce';
-export { SDKInitializer } from './enhancers/core/SDKInitializer';
+export { NextCommerce } from './core/next-commerce';
+export { SDKInitializer } from '@/core/sdk-initializer';
 
 // Store exports
-export { useCartStore } from './stores/cartStore';
-export { useCampaignStore } from './stores/campaignStore';
-export { useConfigStore } from './stores/configStore';
-export { useCheckoutStore } from './stores/checkoutStore';
-export { useOrderStore } from './stores/orderStore';
+export { useCartStore } from '@/state/cart';
+export { useCampaignStore } from '@/state/campaign';
+export { useConfigStore } from '@/state/config.state';
+export { useCheckoutStore } from '@/state/checkout.state';
+export { useOrderStore } from '@/state/order.state';
 // Type exports
 export type * from './types/global';
+// The order shapes the API returns and the order store holds. `OrderData` (above)
+// is only the guaranteed subset used to type the `order:completed` payload.
+export type {
+  Order,
+  OrderLine,
+  OrderUser,
+  OrderAddress,
+  MarketingAttribution,
+} from './types/api';
 
 // Utility exports
-export { Logger } from './utils/logger';
-export { EventBus } from './utils/events';
+export { Logger } from './core/logger';
+export { EventBus } from './core/events';
 
 // API client export
 export { ApiClient } from './api/client';
@@ -38,12 +95,23 @@ declare global {
   }
 }
 
+/**
+ * The SDK version string. Resolves to the loader-injected runtime version
+ * (`window.__NEXT_SDK_VERSION__`) when the loader sets it, otherwise the
+ * build-time version baked in at compile.
+ *
+ * @example
+ * ```ts
+ * import { VERSION } from '@next-commerce/campaign-cart';
+ * console.log(VERSION); // "0.4.30"
+ * ```
+ */
 export const VERSION = typeof window !== 'undefined' && window.__NEXT_SDK_VERSION__
   ? window.__NEXT_SDK_VERSION__
   : __VERSION__;
 
 // Auto-initialization
-import { SDKInitializer } from './enhancers/core/SDKInitializer';
+import { SDKInitializer } from '@/core/sdk-initializer';
 
 // Auto-initialize when DOM is ready
 if (typeof window !== 'undefined') {
@@ -63,51 +131,51 @@ if (typeof window !== 'undefined') {
       // Phase 1: Critical modules (preload immediately)
       requestIdleCallback(() => {
         // Cart enhancers - most commonly used
-        import('./enhancers/cart/CartSummary');
-        import('./enhancers/cart/PackageToggle');
-        import('./enhancers/cart/PackageSelector');
+        import('@/features/cart/cart-summary');
+        import('@/features/cart/package-toggle');
+        import('@/features/cart/package-selector');
         
         // Display enhancers
-        import('./enhancers/display/ProductDisplayEnhancer');
-        import('./enhancers/display/SelectionDisplayEnhancer');
-        import('./enhancers/display/TimerEnhancer');
+        import('@/features/display/product-display.enhancer');
+        import('@/features/display/selection-display.enhancer');
+        import('@/features/display/timer.enhancer');
       }, { timeout: 5000 });
       
       // Phase 2: Secondary modules (preload after critical)
       requestIdleCallback(() => {
         // Checkout flow
-        import('./enhancers/checkout/CheckoutFormEnhancer');
-        import('./enhancers/checkout/ExpressCheckoutContainerEnhancer');
+        import('./features/checkout/checkout-form.enhancer');
+        import('./features/checkout/express-checkout-container.enhancer');
 
         // Order/Upsell
-        import('./enhancers/display/OrderDisplayEnhancer');
-        import('./enhancers/order/Upsell');
+        import('@/features/display/order-display.enhancer');
+        import('@/features/order/upsell');
 
         // Attribution
-        import('./utils/attribution/AttributionCollector');
+        import('@/core/attribution/attribution-collector');
 
         // Cart UI components
-        import('./enhancers/cart/CartItemList');
-        import('./enhancers/cart/QuantityControl');
+        import('@/features/cart/cart-item-list');
+        import('@/features/cart/quantity-control');
       }, { timeout: 5000 });
       
       // Phase 3: Tertiary modules (preload when truly idle)
       requestIdleCallback(() => {
         // Less common enhancers
-        import('./enhancers/ui/AccordionEnhancer');
-        import('./enhancers/CouponEnhancer');
+        import('@/features/ui/accordion.enhancer');
+        import('@/features/cart/coupon.enhancer');
         
         // Behavior enhancers
-        import('./enhancers/behavior/SimpleExitIntentEnhancer');
+        import('@/features/behavior/simple-exit-intent.enhancer');
         
       }, { timeout: 5000 });
     } else {
       // Fallback for browsers without requestIdleCallback
       setTimeout(() => {
         // Just preload critical modules
-        import('./enhancers/cart/CartSummary');
-        import('./enhancers/display/ProductDisplayEnhancer');
-        import('./utils/analytics');
+        import('@/features/cart/cart-summary');
+        import('@/features/display/product-display.enhancer');
+        import('./core/analytics');
       }, 1000);
     }
   });

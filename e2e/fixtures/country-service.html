@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — country service</title>
+  </head>
+  <body>
+    <h1>Country service fixture</h1>
+
+    <form data-next-checkout>
+      <input data-next-checkout-field="fname" name="first_name" />
+      <input data-next-checkout-field="lname" name="last_name" />
+      <input data-next-checkout-field="email" type="email" name="email" />
+      <input data-next-checkout-field="address1" name="address1" />
+      <input data-next-checkout-field="city" name="city" />
+
+      <select data-next-checkout-field="country" name="country">
+        <option value="">Select Country</option>
+      </select>
+
+      <select data-next-checkout-field="province" name="province">
+        <option value="">Select Country First</option>
+      </select>
+
+      <input data-next-checkout-field="postal" name="postal" />
+    </form>
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

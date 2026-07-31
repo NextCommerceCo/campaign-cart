@@ -28,9 +28,10 @@
       "@/*": ["src/*"],
       "@/types/*": ["src/types/*"],
       "@/utils/*": ["src/utils/*"],
-      "@/stores/*": ["src/stores/*"],
-      "@/enhancers/*": ["src/enhancers/*"],
-      "@/api/*": ["src/api/*"]
+      "@/state/*": ["src/state/*"],
+      "@/features/*": ["src/features/*"],
+      "@/api/*": ["src/api/*"],
+      "@/core/*": ["src/core/*"]
     },
     
     /* Output */

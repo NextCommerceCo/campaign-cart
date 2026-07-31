@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Accept upsell</title>
+  </head>
+  <body>
+    <h1>Accept upsell fixture</h1>
+
+    <!-- docs:example An accept button that adds one offer to an order already paid for -->
+    <!-- The order this page adds to is loaded from the `?ref_id=` parameter the
+         checkout forwards, so the page is only reachable from a completed order.
+         Until that order is in place the button carries `disabled` and the
+         `next-disabled` class, so a visitor cannot accept an offer that has
+         nowhere to go. -->
+    <div data-next-display="order.number">…</div>
+
+    <button
+      data-next-action="accept-upsell"
+      data-next-package-id="2"
+      data-next-quantity="2"
+    >
+      Add 2 Triple Packs to my order
+    </button>
+    <!-- /docs:example -->
+
+    <!-- Fixture-only: the selector-driven form of the same offer, so the spec can
+         check the markup `guide/get-started.md` Option B recommends. The button
+         has no package of its own — it reads whichever card is selected, and stays
+         disabled until one is. -->
+    <div
+      data-next-package-selector
+      data-next-selector-id="offer"
+      data-next-upsell-context
+    >
+      <div data-next-selector-card data-next-package-id="4">Widget — Red</div>
+      <div data-next-selector-card data-next-package-id="5">Widget — Blue</div>
+    </div>
+
+    <button data-next-action="accept-upsell" data-next-selector-id="offer">
+      Add the selected offer
+    </button>
+
+    <!-- Fixture-only: an accept button with nothing to accept — no package of its
+         own and no selector to read — which is how the disabled state is reached
+         deterministically. A selector-linked button is not a reliable example of it:
+         a selector in upsell context pre-selects a card as it boots, and whether the
+         button hears that depends on which of the two initialised first. -->
+    <button data-next-action="accept-upsell">Add</button>
+
+    <!-- Fixture-only: the same accept with the next step of the funnel set, so the
+         spec can check the visitor is forwarded with the order reference intact.
+         Kept out of the published example because the URL is a test page. -->
+    <button
+      data-next-action="accept-upsell"
+      data-next-package-id="1"
+      data-next-url="/e2e/fixtures/order-display.html"
+    >
+      Add and continue
+    </button>
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

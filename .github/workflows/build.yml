@@ -26,5 +26,16 @@ jobs:
       - name: Test
         run: bun run test:coverage
 
+      # Fails only on NEW documentation gaps; known gaps are frozen in
+      # scripts/docs-coverage.baseline.json. See docs/documentation-plan.md.
+      - name: Docs coverage
+        run: bun run docs:coverage
+
+      # Builds the docs site with every TypeDoc warning promoted to an error, so a
+      # broken cross-link between guides cannot merge. Note it catches *relative*
+      # links only — site-absolute ones are checked by docs:coverage above.
+      - name: Docs link check
+        run: bun run docs:check
+
       - name: Build
         run: bun run build

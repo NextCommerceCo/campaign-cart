@@ -11,8 +11,8 @@ const sharedResolve = {
     '@': resolve(__dirname, 'src'),
     '@/types': resolve(__dirname, 'src/types'),
     '@/utils': resolve(__dirname, 'src/utils'),
-    '@/stores': resolve(__dirname, 'src/stores'),
-    '@/enhancers': resolve(__dirname, 'src/enhancers'),
+    '@/state': resolve(__dirname, 'src/state'),
+    '@/features': resolve(__dirname, 'src/features'),
     '@/api': resolve(__dirname, 'src/api'),
     '@/core': resolve(__dirname, 'src/core'),
   },
@@ -52,7 +52,7 @@ export default defineConfig({
       exclude: [
         'src/**/*.test.ts',
         'src/**/*.spec.ts',
-        'src/**/test/**',
+        'src/**/tests/**',
         'src/**/debug/**',
         'src/utils/testMode.ts',
         'src/utils/testDataHandler.ts',
@@ -209,7 +209,7 @@ export default defineConfig({
           // Split node_modules into vendor chunk.
           // Note: highlight.js used to be routed to `debug` here, but Rollup
           // placed shared CJS-interop helpers into the debug chunk, creating
-          // a vendor → debug → stores → vendor cycle. Keep all node_modules
+          // a vendor → debug → state → vendor cycle. Keep all node_modules
           // together; the size cost is paid back by avoiding TDZ bugs.
           if (id.includes('node_modules')) {
             // Further split large libraries
@@ -223,7 +223,7 @@ export default defineConfig({
           }
 
           // Separate debug code into its own chunk (won't be loaded unless ?debug=true)
-          if (id.includes('/debug/') || id.includes('/testMode') || id.includes('TestOrderManager')) {
+          if (id.includes('/debug/') || id.includes('/testMode') || id.includes('test-order-manager')) {
             return 'debug';
           }
 
@@ -232,14 +232,15 @@ export default defineConfig({
             return 'analytics';
           }
 
-          // Co-locate stores with the leaf utils they require at module-init time
-          // (logger/storage/events). Without this, a `utils` ↔ `stores` chunk
-          // cycle triggers a TDZ on Zustand's `create` import in production.
+          // Co-locate state stores with the leaf utils they require at
+          // module-init time (logger/storage/events). Without this, a `utils` ↔
+          // `state` chunk cycle triggers a TDZ on Zustand's `create` import in
+          // production.
           if (
-            id.includes('/src/stores/') ||
+            id.includes('/src/state/') ||
             /\/utils\/(logger|storage|events)\.ts$/.test(id)
           ) {
-            return 'stores';
+            return 'state';
           }
 
           // Split utilities into separate chunk (excluding debug and analytics)

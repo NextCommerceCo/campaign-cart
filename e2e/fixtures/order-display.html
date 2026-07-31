@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Order display</title>
+  </head>
+  <body>
+    <h1>Order display fixture</h1>
+
+    <!-- docs:example Order values on a receipt page -->
+    <!-- OrderDisplayEnhancer auto-loads the order from the ?ref_id URL param. -->
+    <span id="order-number" data-next-display="order.number">?</span>
+    <span id="order-total" data-next-display="order.total">?</span>
+    <a id="order-status" data-next-display="order.statusUrl">Status</a>
+    <!-- /docs:example -->
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

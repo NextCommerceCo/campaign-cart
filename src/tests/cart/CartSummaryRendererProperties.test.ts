@@ -11,7 +11,7 @@
  * original implementation unchanged.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { buildLineElement } from '@/enhancers/cart/CartSummary/CartSummaryEnhancer.renderer';
+import { buildLineElement } from '@/features/cart/cart-summary/cart-summary.renderer';
 import type { SummaryLine } from '@/types/api';
 
 // ─── happy-dom :scope > workaround ───────────────────────────────────────────

@@ -5,11 +5,28 @@ Always use path aliases — never relative `../../` imports across module bounda
 - `@/` → `src/`
 - `@/types/` → `src/types/`
 - `@/utils/` → `src/utils/`
-- `@/stores/` → `src/stores/`
-- `@/enhancers/` → `src/enhancers/`
+- `@/state/` → `src/state/`
+- `@/features/` → `src/features/`
 - `@/api/` → `src/api/`
+- `@/core/` → `src/core/`
+
+That is the complete list, from `tsconfig.json` `paths` (mirrored in
+`vite.config.ts`). There is no `@/stores/` or `@/enhancers/` alias — those folders
+were renamed to `state/` and `features/`, and an import using the old alias does not
+resolve.
 
 Relative imports (`./foo`, `../bar`) are fine within the same directory or one level up inside a feature folder.
+
+## File Naming
+
+Files are **kebab-case with a dotted role suffix**: `<name>.<role>.ts`.
+
+- Roles: `enhancer`, `handlers`, `renderer`, `types`, `state`, `slice`, `api` — e.g. `add-to-cart.enhancer.ts`, `cart.state.ts`, `coupon.slice.ts`.
+- Folders are kebab-case too (`features/cart/add-to-cart/`).
+- `index.ts` stays `index.ts` (barrel — exports only).
+- **Kebab governs the file name only.** Identifiers inside keep normal JS casing: classes/types PascalCase (`AddToCartEnhancer`, `CartState`), functions/vars camelCase.
+
+Why kebab (not PascalCase/camelCase): it is case-safe on case-insensitive filesystems (macOS/Windows), so an import can't break on a wrong capital, and it stays uniform with the dotted role suffixes. Existing PascalCase enhancer files and camelCase store files are legacy — they move to this scheme during migration (see the `sdk-structure` skill).
 
 ## Strict Mode Rules
 The project uses TypeScript strict mode. Follow these:

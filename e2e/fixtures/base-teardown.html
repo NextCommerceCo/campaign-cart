@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — base enhancer teardown</title>
+  </head>
+  <body>
+    <h1>Base teardown fixture</h1>
+
+    <button data-next-action="add-to-cart" data-next-package-id="1">
+      Add to cart
+    </button>
+
+    <!-- A cart-bound display we remove mid-test to prove its store
+         subscription is torn down by super.destroy(). -->
+    <div id="removable">
+      <span id="qty" data-next-display="cart.totalQuantity">0</span>
+    </div>
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

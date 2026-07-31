@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { FacebookAdapter } from '@/utils/analytics/providers/FacebookAdapter';
-import { NextCampaignAdapter } from '@/utils/analytics/providers/NextCampaignAdapter';
-import { DispatchError } from '@/utils/analytics/providers/ProviderAdapter';
-import type { DataLayerEvent } from '@/utils/analytics/types';
+import { FacebookAdapter } from '@/core/analytics/providers/FacebookAdapter';
+import { NextCampaignAdapter } from '@/core/analytics/providers/NextCampaignAdapter';
+import { DispatchError } from '@/core/analytics/providers/ProviderAdapter';
+import type { DataLayerEvent } from '@/core/analytics/types';
 
 /**
  * A dispatch that throws must surface honestly (DispatchError) so the base

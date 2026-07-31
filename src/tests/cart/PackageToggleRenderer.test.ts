@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { updateCardDisplayElements } from '@/enhancers/cart/PackageToggle/PackageToggleEnhancer.renderer';
-import type { ToggleCard } from '@/enhancers/cart/PackageToggle/PackageToggleEnhancer.types';
+import { updateCardDisplayElements } from '@/features/cart/package-toggle/package-toggle.renderer';
+import type { ToggleCard } from '@/features/cart/package-toggle/package-toggle.types';
 
 function makeCard(isSelected: boolean): ToggleCard {
   const element = document.createElement('div');

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Conditional display</title>
+  </head>
+  <body>
+    <h1>Conditional display fixture</h1>
+
+    <!-- docs:example Showing one element while the cart has items, and another while it is empty -->
+    <button data-next-action="add-to-cart" data-next-package-id="1">
+      Add to cart
+    </button>
+
+    <!-- Shown only when the cart has items. -->
+    <div id="show-when-items" data-next-show="cart.hasItems">Cart has items</div>
+
+    <!-- Hidden when the cart has items (i.e. shown while empty). -->
+    <div id="hide-when-items" data-next-hide="cart.hasItems">Your cart is empty</div>
+    <!-- /docs:example -->
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

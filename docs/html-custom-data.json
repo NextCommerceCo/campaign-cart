@@ -1,0 +1,2714 @@
+{
+  "$comment": "AUTO-GENERATED from the feature manifests. Do not hand-edit. Regenerate: npm run docs:reference",
+  "version": 1.1,
+  "globalAttributes": [
+    {
+      "name": "data-add-text",
+      "description": {
+        "kind": "markdown",
+        "value": "Button label while the package is out of the cart. Written into a `[data-next-button-text]` child if there is one, otherwise into the element's own text.\n\nType: `string`\n\n⚠️ Only applied when `data-remove-text` is set as well.\n\nFeature: `package-toggle`."
+      },
+      "references": [
+        {
+          "name": "package-toggle docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-toggle/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-animation-duration",
+      "description": {
+        "kind": "markdown",
+        "value": "How long the expand and collapse animation runs. Set `0` to switch instantly.\n\nDefault: `300` · Type: `number (ms)`\n\nFeature: `accordion`."
+      },
+      "references": [
+        {
+          "name": "accordion docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/ui/accordion/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-auto-create",
+      "description": {
+        "kind": "markdown",
+        "value": "Whether a prospect is created automatically when the trigger fires. Set `false` to keep the feature loaded but create prospects only from your own code.\n\nDefault: `true` · Type: `'true' | 'false'`\n\n⚠️ Any value other than `\"false\"` counts as enabled.\n\nFeature: `prospect-cart`."
+      },
+      "references": [
+        {
+          "name": "prospect-cart docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/checkout/prospect-cart/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-cart-item-id",
+      "description": {
+        "kind": "markdown",
+        "value": "Identifies a rendered row by cart line id. The feature counts and queries rows through it, so keep it on the row root — usually as `data-cart-item-id=\"{item.id}\"`.\n\nType: `string`\n\nFeature: `cart-item-list`."
+      },
+      "references": [
+        {
+          "name": "cart-item-list docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/cart-item-list/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-close-text",
+      "description": {
+        "kind": "markdown",
+        "value": "Label written into the text element when the section **closes**, e.g. `Show order summary`. Default `Show`. This is what a collapsed accordion displays, including on first load.\n\nType: `string`\n\nFeature: `accordion`."
+      },
+      "references": [
+        {
+          "name": "accordion docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/ui/accordion/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-confirm",
+      "description": {
+        "kind": "markdown",
+        "value": "On a remove button inside the row: ask the visitor to confirm before removing. The built-in default template sets this.\n\nType: `'true'`\n\nFeature: `cart-item-list`."
+      },
+      "references": [
+        {
+          "name": "cart-item-list docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/cart-item-list/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-confirm-message",
+      "description": {
+        "kind": "markdown",
+        "value": "The wording of that confirmation, when `data-confirm=\"true\"` is set.\n\nDefault: `Remove this item from your cart?` · Type: `string`\n\nFeature: `cart-item-list`."
+      },
+      "references": [
+        {
+          "name": "cart-item-list docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/cart-item-list/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-container",
+      "description": {
+        "kind": "markdown",
+        "value": "Read while walking up the DOM to find the element a price belongs to, for markup that groups a package without using a selector card.\n\nType: `string`\n\nFeature: `product-display`."
+      },
+      "references": [
+        {
+          "name": "product-display docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/display/product-display/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-coupon-code",
+      "description": {
+        "kind": "markdown",
+        "value": "Put alongside `data-exit-intent-action` to apply a discount code when the visitor accepts, without writing the apply call yourself.\n\nType: `string`\n\nFeature: `simple-exit-intent`."
+      },
+      "references": [
+        {
+          "name": "simple-exit-intent docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/behavior/simple-exit-intent/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-divide-by",
+      "description": {
+        "kind": "markdown",
+        "value": "Divides the value before formatting — most often to show a per-unit price from a pack total.\n\nType: `number`\n\nFeature: `display-core`."
+      },
+      "references": [
+        {
+          "name": "display-core docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/display/display-core/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-duration",
+      "description": {
+        "kind": "markdown",
+        "value": "How long the countdown runs, in seconds. Counted from the moment the visitor first saw this timer, not from each page load.\n\n**Required** · Type: `number (seconds)`\n\n⚠️ Missing or non-numeric, the feature throws during init and the timer never starts.\n\nFeature: `timer`."
+      },
+      "references": [
+        {
+          "name": "timer docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/display/timer/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-email-field",
+      "description": {
+        "kind": "markdown",
+        "value": "Which checkout field holds the email, when the form names it something other than `email`.\n\nDefault: `email` · Type: `string`\n\nFeature: `prospect-cart`."
+      },
+      "references": [
+        {
+          "name": "prospect-cart docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/checkout/prospect-cart/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-empty-template",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 2 features — the meaning differs, so check the one you are in:\n\n- **cart-item-list** (`string (HTML)`, default `<div class=\"cart-empty\">Your cart is empty</div>`) — What to render in place of rows when the cart is empty.\n- **order-item-list** (`string (HTML)`) — What to render when the order has no lines — which in practice means the order failed to load rather than a genuinely empty purchase."
+      },
+      "references": [
+        {
+          "name": "cart-item-list docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/cart-item-list/reference/attributes"
+        },
+        {
+          "name": "order-item-list docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/order/order-item-list/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-exit-intent-action",
+      "description": {
+        "kind": "markdown",
+        "value": "Put on a button inside your `template` to make it the accept action. Clicking it runs the `action` callback, applies `data-coupon-code` if present, and closes the popup.\n\nType: `string`\n\nFeature: `simple-exit-intent`."
+      },
+      "references": [
+        {
+          "name": "simple-exit-intent docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/behavior/simple-exit-intent/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-format",
+      "description": {
+        "kind": "markdown",
+        "value": "How the remaining time is rendered — for example `mm:ss` for `04:31`, or a format including hours for a longer window.\n\nDefault: `mm:ss` · Type: `string`\n\nFeature: `timer`."
+      },
+      "references": [
+        {
+          "name": "timer docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/display/timer/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-group-items",
+      "description": {
+        "kind": "markdown",
+        "value": "Collapses cart lines that share a package id into one row with the quantities added together. Display only — the cart itself is untouched.\n\nType: `boolean (presence)`\n\nFeature: `cart-item-list`."
+      },
+      "references": [
+        {
+          "name": "cart-item-list docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/cart-item-list/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-hide-if-false",
+      "description": {
+        "kind": "markdown",
+        "value": "Hides the element when the value is false, for a badge that should be absent rather than showing \"No\".\n\nType: `'true'`\n\nFeature: `display-core`."
+      },
+      "references": [
+        {
+          "name": "display-core docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/display/display-core/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-hide-if-zero",
+      "description": {
+        "kind": "markdown",
+        "value": "Hides the element when the value is zero. Use it for a savings or discount row that should disappear rather than read \"$0.00\".\n\nType: `'true'`\n\nFeature: `display-core`."
+      },
+      "references": [
+        {
+          "name": "display-core docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/display/display-core/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-hide-zero-cents",
+      "description": {
+        "kind": "markdown",
+        "value": "Renders a whole amount as `$49` instead of `$49.00`, while amounts with cents keep them.\n\nType: `'true'`\n\nFeature: `display-core`."
+      },
+      "references": [
+        {
+          "name": "display-core docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/display/display-core/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-initial-state",
+      "description": {
+        "kind": "markdown",
+        "value": "Whether the section starts expanded or collapsed.\n\nDefault: `closed` · Type: `'open' | 'closed'`\n\nFeature: `accordion`."
+      },
+      "values": [
+        {
+          "name": "open",
+          "description": "Expanded on load."
+        },
+        {
+          "name": "closed",
+          "description": "Collapsed on load."
+        }
+      ],
+      "references": [
+        {
+          "name": "accordion docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/ui/accordion/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-item-template",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 2 features — the meaning differs, so check the one you are in:\n\n- **cart-item-list** (`string (HTML)`) — The per-row template as an inline HTML string.\n- **order-item-list** (`string (HTML)`) — The per-row template as an inline HTML string."
+      },
+      "references": [
+        {
+          "name": "cart-item-list docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/cart-item-list/reference/attributes"
+        },
+        {
+          "name": "order-item-list docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/order/order-item-list/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-item-template-id",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 2 features — the meaning differs, so check the one you are in:\n\n- **cart-item-list** (`string`) — Id of an element whose `innerHTML` is the per-row template.\n- **order-item-list** (`string`) — Id of an element whose `innerHTML` is the per-row template."
+      },
+      "references": [
+        {
+          "name": "cart-item-list docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/cart-item-list/reference/attributes"
+        },
+        {
+          "name": "order-item-list docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/order/order-item-list/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-item-template-selector",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 2 features — the meaning differs, so check the one you are in:\n\n- **cart-item-list** (`string`) — CSS selector for the element whose `innerHTML` is the per-row template.\n- **order-item-list** (`string (CSS selector)`) — Selector for the element whose `innerHTML` is the per-row template."
+      },
+      "references": [
+        {
+          "name": "cart-item-list docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/cart-item-list/reference/attributes"
+        },
+        {
+          "name": "order-item-list docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/order/order-item-list/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-line-discounts",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by cart-summary.\n\nType: `boolean (presence)`\n\nFeature: `cart-summary`."
+      },
+      "references": [
+        {
+          "name": "cart-summary docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/cart-summary/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-loading-text",
+      "description": {
+        "kind": "markdown",
+        "value": "Set on any action element — an add-to-cart or accept-upsell button — while its work is in flight, carrying the loading label. Available on every action feature rather than declared by each one.\n\nType: `string`\n\nFeature: `sdk`."
+      },
+      "references": [
+        {
+          "name": "sdk docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/sdk-attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-max",
+      "description": {
+        "kind": "markdown",
+        "value": "Maximum allowed quantity. The `increase` button is disabled when the current quantity equals this value. For `set` mode, values above this are clamped to `max` on `change`/`blur`.\n\nDefault: `99` · Type: `number`\n\nFeature: `quantity-control`."
+      },
+      "references": [
+        {
+          "name": "quantity-control docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/quantity-control/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-min",
+      "description": {
+        "kind": "markdown",
+        "value": "Minimum allowed quantity. The `decrease` button is disabled when the current quantity equals this value. For `set` mode, values below this are clamped to `min` on `change`/`blur`.\n\nDefault: `0` · Type: `number`\n\n⚠️ `data-min=\"0\"` (the default) means quantity 0 is reachable, which removes the item from the cart. `data-min=\"1\"` prevents removal through this control.\n\nFeature: `quantity-control`."
+      },
+      "references": [
+        {
+          "name": "quantity-control docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/quantity-control/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-min-phone-digits",
+      "description": {
+        "kind": "markdown",
+        "value": "How many digits a phone number needs before it counts as entered. Guards against recording a prospect from a half-typed number.\n\nDefault: `7` · Type: `number`\n\n⚠️ A non-numeric or non-positive value logs a warning and the default is used.\n\nFeature: `prospect-cart`."
+      },
+      "references": [
+        {
+          "name": "prospect-cart docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/checkout/prospect-cart/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-multiply-by",
+      "description": {
+        "kind": "markdown",
+        "value": "Multiplies the value before formatting — for showing a per-unit price as a pack total, or a rate as a percentage.\n\nType: `number`\n\nFeature: `display-core`."
+      },
+      "references": [
+        {
+          "name": "display-core docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/display/display-core/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-accordion",
+      "description": {
+        "kind": "markdown",
+        "value": "Marks the accordion and names it. The value is an id you choose; the trigger, panel, and text elements below use the same id to opt in, which is how several accordions coexist on one page.\n\n**Required** · Type: `string (id)`\n\nFeature: `accordion`."
+      },
+      "references": [
+        {
+          "name": "accordion docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/ui/accordion/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-accordion-panel",
+      "description": {
+        "kind": "markdown",
+        "value": "The element that expands and collapses, carrying the same id. Required — with none, the accordion warns and there is nothing to reveal.\n\nType: `string`\n\nFeature: `accordion`."
+      },
+      "references": [
+        {
+          "name": "accordion docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/ui/accordion/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-accordion-text",
+      "description": {
+        "kind": "markdown",
+        "value": "Optional element whose text is swapped between `data-open-text` and `data-close-text`. Without it those labels have nowhere to go.\n\nType: `string`\n\nFeature: `accordion`."
+      },
+      "references": [
+        {
+          "name": "accordion docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/ui/accordion/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-accordion-trigger",
+      "description": {
+        "kind": "markdown",
+        "value": "The clickable element, carrying the same id as the accordion. Required — with none, the accordion logs a warning naming the id it looked for and nothing is clickable.\n\nType: `string`\n\nFeature: `accordion`."
+      },
+      "references": [
+        {
+          "name": "accordion docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/ui/accordion/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-action",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 2 features — the meaning differs, so check the one you are in:\n\n- **accept-upsell** (`string`, required) — Must be `\"accept-upsell\"`.\n- **add-to-cart** (`string`, required) — Must be `\"add-to-cart\"`."
+      },
+      "values": [
+        {
+          "name": "accept-upsell",
+          "description": "Turns this element into an upsell accept button."
+        },
+        {
+          "name": "add-to-cart",
+          "description": "Turns this element into an add-to-cart button."
+        }
+      ],
+      "references": [
+        {
+          "name": "accept-upsell docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/accept-upsell/reference/attributes"
+        },
+        {
+          "name": "add-to-cart docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/add-to-cart/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-await",
+      "description": {
+        "kind": "markdown",
+        "value": "Recognised by the debug x-ray overlay, which highlights elements waiting on SDK data. It has no effect on a production page.\n\nType: `boolean (presence)`\n\n⚠️ No non-debug code reads it. Treat it as a debugging aid, not a supported page attribute.\n\nFeature: `sdk`."
+      },
+      "references": [
+        {
+          "name": "sdk docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/sdk-attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-bump",
+      "description": {
+        "kind": "markdown",
+        "value": "Marks the card as an order bump. Also detected when the card sits inside a `[data-next-bump-section]`, so a whole section can be marked at once.\n\nType: `boolean (presence)`\n\nFeature: `package-toggle`."
+      },
+      "references": [
+        {
+          "name": "package-toggle docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-toggle/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-bundle-card",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by bundle-selector.\n\n**Required** · Type: `boolean (presence)`\n\nFeature: `bundle-selector`."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-bundle-display",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by bundle-selector.\n\nType: `string (field name)`\n\nFeature: `bundle-selector`."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-bundle-id",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by bundle-selector.\n\n**Required** · Type: `string`\n\nFeature: `bundle-selector`."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-bundle-items",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by bundle-selector.\n\nType: `JSON string`\n\nFeature: `bundle-selector`."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-bundle-name",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by bundle-selector.\n\nType: `string`\n\nFeature: `bundle-selector`."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-bundle-price",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by bundle-selector.\n\nType: `string (price variant)`\n\nFeature: `bundle-selector`."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-bundle-qty-for",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by bundle-selector.\n\nType: `string (selector ID)`\n\nFeature: `bundle-selector`."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-bundle-selector",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by bundle-selector.\n\n**Required** · Type: `boolean (presence)`\n\nFeature: `bundle-selector`."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-bundle-selector-id",
+      "description": {
+        "kind": "markdown",
+        "value": "The same, for an external bundle selector.\n\nType: `string`\n\nFeature: `upsell`."
+      },
+      "references": [
+        {
+          "name": "upsell docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/order/upsell/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-bundle-slot-template",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by bundle-selector.\n\nType: `string (HTML)`\n\nFeature: `bundle-selector`."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-bundle-slot-template-id",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by bundle-selector.\n\nType: `string`\n\nFeature: `bundle-selector`."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-bundle-slots",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by bundle-selector.\n\nType: `boolean (presence)`\n\nFeature: `bundle-selector`."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-bundle-slots-for",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by bundle-selector.\n\nType: `string (selector ID)`\n\nFeature: `bundle-selector`."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-bundle-template",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by bundle-selector.\n\nType: `string (HTML)`\n\nFeature: `bundle-selector`."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-bundle-template-id",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by bundle-selector.\n\nType: `string`\n\nFeature: `bundle-selector`."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-bundle-vouchers",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by bundle-selector.\n\nType: `boolean (presence)`\n\nFeature: `bundle-selector`."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-bundles",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by bundle-selector.\n\nType: `JSON string`\n\nFeature: `bundle-selector`."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-cart-item-id",
+      "description": {
+        "kind": "markdown",
+        "value": "Read from an enclosing element to resolve which cart line a binding is about, alongside `data-next-package-id`, `data-next-shipping-id`, and `data-next-selector-id`.\n\nType: `string`\n\n⚠️ The cart item list renders rows with `data-cart-item-id` — **without** the `next` segment — so this context does not currently resolve inside its rows. Use `data-next-package-id`, which the same rows do carry, until the two names agree.\n\nFeature: `display-core`."
+      },
+      "references": [
+        {
+          "name": "display-core docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/display/display-core/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-cart-items",
+      "description": {
+        "kind": "markdown",
+        "value": "Marks the element as the cart line list. Presence is enough — it takes no value.\n\n**Required** · Type: `boolean (presence)`\n\nFeature: `cart-item-list`."
+      },
+      "references": [
+        {
+          "name": "cart-item-list docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/cart-item-list/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-cart-selector",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 2 features — the meaning differs, so check the one you are in:\n\n- **conditional-display** (`string`) — Read while walking up the DOM: marks the enclosing element as the cart selector whose selection a `selection.*` condition should resolve against.\n- **selection-display** (`string`) — Marks the enclosing element as the cart selector to resolve against while walking up the DOM."
+      },
+      "references": [
+        {
+          "name": "conditional-display docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/display/conditional-display/reference/attributes"
+        },
+        {
+          "name": "selection-display docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/display/selection-display/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-cart-summary",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by cart-summary.\n\n**Required** · Type: `boolean (presence)`\n\nFeature: `cart-summary`."
+      },
+      "references": [
+        {
+          "name": "cart-summary docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/cart-summary/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-checkout",
+      "description": {
+        "kind": "markdown",
+        "value": "Marks the `<form>` as the checkout. Must be on a real `<form>` element — the feature is registered against `form[data-next-checkout]`, so a `<div>` carrying it is never activated.\n\n**Required** · Type: `boolean (presence)`\n\nFeature: `checkout-form`."
+      },
+      "references": [
+        {
+          "name": "checkout-form docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/checkout/checkout-form/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-checkout-field",
+      "description": {
+        "kind": "markdown",
+        "value": "Marks an input as a checkout field and names it. The name is what maps the input to the order — see **Field names** below for the set.\n\n**Required** · Type: `string (field name)`\n\n⚠️ The legacy `os-checkout-field` attribute is still read, so existing forms keep working. Use `data-next-checkout-field` in new markup.\n\nFeature: `checkout-form`."
+      },
+      "references": [
+        {
+          "name": "checkout-form docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/checkout/checkout-form/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-checkout-payment",
+      "description": {
+        "kind": "markdown",
+        "value": "Marks a payment method choice — a radio or a button — and names the method it selects.\n\nType: `string (method)`\n\n⚠️ These are the markup spellings; the API names differ (`credit` becomes `card_token`). Use the values above in HTML and let the SDK translate.\n\nFeature: `checkout-form`."
+      },
+      "values": [
+        {
+          "name": "credit",
+          "description": "Card, entered in the hosted card fields."
+        },
+        {
+          "name": "paypal",
+          "description": "PayPal."
+        },
+        {
+          "name": "apple-pay",
+          "description": "Apple Pay."
+        },
+        {
+          "name": "google-pay",
+          "description": "Google Pay."
+        },
+        {
+          "name": "klarna",
+          "description": "Klarna."
+        }
+      ],
+      "references": [
+        {
+          "name": "checkout-form docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/checkout/checkout-form/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-checkout-review",
+      "description": {
+        "kind": "markdown",
+        "value": "Marks an element as a review slot and names the checkout field to show in it. The value is read back from the form as the visitor types, so the review stays correct without a page step.\n\n**Required** · Type: `string (field name)`\n\nFeature: `checkout-review`."
+      },
+      "references": [
+        {
+          "name": "checkout-review docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/checkout/checkout-review/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-checkout-step",
+      "description": {
+        "kind": "markdown",
+        "value": "Makes this form one step of a multi-step checkout: validation and submission apply to this step rather than the whole order, and **the value is the URL to navigate to** once the step validates.\n\nType: `string (URL)`\n\n⚠️ It is a URL, not a step name. `data-next-checkout-step=\"shipping\"` sends the visitor to `/shipping` relative to the current page — usually a 404 — rather than to the next step. Use the real path, e.g. `/checkout/payment`.\n\nFeature: `checkout-form`."
+      },
+      "references": [
+        {
+          "name": "checkout-form docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/checkout/checkout-form/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-checkout-submit",
+      "description": {
+        "kind": "markdown",
+        "value": "Marks the submit control. Without it the form falls back to its own submit event, so a `<button type=\"submit\">` still works.\n\nType: `boolean (presence)`\n\nFeature: `checkout-form`."
+      },
+      "references": [
+        {
+          "name": "checkout-form docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/checkout/checkout-form/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-class-",
+      "description": {
+        "kind": "markdown",
+        "value": "A prefix, not a whole attribute: `data-next-class-<name>` renames one of the classes this feature toggles, so it can drive CSS you already have instead of `next-*`. The `<name>` is the class without its `next-` prefix — `data-next-class-selected`, `data-next-class-in-cart`, `data-next-class-bundle-card`, `data-next-class-variant-selected`, `data-next-class-variant-unavailable`.\n\nType: `string`\n\n⚠️ Renaming a class does not change what the feature does with it, and the default still applies to any class you do not rename.\n\nFeature: `bundle-selector`."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-clear-cart",
+      "description": {
+        "kind": "markdown",
+        "value": "When `\"true\"`, the whole cart is emptied before the new item is added. Use it for single-item flows and \"replace and buy\" CTAs.\n\nDefault: `false` · Type: `string`\n\nFeature: `add-to-cart`."
+      },
+      "values": [
+        {
+          "name": "true",
+          "description": "Empty the cart first, then add."
+        },
+        {
+          "name": "false",
+          "description": "Add alongside whatever is already in the cart."
+        }
+      ],
+      "references": [
+        {
+          "name": "add-to-cart docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/add-to-cart/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-component",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 2 features — the meaning differs, so check the one you are in:\n\n- **checkout-form** (`string`) — Names a structural part of the form so the feature can show, hide, clone, or write into it.\n- **scroll-hint** (`string`, required) — Must be `\"scroll-hint\"`."
+      },
+      "values": [
+        {
+          "name": "shipping-form",
+          "description": "Wrapper for the shipping address fields."
+        },
+        {
+          "name": "billing-form",
+          "description": "Wrapper for the billing address fields."
+        },
+        {
+          "name": "different-billing-address",
+          "description": "The container revealed when the visitor says billing differs from shipping."
+        },
+        {
+          "name": "location",
+          "description": "The country/state/postcode group. Revealed together once a country is known, and cloned to build the billing equivalent."
+        },
+        {
+          "name": "billing-location",
+          "description": "Set by the feature on the cloned billing location group."
+        },
+        {
+          "name": "shipping-field-row",
+          "description": "One row of shipping fields, for row-level show and hide."
+        },
+        {
+          "name": "credit-error",
+          "description": "Container for card errors."
+        },
+        {
+          "name": "credit-error-text",
+          "description": "Element the card error message is written into."
+        },
+        {
+          "name": "paypal-error",
+          "description": "Container for PayPal errors."
+        },
+        {
+          "name": "scroll-hint",
+          "description": "Turns this element into a scroll hint."
+        }
+      ],
+      "references": [
+        {
+          "name": "checkout-form docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/checkout/checkout-form/reference/attributes"
+        },
+        {
+          "name": "scroll-hint docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/ui/scroll-hint/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-component-location",
+      "description": {
+        "kind": "markdown",
+        "value": "Alternative marker for the location group, accepted alongside `data-next-component=\"location\"`.\n\nType: `string`\n\nFeature: `checkout-form`."
+      },
+      "references": [
+        {
+          "name": "checkout-form docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/checkout/checkout-form/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-confirm",
+      "description": {
+        "kind": "markdown",
+        "value": "Shows a native browser confirmation dialog before removing. Any other value, or leaving it off, removes immediately.\n\nType: `'true'`\n\nFeature: `remove-item`."
+      },
+      "values": [
+        {
+          "name": "true",
+          "description": "Ask before removing."
+        }
+      ],
+      "references": [
+        {
+          "name": "remove-item docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/remove-item/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-confirm-message",
+      "description": {
+        "kind": "markdown",
+        "value": "The wording of the confirmation dialog. Only used when `data-next-confirm=\"true\"` is also present.\n\nDefault: `Are you sure you want to remove this item?` · Type: `string`\n\nFeature: `remove-item`."
+      },
+      "references": [
+        {
+          "name": "remove-item docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/remove-item/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-coupon",
+      "description": {
+        "kind": "markdown",
+        "value": "Marks the coupon area. The feature activates on the container and finds the input, button, and display area inside it.\n\n**Required** · Type: `string`\n\n⚠️ When the input, button, and display cannot all be found the feature logs `Required coupon elements not found` and does nothing — check that the markup below is present.\n\nFeature: `coupon`."
+      },
+      "values": [
+        {
+          "name": "input",
+          "description": "On the text input the visitor types the code into. Also activates the feature when used on its own."
+        },
+        {
+          "name": "apply",
+          "description": "On the apply button. Optional — the first `<button>` in the container is used when this is absent."
+        },
+        {
+          "name": "display",
+          "description": "On the element that lists applied codes. Searched inside the container, then in its parent, then document-wide."
+        },
+        {
+          "name": "messages",
+          "description": "On the element that shows success and error text. Searched document-wide."
+        }
+      ],
+      "references": [
+        {
+          "name": "coupon docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/coupon/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-default-property",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 3 features — the meaning differs, so check the one you are in:\n\n- **add-to-cart** (`string`) — Put on an input anywhere in the document.\n- **bundle-selector** (`string (key)`) — see its reference page.\n- **upsell** (`string (key)`) — On an input anywhere in the page: collected for every offer, no container needed."
+      },
+      "references": [
+        {
+          "name": "add-to-cart docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/add-to-cart/reference/attributes"
+        },
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        },
+        {
+          "name": "upsell docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/order/upsell/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-discounts",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 3 features — the meaning differs, so check the one you are in:\n\n- **bundle-selector** (`'' | 'offer' | 'voucher'`) — see its reference page.\n- **cart-summary** (`'' | 'offer' | 'voucher'`) — see its reference page.\n- **package-toggle** (`'' | 'offer' | 'voucher'`, default `(empty)`) — Lists the discounts applied to this card's package — one row per discount."
+      },
+      "values": [
+        {
+          "name": "offer",
+          "description": "Only discounts from an offer."
+        },
+        {
+          "name": "voucher",
+          "description": "Only discounts from a coupon or voucher code."
+        }
+      ],
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        },
+        {
+          "name": "cart-summary docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/cart-summary/reference/attributes"
+        },
+        {
+          "name": "package-toggle docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-toggle/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-display",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 2 features — the meaning differs, so check the one you are in:\n\n- **display-core** (`string (namespaced path)`, required) — The value to show, written as `{namespace}.{path}` — for example `cart.total` or `package.101.price`.\n- **order-display** (`string (order path)`, required) — The order value to show, as `order.{path}`."
+      },
+      "references": [
+        {
+          "name": "display-core docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/display/display-core/reference/attributes"
+        },
+        {
+          "name": "order-display docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/display/order-display/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-enhancer",
+      "description": {
+        "kind": "markdown",
+        "value": "Turns the element into a review block. This is the generic activation attribute — its value names the enhancer to attach, so it is not specific to review and an unrecognised value attaches nothing.\n\n**Required** · Type: `'checkout-review'`\n\n⚠️ A typo in the value fails silently: the scanner logs `Unknown enhancer type: <value>` and the block stays empty.\n\nFeature: `checkout-review`."
+      },
+      "values": [
+        {
+          "name": "checkout-review",
+          "description": "Attaches the review enhancer to this element."
+        }
+      ],
+      "references": [
+        {
+          "name": "checkout-review docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/checkout/checkout-review/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-exclude-property",
+      "description": {
+        "kind": "markdown",
+        "value": "Custom-property keys this card should not copy onto its cart line, comma separated. Use it when an add-on should not inherit engraving text or a gift message from the main product.\n\nType: `string`\n\nFeature: `package-toggle`."
+      },
+      "references": [
+        {
+          "name": "package-toggle docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-toggle/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-express-checkout",
+      "description": {
+        "kind": "markdown",
+        "value": "Marks the container and, on a child, the element buttons are injected into. You supply the container; the SDK supplies the buttons, because which ones are available depends on the campaign and on the visitor's device.\n\n**Required** · Type: `string`\n\n⚠️ With no `\"buttons\"` child the feature logs `No buttons container found with data-next-express-checkout=\"buttons\"` and renders nothing — the usual reason an express section stays empty.\n\nFeature: `express-checkout-container`."
+      },
+      "values": [
+        {
+          "name": "container",
+          "description": "The outer element the feature activates on."
+        },
+        {
+          "name": "buttons",
+          "description": "The child element buttons are rendered into."
+        }
+      ],
+      "references": [
+        {
+          "name": "express-checkout-container docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/checkout/express-checkout-container/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-fallback",
+      "description": {
+        "kind": "markdown",
+        "value": "What to show while the field is still blank. Without one an unfilled field renders as nothing, which reads as a broken layout rather than an empty value.\n\nDefault: `(empty)` · Type: `string`\n\nFeature: `checkout-review`."
+      },
+      "references": [
+        {
+          "name": "checkout-review docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/checkout/checkout-review/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-format",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 2 features — the meaning differs, so check the one you are in:\n\n- **checkout-review** (`string`, default `text`) — How to render the value — for example formatting a phone number or a card expiry rather than echoing the raw input.\n- **display-core** (`string`, default `auto`) — How to render the value."
+      },
+      "values": [
+        {
+          "name": "currency",
+          "description": "Money, in the campaign's currency and locale."
+        },
+        {
+          "name": "number",
+          "description": "A plain number with locale grouping."
+        },
+        {
+          "name": "percentage",
+          "description": "A percentage."
+        },
+        {
+          "name": "boolean",
+          "description": "A true/false value."
+        },
+        {
+          "name": "date",
+          "description": "A date."
+        },
+        {
+          "name": "text",
+          "description": "Verbatim, no formatting."
+        },
+        {
+          "name": "auto",
+          "description": "Infer from the value and the path."
+        }
+      ],
+      "references": [
+        {
+          "name": "checkout-review docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/checkout/checkout-review/reference/attributes"
+        },
+        {
+          "name": "display-core docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/display/display-core/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-hide",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 2 features — the meaning differs, so check the one you are in:\n\n- **cart-summary** (`string (condition)`) — see its reference page.\n- **conditional-display** (`string (condition)`) — The inverse: hides the element while the condition is true."
+      },
+      "references": [
+        {
+          "name": "cart-summary docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/cart-summary/reference/attributes"
+        },
+        {
+          "name": "conditional-display docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/display/conditional-display/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-id",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 2 features — the meaning differs, so check the one you are in:\n\n- **conditional-display** (`string`) — Fallback identifier read from an enclosing cart selector when it has no `data-next-selector-id`.\n- **selection-display** (`string`) — Fallback identifier read from an enclosing cart selector that has no `data-next-selector-id`."
+      },
+      "references": [
+        {
+          "name": "conditional-display docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/display/conditional-display/reference/attributes"
+        },
+        {
+          "name": "selection-display docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/display/selection-display/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-include-shipping",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 3 features — the meaning differs, so check the one you are in:\n\n- **bundle-selector** (`'true' | 'false'`) — see its reference page.\n- **package-selector** (`'true' | 'false'`, default `false`) — When `true`, shipping cost is included in the price calculation sent to the bundle price API, and therefore in what the price slots display.\n- **package-toggle** (`'true' | 'false'`, default `false`) — When `true`, shipping is included in the price shown on cards that are not yet in the cart, so the preview matches what the cart will say."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        },
+        {
+          "name": "package-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-selector/reference/attributes"
+        },
+        {
+          "name": "package-toggle docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-toggle/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-is-upsell",
+      "description": {
+        "kind": "markdown",
+        "value": "Marks the resulting cart line as an upsell or bump item, which changes how it is classified in the cart and in analytics.\n\nDefault: `false` · Type: `'true' | 'false'`\n\n⚠️ It also delays sync-driven removal by 500ms, so a variant swap does not briefly drop the add-on and re-add it.\n\nFeature: `package-toggle`."
+      },
+      "references": [
+        {
+          "name": "package-toggle docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-toggle/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-item-properties",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by cart-summary.\n\nType: `boolean (presence)`\n\nFeature: `cart-summary`."
+      },
+      "references": [
+        {
+          "name": "cart-summary docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/cart-summary/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-max-quantity",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 2 features — the meaning differs, so check the one you are in:\n\n- **bundle-selector** (`number`) — see its reference page.\n- **package-selector** (`number`, default `999`) — Highest quantity the inline controls allow."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        },
+        {
+          "name": "package-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-min-quantity",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 2 features — the meaning differs, so check the one you are in:\n\n- **bundle-selector** (`number`) — see its reference page.\n- **package-selector** (`number`, default `1`) — Lowest quantity the inline controls allow."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        },
+        {
+          "name": "package-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-multiply-quantity",
+      "description": {
+        "kind": "markdown",
+        "value": "Scales the value by the quantity currently chosen, so a per-unit price reads as the pack total the visitor would actually pay.\n\nType: `boolean (presence)`\n\nFeature: `product-display`."
+      },
+      "references": [
+        {
+          "name": "product-display docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/display/product-display/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-next-url",
+      "description": {
+        "kind": "markdown",
+        "value": "Legacy spelling of `data-next-url` on an action button, still read as a fallback. Prefer `data-next-url` in new markup; `data-os-next-url` is read after this one for older pages.\n\nType: `string`\n\nFeature: `upsell`."
+      },
+      "references": [
+        {
+          "name": "upsell docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/order/upsell/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-order-items",
+      "description": {
+        "kind": "markdown",
+        "value": "Marks the element as the order line list. The order is loaded from the reference in the page URL, so a receipt page needs no further wiring.\n\n**Required** · Type: `boolean (presence)`\n\nFeature: `order-item-list`."
+      },
+      "references": [
+        {
+          "name": "order-item-list docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/order/order-item-list/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-package",
+      "description": {
+        "kind": "markdown",
+        "value": "Accepted as an alias of `data-next-package-id` when resolving which package an ancestor element stands for. Both this and `data-package-id` work; `data-next-package-id` is the spelling to use.\n\nType: `string`\n\nFeature: `display-core`."
+      },
+      "references": [
+        {
+          "name": "display-core docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/display/display-core/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-package-id",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 7 features — the meaning differs, so check the one you are in:\n\n- **accept-upsell** (`number`) — The package `ref_id` to add to the order.\n- **add-to-cart** (`number`) — The package `ref_id` to add on click.\n- **package-selector** (`number`, required) — The `ref_id` of the package this card represents.\n- **package-toggle** (`number`, required) — The `ref_id` of the package this card toggles.\n- **quantity-text** (`string`) — Read from the nearest enclosing element that carries it, to work out which package's quantity the sentence is about.\n- **selection-display** (`string`) — Read from the selected card to work out which package's values to show.\n- **upsell** (`number`) — The package being offered."
+      },
+      "references": [
+        {
+          "name": "accept-upsell docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/accept-upsell/reference/attributes"
+        },
+        {
+          "name": "add-to-cart docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/add-to-cart/reference/attributes"
+        },
+        {
+          "name": "package-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-package-price",
+      "description": {
+        "kind": "markdown",
+        "value": "Place on an element inside a card. The selector writes the formatted price into that element after fetching from the bundle price API. With no value, it shows the card's total.\n\nType: `string (price variant)`\n\nFeature: `package-selector`."
+      },
+      "values": [
+        {
+          "name": "compare",
+          "description": "Retail / compare-at price before discounts."
+        },
+        {
+          "name": "savings",
+          "description": "Discount amount — compare price minus total."
+        },
+        {
+          "name": "savingsPercentage",
+          "description": "Discount as a percentage of the compare price."
+        },
+        {
+          "name": "subtotal",
+          "description": "Subtotal before shipping and discounts."
+        }
+      ],
+      "references": [
+        {
+          "name": "package-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-package-selector",
+      "description": {
+        "kind": "markdown",
+        "value": "Marks the element as a package selector container and triggers instantiation by `AttributeScanner`. Must be on the outermost container element.\n\n**Required** · Type: `boolean (presence)`\n\nFeature: `package-selector`."
+      },
+      "references": [
+        {
+          "name": "package-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-package-selector-id",
+      "description": {
+        "kind": "markdown",
+        "value": "Read the offer from an external package selector by id, instead of local option cards. The selection is read at click time.\n\nType: `string`\n\n⚠️ Omit it and a matching selector inside the container is detected automatically.\n\nFeature: `upsell`."
+      },
+      "references": [
+        {
+          "name": "upsell docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/order/upsell/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-package-sync",
+      "description": {
+        "kind": "markdown",
+        "value": "Keeps this card's quantity equal to the combined quantity of the listed packages — one warranty per unit sold, without the visitor managing it. When every synced package leaves the cart, this card is removed too.\n\n**Example:** `\"101,102\"` — quantity becomes (qty of 101) + (qty of 102).\n\nType: `string (comma-separated ids)`\n\n⚠️ Clicking a sync card while none of its synced packages are in the cart does nothing. If the synced product has variants the visitor can swap, use `data-next-product-sync` instead — a swap changes the package id but not the product id.\n\nFeature: `package-toggle`."
+      },
+      "references": [
+        {
+          "name": "package-toggle docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-toggle/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-package-template",
+      "description": {
+        "kind": "markdown",
+        "value": "The card template as an inline HTML string. Used when `data-next-package-template-id` is absent.\n\nType: `string (HTML)`\n\nFeature: `package-selector`."
+      },
+      "references": [
+        {
+          "name": "package-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-package-template-id",
+      "description": {
+        "kind": "markdown",
+        "value": "Id of a `<template>` element whose `innerHTML` is the card template for auto-rendering. Highest precedence of the three template sources.\n\nType: `string`\n\nFeature: `package-selector`."
+      },
+      "references": [
+        {
+          "name": "package-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-package-toggle",
+      "description": {
+        "kind": "markdown",
+        "value": "Marks the container — or, in single-element mode, the one toggle element. The feature activates on this element.\n\n**Required** · Type: `boolean (presence)`\n\nFeature: `package-toggle`."
+      },
+      "references": [
+        {
+          "name": "package-toggle docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-toggle/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-packages",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 2 features — the meaning differs, so check the one you are in:\n\n- **package-selector** (`JSON string`) — A JSON array of package definitions used to auto-render the cards, instead of writing each card by hand.\n- **package-toggle** (`JSON string`) — A JSON array of package definitions used to auto-render cards instead of writing each one by hand."
+      },
+      "references": [
+        {
+          "name": "package-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-selector/reference/attributes"
+        },
+        {
+          "name": "package-toggle docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-toggle/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-page-type",
+      "description": {
+        "kind": "markdown",
+        "value": "Declares what kind of page this is — product, cart, checkout, upsell, receipt — so analytics events are attributed to the right funnel step. Can also come from the loader configuration instead of markup.\n\nType: `string`\n\nFeature: `sdk`."
+      },
+      "references": [
+        {
+          "name": "sdk docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/sdk-attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-payment-form",
+      "description": {
+        "kind": "markdown",
+        "value": "Marks the fields belonging to a payment method, inside that method's container. The form is revealed when the method is chosen and collapsed when another is — so card fields are not in the tab order while PayPal is selected.\n\nType: `string`\n\nFeature: `checkout-form`."
+      },
+      "references": [
+        {
+          "name": "checkout-form docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/checkout/checkout-form/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-payment-method",
+      "description": {
+        "kind": "markdown",
+        "value": "Wraps one payment choice inside the form, and names the method it offers. The feature looks for a radio input and a `[data-next-payment-form]` **inside** this wrapper, so a payment form that is not nested in one is never revealed or collapsed.\n\nType: `string`\n\n⚠️ These markup spellings differ from the names the store and the API use (`credit` maps to `credit-card` and `card_token`). Use the values above in HTML and let the SDK translate.\n\nFeature: `checkout-form`."
+      },
+      "references": [
+        {
+          "name": "checkout-form docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/checkout/checkout-form/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-product-sync",
+      "description": {
+        "kind": "markdown",
+        "value": "Same idea as `data-next-package-sync`, but matched on product id, so every variant of a product counts toward the total. Use it when the visitor can swap variants.\n\n**Example:** `\"55\"` — quantity becomes the total across all cart lines for product 55.\n\nType: `string (comma-separated ids)`\n\n⚠️ Both sync attributes may be set on one card; their totals are added together.\n\nFeature: `package-toggle`."
+      },
+      "references": [
+        {
+          "name": "package-toggle docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-toggle/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-property",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 3 features — the meaning differs, so check the one you are in:\n\n- **add-to-cart** (`string`) — Put on an input, textarea, or select **inside** `data-next-property-container`.\n- **bundle-selector** (`string (key)`) — see its reference page.\n- **upsell** (`string (key)`) — On an input inside the offer: its value is attached to the added line under this key."
+      },
+      "references": [
+        {
+          "name": "add-to-cart docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/add-to-cart/reference/attributes"
+        },
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        },
+        {
+          "name": "upsell docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/order/upsell/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-property-container",
+      "description": {
+        "kind": "markdown",
+        "value": "A CSS selector for an element wrapping custom-property inputs — engraving text, gift messages, a chosen colour. Every `[data-next-property]` input inside it is collected and attached to the cart line on add, and re-synced whenever the visitor edits one.\n\nType: `string`\n\nFeature: `add-to-cart`."
+      },
+      "references": [
+        {
+          "name": "add-to-cart docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/add-to-cart/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-quantity",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 9 features — the meaning differs, so check the one you are in:\n\n- **accept-upsell** (`number`, default `1`) — How many units to add.\n- **add-to-cart** (`number`, default `1`) — How many units to add.\n- **bundle-selector** (`number`) — see its reference page.\n- **cart-item-list** (`'increase' | 'decrease' | 'set'`) — Puts a quantity control in the row.\n- **package-selector** (`number`, default `1`) — This card's starting quantity.\n- **package-toggle** (`number`, default `1`) — How many units to add when the card is toggled on.\n- **quantity-control** (`string`, required) — Declares the mode of this control.\n- **selection-display** (`string`) — Read from the selected card, so the price reflects that card's quantity.\n- **upsell** (`number`, default `1`) — Starting quantity for the offer."
+      },
+      "values": [
+        {
+          "name": "increase",
+          "description": "Button that adds `step` to the current quantity. Listens to `click`."
+        },
+        {
+          "name": "decrease",
+          "description": "Button that subtracts `step` from the current quantity. Listens to `click`."
+        },
+        {
+          "name": "set",
+          "description": "Input or select element that accepts a quantity value directly. Listens to `change` and `blur`. Number inputs also listen to `input` for real-time clamping."
+        }
+      ],
+      "references": [
+        {
+          "name": "accept-upsell docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/accept-upsell/reference/attributes"
+        },
+        {
+          "name": "add-to-cart docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/add-to-cart/reference/attributes"
+        },
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-quantity-decrease",
+      "description": {
+        "kind": "markdown",
+        "value": "Button inside a card that subtracts 1 from that card's quantity. Disabled at `data-next-min-quantity`.\n\nType: `boolean (presence)`\n\nFeature: `package-selector`."
+      },
+      "references": [
+        {
+          "name": "package-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-quantity-display",
+      "description": {
+        "kind": "markdown",
+        "value": "Element inside a card whose text content is kept in sync with that card's current quantity.\n\nType: `boolean (presence)`\n\nFeature: `package-selector`."
+      },
+      "references": [
+        {
+          "name": "package-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-quantity-increase",
+      "description": {
+        "kind": "markdown",
+        "value": "Button inside a card that adds 1 to that card's quantity. Wired up automatically when present. Disabled — `disabled` attribute plus `next-disabled` class — at `data-next-max-quantity`.\n\nType: `boolean (presence)`\n\nFeature: `package-selector`."
+      },
+      "references": [
+        {
+          "name": "package-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-quantity-selector-id",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 3 features — the meaning differs, so check the one you are in:\n\n- **product-display** (`string`) — Which selector supplies that quantity, by id.\n- **quantity-text** (`string`) — Which quantity to watch, by selector id — for a sentence that tracks a selector card's stepper rather than a cart line.\n- **upsell** (`string`) — Scopes a quantity control to one selector, for a page with more than one offer."
+      },
+      "references": [
+        {
+          "name": "product-display docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/display/product-display/reference/attributes"
+        },
+        {
+          "name": "quantity-text docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/display/quantity-text/reference/attributes"
+        },
+        {
+          "name": "upsell docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/order/upsell/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-quantity-text",
+      "description": {
+        "kind": "markdown",
+        "value": "The sentence to render, with `{qty}` where the number belongs. Everything else is written out as-is, and it is re-rendered whenever the quantity it is watching changes. Three token forms are recognised — see **Tokens** below.\n\n**Required** · Type: `string (template)`\n\n⚠️ The token is `{qty}`, **not** `{quantity}`. An unrecognised token is not an error: it is written out literally, so `{quantity} bottles` reaches the visitor as the text \"{quantity} bottles\". Empty or missing, the feature logs `QuantityTextEnhancer requires data-next-quantity-text attribute` and renders nothing.\n\nFeature: `quantity-text`."
+      },
+      "references": [
+        {
+          "name": "quantity-text docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/display/quantity-text/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-remove-item",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 2 features — the meaning differs, so check the one you are in:\n\n- **cart-item-list** (`boolean (presence)`) — Puts a remove button in the row, re-bound after each re-render like the quantity controls.\n- **remove-item** (`boolean (presence)`, required) — Turns the element into a remove button."
+      },
+      "references": [
+        {
+          "name": "cart-item-list docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/cart-item-list/reference/attributes"
+        },
+        {
+          "name": "remove-item docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/remove-item/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-required",
+      "description": {
+        "kind": "markdown",
+        "value": "Forces validation on a field that is optional by default. Phone is the usual case: mark it required when your fulfilment needs it.\n\nType: `'true'`\n\nFeature: `checkout-form`."
+      },
+      "references": [
+        {
+          "name": "checkout-form docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/checkout/checkout-form/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-scroll-target",
+      "description": {
+        "kind": "markdown",
+        "value": "The scrollable container to watch. Without it the feature looks for a nearby cart items list, which covers the common case of a hint sitting under one.\n\nType: `string (CSS selector)`\n\n⚠️ If neither the selector nor the fallback matches, there is nothing to watch and the hint never appears. Set this explicitly for any list that is not a cart items list.\n\nFeature: `scroll-hint`."
+      },
+      "references": [
+        {
+          "name": "scroll-hint docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/ui/scroll-hint/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-scroll-threshold",
+      "description": {
+        "kind": "markdown",
+        "value": "How far the visitor may scroll before the hint is considered dismissed. A few pixels of tolerance stops the hint flickering on trackpad drift.\n\nDefault: `5` · Type: `number (px)`\n\nFeature: `scroll-hint`."
+      },
+      "references": [
+        {
+          "name": "scroll-hint docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/ui/scroll-hint/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-sdk-loading",
+      "description": {
+        "kind": "markdown",
+        "value": "Set on `<body>`: `true` while the SDK is starting, `false` once it is ready. Style your page off this to avoid the flash of un-enhanced markup — prices reading `{price}` and empty cart totals — before the SDK has run.\n\nType: `'true' | 'false'`\n\n⚠️ It is on `<body>`, not on any feature element, so a rule like `body[data-next-sdk-loading=\"true\"] .price { visibility: hidden }` is the intended use.\n\nFeature: `sdk`."
+      },
+      "references": [
+        {
+          "name": "sdk docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/sdk-attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-selected",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 5 features — the meaning differs, so check the one you are in:\n\n- **bundle-selector** (`'true' | 'false'`) — see its reference page.\n- **package-selector** (`'true' | 'false'`, default `false`) — Marks this card as pre-selected on load.\n- **package-toggle** (`'true'`) — Adds this package to the cart when the page loads, for an add-on that is opt-out rather than opt-in.\n- **selection-display** (`string`) — Read from cards to find which one is currently selected when no selection event has fired yet — for example on a page that renders pre-selected.\n- **upsell** (`'true'`) — Pre-selects this option on load."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        },
+        {
+          "name": "package-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-selector/reference/attributes"
+        },
+        {
+          "name": "package-toggle docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-toggle/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-selection-mode",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 3 features — the meaning differs, so check the one you are in:\n\n- **add-to-cart** (`string`) — Read from the *linked selector*, not from the button.\n- **bundle-selector** (`'swap' | 'select'`) — see its reference page.\n- **package-selector** (`'swap' | 'select'`, default `swap`) — Controls whether clicking a card writes to the cart immediately."
+      },
+      "values": [
+        {
+          "name": "swap",
+          "description": "A card click adds or swaps the package in the cart automatically."
+        },
+        {
+          "name": "select",
+          "description": "A card click only updates visual state. An external add-to-cart button performs the cart write."
+        }
+      ],
+      "references": [
+        {
+          "name": "add-to-cart docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/add-to-cart/reference/attributes"
+        },
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        },
+        {
+          "name": "package-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-selector-card",
+      "description": {
+        "kind": "markdown",
+        "value": "Marks an element as a card inside the container. The selector scans for these on init and on DOM mutations, so cards added later are picked up.\n\n**Required** · Type: `boolean (presence)`\n\nFeature: `package-selector`."
+      },
+      "references": [
+        {
+          "name": "package-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-selector-id",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 9 features — the meaning differs, so check the one you are in:\n\n- **accept-upsell** (`string`) — Id of an upsell selector on the page.\n- **add-to-cart** (`string`) — The selector id of a package selector, cart selector, or bundle selector on the page.\n- **bundle-selector** (`string`, required) — see its reference page.\n- **conditional-display** (`string`) — Which selector a `selection.*` condition refers to.\n- **package-selector** (`string`, required) — Unique identifier for this selector instance.\n- **product-display** (`string`) — Read from an enclosing selector so a price inside a card follows that card without being configured.\n- **quantity-text** (`string`) — Read from an enclosing selector when the element sits inside one, so the sentence follows that selector without being told which.\n- **selection-display** (`string`) — Which selector's selection to show.\n- **upsell** (`string`) — Names the selector so its quantity and selection can be tracked — and stay in step across duplicate containers, as when the same offer renders for mobile and desktop."
+      },
+      "references": [
+        {
+          "name": "accept-upsell docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/accept-upsell/reference/attributes"
+        },
+        {
+          "name": "add-to-cart docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/add-to-cart/reference/attributes"
+        },
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-shipping-id",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 5 features — the meaning differs, so check the one you are in:\n\n- **bundle-selector** (`number`) — see its reference page.\n- **conditional-display** (`string`) — Read from an enclosing element so a condition can refer to the shipping method that element represents.\n- **package-selector** (`number`) — Shipping method to apply when this card is selected.\n- **selection-display** (`string`) — Read from the selected card when the selection carries a shipping method.\n- **shipping-display** (`number`, required) — Which shipping method to describe."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        },
+        {
+          "name": "conditional-display docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/display/conditional-display/reference/attributes"
+        },
+        {
+          "name": "package-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-show",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 2 features — the meaning differs, so check the one you are in:\n\n- **cart-summary** (`string (condition)`) — see its reference page.\n- **conditional-display** (`string (condition)`) — Shows the element while the condition is true and hides it otherwise, re-evaluating on every relevant change."
+      },
+      "references": [
+        {
+          "name": "cart-summary docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/cart-summary/reference/attributes"
+        },
+        {
+          "name": "conditional-display docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/display/conditional-display/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-slot-index",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by bundle-selector.\n\nType: `number`\n\nFeature: `bundle-selector`."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-step-number",
+      "description": {
+        "kind": "markdown",
+        "value": "Which step this form is, when `data-next-checkout-step` is set.\n\nDefault: `1` · Type: `number`\n\nFeature: `checkout-form`."
+      },
+      "references": [
+        {
+          "name": "checkout-form docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/checkout/checkout-form/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-timer",
+      "description": {
+        "kind": "markdown",
+        "value": "Marks the element as a countdown timer.\n\n**Required** · Type: `boolean (presence)`\n\nFeature: `timer`."
+      },
+      "references": [
+        {
+          "name": "timer docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/display/timer/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-timer-display",
+      "description": {
+        "kind": "markdown",
+        "value": "Put on an element inside the timer to receive the formatted time. Without one, the timer element's own text is replaced.\n\nType: `string`\n\nFeature: `timer`."
+      },
+      "references": [
+        {
+          "name": "timer docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/display/timer/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-timer-expired",
+      "description": {
+        "kind": "markdown",
+        "value": "Put on an element **anywhere** in the page, carrying the same `data-persistence-id` as the timer. It is revealed when that timer reaches zero — use it for the \"offer expired\" state.\n\nType: `string`\n\nFeature: `timer`."
+      },
+      "references": [
+        {
+          "name": "timer docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/display/timer/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-toggle",
+      "description": {
+        "kind": "markdown",
+        "value": "Watched by the DOM observer and highlighted by the debug overlay. For the package toggle feature use `data-next-package-toggle` — this shorter name is not its activating attribute.\n\nType: `boolean (presence)`\n\n⚠️ Easy to confuse with `data-next-package-toggle`. Adding this one does not create a toggle.\n\nFeature: `sdk`."
+      },
+      "references": [
+        {
+          "name": "sdk docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/sdk-attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-toggle-card",
+      "description": {
+        "kind": "markdown",
+        "value": "Marks an element as a toggle card inside the container. Each card gets its own click handler and cart-state tracking.\n\n**Required** · Type: `boolean (presence)`\n\nFeature: `package-toggle`."
+      },
+      "references": [
+        {
+          "name": "package-toggle docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-toggle/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-toggle-container",
+      "description": {
+        "kind": "markdown",
+        "value": "Marks a wrapper as this card's state container, so the state attributes and classes below land on the wrapper instead of the clickable element. Use it when the element you want to style is not the one you want clickable.\n\nType: `boolean (presence)`\n\nFeature: `package-toggle`."
+      },
+      "references": [
+        {
+          "name": "package-toggle docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-toggle/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-toggle-display",
+      "description": {
+        "kind": "markdown",
+        "value": "Marks an element inside a card as a display slot. After every price update the named field's value is written into it. See **Display fields** below for the field names.\n\nDefault: `price` · Type: `string (field name)`\n\n⚠️ For the boolean fields the element is shown or hidden instead of receiving text. `isSelected` here reflects the `data-next-selected` attribute as of the last price update, not live cart state — for live state use `data-next-display=\"toggle.{packageId}.isSelected\"`.\n\nFeature: `package-toggle`."
+      },
+      "references": [
+        {
+          "name": "package-toggle docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-toggle/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-toggle-image",
+      "description": {
+        "kind": "markdown",
+        "value": "Put on an `<img>` inside a card. Its `src` is set to the package image, and its `alt` to the package name when no `alt` is already there.\n\nType: `boolean (presence)`\n\nFeature: `package-toggle`."
+      },
+      "references": [
+        {
+          "name": "package-toggle docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-toggle/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-toggle-price",
+      "description": {
+        "kind": "markdown",
+        "value": "Deprecated spelling of `data-next-toggle-display`, kept working for existing markup. Same field names, same output — prefer `data-next-toggle-display` in anything new.\n\nDefault: `price` · Type: `string (field name)`\n\nFeature: `package-toggle`."
+      },
+      "references": [
+        {
+          "name": "package-toggle docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-toggle/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-toggle-template",
+      "description": {
+        "kind": "markdown",
+        "value": "The card template as an inline HTML string. Reach for `data-next-toggle-template-id` once the template grows past a few elements.\n\nType: `string (HTML)`\n\nFeature: `package-toggle`."
+      },
+      "references": [
+        {
+          "name": "package-toggle docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-toggle/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-toggle-template-id",
+      "description": {
+        "kind": "markdown",
+        "value": "Id of a `<template>` element whose `innerHTML` is the card template. Highest precedence of the three template sources.\n\nType: `string`\n\nFeature: `package-toggle`."
+      },
+      "references": [
+        {
+          "name": "package-toggle docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-toggle/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-tooltip",
+      "description": {
+        "kind": "markdown",
+        "value": "The text to show. Marks the element as having a tooltip and supplies its content in one attribute.\n\n**Required** · Type: `string`\n\nFeature: `tooltip`."
+      },
+      "references": [
+        {
+          "name": "tooltip docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/ui/tooltip/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-tooltip-class",
+      "description": {
+        "kind": "markdown",
+        "value": "Extra class names put on the tooltip, for a variant that differs from the default styling.\n\nType: `string`\n\nFeature: `tooltip`."
+      },
+      "references": [
+        {
+          "name": "tooltip docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/ui/tooltip/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-tooltip-delay",
+      "description": {
+        "kind": "markdown",
+        "value": "How long the pointer must rest before the tooltip appears. The delay is what stops tooltips flickering as the pointer crosses a row of them.\n\nDefault: `500` · Type: `number (ms)`\n\nFeature: `tooltip`."
+      },
+      "references": [
+        {
+          "name": "tooltip docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/ui/tooltip/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-tooltip-max-width",
+      "description": {
+        "kind": "markdown",
+        "value": "Width at which the text wraps. Accepts any CSS length, so `30ch` or `50%` work as well as pixels.\n\nDefault: `200px` · Type: `string (CSS length)`\n\nFeature: `tooltip`."
+      },
+      "references": [
+        {
+          "name": "tooltip docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/ui/tooltip/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-tooltip-offset",
+      "description": {
+        "kind": "markdown",
+        "value": "Gap between the element and the tooltip.\n\nDefault: `8` · Type: `number (px)`\n\nFeature: `tooltip`."
+      },
+      "references": [
+        {
+          "name": "tooltip docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/ui/tooltip/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-tooltip-placement",
+      "description": {
+        "kind": "markdown",
+        "value": "Which side of the element the tooltip prefers. It flips automatically when there is not enough room on that side, so this is a preference rather than a guarantee.\n\nDefault: `top` · Type: `string`\n\nFeature: `tooltip`."
+      },
+      "references": [
+        {
+          "name": "tooltip docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/ui/tooltip/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-tracking-tag",
+      "description": {
+        "kind": "markdown",
+        "value": "Read from a `<meta>` tag, not from an element: `<meta name=\"data-next-tracking-tag\" data-tag-name=\"funnel_name\" content=\"…\">`. Supplies campaign attribution values that are attached to the order.\n\nType: `string (meta tag)`\n\n⚠️ The legacy `os-tracking-tag` meta name is still read as a fallback.\n\nFeature: `sdk`."
+      },
+      "references": [
+        {
+          "name": "sdk docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/sdk-attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-upsell",
+      "description": {
+        "kind": "markdown",
+        "value": "**Direct mode**: the container offers one fixed package. Any value is ignored — only presence counts. Pair it with `data-next-package-id`.\n\nType: `boolean (presence)`\n\nFeature: `upsell`."
+      },
+      "references": [
+        {
+          "name": "upsell docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/order/upsell/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-upsell-action",
+      "description": {
+        "kind": "markdown",
+        "value": "What the button does.\n\nType: `string`\n\n⚠️ An unrecognised value logs a warning and the button does nothing.\n\nFeature: `upsell`."
+      },
+      "values": [
+        {
+          "name": "add",
+          "description": "Add the offer to the order."
+        },
+        {
+          "name": "accept",
+          "description": "Same as `add`."
+        },
+        {
+          "name": "skip",
+          "description": "Decline and move on."
+        },
+        {
+          "name": "decline",
+          "description": "Same as `skip`."
+        }
+      ],
+      "references": [
+        {
+          "name": "upsell docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/order/upsell/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-upsell-action-for",
+      "description": {
+        "kind": "markdown",
+        "value": "Id of a bundle selector to read instead, for offers presented as a bundle rather than single packages.\n\nType: `string`\n\nFeature: `accept-upsell`."
+      },
+      "references": [
+        {
+          "name": "accept-upsell docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/accept-upsell/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-upsell-context",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 3 features — the meaning differs, so check the one you are in:\n\n- **bundle-selector** (`boolean (presence)`) — see its reference page.\n- **package-selector** (`boolean (presence)`) — Marks the selector as part of a post-purchase upsell flow.\n- **package-toggle** (`boolean (presence)`) — Switches to post-purchase upsell mode: a click adds to the existing order rather than the cart, and the feature stops watching the cart store."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        },
+        {
+          "name": "package-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-selector/reference/attributes"
+        },
+        {
+          "name": "package-toggle docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-toggle/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-upsell-item",
+      "description": {
+        "kind": "markdown",
+        "value": "Alternative marker for the state container, for markup already using upsell-item wrappers.\n\nType: `boolean (presence)`\n\nFeature: `package-toggle`."
+      },
+      "references": [
+        {
+          "name": "package-toggle docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-toggle/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-upsell-option",
+      "description": {
+        "kind": "markdown",
+        "value": "Marks a selectable option card. Give each one a `data-next-package-id`, and `data-next-selected=\"true\"` on the one that should start chosen.\n\nType: `boolean (presence)`\n\nFeature: `upsell`."
+      },
+      "references": [
+        {
+          "name": "upsell docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/order/upsell/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-upsell-quantity",
+      "description": {
+        "kind": "markdown",
+        "value": "Marks a quantity control inside the offer.\n\nType: `string`\n\nFeature: `upsell`."
+      },
+      "values": [
+        {
+          "name": "increase",
+          "description": "Button that adds one."
+        },
+        {
+          "name": "decrease",
+          "description": "Button that subtracts one."
+        },
+        {
+          "name": "display",
+          "description": "Element whose text shows the current quantity."
+        }
+      ],
+      "references": [
+        {
+          "name": "upsell docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/order/upsell/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-upsell-quantity-toggle",
+      "description": {
+        "kind": "markdown",
+        "value": "A button that jumps straight to a quantity — \"Buy 3\" beside \"Buy 1\". The active one gets the `next-selected` class.\n\nType: `number`\n\nFeature: `upsell`."
+      },
+      "references": [
+        {
+          "name": "upsell docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/order/upsell/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-upsell-section",
+      "description": {
+        "kind": "markdown",
+        "value": "Read from an enclosing section: marks everything inside it as upsell content, so cards do not each need `data-next-is-upsell`.\n\nType: `string`\n\nFeature: `package-toggle`."
+      },
+      "references": [
+        {
+          "name": "package-toggle docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-toggle/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-upsell-select",
+      "description": {
+        "kind": "markdown",
+        "value": "Marks a `<select>` as the option source for the selector named in its value, for offers with too many choices to show as cards. Each `<option value>` is a package id.\n\nType: `string (selector id)`\n\nFeature: `upsell`."
+      },
+      "references": [
+        {
+          "name": "upsell docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/order/upsell/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-upsell-selector",
+      "description": {
+        "kind": "markdown",
+        "value": "**Selector mode**: the visitor chooses between options first. Pair it with `data-next-selector-id` plus either option cards or a dropdown.\n\nType: `boolean (presence)`\n\nFeature: `upsell`."
+      },
+      "references": [
+        {
+          "name": "upsell docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/order/upsell/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-url",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 4 features — the meaning differs, so check the one you are in:\n\n- **accept-upsell** (`string`) — Where to send the visitor after the upsell is accepted — usually the next offer or the receipt.\n- **add-to-cart** (`string`) — Where to send the visitor after a successful add.\n- **package-toggle** (`string`, default `the meta[name=\"next-upsell-accept-url\"] content`) — In upsell mode, where to send the visitor after the add succeeds.\n- **upsell** (`string`) — Where to send the visitor after this button's action — usually the next offer, or the receipt."
+      },
+      "references": [
+        {
+          "name": "accept-upsell docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/accept-upsell/reference/attributes"
+        },
+        {
+          "name": "add-to-cart docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/add-to-cart/reference/attributes"
+        },
+        {
+          "name": "package-toggle docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-toggle/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-validate",
+      "description": {
+        "kind": "markdown",
+        "value": "Watched by the DOM observer, so changing it re-runs the affected validation rather than needing a manual refresh. Relevant when your own code drives validation state.\n\nType: `string`\n\nFeature: `sdk`."
+      },
+      "references": [
+        {
+          "name": "sdk docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/sdk-attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-variant-code",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by bundle-selector.\n\nType: `string (attribute code)`\n\nFeature: `bundle-selector`."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-variant-option",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by bundle-selector.\n\nType: `boolean (presence)`\n\nFeature: `bundle-selector`."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-variant-option-template-id",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by bundle-selector.\n\nType: `string`\n\nFeature: `bundle-selector`."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-variant-options",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by bundle-selector.\n\nType: `boolean (presence)`\n\nFeature: `bundle-selector`."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-variant-selector-template-id",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by bundle-selector.\n\nType: `string`\n\nFeature: `bundle-selector`."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-next-variant-selectors",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by bundle-selector.\n\nType: `boolean (presence)`\n\nFeature: `bundle-selector`."
+      },
+      "references": [
+        {
+          "name": "bundle-selector docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/bundle-selector/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-open-text",
+      "description": {
+        "kind": "markdown",
+        "value": "Label written into the text element when the section **opens** — so it names the action that is now available, closing it. Default `Hide`.\n\nType: `string`\n\n⚠️ The names read backwards at first: `data-open-text` is the label while open, not the label that invites opening. The defaults are the clue — `Hide` for open, `Show` for closed.\n\nFeature: `accordion`."
+      },
+      "references": [
+        {
+          "name": "accordion docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/ui/accordion/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-package-id",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by 3 features — the meaning differs, so check the one you are in:\n\n- **cart-item-list** (`number`) — Ties a control inside the row to its package, normally as `data-package-id=\"{item.packageId}\"`.\n- **quantity-control** (`number`, required) — The numeric `ref_id` of the campaign package this control targets.\n- **remove-item** (`number`, required) — The package `ref_id` to remove when clicked."
+      },
+      "references": [
+        {
+          "name": "cart-item-list docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/cart-item-list/reference/attributes"
+        },
+        {
+          "name": "quantity-control docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/quantity-control/reference/attributes"
+        },
+        {
+          "name": "remove-item docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/remove-item/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-persistence-id",
+      "description": {
+        "kind": "markdown",
+        "value": "The key this timer's start time is stored under in `localStorage`. Because the start time persists, reloading the page does not restart the countdown — which is what stops a deadline from being infinitely renewable.\n\nDefault: `default-timer` · Type: `string`\n\n⚠️ Two timers sharing an id share one deadline. Give every distinct offer its own id, or a second timer will silently inherit the first's remaining time.\n\nFeature: `timer`."
+      },
+      "references": [
+        {
+          "name": "timer docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/display/timer/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-phone-field",
+      "description": {
+        "kind": "markdown",
+        "value": "Which checkout field holds the phone number.\n\nDefault: `phone` · Type: `string`\n\nFeature: `prospect-cart`."
+      },
+      "references": [
+        {
+          "name": "prospect-cart docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/checkout/prospect-cart/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-prospect-config",
+      "description": {
+        "kind": "markdown",
+        "value": "All of the above at once, as JSON, plus the options that have no attribute of their own: `includeUtmData` (default `true`) and `sessionTimeout` in minutes (default `30`).\n\n```html\ndata-prospect-config='{\"triggerOn\":\"emailAndPhone\",\"sessionTimeout\":60}'\n```\n\nType: `JSON string`\n\n⚠️ The individual attributes override matching keys in this JSON. Malformed JSON logs a warning and is ignored entirely — including the parts that were valid.\n\nFeature: `prospect-cart`."
+      },
+      "references": [
+        {
+          "name": "prospect-cart docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/checkout/prospect-cart/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-remove-text",
+      "description": {
+        "kind": "markdown",
+        "value": "Button label while the package is in the cart.\n\nType: `string`\n\n⚠️ Only applied when `data-add-text` is set as well.\n\nFeature: `package-toggle`."
+      },
+      "references": [
+        {
+          "name": "package-toggle docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/package-toggle/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-step",
+      "description": {
+        "kind": "markdown",
+        "value": "How much to increase or decrease the quantity per click (for `increase`/`decrease` modes). Has no effect on `set` mode except for the `{step}` template token in button content.\n\nDefault: `1` · Type: `number`\n\nFeature: `quantity-control`."
+      },
+      "references": [
+        {
+          "name": "quantity-control docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/quantity-control/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-summary-lines",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by cart-summary.\n\nType: `boolean (presence)`\n\nFeature: `cart-summary`."
+      },
+      "references": [
+        {
+          "name": "cart-summary docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/cart-summary/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-summary-offer-discounts",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by cart-summary.\n\nType: `boolean (presence)`\n\nFeature: `cart-summary`."
+      },
+      "references": [
+        {
+          "name": "cart-summary docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/cart-summary/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-summary-voucher-discounts",
+      "description": {
+        "kind": "markdown",
+        "value": "Used by cart-summary.\n\nType: `boolean (presence)`\n\nFeature: `cart-summary`."
+      },
+      "references": [
+        {
+          "name": "cart-summary docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/cart-summary/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-template",
+      "description": {
+        "kind": "markdown",
+        "value": "Marks the coupon card that serves as the row template. The feature hides it, clones it once per applied code, and strips this attribute from the clones — so the template itself never shows.\n\nType: `string`\n\n⚠️ Do not set this on a card you want visible; a card carrying it is treated as the hidden template.\n\nFeature: `coupon`."
+      },
+      "references": [
+        {
+          "name": "coupon docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/coupon/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-title-map",
+      "description": {
+        "kind": "markdown",
+        "value": "Overrides the campaign package name per package, for pages that use their own wording. Keys are package ids, values are the titles to show for `{item.name}` and `{item.title}`.\n\n```html\n<div data-next-cart-items data-title-map='{\"42\": \"Main Product\", \"43\": \"Accessory\"}'>\n```\n\nType: `JSON string`\n\n⚠️ Malformed JSON is logged as a warning and ignored, so the list falls back to campaign names rather than failing to render.\n\nFeature: `cart-item-list`."
+      },
+      "references": [
+        {
+          "name": "cart-item-list docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/cart/cart-item-list/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-toggle-class",
+      "description": {
+        "kind": "markdown",
+        "value": "The class added to the accordion while it is open. Change it to match a class your stylesheet already uses instead of writing new CSS.\n\nDefault: `next-expanded` · Type: `string`\n\nFeature: `accordion`."
+      },
+      "references": [
+        {
+          "name": "accordion docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/ui/accordion/reference/attributes"
+        }
+      ]
+    },
+    {
+      "name": "data-trigger-on",
+      "description": {
+        "kind": "markdown",
+        "value": "What counts as enough intent to record a prospect. This is the main trade-off in the feature: earlier triggers catch more leads, later ones record fewer accidental ones.\n\nDefault: `emailEntry` · Type: `string`\n\n⚠️ An unrecognised value is ignored and the default stands.\n\nFeature: `prospect-cart`."
+      },
+      "values": [
+        {
+          "name": "formStart",
+          "description": "The visitor interacts with the form at all."
+        },
+        {
+          "name": "emailEntry",
+          "description": "A valid email has been entered."
+        },
+        {
+          "name": "phoneEntry",
+          "description": "A phone number long enough to be real has been entered."
+        },
+        {
+          "name": "emailAndPhone",
+          "description": "Both are present — fewest, best-quality leads."
+        },
+        {
+          "name": "manual",
+          "description": "Never automatic; you call it yourself."
+        }
+      ],
+      "references": [
+        {
+          "name": "prospect-cart docs",
+          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/checkout/prospect-cart/reference/attributes"
+        }
+      ]
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { reconcileValue } from '@/utils/analytics/validation/reconcileValue';
+import { reconcileValue } from '@/core/analytics/validation/reconcileValue';
 
 // reconcileValue is the single source of truth shared by the runtime
 // EventValidator and the debug EcommerceEventValidator.

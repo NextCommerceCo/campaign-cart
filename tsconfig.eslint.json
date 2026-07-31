@@ -1,0 +1,19 @@
+{
+  // ESLint's type-aware rules need every file they lint to be in a TS program.
+  // `tsconfig.json` excludes `**/*.test.ts` (tests are not part of the shipped
+  // build), which made ESLint fail with "was configured to run on this file but
+  // could not find it in any project" on all 51 colocated feature test files —
+  // so the tests were silently unlinted.
+  //
+  // This config exists only for ESLint: same options, wider include.
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "e2e/**/*.ts",
+    "scripts/**/*.ts",
+    "vite.config.ts",
+    "vitest.config.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

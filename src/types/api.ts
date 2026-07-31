@@ -126,61 +126,191 @@ export interface CartLine {
   is_upsell: boolean;
 }
 
+/**
+ * A placed order, exactly as the orders API returns it — its lines, totals,
+ * shipping, addresses, and the URLs the shopper is sent to next.
+ *
+ * This is **the order object the SDK holds**: creating an order, fetching one by
+ * `ref_id`, and adding a post-purchase upsell all resolve to it, and it is what
+ * the order store ({@link useOrderStore}) keeps on a receipt or upsell page.
+ * Read it when you need any total, line, or address.
+ *
+ * {@link OrderData} is a smaller, older view of this same object — six fields
+ * plus loosely typed `lines`/`user` — and is only the declared payload type of
+ * the `order:completed` event. At runtime that event delivers a full `Order`.
+ *
+ * Every money field is a decimal **string** in the order's `currency` (`"59.98"`),
+ * not a number, so it survives JSON without rounding. Parse it before doing
+ * arithmetic.
+ *
+ * @example
+ * ```ts
+ * import { useOrderStore, type Order } from '@next-commerce/campaign-cart';
+ *
+ * const order: Order | null = useOrderStore.getState().order;
+ * if (order) {
+ *   console.log(order.number, order.total_incl_tax); // "NX-10428" "59.98"
+ *   const upsells = order.lines.filter(line => line.is_upsell);
+ *   console.log(`${upsells.length} upsell line(s) added after checkout`);
+ * }
+ * ```
+ */
 export interface Order {
+  /**
+   * The order's reference. It is the id everything else keys off: the SDK reads
+   * it from `?ref_id=` to load the order on a receipt or upsell page, and sends
+   * it back to add post-purchase upsells.
+   */
   ref_id: string;
+  /** Human-facing order number to show the customer, e.g. `"NX-10428"`. */
   number: string;
+  /** ISO currency code the order was charged in, e.g. `"USD"`. */
   currency: string;
+  /**
+   * Every line on the order, one per package. Lines added after checkout by an
+   * upsell carry `is_upsell: true`, which is how a thank-you page tells the
+   * original purchase apart from what was added later.
+   */
   lines: OrderLine[];
+  /** Order grand total before tax. */
   total_excl_tax: string;
+  /** Order grand total the customer was charged, tax included. */
   total_incl_tax: string;
+  /** Tax charged on the order. */
   total_tax: string;
+  /** Everything discounted off the order — offer discounts and vouchers together. */
   total_discounts: string;
+  /** Shipping charged before tax. */
   shipping_excl_tax: string;
+  /** Shipping charged, tax included. */
   shipping_incl_tax: string;
+  /** Tax charged on shipping. */
   shipping_tax: string;
+  /** Display name of the shipping method chosen at checkout, e.g. `"Standard"`. */
   shipping_method: string;
+  /** Code of that shipping method, matching the campaign's `shipping_methods[].code`. */
   shipping_code: string;
+  /**
+   * Tax presentation hint the orders endpoint returns for stores that show tax
+   * as a separate line. The SDK does not read it; it is here because the API
+   * sends it. Absent for stores that do not display tax separately.
+   */
   display_taxes?: string;
+  /**
+   * The discounts applied to the order, itemised. Each entry carries `amount`
+   * plus, when the API knows them, `offer_id`, `name`, `description`, and
+   * `percentage`. Use {@link Order.total_discounts | total_discounts} for the
+   * single "you saved" figure.
+   */
   discounts: Discount[];
+  /** The customer the order was placed for — name, email, and phone. */
   user: OrderUser;
+  /** Where the goods ship. Absent on orders with nothing to ship. */
   shipping_address?: OrderAddress;
+  /** Where the card is billed. Absent when it is the same as the shipping address. */
   billing_address?: OrderAddress;
+  /**
+   * The marketing attribution captured with the order — UTM parameters, click
+   * ids, affiliate and funnel. Absent when the visit carried none.
+   */
   attribution?: MarketingAttribution;
+  /** URL of the hosted order-status/receipt page for this order. */
   order_status_url: string;
+  /**
+   * Where to send the shopper to finish paying, for payment methods that need a
+   * further step (PayPal, Klarna, and other redirect flows). When present the
+   * SDK redirects here instead of to
+   * {@link Order.order_status_url | order_status_url}.
+   */
   payment_complete_url?: string;
+  /**
+   * Whether lines may still be added to this order. `false` means the order is
+   * closed to upsells, and the SDK hides every offer on an upsell page rather
+   * than letting a shopper accept one that will fail.
+   */
   supports_post_purchase_upsells: boolean;
+  /** `true` for a test-mode order — a real order record, but no money moved. */
   is_test: boolean;
 }
 
+/**
+ * One line on a placed {@link Order} — a package the customer bought, at the
+ * price they were charged for it.
+ *
+ * Money fields are decimal strings in the order's currency. The
+ * `*_excl_discounts` pair is the price *before* discounts, so
+ * `price_incl_tax_excl_discounts - price_incl_tax` is what this line saved.
+ */
 export interface OrderLine {
+  /** The line's id on the order. Use it to tell two lines of the same package apart. */
   id: number;
+  /** Product image URL for the line, for showing on a receipt. */
   image: string;
+  /**
+   * `true` when this line was added after checkout by a post-purchase upsell,
+   * `false` for the original purchase.
+   */
   is_upsell: boolean;
+  /** What this line was charged, before tax and after discounts. */
   price_excl_tax: string;
+  /** What this line would have cost before tax with no discounts applied. */
   price_excl_tax_excl_discounts: string;
+  /** What this line was charged, tax included and after discounts. */
   price_incl_tax: string;
+  /** What this line would have cost with tax and no discounts applied. */
   price_incl_tax_excl_discounts: string;
+  /** SKU of the purchased variant. */
   product_sku: string;
+  /** Product name to display on the line. */
   product_title: string;
+  /** Longer product description, when the catalog has one. */
   product_description?: string;
+  /** The variant the customer chose (e.g. `"Large / Blue"`), when the product has variants. */
   variant_title?: string;
+  /** Units bought on this line. */
   quantity: number;
 }
 
+/**
+ * Where a visitor came from, captured on the cart and carried onto the
+ * {@link Order} — the UTM parameters, click ids, affiliate and funnel of the
+ * visit that converted.
+ *
+ * Every field is optional: a direct visit with no campaign parameters produces
+ * an object with almost nothing in it, and absent means "not present on the
+ * landing URL", never "attribution failed".
+ */
 export interface MarketingAttribution {
+  /** `utm_source` — which site or channel sent the visit. */
   utm_source?: string;
+  /** `utm_medium` — the kind of traffic, e.g. `"cpc"`, `"email"`. */
   utm_medium?: string;
+  /** `utm_campaign` — the campaign name the ad or email belonged to. */
   utm_campaign?: string;
+  /** `utm_term` — the paid keyword, when the source supplies one. */
   utm_term?: string;
+  /** `utm_content` — which creative or link variant was clicked. */
   utm_content?: string;
+  /** Google click id, for matching the order back to a Google Ads click. */
   gclid?: string;
+  /** Affiliate identifier credited with the sale. */
   affiliate?: string;
+  /** Funnel identifier for the page flow the visitor went through. */
   funnel?: string;
+  /** First affiliate sub-id, as passed on the landing URL. */
   subaffiliate1?: string;
+  /** Second affiliate sub-id. */
   subaffiliate2?: string;
+  /** Third affiliate sub-id. */
   subaffiliate3?: string;
+  /** Fourth affiliate sub-id. */
   subaffiliate4?: string;
+  /** Fifth affiliate sub-id. */
   subaffiliate5?: string;
+  /**
+   * Everything else the SDK recorded about the visit — landing page, referrer,
+   * device, timestamp, and any custom values the page added.
+   */
   metadata?: Record<string, any>;
 }
 
@@ -206,28 +336,62 @@ export interface User {
   user_agent?: string;
 }
 
+/**
+ * The customer a placed {@link Order} belongs to, as the orders API returns it.
+ *
+ * Same fields as the customer on a cart; it is a separate name because the two
+ * come from different endpoints and may diverge.
+ */
 export interface OrderUser {
+  /** Whether the customer opted in to marketing email at checkout. */
   accepts_marketing?: boolean;
+  /** Email the receipt was sent to. Absent on orders placed without one. */
   email?: string;
+  /** Customer's first name. */
   first_name: string;
+  /** IP address the order was placed from, when the API returns it. */
   ip?: string;
+  /** Language code the customer checked out in, e.g. `"en"`. */
   language: string;
+  /** Customer's last name. */
   last_name: string;
+  /** Phone number given at checkout, when one was collected. */
   phone_number?: string;
+  /** Browser user-agent string recorded with the order, when the API returns it. */
   user_agent?: string;
 }
 
+/**
+ * A postal address on a placed {@link Order} — where it ships, or where the card
+ * is billed.
+ *
+ * The `line1`–`line4` shape comes from the API: `line4` is the **city**, and
+ * `state` and `postcode` are optional because not every country has them. An
+ * absent field means the country does not use it or the shopper left it blank,
+ * so print the lines that are present rather than assuming a fixed layout.
+ */
 export interface OrderAddress {
+  /** Two-letter country code, e.g. `"US"`. */
   country: string;
+  /** Recipient's first name. */
   first_name: string;
+  /** Recipient's last name. */
   last_name: string;
+  /** Street address. */
   line1: string;
+  /** Apartment, suite, or unit. */
   line2?: string;
+  /** Third address line, for addresses that need one. */
   line3?: string;
-  line4: string; // City
+  /** City. */
+  line4: string;
+  /** Delivery notes the shopper left for the courier. */
   notes?: string;
+  /** Contact phone for the delivery. */
   phone_number?: string;
+  /** Postal or ZIP code. Absent for countries that do not use one. */
   postcode?: string;
+  /** State, province, or region. Absent for countries that do not use one. */
   state?: string;
 }
 

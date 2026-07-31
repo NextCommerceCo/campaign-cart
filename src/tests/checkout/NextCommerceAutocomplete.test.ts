@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { NextCommerceAutocomplete } from '@/enhancers/checkout/addressAutocompleteEnhancer/NextCommerceAutocomplete';
-import type { AutocompleteContext } from '@/enhancers/checkout/types';
+import { NextCommerceAutocomplete } from '@/features/checkout/address-autocomplete/next-commerce-autocomplete';
+import type { AutocompleteContext } from '@/features/checkout/checkout.types';
 import type { ApiClient } from '@/api/client';
 import type { AddressAutocompleteResult } from '@/types/api';
 
@@ -11,11 +11,11 @@ const storeMock = vi.hoisted(() => ({
   shippingMethod: null as null,
 }));
 
-vi.mock('@/stores/checkoutStore', () => ({
+vi.mock('@/state/checkout.state', () => ({
   useCheckoutStore: { getState: () => storeMock },
 }));
 
-vi.mock('@/utils/analytics/index', () => ({
+vi.mock('@/core/analytics/index', () => ({
   nextAnalytics: { track: vi.fn() },
   EcommerceEvents: { createAddShippingInfoEvent: vi.fn(() => ({})) },
 }));

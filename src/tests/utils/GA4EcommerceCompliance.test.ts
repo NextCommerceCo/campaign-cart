@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import Decimal from 'decimal.js';
-import { EcommerceEvents } from '@/utils/analytics/events/EcommerceEvents';
-import { EventBuilder } from '@/utils/analytics/events/EventBuilder';
-import { useCampaignStore } from '@/stores/campaignStore';
-import { useCartStore } from '@/stores/cartStore';
+import { EcommerceEvents } from '@/core/analytics/events/EcommerceEvents';
+import { EventBuilder } from '@/core/analytics/events/EventBuilder';
+import { useCampaignStore } from '@/state/campaign';
+import { useCartStore } from '@/state/cart';
 
 // GA4 recommended-events compliance regressions:
 // - view_item must carry `value` alongside `currency`.

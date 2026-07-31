@@ -31,6 +31,9 @@ coverage/
 # generated content
 .source
 
+# TypeDoc generated site
+docs/site/
+
 # test & build
 /out/
 /build
@@ -47,3 +50,10 @@ yarn-error.log*
 .env*.local
 .vercel
 next-env.d.ts
+
+playwright-report/
+test-results/
+
+# Wrangler's local state, written next to whichever config it runs against
+# (docs/wrangler.jsonc for the docs site). Machine-local, never committed.
+.wrangler/

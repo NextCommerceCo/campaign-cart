@@ -7,7 +7,7 @@ import {
   isDataLayerEvent,
   isEcommerceEvent,
   worstLevel,
-} from '@/utils/debug/panels/EcommerceEventValidator';
+} from '@/core/debug/panels/EcommerceEventValidator';
 
 // The validator targets the issue #51 / #54 class of bug: item-level data
 // that is wrong while ecommerce.value stays correct.

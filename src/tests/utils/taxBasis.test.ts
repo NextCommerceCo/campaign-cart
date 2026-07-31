@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveOrderTaxBasis } from '@/utils/analytics/taxBasis';
+import { resolveOrderTaxBasis } from '@/core/analytics/taxBasis';
 
 // Detects whether displayed prices include tax, by matching each line's
 // PRE-discount incl/excl price to the campaign catalog price.
