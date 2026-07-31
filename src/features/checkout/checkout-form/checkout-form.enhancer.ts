@@ -173,8 +173,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // Track if analytics events have been fired
   /** Ref, shared with `autofill-detection.ts` so the event cannot fire twice. */
   private hasTrackedShippingInfo = { value: false };
-  /** Autofill poll handle, cleared on teardown. Was an untyped `(this as any)` stash. */
-  private autofillInterval?: ReturnType<typeof setInterval>;
+  /**
+   * Stops autofill detection: clears its poll **and** unsubscribes it from the event bus.
+   * Was an untyped `(this as any)` stash holding only the interval.
+   */
+  private stopAutofillDetection?: () => void;
   private hasTrackedBeginCheckout = false;
 
   // Multi-step checkout support
@@ -2470,7 +2473,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     });
 
     // Set up Chrome autofill detection
-    this.autofillInterval = setupAutofillDetection(
+    this.stopAutofillDetection = setupAutofillDetection(
       this.autofillDetectionContext()
     );
 
@@ -2799,9 +2802,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       });
     }
 
-    // Clear autofill detection interval
-    if (this.autofillInterval) {
-      clearInterval(this.autofillInterval);
+    // Stops the poll and unsubscribes from the event bus.
+    if (this.stopAutofillDetection) {
+      this.stopAutofillDetection();
     }
 
     if (this.paymentMethodChangeHandler) {

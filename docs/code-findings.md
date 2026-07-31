@@ -6,7 +6,9 @@ findings 80–85 from the Fumadocs→TypeDoc migration, findings 86–91 from a 
 TypeDoc/reference-docs verification pass, findings 92–94 from splitting the
 `features/display` enhancers by layer, and findings 95–100 from splitting the `features/cart`,
 `features/ui`, `features/behavior` and `features/order` ones, all on **2026-07-31**.
-Findings 97–99 are on the upsell money path. Nothing here is a
+Findings 97–99 are on the upsell money path. Findings 101–102 came from the contract test
+written to enforce the `super.destroy()` rule — 101 is a second instance of 98, in the
+checkout form. Nothing here is a
 documentation problem; each is a code change, and none has been made. The docs describe
 current behaviour, including the broken parts, so this list is the backlog rather than a
 description of what shipped.
@@ -1179,7 +1181,24 @@ splitting these four into their own feature folders would end the collision, but
 published guide URLs, so it needs its own decision. Found 2026-07-31 while splitting the
 cart enhancers by layer — the collision bit that work, which is how it surfaced.
 
-### 96. A double-tap kills a tooltip permanently — *verified*
+### 96. ~~A double-tap kills a tooltip permanently~~ — **FIXED 2026-07-31**
+
+Fixed test-first, in the same pass that gave `features/ui/tooltip/` its first tests (9 of
+them, in `tests/tooltip.enhancer.test.ts`). Three failed before the fix, including
+`expected null not to be null` on the stranded-state assertion. The dismissal timeout is now
+tracked in `timers` so `show()`, `cleanupTimeouts` and `destroy()` all cancel it, and the
+callback removes the element it was scheduled for instead of re-reading the live field. A new
+`finalizeStaleDismissal()` runs at the top of `show()` and from `destroy()`, so at most one
+dismissal is ever in flight and a second `hide()` inside the window cannot double-remove.
+
+Left open, deliberately, for want of a failing test to justify it: because `scheduleShow` /
+`scheduleHide` share `cleanupTimeouts`, a hover arriving during a pending dismissal defers
+that node's removal to the next `show()` or `destroy()` rather than the original 200 ms mark.
+The node is invisible while it waits and no tested path leaks it permanently.
+
+The original diagnosis follows.
+
+
 
 `hide()` hands the teardown to `dismissTooltip`, which schedules an **untracked** 200 ms
 `setTimeout` (untracked = not in the enhancer's `timers`, so nothing cancels it). That
@@ -1212,7 +1231,28 @@ behaviour, so they belong with a test — `src/features/ui/tooltip/` has no test
 today, which is why nothing caught this. Found 2026-07-31 while splitting the enhancer by
 layer; the split preserved the behaviour exactly, including this.
 
-### 97. A selector-mode upsell submits quantity 1 no matter what `data-next-quantity` says — *verified*
+### 97. ~~A selector-mode upsell submits quantity 1 no matter what `data-next-quantity` says~~ — **FIXED 2026-07-31**
+
+Fixed test-first. `tests/enhancer.test.ts` (new) failed 8 assertions against the unfixed code,
+including `expected 1 to be 3` on what `addUpsellToOrder` actually submits.
+
+**The fix removed the second source of truth rather than syncing it.** `quantityBySelectorId`
+is gone from `UpsellState`; `state.quantity` is now the only stored quantity, and the
+selector-keyed map that `renderQuantityDisplay` requires is *projected on read* by
+`quantitySnapshot(state)` and discarded. That signature is pinned by the unmodifiable
+`tests/renderer.test.ts`, so the map had to exist somewhere — as a derived view there is
+nothing left to keep in sync. `setQuantity()` is now the single writer, `data-next-quantity`
+is parsed before selector wiring, and `initializeSelectorMode` seeds nothing.
+
+**One claim below was wrong and is corrected here.** Bullet 2 said the quantity-toggle path
+submitted a stale number. It does not, and the test written to prove it *passed* before the
+fix: the enhancer subscribes to its own `upsell:quantity-changed`, and the synchronous bus
+echo repaired the map in the same tick. The defect was a transient wrong *render*, never a
+wrong submit — latent, not live. The regression tests stay.
+
+The original diagnosis follows, bullet 2 included as written.
+
+
 
 Ordering bug in `UpsellEnhancer.initialize`:
 
@@ -1242,7 +1282,21 @@ the single source of truth rather than syncing them at each write site. Money pa
 needs tests first — `src/features/order/upsell/tests/` currently covers `addUpsellToOrder`
 only, which is precisely the function that reads the map and cannot see how it was seeded.
 
-### 98. `UpsellEnhancer.destroy` clears the array `cleanupEventListeners` needs, before calling it — *verified*
+### 98. ~~`UpsellEnhancer.destroy` clears the array `cleanupEventListeners` needs, before calling it~~ — **FIXED 2026-07-31**
+
+Fixed test-first: `expected "spy" to not be called at all, but actually been called 1 times`
+— the spy being the order API, reached by clicking an action button *after* `destroy()`.
+`super.destroy()` is now the first statement, the array clear is gone, and a comment records
+why the order matters. The `trackUpsellPageView` timer is now cleared in `destroy()` too; it
+had been firing after teardown and throwing `ReferenceError: document is not defined`.
+
+**This finding is why `src/tests/contract/destroy-contract.test.ts` exists**, and that gate
+immediately found a second instance of the same bug in the checkout form — finding 101.
+`UpsellEnhancer` has been removed from its allowlist, so the fix cannot regress.
+
+The original diagnosis follows.
+
+
 
 ```ts
 public override destroy(): void {
@@ -1267,7 +1321,21 @@ the instance is being discarded. Then consider a contract test asserting that ev
 `destroy()` override calls `super.destroy()` first; it is a mechanical check and this is the
 second time the ordering has mattered.
 
-### 99. `UpsellEnhancer.update()` double-wires every listener — *verified by report, not reproduced*
+### 99. ~~`UpsellEnhancer.update()` double-wires every listener~~ — **FIXED 2026-07-31, and it was worse than described**
+
+Reproduced and fixed test-first. `expected '4' to be '2'` — after two `update()` calls a
+single `+` press stepped the quantity by **three**, not two. A second test caught the
+mirror-image defect the write-up missed: a button added to the DOM *after* `initialize` was
+never wired at all (`expected "spy" to be called 1 times, but got 0 times`), so `update()` both
+double-wired what existed and ignored what was new.
+
+`scanUpsellElements` now resets `actionButtons` and runs a `state.scanTeardowns` registry
+before re-binding, recording an undo per listener; `cleanupEventListeners` runs those
+teardowns, which only works because finding 98 was fixed first.
+
+The original diagnosis follows.
+
+
 
 `update()` re-runs `scanUpsellElements`, which **pushes** into the existing
 `state.actionButtons` rather than replacing it, and re-runs the quantity-control wiring. So
@@ -1291,6 +1359,92 @@ listeners before re-scanning — which requires finding 98's cleanup to work fir
   `src/tests/contract/` gates production-bundle contents. So this is a real decision
   (share it via `core/` or `utils/`, or keep two copies knowingly) rather than an oversight
   — but it should be made rather than inherited.
+
+### 101. `CheckoutFormEnhancer.destroy` leaks a listener on every checkout field — *verified*
+
+The same defect as finding 98, in the checkout form, and worth more because of where it sits:
+
+```ts
+this.fields.clear();          // :2957
+this.billingFields.clear();   // :2958
+…
+super.destroy();              // :2961  → calls cleanupEventListeners()
+```
+
+`cleanupEventListeners` removes `change`, `blur` and `input` handlers by iterating
+`[...this.fields.values(), ...this.billingFields.values()]`. Both maps are empty by the time
+it runs, so **every shipping and billing field keeps all three listeners** after teardown. On
+a page that re-initialises the form, the handlers accumulate: each surviving copy re-runs
+validation and the prospect-cart update on every keystroke of a field the shopper is typing
+into.
+
+Found by `src/tests/contract/destroy-contract.test.ts`, the gate written for finding 98.
+Not fixed here: `checkout-form.enhancer.ts` was being actively rewritten by a parallel
+session when this was found, and a blind edit would have collided. **It is in the gate's
+allowlist — remove the entry when fixing, and the gate will then hold the line.**
+
+### 102. The "`super.destroy()` first" rule is violated by 18 of 22 classes — *verified*
+
+`src/tests/contract/destroy-contract.test.ts` was written to enforce the rule stated in
+`CLAUDE.md` and the `sdk-structure` skill. It found that **18 of the 22** classes overriding
+`destroy()` do their own cleanup first and call `super.destroy()` afterwards. Only four
+comply: `QuantityTextEnhancer`, `BundleDisplayEnhancer`, `PackageSelectorDisplayEnhancer`,
+`PackageToggleDisplayEnhancer`.
+
+So the documented rule is the outlier, not the practice — which is a decision to make rather
+than 18 edits to schedule. The mechanical facts that inform it:
+
+- Base `destroy()` (`core/base/base-enhancer.ts`) does exactly two things: unsubscribe the
+  stores, then call `cleanupEventListeners()`.
+- Therefore calling it late is only *harmful* when the subclass's own pre-super cleanup
+  destroys state that its `cleanupEventListeners()` override reads. I checked all 18
+  mechanically: **exactly two do that** — findings 98 (upsell) and 101 (checkout-form). The
+  other 16 are merely late, with no reachable consequence.
+- Two of the 16 are near-misses worth knowing: `BundleSelectorEnhancer` and
+  `PackageToggleEnhancer` call `super.destroy()` as the *second* statement, after
+  `_instances.delete(this)`.
+
+**The choice:** either narrow the documented rule to what actually matters ("your `destroy()`
+must not clear state that your `cleanupEventListeners()` reads" — which is what the two real
+bugs violate), or keep the blanket rule and work the allowlist down to zero. The blanket rule
+is the one that is mechanically checkable, which is an argument for keeping it; the counter-
+argument is that 16 of its 18 violations are noise, and a gate that mostly reports noise gets
+ignored. Recorded 2026-07-31.
+
+### 103. `this.subscribe()` auto-cleans and `this.on()` silently does not — *verified*
+
+`BaseEnhancer` offers two ways to react to something, and only one of them cleans up:
+
+| | Returns | Cleaned up by `destroy()`? |
+|---|---|---|
+| `this.subscribe(store, fn)` | stores the unsubscribe in `this.subscriptions` | **yes** — base `destroy()` runs them all |
+| `this.on(event, fn)` | `void`, stores nothing | **no** — the handler stays on the bus forever |
+
+`EventBus.on()` itself returns `void` (`core/events.ts`), so there is nothing for
+`BaseEnhancer.on()` to keep; `EventBus.off()` exists, but calling it requires having held the
+exact handler reference. `CLAUDE.md` warns about precisely this hazard for the store case
+("direct `store.subscribe()` bypasses auto-cleanup on `destroy()`") and says nothing about the
+event case, where the trap is worse because there is no correct alternative to reach for.
+
+Narrower than it looks, and worth fixing while it is: **one** enhancer uses `this.on(` today —
+`UpsellEnhancer`, at `:165` and `:168` — and both handlers are inline arrows, so no reference
+is retained and they cannot be `off()`'d even by hand. They keep running after `destroy()`.
+Six other features already hand-roll the pattern with a stored bound handler plus an explicit
+`eventBus.off(...)`, which is the workaround this asymmetry forces.
+
+**Fix:** have `EventBus.on()` return an unsubscribe function and `BaseEnhancer.on()` push it
+onto the same `this.subscriptions` array `subscribe()` uses — then both paths clean up by
+construction and the six hand-rolled call sites can collapse. `core/events.ts` and
+`core/base/base-enhancer.ts` are the only files that change; the six existing `off()` calls
+keep working either way. Found 2026-07-31 while fixing findings 97–99.
+
+Two smaller leaks in the same family, left alone: the option-card and `<select>` listeners
+that `initializeSelectorMode` attaches are never removed by `destroy()` (they are attached
+once so they cannot double-fire, but they survive a re-init — the new `scanTeardowns` registry
+could absorb them), and `addUpsellToOrder`'s three-branch quantity resolution is now dead
+weight, kept only because `UpsellHandlerContext.quantityBySelectorId` and
+`currentQuantitySelectorId` are pinned by literal keys in the unmodifiable
+`tests/handlers.test.ts`.
 
 ---
 
@@ -1316,9 +1470,10 @@ Listed so they are not re-reported. All were one-line or docs-only.
 | **"Keep a valid autofilled province" was unreachable code.** `updateStateOptions` read `provinceField.value` to decide whether to preserve a province the browser had autofilled — but by then the field had been overwritten twice, first with `<option>Loading...` near the top of the function and again by the state render. The read always saw `''`, so a shopper whose province was autofilled always had to re-pick it, and the `Kept autofilled state:` debug log could never print. **Predates the extraction** — the original had the same ordering — and the surrounding validation was already correct, so only the read position was wrong | `features/checkout/checkout-form/state-fields.ts` | **fixed** — the value is captured beside `originalHTML`, before the first overwrite. Found by the unit tests written after extraction; guarded by a test that fails if the capture moves back down |
 | `loadCountryStates` evicted its cache entry with `void request.finally(…)`, which derives a **second** promise that rejects whenever the request does — a different promise from the one the caller awaits and catches, with no handler of its own. One failing states fetch therefore produced a genuine unhandled rejection, outside the function's own error handling, which is fatal in a process configured to treat those as such | `features/checkout/checkout-form/state-fields.ts` | **fixed** — `.then(cleanup, cleanup)` instead of `.finally`, so the derived promise always settles. The failure test deliberately installs no `unhandledRejection` listener, so a regression surfaces as a failing run |
 | `CheckoutFormEnhancer` carried a **verbatim copy of `core/url-utils.ts › preserveQueryParams`** — 50 lines, functionally identical, differing only in two log lines. Two implementations of "carry the tracking parameters to the next page" is exactly the drift risk that matters here: a fix to one would silently not reach the other, and the parameters decide whether an order is attributed | `features/checkout/checkout-form/checkout-form.enhancer.ts` | **fixed** — the copy is deleted and the enhancer imports the core function. Its two duplicate log strings (`Preserved parameters from store:`, `Error preserving query params:`) left the checkout guide with it; core's own `[URL Utils] Error preserving query parameters:` remains documented |
+| `setupAutofillDetection` subscribed to `address:autocomplete-filled` and **never unsubscribed**, while returning only the poll's interval handle — so the caller could stop the poll but not the subscription. `EventBus` is a singleton, so a second setup on the same page (a re-init) left the first handler attached: it would still fire on the next autocomplete, schedule its own resume timer, and re-snapshot a field map that no longer matched any live field. **Third instance of this exact shape** after the billing `transitionend` listener and the expiry-month `change` listener | `features/checkout/checkout-form/autofill-detection.ts` | **fixed** — it now returns a teardown that clears the interval *and* calls `eventBus.off` with the same handler reference. Guarded by a test that asserts the reference identity, since passing a different function to `off` would silently leave the original attached |
 | The autofill poll handle was stashed with `(this as any).autofillInterval = …` and cleared with `clearInterval((this as any).autofillInterval)` — untyped at **both** ends, so neither the set nor the clear was checked and a typo in either would have leaked a 30-second interval silently | `features/checkout/checkout-form/checkout-form.enhancer.ts` | **fixed** — `setupAutofillDetection` now returns the handle and the enhancer holds it in a typed `autofillInterval` field |
-| `populateCountryDropdown` **silently drops an author's placeholder that carries a value.** It clears the `<select>` then re-appends the first option only when `!firstOption.value`, so `<option value="US">United States</option>` used as a pre-set default is destroyed with no fallback. Note the HTML-spec wrinkle that makes this easy to get wrong when testing: `HTMLOptionElement.value` falls back to `textContent` when there is no `value` attribute, so an option with only text is **not** empty-valued | `features/checkout/checkout-form/country-fields.ts` | reported — behaviour is now pinned by a test either way, so a deliberate change is safe to make; whether to preserve valued placeholders is a product call |
-| `updateFormLabels` / `updateBillingFormLabels` assign `label.textContent`, which **destroys any child markup inside the label** — a styled required-marker `<abbr>`, a tooltip `<span>` — replacing it with plain text. An author who marks up their labels loses that on the first country change | `features/checkout/checkout-form/country-fields.ts` | reported — pinned by a test. Fixing means writing only the text node rather than the whole subtree, which is a small change but a visible one for pages relying on it |
+| ~~`populateCountryDropdown` silently drops an author's placeholder that carries a value.~~ **Downgraded on review — not a defect.** The guard re-appends the first option only when `!firstOption.value`, so a first option *with* a value is dropped. But a valued option is a real country entry, and the loop immediately regenerates every country from the API list, so nothing is lost except the author's own wording for that one country — and "keep it" would append it *alongside* the generated copy, producing a duplicate marked disabled and hidden. The current behaviour is correct. Worth keeping the HTML-spec wrinkle on record though, because it makes this easy to misread: `HTMLOptionElement.value` falls back to `textContent` when there is no `value` attribute, so an option with only text is **not** empty-valued | `features/checkout/checkout-form/country-fields.ts` | no change needed. A fix was written and reverted before commit once the regeneration was traced |
+| `updateFormLabels` / `updateBillingFormLabels` assign `label.textContent`, which **destroys any child markup inside the label** — a styled required-marker `<abbr>`, a tooltip `<span>` — replacing it with plain text. An author who marks up their labels loses that on the first country change | `features/checkout/checkout-form/country-fields.ts` | reported, **deliberately not fixed.** Pinned by a test so the behaviour is at least known. Weighed and declined: the label still *reads* correctly (only the markup around it goes), so the loss is cosmetic, while the fix means finding and rewriting the right text node among possibly several plus whitespace nodes — fiddly surgery on the checkout form for no functional gain. Worth doing only alongside a decision to support marked-up labels properly |
 | The expiry-month `change` listener **stacked one per call**. `populateExpirationFields` clears the `<select>`'s options with `innerHTML = ''`, which does not remove listeners from the element itself, then unconditionally added another — so a re-render left N live handlers, each closing over the element references captured at *its* call. Same leak as the billing animation, found the same way (writing tests for the extracted module) | `features/checkout/checkout-form/expiration-fields.ts` | **fixed** — the listener is registered with an `AbortSignal` and the previous one aborted first. Guarded by a test that asserts exactly one of three registered signals stays live |
 | `populateYearOptions` matched the shopper's saved year by interpolating it into a CSS selector — `` querySelector(`option[value="${savedValue}"]`) ``. A value containing a quote builds malformed CSS, and a real browser throws `SyntaxError` from `querySelector` where **happy-dom is lenient and returns `null`** — so no unit test could ever have caught it. Not reachable today (the value only ever comes from `<select>.value`, which browsers constrain to a rendered option) but a latent crash for zero benefit | `features/checkout/checkout-form/expiration-fields.ts` | **fixed** — compares `option.value` while scanning `yearField.options` instead of building a selector |
 | The billing expand/collapse animation **never removed its `transitionend` listener** except when the listener fired naturally and removed itself. Two paths left one attached: the 350 ms fallback force-completing an animation, and a shopper re-toggling before the transition finished. Stale handlers then all ran on the next real `transitionend` — each re-settling its own animation and logging a "complete" for a direction the section was no longer going — and accumulated without bound across repeated toggles | `features/checkout/checkout-form/billing-animation.ts` | **fixed** — listeners now registered with an `AbortSignal`; `cancelPending` and the fallback both abort. Found by the unit tests written for the extraction, reproduced as two failing tests first, and those tests now guard it |

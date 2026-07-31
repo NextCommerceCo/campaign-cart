@@ -94,28 +94,35 @@ function snapshot(
 /**
  * Starts watching for browser autofill.
  *
- * @returns The interval handle, for the caller to `clearInterval` on teardown. Returned
- *   rather than stored on the context so the caller owns the lifetime — the previous
- *   version stashed it on the enhancer through `(this as any).autofillInterval`, which
- *   type-checked nothing at either the set or the clear.
+ * @returns A teardown function. Call it on `destroy()`; it stops the poll **and**
+ *   unsubscribes from the event bus.
+ *
+ *   Both halves matter. It used to return just the interval handle, so the caller could
+ *   only `clearInterval` — the `address:autocomplete-filled` subscription was never
+ *   removed, and `EventBus` is a singleton. A second `setupAutofillDetection` on the same
+ *   page therefore left the first one's handler attached: it would still fire on the next
+ *   autocomplete, schedule its own resume timer, and re-snapshot a `fieldValues` map that
+ *   no longer matched any live field. (Before that it was stashed on the enhancer via
+ *   `(this as any).autofillInterval`, which type-checked at neither the set nor the clear.)
  */
 export function setupAutofillDetection(
   ctx: AutofillDetectionContext
-): ReturnType<typeof setInterval> {
+): () => void {
   const fieldValues = new Map<HTMLElement, string>();
 
   // Google Places fills fields programmatically, which looks exactly like autofill from
   // here. Without this pause, its writes would each be reported as autofill and would
   // re-dispatch `change` on fields it is still in the middle of populating.
   let isAutofillDetectionPaused = false;
-  ctx.eventBus.on('address:autocomplete-filled', () => {
+  const onAutocompleteFilled = (): void => {
     isAutofillDetectionPaused = true;
     setTimeout(() => {
       isAutofillDetectionPaused = false;
       // Re-baseline, or everything Places just wrote counts as autofill on resume.
       snapshot(ctx.fields, fieldValues);
     }, AUTOCOMPLETE_PAUSE_MS);
-  });
+  };
+  ctx.eventBus.on('address:autocomplete-filled', onAutocompleteFilled);
 
   snapshot(ctx.fields, fieldValues);
 
@@ -205,5 +212,8 @@ export function setupAutofillDetection(
     }
   }, CHECK_INTERVAL_MS);
 
-  return checkInterval;
+  return () => {
+    clearInterval(checkInterval);
+    ctx.eventBus.off('address:autocomplete-filled', onAutocompleteFilled);
+  };
 }
