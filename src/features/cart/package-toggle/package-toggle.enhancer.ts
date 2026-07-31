@@ -125,22 +125,22 @@
 import { BaseEnhancer } from '@/core/base/base-enhancer';
 import { useCartStore } from '@/state/cart';
 import { useCheckoutStore } from '@/state/checkout';
-import { useCampaignStore } from '@/state/campaign';
-import type { CartState } from '@/types/global';
 import type { PackageDef, ToggleCard } from './package-toggle.types';
-import type { ToggleHandlerContext } from './package-toggle.handlers';
-import { renderToggleTemplate, renderToggleImage, renderTogglePrice, updateCardDisplayElements } from './package-toggle.renderer';
-import { makeProvisionalPrices } from './package-toggle.state';
+import {
+  syncWithCart,
+  type ToggleHandlerContext,
+  type ToggleSyncContext,
+} from './package-toggle.handlers';
+import {
+  renderToggleTemplate,
+  renderToggleImage,
+} from './package-toggle.renderer';
 import { fetchAndUpdateTogglePrice } from './package-toggle.price';
 import {
-  autoAddedPackages,
-  handleCardClick,
-  addToCart,
-  updateSyncedQuantity,
-  handleSyncUpdate,
-  updateCartItemProperties,
-} from './package-toggle.handlers';
-import { attachPropertyListeners } from '@/features/cart/shared/properties';
+  scanCards,
+  registerCard,
+  type CardRegistrationContext,
+} from './package-toggle.cards';
 
 export class PackageToggleEnhancer extends BaseEnhancer {
   private static _instances = new Set<PackageToggleEnhancer>();
@@ -174,8 +174,11 @@ export class PackageToggleEnhancer extends BaseEnhancer {
     PackageToggleEnhancer._instances.add(this);
     this.validateElement();
 
-    this.isUpsellContext = this.element.hasAttribute('data-next-upsell-context');
-    this.includeShipping = this.getAttribute('data-next-include-shipping') === 'true';
+    this.isUpsellContext = this.element.hasAttribute(
+      'data-next-upsell-context'
+    );
+    this.includeShipping =
+      this.getAttribute('data-next-include-shipping') === 'true';
 
     // Resolution order: id attribute → inline HTML attribute → direct <template>
     // child of the container (`this.element`). The child fallback lets authors
@@ -183,11 +186,13 @@ export class PackageToggleEnhancer extends BaseEnhancer {
     const templateId = this.getAttribute('data-next-toggle-template-id');
     const templateAttr = this.getAttribute('data-next-toggle-template');
     if (templateId) {
-      this.template = document.getElementById(templateId)?.innerHTML.trim() ?? '';
+      this.template =
+        document.getElementById(templateId)?.innerHTML.trim() ?? '';
     } else if (templateAttr != null) {
       this.template = templateAttr;
     } else {
-      const inline = this.element.querySelector<HTMLTemplateElement>(':scope > template');
+      const inline =
+        this.element.querySelector<HTMLTemplateElement>(':scope > template');
       this.template = inline?.innerHTML.trim() ?? '';
     }
 
@@ -196,7 +201,9 @@ export class PackageToggleEnhancer extends BaseEnhancer {
       try {
         const parsed: unknown = JSON.parse(packagesAttr);
         if (!Array.isArray(parsed)) {
-          this.logger.warn('data-next-packages must be a JSON array, ignoring auto-render');
+          this.logger.warn(
+            'data-next-packages must be a JSON array, ignoring auto-render'
+          );
         } else {
           this.element.innerHTML = '';
           for (const def of parsed as PackageDef[]) {
@@ -205,11 +212,14 @@ export class PackageToggleEnhancer extends BaseEnhancer {
           }
         }
       } catch {
-        this.logger.warn('Invalid JSON in data-next-packages, ignoring auto-render', packagesAttr);
+        this.logger.warn(
+          'Invalid JSON in data-next-packages, ignoring auto-render',
+          packagesAttr
+        );
       }
     }
 
-    this.scanCards();
+    scanCards(this.element, this.cardContext());
     this.setupMutationObserver();
 
     for (const card of this.cards) {
@@ -217,8 +227,10 @@ export class PackageToggleEnhancer extends BaseEnhancer {
     }
 
     if (!this.isUpsellContext) {
-      this.subscribe(useCartStore, this.syncWithCart.bind(this));
-      this.syncWithCart(useCartStore.getState());
+      this.subscribe(useCartStore, state =>
+        syncWithCart(state, this.syncContext())
+      );
+      syncWithCart(useCartStore.getState(), this.syncContext());
     }
 
     // Re-fetch prices whenever user-entered coupons change.
@@ -233,24 +245,43 @@ export class PackageToggleEnhancer extends BaseEnhancer {
       ) {
         prevVouchers = next;
         for (const card of this.cards) {
-          void fetchAndUpdateTogglePrice(card, this.includeShipping, this.logger, this.isUpsellContext);
+          void fetchAndUpdateTogglePrice(
+            card,
+            this.includeShipping,
+            this.logger,
+            this.isUpsellContext
+          );
         }
       }
     });
 
     this.boundCurrencyChangeHandler = () => {
-      if (this.currencyChangeTimeout !== null) clearTimeout(this.currencyChangeTimeout);
+      if (this.currencyChangeTimeout !== null)
+        clearTimeout(this.currencyChangeTimeout);
       this.currencyChangeTimeout = setTimeout(() => {
         this.currencyChangeTimeout = null;
         for (const card of this.cards) {
-          void fetchAndUpdateTogglePrice(card, this.includeShipping, this.logger, this.isUpsellContext);
+          void fetchAndUpdateTogglePrice(
+            card,
+            this.includeShipping,
+            this.logger,
+            this.isUpsellContext
+          );
         }
       }, 150);
     };
-    document.addEventListener('next:currency-changed', this.boundCurrencyChangeHandler);
+    document.addEventListener(
+      'next:currency-changed',
+      this.boundCurrencyChangeHandler
+    );
 
     for (const card of this.cards) {
-      void fetchAndUpdateTogglePrice(card, this.includeShipping, this.logger, this.isUpsellContext);
+      void fetchAndUpdateTogglePrice(
+        card,
+        this.includeShipping,
+        this.logger,
+        this.isUpsellContext
+      );
     }
 
     this.logger.debug('PackageToggleEnhancer initialized', {
@@ -259,7 +290,7 @@ export class PackageToggleEnhancer extends BaseEnhancer {
     });
   }
 
-  // ─── Context factory ───────────────────────────────────────────────────────
+  // ─── Context factories ──────────────────────────────────────────────────────
 
   private makeHandlerContext(): ToggleHandlerContext {
     return {
@@ -272,304 +303,62 @@ export class PackageToggleEnhancer extends BaseEnhancer {
     };
   }
 
-  // ─── Card registration ────────────────────────────────────────────────────
-
-  private scanCards(): void {
-    this.element.querySelectorAll<HTMLElement>('[data-next-toggle-card]').forEach(el => {
-      if (!this.cards.find(c => c.element === el)) this.registerCard(el);
-    });
-
-    if (
-      this.element.hasAttribute('data-next-package-toggle') &&
-      this.cards.length === 0 &&
-      (this.element.hasAttribute('data-next-package-id') ||
-        this.element.hasAttribute('data-package-id'))
-    ) {
-      this.registerCard(this.element);
-    }
-  }
-
-  private registerCard(el: HTMLElement): void {
-    const stateContainer = this.findStateContainer(el);
-
-    const packageIdAttr = el.getAttribute('data-next-package-id');
-    let packageId: number;
-
-    if (packageIdAttr) {
-      const parsed = parseInt(packageIdAttr, 10);
-      if (isNaN(parsed)) {
-        this.logger.warn('Invalid data-next-package-id on toggle card', packageIdAttr);
-        return;
-      }
-      packageId = parsed;
-    } else {
-      const resolved = this.resolvePackageId(el, stateContainer);
-      if (resolved === null) {
-        this.logger.warn('Toggle card is missing data-next-package-id', el);
-        return;
-      }
-      packageId = resolved;
-    }
-
-    const isPreSelected =
-      el.getAttribute('data-next-selected') === 'true' ||
-      stateContainer.getAttribute('data-next-selected') === 'true';
-
-    const packageSyncAttr =
-      el.getAttribute('data-next-package-sync') ??
-      stateContainer.getAttribute('data-next-package-sync');
-
-    const productSyncAttr =
-      el.getAttribute('data-next-product-sync') ??
-      stateContainer.getAttribute('data-next-product-sync');
-
-    let isSyncMode = false;
-    let syncPackageIds: number[] = [];
-    let syncProductIds: number[] = [];
-    let quantity = 1;
-
-    if (packageSyncAttr) {
-      syncPackageIds = packageSyncAttr
-        .split(',')
-        .map(id => parseInt(id.trim(), 10))
-        .filter(id => !isNaN(id));
-      if (syncPackageIds.length > 0) {
-        isSyncMode = true;
-        quantity = 0;
-      }
-    }
-
-    if (productSyncAttr) {
-      syncProductIds = productSyncAttr
-        .split(',')
-        .map(id => parseInt(id.trim(), 10))
-        .filter(id => !isNaN(id));
-      if (syncProductIds.length > 0) {
-        isSyncMode = true;
-        quantity = 0;
-      }
-    }
-
-    if (!isSyncMode) {
-      const qtyAttr =
-        el.getAttribute('data-next-quantity') ??
-        el.getAttribute('data-quantity') ??
-        stateContainer.getAttribute('data-next-quantity');
-      quantity = qtyAttr ? parseInt(qtyAttr, 10) : 1;
-    }
-
-    const isUpsell =
-      el.getAttribute('data-next-is-upsell') === 'true' ||
-      stateContainer.hasAttribute('data-next-upsell') ||
-      stateContainer.hasAttribute('data-next-bump') ||
-      el.closest('[data-next-upsell-section]') !== null ||
-      el.closest('[data-next-bump-section]') !== null;
-
-    const excludeProperties =
-      el.getAttribute('data-next-exclude-property') ??
-      stateContainer.getAttribute('data-next-exclude-property') ??
-      undefined;
-
-    const pkg = (useCampaignStore.getState().data?.packages ?? []).find(
-      p => p.ref_id === packageId,
-    );
-
-    const card: ToggleCard = {
-      element: el,
-      packageId,
-      name: pkg?.name ?? '',
-      image: pkg?.image ?? '',
-      productId: pkg?.product_id ?? null,
-      variantId: pkg?.product_variant_id ?? null,
-      variantName: pkg?.product_variant_name ?? '',
-      productName: pkg?.product_name ?? '',
-      sku: pkg?.product_sku ?? null,
-      isPreSelected,
-      isSelected: false,
-      quantity,
-      isSyncMode,
-      syncPackageIds,
-      syncProductIds,
-      isUpsell,
-      stateContainer,
-      addText: el.getAttribute('data-add-text'),
-      removeText: el.getAttribute('data-remove-text'),
-      ...makeProvisionalPrices(pkg),
-      discounts: [],
-      properties: undefined,
-      excludeProperties,
+  private cardContext(): CardRegistrationContext {
+    return {
+      cards: this.cards,
+      clickHandlers: this.clickHandlers,
+      logger: this.logger,
+      makeHandlerContext: () => this.makeHandlerContext(),
     };
-
-    this.cards.push(card);
-    el.classList.add('next-toggle-card');
-    updateCardDisplayElements(card);
-
-    const ctx = this.makeHandlerContext();
-    const handler = (e: Event) => void handleCardClick(e, card, ctx);
-    this.clickHandlers.set(el, handler);
-    el.addEventListener('click', handler);
-
-    if (excludeProperties !== '*') {
-      card.properties = {};
-      attachPropertyListeners(el, card.properties, () => void updateCartItemProperties(card));
-    }
-
-    this.logger.debug(`Registered toggle card for packageId ${packageId}`, {
-      isSyncMode,
-      syncPackageIds,
-      syncProductIds,
-      isUpsell,
-      quantity,
-    });
   }
 
-  private findStateContainer(el: HTMLElement): HTMLElement {
-    let current: HTMLElement | null = el;
-
-    while (current && current !== document.body) {
-      if (
-        current.hasAttribute('data-next-toggle-container') ||
-        current.hasAttribute('data-next-bump') ||
-        current.hasAttribute('data-next-upsell-item') ||
-        current.classList.contains('upsell') ||
-        current.classList.contains('bump')
-      ) {
-        return current;
-      }
-      if (
-        current.hasAttribute('data-next-package-id') ||
-        current.hasAttribute('data-package-id')
-      ) {
-        return current;
-      }
-      current = current.parentElement;
-    }
-
-    return el;
-  }
-
-  private resolvePackageId(el: HTMLElement, stateContainer: HTMLElement): number | null {
-    const fromEl =
-      el.getAttribute('data-next-package-id') ?? el.getAttribute('data-package-id');
-    if (fromEl) {
-      const id = parseInt(fromEl, 10);
-      return isNaN(id) ? null : id;
-    }
-    if (stateContainer !== el) {
-      const fromContainer =
-        stateContainer.getAttribute('data-next-package-id') ??
-        stateContainer.getAttribute('data-package-id');
-      if (fromContainer) {
-        const id = parseInt(fromContainer, 10);
-        return isNaN(id) ? null : id;
-      }
-    }
-    return null;
+  private syncContext(): ToggleSyncContext {
+    return {
+      cards: this.cards,
+      autoAddInProgress: this.autoAddInProgress,
+      emit: (e, d) => this.emit(e, d),
+      logger: this.logger,
+      includeShipping: this.includeShipping,
+      getPriceSyncDebounce: () => this.priceSyncDebounce,
+      setPriceSyncDebounce: v => {
+        this.priceSyncDebounce = v;
+      },
+    };
   }
 
   // ─── Mutation observer ────────────────────────────────────────────────────
 
   private setupMutationObserver(): void {
     this.mutationObserver = new MutationObserver(mutations => {
+      const ctx = this.cardContext();
       for (const mutation of mutations) {
         if (mutation.type !== 'childList') continue;
         mutation.addedNodes.forEach(node => {
           if (!(node instanceof HTMLElement)) return;
           if (node.hasAttribute('data-next-toggle-card')) {
-            if (!this.cards.find(c => c.element === node)) this.registerCard(node);
+            if (!this.cards.find(c => c.element === node))
+              registerCard(node, ctx);
           }
-          node.querySelectorAll<HTMLElement>('[data-next-toggle-card]').forEach(el => {
-            if (!this.cards.find(c => c.element === el)) this.registerCard(el);
-          });
+          node
+            .querySelectorAll<HTMLElement>('[data-next-toggle-card]')
+            .forEach(el => {
+              if (!this.cards.find(c => c.element === el))
+                registerCard(el, ctx);
+            });
         });
       }
     });
-    this.mutationObserver.observe(this.element, { childList: true, subtree: true });
-  }
-
-  // ─── Cart sync ────────────────────────────────────────────────────────────
-
-  private syncWithCart(cartState: CartState): void {
-    const selectedPackageIds: number[] = [];
-
-    for (const card of this.cards) {
-      const inCart = cartState.items.some(i => i.packageId === card.packageId);
-      card.isSelected = inCart;
-
-      card.element.classList.toggle('next-in-cart', inCart);
-      card.element.classList.toggle('next-not-in-cart', !inCart);
-      card.element.classList.toggle('next-selected', inCart);
-      card.element.setAttribute('data-next-in-cart', String(inCart));
-
-      card.stateContainer.setAttribute('data-in-cart', String(inCart));
-      card.stateContainer.setAttribute('data-next-active', String(inCart));
-      card.stateContainer.classList.toggle('next-in-cart', inCart);
-      card.stateContainer.classList.toggle('next-not-in-cart', !inCart);
-      card.stateContainer.classList.toggle('next-active', inCart);
-      card.stateContainer.classList.toggle('os--active', inCart);
-
-      if (card.addText && card.removeText) {
-        const textSlot = card.element.querySelector<HTMLElement>('[data-next-button-text]');
-        if (textSlot) {
-          textSlot.textContent = inCart ? card.removeText : card.addText;
-        } else if (card.element.childElementCount === 0) {
-          card.element.textContent = inCart ? card.removeText : card.addText;
-        }
-      }
-
-      if (inCart) {
-        selectedPackageIds.push(card.packageId);
-        if (cartState.summary) {
-          const line = cartState.summary.lines.find(l => l.package_id === card.packageId);
-          if (line) renderTogglePrice(card, line);
-        }
-      }
-
-      if (card.isSyncMode) {
-        void handleSyncUpdate(card, cartState, this.logger);
-      }
-
-      if (
-        card.isPreSelected &&
-        !inCart &&
-        !this.autoAddInProgress.has(card.packageId) &&
-        !autoAddedPackages.has(card.packageId)
-      ) {
-        if (card.isSyncMode) updateSyncedQuantity(card, cartState);
-
-        if (card.isSyncMode && card.quantity === 0) {
-          this.logger.debug('Skipping pre-selected sync card — no synced packages in cart', card.packageId);
-          continue;
-        }
-
-        card.isPreSelected = false;
-        autoAddedPackages.add(card.packageId);
-        this.autoAddInProgress.add(card.packageId);
-
-        void addToCart(card).finally(() => {
-          this.autoAddInProgress.delete(card.packageId);
-        });
-      }
-    }
-
-    this.emit('toggle:selection-changed', { selected: selectedPackageIds });
-
-    if (this.priceSyncDebounce !== null) clearTimeout(this.priceSyncDebounce);
-    this.priceSyncDebounce = setTimeout(() => {
-      this.priceSyncDebounce = null;
-      const currentItems = useCartStore.getState().items;
-      for (const card of this.cards) {
-        if (!currentItems.some(i => i.packageId === card.packageId)) {
-          void fetchAndUpdateTogglePrice(card, this.includeShipping, this.logger);
-        }
-      }
-    }, 150);
+    this.mutationObserver.observe(this.element, {
+      childList: true,
+      subtree: true,
+    });
   }
 
   // ─── BaseEnhancer ─────────────────────────────────────────────────────────
 
   public update(): void {
-    if (!this.isUpsellContext) this.syncWithCart(useCartStore.getState());
+    if (!this.isUpsellContext)
+      syncWithCart(useCartStore.getState(), this.syncContext());
   }
 
   protected override cleanupEventListeners(): void {
@@ -584,7 +373,10 @@ export class PackageToggleEnhancer extends BaseEnhancer {
       this.currencyChangeTimeout = null;
     }
     if (this.boundCurrencyChangeHandler) {
-      document.removeEventListener('next:currency-changed', this.boundCurrencyChangeHandler);
+      document.removeEventListener(
+        'next:currency-changed',
+        this.boundCurrencyChangeHandler
+      );
       this.boundCurrencyChangeHandler = null;
     }
     if (this.mutationObserver) {
@@ -604,10 +396,15 @@ export class PackageToggleEnhancer extends BaseEnhancer {
         'next-not-in-cart',
         'next-selected',
         'next-active',
-        'next-loading',
+        'next-loading'
       );
       if (c.stateContainer !== c.element) {
-        c.stateContainer.classList.remove('next-in-cart', 'next-not-in-cart', 'next-active', 'os--active');
+        c.stateContainer.classList.remove(
+          'next-in-cart',
+          'next-not-in-cart',
+          'next-active',
+          'os--active'
+        );
         c.stateContainer.removeAttribute('data-in-cart');
         c.stateContainer.removeAttribute('data-next-active');
       }

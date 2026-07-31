@@ -20,10 +20,10 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 | Message | Source | Extra context |
 |---|---|---|
 | `Tooltip enhancer initialized` | `tooltip.enhancer.ts › TooltipEnhancer.initialize` | — |
-| `Tooltip styles injected into document head` | `tooltip.enhancer.ts › TooltipEnhancer.injectStyles` | — |
-| `Element position` | `tooltip.enhancer.ts › TooltipEnhancer.show` | yes |
 | `Tooltip shown` | `tooltip.enhancer.ts › TooltipEnhancer.show` | — |
 | `Tooltip hidden` | `tooltip.enhancer.ts › TooltipEnhancer.hide` | — |
-| `Tooltip positioned` | `tooltip.enhancer.ts › TooltipEnhancer.positionTooltip` | yes |
+| `Element position` | `tooltip.renderer.ts › mountTooltip` | yes |
+| `Tooltip positioned` | `tooltip.renderer.ts › positionTooltip` | yes |
+| `Tooltip styles injected into document head` | `tooltip.styles.ts › injectStyles` | — |
 
 The **Extra context** column says whether the call passes a second argument — an object or an error logged alongside the message. Expand that entry in the console to see it; the message alone will not tell you which element or package was involved.

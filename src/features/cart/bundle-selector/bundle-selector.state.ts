@@ -2,7 +2,12 @@ import Decimal from 'decimal.js';
 import type { Logger } from '@/core/logger';
 import type { Package } from '@/types/campaign';
 import { useCampaignStore } from '@/state/campaign';
-import type { BundleCard, BundleItem, BundlePackageState } from './bundle-selector.types';
+import type {
+  BundleCard,
+  BundleItem,
+  BundlePackageState,
+  ClassNames,
+} from './bundle-selector.types';
 
 /**
  * Build a BundlePackageState from a campaign Package.
@@ -49,7 +54,12 @@ export function getEffectiveItems(card: BundleCard): BundleItem[] {
       ? JSON.stringify(Object.fromEntries(Object.entries(p).sort()))
       : '';
 
-  type GroupEntry = { packageId: number; quantity: number; properties?: Record<string, string>; excludeProperties?: string };
+  type GroupEntry = {
+    packageId: number;
+    quantity: number;
+    properties?: Record<string, string>;
+    excludeProperties?: string;
+  };
   const groups = new Map<string, GroupEntry>();
 
   for (const slot of card.slots) {
@@ -63,7 +73,9 @@ export function getEffectiveItems(card: BundleCard): BundleItem[] {
         packageId: slot.activePackageId,
         quantity: slot.quantity,
         ...(slot.properties !== undefined && { properties: slot.properties }),
-        ...(slot.excludeProperties && { excludeProperties: slot.excludeProperties }),
+        ...(slot.excludeProperties && {
+          excludeProperties: slot.excludeProperties,
+        }),
       });
     }
   }
@@ -73,6 +85,50 @@ export function getEffectiveItems(card: BundleCard): BundleItem[] {
     ...g,
     quantity: g.quantity * multiplier,
   }));
+}
+
+/**
+ * Wires the `_getSelectedBundleItems` / `_getSelectedBundleVouchers` accessors
+ * that AddToCartEnhancer reads off the selector element to submit the current
+ * selection. `getSelectedCard` is called lazily on each access so the result
+ * always reflects the live selection, not the selection at wiring time.
+ */
+export function attachBundleAccessors(
+  element: HTMLElement,
+  getSelectedCard: () => BundleCard | null
+): void {
+  (element as unknown as Record<string, unknown>)['_getSelectedBundleItems'] =
+    () => {
+      const card = getSelectedCard();
+      if (!card) return null;
+      const needsVariant = card.slots.some(
+        s => s.configurable && !s.variantSelected
+      );
+      return needsVariant ? null : getEffectiveItems(card);
+    };
+
+  (element as unknown as Record<string, unknown>)[
+    '_getSelectedBundleVouchers'
+  ] = () => getSelectedCard()?.vouchers ?? [];
+}
+
+/**
+ * Parses the `data-next-class-*` override attributes into the class-name set
+ * used throughout rendering and selection state. Falls back to the SDK's
+ * default `next-*` class names when an override attribute is absent.
+ */
+export function parseClassNames(element: HTMLElement): ClassNames {
+  const get = (key: string, fallback: string) =>
+    element.getAttribute(`data-next-class-${key}`) ?? fallback;
+  return {
+    bundleCard: get('bundle-card', 'next-bundle-card'),
+    selected: get('selected', 'next-selected'),
+    inCart: get('in-cart', 'next-in-cart'),
+    variantSelected: get('variant-selected', 'next-variant-selected'),
+    variantUnavailable: get('variant-unavailable', 'next-variant-unavailable'),
+    bundleSlot: get('bundle-slot', 'next-bundle-slot'),
+    slotVariantGroup: get('slot-variant-group', 'next-slot-variant-group'),
+  };
 }
 
 /** Parse the `data-next-bundle-vouchers` attribute into a string array. */
@@ -90,7 +146,10 @@ export function parseVouchers(attr: string | null, logger: Logger): string[] {
       return [];
     }
   }
-  return trimmed.split(',').map(s => s.trim()).filter(Boolean);
+  return trimmed
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
 }
 
 /**
@@ -108,7 +167,7 @@ export function extractNestedSlotTemplate(cardTemplate: string): {
   wrapper.innerHTML = cardTemplate;
 
   const slotTpl = wrapper.querySelector<HTMLTemplateElement>(
-    '[data-next-bundle-slots] > template',
+    '[data-next-bundle-slots] > template'
   );
   if (!slotTpl) return { card: cardTemplate, slot: '' };
 
@@ -138,11 +197,11 @@ export function extractNestedVariantTemplates(slotTemplate: string): {
   let variantOption = '';
 
   const vsTemplate = wrapper.querySelector<HTMLTemplateElement>(
-    '[data-next-variant-selectors] > template',
+    '[data-next-variant-selectors] > template'
   );
   if (vsTemplate) {
     const voTemplate = vsTemplate.content.querySelector<HTMLTemplateElement>(
-      '[data-next-variant-options] > template',
+      '[data-next-variant-options] > template'
     );
     if (voTemplate) {
       variantOption = voTemplate.innerHTML.trim();
@@ -153,6 +212,120 @@ export function extractNestedVariantTemplates(slotTemplate: string): {
   }
 
   return { slot: wrapper.innerHTML, variantSelector, variantOption };
+}
+
+/** Card/slot/variant templates resolved from their attribute/child-template sources. */
+export interface ResolvedBundleTemplates {
+  template: string;
+  slotTemplate: string;
+  variantOptionTemplate: string;
+  variantSelectorTemplate: string;
+}
+
+/**
+ * Resolves the card template, slot template, and variant templates.
+ *
+ * Card template resolution order: id attribute → inline HTML attribute →
+ * direct `<template>` child of `element`. The child fallback lets authors
+ * write native HTML without assigning template ids.
+ *
+ * Slot template resolution order: id attribute → inline HTML attribute →
+ * direct `<template>` child of `externalSlotsEl` → nested `<template>` inside
+ * the card template's `[data-next-bundle-slots]` placeholder. The nested
+ * fallback lets authors keep card and slot markup co-located without setting
+ * any template id or HTML string attribute.
+ *
+ * Variant templates: an explicit id attribute takes precedence; otherwise
+ * they are extracted from `<template>`s nested inside
+ * `[data-next-variant-selectors]` / `[data-next-variant-options]` within the
+ * slot template.
+ */
+export function resolveBundleTemplates(
+  element: HTMLElement,
+  externalSlotsEl: HTMLElement | null,
+  logger: Logger
+): ResolvedBundleTemplates {
+  const templateId = element.getAttribute('data-next-bundle-template-id');
+  const templateAttr = element.getAttribute('data-next-bundle-template');
+  let template: string;
+  if (templateId) {
+    template = document.getElementById(templateId)?.innerHTML.trim() ?? '';
+  } else if (templateAttr != null) {
+    template = templateAttr;
+  } else {
+    const inline =
+      element.querySelector<HTMLTemplateElement>(':scope > template');
+    template = inline?.innerHTML.trim() ?? '';
+  }
+
+  const slotTemplateId = element.getAttribute(
+    'data-next-bundle-slot-template-id'
+  );
+  const slotTemplateAttr = element.getAttribute(
+    'data-next-bundle-slot-template'
+  );
+  let slotTemplate: string;
+  if (slotTemplateId) {
+    slotTemplate =
+      document.getElementById(slotTemplateId)?.innerHTML.trim() ?? '';
+  } else if (slotTemplateAttr != null) {
+    slotTemplate = slotTemplateAttr;
+  } else if (externalSlotsEl) {
+    const inline =
+      externalSlotsEl.querySelector<HTMLTemplateElement>(':scope > template');
+    slotTemplate = inline?.innerHTML.trim() ?? '';
+  } else {
+    slotTemplate = '';
+  }
+
+  if (!slotTemplate && template) {
+    const { card, slot } = extractNestedSlotTemplate(template);
+    if (slot) {
+      template = card;
+      slotTemplate = slot;
+      logger.debug(
+        'Extracted nested slot template from card template [data-next-bundle-slots]'
+      );
+    }
+  }
+
+  let variantOptionTemplate = '';
+  const variantOptionTemplateId = element.getAttribute(
+    'data-next-variant-option-template-id'
+  );
+  if (variantOptionTemplateId) {
+    variantOptionTemplate =
+      document.getElementById(variantOptionTemplateId)?.innerHTML.trim() ?? '';
+  }
+
+  let variantSelectorTemplate = '';
+  const variantSelectorTemplateId = element.getAttribute(
+    'data-next-variant-selector-template-id'
+  );
+  if (variantSelectorTemplateId) {
+    variantSelectorTemplate =
+      document.getElementById(variantSelectorTemplateId)?.innerHTML.trim() ??
+      '';
+  }
+
+  if (slotTemplate && (!variantSelectorTemplate || !variantOptionTemplate)) {
+    const { slot, variantSelector, variantOption } =
+      extractNestedVariantTemplates(slotTemplate);
+    slotTemplate = slot;
+    if (!variantSelectorTemplate && variantSelector) {
+      variantSelectorTemplate = variantSelector;
+    }
+    if (!variantOptionTemplate && variantOption) {
+      variantOptionTemplate = variantOption;
+    }
+  }
+
+  return {
+    template,
+    slotTemplate,
+    variantOptionTemplate,
+    variantSelectorTemplate,
+  };
 }
 
 export interface ForceBundleSpec {
@@ -171,7 +344,9 @@ export interface ForceBundleSpec {
  * Whitespace around tokens is tolerated. Empty/malformed entries are dropped silently
  * (the caller logs at a higher level when nothing matches).
  */
-export function parseForceBundleId(raw: string | null | undefined): ForceBundleSpec[] {
+export function parseForceBundleId(
+  raw: string | null | undefined
+): ForceBundleSpec[] {
   if (!raw) return [];
   return raw
     .split(',')
@@ -196,9 +371,11 @@ export function parseForceBundleId(raw: string | null | undefined): ForceBundleS
  */
 export function resolveForcedBundleId(
   specs: ForceBundleSpec[],
-  selectorId: string | null,
+  selectorId: string | null
 ): string | null {
-  const scoped = specs.find(s => s.selectorId !== null && s.selectorId === selectorId);
+  const scoped = specs.find(
+    s => s.selectorId !== null && s.selectorId === selectorId
+  );
   if (scoped) return scoped.bundleId;
   const unscoped = specs.find(s => s.selectorId === null);
   return unscoped ? unscoped.bundleId : null;
@@ -229,7 +406,7 @@ export interface DefaultCardChoice {
 export function pickDefaultCard(
   cards: BundleCard[],
   rawForceBundleId: string | null | undefined,
-  selectorId: string | null,
+  selectorId: string | null
 ): DefaultCardChoice {
   const specs = parseForceBundleId(rawForceBundleId);
   const forcedId = resolveForcedBundleId(specs, selectorId);
@@ -238,14 +415,24 @@ export function pickDefaultCard(
   if (forcedId) {
     const match = cards.find(c => c.bundleId === forcedId) ?? null;
     if (match) {
-      return { card: match, fromForce: true, forcedMiss: null, usedFirstCardFallback: false };
+      return {
+        card: match,
+        fromForce: true,
+        forcedMiss: null,
+        usedFirstCardFallback: false,
+      };
     }
     forcedMiss = forcedId;
   }
 
   const preSelected = cards.find(c => c.isPreSelected);
   if (preSelected) {
-    return { card: preSelected, fromForce: false, forcedMiss, usedFirstCardFallback: false };
+    return {
+      card: preSelected,
+      fromForce: false,
+      forcedMiss,
+      usedFirstCardFallback: false,
+    };
   }
 
   const first = cards[0] ?? null;
@@ -255,4 +442,50 @@ export function pickDefaultCard(
     forcedMiss,
     usedFirstCardFallback: first !== null,
   };
+}
+
+/**
+ * Run the default-card precedence (forceBundleId → data-next-selected → cards[0])
+ * and emit the appropriate log messages for the outcome.
+ */
+export function pickAndLogDefaultCard(
+  cards: BundleCard[],
+  selectorId: string | null,
+  logger: Logger
+): BundleCard | null {
+  const raw = (window as any)._nextForceBundleId;
+  const choice = pickDefaultCard(
+    cards,
+    typeof raw === 'string' ? raw : null,
+    selectorId
+  );
+  if (choice.forcedMiss) {
+    logger.warn(
+      `forceBundleId="${choice.forcedMiss}" did not match any card in this selector — falling back to default`
+    );
+  }
+  if (choice.fromForce && choice.card) {
+    logger.info(
+      `Bundle pre-selected via forceBundleId: "${choice.card.bundleId}"`,
+      selectorId ? { selectorId } : undefined
+    );
+  } else if (choice.usedFirstCardFallback) {
+    logger.warn(
+      'No card has data-next-selected="true" — auto-selecting first card. ' +
+        'Add data-next-selected="true" to the default card to suppress this warning.'
+    );
+  }
+  return choice.card;
+}
+
+/** Vouchers defined across a single instance's bundle cards. */
+export function getBundleVouchers(cards: BundleCard[]): string[] {
+  return cards.flatMap(c => c.vouchers);
+}
+
+/** Vouchers defined across ALL live BundleSelectorEnhancer instances. */
+export function getAllKnownBundleVouchers(
+  allCards: BundleCard[][]
+): Set<string> {
+  return new Set(allCards.flatMap(cards => getBundleVouchers(cards)));
 }

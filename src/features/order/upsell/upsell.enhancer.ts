@@ -15,34 +15,42 @@
  *   <div data-next-upsell-option data-next-package-id="456">Option 2</div>
  *   <button data-next-upsell-action="add">Add Selected</button>
  * </div>
+ *
+ * This class is the orchestrator only: it owns the lifecycle and the live
+ * {@link UpsellState}, and delegates the work — interaction wiring to
+ * `upsell.handlers.ts`, value resolution to `upsell.properties.ts`, DOM output
+ * to `upsell.display.ts` and `upsell.renderer.ts`.
  */
 import { BaseEnhancer } from '@/core/base/base-enhancer';
 import { useOrderStore } from '@/state/order';
 import { useConfigStore } from '@/state/config';
 import { ApiClient } from '@/api/client';
 import { LoadingOverlay } from '@/core/ui/loading-overlay';
-import type { EventMap } from '@/types/global';
+import { renderProcessingState } from './upsell.renderer';
+import { trackUpsellPageView } from './upsell.handlers';
 import {
-  renderQuantityDisplay,
-  renderQuantityToggles,
-  syncOptionSelectionAcrossContainers,
-  syncQuantityAcrossContainers,
-  renderProcessingState,
-  showUpsellOffer,
-  hideUpsellOffer,
-  renderError,
-} from './upsell.renderer';
+  initializeSelectorMode,
+  scanUpsellElements,
+  setupEventHandlers,
+  onQuantityChanged,
+  onOptionSelected,
+} from './upsell.interaction-handlers';
+import { handleOrderUpdate, updateUpsellDisplay } from './upsell.display';
 import {
-  handleActionClick,
-  trackUpsellPageView,
-} from './upsell.handlers';
-import type { UpsellHandlerContext } from './upsell.types';
+  resolveExternalSelection,
+  resolveExternalBundleItems,
+  resolveExternalBundleVouchers,
+  collectDefaultProperties,
+  resolveProperties,
+} from './upsell.properties';
+import type {
+  UpsellHandlerContext,
+  UpsellInteractionContext,
+  UpsellState,
+} from './upsell.types';
 
 export class UpsellEnhancer extends BaseEnhancer {
   private apiClient!: ApiClient;
-  private packageId?: number;
-  private quantity = 1;
-  private actionButtons: HTMLElement[] = [];
   private clickHandler?: (event: Event) => void;
   private keydownHandler?: (event: KeyboardEvent) => void;
   private pageShowHandler?: (event: PageTransitionEvent) => void;
@@ -51,9 +59,6 @@ export class UpsellEnhancer extends BaseEnhancer {
 
   // Selector mode
   private isSelector = false;
-  private selectorId?: string;
-  private options = new Map<number, HTMLElement>();
-  private selectedPackageId?: number;
   private currentPagePath?: string;
 
   // External PackageSelectorEnhancer integration
@@ -61,9 +66,20 @@ export class UpsellEnhancer extends BaseEnhancer {
   // External BundleSelectorEnhancer integration
   private bundleSelectorId?: string;
 
-  // Per-selector quantity tracking
-  private quantityBySelectorId = new Map<string, number>();
-  private currentQuantitySelectorId?: string;
+  /**
+   * Live state shared by reference with the handlers in `upsell.handlers.ts`.
+   * They mutate it in place; never replace this object.
+   */
+  private state: UpsellState = {
+    packageId: undefined,
+    quantity: 1,
+    selectorId: undefined,
+    selectedPackageId: undefined,
+    options: new Map<number, HTMLElement>(),
+    quantityBySelectorId: new Map<string, number>(),
+    currentQuantitySelectorId: undefined,
+    actionButtons: [],
+  };
 
   constructor(element: HTMLElement) {
     super(element);
@@ -75,61 +91,95 @@ export class UpsellEnhancer extends BaseEnhancer {
     this.setupPageShowHandler();
     setTimeout(
       () => trackUpsellPageView(this.logger, (e, d) => this.emit(e, d)),
-      100,
+      100
     );
 
-    this.selectorId = this.getAttribute('data-next-selector-id') ?? undefined;
+    this.state.selectorId =
+      this.getAttribute('data-next-selector-id') ?? undefined;
 
     // Auto-detect child selectors, fall back to explicit attributes
-    const childBundleSelector = this.element.querySelector<HTMLElement>('[data-next-bundle-selector]');
-    this.bundleSelectorId = childBundleSelector?.getAttribute('data-next-selector-id')
-      ?? this.getAttribute('data-next-bundle-selector-id') ?? undefined;
+    const childBundleSelector = this.element.querySelector<HTMLElement>(
+      '[data-next-bundle-selector]'
+    );
+    this.bundleSelectorId =
+      childBundleSelector?.getAttribute('data-next-selector-id') ??
+      this.getAttribute('data-next-bundle-selector-id') ??
+      undefined;
 
-    const childPackageSelector = this.element.querySelector<HTMLElement>('[data-next-package-selector]');
-    this.packageSelectorId = childPackageSelector?.getAttribute('data-next-selector-id')
-      ?? this.getAttribute('data-next-package-selector-id') ?? undefined;
-    this.isSelector = !!this.selectorId || !!this.packageSelectorId || !!this.bundleSelectorId;
+    const childPackageSelector = this.element.querySelector<HTMLElement>(
+      '[data-next-package-selector]'
+    );
+    this.packageSelectorId =
+      childPackageSelector?.getAttribute('data-next-selector-id') ??
+      this.getAttribute('data-next-package-selector-id') ??
+      undefined;
+    this.isSelector =
+      !!this.state.selectorId ||
+      !!this.packageSelectorId ||
+      !!this.bundleSelectorId;
 
     if (this.isSelector) {
-      this.initializeSelectorMode();
+      initializeSelectorMode(this.makeInteractionContext());
     } else {
       const packageIdAttr = this.getAttribute('data-next-package-id');
       if (!packageIdAttr) {
         throw new Error(
-          'UpsellEnhancer requires data-next-package-id (or selector mode with data-next-selector-id)',
+          'UpsellEnhancer requires data-next-package-id (or selector mode with data-next-selector-id)'
         );
       }
-      this.packageId = parseInt(packageIdAttr, 10);
-      if (isNaN(this.packageId)) throw new Error('Invalid package ID provided');
+      this.state.packageId = parseInt(packageIdAttr, 10);
+      if (isNaN(this.state.packageId))
+        throw new Error('Invalid package ID provided');
       const orderStore = useOrderStore.getState();
-      if (orderStore.order) orderStore.markUpsellViewed(this.packageId.toString());
+      if (orderStore.order)
+        orderStore.markUpsellViewed(this.state.packageId.toString());
     }
 
     const quantityAttr = this.getAttribute('data-next-quantity');
-    if (quantityAttr) this.quantity = parseInt(quantityAttr, 10) || 1;
+    if (quantityAttr) this.state.quantity = parseInt(quantityAttr, 10) || 1;
 
     const config = useConfigStore.getState();
     this.apiClient = new ApiClient(config.apiKey);
 
-    this.scanUpsellElements();
-    this.setupEventHandlers();
-    this.subscribe(useOrderStore, state => this.handleOrderUpdate(state));
+    scanUpsellElements(this.makeInteractionContext());
+    const { clickHandler, keydownHandler } = setupEventHandlers(
+      this.makeInteractionContext(),
+      this.isProcessingRef,
+      () => this.makeHandlerContext()
+    );
+    this.clickHandler = clickHandler;
+    this.keydownHandler = keydownHandler;
+    this.subscribe(useOrderStore, state =>
+      handleOrderUpdate(
+        state,
+        this.element,
+        this.state.actionButtons,
+        this.logger
+      )
+    );
 
-    this.on('upsell:quantity-changed', data => this.onQuantityChanged(data));
-    this.on('upsell:option-selected', data => this.onOptionSelected(data));
+    this.on('upsell:quantity-changed', data =>
+      onQuantityChanged(data, this.makeInteractionContext())
+    );
+    this.on('upsell:option-selected', data =>
+      onOptionSelected(data, this.makeInteractionContext())
+    );
 
-    this.updateUpsellDisplay();
+    updateUpsellDisplay(this.element);
 
     this.logger.debug('UpsellEnhancer initialized', {
       mode: this.isSelector ? 'selector' : 'direct',
-      packageId: this.packageId,
-      selectorId: this.selectorId,
-      quantity: this.quantity,
-      actionButtons: this.actionButtons.length,
-      options: this.options.size,
+      packageId: this.state.packageId,
+      selectorId: this.state.selectorId,
+      quantity: this.state.quantity,
+      actionButtons: this.state.actionButtons.length,
+      options: this.state.options.size,
     });
 
-    this.emit('upsell:initialized', { packageId: this.packageId ?? 0, element: this.element });
+    this.emit('upsell:initialized', {
+      packageId: this.state.packageId ?? 0,
+      element: this.element,
+    });
   }
 
   private setupPageShowHandler(): void {
@@ -137,278 +187,45 @@ export class UpsellEnhancer extends BaseEnhancer {
       if (event.persisted) {
         this.loadingOverlay.hide(true);
         this.isProcessingRef.value = false;
-        renderProcessingState(this.element, this.actionButtons, false);
+        renderProcessingState(this.element, this.state.actionButtons, false);
       }
     };
     window.addEventListener('pageshow', this.pageShowHandler);
   }
 
-  private initializeSelectorMode(): void {
-    if (this.selectorId && !this.quantityBySelectorId.has(this.selectorId)) {
-      this.quantityBySelectorId.set(this.selectorId, this.quantity);
-    }
-
-    this.element.querySelectorAll('[data-next-upsell-option]').forEach(el => {
-      if (!(el instanceof HTMLElement)) return;
-      const pkgId = parseInt(el.getAttribute('data-next-package-id') ?? '', 10);
-      if (isNaN(pkgId)) return;
-      this.options.set(pkgId, el);
-      el.addEventListener('click', () => this.selectOption(pkgId));
-      if (el.getAttribute('data-next-selected') === 'true') this.selectOption(pkgId);
-    });
-
-    const selectEl =
-      this.element.tagName === 'SELECT'
-        ? (this.element as HTMLSelectElement)
-        : (this.element.querySelector(
-            `[data-next-upsell-select="${this.selectorId}"]`,
-          ) as HTMLSelectElement | null);
-
-    if (selectEl) {
-      selectEl.addEventListener('change', () => {
-        if (selectEl.value) {
-          const pkgId = parseInt(selectEl.value, 10);
-          if (!isNaN(pkgId)) this.selectOption(pkgId);
-        } else {
-          this.selectedPackageId = undefined;
-          this.packageId = undefined;
-        }
-      });
-      if (selectEl.value) {
-        const pkgId = parseInt(selectEl.value, 10);
-        if (!isNaN(pkgId)) this.selectOption(pkgId);
-      }
-    }
-  }
-
-  private scanUpsellElements(): void {
-    this.element.querySelectorAll('[data-next-upsell-action]').forEach(el => {
-      if (el instanceof HTMLElement) this.actionButtons.push(el);
-    });
-
-    const incBtn = this.element.querySelector('[data-next-upsell-quantity="increase"]');
-    const decBtn = this.element.querySelector('[data-next-upsell-quantity="decrease"]');
-    const qtySelectorId =
-      incBtn?.getAttribute('data-next-quantity-selector-id') ??
-      decBtn?.getAttribute('data-next-quantity-selector-id') ??
-      this.selectorId;
-
-    incBtn?.addEventListener('click', () => this.adjustQuantity(1, qtySelectorId));
-    decBtn?.addEventListener('click', () => this.adjustQuantity(-1, qtySelectorId));
-
-    this.element.querySelectorAll('[data-next-upsell-quantity-toggle]').forEach(toggle => {
-      if (!(toggle instanceof HTMLElement)) return;
-      const qty = parseInt(toggle.getAttribute('data-next-upsell-quantity-toggle') ?? '1', 10);
-      toggle.addEventListener('click', () => {
-        this.quantity = qty;
-        renderQuantityDisplay(this.element, this.selectorId, this.quantityBySelectorId, qty);
-        renderQuantityToggles(this.element, qty);
-        this.emit('upsell:quantity-changed', {
-          selectorId: this.selectorId,
-          quantity: qty,
-          packageId: this.packageId,
-        });
-      });
-      if (qty === this.quantity) toggle.classList.add('next-selected');
-    });
-  }
-
-  private adjustQuantity(delta: number, qtySelectorId: string | undefined): void {
-    if (qtySelectorId) {
-      const next = Math.min(10, Math.max(1, (this.quantityBySelectorId.get(qtySelectorId) ?? 1) + delta));
-      this.quantityBySelectorId.set(qtySelectorId, next);
-      this.currentQuantitySelectorId = qtySelectorId;
-      this.emit('upsell:quantity-changed', { selectorId: qtySelectorId, quantity: next, packageId: this.packageId });
-    } else {
-      this.quantity = Math.min(10, Math.max(1, this.quantity + delta));
-      this.emit('upsell:quantity-changed', { quantity: this.quantity, packageId: this.packageId });
-    }
-    renderQuantityDisplay(this.element, qtySelectorId ?? this.selectorId, this.quantityBySelectorId, this.quantity);
-    syncQuantityAcrossContainers(qtySelectorId, this.packageId, this.quantityBySelectorId, this.quantity);
-  }
-
-  private selectOption(packageId: number): void {
-    this.options.forEach((el, id) => {
-      el.classList.toggle('next-selected', id === packageId);
-      el.setAttribute('data-next-selected', (id === packageId).toString());
-    });
-    this.selectedPackageId = packageId;
-    this.packageId = packageId;
-
-    let actualSelectorId = this.selectorId;
-    const selectedEl = this.options.get(packageId);
-    if (selectedEl) {
-      const parent = selectedEl.closest('[data-next-selector-id]');
-      actualSelectorId =
-        parent?.getAttribute('data-next-selector-id') ?? this.selectorId;
-    }
-
-    const sid = actualSelectorId ?? '';
-    this.emit('upsell-selector:item-selected', { selectorId: sid, packageId });
-    this.emit('upsell:option-selected', { selectorId: sid, packageId });
-
-    if (actualSelectorId) syncOptionSelectionAcrossContainers(actualSelectorId, packageId);
-    (this.element as unknown as Record<string, unknown>)['_selectedPackageId'] = packageId;
-    this.logger.debug('Upsell option selected:', { packageId, selectorId: actualSelectorId });
-  }
-
-  private setupEventHandlers(): void {
-    this.clickHandler = (event: Event) =>
-      void handleActionClick(event, this.makeHandlerContext());
-    this.actionButtons.forEach(btn => btn.addEventListener('click', this.clickHandler!));
-
-    this.keydownHandler = (event: KeyboardEvent) => {
-      if (event.key === 'Enter' && this.isProcessingRef.value) {
-        event.preventDefault();
-        event.stopPropagation();
-        this.logger.debug('Enter key blocked - upsell is processing');
-      }
-    };
-    this.element.addEventListener('keydown', this.keydownHandler, true);
-  }
-
-  private onQuantityChanged(data: EventMap['upsell:quantity-changed']): void {
-    const shouldSync =
-      (!!this.selectorId && data.selectorId === this.selectorId) ||
-      (!this.selectorId && !data.selectorId && this.packageId !== undefined && data.packageId === this.packageId);
-    if (!shouldSync) return;
-
-    if (this.selectorId) {
-      this.quantityBySelectorId.set(this.selectorId, data.quantity);
-      this.currentQuantitySelectorId = this.selectorId;
-    } else {
-      this.quantity = data.quantity;
-    }
-    renderQuantityDisplay(
-      this.element,
-      this.currentQuantitySelectorId ?? this.selectorId,
-      this.quantityBySelectorId,
-      this.quantity,
-    );
-  }
-
-  private onOptionSelected(data: EventMap['upsell:option-selected']): void {
-    let shouldUpdate = this.selectorId === data.selectorId;
-    if (!shouldUpdate) {
-      this.element.querySelectorAll('[data-next-selector-id]').forEach(sel => {
-        if (sel.getAttribute('data-next-selector-id') === data.selectorId) shouldUpdate = true;
-      });
-    }
-    if (!shouldUpdate) return;
-
-    this.selectedPackageId = data.packageId;
-    this.packageId = data.packageId;
-    this.options.forEach((el, id) => {
-      el.classList.toggle('next-selected', id === data.packageId);
-      el.setAttribute('data-next-selected', (id === data.packageId).toString());
-    });
-  }
-
-  private handleOrderUpdate(orderState: { isProcessingUpsell: boolean; upsellError?: string | null }): void {
-    this.updateUpsellDisplay();
-    renderProcessingState(this.element, this.actionButtons, orderState.isProcessingUpsell);
-    if (orderState.upsellError) {
-      renderError(this.element, orderState.upsellError, this.logger);
-    }
-  }
-
-  private updateUpsellDisplay(): void {
-    if (useOrderStore.getState().canAddUpsells()) {
-      showUpsellOffer(this.element);
-    } else {
-      hideUpsellOffer(this.element);
-    }
-  }
-
   /**
-   * Resolve the selected package from a linked PackageSelectorEnhancer element
-   * (data-next-package-selector-id="<id>"). Called at click time so it always
-   * reflects the current selection.
+   * Hands the handlers the container plus the live state object — not a copy, so
+   * a handler registered now still sees the current values when it runs later.
    */
-  private resolveExternalSelection(): number | undefined {
-    if (!this.packageSelectorId) return undefined;
-    const el = document.querySelector<HTMLElement>(
-      `[data-next-package-selector][data-next-selector-id="${this.packageSelectorId}"]`,
-    );
-    if (!el) return undefined;
-    const fn = (el as unknown as Record<string, unknown>)['_getSelectedPackageId'];
-    return typeof fn === 'function' ? (fn() as number | undefined) : undefined;
-  }
-
-  private resolveExternalBundleItems(): { packageId: number; quantity: number; properties?: Record<string, string> }[] | null {
-    if (!this.bundleSelectorId) return null;
-    const el = document.querySelector<HTMLElement>(
-      `[data-next-bundle-selector][data-next-selector-id="${this.bundleSelectorId}"]`,
-    );
-    if (!el) return null;
-    const fn = (el as unknown as Record<string, unknown>)['_getSelectedBundleItems'];
-    return typeof fn === 'function'
-      ? (fn() as { packageId: number; quantity: number; properties?: Record<string, string> }[] | null)
-      : null;
-  }
-
-  private resolveExternalBundleVouchers(): string[] {
-    if (!this.bundleSelectorId) return [];
-    const el = document.querySelector<HTMLElement>(
-      `[data-next-bundle-selector][data-next-selector-id="${this.bundleSelectorId}"]`,
-    );
-    if (!el) return [];
-    const fn = (el as unknown as Record<string, unknown>)['_getSelectedBundleVouchers'];
-    return typeof fn === 'function' ? (fn() as string[]) : [];
-  }
-
-  private collectDefaultProperties(): Record<string, string> {
-    const result: Record<string, string> = {};
-    document
-      .querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
-        '[data-next-default-property]',
-      )
-      .forEach(el => {
-        const key = el.getAttribute('data-next-default-property');
-        if (key && el.value) result[key] = el.value;
-      });
-    return result;
-  }
-
-  private collectContainerProperties(): Record<string, string> {
-    const result: Record<string, string> = {};
-    this.element
-      .querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
-        '[data-next-property]',
-      )
-      .forEach(el => {
-        const key = el.getAttribute('data-next-property');
-        if (key && el.value) result[key] = el.value;
-      });
-    return result;
-  }
-
-  private resolveProperties(): Record<string, string> | undefined {
-    const merged = {
-      ...this.collectDefaultProperties(),
-      ...this.collectContainerProperties(),
+  private makeInteractionContext(): UpsellInteractionContext {
+    return {
+      element: this.element,
+      state: this.state,
+      logger: this.logger,
+      emit: (event, detail) => this.emit(event, detail),
     };
-    return Object.keys(merged).length > 0 ? merged : undefined;
   }
 
   private makeHandlerContext(): UpsellHandlerContext {
-    const externalId = this.resolveExternalSelection();
-    const externalBundleItems = this.resolveExternalBundleItems();
+    const externalId = resolveExternalSelection(this.packageSelectorId);
+    const externalBundleItems = resolveExternalBundleItems(
+      this.bundleSelectorId
+    );
     return {
       isProcessingRef: this.isProcessingRef,
       element: this.element,
-      packageId: externalId ?? this.packageId,
+      packageId: externalId ?? this.state.packageId,
       isSelector: this.isSelector,
-      selectedPackageId: externalId ?? this.selectedPackageId,
-      selectorId: this.selectorId,
-      quantity: this.quantity,
-      quantityBySelectorId: this.quantityBySelectorId,
-      currentQuantitySelectorId: this.currentQuantitySelectorId,
+      selectedPackageId: externalId ?? this.state.selectedPackageId,
+      selectorId: this.state.selectorId,
+      quantity: this.state.quantity,
+      quantityBySelectorId: this.state.quantityBySelectorId,
+      currentQuantitySelectorId: this.state.currentQuantitySelectorId,
       bundleItems: externalBundleItems,
-      bundleVouchers: this.resolveExternalBundleVouchers(),
-      defaultProperties: this.collectDefaultProperties(),
-      properties: this.resolveProperties(),
-      actionButtons: this.actionButtons,
+      bundleVouchers: resolveExternalBundleVouchers(this.bundleSelectorId),
+      defaultProperties: collectDefaultProperties(),
+      properties: resolveProperties(this.element),
+      actionButtons: this.state.actionButtons,
       loadingOverlay: this.loadingOverlay,
       apiClient: this.apiClient,
       currentPagePath: this.currentPagePath,
@@ -418,13 +235,15 @@ export class UpsellEnhancer extends BaseEnhancer {
   }
 
   public update(): void {
-    this.scanUpsellElements();
-    this.updateUpsellDisplay();
+    scanUpsellElements(this.makeInteractionContext());
+    updateUpsellDisplay(this.element);
   }
 
   protected override cleanupEventListeners(): void {
     if (this.clickHandler) {
-      this.actionButtons.forEach(btn => btn.removeEventListener('click', this.clickHandler!));
+      this.state.actionButtons.forEach(btn =>
+        btn.removeEventListener('click', this.clickHandler!)
+      );
     }
     if (this.keydownHandler) {
       this.element.removeEventListener('keydown', this.keydownHandler, true);
@@ -432,8 +251,9 @@ export class UpsellEnhancer extends BaseEnhancer {
   }
 
   public override destroy(): void {
-    if (this.pageShowHandler) window.removeEventListener('pageshow', this.pageShowHandler);
-    this.actionButtons = [];
+    if (this.pageShowHandler)
+      window.removeEventListener('pageshow', this.pageShowHandler);
+    this.state.actionButtons = [];
     super.destroy();
   }
 }

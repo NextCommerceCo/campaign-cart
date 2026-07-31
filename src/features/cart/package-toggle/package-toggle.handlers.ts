@@ -9,6 +9,8 @@ import type { AddUpsellLine } from '@/types/api';
 import type { Logger } from '@/core/logger';
 import type { ToggleCard } from './package-toggle.types';
 import { mergeWithDefaults, parseExcludeProperty, applyPropertyExclusion } from '@/features/cart/shared/properties';
+import { renderTogglePrice } from './package-toggle.renderer';
+import { fetchAndUpdateTogglePrice } from './package-toggle.price';
 
 // ─── Global deduplication sets ───────────────────────────────────────────────
 
@@ -281,4 +283,103 @@ export async function handleSyncUpdate(
   } finally {
     syncUpdateInProgress.delete(card.packageId);
   }
+}
+
+// ─── Cart sync ────────────────────────────────────────────────────────────
+
+export interface ToggleSyncContext {
+  cards: ToggleCard[];
+  autoAddInProgress: Set<number>;
+  emit: <K extends keyof EventMap>(event: K, detail: EventMap[K]) => void;
+  logger: Logger;
+  includeShipping: boolean;
+  getPriceSyncDebounce: () => ReturnType<typeof setTimeout> | null;
+  setPriceSyncDebounce: (handle: ReturnType<typeof setTimeout> | null) => void;
+}
+
+/**
+ * Reconciles every toggle card with the current cart state: toggles
+ * selected classes/attributes and button text, refreshes price display for
+ * in-cart lines, drives sync-mode quantity updates, and auto-adds
+ * pre-selected cards that are not in the cart yet. Also (re)starts a
+ * debounced price refresh for any card that fell out of the cart.
+ */
+export function syncWithCart(cartState: CartState, ctx: ToggleSyncContext): void {
+  const selectedPackageIds: number[] = [];
+
+  for (const card of ctx.cards) {
+    const inCart = cartState.items.some(i => i.packageId === card.packageId);
+    card.isSelected = inCart;
+
+    card.element.classList.toggle('next-in-cart', inCart);
+    card.element.classList.toggle('next-not-in-cart', !inCart);
+    card.element.classList.toggle('next-selected', inCart);
+    card.element.setAttribute('data-next-in-cart', String(inCart));
+
+    card.stateContainer.setAttribute('data-in-cart', String(inCart));
+    card.stateContainer.setAttribute('data-next-active', String(inCart));
+    card.stateContainer.classList.toggle('next-in-cart', inCart);
+    card.stateContainer.classList.toggle('next-not-in-cart', !inCart);
+    card.stateContainer.classList.toggle('next-active', inCart);
+    card.stateContainer.classList.toggle('os--active', inCart);
+
+    if (card.addText && card.removeText) {
+      const textSlot = card.element.querySelector<HTMLElement>('[data-next-button-text]');
+      if (textSlot) {
+        textSlot.textContent = inCart ? card.removeText : card.addText;
+      } else if (card.element.childElementCount === 0) {
+        card.element.textContent = inCart ? card.removeText : card.addText;
+      }
+    }
+
+    if (inCart) {
+      selectedPackageIds.push(card.packageId);
+      if (cartState.summary) {
+        const line = cartState.summary.lines.find(l => l.package_id === card.packageId);
+        if (line) renderTogglePrice(card, line);
+      }
+    }
+
+    if (card.isSyncMode) {
+      void handleSyncUpdate(card, cartState, ctx.logger);
+    }
+
+    if (
+      card.isPreSelected &&
+      !inCart &&
+      !ctx.autoAddInProgress.has(card.packageId) &&
+      !autoAddedPackages.has(card.packageId)
+    ) {
+      if (card.isSyncMode) updateSyncedQuantity(card, cartState);
+
+      if (card.isSyncMode && card.quantity === 0) {
+        ctx.logger.debug('Skipping pre-selected sync card — no synced packages in cart', card.packageId);
+        continue;
+      }
+
+      card.isPreSelected = false;
+      autoAddedPackages.add(card.packageId);
+      ctx.autoAddInProgress.add(card.packageId);
+
+      void addToCart(card).finally(() => {
+        ctx.autoAddInProgress.delete(card.packageId);
+      });
+    }
+  }
+
+  ctx.emit('toggle:selection-changed', { selected: selectedPackageIds });
+
+  const existingDebounce = ctx.getPriceSyncDebounce();
+  if (existingDebounce !== null) clearTimeout(existingDebounce);
+  ctx.setPriceSyncDebounce(
+    setTimeout(() => {
+      ctx.setPriceSyncDebounce(null);
+      const currentItems = useCartStore.getState().items;
+      for (const card of ctx.cards) {
+        if (!currentItems.some(i => i.packageId === card.packageId)) {
+          void fetchAndUpdateTogglePrice(card, ctx.includeShipping, ctx.logger);
+        }
+      }
+    }, 150),
+  );
 }

@@ -4,7 +4,11 @@ import { useConfigStore } from '@/state/config';
 import { GeneralModal } from '@/core/ui/general-modal';
 import { preserveQueryParams } from '@/core/url-utils';
 import type { AddUpsellLine } from '@/types/api';
-import { renderProcessingState, renderSuccess, renderError } from './upsell.renderer';
+import {
+  renderProcessingState,
+  renderSuccess,
+  renderError,
+} from './upsell.renderer';
 import type { UpsellHandlerContext } from './upsell.types';
 
 // Module-level deduplication: only track one page view per unique path per page load
@@ -23,19 +27,19 @@ export function checkIfUpsellAlreadyAccepted(packageId: number): boolean {
   return (
     store.completedUpsells.includes(packageId.toString()) ||
     store.upsellJourney.some(
-      e => e.packageId === packageId.toString() && e.action === 'accepted',
+      e => e.packageId === packageId.toString() && e.action === 'accepted'
     )
   );
 }
 
 async function showDuplicateUpsellDialog(
-  logger: UpsellHandlerContext['logger'],
+  logger: UpsellHandlerContext['logger']
 ): Promise<boolean> {
   const result = await GeneralModal.showDuplicateUpsell();
   logger.info(
     result
       ? 'User confirmed to add duplicate upsell'
-      : 'User declined to add duplicate upsell',
+      : 'User declined to add duplicate upsell'
   );
   return result;
 }
@@ -43,7 +47,7 @@ async function showDuplicateUpsellDialog(
 export function navigateToUrl(
   url: string,
   refId: string | undefined,
-  logger: UpsellHandlerContext['logger'],
+  logger: UpsellHandlerContext['logger']
 ): void {
   if (!url) {
     logger.warn('No URL provided for navigation');
@@ -66,7 +70,7 @@ export function navigateToUrl(
 
 export function trackUpsellPageView(
   logger: UpsellHandlerContext['logger'],
-  emit: UpsellHandlerContext['emit'],
+  emit: UpsellHandlerContext['emit']
 ): void {
   const meta = document.querySelector('meta[name="next-page-type"]');
   if (!meta || meta.getAttribute('content') !== 'upsell') return;
@@ -84,7 +88,7 @@ export function trackUpsellPageView(
 
 export async function addUpsellToOrder(
   nextUrl: string | null | undefined,
-  ctx: UpsellHandlerContext,
+  ctx: UpsellHandlerContext
 ): Promise<void> {
   const orderStore = useOrderStore.getState();
   ctx.logger.debug('Order state check:', {
@@ -95,14 +99,20 @@ export async function addUpsellToOrder(
   });
 
   if (!orderStore.canAddUpsells()) {
-    ctx.logger.warn('Order does not support upsells or is currently processing');
-    if (orderStore.isProcessingUpsell && orderStore.order?.supports_post_purchase_upsells) {
+    ctx.logger.warn(
+      'Order does not support upsells or is currently processing'
+    );
+    if (
+      orderStore.isProcessingUpsell &&
+      orderStore.order?.supports_post_purchase_upsells
+    ) {
       ctx.logger.warn('Processing flag stuck, resetting...');
       orderStore.setProcessingUpsell(false);
     }
     if (!orderStore.canAddUpsells()) {
       renderError(ctx.element, 'Unable to add upsell at this time', ctx.logger);
-      if (nextUrl) setTimeout(() => navigateToUrl(nextUrl, undefined, ctx.logger), 1000);
+      if (nextUrl)
+        setTimeout(() => navigateToUrl(nextUrl, undefined, ctx.logger), 1000);
       return;
     }
   }
@@ -145,13 +155,18 @@ export async function addUpsellToOrder(
       ctx.currentQuantitySelectorId &&
       ctx.quantityBySelectorId.has(ctx.currentQuantitySelectorId)
     ) {
-      quantityToUse = ctx.quantityBySelectorId.get(ctx.currentQuantitySelectorId)!;
+      quantityToUse = ctx.quantityBySelectorId.get(
+        ctx.currentQuantitySelectorId
+      )!;
     }
 
     const upsellData: AddUpsellLine = ctx.bundleItems?.length
       ? {
           lines: ctx.bundleItems.map(i => {
-            const merged = { ...(ctx.defaultProperties ?? {}), ...(i.properties ?? {}) };
+            const merged = {
+              ...(ctx.defaultProperties ?? {}),
+              ...(i.properties ?? {}),
+            };
             return {
               package_id: i.packageId,
               quantity: i.quantity,
@@ -159,24 +174,40 @@ export async function addUpsellToOrder(
             };
           }),
           currency: getCurrency(),
-          ...(ctx.bundleVouchers?.length ? { vouchers: ctx.bundleVouchers } : {}),
+          ...(ctx.bundleVouchers?.length
+            ? { vouchers: ctx.bundleVouchers }
+            : {}),
         }
       : {
-          lines: [{ package_id: packageToAdd!, quantity: quantityToUse, ...(ctx.properties !== undefined && { properties: ctx.properties }) }],
+          lines: [
+            {
+              package_id: packageToAdd!,
+              quantity: quantityToUse,
+              ...(ctx.properties !== undefined && {
+                properties: ctx.properties,
+              }),
+            },
+          ],
           currency: getCurrency(),
         };
     ctx.logger.info('Adding upsell to order:', upsellData);
     const updatedOrder = await orderStore.addUpsell(upsellData, ctx.apiClient);
-    if (!updatedOrder) throw new Error('Failed to add upsell - no updated order returned');
+    if (!updatedOrder)
+      throw new Error('Failed to add upsell - no updated order returned');
 
     ctx.logger.info('Upsell added successfully');
     renderSuccess(ctx.element);
 
-    const prevLineIds = orderStore.order?.lines?.map((l: { id: unknown }) => l.id) ?? [];
-    const addedLines: { is_upsell: boolean; id: unknown; price_incl_tax?: string }[] =
+    const prevLineIds =
+      orderStore.order?.lines?.map((l: { id: unknown }) => l.id) ?? [];
+    const addedLines: {
+      is_upsell: boolean;
+      id: unknown;
+      price_incl_tax?: string;
+    }[] =
       updatedOrder.lines?.filter(
         (l: { is_upsell: boolean; id: unknown; price_incl_tax?: string }) =>
-          l.is_upsell && !prevLineIds.includes(l.id),
+          l.is_upsell && !prevLineIds.includes(l.id)
       ) ?? [];
 
     if (ctx.bundleItems?.length) {
@@ -191,7 +222,8 @@ export async function addUpsellToOrder(
         const lineValue = addedLine?.price_incl_tax
           ? parseFloat(addedLine.price_incl_tax)
           : parseFloat(
-              useCampaignStore.getState().getPackage(item.packageId)?.price ?? '0',
+              useCampaignStore.getState().getPackage(item.packageId)?.price ??
+                '0'
             ) * item.quantity;
         ctx.emit('upsell:added', {
           packageId: item.packageId,
@@ -204,10 +236,12 @@ export async function addUpsellToOrder(
     } else {
       let upsellValue = 0;
       const addedLine = addedLines[0];
-      if (addedLine?.price_incl_tax) upsellValue = parseFloat(addedLine.price_incl_tax);
+      if (addedLine?.price_incl_tax)
+        upsellValue = parseFloat(addedLine.price_incl_tax);
       if (!upsellValue && packageToAdd != null) {
         const pkgData = useCampaignStore.getState().getPackage(packageToAdd);
-        if (pkgData?.price) upsellValue = parseFloat(pkgData.price) * quantityToUse;
+        if (pkgData?.price)
+          upsellValue = parseFloat(pkgData.price) * quantityToUse;
       }
 
       ctx.emit('upsell:added', {
@@ -220,7 +254,10 @@ export async function addUpsellToOrder(
     }
 
     if (nextUrl) {
-      setTimeout(() => navigateToUrl(nextUrl, updatedOrder.ref_id, ctx.logger), 100);
+      setTimeout(
+        () => navigateToUrl(nextUrl, updatedOrder.ref_id, ctx.logger),
+        100
+      );
     } else {
       ctx.loadingOverlay.hide();
     }
@@ -229,7 +266,7 @@ export async function addUpsellToOrder(
     renderError(
       ctx.element,
       error instanceof Error ? error.message : 'Failed to add upsell',
-      ctx.logger,
+      ctx.logger
     );
     ctx.emit('upsell:error', {
       packageId: ctx.packageId ?? 0,
@@ -248,7 +285,7 @@ export async function addUpsellToOrder(
 
 export function skipUpsell(
   nextUrl: string | null | undefined,
-  ctx: UpsellHandlerContext,
+  ctx: UpsellHandlerContext
 ): void {
   ctx.logger.info('Upsell skipped by user');
   ctx.element.classList.add('next-skipped');
@@ -258,7 +295,9 @@ export function skipUpsell(
   });
 
   if (ctx.packageId !== undefined) {
-    useOrderStore.getState().markUpsellSkipped(ctx.packageId.toString(), ctx.currentPagePath);
+    useOrderStore
+      .getState()
+      .markUpsellSkipped(ctx.packageId.toString(), ctx.currentPagePath);
   }
 
   const eventData: { packageId?: number; orderId?: string } = {};
@@ -272,7 +311,7 @@ export function skipUpsell(
 
 export async function handleActionClick(
   event: Event,
-  ctx: UpsellHandlerContext,
+  ctx: UpsellHandlerContext
 ): Promise<void> {
   event.preventDefault();
   if (ctx.isProcessingRef.value) {
@@ -298,8 +337,11 @@ export async function handleActionClick(
           : null;
     if (metaName) {
       nextUrl =
-        document.querySelector(`meta[name="${metaName}"]`)?.getAttribute('content') ?? undefined;
-      if (nextUrl) ctx.logger.debug('Using fallback URL from meta tag:', nextUrl);
+        document
+          .querySelector(`meta[name="${metaName}"]`)
+          ?.getAttribute('content') ?? undefined;
+      if (nextUrl)
+        ctx.logger.debug('Using fallback URL from meta tag:', nextUrl);
     }
   }
 
@@ -318,3 +360,4 @@ export async function handleActionClick(
       ctx.logger.warn(`Unknown upsell action: ${action}`);
   }
 }
+

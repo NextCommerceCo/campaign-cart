@@ -26,13 +26,23 @@ Files are **kebab-case with a dotted role suffix**: `<name>.<role>.ts`.
   computes**, as long as it already exists somewhere in `src/features/`: `price` (money
   maths), `properties` (turning a `{object}.{property}` path into a value), `conditions`
   (evaluating a condition to a boolean), `dependencies` (deciding which stores a feature
-  must subscribe to), `display` (deriving what to show without touching the DOM). Prefix
-  the role when one file per domain is clearer than one big file —
-  `conditional-display.order-properties.ts`, `order-display.line-properties.ts`. Do not
-  invent a sixth name for a job one of these already describes; two features naming the
-  same job differently is what makes a layout unlearnable.
-- Note `state` means *derived state*, not a Zustand store, when it sits inside a feature
-  folder (`bundle-selector.state.ts` builds a view model). Stores live in `src/state/`.
+  must subscribe to), `cards` (finding and registering the DOM cards a selector binds to),
+  `styles` (a CSS string the feature injects). Prefix the role when one file per domain is
+  clearer than one big file — `conditional-display.order-properties.ts`,
+  `order-display.line-properties.ts`. Do not invent another name for a job one of these
+  already describes; two features naming the same job differently is what makes a layout
+  unlearnable.
+- Two roles do **not** mean what they look like, and both have bitten a refactor:
+  - `state` inside a feature folder is *derived state*, not a Zustand store
+    (`bundle-selector.state.ts` builds a view model). Stores live in `src/state/`.
+  - `display` in `features/cart/` is **a second, DOM-activated enhancer** —
+    `package-selector.display.ts` exports `PackageSelectorDisplayEnhancer`, which
+    `AttributeScanner` registers for `data-next-display="selector.…"`. It is *not* the
+    "state → DOM" layer that the same suffix means in `features/display/`. Do not put a
+    layer helper in one of those four files; a cart-state reconciler that writes to the
+    cart belongs in `handlers`, and a read-only one in `renderer`. See finding 95 in
+    [docs/code-findings.md](../../docs/code-findings.md) — those four enhancers are also
+    invisible to `npm run docs:coverage` because it scans `*.enhancer.ts`.
 - Folders are kebab-case too (`features/cart/add-to-cart/`).
 - `index.ts` stays `index.ts` (barrel — exports only).
 - **Kebab governs the file name only.** Identifiers inside keep normal JS casing: classes/types PascalCase (`AddToCartEnhancer`, `CartState`), functions/vars camelCase.

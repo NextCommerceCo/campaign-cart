@@ -24,7 +24,7 @@ import {
  */
 export function buildSlotVars(
   slot: BundleSlot,
-  pkgState: BundlePackageState,
+  pkgState: BundlePackageState
 ): Record<string, string> {
   return {
     'slot.index': String(slot.slotIndex + 1),
@@ -39,31 +39,60 @@ export function buildSlotVars(
     'item.sku': pkgState.sku ?? '',
     'item.isRecurring': pkgState.isRecurring ? 'true' : 'false',
     'item.interval': pkgState.interval ?? '',
-    'item.intervalCount': pkgState.intervalCount != null ? String(pkgState.intervalCount) : '',
+    'item.intervalCount':
+      pkgState.intervalCount != null ? String(pkgState.intervalCount) : '',
     'item.frequency': pkgState.isRecurring
       ? pkgState.intervalCount != null && pkgState.intervalCount > 1
         ? `Every ${pkgState.intervalCount} ${pkgState.interval}s`
         : `Per ${pkgState.interval}`
       : 'One time',
-    'item.recurringPrice': formatCurrency(pkgState.recurringPrice.toNumber(), pkgState.currency),
-    'item.originalRecurringPrice': formatCurrency(pkgState.originalRecurringPrice.toNumber(), pkgState.currency),
-    'item.price': formatCurrency(pkgState.unitPrice.times(slot.quantity).toNumber(), pkgState.currency),
-    'item.originalPrice': formatCurrency(pkgState.originalUnitPrice.times(slot.quantity).toNumber(), pkgState.currency),
-    'item.unitPrice': formatCurrency(pkgState.unitPrice.toNumber(), pkgState.currency),
-    'item.originalUnitPrice': formatCurrency(pkgState.originalUnitPrice.toNumber(), pkgState.currency),
-    'item.discountAmount': formatCurrency(
-      pkgState.originalUnitPrice.minus(pkgState.unitPrice).times(slot.quantity).toNumber(),
-      pkgState.currency,
+    'item.recurringPrice': formatCurrency(
+      pkgState.recurringPrice.toNumber(),
+      pkgState.currency
     ),
-    'item.discountPercentage': formatPercentage(pkgState.discountPercentage.toNumber()),
+    'item.originalRecurringPrice': formatCurrency(
+      pkgState.originalRecurringPrice.toNumber(),
+      pkgState.currency
+    ),
+    'item.price': formatCurrency(
+      pkgState.unitPrice.times(slot.quantity).toNumber(),
+      pkgState.currency
+    ),
+    'item.originalPrice': formatCurrency(
+      pkgState.originalUnitPrice.times(slot.quantity).toNumber(),
+      pkgState.currency
+    ),
+    'item.unitPrice': formatCurrency(
+      pkgState.unitPrice.toNumber(),
+      pkgState.currency
+    ),
+    'item.originalUnitPrice': formatCurrency(
+      pkgState.originalUnitPrice.toNumber(),
+      pkgState.currency
+    ),
+    'item.discountAmount': formatCurrency(
+      pkgState.originalUnitPrice
+        .minus(pkgState.unitPrice)
+        .times(slot.quantity)
+        .toNumber(),
+      pkgState.currency
+    ),
+    'item.discountPercentage': formatPercentage(
+      pkgState.discountPercentage.toNumber()
+    ),
     'item.hasDiscount': pkgState.hasDiscount ? 'show' : 'hide',
     'item.currency': pkgState.currency,
   };
 }
 
-function varsEqual(a: Record<string, string>, b: Record<string, string>): boolean {
+function varsEqual(
+  a: Record<string, string>,
+  b: Record<string, string>
+): boolean {
   const keys = Object.keys(a);
-  return keys.length === Object.keys(b).length && keys.every(k => a[k] === b[k]);
+  return (
+    keys.length === Object.keys(b).length && keys.every(k => a[k] === b[k])
+  );
 }
 
 // ─── Bundle card template ─────────────────────────────────────────────────────
@@ -71,11 +100,14 @@ function varsEqual(a: Record<string, string>, b: Record<string, string>): boolea
 export function renderBundleTemplate(
   template: string,
   bundle: BundleDef,
-  logger: Logger,
+  logger: Logger
 ): HTMLElement | null {
   const visibleItems = bundle.items.filter(item => !item.noSlot);
   const itemCount = visibleItems.length;
-  const totalQuantity = visibleItems.reduce((sum, item) => sum + (item.quantity ?? 1), 0);
+  const totalQuantity = visibleItems.reduce(
+    (sum, item) => sum + (item.quantity ?? 1),
+    0
+  );
 
   const vars: Record<string, string> = {
     'bundle.itemCount': String(itemCount),
@@ -97,7 +129,10 @@ export function renderBundleTemplate(
     (firstChild instanceof HTMLElement ? firstChild : null);
 
   if (!cardEl) {
-    logger.warn('Bundle template produced no root element for bundle', bundle.id);
+    logger.warn(
+      'Bundle template produced no root element for bundle',
+      bundle.id
+    );
     return null;
   }
 
@@ -108,7 +143,10 @@ export function renderBundleTemplate(
     cardEl.setAttribute('data-next-selected', 'true');
   }
   if (bundle.vouchers?.length) {
-    cardEl.setAttribute('data-next-bundle-vouchers', JSON.stringify(bundle.vouchers));
+    cardEl.setAttribute(
+      'data-next-bundle-vouchers',
+      JSON.stringify(bundle.vouchers)
+    );
   }
   if (bundle.shippingId) {
     cardEl.setAttribute('data-next-shipping-id', bundle.shippingId);
@@ -137,7 +175,11 @@ interface BundleFieldData {
   name: string;
 }
 
-function applyBundleField(el: HTMLElement, field: string, data: BundleFieldData): void {
+function applyBundleField(
+  el: HTMLElement,
+  field: string,
+  data: BundleFieldData
+): void {
   const { bundlePrice, isSelected, name } = data;
   const currency = bundlePrice.currency || undefined;
   switch (field) {
@@ -147,21 +189,35 @@ function applyBundleField(el: HTMLElement, field: string, data: BundleFieldData)
       break;
     case 'compare':
     case 'originalPrice':
-      el.textContent = formatCurrency(bundlePrice.originalPrice.toNumber(), currency);
+      el.textContent = formatCurrency(
+        bundlePrice.originalPrice.toNumber(),
+        currency
+      );
       break;
     case 'savings':
     case 'discountAmount':
-      el.textContent = formatCurrency(bundlePrice.discountAmount.toNumber(), currency);
+      el.textContent = formatCurrency(
+        bundlePrice.discountAmount.toNumber(),
+        currency
+      );
       break;
     case 'unitPrice':
-      el.textContent = formatCurrency(bundlePrice.unitPrice.toNumber(), currency);
+      el.textContent = formatCurrency(
+        bundlePrice.unitPrice.toNumber(),
+        currency
+      );
       break;
     case 'originalUnitPrice':
-      el.textContent = formatCurrency(bundlePrice.originalUnitPrice.toNumber(), currency);
+      el.textContent = formatCurrency(
+        bundlePrice.originalUnitPrice.toNumber(),
+        currency
+      );
       break;
     case 'savingsPercentage':
     case 'discountPercentage':
-      el.textContent = formatPercentage(bundlePrice.discountPercentage.toNumber());
+      el.textContent = formatPercentage(
+        bundlePrice.discountPercentage.toNumber()
+      );
       break;
     case 'isSelected':
       el.style.display = isSelected ? '' : 'none';
@@ -187,7 +243,7 @@ function applyBundleField(el: HTMLElement, field: string, data: BundleFieldData)
  */
 export function updateCardDisplayElements(
   card: BundleCard,
-  bundlePrice: BundlePriceSummary,
+  bundlePrice: BundlePriceSummary
 ): void {
   const isSelected = card.element.getAttribute('data-next-selected') === 'true';
   const fieldData: BundleFieldData = {
@@ -196,16 +252,20 @@ export function updateCardDisplayElements(
     name: card.name,
   };
 
-  card.element.querySelectorAll<HTMLElement>('[data-next-bundle-display]').forEach(el => {
-    const field = el.getAttribute('data-next-bundle-display') ?? 'price';
-    applyBundleField(el, field, fieldData);
-  });
+  card.element
+    .querySelectorAll<HTMLElement>('[data-next-bundle-display]')
+    .forEach(el => {
+      const field = el.getAttribute('data-next-bundle-display') ?? 'price';
+      applyBundleField(el, field, fieldData);
+    });
 
   // Deprecated: kept for backward compatibility
-  card.element.querySelectorAll<HTMLElement>('[data-next-bundle-price]').forEach(el => {
-    const field = el.getAttribute('data-next-bundle-price') ?? 'total';
-    applyBundleField(el, field, fieldData);
-  });
+  card.element
+    .querySelectorAll<HTMLElement>('[data-next-bundle-price]')
+    .forEach(el => {
+      const field = el.getAttribute('data-next-bundle-price') ?? 'total';
+      applyBundleField(el, field, fieldData);
+    });
 
   renderDiscountContainers(card.element, {
     offerDiscounts: card.offerDiscounts,
@@ -215,8 +275,10 @@ export function updateCardDisplayElements(
   card.element.dispatchEvent(
     new CustomEvent('bundle:price-updated', {
       bubbles: true,
-      detail: { selectorId: card.element.getAttribute('data-next-bundle-id') ?? '' },
-    }),
+      detail: {
+        selectorId: card.element.getAttribute('data-next-bundle-id') ?? '',
+      },
+    })
   );
 }
 
@@ -232,12 +294,12 @@ function attachPropertyListeners(
   slotEl: HTMLElement,
   slot: BundleSlot,
   card: BundleCard,
-  onBlur?: (card: BundleCard) => void,
+  onBlur?: (card: BundleCard) => void
 ): void {
   slotEl
-    .querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
-      'input[data-next-property], textarea[data-next-property], select[data-next-property]',
-    )
+    .querySelectorAll<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >('input[data-next-property], textarea[data-next-property], select[data-next-property]')
     .forEach(el => {
       const key = el.getAttribute('data-next-property');
       if (!key) return;
@@ -272,10 +334,11 @@ function attachPropertyListeners(
 export function renderSlotsForCard(
   card: BundleCard,
   ctx: RenderContext,
-  targetEl?: HTMLElement,
+  targetEl?: HTMLElement
 ): void {
   const placeholder =
-    targetEl ?? card.element.querySelector<HTMLElement>('[data-next-bundle-slots]');
+    targetEl ??
+    card.element.querySelector<HTMLElement>('[data-next-bundle-slots]');
   if (!placeholder) return;
 
   const activeIndices = new Set<number>();
@@ -289,13 +352,15 @@ export function renderSlotsForCard(
     activeIndices.add(slot.slotIndex);
 
     const existing = placeholder.querySelector<HTMLElement>(
-      `[data-next-slot-index="${slot.slotIndex}"]`,
+      `[data-next-slot-index="${slot.slotIndex}"]`
     );
     const newVars = buildSlotVars(slot, pkgState);
     // External renders (targetEl provided) bypass the cache entirely so that a
     // variant change that already updated the cache via the internal render does
     // not cause the external container to be silently skipped.
-    const cachedVars = !targetEl ? card.slotVarsCache.get(slot.slotIndex) : undefined;
+    const cachedVars = !targetEl
+      ? card.slotVarsCache.get(slot.slotIndex)
+      : undefined;
 
     // Skip only when the element already exists in this placeholder AND vars haven't changed.
     if (existing && cachedVars && varsEqual(cachedVars, newVars)) continue;
@@ -305,8 +370,9 @@ export function renderSlotsForCard(
       voucherDiscounts: pkgState.voucherDiscounts,
     });
 
-    const variantPlaceholder =
-      newSlotEl.querySelector<HTMLElement>('[data-next-variant-selectors]');
+    const variantPlaceholder = newSlotEl.querySelector<HTMLElement>(
+      '[data-next-variant-selectors]'
+    );
     if (variantPlaceholder) {
       const allPackages = useCampaignStore.getState().packages ?? [];
       const pkg = allPackages.find(p => p.ref_id === slot.activePackageId);
@@ -317,7 +383,7 @@ export function renderSlotsForCard(
           slot.slotIndex,
           pkg,
           allPackages,
-          ctx,
+          ctx
         );
       }
     }
@@ -326,9 +392,9 @@ export function renderSlotsForCard(
       // Preserve user-typed property values before the slot element is replaced.
       const savedPropertyValues: Record<string, string> = {};
       existing
-        .querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
-          'input[data-next-property], textarea[data-next-property], select[data-next-property]',
-        )
+        .querySelectorAll<
+          HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+        >('input[data-next-property], textarea[data-next-property], select[data-next-property]')
         .forEach(el => {
           const key = el.getAttribute('data-next-property');
           if (key && el.value) savedPropertyValues[key] = el.value;
@@ -352,22 +418,30 @@ export function renderSlotsForCard(
           >(`[data-next-property="${key}"]`);
           if (el) el.value = value;
         });
-        slot.properties = { ...(slot.properties ?? {}), ...savedPropertyValues };
+        slot.properties = {
+          ...(slot.properties ?? {}),
+          ...savedPropertyValues,
+        };
       }
     } else {
       placeholder.appendChild(newSlotEl);
     }
 
-    if (slot.excludeProperties !== '*') attachPropertyListeners(newSlotEl, slot, card, ctx.onPropertyBlur);
+    if (slot.excludeProperties !== '*')
+      attachPropertyListeners(newSlotEl, slot, card, ctx.onPropertyBlur);
     if (!targetEl) card.slotVarsCache.set(slot.slotIndex, newVars);
   }
 
   // Remove orphan slots that no longer correspond to an active slot
-  placeholder.querySelectorAll<HTMLElement>('[data-next-slot-index]').forEach(el => {
-    const idx = Number(el.dataset.nextSlotIndex);
-    if (!activeIndices.has(idx)) el.remove();
+  placeholder
+    .querySelectorAll<HTMLElement>('[data-next-slot-index]')
+    .forEach(el => {
+      const idx = Number(el.dataset.nextSlotIndex);
+      if (!activeIndices.has(idx)) el.remove();
+    });
+  ctx.logger.debug('Rendered slots for bundle', card.bundleId, {
+    activeCount: activeIndices.size,
   });
-  ctx.logger.debug('Rendered slots for bundle', card.bundleId, { activeCount: activeIndices.size });
 }
 
 /**
@@ -385,7 +459,7 @@ function createSlotElement(
   discounts?: {
     offerDiscounts: import('@/core/rendering/discount-renderer').DiscountItem[];
     voucherDiscounts: import('@/core/rendering/discount-renderer').DiscountItem[];
-  },
+  }
 ): HTMLElement {
   const wrapper = document.createElement('div');
   wrapper.className = ctx.classNames.bundleSlot;
@@ -405,7 +479,7 @@ export function renderVariantSelectors(
   slotIndex: number,
   currentPkg: Package,
   allPackages: Package[],
-  ctx: RenderContext,
+  ctx: RenderContext
 ): void {
   const productId = currentPkg.product_id;
   if (!productId) return;
@@ -442,13 +516,29 @@ export function renderVariantSelectors(
 
     if (ctx.variantSelectorTemplate) {
       renderSelectorTemplate(
-        target, bundleId, slotIndex, code, name,
-        values, selected[code] ?? '', productPkgs, selected, ctx,
+        target,
+        bundleId,
+        slotIndex,
+        code,
+        name,
+        values,
+        selected[code] ?? '',
+        productPkgs,
+        selected,
+        ctx
       );
     } else if (ctx.variantOptionTemplate) {
       renderCustomOptions(
-        target, bundleId, slotIndex, code, name,
-        values, selected[code] ?? '', productPkgs, selected, ctx,
+        target,
+        bundleId,
+        slotIndex,
+        code,
+        name,
+        values,
+        selected[code] ?? '',
+        productPkgs,
+        selected,
+        ctx
       );
     } else {
       const field = document.createElement('div');
@@ -508,11 +598,16 @@ function renderOptionItems(
   selectedValue: string,
   productPkgs: Package[],
   allSelectedAttrs: Record<string, string>,
-  ctx: RenderContext,
+  ctx: RenderContext
 ): void {
   for (const value of values) {
     const isSelected = value === selectedValue;
-    const isAvailable = isVariantValueAvailable(value, code, productPkgs, allSelectedAttrs);
+    const isAvailable = isVariantValueAvailable(
+      value,
+      code,
+      productPkgs,
+      allSelectedAttrs
+    );
     const vars: Record<string, string> = {
       'attr.code': code,
       'attr.name': name,
@@ -520,7 +615,10 @@ function renderOptionItems(
       'option.selected': String(isSelected),
       'option.available': String(isAvailable),
     };
-    const html = ctx.variantOptionTemplate.replace(/\{([^}]+)\}/g, (_, k) => vars[k] ?? '');
+    const html = ctx.variantOptionTemplate.replace(
+      /\{([^}]+)\}/g,
+      (_, k) => vars[k] ?? ''
+    );
     const temp = document.createElement('div');
     temp.innerHTML = html.trim();
     const first = temp.firstElementChild;
@@ -557,7 +655,7 @@ function renderCustomOptions(
   selectedValue: string,
   productPkgs: Package[],
   allSelectedAttrs: Record<string, string>,
-  ctx: RenderContext,
+  ctx: RenderContext
 ): void {
   const group = document.createElement('div');
   group.className = ctx.classNames.slotVariantGroup;
@@ -566,7 +664,16 @@ function renderCustomOptions(
   group.dataset.nextBundleId = bundleId;
   group.dataset.nextSlotIndex = String(slotIndex);
 
-  renderOptionItems(group, code, name, values, selectedValue, productPkgs, allSelectedAttrs, ctx);
+  renderOptionItems(
+    group,
+    code,
+    name,
+    values,
+    selectedValue,
+    productPkgs,
+    allSelectedAttrs,
+    ctx
+  );
 
   container.appendChild(group);
 }
@@ -581,20 +688,26 @@ function renderSelectorTemplate(
   selectedValue: string,
   productPkgs: Package[],
   allSelectedAttrs: Record<string, string>,
-  ctx: RenderContext,
+  ctx: RenderContext
 ): void {
   const vars: Record<string, string> = {
     'attr.code': code,
     'attr.name': name,
     'attr.selectedValue': selectedValue,
   };
-  const html = ctx.variantSelectorTemplate.replace(/\{([^}]+)\}/g, (_, k) => vars[k] ?? '');
+  const html = ctx.variantSelectorTemplate.replace(
+    /\{([^}]+)\}/g,
+    (_, k) => vars[k] ?? ''
+  );
   const temp = document.createElement('div');
   temp.innerHTML = html.trim();
   const root = temp.firstElementChild;
   const el = root instanceof HTMLElement ? root : null;
   if (!el) {
-    ctx.logger.warn('Variant selector template produced no root element for attribute', code);
+    ctx.logger.warn(
+      'Variant selector template produced no root element for attribute',
+      code
+    );
     return;
   }
 
@@ -602,12 +715,20 @@ function renderSelectorTemplate(
   el.dataset.nextBundleId = bundleId;
   el.dataset.nextSlotIndex = String(slotIndex);
 
-  const optionsPlaceholder = el.querySelector<HTMLElement>('[data-next-variant-options]');
+  const optionsPlaceholder = el.querySelector<HTMLElement>(
+    '[data-next-variant-options]'
+  );
   if (optionsPlaceholder) {
     if (ctx.variantOptionTemplate) {
       renderOptionItems(
-        optionsPlaceholder, code, name, values, selectedValue,
-        productPkgs, allSelectedAttrs, ctx,
+        optionsPlaceholder,
+        code,
+        name,
+        values,
+        selectedValue,
+        productPkgs,
+        allSelectedAttrs,
+        ctx
       );
     } else {
       for (const value of values) {
@@ -615,7 +736,9 @@ function renderSelectorTemplate(
         option.value = value;
         option.textContent = value;
         if (value === selectedValue) option.selected = true;
-        if (!isVariantValueAvailable(value, code, productPkgs, allSelectedAttrs)) {
+        if (
+          !isVariantValueAvailable(value, code, productPkgs, allSelectedAttrs)
+        ) {
           option.disabled = true;
         }
         optionsPlaceholder.appendChild(option);
@@ -641,7 +764,7 @@ export function isVariantValueAvailable(
   value: string,
   code: string,
   productPkgs: Package[],
-  allSelectedAttrs: Record<string, string>,
+  allSelectedAttrs: Record<string, string>
 ): boolean {
   return productPkgs.some(pkg => {
     if (pkg.product_purchase_availability === 'unavailable') return false;
@@ -651,4 +774,84 @@ export function isVariantValueAvailable(
       .filter(([c]) => c !== code)
       .every(([c, v]) => attrs.some(a => a.code === c && a.value === v));
   });
+}
+
+// ─── Auto-render from JSON ──────────────────────────────────────────────────────
+
+/**
+ * Auto-renders bundle card elements from the `data-next-bundles` JSON
+ * attribute into `element`, replacing its current contents.
+ */
+export function autoRenderBundleCards(
+  element: HTMLElement,
+  bundlesAttr: string,
+  template: string,
+  logger: Logger
+): void {
+  try {
+    const parsed: unknown = JSON.parse(bundlesAttr);
+    if (!Array.isArray(parsed)) {
+      logger.warn(
+        'data-next-bundles must be a JSON array, ignoring auto-render'
+      );
+    } else {
+      element.innerHTML = '';
+      for (const def of parsed as BundleDef[]) {
+        const el = renderBundleTemplate(template, def, logger);
+        if (el) element.appendChild(el);
+      }
+    }
+  } catch {
+    logger.warn(
+      'Invalid JSON in data-next-bundles, ignoring auto-render',
+      bundlesAttr
+    );
+  }
+}
+
+// ─── Price-driven DOM updates ───────────────────────────────────────────────────
+
+/**
+ * Updates all DOM that depends on calculated prices: slot `{item.xxx}`
+ * variables, `[data-next-bundle-display]` elements, and the
+ * `bundle:price-updated` event consumed by BundleDisplayEnhancer.
+ */
+export function relenderVariables(
+  card: BundleCard,
+  slotTemplate: string,
+  renderCtx: RenderContext,
+  externalSlotsEl: HTMLElement | null,
+  selectedCard: BundleCard | null,
+  selectorId: string | null
+): void {
+  if (slotTemplate) {
+    renderSlotsForCard(card, renderCtx);
+    if (externalSlotsEl && card === selectedCard) {
+      renderSlotsForCard(card, renderCtx, externalSlotsEl);
+    }
+  }
+  if (card.bundlePrice) {
+    updateCardDisplayElements(card, card.bundlePrice);
+    // When a selectorId is set, BundleDisplayEnhancer may use
+    // "bundle.{selectorId}.property" — fire an additional event so those
+    // displays update when the selected card's price resolves.
+    if (selectorId && card === selectedCard) {
+      document.dispatchEvent(
+        new CustomEvent('bundle:price-updated', {
+          detail: { selectorId },
+        })
+      );
+    }
+  }
+}
+
+/** Re-renders a card's slots into the external slots container, if configured. */
+export function renderExternalSlotsForCard(
+  card: BundleCard,
+  renderCtx: RenderContext,
+  externalSlotsEl: HTMLElement | null,
+  slotTemplate: string
+): void {
+  if (!externalSlotsEl || !slotTemplate) return;
+  renderSlotsForCard(card, renderCtx, externalSlotsEl);
 }

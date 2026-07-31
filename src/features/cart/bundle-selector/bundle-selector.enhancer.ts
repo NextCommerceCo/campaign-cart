@@ -13,47 +13,39 @@
 import { BaseEnhancer } from '@/core/base/base-enhancer';
 import { useCartStore } from '@/state/cart';
 import { useCheckoutStore } from '@/state/checkout';
-import { useCampaignStore } from '@/state/campaign';
 import type { CartState } from '@/types/global';
 
 import type {
   BundleCard,
   BundleCardPublicState,
-  BundleDef,
-  BundleItem,
-  BundlePackageState,
-  BundleSlot,
+  CardRegistrationContext,
   ClassNames,
   HandlerContext,
   PriceContext,
   RenderContext,
 } from './bundle-selector.types';
 import {
-  renderBundleTemplate,
-  renderSlotsForCard,
-  updateCardDisplayElements,
+  autoRenderBundleCards,
+  relenderVariables,
+  renderExternalSlotsForCard,
 } from './bundle-selector.renderer';
 import {
-  applyBundle,
-  applyBundleQuantityChange,
   applyEffectiveChange,
-  applyVoucherSwap,
-  handleCardClick,
   handleSelectVariantChange,
   handleVariantOptionClick,
   onVoucherApplied,
-  setShippingMethod,
+  syncCardsWithCart,
 } from './bundle-selector.handlers';
 import { fetchAndUpdateBundlePrice } from './bundle-selector.price';
 import {
-  extractNestedSlotTemplate,
-  extractNestedVariantTemplates,
+  attachBundleAccessors,
+  getAllKnownBundleVouchers,
   getEffectiveItems,
-  makePackageState,
-  parseVouchers,
-  pickDefaultCard,
+  parseClassNames,
+  pickAndLogDefaultCard,
+  resolveBundleTemplates,
 } from './bundle-selector.state';
-import { setupQuantityControls } from '@/features/cart/shared/quantity-controls';
+import { registerCard, scanCards } from './bundle-selector.cards';
 
 export class BundleSelectorEnhancer extends BaseEnhancer {
   private static readonly _instances = new Set<BundleSelectorEnhancer>();
@@ -75,7 +67,8 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
   private mutationObserver: MutationObserver | null = null;
   private boundVariantOptionClick: ((e: Event) => void) | null = null;
   private boundCurrencyChangeHandler: (() => void) | null = null;
-  private boundDefaultPropertyBlurHandler: ((e: FocusEvent) => void) | null = null;
+  private boundDefaultPropertyBlurHandler: ((e: FocusEvent) => void) | null =
+    null;
   private isApplyingRef = { value: false };
   private includeShipping: boolean = false;
   private selectorId: string | null = null;
@@ -87,118 +80,49 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
   public async initialize(): Promise<void> {
     this.validateElement();
     BundleSelectorEnhancer._instances.add(this);
-    this.classNames = this.parseClassNames();
+    this.classNames = parseClassNames(this.element);
 
-    this.isUpsellContext = this.element.hasAttribute('data-next-upsell-context');
+    this.isUpsellContext = this.element.hasAttribute(
+      'data-next-upsell-context'
+    );
     // Upsell context is always select mode — no cart writes on selection.
     this.mode = this.isUpsellContext
       ? 'select'
-      : ((this.getAttribute('data-next-selection-mode') ?? 'swap') as 'swap' | 'select');
-    this.includeShipping = this.getAttribute('data-next-include-shipping') === 'true';
+      : ((this.getAttribute('data-next-selection-mode') ?? 'swap') as
+          | 'swap'
+          | 'select');
+    this.includeShipping =
+      this.getAttribute('data-next-include-shipping') === 'true';
 
     // ── External slots container ────────────────────────────────────────────────
     const selectorId = this.getAttribute('data-next-selector-id');
     this.selectorId = selectorId;
     if (selectorId) {
       this.externalSlotsEl = document.querySelector<HTMLElement>(
-        `[data-next-bundle-slots-for="${selectorId}"]`,
+        `[data-next-bundle-slots-for="${selectorId}"]`
       );
     }
 
-    // ── Card template ──────────────────────────────────────────────────────────
-    // Resolution order: id attribute → inline HTML attribute → direct <template>
-    // child of the container (`this.element`). The child fallback lets authors
-    // write native HTML without assigning template ids.
-    const templateId = this.getAttribute('data-next-bundle-template-id');
-    const templateAttr = this.getAttribute('data-next-bundle-template');
-    if (templateId) {
-      this.template = document.getElementById(templateId)?.innerHTML.trim() ?? '';
-    } else if (templateAttr != null) {
-      this.template = templateAttr;
-    } else {
-      const inline = this.element.querySelector<HTMLTemplateElement>(':scope > template');
-      this.template = inline?.innerHTML.trim() ?? '';
-    }
-
-    // ── Slot template ──────────────────────────────────────────────────────────
-    // Resolution order: id attribute → inline HTML attribute → direct <template>
-    // child of an external slots container → nested <template> inside the card
-    // template's [data-next-bundle-slots] placeholder. The nested fallback lets
-    // authors keep card and slot markup co-located without setting any
-    // template id or HTML string attribute.
-    const slotTemplateId = this.getAttribute('data-next-bundle-slot-template-id');
-    const slotTemplateAttr = this.getAttribute('data-next-bundle-slot-template');
-    if (slotTemplateId) {
-      this.slotTemplate = document.getElementById(slotTemplateId)?.innerHTML.trim() ?? '';
-    } else if (slotTemplateAttr != null) {
-      this.slotTemplate = slotTemplateAttr;
-    } else if (this.externalSlotsEl) {
-      const inline = this.externalSlotsEl.querySelector<HTMLTemplateElement>(':scope > template');
-      this.slotTemplate = inline?.innerHTML.trim() ?? '';
-    }
-
-    if (!this.slotTemplate && this.template) {
-      const { card, slot } = extractNestedSlotTemplate(this.template);
-      if (slot) {
-        this.template = card;
-        this.slotTemplate = slot;
-        this.logger.debug(
-          'Extracted nested slot template from card template [data-next-bundle-slots]',
-        );
-      }
-    }
-
-    // ── Custom variant option template ─────────────────────────────────────────
-    const variantOptionTemplateId = this.getAttribute('data-next-variant-option-template-id');
-    if (variantOptionTemplateId) {
-      this.variantOptionTemplate =
-        document.getElementById(variantOptionTemplateId)?.innerHTML.trim() ?? '';
-    }
-
-    // ── Custom variant selector template ───────────────────────────────────────
-    const variantSelectorTemplateId = this.getAttribute(
-      'data-next-variant-selector-template-id',
+    // ── Card / slot / variant templates ─────────────────────────────────────────
+    const resolved = resolveBundleTemplates(
+      this.element,
+      this.externalSlotsEl,
+      this.logger
     );
-    if (variantSelectorTemplateId) {
-      this.variantSelectorTemplate =
-        document.getElementById(variantSelectorTemplateId)?.innerHTML.trim() ?? '';
-    }
-
-    // ── Extract variant templates nested inside the slot template ──────────────
-    // When authors nest <template>s inside [data-next-variant-selectors] and
-    // [data-next-variant-options] within the slot template, pull them out and
-    // strip them from the slot template HTML. Explicit id/attribute templates
-    // take precedence and suppress extraction.
-    if (this.slotTemplate && (!this.variantSelectorTemplate || !this.variantOptionTemplate)) {
-      const { slot, variantSelector, variantOption } = extractNestedVariantTemplates(
-        this.slotTemplate,
-      );
-      this.slotTemplate = slot;
-      if (!this.variantSelectorTemplate && variantSelector) {
-        this.variantSelectorTemplate = variantSelector;
-      }
-      if (!this.variantOptionTemplate && variantOption) {
-        this.variantOptionTemplate = variantOption;
-      }
-    }
+    this.template = resolved.template;
+    this.slotTemplate = resolved.slotTemplate;
+    this.variantOptionTemplate = resolved.variantOptionTemplate;
+    this.variantSelectorTemplate = resolved.variantSelectorTemplate;
 
     // ── Auto-render bundle cards from JSON ─────────────────────────────────────
     const bundlesAttr = this.getAttribute('data-next-bundles');
     if (bundlesAttr && this.template) {
-      try {
-        const parsed: unknown = JSON.parse(bundlesAttr);
-        if (!Array.isArray(parsed)) {
-          this.logger.warn('data-next-bundles must be a JSON array, ignoring auto-render');
-        } else {
-          this.element.innerHTML = '';
-          for (const def of parsed as BundleDef[]) {
-            const el = renderBundleTemplate(this.template, def, this.logger);
-            if (el) this.element.appendChild(el);
-          }
-        }
-      } catch {
-        this.logger.warn('Invalid JSON in data-next-bundles, ignoring auto-render', bundlesAttr);
-      }
+      autoRenderBundleCards(
+        this.element,
+        bundlesAttr,
+        this.template,
+        this.logger
+      );
     }
 
     // ── Delegated click handler for custom variant options ─────────────────────
@@ -213,23 +137,19 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
       }
     }
 
-    this.scanCards();
+    scanCards(this.element, this.cards, this.makeCardsContext());
     this.setupMutationObserver();
 
-    (this.element as unknown as Record<string, unknown>)['_getSelectedBundleItems'] = () => {
-      if (!this.selectedCard) return null;
-      const needsVariant = this.selectedCard.slots.some(
-        s => s.configurable && !s.variantSelected,
-      );
-      return needsVariant ? null : getEffectiveItems(this.selectedCard);
-    };
-
-    (this.element as unknown as Record<string, unknown>)['_getSelectedBundleVouchers'] = () =>
-      this.selectedCard?.vouchers ?? [];
+    attachBundleAccessors(this.element, () => this.selectedCard);
 
     if (this.isUpsellContext) {
       // No cart sync in upsell context — just pre-select the default card.
-      this.initializeBundleSelection();
+      const cardToSelect = pickAndLogDefaultCard(
+        this.cards,
+        this.selectorId,
+        this.logger
+      );
+      if (cardToSelect) this.selectCard(cardToSelect);
     } else {
       this.subscribe(useCartStore, this.syncWithCart.bind(this));
       this.syncWithCart(useCartStore.getState());
@@ -249,19 +169,21 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
       if (!changed) return;
 
       prevCheckoutVouchers = next;
-      if (this.voucherChangeTimeout !== null) clearTimeout(this.voucherChangeTimeout);
+      if (this.voucherChangeTimeout !== null)
+        clearTimeout(this.voucherChangeTimeout);
       this.voucherChangeTimeout = setTimeout(() => {
         this.voucherChangeTimeout = null;
         const allBundleVouchers = this.getAllKnownBundleVouchers();
         onVoucherApplied(next, prev, this.cards, allBundleVouchers, card =>
-          this.calculateAndRenderPrice(card),
+          this.calculateAndRenderPrice(card)
         );
       }, 150);
     });
 
     // Re-fetch prices when the active currency changes (debounced)
     this.boundCurrencyChangeHandler = () => {
-      if (this.currencyChangeTimeout !== null) clearTimeout(this.currencyChangeTimeout);
+      if (this.currencyChangeTimeout !== null)
+        clearTimeout(this.currencyChangeTimeout);
       this.currencyChangeTimeout = setTimeout(() => {
         this.currencyChangeTimeout = null;
         for (const card of this.cards) {
@@ -269,7 +191,10 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
         }
       }, 150);
     };
-    document.addEventListener('next:currency-changed', this.boundCurrencyChangeHandler);
+    document.addEventListener(
+      'next:currency-changed',
+      this.boundCurrencyChangeHandler
+    );
 
     // Trigger applyEffectiveChange when user blurs a page-level default property input.
     // Uses capture phase so the blur event (which doesn't bubble) is caught.
@@ -281,7 +206,11 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
         if (!card) return;
         void applyEffectiveChange(card, this.makeHandlerContext());
       };
-      document.addEventListener('blur', this.boundDefaultPropertyBlurHandler, true);
+      document.addEventListener(
+        'blur',
+        this.boundDefaultPropertyBlurHandler,
+        true
+      );
     }
 
     for (const card of this.cards) {
@@ -305,214 +234,17 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
    */
   private async calculateAndRenderPrice(card: BundleCard): Promise<void> {
     await fetchAndUpdateBundlePrice(card, this.makePriceContext());
-    this.relenderVariables(card);
-  }
-
-  /**
-   * Phase 5 — RelenderVariable: updates all DOM that depends on calculated prices.
-   * Covers slot {item.xxx} variables, [data-next-bundle-display] elements,
-   * and the bundle:price-updated event for BundleDisplayEnhancer.
-   */
-  private relenderVariables(card: BundleCard): void {
-    if (this.slotTemplate) {
-      renderSlotsForCard(card, this.makeRenderContext());
-      if (this.externalSlotsEl && card === this.selectedCard) {
-        renderSlotsForCard(card, this.makeRenderContext(), this.externalSlotsEl);
-      }
-    }
-    if (card.bundlePrice) {
-      updateCardDisplayElements(card, card.bundlePrice);
-      // When a selectorId is set, BundleDisplayEnhancer may use
-      // "bundle.{selectorId}.property" — fire an additional event so those
-      // displays update when the selected card's price resolves.
-      if (this.selectorId && card === this.selectedCard) {
-        document.dispatchEvent(
-          new CustomEvent('bundle:price-updated', {
-            detail: { selectorId: this.selectorId },
-          }),
-        );
-      }
-    }
+    relenderVariables(
+      card,
+      this.slotTemplate,
+      this.makeRenderContext(),
+      this.externalSlotsEl,
+      this.selectedCard,
+      this.selectorId
+    );
   }
 
   // ─── Card registration ────────────────────────────────────────────────────────
-
-  private scanCards(): void {
-    this.element.querySelectorAll<HTMLElement>('[data-next-bundle-card]').forEach(el => {
-      if (!this.cards.find(c => c.element === el)) this.registerCard(el);
-    });
-  }
-
-  private registerCard(el: HTMLElement): void {
-    const bundleId = el.getAttribute('data-next-bundle-id');
-    if (!bundleId) {
-      this.logger.warn('Bundle card is missing data-next-bundle-id', el);
-      return;
-    }
-
-    const itemsAttr = el.getAttribute('data-next-bundle-items');
-    if (!itemsAttr) {
-      this.logger.warn(`Bundle card "${bundleId}" is missing data-next-bundle-items`, el);
-      return;
-    }
-
-    let items: BundleItem[];
-    try {
-      items = JSON.parse(itemsAttr);
-    } catch {
-      this.logger.warn(`Invalid JSON in data-next-bundle-items for bundle "${bundleId}"`, el);
-      return;
-    }
-
-    if (!Array.isArray(items) || items.length === 0) {
-      this.logger.warn(`Bundle "${bundleId}" has no items`, el);
-      return;
-    }
-
-    const name = el.getAttribute('data-next-bundle-name') ?? '';
-    const isPreSelected = el.getAttribute('data-next-selected') === 'true';
-    const vouchers = parseVouchers(el.getAttribute('data-next-bundle-vouchers'), this.logger);
-    const shippingId = el.getAttribute('data-next-shipping-id') ?? undefined;
-
-    // Bundle-level quantity. Defaults preserve today's behavior when the
-    // new attrs are absent: multiplier = 1, stepper stays disabled because
-    // no stepper controls exist in the DOM.
-    const parsePositiveInt = (attr: string | null, fallback: number): number => {
-      const n = attr != null ? parseInt(attr, 10) : NaN;
-      return Number.isFinite(n) && n > 0 ? n : fallback;
-    };
-    const minQuantity = parsePositiveInt(el.getAttribute('data-next-min-quantity'), 1);
-    const maxQuantity = parsePositiveInt(el.getAttribute('data-next-max-quantity'), 999);
-    const initialQty = parsePositiveInt(el.getAttribute('data-next-quantity'), 1);
-    const bundleQuantity = Math.min(Math.max(initialQty, minQuantity), maxQuantity);
-
-    const slots: BundleSlot[] = [];
-    let slotIdx = 0;
-    for (const item of items) {
-      if (item.configurable && item.quantity > 1) {
-        for (let u = 0; u < item.quantity; u++) {
-          slots.push({
-            slotIndex: slotIdx++,
-            unitIndex: u,
-            originalPackageId: item.packageId,
-            activePackageId: item.packageId,
-            quantity: 1,
-            noSlot: item.noSlot,
-            excludeProperties: item.excludeProperties,
-            configurable: true,
-            variantSelected: false,
-          });
-        }
-      } else {
-        slots.push({
-          slotIndex: slotIdx++,
-          unitIndex: 0,
-          originalPackageId: item.packageId,
-          activePackageId: item.packageId,
-          quantity: item.quantity,
-          noSlot: item.noSlot,
-          excludeProperties: item.excludeProperties,
-          configurable: !!item.configurable,
-          variantSelected: false,
-        });
-      }
-    }
-
-    // Populate bundle-owned package states from campaign packages (provisional baseline)
-    const allPackages = useCampaignStore.getState().packages ?? [];
-    const packageStates = new Map<number, BundlePackageState>();
-    for (const slot of slots) {
-      if (!packageStates.has(slot.activePackageId)) {
-        const pkg = allPackages.find(p => p.ref_id === slot.activePackageId);
-        if (pkg) packageStates.set(slot.activePackageId, makePackageState(pkg));
-      }
-    }
-
-    // A configurable slot whose initial package already has specific variant
-    // attribute values is already a concrete selection — mark it as selected so
-    // _getSelectedBundleItems() doesn't block submission before the user
-    // interacts with any dropdown.
-    for (const slot of slots) {
-      if (slot.configurable && !slot.variantSelected) {
-        const pkg = allPackages.find(p => p.ref_id === slot.activePackageId);
-        if ((pkg?.product_variant_attribute_values?.length ?? 0) > 0) {
-          slot.variantSelected = true;
-        }
-      }
-    }
-
-    const card: BundleCard = {
-      element: el,
-      bundleId,
-      name,
-      items,
-      slots,
-      isPreSelected,
-      vouchers,
-      shippingId,
-      packageStates,
-      bundlePrice: null,
-      slotVarsCache: new Map(),
-      offerDiscounts: [],
-      voucherDiscounts: [],
-      bundleQuantity,
-      minQuantity,
-      maxQuantity,
-      qtyDebounceTimeout: null,
-    };
-    this.cards.push(card);
-    el.classList.add(this.classNames.bundleCard);
-
-    if (this.slotTemplate) {
-      renderSlotsForCard(card, this.makeRenderContext());
-    }
-
-    const handler = (e: Event) => {
-      const target = e.target as HTMLElement;
-      if (
-        target.closest(
-          'select, [data-next-variant-option], [data-next-quantity-increase], [data-next-quantity-decrease], [data-next-quantity-display]',
-        )
-      ) {
-        return;
-      }
-      void handleCardClick(e, card, this.selectedCard, this.makeHandlerContext());
-    };
-    this.clickHandlers.set(el, handler);
-    el.addEventListener('click', handler);
-
-    // Wire inline bundle-quantity controls. Host lookup covers three locations:
-    // the card element itself, the external slots container (for pages that
-    // render slots outside the selector), and any element marked
-    // `[data-next-bundle-qty-for="{selectorId}"]` (for steppers sitting
-    // entirely outside both — e.g. a product-detail page where the selector
-    // is hidden and the stepper lives next to an Add-to-Cart button).
-    const hostEls: HTMLElement[] = [el];
-    if (this.externalSlotsEl) hostEls.push(this.externalSlotsEl);
-    if (this.selectorId) {
-      document
-        .querySelectorAll<HTMLElement>(`[data-next-bundle-qty-for="${this.selectorId}"]`)
-        .forEach(host => {
-          if (!hostEls.includes(host)) hostEls.push(host);
-        });
-    }
-    const refresh = setupQuantityControls({
-      hostEls,
-      getQty: () => card.bundleQuantity,
-      setQty: n => {
-        card.bundleQuantity = n;
-      },
-      min: minQuantity,
-      max: maxQuantity,
-      onChange: () => {
-        void applyBundleQuantityChange(card, this.makeHandlerContext());
-      },
-      handlers: this.quantityHandlers,
-    });
-    this.quantityRefreshers.set(el, refresh);
-
-    this.logger.debug(`Registered bundle card "${bundleId}"`, { itemCount: items.length });
-  }
 
   private setupMutationObserver(): void {
     this.mutationObserver = new MutationObserver(mutations => {
@@ -521,15 +253,24 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
         mutation.addedNodes.forEach(node => {
           if (!(node instanceof HTMLElement)) return;
           if (node.hasAttribute('data-next-bundle-card')) {
-            if (!this.cards.find(c => c.element === node)) this.registerCard(node);
+            if (!this.cards.find(c => c.element === node)) {
+              registerCard(node, this.cards, this.makeCardsContext());
+            }
           }
-          node.querySelectorAll<HTMLElement>('[data-next-bundle-card]').forEach(el => {
-            if (!this.cards.find(c => c.element === el)) this.registerCard(el);
-          });
+          node
+            .querySelectorAll<HTMLElement>('[data-next-bundle-card]')
+            .forEach(el => {
+              if (!this.cards.find(c => c.element === el)) {
+                registerCard(el, this.cards, this.makeCardsContext());
+              }
+            });
         });
       }
     });
-    this.mutationObserver.observe(this.element, { childList: true, subtree: true });
+    this.mutationObserver.observe(this.element, {
+      childList: true,
+      subtree: true,
+    });
   }
 
   // ─── Selection state ──────────────────────────────────────────────────────────
@@ -547,7 +288,12 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
       selectorId: this.selectorId ?? '',
       items: getEffectiveItems(card),
     });
-    this.renderExternalSlots(card);
+    renderExternalSlotsForCard(
+      card,
+      this.makeRenderContext(),
+      this.externalSlotsEl,
+      this.slotTemplate
+    );
 
     // Notify BundleDisplayEnhancer (which listens on document, not EventBus).
     // Fires bundle:price-updated with the selectorId so displays using
@@ -557,14 +303,9 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
       document.dispatchEvent(
         new CustomEvent('bundle:price-updated', {
           detail: { selectorId: this.selectorId },
-        }),
+        })
       );
     }
-  }
-
-  private renderExternalSlots(card: BundleCard): void {
-    if (!this.externalSlotsEl || !this.slotTemplate) return;
-    renderSlotsForCard(card, this.makeRenderContext(), this.externalSlotsEl);
   }
 
   public getSelectedCard(): BundleCard | null {
@@ -601,79 +342,15 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     return null;
   }
 
-  // ─── Upsell context selection ─────────────────────────────────────────────────
-
-  /**
-   * Run the default-card precedence (forceBundleId → data-next-selected → cards[0])
-   * and emit the appropriate log messages for the outcome.
-   */
-  private pickAndLogDefaultCard(): BundleCard | null {
-    const raw = (window as any)._nextForceBundleId;
-    const choice = pickDefaultCard(this.cards, typeof raw === 'string' ? raw : null, this.selectorId);
-    if (choice.forcedMiss) {
-      this.logger.warn(
-        `forceBundleId="${choice.forcedMiss}" did not match any card in this selector — falling back to default`,
-      );
-    }
-    if (choice.fromForce && choice.card) {
-      this.logger.info(
-        `Bundle pre-selected via forceBundleId: "${choice.card.bundleId}"`,
-        this.selectorId ? { selectorId: this.selectorId } : undefined,
-      );
-    } else if (choice.usedFirstCardFallback) {
-      this.logger.warn(
-        'No card has data-next-selected="true" — auto-selecting first card. ' +
-        'Add data-next-selected="true" to the default card to suppress this warning.',
-      );
-    }
-    return choice.card;
-  }
-
-  /**
-   * Pre-selects the default card without writing to the cart.
-   * Used when isUpsellContext is true to give the user a visual starting selection.
-   */
-  private initializeBundleSelection(): void {
-    const cardToSelect = this.pickAndLogDefaultCard();
-    if (cardToSelect) this.selectCard(cardToSelect);
-  }
-
   // ─── Cart sync ────────────────────────────────────────────────────────────────
 
   private syncWithCart(cartState: CartState): void {
-    for (const card of this.cards) {
-      const effectiveItems = getEffectiveItems(card);
-      // Check both packageId AND selectorId so a package shared across selectors
-      // doesn't cause incorrect "in cart" state on the wrong selector.
-      const allItemsInCart = effectiveItems.every(bi => {
-        const ci = cartState.items.find(
-          i => i.packageId === bi.packageId && i.selectorId === this.selectorId,
-        );
-        return ci != null && ci.quantity >= bi.quantity;
-      });
-      card.element.classList.toggle(this.classNames.inCart, allItemsInCart);
-      card.element.setAttribute('data-next-in-cart', String(allItemsInCart));
-    }
-
-    if (!this.selectedCard) {
-      const cardToSelect = this.pickAndLogDefaultCard();
-      if (cardToSelect) {
-        this.selectCard(cardToSelect);
-        const initVouchers = cardToSelect.vouchers.length
-          ? applyVoucherSwap(null, cardToSelect)
-          : Promise.resolve();
-        if (this.mode === 'swap') {
-          void initVouchers.then(async () => {
-            const success = await applyBundle(null, cardToSelect, this.makeHandlerContext());
-            if (success && cardToSelect.shippingId) {
-              await setShippingMethod(cardToSelect.shippingId, { logger: this.logger });
-            }
-          });
-        } else {
-          void initVouchers;
-        }
-      }
-    }
+    syncCardsWithCart(
+      cartState,
+      this.cards,
+      () => pickAndLogDefaultCard(this.cards, this.selectorId, this.logger),
+      this.makeHandlerContext()
+    );
   }
 
   public update(): void {
@@ -691,8 +368,15 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
       logger: this.logger,
       classNames: this.classNames,
       onSelectChange: (select, bundleId, slotIndex) =>
-        handleSelectVariantChange(select, bundleId, slotIndex, this.cards, this.makeHandlerContext()),
-      onPropertyBlur: card => void applyEffectiveChange(card, this.makeHandlerContext()),
+        handleSelectVariantChange(
+          select,
+          bundleId,
+          slotIndex,
+          this.cards,
+          this.makeHandlerContext()
+        ),
+      onPropertyBlur: card =>
+        void applyEffectiveChange(card, this.makeHandlerContext()),
     };
   }
 
@@ -722,43 +406,42 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     };
   }
 
-  // ─── Small helpers ────────────────────────────────────────────────────────────
-
-  private parseClassNames(): ClassNames {
-    const get = (key: string, fallback: string) =>
-      this.getAttribute(`data-next-class-${key}`) ?? fallback;
+  private makeCardsContext(): CardRegistrationContext {
     return {
-      bundleCard: get('bundle-card', 'next-bundle-card'),
-      selected: get('selected', 'next-selected'),
-      inCart: get('in-cart', 'next-in-cart'),
-      variantSelected: get('variant-selected', 'next-variant-selected'),
-      variantUnavailable: get('variant-unavailable', 'next-variant-unavailable'),
-      bundleSlot: get('bundle-slot', 'next-bundle-slot'),
-      slotVariantGroup: get('slot-variant-group', 'next-slot-variant-group'),
+      classNames: this.classNames,
+      slotTemplate: this.slotTemplate,
+      externalSlotsEl: this.externalSlotsEl,
+      selectorId: this.selectorId,
+      logger: this.logger,
+      clickHandlers: this.clickHandlers,
+      quantityHandlers: this.quantityHandlers,
+      quantityRefreshers: this.quantityRefreshers,
+      makeRenderContext: () => this.makeRenderContext(),
+      makeHandlerContext: () => this.makeHandlerContext(),
     };
   }
 
-  /** Vouchers defined across this instance's bundle cards. */
-  private getBundleVouchers(): string[] {
-    return this.cards.flatMap(c => c.vouchers);
-  }
+  // ─── Small helpers ────────────────────────────────────────────────────────────
 
   /** Vouchers defined across ALL live BundleSelectorEnhancer instances. */
   private getAllKnownBundleVouchers(): Set<string> {
-    return new Set(
-      [...BundleSelectorEnhancer._instances].flatMap(inst => inst.getBundleVouchers()),
+    return getAllKnownBundleVouchers(
+      [...BundleSelectorEnhancer._instances].map(inst => inst.cards)
     );
   }
-
 
   // ─── Cleanup ──────────────────────────────────────────────────────────────────
 
   protected override cleanupEventListeners(): void {
     this.clickHandlers.forEach((h, el) => el.removeEventListener('click', h));
     this.clickHandlers.clear();
-    this.selectHandlers.forEach((h, sel) => sel.removeEventListener('change', h));
+    this.selectHandlers.forEach((h, sel) =>
+      sel.removeEventListener('change', h)
+    );
     this.selectHandlers.clear();
-    this.quantityHandlers.forEach((h, el) => el.removeEventListener('click', h));
+    this.quantityHandlers.forEach((h, el) =>
+      el.removeEventListener('click', h)
+    );
     this.quantityHandlers.clear();
     this.quantityRefreshers.clear();
     for (const card of this.cards) {
@@ -769,7 +452,10 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
     }
     if (this.boundVariantOptionClick) {
       this.element.removeEventListener('click', this.boundVariantOptionClick);
-      this.externalSlotsEl?.removeEventListener('click', this.boundVariantOptionClick);
+      this.externalSlotsEl?.removeEventListener(
+        'click',
+        this.boundVariantOptionClick
+      );
       this.boundVariantOptionClick = null;
     }
     if (this.voucherChangeTimeout !== null) {
@@ -781,11 +467,18 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
       this.currencyChangeTimeout = null;
     }
     if (this.boundCurrencyChangeHandler) {
-      document.removeEventListener('next:currency-changed', this.boundCurrencyChangeHandler);
+      document.removeEventListener(
+        'next:currency-changed',
+        this.boundCurrencyChangeHandler
+      );
       this.boundCurrencyChangeHandler = null;
     }
     if (this.boundDefaultPropertyBlurHandler) {
-      document.removeEventListener('blur', this.boundDefaultPropertyBlurHandler, true);
+      document.removeEventListener(
+        'blur',
+        this.boundDefaultPropertyBlurHandler,
+        true
+      );
       this.boundDefaultPropertyBlurHandler = null;
     }
     if (this.mutationObserver) {
@@ -801,8 +494,8 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
       c.element.classList.remove(
         this.classNames.bundleCard,
         this.classNames.selected,
-        this.classNames.inCart,
-      ),
+        this.classNames.inCart
+      )
     );
     this.cards = [];
   }

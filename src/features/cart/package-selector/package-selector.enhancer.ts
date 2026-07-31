@@ -95,19 +95,23 @@
  */
 
 import { BaseEnhancer } from '@/core/base/base-enhancer';
-import { useCartStore, cartOperations } from '@/state/cart';
-import { useCampaignStore } from '@/state/campaign';
+import { useCartStore } from '@/state/cart';
 import { useCheckoutStore } from '@/state/checkout';
-import type { CartState, SelectorItem } from '@/types/global';
-import type { PackageDef, SelectorHandlerContext } from './package-selector.types';
+import type { SelectorItem } from '@/types/global';
+import type {
+  PackageDef,
+  SelectorHandlerContext,
+} from './package-selector.types';
 import { renderPackageTemplate } from './package-selector.renderer';
 import { fetchAndUpdatePrice } from './package-selector.price';
+import { syncWithCart } from './package-selector.display';
 import {
-  selectItem,
-  handleCardClick,
-  updateCart,
-  setupQuantityControls,
-} from './package-selector.handlers';
+  scanCards,
+  registerCard,
+  handlePackageIdChange,
+  handleCardRemoval,
+  initializeSelection,
+} from './package-selector.cards';
 
 export class PackageSelectorEnhancer extends BaseEnhancer {
   private selectorId: string = '';
@@ -132,12 +136,17 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
       this.getAttribute('data-next-id') ??
       `selector-${Date.now()}`;
 
-    this.isUpsellContext = this.element.hasAttribute('data-next-upsell-context');
+    this.isUpsellContext = this.element.hasAttribute(
+      'data-next-upsell-context'
+    );
     // Upsell context is always select mode — no cart writes on selection.
     this.mode = this.isUpsellContext
       ? 'select'
-      : ((this.getAttribute('data-next-selection-mode') ?? 'swap') as 'swap' | 'select');
-    this.includeShipping = this.getAttribute('data-next-include-shipping') === 'true';
+      : ((this.getAttribute('data-next-selection-mode') ?? 'swap') as
+          | 'swap'
+          | 'select');
+    this.includeShipping =
+      this.getAttribute('data-next-include-shipping') === 'true';
 
     // Resolution order: id attribute → inline HTML attribute → direct <template>
     // child of the container (`this.element`). The child fallback lets authors
@@ -145,11 +154,13 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
     const templateId = this.getAttribute('data-next-package-template-id');
     const templateAttr = this.getAttribute('data-next-package-template');
     if (templateId) {
-      this.template = document.getElementById(templateId)?.innerHTML.trim() ?? '';
+      this.template =
+        document.getElementById(templateId)?.innerHTML.trim() ?? '';
     } else if (templateAttr != null) {
       this.template = templateAttr;
     } else {
-      const inline = this.element.querySelector<HTMLTemplateElement>(':scope > template');
+      const inline =
+        this.element.querySelector<HTMLTemplateElement>(':scope > template');
       this.template = inline?.innerHTML.trim() ?? '';
     }
 
@@ -158,7 +169,9 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
       try {
         const parsed: unknown = JSON.parse(packagesAttr);
         if (!Array.isArray(parsed)) {
-          this.logger.warn('data-next-packages must be a JSON array, ignoring auto-render');
+          this.logger.warn(
+            'data-next-packages must be a JSON array, ignoring auto-render'
+          );
         } else {
           this.element.innerHTML = '';
           for (const def of parsed as PackageDef[]) {
@@ -167,27 +180,40 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
           }
         }
       } catch {
-        this.logger.warn('Invalid JSON in data-next-packages, ignoring auto-render', packagesAttr);
+        this.logger.warn(
+          'Invalid JSON in data-next-packages, ignoring auto-render',
+          packagesAttr
+        );
       }
     }
 
-    this.scanCards();
+    scanCards(
+      this.makeHandlerContext(),
+      this.clickHandlers,
+      this.quantityHandlers
+    );
     this.setupMutationObserver();
 
     (this.element as any)._getSelectedItem = () => this.selectedItemRef.value;
-    (this.element as any)._getSelectedPackageId = () => this.selectedItemRef.value?.packageId;
+    (this.element as any)._getSelectedPackageId = () =>
+      this.selectedItemRef.value?.packageId;
 
     if (this.isUpsellContext) {
       // No cart sync in upsell context — just pre-select the default item.
-      this.initializeSelection();
+      initializeSelection(this.makeHandlerContext());
     } else {
-      this.subscribe(useCartStore, this.syncWithCart.bind(this));
-      this.syncWithCart(useCartStore.getState());
+      this.subscribe(useCartStore, state =>
+        syncWithCart(state, this.makeHandlerContext())
+      );
+      syncWithCart(useCartStore.getState(), this.makeHandlerContext());
 
       let prevVouchers = useCheckoutStore.getState().vouchers;
       this.subscribe(useCheckoutStore, state => {
         const next = state.vouchers;
-        if (next.length !== prevVouchers.length || next.some((v, i) => v !== prevVouchers[i])) {
+        if (
+          next.length !== prevVouchers.length ||
+          next.some((v, i) => v !== prevVouchers[i])
+        ) {
           prevVouchers = next;
           for (const item of this.items) {
             void fetchAndUpdatePrice(item, this.includeShipping, this.logger);
@@ -197,18 +223,32 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
     }
 
     this.boundCurrencyChangeHandler = () => {
-      if (this.currencyChangeTimeout !== null) clearTimeout(this.currencyChangeTimeout);
+      if (this.currencyChangeTimeout !== null)
+        clearTimeout(this.currencyChangeTimeout);
       this.currencyChangeTimeout = setTimeout(() => {
         this.currencyChangeTimeout = null;
         for (const item of this.items) {
-          void fetchAndUpdatePrice(item, this.includeShipping, this.logger, this.isUpsellContext);
+          void fetchAndUpdatePrice(
+            item,
+            this.includeShipping,
+            this.logger,
+            this.isUpsellContext
+          );
         }
       }, 150);
     };
-    document.addEventListener('next:currency-changed', this.boundCurrencyChangeHandler);
+    document.addEventListener(
+      'next:currency-changed',
+      this.boundCurrencyChangeHandler
+    );
 
     for (const item of this.items) {
-      void fetchAndUpdatePrice(item, this.includeShipping, this.logger, this.isUpsellContext);
+      void fetchAndUpdatePrice(
+        item,
+        this.includeShipping,
+        this.logger,
+        this.isUpsellContext
+      );
     }
 
     this.logger.debug('PackageSelectorEnhancer initialized', {
@@ -217,15 +257,6 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
       isUpsellContext: this.isUpsellContext,
       itemCount: this.items.length,
     });
-  }
-
-  // ─── Upsell context: pre-select default item without touching cart ────────
-
-  private initializeSelection(): void {
-    if (this.selectedItemRef.value) return;
-    const ctx = this.makeHandlerContext();
-    const preSelected = this.items.find(i => i.isPreSelected) ?? this.items[0];
-    if (preSelected) selectItem(preSelected, ctx);
   }
 
   // ─── Context factory ───────────────────────────────────────────────────────
@@ -243,96 +274,63 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
     };
   }
 
-  // ─── Card registration ────────────────────────────────────────────────────
-
-  private scanCards(): void {
-    this.element.querySelectorAll<HTMLElement>('[data-next-selector-card]').forEach(el => {
-      if (!this.items.find(i => i.element === el)) this.registerCard(el);
-    });
-  }
-
-  private registerCard(el: HTMLElement): void {
-    const packageIdAttr = el.getAttribute('data-next-package-id');
-    if (!packageIdAttr) {
-      this.logger.warn('Selector card is missing data-next-package-id', el);
-      return;
-    }
-    const packageId = parseInt(packageIdAttr, 10);
-    if (isNaN(packageId)) {
-      this.logger.warn('Invalid data-next-package-id on selector card', packageIdAttr);
-      return;
-    }
-
-    const existing = this.items.find(i => i.element === el);
-    if (existing) {
-      existing.packageId = packageId;
-      existing.quantity = parseInt(el.getAttribute('data-next-quantity') ?? '1', 10);
-      existing.shippingId = el.getAttribute('data-next-shipping-id') ?? undefined;
-      this.updateItemPackageData(existing);
-      return;
-    }
-
-    const quantity = parseInt(el.getAttribute('data-next-quantity') ?? '1', 10);
-    const isPreSelected = el.getAttribute('data-next-selected') === 'true';
-    const shippingId = el.getAttribute('data-next-shipping-id') ?? undefined;
-
-    const pkg = useCampaignStore.getState().getPackage(packageId);
-    const item: SelectorItem = {
-      element: el,
-      packageId,
-      quantity,
-      price: pkg?.price ? parseFloat(pkg.price) : undefined,
-      name: pkg?.name ?? `Package ${packageId}`,
-      isPreSelected,
-      shippingId,
-    };
-
-    this.items.push(item);
-    el.classList.add('next-selector-card');
-
-    const ctx = this.makeHandlerContext();
-    const handler = (e: Event) => void handleCardClick(e, item, ctx);
-    this.clickHandlers.set(el, handler);
-    el.addEventListener('click', handler);
-
-    setupQuantityControls(item, ctx, this.quantityHandlers);
-
-    this.logger.debug(`Registered selector card for package ${packageId}`);
-  }
-
-  private updateItemPackageData(item: SelectorItem): void {
-    const pkg = useCampaignStore.getState().getPackage(item.packageId);
-    if (pkg) {
-      item.price = pkg.price ? parseFloat(pkg.price) : item.price;
-      item.name = pkg.name ?? item.name;
-    }
-  }
-
   // ─── Mutation observer ────────────────────────────────────────────────────
 
   private setupMutationObserver(): void {
     this.mutationObserver = new MutationObserver(mutations => {
+      const ctx = this.makeHandlerContext();
       for (const mutation of mutations) {
-        if (mutation.type === 'attributes' && mutation.target instanceof HTMLElement) {
+        if (
+          mutation.type === 'attributes' &&
+          mutation.target instanceof HTMLElement
+        ) {
           const target = mutation.target;
           if (
             target.hasAttribute('data-next-selector-card') &&
             mutation.attributeName === 'data-next-package-id'
           ) {
-            this.handlePackageIdChange(target);
+            handlePackageIdChange(
+              target,
+              ctx,
+              this.clickHandlers,
+              this.quantityHandlers
+            );
           }
         }
 
         if (mutation.type === 'childList') {
           mutation.addedNodes.forEach(node => {
             if (!(node instanceof HTMLElement)) return;
-            if (node.hasAttribute('data-next-selector-card')) this.registerCard(node);
-            node.querySelectorAll<HTMLElement>('[data-next-selector-card]').forEach(el => {
-              if (!this.items.find(i => i.element === el)) this.registerCard(el);
-            });
+            if (node.hasAttribute('data-next-selector-card')) {
+              registerCard(
+                node,
+                ctx,
+                this.clickHandlers,
+                this.quantityHandlers
+              );
+            }
+            node
+              .querySelectorAll<HTMLElement>('[data-next-selector-card]')
+              .forEach(el => {
+                if (!ctx.items.find(i => i.element === el)) {
+                  registerCard(
+                    el,
+                    ctx,
+                    this.clickHandlers,
+                    this.quantityHandlers
+                  );
+                }
+              });
           });
           mutation.removedNodes.forEach(node => {
-            if (node instanceof HTMLElement) this.handleCardRemoval(node);
+            if (node instanceof HTMLElement) {
+              handleCardRemoval(
+                node,
+                ctx,
+                this.clickHandlers,
+                this.quantityHandlers
+              );
+            }
           });
         }
       }
@@ -340,125 +338,21 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
 
     this.mutationObserver.observe(this.element, {
       attributes: true,
-      attributeFilter: ['data-next-package-id', 'data-next-quantity', 'data-next-selected'],
+      attributeFilter: [
+        'data-next-package-id',
+        'data-next-quantity',
+        'data-next-selected',
+      ],
       childList: true,
       subtree: true,
     });
   }
 
-  private handlePackageIdChange(el: HTMLElement): void {
-    const item = this.items.find(i => i.element === el);
-    if (!item) {
-      this.registerCard(el);
-      return;
-    }
-    const newIdAttr = el.getAttribute('data-next-package-id');
-    if (!newIdAttr) return;
-    const newId = parseInt(newIdAttr, 10);
-    const oldId = item.packageId;
-    if (newId === oldId) return;
-
-    item.packageId = newId;
-    item.quantity = parseInt(el.getAttribute('data-next-quantity') ?? '1', 10);
-    item.shippingId = el.getAttribute('data-next-shipping-id') ?? undefined;
-    this.updateItemPackageData(item);
-
-    if (this.selectedItemRef.value === item && this.mode === 'swap') {
-      void updateCart({ ...item, packageId: oldId }, item, this.items);
-    }
-
-    this.syncWithCart(useCartStore.getState());
-  }
-
-  private handleCardRemoval(el: HTMLElement): void {
-    const toRemove: HTMLElement[] = [];
-    if (el.hasAttribute('data-next-selector-card')) toRemove.push(el);
-    el.querySelectorAll<HTMLElement>('[data-next-selector-card]').forEach(c => toRemove.push(c));
-
-    for (const cardEl of toRemove) {
-      const idx = this.items.findIndex(i => i.element === cardEl);
-      if (idx === -1) continue;
-      const removed = this.items[idx];
-
-      const ch = this.clickHandlers.get(cardEl);
-      if (ch) { cardEl.removeEventListener('click', ch); this.clickHandlers.delete(cardEl); }
-
-      for (const btn of [
-        cardEl.querySelector<HTMLElement>('[data-next-quantity-increase]'),
-        cardEl.querySelector<HTMLElement>('[data-next-quantity-decrease]'),
-      ]) {
-        if (!btn) continue;
-        const h = this.quantityHandlers.get(btn);
-        if (h) { btn.removeEventListener('click', h); this.quantityHandlers.delete(btn); }
-      }
-
-      this.items.splice(idx, 1);
-
-      if (this.selectedItemRef.value === removed) {
-        this.selectedItemRef.value = null;
-        this.element.removeAttribute('data-selected-package');
-      }
-    }
-  }
-
-  // ─── Cart sync ────────────────────────────────────────────────────────────
-
-  private syncWithCart(cartState: CartState): void {
-    const ctx = this.makeHandlerContext();
-
-    for (const item of this.items) {
-      const inCart = cartState.items.some(
-        ci => ci.packageId === item.packageId || ci.originalPackageId === item.packageId
-      );
-      item.element.classList.toggle('next-in-cart', inCart);
-      item.element.setAttribute('data-next-in-cart', String(inCart));
-
-      if (inCart) {
-        const ci = cartState.items.find(
-          ci => ci.packageId === item.packageId || ci.originalPackageId === item.packageId
-        );
-        if (ci && item.quantity !== ci.quantity) {
-          item.quantity = ci.quantity;
-          const displayEl = item.element.querySelector<HTMLElement>('[data-next-quantity-display]');
-          if (displayEl) displayEl.textContent = String(item.quantity);
-          item.element.setAttribute('data-next-quantity', String(item.quantity));
-        }
-      }
-    }
-
-    if (this.mode === 'swap') {
-      const inCartItem = this.items.find(item =>
-        cartState.items.some(
-          ci => ci.packageId === item.packageId || ci.originalPackageId === item.packageId
-        )
-      );
-      if (inCartItem && this.selectedItemRef.value !== inCartItem) {
-        selectItem(inCartItem, ctx);
-        return;
-      }
-    }
-
-    if (!this.selectedItemRef.value) {
-      const preSelected = this.items.find(i => i.isPreSelected) ?? this.items[0];
-      if (preSelected) {
-        selectItem(preSelected, ctx);
-        if (this.mode === 'swap' && cartState.isEmpty) {
-          void updateCart(null, preSelected, this.items).then(() => {
-            if (preSelected.shippingId) {
-              void cartOperations.setShippingMethod(
-                parseInt(preSelected.shippingId, 10)
-              );
-            }
-          });
-        }
-      }
-    }
-  }
-
   // ─── BaseEnhancer ─────────────────────────────────────────────────────────
 
   public update(): void {
-    if (!this.isUpsellContext) this.syncWithCart(useCartStore.getState());
+    if (!this.isUpsellContext)
+      syncWithCart(useCartStore.getState(), this.makeHandlerContext());
   }
 
   public getSelectedItem(): SelectorItem | null {
@@ -468,14 +362,19 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
   protected override cleanupEventListeners(): void {
     this.clickHandlers.forEach((h, el) => el.removeEventListener('click', h));
     this.clickHandlers.clear();
-    this.quantityHandlers.forEach((h, el) => el.removeEventListener('click', h));
+    this.quantityHandlers.forEach((h, el) =>
+      el.removeEventListener('click', h)
+    );
     this.quantityHandlers.clear();
     if (this.currencyChangeTimeout !== null) {
       clearTimeout(this.currencyChangeTimeout);
       this.currencyChangeTimeout = null;
     }
     if (this.boundCurrencyChangeHandler) {
-      document.removeEventListener('next:currency-changed', this.boundCurrencyChangeHandler);
+      document.removeEventListener(
+        'next:currency-changed',
+        this.boundCurrencyChangeHandler
+      );
       this.boundCurrencyChangeHandler = null;
     }
     if (this.mutationObserver) {
@@ -487,7 +386,11 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
   public override destroy(): void {
     this.cleanupEventListeners();
     this.items.forEach(i =>
-      i.element.classList.remove('next-selector-card', 'next-selected', 'next-in-cart')
+      i.element.classList.remove(
+        'next-selector-card',
+        'next-selected',
+        'next-in-cart'
+      )
     );
     this.items = [];
     super.destroy();

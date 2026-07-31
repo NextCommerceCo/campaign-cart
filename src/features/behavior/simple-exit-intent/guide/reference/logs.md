@@ -21,8 +21,8 @@ Something did not work. Each of these means a visitor saw the wrong thing, or no
 |---|---|---|
 | `Exit intent requires either an image URL or a template name` | `simple-exit-intent.enhancer.ts › ExitIntentEnhancer.setup` | — |
 | `Exit intent template not found: <template data-template="{templateName}">` | `simple-exit-intent.enhancer.ts › ExitIntentEnhancer.setup` | — |
-| `Failed to load exit intent image:` | `simple-exit-intent.enhancer.ts › ExitIntentEnhancer.createImagePopup` | yes |
-| `Exit intent action failed:` | `simple-exit-intent.enhancer.ts › ExitIntentEnhancer.createImagePopup` | yes |
+| `Failed to load exit intent image:` | `simple-exit-intent.renderer.ts › createImagePopup` | yes |
+| `Exit intent action failed:` | `simple-exit-intent.renderer.ts › createImagePopup` | yes |
 
 ## Debug
 
@@ -34,6 +34,6 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 | `Exit intent disabled on mobile device` | `simple-exit-intent.enhancer.ts › ExitIntentEnhancer.setup` | — |
 | `Simple exit intent setup complete` | `simple-exit-intent.enhancer.ts › ExitIntentEnhancer.setup` | — |
 | `Failed to clear session storage:` | `simple-exit-intent.enhancer.ts › ExitIntentEnhancer.reset` | yes |
-| `Failed to save to session storage:` | `simple-exit-intent.enhancer.ts › ExitIntentEnhancer.saveToSessionStorage` | yes |
+| `Failed to save to session storage:` | `simple-exit-intent.handlers.ts › saveToSessionStorage` | yes |
 
 The **Extra context** column says whether the call passes a second argument — an object or an error logged alongside the message. Expand that entry in the console to see it; the message alone will not tell you which element or package was involved.

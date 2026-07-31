@@ -186,7 +186,7 @@ export interface RenderContext {
   onSelectChange: (
     select: HTMLSelectElement,
     bundleId: string,
-    slotIndex: number,
+    slotIndex: number
   ) => Promise<void>;
   /** Called when the user blurs a property input so the cart is updated immediately. */
   onPropertyBlur?: (card: BundleCard) => void;
@@ -210,9 +210,14 @@ export interface HandlerContext {
   selectCard: (card: BundleCard) => void;
   getSelectedCard: () => BundleCard | null;
   fetchAndUpdateBundlePrice: (card: BundleCard) => Promise<void>;
-  emit: <K extends 'bundle:selected' | 'bundle:selection-changed' | 'bundle:quantity-changed'>(
+  emit: <
+    K extends
+      | 'bundle:selected'
+      | 'bundle:selection-changed'
+      | 'bundle:quantity-changed',
+  >(
     event: K,
-    detail: EventMap[K],
+    detail: EventMap[K]
   ) => void;
 }
 
@@ -224,4 +229,19 @@ export interface PriceContext {
   /** When true, passes ?upsell=true to the calculate API for post-purchase pricing. */
   isUpsellContext: boolean;
   logger: Logger;
+}
+
+/** Shared context passed to card discovery/registration functions. */
+export interface CardRegistrationContext {
+  classNames: ClassNames;
+  slotTemplate: string;
+  externalSlotsEl: HTMLElement | null;
+  selectorId: string | null;
+  logger: Logger;
+  clickHandlers: Map<HTMLElement, (e: Event) => void>;
+  quantityHandlers: Map<HTMLElement, (e: Event) => void>;
+  /** Map card → its stepper display-refresh callback (returned by setupQuantityControls). */
+  quantityRefreshers: Map<HTMLElement, () => void>;
+  makeRenderContext: () => RenderContext;
+  makeHandlerContext: () => HandlerContext;
 }

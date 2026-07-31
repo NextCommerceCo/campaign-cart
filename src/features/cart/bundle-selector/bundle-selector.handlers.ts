@@ -1,6 +1,7 @@
 import { useCartStore, cartOperations } from '@/state/cart';
 import { useCheckoutStore } from '@/state/checkout';
 import { useCampaignStore } from '@/state/campaign';
+import type { CartState } from '@/types/global';
 import type { BundleCard, HandlerContext } from './bundle-selector.types';
 import { getEffectiveItems, makePackageState } from './bundle-selector.state';
 import {
@@ -18,7 +19,7 @@ export async function handleCardClick(
   e: Event,
   card: BundleCard,
   previousCard: BundleCard | null,
-  ctx: HandlerContext,
+  ctx: HandlerContext
 ): Promise<void> {
   e.preventDefault();
   if (previousCard === card) return;
@@ -26,19 +27,26 @@ export async function handleCardClick(
 
   if (ctx.isUpsellContext) {
     ctx.selectCard(card);
-    ctx.emit('bundle:selected', { selectorId: ctx.selectorId ?? '', items: getEffectiveItems(card) });
+    ctx.emit('bundle:selected', {
+      selectorId: ctx.selectorId ?? '',
+      items: getEffectiveItems(card),
+    });
     return;
   }
 
   ctx.selectCard(card);
-  ctx.emit('bundle:selected', { selectorId: ctx.selectorId ?? '', items: getEffectiveItems(card) });
+  ctx.emit('bundle:selected', {
+    selectorId: ctx.selectorId ?? '',
+    items: getEffectiveItems(card),
+  });
 
   if (card.vouchers.length || previousCard?.vouchers.length) {
     await applyVoucherSwap(previousCard, card);
   }
   if (ctx.mode === 'swap') {
     const success = await applyBundle(previousCard, card, ctx);
-    if (success && card.shippingId) await setShippingMethod(card.shippingId, ctx);
+    if (success && card.shippingId)
+      await setShippingMethod(card.shippingId, ctx);
   }
 }
 
@@ -54,16 +62,25 @@ export async function handleCardClick(
 export async function applyBundle(
   previous: BundleCard | null,
   selected: BundleCard,
-  ctx: HandlerContext,
+  ctx: HandlerContext
 ): Promise<boolean> {
   if (ctx.isApplyingRef.value) return false;
   ctx.isApplyingRef.value = true;
   const { selectorId } = ctx;
   const cartStore = useCartStore.getState();
-  const newItems = getEffectiveItems(selected).map(({ excludeProperties, properties: slotProps, ...rest }) => {
-    const properties = applyPropertyExclusion(mergeWithDefaults(slotProps), parseExcludeProperty(excludeProperties));
-    return { ...rest, selectorId, ...(properties !== undefined && { properties }) };
-  });
+  const newItems = getEffectiveItems(selected).map(
+    ({ excludeProperties, properties: slotProps, ...rest }) => {
+      const properties = applyPropertyExclusion(
+        mergeWithDefaults(slotProps),
+        parseExcludeProperty(excludeProperties)
+      );
+      return {
+        ...rest,
+        selectorId,
+        ...(properties !== undefined && { properties }),
+      };
+    }
+  );
   try {
     const retained = cartStore.items
       .filter(ci => ci.selectorId !== selectorId)
@@ -75,7 +92,10 @@ export async function applyBundle(
         ...(ci.properties !== undefined && { properties: ci.properties }),
       }));
     await cartOperations.swapCart([...retained, ...newItems]);
-    ctx.logger.debug(`Applied bundle "${selected.bundleId}" (selector "${selectorId}")`, newItems);
+    ctx.logger.debug(
+      `Applied bundle "${selected.bundleId}" (selector "${selectorId}")`,
+      newItems
+    );
     return true;
   } catch (error) {
     // Revert visual selection so UI stays consistent with cart state
@@ -85,7 +105,9 @@ export async function applyBundle(
     } else {
       selected.element.classList.remove(ctx.classNames.selected);
       selected.element.setAttribute('data-next-selected', 'false');
-      await applyVoucherSwap(selected, { vouchers: [] } as unknown as BundleCard);
+      await applyVoucherSwap(selected, {
+        vouchers: [],
+      } as unknown as BundleCard);
     }
     const msg = error instanceof Error ? error.message : String(error);
     ctx.logger.error('Error in applyBundle:', msg);
@@ -101,7 +123,7 @@ export async function applyBundle(
  */
 export async function applyEffectiveChange(
   card: BundleCard,
-  ctx: HandlerContext,
+  ctx: HandlerContext
 ): Promise<void> {
   if (ctx.isApplyingRef.value) return;
   ctx.isApplyingRef.value = true;
@@ -120,15 +142,29 @@ export async function applyEffectiveChange(
             selectorId: ci.selectorId,
             ...(ci.properties !== undefined && { properties: ci.properties }),
           }));
-    const newItems = getEffectiveItems(card).map(({ excludeProperties, properties: slotProps, ...rest }) => {
-      const properties = applyPropertyExclusion(mergeWithDefaults(slotProps), parseExcludeProperty(excludeProperties));
-      return { ...rest, selectorId, ...(properties !== undefined && { properties }) };
-    });
+    const newItems = getEffectiveItems(card).map(
+      ({ excludeProperties, properties: slotProps, ...rest }) => {
+        const properties = applyPropertyExclusion(
+          mergeWithDefaults(slotProps),
+          parseExcludeProperty(excludeProperties)
+        );
+        return {
+          ...rest,
+          selectorId,
+          ...(properties !== undefined && { properties }),
+        };
+      }
+    );
     await cartOperations.swapCart([...retained, ...newItems]);
-    ctx.logger.debug(`Variant change synced for bundle "${card.bundleId}" (selector "${selectorId}")`, newItems);
+    ctx.logger.debug(
+      `Variant change synced for bundle "${card.bundleId}" (selector "${selectorId}")`,
+      newItems
+    );
   } catch (error) {
     // Revert slot state so the UI stays consistent with the actual cart
-    card.slots.forEach((s, i) => { s.activePackageId = slotSnapshot[i]; });
+    card.slots.forEach((s, i) => {
+      s.activePackageId = slotSnapshot[i];
+    });
     ctx.emit('bundle:selection-changed', {
       selectorId: selectorId ?? '',
       items: getEffectiveItems(card),
@@ -144,7 +180,7 @@ export async function applyEffectiveChange(
 
 export async function applyVoucherSwap(
   previous: BundleCard | null,
-  next: BundleCard,
+  next: BundleCard
 ): Promise<void> {
   const checkoutStore = useCheckoutStore.getState();
   const toRemove = previous?.vouchers ?? [];
@@ -182,7 +218,7 @@ export function onVoucherApplied(
   prevVouchers: string[],
   cards: BundleCard[],
   allBundleVouchers: Set<string>,
-  fetchPrice: (card: BundleCard) => Promise<void>,
+  fetchPrice: (card: BundleCard) => Promise<void>
 ): void {
   const prevUserCoupons = prevVouchers.filter(v => !allBundleVouchers.has(v));
   const nextUserCoupons = newVouchers.filter(v => !allBundleVouchers.has(v));
@@ -190,8 +226,7 @@ export function onVoucherApplied(
   const prevSet = new Set(prevUserCoupons);
   const nextSet = new Set(nextUserCoupons);
   const changed =
-    prevSet.size !== nextSet.size ||
-    nextUserCoupons.some(v => !prevSet.has(v));
+    prevSet.size !== nextSet.size || nextUserCoupons.some(v => !prevSet.has(v));
 
   if (!changed) return;
 
@@ -206,7 +241,7 @@ export async function applyVariantChange(
   card: BundleCard,
   slotIndex: number,
   selectedAttrs: Record<string, string>,
-  ctx: HandlerContext,
+  ctx: HandlerContext
 ): Promise<void> {
   if (ctx.isApplyingRef.value) return;
 
@@ -217,7 +252,9 @@ export async function applyVariantChange(
   const currentPkg = allPackages.find(p => p.ref_id === slot.activePackageId);
   if (!currentPkg?.product_id) return;
 
-  const productPkgs = allPackages.filter(p => p.product_id === currentPkg.product_id);
+  const productPkgs = allPackages.filter(
+    p => p.product_id === currentPkg.product_id
+  );
 
   const matched = productPkgs.find(pkg => {
     const attrs = pkg.product_variant_attribute_values || [];
@@ -261,7 +298,7 @@ export async function applyVariantChange(
 
   ctx.logger.debug(
     `Variant changed on bundle "${card.bundleId}" slot ${slotIndex}`,
-    { packageId: matched.ref_id },
+    { packageId: matched.ref_id }
   );
 }
 
@@ -269,7 +306,7 @@ export async function applyVariantChange(
 export async function handleVariantOptionClick(
   e: Event,
   cards: BundleCard[],
-  ctx: HandlerContext,
+  ctx: HandlerContext
 ): Promise<void> {
   const target = e.target as HTMLElement;
   const optionEl = target.closest<HTMLElement>('[data-next-variant-option]');
@@ -292,10 +329,12 @@ export async function handleVariantOptionClick(
   if (!card) return;
 
   // Update visual selection within this attribute group
-  group.querySelectorAll<HTMLElement>('[data-next-variant-option]').forEach(el => {
-    el.removeAttribute('data-selected');
-    el.classList.remove(ctx.classNames.variantSelected);
-  });
+  group
+    .querySelectorAll<HTMLElement>('[data-next-variant-option]')
+    .forEach(el => {
+      el.removeAttribute('data-selected');
+      el.classList.remove(ctx.classNames.variantSelected);
+    });
   optionEl.setAttribute('data-selected', 'true');
   optionEl.classList.add(ctx.classNames.variantSelected);
 
@@ -306,22 +345,30 @@ export async function handleVariantOptionClick(
   // [data-next-bundle-slots-for] container, and only the clicked slot's
   // groups carry the updated selection.
   const slotEl = optionEl.closest<HTMLElement>(
-    `[data-next-bundle-id="${bundleId}"][data-next-slot-index="${slotIndex}"]:not([data-next-variant-code])`,
+    `[data-next-bundle-id="${bundleId}"][data-next-slot-index="${slotIndex}"]:not([data-next-variant-code])`
   );
   if (!slotEl) return;
 
   const selectedAttrs: Record<string, string> = {};
-  slotEl.querySelectorAll<HTMLElement>('[data-next-variant-code]').forEach(g => {
-    const attrCode = g.dataset.nextVariantCode;
-    if (!attrCode) return;
-    const sel = g.querySelector<HTMLElement>('[data-next-variant-option][data-selected="true"]');
-    if (sel?.dataset.nextVariantValue) selectedAttrs[attrCode] = sel.dataset.nextVariantValue;
-  });
+  slotEl
+    .querySelectorAll<HTMLElement>('[data-next-variant-code]')
+    .forEach(g => {
+      const attrCode = g.dataset.nextVariantCode;
+      if (!attrCode) return;
+      const sel = g.querySelector<HTMLElement>(
+        '[data-next-variant-option][data-selected="true"]'
+      );
+      if (sel?.dataset.nextVariantValue)
+        selectedAttrs[attrCode] = sel.dataset.nextVariantValue;
+    });
 
   const previousCard = ctx.getSelectedCard();
   if (previousCard !== card) {
     ctx.selectCard(card);
-    ctx.emit('bundle:selected', { selectorId: ctx.selectorId ?? '', items: getEffectiveItems(card) });
+    ctx.emit('bundle:selected', {
+      selectorId: ctx.selectorId ?? '',
+      items: getEffectiveItems(card),
+    });
     if (card.vouchers.length || previousCard?.vouchers.length) {
       await applyVoucherSwap(previousCard, card);
     }
@@ -335,24 +382,29 @@ export async function handleSelectVariantChange(
   bundleId: string,
   slotIndex: number,
   cards: BundleCard[],
-  ctx: HandlerContext,
+  ctx: HandlerContext
 ): Promise<void> {
   const card = cards.find(c => c.bundleId === bundleId);
   if (!card) return;
 
   // Slots may be in an external container (data-next-bundle-slots-for), not inside card.element.
   const slotEl =
-    card.element.querySelector<HTMLElement>(`[data-next-slot-index="${slotIndex}"]`) ??
+    card.element.querySelector<HTMLElement>(
+      `[data-next-slot-index="${slotIndex}"]`
+    ) ??
     ctx.externalSlotsEl?.querySelector<HTMLElement>(
-      `[data-next-bundle-id="${bundleId}"][data-next-slot-index="${slotIndex}"]:not([data-next-variant-code])`,
+      `[data-next-bundle-id="${bundleId}"][data-next-slot-index="${slotIndex}"]:not([data-next-variant-code])`
     ) ??
     null;
   if (!slotEl) return;
 
   const selectedAttrs: Record<string, string> = {};
-  slotEl.querySelectorAll<HTMLSelectElement>('select[data-next-variant-code]').forEach(s => {
-    if (s.dataset.nextVariantCode) selectedAttrs[s.dataset.nextVariantCode] = s.value;
-  });
+  slotEl
+    .querySelectorAll<HTMLSelectElement>('select[data-next-variant-code]')
+    .forEach(s => {
+      if (s.dataset.nextVariantCode)
+        selectedAttrs[s.dataset.nextVariantCode] = s.value;
+    });
 
   // Ensure the changed select's new value takes precedence — it may not be
   // inside slotEl (e.g. external slot containers), so the loop above can miss it.
@@ -378,7 +430,7 @@ export async function handleSelectVariantChange(
  */
 export async function applyBundleQuantityChange(
   card: BundleCard,
-  ctx: HandlerContext,
+  ctx: HandlerContext
 ): Promise<void> {
   const effectiveItems = getEffectiveItems(card);
 
@@ -395,7 +447,11 @@ export async function applyBundleQuantityChange(
 
   // Cart sync only when in swap mode and this card is the currently selected one.
   // Upsell context never writes to cart.
-  if (ctx.mode === 'swap' && !ctx.isUpsellContext && ctx.getSelectedCard() === card) {
+  if (
+    ctx.mode === 'swap' &&
+    !ctx.isUpsellContext &&
+    ctx.getSelectedCard() === card
+  ) {
     await applyEffectiveChange(card, ctx);
   }
 
@@ -416,7 +472,7 @@ export async function applyBundleQuantityChange(
 
 export async function setShippingMethod(
   shippingId: string,
-  ctx: Pick<HandlerContext, 'logger'>,
+  ctx: Pick<HandlerContext, 'logger'>
 ): Promise<void> {
   const id = parseInt(shippingId, 10);
   if (isNaN(id)) {
@@ -428,5 +484,55 @@ export async function setShippingMethod(
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     ctx.logger.error('Failed to set shipping method:', msg);
+  }
+}
+
+// ─── Cart sync ────────────────────────────────────────────────────────────────
+
+/**
+ * Reconciles each card's in-cart visual state against the current cart, then
+ * — the first time no card is selected yet — picks and applies the default
+ * card (writing it to the cart in swap mode).
+ */
+export function syncCardsWithCart(
+  cartState: CartState,
+  cards: BundleCard[],
+  pickDefaultCard: () => BundleCard | null,
+  ctx: HandlerContext
+): void {
+  for (const card of cards) {
+    const effectiveItems = getEffectiveItems(card);
+    // Check both packageId AND selectorId so a package shared across selectors
+    // doesn't cause incorrect "in cart" state on the wrong selector.
+    const allItemsInCart = effectiveItems.every(bi => {
+      const ci = cartState.items.find(
+        i => i.packageId === bi.packageId && i.selectorId === ctx.selectorId
+      );
+      return ci != null && ci.quantity >= bi.quantity;
+    });
+    card.element.classList.toggle(ctx.classNames.inCart, allItemsInCart);
+    card.element.setAttribute('data-next-in-cart', String(allItemsInCart));
+  }
+
+  if (!ctx.getSelectedCard()) {
+    const cardToSelect = pickDefaultCard();
+    if (cardToSelect) {
+      ctx.selectCard(cardToSelect);
+      const initVouchers = cardToSelect.vouchers.length
+        ? applyVoucherSwap(null, cardToSelect)
+        : Promise.resolve();
+      if (ctx.mode === 'swap') {
+        void initVouchers.then(async () => {
+          const success = await applyBundle(null, cardToSelect, ctx);
+          if (success && cardToSelect.shippingId) {
+            await setShippingMethod(cardToSelect.shippingId, {
+              logger: ctx.logger,
+            });
+          }
+        });
+      } else {
+        void initVouchers;
+      }
+    }
   }
 }
