@@ -5,11 +5,11 @@
 
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import Decimal from 'decimal.js';
-import { DisplayFormatter } from '@/features/display/display-core';
+import { DisplayFormatter } from '@/core/base/base-display-enhancer';
 import { ProductDisplayEnhancer } from '@/features/display/product-display';
 import { CartDisplayEnhancer } from '@/features/display/cart-display.enhancer';
 import { DisplayContextProvider } from '@/features/display/display-context';
-import { DisplayErrorBoundary } from '@/features/display/display-error-boundary';
+import { DisplayErrorBoundary } from '@/core/base/display-error-boundary';
 import { useCampaignStore } from '@/state/campaign';
 import { useCartStore } from '@/state/cart';
 

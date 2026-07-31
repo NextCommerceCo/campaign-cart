@@ -1,5 +1,13 @@
+// Fallback config, only fetched when `/src/config.ts` fails to load (loader.js
+// `configScript.onerror`) — i.e. when the repo is served without the Vite dev server.
+// With `npm run dev` running, config.ts wins and this file is never requested.
+//
+// Credentials are deliberately empty: this file is tracked in git and, unlike
+// config.ts, it is loaded as a classic script, so `import.meta.env` is not available
+// to read them from `.env.local`. Fill them in locally if you need this path, and do
+// not commit the result. Prefer config.ts, which does read the environment.
 window.nextConfig = {
-    apiKey: "kLGpgEfCX3iUZG16hpI5zrCH9qxcOdahDY1im6ud",
+    apiKey: "",
     debug: true,
     paymentConfig: {
       expressCheckout: {
@@ -25,7 +33,9 @@ window.nextConfig = {
       }
     },
     googleMaps: {
-      apiKey: "AIzaSyBmrv1QRE41P9FhFOTwUhRMGg6LcFH1ehs",
+      // Empty means Google Maps autocomplete stays off and the SDK's own is used.
+      // A Google Maps key is billable — never commit one, demo or otherwise.
+      apiKey: "",
       region: "US",
       enableAutocomplete: true
     },

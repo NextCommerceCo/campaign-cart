@@ -215,8 +215,8 @@ const PRODUCTION = blocks(
   'Turn debug mode on with `?debug=true` or `?debugger=true` in the URL, or by setting ' +
     '`debug: true` (or `debugger: true`) on `window.nextConfig` before the loader runs. ' +
     '**They are not equivalent, and `?debug=true` is the weakest of them.** `Logger` reads ' +
-    'only the URL and `window.nextConfig` (`core/logger.ts:16-26`), and the level is raised ' +
-    'to `DEBUG` only by `config.debug` (`sdk-initializer.ts:779`):',
+    'only the URL and `window.nextConfig` (`core/logger.ts › isDebugModeEnabled`), and the level is raised ' +
+    'to `DEBUG` only by `config.debug` (`sdk-initializer.ts › SDKInitializer.initializeDebugMode`):',
   [
     '| What you set | `error` / `warn` / `info` | `debug` lines | On-page overlay |',
     '|---|---|---|---|',

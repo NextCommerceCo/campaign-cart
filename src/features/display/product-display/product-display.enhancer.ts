@@ -3,8 +3,8 @@
  * Displays package/campaign data with context awareness and advanced calculations
  */
 
-import { BaseDisplayEnhancer, PropertyResolver, DisplayFormatter } from '@/features/display/display-core';
-import { getPropertyMapping } from '@/features/display/display-types';
+import { BaseDisplayEnhancer, PropertyResolver, DisplayFormatter } from '@/core/base/base-display-enhancer';
+import { getPropertyMapping } from '@/core/base/display-types';
 import { AttributeParser } from '@/core/base/attribute-parser';
 import { PackageContextResolver } from '@/features/display/package-context-resolver';
 import { DisplayContextProvider } from '@/features/display/display-context';

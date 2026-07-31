@@ -10,7 +10,7 @@ category: "Core Reference"
      src/docs/content/core-logs.ts. Do not edit by hand: change the log line in the
      code or the note in core-logs.ts, then run `npm run docs:reference`. -->
 
-Every message the SDK's own machinery can print — 484 of them, across 36 console prefixes plus 14 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
+Every message the SDK's own machinery can print — 494 of them, across 39 console prefixes plus 14 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
 
 Messages are listed at the wording the code uses. A `{name}` inside one is a value filled in at runtime, so search for the text on either side of it. **Extra context** means the call passes a second argument — an object or an error logged beside the message; expand that entry in the console, because the message alone will not tell you which element, package, or event was involved.
 
@@ -24,7 +24,7 @@ Which of these lines a live page prints depends on the bundle it loaded and on w
 
 **The UMD bundle** — `dist/index.umd.js`, loaded only by a browser with no module support, or as the fallback when the module import fails. It is minified with `drop_console`, which removes **every** `console` call, `console.error` included. A page on this bundle prints nothing at any level, and debug mode cannot bring the lines back — they are not in the file to be re-enabled.
 
-Turn debug mode on with `?debug=true` or `?debugger=true` in the URL, or by setting `debug: true` (or `debugger: true`) on `window.nextConfig` before the loader runs. **They are not equivalent, and `?debug=true` is the weakest of them.** `Logger` reads only the URL and `window.nextConfig` (`core/logger.ts:16-26`), and the level is raised to `DEBUG` only by `config.debug` (`sdk-initializer.ts:779`):
+Turn debug mode on with `?debug=true` or `?debugger=true` in the URL, or by setting `debug: true` (or `debugger: true`) on `window.nextConfig` before the loader runs. **They are not equivalent, and `?debug=true` is the weakest of them.** `Logger` reads only the URL and `window.nextConfig` (`core/logger.ts › isDebugModeEnabled`), and the level is raised to `DEBUG` only by `config.debug` (`sdk-initializer.ts › SDKInitializer.initializeDebugMode`):
 
 | What you set | `error` / `warn` / `info` | `debug` lines | On-page overlay |
 |---|---|---|---|
@@ -82,6 +82,9 @@ Console lines are prefixed with the part of the SDK that produced them. Find the
 | `[{EnhancerClassName}]` | The behaviour every feature inherits: reading attributes, subscribing to stores, and the shared error path that turns a thrown error into a log line plus an `error:occurred` event. | 1 | — | — | — |
 | `[DOMObserver]` | Watches the page for elements added or attributes changed after boot, so markup injected by a page builder or an A/B tool still gets enhanced. | 2 | 1 | — | 10 |
 | `[AttributeParser]` | Turns attribute text into something the features can act on — including the comparison expressions behind `data-next-show` and `data-next-hide`. | 1 | — | — | 2 |
+| `[{DisplayEnhancerClassName}]` | Everything behind a `data-next-display` binding: resolving the namespaced path to a value, formatting it, and re-rendering when the value or the currency changes. Four `features/cart/**` display files extend it as well as the display features, which is why it is a base class here rather than a file in the display folder. | — | 1 | — | 2 |
+| `[DisplayErrorBoundary]` | Contains a failure inside one display binding so it cannot blank out the rest of the page. A line here means one element gave up, not that the SDK stopped — which is exactly the distinction to establish first when "some prices are missing". | 2 | — | — | — |
+| `[DisplayValueValidator]` | Coerces a resolved value into the shape its format needs — a price to a 2-decimal number, a date string to a `Date`. Every line here means a value was replaced by a fallback, so the element rendered something plausible instead of the truth. These are the quietest wrong-number bugs in the SDK. | — | 5 | — | — |
 
 ### Location and currency
 
@@ -817,6 +820,109 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 |---|---|---|
 | `Parsing condition:` | `base/attribute-parser.ts › AttributeParser.parseCondition` | yes |
 | `Parsed comparison:` | `base/attribute-parser.ts › AttributeParser.parseCondition` | yes |
+
+## `[{DisplayEnhancerClassName}]`
+
+Everything behind a `data-next-display` binding: resolving the namespaced path to a value, formatting it, and re-rendering when the value or the currency changes. Four `features/cart/**` display files extend it as well as the display features, which is why it is a base class here rather than a file in the display folder.
+
+Logged from `base/base-display-enhancer.ts`. Like `base-enhancer.ts`, the logger is built from the subclass name, so the line appears under whichever display feature you are looking at — `[ProductDisplayEnhancer]`, `[CartSummaryEnhancer]`, and so on.
+
+### Warn
+
+The SDK carried on, but something in the markup, the configuration, or the campaign data was not what it expected. Worth fixing even when the page looks right — several of these are how tracking goes quietly wrong.
+
+#### `Validator failed for {displayPath}:`
+
+`base/base-display-enhancer.ts › BaseDisplayEnhancer.getPropertyValueWithValidation` · extra context attached
+
+**Meaning:** A `data-next-display` binding resolved to a value its format rejected — a price path that produced text, a date path that produced something unparseable. The element shows the fallback for that format instead of the real value, so the page looks finished while one number is quietly wrong. The path is in the message and the thrown error is attached.
+
+**Action:** Compare the named path against the data actually in the store (`window.next.getCartData()`, or the campaign in the debug overlay). Usually the path is right and the data is missing for this campaign, in which case the fix is upstream in the campaign setup, not in the markup. A path that is simply misspelled produces no value at all rather than this line.
+
+### Debug
+
+The detail behind the info lines. Expected in bulk, and only visible with debug mode on — a long list here is health, not trouble.
+
+| Message | Source | Extra context |
+|---|---|---|
+| `{name} initialized with path: {displayPath}` | `base/base-display-enhancer.ts › BaseDisplayEnhancer.initialize` | — |
+| `Currency changed, updating display for {displayPath}` | `base/base-display-enhancer.ts › BaseDisplayEnhancer.setupCurrencyChangeListener` | — |
+
+## `[DisplayErrorBoundary]`
+
+Contains a failure inside one display binding so it cannot blank out the rest of the page. A line here means one element gave up, not that the SDK stopped — which is exactly the distinction to establish first when "some prices are missing".
+
+Logged from `base/display-error-boundary.ts`.
+
+### Error
+
+Something did not work. Each of these means a visitor saw the wrong thing, or a piece of data went missing. Every one carries what it means and what to do.
+
+#### `[Display Error] {operation}:`
+
+`base/display-error-boundary.ts › DisplayErrorBoundary.handleError` · extra context attached
+
+**Meaning:** One display binding threw and the boundary caught it, so that single element stopped updating while the rest of the page carried on. `{operation}` names the step that failed and the attached object carries the error, its stack, and the binding’s context.
+
+**Action:** Read the attached `context` to find which element and path were involved, then the `error`. Because the failure is contained, this line is the only signal — nothing on the page will look broken except one stale or blank value, so treat it as a real defect rather than noise.
+
+#### `Error in error handler:`
+
+`base/display-error-boundary.ts › DisplayErrorBoundary.handleError` · extra context attached
+
+**Meaning:** A custom handler registered on the display error boundary threw while handling another error. The original error was still logged; this is the handler failing on top of it.
+
+**Action:** Fix the handler — it is your code, registered via the boundary’s handler list. Look for the preceding `[Display Error]` line to see what it was reacting to. A handler that throws can hide the real problem, so it should never do more than report.
+
+## `[DisplayValueValidator]`
+
+Coerces a resolved value into the shape its format needs — a price to a 2-decimal number, a date string to a `Date`. Every line here means a value was replaced by a fallback, so the element rendered something plausible instead of the truth. These are the quietest wrong-number bugs in the SDK.
+
+Logged from `base/display-value-validator.ts`.
+
+### Warn
+
+The SDK carried on, but something in the markup, the configuration, or the campaign data was not what it expected. Worth fixing even when the page looks right — several of these are how tracking goes quietly wrong.
+
+#### `Invalid percentage value: {value}`
+
+`base/display-value-validator.ts › DisplayValueValidator.validatePercentage`
+
+**Meaning:** A path formatted as a percentage produced something that is not a number, so the element shows **0%**. A real 0% and a failed conversion look identical on the page.
+
+**Action:** The offending value is in the message. Check whether the path should be a percentage at all — `data-next-format="percentage"` on a plain number path is the usual cause — or whether the campaign is missing that field.
+
+#### `Percentage exceeds 100: {num}`
+
+`base/display-value-validator.ts › DisplayValueValidator.validatePercentage`
+
+**Meaning:** A percentage resolved above 100 and was clamped to **100%**. Most often a fraction that was already converted once, so 0.85 became 85 and then 8500.
+
+**Action:** Check whether the source field stores a fraction (0–1) or a percentage (0–100); the validator accepts both, so a value that has been scaled twice is the thing to look for.
+
+#### `Invalid currency value: {value}`
+
+`base/display-value-validator.ts › DisplayValueValidator.validateCurrency`
+
+**Meaning:** A money path produced something unparseable, so the element shows **0** in the campaign currency. This is the one to take most seriously: a zero price reads as free.
+
+**Action:** Read the value in the message. Currency symbols and commas are stripped before conversion, so a failure here usually means the field is absent or holds text. Verify the package actually carries that price in the campaign.
+
+#### `Invalid number value: {value}`
+
+`base/display-value-validator.ts › DisplayValueValidator.validateNumber`
+
+**Meaning:** A numeric path produced a non-number and the element shows **0**.
+
+**Action:** Check the path against the campaign or cart data. A `0` on the page with no line here is a genuine zero; a `0` with this line is a conversion that failed.
+
+#### `Invalid date value: {value}`
+
+`base/display-value-validator.ts › DisplayValueValidator.validateDate`
+
+**Meaning:** A date path could not be parsed, so the element renders **nothing** — this is the one failure in this file that leaves a blank rather than a wrong number.
+
+**Action:** Read the value in the message. `new Date()` parses ISO 8601 reliably and little else consistently across browsers, so a format that works in one browser and blanks in another is the pattern to expect.
 
 ## `[CountryService]`
 

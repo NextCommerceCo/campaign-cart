@@ -1,5 +1,5 @@
-import { BaseDisplayEnhancer } from '../../display/display-core';
-import { FormatType } from '../../display/display-types';
+import { BaseDisplayEnhancer } from '../../../core/base/base-display-enhancer';
+import { FormatType } from '../../../core/base/display-types';
 export declare class BundleDisplayEnhancer extends BaseDisplayEnhancer {
     private selectorId?;
     private selectionHandler;

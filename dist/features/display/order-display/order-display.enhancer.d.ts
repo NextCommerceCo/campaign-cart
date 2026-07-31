@@ -1,4 +1,4 @@
-import { BaseDisplayEnhancer } from '../display-core';
+import { BaseDisplayEnhancer } from '../../../core/base/base-display-enhancer';
 export declare class OrderDisplayEnhancer extends BaseDisplayEnhancer {
     private apiClient?;
     private orderState;

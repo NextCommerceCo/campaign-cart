@@ -249,6 +249,27 @@ export const CORE_LOG_SOURCES: CoreLogSource[] = [
     area: 'Shared base',
     what: 'Turns attribute text into something the features can act on — including the comparison expressions behind `data-next-show` and `data-next-hide`.',
   },
+  {
+    prefix: '{DisplayEnhancerClassName}',
+    file: 'base/base-display-enhancer.ts',
+    area: 'Shared base',
+    dynamicPrefix: true,
+    prefixNote:
+      'Like `base-enhancer.ts`, the logger is built from the subclass name, so the line appears under whichever display feature you are looking at — `[ProductDisplayEnhancer]`, `[CartSummaryEnhancer]`, and so on.',
+    what: 'Everything behind a `data-next-display` binding: resolving the namespaced path to a value, formatting it, and re-rendering when the value or the currency changes. Four `features/cart/**` display files extend it as well as the display features, which is why it is a base class here rather than a file in the display folder.',
+  },
+  {
+    prefix: 'DisplayErrorBoundary',
+    file: 'base/display-error-boundary.ts',
+    area: 'Shared base',
+    what: 'Contains a failure inside one display binding so it cannot blank out the rest of the page. A line here means one element gave up, not that the SDK stopped — which is exactly the distinction to establish first when "some prices are missing".',
+  },
+  {
+    prefix: 'DisplayValueValidator',
+    file: 'base/display-value-validator.ts',
+    area: 'Shared base',
+    what: 'Coerces a resolved value into the shape its format needs — a price to a 2-decimal number, a date string to a `Date`. Every line here means a value was replaced by a fallback, so the element rendered something plausible instead of the truth. These are the quietest wrong-number bugs in the SDK.',
+  },
 
   // ── Location and currency ──────────────────────────────────────────────────
   {
@@ -1522,6 +1543,79 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
       'Debug mode did not start: no overlay, and none of the `window` debug helpers. Log level is still raised, so debug lines continue to print.',
     action:
       'Read the attached error. Investigate with the console alone until it is fixed — the log output is unaffected.',
+  },
+
+  // ── base/base-display-enhancer.ts ──────────────────────────────────────────
+  {
+    level: 'warn',
+    message: 'Validator failed for {displayPath}:',
+    meaning:
+      'A `data-next-display` binding resolved to a value its format rejected — a price path that produced text, a date path that produced something unparseable. The element shows the fallback for that format instead of the real value, so the page looks finished while one number is quietly wrong. The path is in the message and the thrown error is attached.',
+    action:
+      'Compare the named path against the data actually in the store (`window.next.getCartData()`, or the campaign in the debug overlay). Usually the path is right and the data is missing for this campaign, in which case the fix is upstream in the campaign setup, not in the markup. A path that is simply misspelled produces no value at all rather than this line.',
+  },
+
+  // ── base/display-error-boundary.ts ─────────────────────────────────────────
+  {
+    level: 'error',
+    message: '[Display Error] {operation}:',
+    meaning:
+      'One display binding threw and the boundary caught it, so that single element stopped updating while the rest of the page carried on. `{operation}` names the step that failed and the attached object carries the error, its stack, and the binding’s context.',
+    action:
+      'Read the attached `context` to find which element and path were involved, then the `error`. Because the failure is contained, this line is the only signal — nothing on the page will look broken except one stale or blank value, so treat it as a real defect rather than noise.',
+  },
+  {
+    level: 'error',
+    message: 'Error in error handler:',
+    meaning:
+      'A custom handler registered on the display error boundary threw while handling another error. The original error was still logged; this is the handler failing on top of it.',
+    action:
+      'Fix the handler — it is your code, registered via the boundary’s handler list. Look for the preceding `[Display Error]` line to see what it was reacting to. A handler that throws can hide the real problem, so it should never do more than report.',
+  },
+
+  // ── base/display-value-validator.ts ────────────────────────────────────────
+  // Every line here means the element rendered a fallback. None of them break the
+  // page, which is exactly why they are worth reading: the symptom is a wrong number,
+  // not a missing one.
+  {
+    level: 'warn',
+    message: 'Invalid percentage value: {value}',
+    meaning:
+      'A path formatted as a percentage produced something that is not a number, so the element shows **0%**. A real 0% and a failed conversion look identical on the page.',
+    action:
+      'The offending value is in the message. Check whether the path should be a percentage at all — `data-next-format="percentage"` on a plain number path is the usual cause — or whether the campaign is missing that field.',
+  },
+  {
+    level: 'warn',
+    message: 'Percentage exceeds 100: {num}',
+    meaning:
+      'A percentage resolved above 100 and was clamped to **100%**. Most often a fraction that was already converted once, so 0.85 became 85 and then 8500.',
+    action:
+      'Check whether the source field stores a fraction (0–1) or a percentage (0–100); the validator accepts both, so a value that has been scaled twice is the thing to look for.',
+  },
+  {
+    level: 'warn',
+    message: 'Invalid currency value: {value}',
+    meaning:
+      'A money path produced something unparseable, so the element shows **0** in the campaign currency. This is the one to take most seriously: a zero price reads as free.',
+    action:
+      'Read the value in the message. Currency symbols and commas are stripped before conversion, so a failure here usually means the field is absent or holds text. Verify the package actually carries that price in the campaign.',
+  },
+  {
+    level: 'warn',
+    message: 'Invalid number value: {value}',
+    meaning:
+      'A numeric path produced a non-number and the element shows **0**.',
+    action:
+      'Check the path against the campaign or cart data. A `0` on the page with no line here is a genuine zero; a `0` with this line is a conversion that failed.',
+  },
+  {
+    level: 'warn',
+    message: 'Invalid date value: {value}',
+    meaning:
+      'A date path could not be parsed, so the element renders **nothing** — this is the one failure in this file that leaves a blank rather than a wrong number.',
+    action:
+      'Read the value in the message. `new Date()` parses ISO 8601 reliably and little else consistently across browsers, so a format that works in one browser and blanks in another is the pattern to expect.',
   },
 ];
 

@@ -31,25 +31,28 @@ spoke (`[SDKInitializer]`, `[AttributeScanner]`, `[NextAnalytics]` — the full 
 reach the console:
 
 1. **The production gate.** In a built bundle, `Logger` returns early unless debug mode is
-   on (`core/logger.ts:60`, `:70`, `:80`). It works out "on" by re-reading
-   `window.location.search` and `window.nextConfig` *at the moment of the call*
-   (`:16-26`) — nothing is cached at boot, so setting `window.nextConfig.debug = true`
-   from the console starts the narration on the next line the SDK writes, with no reload.
-2. **The level ladder.** A global level, `INFO` by default (`:38`), then drops anything
-   below it. Only one thing in the SDK ever raises it to `DEBUG`
-   (`core/sdk-initializer.ts:779`), and it does so from the config store — which is why
-   `?debug=true` produces `info` and `warn` lines but no `debug` lines at all.
+   on (`core/logger.ts › Logger.warn`, `Logger.info`, `Logger.debug`). It works out "on" by
+   re-reading `window.location.search` and `window.nextConfig` *at the moment of the call*
+   (`core/logger.ts › isDebugModeEnabled`) — nothing is cached at boot, so setting
+   `window.nextConfig.debug = true` from the console starts the narration on the next line
+   the SDK writes, with no reload.
+2. **The level ladder.** A global level, `INFO` by default (`core/logger.ts › Logger`), then
+   drops anything below it. Only one thing in the SDK ever raises it to `DEBUG`
+   (`core/sdk-initializer.ts › SDKInitializer.initializeDebugMode`), and it does so from the
+   config store — which is why `?debug=true` produces `info` and `warn` lines but no `debug`
+   lines at all.
 
-`error` passes both gates by design (`core/logger.ts:52-57`). If a page prints errors and
+`error` passes both gates by design (`core/logger.ts › Logger.error`). If a page prints errors and
 nothing else, logging is working and debug mode is off.
 
 **The overlay is a separate program that visits your page.** It is imported only in debug
 mode, renders into its own shadow root (`#next-debug-overlay-host`) so your CSS and its CSS
 cannot reach each other, reads the stores on a one-second poll rather than subscribing, and
 keeps its own preferences in `localStorage`. It also does three things to the page while it
-is open: it wraps `window.fetch` to record API calls (`core/debug/DebugEventManager.ts:44-56`),
+is open: it wraps `window.fetch` to record API calls
+(`core/debug/DebugEventManager.ts › DebugEventManager.interceptFetch`),
 it adds a `debug-body-expanded` class to `<body>` and `<html>` when expanded
-(`core/debug/DebugOverlay.ts:528-536`), and it puts the page into
+(`core/debug/DebugOverlay.ts › DebugOverlay.updateBodyHeight`), and it puts the page into
 [test mode](./test-mode.md).
 
 ### Which switch does what
@@ -71,18 +74,19 @@ Read the surprises in that table rather than the pattern:
   and no `debug`-level lines, because it never reaches the config store that raises the
   level.
 - **The `next-debug` meta tag prints nothing in a built bundle.** It sets
-  `config.debug` (`state/config/config.state.ts:100-102`), which raises the level and installs
-  `window.nextDebug` (`core/sdk-initializer.ts:775-794`) — but `Logger` does not read the
-  config store or the document, only the URL and `window.nextConfig`
-  (`core/logger.ts:16-26`), so the production gate still discards every line the raised
-  level was meant to reveal. **Symptom:** the tag is in the page, `window.nextDebug` works
-  in the console, and the console is otherwise silent. **Fix:** add `?debug=true` to the
-  URL, or set `window.nextConfig.debug = true` before the loader runs. (On the dev server
-  the gate is absent, so the tag behaves as expected there — which is how the mismatch
-  survives review.)
+  `config.debug` (`state/config/config.state.ts › loadFromMeta`), which raises the level
+  and installs `window.nextDebug`
+  (`core/sdk-initializer.ts › SDKInitializer.initializeDebugMode`) — but `Logger` does not
+  read the config store or the document, only the URL and `window.nextConfig`
+  (`core/logger.ts › isDebugModeEnabled`), so the production gate still discards every
+  line the raised level was meant to reveal. **Symptom:** the tag is in the page,
+  `window.nextDebug` works in the console, and the console is otherwise silent. **Fix:**
+  add `?debug=true` to the URL, or set `window.nextConfig.debug = true` before the loader
+  runs. (On the dev server the gate is absent, so the tag behaves as expected there —
+  which is how the mismatch survives review.)
 - **Only `debugger` opens the overlay.** `debugOverlay.initialize()` is called for any
   value of `config.debug`, and returns at its own gate unless `?debugger=true` or
-  `window.nextConfig.debugger === true` (`core/debug/DebugOverlay.ts:151-156`).
+  `window.nextConfig.debugger === true` (`core/debug/DebugOverlay.ts › DebugOverlay.initialize`).
   **Symptom:** louder logs, `window.nextDebug` present, no panel. **Fix:** the parameter
   is `?debugger=true` — one letter, and it is the only way in.
 
@@ -90,10 +94,10 @@ Read the surprises in that table rather than the pattern:
   a warn / info / debug call
             │
             ├─ production gate ── off ─► dropped   ?debug, ?debugger,
-            │  logger.ts:60-86                     nextConfig.debug / .debugger
+            │  logger.ts › Logger                  nextConfig.debug / .debugger
             │
             ├─ level ladder ───── below ─► dropped  raised to DEBUG only by
-            │  logger.ts:38, 64-86                  config.debug (meta tag,
+            │  logger.ts › Logger                   config.debug (meta tag,
             │                                       nextConfig.debug, ?debugger)
             └─► console.warn / info / debug
                                                    ┌───────────────────────────┐
@@ -107,7 +111,7 @@ Read the surprises in that table rather than the pattern:
 
 ### What the overlay shows
 
-Eight panels (`core/debug/DebugOverlay.ts:92-103`): **Cart** (items, totals, discounts),
+Eight panels (`core/debug/DebugOverlay.ts › DebugOverlay.initializePanels`): **Cart** (items, totals, discounts),
 **Offers**, **Order** (the post-purchase order and its upsell journey), **Config**,
 **Campaign** (every package and price the campaign returned), **Checkout State** (form
 fields, validation, raw data), **Analytics & Events** (every `dl_*` event with per-provider
@@ -121,11 +125,11 @@ listing is in [storage keys](../reference/storage-keys.md).
 
 ## Business logic
 
-- **The debug switch is re-read per call, never cached.** `core/logger.ts:16-26` parses
-  `window.location.search` and reads `window.nextConfig` on every suppressed call, so the
+- **The debug switch is re-read per call, never cached.** `core/logger.ts › isDebugModeEnabled`
+  parses `window.location.search` and reads `window.nextConfig` on every suppressed call, so the
   flag can be flipped mid-session from the console — and a page under load pays a small
   cost for lines it will never print.
-- **`error` has no production gate** (`core/logger.ts:52-57`) and no other level does. A
+- **`error` has no production gate** (`core/logger.ts › Logger.error`) and no other level does. A
   live page always reports its own failures; everything quieter is opt-in.
 - **The level starts at `INFO` and only boot raises it.** Nothing lowers it, and there is
   no page-facing call to change it, so `debug`-level lines are available exactly when
@@ -141,8 +145,10 @@ listing is in [storage keys](../reference/storage-keys.md).
   The module bundle (`/index.js`, what almost every visitor runs) is not minified, so every
   `console` call is still in the shipped file and debug mode genuinely reveals them. The
   fallback UMD bundle (`dist/index.umd.js`, used for `nomodule` browsers and when the
-  module import fails — `public/loader.js:170`, `:192`) is minified with `drop_console`
-  (`vite.config.ts:29-45`, applied at `:137`), which removes the calls **at build time**.
+  module import fails — `public/loader.js`, in the module and nomodule fallback branches)
+  is minified with `drop_console` (`vite.config.ts` defines the Terser options; they are
+  applied to the UMD build in `vite.config.ts › closeBundle`), which removes the calls
+  **at build time**.
   **Trap:** debug mode is a runtime switch and cannot restore a call that is not in the
   file. **Symptom:** debug mode on, overlay open, console showing little or nothing.
   **Fix:** check which bundle loaded before concluding nothing ran — the loader announces
@@ -153,30 +159,35 @@ listing is in [storage keys](../reference/storage-keys.md).
   arrives as an `error:occurred` event. That is [error capture](./error-handling.md)'s
   behaviour, not the logger's.
 - **The overlay is loaded on demand and only in debug mode**, as a dynamic import
-  (`core/sdk-initializer.ts:783`). A shopper never downloads it on the module bundle.
+  (`core/sdk-initializer.ts › SDKInitializer.initializeDebugMode`). A shopper never
+  downloads it on the module bundle.
 - **The overlay remembers itself in `localStorage`**, under `debug-overlay-expanded`,
-  `debug-overlay-active-panel`, `debug-overlay-active-tab`, `debug-mini-cart-visible`, and
-  `debug-xray-active` (`core/debug/DebugOverlay.ts:50-52`, `:186`,
-  `core/debug/XrayStyles.ts:459`). **Trap:** those names do not begin with `next-`, so
-  `?reset=true` does not clear them (see [storage and expiry](./storage.md)). **Symptom:**
-  the overlay reopens expanded, on a panel you were using yesterday, or the page still has
-  x-ray outlines. **Fix:** collapse or toggle it off through the overlay itself, which
-  rewrites the key.
+  `debug-overlay-active-panel`, `debug-overlay-active-tab` (`core/debug/DebugOverlay.ts ›
+  DebugOverlay`, the class's storage-key constants), `debug-mini-cart-visible`
+  (`core/debug/DebugOverlay.ts › DebugOverlay.show`), and `debug-xray-active`
+  (`core/debug/XrayStyles.ts › XrayManager`). **Trap:** those names do not begin with
+  `next-`, so `?reset=true` does not clear them (see [storage and expiry](./storage.md)).
+  **Symptom:** the overlay reopens expanded, on a panel you were using yesterday, or the
+  page still has x-ray outlines. **Fix:** collapse or toggle it off through the overlay
+  itself, which rewrites the key.
 - **An expanded overlay changes the page's own layout.** It adds `debug-body-expanded` to
-  `<body>` and `<html>` (`:528-536`). **Trap:** a layout bug that only appears with the
-  overlay open is the overlay's. **Fix:** collapse it before measuring anything.
+  `<body>` and `<html>` (`core/debug/DebugOverlay.ts › DebugOverlay.updateBodyHeight`).
+  **Trap:** a layout bug that only appears with the overlay open is the overlay's.
+  **Fix:** collapse it before measuring anything.
 - **Only three panels live-update.** The one-second poll refreshes the quick stats plus the
   Cart, Config, and Campaign panels, and skips a panel whose "raw" tab is showing
-  (`:538-551`); the Analytics panel re-renders when the delivery tracker changes (`:130`).
+  (`core/debug/DebugOverlay.ts › DebugOverlay.startAutoUpdate`); the Analytics panel
+  re-renders when the delivery tracker changes
+  (`core/debug/DebugOverlay.ts › DebugOverlay.setupEventListeners`).
   **Trap:** a panel not on that list can show state from when you opened it. **Fix:**
   switch away and back, which forces a re-render.
 - **Opening the overlay arms test mode.** `?debugger=true` and
   `window.nextConfig.debugger` are read by the test-mode manager as well
-  (`core/test-mode.ts:104`). Read [test mode](./test-mode.md) before using either on a live
-  campaign.
+  (`core/test-mode.ts › TestModeManager.checkUrlTestMode`). Read [test mode](./test-mode.md)
+  before using either on a live campaign.
 - **`window.nextDebug` is installed whenever `config.debug` is true**, with the stores, the
   cart helpers, the analytics status, the attribution dump, and the campaign cache tools
-  (`core/sdk-initializer.ts:798-992`). Its full surface is in
+  (`core/sdk-initializer.ts › SDKInitializer.setupGlobalDebugUtils`). Its full surface is in
   [window surface](../reference/window-surface.md).
 
 ## Decisions
@@ -214,8 +225,9 @@ listing is in [storage keys](../reference/storage-keys.md).
   combination, so a page already loaded without `?debugger=true` needs a reload with the
   parameter. `window.nextDebug.overlay()` can be toggled by hand, but the instance builds
   its panels only if `?debug`, `?debugger`, `nextConfig.debug`, or `nextConfig.debugger` was
-  present when it was constructed (`core/debug/DebugOverlay.ts:61-90`) — with the
-  `next-debug` meta tag alone it has none, and toggling renders an empty overlay.
+  present when it was constructed (`core/debug/DebugOverlay.ts › DebugOverlay.constructor`)
+  — with the `next-debug` meta tag alone it has none, and toggling renders an empty
+  overlay.
 - **The overlay is not a supported interface.** Panel names, tabs, and its `localStorage`
   keys are internal and change between releases; nothing should be automated against them.
 - **The overlay does not show console output.** It records a fixed list of DOM events and

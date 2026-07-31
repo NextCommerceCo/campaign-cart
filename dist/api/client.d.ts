@@ -1,5 +1,6 @@
 import { Campaign, Cart, Order, CartBase, CreateOrder, AddUpsellLine, CartCalculateSummary, CartSummary } from '../types/api';
-export declare class ApiClient {
+import { IApiClient } from './client.types';
+export declare class ApiClient implements IApiClient {
     private baseURL;
     private apiKey;
     private logger;

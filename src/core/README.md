@@ -24,7 +24,7 @@ never imports `SDKInitializer` and depends entirely on what it does.
 | `attribute-scanner.ts` | Discovers `data-next-*` elements and instantiates the bound feature (dynamic `import()` per feature) |
 | `sdk-initializer.ts` | Boot sequence — config, location/currency, campaign load, analytics, DOM scan |
 | `next-commerce.ts` | The programmatic SDK facade (`NextCommerce` / `sdk.*`, incl. `sdk.cart.*`) |
-| `base/` | Base feature classes (`base-enhancer`, `base-cart-enhancer`, `base-action-enhancer`) + `attribute-parser`, `dom-observer` |
+| `base/` | Base feature classes (`base-enhancer`, `base-cart-enhancer`, `base-action-enhancer`, `base-display-enhancer` + the display routing table, validator and error boundary it needs) + `attribute-parser`, `dom-observer`. See [`base/README.md`](./base/README.md) for why the display base is here rather than in `features/display/` |
 | `analytics/` | Analytics subsystem (providers, events, tracking) — a lazy `analytics` chunk, not a feature |
 | `debug/` | Dev-only debug overlay/panels — loaded via dynamic `import()` so it never ships in the production bundle |
 | `attribution/` | Attribution capture run at SDK init: `attribution-collector` (reads UTM/referrer/funnel into `attribution.state`) and `utm-transfer` (propagates URL params to page links) |

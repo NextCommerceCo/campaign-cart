@@ -1,5 +1,5 @@
-import { BaseDisplayEnhancer } from '@/features/display/display-core';
-import type { FormatType } from '@/features/display/display-types';
+import { BaseDisplayEnhancer } from '@/core/base/base-display-enhancer';
+import type { FormatType } from '@/core/base/display-types';
 import { useCartStore } from '@/state/cart';
 import type { CartState } from '@/types/global';
 import { buildFlags } from './cart-summary.renderer';

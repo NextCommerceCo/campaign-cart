@@ -46,7 +46,7 @@ export const CORE_SUBSYSTEMS: CoreSubsystem[] = [
     reference: ['javascript-api', 'window-surface'],
     emits: ['upsell:added'],
     cautions: [
-      '`window.next` does not exist until boot completes, so a script tag placed above the loader sees `undefined`. Queue your code with `window.nextReady.push(fn)` — and inside that callback use the `next` argument it hands you, not `window.next`: boot drains the queue at `sdk-initializer.ts:745` and assigns `window.next` at `:755`, so a callback queued before boot would still read `undefined` from the global.',
+      '`window.next` does not exist until boot completes, so a script tag placed above the loader sees `undefined`. Queue your code with `window.nextReady.push(fn)` — and inside that callback use the `next` argument it hands you, not `window.next`: boot drains the queue and assigns `window.next` in `sdk-initializer.ts › SDKInitializer.setupReadyCallbacks`, so a callback queued before boot would still read `undefined` from the global.',
       'The callbacks registered with `next.registerCallback()` are never fired by the SDK — `triggerCallback` has no caller in the codebase, so your own code has to trigger them. For things the SDK really does announce, use `next.on()`.',
     ],
   }),
@@ -65,7 +65,7 @@ export const CORE_SUBSYSTEMS: CoreSubsystem[] = [
     reference: ['logs'],
     cautions: [
       'A feature only activates if the scanner queries its attribute. An attribute the scanner does not know about is inert with no error — the element simply never does anything, which reads like a broken feature rather than a typo.',
-      'The first scan matches 30 selectors; the watcher that picks up markup added afterwards matches **8 attributes** (`dom-observer.ts:43`). So HTML injected after boot activates only if it carries `data-next-display`, `-toggle`, `-timer`, `-show`, `-hide`, `-checkout`, `-validate`, or `-express-checkout`. An injected `data-next-action="add-to-cart"`, `-package-selector`, `-cart-items`, `-coupon`, or `-quantity` never comes alive, with no error. Re-scan after inserting that markup rather than relying on the watcher.',
+      'The first scan matches 30 selectors; the watcher that picks up markup added afterwards matches **8 attributes** (`dom-observer.ts › DOMObserver.constructor`). So HTML injected after boot activates only if it carries `data-next-display`, `-toggle`, `-timer`, `-show`, `-hide`, `-checkout`, `-validate`, or `-express-checkout`. An injected `data-next-action="add-to-cart"`, `-package-selector`, `-cart-items`, `-coupon`, or `-quantity` never comes alive, with no error. Re-scan after inserting that markup rather than relying on the watcher.',
     ],
   }),
 
@@ -92,8 +92,8 @@ export const CORE_SUBSYSTEMS: CoreSubsystem[] = [
     reference: ['url-parameters'],
     cautions: [
       "Test mode posts to the **real** order API — it is not a sandbox. Orders it creates are real orders on the campaign, and submitting also resets the cart and checkout stores and redirects, so a demo on a live page can take a shopper's cart with it. Clear the orders up rather than assuming they were discarded.",
-      'The risk is not the `?test=true` flag, it is the keyboard shortcut: the Konami listener is attached when the module is imported (`core/test-mode.ts:70-76`, `:367`, imported by `core/sdk-initializer.ts:16`) and `handleKeyDown` never checks whether test mode is on. So ↑↑↓↓←→←→BA creates a real order on any production checkout. `?debugger=true` also arms test mode as a side effect (`core/test-mode.ts:104`) — opening the overlay on a live page is enough.',
-      'What reaches the API is the token string `test_card`, not one of the card numbers in `core/test-mode.ts`. Those are unreachable: `showTestCardMenu()` (`:299`) has no caller, and it is the only thing that calls `fillTestCardData()` (`:237`). Do not expect to pick a card brand.',
+      'The risk is not the `?test=true` flag, it is the keyboard shortcut: the Konami listener is attached when the module is imported (`core/test-mode.ts › TestModeManager.initializeKonamiCode`, instantiated at module scope in `core/test-mode.ts`, imported by `core/sdk-initializer.ts`) and `handleKeyDown` never checks whether test mode is on. So ↑↑↓↓←→←→BA creates a real order on any production checkout. `?debugger=true` also arms test mode as a side effect (`core/test-mode.ts › TestModeManager.checkUrlTestMode`) — opening the overlay on a live page is enough.',
+      'What reaches the API is the token string `test_card`, not one of the card numbers in `core/test-mode.ts`. Those are unreachable: `showTestCardMenu()` (`core/test-mode.ts › TestModeManager.showTestCardMenu`) has no caller, and it is the only thing that calls `fillTestCardData()` (`core/test-mode.ts › TestModeManager.fillTestCardData`). Do not expect to pick a card brand.',
     ],
   }),
 
@@ -125,7 +125,7 @@ export const CORE_SUBSYSTEMS: CoreSubsystem[] = [
     howAuthorsReachIt: ['debug-only', 'observed'],
     reference: ['logs', 'url-parameters', 'meta-tags'],
     cautions: [
-      'There are four ways to turn debugging on and they do different things. `?debug=true` prints `info` and `warn` but not `debug` lines and opens no overlay; `nextConfig.debug` adds `debug` lines and `window.nextDebug` but still no overlay; the `next-debug` meta tag installs `window.nextDebug` and prints **nothing**, because `Logger` reads only the URL and `window.nextConfig` (`core/logger.ts:16-26`); only `?debugger=true` gives you the lines *and* the overlay. Reach for `?debugger=true` unless you know you want less.',
+      'There are four ways to turn debugging on and they do different things. `?debug=true` prints `info` and `warn` but not `debug` lines and opens no overlay; `nextConfig.debug` adds `debug` lines and `window.nextDebug` but still no overlay; the `next-debug` meta tag installs `window.nextDebug` and prints **nothing**, because `Logger` reads only the URL and `window.nextConfig` (`core/logger.ts › isDebugModeEnabled`); only `?debugger=true` gives you the lines *and* the overlay. Reach for `?debugger=true` unless you know you want less.',
       'On the fallback UMD bundle every `console` call is removed at build time — errors included — so a page there prints nothing at any level and no switch can restore it. If the console is silent on a clearly broken page, check which bundle loaded before concluding nothing failed.',
     ],
   }),
@@ -153,7 +153,7 @@ export const CORE_SUBSYSTEMS: CoreSubsystem[] = [
     howAuthorsReachIt: ['configured', 'observed'],
     reference: ['url-parameters', 'meta-tags', 'storage-keys'],
     cautions: [
-      'It is **last-touch per parameter**, not first-touch. `getStoredValue()` (`core/attribution/attribution-collector.ts:105-155`) reads the URL first and mirrors a hit back into storage, so a second tagged link in the same session re-credits that parameter; a parameter absent from the URL carries over from storage instead. `?funnel=` is the most emphatic case — it always wins and logs `🔄 Funnel override`. So a value you did not expect is a carry-over-versus-overwrite question, not proof the tag was lost.',
+      'It is **last-touch per parameter**, not first-touch. `getStoredValue()` (`core/attribution/attribution-collector.ts › AttributionCollector.getStoredValue`) reads the URL first and mirrors a hit back into storage, so a second tagged link in the same session re-credits that parameter; a parameter absent from the URL carries over from storage instead. `?funnel=` is the most emphatic case — it always wins and logs `🔄 Funnel override`. So a value you did not expect is a carry-over-versus-overwrite question, not proof the tag was lost.',
       '`first_visit_timestamp` is the exception that does not survive a new tab: the collector recovers it from `localStorage["next-attribution"]`, and the store only ever writes that key to sessionStorage. Returning-visitor logic built on it always reports a first visit. Write your own localStorage marker if you need truth across tabs.',
     ],
   }),
@@ -168,9 +168,9 @@ export const CORE_SUBSYSTEMS: CoreSubsystem[] = [
     reference: ['errors'],
     emits: ['error:occurred'],
     cautions: [
-      "It observes and reports; it does not contain failures. Keeping one broken feature from taking the page down is each feature's own `try/catch` (`core/base/base-enhancer.ts:133-142`), not this. So silence here is not evidence that nothing broke.",
+      "It observes and reports; it does not contain failures. Keeping one broken feature from taking the page down is each feature's own `try/catch` (`core/base/base-enhancer.ts › BaseEnhancer.handleError`), not this. So silence here is not evidence that nothing broke.",
       'It replaces `console.error` to observe errors, and its filter accepts any string containing "error". So anything your own code logs through `console.error` also arrives as `error:occurred`, and an enhancer failure arrives **twice** — once from the feature and once from the console line it wrote. Deduplicate before alerting on the count.',
-      'Capture is installed at boot step 9 through an import that is **not awaited** (`core/sdk-initializer.ts:686-694`), so nothing earlier in boot produces `error:occurred` — config, geo, campaign load, analytics, and a first failed boot attempt are all outside its window. If a failure disappears without an event, check whether it happened before this installed.',
+      'Capture is installed at boot step 9 through an import that is **not awaited** (`core/sdk-initializer.ts › SDKInitializer.initializeErrorHandler`), so nothing earlier in boot produces `error:occurred` — config, geo, campaign load, analytics, and a first failed boot attempt are all outside its window. If a failure disappears without an event, check whether it happened before this installed.',
     ],
   }),
 

@@ -1,5 +1,5 @@
-import { BaseDisplayEnhancer } from '@/features/display/display-core';
-import type { FormatType } from '@/features/display/display-types';
+import { BaseDisplayEnhancer } from '@/core/base/base-display-enhancer';
+import type { FormatType } from '@/core/base/display-types';
 import { PackageToggleEnhancer } from './package-toggle.enhancer';
 
 const FORMAT_MAP: Record<string, FormatType> = {

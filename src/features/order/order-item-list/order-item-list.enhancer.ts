@@ -9,7 +9,7 @@ import { useOrderStore } from '@/state/order';
 import { useConfigStore } from '@/state/config';
 import { ApiClient } from '@/api/client';
 import { TemplateRenderer, TemplateFormatters } from '@/core/rendering/template-renderer';
-import { DisplayFormatter } from '@/features/display/display-core';
+import { DisplayFormatter } from '@/core/base/base-display-enhancer';
 import type { OrderLine } from '@/types/api';
 // Order type is imported but not used in this file
 // import type { Order, OrderLine } from '@/types/api';

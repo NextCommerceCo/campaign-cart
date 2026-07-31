@@ -14,7 +14,10 @@ import {
   renderTestedExample,
 } from '@/docs/render/render-feature-reference';
 import { extractEventDocs } from '@/docs/extract/extract-event-docs';
-import { extractDisplayPaths } from '@/docs/extract/extract-display-paths';
+import {
+  extractDisplayPaths,
+  findPropertyMappings,
+} from '@/docs/extract/extract-display-paths';
 import { extractFixtureExample } from '@/docs/extract/extract-fixture-example';
 import { extractLogs, extractThrows } from '@/docs/extract/extract-logs';
 import { SDK_ATTRIBUTES } from '@/docs/content/sdk-attributes';
@@ -47,8 +50,24 @@ const modules = import.meta.glob<{ default: FeatureManifest }>(
 );
 
 const eventDocs = extractEventDocs(join(SRC, 'types/global.ts'));
+
+/**
+ * Where `PROPERTY_MAPPINGS` may live, most-likely first.
+ *
+ * A list rather than one path because this used to be hardcoded to
+ * `features/display/display-types.ts`, and relocating that file — which `sdk-structure`
+ * §2 required, since four `features/cart/**` files import from it — failed doc
+ * generation with an `ENOENT` rather than anything a reader could act on. Searching by
+ * declaration name instead means the table can move again without breaking the docs.
+ *
+ * The old path stays listed on purpose: it costs one `existsSync` and it is what makes
+ * this list a search rather than a second hardcoded path.
+ */
 const displayPaths = extractDisplayPaths(
-  join(SRC, 'features/display/display-types.ts')
+  findPropertyMappings([
+    join(SRC, 'core/base/display-types.ts'),
+    join(SRC, 'features/display/display-types.ts'),
+  ])
 );
 
 /** Repo root, for reading `e2e/` and for the fixture paths printed in the docs. */
@@ -104,6 +123,17 @@ function featureFiles(
     // render it. Keep this glob narrow: it must cover every path an `extraSource`
     // entry can point at, and nothing else.
     ...import.meta.glob<string>('../../core/rendering/**/*.ts', {
+      query: '?raw',
+      import: 'default',
+      eager: true,
+    }),
+    // Same reason, for the base classes: `data-next-display` and its formatting
+    // modifiers are read by `core/base/base-display-enhancer`, which every display
+    // feature extends. The class lives in `core/base/` rather than in the display
+    // folder because four `features/cart/**` files also extend it, and a feature
+    // importing another feature's internals is the cross-feature import
+    // `sdk-structure` §2 forbids.
+    ...import.meta.glob<string>('../../core/base/**/*.ts', {
       query: '?raw',
       import: 'default',
       eager: true,

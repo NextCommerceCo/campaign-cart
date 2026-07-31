@@ -4,14 +4,14 @@
 
 import { OrderBuilder } from '../builders/order-builder';
 import { handleOrderRedirect } from '../utils/redirect-handler';
-import type { ApiClient } from '@/api/client';
+import type { IApiClient } from '@/api/client.types';
 import type { Logger } from '@/core/logger';
 
 export class OrderManager {
   private orderBuilder: OrderBuilder;
 
   constructor(
-    private apiClient: ApiClient,
+    private apiClient: IApiClient,
     private logger: Logger,
     private emitCallback: (event: string, data: any) => void
   ) {

@@ -96,7 +96,7 @@ What the visitor sees in the meantime is the part worth planning for:
 - The `next-display-ready` class is **not** added, because the DOM scan never ran. That is the signal that separates a finished boot from an abandoned one.
 - `window.next` is never published and callbacks queued on `window.nextReady` never run, so page code waiting on either stays silent rather than erroring.
 - Each retry re-runs every step from the top, so the console shows the whole boot log again. Duplicate boot logs mean the first attempt failed — look for the earlier `SDK initialization failed:` line rather than treating the repetition as a page bug.
-- After the last retry the error is re-thrown. Nothing catches it (`src/index.ts:89` and `:93` call `initialize()` without a handler), so it surfaces as an unhandled promise rejection.
+- After the last retry the error is re-thrown. Nothing catches it (`src/index.ts` calls `initialize()` without a handler), so it surfaces as an unhandled promise rejection.
 
 ### Errors that stop the boot
 

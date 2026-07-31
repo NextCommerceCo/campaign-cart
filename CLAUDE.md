@@ -29,7 +29,7 @@ Guidance for Claude Code when working in this repository.
 
 - [src/features/](src/features/) — DOM-bound feature classes, organised by category (`cart/`, `display/`, `checkout/`, `order/`, `ui/`, `behavior/`). Every feature extends `BaseEnhancer` (or `BaseCartEnhancer` / `BaseActionEnhancer` / `BaseDisplayEnhancer`) and is activated by a `data-next-*` attribute.
 - [src/state/](src/state/) — Zustand stores. Field-name gotcha: campaign data lives on `useCampaignStore.getState().data` (not `.campaign`).
-- [src/api/](src/api/) — pure fetch calls. No store imports, no Zustand.
+- [src/api/](src/api/) — pure fetch calls. No store imports, no Zustand. Features depend on the **`IApiClient`** interface ([`src/api/client.types.ts`](src/api/client.types.ts)), not the concrete `ApiClient`; import the class only where one is constructed. See [src/api/README.md](src/api/README.md).
 - [src/core/](src/core/) — singleton services: `NextCommerce` and `EventBus` (obtain via `.getInstance()`), plus `Logger` (obtain via `createLogger(name)`). Its author-facing behaviour — boot order, meta tags, URL parameters, storage keys and TTLs, the `window.next` API, logs, errors, analytics — is documented in [src/core/guide/](src/core/guide/), mostly generated and drift-checked. `src/core` is a TypeDoc entry point, so its TSDoc now publishes to the docs site for **contributors** reading class/symbol pages — but author-facing explanations still belong in that guide, not in comments: an author reads the guide, not a class page.
 - [src/types/](src/types/) — shared types. Global event names live on `EventMap` in [src/types/global.ts](src/types/global.ts).
 - [src/utils/](src/utils/) — pure utilities. Do not import stores here (circular-dep risk).

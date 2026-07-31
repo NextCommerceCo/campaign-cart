@@ -1,4 +1,4 @@
-import { ApiClient } from '@/api/client';
+import type { IApiClient } from '@/api/client.types';
 import { useCheckoutStore } from '@/state/checkout';
 import type { AddressAutocomplete as AddressAutocompleteData, AddressAutocompleteResult } from '@/types/api';
 import { nextAnalytics, EcommerceEvents } from '@/core/analytics/index';
@@ -8,7 +8,7 @@ import { createCloseButton } from '../utils/create-close-button';
 class AddressAutocomplete {
   private input: HTMLInputElement;
   private ctx: AutocompleteContext;
-  private apiClient: ApiClient;
+  private apiClient: IApiClient;
   private type: 'shipping' | 'billing';
   private defaultCountry: string;
 
@@ -25,7 +25,7 @@ class AddressAutocomplete {
   constructor(
     input: HTMLInputElement,
     ctx: AutocompleteContext,
-    apiClient: ApiClient,
+    apiClient: IApiClient,
     type: 'shipping' | 'billing',
     defaultCountry: string
   ) {
@@ -354,9 +354,9 @@ class AddressAutocomplete {
 
 export class NextCommerceAutocomplete {
   private ctx: AutocompleteContext;
-  private apiClient: ApiClient;
+  private apiClient: IApiClient;
 
-  constructor(ctx: AutocompleteContext, apiClient: ApiClient) {
+  constructor(ctx: AutocompleteContext, apiClient: IApiClient) {
     this.ctx = ctx;
     this.apiClient = apiClient;
   }

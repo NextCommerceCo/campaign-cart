@@ -1,6 +1,6 @@
 import { Logger } from '../../../core/logger';
 import { SelectorItem } from '../../../types/global';
-import { ApiClient } from '../../../api/client';
+import { IApiClient } from '../../../api/client.types';
 import { LoadingOverlay } from '../../../core/ui/loading-overlay';
 export interface BundleLineItem {
     packageId: number;
@@ -18,7 +18,7 @@ export interface UpsellHandlerContext {
         value: BundleLineItem[] | null;
     };
     nextUrl: string | undefined;
-    apiClient: ApiClient;
+    apiClient: IApiClient;
     loadingOverlay: LoadingOverlay;
     logger: Logger;
     emit: (event: string, detail: unknown) => void;

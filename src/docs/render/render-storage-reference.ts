@@ -22,7 +22,7 @@ import { STORAGE_GROUPS } from '../content/storage-keys';
 export interface ExtractedKeyFacts {
   /** `sessionStorage` / `localStorage`, or both. Empty when nothing touches it. */
   areas: string[];
-  /** First site, `state/cart/cart.state.ts:84` style. */
+  /** First site, `state/cart/cart.state.ts` style. */
   firstSite: string;
   /** How many places touch it, so a reader knows whether it is one owner or many. */
   siteCount: number;

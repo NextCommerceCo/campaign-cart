@@ -246,7 +246,7 @@ function failureSection(sequence: BootSequence): string {
         ? '- Each retry re-runs every step from the top, so the console shows the whole boot log again. Duplicate boot logs mean the first attempt failed — look for the earlier `SDK initialization failed:` line rather than treating the repetition as a page bug.'
         : undefined,
       retry.rethrows
-        ? '- After the last retry the error is re-thrown. Nothing catches it (`src/index.ts:89` and `:93` call `initialize()` without a handler), so it surfaces as an unhandled promise rejection.'
+        ? '- After the last retry the error is re-thrown. Nothing catches it (`src/index.ts` calls `initialize()` without a handler), so it surfaces as an unhandled promise rejection.'
         : undefined,
     ]
       .filter(Boolean)

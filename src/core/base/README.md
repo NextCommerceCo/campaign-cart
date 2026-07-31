@@ -9,8 +9,31 @@ Foundation classes used by every enhancer in the project.
 | `base-enhancer.ts` | `BaseEnhancer` | Abstract base — lifecycle, DOM helpers, EventBus, store subscriptions |
 | `base-cart-enhancer.ts` | `BaseCartEnhancer` | Extends `BaseEnhancer` — adds cart store subscription helpers |
 | `base-action-enhancer.ts` | `BaseActionEnhancer` | Extends `BaseEnhancer` — adds `executeAction` with loading/disable state |
+| `base-display-enhancer.ts` | `BaseDisplayEnhancer` | Extends `BaseEnhancer` — everything behind a `data-next-display` binding: resolve the namespaced path, format the value, re-render on change |
+| `display-types.ts` | — | `PROPERTY_MAPPINGS` (the display routing table), `FormatType`, and the per-property config helpers |
+| `display-value-validator.ts` | `DisplayValueValidator` | Static utility — coerces a resolved value into what its format needs, warning and falling back when it cannot |
+| `display-error-boundary.ts` | `DisplayErrorBoundary` | Contains a failure in one display binding so it cannot blank the rest of the page |
 | `dom-observer.ts` | `DOMObserver` | MutationObserver wrapper for `data-next-*` attribute changes |
 | `attribute-parser.ts` | `AttributeParser` | Static utility — parses attributes, display paths, conditions, and determines enhancer types |
+
+### Why the display base is here and not in `features/display/`
+
+It used to live in `features/display/`, which read naturally — until you notice that
+four `features/cart/**` files extend it too (`cart-summary`, `package-selector`,
+`package-toggle`, `bundle-selector` each have a `*.display.ts`). That made every one of
+them import another feature's internals, the cross-feature import the `sdk-structure`
+skill §2 exists to prevent, and it is why `BaseDisplayEnhancer` was the only one of the
+four base classes not sitting beside its siblings.
+
+`display-types.ts` came with it because the same files import `FormatType`;
+`display-value-validator.ts` and `display-error-boundary.ts` came because
+`base-display-enhancer.ts` uses them.
+
+**Author-facing docs for `data-next-display` did not move** — they stay with the feature,
+at [`features/display/display-core/guide/`](../../features/display/display-core/guide/),
+because a page author looks for the attribute, not for the class. The manifest claims
+these files via `extraSource: ['src/core/base/…']` so the attribute checks still see the
+code that reads them.
 
 ---
 

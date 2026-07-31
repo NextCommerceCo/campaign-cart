@@ -3,7 +3,7 @@
  * Displays values based on the currently selected package in a selector
  */
 
-import { BaseDisplayEnhancer, PropertyResolver } from '@/features/display/display-core';
+import { BaseDisplayEnhancer, PropertyResolver } from '@/core/base/base-display-enhancer';
 import { PriceCalculator } from '@/features/display/price-calculator';
 import { useCampaignStore } from '@/state/campaign';
 import { useCartStore } from '@/state/cart';

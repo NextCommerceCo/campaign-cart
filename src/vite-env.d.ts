@@ -1,10 +1,22 @@
 /// <reference types="vite/client" />
 
-// Vite environment variables
+// Vite environment variables.
+//
+// Read from `.env.local` (gitignored) during development. Credentials belong here
+// rather than in `src/config.ts`, which is tracked — see the comment at the top of
+// that file.
 interface ImportMetaEnv {
   readonly VITE_API_BASE_URL?: string;
+  /** Campaign API key used by the debug-mode dev config (`src/config.ts`). */
   readonly VITE_API_KEY?: string;
   readonly VITE_CAMPAIGN_ID?: string;
+  /**
+   * Google Maps key for address autocomplete. Optional and billable: left unset, the
+   * SDK falls back to its own autocomplete.
+   */
+  readonly VITE_GOOGLE_MAPS_API_KEY?: string;
+  /** Version reported with captured errors (`core/monitoring/error-handler.ts`). */
+  readonly VITE_APP_VERSION?: string;
   readonly DEV: boolean;
   readonly PROD: boolean;
   readonly MODE: string;

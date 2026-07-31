@@ -17,7 +17,17 @@ export default defineFeature({
   logPrefix: 'DisplayEnhancer',
   // Context resolution — which package, cart line, or selector a binding is about —
   // lives beside the core rather than inside it.
-  extraSource: ['display-context.ts', 'display-types.ts'],
+  //
+  // The base class and its routing table moved to `core/base/` (sdk-structure §2):
+  // four `features/cart/**` display files extend `BaseDisplayEnhancer` too, and a
+  // feature reaching into another feature's folder is the cross-feature import that
+  // section forbids. The attributes documented here are read there, so they are
+  // claimed with the `src/`-relative form.
+  extraSource: [
+    'display-context.ts',
+    'src/core/base/base-display-enhancer.ts',
+    'src/core/base/display-types.ts',
+  ],
 
   attributes: [
     {

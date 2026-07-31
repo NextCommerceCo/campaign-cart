@@ -85,7 +85,7 @@ from an absence.
 - **Nothing is sent until the page switches it on, and no meta tag switches it on.**
   The config store has no `analytics` block by default, so `config.analytics?.enabled`
   is `undefined` and the analytics boot returns at its first check
-  (`core/analytics/index.ts:166`). Only `window.nextConfig.analytics.enabled = true`,
+  (`core/analytics/index.ts › NextAnalytics.initialize`). Only `window.nextConfig.analytics.enabled = true`,
   set before the SDK loads, starts it. A page with a GTM container on it and no
   `analytics` block sends zero events, and the only trace is one info log,
   `Analytics disabled in configuration`.
@@ -108,7 +108,7 @@ from an absence.
   reaching a provider.
 - **Two different validators, and only one of them can drop an event.** The
   required-field rules in `analytics/config.ts` run on every push and **drop** the
-  event before it reaches the array (`DataLayerManager.ts:84`) — for example
+  event before it reaches the array (`DataLayerManager.ts › DataLayerManager.push`) — for example
   `dl_add_to_cart` without `ecommerce.currency`. The richer field-schema validator runs
   **only in debug mode** and only reports; it never blocks. So a payload problem you
   can see logged in debug may have been shipped in production.

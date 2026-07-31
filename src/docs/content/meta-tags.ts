@@ -426,7 +426,7 @@ export const META_TAGS: MetaTagDoc[] = [
     description:
       "Intended to stop the named analytics events from being sent. The value is parsed into the controller's config and the only method that consults it, `shouldBlockEvent()`, is called from nowhere — so the events still fire.",
     notes:
-      'This is the trap: the tag looks like it works, and a page carrying it sends every event anyway, which is how duplicate or unwanted conversions reach a provider. Two ways to suppress events that do work today: add `?ignore=true` to the URL, which sets a session-wide flag and stops analytics before any provider initialises (`analytics/index.ts:100-138`), or filter the event in your tag manager. Do **not** reach for `window.nextConfig.tracking` — that value is stored and read by nothing. Treat this tag as not implemented until `shouldBlockEvent()` has a caller.',
+      'This is the trap: the tag looks like it works, and a page carrying it sends every event anyway, which is how duplicate or unwanted conversions reach a provider. Two ways to suppress events that do work today: add `?ignore=true` to the URL, which sets a session-wide flag in `analytics/index.ts › NextAnalytics.checkAndSetIgnoreFlag` and is checked by `analytics/index.ts › NextAnalytics.shouldIgnoreAnalytics` before any provider initialises, or filter the event in your tag manager. Do **not** reach for `window.nextConfig.tracking` — that value is stored and read by nothing. Treat this tag as not implemented until `shouldBlockEvent()` has a caller.',
   },
   {
     name: 'next-analytics-enable-only',

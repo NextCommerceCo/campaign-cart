@@ -10,7 +10,7 @@ category: "Core Reference"
      src/core. Do not edit by hand: edit core-errors.ts, then run
      `npm run docs:reference`. -->
 
-Every error the SDK's own machinery can raise — 19 of them — at the exact message, so a console line can be matched to a cause. Each feature documents its own throws in its own `guide/reference/errors.md`.
+Every error the SDK's own machinery can raise — 20 of them — at the exact message, so a console line can be matched to a cause. Each feature documents its own throws in its own `guide/reference/errors.md`.
 
 **Recoverable** means a retry or a corrected input gets past it with no code change. **Fatal** means it happens every time until the markup, code, or configuration changes.
 
@@ -31,6 +31,7 @@ Fatal first, since those recur for every visitor until something changes.
 | `No order found. Upsells can only be added after order completion.` | Fatal | `next-commerce.ts` |
 | `Either packageId or items array must be provided` | Fatal | `next-commerce.ts` |
 | `No test cards available` | Fatal | `test-mode.ts` |
+| `{name}: data-next-display attribute is required` | Fatal | `base/base-display-enhancer.ts` |
 | `Failed to fetch location data: {statusText}` | Recoverable | `country-service.ts` |
 | `Failed to fetch states for {countryCode}: {statusText}` | Recoverable | `country-service.ts` |
 | `Order does not support post-purchase upsells or is currently processing.` | Recoverable | `next-commerce.ts` |
@@ -71,7 +72,10 @@ Every part of `src/core`, and whether it raises anything of its own. "Nothing" i
 | `attribution/attribution-collector.ts` | `[AttributionCollector]` | nothing |
 | `attribution/utm-transfer.ts` | `[UtmTransfer]` | nothing |
 | `base/attribute-parser.ts` | `[AttributeParser]` | nothing |
+| `base/base-display-enhancer.ts` | `[{DisplayEnhancerClassName}]` | 1 — `{name}: data-next-display attribute is required` |
 | `base/base-enhancer.ts` | `[{EnhancerClassName}]` | 2 — `Required attribute {name} not found on element`, `Element is required` |
+| `base/display-error-boundary.ts` | `[DisplayErrorBoundary]` | nothing |
+| `base/display-value-validator.ts` | `[DisplayValueValidator]` | nothing |
 | `base/dom-observer.ts` | `[DOMObserver]` | nothing |
 | `country-service.ts` | `[CountryService]` | 2 — `Failed to fetch location data: {statusText}`, `Failed to fetch states for {countryCode}: {statusText}` |
 | `debug/CountrySelector.ts` | `[CountrySelector]` | nothing |
@@ -246,6 +250,26 @@ An `items: []` is treated as nothing provided, so guard an empty selection befor
 | Caught | Nothing catches it — it propagates to the caller, which is test-mode code, not a customer page. |
 
 **Fix:** A shipped build cannot reach this: the card list is a constant with several entries. It guards against that list being emptied, so seeing it means `test-mode.ts` was edited. Restore an entry in `testCards`.
+
+---
+
+## `{name}: data-next-display attribute is required`
+
+| | |
+|---|---|
+| Type | Fatal |
+| Thrown by | `base/base-display-enhancer.ts` — logs under `[{DisplayEnhancerClassName}]` |
+| Cause | An element was matched as a display binding but carries no `data-next-display` value to bind. Almost always the attribute is present with an empty value (`data-next-display=""`), or a templating step emitted the name without filling it in — a genuinely absent attribute would not have matched in the first place. |
+| Caught | The base feature class catches it, logs it under the failing feature’s own prefix, and emits `error:occurred`. Only that element is affected: it keeps its placeholder text and never updates, while every other binding on the page works normally. |
+
+**Fix:** Give the element a namespaced path, or remove the attribute if the element is not a display binding:
+
+```html
+<!-- was: <span data-next-display=""></span> -->
+<span data-next-display="cart.total"></span>
+```
+
+The namespace before the dot decides which part of the SDK answers — see the display feature's [attributes reference](../../../features/display/display-core/guide/reference/attributes.md) for the full list.
 
 ---
 

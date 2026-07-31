@@ -87,8 +87,24 @@ method are now one anchor, and a key that was `(file, line)` must become
 And a line number is still right in an **assertion failure message** — that is a developer
 finding a call site, not a published page.
 
-A line number in *hand-written* prose is not gated by anything and goes stale silently;
-prefer naming the symbol there too.
+**Hand-written prose is gated too, as of 2026-07-31.**
+[`src/tests/docs/sourceReferences.test.ts`](../../src/tests/docs/sourceReferences.test.ts)
+reads every citation in `src/docs/content/*.ts`, `src/docs/render/*.ts` and
+`src/core/guide/subsystems/*.md` and asserts:
+
+- **the cited file exists** — this is what catches a move. It had to be written because
+  relocating `checkout-form.enhancer.ts` left a subsystem page citing a path that was
+  simply gone, with every other gate green.
+- **the cited symbol is really in that file** — this is what catches a rename.
+- **no line-number citations at all.** This began as a ratchet at the 79 that existed
+  when the gate was written; all 79 were converted, so it is now a flat ban. A line
+  number can get the file check but never the symbol check, so every citation in these
+  files is now checkable and none can silently rot.
+
+Two things the gate cannot do, so they stay on you: it proves the symbol *exists* in the
+file, not that it is the *right* symbol for the claim; and a bare basename
+(`dom-observer.ts`) resolves only while it is unique across `src/` — an ambiguous one is
+reported rather than guessed.
 
 ## 2. Write so a newcomer understands (readability bar)
 

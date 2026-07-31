@@ -542,7 +542,7 @@ next.off('cart:item-added', onAdd);`,
 next.triggerCallback('cartUpdated', next.getCartData());`,
     caution:
       '**The SDK never fires these.** `triggerCallback` has no caller anywhere in the SDK ' +
-      '(`core/next-commerce.ts:354` is its only definition and nothing invokes it), so a ' +
+      '(`core/next-commerce.ts › NextCommerce.triggerCallback` is its only definition and nothing invokes it), so a ' +
       'handler registered here stays silent until your own code triggers it. It is a ' +
       'page-driven notification channel, not a lifecycle hook. For events the SDK really ' +
       'does emit, use `next.on()`.',

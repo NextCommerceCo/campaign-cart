@@ -6,7 +6,7 @@ description: >-
   belongs (feature vs state vs core vs util); refactoring the folder layout; or
   migrating enhancers→features / stores→state. Covers the TARGET layout
   (features/state/core/types/utils + client.ts DI), dependency direction, the
-  DOM-activation model, feature/state anatomy, the IHttpClient injection
+  DOM-activation model, feature/state anatomy, the IApiClient injection
   redesign, TypeDoc conventions, and the safe phased-migration workflow
   (contract test → shim → one file at a time). Reference files carry the durable
   behavior contracts and the per-feature / per-store authoring rules.
@@ -73,7 +73,7 @@ src/
 │
 ├── features/       # ★ What the SDK DOES — one folder per domain (cart, checkout, upsell…)
 ├── state/          # ★ Mutable reactive state (Zustand), shared across features. Was stores/
-├── core/           # ★ Internal engine (@internal): http (+IHttpClient), events, storage,
+├── core/           # ★ Internal engine (@internal): events, storage,
 │                   #     config, errors, plus the DOM-activation engine (AttributeScanner,
 │                   #     SDKInitializer, base feature class)
 ├── types/          # Shared cross-cutting types + EventMap
@@ -94,7 +94,7 @@ Supporting (repo root): `examples/`, `tests/`, `docs/`, `typedoc.json`,
 | `core/NextCommerce.ts` | `client.ts` + `core/` | composition root |
 | `utils/events.ts`, `utils/logger.ts` | `core/events.ts`, `core/logger.ts` ✅ done | still `.getInstance()` singletons; injection is a later phase |
 | `utils/storage.ts`, `utils/testMode.ts`, `utils/countryService.ts`, `utils/monitoring/`, `utils/attribution/` | `core/*` ✅ done | shared infra + SDK-init subsystems, not features |
-| `api/client.ts` | `core/http.ts` (+ `core/http.types.ts` → `IHttpClient`) | transport facade |
+| `api/client.ts` | **stays** `api/client.ts` (+ `api/client.types.ts` → `IApiClient`) ✅ done | the seam shipped 2026-07-31. Renaming it `core/http.ts` would misname it: it is the typed endpoint client, not a transport facade — §6 |
 | `utils/analytics/` | `core/analytics/` ✅ done | cross-cutting subsystem, not a feature; stays a lazy `analytics` chunk |
 | `utils/debug/` | `core/debug/` ✅ done | code-split via dynamic `import()` so it never ships in prod |
 
@@ -107,7 +107,7 @@ layer (`CartCalculator` → `state/cart/`, `PriceCalculator` → `features/displ
 ## 2. Dependency direction (never violate)
 
 ```
-features   →  core (via the IHttpClient interface), state, types, utils
+features   →  core, api (via the IApiClient interface), state, types, utils
 core       →  nothing above it
 state      →  nothing above it
 client.ts  →  wires everything together (the only file that knows all layers)
@@ -133,8 +133,9 @@ feature bound to each one.
 
 So a feature is **DOM-bound**, not a free-standing service:
 
-- `client.ts` builds the shared dependencies (`http`, `state`, event bus) once
-  and hands them to features — features never construct their own singletons.
+- `client.ts` builds the shared dependencies (the API client, `state`, event bus)
+  once and hands them to features — features never construct their own
+  singletons.
 - `AttributeScanner` supplies the DOM element; `client.ts` supplies the
   dependencies. Together they instantiate a feature.
 - The `data-next-*` → feature mapping is part of the frozen contract (§0.1).
@@ -142,8 +143,8 @@ So a feature is **DOM-bound**, not a free-standing service:
   path — grep for `import(` after any move.
 
 A future thin *programmatic* facade (`sdk.cart.addItem()`) can reuse the same
-`state/` + `core/http` without the DOM layer — which is exactly why business
-rules live in `features`/`state`/`core`, not buried in DOM event handlers.
+`state/` + `api/` without the DOM layer — which is exactly why business rules
+live in `features`/`state`/`core`, not buried in DOM event handlers.
 
 ---
 
@@ -212,17 +213,50 @@ customer sessions. After moving a store, confirm every import resolves to the
 
 ## 6. Engine, injection, and interfaces (the redesign — do it deliberately)
 
-- **`core/http.ts` is the one HTTP facade over `fetch`** — auth, retries,
-  timeouts, error conversion written once. Features call `http.get()/post()` and
-  never touch `fetch`.
-- **Features depend on the `IHttpClient` interface** (`core/http.types.ts`), not
-  the concrete class — tests pass a fake; implementations can be swapped.
-- **`client.ts` is the composition root**: creates the real `HttpClient`, event
-  bus, and state, then injects them into features. Features never construct
-  their own dependencies.
+- **One HTTP facade over `fetch`** — auth, retries, timeouts, error conversion
+  written once. No feature touches `fetch`. Today that is
+  `ApiClient.request()` in `api/client.ts`.
+- **Features depend on an interface, not the concrete class** — tests pass a
+  fake; implementations can be swapped.
+- **`client.ts` is the composition root**: creates the real client, event bus,
+  and state, then injects them into features. Features never construct their
+  own dependencies.
 - **Add an interface only where it earns it**: multiple dependents, needs
-  mocking, or may be swapped. `IHttpClient` qualifies. Do NOT add an interface
+  mocking, or may be swapped. The API client qualifies. Do NOT add an interface
   for every class — that is over-engineering.
+
+### The seam is the domain methods, not `get`/`post` — **decided 2026-07-31**
+
+This section used to name the interface `IHttpClient` and have features call
+`http.get()/post()`. **That was wrong, and the shipped interface is
+[`IApiClient`](../../../src/api/client.types.ts) instead** — the fourteen typed
+endpoint calls (`createOrder`, `calculateSummary`, …).
+
+Two different abstractions were being conflated. A *transport* facade
+(`get`/`post`) is the right shape for the **inside** of the client, and
+`ApiClient.request()` already is one. It is the wrong shape for a **feature** to
+depend on: `http.post('/api/v1/orders/', …)` puts endpoint paths and payload
+shapes inside the feature, which is exactly what `src/api/` exists to own — so
+that seam would violate §2 while appearing to follow it.
+
+So: features depend on `IApiClient`; the transport stays private to `ApiClient`.
+Do not "fix" it back. Details and the rough edges in
+[`src/api/README.md`](../../../src/api/README.md).
+
+**Done so far** (the type-only half — no construction changed, so it carried no
+runtime risk): `IApiClient` exists, `ApiClient implements` it, and every site
+that *holds* a client is typed at the interface — `OrderManager`,
+`NextCommerceAutocomplete`, the accept-upsell context, and the `apiClient` field
+on the order-display / accept-upsell / prospect-cart enhancers.
+`src/tests/contract/api-surface.test.ts` gates both directions, because
+`implements` only checks one: an endpoint added to the class and missed on the
+interface is otherwise silent.
+
+**Still to do:** the enhancers above still call `new ApiClient(…)` themselves.
+Because their fields are already `IApiClient`, moving construction to a
+composition root is one line each and no type changes. That, and removing
+`Logger`/`EventBus`/`ApiClient` from `src/index.ts`, is a **breaking public-API
+change needing explicit approval** (§0.1) — keep it separate.
 
 This section is a **redesign of today's `.getInstance()` singletons** (§0.2).
 Migrate it as its own phase, behind green tests, after the folder moves.

@@ -328,4 +328,26 @@ An \`items: []\` is treated as nothing provided, so guard an empty selection bef
       'A `DispatchError`: the adapter base logs `Event "{event}" not delivered: RudderStack load timeout` and records the descriptor it had prepared.',
     fix: 'Add the RudderStack JavaScript SDK snippet to the page, above the SDK loader. The adapter warns once with the same instruction — `rudderanalytics not found …`.',
   },
+
+  // ── Shared base ────────────────────────────────────────────────────────────
+  {
+    // `{name}` is how the extractor renders `${this.constructor.name}` — at runtime it
+    // is the concrete subclass, e.g. `ProductDisplayEnhancer: data-next-display …`.
+    message: '{name}: data-next-display attribute is required',
+    owner: '{DisplayEnhancerClassName}',
+    file: 'base/base-display-enhancer.ts',
+    kind: 'fatal',
+    cause:
+      'An element was matched as a display binding but carries no `data-next-display` value to bind. Almost always the attribute is present with an empty value (`data-next-display=""`), or a templating step emitted the name without filling it in — a genuinely absent attribute would not have matched in the first place.',
+    caught:
+      'The base feature class catches it, logs it under the failing feature’s own prefix, and emits `error:occurred`. Only that element is affected: it keeps its placeholder text and never updates, while every other binding on the page works normally.',
+    fix: `Give the element a namespaced path, or remove the attribute if the element is not a display binding:
+
+\`\`\`html
+<!-- was: <span data-next-display=""></span> -->
+<span data-next-display="cart.total"></span>
+\`\`\`
+
+The namespace before the dot decides which part of the SDK answers — see the display feature's [attributes reference](../../../features/display/display-core/guide/reference/attributes.md) for the full list.`,
+  },
 ];

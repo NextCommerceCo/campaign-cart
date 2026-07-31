@@ -4,7 +4,7 @@
  */
 
 import { DisplayContextProvider } from './display-context';
-import { DisplayErrorBoundary } from '@/features/display/display-error-boundary';
+import { DisplayErrorBoundary } from '@/core/base/display-error-boundary';
 
 interface DebugInfo {
   path: string;

@@ -1,5 +1,5 @@
-import { BaseDisplayEnhancer } from '../../display/display-core';
-import { FormatType } from '../../display/display-types';
+import { BaseDisplayEnhancer } from '../../../core/base/base-display-enhancer';
+import { FormatType } from '../../../core/base/display-types';
 import { CartState } from '../../../types/global';
 export declare class CartDisplayEnhancer extends BaseDisplayEnhancer {
     protected setupStoreSubscriptions(): void;

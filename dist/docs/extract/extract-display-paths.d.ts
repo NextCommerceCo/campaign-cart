@@ -3,5 +3,6 @@ export interface DisplayPath {
     format: string;
     negated: boolean;
 }
+export declare function findPropertyMappings(candidates: string[]): string;
 export declare function extractDisplayPaths(displayTypesPath: string): Record<string, DisplayPath[]>;
 //# sourceMappingURL=extract-display-paths.d.ts.map

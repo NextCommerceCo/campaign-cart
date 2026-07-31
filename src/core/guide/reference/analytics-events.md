@@ -11,7 +11,7 @@ category: "Core Reference"
 
 Every analytics event the SDK can fire, what triggers it, what it carries, and which of your tags will see it. Event names are the canonical `dl_*` names — the same strings you put in `blockedEvents` and the same strings that land in `window.NextDataLayer`.
 
-There are **35** canonical events. **19** carry a field schema, which is checked only when debug mode is on and only ever logged — it never blocks an event (`analytics/index.ts:293-301`). What can stop an event before it is pushed is the separate always-on rule set in `analytics/config.ts`, which checks a handful of required fields per event rather than the whole schema. So a payload missing a schema field still ships; read the field tables as the shape to aim for, not a guarantee. **7** are declared but never fired by any SDK feature — they are listed so a page can push them and so they can be blocked, not because the SDK produces them.
+There are **35** canonical events. **19** carry a field schema, which is checked only when debug mode is on and only ever logged — it never blocks an event (`analytics/index.ts › NextAnalytics.track`). What can stop an event before it is pushed is the separate always-on rule set in `analytics/config.ts`, which checks a handful of required fields per event rather than the whole schema. So a payload missing a schema field still ships; read the field tables as the shape to aim for, not a guarantee. **7** are declared but never fired by any SDK feature — they are listed so a page can push them and so they can be blocked, not because the SDK produces them.
 
 ## Nothing fires until you turn it on
 

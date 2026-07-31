@@ -3,7 +3,7 @@
  * Validates display formatting across the application
  */
 
-import { FormatType } from '@/features/display/display-types';
+import { FormatType } from '@/core/base/display-types';
 
 export interface ValidationIssue {
   element: HTMLElement;

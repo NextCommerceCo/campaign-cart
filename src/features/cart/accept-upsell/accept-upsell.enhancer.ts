@@ -2,6 +2,7 @@ import { BaseActionEnhancer } from '@/core/base/base-action-enhancer';
 import { useOrderStore } from '@/state/order';
 import { useConfigStore } from '@/state/config';
 import { ApiClient } from '@/api/client';
+import type { IApiClient } from '@/api/client.types';
 import { LoadingOverlay } from '@/core/ui/loading-overlay';
 import { acceptUpsell } from './accept-upsell.handlers';
 import type { SelectorItem } from '@/types/global';
@@ -14,7 +15,7 @@ export class AcceptUpsellEnhancer extends BaseActionEnhancer {
   private bundleSelectorId?: string;
   private bundleItemsRef: { value: BundleLineItem[] | null } = { value: null };
   private nextUrl?: string;
-  private apiClient!: ApiClient;
+  private apiClient!: IApiClient;
   private loadingOverlay = new LoadingOverlay();
   private selectedItemRef: { value: SelectorItem | null } = { value: null };
 

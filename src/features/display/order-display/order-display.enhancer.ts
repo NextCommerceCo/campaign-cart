@@ -3,16 +3,17 @@
  * Displays order data using the unified data-next-display="order.xxx" pattern
  */
 
-import { BaseDisplayEnhancer, PropertyResolver, DisplayFormatter } from '@/features/display/display-core';
+import { BaseDisplayEnhancer, PropertyResolver, DisplayFormatter } from '@/core/base/base-display-enhancer';
 import { AttributeParser } from '@/core/base/attribute-parser';
-import { getPropertyMapping } from '@/features/display/display-types';
+import { getPropertyMapping } from '@/core/base/display-types';
 import { useOrderStore } from '@/state/order';
 import { useConfigStore } from '@/state/config';
 import { ApiClient } from '@/api/client';
+import type { IApiClient } from '@/api/client.types';
 import type { Order, OrderLine } from '@/types/api';
 
 export class OrderDisplayEnhancer extends BaseDisplayEnhancer {
-  private apiClient?: ApiClient;
+  private apiClient?: IApiClient;
   private orderState: any = {};
 
   public override async initialize(): Promise<void> {

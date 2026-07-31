@@ -349,7 +349,7 @@ export class AttributeScanner {
         case 'checkout':
           // SIMPLIFIED: Use single CheckoutFormEnhancer for all checkout functionality
           // This matches the original CheckoutFormEnhancer.backup.ts approach
-          const { CheckoutFormEnhancer } = await import('@/features/checkout/checkout-form.enhancer');
+          const { CheckoutFormEnhancer } = await import('@/features/checkout/checkout-form');
           return new CheckoutFormEnhancer(element);
 
         case 'checkout-review':
@@ -357,7 +357,7 @@ export class AttributeScanner {
             element: element.tagName,
             class: element.className,
           });
-          const { CheckoutReviewEnhancer } = await import('@/features/checkout/checkout-review.enhancer');
+          const { CheckoutReviewEnhancer } = await import('@/features/checkout/checkout-review');
           return new CheckoutReviewEnhancer(element);
 
         case 'express-checkout':
@@ -367,7 +367,7 @@ export class AttributeScanner {
           return null;
           
         case 'express-checkout-container':
-          const { ExpressCheckoutContainerEnhancer } = await import('@/features/checkout/express-checkout-container.enhancer');
+          const { ExpressCheckoutContainerEnhancer } = await import('@/features/checkout/express-checkout-container');
           return new ExpressCheckoutContainerEnhancer(element);
 
         // REMOVED: form-validator, payment, address, phone, validation enhancers

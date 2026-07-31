@@ -221,7 +221,7 @@ export function renderAnalyticsEvents(
     `There are **${facts.events.length}** canonical events. ` +
       `**${withSchema}** carry a field schema, which is checked only when debug ` +
       `mode is on and only ever logged — it never blocks an event ` +
-      `(\`analytics/index.ts:293-301\`). What can stop an event before it is ` +
+      `(\`analytics/index.ts › NextAnalytics.track\`). What can stop an event before it is ` +
       `pushed is the separate always-on rule set in \`analytics/config.ts\`, ` +
       `which checks a handful of required fields per event rather than the whole ` +
       `schema. So a payload missing a schema field still ships; read the field ` +

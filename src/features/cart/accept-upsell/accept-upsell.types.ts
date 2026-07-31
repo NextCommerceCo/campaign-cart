@@ -1,6 +1,6 @@
 import type { Logger } from '@/core/logger';
 import type { SelectorItem } from '@/types/global';
-import type { ApiClient } from '@/api/client';
+import type { IApiClient } from '@/api/client.types';
 import type { LoadingOverlay } from '@/core/ui/loading-overlay';
 
 export interface BundleLineItem {
@@ -18,7 +18,7 @@ export interface UpsellHandlerContext {
   /** Ref holding the currently selected bundle items — updated on bundle:selection-changed. */
   bundleItemsRef: { value: BundleLineItem[] | null };
   nextUrl: string | undefined;
-  apiClient: ApiClient;
+  apiClient: IApiClient;
   loadingOverlay: LoadingOverlay;
   logger: Logger;
   emit: (event: string, detail: unknown) => void;

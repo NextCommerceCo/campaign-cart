@@ -2,22 +2,51 @@
 
 Handles the checkout form: field collection, validation, payment processing, order creation, and express checkout (PayPal, Apple Pay, Google Pay).
 
-## Files
+## Layout
 
-| File | Class | Purpose |
+Each feature is a folder holding its enhancer, its manifest, its `guide/`, and its tests —
+import the folder (`@/features/checkout/checkout-form`), never the inner file. Everything
+below the features is **shared by more than one of them**, which is why it stays at this
+level rather than inside a feature.
+
+### Features
+
+| Folder | Class | Activated by | Purpose |
+|---|---|---|---|
+| `checkout-form/` | `CheckoutFormEnhancer` | `form[data-next-checkout]` | The checkout form: fields, validation, payment, order creation |
+| `checkout-review/` | `CheckoutReviewEnhancer` | `[data-next-enhancer]` | Displays stored checkout data for review |
+| `express-checkout-container/` | `ExpressCheckoutContainerEnhancer` | `[data-next-express-checkout="container"]` | Container for PayPal / Apple Pay / Google Pay |
+| `prospect-cart/` | `ProspectCartEnhancer` | `form[data-next-checkout]` — but **not via the scanner** | Saves the prospect (email capture) before the order, for abandoned-cart recovery |
+
+`prospect-cart/` is the exception worth knowing: its manifest documents the same
+`form[data-next-checkout]` as the form itself, because that is the markup that brings it to
+life — but `AttributeScanner` never instantiates it. `CheckoutFormEnhancer.initializeProspectCart()`
+constructs it and drives it from the form's email field, so it exists only where an
+enhanced checkout form does. Grepping the scanner for it finds nothing; that is expected,
+not a missing registration.
+
+### Shared by the features above
+
+| Path | Class | Purpose |
 |---|---|---|
-| `checkout-form.enhancer.ts` | `CheckoutFormEnhancer` | Main checkout `<form>` enhancer |
-| `checkout-review.enhancer.ts` | `CheckoutReviewEnhancer` | Displays stored checkout data for review |
-| `prospect-cart.enhancer.ts` | `ProspectCartEnhancer` | Saves prospect (email capture) before order |
-| `express-checkout-container.enhancer.ts` | `ExpressCheckoutContainerEnhancer` | Container for PayPal/Apple Pay/Google Pay |
 | `processors/express-checkout-processor.ts` | `ExpressCheckoutProcessor` | Handles express payment flows |
 | `managers/field-manager.ts` | `FieldManager` | Finds and reads form fields |
-| `managers/order-manager.ts` | `OrderManager` | Builds and submits the order API call |
+| `managers/order-manager.ts` | `OrderManager` | Builds and submits the order API call. Takes an `IApiClient` — see [`api/README.md`](../../api/README.md) |
 | `services/credit-card-service.ts` | `CreditCardService` | Tokenizes card data (Stripe/Braintree) |
 | `services/ui-service.ts` | `UIService` | Manages form UI state (errors, loading, button) |
 | `validation/checkout-validator.ts` | `CheckoutValidator` | Field validation rules |
 | `builders/order-builder.ts` | `OrderBuilder` | Assembles `CreateOrder` payload |
+| `address-autocomplete/` | `AddressAutocompleteEnhancer` | Address suggestions in the form |
 | `constants/` | — | Field mappings, selectors, payment icons, validation config |
+| `utils/`, `debug/` | — | URL/redirect helpers and the checkout debug panel |
+| `checkout.types.ts` | — | Types shared across the checkout features |
+| `tests/` | — | Tests for the shared pieces above (`OrderBuilder`). A feature's own tests live in that feature's folder |
+
+**Attributes and errors documented by `checkout-form` are read and thrown in the shared
+folders** — `ui-service` reads `data-next-payment-method`, `order-manager` and
+`credit-card-service` throw four of its documented errors. Its manifest claims them with
+`src/`-relative `extraSource` entries; if you move any of these folders, update that list
+or the attribute and error drift checks stop seeing the code.
 
 ---
 

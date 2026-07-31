@@ -144,8 +144,8 @@ if (typeof window !== 'undefined') {
       // Phase 2: Secondary modules (preload after critical)
       requestIdleCallback(() => {
         // Checkout flow
-        import('./features/checkout/checkout-form.enhancer');
-        import('./features/checkout/express-checkout-container.enhancer');
+        import('./features/checkout/checkout-form');
+        import('./features/checkout/express-checkout-container');
 
         // Order/Upsell
         import('@/features/display/order-display');

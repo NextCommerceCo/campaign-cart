@@ -3,8 +3,8 @@
  * Displays shipping data based on data-next-shipping-id context
  */
 
-import { BaseDisplayEnhancer, DisplayFormatter } from '@/features/display/display-core';
-import { getPropertyMapping } from '@/features/display/display-types';
+import { BaseDisplayEnhancer, DisplayFormatter } from '@/core/base/base-display-enhancer';
+import { getPropertyMapping } from '@/core/base/display-types';
 import { useCampaignStore } from '@/state/campaign';
 // import { useCartStore } from '@/state/cart'; - removed unused import
 import type { ShippingOption } from '@/types/api';

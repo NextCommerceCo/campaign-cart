@@ -8,8 +8,8 @@
 
 import { BaseEnhancer } from '@/core/base/base-enhancer';
 import { AttributeParser } from '@/core/base/attribute-parser';
-import { PropertyResolver } from '@/features/display/display-core';
-import { getPropertyConfig } from '@/features/display/display-types';
+import { PropertyResolver } from '@/core/base/base-display-enhancer';
+import { getPropertyConfig } from '@/core/base/display-types';
 import { PackageContextResolver } from '@/features/display/package-context-resolver';
 import { PriceCalculator } from '@/features/display/price-calculator';
 import { useCartStore } from '@/state/cart';
