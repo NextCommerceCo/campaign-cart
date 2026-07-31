@@ -5,6 +5,10 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Attribution } from '@/types/api';
+import { createLogger } from '@/core/logger';
+
+/** Prefixes every line with `[AttributionStore]`, which the messages used to carry by hand. */
+const logger = createLogger('AttributionStore');
 
 export interface AttributionMetadata {
   landing_page: string;
@@ -119,10 +123,7 @@ export const useAttributionStore = create<
               state.first_visit_timestamp || data.first_visit_timestamp,
           }));
         } catch (error) {
-          console.error(
-            '[AttributionStore] Error initializing attribution:',
-            error
-          );
+          logger.error('Error initializing attribution:', error);
         }
       },
 
@@ -139,7 +140,7 @@ export const useAttributionStore = create<
 
       setFunnelName: funnel => {
         if (!funnel) {
-          console.warn('[AttributionStore] Cannot set empty funnel name');
+          logger.warn('Cannot set empty funnel name');
           return;
         }
 
@@ -147,8 +148,8 @@ export const useAttributionStore = create<
 
         // Check if funnel is already set
         if (currentState.funnel) {
-          console.info(
-            `[AttributionStore] Funnel already set to: ${currentState.funnel}, ignoring new value: ${funnel}`
+          logger.info(
+            `Funnel already set to: ${currentState.funnel}, ignoring new value: ${funnel}`
           );
           return;
         }
@@ -158,8 +159,8 @@ export const useAttributionStore = create<
           localStorage.getItem('next_funnel_name') ||
           sessionStorage.getItem('next_funnel_name');
         if (persistedFunnel) {
-          console.info(
-            `[AttributionStore] Funnel already persisted as: ${persistedFunnel}, ignoring new value: ${funnel}`
+          logger.info(
+            `Funnel already persisted as: ${persistedFunnel}, ignoring new value: ${funnel}`
           );
           // Update state to match persisted value
           set({ funnel: persistedFunnel });
@@ -173,20 +174,15 @@ export const useAttributionStore = create<
         try {
           sessionStorage.setItem('next_funnel_name', funnel);
           localStorage.setItem('next_funnel_name', funnel);
-          console.info(
-            `[AttributionStore] Funnel name set and persisted: ${funnel}`
-          );
+          logger.info(`Funnel name set and persisted: ${funnel}`);
         } catch (error) {
-          console.error(
-            '[AttributionStore] Error persisting funnel name:',
-            error
-          );
+          logger.error('Error persisting funnel name:', error);
         }
       },
 
       setEverflowClickId: evclid => {
         if (!evclid) {
-          console.warn('[AttributionStore] Cannot set empty Everflow click ID');
+          logger.warn('Cannot set empty Everflow click ID');
           return;
         }
 
@@ -203,7 +199,7 @@ export const useAttributionStore = create<
           },
         }));
 
-        console.info(`[AttributionStore] Everflow click ID set to: ${evclid}`);
+        logger.info(`Everflow click ID set to: ${evclid}`);
       },
 
       getAttributionForApi: (): Attribution => {
@@ -249,6 +245,15 @@ export const useAttributionStore = create<
       },
 
       debug: () => {
+        /*
+         * The console output of this method *is* its product: a developer types
+         * `window.next.attribution.debug()` and reads a grouped, aligned report. Routing it
+         * through `logger` would prefix and level-gate every line and lose
+         * `console.group`, which is the formatting that makes it readable — so the
+         * project-wide no-console rule is switched off here deliberately, for this method
+         * only. Everything outside it in this file goes through `logger`.
+         */
+        /* eslint-disable no-console */
         const state = get();
 
         console.group('🔍 Attribution Debug Info');
@@ -343,6 +348,7 @@ export const useAttributionStore = create<
         console.groupEnd();
 
         return 'Attribution debug info logged to console.';
+        /* eslint-enable no-console */
       },
 
       reset: () => {
@@ -354,12 +360,9 @@ export const useAttributionStore = create<
           localStorage.removeItem('next_funnel_name');
           sessionStorage.removeItem('next_funnel_name');
           set({ funnel: '' });
-          console.info('[AttributionStore] Cleared persisted funnel name');
+          logger.info('Cleared persisted funnel name');
         } catch (error) {
-          console.error(
-            '[AttributionStore] Error clearing persisted funnel:',
-            error
-          );
+          logger.error('Error clearing persisted funnel:', error);
         }
       },
     }),
