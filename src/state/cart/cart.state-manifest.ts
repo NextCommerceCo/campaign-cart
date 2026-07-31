@@ -216,7 +216,7 @@ export default defineStore({
     {
       name: 'sdk.cart.removeCoupon(code)',
       effect:
-        'Takes the coupon off the checkout store and recalculates. The code must match what was stored, which is the upper-cased form.',
+        'Takes the coupon off the checkout store and recalculates. Normalises the code the same way `applyCoupon` does before matching, so casing and whitespace do not have to match what was stored.',
       deprecated:
         'the `useCartStore.getState().removeCoupon()` delegator is legacy — it forwards here.',
     },

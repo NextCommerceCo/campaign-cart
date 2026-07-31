@@ -69,4 +69,5 @@ acceptUpsell()
   (rendered into a tab, a modal, or behind a deferred script) still misses that read. When it
   does, `Selector "<id>" not found` is logged and the button falls back to arming on the
   visitor's first click on a card. **What to do as an author:** if your selector renders late,
-  expect the button to start disabled and to enable on the first card click.
+  expect the button to start disabled and to enable on the first card click — and do not build
+  a step where the button must already be enabled before any card exists in the DOM.

@@ -1,4 +1,5 @@
 import { calculateTotals } from './calculate-totals';
+import { normalizeVoucherCode } from '@/utils/voucher';
 
 export async function applyCoupon(
   code: string
@@ -6,9 +7,17 @@ export async function applyCoupon(
   const { useCheckoutStore } = await import('@/state/checkout');
   const checkoutState = useCheckoutStore.getState();
 
-  const normalizedCode = code.toUpperCase().trim();
+  const normalizedCode = normalizeVoucherCode(code);
 
-  if (checkoutState.vouchers.includes(normalizedCode)) {
+  // Compare normalised on both sides, not just the incoming code: a voucher
+  // can also reach `vouchers` un-normalised, via bundle-selector's direct
+  // `checkoutStore.addVoucher(code)` calls (bundle-configured codes are not
+  // routed through this function). Comparing only `normalizedCode` against
+  // raw stored entries would miss that duplicate.
+  const alreadyApplied = checkoutState.vouchers.some(
+    v => normalizeVoucherCode(v) === normalizedCode
+  );
+  if (alreadyApplied) {
     return { success: false, message: 'Coupon already applied' };
   }
 

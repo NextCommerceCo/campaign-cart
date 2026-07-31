@@ -70,7 +70,43 @@ Any integration reading `cartLines` gets an empty array and no error.
 **Fix:** either populate it or remove it from the public snapshot. Removing is an API
 change; leaving it is a silent wrong answer.
 
-### 4. `removeCoupon` is case-sensitive while `applyCoupon` is not — *verified*
+### 4. ~~`removeCoupon` is case-sensitive while `applyCoupon` is not~~ — **FIXED 2026-07-31**
+
+Fixed test-first: `expected [ 'SAVE10' ] to deeply equal []` — `applyCoupon('save10')` then
+`removeCoupon('save10')` left the voucher in place. 8 new tests across
+`state/cart/operations/coupon.test.ts` and `state/checkout/checkout.state.test.ts`, covering
+the exact-casing round trip and the `' Save10 '` whitespace/mixed-case variants in both
+directions.
+
+The normaliser is now shared — `normalizeVoucherCode()` in `src/utils/voucher.ts` — and **two**
+comparison sites use it, not the one this entry named:
+
+- `removeVoucher` (`checkout.state.ts`) normalises both the incoming code and each stored entry.
+- `applyCoupon`'s duplicate check normalises each stored entry instead of assuming they are
+  already normalised. They are not: `bundle-selector.handlers.ts:189,193` calls
+  `addVoucher`/`removeVoucher` **directly** with bundle-configured codes, bypassing
+  `applyCoupon` entirely — so a bundle voucher stored as `save10` would have let a
+  shopper-typed `SAVE10` apply on top of it as a duplicate.
+
+**`addVoucher` was deliberately left un-normalising.** Normalising what gets *stored* would
+change what `bundle-selector.handlers.ts` puts in the array, and that file compares raw
+(`!toApply.includes(code)`), so normalising storage without also normalising that comparison
+would convert a latent casing bug into a live duplicate-push on every bundle voucher swap.
+Normalising both sides of the *comparisons* fixes the reported bug without touching storage
+semantics.
+
+Nothing depended on the raw casing: the coupon display renders from the already-normalised
+stored array, and no API payload carries the argument passed to `removeCoupon` —
+`core/next-commerce.ts` needed no change.
+
+**Still open:** a **third** copy of this normaliser lives in
+`features/display/conditional-display/conditional-display.conditions.ts:128-131` as a private
+`normalizeCouponCode`. It is correct today, so nothing is broken — but it should point at
+`@/utils/voucher.ts` so a future change to the rule reaches all three.
+
+The original diagnosis follows.
+
+
 
 `applyCoupon` stores `code.toUpperCase().trim()`
 (`state/cart/operations/apply-coupon.ts:9`). `removeVoucher` filters on `v !== code`

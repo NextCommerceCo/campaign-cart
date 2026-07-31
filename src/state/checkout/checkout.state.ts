@@ -4,6 +4,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { normalizeVoucherCode } from '@/utils/voucher';
 
 export interface CheckoutState {
   step: number;
@@ -150,8 +151,11 @@ export const useCheckoutStore = create<CheckoutState & CheckoutActions>()(
       },
 
       removeVoucher: (code: string) => {
+        const normalizedCode = normalizeVoucherCode(code);
         set(state => ({
-          vouchers: state.vouchers.filter(v => v !== code),
+          vouchers: state.vouchers.filter(
+            v => normalizeVoucherCode(v) !== normalizedCode
+          ),
         }));
       },
 

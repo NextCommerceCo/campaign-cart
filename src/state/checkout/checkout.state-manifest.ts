@@ -96,7 +96,7 @@ export default defineStore({
       description:
         'The coupon codes currently applied to this checkout. This is the source of truth for coupons — the cart store\'s `vouchers` is a copy written on each totals recalculation, so read coupons from here (or via `sdk.getCoupons()`) and never write them into the cart store directly.',
       notes:
-        'Codes go in uppercased and trimmed (`applyCoupon` normalises them), but `removeVoucher` matches exactly. So `removeVoucher(\'save10\')` against a stored `SAVE10` removes nothing and silently leaves the discount in place — the shopper clicks remove and the total does not move. Always normalise before removing: `removeVoucher(code.toUpperCase().trim())`, or go through `sdk.removeCoupon(code)`.',
+        'Codes go in uppercased and trimmed, and `removeVoucher` normalises the same way before comparing — both `applyCoupon` and `removeVoucher` run every code through the same `normalizeVoucherCode()` (`@/utils/voucher.ts`), so `removeVoucher(\'save10\')` removes a stored `SAVE10`.',
     },
   ],
 
@@ -104,12 +104,12 @@ export default defineStore({
     {
       name: 'sdk.applyCoupon(code)',
       effect:
-        'Uppercases and trims the code, refuses it if it is already in `vouchers`, adds it, then recalculates cart totals against the API. Returns `{ success, message }` — the message is ready to show to the shopper.',
+        'Uppercases and trims the code, refuses it if it is already in `vouchers` (comparing normalised on both sides, so a code stored un-normalised still dedupes), adds it, then recalculates cart totals against the API. Returns `{ success, message }` — the message is ready to show to the shopper.',
     },
     {
       name: 'sdk.removeCoupon(code)',
       effect:
-        'Removes the code from `vouchers` and recalculates totals against the API. Matches the stored code exactly, so pass it in the same case it was stored in.',
+        'Removes the code from `vouchers` and recalculates totals against the API. Normalises the code the same way `applyCoupon` does before matching, so any casing or surrounding whitespace still finds the stored entry.',
     },
   ],
 
@@ -158,7 +158,7 @@ export default defineStore({
     {
       name: 'removeVoucher(code)',
       effect:
-        'Removes an exactly-matching code without recalculating. Prefer `sdk.removeCoupon(code)`.',
+        'Removes a matching code (normalised the same way `addVoucher`/`applyCoupon` store it) without recalculating. Prefer `sdk.removeCoupon(code)`.',
     },
     {
       name: 'reset()',
@@ -192,7 +192,6 @@ export default defineStore({
 
   cautions: [
     "**Persistence is filtered, so \"I added a field and it resets\" is the expected outcome.** Only the fields listed in `partialize` (`step`, `formData`, `shippingMethod`, `billingAddress`, `sameAsShipping`, `paymentMethod`, `vouchers`) reach sessionStorage. Add your field to that list if it must survive a reload — and leave it out if it touches card data.",
-    '**Coupon removal is case-sensitive while adding is not.** `applyCoupon` stores `SAVE10`; `removeVoucher(\'save10\')` matches nothing, so the discount stays and the remove button looks broken. Normalise with `code.toUpperCase().trim()`, or call `sdk.removeCoupon(code)`.',
     '**Coupons live here, not in the cart store.** `useCartStore.vouchers` is refreshed from this store every time totals are recalculated, so writing a coupon into the cart store is overwritten on the next recalculation and the API never sees it. Write here via `sdk.applyCoupon()`.',
     '**Express payment choices do not survive a reload.** `apple_pay`, `google_pay`, and `paypal` are rewritten to `credit-card` on the way to storage, so a refreshed page shows the card form. Re-offer the express buttons on load rather than trusting the stored method.',
     '**Card data is never in this store after a reload.** `paymentToken` is not persisted and CVV, card number, and expiry are stripped from `formData`. A "resume checkout" flow has to send the shopper back through the hosted card fields.',

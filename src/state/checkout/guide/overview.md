@@ -79,8 +79,10 @@ checkout always sends the shopper back through the hosted card fields.
   `vouchers`, appends it, and then recalculates cart totals against the API. The
   cart store's `vouchers` is a mirror refreshed on each recalculation — see
   [the cart store](../../cart/guide/reference/state-reference.md).
-- **Removal matches exactly.** `removeVoucher` filters on string equality
-  against the stored, upper-cased form, so a lower-case code removes nothing.
+- **Removal is case- and whitespace-insensitive, like storage.** `removeVoucher`
+  normalises both the code it is given and each stored code with the same
+  `toUpperCase().trim()` `applyCoupon` uses, so `removeVoucher('save10')` removes
+  a stored `SAVE10`.
 - **`setShippingMethod` here does not reprice.** It records the choice; the money
   only changes when the cart recalculates.
 - **Nothing resets the store when an order completes.** The persisted subset
@@ -122,10 +124,6 @@ checkout always sends the shopper back through the hosted card fields.
   dropped on write and an all-empty address is stored as `undefined`, so code
   that assumes every billing key is present reads `undefined` for the rest. Guard
   each field, or re-read the form.
-- **Coupon removal is case-sensitive while adding is not.** `removeVoucher('save10')`
-  against a stored `SAVE10` silently leaves the discount in place and the remove
-  button looks dead. Call `sdk.removeCoupon(code)`, or normalise with
-  `code.toUpperCase().trim()` first.
 - **`testMode` here does not put the page into test mode.** The submit path
   decides that from `core/test-mode.ts`; flipping this field alone changes
   nothing about the order that is placed.
