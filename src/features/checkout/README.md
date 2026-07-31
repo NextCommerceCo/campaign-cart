@@ -38,6 +38,7 @@ field list and nothing more.
 | `phone-input.ts` | `intl-tel-input` wiring for the shipping and billing phone fields, so the order carries an E.164 number rather than typed text | 7 fields |
 | `billing-animation.ts` | Expanding/collapsing the billing section (height animation + a fallback for when `transitionend` never fires) | 3 fields |
 | `billing-form-setup.ts` | Cloning the shipping form into a billing one, rewriting each field's identity to `billing-`, and setting the section's opening state without animation | 3 fields |
+| `expiration-fields.ts` | The card expiry month/year dropdowns, including the rule that keeps the year list consistent with the chosen month so an already-past date cannot be assembled | 1 field |
 
 Each has a colocated test in `checkout-form/tests/`.
 
