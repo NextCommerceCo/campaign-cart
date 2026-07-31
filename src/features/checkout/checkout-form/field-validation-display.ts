@@ -51,7 +51,15 @@ function clearErrorLabels(field: HTMLElement): void {
   field.closest(FORM_GROUP)?.querySelector(ERROR_LABEL)?.remove();
 }
 
-/** Marks the field and its wrapper as valid: tick on, error off. */
+/**
+ * Marks the field and its wrapper as valid: tick on, error off, message gone.
+ *
+ * Uses {@link clearErrorLabels} rather than only clearing the immediate wrapper. The
+ * original code cleared the label in **one** place here but in **three** on `input`, so a
+ * field whose error message sat in a `.form-group` ancestor kept showing it after the value
+ * became valid — the exact "stale error under a corrected field" that `input` was written
+ * carefully to avoid. That asymmetry predates the extraction; the two paths now agree.
+ */
 function markValid(field: HTMLElement): void {
   field.classList.remove('has-error', 'next-error-field');
   field.classList.add('no-error');
@@ -60,8 +68,9 @@ function markValid(field: HTMLElement): void {
   if (wrapper) {
     wrapper.classList.remove('addErrorIcon');
     wrapper.classList.add('addTick');
-    wrapper.querySelector(ERROR_LABEL)?.remove();
   }
+
+  clearErrorLabels(field);
 }
 
 /** True when the field holds nothing a validator could judge. */
