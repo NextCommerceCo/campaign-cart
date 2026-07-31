@@ -10,7 +10,7 @@ vi.mock('@/state/cart', () => ({
     clear: vi.fn(),
   },
 }));
-vi.mock('@/utils/url-utils', () => ({
+vi.mock('@/core/url-utils', () => ({
   preserveQueryParams: (url: string) => `${url}?kept=1`,
 }));
 

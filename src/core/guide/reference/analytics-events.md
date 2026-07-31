@@ -6,7 +6,7 @@ category: "Core Reference"
 
 # Analytics events
 
-<!-- Generated. Do not edit by hand: edit src/core/docs/analytics-events.ts
+<!-- Generated. Do not edit by hand: edit src/docs/content/analytics-events.ts
      (prose) or the analytics source (facts), then run `npm run docs:reference`. -->
 
 Every analytics event the SDK can fire, what triggers it, what it carries, and which of your tags will see it. Event names are the canonical `dl_*` names — the same strings you put in `blockedEvents` and the same strings that land in `window.NextDataLayer`.

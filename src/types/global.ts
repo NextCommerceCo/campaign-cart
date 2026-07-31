@@ -1375,7 +1375,17 @@ export interface ConfigState {
 
 /**
  * Which stage of the funnel a page represents. Drives page-specific behavior and
- * analytics. Set via `data-next-page-type` / loader config.
+ * analytics.
+ *
+ * Set with `<meta name="next-page-type" content="checkout">`, or with
+ * `window.nextConfig.pageType` — the meta tag wins over the config. It is a meta
+ * tag only: there is no element attribute for it, and a value written that way is
+ * never read.
+ *
+ * @example
+ * ```html
+ * <meta name="next-page-type" content="upsell">
+ * ```
  */
 export type PageType = 'product' | 'cart' | 'checkout' | 'upsell' | 'receipt';
 

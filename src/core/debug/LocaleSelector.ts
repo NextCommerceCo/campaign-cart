@@ -350,7 +350,7 @@ export class LocaleSelector {
       }
       
       // Clear currency formatter cache when locale changes
-      const { CurrencyFormatter } = await import('@/utils/currencyFormatter');
+      const { CurrencyFormatter } = await import('@/core/currency-formatter');
       CurrencyFormatter.clearCache();
       
       // Import and refresh display enhancers

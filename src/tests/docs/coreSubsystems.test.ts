@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, relative } from 'node:path';
-import { CORE_SUBSYSTEMS } from '@/core/docs/core-subsystems';
-import type { CoreSubsystem } from '@/core/docs/core-manifest';
+import { CORE_SUBSYSTEMS } from '@/docs/content/core-subsystems';
+import type { CoreSubsystem } from '@/docs/content/core-manifest';
 
 /**
  * Structural checks on the core subsystem inventory — the denominator

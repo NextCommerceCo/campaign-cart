@@ -3,7 +3,7 @@
  * Individual panel content generators for debug overlay
  */
 
-import { formatCurrency } from '@/utils/currencyFormatter';
+import { formatCurrency } from '@/core/currency-formatter';
 import { useCartStore, cartOperations } from '@/state/cart';
 import { useConfigStore } from '@/state/config';
 import { useCampaignStore } from '@/state/campaign';

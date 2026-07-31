@@ -129,7 +129,7 @@ Limitations, `reference/logs.md`, `get-started.md`, and the manifest note on
 
 ### 5. The first `<button>` in a coupon container wins — *verified*
 
-`features/cart/coupon.enhancer.ts:32-33`:
+`features/cart/coupon/coupon.enhancer.ts:32-33`:
 
 ```ts
 this.element.querySelector('button') ||
@@ -194,7 +194,7 @@ bound to a parameter goes stale. `core/next-commerce.ts` around `:984-1037`.
 | 12 | `campaign:loaded` has a live subscriber (`core/sdk-initializer.ts:639`) and no emitter. | — | reported |
 | 13 | 16 `EventMap` events are never emitted. Removing them is an API change. | `types/global.ts` | verified earlier |
 | 14 | `data-cart-item-id` vs `data-next-cart-item-id` — cart-item-list writes one, display-context reads the other, so display bindings never resolve cart-line context in a row. | — | reported |
-| 15 | `accordion`'s `aria-controls` never resolves: the trigger gets `aria-controls="{id}"` while the panel is given `id="{id}-content"`. Accessibility, and no fix a page author can apply. | `features/ui/accordion.enhancer.ts` | reported |
+| 15 | `accordion`'s `aria-controls` never resolves: the trigger gets `aria-controls="{id}"` while the panel is given `id="{id}-content"`. Accessibility, and no fix a page author can apply. | `features/ui/accordion/accordion.enhancer.ts` | reported |
 | 16 | `CACHE_EXPIRY_MS` (10 min) is duplicated in `state/campaign/api.slice.ts:10` and `items.slice.ts:12` — two copies that can drift. `config.cacheTtl` does not control it. | — | reported |
 | 17 | 14 `ConfigState` fields are read nowhere outside the debug panel, including `cacheTtl`, `retryAttempts`, `maxRetries`, `enableAnalytics`, and `tracking`. Analytics reads `config.analytics?.enabled` instead. | `types/global.ts` | reported |
 | 18 | `campaignId` is never sent anywhere — requests authenticate by `apiKey` alone. | — | reported |
@@ -283,7 +283,7 @@ track the handlers and remove them before re-registering.
 
 `saveTimerState` / `loadTimerState` / `clearTimerState` (`storage.ts:157-170`) write
 `next-timer-*` to **sessionStorage** and are called from nowhere; the only code using that
-prefix, `features/display/timer.enhancer.ts:39,45,100`, uses **localStorage**. So two
+prefix, `features/display/timer/timer.enhancer.ts:39,45,100`, uses **localStorage**. So two
 mechanisms exist for one key family and the helpers can never read what the timer wrote — a
 future caller would silently get a different lifetime. Also `CONFIG_STORAGE_KEY =
 'next-config-state'` (`storage.ts:146`) is exported and never read or written anywhere under
@@ -604,7 +604,7 @@ or read the existing value first.
 
 ### 57. `require()` in ESM source — *verified as present, runtime effect unconfirmed*
 
-`core/next-commerce.ts:783` has `const { formatCurrency } = require('@/utils/currencyFormatter');`
+`core/next-commerce.ts:783` has `const { formatCurrency } = require('@/core/currency-formatter');`
 inside `formatPrice()`, and `core/debug/DebugPanels.ts:173` has another. The library builds ESM
 (`vite.config.ts` `formats: ['es']`), where `require` is not defined, so `next.formatPrice()`
 plausibly throws `require is not defined` in the browser. Worth a 30-second check in a real
@@ -640,7 +640,7 @@ The bus does not replay, and these fire during boot before any page code can be 
 
 - `sdk:url-parameters-processed` — emitted inside `loadCampaignData` at boot step 5
   (`sdk-initializer.ts:465`); its only subscriber registers during the step-11 DOM scan
-  (`features/display/conditional-display.enhancer.ts:97`), so that handler can never run.
+  (`features/display/conditional-display/conditional-display.enhancer.ts:97`), so that handler can never run.
 - `currency:fallback` (`state/campaign/api.slice.ts:98`, `:162`) — also step 5. The
   "surface this to the visitor" advice in `types/global.ts:160-163` is unactionable; the usable
   signal is `configStore.currencyFallbackOccurred` (`api.slice.ts:93`, `:157`, `:168`).
@@ -1012,7 +1012,7 @@ splits into three different situations, only some of which are the `Discount`-sh
   closest live analogue to finding 87's `Discount` bug — three declarations of one concept,
   two of them unreachable from `src/index.ts` — except today all three happen to agree, so
   there is no visible symptom yet. `api.ts`'s copy is not dead: it types
-  `features/display/shipping-display.enhancer.ts`'s import directly.
+  `features/display/shipping-display/shipping-display.enhancer.ts`'s import directly.
 
 **Same name, but both sides of the pair are the already-known-dead `types/cart.ts`:**
 
@@ -1103,10 +1103,13 @@ Listed so they are not re-reported. All were one-line or docs-only.
 | Finding | Where | What changed |
 |---|---|---|
 | `data-next-show-if-profile` activated the conditional enhancer, which then **threw** `Either data-next-show or data-next-hide is required` on every such element | `core/base/attribute-parser.ts` | removed the dead activation. ⚠️ Content those attributes used to hide is now **visible** |
-| A leftover debug statement logged at **warn** level on every read of `unitSavingsPercentage`, a common display path | `features/display/product-display.enhancer.ts:385` | dropped to `debug` |
+| A leftover debug statement logged at **warn** level on every read of `unitSavingsPercentage`, a common display path | `features/display/product-display/product-display.enhancer.ts:385` | dropped to `debug` |
 | `npm run lint` could not run at all — `"@typescript-eslint/recommended"` needs the `plugin:` prefix, twice | `.eslintrc.json` | fixed. It now reports **12,365 errors**; see the open decision below |
 | The type-aware linter could not parse any test file, so all 51 colocated feature tests were silently unlinted | `tsconfig.json` excluded `**/*.test.ts` | added `tsconfig.eslint.json` |
 | Dead profile system: `ProfileManager` docs, a 703-line guide, a 451-line recipe, and 4 `profile:*` events that are not in `EventMap` | across docs | removed |
+| A leftover `console.log` on every modal button click, printing the action name to the visitor's console. Forbidden by CLAUDE.md (`this.logger` instead), and now inside `core/` where the log-reference gate applies | `core/ui/general-modal.ts:260` | reported |
+| `TemplateRenderer` reports a failed placeholder with `console.warn` rather than a logger, so a blank field on a live page is invisible to the SDK's own log level. Documented in the core log reference as part of the `shared/` → `core/rendering/` move; the call itself still bypasses the logger | `core/rendering/template-renderer.ts:54` | reported |
+| The docs tooling hardcodes `src/features/display/display-types.ts` in two places — `featureReference.test.ts:51` and `extract-display-paths.ts` (which reads `PROPERTY_MAPPINGS` out of it). Moving that file breaks doc generation with an `ENOENT`, not a readable error. Same fragility class as the line-number coupling in the open decisions below | `src/tests/docs/` | reported — blocks moving display base classes into `core/base/` |
 
 ---
 

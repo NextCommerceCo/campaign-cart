@@ -3,7 +3,7 @@
  */
 
 import { getNextPageUrlFromMeta } from './meta-tag-utils';
-import { preserveQueryParams } from '@/utils/url-utils';
+import { preserveQueryParams } from '@/core/url-utils';
 import type { Logger } from '@/core/logger';
 
 export function handleOrderRedirect(order: any, logger: Logger, emitCallback: (event: string, data: any) => void): void {

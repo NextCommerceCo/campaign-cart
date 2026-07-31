@@ -2,12 +2,12 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { basename, dirname, join, relative } from 'node:path';
-import type { StateManifest } from '@/core/docs/state-manifest';
+import type { StateManifest } from '@/docs/schema/state-manifest';
 import {
   renderStateReference,
   type FieldTypes,
-} from '@/core/docs/render-state-reference';
-import { extractStateFields } from './extract-state-fields';
+} from '@/docs/render/render-state-reference';
+import { extractStateFields } from '@/docs/extract/extract-state-fields';
 
 /**
  * Generates each store's `guide/reference/state-reference.md` from its
@@ -33,9 +33,9 @@ const stores = Object.entries(modules)
   .map(([path, mod]) => {
     const file = join(dirname(fileURLToPath(import.meta.url)), path);
     const manifest = mod.default;
-    // A store either has its own folder (`state/cart/`) or sits flat in `state/`
-    // as a single file (`state/order.state.ts`). Its guide goes in a folder named
-    // after it either way, matching how flat features are handled.
+    // Every store now has its own folder (`state/cart/`, `state/order/`), so the
+    // guide sits beside the code. The flat-file branch below is kept only so a
+    // store added at `state/<id>.state-manifest.ts` still finds its guide.
     const dir = dirname(file);
     const ownFolder = basename(dir) === manifest.id;
     return {

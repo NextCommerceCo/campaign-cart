@@ -7,7 +7,7 @@ category: "Core Reference"
 # Boot sequence
 
 <!-- Generated from src/core/sdk-initializer.ts. Do not edit by hand:
-     edit the source or STEP_NOTES in core/docs/render-boot-sequence.ts,
+     edit the source or STEP_NOTES in src/docs/render/render-boot-sequence.ts,
      then run `npm run docs:reference`. -->
 
 The SDK boots once per page load, in 14 steps, and only the last of them makes `window.next` usable. This page is the order those steps run in, what each one gives the page, and which signal to wait for before your own code touches the cart.

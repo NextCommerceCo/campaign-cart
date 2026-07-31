@@ -158,6 +158,11 @@ the same page; put the simple usage first and the depth below it.
   components — `<Callout>`, `<Tabs>`, `<Cards>`, `<Steps>` are not supported.
   Relative `.md` links between guides render correctly as-is; keep samples
   inside ordinary fenced code blocks.
+- **Diagrams: a ` ```mermaid ` fenced block, nothing else.** It renders as a real
+  diagram, in the reader's light or dark theme, in guide pages *and* in TSDoc
+  comments — `@boneskull/typedoc-plugin-mermaid` handles it, and readers with
+  JavaScript off still see the source. Write the diagram in the markdown; never
+  commit a rendered image or add site JavaScript for it.
 - **Frontmatter drives the nav.** `title`, `group`, `category`, and `children`
   on a document decide its place in the sidebar — a new hand-written page needs
   this frontmatter or it will not appear in the tree.

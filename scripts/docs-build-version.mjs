@@ -215,25 +215,13 @@ function runTypedoc({ cwd, optionsFile }) {
     throw new Error(`typedoc exited with code ${result.status}`);
 }
 
-/**
- * Copies the vendored runtime assets into the finished build.
- *
- * TypeDoc emits only `customCss`/`customJs` — a `vendor/` sibling is not copied —
- * so without this every version folder 404s on the mermaid bundle that
- * `docs/assets/site.js` lazy-loads, and diagram pages fall back to showing their
- * source. Assets come from *this* checkout, matching how `customCss`/`customJs`
- * are absolutised, so an old tag gets current assets.
+/*
+ * No asset-copy step here on purpose. TypeDoc emits only `customCss`/`customJs`, but the
+ * one runtime asset the site needs beyond those — mermaid's ESM bundle — is copied into
+ * `<outDir>/assets/mermaid/` by `@boneskull/typedoc-plugin-mermaid` itself, and only for
+ * builds that actually contain a diagram. A tag whose guides have no mermaid block pays
+ * nothing.
  */
-function copyAssets(outDir) {
-  const result = spawnSync(
-    process.execPath,
-    [join(REPO, 'scripts/docs-assets.mjs'), '--out', outDir],
-    { cwd: REPO, stdio: 'inherit', encoding: 'utf8' }
-  );
-  if (result.error) throw result.error;
-  if (result.status !== 0)
-    throw new Error(`docs-assets exited with code ${result.status}`);
-}
 
 /** Writes the generated options next to the sources it describes. */
 function writeOptions(sourceRoot, config) {
@@ -330,7 +318,6 @@ function main(argv) {
     );
     runTypedoc({ cwd: REPO, optionsFile });
     rmSync(dirname(optionsFile), { recursive: true, force: true });
-    copyAssets(outDir);
     process.stdout.write(`\nBuilt working tree -> ${short(outDir)}\n`);
     return 0;
   }
@@ -392,8 +379,6 @@ function main(argv) {
   } finally {
     cleanupWorktree(worktree);
   }
-
-  copyAssets(outDir);
 
   process.stdout.write(`\nBuilt ${tag.tag} -> ${short(outDir)}\n`);
 

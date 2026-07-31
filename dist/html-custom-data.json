@@ -1557,19 +1557,6 @@
       ]
     },
     {
-      "name": "data-next-page-type",
-      "description": {
-        "kind": "markdown",
-        "value": "Declares what kind of page this is — product, cart, checkout, upsell, receipt — so analytics events are attributed to the right funnel step. Can also come from the loader configuration instead of markup.\n\nType: `string`\n\nFeature: `sdk`."
-      },
-      "references": [
-        {
-          "name": "sdk docs",
-          "url": "https://developers.nextcommerce.com/docs/campaigns/feature-guides/sdk-attributes"
-        }
-      ]
-    },
-    {
       "name": "data-next-payment-form",
       "description": {
         "kind": "markdown",

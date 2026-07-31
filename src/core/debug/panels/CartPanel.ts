@@ -3,7 +3,7 @@
  * Displays cart state, items, and provides cart manipulation controls
  */
 
-import { formatCurrency } from '@/utils/currencyFormatter';
+import { formatCurrency } from '@/core/currency-formatter';
 import { useCartStore, cartOperations } from '@/state/cart';
 import { DebugPanel, PanelAction, PanelTab } from '../DebugPanels';
 import { RawDataHelper } from './RawDataHelper';

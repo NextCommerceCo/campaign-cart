@@ -1,7 +1,7 @@
 import type Decimal from 'decimal.js';
 import type { EventMap } from '@/types/global';
 import type { Logger } from '@/core/logger';
-import type { DiscountItem } from '@/shared/utils/discount-renderer';
+import type { DiscountItem } from '@/core/rendering/discount-renderer';
 
 export interface ClassNames {
   bundleCard: string;

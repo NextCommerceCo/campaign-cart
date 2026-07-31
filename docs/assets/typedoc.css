@@ -74,17 +74,16 @@ div.tsd-typography table {
   overflow-x: auto;
 }
 
-/* Mermaid diagrams (rendered by docs/assets/mermaid-init.snippet.js, spliced
-   into site.js at build time) replace the fenced code block with an inline
-   SVG. Center it and cap its width so a wide flowchart doesn't blow past the
-   prose column on desktop, while still shrinking on narrow viewports. */
-.tsd-typography .mermaid {
-  display: flex;
-  justify-content: center;
+/* Mermaid diagrams. `@boneskull/typedoc-plugin-mermaid` wraps each fenced block in
+   `.mermaid-block` (a dark and a light copy, plus the source as a no-JS fallback) and
+   ships its own sizing rules. It toggles the two copies with an inline `display`, so
+   styling `.mermaid` itself would either lose to that or fight it — space the block and
+   center the SVG instead. */
+.tsd-typography .mermaid-block {
   margin: 1.5em 0;
 }
 
 .tsd-typography .mermaid svg {
-  max-width: 100%;
-  height: auto;
+  display: block;
+  margin-inline: auto;
 }

@@ -1,4 +1,4 @@
-import { defineFeature } from '@/core/docs/feature-manifest';
+import { defineFeature } from '@/docs/schema/feature-manifest';
 
 const HOST = 'On the list element';
 const TEMPLATE = 'Inside the item template';

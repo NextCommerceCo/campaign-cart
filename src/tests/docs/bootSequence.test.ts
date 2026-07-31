@@ -7,8 +7,8 @@ import {
   STEP_NOTES,
   STEP_FAILURE_NOTES,
   EVENT_MEANING,
-} from '@/core/docs/render-boot-sequence';
-import { extractBootSequence } from './extract-boot-sequence';
+} from '@/docs/render/render-boot-sequence';
+import { extractBootSequence } from '@/docs/extract/extract-boot-sequence';
 
 /**
  * Generates `src/core/guide/reference/boot-sequence.md` from `core/sdk-initializer.ts`,
@@ -62,7 +62,7 @@ describe('boot sequence docs', () => {
     const undescribed = stepNames.filter(name => !STEP_NOTES[name]?.trim());
     expect(
       undescribed,
-      'in initialize() but not in STEP_NOTES (core/docs/render-boot-sequence.ts)'
+      'in initialize() but not in STEP_NOTES (src/docs/render/render-boot-sequence.ts)'
     ).toEqual([]);
   });
 

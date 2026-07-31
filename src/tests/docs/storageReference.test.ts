@@ -7,16 +7,16 @@ import {
   STORAGE_GROUPS,
   STORAGE_KEYS_DOC,
   UNSCANNABLE_STORAGE_KEYS,
-} from '@/core/docs/storage-keys';
+} from '@/docs/content/storage-keys';
 import {
   renderStorageReference,
   type ExtractedKeyFacts,
-} from '@/core/docs/render-storage-reference';
-import { extractStorageKeys, toPattern } from './extract-storage-keys';
+} from '@/docs/render/render-storage-reference';
+import { extractStorageKeys, toPattern } from '@/docs/extract/extract-storage-keys';
 
 /**
  * Generates `src/core/guide/reference/storage-keys.md` from the source plus
- * `core/docs/storage-keys.ts`, and fails when the committed markdown drifts.
+ * `src/docs/content/storage-keys.ts`, and fails when the committed markdown drifts.
  *
  * Regenerate:
  *   UPDATE_DOCS=1 npm run docs:reference
@@ -39,8 +39,8 @@ const OUT = join(OUT_DIR, 'storage-keys.md');
 
 /**
  * Every runtime file under `src/`. Tests are excluded because a fixture key is not a
- * real key, and `core/docs/` because these manifests quote keys in prose — counting
- * the documentation as evidence of the code would make the drift check circular.
+ * real key, and `docs/` because those manifests quote keys in prose — counting the
+ * documentation as evidence of the code would make the drift check circular.
  */
 const sources = Object.entries(
   import.meta.glob<string>('../../**/*.ts', {
@@ -54,7 +54,7 @@ const sources = Object.entries(
       !/\.(test|spec)\.ts$/.test(path) &&
       !path.startsWith('../../tests/') &&
       !path.startsWith('../../test/') &&
-      !path.startsWith('../../core/docs/') &&
+      !path.startsWith('../../docs/') &&
       !/\.manifest\.ts$/.test(path)
   )
   .map(
@@ -95,7 +95,7 @@ describe('storage key reference', () => {
       .map(k => `${k.key} (${k.where[0]})`);
     expect(
       missing,
-      'written by the SDK but absent from STORAGE_KEYS_DOC in core/docs/storage-keys.ts'
+      'written by the SDK but absent from STORAGE_KEYS_DOC in docs/content/storage-keys.ts'
     ).toEqual([]);
   });
 
@@ -106,7 +106,7 @@ describe('storage key reference', () => {
     ).map(d => d.key);
     expect(
       phantom,
-      'documented in core/docs/storage-keys.ts but no longer read or written anywhere under src/'
+      'documented in docs/content/storage-keys.ts but no longer read or written anywhere under src/'
     ).toEqual([]);
   });
 
@@ -202,7 +202,7 @@ describe('storage key reference', () => {
 
   /**
    * Prose only, not the rendered page: the page carries source paths, and one of them
-   * is `features/behavior/simple-exit-intent.enhancer.ts`. Checking the whole output
+   * is `features/behavior/simple-exit-intent/simple-exit-intent.enhancer.ts`. Checking the whole output
    * would fail on a filename and teach whoever hit it to delete the test.
    */
   it('keeps the forbidden words out of the prose', () => {

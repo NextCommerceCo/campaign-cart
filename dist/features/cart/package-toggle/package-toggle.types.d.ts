@@ -39,7 +39,7 @@ export interface ToggleCard {
     interval: 'day' | 'month' | null;
     intervalCount: number | null;
     frequency: string;
-    discounts: import('../../../shared/utils/discount-renderer').DiscountItem[];
+    discounts: import('../../../core/rendering/discount-renderer').DiscountItem[];
     properties?: Record<string, string>;
     excludeProperties?: string;
 }

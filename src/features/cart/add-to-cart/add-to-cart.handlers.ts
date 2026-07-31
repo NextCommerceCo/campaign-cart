@@ -1,5 +1,5 @@
 import { cartOperations } from '@/state/cart';
-import { preserveQueryParams } from '@/utils/url-utils';
+import { preserveQueryParams } from '@/core/url-utils';
 import type { SelectorItem } from '@/types/global';
 import type { AddToCartHandlerContext, SelectorEvent } from './add-to-cart.types';
 

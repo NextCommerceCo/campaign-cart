@@ -25,16 +25,6 @@ Set on `<body>`: `true` while the SDK is starting, `false` once it is ready. Sty
 
 > **Watch out:** It is on `<body>`, not on any feature element, so a rule like `body[data-next-sdk-loading="true"] .price { visibility: hidden }` is the intended use.
 
-## `data-next-page-type`
-
-| | |
-|---|---|
-| Owner | SDK config / analytics |
-| Type | `string` |
-| Direction | you set it, the SDK reads it |
-
-Declares what kind of page this is — product, cart, checkout, upsell, receipt — so analytics events are attributed to the right funnel step. Can also come from the loader configuration instead of markup.
-
 ## `data-next-tracking-tag`
 
 | | |

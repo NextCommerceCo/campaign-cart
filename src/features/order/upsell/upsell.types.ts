@@ -1,5 +1,5 @@
 import type { Logger } from '@/core/logger';
-import type { LoadingOverlay } from '@/shared/components/loading-overlay';
+import type { LoadingOverlay } from '@/core/ui/loading-overlay';
 import type { ApiClient } from '@/api/client';
 import type { EventMap } from '@/types/global';
 

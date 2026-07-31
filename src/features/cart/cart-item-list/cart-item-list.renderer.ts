@@ -1,7 +1,7 @@
 import {
   TemplateRenderer,
   type TemplateFormatters,
-} from '@/shared/utils/template-renderer';
+} from '@/core/rendering/template-renderer';
 import { DisplayFormatter } from '@/features/display/display-core';
 import type { CartItem } from '@/types/global';
 import type { TitleMap } from './cart-item-list.types';

@@ -25,6 +25,10 @@ const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
+  // mermaid ships as ESM (`assets/mermaid/**.mjs`). A module script served as
+  // application/octet-stream is refused by the browser, so every diagram page
+  // would fall back to showing its source.
+  '.mjs': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.woff2': 'font/woff2',
@@ -36,18 +40,14 @@ function contentTypeFor(filePath) {
   return MIME_TYPES[extname(filePath)] ?? 'application/octet-stream';
 }
 
-/** Vendored assets live in the repo, not in the build — see scripts/docs-assets.mjs. */
-const VENDOR = resolve(process.cwd(), 'docs/assets/vendor');
-
 /**
  * Resolves a request path to a file under ROOT, treating directory requests
  * (and any path with no matching file) as `index.html`. Rejects any path that
  * escapes ROOT via `..` traversal.
  *
- * `assets/vendor/**` falls back to the repo copy: TypeDoc wipes the output
- * directory on every rebuild, so in `--watch` mode the copied vendor bundle
- * disappears the first time a file changes and mermaid diagrams stop rendering
- * until the next `npm run docs`. Serving it from source keeps watch mode honest.
+ * Everything is served from the build — including `assets/mermaid/**`, which
+ * `@boneskull/typedoc-plugin-mermaid` re-copies on every render, so `--watch`
+ * keeps its diagrams after a rebuild wipes the output directory.
  * @param {string} urlPath
  */
 function resolveFile(urlPath) {
@@ -61,20 +61,6 @@ function resolveFile(urlPath) {
 
   if (existsSync(filePath) && statSync(filePath).isDirectory()) {
     filePath = join(filePath, 'index.html');
-  }
-
-  if (!existsSync(filePath)) {
-    const vendorMatch = /(?:^|\/)assets\/vendor\/(.+)$/.exec(safePath);
-    if (vendorMatch?.[1]) {
-      const fromRepo = join(VENDOR, vendorMatch[1]);
-      if (
-        fromRepo.startsWith(VENDOR) &&
-        existsSync(fromRepo) &&
-        statSync(fromRepo).isFile()
-      ) {
-        return fromRepo;
-      }
-    }
   }
 
   return existsSync(filePath) && statSync(filePath).isFile() ? filePath : null;

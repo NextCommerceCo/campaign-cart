@@ -4,7 +4,7 @@
  */
 
 // Core functionality
-export { BaseDisplayEnhancer, DisplayFormatter, PropertyResolver } from './display-core';
+export { BaseDisplayEnhancer, DisplayFormatter, PropertyResolver } from '@/features/display/display-core';
 export { ProductDisplayEnhancer } from './product-display';
 export { CartDisplayEnhancer } from '@/features/cart/cart-summary';
 export { SelectionDisplayEnhancer } from './selection-display';
@@ -15,8 +15,8 @@ export { DisplayContextProvider, setupContextProviders } from './display-context
 export type { DisplayContext } from './display-context';
 
 // Error handling
-export { DisplayErrorBoundary, withErrorBoundary, safeGet } from './display-error-boundary';
-export type { ErrorContext, ErrorHandler } from './display-error-boundary';
+export { DisplayErrorBoundary, withErrorBoundary, safeGet } from '@/features/display/display-error-boundary';
+export type { ErrorContext, ErrorHandler } from '@/features/display/display-error-boundary';
 
 // Debug tools
 export { DisplayDebugPanel } from './display-debug-panel';
@@ -32,7 +32,7 @@ export {
   isFormattedValueProperty,
   getBasePropertyName,
   supportsExpressions
-} from './display-types';
+} from '@/features/display/display-types';
 
 export type {
   FormatType,
@@ -40,7 +40,7 @@ export type {
   DisplayValue,
   DisplayState,
   PropertyConfig
-} from './display-types';
+} from '@/features/display/display-types';
 
 // Initialize debug tools in development
 if (process.env.NODE_ENV === 'development') {

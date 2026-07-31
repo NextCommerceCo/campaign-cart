@@ -1,5 +1,5 @@
 import { Logger } from '../../../core/logger';
-import { LoadingOverlay } from '../../../shared/components/loading-overlay';
+import { LoadingOverlay } from '../../../core/ui/loading-overlay';
 import { ApiClient } from '../../../api/client';
 import { EventMap } from '../../../types/global';
 export interface UpsellHandlerContext {

@@ -19,7 +19,7 @@ vi.mock('../upsell.renderer', () => ({
   renderSuccess: vi.fn(),
   renderError: vi.fn(),
 }));
-vi.mock('@/shared/modals/general-modal', () => ({
+vi.mock('@/core/ui/general-modal', () => ({
   GeneralModal: { showDuplicateUpsell: vi.fn().mockResolvedValue(true) },
 }));
 

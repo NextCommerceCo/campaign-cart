@@ -1,4 +1,4 @@
-import { defineFeature } from '@/core/docs/feature-manifest';
+import { defineFeature } from '@/docs/schema/feature-manifest';
 
 const CONTAINER = 'Container attributes';
 const CARD = 'Card attributes';
@@ -18,7 +18,7 @@ export default defineFeature({
   pages: { logs: 'hand-written', errors: 'hand-written', relations: 'hand-written', getStarted: 'hand-written' },
   // `data-next-discounts` containers are rendered by this shared util, not by
   // the feature's own files.
-  extraSource: ['src/shared/utils/discount-renderer.ts'],
+  extraSource: ['src/core/rendering/discount-renderer.ts'],
 
   attributes: [
     {

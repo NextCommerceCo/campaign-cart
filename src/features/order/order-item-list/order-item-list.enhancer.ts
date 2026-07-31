@@ -8,7 +8,7 @@ import { BaseEnhancer } from '@/core/base/base-enhancer';
 import { useOrderStore } from '@/state/order';
 import { useConfigStore } from '@/state/config';
 import { ApiClient } from '@/api/client';
-import { TemplateRenderer, TemplateFormatters } from '@/shared/utils/template-renderer';
+import { TemplateRenderer, TemplateFormatters } from '@/core/rendering/template-renderer';
 import { DisplayFormatter } from '@/features/display/display-core';
 import type { OrderLine } from '@/types/api';
 // Order type is imported but not used in this file

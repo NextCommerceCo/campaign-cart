@@ -1,4 +1,4 @@
-import { AttributionState } from '../../state/attribution.state';
+import { AttributionState } from '../../state/attribution';
 export declare class AttributionCollector {
     collect(): Promise<AttributionState>;
     private collectMetadata;

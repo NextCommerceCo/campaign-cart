@@ -27,7 +27,8 @@ const IMPORT_SITES = [
 ] as const;
 
 /** `const { Name } = await import('spec')` — activation sites we can name-check. */
-const DESTRUCTURED = /const\s*\{\s*(\w+)\s*\}\s*=\s*await\s+import\(\s*['"]([^'"]+)['"]\s*\)/g;
+const DESTRUCTURED =
+  /const\s*\{\s*(\w+)\s*\}\s*=\s*await\s+import\(\s*['"]([^'"]+)['"]\s*\)/g;
 
 /** Any `import('spec')` — including bare preload hints with no destructuring. */
 const ANY_IMPORT = /(?<!\.)\bimport\(\s*['"]([^'"]+)['"]\s*\)/g;
@@ -58,17 +59,20 @@ function readSite(site: string) {
 }
 
 describe('dynamic-import contract', () => {
-  it.each(IMPORT_SITES)('every specifier in %s resolves to a real module', site => {
-    const { abs, source } = readSite(site);
+  it.each(IMPORT_SITES)(
+    'every specifier in %s resolves to a real module',
+    site => {
+      const { abs, source } = readSite(site);
 
-    const unresolved = [...source.matchAll(ANY_IMPORT)]
-      .map(m => m[1] as string)
-      .filter(spec => spec.startsWith('@/') || spec.startsWith('.'))
-      .filter(spec => resolveSpecifier(spec, abs) === null);
+      const unresolved = [...source.matchAll(ANY_IMPORT)]
+        .map(m => m[1])
+        .filter(spec => spec.startsWith('@/') || spec.startsWith('.'))
+        .filter(spec => resolveSpecifier(spec, abs) === null);
 
-    // Named so a failure prints the dead paths, not just a count.
-    expect(unresolved).toEqual([]);
-  });
+      // Named so a failure prints the dead paths, not just a count.
+      expect(unresolved).toEqual([]);
+    }
+  );
 
   it('attribute-scanner still carries the full activation table', () => {
     const { source } = readSite('core/attribute-scanner.ts');
@@ -79,24 +83,29 @@ describe('dynamic-import contract', () => {
     expect(found.length).toBeGreaterThanOrEqual(31);
   });
 
+  // Imports ~30 enhancer modules for real. Run them concurrently and give the
+  // case its own budget — sequential awaits landed at ~4.8s against the 5s
+  // default and failed about one run in three.
   it('every enhancer the scanner activates really exports that binding', async () => {
     const { abs, source } = readSite('core/attribute-scanner.ts');
 
-    const missing: string[] = [];
-    for (const [, name, spec] of source.matchAll(DESTRUCTURED)) {
-      const target = resolveSpecifier(spec as string, abs);
-      if (target === null) {
-        missing.push(`${spec} → module not found`);
-        continue;
-      }
-      // Import the resolved absolute path: a runtime specifier bypasses Vite's
-      // `@/` alias, so the alias has to be applied before we get here.
-      const mod: Record<string, unknown> = await import(/* @vite-ignore */ target);
-      if (typeof mod[name as string] !== 'function') {
-        missing.push(`${spec} → does not export class ${name}`);
-      }
-    }
+    const checks = [...source.matchAll(DESTRUCTURED)].map(
+      async ([, name, spec]) => {
+        const target = resolveSpecifier(spec, abs);
+        if (target === null) return `${spec} → module not found`;
 
-    expect(missing).toEqual([]);
-  });
+        // Import the resolved absolute path: a runtime specifier bypasses Vite's
+        // `@/` alias, so the alias has to be applied before we get here.
+        const mod = (await import(/* @vite-ignore */ target)) as Record<
+          string,
+          unknown
+        >;
+        return typeof mod[name] === 'function'
+          ? null
+          : `${spec} → does not export class ${name}`;
+      }
+    );
+
+    expect((await Promise.all(checks)).filter(Boolean)).toEqual([]);
+  }, 30_000);
 });

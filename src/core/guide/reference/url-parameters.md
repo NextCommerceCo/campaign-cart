@@ -7,7 +7,7 @@ category: "Core Reference"
 # URL Parameters
 
 <!-- Generated from the core contract lists. Do not edit by hand:
-     edit src/core/docs/url-parameters.ts, then run `npm run docs:reference`. -->
+     edit src/docs/content/url-parameters.ts, then run `npm run docs:reference`. -->
 
 The SDK acts on **40 query parameters**. They are the configuration surface with no trace in the markup: nothing on the page mentions them, so grepping a template never finds them, and adding one to a link changes what the page does.
 

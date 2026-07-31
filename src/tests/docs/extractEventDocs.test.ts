@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { extractEventDocs } from './extract-event-docs';
+import { extractEventDocs } from '@/docs/extract/extract-event-docs';
 
 /**
  * Guards the `{@link}` handling in `extract-event-docs.ts`.

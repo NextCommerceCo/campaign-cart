@@ -6,7 +6,7 @@ category: "Core Reference"
 
 # Analytics providers
 
-<!-- Generated. Do not edit by hand: edit src/core/docs/analytics-events.ts
+<!-- Generated. Do not edit by hand: edit src/docs/content/analytics-events.ts
      (prose) or the analytics source (facts), then run `npm run docs:reference`. -->
 
 Which destinations the SDK can forward events to, what each one does to an event on the way out, and how to find out where an event went. Five providers can be configured; a sixth file, `ProviderAdapter`, is the shared base class they all extend rather than a destination you can enable.

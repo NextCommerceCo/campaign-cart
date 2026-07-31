@@ -1,4 +1,4 @@
-import { defineStore } from '@/core/docs/state-manifest';
+import { defineStore } from '@/docs/schema/state-manifest';
 
 export default defineStore({
   id: 'campaign',

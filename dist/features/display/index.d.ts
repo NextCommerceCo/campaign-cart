@@ -1,8 +1,8 @@
 export { BaseDisplayEnhancer, DisplayFormatter, PropertyResolver } from './display-core';
-export { ProductDisplayEnhancer } from './product-display.enhancer';
+export { ProductDisplayEnhancer } from './product-display';
 export { CartDisplayEnhancer } from '../cart/cart-summary';
-export { SelectionDisplayEnhancer } from './selection-display.enhancer';
-export { OrderDisplayEnhancer } from './order-display.enhancer';
+export { SelectionDisplayEnhancer } from './selection-display';
+export { OrderDisplayEnhancer } from './order-display';
 export { DisplayContextProvider, setupContextProviders } from './display-context';
 export type { DisplayContext } from './display-context';
 export { DisplayErrorBoundary, withErrorBoundary, safeGet } from './display-error-boundary';

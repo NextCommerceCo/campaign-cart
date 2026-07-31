@@ -8,16 +8,16 @@ import {
   NEXT_METHODS,
   WINDOW_GLOBALS,
   WINDOW_GROUPS,
-} from '@/core/docs/next-methods';
+} from '@/docs/content/next-methods';
 import {
   renderJavaScriptApi,
   renderWindowSurface,
-} from '@/core/docs/render-next-methods';
+} from '@/docs/render/render-next-methods';
 import {
   extractInterfaceCallables,
   extractPublicMembers,
   extractWindowSurface,
-} from './extract-next-methods';
+} from '@/docs/extract/extract-next-methods';
 
 /**
  * Generates `src/core/guide/reference/javascript-api.md` and `window-surface.md`, and
@@ -88,7 +88,7 @@ describe('window.next public facade', () => {
       .filter(name => !documented.has(name));
     expect(
       missing,
-      'public on NextCommerce but not in NEXT_METHODS — add a summary and a runnable example to src/core/docs/next-methods.ts'
+      'public on NextCommerce but not in NEXT_METHODS — add a summary and a runnable example to src/docs/content/next-methods.ts'
     ).toEqual([]);
   });
 

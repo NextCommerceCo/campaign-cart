@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Decimal from 'decimal.js';
 import { buildSlotVars } from '../bundle-selector.renderer';
-import { formatCurrency, formatPercentage } from '@/utils/currencyFormatter';
+import { formatCurrency, formatPercentage } from '@/core/currency-formatter';
 import type { BundlePackageState, BundleSlot } from '../bundle-selector.types';
 
 vi.mock('@/state/campaign', () => ({

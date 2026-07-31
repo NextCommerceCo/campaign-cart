@@ -20,7 +20,7 @@ import { BaseEnhancer } from '@/core/base/base-enhancer';
 import { useOrderStore } from '@/state/order';
 import { useConfigStore } from '@/state/config';
 import { ApiClient } from '@/api/client';
-import { LoadingOverlay } from '@/shared/components/loading-overlay';
+import { LoadingOverlay } from '@/core/ui/loading-overlay';
 import type { EventMap } from '@/types/global';
 import {
   renderQuantityDisplay,

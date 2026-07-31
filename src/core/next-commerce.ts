@@ -781,7 +781,7 @@ export class NextCommerce {
    * @category Utility
    */
   public formatPrice(amount: number, currency?: string): string {
-    const { formatCurrency } = require('@/utils/currencyFormatter');
+    const { formatCurrency } = require('@/core/currency-formatter');
     const campaignStore = useCampaignStore.getState();
     const useCurrency = currency ?? campaignStore.currency ?? 'USD';
 

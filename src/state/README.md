@@ -21,13 +21,12 @@ Every store is a `<domain>/` folder holding `<domain>.state.ts`, its
 code and the docs that describe it sit together. Import a store through the
 folder (`@/state/order`), never through its inner file.
 
-A one-line shim still sits at each old path (`state/order.state.ts` →
-`export * from './order'`) so `src/index.ts`, `core/next-commerce.ts`, and two
-`utils/` files keep resolving while their imports are swept over. The shims
-re-export the folder barrel rather than redeclaring anything, which is what keeps
-both paths on **one** store instance —
+The barrel and the inner `<domain>.state.ts` must resolve to **one** store
+instance — two instances split state silently, and every unit test still passes
+while the live page loses half its cart.
 [`src/tests/contract/store-identity.test.ts`](../tests/contract/store-identity.test.ts)
-fails if that ever stops being true. Delete a shim once nothing imports it.
+asserts that, and reads each `persist` key back off the store so a rename fails
+the test instead of a customer's session.
 
 ## Thin-state convention
 

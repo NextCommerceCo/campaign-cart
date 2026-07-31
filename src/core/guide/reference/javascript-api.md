@@ -6,7 +6,7 @@ category: "Core Reference"
 
 # JavaScript API — `window.next`
 
-<!-- Generated. Do not edit by hand: edit src/core/docs/next-methods.ts
+<!-- Generated. Do not edit by hand: edit src/docs/content/next-methods.ts
      for the prose, or src/core/next-commerce.ts for what is inventoried, then run
      `UPDATE_DOCS=1 npx vitest run src/tests/docs/nextMethods.test.ts`. -->
 

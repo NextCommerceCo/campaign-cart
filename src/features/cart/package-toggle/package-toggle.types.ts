@@ -44,7 +44,7 @@ export interface ToggleCard {
   intervalCount: number | null;
   frequency: string;
   /** Per-line discounts from the price calculation. */
-  discounts: import('@/shared/utils/discount-renderer').DiscountItem[];
+  discounts: import('@/core/rendering/discount-renderer').DiscountItem[];
   /** User-entered key-value properties for this toggle card (synced live as the visitor types). */
   properties?: Record<string, string>;
   /**

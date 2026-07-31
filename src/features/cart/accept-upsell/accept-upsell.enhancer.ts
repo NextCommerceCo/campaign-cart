@@ -2,7 +2,7 @@ import { BaseActionEnhancer } from '@/core/base/base-action-enhancer';
 import { useOrderStore } from '@/state/order';
 import { useConfigStore } from '@/state/config';
 import { ApiClient } from '@/api/client';
-import { LoadingOverlay } from '@/shared/components/loading-overlay';
+import { LoadingOverlay } from '@/core/ui/loading-overlay';
 import { acceptUpsell } from './accept-upsell.handlers';
 import type { SelectorItem } from '@/types/global';
 import type { BundleLineItem, UpsellHandlerContext } from './accept-upsell.types';

@@ -1,7 +1,7 @@
 import { Logger } from '../../../core/logger';
 import { SelectorItem } from '../../../types/global';
 import { ApiClient } from '../../../api/client';
-import { LoadingOverlay } from '../../../shared/components/loading-overlay';
+import { LoadingOverlay } from '../../../core/ui/loading-overlay';
 export interface BundleLineItem {
     packageId: number;
     quantity: number;

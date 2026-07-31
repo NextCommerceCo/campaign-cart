@@ -4,7 +4,7 @@
  * coupon-attempt log. Renders gracefully when offer state is absent.
  */
 
-import { formatCurrency } from '@/utils/currencyFormatter';
+import { formatCurrency } from '@/core/currency-formatter';
 import { useCartStore, cartOperations } from '@/state/cart';
 import { useCampaignStore } from '@/state/campaign';
 import { EventBus } from '../../events';

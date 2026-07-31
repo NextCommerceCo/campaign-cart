@@ -46,7 +46,7 @@ vi.mock('@/state/config', () => ({
   useConfigStore: { getState: vi.fn() },
 }));
 vi.mock('@/api/client', () => ({ ApiClient: vi.fn() }));
-vi.mock('@/utils/url-utils', () => ({
+vi.mock('@/core/url-utils', () => ({
   preserveQueryParams: (url: string) => url,
 }));
 

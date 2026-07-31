@@ -7,10 +7,10 @@ category: "Core Reference"
 # Logs
 
 <!-- Generated from the logger calls in src/core plus the notes in
-     src/core/docs/core-logs.ts. Do not edit by hand: change the log line in the
+     src/docs/content/core-logs.ts. Do not edit by hand: change the log line in the
      code or the note in core-logs.ts, then run `npm run docs:reference`. -->
 
-Every message the SDK's own machinery can print — 482 of them, across 36 console prefixes plus 12 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
+Every message the SDK's own machinery can print — 484 of them, across 36 console prefixes plus 14 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
 
 Messages are listed at the wording the code uses. A `{name}` inside one is a value filled in at runtime, so search for the text on either side of it. **Extra context** means the call passes a second argument — an object or an error logged beside the message; expand that entry in the console, because the message alone will not tell you which element, package, or event was involved.
 
@@ -2315,13 +2315,13 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 ## Lines that bypass the logger
 
-12 messages in `src/core` are printed with a bare `console.error` or `console.warn` instead of through `Logger`. They behave differently from everything above, and the difference matters when you are reading a console:
+14 messages in `src/core` are printed with a bare `console.error` or `console.warn` instead of through `Logger`. They behave differently from everything above, and the difference matters when you are reading a console:
 
 - **No `[Prefix]`**, unless the message writes one out by hand — which the attribution collector does and the event bus does not. An unprefixed error line from the SDK is one of these.
 - **Not gated by debug mode or the log level.** On the module bundle they print for every visitor. On the UMD bundle they are stripped like everything else.
 - **`Logger.setLogLevel()` cannot silence them.**
 
-They come from `attribution/attribution-collector.ts`, `events.ts`, `storage.ts`, `sdk-initializer.ts`. The debug tooling under `core/debug/` also writes to the console directly; that output is the tool talking to whoever opened it, so it is not listed here.
+They come from `attribution/attribution-collector.ts`, `events.ts`, `storage.ts`, `sdk-initializer.ts`, `url-utils.ts`, `rendering/template-renderer.ts`. The debug tooling under `core/debug/` also writes to the console directly; that output is the tool talking to whoever opened it, so it is not listed here.
 
 ### `[AttributionCollector] Error storing {key} in sessionStorage:`
 
@@ -2418,3 +2418,19 @@ They come from `attribution/attribution-collector.ts`, `events.ts`, `storage.ts`
 **Meaning:** The `testShippingMethod()` debug helper could not apply a shipping method. It only appears when someone calls that helper from the console, never on its own.
 
 **Action:** Read the attached error and check the method id against the campaign’s `shipping_methods`. Debug-only; a visitor never triggers it.
+
+### `[URL Utils] Error preserving query parameters:`
+
+`url-utils.ts:61` · `console.error` · extra context attached
+
+**Meaning:** A target URL could not be parsed, so the visitor is sent there with none of the tracking parameters carried over. Navigation still happens — the original URL is used unchanged — but the next page starts with no UTM tags, so an order placed after it can be attributed to nothing.
+
+**Action:** Read the attached error and check the URL that was passed — a relative path with a stray space or an unencoded template placeholder left in the markup is the usual cause. On paid traffic, confirm the destination page still receives its parameters before spending more on the campaign.
+
+### `Template rendering error for placeholder {placeholder}:`
+
+`rendering/template-renderer.ts:55` · `console.warn` · extra context attached
+
+**Meaning:** One placeholder in a cart, package, or order item template threw while being formatted. That placeholder falls back to its default value — usually an empty string — so the row still renders but one field is blank or stale. The rest of the template is unaffected.
+
+**Action:** Read the attached error and check the placeholder named against the data the row was given; a missing price or currency on the item is the usual cause. A blank field on a live page is worth fixing even though nothing crashes.

@@ -68,8 +68,8 @@ export async function fetchAndUpdateBundlePrice(
             : new Decimal(0);
           const hasDiscount = discountAmount.gt(0);
 
-          const lineOfferDiscounts: import('@/shared/utils/discount-renderer').DiscountItem[] = [];
-          const lineVoucherDiscounts: import('@/shared/utils/discount-renderer').DiscountItem[] = [];
+          const lineOfferDiscounts: import('@/core/rendering/discount-renderer').DiscountItem[] = [];
+          const lineVoucherDiscounts: import('@/core/rendering/discount-renderer').DiscountItem[] = [];
           for (const d of line.discounts ?? []) {
             if (voucherOfferIds.has(d.offer_id)) {
               lineVoucherDiscounts.push(d);

@@ -1,4 +1,4 @@
-import { defineFeature } from '@/core/docs/feature-manifest';
+import { defineFeature } from '@/docs/schema/feature-manifest';
 
 const CONTAINER = 'Container — pick one mode';
 const OFFER = 'Offer configuration';

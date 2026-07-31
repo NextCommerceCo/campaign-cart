@@ -1,7 +1,7 @@
 import { default as Decimal } from 'decimal.js';
 import { EventMap } from '../../../types/global';
 import { Logger } from '../../../core/logger';
-import { DiscountItem } from '../../../shared/utils/discount-renderer';
+import { DiscountItem } from '../../../core/rendering/discount-renderer';
 export interface ClassNames {
     bundleCard: string;
     selected: string;

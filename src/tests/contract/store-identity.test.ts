@@ -6,39 +6,43 @@ import { useConfigStore, configStore } from '@/state/config';
 import { useOrderStore } from '@/state/order';
 import { useParameterStore } from '@/state/parameter';
 
-import { useAttributionStore as attributionViaShim } from '@/state/attribution.state';
-import { useCheckoutStore as checkoutViaShim } from '@/state/checkout.state';
-import { useConfigStore as configViaShim } from '@/state/config.state';
-import { useOrderStore as orderViaShim } from '@/state/order.state';
-import { useParameterStore as parameterViaShim } from '@/state/parameter.state';
+import { useAttributionStore as attributionDirect } from '@/state/attribution/attribution.state';
+import { useCheckoutStore as checkoutDirect } from '@/state/checkout/checkout.state';
+import { useConfigStore as configDirect } from '@/state/config/config.state';
+import { useOrderStore as orderDirect } from '@/state/order/order.state';
+import { useParameterStore as parameterDirect } from '@/state/parameter/parameter.state';
 
 /**
- * Store-identity + persistence contract for the `state/` folder move.
+ * Store-identity + persistence contract for `state/`.
  *
- * Each store moved from `state/<domain>.state.ts` into `state/<domain>/`, with a
- * one-line shim left at the old path. Two things can break silently on a move
- * like that, and neither shows up in `type-check`:
+ * Every store lives in `state/<domain>/`, reachable either through the folder's
+ * barrel or by importing the `.state.ts` file inside it. Two things can break
+ * silently when those files move, and neither shows up in `type-check`:
  *
- * 1. **Two instances.** If the shim re-declared the store instead of re-exporting
- *    the folder's barrel, callers on the old path and callers on the new path
- *    would each get their own Zustand store. Writes on one would be invisible to
- *    the other — every unit test still passes, and the live page splits its cart
- *    or checkout state in half.
+ * 1. **Two instances.** If a barrel ever re-declares a store instead of
+ *    re-exporting it — or a second copy of the module is reachable by another
+ *    path — callers split across two Zustand stores. Writes on one are invisible
+ *    to the other: every unit test still passes, and the live page splits its
+ *    cart or checkout state in half.
  * 2. **A changed `persist` key.** The key names a live entry in a visitor's
  *    sessionStorage. Rename one and every session in flight loses its cart,
  *    checkout form, or order.
+ *
+ * (This test was written for the `state/<domain>.state.ts` → `state/<domain>/`
+ * move and asserted the old-path shims resolved to the same instance. The shims
+ * are gone; it now guards barrel-vs-direct, which is the same failure mode.)
  */
 
 const stores = [
   {
     id: 'attribution',
-    viaFolder: useAttributionStore,
-    viaShim: attributionViaShim,
+    viaBarrel: useAttributionStore,
+    direct: attributionDirect,
   },
-  { id: 'checkout', viaFolder: useCheckoutStore, viaShim: checkoutViaShim },
-  { id: 'config', viaFolder: useConfigStore, viaShim: configViaShim },
-  { id: 'order', viaFolder: useOrderStore, viaShim: orderViaShim },
-  { id: 'parameter', viaFolder: useParameterStore, viaShim: parameterViaShim },
+  { id: 'checkout', viaBarrel: useCheckoutStore, direct: checkoutDirect },
+  { id: 'config', viaBarrel: useConfigStore, direct: configDirect },
+  { id: 'order', viaBarrel: useOrderStore, direct: orderDirect },
+  { id: 'parameter', viaBarrel: useParameterStore, direct: parameterDirect },
 ] as const;
 
 /** The persist key each store must keep. `config` has no persistence at all. */
@@ -50,11 +54,11 @@ const PERSIST_KEYS: Record<string, string | null> = {
   parameter: 'next-url-params',
 };
 
-describe('state folder move — store identity', () => {
+describe('state — store identity', () => {
   it.each(stores)(
-    '$id resolves to one instance through the folder barrel and the old-path shim',
-    ({ viaFolder, viaShim }) => {
-      expect(viaFolder).toBe(viaShim);
+    '$id resolves to one instance through the barrel and the state file',
+    ({ viaBarrel, direct }) => {
+      expect(viaBarrel).toBe(direct);
     }
   );
 
@@ -63,10 +67,10 @@ describe('state folder move — store identity', () => {
   });
 });
 
-describe('state folder move — persist keys are unchanged', () => {
-  it.each(stores)('$id keeps its sessionStorage key', ({ id, viaFolder }) => {
+describe('state — persist keys are unchanged', () => {
+  it.each(stores)('$id keeps its sessionStorage key', ({ id, viaBarrel }) => {
     const persist = (
-      viaFolder as unknown as {
+      viaBarrel as unknown as {
         persist?: { getOptions: () => { name?: string } };
       }
     ).persist;

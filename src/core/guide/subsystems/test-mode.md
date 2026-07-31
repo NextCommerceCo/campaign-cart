@@ -98,12 +98,12 @@ stores are reset and the browser is sent to the success page with the new order'
 - **The API decides whether the order is a test order, not the SDK.** The response's
   `is_test` field is what marks it (`types/global.ts:1616-1617`); the SDK only reads it. An
   order display renders `🧪 TEST ORDER` from it
-  (`features/display/order-display.enhancer.ts:184`) and `data-next-show="order.is_test"`
-  gates on it (`features/display/conditional-display.enhancer.ts:1581`) — worth putting on
+  (`features/display/order-display/order-display.enhancer.ts:184`) and `data-next-show="order.is_test"`
+  gates on it (`features/display/conditional-display/conditional-display.enhancer.ts:1581`) — worth putting on
   a receipt or upsell page you test against, so a test run is visible on screen.
 - **`?test=true` follows the funnel once it is set.** Links the SDK builds carry the current
   URL's parameters plus everything the parameter store holds
-  (`utils/url-utils.ts:22-47`), and the post-order redirect uses the same helper. So a
+  (`core/url-utils.ts:22-47`), and the post-order redirect uses the same helper. So a
   Konami code on step one leaves every later page in test mode until a link is opened
   without it.
 - **Neither `config.testMode` nor `checkout.testMode` is this switch.** The debug Config

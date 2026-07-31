@@ -4,16 +4,16 @@ import type { UpsellHandlerContext } from '../accept-upsell.types';
 import { useOrderStore } from '@/state/order';
 import { useCampaignStore } from '@/state/campaign';
 import { useConfigStore } from '@/state/config';
-import { GeneralModal } from '@/shared/modals/general-modal';
+import { GeneralModal } from '@/core/ui/general-modal';
 import { resolveOrderTaxBasis } from '@/core/analytics/taxBasis';
 
 vi.mock('@/state/order', () => ({ useOrderStore: { getState: vi.fn() } }));
 vi.mock('@/state/campaign', () => ({ useCampaignStore: { getState: vi.fn() } }));
 vi.mock('@/state/config', () => ({ useConfigStore: { getState: vi.fn() } }));
-vi.mock('@/shared/modals/general-modal', () => ({
+vi.mock('@/core/ui/general-modal', () => ({
   GeneralModal: { showDuplicateUpsell: vi.fn() },
 }));
-vi.mock('@/utils/url-utils', () => ({ preserveQueryParams: (u: string) => u }));
+vi.mock('@/core/url-utils', () => ({ preserveQueryParams: (u: string) => u }));
 vi.mock('@/core/analytics/taxBasis', () => ({ resolveOrderTaxBasis: vi.fn() }));
 
 function mockStores(orderOverrides: Record<string, any> = {}) {

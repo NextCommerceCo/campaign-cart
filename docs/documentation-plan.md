@@ -130,6 +130,56 @@ Core and analytics are now in the gate and at 100%. §5q is the plan that was wr
 them; **§5r is what actually shipped, including the eight places §5q turned out to be
 wrong.** Read §5r rather than §5q if you only read one.
 
+### Build-time docs machinery moved out of `core/` (task E1) — **DONE 2026-07-31**
+
+`src/core/docs/` was ~11,000 lines of generator/renderer/content code that runs only at
+build time (via `src/tests/docs/*.test.ts` and `scripts/docs-coverage.mjs`), sitting
+inside `core/`, which the `sdk-structure` skill §1 defines as the SDK's **runtime
+engine**. It has moved to a new top-level layer, **`src/docs/`**, split by what each
+piece is:
+
+- `src/docs/schema/{feature-manifest,state-manifest}.ts` — the two type/builder modules
+  every shipped `*.manifest.ts` and `*.state-manifest.ts` file imports (`defineFeature`,
+  `defineStore`). Tree-shaken out of the production bundle (verified by
+  [`src/tests/contract/bundle-contents.test.ts`](../src/tests/contract/bundle-contents.test.ts)),
+  but the import happens from files that ship, so this is the one part with a real edge
+  to the rest of `src/`.
+- `src/docs/content/*.ts` — the hand-written declaration files (`core-logs.ts`,
+  `analytics-events.ts`, `meta-tags.ts`, `storage-keys.ts`, `next-methods.ts`,
+  `sdk-attributes.ts`, `url-parameters.ts`, `core-manifest.ts`, `core-subsystems.ts`,
+  `nav.ts`) — prose and inventories, never imported by anything that ships.
+- `src/docs/render/render-*.ts` — the markdown generators, moved unchanged.
+- `src/docs/extract/extract-*.ts` — the AST extractors, moved here from
+  `src/tests/docs/` (where they lived alongside the `*.test.ts` drift tests that call
+  them) because one of them, `render-boot-sequence.ts`, imported an extractor from
+  `@/tests/docs/`  — a production-layer-shaped file reaching into `src/tests/`. Moving
+  both under `src/docs/` fixes the direction: `render/` now imports `extract/` as a
+  sibling, and `src/tests/docs/*.test.ts` imports both from `@/docs/**` (the general
+  `@/*` alias already covers it — no new tsconfig/vite alias was needed).
+
+`src/tests/docs/` now holds only the eleven `*.test.ts` drift tests.
+
+One consequence, not a regression: `src/core` was a TypeDoc entry point with
+`entryPointStrategy: "expand"`, so every file directly under it — including
+`core/docs/**` — got its own symbol page. That published ~163 pages of build-tooling
+(`renderCoreLogs`, `defineFeature`, `CoreLogRow`, …) as if they were part of the SDK's
+public "Core" reference. `src/docs/` is not in `typedoc.json`'s `entryPoints`, so those
+pages no longer publish — `npm run docs` now produces 760 pages, not 882/923. That is a
+correctness fix (build machinery was never meant to be contributor-facing API
+reference), not a lost feature; every guide/state/feature/core-subsystem page some
+prior baseline counted is still there.
+
+One test broke as a **direct, intended consequence**, and was left broken rather than
+patched: `featureReference.test.ts`'s `'sdk-attributes.md matches the declared list, and
+each is still in core'` globbed `src/core/**/*.ts` to check that every SDK-level
+attribute is read somewhere in core — but `sdk-attributes.ts` (which declares them) used
+to live inside that same glob, so the check was checking its own declaration, always
+true. With the file moved out, the check is real for the first time, and it found that
+`data-next-page-type` is declared as SDK-level but is not read anywhere in `src/core` —
+only mentioned in a TSDoc comment in `src/types/global.ts`. That is a pre-existing
+documentation/behaviour gap this move exposed, not one it created; `featureReference.test.ts`
+belongs to a different task and was left as-is per that task's own instruction.
+
 ### Not worth doing, and why
 
 - **`object-attributes.md` for all 29 features.** The 8 that have one link to the TypeDoc
@@ -200,8 +250,11 @@ has no machine-readable source of truth.
 
 ## 2. New libraries to add: none
 
-Everything below uses what is already installed. **Still true after §8** — the switch to a
-TypeDoc HTML site adds no dependency either, and removes two (the markdown plugins).
+Everything below uses what is already installed. **No longer true after §8.1** — the site
+removed two dependencies (the markdown plugins) and added four: three TypeDoc plugins plus
+`mermaid`, each replacing hand-written site code rather than adding a feature. The
+[§8.1](#81-plugins--evaluated-2026-07-31) table is the authority on what is installed and
+why.
 
 - **TypeDoc** keeps owning types, methods, and data shapes — and after §8 it owns the
   whole site.
@@ -224,7 +277,7 @@ lazy-loading in `AttributeScanner` is unaffected.
 
 ```ts
 // src/features/cart/quantity-control/quantity-control.manifest.ts
-import { defineFeature } from '@/core/docs/define-feature';
+import { defineFeature } from '@/docs/schema/feature-manifest';
 
 export default defineFeature({
   id: 'quantity-control',
@@ -362,8 +415,8 @@ separate CI step.
 
 ## 5b. Phase 1 as shipped (2026-07-30)
 
-Files: [`src/core/docs/feature-manifest.ts`](../src/core/docs/feature-manifest.ts)
-(schema), [`render-feature-reference.ts`](../src/core/docs/render-feature-reference.ts)
+Files: [`src/docs/schema/feature-manifest.ts`](../src/docs/schema/feature-manifest.ts)
+(schema), [`render-feature-reference.ts`](../src/docs/render/render-feature-reference.ts)
 (markdown), [`src/tests/docs/featureReference.test.ts`](../src/tests/docs/featureReference.test.ts)
 (generate + drift), [`extract-event-docs.ts`](../src/tests/docs/extract-event-docs.ts)
 (EventMap TSDoc → event docs). Regenerate with `npm run docs:reference`.
@@ -736,7 +789,7 @@ clear by checking each against the source:
 
 **Seven are genuinely SDK-level** — owned by the boot sequence, the shared action
 base, attribution, or the DOM observer. They now live in
-[`src/core/docs/sdk-attributes.ts`](../src/core/docs/sdk-attributes.ts), rendered to
+[`src/docs/content/sdk-attributes.ts`](../src/docs/content/sdk-attributes.ts), rendered to
 `docs/sdk-attributes.md` and published as **Feature Guides › SDK-level Attributes**,
 with a summary row in the index. A test asserts each is still read somewhere in
 `src/core`, so one that leaves the codebase cannot keep its page.
@@ -796,7 +849,7 @@ Writing the map is what found the last two gaps — mapping a URL forces the que
 
 ## 5f. Phase 5 (2026-07-30) — the manifests become a tool
 
-[`render-html-custom-data.ts`](../src/core/docs/render-html-custom-data.ts) generates
+[`render-html-custom-data.ts`](../src/docs/render/render-html-custom-data.ts) generates
 VS Code HTML custom data from the same manifests that generate the docs, so an
 integrator writing a campaign page gets completion and hover documentation for
 **165 attributes** — with defaults, valid values, and a link to the feature's page.
@@ -879,7 +932,7 @@ is generated from the manifests:
 - `data-next-enhancer` — checkout-review's own activation attribute
 
 `data-next-discounts` also exposed a limit in the drift checks: it is rendered by
-`src/shared/utils/discount-renderer.ts`, not by any of the three features' own files,
+`src/core/rendering/discount-renderer.ts`, not by any of the three features' own files,
 so "documented but never read" fired for all three. `extraSource` now accepts a
 `src/`-prefixed path, which is how a feature claims shared code — narrow enough that a
 shared attribute still cannot pass the check for a feature that does not render it.
@@ -1437,15 +1490,16 @@ acceptance criterion for Phase 7:
 2. **Generate what is extractable**, following `extract-logs.ts` / `extract-state-fields.ts`:
    the storage-key registry with TTLs (`core/storage.ts`), the log-prefix list, the meta
    tags and `data-next-*` attributes the boot sequence reads (already partly covered by
-   [`sdk-attributes.ts`](../src/core/docs/sdk-attributes.ts)), and the analytics event
+   [`sdk-attributes.ts`](../src/docs/content/sdk-attributes.ts)), and the analytics event
    catalogue.
 3. **Hand-write one overview per author-facing subsystem**, the way §5n did for stores:
    boot sequence, event bus, logging/debug, storage, attribution, error handling,
    analytics.
 4. **Correct the three existing READMEs** — starting with analytics' provider list.
-5. **Leave contributor-only plumbing alone.** `core/docs/`, `core/base/`, and the
-   generators do not need author-facing pages; they need accurate TSDoc, which they
-   largely have.
+5. **Leave contributor-only plumbing alone.** `src/docs/` (the build-time manifest
+   schema, content, and generators — relocated out of `core/docs/` by E1, see §0), `core/base/`,
+   and the generators do not need author-facing pages; they need accurate TSDoc, which
+   they largely have.
 
 ### The constraint that changes the approach: core TSDoc is never published
 
@@ -1472,7 +1526,8 @@ the generators write, exactly as features and stores already do. Adding core to
 **A related correction:** `src/core/README.md` claims core is kept out of the public
 reference because it is "marked `@internal`… (`excludeInternal: true`)". An AST scan
 finds **zero `@internal` tags on any exported declaration** in core — the only seven are
-file-header blocks in `core/docs/` attached to nothing. Core is excluded by
+file-header blocks in what was then `core/docs/` (now `src/docs/`, see §0) attached to
+nothing. Core is excluded by
 unreachability plus `DROP_DIRS`, not by tags. Worth fixing in the README because it
 tells the next person the wrong thing to maintain.
 
@@ -1545,7 +1600,7 @@ Each was checked against the whole published site, not just the repo. The sharp 
 | **Log prefixes + messages** | **Generable with no new tooling.** `extract-logs.ts` already matches on a `logger` receiver, so it works unchanged on core's **483 call sites** under **37 prefixes**. Judgement: expected-vs-problem, as the feature `logs.md` standard already requires. |
 | **Analytics event catalogue** | **Generable, and the drift gate already exists.** `DL_EVENTS` (`analytics/schemas/events.ts:55`) is `as const satisfies` with **35 events**, 19 carrying field schemas, and `analyticsVocabulary.test.ts` already asserts six invariants including a bidirectional emit-site scan. |
 | **Error catalogue** | **Generable** — `extractThrows()` already does this; **14 literal throws** in core plus 5 `DispatchError` sites. Recoverable-vs-fatal stays hand-declared, as `ErrorDoc` already is. |
-| **Meta tags + boot-read attributes** | **Mostly generable** — 24 distinct `meta[name=…]` literals; [`sdk-attributes.ts`](../src/core/docs/sdk-attributes.ts) is the existing home and already renders. Descriptions are judgement. |
+| **Meta tags + boot-read attributes** | **Mostly generable** — 24 distinct `meta[name=…]` literals; [`sdk-attributes.ts`](../src/docs/content/sdk-attributes.ts) is the existing home and already renders. Descriptions are judgement. |
 | **Storage keys + TTLs** | **Split.** Keys are extractable (constants + `persist({name})` + every literal `setItem`). **TTLs are not** — six unrelated constants, plus dynamic keys (`next-campaign-cache_{CURRENCY}`, `next-price-{hash}`, `upsells_{orderId}`, `next_country_states_{CC}`) whose shape no scanner can name. |
 | **`next.*` method list** | **Names generable, prose not** — 65 members, 34 with only a bare `@category`. A drift test "every public member appears in `javascript-api/methods.md`" would have caught the 7 missing ones. |
 | **Provider matrix** | **Half.** The registry and required-settings checks are literals; which behaviour is contract vs accident is judgement — e.g. `NextCampaignAdapter` supports only `page_view`, RudderStack skips `identify` without an email, GTM pushes `dl_*` verbatim to two data layers while stripping the prefix only to pick GA4 field rules. |
@@ -1595,11 +1650,11 @@ shape follows what §5q proposed, with one structural change and eight factual c
 
 | Piece | Files |
 |---|---|
-| **The inventory** — 11 author-facing subsystems, the denominator | [`core/docs/core-manifest.ts`](../src/core/docs/core-manifest.ts), [`core-subsystems.ts`](../src/core/docs/core-subsystems.ts) |
+| **The inventory** — 11 author-facing subsystems, the denominator | [`src/docs/content/core-manifest.ts`](../src/docs/content/core-manifest.ts), [`core-subsystems.ts`](../src/docs/content/core-subsystems.ts) |
 | **10 generated reference pages** | `src/core/guide/reference/` — boot-sequence, meta-tags, url-parameters, storage-keys, javascript-api, window-surface, logs, errors, analytics-events, analytics-providers |
 | **11 hand-written overviews + a section landing** | `src/core/guide/subsystems/*.md`, [`guide/overview.md`](../src/core/guide/overview.md) |
 | **5 extractors** | `src/tests/docs/extract-{boot-sequence,storage-keys,core-contracts,next-methods,analytics-events}.ts` |
-| **6 declaration files** (the judgement half, drift-checked both ways) | `core/docs/{meta-tags,url-parameters,storage-keys,next-methods,analytics-events,core-logs,core-errors}.ts` |
+| **6 declaration files** (the judgement half, drift-checked both ways) | `src/docs/content/{meta-tags,url-parameters,storage-keys,next-methods,analytics-events,core-logs,core-errors}.ts` |
 | **6 new coverage metrics** | [`scripts/docs-coverage.mjs`](../scripts/docs-coverage.mjs) |
 | **6 new drift test files** | `src/tests/docs/{bootSequence,coreContracts,coreLogs,coreSubsystems,nextMethods,storageReference}.test.ts` |
 
@@ -1862,7 +1917,13 @@ Cost of adopting all four: **5 devDependencies** (the four plugins plus `mermaid
 the two markdown plugins Phase 8 removes. That breaks the "no new dependencies" line in the
 feasibility table above, which described the trial build, not the final config.
 
-**Adopt (in this order):**
+**Adopted 2026-07-31 — three of the four.** `typedoc.json` now carries
+`"plugin": ["typedoc-plugin-mdn-links", "@boneskull/typedoc-plugin-mermaid",
+"typedoc-plugin-llms-txt"]` plus `"mermaidSource": "local"`, and `mermaid` is a
+devDependency. The fourth (`@shipgirl/typedoc-plugin-versions`) is **rejected** — see the
+versioning note below. Measured on the working tree, plugins on vs off: **771 → 979 files,
+14 → 30 MiB**; every added file is mermaid's ESM bundle plus one `llms.txt`. Build stays
+0 errors / 0 warnings.
 
 | Plugin | Version / peer | Buys us | Land in |
 |---|---|---|---|
@@ -1871,13 +1932,16 @@ feasibility table above, which described the trial build, not the final config.
 | `@shipgirl/typedoc-plugin-versions` | 0.3.2, `>=0.26.0 <0.29.0` | Version subfolders from `package.json` version, minor-version symlinks, header `<select>` switcher, stable/dev aliases — Phase 10 items 3–6. See the caveats below | 10 |
 | `typedoc-plugin-llms-txt` | 0.1.2, `^0.28.0` | `llms.txt` covering both API reflections and `projectDocuments`, with sections auto-discovered from document **frontmatter**. Near-free once Phase 9 has written that frontmatter — so it must land *after* Phase 9, not before | 9 (after frontmatter) |
 
-**Versioning plugin — read before Phase 10.** It does **not** build from git tags, so
-Phase 10 item 1 (`docs-build-version.mjs`, the `git worktree` prototype) stays ours; the
-plugin replaces items 3–6, roughly 1 day of the 1–1.5 d estimate. Two caveats decide
-whether it survives contact: it depends on **symlinks** (GitHub Pages does not serve
-symlinks at the site root), and removing an old version means deleting the folder and
-rebuilding. Hosting is still a human decision, so pick the plugin only once the host is
-known — but do not write a switcher by hand before checking it.
+**Versioning plugin — rejected once the host was known (2026-07-31).** The caveat flagged
+here decided it: the plugin's version aliases are **symlinks**, and §13's host is
+Cloudflare Workers static assets, where Wrangler walks the tree with `lstat` and **does not
+upload a symlinked folder** — `latest/` would publish as nothing. It also cannot build from
+a git tag, which is the whole of Phase 10 item 1. So the switcher, the aliases and the
+folder layout stay in [`docs-build-version.mjs`](../scripts/docs-build-version.mjs) /
+[`docs-versions.mjs`](../scripts/docs-versions.mjs) /
+[`docs-publish.mjs`](../scripts/docs-publish.mjs), which materialise `latest/` as a real
+directory copy for exactly that reason. This is the one piece of docs tooling that is
+hand-written *because* no plugin fits, not for lack of looking.
 
 **Rejected, with the reason:**
 
@@ -1987,7 +2051,7 @@ become.
 frontmatter:
 
 - The generated pages (`reference/*.md`, `logs.md`, `errors.md`, `relations.md`,
-  `get-started.md`, …) already have owners in `src/core/docs/render-*.ts` — emit
+  `get-started.md`, …) already have owners in `src/docs/render/render-*.ts` — emit
   `title` / `group` / `category` there, and the existing drift tests keep them honest.
 - The hand-written three (`overview.md`, `use-cases.md`, `glossary.md`) get frontmatter
   once by codemod, then a new `docs:coverage` metric — *guide pages carrying nav
@@ -2004,7 +2068,9 @@ door with document links, plus `navigationLinks` (GitHub, playground), `titleLin
 **Two plugins belong to this phase** ([§8.1](#81-plugins--evaluated-2026-07-31)):
 `typedoc-plugin-mdn-links`, which needs no decisions, and `typedoc-plugin-llms-txt`,
 which reads the frontmatter this phase writes — so add it last, after the frontmatter
-generation above is landing clean.
+generation above is landing clean. **Both landed 2026-07-31**, after the frontmatter: 272
+MDN links across the build, and `llms.txt` at each version root with one section per feature,
+taken from the `category` frontmatter.
 
 ### Phase 10 — versioning
 
@@ -2060,8 +2126,9 @@ Work items:
 
 - **`@internal` needs a policy.** 24 tags in `src/core`, 0 in `src/state`. With core as an
   entry point, `excludeInternal: true` would silently hide members again — and §5q found
-  most of those tags sit on **file-header blocks in `core/docs/` that attach to no
-  declaration**. Recommendation: keep `excludeInternal: true`, delete the header-block
+  most of those tags sit on **file-header blocks in what was then `core/docs/` (now
+  `src/docs/`, see §0) that attach to no declaration**. Recommendation: keep
+  `excludeInternal: true`, delete the header-block
   tags, and let the tag keep its plain meaning for the few members that genuinely hide.
 - **Two documents now say something false** and must be corrected in the same change:
   CLAUDE.md's "TSDoc inside `src/core/**` reaches no reader (only four core symbols are
@@ -2079,12 +2146,28 @@ Work items:
   hand-vendoring `mermaid.min.js` under `docs/assets/`: local mode copies mermaid's ESM
   entry and chunk directory into `assets/mermaid/`, so the site still works offline (no
   CDN), and the plugin supplies the light/dark theme variants a hand-rolled `customJs` would
-  have to write. It needs `mermaid` (`>=11`) as a devDependency. **Verify one thing first:**
-  the README documents fenced blocks in TSDoc comments and says nothing about
-  `projectDocuments` — 3 of the 4 blocks are in document pages. TypeDoc's own warning calls
-  them `in comment for core/guide/subsystems/analytics`, i.e. documents run through the same
-  comment pipeline, so this is likely fine; a 5-minute trial build settles it. If the plugin
-  misses document pages, fall back to vendoring.
+  have to write. It needs `mermaid` (`>=11`) as a devDependency.
+
+  **Settled 2026-07-31 — the plugin does handle document pages.** The open question above
+  (3 of the 4 blocks live in `projectDocuments`, and the README only documents TSDoc
+  comments) was answered by building it: all four pages —
+  `Core_Subsystems_Analytics`, `Core_Subsystems_Error_Handling`,
+  `Features_Display_Product_Display_Overview`, `Features_Order_Upsell_Overview` — carry a
+  `.mermaid-block` with a dark and a light diagram plus the source as a no-JS fallback.
+  Phase 11 first shipped a hand-vendored `mermaid.min.js` instead; that is now **reverted in
+  favour of the plugin**, deleting `docs/assets/vendor/` (3.5 MiB committed),
+  `docs/assets/mermaid-init.snippet.js`, `scripts/docs-assets.mjs` (the whole script), the
+  155-line spliced IIFE in `docs/assets/site.js`, and the vendor fallback in
+  `docs-serve.mjs`. Two things the swap needed: `.mjs` in `docs-serve.mjs`'s MIME table (a
+  module script served as `application/octet-stream` is refused by the browser), and CSS
+  that spaces `.mermaid-block` rather than setting `display` on `.mermaid`, which the plugin
+  drives with an inline style.
+
+  **Cost, measured:** mermaid's ESM entry plus its 206 lazily-imported chunks is **+207
+  files / +16 MiB per version folder that contains a diagram** — and only those: the plugin
+  copies nothing when a build has no mermaid block, verified on `v0.4.30`, which produced
+  none. The old vendoring copied 3.5 MiB into *every* folder unconditionally. Browsers still
+  download only the chunks a diagram needs.
 
 ### Phase 12 — unhook developer-docs
 
@@ -2124,10 +2207,18 @@ that size reaches ~28,000 and Pages is out with no migration path. Picking the c
 grow into rather than the one we grow out of. It also matches `developer-docs`, which
 already deploys as an assets-only Worker, so there is one mechanism in the org, not two.
 
-Note on the 213.8 MiB: ~109 of it is 32 copies of the 3.4 MiB vendored `mermaid.min.js`,
-one per version folder plus `latest/`. Wrangler content-addresses assets, so that uploads
-once — it costs file *count*, not bandwidth. Phase 11's mermaid plugin retires the
-hand-vendoring anyway.
+Note on the 213.8 MiB: ~109 of it was 32 copies of the 3.4 MiB vendored `mermaid.min.js`,
+one per version folder plus `latest/`. **That is gone** — the mermaid plugin (§8.1) now
+copies mermaid's ESM bundle only into folders that actually contain a diagram, and no tag
+below the current one does. The trade is file *count*, not bandwidth: a diagram-carrying
+folder gains 207 files, so a release folder goes from ~773 to ~980. Wrangler
+content-addresses assets, so identical chunks upload once. Re-measure with
+`npm run docs:publish` before assuming headroom against the 20,000-file free ceiling.
+
+Measured after the swap (`docs:publish --versions 3 --free-plan`): **837 files, 13.9 MiB,
+largest file 0.2 MiB** for the three newest tags plus `latest/` — where the largest file
+used to be the 3.4 MiB mermaid bundle. None of those tags carries a diagram, so none
+carries a mermaid chunk.
 
 What `docs-publish.mjs` does that a bare `wrangler deploy` cannot:
 
@@ -2171,7 +2262,7 @@ step cannot be taken by an agent by accident.
 
 ### What §8 does not change
 
-The manifests, the `src/core/docs/render-*.ts` generators, the 19 coverage metrics and
+The manifests, the `src/docs/render/render-*.ts` generators, the 19 coverage metrics and
 their ratchet, `npm run docs:reference`, the drift tests, and the guide format in
 [`.claude/rules/guide.md`](../.claude/rules/guide.md) all stay exactly as shipped. **This
 is a change of output target, not of content.** Every page the programme produced is
@@ -2203,7 +2294,7 @@ lead holding the shared spine — `typedoc.json`, `package.json`,
 builds clean.**
 
 ```bash
-npm run docs         # typedoc + asset copy → docs/site   (891 pages, 0 errors, 0 warnings, ~9s)
+npm run docs         # typedoc → docs/site   (891 pages, 0 errors, 0 warnings, ~9s)
 npm run docs:serve   # typedoc --watch + static server on :3500
 npm run docs:check   # typedoc --treatWarningsAsErrors — the link gate
 npm run docs:version -- v0.4.30   # one version folder, built from that tag
@@ -2219,9 +2310,9 @@ Baseline after the run: `npm run type-check` clean · `npx vitest run src/tests/
 | Phase | Predicted | Shipped |
 |---|---|---|
 | 8 | HTML config, Fumadocs pipeline deleted, serve script | Done. `scripts/typedoc-fumadocs.mjs` (108 lines) and `docs/api/` gone, both markdown plugins dropped, zero-dependency `scripts/docs-serve.mjs` |
-| 9 | frontmatter nav, URL shape frozen, landing page | Done, by a **different mechanism** than planned — see below. 346 pages carry nav frontmatter; new [`src/core/docs/nav.ts`](../src/core/docs/nav.ts) is the one place it is written |
+| 9 | frontmatter nav, URL shape frozen, landing page | Done, by a **different mechanism** than planned — see below. 346 pages carry nav frontmatter; new [`src/docs/content/nav.ts`](../src/docs/content/nav.ts) is the one place it is written |
 | 10 | versioning, tag-build prototype | Done. **The prototype worked**, further back than expected |
-| 11 | `@internal` policy, README fix, mermaid | Done. All 24 tags removed, mermaid vendored and rendering |
+| 11 | `@internal` policy, README fix, mermaid | Done. All 24 tags removed; mermaid renders via `@boneskull/typedoc-plugin-mermaid` (`"mermaidSource": "local"`), as §8.1 prescribed — the hand-vendored bundle it shipped with first is gone |
 | 12 | unhook developer-docs | Done. No code path or instruction file points at `../../developer-docs` |
 
 ### Nine things §8 got wrong, found by building it
@@ -2245,17 +2336,23 @@ Baseline after the run: `npm run type-check` clean · `npx vitest run src/tests/
    by the gate.
 6. **Missing `customCss`/`customJs` is a hard error**, not a warning: TypeDoc refuses to
    generate at all. Wiring those keys before the files exist breaks the build.
-7. **TypeDoc copies no static assets.** `customCss`/`customJs` are the only files that
-   travel, so the vendored mermaid bundle needed
-   [`scripts/docs-assets.mjs`](../scripts/docs-assets.mjs) — without it every diagram page
-   404s on the bundle, and `--watch` loses it on the first rebuild (TypeDoc clears the out
-   directory), which is why `docs-serve.mjs` serves `assets/vendor/**` from the repo.
+7. **TypeDoc copies no static assets** — `customCss`/`customJs` are the only files that
+   travel. That first produced a `scripts/docs-assets.mjs` copy step, a repo-served
+   `assets/vendor/**` fallback in `docs-serve.mjs` (TypeDoc clears the out directory, so
+   `--watch` lost the bundle on the first rebuild), and a copy call in
+   `docs-build-version.mjs`. **All three are deleted:** a plugin that needs a runtime asset
+   copies its own, on every render, into every version folder it builds — which is what
+   `@boneskull/typedoc-plugin-mermaid` does. The lesson is narrower than it looked: TypeDoc
+   copies no static assets *of yours*, so reach for a plugin before a copy script.
 8. **`@internal` in core hid nothing at all** — not "most", *all* 24. Every tag sat in a
    file-header block before the first `import`, which TypeDoc does not treat as a module
    comment. All 161 pages of `src/core/docs/**` were rendering regardless. **The lever
    left unpulled:** adding `@module` beside `@internal` makes the tag work, verified. It
    would drop those 161 pages — deliberately not done, because the manifest modules carry
    the best authoring TSDoc in the repo, which is what §8 decision 4 wants read.
+   **Superseded by E1 (see §0):** `core/docs/` moved to `src/docs/`, which is no longer
+   under the `src/core` entry point at all, so those ~161 pages (163 measured just before
+   the move) stopped publishing outright rather than needing `@module` to hide them.
 9. **The floor recipe in §8 Phase 10 gives a wrong answer.**
    `git log --diff-filter=A -- 'src/features/*/*/guide'` returns a `node_modules` chore
    commit. `git tag` is also denied to agents; `git for-each-ref --sort=v:refname

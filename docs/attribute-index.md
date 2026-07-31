@@ -38,7 +38,6 @@ These belong to the SDK itself rather than to a feature — the boot sequence, t
 | Attribute | Owner | Use |
 |---|---|---|
 | `data-next-sdk-loading` | SDK boot | **sets** |
-| `data-next-page-type` | SDK config / analytics | you set it |
 | `data-next-tracking-tag` | Attribution | you set it |
 | `data-loading-text` | Shared action base | **sets** |
 | `data-next-validate` | DOM observer | you set it |

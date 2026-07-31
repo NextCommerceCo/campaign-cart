@@ -6,7 +6,7 @@ category: "Core Reference"
 
 # Errors
 
-<!-- Generated from src/core/docs/core-errors.ts, checked against the throw sites in
+<!-- Generated from src/docs/content/core-errors.ts, checked against the throw sites in
      src/core. Do not edit by hand: edit core-errors.ts, then run
      `npm run docs:reference`. -->
 

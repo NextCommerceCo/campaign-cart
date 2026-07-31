@@ -1,7 +1,7 @@
 import { useCampaignStore } from '@/state/campaign';
 import type { Package } from '@/types/campaign';
 import type { Logger } from '@/core/logger';
-import { formatCurrency, formatPercentage } from '@/utils/currencyFormatter';
+import { formatCurrency, formatPercentage } from '@/core/currency-formatter';
 import type {
   BundleCard,
   BundleDef,
@@ -14,7 +14,7 @@ import { applySlotConditionals } from './bundle-selector.conditions';
 import {
   renderDiscountContainers,
   replaceVarsPreservingTemplates,
-} from '@/shared/utils/discount-renderer';
+} from '@/core/rendering/discount-renderer';
 
 // ─── Slot vars builder ────────────────────────────────────────────────────────
 
@@ -383,8 +383,8 @@ function createSlotElement(
   vars: Record<string, string>,
   ctx: RenderContext,
   discounts?: {
-    offerDiscounts: import('@/shared/utils/discount-renderer').DiscountItem[];
-    voucherDiscounts: import('@/shared/utils/discount-renderer').DiscountItem[];
+    offerDiscounts: import('@/core/rendering/discount-renderer').DiscountItem[];
+    voucherDiscounts: import('@/core/rendering/discount-renderer').DiscountItem[];
   },
 ): HTMLElement {
   const wrapper = document.createElement('div');

@@ -1,8 +1,8 @@
 import { useOrderStore } from '@/state/order';
 import { useCampaignStore } from '@/state/campaign';
 import { useConfigStore } from '@/state/config';
-import { GeneralModal } from '@/shared/modals/general-modal';
-import { preserveQueryParams } from '@/utils/url-utils';
+import { GeneralModal } from '@/core/ui/general-modal';
+import { preserveQueryParams } from '@/core/url-utils';
 import type { AddUpsellLine } from '@/types/api';
 import { renderProcessingState, renderSuccess, renderError } from './upsell.renderer';
 import type { UpsellHandlerContext } from './upsell.types';

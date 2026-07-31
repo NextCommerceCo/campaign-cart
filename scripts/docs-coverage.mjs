@@ -100,7 +100,7 @@ function attributesDeclaredInManifests() {
     // Activation selectors: `activates: '[data-next-foo="bar"]'`
     for (const m of src.matchAll(/\[(data-[a-z0-9-]+)/g)) declared.add(m[1]);
   }
-  const sdk = join(SRC, 'core/docs/sdk-attributes.ts');
+  const sdk = join(SRC, 'docs/content/sdk-attributes.ts');
   if (existsSync(sdk)) {
     for (const m of readFileSync(sdk, 'utf8').matchAll(/name:\s*'(data-[a-z0-9-]+)'/g)) {
       declared.add(m[1]);
@@ -284,7 +284,7 @@ function scanStores() {
 
 const CORE = join(SRC, 'core');
 const CORE_GUIDE = join(CORE, 'guide');
-const CORE_DOCS = join(CORE, 'docs');
+const DOCS_CONTENT = join(SRC, 'docs', 'content');
 
 /**
  * Core was outside this gate until Phase 6, and that was the problem: 75 files and
@@ -297,7 +297,7 @@ const CORE_DOCS = join(CORE, 'docs');
  * contributor's question, not an author's. (Core TSDoc *is* published now — `src/core` is
  * a TypeDoc entry point since 2026-07-31 — but it publishes class and symbol pages, which
  * is not where someone building a page looks.) So the unit is the **contract a page
- * depends on** — see `src/core/docs/core-subsystems.ts`.
+ * depends on** — see `src/docs/content/core-subsystems.ts`.
  *
  * A deliberate limit on the scans below: they measure what can be counted from the
  * source **without re-implementing the extractors** that generate the pages. Meta tags
@@ -313,7 +313,7 @@ const CORE_DOCS = join(CORE, 'docs');
 /**
  * The files a contract may be *read* in — real SDK code only.
  *
- * Manifests and the `core/docs/` declaration files are documentation, so counting them
+ * Manifests and the `src/docs/` declaration files are documentation, so counting them
  * makes the metric circular: declaring a key would add it to the set of keys needing
  * declaration, and the denominator would grow every time a gap was closed. That
  * happened once already, to the attribute metric (§5m), which is why it is excluded
@@ -321,7 +321,7 @@ const CORE_DOCS = join(CORE, 'docs');
  */
 function contractSourceFiles() {
   return walk(SRC, isSourceTs).filter(
-    f => !f.endsWith('.manifest.ts') && !f.includes(join(SRC, 'core', 'docs'))
+    f => !f.endsWith('.manifest.ts') && !f.includes(join(SRC, 'docs'))
   );
 }
 
@@ -338,7 +338,7 @@ function coreGuidePage(name) {
  * permanently-unreachable feature rows.
  */
 function scanCoreSubsystems() {
-  const file = join(CORE_DOCS, 'core-subsystems.ts');
+  const file = join(DOCS_CONTENT, 'core-subsystems.ts');
   if (!existsSync(file)) return [];
   const src = readFileSync(file, 'utf8');
   return src
@@ -366,7 +366,7 @@ function scanCoreSubsystems() {
  * already published — the off-by-one class of bug §5e found 19 of.
  */
 function scanCoreReferencePages() {
-  const file = join(CORE_DOCS, 'core-subsystems.ts');
+  const file = join(DOCS_CONTENT, 'core-subsystems.ts');
   if (!existsSync(file)) return [];
   const src = readFileSync(file, 'utf8');
   const wanted = new Set();
@@ -389,8 +389,8 @@ function scanAnalyticsEvents() {
   if (!existsSync(file)) return [];
   const names = (JSON.parse(readFileSync(file, 'utf8')).events ?? []).map(e => e.name);
   const page = coreGuidePage('analytics-events');
-  const declared = existsSync(join(CORE_DOCS, 'analytics-events.ts'))
-    ? readFileSync(join(CORE_DOCS, 'analytics-events.ts'), 'utf8')
+  const declared = existsSync(join(DOCS_CONTENT, 'analytics-events.ts'))
+    ? readFileSync(join(DOCS_CONTENT, 'analytics-events.ts'), 'utf8')
     : '';
   // Documented means it reached the reader *and* carries prose a generator could not
   // derive. Either half alone is how `data-next-payment-method` read 100% while being
@@ -513,7 +513,7 @@ function scanStorageKeys() {
  * 3. **Siblings must share a prefix.** Every page in one `guide/` folder belongs under
  *    the same three segments; a typo in one title scatters it elsewhere in the sidebar.
  *
- * See `src/core/docs/nav.ts` — the single place the frontmatter is written.
+ * See `src/docs/content/nav.ts` — the single place the frontmatter is written.
  */
 function scanNavFrontmatter() {
   const files = [
@@ -825,28 +825,28 @@ const KINDS = [
     label: 'dl_* analytics events with a catalogue entry and prose',
     have: analyticsEvents.length - analyticsEventsWithoutDocs.length,
     total: analyticsEvents.length,
-    fix: 'add it to src/core/docs/analytics-events.ts (when it fires, what each field means, which provider reshapes it), then regenerate',
+    fix: 'add it to src/docs/content/analytics-events.ts (when it fires, what each field means, which provider reshapes it), then regenerate',
   },
   {
     key: 'nextMethodsWithoutDocs',
     label: 'public NextCommerce members named on the JavaScript API page',
     have: nextMethods.length - nextMethodsWithoutDocs.length,
     total: nextMethods.length,
-    fix: 'document it in src/core/docs/next-methods.ts with a runnable example, then regenerate — TSDoc on the class publishes a contributor-facing symbol page, not the task-shaped JavaScript API reference an author reads',
+    fix: 'document it in src/docs/content/next-methods.ts with a runnable example, then regenerate — TSDoc on the class publishes a contributor-facing symbol page, not the task-shaped JavaScript API reference an author reads',
   },
   {
     key: 'metaTagsWithoutDocs',
     label: '<meta> tags the SDK reads, documented in the meta-tag reference',
     have: metaTags.length - metaTagsWithoutDocs.length,
     total: metaTags.length,
-    fix: 'add it to src/core/docs/meta-tags.ts, then regenerate',
+    fix: 'add it to src/docs/content/meta-tags.ts, then regenerate',
   },
   {
     key: 'storageKeysWithoutDocs',
     label: 'literal storage keys documented in the storage reference',
     have: storageKeys.length - storageKeysWithoutDocs.length,
     total: storageKeys.length,
-    fix: 'add it to src/core/docs/storage-keys.ts with its TTL and what clearing it costs the visitor, then regenerate',
+    fix: 'add it to src/docs/content/storage-keys.ts with its TTL and what clearing it costs the visitor, then regenerate',
   },
   {
     key: 'featuresWithoutTestedExample',
@@ -864,7 +864,7 @@ const KINDS = [
     total: navPages.length,
     fix:
       'add title/group/category frontmatter — generated pages from the render-*.ts that ' +
-      'owns them (see src/core/docs/nav.ts), hand-written pages in the file itself',
+      'owns them (see src/docs/content/nav.ts), hand-written pages in the file itself',
   },
 ];
 
@@ -923,7 +923,7 @@ if (closed && !UPDATE) {
 if (duplicateNavTitles.length) {
   console.error(`\nFAIL — ${duplicateNavTitles.length} duplicate nav title(s); each is two pages claiming one URL:`);
   for (const x of duplicateNavTitles) console.error(`  ${x}`);
-  console.error('  fix: make every guide page title unique — see src/core/docs/nav.ts\n');
+  console.error('  fix: make every guide page title unique — see src/docs/content/nav.ts\n');
   process.exit(1);
 }
 

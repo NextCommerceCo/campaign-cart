@@ -6,7 +6,7 @@ category: "Core Reference"
 
 # The `window` surface
 
-<!-- Generated. Do not edit by hand: edit src/core/docs/next-methods.ts
+<!-- Generated. Do not edit by hand: edit src/docs/content/next-methods.ts
      for the prose, or the source under src/core and src/features for what is inventoried, then run
      `UPDATE_DOCS=1 npx vitest run src/tests/docs/nextMethods.test.ts`. -->
 
@@ -25,7 +25,7 @@ Every entry below is read out of the source, so the list cannot fall behind the 
 |---|---|---|
 | [`window.next`](#windownext) | install | `core/sdk-initializer.ts:755` |
 | [`window.nextReady`](#windownextready) | install | `core/sdk-initializer.ts:758` |
-| [`window.nextConfig`](#windownextconfig) | read | `core/debug/DebugModule.ts:76` and 9 more |
+| [`window.nextConfig`](#windownextconfig) | read | `core/debug/DebugModule.ts:76` and 11 more |
 | [`window.__NEXT_SDK_VERSION__`](#window__next_sdk_version__) | read | `core/debug/panels/ConfigPanel.ts:47` and 7 more |
 | [`window.NextDataLayer`](#windownextdatalayer) | install | `core/analytics/DataLayerManager.ts:69`, `core/analytics/DataLayerManager.ts:199` |
 | [`window.NextDataLayerTransformFn`](#windownextdatalayertransformfn) | install | `core/analytics/DataLayerManager.ts:74` and 2 more |
@@ -98,7 +98,7 @@ The configuration object your page sets before the SDK loads — API key, debug 
 
 > ⚠️ Read during boot, so it has to be set before the SDK script runs; assigning it afterwards changes nothing. Meta tags override it where both are present.
 
-<sub>Read in `core/debug/DebugModule.ts:76`, `core/debug/DebugModule.ts:138`, `core/debug/DebugOverlay.ts:64`, `core/debug/DebugOverlay.ts:153`, `core/debug/panels/EventTimelinePanel.ts:200`, `core/logger.ts:19`, `core/sdk-initializer.ts:388`, `core/test-mode.ts:102`, `features/cart/cart-item-list/cart-item-list.renderer.ts:133`, `features/cart/cart-item-list/cart-item-list.renderer.ts:141`</sub>
+<sub>Read in `core/debug/DebugModule.ts:76`, `core/debug/DebugModule.ts:138`, `core/debug/DebugOverlay.ts:64`, `core/debug/DebugOverlay.ts:153`, `core/debug/panels/EventTimelinePanel.ts:200`, `core/logger.ts:19`, `core/sdk-initializer.ts:388`, `core/test-mode.ts:102`, `core/url-utils.ts:91`, `core/url-utils.ts:106`, `features/cart/cart-item-list/cart-item-list.renderer.ts:133`, `features/cart/cart-item-list/cart-item-list.renderer.ts:141`</sub>
 
 ### `window.__NEXT_SDK_VERSION__`
 

@@ -13,7 +13,8 @@ import { stubCampaign, stubCart, stubOrder, bootSdk } from './fixtures/routes';
  *  - campaign    → `next-campaign-cache_{CURRENCY}` (e.g. `next-campaign-cache_USD`)
  *  - order       → `next-order`
  *  - attribution → `next-attribution`
- * (src/core/storage.ts; src/state/order.state.ts; src/state/attribution.state.ts)
+ * (src/core/storage.ts; src/state/order/order.state.ts;
+ *  src/state/attribution/attribution.state.ts)
  */
 
 const FIXTURE = '/e2e/fixtures/storage.html';

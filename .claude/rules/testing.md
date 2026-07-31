@@ -6,8 +6,15 @@
 - **Coverage target**: 80% branches / functions / lines / statements
 
 ## Unit Tests
-- **Feature/store tests are colocated** with their code — `features/<cat>/<feature>/tests/*.test.ts`, one `<source>.test.ts` per source file. They move with the feature. (See the `sdk-structure` skill.)
-- `src/tests/**/*.test.ts` is for **cross-cutting / integration** tests only (analytics, multi-feature flows) — not per-feature units.
+- **Feature tests are colocated** with their code — `src/features/<cat>/<feature>/tests/*.test.ts`, one `<source>.test.ts` per source file. They move with the feature. (See the `sdk-structure` skill.)
+- **Core tests** live in `src/core/tests/*.test.ts` — same `<source>.test.ts` naming
+  (`currency-formatter.ts` → `currency-formatter.test.ts`).
+- **State/store tests** live alongside their store in `src/state/<domain>/`.
+- `src/tests/**/*.test.ts` is for **cross-cutting / integration** tests only:
+  - `src/tests/analytics/` — analytics validators, event builders, provider adapters. Cross-cutting because one event is produced by several features and consumed by several providers.
+  - `src/tests/contract/` — the gates: public export surface, dynamic-import resolution, store identity + `persist` keys, production-bundle contents. These fail on a whole-repo invariant, not on one unit.
+  - `src/tests/docs/` — documentation drift checks: every generated page must still match the source it was generated from.
+  - Do NOT unit-test per-feature code here; that belongs colocated with the feature.
 - Setup file: `src/tests/setup.ts` (DOM reset, window cleanup runs before each test) — the path `vitest.config.ts` actually registers in `setupFiles`
 - Import from `vitest` — not `jest`: `import { describe, it, expect, vi } from 'vitest'`
 - Use `vi.fn()` for mocks, `vi.spyOn()` for spies

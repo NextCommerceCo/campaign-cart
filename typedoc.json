@@ -26,9 +26,15 @@
     "docs/sdk-attributes.md"
   ],
   "searchInDocuments": true,
+  "plugin": [
+    "typedoc-plugin-mdn-links",
+    "@boneskull/typedoc-plugin-mermaid",
+    "typedoc-plugin-llms-txt"
+  ],
   "ignoredHighlightLanguages": [
     "mermaid"
   ],
+  "mermaidSource": "local",
   "excludePrivate": true,
   "excludeInternal": true,
   "excludeExternals": true,

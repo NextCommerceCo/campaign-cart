@@ -7,7 +7,7 @@ category: "Core Reference"
 # Meta Tags
 
 <!-- Generated from the core contract lists. Do not edit by hand:
-     edit src/core/docs/meta-tags.ts, then run `npm run docs:reference`. -->
+     edit src/docs/content/meta-tags.ts, then run `npm run docs:reference`. -->
 
 The SDK reads **27 `<meta>` tags** from the page's `<head>`. Attributes configure one element; these configure the whole page — the API key it boots with, which funnel step the page is, where checkout sends the visitor, which analytics events fire. Add them to the `<head>`, above the SDK loader script.
 

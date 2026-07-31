@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { basename, dirname, join, relative } from 'node:path';
-import type { FeatureManifest } from '@/core/docs/feature-manifest';
+import type { FeatureManifest } from '@/docs/schema/feature-manifest';
 import {
   renderAttributes,
   renderDisplayPaths,
@@ -12,17 +12,17 @@ import {
   renderLogs,
   renderRelations,
   renderTestedExample,
-} from '@/core/docs/render-feature-reference';
-import { extractEventDocs } from './extract-event-docs';
-import { extractDisplayPaths } from './extract-display-paths';
-import { extractFixtureExample } from './extract-fixture-example';
-import { extractLogs, extractThrows } from './extract-logs';
-import { SDK_ATTRIBUTES } from '@/core/docs/sdk-attributes';
-import { renderHtmlCustomData } from '@/core/docs/render-html-custom-data';
+} from '@/docs/render/render-feature-reference';
+import { extractEventDocs } from '@/docs/extract/extract-event-docs';
+import { extractDisplayPaths } from '@/docs/extract/extract-display-paths';
+import { extractFixtureExample } from '@/docs/extract/extract-fixture-example';
+import { extractLogs, extractThrows } from '@/docs/extract/extract-logs';
+import { SDK_ATTRIBUTES } from '@/docs/content/sdk-attributes';
+import { renderHtmlCustomData } from '@/docs/render/render-html-custom-data';
 import {
   renderAttributeIndex,
   renderSdkAttributes,
-} from '@/core/docs/render-attribute-index';
+} from '@/docs/render/render-attribute-index';
 
 /**
  * Generates each feature's `guide/reference/attributes.md` and `events.md` from
@@ -97,11 +97,13 @@ function featureFiles(
       eager: true,
     }),
     // Some attributes are read by a shared renderer rather than by the feature's
-    // own files — `data-next-discounts` is handled by `shared/utils/discount-renderer`
-    // for three different features. Those files are only in scope for a feature
-    // that names them in `extraSource`, so a shared attribute still cannot pass
-    // this check for a feature that does not actually render it.
-    ...import.meta.glob<string>('../../shared/**/*.ts', {
+    // own files — `data-next-discounts` is handled by
+    // `core/rendering/discount-renderer` for three different features. Those files
+    // are only in scope for a feature that names them in `extraSource`, so a shared
+    // attribute still cannot pass this check for a feature that does not actually
+    // render it. Keep this glob narrow: it must cover every path an `extraSource`
+    // entry can point at, and nothing else.
+    ...import.meta.glob<string>('../../core/rendering/**/*.ts', {
       query: '?raw',
       import: 'default',
       eager: true,

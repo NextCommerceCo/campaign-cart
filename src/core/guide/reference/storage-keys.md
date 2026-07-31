@@ -7,7 +7,7 @@ category: "Core Reference"
 # Storage keys
 
 <!-- Generated from the storage-key registry. Do not edit by hand:
-     edit src/core/docs/storage-keys.ts, then run `npm run docs:reference`. -->
+     edit src/docs/content/storage-keys.ts, then run `npm run docs:reference`. -->
 
 Every sessionStorage and localStorage entry the SDK reads or writes: what is inside it, how long it lives, and what the visitor loses if it goes. Use it when a cart came back empty, a page is priced in the wrong currency, or an order arrived with no attribution — those are all one storage entry away.
 
@@ -126,7 +126,7 @@ The country and currency the visitor is shopping in, kept so every page in the f
 |---|---|---|---|
 | `next_selected_currency`<br><sub>core/debug/CountrySelector.ts:394 +10 more</sub> | `session` | none — gone when the tab closes | The currency this visitor is shopping in, whether they chose it, `?currency=` set it, or geo-detection picked it.<br><br>**Clearing it:** The next page redetects the currency. A visitor mid-funnel can watch prices change between pages, and an upsell can be priced in a different currency from the order they already paid for.<br><br>Store: [`config`](../../../state/config/guide/reference/state-reference.md). |
 | `next_selected_country`<br><sub>core/debug/CountrySelector.ts:353 +10 more</sub> | `session` | none — gone when the tab closes | The shipping country in force, from the address form, the debug country selector, or `?country=`.<br><br>**Clearing it:** Country falls back to geo-detection, which can disagree with the address the visitor already entered — the state dropdown and postcode rules reset with it. |
-| `next_selected_locale`<br><sub>core/debug/LocaleSelector.ts:344 +3 more</sub> | `session` | none — gone when the tab closes | The locale used to format prices and numbers, so `1.234,56 €` stays `1.234,56 €` across pages.<br><br>**Clearing it:** Prices format with the browser's own locale instead. Amounts stay correct; separators and symbol placement can change mid-funnel. |
+| `next_selected_locale`<br><sub>core/currency-formatter.ts:30 +3 more</sub> | `session` | none — gone when the tab closes | The locale used to format prices and numbers, so `1.234,56 €` stays `1.234,56 €` across pages.<br><br>**Clearing it:** Prices format with the browser's own locale instead. Amounts stay correct; separators and symbol placement can change mid-funnel. |
 
 ### Analytics session and queued events
 

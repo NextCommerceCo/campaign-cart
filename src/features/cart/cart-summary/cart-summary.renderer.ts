@@ -2,7 +2,7 @@ import {
   formatCurrency,
   formatDiscountPercentage,
   formatPercentage,
-} from '@/utils/currencyFormatter';
+} from '@/core/currency-formatter';
 import type { CartState } from '@/types/global';
 import type { CartSummary, SummaryLine } from '@/types/api';
 import type {
@@ -19,7 +19,7 @@ import {
   renderDiscountContainers,
   renderFlatDiscountContainers,
   replaceVarsPreservingTemplates,
-} from '@/shared/utils/discount-renderer';
+} from '@/core/rendering/discount-renderer';
 
 // ─── Data builders ────────────────────────────────────────────────────────────
 

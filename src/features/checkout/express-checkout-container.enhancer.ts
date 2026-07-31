@@ -20,7 +20,7 @@ import { ApiClient } from '@/api/client';
 import { OrderManager } from './managers/order-manager';
 import { ExpressCheckoutProcessor } from './processors/express-checkout-processor';
 import { PAYPAL_SVG, APPLE_PAY_SVG, GOOGLE_PAY_SVG } from './constants/payment-icons';
-import { LoadingOverlay } from '@/shared/components/loading-overlay';
+import { LoadingOverlay } from '@/core/ui/loading-overlay';
 import { isApplePayAvailable, isGooglePayAvailable, isPayPalAvailable, getPaymentCapabilities } from '@/features/checkout/utils/payment-availability';
 import type { PaymentConfig, CartState } from '@/types/global';
 import type { PaymentMethodOption } from '@/types/api';

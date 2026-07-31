@@ -2,22 +2,22 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, relative } from 'node:path';
-import { META_TAGS, META_TAG_GROUPS } from '@/core/docs/meta-tags';
+import { META_TAGS, META_TAG_GROUPS } from '@/docs/content/meta-tags';
 import {
   URL_PARAMETERS,
   URL_PARAMETER_GROUPS,
-} from '@/core/docs/url-parameters';
+} from '@/docs/content/url-parameters';
 import {
   renderMetaTags,
   renderUrlParameters,
   type ContractUsage,
-} from '@/core/docs/render-core-contracts';
+} from '@/docs/render/render-core-contracts';
 import {
   extractCoreContracts,
   coreContractSources,
   isReadAccess,
   type ExtractedContract,
-} from './extract-core-contracts';
+} from '@/docs/extract/extract-core-contracts';
 
 /**
  * Generates `core/guide/reference/meta-tags.md` and `url-parameters.md`, and fails when
@@ -63,7 +63,7 @@ describe('core contract docs', () => {
         .filter(name => !documented.has(name));
       expect(
         missing,
-        'read by the SDK but absent from src/core/docs/meta-tags.ts — add them to META_TAGS'
+        'read by the SDK but absent from src/docs/content/meta-tags.ts — add them to META_TAGS'
       ).toEqual([]);
     });
 
@@ -163,7 +163,7 @@ describe('core contract docs', () => {
         .filter(name => !documented.has(name));
       expect(
         missing,
-        'read or written by the SDK but absent from src/core/docs/url-parameters.ts — add them to URL_PARAMETERS'
+        'read or written by the SDK but absent from src/docs/content/url-parameters.ts — add them to URL_PARAMETERS'
       ).toEqual([]);
     });
 

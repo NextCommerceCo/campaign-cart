@@ -9,7 +9,7 @@ import { calculateBundlePrice } from '@/state/cart/cart-calculator';
 vi.mock('@/state/campaign', () => ({ useCampaignStore: { getState: vi.fn() } }));
 vi.mock('@/state/checkout', () => ({ useCheckoutStore: { getState: vi.fn() } }));
 vi.mock('@/state/cart/cart-calculator', () => ({ calculateBundlePrice: vi.fn() }));
-vi.mock('@/utils/currencyFormatter', () => ({
+vi.mock('@/core/currency-formatter', () => ({
   formatCurrency: (n: number) => `$${n}`,
   formatPercentage: (n: number) => `${Math.round(n)}%`,
 }));

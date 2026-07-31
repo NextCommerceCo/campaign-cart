@@ -3,4 +3,4 @@
  *
  * Re-exports from the shared utility so existing imports are unaffected.
  */
-export { applySlotConditionals, isTruthyVar } from '@/shared/utils/slot-conditionals';
+export { applySlotConditionals, isTruthyVar } from '@/core/rendering/slot-conditionals';

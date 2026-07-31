@@ -8,7 +8,7 @@ import { AttributeParser } from '@/core/base/attribute-parser';
 import { FormatType, getPropertyConfig, type DisplayValue } from './display-types';
 import { DisplayValueValidator } from '@/features/display/display-value-validator';
 import { DisplayErrorBoundary } from './display-error-boundary';
-import { formatCurrency as formatCurrencyUtil, formatNumber as formatNumberUtil, CurrencyFormatter } from '@/utils/currencyFormatter';
+import { formatCurrency as formatCurrencyUtil, formatNumber as formatNumberUtil, CurrencyFormatter } from '@/core/currency-formatter';
 
 // =====================
 // DISPLAY FORMATTER

@@ -1,13 +1,13 @@
 import { Decimal } from 'decimal.js';
 import { useCampaignStore } from '@/state/campaign';
-import { formatCurrency, formatPercentage } from '@/utils/currencyFormatter';
-import { TemplateRenderer } from '@/shared/utils/template-renderer';
+import { formatCurrency, formatPercentage } from '@/core/currency-formatter';
+import { TemplateRenderer } from '@/core/rendering/template-renderer';
 import type { Logger } from '@/core/logger';
 import type { SummaryLine } from '@/types/api';
 import type { PackageDef, ToggleCard } from './package-toggle.types';
 import { makeProvisionalPrices } from './package-toggle.state';
-import { renderFlatDiscountContainers } from '@/shared/utils/discount-renderer';
-import { applySlotConditionals, isTruthyVar } from '@/shared/utils/slot-conditionals';
+import { renderFlatDiscountContainers } from '@/core/rendering/discount-renderer';
+import { applySlotConditionals, isTruthyVar } from '@/core/rendering/slot-conditionals';
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 

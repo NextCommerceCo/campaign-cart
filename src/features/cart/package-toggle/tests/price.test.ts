@@ -17,7 +17,7 @@ vi.mock('@/state/checkout', () => ({
 vi.mock('@/state/cart/cart-calculator', () => ({
   calculateBundlePrice: vi.fn(),
 }));
-vi.mock('@/utils/currencyFormatter', () => ({
+vi.mock('@/core/currency-formatter', () => ({
   formatCurrency: (n: number) => `$${n.toFixed(2)}`,
   formatPercentage: (n: number) => `${n}%`,
 }));

@@ -15,12 +15,12 @@ import {
   ANALYTICS_SHARED_SHAPES,
   DL_PREFIX_NOTES,
   type SharedShapeName,
-} from '@/core/docs/analytics-events';
+} from '@/docs/content/analytics-events';
 import {
   renderAnalyticsEvents,
   renderAnalyticsProviders,
-} from '@/core/docs/render-analytics-reference';
-import { extractAnalytics } from './extract-analytics-events';
+} from '@/docs/render/render-analytics-reference';
+import { extractAnalytics } from '@/docs/extract/extract-analytics-events';
 
 /**
  * Generates `src/core/guide/reference/analytics-events.md` and
@@ -70,7 +70,7 @@ describe('analytics reference docs', () => {
       .filter(name => !documented.has(name));
     expect(
       missing,
-      'in DL_EVENTS but not in src/core/docs/analytics-events.ts — add a row'
+      'in DL_EVENTS but not in src/docs/content/analytics-events.ts — add a row'
     ).toEqual([]);
   });
 

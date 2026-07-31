@@ -9,15 +9,15 @@ import {
   CORE_LOG_NOTES,
   CORE_LOG_SOURCES,
   CORE_UNREADABLE_LOGS,
-} from '@/core/docs/core-logs';
-import { CORE_ERRORS } from '@/core/docs/core-errors';
+} from '@/docs/content/core-logs';
+import { CORE_ERRORS } from '@/docs/content/core-errors';
 import {
   renderCoreLogs,
   type CoreLogGroup,
   type CoreLogRow,
-} from '@/core/docs/render-core-logs';
-import { renderCoreErrors } from '@/core/docs/render-core-errors';
-import { extractLogs, extractThrows, type LogMessage } from './extract-logs';
+} from '@/docs/render/render-core-logs';
+import { renderCoreErrors } from '@/docs/render/render-core-errors';
+import { extractLogs, extractThrows, type LogMessage } from '@/docs/extract/extract-logs';
 
 /**
  * Generates `src/core/guide/reference/logs.md` and `errors.md`, and fails when the
@@ -66,17 +66,12 @@ const raw = import.meta.glob<string>('../../core/**/*.ts', {
  * Core's own source, keyed by path relative to `src/core` — `analytics/index.ts` rather
  * than `index.ts`, since a bare basename is ambiguous across 68 files.
  *
- * `docs/` is excluded: it is the build-time documentation layer, not shipped code, and
- * its prose would otherwise be scanned for log calls.
+ * The build-time documentation layer lives under `src/docs/` now, outside this glob
+ * entirely, so its prose can no longer be scanned for log calls by accident.
  */
 const coreFiles: Array<[string, string]> = Object.entries(raw)
   .map(([p, text]) => [relative(CORE, join(HERE, p)), text] as [string, string])
-  .filter(
-    ([name]) =>
-      !name.startsWith('docs/') &&
-      !name.includes('tests/') &&
-      !name.endsWith('.test.ts')
-  )
+  .filter(([name]) => !name.includes('tests/') && !name.endsWith('.test.ts'))
   .sort((a, b) => a[0].localeCompare(b[0]));
 
 const sourceOf = new Map(coreFiles);

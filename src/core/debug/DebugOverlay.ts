@@ -13,7 +13,7 @@ import { useConfigStore } from '@/state/config';
 import { XrayManager } from './XrayStyles';
 import { selectorContainer } from './SelectorContainer';
 import { upsellSelector } from './UpsellSelector';
-import { formatCurrency } from '@/utils/currencyFormatter';
+import { formatCurrency } from '@/core/currency-formatter';
 import { analyticsDebug } from '@/core/analytics/debug/AnalyticsDebugTracker';
 import {
   CartPanel,

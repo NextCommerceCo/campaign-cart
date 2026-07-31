@@ -3,7 +3,7 @@ import { useCampaignStore } from '@/state/campaign';
 import { useOrderStore } from '@/state/order';
 import { useConfigStore } from '@/state/config';
 import { ApiClient } from '@/api/client';
-import { preserveQueryParams } from '@/utils/url-utils';
+import { preserveQueryParams } from '@/core/url-utils';
 import type { CartState, EventMap } from '@/types/global';
 import type { AddUpsellLine } from '@/types/api';
 import type { Logger } from '@/core/logger';

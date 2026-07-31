@@ -71,7 +71,7 @@ Read the surprises in that table rather than the pattern:
   and no `debug`-level lines, because it never reaches the config store that raises the
   level.
 - **The `next-debug` meta tag prints nothing in a built bundle.** It sets
-  `config.debug` (`state/config.state.ts:100-102`), which raises the level and installs
+  `config.debug` (`state/config/config.state.ts:100-102`), which raises the level and installs
   `window.nextDebug` (`core/sdk-initializer.ts:775-794`) — but `Logger` does not read the
   config store or the document, only the URL and `window.nextConfig`
   (`core/logger.ts:16-26`), so the production gate still discards every line the raised

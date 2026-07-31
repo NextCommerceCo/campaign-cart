@@ -13,8 +13,9 @@ never imports `SDKInitializer` and depends entirely on what it does.
 > boot order, storage keys and TTLs, meta tags, URL parameters, logs, errors, the
 > analytics catalogue, and the `window.next` API — are under
 > [`guide/reference/`](./guide/reference/). The inventory that ties them together is
-> [`docs/core-subsystems.ts`](./docs/core-subsystems.ts), and
-> `npm run docs:coverage` measures it.
+> [`src/docs/content/core-subsystems.ts`](../docs/content/core-subsystems.ts), and
+> `npm run docs:coverage` measures it. The machinery that generates these pages lives
+> in [`src/docs/`](../docs/) — a build-time layer, deliberately outside the engine.
 
 ## Contents
 
@@ -27,18 +28,35 @@ never imports `SDKInitializer` and depends entirely on what it does.
 | `analytics/` | Analytics subsystem (providers, events, tracking) — a lazy `analytics` chunk, not a feature |
 | `debug/` | Dev-only debug overlay/panels — loaded via dynamic `import()` so it never ships in the production bundle |
 | `attribution/` | Attribution capture run at SDK init: `attribution-collector` (reads UTM/referrer/funnel into `attribution.state`) and `utm-transfer` (propagates URL params to page links) |
+| `rendering/` | Template machinery shared by features that render lists and price lines: `template-renderer` (renders `data-next-*` templates to DOM), `discount-renderer` (formats/renders discount lines), `slot-conditionals` (evaluates conditional template slots) |
+| `ui/` | DOM widgets shared across feature categories: `loading-overlay` (shown during add-to-cart / checkout submit) and `general-modal` (generic dialog shell). Not enhancers — no `data-next-*` activation, no manifest, no guide |
 | `monitoring/` | `error-handler` — central runtime error capture, emits on the event bus |
 | `logger.ts` | `Logger` / `createLogger` — leveled logging used across every layer |
 | `events.ts` | `EventBus` — the type-safe SDK event bus (`EventMap`) |
 | `storage.ts` | `StorageManager` / `sessionStorageManager` — persistence helper backing the stores' `persist` |
 | `country-service.ts` | Loads and caches country/state geographic data for checkout, debug, and init |
+| `url-utils.ts` | `preserveQueryParams` / `navigateWithParams` — carries tracking parameters across navigations, and `isDebugMode` / `isDebuggerMode`. Reads **and writes** `parameter.state`, which is why it is not a `utils/` helper |
+| `currency-formatter.ts` | `CurrencyFormatter` + the `formatCurrency` / `formatNumber` / `formatPercentage` / `getCurrencySymbol` helpers. Falls back to the campaign's currency and the visitor's locale when a caller does not name one, so it reads `campaign.state` and `config.state` |
 | `test-mode.ts` | Detects and manages SDK test mode |
-| `docs/` | Build-time documentation machinery — the feature/state/core manifests and the renderers that generate the guides. Never imported at runtime |
 
 ## Dependency direction
 
 `core/` depends on **nothing above it** — never imports `features/`. It may use
 `state/`, `types/`, `utils/`. Features depend on core, not the reverse.
+
+This is why `rendering/` and `ui/` live here rather than in a feature. Both are used
+from more than one category — `ui/loading-overlay` by `cart/accept-upsell`,
+`checkout/`, and `order/upsell` — and the skill's §2 gives shared logic exactly three
+homes: `core/`, `state/`, `utils/`. Putting a widget in `features/ui/` instead would
+make every other category import across features, which is the violation §2 exists to
+prevent. They replaced a former top-level `shared/` folder that had no rule governing
+what belonged in it.
+
+`url-utils.ts` and `currency-formatter.ts` are here for the mirror-image reason. Both
+read state — `url-utils` also *writes* to `parameter.state` — and `src/utils/` is for
+pure helpers that import nothing above them. Leaving them there made the rule in
+`CLAUDE.md` ("do not import stores here") false in two of that folder's four files.
+`utils/` now holds only `cookies.ts` and `typeGuards.ts`, and the rule is true again.
 
 ## Pending redesign (skill §6)
 

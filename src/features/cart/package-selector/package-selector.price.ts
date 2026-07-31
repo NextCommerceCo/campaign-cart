@@ -2,7 +2,7 @@ import { Decimal } from 'decimal.js';
 import { useCampaignStore } from '@/state/campaign';
 import { useCheckoutStore } from '@/state/checkout';
 import { calculateBundlePrice } from '@/state/cart/cart-calculator';
-import { formatCurrency, formatPercentage } from '@/utils/currencyFormatter';
+import { formatCurrency, formatPercentage } from '@/core/currency-formatter';
 import type { Logger } from '@/core/logger';
 import type { SelectorItem } from '@/types/global';
 
