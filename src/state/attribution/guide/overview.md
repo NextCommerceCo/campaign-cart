@@ -28,7 +28,7 @@ this reads as "collect once". But a *tagged* link partway through the session ov
 the parameters it carries, and writes them back to storage.
 
 That makes it **last-touch per parameter, with carry-over**, not first-touch.
-`AttributionCollector.getStoredValue()` (`core/attribution/attribution-collector.ts:105-155`)
+`AttributionCollector.getStoredValue()` (`core/attribution/attribution-collector.ts › AttributionCollector.getStoredValue`)
 checks the URL, then sessionStorage, then localStorage, then the persisted blob, and mirrors
 a URL hit back into sessionStorage on the way out. `getFunnelName()` (`:183`) is the most
 emphatic version: `?funnel=` always wins and logs `🔄 Funnel override: "old" -> "new"`.

@@ -53,6 +53,25 @@ const PROSE = {
     import: 'default',
     eager: true,
   }),
+  // The hand-written pages of every feature and store guide. `overview.md`,
+  // `use-cases.md`, `relations.md` and `glossary.md` are written by a person; the
+  // `reference/*.md` siblings are generated and so are excluded by the globs below —
+  // a stale citation there is a symptom of a stale *source*, and gets fixed by the
+  // content/render entries above rather than in the output.
+  //
+  // Added after a citation survived in `state/attribution/guide/overview.md` while
+  // every other line-number reference in the repo had been converted: the gate simply
+  // was not looking at these files.
+  ...import.meta.glob<string>('../../features/*/*/guide/*.md', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }),
+  ...import.meta.glob<string>('../../state/*/guide/*.md', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }),
 };
 
 /** `core/logger.ts:16-26`, `analytics/index.ts:100` — a path plus a line or range. */

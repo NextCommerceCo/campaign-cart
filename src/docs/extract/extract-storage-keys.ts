@@ -68,7 +68,13 @@ export interface ExtractedStorageKey {
    */
   areas: StorageArea[];
   sources: KeySource[];
-  /** Every site, `state/cart/cart.state.ts:84` style, sorted. */
+  /**
+   * Every site, `state/cart/cart.state.ts › cartStoreInstance` style, sorted.
+   *
+   * Symbol anchors, not line numbers — see `./source-anchor`. Two sites in the same
+   * symbol collapse to one entry here, which is intended: a reader looking up a storage
+   * key wants the function, not each statement in it.
+   */
   where: string[];
 }
 
