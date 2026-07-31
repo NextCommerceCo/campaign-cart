@@ -29,6 +29,16 @@ import {
   initializePhoneInputs,
   type PhoneInputContext,
 } from './phone-input';
+import {
+  collapseBillingForm,
+  expandBillingForm,
+  type BillingAnimationContext,
+} from './billing-animation';
+import {
+  scanBillingFields,
+  setupBillingForm,
+  type BillingFormSetupContext,
+} from './billing-form-setup';
 import 'intl-tel-input/build/css/intlTelInput.css';
 
 // Consolidated constants
@@ -118,9 +128,21 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private boundHandleKonamiActivation?: EventListener;
 
   // Animation state management
-  private billingAnimationInProgress = false;
+  /**
+   * Shared with `billing-animation.ts` as a ref, not a boolean: both that module and
+   * { handleBillingAddressToggle} read and write it, and a copied primitive would
+   * give each side its own flag.
+   */
+  private billingAnimationInProgress = { value: false };
   private billingAnimationDebounceTimer?: NodeJS.Timeout;
   private billingAnimationTimeouts: Set<NodeJS.Timeout> = new Set();
+  /**
+   * Aborts the in-flight billing `transitionend` listener. Held here, alongside the
+   * timers above, so `destroy()` can drop it — see `billing-animation.ts`.
+   */
+  private billingListenerAbort: { value: AbortController | null } = {
+    value: null,
+  };
 
   // Track if analytics events have been fired
   private hasTrackedShippingInfo = false;
@@ -194,9 +216,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     this.scanAllFields();
 
     // Setup billing form (clone from shipping if needed)
-    const billingFormCloned = this.setupBillingForm();
+    const billingFormCloned = setupBillingForm(this.billingFormSetupContext());
     if (billingFormCloned) {
-      this.scanBillingFields(); // Re-scan after cloning
+      scanBillingFields(this.billingFormSetupContext()); // Re-scan after cloning
     }
 
     // Initialize UI service
@@ -399,21 +421,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     this.scanExpirationFields();
   }
 
-  private scanBillingFields(): void {
-    const billingSelectors = [
-      '[os-checkout-field^="billing-"]',
-      '[data-next-checkout-field^="billing-"]'
-    ];
-    billingSelectors.forEach(selector => {
-      document.querySelectorAll(selector).forEach(element => {
-        const fieldName = element.getAttribute('os-checkout-field') ||
-          element.getAttribute('data-next-checkout-field');
-        if (fieldName && element instanceof HTMLElement) {
-          this.billingFields.set(fieldName, element);
-        }
-      });
-    });
-  }
 
   private scanExpirationFields(): void {
     const monthSelectors = [
@@ -564,317 +571,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // BILLING FORM MANAGEMENT
   // ============================================================================
 
-  private setupBillingForm(): boolean {
-    const billingContainer = document.querySelector(BILLING_CONTAINER_SELECTOR);
-    if (!billingContainer) return false;
 
-    const shippingForm = document.querySelector(SHIPPING_FORM_SELECTOR);
-    if (!shippingForm) return false;
 
-    const billingFormContainer = billingContainer.querySelector(BILLING_FORM_CONTAINER_SELECTOR);
-    if (!billingFormContainer) return false;
-
-    // Clear the billing form container
-    billingFormContainer.innerHTML = '';
-
-    // Clone ALL shipping field rows (including basic fields like name, country, address1)
-    const allShippingFieldRows = shippingForm.querySelectorAll('[data-next-component="shipping-field-row"]');
-
-    // First clone the non-location field rows (name, country, address1)
-    allShippingFieldRows.forEach(row => {
-      // Check if this row is inside a location container
-      const isInsideLocation = row.closest('[data-next-component="location"]');
-
-      if (!isInsideLocation) {
-        // This is a basic field row (name, country, address1), clone it
-        const clonedRow = row.cloneNode(true) as HTMLElement;
-        this.convertShippingFieldsToBilling(clonedRow);
-        billingFormContainer.appendChild(clonedRow);
-      }
-    });
-
-    // Then check if there's a location container with additional fields
-    const locationContainer = shippingForm.querySelector('[data-next-component="location"]');
-
-    if (locationContainer) {
-      // Clone the entire location container with all its field rows
-      const clonedLocation = locationContainer.cloneNode(true) as HTMLElement;
-
-      // Mark it as billing location
-      clonedLocation.setAttribute('data-next-component', 'billing-location');
-
-      // Convert all fields inside to billing fields
-      this.convertShippingFieldsToBilling(clonedLocation);
-
-      // Initially hide the billing location fields (they'll be shown when billing address1 is filled)
-      clonedLocation.classList.add('next-hidden', 'next-location-hidden');
-      clonedLocation.style.display = 'none';
-
-      billingFormContainer.appendChild(clonedLocation);
-    } else {
-      // Fallback: If no location container, clone any remaining field rows
-      allShippingFieldRows.forEach(row => {
-        const isInsideLocation = row.closest('[data-next-component="location"]');
-
-        if (isInsideLocation) {
-          // These are location fields without a container, clone them
-          const clonedRow = row.cloneNode(true) as HTMLElement;
-          this.convertShippingFieldsToBilling(clonedRow);
-          billingFormContainer.appendChild(clonedRow);
-        }
-      });
-    }
-
-    this.setInitialBillingFormState();
-    return true;
-  }
-
-  private convertShippingFieldsToBilling(billingForm: HTMLElement): void {
-    // Remove h tags (h1, h2, h3, h4, h5, h6) from the cloned form
-    billingForm.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach(heading => {
-      heading.remove();
-    });
-
-    // Update data-next-checkout-field attributes
-    billingForm.querySelectorAll('[data-next-checkout-field]').forEach(field => {
-      const currentValue = field.getAttribute('data-next-checkout-field');
-      if (currentValue && !currentValue.startsWith('billing-')) {
-        field.setAttribute('data-next-checkout-field', `billing-${currentValue}`);
-      }
-    });
-
-    // Update os-checkout-field attributes
-    billingForm.querySelectorAll('[os-checkout-field]').forEach(field => {
-      const currentValue = field.getAttribute('os-checkout-field');
-      if (currentValue && !currentValue.startsWith('billing-')) {
-        field.setAttribute('os-checkout-field', `billing-${currentValue}`);
-      }
-    });
-
-    // Update name and id attributes
-    billingForm.querySelectorAll('input, select, textarea').forEach(field => {
-      const element = field as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
-
-      if (element.name && !element.name.startsWith('billing_')) {
-        element.name = element.name.startsWith('shipping_')
-          ? element.name.replace('shipping_', 'billing_')
-          : `billing_${element.name}`;
-      }
-
-      if (element.id && !element.id.startsWith('billing_')) {
-        element.id = element.id.startsWith('shipping_')
-          ? element.id.replace('shipping_', 'billing_')
-          : `billing_${element.id}`;
-      }
-
-      // Clear values
-      if (element.type === 'checkbox' || element.type === 'radio') {
-        (element as HTMLInputElement).checked = false;
-      } else {
-        element.value = '';
-      }
-    });
-  }
-
-  private setInitialBillingFormState(): void {
-    const billingToggle = this.form.querySelector('input[name="use_shipping_address"]') as HTMLInputElement;
-    const billingSection = document.querySelector(BILLING_CONTAINER_SELECTOR) as HTMLElement;
-
-    this.logger.info('[Billing] Setting initial state', {
-      toggleFound: !!billingToggle,
-      sectionFound: !!billingSection,
-      toggleChecked: billingToggle?.checked,
-      currentHeight: billingSection?.style.height,
-      currentOverflow: billingSection?.style.overflow,
-      currentClasses: billingSection?.className
-    });
-
-    if (billingToggle && billingSection) {
-      // Clear any existing inline styles first
-      billingSection.style.removeProperty('height');
-      billingSection.style.removeProperty('overflow');
-      billingSection.style.removeProperty('transition');
-
-      if (billingToggle.checked) {
-        // Set collapsed state immediately without animation
-        billingSection.style.height = '0px';
-        billingSection.style.overflow = 'hidden';
-        billingSection.classList.add('billing-form-collapsed');
-        billingSection.classList.remove('billing-form-expanded');
-        this.logger.info('[Billing] Initial state: COLLAPSED (checkbox checked)');
-      } else {
-        // Set expanded state immediately without animation
-        billingSection.style.height = 'auto';
-        billingSection.style.overflow = 'visible';
-        billingSection.classList.add('billing-form-expanded');
-        billingSection.classList.remove('billing-form-collapsed');
-        this.logger.info('[Billing] Initial state: EXPANDED (checkbox unchecked)');
-      }
-    } else {
-      this.logger.warn('[Billing] Could not set initial state - missing elements');
-    }
-  }
-
-  private expandBillingForm(billingSection: HTMLElement): void {
-    // Clear any existing animation timeouts
-    this.billingAnimationTimeouts.forEach(timeout => clearTimeout(timeout));
-    this.billingAnimationTimeouts.clear();
-
-    // Mark animation as in progress
-    this.billingAnimationInProgress = true;
-
-    this.logger.debug('[Billing] Starting expand animation', {
-      startHeight: billingSection.offsetHeight,
-      startOverflow: billingSection.style.overflow
-    });
-
-    // Double RAF for better browser compatibility in production
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        // Measure the full height
-        billingSection.style.transition = 'none';
-        billingSection.style.height = 'auto';
-        const fullHeight = billingSection.scrollHeight;
-
-        this.logger.debug('[Billing] Measured full height:', fullHeight);
-
-        // Set back to 0 for animation
-        billingSection.style.height = '0px';
-        billingSection.style.overflow = 'hidden';
-
-        // Force reflow - use multiple methods to ensure it works in production
-        void billingSection.offsetHeight;
-        void billingSection.getBoundingClientRect();
-
-        // Add another RAF to ensure the height is set before transition
-        requestAnimationFrame(() => {
-          // Animate to full height
-          billingSection.style.setProperty('transition', 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 'important');
-          billingSection.style.setProperty('height', `${fullHeight}px`, 'important');
-
-          this.logger.debug('[Billing] Expand animation started', {
-            fromHeight: '0px',
-            toHeight: fullHeight
-          });
-
-          // Clean up after animation
-          const handleTransitionEnd = () => {
-            // Set to auto and remove transition
-            billingSection.style.transition = 'none';
-            billingSection.style.height = 'auto';
-            billingSection.style.overflow = 'visible';
-            billingSection.removeEventListener('transitionend', handleTransitionEnd);
-            this.billingAnimationInProgress = false;
-
-            this.logger.info('[Billing] Expand complete', {
-              finalHeight: billingSection.style.height,
-              finalOverflow: billingSection.style.overflow,
-              finalTransition: billingSection.style.transition
-            });
-          };
-
-          billingSection.addEventListener('transitionend', handleTransitionEnd);
-
-          // Fallback cleanup
-          const fallbackTimeout = setTimeout(() => {
-            if (this.billingAnimationInProgress && billingSection.classList.contains('billing-form-expanded')) {
-              this.logger.warn('[Billing] Expand fallback triggered - forcing completion');
-              billingSection.style.transition = 'none';
-              billingSection.style.height = 'auto';
-              billingSection.style.overflow = 'visible';
-              this.billingAnimationInProgress = false;
-            }
-            this.billingAnimationTimeouts.delete(fallbackTimeout);
-          }, 350);
-
-          this.billingAnimationTimeouts.add(fallbackTimeout);
-        });
-
-        billingSection.classList.add('billing-form-expanded');
-        billingSection.classList.remove('billing-form-collapsed');
-      }); // Extra RAF close
-    });
-  }
-
-  private collapseBillingForm(billingSection: HTMLElement): void {
-    // Clear any existing animation timeouts
-    this.billingAnimationTimeouts.forEach(timeout => clearTimeout(timeout));
-    this.billingAnimationTimeouts.clear();
-
-    // Mark animation as in progress
-    this.billingAnimationInProgress = true;
-
-    this.logger.debug('[Billing] Starting collapse animation', {
-      startHeight: billingSection.offsetHeight,
-      scrollHeight: billingSection.scrollHeight
-    });
-
-    // Double RAF for better browser compatibility in production
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        // Get current height before collapsing
-        const currentHeight = billingSection.scrollHeight;
-
-        // Remove any existing transition first
-        billingSection.style.transition = 'none';
-
-        // Set explicit height to enable transition from auto
-        billingSection.style.height = `${currentHeight}px`;
-        billingSection.style.overflow = 'hidden';
-
-        // Force reflow - use multiple methods to ensure it works in production
-        void billingSection.offsetHeight;
-        void billingSection.getBoundingClientRect();
-
-        // Add another RAF to ensure the height is set before transition
-        requestAnimationFrame(() => {
-          // Animate to collapsed state
-          billingSection.style.setProperty('transition', 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 'important');
-          billingSection.style.setProperty('height', '0px', 'important');
-
-          this.logger.debug('[Billing] Collapse animation started', {
-            fromHeight: currentHeight,
-            toHeight: '0px'
-          });
-
-          // Clean up after animation
-          const handleTransitionEnd = () => {
-            // Keep it collapsed but remove transition
-            billingSection.style.transition = 'none';
-            billingSection.style.height = '0px';
-            billingSection.style.overflow = 'hidden';
-            billingSection.removeEventListener('transitionend', handleTransitionEnd);
-            this.billingAnimationInProgress = false;
-
-            this.logger.info('[Billing] Collapse complete', {
-              finalHeight: billingSection.style.height,
-              finalOverflow: billingSection.style.overflow,
-              finalTransition: billingSection.style.transition
-            });
-          };
-
-          billingSection.addEventListener('transitionend', handleTransitionEnd);
-
-          // Fallback cleanup
-          const fallbackTimeout = setTimeout(() => {
-            if (this.billingAnimationInProgress && billingSection.classList.contains('billing-form-collapsed')) {
-              this.logger.warn('[Billing] Collapse fallback triggered - forcing completion');
-              billingSection.style.transition = 'none';
-              billingSection.style.height = '0px';
-              billingSection.style.overflow = 'hidden';
-              this.billingAnimationInProgress = false;
-            }
-            this.billingAnimationTimeouts.delete(fallbackTimeout);
-          }, 350);
-
-          this.billingAnimationTimeouts.add(fallbackTimeout);
-        });
-
-        billingSection.classList.add('billing-form-collapsed');
-        billingSection.classList.remove('billing-form-expanded');
-      }); // Extra RAF close
-    });
-  }
 
   // ============================================================================
   // ADDRESS AND COUNTRY MANAGEMENT
@@ -1464,6 +1162,25 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // PHONE INPUT MANAGEMENT
   // ============================================================================
 
+
+  /** The three things `billing-form-setup.ts` needs from this form. */
+  private billingFormSetupContext(): BillingFormSetupContext {
+    return {
+      form: this.form,
+      billingFields: this.billingFields,
+      logger: this.logger,
+    };
+  }
+
+  /** The three things `billing-animation.ts` needs from this form. */
+  private billingAnimationContext(): BillingAnimationContext {
+    return {
+      inProgress: this.billingAnimationInProgress,
+      timeouts: this.billingAnimationTimeouts,
+      listenerAbort: this.billingListenerAbort,
+      logger: this.logger,
+    };
+  }
 
   /**
    * The seven things `phone-input.ts` needs from this form.
@@ -3044,11 +2761,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     this.logger.info('[Billing] Toggle clicked', {
       checked: target.checked,
-      animationInProgress: this.billingAnimationInProgress
+      animationInProgress: this.billingAnimationInProgress.value
     });
 
     // Prevent rapid clicks during animation
-    if (this.billingAnimationInProgress) {
+    if (this.billingAnimationInProgress.value) {
       event.preventDefault();
       // Revert checkbox state
       target.checked = !target.checked;
@@ -3084,10 +2801,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
       if (target.checked) {
         this.logger.info('[Billing] Collapsing form...');
-        this.collapseBillingForm(billingSection);
+        collapseBillingForm(this.billingAnimationContext(), billingSection);
       } else {
         this.logger.info('[Billing] Expanding form...');
-        this.expandBillingForm(billingSection);
+        expandBillingForm(this.billingAnimationContext(), billingSection);
 
         // Populate billing fields after expansion
         setTimeout(() => {
@@ -3705,6 +3422,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     // Clear all animation timeouts
     this.billingAnimationTimeouts.forEach(timeout => clearTimeout(timeout));
     this.billingAnimationTimeouts.clear();
+    this.billingListenerAbort.value?.abort();
+    this.billingListenerAbort.value = null;
 
     if (this.validator) {
       this.validator.destroy();

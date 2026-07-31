@@ -37,6 +37,7 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private billingAnimationInProgress;
     private billingAnimationDebounceTimer?;
     private billingAnimationTimeouts;
+    private billingListenerAbort;
     private hasTrackedShippingInfo;
     private hasTrackedBeginCheckout;
     private isMultiStep;
@@ -44,15 +45,9 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private nextStepUrl?;
     initialize(): Promise<void>;
     private scanAllFields;
-    private scanBillingFields;
     private scanExpirationFields;
     private populateExpirationFields;
     private populateYearOptions;
-    private setupBillingForm;
-    private convertShippingFieldsToBilling;
-    private setInitialBillingFormState;
-    private expandBillingForm;
-    private collapseBillingForm;
     private initializeAddressManagement;
     private populateCountryDropdown;
     private populateBillingCountryDropdown;
@@ -68,6 +63,8 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private hideBillingLocationFields;
     private showBillingLocationFields;
     private initializeProspectCart;
+    private billingFormSetupContext;
+    private billingAnimationContext;
     private phoneInputContext;
     private initializePhoneInputs;
     private initializeCreditCard;

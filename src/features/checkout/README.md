@@ -13,7 +13,7 @@ level rather than inside a feature.
 
 | Folder | Class | Activated by | Purpose |
 |---|---|---|---|
-| `checkout-form/` | `CheckoutFormEnhancer` | `form[data-next-checkout]` | The checkout form: fields, validation, payment, order creation |
+| `checkout-form/` | `CheckoutFormEnhancer` | `form[data-next-checkout]` | The checkout form: fields, validation, payment, order creation. Being split — see below |
 | `checkout-review/` | `CheckoutReviewEnhancer` | `[data-next-enhancer]` | Displays stored checkout data for review |
 | `express-checkout-container/` | `ExpressCheckoutContainerEnhancer` | `[data-next-express-checkout="container"]` | Container for PayPal / Apple Pay / Google Pay |
 | `prospect-cart/` | `ProspectCartEnhancer` | `form[data-next-checkout]` — but **not via the scanner** | Saves the prospect (email capture) before the order, for abandoned-cart recovery |
@@ -25,12 +25,41 @@ constructs it and drives it from the form's email field, so it exists only where
 enhanced checkout form does. Grepping the scanner for it finds nothing; that is expected,
 not a missing registration.
 
+### Inside `checkout-form/` — an in-progress split
+
+`checkout-form.enhancer.ts` was 3,826 lines. It is being reduced by lifting cohesive
+clusters into sibling modules, **lowest-coupling first**, with the E2E suite as the net.
+Each module takes a small explicit **context object** instead of reaching into the enhancer
+— the same shape `features/cart/accept-upsell` uses — so the coupling is the context's
+field list and nothing more.
+
+| Module | What it owns | Needs from the form |
+|---|---|---|
+| `phone-input.ts` | `intl-tel-input` wiring for the shipping and billing phone fields, so the order carries an E.164 number rather than typed text | 7 fields |
+| `billing-animation.ts` | Expanding/collapsing the billing section (height animation + a fallback for when `transitionend` never fires) | 3 fields |
+| `billing-form-setup.ts` | Cloning the shipping form into a billing one, rewriting each field's identity to `billing-`, and setting the section's opening state without animation | 3 fields |
+
+Each has a colocated test in `checkout-form/tests/`.
+
+**Two rules learned the hard way while doing this** — both cost a red test:
+
+- **Extract verbatim; do not tidy in the same step.** Factoring two near-identical
+  fallbacks into one helper collapsed two separately-searchable log strings into a
+  templated one. Log strings are a contract, *and* a templated message is not a literal at
+  the `logger.*` call — so the generator stops being able to read it and the line vanishes
+  from `reference/logs.md` entirely.
+- **A `logger` call moving file changes its published anchor**, so `logs.md` needs
+  regenerating (`UPDATE_DOCS=1 npm run docs:reference`). That regeneration is the drift test
+  telling you the docs followed the code — not a nuisance.
+
+Still in the enhancer: field scanning/population, address and country management, payment,
+and order submission. The money path (order submission) is deliberately last.
+
 ### Shared by the features above
 
 | Path | Class | Purpose |
 |---|---|---|
 | `processors/express-checkout-processor.ts` | `ExpressCheckoutProcessor` | Handles express payment flows |
-| `managers/field-manager.ts` | `FieldManager` | Finds and reads form fields |
 | `managers/order-manager.ts` | `OrderManager` | Builds and submits the order API call. Takes an `IApiClient` — see [`api/README.md`](../../api/README.md) |
 | `services/credit-card-service.ts` | `CreditCardService` | Tokenizes card data (Stripe/Braintree) |
 | `services/ui-service.ts` | `UIService` | Manages form UI state (errors, loading, button) |

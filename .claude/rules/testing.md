@@ -31,6 +31,31 @@
 - API client (`src/api/client.ts`) — mock at the fetch level, not the class level
 - EventBus emit/on round-trips — integration-test territory
 
+## Driving animation frames and timers
+
+A module that nests `requestAnimationFrame` needs it stubbed to run synchronously, or the
+callbacks never execute and assertions see the pre-animation state:
+
+```ts
+vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback): number => {
+  cb(0);
+  return 0;
+});
+```
+
+**`vi.useFakeTimers()` also fakes `requestAnimationFrame`** — it exists on `global` under
+happy-dom, so the fake-timer library takes it over and silently replaces the stub above
+with one that needs manual frame ticking. Any test that needs both fake timers *and*
+synchronous frames must re-apply the stub **after** `vi.useFakeTimers()`. Symptom when you
+forget: the element is stuck at its starting state with no error.
+
+Restore with `vi.unstubAllGlobals()` and `vi.useRealTimers()` in `afterEach`.
+Worked example: `src/features/checkout/checkout-form/tests/billing-animation.test.ts`.
+
+**happy-dom does no layout**, so `scrollHeight` / `offsetHeight` / `getBoundingClientRect()`
+are all zero. Assert the properties and classes the code *sets*, never computed geometry —
+a test that needs real pixel heights belongs in E2E.
+
 ## Mocking
 - Mock `fetch` via `vi.stubGlobal('fetch', vi.fn())` in setup or per-test
 - Don't mock Zustand stores — test with real store instances and reset state between tests

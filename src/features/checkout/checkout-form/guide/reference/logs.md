@@ -36,7 +36,6 @@ Something did not work. Each of these means a visitor saw the wrong thing, or no
 | `Error handling config update:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleConfigUpdate` | yes |
 | `[Payment Error] Could not find error container element` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.displayPaymentError` | — |
 | `Failed to initialize {type} phone field:` | `phone-input.ts › initializePhoneInput` | yes |
-| `Error populating expiration fields:` | `field-manager.ts › FieldManager.populateExpirationFields` | yes |
 | `Failed to create express order:` | `order-manager.ts › OrderManager.createExpressOrder` | yes |
 | `Cannot redirect: order missing ref_id` | `order-manager.ts › OrderManager.handleOrderRedirect` | — |
 | `Error handling order redirect:` | `order-manager.ts › OrderManager.handleOrderRedirect` | yes |
@@ -58,10 +57,10 @@ The feature carried on, but something in the markup or the data was not what it 
 
 | Message | Source | Extra context |
 |---|---|---|
+| `[Billing] Expand fallback triggered - forcing completion` | `billing-animation.ts › expandBillingForm` | — |
+| `[Billing] Collapse fallback triggered - forcing completion` | `billing-animation.ts › collapseBillingForm` | — |
+| `[Billing] Could not set initial state - missing elements` | `billing-form-setup.ts › setInitialBillingFormState` | — |
 | `Submit button not found in checkout form` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.scanAllFields` | — |
-| `[Billing] Could not set initial state - missing elements` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setInitialBillingFormState` | — |
-| `[Billing] Expand fallback triggered - forcing completion` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.expandBillingForm` | — |
-| `[Billing] Collapse fallback triggered - forcing completion` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.collapseBillingForm` | — |
 | `Stored country {storedCountry} not in available countries` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | — |
 | `Country {countryCode} from URL not in available countries` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | — |
 | `Saved country {savedCountryOverride} not in available countries` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | — |
@@ -96,16 +95,16 @@ Normal progress, useful for confirming the feature ran at all.
 
 | Message | Source | Extra context |
 |---|---|---|
+| `[Billing] Expand complete` | `billing-animation.ts › expandBillingForm` | yes |
+| `[Billing] Collapse complete` | `billing-animation.ts › collapseBillingForm` | yes |
+| `[Billing] Setting initial state` | `billing-form-setup.ts › setInitialBillingFormState` | yes |
+| `[Billing] Initial state: COLLAPSED (checkbox checked)` | `billing-form-setup.ts › setInitialBillingFormState` | — |
+| `[Billing] Initial state: EXPANDED (checkbox unchecked)` | `billing-form-setup.ts › setInitialBillingFormState` | — |
 | `Page restored from bfcache, resetting express checkout state` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initialize` | — |
 | `Resetting processing state after bfcache restore` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initialize` | — |
 | `Resetting payment method from` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initialize` | yes |
 | `Re-initializing credit card service after bfcache restore` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initialize` | — |
 | `Window focused with processing=true, resetting express checkout state` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initialize` | — |
-| `[Billing] Setting initial state` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setInitialBillingFormState` | yes |
-| `[Billing] Initial state: COLLAPSED (checkbox checked)` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setInitialBillingFormState` | — |
-| `[Billing] Initial state: EXPANDED (checkbox unchecked)` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setInitialBillingFormState` | — |
-| `[Billing] Expand complete` | `checkout-form.enhancer.ts › handleTransitionEnd` | yes |
-| `[Billing] Collapse complete` | `checkout-form.enhancer.ts › handleTransitionEnd` | yes |
 | `Setting campaign shipping countries:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | yes |
 | `Shipping country selection priority check (does not affect currency):` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | yes |
 | `✅ Using stored country from previous step: {storedCountry}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | — |
@@ -159,13 +158,13 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 
 | Message | Source | Extra context |
 |---|---|---|
+| `[Billing] Starting expand animation` | `billing-animation.ts › expandBillingForm` | yes |
+| `[Billing] Measured full height:` | `billing-animation.ts › expandBillingForm` | yes |
+| `[Billing] Expand animation started` | `billing-animation.ts › expandBillingForm` | yes |
+| `[Billing] Starting collapse animation` | `billing-animation.ts › collapseBillingForm` | yes |
+| `[Billing] Collapse animation started` | `billing-animation.ts › collapseBillingForm` | yes |
 | `CheckoutFormEnhancer initialized` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initialize` | — |
 | `Found submit button:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.scanAllFields` | yes |
-| `[Billing] Starting expand animation` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.expandBillingForm` | yes |
-| `[Billing] Measured full height:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.expandBillingForm` | yes |
-| `[Billing] Expand animation started` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.expandBillingForm` | yes |
-| `[Billing] Starting collapse animation` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.collapseBillingForm` | yes |
-| `[Billing] Collapse animation started` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.collapseBillingForm` | yes |
 | `No campaign shipping countries available, using config` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | — |
 | `Reusing existing state loading promise for {country}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.updateStateOptions` | — |
 | `Kept autofilled state: {currentProvinceValue}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.updateStateOptions` | — |
@@ -192,19 +191,6 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 | `Converting phone to international format: {phone} -> {internationalNumber}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.populateFormData` | — |
 | `Restored province: {storedProvince}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.populateFormData` | — |
 | `begin_checkout already tracked, skipping duplicate` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.trackBeginCheckout` | — |
-| `Found checkout field: {fieldName}` | `field-manager.ts › FieldManager.scanCheckoutFields` | yes |
-| `Found exp-month field` | `field-manager.ts › FieldManager.scanCheckoutFields` | yes |
-| `Found cc-month field without checkout attribute` | `field-manager.ts › FieldManager.scanCheckoutFields` | yes |
-| `Found exp-year field` | `field-manager.ts › FieldManager.scanCheckoutFields` | yes |
-| `Found cc-year field without checkout attribute` | `field-manager.ts › FieldManager.scanCheckoutFields` | yes |
-| `Found {key} field by pattern: id="{id}", name="{name}"` | `field-manager.ts › FieldManager.scanCheckoutFields` | yes |
-| `Found payment button: {paymentMethod}` | `field-manager.ts › FieldManager.scanPaymentButtons` | yes |
-| `Found billing field: {fieldName}` | `field-manager.ts › FieldManager.scanBillingFields` | yes |
-| `Month options populated (01-12)` | `field-manager.ts › FieldManager.populateMonthOptions` | — |
-| `Year options populated ({currentYear}-{currentYear + 19})` | `field-manager.ts › FieldManager.populateYearOptions` | — |
-| `Populating expiration date fields` | `field-manager.ts › FieldManager.populateExpirationFields` | — |
-| `Expiration date fields populated` | `field-manager.ts › FieldManager.populateExpirationFields` | yes |
-| `Could not map field: id="{id}", name="{name}", attributes:` | `field-manager.ts › FieldManager.getFieldNameFromElement` | yes |
 | `createOrder called with:` | `order-manager.ts › OrderManager.createOrder` | yes |
 | `Creating order with data:` | `order-manager.ts › OrderManager.createOrder` | yes |
 | `Order data built successfully` | `order-manager.ts › OrderManager.createOrder` | — |
