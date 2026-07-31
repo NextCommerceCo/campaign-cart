@@ -170,15 +170,11 @@ function scanEvents() {
 
 /**
  * A DOM-activated feature: an `*.enhancer.ts` exporting a class that extends one
- * of the base enhancers. This excludes two kinds of file that also end in
- * `.enhancer.ts` but are not features a reader can turn on with an attribute:
- *
- * - deprecated re-export shims (`display/cart-display.enhancer.ts`, whose class
- *   actually lives in `cart/cart-summary/`)
- * - helper classes another feature constructs directly rather than
- *   `AttributeScanner` activating (`checkout/address-autocomplete/`)
- *
- * Counting either would put a permanently-unreachable row in the denominator.
+ * of the base enhancers. This excludes files that end in `.enhancer.ts` but are not
+ * features a reader can turn on with an attribute — helper classes another feature
+ * constructs directly rather than `AttributeScanner` activating
+ * (`checkout/address-autocomplete/`), and any re-export shim left behind by a move.
+ * Counting one would put a permanently-unreachable row in the denominator.
  */
 function isDomActivated(file) {
   return /class\s+\w+\s+extends\s+Base\w*Enhancer/.test(readFileSync(file, 'utf8'));

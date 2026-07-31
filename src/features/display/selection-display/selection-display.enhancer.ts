@@ -4,7 +4,7 @@
  */
 
 import { BaseDisplayEnhancer, PropertyResolver } from '@/core/base/base-display-enhancer';
-import { PriceCalculator } from '@/features/display/price-calculator';
+import { PriceCalculator } from '@/features/display/display-core';
 import { useCampaignStore } from '@/state/campaign';
 import { useCartStore } from '@/state/cart';
 import type { Package, SelectorItem, CartState } from '@/types/global';

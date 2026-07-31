@@ -11,17 +11,16 @@ export { SelectionDisplayEnhancer } from './selection-display';
 export { OrderDisplayEnhancer } from './order-display';
 
 // Context management
-export { DisplayContextProvider, setupContextProviders } from './display-context';
-export type { DisplayContext } from './display-context';
+export { DisplayContextProvider, setupContextProviders } from './display-core';
+export type { DisplayContext } from './display-core';
 
 // Error handling
 export { DisplayErrorBoundary, withErrorBoundary, safeGet } from '@/core/base/display-error-boundary';
 export type { ErrorContext, ErrorHandler } from '@/core/base/display-error-boundary';
 
 // Debug tools
-export { DisplayDebugPanel } from './display-debug-panel';
-export { FormatValidator } from './format-validator';
-export type { ValidationIssue, ValidationReport } from './format-validator';
+export { DisplayDebugPanel, FormatValidator } from './display-core';
+export type { ValidationIssue, ValidationReport } from './display-core';
 
 // Types and configuration
 export {
@@ -48,7 +47,7 @@ if (process.env.NODE_ENV === 'development') {
   if (typeof window !== 'undefined') {
     window.addEventListener('DOMContentLoaded', () => {
       // Import dynamically to avoid circular dependencies
-      import('./display-debug-panel').then(({ DisplayDebugPanel }) => {
+      import('./display-core/display-debug-panel').then(({ DisplayDebugPanel }) => {
         DisplayDebugPanel.init();
         console.log('[Display System] Debug tools initialized. Press Ctrl+Shift+D for debug panel.');
       });

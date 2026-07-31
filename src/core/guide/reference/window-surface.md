@@ -41,7 +41,7 @@ Every entry below is read out of the source, so the list cannot fall behind the 
 | [`window._nextForceShippingId`](#window_nextforceshippingid) | install | `core/sdk-initializer.ts › SDKInitializer.loadConfiguration` |
 | [`window._nextForceBundleId`](#window_nextforcebundleid) | install | `core/sdk-initializer.ts › SDKInitializer.loadConfiguration` |
 | [`window.nextDebug`](#windownextdebug) | install | `core/debug/DebugModule.ts › DebugModule.setupGlobalDebugAccess`, `core/sdk-initializer.ts › SDKInitializer.setupGlobalDebugUtils` |
-| [`window.validateFormats`](#windowvalidateformats) | install | `features/display/format-validator.ts` |
+| [`window.validateFormats`](#windowvalidateformats) | install | `features/display/display-core/format-validator.ts` |
 | [`window.eventTimelinePanel_*`](#windoweventtimelinepanel_) | install | 11 names, see below |
 | [`window.fetch`](#windowfetch) | install | `core/debug/DebugEventManager.ts › DebugEventManager.interceptFetch` |
 
@@ -343,7 +343,7 @@ validateFormats(); // returns the report as well as logging it
 
 > ⚠️ Installed whenever the display code loads, not only in debug mode, but it is a console tool — it writes to the console and mutates element outlines.
 
-<sub>Assigned in `features/display/format-validator.ts`</sub>
+<sub>Assigned in `features/display/display-core/format-validator.ts`</sub>
 
 ### `window.eventTimelinePanel_*`
 

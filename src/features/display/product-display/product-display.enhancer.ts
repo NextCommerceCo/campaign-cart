@@ -6,9 +6,11 @@
 import { BaseDisplayEnhancer, PropertyResolver, DisplayFormatter } from '@/core/base/base-display-enhancer';
 import { getPropertyMapping } from '@/core/base/display-types';
 import { AttributeParser } from '@/core/base/attribute-parser';
-import { PackageContextResolver } from '@/features/display/package-context-resolver';
-import { DisplayContextProvider } from '@/features/display/display-context';
-import { PriceCalculator } from '@/features/display/price-calculator';
+import {
+  DisplayContextProvider,
+  PackageContextResolver,
+  PriceCalculator,
+} from '@/features/display/display-core';
 import { useCampaignStore } from '@/state/campaign';
 import { useCartStore } from '@/state/cart';
 import type { Package } from '@/types/global';

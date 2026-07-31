@@ -10,7 +10,7 @@ category: "Product Display"
 
 - `useCampaignStore` — required. Supplies the `Package` data (on `.data.packages`) and the active currency the display renders.
 - `useCartStore` — subscribed to so displays re-render when discounts/coupons change what a price should show.
-- `PriceCalculator` (`@/features/display/price-calculator`) — computes the derived metrics (savings, unit prices, final prices).
+- `PriceCalculator` (`@/features/display/display-core`) — computes the derived metrics (savings, unit prices, final prices).
 - Package **context** — an ancestor `data-next-package-id` (or a selector card) when the display path omits the id. Provided by `PackageSelectorEnhancer` / `BundleSelectorEnhancer` cards, or plain markup.
 
 ## Conflicts

@@ -27,6 +27,9 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 
 | Message | Source | Extra context |
 |---|---|---|
+| `Found context package ID: {id} from element:` | `package-context-resolver.ts › PackageContextResolver.findPackageId` | yes |
+| `No context package ID found in parent elements` | `package-context-resolver.ts › PackageContextResolver.findPackageId` | — |
+| `Found direct package ID: {id} from element:` | `package-context-resolver.ts › PackageContextResolver.getPackageId` | yes |
 | `{name} initialized with path: {displayPath}` | `base-display-enhancer.ts › BaseDisplayEnhancer.initialize` | — |
 | `Currency changed, updating display for {displayPath}` | `base-display-enhancer.ts › BaseDisplayEnhancer.setupCurrencyChangeListener` | — |
 

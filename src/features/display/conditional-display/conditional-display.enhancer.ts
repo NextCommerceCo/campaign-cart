@@ -10,8 +10,10 @@ import { BaseEnhancer } from '@/core/base/base-enhancer';
 import { AttributeParser } from '@/core/base/attribute-parser';
 import { PropertyResolver } from '@/core/base/base-display-enhancer';
 import { getPropertyConfig } from '@/core/base/display-types';
-import { PackageContextResolver } from '@/features/display/package-context-resolver';
-import { PriceCalculator } from '@/features/display/price-calculator';
+import {
+  PackageContextResolver,
+  PriceCalculator,
+} from '@/features/display/display-core';
 import { useCartStore } from '@/state/cart';
 import { useCampaignStore } from '@/state/campaign';
 import { useOrderStore } from '@/state/order';

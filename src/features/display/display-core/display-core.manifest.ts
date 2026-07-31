@@ -15,16 +15,15 @@ export default defineFeature({
     'Binds any element to a live value from the cart, campaign, order, or a selector — and formats it.',
   activates: '[data-next-display]',
   logPrefix: 'DisplayEnhancer',
-  // Context resolution — which package, cart line, or selector a binding is about —
-  // lives beside the core rather than inside it.
-  //
-  // The base class and its routing table moved to `core/base/` (sdk-structure §2):
+  // The base class and its routing table live in `core/base/` (sdk-structure §2):
   // four `features/cart/**` display files extend `BaseDisplayEnhancer` too, and a
   // feature reaching into another feature's folder is the cross-feature import that
   // section forbids. The attributes documented here are read there, so they are
   // claimed with the `src/`-relative form.
+  //
+  // Context resolution and the price maths need no entry — they sit inside this
+  // folder, which the manifest owns outright now that it lives here too.
   extraSource: [
-    'display-context.ts',
     'src/core/base/base-display-enhancer.ts',
     'src/core/base/display-types.ts',
   ],

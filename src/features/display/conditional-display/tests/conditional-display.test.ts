@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from 'vitest';
-import { ConditionalDisplayEnhancer } from '../conditional-display';
+import { ConditionalDisplayEnhancer } from '../conditional-display.enhancer';
 import { useCartStore } from '@/state/cart';
 
 describe('ConditionalDisplayEnhancer coupon conditions', () => {
