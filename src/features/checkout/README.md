@@ -42,6 +42,7 @@ field list and nothing more.
 | `country-fields.ts` | The country dropdowns, and relabelling "state"/"postcode" per the chosen country (province, county, prefecture — required or not) | 4 fields |
 | `state-fields.ts` | Refilling the state/province dropdown per country, including hiding it entirely for countries with neither states nor a requirement | 4 (billing) / 8 (shipping) |
 | `autofill-detection.ts` | Polling for **browser** autofill, which fires no events — without it the store stays empty while the form looks full, and the order submits blank | 4 fields |
+| `field-validation-display.ts` | The error/tick states as a shopper interacts: blur commits a verdict (but never errors an empty field), input only clears, change validates a value that arrived without typing | 2 fields |
 
 Each has a colocated test in `checkout-form/tests/`.
 

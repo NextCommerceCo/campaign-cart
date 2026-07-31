@@ -62,6 +62,10 @@ import {
   setupAutofillDetection,
   type AutofillDetectionContext,
 } from './autofill-detection';
+import {
+  updateFieldValidationDisplay,
+  type FieldValidationContext,
+} from './field-validation-display';
 import 'intl-tel-input/build/css/intlTelInput.css';
 
 // Consolidated constants
@@ -849,6 +853,14 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // PHONE INPUT MANAGEMENT
   // ============================================================================
 
+
+  /** The two things `field-validation-display.ts` needs from this form. */
+  private fieldValidationContext(): FieldValidationContext {
+    return {
+      validator: this.validator,
+      getFieldByName: name => this.getFieldByName(name),
+    };
+  }
 
   /** The four things `autofill-detection.ts` needs from this form. */
   private autofillDetectionContext(): AutofillDetectionContext {
@@ -2139,133 +2151,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       }
     }
 
-    // Handle validation differently based on event type
-    if (event.type === 'blur') {
-      // On blur, always handle the field state
-      const field = this.getFieldByName(fieldName);
-      if (!field) return;
-
-      const wrapper = field.closest('.form-group, .form-input');
-
-      // Check if field is empty (works for both input and select elements)
-      const isEmpty = !target.value || (typeof target.value === 'string' && target.value.trim() === '');
-
-      if (isEmpty) {
-        // Field is empty - check if there's an error label present
-        // Check both in wrapper and form-group (error label can be in either)
-        const formGroup = field.closest('.form-group');
-        const errorLabel = wrapper?.querySelector('.next-error-label') || formGroup?.querySelector('.next-error-label');
-
-        if (errorLabel) {
-          // There's an error label present, so maintain the error state on the field
-          // Re-add error classes to the field to keep them consistent with the error label
-          field.classList.add('has-error', 'next-error-field');
-          field.classList.remove('no-error');
-
-          // Also ensure wrapper has error icon class if there's an error
-          if (wrapper) {
-            wrapper.classList.add('addErrorIcon');
-            wrapper.classList.remove('addTick');
-          }
-        } else {
-          // No error label - remove both error and success classes
-          field.classList.remove('has-error', 'next-error-field', 'no-error');
-
-          if (wrapper) {
-            wrapper.classList.remove('addErrorIcon', 'addTick');
-          }
-        }
-
-        // For required fields, we might want to show an error
-        // Don't show required error on blur for better UX - only on submit
-        // Just leave the field in neutral state
-      } else {
-        // Field has value - validate it
-        const validationResult = this.validator.validateField(fieldName, target.value);
-
-        if (validationResult.isValid) {
-          // Field is valid, add the no-error class
-          field.classList.remove('has-error', 'next-error-field');
-          field.classList.add('no-error');
-
-          // Remove error message if exists
-          if (wrapper) {
-            wrapper.classList.remove('addErrorIcon');
-            wrapper.classList.add('addTick');
-            const errorLabel = wrapper.querySelector('.next-error-label');
-            if (errorLabel) {
-              errorLabel.remove();
-            }
-          }
-        } else if (validationResult.message) {
-          // Field is invalid, show error
-          field.classList.remove('no-error'); // Ensure no-error is removed
-          this.validator.showError(fieldName, validationResult.message);
-        }
-      }
-    } else if (event.type === 'input') {
-      // On input events, clear the error display as soon as user starts typing
-      const field = this.getFieldByName(fieldName);
-      if (field) {
-        // Just remove error classes without adding success classes
-        field.classList.remove('has-error', 'next-error-field');
-
-        // Remove error message if exists - check both wrapper and parent form-group
-        const wrapper = field.closest('.form-group, .form-input');
-        if (wrapper) {
-          // First check inside the wrapper
-          let errorLabel = wrapper.querySelector('.next-error-label');
-          if (errorLabel) {
-            errorLabel.remove();
-          }
-
-          // Also check if wrapper is form-input inside a form-group
-          const formGroup = wrapper.closest('.form-group');
-          if (formGroup) {
-            errorLabel = formGroup.querySelector('.next-error-label');
-            if (errorLabel) {
-              errorLabel.remove();
-            }
-          }
-        }
-
-        // Also check parent element in case structure is different
-        const parentGroup = field.closest('.form-group');
-        if (parentGroup) {
-          const errorLabel = parentGroup.querySelector('.next-error-label');
-          if (errorLabel) {
-            errorLabel.remove();
-          }
-        }
-      }
-    } else if (event.type === 'change') {
-      // On change events (e.g., from Google Autocomplete), validate and clear errors if field is now valid
-      const field = this.getFieldByName(fieldName);
-      if (field && target.value && target.value.trim() !== '') {
-        // Field has value - validate it and clear error if valid
-        const validationResult = this.validator.validateField(fieldName, target.value);
-
-        if (validationResult.isValid) {
-          // Field is valid, remove error classes and messages
-          field.classList.remove('has-error', 'next-error-field');
-          field.classList.add('no-error');
-
-          const wrapper = field.closest('.form-group, .form-input');
-          if (wrapper) {
-            wrapper.classList.remove('addErrorIcon');
-            wrapper.classList.add('addTick');
-            const errorLabel = wrapper.querySelector('.next-error-label');
-            if (errorLabel) {
-              errorLabel.remove();
-            }
-          }
-
-          // Also clear error from store
-          const checkoutStore = useCheckoutStore.getState();
-          checkoutStore.clearError(fieldName);
-        }
-      }
-    }
+    updateFieldValidationDisplay(
+      this.fieldValidationContext(),
+      event.type,
+      fieldName,
+      target.value
+    );
   }
 
 
