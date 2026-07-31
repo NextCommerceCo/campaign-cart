@@ -421,7 +421,13 @@ export interface EventMap {
   };
   /** The quantity on an upsell offer changed before the visitor accepted it. */
   'upsell:quantity-changed': {
-    /** The upsell selector, when the change came from one. */
+    /**
+     * The upsell selector the offer belongs to. Present whenever the offer has
+     * one — whichever control changed the quantity — and absent in direct mode.
+     * Before 2026-07-31 a quantity-toggle press sent the key with `undefined`,
+     * so treat "key present but undefined" as direct mode too if you handle
+     * events from an older SDK build.
+     */
     selectorId?: string | undefined;
     /** The new quantity. */
     quantity: number;

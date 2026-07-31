@@ -45,7 +45,7 @@ Subscribe with `next.on('<event>', handler)`. Payloads are the exact shapes decl
 
 | Field | Type | Description |
 |---|---|---|
-| `selectorId?` | `string \| undefined` | The upsell selector, when the change came from one. |
+| `selectorId?` | `string \| undefined` | The upsell selector the offer belongs to. Present whenever the offer has one — whichever control changed the quantity — and absent in direct mode. Before 2026-07-31 a quantity-toggle press sent the key with `undefined`, so treat "key present but undefined" as direct mode too if you handle events from an older SDK build. |
 | `quantity` | `number` | The new quantity. |
 | `packageId?` | `number \| undefined` | The package whose quantity changed, when it is known. |
 

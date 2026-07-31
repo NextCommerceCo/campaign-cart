@@ -7,7 +7,7 @@ category: "Tooltip"
 # Tooltip
 
 > Category: `ui`
-> Last reviewed: 2026-07-30
+> Last reviewed: 2026-07-31
 > Owner: Campaigns
 
 Shows a short explanation on hover or focus — what a fee covers, what a guarantee
@@ -57,9 +57,13 @@ an attribute so the arrow can point the correct way.
 
 - Plain text only — the value is an attribute, so it cannot contain markup.
 - One tooltip per element.
-- Does not handle touch specially. There is no hover on a touch screen, so a
-  touch-only device may never see it; do not put essential information here.
+- On a touch screen a **tap toggles it** — there is no hover, so the first tap
+  opens it and the next one closes it. It is not unreachable on touch, but it does
+  cost the shopper a tap they may not know to make, so still do not put essential
+  information here.
 - Does not stay open for selection or copying.
+- A tooltip whose fade-out is interrupted by a new tap is removed immediately
+  rather than fading, because the new tooltip supersedes it.
 
 ## Reference
 

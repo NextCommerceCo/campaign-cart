@@ -86,6 +86,7 @@ Every part of `src/core`, and whether it raises anything of its own. "Nothing" i
 | `debug/UpsellSelector.ts` | `[UpsellSelector]` | nothing |
 | `monitoring/error-handler.ts` | `[ErrorHandler]` | nothing |
 | `next-commerce.ts` | `[NextCommerce]` | 4 — `No order found. Upsells can only be added after order completion.`, `Order does not support post-purchase upsells or is currently processing.`, `Either packageId or items array must be provided`, `Failed to add upsell - no updated order returned` |
+| `rendering/template-renderer.ts` | `[TemplateRenderer]` | nothing |
 | `sdk-initializer.ts` | `[SDKInitializer]` | 4 — `API key not found. Please set next-api-key meta tag or window.nextConfig.apiKey`, `Invalid package ID: {idStr}`, `Invalid quantity: {quantityStr}`, `Invalid shipping ID: {forceShippingId}` |
 | `storage.ts` | `[StorageManager]` | nothing |
 | `test-mode.ts` | — logs nothing | 1 — `No test cards available` |

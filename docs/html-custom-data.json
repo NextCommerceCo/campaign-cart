@@ -1633,7 +1633,7 @@
       "name": "data-next-quantity",
       "description": {
         "kind": "markdown",
-        "value": "Used by 9 features — the meaning differs, so check the one you are in:\n\n- **accept-upsell** (`number`, default `1`) — How many units to add.\n- **add-to-cart** (`number`, default `1`) — How many units to add.\n- **bundle-selector** (`number`) — see its reference page.\n- **cart-item-list** (`'increase' | 'decrease' | 'set'`) — Puts a quantity control in the row.\n- **package-selector** (`number`, default `1`) — This card's starting quantity.\n- **package-toggle** (`number`, default `1`) — How many units to add when the card is toggled on.\n- **quantity-control** (`string`, required) — Declares the mode of this control.\n- **selection-display** (`string`) — Read from the selected card, so the price reflects that card's quantity.\n- **upsell** (`number`, default `1`) — Starting quantity for the offer."
+        "value": "Used by 9 features — the meaning differs, so check the one you are in:\n\n- **accept-upsell** (`number`, default `1`) — How many units to add.\n- **add-to-cart** (`number`, default `1`) — How many units to add.\n- **bundle-selector** (`number`) — see its reference page.\n- **cart-item-list** (`'increase' | 'decrease' | 'set'`) — Puts a quantity control in the row.\n- **package-selector** (`number`, default `1`) — This card's starting quantity.\n- **package-toggle** (`number`, default `1`) — How many units to add when the card is toggled on.\n- **quantity-control** (`string`, required) — Declares the mode of this control.\n- **selection-display** (`string`) — Read from the selected card, so the price reflects that card's quantity.\n- **upsell** (`number`, default `1`) — Starting quantity for the offer, and the quantity submitted unless a quantity control changes it."
       },
       "values": [
         {
@@ -2311,7 +2311,7 @@
         },
         {
           "name": "display",
-          "description": "Element whose text shows the current quantity."
+          "description": "Element whose text shows the current quantity. The SDK writes the starting quantity into it during initialize and again on every update, so it shows the real number without the shopper touching anything — any placeholder text you put there is replaced."
         }
       ],
       "references": [
@@ -2325,7 +2325,7 @@
       "name": "data-next-upsell-quantity-toggle",
       "description": {
         "kind": "markdown",
-        "value": "A button that jumps straight to a quantity — \"Buy 3\" beside \"Buy 1\". The active one gets the `next-selected` class.\n\nType: `number`\n\nFeature: `upsell`."
+        "value": "A button that jumps straight to a quantity — \"Buy 3\" beside \"Buy 1\". The active one gets the `next-selected` class, and that highlight also follows the `increase`/`decrease` controls, so the two kinds of quantity control never disagree about which is current.\n\nType: `number`\n\n⚠️ Pressing one also syncs the quantity into any duplicate container bound to the same selector id.\n\nFeature: `upsell`."
       },
       "references": [
         {

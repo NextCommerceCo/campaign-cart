@@ -113,37 +113,46 @@ export function revealTooltip(tooltip: HTMLElement | null): void {
   });
 }
 
-export interface DismissTooltipHandle {
-  /** Reads the *current* tooltip field at the time the removal timeout fires. */
-  getTooltip: () => HTMLElement | null;
-  clearTooltip: () => void;
-  clearArrow: () => void;
-}
-
 /**
- * Removes the visible class, then removes the tooltip from the DOM after the
- * animation (DOM half of `hide`).
+ * Removes the visible class, then schedules removing `tooltip` itself from the
+ * DOM after the fade. Returns the timeout id so the caller can track and
+ * cancel it (see `TooltipTimers.dismissTimeout`).
  *
- * Reads the tooltip back through `handle.getTooltip()` at the time the
- * timeout fires rather than closing over the `tooltip` argument — matches the
- * original's `this.tooltip` re-read, so it is unaffected by a new tooltip
- * being created before this timeout runs.
+ * The callback closes over `tooltip` — the element this dismissal was
+ * scheduled for — rather than re-reading whatever the enhancer's live field
+ * points to. Finding 96 (`docs/code-findings.md`) was exactly that: a re-read
+ * let this timer remove a *different*, newer tooltip that a re-tap had mounted
+ * in the meantime, then null out the fields backing it. Callers that mount a
+ * new tooltip before this fires are expected to cancel it first (`show()` and
+ * `destroy()` both do, via `dismissTimeout`) rather than rely on this callback
+ * to sort out which tooltip is still current.
  */
 export function dismissTooltip(
   tooltip: HTMLElement,
-  handle: DismissTooltipHandle
-): void {
+  onDismissed: () => void
+): number {
   tooltip.classList.remove('next-tooltip--visible');
 
   // Remove after animation
-  setTimeout(() => {
-    const current = handle.getTooltip();
-    if (current && current.parentNode) {
-      current.parentNode.removeChild(current);
+  return window.setTimeout(() => {
+    if (tooltip.parentNode) {
+      tooltip.parentNode.removeChild(tooltip);
     }
-    handle.clearTooltip();
-    handle.clearArrow();
+    onDismissed();
   }, 200);
+}
+
+/**
+ * Removes `tooltip` from the DOM immediately, with no fade. Used when a new
+ * tooltip is about to replace one that is still mid-dismissal (a re-tap inside
+ * the 200ms fade window) or the enhancer is destroyed while a dismissal is
+ * pending — in both cases the fade is moot, so there is no reason to wait out
+ * the remaining timeout before removing the stale node.
+ */
+export function removeTooltipNow(tooltip: HTMLElement): void {
+  if (tooltip.parentNode) {
+    tooltip.parentNode.removeChild(tooltip);
+  }
 }
 
 export interface PositionTooltipParams {

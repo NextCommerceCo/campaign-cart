@@ -14,6 +14,7 @@ import {
   mountTooltip,
   revealTooltip,
   dismissTooltip,
+  removeTooltipNow,
   positionTooltip,
 } from './tooltip.renderer';
 import {
@@ -29,7 +30,11 @@ export type { TooltipConfig } from './tooltip.types';
 export class TooltipEnhancer extends BaseEnhancer {
   private tooltip: HTMLElement | null = null;
   private arrow: HTMLElement | null = null;
-  private timers: TooltipTimers = { showTimeout: null, hideTimeout: null };
+  private timers: TooltipTimers = {
+    showTimeout: null,
+    hideTimeout: null,
+    dismissTimeout: null,
+  };
   private config: TooltipConfig;
   private isVisible = false;
 
@@ -68,6 +73,10 @@ export class TooltipEnhancer extends BaseEnhancer {
 
   public override destroy(): void {
     this.hide();
+    // `hide()` above may have just scheduled a 200ms dismissal for the
+    // tooltip that was visible — finish it synchronously instead of leaving a
+    // DOM node (and a timer) to outlive the enhancer.
+    this.finalizeStaleDismissal();
     cleanupTimeouts(this.timers);
     super.destroy();
   }
@@ -113,6 +122,31 @@ export class TooltipEnhancer extends BaseEnhancer {
     }
   };
 
+  /**
+   * Cancels a pending dismissal (the 200ms fade-out `hide()` scheduled) and
+   * removes the tooltip it was scheduled for immediately, without waiting out
+   * the rest of the fade.
+   *
+   * Called from `show()` before mounting a new tooltip and from `destroy()` —
+   * both are cases where an old tooltip could still be mid-dismissal
+   * (`isVisible` is already `false`, but `tooltip` has not been nulled yet).
+   * Finishing it here, synchronously, means the timeout `dismissTooltip`
+   * scheduled either never fires (it was cancelled) or was already fully
+   * handled — `tooltip`/`arrow` are never left pointing at a removed element,
+   * and a re-tap can never race the removal of the tooltip it just mounted.
+   */
+  private finalizeStaleDismissal(): void {
+    if (this.timers.dismissTimeout !== null) {
+      clearTimeout(this.timers.dismissTimeout);
+      this.timers.dismissTimeout = null;
+    }
+    if (this.tooltip) {
+      removeTooltipNow(this.tooltip);
+      this.tooltip = null;
+      this.arrow = null;
+    }
+  }
+
   private async show(): Promise<void> {
     if (this.isVisible) return;
 
@@ -120,6 +154,8 @@ export class TooltipEnhancer extends BaseEnhancer {
     if (!content) return;
 
     try {
+      this.finalizeStaleDismissal();
+
       const created = createTooltip(content, this.config, {
         onTooltipMouseEnter: () => cleanupTimeouts(this.timers),
         onTooltipMouseLeave: () => scheduleHide(this.timers, () => this.hide()),
@@ -164,14 +200,25 @@ export class TooltipEnhancer extends BaseEnhancer {
     if (!this.isVisible || !this.tooltip) return;
 
     this.isVisible = false;
-    dismissTooltip(this.tooltip, {
-      getTooltip: () => this.tooltip,
-      clearTooltip: () => {
+
+    // Capture the element/arrow this dismissal is for — the callback must act
+    // on these, not on whatever `this.tooltip`/`this.arrow` point to when the
+    // timeout fires, or a tooltip mounted by a `show()` in between gets torn
+    // down out from under itself (finding 96).
+    const dismissedTooltip = this.tooltip;
+    const dismissedArrow = this.arrow;
+    this.timers.dismissTimeout = dismissTooltip(dismissedTooltip, () => {
+      this.timers.dismissTimeout = null;
+      // Defensive: under normal operation `show()` always finalizes a stale
+      // dismissal (and thus cancels this timeout) before replacing `tooltip`/
+      // `arrow`, so these should still be the same elements. Guarded anyway so
+      // this callback can never clear a *different* tooltip's fields.
+      if (this.tooltip === dismissedTooltip) {
         this.tooltip = null;
-      },
-      clearArrow: () => {
+      }
+      if (this.arrow === dismissedArrow) {
         this.arrow = null;
-      },
+      }
     });
 
     // Remove ARIA attributes

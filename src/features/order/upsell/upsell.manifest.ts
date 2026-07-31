@@ -64,8 +64,10 @@ export default defineFeature({
       type: 'number',
       required: false,
       default: '1',
-      description: 'Starting quantity for the offer.',
-      notes: 'Runtime changes are clamped to 1–10 regardless of what the controls request.',
+      description:
+        'Starting quantity for the offer, and the quantity submitted unless a quantity control changes it. Applies in selector mode as well as direct mode.',
+      notes:
+        'Runtime changes are clamped to 1–10 regardless of what the controls request. Before 2026-07-31 a selector-mode offer ignored this and submitted 1.',
     },
 
     {
@@ -126,7 +128,11 @@ export default defineFeature({
       values: [
         { value: 'increase', description: 'Button that adds one.' },
         { value: 'decrease', description: 'Button that subtracts one.' },
-        { value: 'display', description: 'Element whose text shows the current quantity.' },
+        {
+          value: 'display',
+          description:
+            'Element whose text shows the current quantity. The SDK writes the starting quantity into it during initialize and again on every update, so it shows the real number without the shopper touching anything — any placeholder text you put there is replaced.',
+        },
       ],
     },
     {
@@ -135,7 +141,9 @@ export default defineFeature({
       type: 'number',
       required: false,
       description:
-        'A button that jumps straight to a quantity — "Buy 3" beside "Buy 1". The active one gets the `next-selected` class.',
+        'A button that jumps straight to a quantity — "Buy 3" beside "Buy 1". The active one gets the `next-selected` class, and that highlight also follows the `increase`/`decrease` controls, so the two kinds of quantity control never disagree about which is current.',
+      notes:
+        'Pressing one also syncs the quantity into any duplicate container bound to the same selector id.',
     },
     {
       group: QUANTITY,

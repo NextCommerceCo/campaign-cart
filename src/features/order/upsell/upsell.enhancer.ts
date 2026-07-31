@@ -34,6 +34,7 @@ import {
   setupEventHandlers,
   onQuantityChanged,
   onOptionSelected,
+  quantitySnapshot,
 } from './upsell.interaction-handlers';
 import { handleOrderUpdate, updateUpsellDisplay } from './upsell.display';
 import {
@@ -54,6 +55,7 @@ export class UpsellEnhancer extends BaseEnhancer {
   private clickHandler?: (event: Event) => void;
   private keydownHandler?: (event: KeyboardEvent) => void;
   private pageShowHandler?: (event: PageTransitionEvent) => void;
+  private pageViewTimer?: ReturnType<typeof setTimeout>;
   private loadingOverlay: LoadingOverlay;
   private isProcessingRef = { value: false };
 
@@ -76,9 +78,9 @@ export class UpsellEnhancer extends BaseEnhancer {
     selectorId: undefined,
     selectedPackageId: undefined,
     options: new Map<number, HTMLElement>(),
-    quantityBySelectorId: new Map<string, number>(),
     currentQuantitySelectorId: undefined,
     actionButtons: [],
+    scanTeardowns: [],
   };
 
   constructor(element: HTMLElement) {
@@ -89,7 +91,7 @@ export class UpsellEnhancer extends BaseEnhancer {
   public async initialize(): Promise<void> {
     this.validateElement();
     this.setupPageShowHandler();
-    setTimeout(
+    this.pageViewTimer = setTimeout(
       () => trackUpsellPageView(this.logger, (e, d) => this.emit(e, d)),
       100
     );
@@ -118,6 +120,11 @@ export class UpsellEnhancer extends BaseEnhancer {
       !!this.packageSelectorId ||
       !!this.bundleSelectorId;
 
+    // Before anything reads the quantity: selector wiring, the scan that paints
+    // the quantity widgets, and the submit handler all start from this number.
+    const quantityAttr = this.getAttribute('data-next-quantity');
+    if (quantityAttr) this.state.quantity = parseInt(quantityAttr, 10) || 1;
+
     if (this.isSelector) {
       initializeSelectorMode(this.makeInteractionContext());
     } else {
@@ -134,9 +141,6 @@ export class UpsellEnhancer extends BaseEnhancer {
       if (orderStore.order)
         orderStore.markUpsellViewed(this.state.packageId.toString());
     }
-
-    const quantityAttr = this.getAttribute('data-next-quantity');
-    if (quantityAttr) this.state.quantity = parseInt(quantityAttr, 10) || 1;
 
     const config = useConfigStore.getState();
     this.apiClient = new ApiClient(config.apiKey);
@@ -219,7 +223,7 @@ export class UpsellEnhancer extends BaseEnhancer {
       selectedPackageId: externalId ?? this.state.selectedPackageId,
       selectorId: this.state.selectorId,
       quantity: this.state.quantity,
-      quantityBySelectorId: this.state.quantityBySelectorId,
+      quantityBySelectorId: quantitySnapshot(this.state),
       currentQuantitySelectorId: this.state.currentQuantitySelectorId,
       bundleItems: externalBundleItems,
       bundleVouchers: resolveExternalBundleVouchers(this.bundleSelectorId),
@@ -236,13 +240,31 @@ export class UpsellEnhancer extends BaseEnhancer {
 
   public update(): void {
     scanUpsellElements(this.makeInteractionContext());
+    this.bindActionButtons();
     updateUpsellDisplay(this.element);
   }
 
+  /**
+   * Attaches the click handler to the buttons the last scan found.
+   * `addEventListener` ignores a repeat of the same function, so a button that
+   * survived a re-scan keeps exactly one listener, while a button added to the
+   * page after `initialize` gets wired by `update()`.
+   */
+  private bindActionButtons(): void {
+    const handler = this.clickHandler;
+    if (!handler) return;
+    this.state.actionButtons.forEach(btn =>
+      btn.addEventListener('click', handler)
+    );
+  }
+
   protected override cleanupEventListeners(): void {
-    if (this.clickHandler) {
+    this.state.scanTeardowns.forEach(off => off());
+    this.state.scanTeardowns = [];
+    const handler = this.clickHandler;
+    if (handler) {
       this.state.actionButtons.forEach(btn =>
-        btn.removeEventListener('click', this.clickHandler!)
+        btn.removeEventListener('click', handler)
       );
     }
     if (this.keydownHandler) {
@@ -251,9 +273,11 @@ export class UpsellEnhancer extends BaseEnhancer {
   }
 
   public override destroy(): void {
+    // super.destroy() first: it calls cleanupEventListeners(), which needs
+    // `actionButtons` and `scanTeardowns` still populated to remove anything.
+    super.destroy();
+    if (this.pageViewTimer) clearTimeout(this.pageViewTimer);
     if (this.pageShowHandler)
       window.removeEventListener('pageshow', this.pageShowHandler);
-    this.state.actionButtons = [];
-    super.destroy();
   }
 }

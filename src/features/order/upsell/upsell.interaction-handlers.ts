@@ -24,8 +24,88 @@ import {
 import type {
   UpsellHandlerContext,
   UpsellInteractionContext,
+  UpsellState,
 } from './upsell.types';
 import { handleActionClick } from './upsell.handlers';
+
+/**
+ * Which selector id the offer's quantity is addressed by: the one a `+`/`-`
+ * control named, else the container's own `data-next-selector-id`. It decides
+ * which elements a repaint writes to — the number itself is always
+ * `state.quantity`.
+ */
+export function quantityKey(state: UpsellState): string | undefined {
+  return state.currentQuantitySelectorId ?? state.selectorId;
+}
+
+/**
+ * The selector-keyed view of `state.quantity` that the renderers and the
+ * order-submission handlers take. Built on read and discarded, so it cannot
+ * drift from `state.quantity` the way a stored map did.
+ *
+ * @example
+ * quantitySnapshot({ quantity: 3, selectorId: 'protection', ... });
+ * // Map { 'protection' => 3 }
+ */
+export function quantitySnapshot(state: UpsellState): Map<string, number> {
+  const key = quantityKey(state);
+  const snapshot = new Map<string, number>();
+  if (key) snapshot.set(key, state.quantity);
+  return snapshot;
+}
+
+/** Repaints every quantity widget in this container from `state.quantity`. */
+function renderQuantity(ctx: UpsellInteractionContext): void {
+  const { element, state } = ctx;
+  renderQuantityDisplay(
+    element,
+    quantityKey(state),
+    quantitySnapshot(state),
+    state.quantity
+  );
+  renderQuantityToggles(element, state.quantity);
+}
+
+/**
+ * The one place the offer's quantity is written after initialize: clamps it to
+ * 1–10, records which selector the change came from, announces it, then repaints
+ * the display, the fixed-quantity toggles, and the same offer wherever else it
+ * appears on the page.
+ *
+ * Every input path goes through here — the `+`/`-` buttons, the
+ * `data-next-upsell-quantity-toggle` buttons, and a change announced by another
+ * container — so the number that gets submitted is the number on screen.
+ *
+ * @example
+ * setQuantity(ctx, 3); // three units, keyed by the container's selector
+ * setQuantity(ctx, 3, 'protection'); // three units, keyed by 'protection'
+ */
+export function setQuantity(
+  ctx: UpsellInteractionContext,
+  quantity: number,
+  qtySelectorId?: string
+): void {
+  const { state } = ctx;
+  state.quantity = Math.min(10, Math.max(1, quantity));
+  if (qtySelectorId) state.currentQuantitySelectorId = qtySelectorId;
+
+  const key = qtySelectorId ?? state.selectorId;
+  ctx.emit('upsell:quantity-changed', {
+    ...(key ? { selectorId: key } : {}),
+    quantity: state.quantity,
+    packageId: state.packageId,
+  });
+
+  // Repaint after the emit: the bus is synchronous, so every other container
+  // showing this offer has already reacted.
+  renderQuantity(ctx);
+  syncQuantityAcrossContainers(
+    quantityKey(state),
+    state.packageId,
+    quantitySnapshot(state),
+    state.quantity
+  );
+}
 
 /**
  * Wires selector mode: option cards and/or a `<select>` dropdown, plus any
@@ -33,10 +113,6 @@ import { handleActionClick } from './upsell.handlers';
  */
 export function initializeSelectorMode(ctx: UpsellInteractionContext): void {
   const { element, state } = ctx;
-
-  if (state.selectorId && !state.quantityBySelectorId.has(state.selectorId)) {
-    state.quantityBySelectorId.set(state.selectorId, state.quantity);
-  }
 
   element.querySelectorAll('[data-next-upsell-option]').forEach(el => {
     if (!(el instanceof HTMLElement)) return;
@@ -74,10 +150,29 @@ export function initializeSelectorMode(ctx: UpsellInteractionContext): void {
 
 /**
  * Collects the action buttons and wires the quantity controls (+/- buttons and
- * fixed-quantity toggles) found inside the container.
+ * fixed-quantity toggles) found inside the container, then paints the current
+ * quantity onto them.
+ *
+ * Safe to call again: `update()` re-scans the same container, so this first
+ * undoes what the previous scan attached. Without that, a button ended up in
+ * `actionButtons` twice and one press stepped the quantity twice.
  */
 export function scanUpsellElements(ctx: UpsellInteractionContext): void {
   const { element, state } = ctx;
+
+  state.scanTeardowns.forEach(off => off());
+  state.scanTeardowns = [];
+  state.actionButtons = [];
+
+  const bind = (
+    target: Element | null,
+    type: string,
+    listener: EventListener
+  ): void => {
+    if (!target) return;
+    target.addEventListener(type, listener);
+    state.scanTeardowns.push(() => target.removeEventListener(type, listener));
+  };
 
   element.querySelectorAll('[data-next-upsell-action]').forEach(el => {
     if (el instanceof HTMLElement) state.actionButtons.push(el);
@@ -94,12 +189,8 @@ export function scanUpsellElements(ctx: UpsellInteractionContext): void {
     decBtn?.getAttribute('data-next-quantity-selector-id') ??
     state.selectorId;
 
-  incBtn?.addEventListener('click', () =>
-    adjustQuantity(1, qtySelectorId, ctx)
-  );
-  decBtn?.addEventListener('click', () =>
-    adjustQuantity(-1, qtySelectorId, ctx)
-  );
+  bind(incBtn, 'click', () => adjustQuantity(1, qtySelectorId, ctx));
+  bind(decBtn, 'click', () => adjustQuantity(-1, qtySelectorId, ctx));
 
   element
     .querySelectorAll('[data-next-upsell-quantity-toggle]')
@@ -109,68 +200,19 @@ export function scanUpsellElements(ctx: UpsellInteractionContext): void {
         toggle.getAttribute('data-next-upsell-quantity-toggle') ?? '1',
         10
       );
-      toggle.addEventListener('click', () => {
-        state.quantity = qty;
-        renderQuantityDisplay(
-          element,
-          state.selectorId,
-          state.quantityBySelectorId,
-          qty
-        );
-        renderQuantityToggles(element, qty);
-        ctx.emit('upsell:quantity-changed', {
-          selectorId: state.selectorId,
-          quantity: qty,
-          packageId: state.packageId,
-        });
-      });
-      if (qty === state.quantity) toggle.classList.add('next-selected');
+      bind(toggle, 'click', () => setQuantity(ctx, qty));
     });
+
+  renderQuantity(ctx);
 }
 
-/**
- * Steps the quantity by `delta`, clamped to 1–10. With a quantity selector id
- * the count is kept per selector; without one it is the offer's own quantity.
- */
+/** Steps the quantity by `delta`, clamped to 1–10. */
 export function adjustQuantity(
   delta: number,
   qtySelectorId: string | undefined,
   ctx: UpsellInteractionContext
 ): void {
-  const { state } = ctx;
-  if (qtySelectorId) {
-    const next = Math.min(
-      10,
-      Math.max(1, (state.quantityBySelectorId.get(qtySelectorId) ?? 1) + delta)
-    );
-    state.quantityBySelectorId.set(qtySelectorId, next);
-    state.currentQuantitySelectorId = qtySelectorId;
-    ctx.emit('upsell:quantity-changed', {
-      selectorId: qtySelectorId,
-      quantity: next,
-      packageId: state.packageId,
-    });
-  } else {
-    state.quantity = Math.min(10, Math.max(1, state.quantity + delta));
-    ctx.emit('upsell:quantity-changed', {
-      quantity: state.quantity,
-      packageId: state.packageId,
-    });
-  }
-  // Read after the emit: the bus is synchronous, so onQuantityChanged has
-  // already run and may have moved these values.
-  renderQuantityDisplay(
-    ctx.element,
-    qtySelectorId ?? state.selectorId,
-    state.quantityBySelectorId,
-    state.quantity
-  );
-  syncQuantityAcrossContainers(
-    qtySelectorId,
-    state.packageId,
-    state.quantityBySelectorId,
-    state.quantity
-  );
+  setQuantity(ctx, ctx.state.quantity + delta, qtySelectorId);
 }
 
 /** Marks `packageId` as the chosen option and announces it to the page. */
@@ -257,18 +299,9 @@ export function onQuantityChanged(
       data.packageId === state.packageId);
   if (!shouldSync) return;
 
-  if (state.selectorId) {
-    state.quantityBySelectorId.set(state.selectorId, data.quantity);
-    state.currentQuantitySelectorId = state.selectorId;
-  } else {
-    state.quantity = data.quantity;
-  }
-  renderQuantityDisplay(
-    ctx.element,
-    state.currentQuantitySelectorId ?? state.selectorId,
-    state.quantityBySelectorId,
-    state.quantity
-  );
+  state.quantity = data.quantity;
+  if (state.selectorId) state.currentQuantitySelectorId = state.selectorId;
+  renderQuantity(ctx);
 }
 
 /**

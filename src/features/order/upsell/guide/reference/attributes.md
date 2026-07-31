@@ -73,9 +73,9 @@ Names the selector so its quantity and selection can be tracked — and stay in 
 | Required | no |
 | Default | `1` |
 
-Starting quantity for the offer.
+Starting quantity for the offer, and the quantity submitted unless a quantity control changes it. Applies in selector mode as well as direct mode.
 
-> **Watch out:** Runtime changes are clamped to 1–10 regardless of what the controls request.
+> **Watch out:** Runtime changes are clamped to 1–10 regardless of what the controls request. Before 2026-07-31 a selector-mode offer ignored this and submitted 1.
 
 ## Options (selector mode)
 
@@ -164,7 +164,7 @@ Marks a quantity control inside the offer.
 
 - `increase` — Button that adds one.
 - `decrease` — Button that subtracts one.
-- `display` — Element whose text shows the current quantity.
+- `display` — Element whose text shows the current quantity. The SDK writes the starting quantity into it during initialize and again on every update, so it shows the real number without the shopper touching anything — any placeholder text you put there is replaced.
 
 ---
 
@@ -176,7 +176,9 @@ Marks a quantity control inside the offer.
 | Required | no |
 | Default | — |
 
-A button that jumps straight to a quantity — "Buy 3" beside "Buy 1". The active one gets the `next-selected` class.
+A button that jumps straight to a quantity — "Buy 3" beside "Buy 1". The active one gets the `next-selected` class, and that highlight also follows the `increase`/`decrease` controls, so the two kinds of quantity control never disagree about which is current.
+
+> **Watch out:** Pressing one also syncs the quantity into any duplicate container bound to the same selector id.
 
 ---
 
