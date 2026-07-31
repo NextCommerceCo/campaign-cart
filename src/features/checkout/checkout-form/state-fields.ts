@@ -93,15 +93,21 @@ function loadCountryStates(
 
   const request = ctx.countryService.getCountryStates(country);
   ctx.stateLoadingPromises.set(country, request);
-  // `void`: this is cache housekeeping, not part of the caller's result. The caller awaits
-  // `request` itself, so a rejection is handled there — attaching `.catch` here as well
-  // would swallow nothing but would imply this branch owns the error.
-  void request.finally(() => {
+
+  // Cache housekeeping, deliberately **not** `.finally()`. `request.finally(fn)` returns a
+  // *derived* promise that rejects whenever `request` does — a different promise from the
+  // one the caller awaits and catches, with no handler of its own. A single failing states
+  // fetch therefore raised a genuine unhandled rejection, which crashes a process
+  // configured to treat those as fatal, entirely outside this function's own error
+  // handling. Two handlers instead of `finally` means the derived promise always settles.
+  const scheduleCleanup = (): void => {
     setTimeout(
       () => ctx.stateLoadingPromises.delete(country),
       PROMISE_CLEANUP_MS
     );
-  });
+  };
+  void request.then(scheduleCleanup, scheduleCleanup);
+
   return request;
 }
 
@@ -167,6 +173,10 @@ export async function updateStateOptions(
 
   provinceField.disabled = true;
   const originalHTML = provinceField.innerHTML;
+  // Captured here, beside the markup, because the very next line destroys it: replacing
+  // the options with "Loading..." leaves `.value` empty. This is what the shopper (or
+  // browser autofill) had chosen, and the only chance to read it.
+  const previousProvince = provinceField.value;
   provinceField.innerHTML = '<option value="">Loading...</option>';
 
   try {
@@ -201,8 +211,16 @@ export async function updateStateOptions(
 
     renderStates(provinceField, countryData);
 
-    // Read before clearing: this may be an autofilled value worth keeping.
-    const currentProvinceValue = provinceField.value;
+    // `previousProvince`, captured at the top of the function — **not**
+    // `provinceField.value`, which is what this used to read.
+    //
+    // That made the whole "keep a valid autofilled province" branch below unreachable,
+    // including its `Kept autofilled state:` log, which could never print: by this point
+    // the field has been overwritten twice (once with "Loading...", once by
+    // `renderStates`), so the read always saw an empty string. The defect predates the
+    // extraction — the original had the same ordering — and was found by the unit tests
+    // written for this module afterwards.
+    const currentProvinceValue = previousProvince;
 
     ctx.updateFormData({ province: '' });
     ctx.clearError('province');
