@@ -44,6 +44,13 @@ import {
   scanExpirationFields,
   type ExpirationFieldsContext,
 } from './expiration-fields';
+import {
+  populateBillingCountryDropdown,
+  populateCountryDropdown,
+  updateBillingFormLabels,
+  updateFormLabels,
+  type CountryFieldsContext,
+} from './country-fields';
 import 'intl-tel-input/build/css/intlTelInput.css';
 
 // Consolidated constants
@@ -539,7 +546,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
       const countryField = this.fields.get('country');
       if (countryField instanceof HTMLSelectElement) {
-        this.populateCountryDropdown(countryField, locationData.countries, selectedCountryCode);
+        populateCountryDropdown(countryField, locationData.countries, selectedCountryCode);
 
         if (selectedCountryCode) {
           this.updateFormData({ country: selectedCountryCode });
@@ -576,7 +583,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       }
 
       if (this.billingFields.size > 0) {
-        this.populateBillingCountryDropdown();
+        populateBillingCountryDropdown(this.countryFieldsContext());
       }
 
       // Initialize address autocomplete
@@ -589,49 +596,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     }
   }
 
-  private populateCountryDropdown(countrySelect: HTMLSelectElement, countries: Country[], defaultCountry?: string): void {
-    const firstOption = countrySelect.options[0];
-    countrySelect.innerHTML = '';
-    if (firstOption && !firstOption.value) {
-      firstOption.disabled = true;
-      firstOption.hidden = true; // Hide from dropdown list
-      countrySelect.appendChild(firstOption);
-    }
-
-    countries.forEach(country => {
-      const option = document.createElement('option');
-      option.value = country.code;
-      option.textContent = country.name;
-      if (country.code === defaultCountry) {
-        option.selected = true;
-      }
-      countrySelect.appendChild(option);
-    });
-
-    if (defaultCountry) {
-      countrySelect.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-  }
-
-  private populateBillingCountryDropdown(): void {
-    const billingCountryField = this.billingFields.get('billing-country');
-    if (!(billingCountryField instanceof HTMLSelectElement)) return;
-
-    const firstOption = billingCountryField.options[0];
-    billingCountryField.innerHTML = '';
-    if (firstOption && !firstOption.value) {
-      firstOption.disabled = true;
-      firstOption.hidden = true; // Hide from dropdown list
-      billingCountryField.appendChild(firstOption);
-    }
-
-    this.countries.forEach(country => {
-      const option = document.createElement('option');
-      option.value = country.code;
-      option.textContent = country.name;
-      billingCountryField.appendChild(option);
-    });
-  }
 
   private async handleCountryChange(newCountry: string): Promise<void> {
     this.logger.info(`Handling country change to: ${newCountry}`);
@@ -708,7 +672,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       this.currentCountryConfig = countryData.countryConfig;
 
       // Update form labels and placeholders for the new country
-      this.updateFormLabels(countryData.countryConfig);
+      updateFormLabels(this.countryFieldsContext(), countryData.countryConfig);
 
       const hasStates = countryData.states && countryData.states.length > 0;
       const stateRequired = countryData.countryConfig.stateRequired;
@@ -794,45 +758,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     }
   }
 
-  private updateFormLabels(countryConfig: CountryConfig): void {
-    const stateLabel = this.form.querySelector('label[for*="province"], label[for*="state"]');
-    if (stateLabel) {
-      const isRequired = countryConfig.stateRequired ? ' *' : '';
-      stateLabel.textContent = countryConfig.stateLabel + isRequired;
-    }
-
-    const postalLabel = this.form.querySelector('label[for*="postal"], label[for*="zip"]');
-    if (postalLabel) {
-      postalLabel.textContent = countryConfig.postcodeLabel + ' *';
-    }
-
-    const postalField = this.fields.get('postal');
-    if (postalField instanceof HTMLInputElement) {
-      postalField.placeholder = countryConfig.postcodeLabel;
-    }
-  }
-
-  private updateBillingFormLabels(countryConfig: CountryConfig): void {
-    // Find billing form container
-    const billingContainer = document.querySelector('[os-checkout-element="different-billing-address"]');
-    if (!billingContainer) return;
-
-    const billingStateLabel = billingContainer.querySelector('label[for*="billing"][for*="province"], label[for*="billing"][for*="state"]');
-    if (billingStateLabel) {
-      const isRequired = countryConfig.stateRequired ? ' *' : '';
-      billingStateLabel.textContent = `Billing ${countryConfig.stateLabel}${isRequired}`;
-    }
-
-    const billingPostalLabel = billingContainer.querySelector('label[for*="billing"][for*="postal"], label[for*="billing"][for*="zip"]');
-    if (billingPostalLabel) {
-      billingPostalLabel.textContent = `Billing ${countryConfig.postcodeLabel} *`;
-    }
-
-    const billingPostalField = this.billingFields.get('billing-postal');
-    if (billingPostalField instanceof HTMLInputElement) {
-      billingPostalField.placeholder = `Billing ${countryConfig.postcodeLabel}`;
-    }
-  }
 
   // ============================================================================
   // LOCATION FIELD VISIBILITY MANAGEMENT
@@ -1023,6 +948,16 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // PHONE INPUT MANAGEMENT
   // ============================================================================
 
+
+  /** The four things `country-fields.ts` needs from this form. */
+  private countryFieldsContext(): CountryFieldsContext {
+    return {
+      form: this.form,
+      fields: this.fields,
+      billingFields: this.billingFields,
+      countries: this.countries,
+    };
+  }
 
   /** The one thing `expiration-fields.ts` needs from this form. */
   private expirationFieldsContext(): ExpirationFieldsContext {
@@ -2479,7 +2414,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       const countryData = await countryDataPromise;
 
       // Update billing form labels and placeholders
-      this.updateBillingFormLabels(countryData.countryConfig);
+      updateBillingFormLabels(this.countryFieldsContext(), countryData.countryConfig);
 
       billingProvinceField.innerHTML = '';
 
