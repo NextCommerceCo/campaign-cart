@@ -57,6 +57,15 @@ const MONTH_NAMES = [
 const YEARS_AHEAD = 20;
 
 /**
+ * Aborts the month `change` listener from a previous {@link populateExpirationFields} run.
+ *
+ * Module-level rather than in the context because there is exactly one expiry pair per
+ * page — the checkout form is a singleton on a checkout page — and threading it through
+ * the context would put a detail of this module into the enhancer's field list for no gain.
+ */
+let monthChangeAbort: AbortController | null = null;
+
+/**
  * What this module needs from the checkout form: the field map, and nothing else.
  *
  * Deliberately no `logger` — none of these functions log, and the originals did not
@@ -173,13 +182,17 @@ export function populateYearOptions(
 
   // Keep the shopper's year if it is still on offer; clear it if the month change pushed
   // it out of range, rather than leaving a selection that no longer exists in the list.
+  //
+  // Matched by scanning the options rather than `querySelector(\`option[value="…"]\`)`:
+  // interpolating the value into a selector is a latent crash, because a value containing
+  // a quote builds malformed CSS and a real browser throws `SyntaxError` from it (happy-dom
+  // is lenient, so no test would have caught it). Nothing can currently put a quote in a
+  // `<select>.value`, but the selector buys nothing over a plain comparison.
   if (savedValue) {
-    const option = yearField.querySelector(`option[value="${savedValue}"]`);
-    if (option && !(option as HTMLOptionElement).disabled) {
-      yearField.value = savedValue;
-    } else {
-      yearField.value = '';
-    }
+    const stillOffered = Array.from(yearField.options).some(
+      option => option.value === savedValue && !option.disabled
+    );
+    yearField.value = stillOffered ? savedValue : '';
   }
 }
 
@@ -218,17 +231,28 @@ export function populateExpirationFields(ctx: ExpirationFieldsContext): void {
       monthField.appendChild(option);
     }
 
-    monthField.addEventListener('change', () => {
-      if (yearField instanceof HTMLSelectElement) {
-        const selectedMonth = parseInt(monthField.value);
-        populateYearOptions(
-          yearField,
-          currentYear,
-          currentMonth,
-          selectedMonth
-        );
-      }
-    });
+    // Replaced, not stacked. `innerHTML = ''` above clears the options but leaves any
+    // listener from a previous run attached to the `<select>` itself, so re-running this
+    // (a re-render, a second boot) used to add another one each time — each closing over
+    // the element references captured at *its* call. Same leak the billing animation had.
+    monthChangeAbort?.abort();
+    monthChangeAbort = new AbortController();
+
+    monthField.addEventListener(
+      'change',
+      () => {
+        if (yearField instanceof HTMLSelectElement) {
+          const selectedMonth = parseInt(monthField.value);
+          populateYearOptions(
+            yearField,
+            currentYear,
+            currentMonth,
+            selectedMonth
+          );
+        }
+      },
+      { signal: monthChangeAbort.signal }
+    );
   }
 
   if (yearField instanceof HTMLSelectElement) {
