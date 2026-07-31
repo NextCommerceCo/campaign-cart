@@ -3,8 +3,10 @@
 Found while documenting the SDK on **2026-07-30**, plus finding 24 from writing the
 `accept-upsell` e2e coverage, findings 36–42 from documenting `src/core` (Phase 6),
 findings 80–85 from the Fumadocs→TypeDoc migration, findings 86–91 from a further
-TypeDoc/reference-docs verification pass, and findings 92–94 from splitting the
-`features/display` enhancers by layer, all on **2026-07-31**. Nothing here is a
+TypeDoc/reference-docs verification pass, findings 92–94 from splitting the
+`features/display` enhancers by layer, and findings 95–100 from splitting the `features/cart`,
+`features/ui`, `features/behavior` and `features/order` ones, all on **2026-07-31**.
+Findings 97–99 are on the upsell money path. Nothing here is a
 documentation problem; each is a code change, and none has been made. The docs describe
 current behaviour, including the broken parts, so this list is the backlog rather than a
 description of what shipped.
@@ -1140,6 +1142,156 @@ navigation for every visitor, not just for a developer debugging.
 **Fix:** downgrade it to `debug` to match the rest of the feature. One-line change, but it
 alters what a live page prints, so it is not part of a pure move.
 
+### 95. Four DOM-activated features are invisible to the docs-coverage feature scan — *verified*
+
+`scanFeatures` in `scripts/docs-coverage.mjs` finds features by walking for `*.enhancer.ts`
+and keeping the ones that extend a base enhancer. These four extend `BaseDisplayEnhancer`
+and are registered in `attribute-scanner.ts`, but live in `.display.ts` files, so the walk
+never reaches them:
+
+| Class | File | Activated by |
+|---|---|---|
+| `PackageSelectorDisplayEnhancer` | `cart/package-selector/package-selector.display.ts` | `data-next-display="selector.…"` |
+| `BundleDisplayEnhancer` | `cart/bundle-selector/bundle-selector.display.ts` | `data-next-display="bundle.…"` |
+| `PackageToggleDisplayEnhancer` | `cart/package-toggle/package-toggle.display.ts` | `data-next-display="toggle.…"` |
+| `CartDisplayEnhancer` | `cart/cart-summary/cart-summary.display.ts` | `data-next-display="cart.…"` |
+
+They are in neither the numerator nor the denominator of "28/28 features with a
+guide/overview.md", and — unlike the two files the script *does* exclude — they are not
+named in the "excluded from the counts above" list either. The script's own standard is to
+declare exclusions out loud; these are silent.
+
+**It has already cost documentation.** `display-paths.md` — the page enumerating which
+properties a display namespace supports — exists for `cart-summary` and for the four
+`features/display/` features, but **not** for `package-selector`, `bundle-selector`, or
+`package-toggle`. So `data-next-display="selector.{selectorId}.{packageId}.{property}"` is
+routed correctly by the namespace table in `display-core.manifest.ts` and then lands on an
+`attributes.md` that never lists the properties: `isSelected`, `isInCart`, `price`,
+`compare`, `savings`, `savingsPercentage`, `hasSavings` (read off the class's own TSDoc).
+No gate flagged it because no gate can see the feature.
+
+**Fix, in order:** teach `scanFeatures` to find DOM-activated classes in any feature file,
+not only `*.enhancer.ts` — then either write the three missing `display-paths.md` pages or
+declare the four as covered-by-parent in the exclusion list, so the choice is recorded
+rather than accidental. The deeper cleanup is that `.display.ts` means two different things
+in `features/cart/` (a registered enhancer) and in `features/display/` (a state→DOM layer);
+splitting these four into their own feature folders would end the collision, but that moves
+published guide URLs, so it needs its own decision. Found 2026-07-31 while splitting the
+cart enhancers by layer — the collision bit that work, which is how it surfaced.
+
+### 96. A double-tap kills a tooltip permanently — *verified*
+
+`hide()` hands the teardown to `dismissTooltip`, which schedules an **untracked** 200 ms
+`setTimeout` (untracked = not in the enhancer's `timers`, so nothing cancels it). That
+callback reads the *live* `tooltip` field rather than the one it was scheduled for, removes
+whatever it finds from the DOM, and unconditionally nulls `tooltip` and `arrow`.
+`handleTouchStart` toggles with **no delay**. So on a touch device:
+
+1. Tap → `show()` → `isVisible = true`, tooltip mounted.
+2. Tap → `hide()` → `isVisible = false`, removal scheduled for +200 ms.
+3. Tap again inside that 200 ms → `show()` proceeds (`isVisible` is false) → mounts a
+   **new** tooltip, `isVisible = true`.
+4. The timer from step 2 fires → reads the *new* tooltip → removes it from the DOM →
+   `tooltip = null`, `arrow = null`.
+
+Final state is `isVisible === true` with `tooltip === null`, and that is unrecoverable:
+`show()` early-returns on `if (this.isVisible) return`, and `hide()` early-returns on
+`if (!this.isVisible || !this.tooltip) return` **without clearing `isVisible`**. Escape does
+nothing for the same reason. The tooltip is dead for that element until the enhancer is
+destroyed and re-created, and `aria-describedby` is left pointing at a removed node — so a
+screen reader announces a description that is no longer in the document.
+
+The hover path hides this: the show delay defaults to 500 ms (`data-next-tooltip-delay`)
+and `scheduleHide` waits 150 ms, so a re-hover lands after the 200 ms removal has finished.
+Only the immediate toggle in `handleTouchStart` — i.e. mobile — collides.
+
+**Fix:** hold the dismissal timeout in `timers` alongside `showTimeout` / `hideTimeout` so
+`show()` and `cleanupTimeouts` cancel it, and have the callback remove only the element it
+was scheduled for (capture it, do not re-read the field). Both changes alter timing
+behaviour, so they belong with a test — `src/features/ui/tooltip/` has no tests at all
+today, which is why nothing caught this. Found 2026-07-31 while splitting the enhancer by
+layer; the split preserved the behaviour exactly, including this.
+
+### 97. A selector-mode upsell submits quantity 1 no matter what `data-next-quantity` says — *verified*
+
+Ordering bug in `UpsellEnhancer.initialize`:
+
+- `:122` calls `initializeSelectorMode`, which seeds the per-selector quantity map:
+  `state.quantityBySelectorId.set(state.selectorId, state.quantity)`
+  (`upsell.interaction-handlers.ts:37-38`).
+- `:138-139` *then* reads the attribute: `data-next-quantity` → `state.quantity`.
+
+So the map is seeded with the field's initial value, **1**, and the attribute lands in
+`state.quantity` afterwards where the map never sees it. `addUpsellToOrder` prefers the map
+over the scalar (`upsell.handlers.ts:152-153`, `if (ctx.selectorId &&
+ctx.quantityBySelectorId.has(ctx.selectorId)) quantityToUse = map.get(...)`), so a
+selector-mode offer marked `data-next-quantity="3"` is **submitted to the order API as
+quantity 1**. The customer is charged for one unit of a three-unit offer.
+
+Two related defects in the same map, same root cause — the map and the scalar are two
+sources of truth for one number:
+
+- The `[data-next-upsell-quantity-toggle]` handler writes `state.quantity` and emits, but
+  never writes `quantityBySelectorId`. `renderQuantityDisplay` prefers the map, so the
+  displayed quantity does not follow the toggle — and neither does the submitted one.
+- `adjustQuantity` (the +/- buttons) *does* write the map, which is why that path works and
+  hides the other two.
+
+**Fix:** parse `data-next-quantity` before `initializeSelectorMode`, and make one of the two
+the single source of truth rather than syncing them at each write site. Money path, so it
+needs tests first — `src/features/order/upsell/tests/` currently covers `addUpsellToOrder`
+only, which is precisely the function that reads the map and cannot see how it was seeded.
+
+### 98. `UpsellEnhancer.destroy` clears the array `cleanupEventListeners` needs, before calling it — *verified*
+
+```ts
+public override destroy(): void {
+  if (this.pageShowHandler) window.removeEventListener('pageshow', this.pageShowHandler);
+  this.state.actionButtons = [];   // ← cleared here
+  super.destroy();                 // ← which calls cleanupEventListeners() (base-enhancer.ts:33)
+}
+```
+
+`cleanupEventListeners` removes the click handler by iterating `state.actionButtons`
+(`:244-246`). By the time it runs, that array is empty, so **no click listener is ever
+removed** — every accept/decline button keeps a live handler after teardown. On a page that
+re-inits (or on `update()`, see below) the handlers accumulate.
+
+This is the exact failure mode the project rule "**call `super.destroy()` first** when
+overriding `destroy()`" exists to prevent (`CLAUDE.md`, and the `sdk-structure` skill's
+behavior contracts). One file violates it and the rule caught nothing, because nothing
+checks it.
+
+**Fix:** move `super.destroy()` above the array clear — or drop the clear entirely, since
+the instance is being discarded. Then consider a contract test asserting that every
+`destroy()` override calls `super.destroy()` first; it is a mechanical check and this is the
+second time the ordering has mattered.
+
+### 99. `UpsellEnhancer.update()` double-wires every listener — *verified by report, not reproduced*
+
+`update()` re-runs `scanUpsellElements`, which **pushes** into the existing
+`state.actionButtons` rather than replacing it, and re-runs the quantity-control wiring. So
+after one `update()` the same button is in the array twice and carries two click listeners:
+one press steps the quantity by two, and an accept can fire twice. Reported by the agent
+that split this feature; I confirmed the `push`-into-existing-array shape but did not drive
+an `update()` cycle to observe the double-step.
+
+**Fix:** have `scanUpsellElements` reset `actionButtons` and remove previously-attached
+listeners before re-scanning — which requires finding 98's cleanup to work first.
+
+### 100. Two smaller upsell defects, and one duplicated helper — *verified*
+
+- **`currentPagePath` is never assigned.** It is declared, threaded through
+  `UpsellHandlerContext`, and read by `skipUpsell` → `markUpsellSkipped(id, undefined)`. The
+  skip journey therefore never records which page the shopper skipped from.
+- **`collectDefaultProperties` exists twice**, byte-identical, in
+  `features/order/upsell/upsell.properties.ts` and `features/cart/shared/properties.ts`.
+  The copy was kept deliberately during the split: importing `cart/shared` from the
+  dynamically-imported upsell chunk would pull cart code into that chunk, and
+  `src/tests/contract/` gates production-bundle contents. So this is a real decision
+  (share it via `core/` or `utils/`, or keep two copies knowingly) rather than an oversight
+  — but it should be made rather than inherited.
+
 ---
 
 ## Fixed during the documentation work
@@ -1159,6 +1311,8 @@ Listed so they are not re-reported. All were one-line or docs-only.
 | **Generated pages cited `file:line`**, so any reformat rewrote hundreds of doc lines describing unchanged behaviour and failed the drift tests. One blank line in `sdk-initializer.ts` was enough. This blocked `npm run format`, the lint cleanup, and task C1 | seven extractors under `src/docs/extract/` | **fixed** — anchors are now `file › EnclosingSymbol` via `source-anchor.ts`. See [documentation-plan.md §0a](./documentation-plan.md) |
 | **`FieldManager` (364 lines) was dead code** — nothing imported it, nothing constructed it, no method had a caller in `src/` or `e2e/`. It was not stray scaffolding but a *fork*: an earlier extraction of the field-management cluster that was never wired in, while the enhancer kept and maintained its own copies. The two had diverged in both directions — the enhancer tracks a submit button that `FieldManager` has no concept of, and `FieldManager.getFieldNameFromElement` had grown an 83-line heuristic (inferring `country`/`province`/`postal` from substrings in `id`/`name`) that the live 13-line version does not have. Adopting it would therefore have been a **behaviour change on the money path** — field→order mapping decides what data lands on a real order. The damage while it existed was documentary: the manifest claims `managers/` via `extraSource`, so the checkout guide published **13 log messages from a class that never ran**, and anyone debugging a missing field would search `Found billing field: {fieldName}`, find nothing, and wrongly conclude the scan had failed | `features/checkout/managers/field-manager.ts` | **deleted 2026-07-31** (was at `76403a1` if the heuristic is ever wanted). The 13 phantom log entries left the guide with it. Extracting the field cluster from the *live* code is step 4 of the `checkout-form` split, which preserves behaviour by construction |
 | Tolerating checkout fields that carry **no SDK attribute at all** — inferring `country`/`province`/`postal` from `id`/`name` substrings — is a plausible feature, and the deleted `FieldManager` contained a working implementation of it. Worth deciding on its own merits rather than inheriting by wiring up an old class: a wrong guess on the money path (an element named `billing_country_note` classified as `country`) is more expensive than not guessing | `features/checkout/` | open — not scheduled. Retrieve the prior art from `76403a1` if picked up |
+| `populateCountryDropdown` **silently drops an author's placeholder that carries a value.** It clears the `<select>` then re-appends the first option only when `!firstOption.value`, so `<option value="US">United States</option>` used as a pre-set default is destroyed with no fallback. Note the HTML-spec wrinkle that makes this easy to get wrong when testing: `HTMLOptionElement.value` falls back to `textContent` when there is no `value` attribute, so an option with only text is **not** empty-valued | `features/checkout/checkout-form/country-fields.ts` | reported — behaviour is now pinned by a test either way, so a deliberate change is safe to make; whether to preserve valued placeholders is a product call |
+| `updateFormLabels` / `updateBillingFormLabels` assign `label.textContent`, which **destroys any child markup inside the label** — a styled required-marker `<abbr>`, a tooltip `<span>` — replacing it with plain text. An author who marks up their labels loses that on the first country change | `features/checkout/checkout-form/country-fields.ts` | reported — pinned by a test. Fixing means writing only the text node rather than the whole subtree, which is a small change but a visible one for pages relying on it |
 | The expiry-month `change` listener **stacked one per call**. `populateExpirationFields` clears the `<select>`'s options with `innerHTML = ''`, which does not remove listeners from the element itself, then unconditionally added another — so a re-render left N live handlers, each closing over the element references captured at *its* call. Same leak as the billing animation, found the same way (writing tests for the extracted module) | `features/checkout/checkout-form/expiration-fields.ts` | **fixed** — the listener is registered with an `AbortSignal` and the previous one aborted first. Guarded by a test that asserts exactly one of three registered signals stays live |
 | `populateYearOptions` matched the shopper's saved year by interpolating it into a CSS selector — `` querySelector(`option[value="${savedValue}"]`) ``. A value containing a quote builds malformed CSS, and a real browser throws `SyntaxError` from `querySelector` where **happy-dom is lenient and returns `null`** — so no unit test could ever have caught it. Not reachable today (the value only ever comes from `<select>.value`, which browsers constrain to a rendered option) but a latent crash for zero benefit | `features/checkout/checkout-form/expiration-fields.ts` | **fixed** — compares `option.value` while scanning `yearField.options` instead of building a selector |
 | The billing expand/collapse animation **never removed its `transitionend` listener** except when the listener fired naturally and removed itself. Two paths left one attached: the 350 ms fallback force-completing an animation, and a shopper re-toggling before the transition finished. Stale handlers then all ran on the next real `transitionend` — each re-settling its own animation and logging a "complete" for a direction the section was no longer going — and accumulated without bound across repeated toggles | `features/checkout/checkout-form/billing-animation.ts` | **fixed** — listeners now registered with an `AbortSignal`; `cancelPending` and the fallback both abort. Found by the unit tests written for the extraction, reproduced as two failing tests first, and those tests now guard it |

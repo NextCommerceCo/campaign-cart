@@ -51,6 +51,12 @@ import {
   updateFormLabels,
   type CountryFieldsContext,
 } from './country-fields';
+import {
+  updateBillingStateOptions,
+  updateStateOptions,
+  type ShippingStateFieldsContext,
+  type StateFieldsContext,
+} from './state-fields';
 import 'intl-tel-input/build/css/intlTelInput.css';
 
 // Consolidated constants
@@ -116,7 +122,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // Country/State management
   private countries: Country[] = [];
   private countryConfigs: Map<string, CountryConfig> = new Map();
-  private currentCountryConfig?: CountryConfig;
+  /** Ref, shared with `state-fields.ts` — see its context docs. */
+  private currentCountryConfig: { value: CountryConfig | undefined } = {
+    value: undefined,
+  };
   private detectedCountryCode: string = 'US';
   private autocompleteEnhancer?: AddressAutocompleteEnhancer;
 
@@ -565,8 +574,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         const provinceField = this.fields.get('province');
         if (provinceField instanceof HTMLSelectElement) {
           // updateStateOptions fetches the correct country config and updates form labels
-          await this.updateStateOptions(selectedCountryCode, provinceField);
-          // this.currentCountryConfig is already set by updateStateOptions (line 1337)
+          await updateStateOptions(this.shippingStateFieldsContext(), selectedCountryCode, provinceField);
+          // this.currentCountryConfig.value is already set by updateStateOptions (line 1337)
 
           // Restore stored province after states are loaded (if country matches)
           if (storedProvince && storedCountry === selectedCountryCode) {
@@ -611,7 +620,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       // Update state options for the new country
       const provinceField = this.fields.get('province');
       if (provinceField instanceof HTMLSelectElement) {
-        await this.updateStateOptions(newCountry, provinceField);
+        await updateStateOptions(this.shippingStateFieldsContext(), newCountry, provinceField);
       }
 
       // Trigger change event to update any dependent fields
@@ -631,132 +640,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         // Pass the shipping province value if "same as shipping" is checked
         const checkoutStore = useCheckoutStore.getState();
         const shippingProvince = checkoutStore.sameAsShipping ? checkoutStore.formData.province : undefined;
-        await this.updateBillingStateOptions(newCountry, billingProvinceField, shippingProvince);
+        await updateBillingStateOptions(this.stateFieldsContext(), newCountry, billingProvinceField, shippingProvince);
       }
 
       billingCountryField.dispatchEvent(new Event('change', { bubbles: true }));
     }
   }
 
-  private async updateStateOptions(country: string, provinceField: HTMLSelectElement): Promise<void> {
-    // If country is empty, just clear the state field
-    if (!country || country.trim() === '') {
-      provinceField.innerHTML = '<option value="">Select Country First</option>';
-      provinceField.disabled = true;
-      return;
-    }
-
-    provinceField.disabled = true;
-    const originalHTML = provinceField.innerHTML;
-    provinceField.innerHTML = '<option value="">Loading...</option>';
-
-    try {
-      // Check if we already have a promise for this country
-      let countryDataPromise = this.stateLoadingPromises.get(country);
-
-      if (!countryDataPromise) {
-        // Create new promise and store it
-        countryDataPromise = this.countryService.getCountryStates(country);
-        this.stateLoadingPromises.set(country, countryDataPromise);
-
-        // Clean up after completion
-        countryDataPromise.finally(() => {
-          setTimeout(() => this.stateLoadingPromises.delete(country), 100);
-        });
-      } else {
-        this.logger.debug(`Reusing existing state loading promise for ${country}`);
-      }
-
-      const countryData = await countryDataPromise;
-      this.countryConfigs.set(country, countryData.countryConfig);
-      this.currentCountryConfig = countryData.countryConfig;
-
-      // Update form labels and placeholders for the new country
-      updateFormLabels(this.countryFieldsContext(), countryData.countryConfig);
-
-      const hasStates = countryData.states && countryData.states.length > 0;
-      const stateRequired = countryData.countryConfig.stateRequired;
-
-      const provinceContainer = provinceField.closest('.frm-flds, .form-group, .form-field, .field-group') || provinceField.parentElement;
-
-      if (!stateRequired && !hasStates) {
-        if (provinceContainer) {
-          (provinceContainer as HTMLElement).style.display = 'none';
-        }
-        provinceField.removeAttribute('required');
-        this.updateFormData({ province: '' });
-        this.clearError('province');
-        return;
-      }
-
-      if (provinceContainer) {
-        (provinceContainer as HTMLElement).style.display = '';
-      }
-
-      provinceField.innerHTML = '';
-
-      // Create placeholder option that shows the appropriate label
-      const placeholderOption = document.createElement('option');
-      placeholderOption.value = '';
-      placeholderOption.textContent = `Select ${countryData.countryConfig.stateLabel}`;
-      placeholderOption.disabled = true;
-      placeholderOption.selected = true;
-      placeholderOption.hidden = true; // Hide from dropdown list but show when selected
-      provinceField.appendChild(placeholderOption);
-
-      countryData.states.forEach((state: any) => {
-        const option = document.createElement('option');
-        option.value = state.code;
-        option.textContent = state.name;
-        provinceField.appendChild(option);
-      });
-
-      if (countryData.countryConfig.stateRequired) {
-        provinceField.setAttribute('required', 'required');
-      } else {
-        provinceField.removeAttribute('required');
-      }
-
-      // Store the current value (might be from autofill)
-      const currentProvinceValue = provinceField.value;
-
-      // Clear the form data but keep the field value if it exists
-      this.updateFormData({ province: '' });
-      this.clearError('province');
-
-      // Check if the current value is valid for the new country
-      let validStateFound = false;
-      if (currentProvinceValue) {
-        const isValidState = countryData.states.some((state: any) => state.code === currentProvinceValue);
-        if (isValidState) {
-          // Keep the autofilled value if it's valid
-          provinceField.value = currentProvinceValue;
-          this.updateFormData({ province: currentProvinceValue });
-          validStateFound = true;
-          this.logger.debug(`Kept autofilled state: ${currentProvinceValue}`);
-        } else {
-          // Clear invalid state
-          provinceField.value = '';
-        }
-      } else {
-        provinceField.value = '';
-      }
-
-      // Don't auto-select - keep the placeholder selected
-      // The placeholder option is already selected by default
-      if (!validStateFound) {
-        // Ensure the placeholder is selected (value is empty)
-        provinceField.value = '';
-        this.logger.debug(`No valid state found, showing placeholder: Select ${countryData.countryConfig.stateLabel}`);
-      }
-
-    } catch (error) {
-      this.logger.error('Failed to load states:', error);
-      provinceField.innerHTML = originalHTML;
-    } finally {
-      provinceField.disabled = false;
-    }
-  }
 
 
   // ============================================================================
@@ -948,6 +838,31 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // PHONE INPUT MANAGEMENT
   // ============================================================================
 
+
+  /** What both state-field paths need. Shipping needs more — see below. */
+  private stateFieldsContext(): StateFieldsContext {
+    return {
+      stateLoadingPromises: this.stateLoadingPromises,
+      countryService: this.countryService,
+      logger: this.logger,
+      countryFields: this.countryFieldsContext(),
+    };
+  }
+
+  /**
+   * The shipping path additionally writes form data, clears the province error, and
+   * caches the resolved country config — eight things, the largest context in this
+   * folder. That size is the honest measure of how entangled filling this one field is.
+   */
+  private shippingStateFieldsContext(): ShippingStateFieldsContext {
+    return {
+      ...this.stateFieldsContext(),
+      countryConfigs: this.countryConfigs,
+      currentCountryConfig: this.currentCountryConfig,
+      updateFormData: data => this.updateFormData(data),
+      clearError: field => this.clearError(field),
+    };
+  }
 
   /** The four things `country-fields.ts` needs from this form. */
   private countryFieldsContext(): CountryFieldsContext {
@@ -1746,7 +1661,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         this.currentStep,
         checkoutStore.formData,
         this.countryConfigs,
-        this.currentCountryConfig
+        this.currentCountryConfig.value
       );
 
       if (!validation.isValid) {
@@ -1911,7 +1826,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         validation = await this.validator.validateForm(
           checkoutStore.formData,
           this.countryConfigs,
-          this.currentCountryConfig,
+          this.currentCountryConfig.value,
           includePayment,
           checkoutStore.billingAddress,
           checkoutStore.sameAsShipping
@@ -2127,7 +2042,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       if (fieldName === 'billing-country') {
         const billingProvinceField = this.billingFields.get('billing-province');
         if (billingProvinceField instanceof HTMLSelectElement) {
-          await this.updateBillingStateOptions(target.value, billingProvinceField, checkoutStore.formData.province);
+          await updateBillingStateOptions(this.stateFieldsContext(), target.value, billingProvinceField, checkoutStore.formData.province);
         }
         // Currency is location-based only, not affected by billing or shipping country
       }
@@ -2192,7 +2107,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       if (fieldName === 'country') {
         const provinceField = this.fields.get('province');
         if (provinceField instanceof HTMLSelectElement) {
-          await this.updateStateOptions(target.value, provinceField);
+          await updateStateOptions(this.shippingStateFieldsContext(), target.value, provinceField);
         }
 
         // Save the user's country selection to sessionStorage
@@ -2382,75 +2297,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     }
   }
 
-  private async updateBillingStateOptions(country: string, billingProvinceField: HTMLSelectElement, shippingProvince?: string): Promise<void> {
-    // If country is empty, just clear the state field
-    if (!country || country.trim() === '') {
-      billingProvinceField.innerHTML = '<option value="">Select Country First</option>';
-      billingProvinceField.disabled = true;
-      return;
-    }
-
-    billingProvinceField.disabled = true;
-    const originalHTML = billingProvinceField.innerHTML;
-    billingProvinceField.innerHTML = '<option value="">Loading...</option>';
-
-    try {
-      // Check if we already have a promise for this country
-      let countryDataPromise = this.stateLoadingPromises.get(country);
-
-      if (!countryDataPromise) {
-        // Create new promise and store it
-        countryDataPromise = this.countryService.getCountryStates(country);
-        this.stateLoadingPromises.set(country, countryDataPromise);
-
-        // Clean up after completion
-        countryDataPromise.finally(() => {
-          setTimeout(() => this.stateLoadingPromises.delete(country), 100);
-        });
-      } else {
-        this.logger.debug(`Reusing existing state loading promise for ${country} (billing)`);
-      }
-
-      const countryData = await countryDataPromise;
-
-      // Update billing form labels and placeholders
-      updateBillingFormLabels(this.countryFieldsContext(), countryData.countryConfig);
-
-      billingProvinceField.innerHTML = '';
-
-      // Create placeholder option with appropriate label
-      const placeholderOption = document.createElement('option');
-      placeholderOption.value = '';
-      placeholderOption.textContent = `Select ${countryData.countryConfig.stateLabel}`;
-      placeholderOption.disabled = true;
-      placeholderOption.selected = true;
-      placeholderOption.hidden = true; // Hide from dropdown list but show when selected
-      billingProvinceField.appendChild(placeholderOption);
-
-      countryData.states.forEach((state: any) => {
-        const option = document.createElement('option');
-        option.value = state.code;
-        option.textContent = state.name;
-        billingProvinceField.appendChild(option);
-      });
-
-      if (countryData.countryConfig.stateRequired) {
-        billingProvinceField.setAttribute('required', 'required');
-      } else {
-        billingProvinceField.removeAttribute('required');
-      }
-
-      if (shippingProvince) {
-        billingProvinceField.value = shippingProvince;
-      }
-
-    } catch (error) {
-      this.logger.error('Failed to load billing states:', error);
-      billingProvinceField.innerHTML = originalHTML;
-    } finally {
-      billingProvinceField.disabled = false;
-    }
-  }
 
   private getFieldNameFromElement(element: HTMLElement): string | null {
     const checkoutFieldName = element.getAttribute('data-next-checkout-field') ||
@@ -2835,7 +2681,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         // Load states for the stored country
         const provinceField = this.fields.get('province');
         if (provinceField instanceof HTMLSelectElement) {
-          await this.updateStateOptions(currentCountryValue, provinceField);
+          await updateStateOptions(this.shippingStateFieldsContext(), currentCountryValue, provinceField);
         }
       }
     }

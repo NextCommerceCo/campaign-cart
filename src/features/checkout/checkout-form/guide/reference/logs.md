@@ -21,7 +21,6 @@ Something did not work. Each of these means a visitor saw the wrong thing, or no
 |---|---|---|
 | `Failed to re-initialize credit card service:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initialize` | yes |
 | `Failed to load country data:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | yes |
-| `Failed to load states:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.updateStateOptions` | yes |
 | `Failed to initialize credit card service:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeCreditCard` | yes |
 | `Error clearing checkout fields:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.clearAllCheckoutFields` | yes |
 | `Failed to parse order data from sessionStorage:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handlePurchaseEvent` | yes |
@@ -30,12 +29,13 @@ Something did not work. Each of these means a visitor saw the wrong thing, or no
 | `Error preserving query params:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.preserveQueryParams` | yes |
 | `Step navigation error:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleStepNavigation` | yes |
 | `Failed to process tokenized payment:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleTokenizedPayment` | yes |
-| `Failed to load billing states:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.updateBillingStateOptions` | yes |
 | `[Billing] CRITICAL: Billing section not found!` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleBillingAddressToggle` | — |
 | `Error filling test data for Konami order:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleKonamiActivation` | yes |
 | `Error handling config update:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleConfigUpdate` | yes |
 | `[Payment Error] Could not find error container element` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.displayPaymentError` | — |
 | `Failed to initialize {type} phone field:` | `phone-input.ts › initializePhoneInput` | yes |
+| `Failed to load states:` | `state-fields.ts › updateStateOptions` | yes |
+| `Failed to load billing states:` | `state-fields.ts › updateBillingStateOptions` | yes |
 | `Failed to create express order:` | `order-manager.ts › OrderManager.createExpressOrder` | yes |
 | `Cannot redirect: order missing ref_id` | `order-manager.ts › OrderManager.handleOrderRedirect` | — |
 | `Error handling order redirect:` | `order-manager.ts › OrderManager.handleOrderRedirect` | yes |
@@ -166,9 +166,6 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 | `CheckoutFormEnhancer initialized` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initialize` | — |
 | `Found submit button:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.scanAllFields` | yes |
 | `No campaign shipping countries available, using config` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | — |
-| `Reusing existing state loading promise for {country}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.updateStateOptions` | — |
-| `Kept autofilled state: {currentProvinceValue}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.updateStateOptions` | — |
-| `No valid state found, showing placeholder: Select {stateLabel}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.updateStateOptions` | — |
 | `No shipping location elements found` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeLocationFieldVisibility` | — |
 | `No billing location elements found` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeLocationFieldVisibility` | — |
 | `Location field visibility initialized` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeLocationFieldVisibility` | yes |
@@ -185,12 +182,15 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 | `Express payment config:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFormSubmit` | yes |
 | `Saved user's country selection to session: {value}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFieldChange` | — |
 | `Updated user data storage:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFieldChange` | yes |
-| `Reusing existing state loading promise for {country} (billing)` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.updateBillingStateOptions` | — |
 | `[Billing] Set country to:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleBillingAddressToggle` | yes |
 | `Stopped autofill detection after 30 seconds` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupAutofillDetection` | — |
 | `Converting phone to international format: {phone} -> {internationalNumber}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.populateFormData` | — |
 | `Restored province: {storedProvince}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.populateFormData` | — |
 | `begin_checkout already tracked, skipping duplicate` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.trackBeginCheckout` | — |
+| `Reusing existing state loading promise for {country}` | `state-fields.ts › updateStateOptions` | — |
+| `Kept autofilled state: {currentProvinceValue}` | `state-fields.ts › updateStateOptions` | — |
+| `No valid state found, showing placeholder: Select {stateLabel}` | `state-fields.ts › updateStateOptions` | — |
+| `Reusing existing state loading promise for {country} (billing)` | `state-fields.ts › updateBillingStateOptions` | — |
 | `createOrder called with:` | `order-manager.ts › OrderManager.createOrder` | yes |
 | `Creating order with data:` | `order-manager.ts › OrderManager.createOrder` | yes |
 | `Order data built successfully` | `order-manager.ts › OrderManager.createOrder` | — |
