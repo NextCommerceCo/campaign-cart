@@ -19,9 +19,9 @@ The feature carried on, but something in the markup or the data was not what it 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `No buttons container found with data-next-express-checkout="buttons"` | `express-checkout-container.enhancer.ts:60` | — |
-| `Unknown express payment method: {code}` | `express-checkout-container.enhancer.ts:182` | — |
-| `Unknown payment method in methodOrder: {method}` | `express-checkout-container.enhancer.ts:250` | — |
+| `No buttons container found with data-next-express-checkout="buttons"` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.initialize` | — |
+| `Unknown express payment method: {code}` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.updateExpressCheckoutButtons` | — |
+| `Unknown payment method in methodOrder: {method}` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.updateExpressCheckoutButtons` | — |
 
 ## Info
 
@@ -29,7 +29,7 @@ Normal progress, useful for confirming the feature ran at all.
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Payment capabilities detected:` | `express-checkout-container.enhancer.ts:55` | yes |
+| `Payment capabilities detected:` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.initialize` | yes |
 
 ## Debug
 
@@ -37,19 +37,19 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `ExpressCheckoutContainerEnhancer initialized` | `express-checkout-container.enhancer.ts:104` | — |
-| `PayPal not available on this device` | `express-checkout-container.enhancer.ts:164` | — |
-| `Apple Pay not available on this device/browser` | `express-checkout-container.enhancer.ts:171` | — |
-| `Google Pay not available on this device/browser` | `express-checkout-container.enhancer.ts:178` | — |
-| `Express checkout buttons updated from campaign data` | `express-checkout-container.enhancer.ts:187` | yes |
-| `PayPal enabled in config but not available on device` | `express-checkout-container.enhancer.ts:232` | — |
-| `Apple Pay enabled in config but not available on device/browser` | `express-checkout-container.enhancer.ts:239` | — |
-| `Google Pay enabled in config but not available on device/browser` | `express-checkout-container.enhancer.ts:246` | — |
-| `Express checkout buttons updated from config` | `express-checkout-container.enhancer.ts:255` | yes |
-| `Express checkout container hidden - no methods enabled` | `express-checkout-container.enhancer.ts:278` | — |
-| `Express checkout container shown` | `express-checkout-container.enhancer.ts:283` | — |
-| `PayPal express checkout button created` | `express-checkout-container.enhancer.ts:404` | — |
-| `Apple Pay express checkout button created` | `express-checkout-container.enhancer.ts:423` | — |
-| `Google Pay express checkout button created` | `express-checkout-container.enhancer.ts:442` | — |
+| `ExpressCheckoutContainerEnhancer initialized` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.initialize` | — |
+| `PayPal not available on this device` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.updateExpressCheckoutButtons` | — |
+| `Apple Pay not available on this device/browser` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.updateExpressCheckoutButtons` | — |
+| `Google Pay not available on this device/browser` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.updateExpressCheckoutButtons` | — |
+| `Express checkout buttons updated from campaign data` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.updateExpressCheckoutButtons` | yes |
+| `PayPal enabled in config but not available on device` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.updateExpressCheckoutButtons` | — |
+| `Apple Pay enabled in config but not available on device/browser` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.updateExpressCheckoutButtons` | — |
+| `Google Pay enabled in config but not available on device/browser` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.updateExpressCheckoutButtons` | — |
+| `Express checkout buttons updated from config` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.updateExpressCheckoutButtons` | yes |
+| `Express checkout container hidden - no methods enabled` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.hideContainer` | — |
+| `Express checkout container shown` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.showContainer` | — |
+| `PayPal express checkout button created` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.createPayPalButton` | — |
+| `Apple Pay express checkout button created` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.createApplePayButton` | — |
+| `Google Pay express checkout button created` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.createGooglePayButton` | — |
 
 The **Extra context** column says whether the call passes a second argument — an object or an error logged alongside the message. Expand that entry in the console to see it; the message alone will not tell you which element or package was involved.

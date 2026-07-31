@@ -19,8 +19,8 @@ Something did not work. Each of these means a visitor saw the wrong thing, or no
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Failed to auto-load order:` | `order-item-list.enhancer.ts:80` | yes |
-| `Error rendering order item:` | `order-item-list.enhancer.ts:159` | yes |
+| `Failed to auto-load order:` | `order-item-list.enhancer.ts › OrderItemListEnhancer.checkAndLoadOrderFromUrl` | yes |
+| `Error rendering order item:` | `order-item-list.enhancer.ts › OrderItemListEnhancer.renderOrderItem` | yes |
 
 ## Debug
 
@@ -28,6 +28,6 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `OrderItemListEnhancer initialized` | `order-item-list.enhancer.ts:56` | — |
+| `OrderItemListEnhancer initialized` | `order-item-list.enhancer.ts › OrderItemListEnhancer.initialize` | — |
 
 The **Extra context** column says whether the call passes a second argument — an object or an error logged alongside the message. Expand that entry in the console to see it; the message alone will not tell you which element or package was involved.

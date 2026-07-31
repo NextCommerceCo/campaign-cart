@@ -91,9 +91,13 @@ is not a target any more (§8).
    deletions**. `type-check` stays clean, but **19 tests fail**, in two very different
    ways:
 
-   - **17 × `logs.md` drift.** The generated log pages cite `file:line` for every
-     message, and reflowing shifts those numbers. Harmless but unavoidable: option (a)
-     has to be *reformat + `npm run docs:reference` in the same commit*, or CI goes red.
+   - ~~**17 × `logs.md` drift.**~~ **Fixed 2026-07-31 (task G) — this constraint is
+     gone.** The generated pages cited `file:line`, and reflowing shifted every number,
+     so option (a) had to be *reformat + regenerate in one commit*. Generated pages now
+     cite the **enclosing symbol** instead (`sdk-initializer.ts › SDKInitializer.initialize`),
+     which no reformat can move. Re-measured after the change: **233 files reformatted,
+     all 11 documentation suites still pass with nothing regenerated.** Option (a) is now
+     a plain formatting commit. See §0a.
    - **2 × latent format-sensitivity in the checks themselves — now fixed.** The
      scanner-selector check harvested any line that was just a quoted `data-next-*`
      string, so Prettier moving `querySelectorAll('[data-next-show], [data-next-hide]')`'s
@@ -117,6 +121,60 @@ is not a target any more (§8).
    if that site stays online someone should still run
    `cd developer-docs && git rm -r content/docs/campaigns/data-attributes`. Nothing in
    campaign-cart depends on it either way.
+
+## 0a. Generated pages cite symbols, not lines (task G) — **DONE 2026-07-31**
+
+**The rule: nothing generated may embed a source line number.** A line is not a property
+of the code, it is a property of the code's *formatting*, so citing one couples every
+generated page to whitespace. Adding a single blank line near the top of
+`sdk-initializer.ts` rewrote 30 anchors in `core/guide/reference/logs.md` and failed two
+drift tests — which is what made `npm run format` and the 12k-finding lint cleanup
+unrunnable, and what blocked task C1.
+
+Anchors are now `file › EnclosingSymbol`:
+
+```
+core/sdk-initializer.ts › SDKInitializer.initializeAnalytics
+public/loader.js › moduleScript
+```
+
+One helper owns the format — [`src/docs/extract/source-anchor.ts`](../src/docs/extract/source-anchor.ts):
+`anchorOf(sf, node, file)` resolves a node to its enclosing symbol, `anchor(file, symbol)`
+composes from parts, and `fileOf(anchor)` parses the file back out. **Parse with `fileOf`,
+never `split(':')`** — that idiom silently returned the whole anchor once the format
+changed, and it existed in two places.
+
+**Seven producers were converted.** They were not findable by grepping one pattern; each
+had its own spelling, and the last two only surfaced when a full reformat was run against
+the whole suite:
+
+| Producer | What it cites |
+|---|---|
+| `extract-logs.ts` | every log message and literal `throw` (the bulk — 596 anchors) |
+| `extract-core-contracts.ts` | meta tags and URL parameters — now cites the **file only**, since the `consumer` column already names the symbol |
+| `extract-boot-sequence.ts` | boot steps, signals, events, retry policy |
+| `extract-storage-keys.ts` | every storage key site |
+| `extract-next-methods.ts` | `NextCommerce` members and `window.*` installs |
+| `extract-analytics-events.ts` | each `dl_*` event's **Built at** |
+| `coreLogs.test.ts` | hand-declared logs, resolved from their verbatim `anchor` text |
+
+**Three dedupe keys had to widen to compensate.** A line is unique; a symbol is not, so
+collapsing the anchor merges rows that used to be distinct. `Collector.add` in
+`extract-core-contracts.ts` now keys on `(where, consumer, access)` — without `consumer`,
+two methods in one file became one row and the page under-reported who reads a value.
+`extract-analytics-events.ts` drops an exact `(file, symbol, how)` repeat, and sorts by
+symbol rather than by position. **Anywhere else that keys on an anchor, check this.**
+
+Verified end to end: 233 files reformatted → `type-check` clean, full suite
+**1592 passed / 0 failed**, all 11 documentation suites green **with nothing
+regenerated**, `docs:coverage` still 100% on 20 metrics.
+
+**Still line-coupled, deliberately out of scope:** ~154 refs in *hand-written* prose
+(`src/docs/content/core-subsystems.ts`, `storage-keys.ts`, `meta-tags.ts`, and the
+`source:` fields in `analytics-events.ts`). These are literal strings that no extractor
+regenerates, so they cannot fail a drift test — which is exactly the problem: **a reformat
+makes them quietly wrong instead of loudly wrong.** Nothing gates them today. Logged in
+[code-findings.md](./code-findings.md).
 
 ### The one unblocked task — **DONE 2026-07-31**
 

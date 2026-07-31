@@ -19,7 +19,7 @@ The feature carried on, but something in the markup or the data was not what it 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `No scroll target found for scroll hint` | `scroll-hint.enhancer.ts:46` | — |
+| `No scroll target found for scroll hint` | `scroll-hint.enhancer.ts › ScrollHintEnhancer.initialize` | — |
 
 ## Debug
 
@@ -27,6 +27,6 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `ScrollHintEnhancer initialized` | `scroll-hint.enhancer.ts:64` | yes |
+| `ScrollHintEnhancer initialized` | `scroll-hint.enhancer.ts › ScrollHintEnhancer.initialize` | yes |
 
 The **Extra context** column says whether the call passes a second argument — an object or an error logged alongside the message. Expand that entry in the console to see it; the message alone will not tell you which element or package was involved.

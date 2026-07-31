@@ -1110,6 +1110,8 @@ Listed so they are not re-reported. All were one-line or docs-only.
 | A leftover `console.log` on every modal button click, printing the action name to the visitor's console. Forbidden by CLAUDE.md (`this.logger` instead), and now inside `core/` where the log-reference gate applies | `core/ui/general-modal.ts:260` | reported |
 | `TemplateRenderer` reports a failed placeholder with `console.warn` rather than a logger, so a blank field on a live page is invisible to the SDK's own log level. Documented in the core log reference as part of the `shared/` → `core/rendering/` move; the call itself still bypasses the logger | `core/rendering/template-renderer.ts:54` | reported |
 | The docs tooling hardcodes `src/features/display/display-types.ts` in two places — `featureReference.test.ts:51` and `extract-display-paths.ts` (which reads `PROPERTY_MAPPINGS` out of it). Moving that file breaks doc generation with an `ENOENT`, not a readable error. Same fragility class as the line-number coupling in the open decisions below | `src/tests/docs/` | reported — blocks moving display base classes into `core/base/` |
+| **Generated pages cited `file:line`**, so any reformat rewrote hundreds of doc lines describing unchanged behaviour and failed the drift tests. One blank line in `sdk-initializer.ts` was enough. This blocked `npm run format`, the lint cleanup, and task C1 | seven extractors under `src/docs/extract/` | **fixed** — anchors are now `file › EnclosingSymbol` via `source-anchor.ts`. See [documentation-plan.md §0a](./documentation-plan.md) |
+| ~154 line refs in **hand-written** prose (`core-subsystems.ts`, `storage-keys.ts`, `meta-tags.ts`, the `source:` fields in `analytics-events.ts`) are literal strings no extractor regenerates, so **no gate can catch them going stale**. A reformat makes them quietly wrong rather than loudly wrong — the opposite of the generated case, which now fails loudly or not at all | `src/docs/content/`, `src/docs/render/` | reported — not fixed; needs either symbol refs by hand or a check that each cited line still contains what the prose claims |
 
 ---
 
@@ -1121,6 +1123,14 @@ Listed so they are not re-reported. All were one-line or docs-only.
    CI runs only `type-check` and `test:coverage`, which is how it accumulated. Options:
    reformat 318 files, drop the strict tier, or ratchet it the way
    `docs-coverage.baseline.json` does.
+
+   **The docs half of this is no longer a blocker (2026-07-31).** Reformatting used to
+   drag hundreds of regenerated doc lines along with it; generated pages now cite symbols
+   instead of lines, and a 233-file reformat was measured to leave every documentation
+   suite green with nothing regenerated. The formatting commit is now purely a formatting
+   commit. What still needs a decision is the *`git blame` cost* of touching ~72% of `src`
+   at once, and the ~3,900 `no-unsafe-*` findings — neither of which the anchor change
+   touches.
 2. ~~**Retiring `data-attributes/`.**~~ Reviewed and applied 2026-07-31: the 42
    redirects are in both `netlify.toml` and `public/_redirects`, the inbound links and
    the nav entry are rewired, `validate-links` is at 0 errors. One step left, and it

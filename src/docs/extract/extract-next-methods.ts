@@ -9,7 +9,7 @@
  * out of the published API list. A `window.*` install added in a debug panel is
  * worse: it is part of the page's namespace whether or not anyone wrote it down.
  *
- * Signatures and `file:line` are read here rather than copied into the companion
+ * Signatures and source anchors are read here rather than copied into the companion
  * declaration, so the published table cannot disagree with the code about a type.
  * Prose lives in `src/docs/content/next-methods.ts`; nothing prose-shaped is derived
  * here.
@@ -18,6 +18,8 @@
  */
 
 import ts from 'typescript';
+
+import { anchorOf, functionName } from './source-anchor';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
@@ -50,8 +52,12 @@ export interface ExtractedMember {
   hasExample: boolean;
   /** True when tagged `@deprecated`. */
   deprecated: boolean;
-  /** 1-based line of the declaration, for a source link. */
-  line: number;
+  /**
+   * Symbol to cite as the source, e.g. `NextCommerce.addItem`. Not a line number:
+   * a line moves whenever the file is reformatted, which rewrote this page for no
+   * behaviour change (see {@link anchorOf}).
+   */
+  symbol: string;
 }
 
 /** One global the SDK assigns to `window`. */
@@ -63,7 +69,7 @@ export interface ExtractedGlobal {
    * Empty when the value is not an object literal.
    */
   keys: string[];
-  /** Every `<path>:<line>` that assigns it, source-root-relative, in file order. */
+  /** Every `<path> › <symbol>` that assigns it, source-root-relative, in file order. */
   sites: string[];
 }
 
@@ -99,10 +105,6 @@ function oneLine(text: string): string {
     .replace(/\(\s+/g, '(')
     .replace(/\s+\)/g, ')')
     .trim();
-}
-
-function lineOf(sf: ts.SourceFile, node: ts.Node): number {
-  return sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1;
 }
 
 /**
@@ -244,7 +246,7 @@ export function extractPublicMembers(
       ...(category ? { category } : {}),
       hasExample,
       deprecated,
-      line: lineOf(sf, member),
+      symbol: functionName(member, sf) ?? name,
     });
   }
 
@@ -262,7 +264,7 @@ export function extractPublicMembers(
 export function extractInterfaceCallables(
   file: string,
   interfaceName: string
-): Array<{ name: string; signature: string; line: number }> {
+): Array<{ name: string; signature: string }> {
   const sf = ts.createSourceFile(
     file,
     readFileSync(file, 'utf8'),
@@ -281,7 +283,7 @@ export function extractInterfaceCallables(
   find(sf);
   if (!decl) return [];
 
-  const out: Array<{ name: string; signature: string; line: number }> = [];
+  const out: Array<{ name: string; signature: string }> = [];
   for (const member of decl.members) {
     if (!member.name || !ts.isIdentifier(member.name)) continue;
     const name = member.name.text;
@@ -294,7 +296,6 @@ export function extractInterfaceCallables(
       out.push({
         name,
         signature: `${name}(${params})${ret}`,
-        line: lineOf(sf, member),
       });
       continue;
     }
@@ -308,7 +309,6 @@ export function extractInterfaceCallables(
     out.push({
       name,
       signature: `${name}(${params}): ${ret}`,
-      line: lineOf(sf, member),
     });
   }
   return out;
@@ -385,8 +385,8 @@ export function extractWindowSurface(
         ts.ScriptTarget.Latest,
         true
       );
-      const where = (node: ts.Node): string =>
-        `${relative(srcRoot, file).replace(/\\/g, '/')}:${lineOf(sf, node)}`;
+      const cited = relative(srcRoot, file).replace(/\\/g, '/');
+      const where = (node: ts.Node): string => anchorOf(sf, node, cited);
 
       const visit = (node: ts.Node): void => {
         // window.X = …  /  (window as any).X = …

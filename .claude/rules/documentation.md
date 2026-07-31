@@ -53,7 +53,7 @@ consequences, all enforced by `npm run docs:coverage`:
 
 - A hand-written guide page **needs** frontmatter, or it publishes as an orphan
   outside the tree. Generated pages get theirs from
-  [`src/core/docs/nav.ts`](../../src/core/docs/nav.ts) — the one place it is written.
+  [`src/docs/content/nav.ts`](../../src/docs/content/nav.ts) — the one place it is written.
 - **Renaming a `title` moves a published page.** Treat it as a breaking change to
   customer links, not a cosmetic edit.
 - **Two pages may not share a title** — that is two pages claiming one URL, and one
@@ -66,6 +66,29 @@ emits the named page twice.
 the site has no absolute routes. TypeDoc's own link check cannot see them (it
 resolves relative paths only), so `npm run docs:coverage` fails on them instead.
 Link a relative path to the target `.md`, or use `{@link ExportedName}`.
+
+**Never cite a source line number in anything generated.** A line is a property of the
+file's *formatting*, not of the code, so a generated page that embeds one is coupled to
+whitespace: one blank line in `sdk-initializer.ts` once rewrote 30 anchors in
+`core/guide/reference/logs.md` and failed two drift tests. That is what made
+`npm run format` unrunnable for months. Cite the **enclosing symbol** instead, through the
+one helper that owns the format —
+[`src/docs/extract/source-anchor.ts`](../../src/docs/extract/source-anchor.ts):
+
+- `anchorOf(sf, node, file)` → `core/sdk-initializer.ts › SDKInitializer.initialize`
+- `anchor(file, symbol)` when you already resolved the symbol
+- `fileOf(anchor)` to read the file back out — **never `split(':')`**, which silently
+  returns the whole string once the format changes
+
+Two consequences when you add or change an extractor. **A symbol is not unique the way a
+line was**, so any dedupe or sort keyed on the anchor has to widen: two call sites in one
+method are now one anchor, and a key that was `(file, line)` must become
+`(file, symbol, …whatever else distinguishes the rows)` or the page silently drops them.
+And a line number is still right in an **assertion failure message** — that is a developer
+finding a call site, not a published page.
+
+A line number in *hand-written* prose is not gated by anything and goes stale silently;
+prefer naming the symbol there too.
 
 ## 2. Write so a newcomer understands (readability bar)
 

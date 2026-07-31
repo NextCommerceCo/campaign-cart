@@ -4,7 +4,7 @@ export interface RenderedMember {
     kind: 'method' | 'getter' | 'property';
     isStatic: boolean;
     signature: string;
-    line: number;
+    symbol: string;
 }
 export interface RenderedCallable {
     name: string;

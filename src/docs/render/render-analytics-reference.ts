@@ -12,6 +12,8 @@
  */
 
 import { coreNav } from '../content/nav';
+// Aliased: the local `anchor` below is a markdown heading slug, a different thing.
+import { anchor as sourceAnchor } from '../extract/source-anchor';
 import {
   ANALYTICS_BLOCKED_EVENTS_NOTE,
   ANALYTICS_DEBUG_NOTES,
@@ -37,7 +39,8 @@ export interface SchemaFieldFact {
 /** Where an event object is constructed in the source. */
 export interface EmitSiteFact {
   file: string;
-  line: number;
+  /** Enclosing symbol; empty at module scope. */
+  symbol: string;
   how: string;
 }
 
@@ -190,7 +193,7 @@ function eventSection(doc: AnalyticsEventDoc, facts: AnalyticsFacts): string {
       : `**Fires when:** ${doc.firesWhen}`,
     `**Reaches:** ${destinations(doc.name, facts)}`,
     sites.length
-      ? `**Built at:** ${sites.map(s => `\`${s.file}:${s.line}\``).join(', ')}`
+      ? `**Built at:** ${sites.map(s => `\`${sourceAnchor(s.file, s.symbol)}\``).join(', ')}`
       : undefined,
     doc.providerNotes,
     payloadTable(doc, facts.schemas[doc.name]),

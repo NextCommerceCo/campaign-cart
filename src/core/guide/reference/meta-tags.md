@@ -161,30 +161,30 @@ Every tag above, with the code that reads it. This table is generated from the s
 
 | Tag | Read by |
 |---|---|
-| `data-next-tracking-tag` | `AttributionCollector.getFunnelName` — `core/attribution/attribution-collector.ts:248`<br>`AttributionCollector.collectTrackingTags` — `core/attribution/attribution-collector.ts:309` |
-| `facebook-pixel-id` | `AttributionCollector.getFacebookPixelId` — `core/attribution/attribution-collector.ts:342` |
-| `next-analytics-disable` | `MetaTagController.initialize` — `core/analytics/tracking/MetaTagController.ts:78` |
-| `next-analytics-enable-only` | `MetaTagController.initialize` — `core/analytics/tracking/MetaTagController.ts:79` |
-| `next-analytics-list-id` | `MetaTagController.parseListContext` — `core/analytics/tracking/MetaTagController.ts:407` |
-| `next-analytics-list-name` | `MetaTagController.parseListContext` — `core/analytics/tracking/MetaTagController.ts:408` |
-| `next-analytics-scroll-tracking` | `MetaTagController.parseScrollThresholds` — `core/analytics/tracking/MetaTagController.ts:428` |
-| `next-analytics-view-item` | `MetaTagController.parseViewItemConfig` — `core/analytics/tracking/MetaTagController.ts:183` |
-| `next-analytics-view-item-list` | `MetaTagController.parseViewItemListConfig` — `core/analytics/tracking/MetaTagController.ts:213` |
-| `next-api-key` | `loadFromMeta` — `state/config/config.state.ts:86` |
-| `next-campaign-id` | `loadFromMeta` — `state/config/config.state.ts:93` |
-| `next-clear-cart` | `loadFromMeta` — `state/config/config.state.ts:107` |
-| `next-debug` | `loadFromMeta` — `state/config/config.state.ts:100` |
-| `next-failure-url` | `CheckoutFormEnhancer.getFailureUrl` — `features/checkout/checkout-form.enhancer.ts:2257`<br>*top level of the file* — `features/checkout/constants/selectors.ts:46`<br>`getFailureUrl` — `features/checkout/utils/url-utils.ts:33`<br>…and 1 more |
-| `next-funnel` | `AttributionCollector.getFunnelName` — `core/attribution/attribution-collector.ts:249` |
-| `next-next-url` | `CheckoutFormEnhancer.getNextPageUrlFromMeta` — `features/checkout/checkout-form.enhancer.ts:2117`<br>`CheckoutFormEnhancer.getSuccessUrl` — `features/checkout/checkout-form.enhancer.ts:2194`<br>*top level of the file* — `features/checkout/constants/selectors.ts:45`<br>…and 3 more |
-| `next-page-name` | `RudderStackAdapter.getPageMetadata` — `core/analytics/providers/RudderStackAdapter.ts:734` |
-| `next-page-type` | `RudderStackAdapter.getPageMetadata` — `core/analytics/providers/RudderStackAdapter.ts:728`<br>`UpsellSelector.checkIfUpsellPage` — `core/debug/UpsellSelector.ts:158`<br>`trackUpsellPageView` — `features/order/upsell/upsell.handlers.ts:71`<br>…and 1 more |
-| `next-payment-env-key` | `loadFromMeta` — `state/config/config.state.ts:123` |
-| `next-spreedly-key` | `loadFromMeta` — `state/config/config.state.ts:122` |
-| `next-success-url` | `CheckoutFormEnhancer.getNextPageUrlFromMeta` — `features/checkout/checkout-form.enhancer.ts:2116`<br>`CheckoutFormEnhancer.getSuccessUrl` — `features/checkout/checkout-form.enhancer.ts:2193`<br>*top level of the file* — `features/checkout/constants/selectors.ts:45`<br>…and 3 more |
-| `next-upsell-accept-url` | `resolveNextUrl` — `features/cart/package-toggle/package-toggle.handlers.ts:130`<br>`handleActionClick` — `features/order/upsell/upsell.handlers.ts:301`<br>`acceptBundleUpsell` — `features/cart/accept-upsell/accept-upsell.handlers.ts:148`<br>…and 1 more |
-| `next-upsell-decline-url` | `handleActionClick` — `features/order/upsell/upsell.handlers.ts:301`<br>`acceptUpsell` — `features/cart/accept-upsell/accept-upsell.handlers.ts:189` |
-| `os-facebook-pixel` | `AttributionCollector.getFacebookPixelId` — `core/attribution/attribution-collector.ts:342` |
-| `os-failure-url` | `CheckoutFormEnhancer.getFailureUrl` — `features/checkout/checkout-form.enhancer.ts:2258`<br>*top level of the file* — `features/checkout/constants/selectors.ts:46`<br>`getFailureUrl` — `features/checkout/utils/url-utils.ts:34`<br>…and 1 more |
-| `os-next-page` | `CheckoutFormEnhancer.getNextPageUrlFromMeta` — `features/checkout/checkout-form.enhancer.ts:2118`<br>`CheckoutFormEnhancer.getSuccessUrl` — `features/checkout/checkout-form.enhancer.ts:2195`<br>*top level of the file* — `features/checkout/constants/selectors.ts:45`<br>…and 3 more |
-| `os-tracking-tag` | `AttributionCollector.getFunnelName` — `core/attribution/attribution-collector.ts:247`<br>`AttributionCollector.collectTrackingTags` — `core/attribution/attribution-collector.ts:309` |
+| `data-next-tracking-tag` | `AttributionCollector.getFunnelName` — `core/attribution/attribution-collector.ts`<br>`AttributionCollector.collectTrackingTags` — `core/attribution/attribution-collector.ts` |
+| `facebook-pixel-id` | `AttributionCollector.getFacebookPixelId` — `core/attribution/attribution-collector.ts` |
+| `next-analytics-disable` | `MetaTagController.initialize` — `core/analytics/tracking/MetaTagController.ts` |
+| `next-analytics-enable-only` | `MetaTagController.initialize` — `core/analytics/tracking/MetaTagController.ts` |
+| `next-analytics-list-id` | `MetaTagController.parseListContext` — `core/analytics/tracking/MetaTagController.ts` |
+| `next-analytics-list-name` | `MetaTagController.parseListContext` — `core/analytics/tracking/MetaTagController.ts` |
+| `next-analytics-scroll-tracking` | `MetaTagController.parseScrollThresholds` — `core/analytics/tracking/MetaTagController.ts` |
+| `next-analytics-view-item` | `MetaTagController.parseViewItemConfig` — `core/analytics/tracking/MetaTagController.ts` |
+| `next-analytics-view-item-list` | `MetaTagController.parseViewItemListConfig` — `core/analytics/tracking/MetaTagController.ts` |
+| `next-api-key` | `loadFromMeta` — `state/config/config.state.ts` |
+| `next-campaign-id` | `loadFromMeta` — `state/config/config.state.ts` |
+| `next-clear-cart` | `loadFromMeta` — `state/config/config.state.ts` |
+| `next-debug` | `loadFromMeta` — `state/config/config.state.ts` |
+| `next-failure-url` | `CheckoutFormEnhancer.getFailureUrl` — `features/checkout/checkout-form.enhancer.ts`<br>*top level of the file* — `features/checkout/constants/selectors.ts`<br>`getFailureUrl` — `features/checkout/utils/url-utils.ts`<br>…and 1 more |
+| `next-funnel` | `AttributionCollector.getFunnelName` — `core/attribution/attribution-collector.ts` |
+| `next-next-url` | `CheckoutFormEnhancer.getNextPageUrlFromMeta` — `features/checkout/checkout-form.enhancer.ts`<br>`CheckoutFormEnhancer.getSuccessUrl` — `features/checkout/checkout-form.enhancer.ts`<br>*top level of the file* — `features/checkout/constants/selectors.ts`<br>…and 3 more |
+| `next-page-name` | `RudderStackAdapter.getPageMetadata` — `core/analytics/providers/RudderStackAdapter.ts` |
+| `next-page-type` | `RudderStackAdapter.getPageMetadata` — `core/analytics/providers/RudderStackAdapter.ts`<br>`UpsellSelector.checkIfUpsellPage` — `core/debug/UpsellSelector.ts`<br>`trackUpsellPageView` — `features/order/upsell/upsell.handlers.ts`<br>…and 1 more |
+| `next-payment-env-key` | `loadFromMeta` — `state/config/config.state.ts` |
+| `next-spreedly-key` | `loadFromMeta` — `state/config/config.state.ts` |
+| `next-success-url` | `CheckoutFormEnhancer.getNextPageUrlFromMeta` — `features/checkout/checkout-form.enhancer.ts`<br>`CheckoutFormEnhancer.getSuccessUrl` — `features/checkout/checkout-form.enhancer.ts`<br>*top level of the file* — `features/checkout/constants/selectors.ts`<br>…and 3 more |
+| `next-upsell-accept-url` | `resolveNextUrl` — `features/cart/package-toggle/package-toggle.handlers.ts`<br>`handleActionClick` — `features/order/upsell/upsell.handlers.ts`<br>`acceptBundleUpsell` — `features/cart/accept-upsell/accept-upsell.handlers.ts`<br>…and 1 more |
+| `next-upsell-decline-url` | `handleActionClick` — `features/order/upsell/upsell.handlers.ts`<br>`acceptUpsell` — `features/cart/accept-upsell/accept-upsell.handlers.ts` |
+| `os-facebook-pixel` | `AttributionCollector.getFacebookPixelId` — `core/attribution/attribution-collector.ts` |
+| `os-failure-url` | `CheckoutFormEnhancer.getFailureUrl` — `features/checkout/checkout-form.enhancer.ts`<br>*top level of the file* — `features/checkout/constants/selectors.ts`<br>`getFailureUrl` — `features/checkout/utils/url-utils.ts`<br>…and 1 more |
+| `os-next-page` | `CheckoutFormEnhancer.getNextPageUrlFromMeta` — `features/checkout/checkout-form.enhancer.ts`<br>`CheckoutFormEnhancer.getSuccessUrl` — `features/checkout/checkout-form.enhancer.ts`<br>*top level of the file* — `features/checkout/constants/selectors.ts`<br>…and 3 more |
+| `os-tracking-tag` | `AttributionCollector.getFunnelName` — `core/attribution/attribution-collector.ts`<br>`AttributionCollector.collectTrackingTags` — `core/attribution/attribution-collector.ts` |

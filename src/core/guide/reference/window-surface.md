@@ -23,27 +23,27 @@ Every entry below is read out of the source, so the list cannot fall behind the 
 
 | Global | Direction | In the code |
 |---|---|---|
-| [`window.next`](#windownext) | install | `core/sdk-initializer.ts:755` |
-| [`window.nextReady`](#windownextready) | install | `core/sdk-initializer.ts:758` |
-| [`window.nextConfig`](#windownextconfig) | read | `core/debug/DebugModule.ts:76` and 11 more |
-| [`window.__NEXT_SDK_VERSION__`](#window__next_sdk_version__) | read | `core/debug/panels/ConfigPanel.ts:47` and 7 more |
-| [`window.NextDataLayer`](#windownextdatalayer) | install | `core/analytics/DataLayerManager.ts:69`, `core/analytics/DataLayerManager.ts:199` |
-| [`window.NextDataLayerTransformFn`](#windownextdatalayertransformfn) | install | `core/analytics/DataLayerManager.ts:74` and 2 more |
-| [`window.NextAnalytics`](#windownextanalytics) | install | `core/analytics/index.ts:427` |
-| [`window.NextDataLayerManager`](#windownextdatalayermanager) | install | `core/analytics/index.ts:428` |
-| [`window.NextMetaTagController`](#windownextmetatagcontroller) | install | `core/analytics/index.ts:429` |
-| [`window.NextInvalidateContext`](#windownextinvalidatecontext) | install | `core/analytics/index.ts:432` |
-| [`window.NextAnalyticsClearIgnore`](#windownextanalyticsclearignore) | install | `core/analytics/index.ts:437` |
-| [`window.nextCampaign`](#windownextcampaign) | read | `core/analytics/providers/NextCampaignAdapter.ts:116` and 6 more |
-| [`window.dataLayer`](#windowdatalayer) | install | `core/analytics/providers/GTMAdapter.ts:40`, `core/debug/panels/EventTimelinePanel.ts:416` |
-| [`window.ElevarDataLayer`](#windowelevardatalayer) | install | `core/analytics/providers/GTMAdapter.ts:41` |
-| [`window._nextForcePackageId`](#window_nextforcepackageid) | install | `core/sdk-initializer.ts:409` |
-| [`window._nextForceShippingId`](#window_nextforceshippingid) | install | `core/sdk-initializer.ts:416` |
-| [`window._nextForceBundleId`](#window_nextforcebundleid) | install | `core/sdk-initializer.ts:424` |
-| [`window.nextDebug`](#windownextdebug) | install | `core/debug/DebugModule.ts:159`, `core/sdk-initializer.ts:801` |
-| [`window.validateFormats`](#windowvalidateformats) | install | `features/display/format-validator.ts:399` |
+| [`window.next`](#windownext) | install | `core/sdk-initializer.ts › SDKInitializer.setupReadyCallbacks` |
+| [`window.nextReady`](#windownextready) | install | `core/sdk-initializer.ts › SDKInitializer.setupReadyCallbacks` |
+| [`window.nextConfig`](#windownextconfig) | read | `core/debug/DebugModule.ts › DebugModule.initializeIfEnabled` and 10 more |
+| [`window.__NEXT_SDK_VERSION__`](#window__next_sdk_version__) | read | `core/debug/panels/ConfigPanel.ts › ConfigPanel.getOverviewContent` and 3 more |
+| [`window.NextDataLayer`](#windownextdatalayer) | install | `core/analytics/DataLayerManager.ts › DataLayerManager.initializeDataLayer`, `core/analytics/DataLayerManager.ts › DataLayerManager.clear` |
+| [`window.NextDataLayerTransformFn`](#windownextdatalayertransformfn) | install | `core/analytics/DataLayerManager.ts › DataLayerManager.initializeDataLayer` and 2 more |
+| [`window.NextAnalytics`](#windownextanalytics) | install | `core/analytics/index.ts` |
+| [`window.NextDataLayerManager`](#windownextdatalayermanager) | install | `core/analytics/index.ts` |
+| [`window.NextMetaTagController`](#windownextmetatagcontroller) | install | `core/analytics/index.ts` |
+| [`window.NextInvalidateContext`](#windownextinvalidatecontext) | install | `core/analytics/index.ts` |
+| [`window.NextAnalyticsClearIgnore`](#windownextanalyticsclearignore) | install | `core/analytics/index.ts` |
+| [`window.nextCampaign`](#windownextcampaign) | read | `core/analytics/providers/NextCampaignAdapter.ts › NextCampaignAdapter.sendEvent` and 3 more |
+| [`window.dataLayer`](#windowdatalayer) | install | `core/analytics/providers/GTMAdapter.ts › GTMAdapter.sendEvent`, `core/debug/panels/EventTimelinePanel.ts › EventTimelinePanel.watchDataLayer` |
+| [`window.ElevarDataLayer`](#windowelevardatalayer) | install | `core/analytics/providers/GTMAdapter.ts › GTMAdapter.sendEvent` |
+| [`window._nextForcePackageId`](#window_nextforcepackageid) | install | `core/sdk-initializer.ts › SDKInitializer.loadConfiguration` |
+| [`window._nextForceShippingId`](#window_nextforceshippingid) | install | `core/sdk-initializer.ts › SDKInitializer.loadConfiguration` |
+| [`window._nextForceBundleId`](#window_nextforcebundleid) | install | `core/sdk-initializer.ts › SDKInitializer.loadConfiguration` |
+| [`window.nextDebug`](#windownextdebug) | install | `core/debug/DebugModule.ts › DebugModule.setupGlobalDebugAccess`, `core/sdk-initializer.ts › SDKInitializer.setupGlobalDebugUtils` |
+| [`window.validateFormats`](#windowvalidateformats) | install | `features/display/format-validator.ts` |
 | [`window.eventTimelinePanel_*`](#windoweventtimelinepanel_) | install | 11 names, see below |
-| [`window.fetch`](#windowfetch) | install | `core/debug/DebugEventManager.ts:46` |
+| [`window.fetch`](#windowfetch) | install | `core/debug/DebugEventManager.ts › DebugEventManager.interceptFetch` |
 
 ## What your page should use
 
@@ -59,7 +59,7 @@ await window.next.addItem({ packageId: 2 });
 
 > ⚠️ Assigned late in boot, so it is `undefined` for any script that runs before the SDK is ready. Reading `next.getCartCount()` at the top of a page script throws — use `nextReady.push()`.
 
-<sub>Assigned in `core/sdk-initializer.ts:755`</sub>
+<sub>Assigned in `core/sdk-initializer.ts › SDKInitializer.setupReadyCallbacks`</sub>
 
 ### `window.nextReady`
 
@@ -79,7 +79,7 @@ window.nextReady.push(sdk => {
 
 > ⚠️ It changes shape during boot: an array you create, replaced by an object with a `push` method that runs callbacks immediately. Only ever call `push` on it — treating it as an array afterwards (`nextReady.length`, `nextReady.map`) fails.
 
-<sub>Assigned in `core/sdk-initializer.ts:758`</sub>
+<sub>Assigned in `core/sdk-initializer.ts › SDKInitializer.setupReadyCallbacks`</sub>
 
 ### `window.nextConfig`
 
@@ -98,7 +98,7 @@ The configuration object your page sets before the SDK loads — API key, debug 
 
 > ⚠️ Read during boot, so it has to be set before the SDK script runs; assigning it afterwards changes nothing. Meta tags override it where both are present.
 
-<sub>Read in `core/debug/DebugModule.ts:76`, `core/debug/DebugModule.ts:138`, `core/debug/DebugOverlay.ts:64`, `core/debug/DebugOverlay.ts:153`, `core/debug/panels/EventTimelinePanel.ts:200`, `core/logger.ts:19`, `core/sdk-initializer.ts:388`, `core/test-mode.ts:102`, `core/url-utils.ts:91`, `core/url-utils.ts:106`, `features/cart/cart-item-list/cart-item-list.renderer.ts:133`, `features/cart/cart-item-list/cart-item-list.renderer.ts:141`</sub>
+<sub>Read in `core/debug/DebugModule.ts › DebugModule.initializeIfEnabled`, `core/debug/DebugModule.ts › DebugModule.isDebugMode`, `core/debug/DebugOverlay.ts › DebugOverlay.constructor`, `core/debug/DebugOverlay.ts › DebugOverlay.initialize`, `core/debug/panels/EventTimelinePanel.ts › EventTimelinePanel.constructor`, `core/logger.ts › isDebugModeEnabled`, `core/sdk-initializer.ts › SDKInitializer.loadConfiguration`, `core/test-mode.ts › TestModeManager.checkUrlTestMode`, `core/url-utils.ts › isDebugMode`, `core/url-utils.ts › isDebuggerMode`, `features/cart/cart-item-list/cart-item-list.renderer.ts › prepareCartItemData`</sub>
 
 ### `window.__NEXT_SDK_VERSION__`
 
@@ -110,7 +110,7 @@ console.log(window.__NEXT_SDK_VERSION__ ?? 'set by the loader only');
 
 > ⚠️ Only the loader sets it. On a page that imports the bundle directly it is `undefined`, and `next.getVersion()` falls back to the build-time version — which is the accurate one in that case.
 
-<sub>Read in `core/debug/panels/ConfigPanel.ts:47`, `core/debug/panels/ConfigPanel.ts:48`, `core/debug/panels/ConfigPanel.ts:89`, `core/debug/panels/ConfigPanel.ts:90`, `core/next-commerce.ts:773`, `core/next-commerce.ts:774`, `core/sdk-initializer.ts:596`, `core/sdk-initializer.ts:597`</sub>
+<sub>Read in `core/debug/panels/ConfigPanel.ts › ConfigPanel.getOverviewContent`, `core/debug/panels/ConfigPanel.ts › ConfigPanel.getSettingsContent`, `core/next-commerce.ts › NextCommerce.getVersion`, `core/sdk-initializer.ts › SDKInitializer.initializeAttribution`</sub>
 
 ## Analytics and tag-manager hooks
 
@@ -126,7 +126,7 @@ console.table(window.NextDataLayer);
 
 > ⚠️ Emptied when the data layer reinitialises, so it is a live view rather than a complete session log. Do not read a length from it and assume it only grows.
 
-<sub>Assigned in `core/analytics/DataLayerManager.ts:69`, `core/analytics/DataLayerManager.ts:199`</sub>
+<sub>Assigned in `core/analytics/DataLayerManager.ts › DataLayerManager.initializeDataLayer`, `core/analytics/DataLayerManager.ts › DataLayerManager.clear`</sub>
 
 ### `window.NextDataLayerTransformFn`
 
@@ -141,7 +141,7 @@ window.NextDataLayerTransformFn = event => ({
 
 > ⚠️ Assign it **after** the SDK is up — from inside `window.nextReady.push()`. The analytics engine's constructor sets this slot to `null` unconditionally, so a transform assigned in a `<script>` tag before the SDK loads is discarded and every event goes out untransformed. It also runs on every event, so a throw inside it costs you analytics across the whole page — keep it free of anything that can fail.
 
-<sub>Assigned in `core/analytics/DataLayerManager.ts:74`, `core/analytics/DataLayerManager.ts:467`, `core/analytics/index.ts:84`</sub>
+<sub>Assigned in `core/analytics/DataLayerManager.ts › DataLayerManager.initializeDataLayer`, `core/analytics/DataLayerManager.ts › DataLayerManager.setTransformFunction`, `core/analytics/index.ts › NextAnalytics.constructor`</sub>
 
 ### `window.NextAnalytics`
 
@@ -153,7 +153,7 @@ console.log(window.NextAnalytics.getStatus());
 
 > ⚠️ An internal object exposed for inspection. Prefer `next.track*` and `next.setDebugMode()`; methods here are free to change.
 
-<sub>Assigned in `core/analytics/index.ts:427`</sub>
+<sub>Assigned in `core/analytics/index.ts`</sub>
 
 ### `window.NextDataLayerManager`
 
@@ -165,7 +165,7 @@ window.NextDataLayerManager.setTransformFunction(event => event);
 
 > ⚠️ Internal, same as `NextAnalytics`. The supported seam is `NextDataLayerTransformFn`.
 
-<sub>Assigned in `core/analytics/index.ts:428`</sub>
+<sub>Assigned in `core/analytics/index.ts`</sub>
 
 ### `window.NextMetaTagController`
 
@@ -177,7 +177,7 @@ console.log(window.NextMetaTagController.getConfig?.());
 
 > ⚠️ Internal. Meta tags are the interface; this object is how the SDK reads them.
 
-<sub>Assigned in `core/analytics/index.ts:429`</sub>
+<sub>Assigned in `core/analytics/index.ts`</sub>
 
 ### `window.NextInvalidateContext`
 
@@ -189,7 +189,7 @@ window.NextInvalidateContext();
 
 > ⚠️ The same thing as `next.invalidateAnalyticsContext()`. Two doors to one behaviour; prefer the method, and use this only from code that has no reference to `next`.
 
-<sub>Assigned in `core/analytics/index.ts:432`</sub>
+<sub>Assigned in `core/analytics/index.ts`</sub>
 
 ### `window.NextAnalyticsClearIgnore`
 
@@ -201,7 +201,7 @@ window.NextAnalyticsClearIgnore();
 
 > ⚠️ If events stopped arriving from one browser and nothing else explains it, the ignore flag is the thing to check, and this is how you clear it.
 
-<sub>Assigned in `core/analytics/index.ts:437`</sub>
+<sub>Assigned in `core/analytics/index.ts`</sub>
 
 ### `window.nextCampaign`
 
@@ -215,7 +215,7 @@ if (window.nextCampaign) {
 
 > ⚠️ Loaded by the SDK when that provider is configured, and read back once present. If the script never loads, events raise a dispatch failure rather than being silently dropped — check the console before assuming the provider is off.
 
-<sub>Read in `core/analytics/providers/NextCampaignAdapter.ts:116`, `core/analytics/providers/NextCampaignAdapter.ts:117`, `core/analytics/providers/NextCampaignAdapter.ts:200`, `core/analytics/providers/NextCampaignAdapter.ts:201`, `core/analytics/providers/NextCampaignAdapter.ts:230`, `core/analytics/providers/NextCampaignAdapter.ts:231`, `core/analytics/providers/NextCampaignAdapter.ts:253`</sub>
+<sub>Read in `core/analytics/providers/NextCampaignAdapter.ts › NextCampaignAdapter.sendEvent`, `core/analytics/providers/NextCampaignAdapter.ts › NextCampaignAdapter.performLoad`, `core/analytics/providers/NextCampaignAdapter.ts › NextCampaignAdapter.sendPageView`, `core/analytics/providers/NextCampaignAdapter.ts › NextCampaignAdapter.waitForNextCampaign`</sub>
 
 ## Third-party arrays the SDK fills
 
@@ -231,7 +231,7 @@ console.log(window.dataLayer.filter(e => e.event?.startsWith('dl_')));
 
 > ⚠️ Created with `window.dataLayer = window.dataLayer || []`, so an existing queue is preserved and load order does not matter. Do not reassign it — replacing the array orphans everything GTM has already read.
 
-<sub>Assigned in `core/analytics/providers/GTMAdapter.ts:40`, `core/debug/panels/EventTimelinePanel.ts:416`</sub>
+<sub>Assigned in `core/analytics/providers/GTMAdapter.ts › GTMAdapter.sendEvent`, `core/debug/panels/EventTimelinePanel.ts › EventTimelinePanel.watchDataLayer`</sub>
 
 ### `window.ElevarDataLayer`
 
@@ -239,7 +239,7 @@ Elevar's event queue, created and filled the same way as `dataLayer`.
 
 > ⚠️ Created even when Elevar is not in use, in which case it stays an empty array.
 
-<sub>Assigned in `core/analytics/providers/GTMAdapter.ts:41`</sub>
+<sub>Assigned in `core/analytics/providers/GTMAdapter.ts › GTMAdapter.sendEvent`</sub>
 
 ## Preview and QA overrides
 
@@ -256,7 +256,7 @@ Pre-loads the cart with a package for preview, taken from the `?forcePackageId=`
 
 > ⚠️ Consumed and deleted once the campaign has loaded, so reading it later gives `undefined` even though it worked. Drive it from the URL, not from script.
 
-<sub>Assigned in `core/sdk-initializer.ts:409`</sub>
+<sub>Assigned in `core/sdk-initializer.ts › SDKInitializer.loadConfiguration`</sub>
 
 ### `window._nextForceShippingId`
 
@@ -268,7 +268,7 @@ Pre-selects a shipping method for preview, from the `?forceShippingId=` URL para
 
 > ⚠️ Consumed and deleted after the campaign loads, same as `_nextForcePackageId`.
 
-<sub>Assigned in `core/sdk-initializer.ts:416`</sub>
+<sub>Assigned in `core/sdk-initializer.ts › SDKInitializer.loadConfiguration`</sub>
 
 ### `window._nextForceBundleId`
 
@@ -283,7 +283,7 @@ Forces which bundle card starts selected, from the `?forceBundleId=` URL paramet
 
 > ⚠️ Unlike the other two this one is not deleted after use, because the bundle selector reads it when it initialises, which can be after the campaign has loaded.
 
-<sub>Assigned in `core/sdk-initializer.ts:424`</sub>
+<sub>Assigned in `core/sdk-initializer.ts › SDKInitializer.loadConfiguration`</sub>
 
 ## Debug-only globals
 
@@ -331,7 +331,7 @@ nextDebug.attribution.debug();
 
 > ⚠️ It hands out the six Zustand stores directly, and a `setState` on one of those skips every operation that carries the pricing and event logic — the cart will disagree with its totals and with analytics. Read through it; write through `next.*`. Absent entirely when debug mode is off, and assembled in two passes (boot, then the debug overlay), so a key can appear a moment after the object does.
 
-<sub>Assigned in `core/debug/DebugModule.ts:159`, `core/sdk-initializer.ts:801`</sub>
+<sub>Assigned in `core/debug/DebugModule.ts › DebugModule.setupGlobalDebugAccess`, `core/sdk-initializer.ts › SDKInitializer.setupGlobalDebugUtils`</sub>
 
 ### `window.validateFormats`
 
@@ -343,7 +343,7 @@ validateFormats(); // returns the report as well as logging it
 
 > ⚠️ Installed whenever the display code loads, not only in debug mode, but it is a console tool — it writes to the console and mutates element outlines.
 
-<sub>Assigned in `features/display/format-validator.ts:399`</sub>
+<sub>Assigned in `features/display/format-validator.ts`</sub>
 
 ### `window.eventTimelinePanel_*`
 
@@ -359,7 +359,7 @@ The browser's own `fetch`, wrapped by the debug event manager so API calls appea
 
 > ⚠️ A monkey-patch of a browser global — the one entry here that changes behaviour outside the SDK. It delegates to the original and only adds logging, but it is installed for the life of the page and never restored, so anything that also wraps `fetch` will see the patched version. Debug mode only.
 
-<sub>Assigned in `core/debug/DebugEventManager.ts:46`</sub>
+<sub>Assigned in `core/debug/DebugEventManager.ts › DebugEventManager.interceptFetch`</sub>
 
 ## Cautions
 

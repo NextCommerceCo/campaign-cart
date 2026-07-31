@@ -33,6 +33,8 @@
 
 import ts from 'typescript';
 
+import { anchorOf } from './source-anchor';
+
 export const STORAGE_AREAS = ['sessionStorage', 'localStorage'] as const;
 
 /** Which of the two browser stores an entry lives in. */
@@ -510,8 +512,7 @@ export function extractStorageKeys(
 
   for (const [name, sf] of parsed) {
     const ctx: Ctx = { sf, exported };
-    const where = (node: ts.Node): string =>
-      `${name}:${sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1}`;
+    const where = (node: ts.Node): string => anchorOf(sf, node, name);
 
     sites.push(...constantSites(ctx, where));
 

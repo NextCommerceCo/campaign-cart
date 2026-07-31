@@ -16,6 +16,8 @@
  */
 
 import { coreNav } from '../content/nav';
+// Aliased: `anchor` below is a GitHub heading slug, a different thing entirely.
+import { anchor as sourceAnchor } from '../extract/source-anchor';
 import type {
   CartOperationDoc,
   NextMethodDoc,
@@ -30,7 +32,8 @@ export interface RenderedMember {
   kind: 'method' | 'getter' | 'property';
   isStatic: boolean;
   signature: string;
-  line: number;
+  /** `NextCommerce.addItem` — the symbol to cite, rather than a line that moves. */
+  symbol: string;
 }
 
 /** A `CartOperations` member's real call signature. */
@@ -170,7 +173,7 @@ window.nextReady.push(sdk => {
         fence(doc.example),
         doc.caution ? `> ⚠️ ${doc.caution}` : undefined,
         member
-          ? `<sub>Source: \`${SOURCE_FILE}:${member.line}\`</sub>`
+          ? `<sub>Source: \`${sourceAnchor(SOURCE_FILE, member.symbol)}\`</sub>`
           : undefined
       );
     }

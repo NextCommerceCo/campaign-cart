@@ -9,6 +9,7 @@ import {
   EVENT_MEANING,
 } from '@/docs/render/render-boot-sequence';
 import { extractBootSequence } from '@/docs/extract/extract-boot-sequence';
+import { fileOf } from '@/docs/extract/source-anchor';
 
 /**
  * Generates `src/core/guide/reference/boot-sequence.md` from `core/sdk-initializer.ts`,
@@ -130,15 +131,18 @@ describe('boot sequence docs', () => {
       event => event.name === 'next:initialized'
     );
 
+    // Compared through `fileOf` rather than a regex on the anchor: what this test
+    // means is "which file dispatches it", and that stays true however the anchor's
+    // symbol part is formatted.
     expect(
-      ready?.where,
+      ready && fileOf(ready.where),
       'next:ready is no longer dispatched from the loader — check whether it now ' +
         'means what the page says it means'
-    ).toMatch(/^public\/loader\.js:/);
+    ).toBe('public/loader.js');
     expect(
-      initialized?.where,
+      initialized && fileOf(initialized.where),
       'next:initialized is no longer dispatched from the initializer'
-    ).toMatch(/^core\/sdk-initializer\.ts:/);
+    ).toBe('core/sdk-initializer.ts');
     expect(
       stepNames.at(-1),
       'boot no longer ends by emitting next:initialized'

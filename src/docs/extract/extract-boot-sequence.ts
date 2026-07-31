@@ -24,9 +24,11 @@
  */
 
 import ts from 'typescript';
+
+import { MODULE_SCOPE, anchor, enclosingFunction } from './source-anchor';
 import { readFileSync } from 'node:fs';
 
-/** A file to read, plus the short name used in every `file:line` this module reports. */
+/** A file to read, plus the short name used in every anchor this module reports. */
 export interface BootSource {
   /** Absolute path. */
   path: string;
@@ -134,23 +136,36 @@ function parse(source: BootSource): ts.SourceFile {
   );
 }
 
+/**
+ * Where a boot fact lives, as `file › Symbol`.
+ *
+ * @param fallbackSymbol Used when the node sits at the top level of its scope — the
+ *   loader's inline `<script>` has no enclosing function, and citing the bare file
+ *   would not say which of the loader's two bodies of code it came from.
+ */
 function at(
   sf: ts.SourceFile,
   node: ts.Node,
   name: string,
-  lineOffset = 0
+  fallbackSymbol?: string
 ): string {
-  const line = sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1;
-  return `${name}:${line + lineOffset}`;
+  const { name: symbol } = enclosingFunction(node, sf);
+  return anchor(
+    name,
+    symbol === MODULE_SCOPE ? (fallbackSymbol ?? '') : symbol
+  );
 }
 
 /** One parseable body of code: a file, or a script the loader builds as a string. */
 interface Scope {
   sf: ts.SourceFile;
-  /** Name used in `file:line`. */
+  /** File this scope is cited as. */
   name: string;
-  /** Added to every line number, so a nested script still cites the outer file. */
-  lineOffset: number;
+  /**
+   * Symbol to cite when a fact sits at this scope's top level. Set for a nested
+   * script, whose statements have no enclosing function of their own.
+   */
+  fallbackSymbol?: string;
   /** Method names whose dispatches count; every method counts when absent. */
   allowFrom?: Set<string>;
 }
@@ -162,8 +177,9 @@ interface Scope {
  * to the parser and an AST walk over the file alone finds nothing. That would quietly
  * drop the one fact this page exists to correct. Each template is re-parsed as its own
  * script with `${…}` spans swapped for a placeholder identifier — `${isDebug} ? 'a' :
- * 'b'` is not parseable, `__EXPR__ ? 'a' : 'b'` is — and its line numbers are shifted
- * back onto the outer file so `file:line` still points where a reader can look.
+ * 'b'` is not parseable, `__EXPR__ ? 'a' : 'b'` is. Each fact the template yields is
+ * cited against the symbol that *builds* the script, since the template's own
+ * statements sit at top level and have no enclosing function to name.
  */
 function nestedScripts(scope: Scope): Scope[] {
   const out: Scope[] = [];
@@ -179,9 +195,11 @@ function nestedScripts(scope: Scope): Scope[] {
       const text =
         template.head.text +
         template.templateSpans.map(s => `__EXPR__${s.literal.text}`).join('');
-      const startLine = scope.sf.getLineAndCharacterOfPosition(
-        template.getStart(scope.sf)
-      ).line;
+      // Statements inside the template have no enclosing function of their own, so
+      // they inherit the symbol that *builds* the script — `loader.js › loadModule`
+      // reads better than the bare file, and says which of the loader's bodies of
+      // code the dispatch came from.
+      const builder = enclosingFunction(node, scope.sf).name;
       out.push({
         sf: ts.createSourceFile(
           scope.name,
@@ -191,7 +209,13 @@ function nestedScripts(scope: Scope): Scope[] {
           ts.ScriptKind.JS
         ),
         name: scope.name,
-        lineOffset: scope.lineOffset + startLine,
+        // At top level there is no builder to name, so cite the element the script is
+        // assigned to (`moduleScript.innerHTML` → `moduleScript`). That is a real
+        // identifier in the file, so a reader can still grep straight to it.
+        fallbackSymbol:
+          builder === MODULE_SCOPE
+            ? node.left.getText(scope.sf).replace(/\.innerHTML$/, '')
+            : builder,
       });
     }
     ts.forEachChild(node, visit);
@@ -568,7 +592,7 @@ function collectEvents(scopes: Scope[]): BootEvent[] {
   };
 
   for (const scope of [...scopes, ...scopes.flatMap(nestedScripts)]) {
-    const { sf, name, lineOffset } = scope;
+    const { sf, name } = scope;
 
     const visit = (node: ts.Node): void => {
       if (
@@ -591,7 +615,7 @@ function collectEvents(scopes: Scope[]): BootEvent[] {
               name: eventName,
               target: receiver === 'document' ? 'document' : 'window',
               detail: detailKeys(event, sf),
-              where: at(sf, node, name, lineOffset),
+              where: at(sf, node, name, scope.fallbackSymbol),
               sites: 1,
             });
           }
@@ -609,7 +633,7 @@ function collectEvents(scopes: Scope[]): BootEvent[] {
               name: eventName,
               target: 'event-bus',
               detail: [],
-              where: at(sf, node, name, lineOffset),
+              where: at(sf, node, name, scope.fallbackSymbol),
               sites: 1,
             });
           }
@@ -725,13 +749,11 @@ export function extractBootSequence(
       {
         sf,
         name: initializer.name,
-        lineOffset: 0,
         allowFrom: new Set(['initialize', ...steps.map(step => step.name)]),
       },
       ...observers.map(source => ({
         sf: parse(source),
         name: source.name,
-        lineOffset: 0,
       })),
     ]),
     retry: readRetryPolicy(cls, tryStatement, sf, initializer),

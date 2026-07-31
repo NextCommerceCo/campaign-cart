@@ -19,7 +19,7 @@ The feature carried on, but something in the markup or the data was not what it 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `No accordion ID found on element` | `accordion.enhancer.ts:44` | — |
+| `No accordion ID found on element` | `accordion.enhancer.ts › AccordionEnhancer.enhance` | — |
 
 ## Debug
 
@@ -27,8 +27,8 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Accordion enhanced: {accordionId}` | `accordion.enhancer.ts:54` | — |
-| `Accordion opened: {id}` | `accordion.enhancer.ts:174` | — |
-| `Accordion closed: {id}` | `accordion.enhancer.ts:219` | — |
+| `Accordion enhanced: {accordionId}` | `accordion.enhancer.ts › AccordionEnhancer.enhance` | — |
+| `Accordion opened: {id}` | `accordion.enhancer.ts › AccordionEnhancer.openAccordion` | — |
+| `Accordion closed: {id}` | `accordion.enhancer.ts › AccordionEnhancer.closeAccordion` | — |
 
 The **Extra context** column says whether the call passes a second argument — an object or an error logged alongside the message. Expand that entry in the console to see it; the message alone will not tell you which element or package was involved.

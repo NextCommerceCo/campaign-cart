@@ -202,7 +202,7 @@ describe('window.next public facade', () => {
   it('gives every public member a real TSDoc summary, not a bare @category', () => {
     const bare = members
       .filter(m => !m.hasSummary)
-      .map(m => `${m.name} (line ${m.line})`);
+      .map(m => `${m.name} (${m.symbol})`);
     expect(
       bare,
       'TSDoc block carries only tags — add a summary sentence above the @category line'

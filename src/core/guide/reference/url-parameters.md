@@ -217,43 +217,43 @@ Every parameter above, with the code that reads or writes it. Generated from the
 
 | Parameter | Read by |
 |---|---|
-| `aff` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts:19` |
-| `affid` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts:19` |
-| `category` | `ListAttributionTracker.detectListFromUrl` *(has)* — `core/analytics/tracking/ListAttributionTracker.ts:141` |
-| `clickid` | `AttributionCollector.collectMetadata` *(get)* — `core/attribution/attribution-collector.ts:71` |
-| `collection` | `ListAttributionTracker.detectListFromUrl` *(has)* — `core/analytics/tracking/ListAttributionTracker.ts:149` |
-| `country` | `SDKInitializer.initializeLocationAndCurrency` *(get)* — `core/sdk-initializer.ts:186`<br>`CheckoutFormEnhancer.initializeAddressManagement` *(get)* — `features/checkout/checkout-form.enhancer.ts:927` |
-| `currency` | `SDKInitializer.initializeLocationAndCurrency` *(get)* — `core/sdk-initializer.ts:166`<br>`loadCampaign` *(get)* — `state/campaign/api.slice.ts:36` |
-| `debug` | `AttributeScanner.constructor` *(get)* — `core/attribute-scanner.ts:37`<br>`DebugOverlay.constructor` *(get)* — `core/debug/DebugOverlay.ts:65`<br>`EventTimelinePanel.constructor` *(get)* — `core/debug/panels/EventTimelinePanel.ts:203`<br>…and 3 more |
-| `debugger` | `DebugModule.initializeIfEnabled` *(get)* — `core/debug/DebugModule.ts:77`<br>`DebugModule.enableDebugMode` *(set)* — `core/debug/DebugModule.ts:102`<br>`DebugModule.disableDebugMode` *(delete)* — `core/debug/DebugModule.ts:119`<br>…and 9 more |
-| `evclid` | `AttributionCollector.handleEverflowClickId` *(has)* — `core/attribution/attribution-collector.ts:281` |
-| `fbclid` | `AttributionCollector.collectMetadata` *(get)* — `core/attribution/attribution-collector.ts:65` |
-| `forceBundleId` | `SDKInitializer.loadConfiguration` *(get)* — `core/sdk-initializer.ts:392` |
-| `forcePackageId` | `SDKInitializer.loadConfiguration` *(get)* — `core/sdk-initializer.ts:390` |
-| `forceShippingId` | `SDKInitializer.loadConfiguration` *(get)* — `core/sdk-initializer.ts:391` |
-| `funnel` | `AttributionCollector.getFunnelName` *(has)* — `core/attribution/attribution-collector.ts:186` |
-| `gclid` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts:21` |
-| `ignore` | `NextAnalytics.checkAndSetIgnoreFlag` *(get)* — `core/analytics/index.ts:105`<br>`NextAnalytics.shouldIgnoreAnalytics` *(get)* — `core/analytics/index.ts:132` |
-| `order_ref_id` | `SDKInitializer.checkAndLoadOrder` *(get)* — `core/sdk-initializer.ts:701`<br>`OrderDisplayEnhancer.checkAndLoadOrderFromUrl` *(get)* — `features/display/order-display/order-display.enhancer.ts:49` |
-| `payment_failed` | `CheckoutFormEnhancer.getFailureUrl` *(set)* — `features/checkout/checkout-form.enhancer.ts:2270`<br>`getFailureUrl` *(set)* — `features/checkout/utils/url-utils.ts:49` |
-| `q` | `ListAttributionTracker.detectListFromUrl` *(has)* — `core/analytics/tracking/ListAttributionTracker.ts:157` |
-| `query` | `ListAttributionTracker.detectListFromUrl` *(has)* — `core/analytics/tracking/ListAttributionTracker.ts:157` |
-| `ref_id` | `SDKInitializer.checkAndLoadOrder` *(get)* — `core/sdk-initializer.ts:701`<br>`navigatePreservingParams` *(has)* — `features/cart/package-toggle/package-toggle.handlers.ts:139`<br>`CheckoutFormEnhancer.handlePurchaseEvent` *(has)* — `features/checkout/checkout-form.enhancer.ts:1777`<br>…and 5 more |
-| `reset` | `SDKInitializer.loadConfiguration` *(get)* — `core/sdk-initializer.ts:376` |
-| `search` | `ListAttributionTracker.detectListFromUrl` *(has)* — `core/analytics/tracking/ListAttributionTracker.ts:157` |
-| `sub1` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts:31` |
-| `sub2` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts:32` |
-| `sub3` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts:33` |
-| `sub4` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts:34` |
-| `sub5` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts:35` |
-| `subaffiliate1` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts:31` |
-| `subaffiliate2` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts:32` |
-| `subaffiliate3` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts:33` |
-| `subaffiliate4` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts:34` |
-| `subaffiliate5` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts:35` |
-| `test` | `TestModeManager.checkUrlTestMode` *(get)* — `core/test-mode.ts:105`<br>`TestModeManager.activateKonamiCode` *(set)* — `core/test-mode.ts:120`<br>`TestModeManager.setTestMode` *(set)* — `core/test-mode.ts:208` |
-| `utm_campaign` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts:26` |
-| `utm_content` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts:27` |
-| `utm_medium` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts:25` |
-| `utm_source` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts:24` |
-| `utm_term` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts:28` |
+| `aff` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts` |
+| `affid` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts` |
+| `category` | `ListAttributionTracker.detectListFromUrl` *(has)* — `core/analytics/tracking/ListAttributionTracker.ts` |
+| `clickid` | `AttributionCollector.collectMetadata` *(get)* — `core/attribution/attribution-collector.ts` |
+| `collection` | `ListAttributionTracker.detectListFromUrl` *(has)* — `core/analytics/tracking/ListAttributionTracker.ts` |
+| `country` | `SDKInitializer.initializeLocationAndCurrency` *(get)* — `core/sdk-initializer.ts`<br>`CheckoutFormEnhancer.initializeAddressManagement` *(get)* — `features/checkout/checkout-form.enhancer.ts` |
+| `currency` | `SDKInitializer.initializeLocationAndCurrency` *(get)* — `core/sdk-initializer.ts`<br>`loadCampaign` *(get)* — `state/campaign/api.slice.ts` |
+| `debug` | `AttributeScanner.constructor` *(get)* — `core/attribute-scanner.ts`<br>`DebugOverlay.constructor` *(get)* — `core/debug/DebugOverlay.ts`<br>`EventTimelinePanel.constructor` *(get)* — `core/debug/panels/EventTimelinePanel.ts`<br>…and 3 more |
+| `debugger` | `DebugModule.initializeIfEnabled` *(get)* — `core/debug/DebugModule.ts`<br>`DebugModule.enableDebugMode` *(set)* — `core/debug/DebugModule.ts`<br>`DebugModule.disableDebugMode` *(delete)* — `core/debug/DebugModule.ts`<br>…and 9 more |
+| `evclid` | `AttributionCollector.handleEverflowClickId` *(has)* — `core/attribution/attribution-collector.ts` |
+| `fbclid` | `AttributionCollector.collectMetadata` *(get)* — `core/attribution/attribution-collector.ts` |
+| `forceBundleId` | `SDKInitializer.loadConfiguration` *(get)* — `core/sdk-initializer.ts` |
+| `forcePackageId` | `SDKInitializer.loadConfiguration` *(get)* — `core/sdk-initializer.ts` |
+| `forceShippingId` | `SDKInitializer.loadConfiguration` *(get)* — `core/sdk-initializer.ts` |
+| `funnel` | `AttributionCollector.getFunnelName` *(has)* — `core/attribution/attribution-collector.ts` |
+| `gclid` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts` |
+| `ignore` | `NextAnalytics.checkAndSetIgnoreFlag` *(get)* — `core/analytics/index.ts`<br>`NextAnalytics.shouldIgnoreAnalytics` *(get)* — `core/analytics/index.ts` |
+| `order_ref_id` | `SDKInitializer.checkAndLoadOrder` *(get)* — `core/sdk-initializer.ts`<br>`OrderDisplayEnhancer.checkAndLoadOrderFromUrl` *(get)* — `features/display/order-display/order-display.enhancer.ts` |
+| `payment_failed` | `CheckoutFormEnhancer.getFailureUrl` *(set)* — `features/checkout/checkout-form.enhancer.ts`<br>`getFailureUrl` *(set)* — `features/checkout/utils/url-utils.ts` |
+| `q` | `ListAttributionTracker.detectListFromUrl` *(has)* — `core/analytics/tracking/ListAttributionTracker.ts` |
+| `query` | `ListAttributionTracker.detectListFromUrl` *(has)* — `core/analytics/tracking/ListAttributionTracker.ts` |
+| `ref_id` | `SDKInitializer.checkAndLoadOrder` *(get)* — `core/sdk-initializer.ts`<br>`navigatePreservingParams` *(has)* — `features/cart/package-toggle/package-toggle.handlers.ts`<br>`CheckoutFormEnhancer.handlePurchaseEvent` *(has)* — `features/checkout/checkout-form.enhancer.ts`<br>…and 5 more |
+| `reset` | `SDKInitializer.loadConfiguration` *(get)* — `core/sdk-initializer.ts` |
+| `search` | `ListAttributionTracker.detectListFromUrl` *(has)* — `core/analytics/tracking/ListAttributionTracker.ts` |
+| `sub1` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts` |
+| `sub2` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts` |
+| `sub3` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts` |
+| `sub4` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts` |
+| `sub5` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts` |
+| `subaffiliate1` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts` |
+| `subaffiliate2` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts` |
+| `subaffiliate3` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts` |
+| `subaffiliate4` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts` |
+| `subaffiliate5` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts` |
+| `test` | `TestModeManager.checkUrlTestMode` *(get)* — `core/test-mode.ts`<br>`TestModeManager.activateKonamiCode` *(set)* — `core/test-mode.ts`<br>`TestModeManager.setTestMode` *(set)* — `core/test-mode.ts` |
+| `utm_campaign` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts` |
+| `utm_content` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts` |
+| `utm_medium` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts` |
+| `utm_source` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts` |
+| `utm_term` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts` |

@@ -17,7 +17,12 @@ import {
   type CoreLogRow,
 } from '@/docs/render/render-core-logs';
 import { renderCoreErrors } from '@/docs/render/render-core-errors';
-import { extractLogs, extractThrows, type LogMessage } from '@/docs/extract/extract-logs';
+import {
+  extractLogs,
+  extractThrows,
+  type LogMessage,
+} from '@/docs/extract/extract-logs';
+import { anchorOf, fileOf } from '@/docs/extract/source-anchor';
 
 /**
  * Generates `src/core/guide/reference/logs.md` and `errors.md`, and fails when the
@@ -166,12 +171,37 @@ function rawConsoleCalls(files: Array<[string, string]>): OpaqueCall[] {
   return found;
 }
 
-/** 1-based line of the first occurrence of `text` in `file`. */
-function lineOf(file: string, text: string): number {
+/**
+ * Anchor for a hand-declared log, found by locating its verbatim `anchor` text.
+ *
+ * These entries exist because their message is built at runtime and cannot be read
+ * out of the AST, so the file and a searchable fragment are declared by hand. The
+ * fragment is what makes the anchor honest: it is asserted to appear in the file, so
+ * a log that moves or changes wording fails the drift test rather than publishing a
+ * citation to nothing.
+ *
+ * Resolves to the same `file › Symbol` form the extractors emit — the renderer puts
+ * both kinds of row in one table, so they have to agree on the format.
+ */
+function anchorFor(file: string, text: string): string {
   const source = sourceOf.get(file) ?? '';
   const at = source.indexOf(text);
-  if (at === -1) return 0;
-  return source.slice(0, at).split('\n').length;
+  if (at === -1) return file;
+
+  const sf = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
+  let innermost: ts.Node = sf;
+  const descend = (node: ts.Node): void => {
+    for (const child of node.getChildren(sf)) {
+      if (child.getStart(sf) <= at && at < child.getEnd()) {
+        innermost = child;
+        descend(child);
+        return;
+      }
+    }
+  };
+  descend(sf);
+
+  return anchorOf(sf, innermost, file);
 }
 
 // ── The inventory, read from the source ──────────────────────────────────────
@@ -204,7 +234,7 @@ const groups: CoreLogGroup[] = CORE_LOG_SOURCES.map(source => {
   ).map(u => ({
     level: u.level,
     message: u.message,
-    where: `${u.file}:${lineOf(u.file, u.anchor)}`,
+    where: anchorFor(u.file, u.anchor),
     hasContext: u.hasContext ?? false,
     meaning: u.meaning,
     action: u.action,
@@ -483,7 +513,7 @@ describe('core logs and errors reference', () => {
 
   it('attributes every error to the file that throws it', () => {
     const whereThrown = new Map(
-      thrown.map(e => [e.message, e.where.split(':')[0]] as const)
+      thrown.map(e => [e.message, fileOf(e.where)] as const)
     );
     const wrong = CORE_ERRORS.filter(e => {
       const file = whereThrown.get(e.extracted ?? e.message);
@@ -605,7 +635,7 @@ describe('core logs and errors reference', () => {
       groups,
       CORE_HEALTHY_BOOT.map(l => `[${l.prefix}] ${l.message}`),
       CORE_CONSOLE_LOGS,
-      c => `${c.file}:${lineOf(c.file, c.anchor)}`
+      c => anchorFor(c.file, c.anchor)
     );
     const out = join(OUT_DIR, 'logs.md');
     if (UPDATE) {

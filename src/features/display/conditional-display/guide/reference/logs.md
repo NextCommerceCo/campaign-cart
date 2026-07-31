@@ -19,13 +19,13 @@ Something did not work. Each of these means a visitor saw the wrong thing, or no
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Error evaluating package condition:` | `conditional-display.enhancer.ts:433` | yes |
-| `Error evaluating order condition:` | `conditional-display.enhancer.ts:485` | yes |
-| `Error evaluating condition:` | `conditional-display.enhancer.ts:617` | yes |
-| `Error evaluating selection condition:` | `conditional-display.enhancer.ts:750` | yes |
-| `Error evaluating shipping condition:` | `conditional-display.enhancer.ts:802` | yes |
-| `Error evaluating params condition:` | `conditional-display.enhancer.ts:903` | yes |
-| `Error getting package property {property}:` | `conditional-display.enhancer.ts:1347` | yes |
+| `Error evaluating package condition:` | `conditional-display.enhancer.ts › ConditionalDisplayEnhancer.evaluatePackageCondition` | yes |
+| `Error evaluating order condition:` | `conditional-display.enhancer.ts › ConditionalDisplayEnhancer.evaluateOrderCondition` | yes |
+| `Error evaluating condition:` | `conditional-display.enhancer.ts › ConditionalDisplayEnhancer.evaluateCondition` | yes |
+| `Error evaluating selection condition:` | `conditional-display.enhancer.ts › ConditionalDisplayEnhancer.evaluateSelectionCondition` | yes |
+| `Error evaluating shipping condition:` | `conditional-display.enhancer.ts › ConditionalDisplayEnhancer.evaluateShippingCondition` | yes |
+| `Error evaluating params condition:` | `conditional-display.enhancer.ts › ConditionalDisplayEnhancer.evaluateParamsCondition` | yes |
+| `Error getting package property {property}:` | `conditional-display.enhancer.ts › ConditionalDisplayEnhancer.getPackagePropertyValue` | yes |
 
 ## Warn
 
@@ -33,18 +33,18 @@ The feature carried on, but something in the markup or the data was not what it 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Unsupported condition type for package: {type}` | `conditional-display.enhancer.ts:429` | — |
-| `Unsupported condition type for order: {type}` | `conditional-display.enhancer.ts:481` | — |
-| `Unknown condition type: {type}` | `conditional-display.enhancer.ts:613` | — |
-| `Unsupported condition type for selection: {type}` | `conditional-display.enhancer.ts:746` | — |
-| `Unsupported condition type for shipping: {type}` | `conditional-display.enhancer.ts:798` | — |
-| `Unsupported condition type for params: {type}` | `conditional-display.enhancer.ts:899` | — |
-| `Unknown cart method: {method}` | `conditional-display.enhancer.ts:1057` | — |
-| `Selection condition used but no selector context found` | `conditional-display.enhancer.ts:1209` | — |
-| `Package condition used but no package context found` | `conditional-display.enhancer.ts:1331` | — |
-| `Package {packageContext} not found in campaign data` | `conditional-display.enhancer.ts:1340` | — |
-| `Shipping condition used but no shipping context found` | `conditional-display.enhancer.ts:1444` | — |
-| `Shipping method {shippingId} not found in campaign data` | `conditional-display.enhancer.ts:1461` | — |
+| `Unsupported condition type for package: {type}` | `conditional-display.enhancer.ts › ConditionalDisplayEnhancer.evaluatePackageCondition` | — |
+| `Unsupported condition type for order: {type}` | `conditional-display.enhancer.ts › ConditionalDisplayEnhancer.evaluateOrderCondition` | — |
+| `Unknown condition type: {type}` | `conditional-display.enhancer.ts › ConditionalDisplayEnhancer.evaluateCondition` | — |
+| `Unsupported condition type for selection: {type}` | `conditional-display.enhancer.ts › ConditionalDisplayEnhancer.evaluateSelectionCondition` | — |
+| `Unsupported condition type for shipping: {type}` | `conditional-display.enhancer.ts › ConditionalDisplayEnhancer.evaluateShippingCondition` | — |
+| `Unsupported condition type for params: {type}` | `conditional-display.enhancer.ts › ConditionalDisplayEnhancer.evaluateParamsCondition` | — |
+| `Unknown cart method: {method}` | `conditional-display.enhancer.ts › ConditionalDisplayEnhancer.evaluateFunction` | — |
+| `Selection condition used but no selector context found` | `conditional-display.enhancer.ts › ConditionalDisplayEnhancer.getSelectionPropertyValue` | — |
+| `Package condition used but no package context found` | `conditional-display.enhancer.ts › ConditionalDisplayEnhancer.getPackagePropertyValue` | — |
+| `Package {packageContext} not found in campaign data` | `conditional-display.enhancer.ts › ConditionalDisplayEnhancer.getPackagePropertyValue` | — |
+| `Shipping condition used but no shipping context found` | `conditional-display.enhancer.ts › ConditionalDisplayEnhancer.getShippingPropertyValue` | — |
+| `Shipping method {shippingId} not found in campaign data` | `conditional-display.enhancer.ts › ConditionalDisplayEnhancer.getShippingPropertyValue` | — |
 
 ## Info
 
@@ -52,7 +52,7 @@ Normal progress, useful for confirming the feature ran at all.
 
 | Message | Source | Extra context |
 |---|---|---|
-| `evaluateParamsCondition comparison:` | `conditional-display.enhancer.ts:852` | yes |
+| `evaluateParamsCondition comparison:` | `conditional-display.enhancer.ts › ConditionalDisplayEnhancer.evaluateParamsCondition` | yes |
 
 ## Debug
 
@@ -60,13 +60,13 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Condition analysis:` | `conditional-display.enhancer.ts:63` | yes |
-| `Checking if condition depends on params:` | `conditional-display.enhancer.ts:285` | yes |
-| `Comparison depends on params:` | `conditional-display.enhancer.ts:312` | yes |
-| `handleParamsUpdate:` | `conditional-display.enhancer.ts:390` | yes |
-| `Found selector ID in property:` | `conditional-display.enhancer.ts:665` | yes |
-| `Found selector ID in comparison:` | `conditional-display.enhancer.ts:674` | yes |
-| `Selector element not found for ID: {targetSelectorId}` | `conditional-display.enhancer.ts:1219` | — |
-| `Could not get package data for selection` | `conditional-display.enhancer.ts:1239` | — |
+| `Condition analysis:` | `conditional-display.enhancer.ts › ConditionalDisplayEnhancer.initialize` | yes |
+| `Checking if condition depends on params:` | `conditional-display.enhancer.ts › ConditionalDisplayEnhancer.conditionDependsOnParams` | yes |
+| `Comparison depends on params:` | `conditional-display.enhancer.ts › ConditionalDisplayEnhancer.conditionDependsOnParams` | yes |
+| `handleParamsUpdate:` | `conditional-display.enhancer.ts › ConditionalDisplayEnhancer.handleParamsUpdate` | yes |
+| `Found selector ID in property:` | `conditional-display.enhancer.ts › ConditionalDisplayEnhancer.detectSelectorContext` | yes |
+| `Found selector ID in comparison:` | `conditional-display.enhancer.ts › ConditionalDisplayEnhancer.detectSelectorContext` | yes |
+| `Selector element not found for ID: {targetSelectorId}` | `conditional-display.enhancer.ts › ConditionalDisplayEnhancer.getSelectionPropertyValue` | — |
+| `Could not get package data for selection` | `conditional-display.enhancer.ts › ConditionalDisplayEnhancer.getSelectionPropertyValue` | — |
 
 The **Extra context** column says whether the call passes a second argument — an object or an error logged alongside the message. Expand that entry in the console to see it; the message alone will not tell you which element or package was involved.

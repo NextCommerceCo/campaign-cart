@@ -19,8 +19,8 @@ The feature carried on, but something in the markup or the data was not what it 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `ShippingDisplayEnhancer requires data-next-shipping-id context` | `shipping-display.enhancer.ts:24` | — |
-| `Shipping method {shippingId} not found in campaign data` | `shipping-display.enhancer.ts:75` | — |
+| `ShippingDisplayEnhancer requires data-next-shipping-id context` | `shipping-display.enhancer.ts › ShippingDisplayEnhancer.initialize` | — |
+| `Shipping method {shippingId} not found in campaign data` | `shipping-display.enhancer.ts › ShippingDisplayEnhancer.loadShippingMethod` | — |
 
 ## Debug
 
@@ -28,6 +28,6 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `ShippingDisplayEnhancer initialized with shipping ID {shippingId}` | `shipping-display.enhancer.ts:31` | — |
+| `ShippingDisplayEnhancer initialized with shipping ID {shippingId}` | `shipping-display.enhancer.ts › ShippingDisplayEnhancer.initialize` | — |
 
 The **Extra context** column says whether the call passes a second argument — an object or an error logged alongside the message. Expand that entry in the console to see it; the message alone will not tell you which element or package was involved.

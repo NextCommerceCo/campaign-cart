@@ -19,7 +19,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or no
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Failed to auto-load order:` | `order-display.enhancer.ts:62` | yes |
+| `Failed to auto-load order:` | `order-display.enhancer.ts › OrderDisplayEnhancer.checkAndLoadOrderFromUrl` | yes |
 
 ## Warn
 
@@ -27,6 +27,6 @@ The feature carried on, but something in the markup or the data was not what it 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Unknown order property: {propertyStr}` | `order-display.enhancer.ts:211` | — |
+| `Unknown order property: {propertyStr}` | `order-display.enhancer.ts › OrderDisplayEnhancer.getDisplayValue` | — |
 
 The **Extra context** column says whether the call passes a second argument — an object or an error logged alongside the message. Expand that entry in the console to see it; the message alone will not tell you which element or package was involved.

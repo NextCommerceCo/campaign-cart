@@ -37,6 +37,8 @@
 
 import ts from 'typescript';
 
+import { MODULE_SCOPE, enclosingFunction } from './source-anchor';
+
 /** How a name was reached from the source, so a reader can retrace the extraction. */
 export type Resolution =
   /** Written out at the call site: `meta[name="next-api-key"]`. */
@@ -57,7 +59,12 @@ export type ParamAccess =
 
 /** One place a contract is touched. */
 export interface ContractSite {
-  /** `core/sdk-initializer.ts:390` — where to look when the description is unclear. */
+  /**
+   * `core/sdk-initializer.ts` — the file to look in when the description is unclear.
+   *
+   * Just the file, not a {@link anchorOf} anchor: {@link consumer} already names the
+   * symbol, so an anchor here would print it twice on the same row.
+   */
   where: string;
   /**
    * What consumes it: `ClassName.method`, a bare function name, or `<module>` for
@@ -135,78 +142,6 @@ function literalsOf(node: ts.Expression): string[] {
   }
   if (ts.isParenthesizedExpression(node)) return literalsOf(node.expression);
   return [];
-}
-
-// ── the enclosing function, for `consumer` and for parameter lookup ─────────────
-
-interface Enclosing {
-  /** `ClassName.method`, `functionName`, or `<module>`. */
-  name: string;
-  /** Parameter names in order, for resolving an identifier to a sink parameter. */
-  params: string[];
-}
-
-/** Name of a function-ish node, including the class for a method. */
-function functionName(node: ts.Node, sf: ts.SourceFile): string | undefined {
-  if (ts.isMethodDeclaration(node) || ts.isGetAccessorDeclaration(node)) {
-    const owner = node.parent;
-    const cls = ts.isClassDeclaration(owner) ? owner.name?.text : undefined;
-    const method = node.name.getText(sf);
-    return cls ? `${cls}.${method}` : method;
-  }
-  if (ts.isConstructorDeclaration(node)) {
-    const owner = node.parent;
-    const cls = ts.isClassDeclaration(owner) ? owner.name?.text : undefined;
-    return cls ? `${cls}.constructor` : 'constructor';
-  }
-  if (ts.isFunctionDeclaration(node)) return node.name?.text;
-  if (ts.isFunctionExpression(node) || ts.isArrowFunction(node)) {
-    // `const getSuccessUrl = () => …` reads as `getSuccessUrl`, not as an anonymous
-    // arrow — the reader is looking for the exported name.
-    const parent = node.parent;
-    if (ts.isVariableDeclaration(parent) && ts.isIdentifier(parent.name)) {
-      return parent.name.text;
-    }
-    if (ts.isPropertyDeclaration(parent)) {
-      const owner = parent.parent;
-      const cls = ts.isClassDeclaration(owner) ? owner.name?.text : undefined;
-      const prop = parent.name.getText(sf);
-      return cls ? `${cls}.${prop}` : prop;
-    }
-    // `loadFromMeta: () => { … }` inside a Zustand `create(…)` object. Without this
-    // the whole config store reads as `<module>`, which tells a reader nothing about
-    // where the meta tags are actually loaded.
-    if (ts.isPropertyAssignment(parent)) return parent.name.getText(sf);
-    return undefined;
-  }
-  return undefined;
-}
-
-/**
- * The nearest *named* function around a node, plus its parameters.
- *
- * Anonymous callbacks are skipped so a name resolved inside a `forEach` is still
- * attributed to the method a reader would look up. The parameters returned are that
- * named function's own, which is what makes sink detection exact: an identifier only
- * creates a sink when it really is a parameter the caller supplies.
- */
-function enclosingFunction(node: ts.Node, sf: ts.SourceFile): Enclosing {
-  let current: ts.Node | undefined = node.parent;
-  while (current) {
-    if (ts.isFunctionLike(current)) {
-      const name = functionName(current, sf);
-      if (name !== undefined) {
-        return {
-          name,
-          params: current.parameters
-            .filter(p => ts.isIdentifier(p.name))
-            .map(p => p.name.getText(sf)),
-        };
-      }
-    }
-    current = current.parent;
-  }
-  return { name: '<module>', params: [] };
 }
 
 // ── per-file index of what a local name resolves to ─────────────────────────────
@@ -297,8 +232,19 @@ class Collector {
     if (trimmed === '') return;
     if (filter && !filter(trimmed)) return;
     const sites = this.found.get(trimmed) ?? [];
-    // The same name on the same line twice (`get('q') || get('q')`) is one site.
-    if (sites.some(s => s.where === site.where && s.access === site.access)) {
+    // The same name reached the same way from the same consumer is one site —
+    // `get('q') || get('q')` in one method is one row for a reader. The consumer is
+    // part of the key because `where` is only the file: without it, two different
+    // methods in one file would collapse into one row and the page would under-report
+    // who reads the value.
+    if (
+      sites.some(
+        s =>
+          s.where === site.where &&
+          s.consumer === site.consumer &&
+          s.access === site.access
+      )
+    ) {
       return;
     }
     sites.push(site);
@@ -310,12 +256,6 @@ class Collector {
       .map(([name, sites]) => ({ name, sites }))
       .sort((a, b) => a.name.localeCompare(b.name));
   }
-}
-
-function lineOf(node: ts.Node, index: FileIndex): string {
-  const line =
-    index.sf.getLineAndCharacterOfPosition(node.getStart(index.sf)).line + 1;
-  return `${index.name}:${line}`;
 }
 
 /** The bare name of whatever a call expression calls: `this.getMeta` → `getMeta`. */
@@ -342,7 +282,7 @@ function resolveName(
   if (ts.isIdentifier(expr)) {
     const enclosing = enclosingFunction(expr, index.sf);
     const paramIndex = enclosing.params.indexOf(expr.text);
-    if (paramIndex >= 0 && enclosing.name !== '<module>') {
+    if (paramIndex >= 0 && enclosing.name !== MODULE_SCOPE) {
       if (!sinks.some(s => s.fn === enclosing.name && s.param === paramIndex)) {
         // A method is registered under its bare name: the call site writes
         // `this.getMeta(…)`, so `MetaTagController.getMeta` would never match.
@@ -421,7 +361,7 @@ export function extractCoreContracts(
             metaTags.add(
               name,
               {
-                where: lineOf(node, index),
+                where: index.name,
                 consumer: enclosing.name,
                 resolution: 'literal',
               },
@@ -453,7 +393,7 @@ export function extractCoreContracts(
           if (!ts.isIdentifier(asIdentifier)) continue;
 
           const paramIndex = enclosing.params.indexOf(asIdentifier.text);
-          if (paramIndex >= 0 && enclosing.name !== '<module>') {
+          if (paramIndex >= 0 && enclosing.name !== MODULE_SCOPE) {
             const bare = enclosing.name.split('.').pop() ?? enclosing.name;
             if (!metaSinks.some(s => s.fn === bare && s.param === paramIndex)) {
               metaSinks.push({ fn: bare, param: paramIndex });
@@ -464,7 +404,7 @@ export function extractCoreContracts(
             metaTags.add(
               name,
               {
-                where: lineOf(node, index),
+                where: index.name,
                 consumer: enclosing.name,
                 resolution: 'local variable',
               },
@@ -489,7 +429,7 @@ export function extractCoreContracts(
             urlParameters.add(
               name,
               {
-                where: lineOf(node, index),
+                where: index.name,
                 consumer: enclosing.name,
                 resolution: resolved.resolution,
                 access,
@@ -531,7 +471,7 @@ export function extractCoreContracts(
                 collector.add(
                   name,
                   {
-                    where: lineOf(node, index),
+                    where: index.name,
                     consumer: enclosing.name,
                     resolution:
                       resolved.resolution === 'literal'

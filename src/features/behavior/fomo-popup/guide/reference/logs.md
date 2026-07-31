@@ -19,6 +19,6 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `FOMO popup configured:` | `fomo-popup.enhancer.ts:117` | yes |
+| `FOMO popup configured:` | `fomo-popup.enhancer.ts › FomoPopupEnhancer.setup` | yes |
 
 The **Extra context** column says whether the call passes a second argument — an object or an error logged alongside the message. Expand that entry in the console to see it; the message alone will not tell you which element or package was involved.

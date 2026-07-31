@@ -21,6 +21,8 @@
  */
 
 import ts from 'typescript';
+
+import { MODULE_SCOPE, enclosingFunction } from './source-anchor';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 
@@ -56,7 +58,12 @@ export interface SchemaField {
 export interface EmitSite {
   /** Path relative to `src/`, POSIX separators. */
   file: string;
-  line: number;
+  /**
+   * Enclosing symbol, e.g. `UserEvents.buildSignUp` — empty at module scope.
+   * A symbol rather than a line so reformatting the file does not rewrite the
+   * published page; see `anchorOf` in `./source-anchor`.
+   */
+  symbol: string;
   /** The construction call or object property that produced it. */
   how: string;
 }
@@ -478,9 +485,19 @@ export function extractEmitSites(
     how: string
   ): void => {
     const sf = node.getSourceFile();
-    const line = sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1;
+    const { name: enclosing } = enclosingFunction(node, sf);
+    const symbol = enclosing === MODULE_SCOPE ? '' : enclosing;
     const rel = relative(srcRoot, file).split(sep).join('/');
-    (sites[name] ??= []).push({ file: rel, line, how });
+    const list = (sites[name] ??= []);
+    // Two builds of the same event in one method were two rows when a row was a
+    // line; anchored to the symbol they are the same row, so drop the repeat
+    // rather than printing an identical citation twice.
+    if (
+      list.some(s => s.file === rel && s.symbol === symbol && s.how === how)
+    ) {
+      return;
+    }
+    list.push({ file: rel, symbol, how });
   };
 
   for (const file of [...collectSourceFiles(analyticsDir), ...extraFiles]) {
@@ -506,7 +523,11 @@ export function extractEmitSites(
   }
 
   for (const list of Object.values(sites)) {
-    list.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line);
+    // By symbol, not by position: a stable order that does not shift when the file
+    // is reformatted or a sibling function moves above this one.
+    list.sort(
+      (a, b) => a.file.localeCompare(b.file) || a.symbol.localeCompare(b.symbol)
+    );
   }
   return sites;
 }

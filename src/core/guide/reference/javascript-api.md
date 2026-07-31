@@ -66,7 +66,7 @@ console.log(sdk === window.next); // true
 
 > ⚠️ Reached off the class, not off `next` — `next.getInstance()` also works but reads as though it made a second SDK. On a page that loads the SDK from the loader script, prefer `window.next`; there is nothing to import.
 
-<sub>Source: `src/core/next-commerce.ts:72`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.getInstance`</sub>
 
 ## Reading the cart
 
@@ -88,7 +88,7 @@ if (next.hasItemInCart({ packageId: 2 })) {
 
 > ⚠️ Called with no `packageId` it returns `false` rather than "is the cart non-empty" — use `next.getCartCount() > 0` for that.
 
-<sub>Source: `src/core/next-commerce.ts:103`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.hasItemInCart`</sub>
 
 ### `next.getCartData()`
 
@@ -106,7 +106,7 @@ console.log('coupons:', vouchers);
 
 > ⚠️ This is the same shape your `registerCallback` handlers receive, so it is the one to reach for when you are reproducing a callback outside its trigger. The amounts inside `cartTotals` are `Decimal` objects — see [`next.getCartTotals()`](#nextgetcarttotals).
 
-<sub>Source: `src/core/next-commerce.ts:186`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.getCartData`</sub>
 
 ### `next.getCartTotals()`
 
@@ -129,7 +129,7 @@ next.formatPrice(total.toNumber()); // '$59.98'
 
 > ⚠️ The amounts are `Decimal` objects, so `subtotal - total` is `NaN` and `total > 50` is a string comparison. Use `.minus()`, `.gt()` and friends, and call `.toNumber()` only when handing the value to something that wants a number — `formatPrice` is one.
 
-<sub>Source: `src/core/next-commerce.ts:209`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.getCartTotals`</sub>
 
 ### `next.getCartCount()`
 
@@ -146,7 +146,7 @@ document.querySelector('#cart-badge')!.textContent =
 
 > ⚠️ Two of one package and one of another is `3`, not `2`. For the number of rows use `next.getCartData().cartLines.length`.
 
-<sub>Source: `src/core/next-commerce.ts:225`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.getCartCount`</sub>
 
 ## Changing the cart
 
@@ -170,7 +170,7 @@ await next.cart.swapPackage(2, { packageId: 7, quantity: 1, isUpsell: false });
 
 > ⚠️ Do not write to the cart store directly. The operations here carry the pricing, validation and event-emission logic; a raw `useCartStore.setState()` skips all three and leaves totals and analytics disagreeing with the visible cart.
 
-<sub>Source: `src/core/next-commerce.ts:92`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.cart`</sub>
 
 ### `next.addItem()`
 
@@ -187,7 +187,7 @@ await next.addItem({ packageId: 7, quantity: 3 }); // three units
 
 > ⚠️ Omitting `packageId` does nothing at all — no throw, no log at warn level. If an add silently fails, check that the id actually reached the call. For upsell adds use `next.cart.addItem({ …, isUpsell: true })`, which is what marks the line for revenue reporting.
 
-<sub>Source: `src/core/next-commerce.ts:123`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.addItem`</sub>
 
 ### `next.removeItem()`
 
@@ -203,7 +203,7 @@ await next.removeItem({ packageId: 2 });
 
 > ⚠️ A `packageId` that is not in the cart is not an error; nothing happens.
 
-<sub>Source: `src/core/next-commerce.ts:142`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.removeItem`</sub>
 
 ### `next.updateQuantity()`
 
@@ -220,7 +220,7 @@ await next.updateQuantity({ packageId: 2, quantity: 0 }); // removes the line
 
 > ⚠️ Quantity `0` removes the line. If you meant "leave it alone", do not call this — there is no no-op quantity.
 
-<sub>Source: `src/core/next-commerce.ts:152`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.updateQuantity`</sub>
 
 ### `next.clearCart()`
 
@@ -237,7 +237,7 @@ console.log(next.getCartCount()); // 0
 
 > ⚠️ Declared `async` but the underlying clear is synchronous, so awaiting it buys you nothing beyond a tidy call site.
 
-<sub>Source: `src/core/next-commerce.ts:165`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.clearCart`</sub>
 
 ### `next.swapCart()`
 
@@ -257,7 +257,7 @@ await next.swapCart([
 
 > ⚠️ This is a replace, not a merge. Passing `[]` empties the cart. It is what bundle and swap-mode selectors use, which is also why pairing a swap-mode `package-selector` with `add-to-cart` on the same selector double-writes the cart — pick one.
 
-<sub>Source: `src/core/next-commerce.ts:174`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.swapCart`</sub>
 
 ## Coupons
 
@@ -280,7 +280,7 @@ if (!success) {
 
 > ⚠️ It resolves with `success: false` instead of throwing, so a bare `await` looks like it worked. Always read `success`, and show `message` — it is written for the visitor.
 
-<sub>Source: `src/core/next-commerce.ts:821`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.applyCoupon`</sub>
 
 ### `next.removeCoupon()`
 
@@ -296,7 +296,7 @@ next.removeCoupon('SAVE10');
 
 > ⚠️ Returns `void` even though the work behind it is asynchronous, so there is nothing to await. To act once the totals have settled, listen for `cart:updated`.
 
-<sub>Source: `src/core/next-commerce.ts:831`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.removeCoupon`</sub>
 
 ### `next.getCoupons()`
 
@@ -312,7 +312,7 @@ for (const code of next.getCoupons()) {
 }
 ```
 
-<sub>Source: `src/core/next-commerce.ts:839`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.getCoupons`</sub>
 
 ## Shipping
 
@@ -334,7 +334,7 @@ for (const method of next.getShippingMethods()) {
 
 > ⚠️ Empty before the campaign has loaded, which is indistinguishable from "this campaign has no shipping methods". Populate your selector on `campaign:loaded`, not on `DOMContentLoaded`.
 
-<sub>Source: `src/core/next-commerce.ts:734`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.getShippingMethods`</sub>
 
 ### `next.getSelectedShippingMethod()`
 
@@ -349,7 +349,7 @@ const method = next.getSelectedShippingMethod();
 console.log(method ? method.name : 'not chosen yet');
 ```
 
-<sub>Source: `src/core/next-commerce.ts:747`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.getSelectedShippingMethod`</sub>
 
 ### `next.setShippingMethod()`
 
@@ -366,7 +366,7 @@ console.log(next.getCartTotals().total); // now includes shipping
 
 > ⚠️ Throws when the id is not one of the campaign's methods, so pass a `ref_id` from `getShippingMethods()` rather than a hard-coded number that was valid in a different campaign.
 
-<sub>Source: `src/core/next-commerce.ts:762`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.setShippingMethod`</sub>
 
 ## Products, packages, and variants
 
@@ -389,7 +389,7 @@ if (campaign) {
 
 > ⚠️ `null` means "still loading", not "no campaign". Guard on it, or subscribe to `campaign:loaded` and read it there.
 
-<sub>Source: `src/core/next-commerce.ts:235`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.getCampaignData`</sub>
 
 ### `next.getPackage()`
 
@@ -406,7 +406,7 @@ console.log(pkg?.name, pkg?.price);
 
 > ⚠️ Returns `null` both for an unknown id and for "campaign not loaded yet". Check `getCampaignData()` first when you need to tell those apart.
 
-<sub>Source: `src/core/next-commerce.ts:244`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.getPackage`</sub>
 
 ### `next.getVariantsByProductId()`
 
@@ -423,7 +423,7 @@ console.log(variants?.map((v: { ref_id: number }) => v.ref_id));
 
 > ⚠️ Grouped by product id, which is not the package `ref_id`. A product with no variants returns `null`, not an empty list.
 
-<sub>Source: `src/core/next-commerce.ts:253`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.getVariantsByProductId`</sub>
 
 ### `next.getAvailableVariantAttributes()`
 
@@ -440,7 +440,7 @@ const sizes = next.getAvailableVariantAttributes(42, 'size');
 
 > ⚠️ The attribute code is the campaign's own string (`size`, `color`), not a display label. An unknown code returns `[]`, so an empty picker usually means a misspelled code rather than a product with one variant.
 
-<sub>Source: `src/core/next-commerce.ts:263`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.getAvailableVariantAttributes`</sub>
 
 ### `next.getPackageByVariantSelection()`
 
@@ -457,7 +457,7 @@ if (pkg) await next.addItem({ packageId: pkg.ref_id });
 
 > ⚠️ The selection has to be complete. A partial set — size chosen, colour not — matches nothing and returns `null`; keep the add-to-cart button disabled until every attribute has a value.
 
-<sub>Source: `src/core/next-commerce.ts:279`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.getPackageByVariantSelection`</sub>
 
 ### `next.createVariantKey()`
 
@@ -474,7 +474,7 @@ next.createVariantKey({ color: 'red', size: 'L' }); // 'color:red|size:L' — sa
 
 > ⚠️ The key is sorted, so property order never changes it. It is an identifier for your own maps — nothing in the SDK or the API accepts it as an argument.
 
-<sub>Source: `src/core/next-commerce.ts:295`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.createVariantKey`</sub>
 
 ## Reacting to what happens
 
@@ -496,7 +496,7 @@ next.on('cart:item-added', ({ packageId, quantity }) => {
 
 > ⚠️ There is no automatic teardown. On a page that swaps views, keep the handler in a variable and pass it to `next.off()` when the view goes away, or handlers accumulate and fire several times per event.
 
-<sub>Source: `src/core/next-commerce.ts:312`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.on`</sub>
 
 ### `next.off()`
 
@@ -515,7 +515,7 @@ next.off('cart:item-added', onAdd);
 
 > ⚠️ Matched by function identity. An inline arrow passed to `on` can never be removed — name the handler.
 
-<sub>Source: `src/core/next-commerce.ts:323`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.off`</sub>
 
 ### `next.registerCallback()`
 
@@ -536,7 +536,7 @@ next.triggerCallback('cartUpdated', next.getCartData());
 
 > ⚠️ **The SDK never fires these.** `triggerCallback` has no caller anywhere in the SDK (`core/next-commerce.ts:354` is its only definition and nothing invokes it), so a handler registered here stays silent until your own code triggers it. It is a page-driven notification channel, not a lifecycle hook. For events the SDK really does emit, use `next.on()`.
 
-<sub>Source: `src/core/next-commerce.ts:332`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.registerCallback`</sub>
 
 ### `next.unregisterCallback()`
 
@@ -554,7 +554,7 @@ next.unregisterCallback('cartUpdated', onCart);
 
 > ⚠️ Matched by function identity, same as `off`. Registering an inline function makes it permanent.
 
-<sub>Source: `src/core/next-commerce.ts:346`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.unregisterCallback`</sub>
 
 ### `next.triggerCallback()`
 
@@ -573,7 +573,7 @@ next.triggerCallback('cartUpdated', next.getCartData());
 
 > ⚠️ It reads as an internal method and is not one in practice: **nothing in the SDK calls it**, so `registerCallback` handlers only run when your code calls this. Triggering changes no state — it only notifies handlers — so passing a stale or invented snapshot makes the page render a cart that does not exist. A handler that throws is caught and logged at error level rather than stopping the rest.
 
-<sub>Source: `src/core/next-commerce.ts:354`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.triggerCallback`</sub>
 
 ## Sending analytics events yourself
 
@@ -593,7 +593,7 @@ next.trackViewItemList([2, 7, 9], undefined, 'Best sellers');
 
 > ⚠️ The second parameter (`_listId`) is accepted and ignored; the list name is the third. Passing the name in second position loses it silently.
 
-<sub>Source: `src/core/next-commerce.ts:371`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.trackViewItemList`</sub>
 
 ### `next.trackViewItem()`
 
@@ -609,7 +609,7 @@ next.trackViewItem(2);
 
 > ⚠️ The package has to be in the loaded campaign. If it is not, the call logs a warning and sends nothing — so a tracked view going missing usually means the campaign had not loaded yet.
 
-<sub>Source: `src/core/next-commerce.ts:391`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.trackViewItem`</sub>
 
 ### `next.trackAddToCart()`
 
@@ -625,7 +625,7 @@ next.trackAddToCart(2, 3);
 
 > ⚠️ The SDK already tracks its own adds. Calling this after `next.addItem()` reports the same add twice and inflates the funnel.
 
-<sub>Source: `src/core/next-commerce.ts:426`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.trackAddToCart`</sub>
 
 ### `next.trackRemoveFromCart()`
 
@@ -641,7 +641,7 @@ next.trackRemoveFromCart(2, 1);
 
 > ⚠️ Double-counts for the same reason as `trackAddToCart` — do not pair it with `next.removeItem()`.
 
-<sub>Source: `src/core/next-commerce.ts:451`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.trackRemoveFromCart`</sub>
 
 ### `next.trackBeginCheckout()`
 
@@ -659,7 +659,7 @@ document.querySelector('#to-checkout')!.addEventListener('click', () => {
 
 > ⚠️ The built-in checkout form fires this already. Call it only for a checkout flow you built yourself.
 
-<sub>Source: `src/core/next-commerce.ts:477`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.trackBeginCheckout`</sub>
 
 ### `next.trackPurchase()`
 
@@ -675,7 +675,7 @@ next.trackPurchase({ ref_id: 'ORD-1042', total_incl_tax: '59.98', lines: [] });
 
 > ⚠️ The receipt page reports the purchase on its own. Calling this as well is the classic cause of doubled revenue in a analytics property — reconcile before you add it.
 
-<sub>Source: `src/core/next-commerce.ts:493`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.trackPurchase`</sub>
 
 ### `next.trackCustomEvent()`
 
@@ -691,7 +691,7 @@ next.trackCustomEvent('size_guide_opened', { productId: 42 });
 
 > ⚠️ Nothing validates the name or the payload, so a typo becomes a new event name in your analytics property rather than an error. Keep the names in one constant.
 
-<sub>Source: `src/core/next-commerce.ts:509`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.trackCustomEvent`</sub>
 
 ### `next.trackSignUp()`
 
@@ -707,7 +707,7 @@ next.trackSignUp('shopper@example.com');
 
 > ⚠️ The address is placed in the event payload as `customer_email` **in the clear** — nothing in the SDK hashes it. It therefore reaches every configured provider, and the browser data layer, as plain text. Pass it only where your privacy policy and your provider agreements allow, and call `next.trackSignUp()` with no argument when you only need the event.
 
-<sub>Source: `src/core/next-commerce.ts:530`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.trackSignUp`</sub>
 
 ### `next.trackLogin()`
 
@@ -723,7 +723,7 @@ next.trackLogin('shopper@example.com');
 
 > ⚠️ Carries the address in the clear exactly as `trackSignUp` does — read that caution before passing one.
 
-<sub>Source: `src/core/next-commerce.ts:546`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.trackLogin`</sub>
 
 ### `next.setDebugMode()`
 
@@ -740,7 +740,7 @@ next.setDebugMode(false);  // quiet again
 
 > ⚠️ Affects analytics logging only — it does not enable the debug overlay, which is `?debugger=true` or `window.nextConfig.debugger`. Leave it off in production; it is noisy, not harmful.
 
-<sub>Source: `src/core/next-commerce.ts:563`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.setDebugMode`</sub>
 
 ### `next.invalidateAnalyticsContext()`
 
@@ -757,7 +757,7 @@ router.afterEach(() => next.invalidateAnalyticsContext());
 
 > ⚠️ Needed only in a single-page app, where no full page load resets the context. Forget it and every event after the first route reports the first route's URL and page type.
 
-<sub>Source: `src/core/next-commerce.ts:579`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.invalidateAnalyticsContext`</sub>
 
 ## Attribution and order metadata
 
@@ -777,7 +777,7 @@ next.addMetadata('quiz_result', 'sensitive-skin');
 
 > ⚠️ Merges, so it will not disturb the values the SDK collects automatically. Errors are caught and logged at error level rather than thrown — check the console if a value never reaches the order.
 
-<sub>Source: `src/core/next-commerce.ts:599`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.addMetadata`</sub>
 
 ### `next.setMetadata()`
 
@@ -793,7 +793,7 @@ next.setMetadata({ quiz_result: 'sensitive-skin', quiz_version: '3' });
 
 > ⚠️ Despite the name it merges rather than replaces, which is deliberate: a true replace would wipe the automatic fields (`landing_page`, `referrer`, `device`). To clear your own values use `clearMetadata()`.
 
-<sub>Source: `src/core/next-commerce.ts:623`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.setMetadata`</sub>
 
 ### `next.clearMetadata()`
 
@@ -810,7 +810,7 @@ console.log(next.getMetadata()); // automatic fields only
 
 > ⚠️ Not a full reset: `landing_page`, `referrer`, `device`, `device_type`, `domain` and `timestamp` are preserved on purpose, because the order needs them.
 
-<sub>Source: `src/core/next-commerce.ts:648`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.clearMetadata`</sub>
 
 ### `next.getMetadata()`
 
@@ -826,7 +826,7 @@ console.log(next.getMetadata()?.landing_page);
 
 > ⚠️ `undefined` means the read failed, not that the bag is empty — an empty bag is `{}`.
 
-<sub>Source: `src/core/next-commerce.ts:675`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.getMetadata`</sub>
 
 ### `next.setAttribution()`
 
@@ -842,7 +842,7 @@ next.setAttribution({ funnel: 'summer-quiz-v2', utm_source: 'newsletter' });
 
 > ⚠️ Overwrites what was captured from the URL. Attribution decides who gets paid for the sale, so setting it from page code is a reporting decision, not a cosmetic one — see the [attribution store reference](../../../state/attribution/guide/reference/state-reference.md).
 
-<sub>Source: `src/core/next-commerce.ts:690`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.setAttribution`</sub>
 
 ### `next.getAttribution()`
 
@@ -858,7 +858,7 @@ console.log(next.getAttribution()?.funnel);
 
 > ⚠️ This is the API-shaped view, not the raw store — field names match the order payload, so it is the right thing to log when an order arrives attributed wrongly.
 
-<sub>Source: `src/core/next-commerce.ts:706`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.getAttribution`</sub>
 
 ### `next.debugAttribution()`
 
@@ -874,7 +874,7 @@ next.debugAttribution(); // then read the console
 
 > ⚠️ A console tool: it returns nothing, so there is no value to assert on in a test. Use `getAttribution()` for that.
 
-<sub>Source: `src/core/next-commerce.ts:721`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.debugAttribution`</sub>
 
 ## URL parameters
 
@@ -894,7 +894,7 @@ next.setParam('promo', 'spring24');
 
 > ⚠️ Does not touch the address bar. The value lives in the session store, so a reader looking for it in `location.search` will not find it.
 
-<sub>Source: `src/core/next-commerce.ts:1099`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.setParam`</sub>
 
 ### `next.setParams()`
 
@@ -910,7 +910,7 @@ next.setParams({ promo: 'spring24', variant: 'b' });
 
 > ⚠️ Replaces the value of each key it names and leaves the rest alone. To add without risking an overwrite, use `mergeParams`.
 
-<sub>Source: `src/core/next-commerce.ts:1110`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.setParams`</sub>
 
 ### `next.getParam()`
 
@@ -924,7 +924,7 @@ Reads one captured URL parameter, or `null` when it was never present.
 const variant = next.getParam('variant') ?? 'a';
 ```
 
-<sub>Source: `src/core/next-commerce.ts:1120`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.getParam`</sub>
 
 ### `next.getAllParams()`
 
@@ -938,7 +938,7 @@ Every URL parameter captured for this session.
 console.log(Object.keys(next.getAllParams()));
 ```
 
-<sub>Source: `src/core/next-commerce.ts:1130`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.getAllParams`</sub>
 
 ### `next.hasParam()`
 
@@ -954,7 +954,7 @@ if (next.hasParam('debug_offer')) showOfferDebugPanel();
 
 > ⚠️ True for a parameter present with an empty value (`?promo=`), which `getParam` returns as `''`. Use this when presence is the signal.
 
-<sub>Source: `src/core/next-commerce.ts:1140`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.hasParam`</sub>
 
 ### `next.clearParam()`
 
@@ -968,7 +968,7 @@ Forgets one captured URL parameter.
 next.clearParam('promo');
 ```
 
-<sub>Source: `src/core/next-commerce.ts:1149`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.clearParam`</sub>
 
 ### `next.clearAllParams()`
 
@@ -985,7 +985,7 @@ console.log(next.getAllParams()); // {}
 
 > ⚠️ This also drops the `utm_*` values the campaign was entered with, which attribution reads. Clear individual keys unless you mean to lose the whole entry context.
 
-<sub>Source: `src/core/next-commerce.ts:1162`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.clearAllParams`</sub>
 
 ### `next.mergeParams()`
 
@@ -999,7 +999,7 @@ Adds parameters to the captured set without disturbing keys you did not name.
 next.mergeParams({ quiz_step: '3' });
 ```
 
-<sub>Source: `src/core/next-commerce.ts:1173`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.mergeParams`</sub>
 
 ## Post-purchase upsells
 
@@ -1025,7 +1025,7 @@ console.log(`added ${addedLines.length} lines worth ${totalValue}`);
 
 > ⚠️ Throws — it does not resolve with an error — in four cases: no order in session, the order does not support post-purchase upsells or is mid-processing, and neither `packageId` nor `items` was given. Wrap it in `try`/`catch` and check `canAddUpsells()` first. This charges money; it is not a cart call.
 
-<sub>Source: `src/core/next-commerce.ts:949`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.addUpsell`</sub>
 
 ### `next.canAddUpsells()`
 
@@ -1043,7 +1043,7 @@ if (next.canAddUpsells()) {
 
 > ⚠️ Also `false` while an upsell is being processed, so it is the right guard against double-submitting an offer button.
 
-<sub>Source: `src/core/next-commerce.ts:1055`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.canAddUpsells`</sub>
 
 ### `next.getCompletedUpsells()`
 
@@ -1059,7 +1059,7 @@ console.log(next.getCompletedUpsells()); // ['12']
 
 > ⚠️ Strings, not numbers — compare with `String(packageId)`.
 
-<sub>Source: `src/core/next-commerce.ts:1065`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.getCompletedUpsells`</sub>
 
 ### `next.isUpsellAlreadyAdded()`
 
@@ -1077,7 +1077,7 @@ if (!next.isUpsellAlreadyAdded(12)) {
 
 > ⚠️ Checks both the completed list and the accepted entries in the upsell journey, so it stays true across a page reload of the upsell funnel.
 
-<sub>Source: `src/core/next-commerce.ts:1076`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.isUpsellAlreadyAdded`</sub>
 
 ## On-page popups
 
@@ -1102,7 +1102,7 @@ await next.exitIntent({
 
 > ⚠️ Loads its code on demand, so the first call is asynchronous and it rethrows if that load fails. Full options and behaviour: [simple-exit-intent guide](../../../features/behavior/simple-exit-intent/guide/overview.md).
 
-<sub>Source: `src/core/next-commerce.ts:850`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.exitIntent`</sub>
 
 ### `next.disableExitIntent()`
 
@@ -1118,7 +1118,7 @@ next.disableExitIntent();
 
 > ⚠️ Does nothing if `exitIntent()` was never called — there is nothing to disable, and no warning either.
 
-<sub>Source: `src/core/next-commerce.ts:888`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.disableExitIntent`</sub>
 
 ### `next.fomo()`
 
@@ -1141,7 +1141,7 @@ await next.fomo({
 
 > ⚠️ Called with no argument it starts with its built-in defaults rather than doing nothing. Full options: [fomo-popup guide](../../../features/behavior/fomo-popup/guide/overview.md).
 
-<sub>Source: `src/core/next-commerce.ts:902`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.fomo`</sub>
 
 ### `next.stopFomo()`
 
@@ -1157,7 +1157,7 @@ next.stopFomo();
 
 > ⚠️ A no-op when `fomo()` was never called.
 
-<sub>Source: `src/core/next-commerce.ts:935`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.stopFomo`</sub>
 
 ## Formatting, version, and checks
 
@@ -1177,7 +1177,7 @@ console.log(next.getVersion()); // "0.4.30"
 
 > ⚠️ This is the value to trust. The `next:initialized` DOM event carries a hard-coded `version` that has not tracked releases — read it from here instead.
 
-<sub>Source: `src/core/next-commerce.ts:771`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.getVersion`</sub>
 
 ### `next.formatPrice()`
 
@@ -1194,7 +1194,7 @@ next.formatPrice(19.99, 'EUR'); // '€19.99'
 
 > ⚠️ Falls back to USD when the campaign has not loaded, so a price formatted too early can carry the wrong symbol. Format after `campaign:loaded`.
 
-<sub>Source: `src/core/next-commerce.ts:783`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.formatPrice`</sub>
 
 ### `next.validateCheckout()`
 
@@ -1211,7 +1211,7 @@ if (!valid) showErrors(errors); // e.g. ['Cart is empty']
 
 > ⚠️ Only checks that the cart is not empty today. It is not a substitute for the checkout form's own field validation, and passing it does not mean an order will succeed.
 
-<sub>Source: `src/core/next-commerce.ts:795`</sub>
+<sub>Source: `src/core/next-commerce.ts › NextCommerce.validateCheckout`</sub>
 
 ## What `next.cart` can do
 

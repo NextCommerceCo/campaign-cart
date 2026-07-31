@@ -19,8 +19,8 @@ Normal progress, useful for confirming the feature ran at all.
 
 | Message | Source | Extra context |
 |---|---|---|
-| `CheckoutReviewEnhancer initializing` | `checkout-review.enhancer.ts:36` | yes |
-| `Found review elements:` | `checkout-review.enhancer.ts:44` | yes |
+| `CheckoutReviewEnhancer initializing` | `checkout-review.enhancer.ts › CheckoutReviewEnhancer.enhance` | yes |
+| `Found review elements:` | `checkout-review.enhancer.ts › CheckoutReviewEnhancer.enhance` | yes |
 
 ## Debug
 
@@ -28,6 +28,6 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Found review elements:` | `checkout-review.enhancer.ts:68` | yes |
+| `Found review elements:` | `checkout-review.enhancer.ts › CheckoutReviewEnhancer.enhance` | yes |
 
 The **Extra context** column says whether the call passes a second argument — an object or an error logged alongside the message. Expand that entry in the console to see it; the message alone will not tell you which element or package was involved.

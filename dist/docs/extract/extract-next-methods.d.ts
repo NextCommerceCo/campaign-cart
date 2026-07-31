@@ -8,7 +8,7 @@ export interface ExtractedMember {
     category?: string;
     hasExample: boolean;
     deprecated: boolean;
-    line: number;
+    symbol: string;
 }
 export interface ExtractedGlobal {
     name: string;
@@ -27,7 +27,6 @@ export declare function extractPublicMembers(file: string, className: string): E
 export declare function extractInterfaceCallables(file: string, interfaceName: string): Array<{
     name: string;
     signature: string;
-    line: number;
 }>;
 export declare function extractWindowSurface(srcRoot: string, roots?: string[]): ExtractedWindowSurface;
 //# sourceMappingURL=extract-next-methods.d.ts.map

@@ -138,7 +138,7 @@ One entry per event: when it fires, where the SDK builds it, which destinations 
 
 **Reaches:** GTM (verbatim), RudderStack `Product List Viewed`
 
-**Built at:** `core/analytics/events/EcommerceEvents.ts:80`
+**Built at:** `core/analytics/events/EcommerceEvents.ts › EcommerceEvents.createViewItemListEvent`
 
 RudderStack sends the whole list as a `products[]` array. Meta has no name for a list impression, so it skips this event.
 
@@ -163,7 +163,7 @@ RudderStack sends the whole list as a `products[]` array. Meta has no name for a
 
 **Reaches:** GTM (verbatim), Meta `ViewContent`, RudderStack `Product Viewed`
 
-**Built at:** `core/analytics/events/EcommerceEvents.ts:105`
+**Built at:** `core/analytics/events/EcommerceEvents.ts › EcommerceEvents.createViewItemEvent`
 
 | Field | Type | Required | Meaning |
 |---|---|---|---|
@@ -181,7 +181,7 @@ RudderStack sends the whole list as a `products[]` array. Meta has no name for a
 
 **Reaches:** GTM (verbatim), RudderStack `Product Clicked`
 
-**Built at:** `core/analytics/events/EcommerceEvents.ts:233`
+**Built at:** `core/analytics/events/EcommerceEvents.ts › EcommerceEvents.createSelectItemEvent`
 
 Meta has no name for a list click, so it skips this event. The list the offer was chosen from travels with it.
 
@@ -203,7 +203,7 @@ Meta has no name for a list click, so it skips this event. The list the offer wa
 
 **Reaches:** GTM (verbatim)
 
-**Built at:** `core/analytics/events/EcommerceEvents.ts:463`
+**Built at:** `core/analytics/events/EcommerceEvents.ts › EcommerceEvents.createViewSearchResultsEvent`
 
 Meta's search event is `dl_search`, which the SDK never fires — so search results reach your GTM container and nowhere else.
 
@@ -238,7 +238,7 @@ No field schema is declared for this event, so validation only checks that it ha
 
 **Reaches:** GTM (verbatim), Meta `AddToCart`, RudderStack `Product Added`
 
-**Built at:** `core/analytics/events/EcommerceEvents.ts:143`
+**Built at:** `core/analytics/events/EcommerceEvents.ts › EcommerceEvents.createAddToCartEvent`
 
 Becomes Meta `AddToCart` and RudderStack `Product Added`. RudderStack reports only the **first** line of `items`, per its spec, so a multi-line add is under-reported there while GTM sees every line.
 
@@ -260,7 +260,7 @@ Becomes Meta `AddToCart` and RudderStack `Product Added`. RudderStack reports on
 
 **Reaches:** GTM (verbatim), Meta `RemoveFromCart` (custom), RudderStack `Product Removed`
 
-**Built at:** `core/analytics/events/EcommerceEvents.ts:172`
+**Built at:** `core/analytics/events/EcommerceEvents.ts › EcommerceEvents.createRemoveFromCartEvent`
 
 `RemoveFromCart` is a Meta *custom* event rather than a standard one, so it will not appear in Meta's standard-event reporting until you define it there.
 
@@ -292,7 +292,7 @@ No field schema is declared for this event, so validation only checks that it ha
 
 **Reaches:** GTM (verbatim), Meta `ViewCart` (custom), RudderStack `Cart Viewed`
 
-**Built at:** `core/analytics/events/EcommerceEvents.ts:477`
+**Built at:** `core/analytics/events/EcommerceEvents.ts › EcommerceEvents.createViewCartEvent`
 
 `ViewCart` is a Meta custom event. RudderStack correlates cart and checkout events by the analytics session id, which it sends as `cart_id`.
 
@@ -312,7 +312,7 @@ No field schema is declared for this event, so validation only checks that it ha
 
 **Reaches:** GTM (verbatim), Meta `InitiateCheckout`, RudderStack `Checkout Started`
 
-**Built at:** `core/analytics/events/EcommerceEvents.ts:246`
+**Built at:** `core/analytics/events/EcommerceEvents.ts › EcommerceEvents.createBeginCheckoutEvent`
 
 | Field | Type | Required | Meaning |
 |---|---|---|---|
@@ -332,7 +332,7 @@ No field schema is declared for this event, so validation only checks that it ha
 
 **Reaches:** GTM (verbatim), Meta `AddShippingInfo` (custom), RudderStack `Checkout Step Completed`
 
-**Built at:** `core/analytics/events/EcommerceEvents.ts:511`
+**Built at:** `core/analytics/events/EcommerceEvents.ts › EcommerceEvents.createAddShippingInfoEvent`
 
 RudderStack reports it as checkout `step: 2` — its spec has no shipping event, so shipping is modelled as a numbered step. `AddShippingInfo` is a Meta custom event.
 
@@ -354,7 +354,7 @@ RudderStack reports it as checkout `step: 2` — its spec has no shipping event,
 
 **Reaches:** GTM (verbatim), Meta `AddPaymentInfo`, RudderStack `Payment Info Entered`
 
-**Built at:** `core/analytics/events/EcommerceEvents.ts:528`
+**Built at:** `core/analytics/events/EcommerceEvents.ts › EcommerceEvents.createAddPaymentInfoEvent`
 
 RudderStack reports it as checkout `step: 3`.
 
@@ -376,7 +376,7 @@ RudderStack reports it as checkout `step: 3`.
 
 **Reaches:** GTM (verbatim), Meta `Purchase`, RudderStack `Order Completed`
 
-**Built at:** `core/analytics/events/EcommerceEvents.ts:435`
+**Built at:** `core/analytics/events/EcommerceEvents.ts › EcommerceEvents.createPurchaseEvent`
 
 Becomes Meta `Purchase` and RudderStack `Order Completed`. Meta gets an `eventID` of `{storeName}-{orderNumber}` when a store name is configured, which is what lets Meta deduplicate this browser event against a server-side copy of the same order. RudderStack recomputes `total` as value + tax + shipping and also calls `identify()` from the event's user properties.
 
@@ -443,7 +443,7 @@ No field schema is declared for this event, so validation only checks that it ha
 
 **Reaches:** GTM (verbatim), Meta `PageView`, RudderStack (own handler)
 
-**Built at:** `core/analytics/DataLayerManager.ts:495`, `core/analytics/index.ts:338`, `core/analytics/tracking/UserDataTracker.ts:118`
+**Built at:** `core/analytics/DataLayerManager.ts › DataLayerManager.formatUserDataEvent`, `core/analytics/index.ts › NextAnalytics.invalidateContext`, `core/analytics/tracking/UserDataTracker.ts › UserDataTracker.trackUserData`
 
 Meta treats it as `PageView`. RudderStack turns it into an `identify()` call — and **skips it entirely for a guest**, because there is no email or user id to identify. GTM receives it like any other event.
 
@@ -466,7 +466,7 @@ Meta treats it as `PageView`. RudderStack turns it into an `identify()` call —
 
 **Reaches:** GTM (verbatim), Meta `CompleteRegistration`, RudderStack `Signed Up`
 
-**Built at:** `core/analytics/events/UserEvents.ts:87`
+**Built at:** `core/analytics/events/UserEvents.ts › UserEvents.createSignUpEvent`
 
 | Field | Type | Required | Meaning |
 |---|---|---|---|
@@ -480,7 +480,7 @@ Meta treats it as `PageView`. RudderStack turns it into an `identify()` call —
 
 **Reaches:** GTM (verbatim), Meta `Login` (custom), RudderStack `Logged In`
 
-**Built at:** `core/analytics/events/UserEvents.ts:109`
+**Built at:** `core/analytics/events/UserEvents.ts › UserEvents.createLoginEvent`
 
 `Login` is a Meta custom event, not a standard one.
 
@@ -496,7 +496,7 @@ Meta treats it as `PageView`. RudderStack turns it into an `identify()` call —
 
 **Reaches:** GTM (verbatim), Meta `Subscribe` (custom)
 
-**Built at:** `core/analytics/events/UserEvents.ts:134`
+**Built at:** `core/analytics/events/UserEvents.ts › UserEvents.createSubscribeEvent`
 
 `Subscribe` is a Meta custom event. RudderStack has no mapping for it, so subscriptions never reach that destination.
 
@@ -534,7 +534,7 @@ No field schema is declared for this event, so validation only checks that it ha
 
 **Reaches:** GTM (verbatim), Meta `ViewedUpsell` (custom), RudderStack `Upsell Viewed`
 
-**Built at:** `core/analytics/tracking/AutoEventListener.ts:308`, `core/analytics/tracking/AutoEventListener.ts:334`
+**Built at:** `core/analytics/tracking/AutoEventListener.ts › handleUpsellViewed`
 
 Both vendor names are custom events, outside either vendor's standard set — define them at the destination before reporting on them.
 
@@ -577,7 +577,7 @@ Mapped by Meta to `AcceptedUpsell`, and validated as if it fired. No RudderStack
 
 **Reaches:** GTM (verbatim), Meta `SkippedUpsell` (custom), RudderStack `Upsell Skipped`
 
-**Built at:** `core/analytics/tracking/AutoEventListener.ts:430`
+**Built at:** `core/analytics/tracking/AutoEventListener.ts › handleUpsellSkipped`
 
 Both vendor names are custom events, outside either vendor's standard set.
 
@@ -595,7 +595,7 @@ Both vendor names are custom events, outside either vendor's standard set.
 
 **Reaches:** GTM (verbatim), RudderStack `Order Completed`
 
-**Built at:** `core/analytics/events/EcommerceEvents.ts:654`
+**Built at:** `core/analytics/events/EcommerceEvents.ts › EcommerceEvents.createAcceptedUpsellEvent`
 
 RudderStack sends it as a second `Order Completed`. Meta has no mapping for it, so accepted upsells do **not** reach the Meta Pixel as purchases — a real gap if you optimise Meta campaigns on total revenue.
 
@@ -628,7 +628,7 @@ RudderStack sends it as a second `Order Completed`. Meta has no mapping for it, 
 
 **Reaches:** GTM (verbatim), RudderStack `Cart Viewed`
 
-**Built at:** `core/analytics/events/EcommerceEvents.ts:494`
+**Built at:** `core/analytics/events/EcommerceEvents.ts › EcommerceEvents.createCartUpdatedEvent`
 
 RudderStack maps it to `Cart Viewed`, the same name it uses for `dl_view_cart`, so the two are indistinguishable downstream unless you block one. Meta has no mapping.
 
@@ -640,7 +640,7 @@ No field schema is declared for this event, so validation only checks that it ha
 
 **Reaches:** GTM (verbatim)
 
-**Built at:** `core/analytics/events/EcommerceEvents.ts:198`, `core/analytics/tracking/AutoEventListener.ts:253`
+**Built at:** `core/analytics/events/EcommerceEvents.ts › EcommerceEvents.createPackageSwappedEvent`, `core/analytics/tracking/AutoEventListener.ts › handlePackageSwapped`
 
 No vendor models a swap as one action, so neither Meta nor RudderStack maps it — a swap is visible to your GTM container only.
 
@@ -656,7 +656,7 @@ No field schema is declared for this event, so validation only checks that it ha
 
 **Reaches:** GTM (verbatim), Meta `PageView`, RudderStack (own handler), NextCampaign `page_view`
 
-**Built at:** `core/analytics/tracking/AutoEventListener.ts:615`
+**Built at:** `core/analytics/tracking/AutoEventListener.ts › handlePageView`
 
 The only event NextCampaign forwards. RudderStack turns it into a `page()` call plus a `{PageType} Page View` track event, and sends it **once per page load** — a second page view in the same load is skipped as a duplicate. Meta maps it to `PageView`.
 
@@ -668,7 +668,7 @@ No field schema is declared for this event, so validation only checks that it ha
 
 **Reaches:** GTM (verbatim)
 
-**Built at:** `core/analytics/tracking/AutoEventListener.ts:631`
+**Built at:** `core/analytics/tracking/AutoEventListener.ts › handleRouteChanged`
 
 Redundant with `dl_page_view`, which fires for the same navigation — report on one of the two, not both.
 
@@ -682,7 +682,7 @@ No field schema is declared for this event, so validation only checks that it ha
 
 **Reaches:** GTM (verbatim)
 
-**Built at:** `core/analytics/tracking/MetaTagController.ts:457`
+**Built at:** `core/analytics/tracking/MetaTagController.ts › scrollHandler`
 
 No field schema is declared for this event, so validation only checks that it has a name. Treat its payload as whatever the code that builds it puts there.
 
@@ -692,7 +692,7 @@ No field schema is declared for this event, so validation only checks that it ha
 
 **Reaches:** GTM (verbatim)
 
-**Built at:** `core/analytics/tracking/AutoEventListener.ts:651`
+**Built at:** `core/analytics/tracking/AutoEventListener.ts › handleExitIntentShown`
 
 No field schema is declared for this event, so validation only checks that it has a name. Treat its payload as whatever the code that builds it puts there.
 
@@ -702,7 +702,7 @@ No field schema is declared for this event, so validation only checks that it ha
 
 **Reaches:** GTM (verbatim)
 
-**Built at:** `core/analytics/tracking/AutoEventListener.ts:669`
+**Built at:** `core/analytics/tracking/AutoEventListener.ts › handleExitIntentClicked`
 
 No field schema is declared for this event, so validation only checks that it has a name. Treat its payload as whatever the code that builds it puts there.
 
@@ -712,7 +712,7 @@ No field schema is declared for this event, so validation only checks that it ha
 
 **Reaches:** GTM (verbatim)
 
-**Built at:** `core/analytics/tracking/AutoEventListener.ts:687`
+**Built at:** `core/analytics/tracking/AutoEventListener.ts › handleExitIntentDismissed`
 
 No field schema is declared for this event, so validation only checks that it has a name. Treat its payload as whatever the code that builds it puts there.
 
@@ -722,7 +722,7 @@ No field schema is declared for this event, so validation only checks that it ha
 
 **Reaches:** GTM (verbatim)
 
-**Built at:** `core/analytics/tracking/AutoEventListener.ts:705`
+**Built at:** `core/analytics/tracking/AutoEventListener.ts › handleExitIntentClosed`
 
 No field schema is declared for this event, so validation only checks that it has a name. Treat its payload as whatever the code that builds it puts there.
 
@@ -732,7 +732,7 @@ No field schema is declared for this event, so validation only checks that it ha
 
 **Reaches:** GTM (verbatim)
 
-**Built at:** `core/analytics/tracking/AutoEventListener.ts:723`
+**Built at:** `core/analytics/tracking/AutoEventListener.ts › handleExitIntentAction`
 
 No field schema is declared for this event, so validation only checks that it has a name. Treat its payload as whatever the code that builds it puts there.
 

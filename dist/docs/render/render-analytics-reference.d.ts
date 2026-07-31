@@ -7,7 +7,7 @@ export interface SchemaFieldFact {
 }
 export interface EmitSiteFact {
     file: string;
-    line: number;
+    symbol: string;
     how: string;
 }
 export interface AnalyticsFacts {

@@ -13,7 +13,7 @@ export interface SchemaField {
 }
 export interface EmitSite {
     file: string;
-    line: number;
+    symbol: string;
     how: string;
 }
 export interface ProviderRegistryEntry {
