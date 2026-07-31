@@ -59,24 +59,31 @@ Each has a colocated test in `checkout-form/tests/`.
 
 ### What is left, and the proposed seams
 
-The seven modules above came out **verbatim** — they were cohesive clusters with 1–8
-dependencies, so lifting them changed no behaviour by construction. The three biggest
-remaining methods are not like that: their coupling is 9–23, and each needs a *designed*
-seam rather than a move. Measured, not estimated:
+The first **seven** modules came out **verbatim** — cohesive clusters with 1–8 dependencies,
+so lifting them changed no behaviour by construction. `field-validation-display.ts` is the
+first that did not: its body was restructured into named helpers (`handleBlur`,
+`handleInput`, `handleChange`, `markValid`, `clearErrorLabels`) because the original was one
+120-line `if/else if` chain where the three interactions' *differences* were the whole
+point and were invisible. Same behaviour, different shape — which is why it needs tests in
+a way the verbatim ones did not.
+
+The remaining big methods need a *designed* seam rather than a move. Measured, not
+estimated (`handleFieldChange` as it now stands, after the display half came out):
 
 | Method | Lines | `this.` fields | `this.` calls |
 |---|---|---|---|
-| `handleFieldChange` | 291 | 9 | 7 |
 | `handleFormSubmit` | 240 | 11 | 5 |
 | `initialize` | 228 | **23** | **18** |
+| `handleFieldChange` (value routing, remainder) | ~160 | 9 | 7 |
 
-**`handleFieldChange` — split by concern, not by field.** It looks like one big switch but
-is really **two** fused: the top half branches on the *field name* to route a value into
-the store (billing-prefixed vs shipping, with per-field handling for postal, phone,
-country, address1), and the bottom half branches on the *event type* (`blur` / `input` /
-`change`) to run validation and show or clear errors. Those are independent jobs sharing
-one entry point. Two modules — value routing and field validation — each keyed on the thing
-it actually dispatches on. Lowest risk of the three and the biggest line win.
+**`handleFieldChange` — half done.** It looked like one big switch but was really **two**
+fused: the top half branches on the *field name* to route a value into the store, and the
+bottom half branched on the *event type* (`blur` / `input` / `change`) to show or clear
+errors. Two independent jobs sharing one entry point. **The event-type half is now
+`field-validation-display.ts`** — it needed only two things from the form despite the whole
+method touching nine, which is the evidence the split was real. The field-name routing half
+remains; it is the more entangled of the two because it writes to the store and drives the
+state dropdowns.
 
 **`handleFormSubmit` — split by submit path.** Its five calls
 (`validateExpressCheckoutFields`, `processOrder`, `handleStepNavigation`,
