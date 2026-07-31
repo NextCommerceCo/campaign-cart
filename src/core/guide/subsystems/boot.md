@@ -70,5 +70,10 @@ Two ideas explain almost every boot question.
 - **No supported second run.** `SDKInitializer.reinitialize()` exists for the SDK's own use; it tears down the DOM scanner without destroying the features that scanner created, so calling it from a page leaves two live features on every element.
 - **The version in `next:initialized` is not the SDK version.** `detail.version` is the hardcoded string `'0.2.0'` (`sdk-initializer.ts › SDKInitializer.emitInitializedEvent`). Read `next.getVersion()` instead — see [JavaScript API](../reference/javascript-api.md).
 - **No per-step progress to observe.** Boot marks its start with `data-next-sdk-loading="true"`, its scan with `next:display-ready`, and its end with `next:initialized`; the steps in between report only to the console. Store-level events such as `campaign:loaded` fire on the [event bus](./event-bus.md), which an inline page script has no handle on until `window.next` exists at the end of boot.
-- **Failure is not announced to the page.** No event fires when boot aborts; the retries and the final error appear in the console only, so a page cannot render its own fallback in response.
+- **Failure is announced once the retries are exhausted**, as `error:occurred` with
+  `code: "SDK_INIT_FAILED"` and the attempt count in `details`. Subscribe with
+  `EventBus.getInstance().on('error:occurred', …)` rather than `next.on(…)`: a boot that
+  fails this early never publishes `window.next`. The individual retries are still
+  console-only. Before 2026-07-31 nothing fired at all, so a page had no way to render its
+  own fallback.
 - **It does not validate the API key beyond its presence,** so a wrong key fails inside the campaign request rather than at the step that reads the tag.

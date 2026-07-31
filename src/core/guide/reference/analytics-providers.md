@@ -23,13 +23,13 @@ Which destinations the SDK can forward events to, what each one does to an event
 
 Every provider is optional. With `analytics.enabled: true` and no provider configured, events are still built, validated and pushed to `window.NextDataLayer` — see [Analytics events](./analytics-events.md).
 
-## `blockedEvents` only reaches two providers
+## `blockedEvents` reaches every provider
 
-Only the GTM and Meta adapters are constructed with their provider config, so only those two receive a `blockedEvents` list. RudderStack, NextCampaign and Custom are constructed with no options at all — their blocked list is always empty, and a name you add there is silently ignored while the event keeps arriving.
-
-The symptom is an event you believe you blocked still showing up at that destination, with the debug overlay reporting `sent` rather than `blocked`. Until the adapters accept the list, block such an event at the destination (a RudderStack transformation, a filter at your endpoint) rather than in SDK config.
+All five adapters — GTM, Meta, RudderStack, NextCampaign and Custom — are constructed with their provider config, so a `blockedEvents` list applies to all of them. Until 2026-07-31 only GTM and Meta received it and the other three ignored it silently, so if you worked around that by blocking at the destination (a RudderStack transformation, a filter at your endpoint), that filter is now doing the same job twice — harmless, but you can drop it.
 
 Names are matched **verbatim** against the canonical event name, so `blockedEvents: ["purchase"]` blocks nothing — the event is `dl_purchase`.
+
+This is a per-provider list set when the SDK boots. The `next-analytics-disable` and `next-analytics-enable-only` meta tags are a separate, page-level mechanism and are **still parsed and never enforced** — do not reach for them expecting this behaviour.
 
 ## The `dl_` prefix: who sees it
 

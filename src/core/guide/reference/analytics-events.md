@@ -395,7 +395,7 @@ Becomes Meta `Purchase` and RudderStack `Order Completed`. Meta gets an `eventID
 | `ecommerce.discount` | `number` | no | Total taken off the order across all lines, as a positive amount. |
 | `user_properties` | `UserProperties` | no | Who the shopper is. See [User properties](#user-properties) — mostly empty before checkout. |
 
-> ⚠️ Validation requires `ecommerce.value` to be truthy, so a zero-value order — a 100% discount, a free trial — is dropped before it reaches the data layer and no provider ever sees it. Check the order total first when a conversion is missing.
+> ⚠️ A zero-value order — a 100% discount, a free trial — now reports normally, carrying `value: 0` with its real `transaction_id`, currency and items. Until 2026-07-31 validation required `ecommerce.value` to be *truthy*, so those orders were dropped before reaching the data layer and no provider ever saw them; a conversion count from before that date under-reports free orders.
 >
 > ⚠️ Reporting `value` as item revenue means it excludes tax and shipping by design. A GA4 revenue figure that looks low against the store's own total is usually this, not a lost event.
 

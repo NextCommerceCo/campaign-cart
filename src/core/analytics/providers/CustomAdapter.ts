@@ -9,20 +9,21 @@ interface CustomAdapterConfig {
   maxRetries?: number;
   retryDelayMs?: number;
   transformFunction?: (event: DataLayerEvent) => any;
+  blockedEvents?: string[];
 }
 
 /**
  * Custom adapter for sending events to webhooks or custom APIs
  */
 export class CustomAdapter extends ProviderAdapter {
-  private config: Required<CustomAdapterConfig>;
+  private config: Required<Omit<CustomAdapterConfig, 'blockedEvents'>>;
   private eventQueue: DataLayerEvent[] = [];
   private batchTimer: number | null = null;
   private retryQueue: Map<string, { event: DataLayerEvent; attempts: number }> =
     new Map();
 
   constructor(config: CustomAdapterConfig = {}) {
-    super('Custom');
+    super('Custom', { blockedEvents: config.blockedEvents });
 
     // Set default configuration
     this.config = {

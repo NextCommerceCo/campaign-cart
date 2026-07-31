@@ -46,8 +46,8 @@ export class RudderStackAdapter extends ProviderAdapter {
   private pageViewSent = false;
   private loadWarned = false;
 
-  constructor() {
-    super('RudderStack');
+  constructor(config?: { blockedEvents?: string[] }) {
+    super('RudderStack', { blockedEvents: config?.blockedEvents });
   }
 
   /** Warn once, with the fix, when the RudderStack SDK never loads. */
@@ -496,7 +496,11 @@ export class RudderStackAdapter extends ProviderAdapter {
    * Build Cart Viewed properties.
    * Spec: cart_id + products[]; value/currency added for reporting.
    */
-  private buildCartViewedProps(data: any, baseProps: any, cartId?: string): any {
+  private buildCartViewedProps(
+    data: any,
+    baseProps: any,
+    cartId?: string
+  ): any {
     const campaignData = this.getCampaignData(data);
 
     return {

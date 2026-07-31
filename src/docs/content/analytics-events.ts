@@ -136,19 +136,20 @@ export const ANALYTICS_PROVIDERS_INTRO =
  * provider config. Worth its own note because the setting looks universal.
  */
 export const ANALYTICS_BLOCKED_EVENTS_NOTE = [
-  '## `blockedEvents` only reaches two providers',
-  'Only the GTM and Meta adapters are constructed with their provider config, ' +
-    'so only those two receive a `blockedEvents` list. RudderStack, ' +
-    'NextCampaign and Custom are constructed with no options at all — their ' +
-    'blocked list is always empty, and a name you add there is silently ' +
-    'ignored while the event keeps arriving.',
-  'The symptom is an event you believe you blocked still showing up at that ' +
-    'destination, with the debug overlay reporting `sent` rather than ' +
-    '`blocked`. Until the adapters accept the list, block such an event at the ' +
-    'destination (a RudderStack transformation, a filter at your endpoint) ' +
-    'rather than in SDK config.',
+  '## `blockedEvents` reaches every provider',
+  'All five adapters — GTM, Meta, RudderStack, NextCampaign and Custom — are ' +
+    'constructed with their provider config, so a `blockedEvents` list applies ' +
+    'to all of them. Until 2026-07-31 only GTM and Meta received it and the ' +
+    'other three ignored it silently, so if you worked around that by blocking ' +
+    'at the destination (a RudderStack transformation, a filter at your ' +
+    'endpoint), that filter is now doing the same job twice — harmless, but you ' +
+    'can drop it.',
   'Names are matched **verbatim** against the canonical event name, so ' +
     '`blockedEvents: ["purchase"]` blocks nothing — the event is `dl_purchase`.',
+  'This is a per-provider list set when the SDK boots. The ' +
+    '`next-analytics-disable` and `next-analytics-enable-only` meta tags are a ' +
+    'separate, page-level mechanism and are **still parsed and never enforced** ' +
+    '— do not reach for them expecting this behaviour.',
 ];
 
 /** Verified behaviour of the `dl_` prefix, per channel. */
@@ -612,7 +613,7 @@ export const ANALYTICS_EVENT_DOCS: AnalyticsEventDoc[] = [
       '`total` as value + tax + shipping and also calls `identify()` from the ' +
       "event's user properties.",
     cautions: [
-      'Validation requires `ecommerce.value` to be truthy, so a zero-value order — a 100% discount, a free trial — is dropped before it reaches the data layer and no provider ever sees it. Check the order total first when a conversion is missing.',
+      'A zero-value order — a 100% discount, a free trial — now reports normally, carrying `value: 0` with its real `transaction_id`, currency and items. Until 2026-07-31 validation required `ecommerce.value` to be *truthy*, so those orders were dropped before reaching the data layer and no provider ever saw them; a conversion count from before that date under-reports free orders.',
       "Reporting `value` as item revenue means it excludes tax and shipping by design. A GA4 revenue figure that looks low against the store's own total is usually this, not a lost event.",
     ],
   },

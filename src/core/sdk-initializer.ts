@@ -29,6 +29,7 @@ export class SDKInitializer {
   private static campaignLoadStartTime = 0;
   private static campaignLoadTime = 0;
   private static campaignFromCache = false;
+  private static attributionListenersCleanup: (() => void) | null = null;
 
   public static async initialize(): Promise<void> {
     if (this.initialized) {
@@ -60,7 +61,7 @@ export class SDKInitializer {
 
       // Initialize analytics after campaign data is loaded
       await this.initializeAnalytics();
-      
+
       // IMPORTANT: Wait for cart store to fully rehydrate from storage
       // This prevents race conditions where display enhancers initialize with empty cart state
       await this.waitForStoreRehydration();
@@ -97,26 +98,45 @@ export class SDKInitializer {
 
       // Emit initialization event
       this.emitInitializedEvent();
-
     } catch (error) {
       this.logger.error('SDK initialization failed:', error);
-      document.body.setAttribute('data-next-sdk-loading', 'false');
+
+      // Leave it "true": nothing after the failed step ran — no DOM scan, no
+      // window.next, no next:display-ready — so a page revealing itself on
+      // "false" would show raw un-enhanced markup. True through every retry
+      // and after the final failure alike (findings #26, #41).
 
       // Retry logic
       if (this.retryAttempts < this.maxRetries) {
         this.retryAttempts++;
-        this.logger.warn(`Retrying initialization (attempt ${this.retryAttempts}/${this.maxRetries})...`);
-        
+        this.logger.warn(
+          `Retrying initialization (attempt ${this.retryAttempts}/${this.maxRetries})...`
+        );
+
         // Wait before retry
-        await new Promise(resolve => setTimeout(resolve, 1000 * this.retryAttempts));
+        await new Promise(resolve =>
+          setTimeout(resolve, 1000 * this.retryAttempts)
+        );
         return this.initialize();
       }
-      
+
+      // Step 9's error handler never installs this early in boot, and
+      // window.next/nextDebug never get created either — this emit is the
+      // only failure signal a page can subscribe to (finding #26).
+      const message = error instanceof Error ? error.message : String(error);
+      EventBus.getInstance().emit('error:occurred', {
+        message,
+        code: 'SDK_INIT_FAILED',
+        details: { retryAttempts: this.retryAttempts },
+      });
+
       throw error;
     }
   }
 
-  private static async captureUrlParameters(urlParams: URLSearchParams): Promise<void> {
+  private static async captureUrlParameters(
+    urlParams: URLSearchParams
+  ): Promise<void> {
     try {
       // Import parameter store
       const { useParameterStore } = await import('@/state/parameter');
@@ -137,13 +157,27 @@ export class SDKInitializer {
       // Update the store with merged parameters
       if (Object.keys(mergedParams).length > 0) {
         paramStore.updateParams(mergedParams);
-        this.logger.debug(`Captured ${Object.keys(currentParams).length} URL parameters, total stored: ${Object.keys(mergedParams).length}`);
+        this.logger.debug(
+          `Captured ${Object.keys(currentParams).length} URL parameters, total stored: ${Object.keys(mergedParams).length}`
+        );
 
         // Log special parameters we're interested in for visibility control
-        const visibilityParams = ['seen', 'timer', 'reviews', 'loading', 'banner', 'exit'];
-        const relevantParams = Object.keys(mergedParams).filter(key => visibilityParams.includes(key));
+        const visibilityParams = [
+          'seen',
+          'timer',
+          'reviews',
+          'loading',
+          'banner',
+          'exit',
+        ];
+        const relevantParams = Object.keys(mergedParams).filter(key =>
+          visibilityParams.includes(key)
+        );
         if (relevantParams.length > 0) {
-          this.logger.info('Visibility control parameters detected:', relevantParams.map(k => `${k}=${mergedParams[k]}`).join(', '));
+          this.logger.info(
+            'Visibility control parameters detected:',
+            relevantParams.map(k => `${k}=${mergedParams[k]}`).join(', ')
+          );
         }
       }
     } catch (error) {
@@ -157,8 +191,13 @@ export class SDKInitializer {
       const configStore = useConfigStore.getState();
 
       // Only initialize if currencyBehavior is explicitly set to 'auto'
-      if (!configStore.currencyBehavior || configStore.currencyBehavior !== 'auto') {
-        this.logger.info('Skipping location/currency detection (currencyBehavior is not set to auto)');
+      if (
+        !configStore.currencyBehavior ||
+        configStore.currencyBehavior !== 'auto'
+      ) {
+        this.logger.info(
+          'Skipping location/currency detection (currencyBehavior is not set to auto)'
+        );
         // Even when auto-detection is disabled, restore a previously chosen
         // currency from session so subsequent page loads (post-checkout,
         // upsells, etc.) keep the same currency the user paid in.
@@ -180,27 +219,31 @@ export class SDKInitializer {
 
       // Initialize country service early
       const countryService = CountryService.getInstance();
-      
+
       // Check for country override in URL or session
       const urlParams = new URLSearchParams(window.location.search);
       const countryOverride = urlParams.get('country');
       const savedCountry = sessionStorage.getItem('next_selected_country');
-      
+
       // Priority: URL param > saved preference > auto-detection
       const forcedCountry = countryOverride || savedCountry;
-      
+
       let locationData: LocationData | null = null;
-      
+
       if (forcedCountry) {
         // Use forced country instead of detection
-        this.logger.info(`Using forced country: ${forcedCountry} (source: ${countryOverride ? 'URL' : 'session'})`);
-        
+        this.logger.info(
+          `Using forced country: ${forcedCountry} (source: ${countryOverride ? 'URL' : 'session'})`
+        );
+
         try {
-          const response = await fetch(`https://cdn-countries.muddy-wind-c7ca.workers.dev/countries/${forcedCountry.toUpperCase()}/states`);
-          
+          const response = await fetch(
+            `https://cdn-countries.muddy-wind-c7ca.workers.dev/countries/${forcedCountry.toUpperCase()}/states`
+          );
+
           if (response.ok) {
             const data = await response.json();
-            
+
             // Format response to match location detection structure
             locationData = {
               detectedCountryCode: forcedCountry.toUpperCase(),
@@ -211,46 +254,60 @@ export class SDKInitializer {
                 stateRequired: true,
                 postcodeLabel: 'Postcode / ZIP',
                 postcodeMinLength: 2,
-                postcodeMaxLength: 20
+                postcodeMaxLength: 20,
               },
               detectedStates: data.states || [],
-              countries: [] as Country[]
+              countries: [] as Country[],
             };
-            
+
             // Save to session if from URL
             if (countryOverride) {
-              sessionStorage.setItem('next_selected_country', countryOverride.toUpperCase());
+              sessionStorage.setItem(
+                'next_selected_country',
+                countryOverride.toUpperCase()
+              );
             }
-            
+
             this.logger.info('Country config loaded:', {
               country: locationData?.detectedCountryCode,
-              currency: locationData?.detectedCountryConfig.currencyCode
+              currency: locationData?.detectedCountryConfig.currencyCode,
             });
           } else {
-            this.logger.warn(`Failed to fetch country config for ${forcedCountry}, falling back to detection`);
+            this.logger.warn(
+              `Failed to fetch country config for ${forcedCountry}, falling back to detection`
+            );
           }
         } catch (error) {
           this.logger.error('Error fetching country config:', error);
         }
       }
-      
+
       // If no forced country or fetch failed, use normal detection
       if (!locationData) {
         // Apply address config if available
         if (configStore.addressConfig) {
           countryService.setConfig(configStore.addressConfig);
         }
-        
+
         // Fetch location data with timeout to prevent blocking
         const locationDataPromise = countryService.getLocationData();
-        const timeoutPromise = new Promise<null>((_, reject) => 
-          setTimeout(() => reject(new Error('Location detection timeout')), 3000)
+        const timeoutPromise = new Promise<null>((_, reject) =>
+          setTimeout(
+            () => reject(new Error('Location detection timeout')),
+            3000
+          )
         );
-        
+
         try {
-          locationData = await Promise.race([locationDataPromise, timeoutPromise]);
+          locationData = await Promise.race([
+            locationDataPromise,
+            timeoutPromise,
+          ]);
         } catch (error) {
-          this.logger.warn('Location detection failed or timed out, using defaults:', error);
+          this.logger.warn(
+            'Location detection failed or timed out, using defaults:',
+            error
+          );
           // Use fallback data
           locationData = {
             detectedCountryCode: 'US',
@@ -264,10 +321,10 @@ export class SDKInitializer {
               postcodeExample: '12345',
               postcodeFormat: null,
               currencyCode: 'USD',
-              currencySymbol: '$'
+              currencySymbol: '$',
             },
             detectedStates: [],
-            countries: [] as Country[]
+            countries: [] as Country[],
           };
         }
       } else if (locationData && !locationData.countries?.length) {
@@ -279,13 +336,13 @@ export class SDKInitializer {
           this.logger.warn('Failed to fetch countries list:', error);
         }
       }
-      
+
       if (locationData) {
         this.logger.info('User location detected:', {
           country: locationData.detectedCountryCode,
           currency: locationData.detectedCountryConfig.currencyCode,
           currencySymbol: locationData.detectedCountryConfig.currencySymbol,
-          ip: locationData.detectedIp
+          ip: locationData.detectedIp,
         });
 
         // Store in config for global access
@@ -293,21 +350,22 @@ export class SDKInitializer {
           detectedCountry: locationData.detectedCountryCode,
           detectedCurrency: locationData.detectedCountryConfig.currencyCode,
           detectedIp: locationData.detectedIp || '', // Store user IP address
-          locationData: locationData // Cache the entire response
+          locationData: locationData, // Cache the entire response
         });
-        
+
         // Determine selected currency with proper priority:
         // 1. URL parameter (highest priority - immediate override)
         // 2. Previously saved user selection (from session)
         // 3. Detected currency from location (default)
-        
+
         const urlParams = new URLSearchParams(window.location.search);
         const urlCurrency = urlParams.get('currency');
         const savedCurrency = sessionStorage.getItem('next_selected_currency');
-        const detectedCurrency = locationData.detectedCountryConfig.currencyCode;
-        
+        const detectedCurrency =
+          locationData.detectedCountryConfig.currencyCode;
+
         let selectedCurrency: string;
-        
+
         if (urlCurrency) {
           // URL parameter has highest priority
           selectedCurrency = urlCurrency.toUpperCase();
@@ -317,7 +375,10 @@ export class SDKInitializer {
         } else if (savedCurrency) {
           // Use previously saved selection
           selectedCurrency = savedCurrency;
-          this.logger.info('Using saved currency preference:', selectedCurrency);
+          this.logger.info(
+            'Using saved currency preference:',
+            selectedCurrency
+          );
         } else {
           // Use detected currency as default
           selectedCurrency = detectedCurrency;
@@ -332,24 +393,26 @@ export class SDKInitializer {
         }
 
         configStore.updateConfig({
-          selectedCurrency
+          selectedCurrency,
         });
-        
+
         this.logger.debug('Location and currency initialized:', {
           detectedCountry: configStore.detectedCountry,
           detectedCurrency: configStore.detectedCurrency,
-          selectedCurrency: configStore.selectedCurrency
+          selectedCurrency: configStore.selectedCurrency,
         });
       }
-      
     } catch (error) {
-      this.logger.warn('Failed to initialize location/currency, using defaults:', error);
-      
+      this.logger.warn(
+        'Failed to initialize location/currency, using defaults:',
+        error
+      );
+
       // Check for saved currency even in fallback case
       const savedCurrency = sessionStorage.getItem('next_selected_currency');
       const urlParams = new URLSearchParams(window.location.search);
       const urlCurrency = urlParams.get('currency');
-      
+
       // Determine fallback currency with priority
       let fallbackCurrency = 'USD';
       if (urlCurrency) {
@@ -358,12 +421,12 @@ export class SDKInitializer {
       } else if (savedCurrency) {
         fallbackCurrency = savedCurrency;
       }
-      
+
       const configStore = useConfigStore.getState();
       configStore.updateConfig({
         detectedCountry: 'US',
         detectedCurrency: 'USD',
-        selectedCurrency: fallbackCurrency
+        selectedCurrency: fallbackCurrency,
       });
     }
   }
@@ -377,7 +440,9 @@ export class SDKInitializer {
       await this.clearAllStorage();
       // Remove the reset parameter from URL to avoid infinite loop
       urlParams.delete('reset');
-      const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+      const newUrl =
+        window.location.pathname +
+        (urlParams.toString() ? '?' + urlParams.toString() : '');
       window.history.replaceState({}, '', newUrl);
     }
 
@@ -386,29 +451,30 @@ export class SDKInitializer {
 
     // Check URL parameters for debug mode, forcePackageId, forceShippingId, and forceBundleId
     const windowConfig = (window as any).nextConfig;
-    const debugMode = urlParams.get('debugger') === 'true' || windowConfig?.debugger === true;
+    const debugMode =
+      urlParams.get('debugger') === 'true' || windowConfig?.debugger === true;
     const forcePackageId = urlParams.get('forcePackageId');
     const forceShippingId = urlParams.get('forceShippingId');
     const forceBundleId = urlParams.get('forceBundleId');
-    
+
     // Load from window.nextConfig first (as defaults)
     configStore.loadFromWindow();
-    
+
     // Load from meta tags second (will override window.nextConfig if metatags exist)
     configStore.loadFromMeta();
-    
+
     // Override debug mode from URL if present
     if (debugMode) {
       configStore.updateConfig({ debug: true });
     }
-    
+
     // Handle forcePackageId parameter
     if (forcePackageId) {
       this.logger.info('forcePackageId parameter detected:', forcePackageId);
       // Store for later processing after campaign data is loaded
       (window as any)._nextForcePackageId = forcePackageId;
     }
-    
+
     // Handle forceShippingId parameter
     if (forceShippingId) {
       this.logger.info('forceShippingId parameter detected:', forceShippingId);
@@ -424,15 +490,20 @@ export class SDKInitializer {
       (window as any)._nextForceBundleId = forceBundleId;
     }
 
-    this.logger.debug('Configuration loaded (metatags have priority):', configStore);
+    this.logger.debug(
+      'Configuration loaded (metatags have priority):',
+      configStore
+    );
   }
 
   private static async loadCampaignData(): Promise<void> {
     const configStore = useConfigStore.getState();
     const campaignStore = useCampaignStore.getState();
-    
+
     if (!configStore.apiKey) {
-      throw new Error('API key not found. Please set next-api-key meta tag or window.nextConfig.apiKey');
+      throw new Error(
+        'API key not found. Please set next-api-key meta tag or window.nextConfig.apiKey'
+      );
     }
 
     // Campaign ID is deprecated and not used by the API - only the API key is needed
@@ -449,8 +520,13 @@ export class SDKInitializer {
     // This ensures country dropdowns only show countries the campaign ships to
     if (campaignStore.data?.available_shipping_countries) {
       const countryService = CountryService.getInstance();
-      countryService.setCampaignShippingCountries(campaignStore.data.available_shipping_countries);
-      this.logger.info('Campaign shipping countries set globally:', campaignStore.data.available_shipping_countries.map((c: any) => c.code));
+      countryService.setCampaignShippingCountries(
+        campaignStore.data.available_shipping_countries
+      );
+      this.logger.info(
+        'Campaign shipping countries set globally:',
+        campaignStore.data.available_shipping_countries.map((c: any) => c.code)
+      );
     }
 
     // Process forcePackageId parameter after campaign data is available
@@ -468,62 +544,67 @@ export class SDKInitializer {
 
   private static async processForcePackageId(): Promise<void> {
     const forcePackageId = (window as any)._nextForcePackageId;
-    
+
     if (!forcePackageId) {
       return;
     }
-    
+
     try {
       this.logger.info('Processing forcePackageId parameter:', forcePackageId);
-      
+
       const campaignStore = useCampaignStore.getState();
 
       // Clear existing cart
       cartOperations.clear();
       this.logger.debug('Cart cleared for forcePackageId');
-      
+
       // Parse the format: x:2,y:1 -> [{id: x, quantity: 2}, {id: y, quantity: 1}]
       const packageSpecs = forcePackageId.split(',').map((spec: string) => {
         const [idStr, quantityStr] = spec.trim().split(':');
         const packageId = parseInt(idStr || '', 10);
         const quantity = quantityStr ? parseInt(quantityStr, 10) : 1;
-        
+
         if (isNaN(packageId) || packageId <= 0) {
           throw new Error(`Invalid package ID: ${idStr}`);
         }
-        
+
         if (isNaN(quantity) || quantity <= 0) {
           throw new Error(`Invalid quantity: ${quantityStr}`);
         }
-        
+
         return { packageId, quantity };
       });
-      
+
       this.logger.debug('Parsed package specifications:', packageSpecs);
-      
+
       // Add each package to cart
       for (const spec of packageSpecs) {
         const packageData = campaignStore.getPackage(spec.packageId);
-        
+
         if (!packageData) {
-          this.logger.warn(`Package ${spec.packageId} not found in campaign data, skipping`);
+          this.logger.warn(
+            `Package ${spec.packageId} not found in campaign data, skipping`
+          );
           continue;
         }
-        
+
         await cartOperations.addItem({
           packageId: spec.packageId,
           quantity: spec.quantity,
-          isUpsell: false
+          isUpsell: false,
         });
-        
-        this.logger.debug(`Added package ${spec.packageId} with quantity ${spec.quantity} to cart`);
+
+        this.logger.debug(
+          `Added package ${spec.packageId} with quantity ${spec.quantity} to cart`
+        );
       }
-      
-      this.logger.info(`Successfully processed forcePackageId: added ${packageSpecs.length} package(s) to cart`);
-      
+
+      this.logger.info(
+        `Successfully processed forcePackageId: added ${packageSpecs.length} package(s) to cart`
+      );
+
       // Clean up the temporary storage
       delete (window as any)._nextForcePackageId;
-      
     } catch (error) {
       this.logger.error('Error processing forcePackageId parameter:', error);
       // Don't throw - this shouldn't break SDK initialization
@@ -532,50 +613,61 @@ export class SDKInitializer {
 
   private static async processForceShippingId(): Promise<void> {
     const forceShippingId = (window as any)._nextForceShippingId;
-    
+
     if (!forceShippingId) {
       return;
     }
-    
+
     try {
-      this.logger.info('Processing forceShippingId parameter:', forceShippingId);
-      
+      this.logger.info(
+        'Processing forceShippingId parameter:',
+        forceShippingId
+      );
+
       const campaignStore = useCampaignStore.getState();
 
       // Parse the shipping ID (should be a number)
       const shippingId = parseInt(forceShippingId, 10);
-      
+
       if (isNaN(shippingId) || shippingId <= 0) {
         throw new Error(`Invalid shipping ID: ${forceShippingId}`);
       }
-      
+
       // Verify the shipping method exists in campaign data
       const campaignData = campaignStore.data;
       if (!campaignData?.shipping_methods) {
         this.logger.warn('No shipping methods available in campaign data');
         return;
       }
-      
+
       const shippingMethod = campaignData.shipping_methods.find(
         method => method.ref_id === shippingId
       );
-      
+
       if (!shippingMethod) {
-        this.logger.warn(`Shipping method ${shippingId} not found in campaign data`);
-        this.logger.debug('Available shipping methods:', 
-          campaignData.shipping_methods.map(m => ({ id: m.ref_id, code: m.code, price: m.price }))
+        this.logger.warn(
+          `Shipping method ${shippingId} not found in campaign data`
+        );
+        this.logger.debug(
+          'Available shipping methods:',
+          campaignData.shipping_methods.map(m => ({
+            id: m.ref_id,
+            code: m.code,
+            price: m.price,
+          }))
         );
         return;
       }
-      
+
       // Set the shipping method
       await cartOperations.setShippingMethod(shippingId);
-      
-      this.logger.info(`Successfully set shipping method: ${shippingMethod.code} (ID: ${shippingId}, Price: $${shippingMethod.price})`);
-      
+
+      this.logger.info(
+        `Successfully set shipping method: ${shippingMethod.code} (ID: ${shippingId}, Price: $${shippingMethod.price})`
+      );
+
       // Clean up the temporary storage
       delete (window as any)._nextForceShippingId;
-      
     } catch (error) {
       this.logger.error('Error processing forceShippingId parameter:', error);
       // Don't throw - this shouldn't break SDK initialization
@@ -593,9 +685,10 @@ export class SDKInitializer {
       await attributionStore.initialize();
 
       // Add SDK version and user IP to metadata
-      const sdkVersion = typeof window !== 'undefined' && window.__NEXT_SDK_VERSION__
-        ? window.__NEXT_SDK_VERSION__
-        : 'unknown';
+      const sdkVersion =
+        typeof window !== 'undefined' && window.__NEXT_SDK_VERSION__
+          ? window.__NEXT_SDK_VERSION__
+          : 'unknown';
 
       // Get user IP from config store (set during location detection)
       const userIp = configStore.detectedIp || '';
@@ -604,18 +697,20 @@ export class SDKInitializer {
         metadata: {
           ...attributionStore.metadata,
           sdk_version: sdkVersion,
-          user_ip: userIp
-        }
+          user_ip: userIp,
+        },
       });
 
-      this.logger.debug(`Added SDK version to attribution metadata: ${sdkVersion}`);
+      this.logger.debug(
+        `Added SDK version to attribution metadata: ${sdkVersion}`
+      );
       if (userIp) {
         this.logger.debug(`Added user IP to attribution metadata: ${userIp}`);
       }
-      
+
       // Set up event listeners for attribution updates
       this.setupAttributionListeners();
-      
+
       // Initialize UTM transfer if enabled
       if (configStore.utmTransfer?.enabled) {
         const { UtmTransfer } = await import('@/core/attribution/utm-transfer');
@@ -623,7 +718,7 @@ export class SDKInitializer {
         utmTransfer.init();
         this.logger.debug('UTM transfer initialized');
       }
-      
+
       this.logger.debug('Attribution initialized');
     } catch (error) {
       this.logger.error('Attribution initialization failed:', error);
@@ -632,37 +727,49 @@ export class SDKInitializer {
   }
 
   private static setupAttributionListeners(): void {
+    // Idempotent: a boot retry or reinitialize() calls this again, and
+    // without tearing down the previous registration first, every cart
+    // update and popstate would re-run once per past call (finding #30).
+    this.attributionListenersCleanup?.();
+
     const eventBus = EventBus.getInstance();
     const attributionStore = useAttributionStore.getState();
-    
+
     // Update funnel when campaign loads
-    eventBus.on('campaign:loaded', (campaign) => {
+    const offCampaignLoaded = eventBus.on('campaign:loaded', campaign => {
       if (campaign?.name && !attributionStore.funnel) {
         attributionStore.setFunnelName(campaign.name);
         this.logger.debug('Set funnel name from campaign:', campaign.name);
       }
     });
-    
+
     // Track conversion timestamp on cart creation
-    eventBus.on('cart:updated', () => {
+    const offCartUpdated = eventBus.on('cart:updated', () => {
       attributionStore.updateAttribution({
         metadata: {
           ...attributionStore.metadata,
-          conversion_timestamp: Date.now()
-        }
+          conversion_timestamp: Date.now(),
+        },
       });
       this.logger.debug('Updated attribution with conversion timestamp');
     });
-    
+
     // Listen for page changes to update landing page
-    window.addEventListener('popstate', () => {
+    const onPopState = () => {
       attributionStore.updateAttribution({
         metadata: {
           ...attributionStore.metadata,
-          landing_page: window.location.href
-        }
+          landing_page: window.location.href,
+        },
       });
-    });
+    };
+    window.addEventListener('popstate', onPopState);
+
+    this.attributionListenersCleanup = () => {
+      offCampaignLoaded();
+      offCartUpdated();
+      window.removeEventListener('popstate', onPopState);
+    };
   }
 
   private static async initializeAnalytics(): Promise<void> {
@@ -677,12 +784,14 @@ export class SDKInitializer {
 
       this.logger.debug('Analytics v2 initialized successfully');
     } catch (error) {
-      this.logger.warn('Analytics v2 initialization failed (non-critical):', error);
+      this.logger.warn(
+        'Analytics v2 initialization failed (non-critical):',
+        error
+      );
       // Don't throw - analytics failure shouldn't break SDK initialization
     }
   }
-  
-  
+
   private static initializeErrorHandler(): void {
     try {
       // Import and initialize error handler
@@ -702,7 +811,10 @@ export class SDKInitializer {
 
     if (refId) {
       const paramName = urlParams.get('ref_id') ? 'ref_id' : 'order_ref_id';
-      this.logger.info(`Page loaded with ${paramName} parameter, auto-loading order:`, refId);
+      this.logger.info(
+        `Page loaded with ${paramName} parameter, auto-loading order:`,
+        refId
+      );
 
       try {
         const configStore = useConfigStore.getState();
@@ -714,7 +826,10 @@ export class SDKInitializer {
 
         // Log whether the order supports upsells
         if (orderStore.order) {
-          this.logger.info('Order supports upsells:', orderStore.order.supports_post_purchase_upsells);
+          this.logger.info(
+            'Order supports upsells:',
+            orderStore.order.supports_post_purchase_upsells
+          );
         }
       } catch (error) {
         this.logger.error('Failed to auto-load order:', error);
@@ -727,17 +842,17 @@ export class SDKInitializer {
     if (this.attributeScanner) {
       this.attributeScanner.destroy();
     }
-    
+
     this.attributeScanner = new AttributeScanner();
     await this.attributeScanner.scanAndEnhance(document.body);
-    
+
     const stats = this.attributeScanner.getStats();
     this.logger.info('DOM scanning and enhancement complete', stats);
   }
 
   private static setupReadyCallbacks(): void {
     const sdk = NextCommerce.getInstance();
-    
+
     if (typeof window !== 'undefined') {
       // Execute any queued ready callbacks if they exist
       if (Array.isArray((window as any).nextReady)) {
@@ -750,10 +865,10 @@ export class SDKInitializer {
           }
         });
       }
-      
+
       // Set up public API as window.next
       (window as any).next = sdk;
-      
+
       // Always set up nextReady for future callbacks (whether it existed before or not)
       (window as any).nextReady = {
         push: (callback: (sdk: NextCommerce) => void) => {
@@ -762,34 +877,36 @@ export class SDKInitializer {
           } catch (error) {
             this.logger.error('Ready callback error:', error);
           }
-        }
+        },
       };
-      
-      this.logger.debug('nextReady callback system and window.next API initialized');
+
+      this.logger.debug(
+        'nextReady callback system and window.next API initialized'
+      );
     }
   }
 
   private static async initializeDebugMode(): Promise<void> {
     const configStore = useConfigStore.getState();
-    
+
     if (configStore.debug) {
       this.logger.info('Debug mode enabled - initializing debug utilities');
-      
+
       // Set logger to DEBUG level when debug mode is enabled
       Logger.setLogLevel(LogLevel.DEBUG);
       this.logger.info('Logger level set to DEBUG');
-      
+
       // Initialize debug overlay only in debug mode
       const { debugOverlay } = await import('@/core/debug/DebugOverlay');
       debugOverlay.initialize();
-      
+
       // Initialize test mode manager
       // Removed test mode indicator - using debug overlay instead
       // testModeManager.addTestModeIndicator();
-      
+
       // Set up global debug utilities
       this.setupGlobalDebugUtils();
-      
+
       // Log debug info
       this.logger.info('Debug utilities initialized ✅');
     }
@@ -799,7 +916,8 @@ export class SDKInitializer {
     if (typeof window !== 'undefined') {
       // Add global debug utilities to window for console access
       (window as any).nextDebug = {
-        overlay: () => import('@/core/debug/DebugOverlay').then(m => m.debugOverlay),
+        overlay: () =>
+          import('@/core/debug/DebugOverlay').then(m => m.debugOverlay),
         testMode: testModeManager,
         stores: {
           cart: useCartStore,
@@ -807,12 +925,12 @@ export class SDKInitializer {
           config: useConfigStore,
           checkout: useCheckoutStore,
           order: useOrderStore,
-          attribution: useAttributionStore
+          attribution: useAttributionStore,
         },
         sdk: NextCommerce.getInstance(),
         reinitialize: () => this.reinitialize(),
         getStats: () => this.getInitializationStats(),
-        
+
         // Enhanced cart methods
         addToCart: (packageId: number, quantity: number = 1) => {
           const campaignStore = useCampaignStore.getState();
@@ -824,37 +942,37 @@ export class SDKInitializer {
               quantity,
               price: parseFloat(packageData.price),
               title: packageData.name,
-              isUpsell: false
+              isUpsell: false,
             });
           }
         },
-        
+
         removeFromCart: (packageId: number) => {
           void cartOperations.removeItem(packageId);
         },
-        
+
         updateQuantity: (packageId: number, quantity: number) => {
           void cartOperations.updateQuantity(packageId, quantity);
         },
-        
+
         // Analytics methods (removed - will be combined with analytics below)
-        
+
         // Campaign methods
         loadCampaign: () => {
           const configStore = useConfigStore.getState();
           return useCampaignStore.getState().loadCampaign(configStore.apiKey);
         },
-        
+
         clearCampaignCache: () => {
           useCampaignStore.getState().clearCache();
         },
-        
+
         getCacheInfo: () => {
           const info = useCampaignStore.getState().getCacheInfo();
           console.table(info);
           return info;
         },
-        
+
         inspectPackage: (packageId: number) => {
           const campaignStore = useCampaignStore.getState();
           const packageData = campaignStore.getPackage(packageId);
@@ -862,34 +980,39 @@ export class SDKInitializer {
           console.table(packageData);
           console.groupEnd();
         },
-        
+
         testShippingMethod: async (methodId: number) => {
           console.log(`🚚 Testing shipping method ${methodId}`);
           try {
             const cartStore = useCartStore.getState();
             await cartOperations.setShippingMethod(methodId);
             console.log(`✅ Shipping method ${methodId} set successfully`);
-            
+
             // Get the updated cart state to show the shipping cost
             const state = cartStore;
             const shippingMethod = state.shippingMethod;
             if (shippingMethod) {
-              console.log(`📦 Shipping: ${shippingMethod.code} - $${shippingMethod.price}`);
+              console.log(
+                `📦 Shipping: ${shippingMethod.code} - $${shippingMethod.price}`
+              );
             }
-            
+
             // Trigger UI update
             document.dispatchEvent(new CustomEvent('debug:update-content'));
           } catch (error) {
-            console.error(`❌ Failed to set shipping method ${methodId}:`, error);
+            console.error(
+              `❌ Failed to set shipping method ${methodId}:`,
+              error
+            );
           }
         },
-        
+
         sortPackages: (sortBy: string) => {
           console.log(`🔄 Sorting packages by ${sortBy}`);
           // Trigger panel update with sorted packages
           document.dispatchEvent(new CustomEvent('debug:update-content'));
         },
-        
+
         // Analytics utilities - lazy loaded to avoid blocking
         analytics: {
           getStatus: async () => {
@@ -911,31 +1034,36 @@ export class SDKInitializer {
           invalidateContext: async () => {
             const { nextAnalytics } = await import('@/core/analytics/index');
             return nextAnalytics.invalidateContext();
-          }
+          },
         },
-        
+
         // Attribution utilities
         attribution: {
           debug: () => useAttributionStore.getState().debug(),
           get: () => useAttributionStore.getState().getAttributionForApi(),
-          setFunnel: (funnel: string) => useAttributionStore.getState().setFunnelName(funnel),
-          setEvclid: (evclid: string) => useAttributionStore.getState().setEverflowClickId(evclid),
-          clearFunnel: () => useAttributionStore.getState().clearPersistedFunnel(),
+          setFunnel: (funnel: string) =>
+            useAttributionStore.getState().setFunnelName(funnel),
+          setEvclid: (evclid: string) =>
+            useAttributionStore.getState().setEverflowClickId(evclid),
+          clearFunnel: () =>
+            useAttributionStore.getState().clearPersistedFunnel(),
           getFunnel: () => {
             const state = useAttributionStore.getState();
-            const persisted = localStorage.getItem('next_funnel_name') || sessionStorage.getItem('next_funnel_name');
+            const persisted =
+              localStorage.getItem('next_funnel_name') ||
+              sessionStorage.getItem('next_funnel_name');
             console.log('Current funnel:', state.funnel);
             console.log('Persisted funnel:', persisted);
             return state.funnel || persisted || '(not set)';
-          }
+          },
         },
-        
+
         // Element highlighting
         highlightElement: (selector: string) => {
           this.logger.debug(`🎯 Highlighting element: ${selector}`);
           // TODO: Implement element highlighting in DebugOverlay
         },
-        
+
         addTestItems: () => {
           [2, 7, 9].forEach(packageId => {
             void cartOperations.addItem({
@@ -943,24 +1071,30 @@ export class SDKInitializer {
               quantity: 1,
               price: 19.99,
               title: `Test Package ${packageId}`,
-              isUpsell: false
+              isUpsell: false,
             });
           });
         },
-        
+
         // Accordion utilities
         accordion: {
           open: (id: string) => {
-            document.dispatchEvent(new CustomEvent('next:accordion-open', { detail: { id } }));
+            document.dispatchEvent(
+              new CustomEvent('next:accordion-open', { detail: { id } })
+            );
           },
           close: (id: string) => {
-            document.dispatchEvent(new CustomEvent('next:accordion-close', { detail: { id } }));
+            document.dispatchEvent(
+              new CustomEvent('next:accordion-close', { detail: { id } })
+            );
           },
           toggle: (id: string) => {
-            document.dispatchEvent(new CustomEvent('next:accordion-toggle', { detail: { id } }));
-          }
+            document.dispatchEvent(
+              new CustomEvent('next:accordion-toggle', { detail: { id } })
+            );
+          },
         },
-        
+
         // Order and upsell utilities
         order: {
           getJourney: () => {
@@ -979,18 +1113,17 @@ export class SDKInitializer {
             return {
               hasOrder: !!orderStore.order,
               refId: orderStore.refId,
-              orderAge: orderStore.orderLoadedAt ? 
-                `${Math.floor((Date.now() - orderStore.orderLoadedAt) / 1000 / 60)} minutes` : 
-                'N/A',
+              orderAge: orderStore.orderLoadedAt
+                ? `${Math.floor((Date.now() - orderStore.orderLoadedAt) / 1000 / 60)} minutes`
+                : 'N/A',
               viewedUpsells: orderStore.viewedUpsells,
               viewedUpsellPages: orderStore.viewedUpsellPages,
               completedUpsells: orderStore.completedUpsells,
-              journeyLength: orderStore.upsellJourney.length
+              journeyLength: orderStore.upsellJourney.length,
             };
-          }
-        }
+          },
+        },
       };
-    
     }
   }
 
@@ -1000,28 +1133,28 @@ export class SDKInitializer {
 
   public static async reinitialize(): Promise<void> {
     this.logger.info('Reinitializing SDK...');
-    
+
     // Cleanup existing resources
     if (this.attributeScanner) {
       this.attributeScanner.destroy();
       this.attributeScanner = null;
     }
-    
+
     this.initialized = false;
     this.retryAttempts = 0;
-    
+
     await this.initialize();
   }
 
   private static async waitForDOM(): Promise<void> {
     if (document.readyState === 'loading') {
-      return new Promise((resolve) => {
+      return new Promise(resolve => {
         const onReady = () => {
           document.removeEventListener('DOMContentLoaded', onReady);
           document.removeEventListener('readystatechange', onReady);
           resolve();
         };
-        
+
         document.addEventListener('DOMContentLoaded', onReady);
         document.addEventListener('readystatechange', onReady);
       });
@@ -1032,15 +1165,15 @@ export class SDKInitializer {
     // Wait for cart store to rehydrate from session storage
     // This is crucial to prevent display enhancers from initializing with empty state
     const cartStore = useCartStore.getState();
-    
+
     // Check if there's data in sessionStorage that needs to be rehydrated
     // Using the shared constant from storage.ts ensures consistency
     const storedData = sessionStorage.getItem(CART_STORAGE_KEY);
-    
+
     if (storedData) {
       this.logger.debug('Waiting for cart store rehydration...');
       const rehydrationStartTime = Date.now();
-      
+
       // Give the store time to rehydrate and recalculate totals
       // The store's onRehydrateStorage callback calls calculateTotals()
       // We need to wait for that to complete
@@ -1049,16 +1182,16 @@ export class SDKInitializer {
         // This includes the async calculateTotals() call in the store
         setTimeout(resolve, 50);
       });
-      
+
       // Force a recalculation to ensure everything is up to date
       cartOperations.calculateTotals();
-      
+
       const rehydrationTime = Date.now() - rehydrationStartTime;
-      
+
       this.logger.debug('Cart store rehydration complete', {
         itemCount: cartStore.items.length,
         total: cartStore.total,
-        isEmpty: cartStore.isEmpty
+        isEmpty: cartStore.isEmpty,
       });
     } else {
       this.logger.debug('No cart data to rehydrate');
@@ -1071,10 +1204,10 @@ export class SDKInitializer {
         detail: {
           version: '0.2.0',
           timestamp: Date.now(),
-          stats: this.attributeScanner?.getStats()
-        }
+          stats: this.attributeScanner?.getStats(),
+        },
       });
-      
+
       window.dispatchEvent(event);
     }
   }
@@ -1091,13 +1224,15 @@ export class SDKInitializer {
     return {
       initialized: this.initialized,
       retryAttempts: this.retryAttempts,
-      ...(this.attributeScanner && { scannerStats: this.attributeScanner.getStats() })
+      ...(this.attributeScanner && {
+        scannerStats: this.attributeScanner.getStats(),
+      }),
     };
   }
 
   private static async clearAllStorage(): Promise<void> {
     this.logger.info('Clearing all Next Campaign Cart storage...');
-    
+
     // Clear sessionStorage items
     const sessionKeys = [];
     for (let i = 0; i < sessionStorage.length; i++) {
@@ -1107,7 +1242,7 @@ export class SDKInitializer {
       }
     }
     sessionKeys.forEach(key => sessionStorage.removeItem(key));
-    
+
     // Clear localStorage items
     const localKeys = [];
     for (let i = 0; i < localStorage.length; i++) {
@@ -1117,7 +1252,7 @@ export class SDKInitializer {
       }
     }
     localKeys.forEach(key => localStorage.removeItem(key));
-    
+
     // Clear cookies (only those we can access)
     document.cookie.split(';').forEach(cookie => {
       const eqPos = cookie.indexOf('=');
@@ -1128,7 +1263,9 @@ export class SDKInitializer {
         document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${window.location.hostname};`;
       }
     });
-    
-    this.logger.info(`Cleared ${sessionKeys.length} sessionStorage items, ${localKeys.length} localStorage items`);
+
+    this.logger.info(
+      `Cleared ${sessionKeys.length} sessionStorage items, ${localKeys.length} localStorage items`
+    );
   }
 }

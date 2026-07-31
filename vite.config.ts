@@ -1,6 +1,7 @@
-import { defineConfig, type UserConfig } from 'vite';
+import { defineConfig, type Rollup, type UserConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 import { resolve } from 'path';
+import { minify as terserMinify } from 'terser';
 import { visualizer } from 'rollup-plugin-visualizer';
 import viteCompression from 'vite-plugin-compression';
 // import legacy from '@vitejs/plugin-legacy'; // Optional - uncomment if you need legacy browser support
@@ -25,12 +26,30 @@ const sharedDefine = {
   global: 'globalThis',
 };
 
-// Terser options for consistency
+// `vite-plugin-compression` logs `dist/` + the file path it just wrote, and strips
+// the prefix with `.replace(normalizePath(`${build.outDir}/`), '')` — which only
+// matches when `outDir` is absolute, because the path it strips from always is. With
+// a relative `outDir` nothing matches and the log reads
+// `dist//home/bond/.../chunks/foo.js.br`. The files themselves always landed beside
+// the chunks; only the log line was wrong. An absolute outDir makes it truthful.
+const OUT_DIR = resolve(__dirname, 'dist');
+
+// Terser options for consistency.
+//
+// NOT set here, deliberately — `mangle.properties: { regex: /^_/ }`.
+// The SDK uses `_`-prefixed keys as *contracts*, not as private fields:
+//   - cross-chunk handshakes written onto DOM elements by one feature and read by
+//     another (`_getSelectedItem`, `_getSelectedPackageId`, `_getSelectedBundleItems`,
+//     `_getSelectedBundleVouchers`, `_selectedPackageId`, `_selectedItem`) — and
+//     terser runs per chunk, so writer and reader get independent name maps;
+//   - a documented `window` surface (`_nextForcePackageId`, `_nextForceShippingId`,
+//     `_nextForceBundleId` — see `src/core/guide/reference/window-surface.md`);
+//   - keys reached through string literals terser cannot rewrite, e.g.
+//     `'_expression' in mappings` in `core/base/display-types.ts`.
+// Mangling any of those breaks only in a built bundle, which no unit test sees.
 const terserOptions = {
   compress: {
-    drop_console: true,
     drop_debugger: true,
-    pure_funcs: ['console.log', 'console.info', 'console.warn', 'console.debug'],
     passes: 2, // Run compress passes twice for better optimization
   },
   format: {
@@ -38,11 +57,54 @@ const terserOptions = {
   },
   mangle: {
     safari10: true,
-    properties: {
-      regex: /^_/, // Mangle properties starting with _
-    },
   },
 };
+
+// The UMD fallback additionally strips every `console.*` call, which is why debug
+// mode cannot restore log output there (documented in
+// `src/core/guide/subsystems/logging-and-debug.md`). The ESM chunks keep them, so
+// `?debug=true` and every log documented in `reference/logs.md` still work.
+const umdTerserOptions = {
+  ...terserOptions,
+  compress: {
+    ...terserOptions.compress,
+    drop_console: true,
+    pure_funcs: ['console.log', 'console.info', 'console.warn', 'console.debug'],
+  },
+};
+
+/**
+ * Minifies the library's ES chunks — the files every campaign page actually loads.
+ *
+ * Vite will not do it: `vite:terser` bails with
+ * `if (config.build.lib && outputOptions.format === 'es') return null`, and
+ * `vite:esbuild-transpile` forces `minifyWhitespace: false` for the same case, both
+ * so that `/*#__PURE__*\/` annotations survive for a downstream bundler. Nothing is
+ * downstream of this SDK — the chunks are fetched straight from a `<script>` loader —
+ * so the exemption bought nothing and cost >2 MB of unminified JavaScript.
+ *
+ * Registered under `rollupOptions.output.plugins`: output plugins run their
+ * `renderChunk` after every input plugin, including `vite:esbuild-transpile`. A
+ * user plugin with `enforce: 'post'` would run *before* it, and esbuild would then
+ * re-indent the minified code away.
+ */
+const minifyEsLibChunks = (): Rollup.OutputPlugin => ({
+  name: 'minify-es-lib-chunks',
+  async renderChunk(code, _chunk, outputOptions) {
+    if (outputOptions.format !== 'es') return null;
+
+    const result = await terserMinify(code, {
+      ...terserOptions,
+      safari10: true,
+      module: true, // ES chunk: terser keeps `export {}` bindings intact
+      sourceMap: !!outputOptions.sourcemap,
+    });
+
+    return result.code === undefined
+      ? null
+      : { code: result.code, map: result.map as Rollup.SourceMapInput };
+  },
+});
 
 export default defineConfig({
   plugins: [
@@ -113,7 +175,7 @@ export default defineConfig({
           resolve: sharedResolve,
           define: sharedDefine,
           build: {
-            outDir: 'dist',
+            outDir: OUT_DIR,
             emptyOutDir: false,
             lib: {
               entry: resolve(__dirname, 'src/index.ts'),
@@ -134,8 +196,9 @@ export default defineConfig({
                 inlineDynamicImports: true,
               },
             },
+            // UMD is a single non-ES-format file, so Vite's own terser pass applies.
             minify: 'terser',
-            terserOptions,
+            terserOptions: umdTerserOptions,
             sourcemap: false,
             target: 'es2015', // UMD should support older browsers
           },
@@ -294,6 +357,9 @@ export default defineConfig({
 
         // Don't inline dynamic imports for better code splitting
         inlineDynamicImports: false,
+
+        // Must be an *output* plugin — see minifyEsLibChunks.
+        plugins: [minifyEsLibChunks()],
       },
 
       // Tree-shaking optimizations
@@ -314,12 +380,14 @@ export default defineConfig({
     assetsInlineLimit: 4096,
 
     // Output directory
-    outDir: 'dist',
+    outDir: OUT_DIR,
 
     // Empty output directory before build
     emptyOutDir: true,
 
-    // Improve build performance
+    // Only reaches the non-ES outputs of this build (there are none) — the ES chunks
+    // are minified by the `minifyEsLibChunks` output plugin above, because Vite
+    // exempts `build.lib` + `format: 'es'` from both of its minifiers.
     minify: 'terser',
     terserOptions,
   },

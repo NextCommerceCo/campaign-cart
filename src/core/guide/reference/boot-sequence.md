@@ -64,7 +64,6 @@ Two markers land on the document, and they answer different questions. The attri
 |---|---|---|---|
 | `data-next-sdk-loading="true"` | `<body>` | boot has started — nothing on the page has real values yet | `core/sdk-initializer.ts › SDKInitializer.initialize` |
 | `data-next-sdk-loading="false"` | `<body>` | boot finished — every step in the table above ran | `core/sdk-initializer.ts › SDKInitializer.initialize` |
-| `data-next-sdk-loading="false"` | `<body>` | a step threw — see [When a step fails](#when-a-step-fails) | `core/sdk-initializer.ts › SDKInitializer.initialize` |
 | class `next-display-ready` | `<html>` | the DOM scan finished and display bindings have their first values | `core/attribute-scanner.ts › AttributeScanner.scanAndEnhance` |
 
 A reveal rule wants both — the attribute alone flips to `"false"` on the failure path too:
@@ -92,7 +91,7 @@ An error in any step marked **aborts the boot** above stops the sequence there, 
 
 What the visitor sees in the meantime is the part worth planning for:
 
-- `data-next-sdk-loading` is set back to `"false"` on the failure path, the same value it gets on success. CSS that reveals the page on `"false"` reveals it with nothing filled in — raw `{price}` placeholders and an empty cart.
+- `data-next-sdk-loading` stays `"true"` on the failure path — it is only cleared when boot succeeds. So CSS that reveals the page on `"false"` keeps it hidden rather than showing raw `{price}` placeholders and an empty cart. The trade-off is that the attribute alone cannot tell a failed boot from one still in progress: both read `"true"`. To detect the failure itself, listen for `error:occurred` with `code: "SDK_INIT_FAILED"`, which is emitted once the retries are exhausted — subscribe through `EventBus.getInstance().on(…)`, because `window.next` is never published on a boot that fails this early.
 - The `next-display-ready` class is **not** added, because the DOM scan never ran. That is the signal that separates a finished boot from an abandoned one.
 - `window.next` is never published and callbacks queued on `window.nextReady` never run, so page code waiting on either stays silent rather than erroring.
 - Each retry re-runs every step from the top, so the console shows the whole boot log again. Duplicate boot logs mean the first attempt failed — look for the earlier `SDK initialization failed:` line rather than treating the repetition as a page bug.

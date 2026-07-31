@@ -4,13 +4,13 @@
  */
 
 import { useAttributionStore } from '@/state/attribution';
-import type { 
-  DataLayerEvent, 
-  DataLayerConfig, 
-  EventContext, 
+import type {
+  DataLayerEvent,
+  DataLayerConfig,
+  EventContext,
   EventMetadata,
   DataLayerTransformFn,
-  DebugOptions 
+  DebugOptions,
 } from './types';
 import { DEFAULT_CONFIG, STORAGE_KEYS, EVENT_VALIDATION_RULES } from './config';
 import { pendingEventsHandler } from './tracking/PendingEventsHandler';
@@ -52,7 +52,9 @@ export class DataLayerManager {
   /**
    * Get singleton instance
    */
-  public static getInstance(config?: Partial<DataLayerConfig>): DataLayerManager {
+  public static getInstance(
+    config?: Partial<DataLayerConfig>
+  ): DataLayerManager {
     if (!DataLayerManager.instance) {
       DataLayerManager.instance = new DataLayerManager(config);
     }
@@ -101,15 +103,21 @@ export class DataLayerManager {
 
       // Check if this event should be queued for after redirect
       const willRedirect = (finalEvent as any)._willRedirect;
-      this.debug(`Event ${finalEvent.event} has _willRedirect flag:`, willRedirect);
+      this.debug(
+        `Event ${finalEvent.event} has _willRedirect flag:`,
+        willRedirect
+      );
       delete (finalEvent as any)._willRedirect; // Clean up internal flag
-      
+
       // ONLY queue if there's an actual redirect happening
       if (willRedirect) {
         // Queue the event for processing after redirect
         pendingEventsHandler.queueEvent(finalEvent);
-        this.debug(`Event queued for after redirect: ${finalEvent.event}`, finalEvent);
-        
+        this.debug(
+          `Event queued for after redirect: ${finalEvent.event}`,
+          finalEvent
+        );
+
         // Don't push to current page's data layer since we're redirecting
         // This prevents duplicate events
         return;
@@ -123,7 +131,6 @@ export class DataLayerManager {
 
       // Notify providers
       this.notifyProviders(finalEvent);
-
     } catch (error) {
       this.error('Error pushing event to data layer', error, event);
     }
@@ -134,7 +141,7 @@ export class DataLayerManager {
    */
   public setDebugMode(enabled: boolean, options?: Partial<DebugOptions>): void {
     this.debugMode = enabled;
-    
+
     if (this.config.debug) {
       this.config.debug = { ...this.config.debug, enabled, ...options };
     }
@@ -142,7 +149,10 @@ export class DataLayerManager {
     // Persist to localStorage if enabled
     if (this.config.debug?.persistInLocalStorage) {
       try {
-        localStorage.setItem(STORAGE_KEYS.DEBUG_MODE, JSON.stringify({ enabled, options }));
+        localStorage.setItem(
+          STORAGE_KEYS.DEBUG_MODE,
+          JSON.stringify({ enabled, options })
+        );
       } catch (e) {
         logger.error('Failed to persist debug mode', e);
       }
@@ -172,7 +182,10 @@ export class DataLayerManager {
    */
   public setUserProperties(properties: Record<string, any>): void {
     try {
-      localStorage.setItem(STORAGE_KEYS.USER_PROPERTIES, JSON.stringify(properties));
+      localStorage.setItem(
+        STORAGE_KEYS.USER_PROPERTIES,
+        JSON.stringify(properties)
+      );
       this.debug('User properties updated', properties);
     } catch (e) {
       this.error('Failed to save user properties', e);
@@ -209,28 +222,41 @@ export class DataLayerManager {
   private validateEvent(event: DataLayerEvent): boolean {
     // Check required fields
     for (const field of EVENT_VALIDATION_RULES.required) {
-      if (!this.getNestedValue(event, field)) {
+      if (this.isFieldMissing(event, field)) {
         this.error(`Missing required field: ${field}`, null, event);
         return false;
       }
     }
 
     // Check event-specific required fields
-    const eventRules = EVENT_VALIDATION_RULES.eventSpecific[event.event as keyof typeof EVENT_VALIDATION_RULES.eventSpecific];
+    const eventRules =
+      EVENT_VALIDATION_RULES.eventSpecific[
+        event.event as keyof typeof EVENT_VALIDATION_RULES.eventSpecific
+      ];
     if (eventRules) {
       for (const field of eventRules) {
-        if (!this.getNestedValue(event, field)) {
-          this.error(`Missing required field for ${event.event}: ${field}`, null, event);
+        if (this.isFieldMissing(event, field)) {
+          this.error(
+            `Missing required field for ${event.event}: ${field}`,
+            null,
+            event
+          );
           return false;
         }
       }
     }
 
     // Validate field types
-    for (const [field, expectedType] of Object.entries(EVENT_VALIDATION_RULES.fieldTypes)) {
+    for (const [field, expectedType] of Object.entries(
+      EVENT_VALIDATION_RULES.fieldTypes
+    )) {
       const value = this.getNestedValue(event, field);
       if (value !== undefined && typeof value !== expectedType) {
-        this.error(`Invalid type for field ${field}: expected ${expectedType}, got ${typeof value}`, null, event);
+        this.error(
+          `Invalid type for field ${field}: expected ${expectedType}, got ${typeof value}`,
+          null,
+          event
+        );
         return false;
       }
     }
@@ -275,7 +301,7 @@ export class DataLayerManager {
       ...event,
       _metadata: metadata,
     };
-    
+
     // Only add attribution if it has data
     if (attribution && Object.keys(attribution).length > 0) {
       enrichedEvent.attribution = attribution;
@@ -292,9 +318,10 @@ export class DataLayerManager {
 
     // Add context if enrichment is enabled
     if (this.config.enrichContext) {
-      enrichedEvent.event_time = enrichedEvent.event_time || new Date().toISOString();
+      enrichedEvent.event_time =
+        enrichedEvent.event_time || new Date().toISOString();
       enrichedEvent.event_id = enrichedEvent.event_id || this.generateEventId();
-      
+
       // Merge stored user properties
       const storedUserProperties = this.getUserProperties();
       if (storedUserProperties) {
@@ -333,11 +360,15 @@ export class DataLayerManager {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.SESSION_ID);
       const sessionStart = localStorage.getItem(STORAGE_KEYS.SESSION_START);
-      
+
       const now = Date.now();
       const sessionTimeout = this.config.sessionTimeout || 30 * 60 * 1000; // 30 minutes
 
-      if (stored && sessionStart && (now - parseInt(sessionStart)) < sessionTimeout) {
+      if (
+        stored &&
+        sessionStart &&
+        now - parseInt(sessionStart) < sessionTimeout
+      ) {
         // Update session start time
         localStorage.setItem(STORAGE_KEYS.SESSION_START, now.toString());
         return stored;
@@ -393,7 +424,11 @@ export class DataLayerManager {
           provider.trackEvent(event);
         }
       } catch (error) {
-        this.error(`Error in provider ${provider.name || 'unknown'}`, error, event);
+        this.error(
+          `Error in provider ${provider.name || 'unknown'}`,
+          error,
+          event
+        );
       }
     }
   }
@@ -417,6 +452,27 @@ export class DataLayerManager {
    */
   private getNestedValue(obj: any, path: string): any {
     return path.split('.').reduce((current, key) => current?.[key], obj);
+  }
+
+  /**
+   * Whether a required field is absent from an event. A `number`/`boolean`
+   * field (per {@link EVENT_VALIDATION_RULES.fieldTypes}) is only missing when
+   * `undefined`/`null` — `0` and `false` are legitimate values (e.g. a
+   * 100%-discount order's `ecommerce.value`). Every other field keeps the
+   * plain falsy check: an empty string id/currency or a `null` object is
+   * genuinely absent data, and an empty array is never falsy in JS so this
+   * does not affect `ecommerce.items` and friends.
+   */
+  private isFieldMissing(event: DataLayerEvent, field: string): boolean {
+    const value = this.getNestedValue(event, field);
+    const expectedType =
+      EVENT_VALIDATION_RULES.fieldTypes[
+        field as keyof typeof EVENT_VALIDATION_RULES.fieldTypes
+      ];
+    if (expectedType === 'number' || expectedType === 'boolean') {
+      return value === undefined || value === null;
+    }
+    return !value;
   }
 
   /**
@@ -483,7 +539,7 @@ export class DataLayerManager {
       event: eventName,
       event_time: new Date().toISOString(),
       data: data.data || data,
-      ecommerce: data.ecommerce || data
+      ecommerce: data.ecommerce || data,
     };
   }
 
@@ -496,7 +552,7 @@ export class DataLayerManager {
       event_time: new Date().toISOString(),
       user_properties: userData.user_properties || userData,
       cart_total: userData.cart_total,
-      ecommerce: userData.ecommerce
+      ecommerce: userData.ecommerce,
     };
   }
 }

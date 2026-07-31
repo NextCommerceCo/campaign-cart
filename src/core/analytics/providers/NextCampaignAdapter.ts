@@ -26,8 +26,8 @@ export class NextCampaignAdapter extends ProviderAdapter {
   private apiKey: string = '';
   private loadWarned = false;
 
-  constructor() {
-    super('NextCampaign');
+  constructor(config?: { blockedEvents?: string[] }) {
+    super('NextCampaign', { blockedEvents: config?.blockedEvents });
   }
 
   /** Warn once, with the fix, when the NextCampaign SDK fails to load. */

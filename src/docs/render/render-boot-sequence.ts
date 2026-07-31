@@ -239,7 +239,7 @@ function failureSection(sequence: BootSequence): string {
       `so no later step runs. ${retry.maxRetries === 0 ? '' : `The whole sequence is then retried up to **${retry.maxRetries} times**, waiting ${ladder} before each attempt (${code(retry.where)}).`}`,
     'What the visitor sees in the meantime is the part worth planning for:',
     [
-      `- \`data-next-sdk-loading\` is set back to \`"false"\` on the failure path, the same value it gets on success. CSS that reveals the page on \`"false"\` reveals it with nothing filled in — raw \`{price}\` placeholders and an empty cart.`,
+      `- \`data-next-sdk-loading\` stays \`"true"\` on the failure path — it is only cleared when boot succeeds. So CSS that reveals the page on \`"false"\` keeps it hidden rather than showing raw \`{price}\` placeholders and an empty cart. The trade-off is that the attribute alone cannot tell a failed boot from one still in progress: both read \`"true"\`. To detect the failure itself, listen for \`error:occurred\` with \`code: "SDK_INIT_FAILED"\`, which is emitted once the retries are exhausted — subscribe through \`EventBus.getInstance().on(…)\`, because \`window.next\` is never published on a boot that fails this early.`,
       `- The \`next-display-ready\` class is **not** added, because the DOM scan never ran. That is the signal that separates a finished boot from an abandoned one.`,
       `- \`window.next\` is never published and callbacks queued on \`window.nextReady\` never run, so page code waiting on either stays silent rather than erroring.`,
       retry.recursive

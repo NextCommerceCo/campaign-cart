@@ -192,11 +192,16 @@ describe('boot sequence docs', () => {
   });
 
   /**
-   * Why the page tells authors to gate their reveal on the `next-display-ready` class
-   * as well: `data-next-sdk-loading` reaches the same `"false"` whether boot finished
-   * or gave up.
+   * `data-next-sdk-loading` is cleared on success and **left set** on failure — that
+   * asymmetry is the point, and it is what finding 26 fixed. Clearing it on the failure
+   * path revealed the un-enhanced page, `{price}` placeholders and all, because the same
+   * attribute is the documented hook for revealing markup.
+   *
+   * A failure is therefore not detectable from the attribute alone: it stays `"true"`,
+   * indistinguishable from a boot still in progress. The signal for "gave up" is the
+   * `error:occurred` event with `code: 'SDK_INIT_FAILED'`.
    */
-  it('flips data-next-sdk-loading to the same value on success and on failure', () => {
+  it('clears data-next-sdk-loading on success and leaves it set on failure', () => {
     const loading = sequence.signals.filter(
       signal => signal.name === 'data-next-sdk-loading'
     );
@@ -208,9 +213,10 @@ describe('boot sequence docs', () => {
       'boot no longer clears the loading attribute on success'
     ).toBe('false');
     expect(
-      failed?.value,
-      'the failure path no longer clears the attribute'
-    ).toBe('false');
+      failed,
+      'the failure path clears the loading attribute again — that un-hides the ' +
+        'un-enhanced page, which is finding 26 regressing'
+    ).toBeUndefined();
     expect(
       sequence.signals.some(signal => signal.name === 'next-display-ready'),
       'the next-display-ready class is gone, so the page recommends a signal that ' +

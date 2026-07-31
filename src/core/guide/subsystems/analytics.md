@@ -163,10 +163,10 @@ from an absence.
 - **`window.NextDataLayer` is a plain array, not an intercepted queue.** Pushing into
   it from your own code appends a value and notifies nobody — no enrichment, no
   provider forwarding. To send an event, call the SDK.
-- **`blockedEvents` reaches only two of the five providers.** Only the GTM and Meta
-  adapters are constructed with their provider config; a name blocked for RudderStack,
-  NextCampaign or Custom is ignored and the event still arrives. Block it at the
-  destination until the adapters accept the list.
+- **`blockedEvents` reaches all five providers.** Every adapter is constructed with its
+  provider config, so a blocked name is suppressed everywhere. Before 2026-07-31 only GTM
+  and Meta received the list and the other three ignored it silently, so a destination-side
+  filter added as a workaround is now redundant.
 - **The `next-analytics-disable` and `next-analytics-enable-only` meta tags do
   nothing.** They are parsed, and the method that would apply them has no caller — a
   page carrying them sends its full event set. See

@@ -282,7 +282,48 @@ boot then runs 19 more steps and fires `next:initialized`
 `window.next` possibly not assigned. **Fix:** either rename/retire the loader event or
 make it wait; documenting it is not enough, because the name is the trap.
 
-### 26. A missing API key un-hides the page it was supposed to keep hidden — *verified*
+### 26. ~~A missing API key un-hides the page it was supposed to keep hidden~~ — **FIXED 2026-07-31, together with 41 and 30**
+
+All three were one coherent pass over the boot/retry path, and 26 and 41 turned out to be
+**the same line** — the `setAttribute('data-next-sdk-loading', 'false')` in `initialize()`'s
+catch block. Removing it fixes both: the attribute is now only ever set to `"true"`, and only
+cleared when boot actually succeeds.
+
+Failing assertions before the fix:
+
+- `expected [ 'true', 'false', 'true', …(5) ] to not include 'false'` — the attribute cycled
+  true→false on *every* attempt, which is finding 41.
+- `expected "spy" to be called 1 times, but got 0 times` — nothing was emitted on permanent
+  boot failure.
+- `expected "updateAttribution" to be called 1 times, but got 2 times` and
+  `expected [] to have a length of 1 but got +0` — finding 30's duplicate listeners, and no
+  `removeEventListener('popstate', …)` between calls.
+
+**The new author-facing contract, which is a real trade-off and not a pure win:**
+`data-next-sdk-loading` stays `"true"` on failure, so it is now **indistinguishable from a boot
+still in progress**. The page stays hidden rather than showing `{price}` placeholders, which is
+the right default — but a page that wants to render a fallback must listen for
+`error:occurred` with `code: 'SDK_INIT_FAILED'` (payload carries `retryAttempts`), and must
+subscribe via `EventBus.getInstance().on(…)` because `window.next` is never published on a boot
+that fails this early. `core/guide/reference/boot-sequence.md` and
+`core/guide/subsystems/boot.md` now say exactly this.
+
+Finding 30 was fixed by making `setupAttributionListeners()` idempotent — a static
+`attributionListenersCleanup` holds the unsubscribes (using the return value of `EventBus.on()`,
+which only exists because finding 103 was fixed earlier the same day) and runs them before
+re-registering. That covers the retry recursion and `reinitialize()` with one change.
+
+`src/tests/docs/bootSequence.test.ts` had encoded the **old** behaviour — it asserted the
+failure path clears the attribute — so the gate failed on the fix. It now asserts the
+asymmetry, with a message naming this finding so a regression is self-explaining.
+
+One process note: the two boot-failure tests use **real timers**. `vi.useFakeTimers()` plus
+`runAllTimersAsync()` deadlocked reproducibly against the dynamic imports inside the recursive
+retry, so they run on a 15s budget against the real 1s/2s/3s ladder.
+
+The original diagnosis follows.
+
+
 
 `sdk-initializer.ts:434` throws `API key not found…` at step 7, so nothing after it runs:
 no DOM scan, no `window.next`, no `next:display-ready`, and `window.nextReady` callbacks
@@ -389,7 +430,89 @@ were removed at build time rather than gated at runtime.
 
 **The reason they survive is finding 36.** No fix is needed on the log pages.
 
-### 36. The ESM bundle — the one every customer page loads — is not minified — *verified*
+### 36. ~~The ESM bundle — the one every customer page loads — is not minified~~ — **FIXED 2026-07-31**
+
+`dist/chunks/*.js` went **2,271,386 → 1,372,827 bytes raw (−39.6%)**, gzip −25.2%, brotli
+−23.6%. `state` −49.9%, `vendor` −40.8%, `utils` −49.2%, a feature chunk −33.2%.
+
+**Why terser was skipped, actually:** not the `build.lib` multi-entry config and not the UMD
+plugin hook, but a hard-coded exemption inside Vite. `vite:terser`'s `renderChunk` returns
+`null` when `config.build.lib && outputOptions.format === 'es'`, with no escape hatch — the
+reasoning being that a *library* ES output is consumed by another bundler, so `/*#__PURE__*/`
+annotations must survive. This SDK is fetched straight from a `<script>` loader, so nothing
+downstream ever tree-shakes it and the exemption bought nothing. The fix is a terser pass
+registered under `rollupOptions.output.plugins` — **not** as an `enforce: 'post'` plugin,
+because user post-plugins run *before* `vite:esbuild-transpile`, which would re-indent
+everything away.
+
+Same investigation found the top-level `esbuild: { minifyIdentifiers, … }` block in
+`vite.config.ts` is **dead config** and always has been: `resolveEsbuildTranspileOptions`
+returns everything `false` unless `build.minify === 'esbuild'`. Safe to delete.
+
+**`mangle.properties` had to be turned off — for both builds — and this is the important part.**
+The regex `/^_/` mangled the `_`-prefixed properties the SDK uses as cross-feature handshakes,
+**per chunk**. Measured on a proof build: `_getSelectedBundleItems` became `i` where it is
+written and `i`, `t` and `l` in its three readers, and `_getSelectedBundleVouchers`'s writer
+name `o` collided with `_selectedItem` in another chunk. Had that shipped, bundle add-to-cart
+via accept-upsell and all voucher resolution would return `undefined` **in production only**.
+A `reserved` list was rejected as too fragile: it would have to cover the documented
+`_nextForce*` window surface too, and it cannot help `display-types.ts:430`, which compares the
+string literal `'_expression'` against a dotted read of the same property — terser rewrites one
+and not the other.
+
+**That last case was already broken in the UMD build**, which has had property mangling on all
+along: `_expression` occurrences in `dist/index.umd.js` went **0 → 1** with this change, meaning
+`supportsExpressions()` has been returning `false` for every expression binding in the UMD. The
+UMD grew 6.5 kB (+0.47%) as the price of that correctness.
+
+`src/tests/contract/cross-chunk-handshakes.test.ts` now asserts each handshake name survives in
+both the ESM chunks and the UMD, so the whole class is self-enforcing rather than a comment.
+
+**`drop_console` was deliberately left off the ESM chunks.** It removes *all* `console.*`, and
+`core/logger.ts` is nothing but four such calls — enabling it would delete the SDK's entire log
+surface and make `core/guide/reference/logs.md` plus every per-feature `reference/logs.md`
+wrong. Measured cost of that safety: 9,118 bytes, 0.7% of the minified total. `terserOptions`
+(ESM, keeps console) and `umdTerserOptions` (UMD, drops it) are now separate in the config.
+
+The `dist//home/bond/...` path in the build log was **a logging bug, not a misplacement** —
+`vite-plugin-compression` strips the raw `build.outDir` (`'dist'`) off an absolute path, so
+nothing matches. The `.br`/`.gz` files were always beside their chunks. Fixed by making
+`build.outDir` absolute.
+
+The original diagnosis follows.
+
+### 104. Every campaign page downloads the `debug` chunk — 281 kB, unconditionally — *verified*
+
+`dist/index.js` → `chunks/index-*.js` → `import { C as p } from "./debug-*.js"`. **Nine chunks
+statically import it**, including `base-display-enhancer` and `analytics`; only one of them also
+does the dynamic `import()` that the overlay was supposed to be gated behind. So the "won't be
+loaded unless `?debug=true`" comment in `vite.config.ts:225` is wrong, and every visitor pays
+281,620 B (55,954 B gzip) for it — the largest remaining performance item now that finding 36 is
+fixed, bigger than the whole minification win on some chunks.
+
+Cause: `manualChunks` seeds `debug` from `/debug/`, `/testMode` and `test-order-manager`, and
+Rollup then parks shared modules there because their importer sets match. The bindings actually
+dragged across are `CurrencyFormatter`, `formatCurrency`, `formatNumber`, `formatPercentage`,
+`formatDiscountPercentage`, `CountryService` and `analyticsDebug` — none of which are debug code.
+
+**Not fixed deliberately.** The comment at `vite.config.ts:210-213` records that a previous
+chunk reassignment produced a `vendor → debug → state → vendor` cycle and a production TDZ
+crash, so this wants its own change with an e2e run behind it, not a size-driven guess. The
+likely shape is to give those shared formatters a chunk of their own so `debug` is left holding
+only debug code.
+
+### 105. The production-bundle gate only reads the UMD file, not the chunks customers load — *verified*
+
+`src/tests/contract/bundle-contents.test.ts:25` resolves `dist/index.umd.js` and scans that.
+The UMD is the fallback build; every campaign page loads the ESM chunks. So the gate that exists
+to prove the docs machinery never reaches a customer cannot see the files customers actually
+fetch — and its own comment at `:54-59` says it guards against the docs layer "sitting in a
+sibling chunk", which is precisely the case its file selection excludes.
+
+**Fix:** scan `dist/chunks/*.js` as well as the UMD. Cheap, and it closes a gate that currently
+reads as stronger than it is.
+
+
 
 `vite.config.ts:323-324` sets `minify: 'terser'` with `terserOptions` on the main build,
 and the UMD build at `:137-138` does the same. It takes effect for the UMD and **not** for
@@ -530,7 +653,25 @@ modelled on (§2 of the plan) — it is cited as the example of a gate that work
 **Fix:** match construction sites (an event object being built) rather than any textual
 occurrence, the way `extract-analytics-events.ts` now does.
 
-### 45. `blockedEvents` is silently ignored by three of the five providers — *verified*
+### 45. ~~`blockedEvents` is silently ignored by three of the five providers~~ — **FIXED 2026-07-31**
+
+Fixed test-first: three assertions of the form
+`expected "sendEvent" to not be called at all, but actually been called 1 times`, one each for
+`NextCampaignAdapter`, `RudderStackAdapter` and `CustomAdapter`.
+
+The three adapters did not merely miss the option — they **did not accept it**. Each now takes
+the config and forwards it to `super()`, matching the GTM/Meta pattern, and all five factories
+in `analytics/index.ts` pass it through (`custom` merges it into the settings object it builds).
+
+**Finding 28 is not brought closer by this**, contrary to what one might assume from the shared
+vocabulary. `MetaTagController.shouldBlockEvent()` is a global, per-dispatch check driven by
+parsed meta tags; what was fixed here is each provider's static, construction-time list.
+Wiring 28 up means adding a call in the dispatch path (`DataLayerManager.push` or
+`NextAnalytics.track`) — a different file and a different call site.
+
+The original diagnosis follows.
+
+
 
 `analytics/index.ts:50` (`nextCampaign`), `:56` (`rudderstack`), and `:58` (`custom`)
 construct their adapters with no options, so `ProviderAdapter.blockedEvents` is `[]` for
@@ -538,7 +679,36 @@ all three. Only `gtm` and `facebook` receive the list. A page that blocks an eve
 suppressed for two destinations and delivered to the other three, which is worse than not
 being able to block at all. **Fix:** pass the options through in all five factories.
 
-### 46. A 100%-discount order sends no purchase event at all — *verified*
+### 46. ~~A 100%-discount order sends no purchase event at all~~ — **FIXED 2026-07-31**
+
+Fixed test-first. `expected undefined to be defined` — a `dl_purchase` built from a genuinely
+free order (`price_excl_tax: '0'`) never arrived in `window.NextDataLayer`, with
+`[NextDataLayer] Missing required field for dl_purchase: ecommerce.value` on the console.
+
+**The fix is type-aware rather than a blanket `undefined` check**, which is better than this
+entry proposed: `isFieldMissing()` consults `EVENT_VALIDATION_RULES.fieldTypes`, so a field
+typed `number`/`boolean` counts `0`/`false` as present while every other required field keeps
+the falsy check — an empty-string `transaction_id` or currency is still correctly rejected.
+Five events were affected (`dl_purchase`, `dl_upsell_purchase`, and legacy
+`purchase`/`add_payment_info`/`add_shipping_info`); all now accept `0`.
+
+The test asserts the payload is *correct*, not merely delivered: `value: 0` arrives with its
+real `transaction_id`, `currency` and populated `items`.
+
+**Note for anyone reading historical numbers:** conversion counts from before 2026-07-31
+under-report free orders entirely. That is data loss already banked, not something the fix
+backfills.
+
+Four other falsy checks were audited and deliberately left, each with a reason — the two in
+`EventValidator`/`schemas` already test `undefined`/`null`; `reconcileValue`'s `if (tax && …)`
+guards are diagnosis heuristics where zero genuinely means nothing to diagnose;
+`validateUpsellEvent`'s `!package_id` matches an intentional domain rule that treats `'0'` as
+unresolved; and the `|| 0` defaults in the provider adapters shape optional fields rather than
+gating delivery.
+
+The original diagnosis follows.
+
+
 
 `DataLayerManager.validateEvent` tests the value with a falsy check (`:212`, `:222`), and
 `EVENT_VALIDATION_RULES.eventSpecific` requires `ecommerce.value` for `dl_purchase`
