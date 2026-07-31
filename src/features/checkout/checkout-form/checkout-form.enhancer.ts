@@ -9,6 +9,7 @@ import { useConfigStore } from '@/state/config';
 import { useCampaignStore } from '@/state/campaign';
 import { ApiClient } from '@/api/client';
 import { CountryService, type Country, type CountryConfig } from '@/core/country-service';
+import { preserveQueryParams } from '@/core/url-utils';
 import type { CartState } from '@/types/global';
 import { CreditCardService, type CreditCardData } from '../services/credit-card-service';
 import { CheckoutValidator } from '../validation/checkout-validator';
@@ -57,6 +58,10 @@ import {
   type ShippingStateFieldsContext,
   type StateFieldsContext,
 } from './state-fields';
+import {
+  setupAutofillDetection,
+  type AutofillDetectionContext,
+} from './autofill-detection';
 import 'intl-tel-input/build/css/intlTelInput.css';
 
 // Consolidated constants
@@ -166,7 +171,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   };
 
   // Track if analytics events have been fired
-  private hasTrackedShippingInfo = false;
+  /** Ref, shared with `autofill-detection.ts` so the event cannot fire twice. */
+  private hasTrackedShippingInfo = { value: false };
+  /** Autofill poll handle, cleared on teardown. Was an untyped `(this as any)` stash. */
+  private autofillInterval?: ReturnType<typeof setInterval>;
   private hasTrackedBeginCheckout = false;
 
   // Multi-step checkout support
@@ -483,8 +491,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         billingFields: this.billingFields,
         apiClient: this.apiClient,
         getDetectedCountryCode: () => this.detectedCountryCode,
-        getHasTrackedShippingInfo: () => this.hasTrackedShippingInfo,
-        setHasTrackedShippingInfo: (value) => { this.hasTrackedShippingInfo = value; },
+        getHasTrackedShippingInfo: () => this.hasTrackedShippingInfo.value,
+        setHasTrackedShippingInfo: (value) => { this.hasTrackedShippingInfo.value = value; },
       });
 
 
@@ -839,6 +847,16 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // ============================================================================
 
 
+  /** The four things `autofill-detection.ts` needs from this form. */
+  private autofillDetectionContext(): AutofillDetectionContext {
+    return {
+      eventBus: this.eventBus,
+      fields: this.fields,
+      hasTrackedShippingInfo: this.hasTrackedShippingInfo,
+      logger: this.logger,
+    };
+  }
+
   /** What both state-field paths need. Shipping needs more — see below. */
   private stateFieldsContext(): StateFieldsContext {
     return {
@@ -1122,7 +1140,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
             url.searchParams.set('ref_id', order.ref_id);
           }
           // Preserve all current session parameters
-          const finalUrl = this.preserveQueryParams(url.href);
+          const finalUrl = preserveQueryParams(url.href);
           window.location.href = finalUrl;
         }
       } else {
@@ -1439,7 +1457,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     }
 
     if (redirectUrl) {
-      const finalUrl = this.preserveQueryParams(redirectUrl);
+      const finalUrl = preserveQueryParams(redirectUrl);
       // Clear cart items, vouchers, and checkout form state before navigating
       // away from the checkout. Zustand's persist middleware writes to
       // sessionStorage synchronously so the next page loads with a fresh cart.
@@ -1473,57 +1491,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     }
 
     // Preserve all current session parameters (currency, country, utm params, etc.)
-    return this.preserveQueryParams(redirectUrl.href);
-  }
-
-  private preserveQueryParams(targetUrl: string, preserveParams: string[] | 'all' = 'all'): string {
-    try {
-      const url = new URL(targetUrl, window.location.origin);
-
-      if (preserveParams === 'all') {
-        // Get stored parameters from parameter store (persisted across page navigations)
-        const paramStore = useParameterStore.getState();
-        const storedParams = paramStore.params;
-
-        // Also get current URL params (in case there are new ones not yet captured)
-        const currentParams = new URLSearchParams(window.location.search);
-        const currentParamsObj: Record<string, string> = {};
-        currentParams.forEach((value, key) => {
-          currentParamsObj[key] = value;
-        });
-
-        // Update parameter store with any new current URL params
-        if (Object.keys(currentParamsObj).length > 0) {
-          paramStore.mergeParams(currentParamsObj);
-        }
-
-        // Merge: current URL params take priority over stored ones (most recent)
-        const allParams = { ...storedParams, ...currentParamsObj };
-
-        // Apply all parameters to the target URL (don't override existing params in target)
-        Object.entries(allParams).forEach(([key, value]) => {
-          if (!url.searchParams.has(key)) {
-            url.searchParams.append(key, value);
-          }
-        });
-
-        this.logger.debug('Preserved parameters from store:', allParams);
-      } else {
-        // Preserve only specified parameters (fallback to URL for specific params)
-        const currentParams = new URLSearchParams(window.location.search);
-        preserveParams.forEach(param => {
-          const value = currentParams.get(param);
-          if (value && !url.searchParams.has(param)) {
-            url.searchParams.append(param, value);
-          }
-        });
-      }
-
-      return url.href;
-    } catch (error) {
-      this.logger.error('Error preserving query params:', error);
-      return targetUrl;
-    }
+    return preserveQueryParams(redirectUrl.href);
   }
 
   private getCurrency(): string {
@@ -1696,7 +1664,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       checkoutStore.setStep(this.currentStep + 1);
 
       // Build next URL with all session parameters preserved (currency, country, utm params, etc.)
-      const nextUrl = this.preserveQueryParams(this.nextStepUrl!);
+      const nextUrl = preserveQueryParams(this.nextStepUrl!);
       this.logger.debug('Preserving all session parameters in next step URL');
 
       // Add a small delay to show the loading spinner before navigation
@@ -2124,13 +2092,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
         // Track add_shipping_info when user has entered a shipping address
         // Check if we have enough address info to consider it "entered"
-        if (!this.hasTrackedShippingInfo && checkoutStore.formData.city && checkoutStore.formData.province) {
+        if (!this.hasTrackedShippingInfo.value && checkoutStore.formData.city && checkoutStore.formData.province) {
           try {
             // Get current shipping method if selected
             const shippingMethod = checkoutStore.shippingMethod;
             const shippingTier = shippingMethod ? shippingMethod.name : 'Standard';
             nextAnalytics.track(EcommerceEvents.createAddShippingInfoEvent(shippingTier));
-            this.hasTrackedShippingInfo = true;
+            this.hasTrackedShippingInfo.value = true;
             this.logger.info('Tracked add_shipping_info event (address complete)', { shippingTier });
           } catch (error) {
             this.logger.warn('Failed to track add_shipping_info event:', error);
@@ -2383,7 +2351,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       void cartOperations.setShippingMethod(selectedMethod.id);
 
       // Track add_shipping_info event when shipping method is selected
-      if (!this.hasTrackedShippingInfo) {
+      if (!this.hasTrackedShippingInfo.value) {
         try {
           // Map shipping codes to tier names for GA4
           const shippingTierMap: Record<string, string> = {
@@ -2394,7 +2362,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
           const shippingTier = shippingTierMap[selectedMethod.code] || selectedMethod.name;
           nextAnalytics.track(EcommerceEvents.createAddShippingInfoEvent(shippingTier));
-          this.hasTrackedShippingInfo = true;
+          this.hasTrackedShippingInfo.value = true;
           this.logger.info('Tracked add_shipping_info event', { shippingTier });
         } catch (error) {
           this.logger.warn('Failed to track add_shipping_info event:', error);
@@ -2485,117 +2453,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   /**
    * Set up detection for browser autofill
    */
-  private setupAutofillDetection(): void {
-    // Track the previous values of fields
-    const fieldValues = new Map<HTMLElement, string>();
-
-    // Flag to temporarily disable autofill detection (e.g., during Google Places autocomplete)
-    let isAutofillDetectionPaused = false;
-
-    // Listen for Google Places autocomplete events to pause detection
-    this.eventBus.on('address:autocomplete-filled', () => {
-      isAutofillDetectionPaused = true;
-      // Resume after 2 seconds (enough time for Google Places to finish)
-      setTimeout(() => {
-        isAutofillDetectionPaused = false;
-        // Update field values after Google Places fills them
-        [...this.fields.values()].forEach(field => {
-          if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement) {
-            fieldValues.set(field, field.value);
-          }
-        });
-      }, 2000);
-    });
-
-    // Initialize with current values
-    [...this.fields.values()].forEach(field => {
-      if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement) {
-        fieldValues.set(field, field.value);
-      }
-    });
-
-    // Check for autofill periodically
-    let checkCount = 0;
-    const maxChecks = 60; // Check for up to 30 seconds (60 * 500ms)
-
-    const checkInterval = setInterval(() => {
-      checkCount++;
-
-      // Skip if detection is paused (Google Places is filling fields)
-      if (isAutofillDetectionPaused) {
-        return;
-      }
-
-      // Track if we found autofilled fields
-      let hasAutofill = false;
-      const autofilledFields: string[] = [];
-
-      // Check each field for changes
-      [...this.fields.values()].forEach(field => {
-        if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement) {
-          const oldValue = fieldValues.get(field) || '';
-          const newValue = field.value;
-
-          // Skip address1 field as it's handled by Google Places
-          const fieldName = field.getAttribute('data-next-checkout-field') ||
-            field.getAttribute('os-checkout-field') ||
-            field.name;
-          if (fieldName === 'address1' || fieldName === 'address') {
-            fieldValues.set(field, newValue); // Update value but don't trigger events
-            return;
-          }
-
-          // If value changed and field wasn't focused (likely autofill)
-          if (newValue !== oldValue && newValue !== '' && document.activeElement !== field) {
-            hasAutofill = true;
-            fieldValues.set(field, newValue);
-
-            // Add field name to list
-            if (fieldName) {
-              autofilledFields.push(fieldName);
-            }
-
-            // Don't dispatch change events for country field as it has side effects (loads states)
-            // The state management should handle keeping the autofilled state value
-            if (fieldName !== 'country' && fieldName !== 'billing-country') {
-              // Only dispatch change event (not input) to update store
-              field.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-          }
-        }
-      });
-
-      // If we detected autofill, check for shipping info tracking
-      if (hasAutofill && autofilledFields.length > 0) {
-        this.logger.info('Browser autofill detected for fields:', autofilledFields);
-
-        // Small delay to ensure store is updated
-        setTimeout(() => {
-          const checkoutStore = useCheckoutStore.getState();
-          if (!this.hasTrackedShippingInfo && checkoutStore.formData.city && checkoutStore.formData.province) {
-            try {
-              const shippingMethod = checkoutStore.shippingMethod;
-              const shippingTier = shippingMethod ? shippingMethod.name : 'Standard';
-              nextAnalytics.track(EcommerceEvents.createAddShippingInfoEvent(shippingTier));
-              this.hasTrackedShippingInfo = true;
-              this.logger.info('Tracked add_shipping_info event (browser autofill)', { shippingTier });
-            } catch (error) {
-              this.logger.warn('Failed to track add_shipping_info event after browser autofill:', error);
-            }
-          }
-        }, 100);
-      }
-
-      // Stop checking after max attempts
-      if (checkCount >= maxChecks) {
-        clearInterval(checkInterval);
-        this.logger.debug('Stopped autofill detection after 30 seconds');
-      }
-    }, 500);
-
-    // Store interval for cleanup
-    (this as any).autofillInterval = checkInterval;
-  }
 
   private setupEventHandlers(): void {
     this.submitHandler = this.handleFormSubmit.bind(this);
@@ -2613,7 +2470,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     });
 
     // Set up Chrome autofill detection
-    this.setupAutofillDetection();
+    this.autofillInterval = setupAutofillDetection(
+      this.autofillDetectionContext()
+    );
 
     this.paymentMethodChangeHandler = this.handlePaymentMethodChange.bind(this);
     const paymentRadios = this.form.querySelectorAll([
@@ -2941,8 +2800,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     }
 
     // Clear autofill detection interval
-    if ((this as any).autofillInterval) {
-      clearInterval((this as any).autofillInterval);
+    if (this.autofillInterval) {
+      clearInterval(this.autofillInterval);
     }
 
     if (this.paymentMethodChangeHandler) {

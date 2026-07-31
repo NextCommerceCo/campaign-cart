@@ -41,6 +41,7 @@ field list and nothing more.
 | `expiration-fields.ts` | The card expiry month/year dropdowns, including the rule that keeps the year list consistent with the chosen month so an already-past date cannot be assembled | 1 field |
 | `country-fields.ts` | The country dropdowns, and relabelling "state"/"postcode" per the chosen country (province, county, prefecture — required or not) | 4 fields |
 | `state-fields.ts` | Refilling the state/province dropdown per country, including hiding it entirely for countries with neither states nor a requirement | 4 (billing) / 8 (shipping) |
+| `autofill-detection.ts` | Polling for **browser** autofill, which fires no events — without it the store stays empty while the form looks full, and the order submits blank | 4 fields |
 
 Each has a colocated test in `checkout-form/tests/`.
 

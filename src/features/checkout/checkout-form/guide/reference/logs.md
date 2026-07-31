@@ -26,7 +26,6 @@ Something did not work. Each of these means a visitor saw the wrong thing, or no
 | `Failed to parse order data from sessionStorage:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handlePurchaseEvent` | yes |
 | `Failed to create order:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.createOrder` | yes |
 | `Failed to create test order:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.createTestOrder` | yes |
-| `Error preserving query params:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.preserveQueryParams` | yes |
 | `Step navigation error:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleStepNavigation` | yes |
 | `Failed to process tokenized payment:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleTokenizedPayment` | yes |
 | `[Billing] CRITICAL: Billing section not found!` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleBillingAddressToggle` | — |
@@ -57,6 +56,7 @@ The feature carried on, but something in the markup or the data was not what it 
 
 | Message | Source | Extra context |
 |---|---|---|
+| `Failed to track add_shipping_info event after browser autofill:` | `autofill-detection.ts › setupAutofillDetection` | yes |
 | `[Billing] Expand fallback triggered - forcing completion` | `billing-animation.ts › expandBillingForm` | — |
 | `[Billing] Collapse fallback triggered - forcing completion` | `billing-animation.ts › collapseBillingForm` | — |
 | `[Billing] Could not set initial state - missing elements` | `billing-form-setup.ts › setInitialBillingFormState` | — |
@@ -73,7 +73,6 @@ The feature carried on, but something in the markup or the data was not what it 
 | `Invalid {fieldName} detected on blur:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFieldChange` | yes |
 | `Failed to track add_shipping_info event:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFieldChange` | yes |
 | `[Billing] Click blocked - animation in progress` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleBillingAddressToggle` | — |
-| `Failed to track add_shipping_info event after browser autofill:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupAutofillDetection` | yes |
 | `Province {storedProvince} not found in options for country {storedCountry}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.populateFormData` | — |
 | `Cart is empty` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleCartUpdate` | — |
 | `Failed to track begin_checkout event:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.trackBeginCheckout` | yes |
@@ -95,6 +94,8 @@ Normal progress, useful for confirming the feature ran at all.
 
 | Message | Source | Extra context |
 |---|---|---|
+| `Browser autofill detected for fields:` | `autofill-detection.ts › setupAutofillDetection` | yes |
+| `Tracked add_shipping_info event (browser autofill)` | `autofill-detection.ts › setupAutofillDetection` | yes |
 | `[Billing] Expand complete` | `billing-animation.ts › expandBillingForm` | yes |
 | `[Billing] Collapse complete` | `billing-animation.ts › collapseBillingForm` | yes |
 | `[Billing] Setting initial state` | `billing-form-setup.ts › setInitialBillingFormState` | yes |
@@ -131,8 +132,6 @@ Normal progress, useful for confirming the feature ran at all.
 | `[Billing] Processing toggle` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleBillingAddressToggle` | yes |
 | `[Billing] Collapsing form...` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleBillingAddressToggle` | — |
 | `[Billing] Expanding form...` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleBillingAddressToggle` | — |
-| `Browser autofill detected for fields:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupAutofillDetection` | yes |
-| `Tracked add_shipping_info event (browser autofill)` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupAutofillDetection` | yes |
 | `Restoring saved country: {currentCountryValue}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.populateFormData` | — |
 | `[Payment Error] Displaying error:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.displayPaymentError` | yes |
 | `[Payment Error] Error container shown with message:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.displayPaymentError` | yes |
@@ -158,6 +157,7 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 
 | Message | Source | Extra context |
 |---|---|---|
+| `Stopped autofill detection after 30 seconds` | `autofill-detection.ts › setupAutofillDetection` | — |
 | `[Billing] Starting expand animation` | `billing-animation.ts › expandBillingForm` | yes |
 | `[Billing] Measured full height:` | `billing-animation.ts › expandBillingForm` | yes |
 | `[Billing] Expand animation started` | `billing-animation.ts › expandBillingForm` | yes |
@@ -177,13 +177,11 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 | `[Spreedly] Credit card service ready` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeCreditCard` | — |
 | `[Spreedly] Connected floating label callbacks` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeCreditCard` | — |
 | `Already shown warning for order` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handlePurchaseEvent` | yes |
-| `Preserved parameters from store:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.preserveQueryParams` | yes |
 | `Preserving all session parameters in next step URL` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleStepNavigation` | — |
 | `Express payment config:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFormSubmit` | yes |
 | `Saved user's country selection to session: {value}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFieldChange` | — |
 | `Updated user data storage:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFieldChange` | yes |
 | `[Billing] Set country to:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleBillingAddressToggle` | yes |
-| `Stopped autofill detection after 30 seconds` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupAutofillDetection` | — |
 | `Converting phone to international format: {phone} -> {internationalNumber}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.populateFormData` | — |
 | `Restored province: {storedProvince}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.populateFormData` | — |
 | `begin_checkout already tracked, skipping duplicate` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.trackBeginCheckout` | — |
