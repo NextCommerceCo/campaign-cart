@@ -1,6 +1,6 @@
 import { useCartStore } from '@/state/cart';
 import { useCampaignStore } from '@/state/campaign';
-import { useCheckoutStore } from '@/state/checkout.state';
+import { useCheckoutStore } from '@/state/checkout';
 import { calculateBundlePrice } from '@/state/cart/cart-calculator';
 import type { Logger } from '@/core/logger';
 import type { ToggleCard } from './package-toggle.types';

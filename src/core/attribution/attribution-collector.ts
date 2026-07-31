@@ -2,7 +2,7 @@
  * Attribution Collector - Collects attribution data from various sources
  */
 
-import type { AttributionState, AttributionMetadata } from '@/state/attribution.state';
+import type { AttributionState, AttributionMetadata } from '@/state/attribution';
 import { createLogger } from '@/core/logger';
 
 const logger = createLogger('AttributionCollector');

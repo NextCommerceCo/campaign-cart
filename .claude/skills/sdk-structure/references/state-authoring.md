@@ -39,43 +39,44 @@ debug, and cross-store — which the dependency rules only permit from `state/`.
 |-------|------|---------|
 | `useCartStore` | `state/cart/` (+ `operations/`) | Cart items, totals, coupons, shipping. Async logic in `operations/` |
 | `useCampaignStore` | `state/campaign/` | Campaign/package data (10-min cache). Field is **`.data`** |
-| `useOrderStore` | `state/order.state.ts` | Post-purchase order/upsell (15-min expiry) |
-| `useCheckoutStore` | `state/checkout.state.ts` | Checkout form state & validation |
-| `useConfigStore` | `state/config.state.ts` | SDK configuration |
-| `useAttributionStore` | `state/attribution.state.ts` | UTM & referral tracking |
-| `useParameterStore` | `state/parameter.state.ts` | URL parameters |
-
-`cart/` and `campaign/` are folders (they grew big enough to earn it); the rest
-are single `*.state.ts` files — which is the correct default, **not migration
-debt**.
+| `useOrderStore` | `state/order/` | Post-purchase order/upsell (15-min expiry) |
+| `useCheckoutStore` | `state/checkout/` | Checkout form state & validation |
+| `useConfigStore` | `state/config/` | SDK configuration |
+| `useAttributionStore` | `state/attribution/` | UTM & referral tracking |
+| `useParameterStore` | `state/parameter/` | URL parameters |
 
 ---
 
-## Default: one file per store
+## Every store is a folder
 
-A store is **one file** — `state/<domain>.state.ts` — holding its state, sync
-setters, and local types. Do NOT pre-split it into items/ui/api slice files, and
-do NOT put async/business logic in it (that goes in the feature, see above).
-Most stores never need more than this one file.
+A store owns a `state/<domain>/` folder — even when the store itself is one
+file. The folder is what makes the code and the docs that describe it one unit:
 
 ```
-state/
-├── cart.state.ts        # everything for this store in one file
-├── checkout.state.ts
-├── order.state.ts
-├── config.state.ts
-├── attribution.state.ts
-└── parameter.state.ts
+state/order/
+├── index.ts                    # barrel — re-exports only, NO logic
+├── order.state.ts              # the store: create() + middleware + state/actions
+├── order.state-manifest.ts     # what the generated state reference is built from
+└── guide/                      # overview + reference/state-reference.md
 ```
 
-Today `checkout/order/config/attribution/parameter` are already single files —
-**that is correct, not migration debt.** They stay single files.
+Callers import the **folder** (`@/state/order`), never the inner file. Before
+2026-07-31 five stores sat flat in `state/` next to a same-named folder that
+held only `guide/` — a shadow folder — and the two halves of one store could
+drift apart unnoticed. One-line shims (`export * from './order'`) still sit at
+those old paths while the last imports are swept; they re-export the barrel, so
+both paths resolve to a single store instance.
 
-## Split into a folder only when it grows
+Inside the folder, **one file for the store is still the default.** Do NOT
+pre-split it into items/ui/api slice files, and do NOT put async/business logic
+in it (that goes in the feature, see above). `checkout`, `order`, `config`,
+`attribution` and `parameter` are one-file stores and should stay that way.
+
+## Split into more files only when it grows
 
 When a single store file gets genuinely hard to read (~300 lines — the same
-signal as a feature), split it into a folder, **by real sub-domain, not a forced
-items/ui/api trichotomy**:
+signal as a feature), split it **by real sub-domain, not a forced items/ui/api
+trichotomy**:
 
 ```
 state/cart/
@@ -90,10 +91,10 @@ Slices are named `<sub-domain>.slice.ts` — the sub-domain first, `slice` as th
 role suffix (matching `.state.ts` / `.types.ts`). The folder already says
 `cart`, so don't repeat it in the filenames.
 
-Today `cartStore/` and `campaignStore/` are folders because they earned it. Add
-a slice file only when a group of state + actions has its own reason to change
-(its own loading/error cycle, an independently-describable concern) or the file
-is past ~300 lines.
+Today only `cart/` and `campaign/` carry slice files, because they earned them.
+Add a slice file only when a group of state + actions has its own reason to
+change (its own loading/error cycle, an independently-describable concern) or
+the file is past ~300 lines.
 
 ### When you do split — one file, one responsibility
 

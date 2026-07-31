@@ -5,10 +5,10 @@
 
 // Core functionality
 export { BaseDisplayEnhancer, DisplayFormatter, PropertyResolver } from './display-core';
-export { ProductDisplayEnhancer } from './product-display.enhancer';
+export { ProductDisplayEnhancer } from './product-display';
 export { CartDisplayEnhancer } from '@/features/cart/cart-summary';
-export { SelectionDisplayEnhancer } from './selection-display.enhancer';
-export { OrderDisplayEnhancer } from './order-display.enhancer';
+export { SelectionDisplayEnhancer } from './selection-display';
+export { OrderDisplayEnhancer } from './order-display';
 
 // Context management
 export { DisplayContextProvider, setupContextProviders } from './display-context';

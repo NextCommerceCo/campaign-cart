@@ -5,7 +5,7 @@
 
 import { formatCurrency } from '@/utils/currencyFormatter';
 import { useCartStore, cartOperations } from '@/state/cart';
-import { useConfigStore } from '@/state/config.state';
+import { useConfigStore } from '@/state/config';
 import { useCampaignStore } from '@/state/campaign';
 
 export interface DebugPanel {
@@ -170,7 +170,7 @@ export class CampaignPanel implements DebugPanel {
       {
         label: 'Refresh Campaign',
         action: () => {
-          const { useConfigStore } = require('@/state/config.state');
+          const { useConfigStore } = require('@/state/config');
           const apiKey = useConfigStore.getState().apiKey;
           if (apiKey) {
             useCampaignStore.getState().loadCampaign(apiKey);

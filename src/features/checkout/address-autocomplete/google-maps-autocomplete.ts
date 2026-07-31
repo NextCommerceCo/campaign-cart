@@ -1,4 +1,4 @@
-import { useCheckoutStore } from '@/state/checkout.state';
+import { useCheckoutStore } from '@/state/checkout';
 import { nextAnalytics, EcommerceEvents } from '@/core/analytics/index';
 import type { AutocompleteContext } from '../checkout.types';
 import { createCloseButton } from '../utils/create-close-button';
@@ -62,7 +62,7 @@ export class GoogleMapsAutocomplete {
       return this.googleMapsLoadPromise!;
     }
 
-    const { useConfigStore } = await import('@/state/config.state');
+    const { useConfigStore } = await import('@/state/config');
     const googleMapsConfig = useConfigStore.getState().googleMapsConfig;
 
     if (googleMapsConfig.enableAutocomplete === false) {

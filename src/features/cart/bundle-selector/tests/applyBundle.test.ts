@@ -3,7 +3,7 @@ import { applyBundle } from '../bundle-selector.handlers';
 import type { BundleCard, BundleSlot, HandlerContext } from '../bundle-selector.types';
 import type { CartItem } from '@/types/global';
 import { useCartStore } from '@/state/cart';
-import { useCheckoutStore } from '@/state/checkout.state';
+import { useCheckoutStore } from '@/state/checkout';
 
 vi.mock('@/state/cart', () => {
   const getState = vi.fn();
@@ -27,7 +27,7 @@ vi.mock('@/state/cart', () => {
     },
   };
 });
-vi.mock('@/state/checkout.state', () => ({
+vi.mock('@/state/checkout', () => ({
   useCheckoutStore: { getState: vi.fn() },
 }));
 

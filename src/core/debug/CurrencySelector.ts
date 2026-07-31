@@ -3,7 +3,7 @@
  * Fixed position currency switcher for testing multi-currency functionality
  */
 
-import { useConfigStore } from '@/state/config.state';
+import { useConfigStore } from '@/state/config';
 import { useCampaignStore } from '@/state/campaign';
 import { cartOperations } from '@/state/cart';
 import { Logger } from '@/core/logger';

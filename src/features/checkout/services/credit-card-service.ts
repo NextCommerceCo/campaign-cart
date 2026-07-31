@@ -7,7 +7,7 @@ import { createLogger } from '@/core/logger';
 // import { ErrorDisplayManager } from '../utils/error-display-utils'; - removed unused import
 import { FieldFinder } from '../utils/field-finder-utils';
 import type { Logger } from '@/core/logger';
-import { useCheckoutStore } from '@/state/checkout.state';
+import { useCheckoutStore } from '@/state/checkout';
 import { nextAnalytics, EcommerceEvents } from '@/core/analytics/index';
 import type { CardInputConfig } from '@/types/global';
 

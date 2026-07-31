@@ -1,5 +1,5 @@
 import { ApiClient } from '@/api/client';
-import { useCheckoutStore } from '@/state/checkout.state';
+import { useCheckoutStore } from '@/state/checkout';
 import type { AddressAutocomplete as AddressAutocompleteData, AddressAutocompleteResult } from '@/types/api';
 import { nextAnalytics, EcommerceEvents } from '@/core/analytics/index';
 import type { AutocompleteContext } from '../checkout.types';

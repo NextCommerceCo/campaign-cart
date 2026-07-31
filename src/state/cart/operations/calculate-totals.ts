@@ -8,7 +8,7 @@ export function calculateTotals(): void {
   scheduleCalculate(async signal => {
     try {
       const { useCampaignStore } = await import('@/state/campaign');
-      const { useCheckoutStore } = await import('@/state/checkout.state');
+      const { useCheckoutStore } = await import('@/state/checkout');
       const { calculateCart } = await import(
         '@/state/cart/cart-calculator'
       );

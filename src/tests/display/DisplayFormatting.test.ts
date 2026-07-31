@@ -6,7 +6,7 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import Decimal from 'decimal.js';
 import { DisplayFormatter } from '@/features/display/display-core';
-import { ProductDisplayEnhancer } from '@/features/display/product-display.enhancer';
+import { ProductDisplayEnhancer } from '@/features/display/product-display';
 import { CartDisplayEnhancer } from '@/features/display/cart-display.enhancer';
 import { DisplayContextProvider } from '@/features/display/display-context';
 import { DisplayErrorBoundary } from '@/features/display/display-error-boundary';

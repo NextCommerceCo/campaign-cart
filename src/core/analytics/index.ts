@@ -22,7 +22,7 @@ import { EventValidator } from './validation/EventValidator';
 import { EcommerceEvents } from './events/EcommerceEvents';
 import { UserEvents } from './events/UserEvents';
 import { createLogger } from '@/core/logger';
-import { useConfigStore } from '@/state/config.state';
+import { useConfigStore } from '@/state/config';
 import type { DataLayerEvent } from './types';
 import type { CartItem, EnrichedCartLine } from '@/types/global';
 

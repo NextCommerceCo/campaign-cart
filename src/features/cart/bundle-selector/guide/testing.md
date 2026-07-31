@@ -37,7 +37,7 @@ Zustand store is instantiated — the tests control exactly what `getState()` re
 vi.mock('@/state/cart', () => ({
   useCartStore: { getState: vi.fn() },
 }));
-vi.mock('@/state/checkout.state', () => ({
+vi.mock('@/state/checkout', () => ({
   useCheckoutStore: { getState: vi.fn() },
 }));
 ```

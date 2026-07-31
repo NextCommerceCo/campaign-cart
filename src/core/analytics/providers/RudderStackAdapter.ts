@@ -7,7 +7,7 @@ import {
 } from './ProviderAdapter';
 import { DataLayerEvent } from '../types';
 import { createLogger } from '@/core/logger';
-import { useConfigStore } from '@/state/config.state';
+import { useConfigStore } from '@/state/config';
 import { useCampaignStore } from '@/state/campaign';
 
 const logger = createLogger('RudderStack');

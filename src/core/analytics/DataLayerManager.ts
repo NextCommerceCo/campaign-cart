@@ -3,7 +3,7 @@
  * Core data layer management following Elevar's pattern
  */
 
-import { useAttributionStore } from '@/state/attribution.state';
+import { useAttributionStore } from '@/state/attribution';
 import type { 
   DataLayerEvent, 
   DataLayerConfig, 

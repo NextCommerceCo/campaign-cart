@@ -170,17 +170,17 @@ Every tag above, with the code that reads it. This table is generated from the s
 | `next-analytics-scroll-tracking` | `MetaTagController.parseScrollThresholds` — `core/analytics/tracking/MetaTagController.ts:428` |
 | `next-analytics-view-item` | `MetaTagController.parseViewItemConfig` — `core/analytics/tracking/MetaTagController.ts:183` |
 | `next-analytics-view-item-list` | `MetaTagController.parseViewItemListConfig` — `core/analytics/tracking/MetaTagController.ts:213` |
-| `next-api-key` | `loadFromMeta` — `state/config.state.ts:86` |
-| `next-campaign-id` | `loadFromMeta` — `state/config.state.ts:93` |
-| `next-clear-cart` | `loadFromMeta` — `state/config.state.ts:107` |
-| `next-debug` | `loadFromMeta` — `state/config.state.ts:100` |
+| `next-api-key` | `loadFromMeta` — `state/config/config.state.ts:86` |
+| `next-campaign-id` | `loadFromMeta` — `state/config/config.state.ts:93` |
+| `next-clear-cart` | `loadFromMeta` — `state/config/config.state.ts:107` |
+| `next-debug` | `loadFromMeta` — `state/config/config.state.ts:100` |
 | `next-failure-url` | `CheckoutFormEnhancer.getFailureUrl` — `features/checkout/checkout-form.enhancer.ts:2257`<br>*top level of the file* — `features/checkout/constants/selectors.ts:46`<br>`getFailureUrl` — `features/checkout/utils/url-utils.ts:33`<br>…and 1 more |
 | `next-funnel` | `AttributionCollector.getFunnelName` — `core/attribution/attribution-collector.ts:249` |
 | `next-next-url` | `CheckoutFormEnhancer.getNextPageUrlFromMeta` — `features/checkout/checkout-form.enhancer.ts:2117`<br>`CheckoutFormEnhancer.getSuccessUrl` — `features/checkout/checkout-form.enhancer.ts:2194`<br>*top level of the file* — `features/checkout/constants/selectors.ts:45`<br>…and 3 more |
 | `next-page-name` | `RudderStackAdapter.getPageMetadata` — `core/analytics/providers/RudderStackAdapter.ts:734` |
 | `next-page-type` | `RudderStackAdapter.getPageMetadata` — `core/analytics/providers/RudderStackAdapter.ts:728`<br>`UpsellSelector.checkIfUpsellPage` — `core/debug/UpsellSelector.ts:158`<br>`trackUpsellPageView` — `features/order/upsell/upsell.handlers.ts:71`<br>…and 1 more |
-| `next-payment-env-key` | `loadFromMeta` — `state/config.state.ts:123` |
-| `next-spreedly-key` | `loadFromMeta` — `state/config.state.ts:122` |
+| `next-payment-env-key` | `loadFromMeta` — `state/config/config.state.ts:123` |
+| `next-spreedly-key` | `loadFromMeta` — `state/config/config.state.ts:122` |
 | `next-success-url` | `CheckoutFormEnhancer.getNextPageUrlFromMeta` — `features/checkout/checkout-form.enhancer.ts:2116`<br>`CheckoutFormEnhancer.getSuccessUrl` — `features/checkout/checkout-form.enhancer.ts:2193`<br>*top level of the file* — `features/checkout/constants/selectors.ts:45`<br>…and 3 more |
 | `next-upsell-accept-url` | `resolveNextUrl` — `features/cart/package-toggle/package-toggle.handlers.ts:130`<br>`handleActionClick` — `features/order/upsell/upsell.handlers.ts:301`<br>`acceptBundleUpsell` — `features/cart/accept-upsell/accept-upsell.handlers.ts:148`<br>…and 1 more |
 | `next-upsell-decline-url` | `handleActionClick` — `features/order/upsell/upsell.handlers.ts:301`<br>`acceptUpsell` — `features/cart/accept-upsell/accept-upsell.handlers.ts:189` |

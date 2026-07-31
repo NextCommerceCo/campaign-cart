@@ -3,7 +3,7 @@ import { calculateTotals } from './calculate-totals';
 export async function applyCoupon(
   code: string
 ): Promise<{ success: boolean; message: string }> {
-  const { useCheckoutStore } = await import('@/state/checkout.state');
+  const { useCheckoutStore } = await import('@/state/checkout');
   const checkoutState = useCheckoutStore.getState();
 
   const normalizedCode = code.toUpperCase().trim();

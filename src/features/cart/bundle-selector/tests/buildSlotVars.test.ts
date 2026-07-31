@@ -7,7 +7,7 @@ import type { BundlePackageState, BundleSlot } from '../bundle-selector.types';
 vi.mock('@/state/campaign', () => ({
   useCampaignStore: { getState: vi.fn(() => ({ currency: 'USD' })) },
 }));
-vi.mock('@/state/config.state', () => ({
+vi.mock('@/state/config', () => ({
   useConfigStore: {
     getState: vi.fn(() => ({
       selectedCurrency: 'USD',

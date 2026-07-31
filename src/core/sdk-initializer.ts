@@ -4,12 +4,12 @@
  */
 
 import { createLogger, Logger, LogLevel } from '@/core/logger';
-import { useConfigStore } from '@/state/config.state';
+import { useConfigStore } from '@/state/config';
 import { useCampaignStore } from '@/state/campaign';
-import { useCheckoutStore } from '@/state/checkout.state';
+import { useCheckoutStore } from '@/state/checkout';
 import { useCartStore, cartOperations } from '@/state/cart';
-import { useOrderStore } from '@/state/order.state';
-import { useAttributionStore } from '@/state/attribution.state';
+import { useOrderStore } from '@/state/order';
+import { useAttributionStore } from '@/state/attribution';
 import { AttributeScanner } from './attribute-scanner';
 import { NextCommerce } from '@/core/next-commerce';
 // Debug overlay imported dynamically when needed
@@ -119,7 +119,7 @@ export class SDKInitializer {
   private static async captureUrlParameters(urlParams: URLSearchParams): Promise<void> {
     try {
       // Import parameter store
-      const { useParameterStore } = await import('@/state/parameter.state');
+      const { useParameterStore } = await import('@/state/parameter');
       const paramStore = useParameterStore.getState();
 
       // Get existing stored parameters

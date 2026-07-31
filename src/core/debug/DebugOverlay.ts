@@ -9,7 +9,7 @@ import { Logger } from '../logger';
 import { DebugEventManager } from './DebugEventManager';
 import { EnhancedDebugUI } from './EnhancedDebugUI';
 import { useCartStore, cartOperations } from '@/state/cart';
-import { useConfigStore } from '@/state/config.state';
+import { useConfigStore } from '@/state/config';
 import { XrayManager } from './XrayStyles';
 import { selectorContainer } from './SelectorContainer';
 import { upsellSelector } from './UpsellSelector';

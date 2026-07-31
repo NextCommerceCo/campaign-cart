@@ -4,7 +4,7 @@
  */
 
 import { useCampaignStore } from '@/state/campaign';
-import { useConfigStore } from '@/state/config.state';
+import { useConfigStore } from '@/state/config';
 
 export class CurrencyFormatter {
   private static formatters: Map<string, Intl.NumberFormat> = new Map();

@@ -593,7 +593,10 @@ describe('core logs and errors reference', () => {
       'the level is no longer raised from configStore.debug'
     ).toContain('configStore.debug');
 
-    const config = readFileSync(join(SRC, 'state/config.state.ts'), 'utf8');
+    const config = readFileSync(
+      join(SRC, 'state/config/config.state.ts'),
+      'utf8'
+    );
     expect(
       config,
       'the next-debug meta tag row describes a tag the config store no longer reads'

@@ -199,7 +199,7 @@
 import { BaseEnhancer } from '@/core/base/base-enhancer';
 import { useCartStore } from '@/state/cart';
 import { useCampaignStore } from '@/state/campaign';
-import { useConfigStore } from '@/state/config.state';
+import { useConfigStore } from '@/state/config';
 import type { CartState } from '@/types/global';
 import type { CartSummary } from '@/types/api';
 import {

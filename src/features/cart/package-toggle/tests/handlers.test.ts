@@ -11,8 +11,8 @@ import type { ToggleCard } from '../package-toggle.types';
 import type { CartItem, CartState } from '@/types/global';
 import { useCartStore } from '@/state/cart';
 import { useCampaignStore } from '@/state/campaign';
-import { useOrderStore } from '@/state/order.state';
-import { useConfigStore } from '@/state/config.state';
+import { useOrderStore } from '@/state/order';
+import { useConfigStore } from '@/state/config';
 
 vi.mock('@/state/cart', () => {
   const getState = vi.fn();
@@ -39,10 +39,10 @@ vi.mock('@/state/cart', () => {
 vi.mock('@/state/campaign', () => ({
   useCampaignStore: { getState: vi.fn() },
 }));
-vi.mock('@/state/order.state', () => ({
+vi.mock('@/state/order', () => ({
   useOrderStore: { getState: vi.fn() },
 }));
-vi.mock('@/state/config.state', () => ({
+vi.mock('@/state/config', () => ({
   useConfigStore: { getState: vi.fn() },
 }));
 vi.mock('@/api/client', () => ({ ApiClient: vi.fn() }));

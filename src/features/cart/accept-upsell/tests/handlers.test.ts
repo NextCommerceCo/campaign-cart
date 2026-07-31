@@ -1,15 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { acceptUpsell } from '../accept-upsell.handlers';
 import type { UpsellHandlerContext } from '../accept-upsell.types';
-import { useOrderStore } from '@/state/order.state';
+import { useOrderStore } from '@/state/order';
 import { useCampaignStore } from '@/state/campaign';
-import { useConfigStore } from '@/state/config.state';
+import { useConfigStore } from '@/state/config';
 import { GeneralModal } from '@/shared/modals/general-modal';
 import { resolveOrderTaxBasis } from '@/core/analytics/taxBasis';
 
-vi.mock('@/state/order.state', () => ({ useOrderStore: { getState: vi.fn() } }));
+vi.mock('@/state/order', () => ({ useOrderStore: { getState: vi.fn() } }));
 vi.mock('@/state/campaign', () => ({ useCampaignStore: { getState: vi.fn() } }));
-vi.mock('@/state/config.state', () => ({ useConfigStore: { getState: vi.fn() } }));
+vi.mock('@/state/config', () => ({ useConfigStore: { getState: vi.fn() } }));
 vi.mock('@/shared/modals/general-modal', () => ({
   GeneralModal: { showDuplicateUpsell: vi.fn() },
 }));

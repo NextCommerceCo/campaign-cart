@@ -4,7 +4,7 @@ export default defineStore({
   id: 'order',
   storeHook: 'useOrderStore',
   stateInterface: 'OrderState',
-  interfaceFile: 'state/order.state.ts',
+  interfaceFile: 'state/order/order.state.ts',
   summary:
     'Holds the order the visitor has already paid for, so a receipt or upsell page can show it and add to it.',
 

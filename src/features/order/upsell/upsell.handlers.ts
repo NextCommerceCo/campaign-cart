@@ -1,6 +1,6 @@
-import { useOrderStore } from '@/state/order.state';
+import { useOrderStore } from '@/state/order';
 import { useCampaignStore } from '@/state/campaign';
-import { useConfigStore } from '@/state/config.state';
+import { useConfigStore } from '@/state/config';
 import { GeneralModal } from '@/shared/modals/general-modal';
 import { preserveQueryParams } from '@/utils/url-utils';
 import type { AddUpsellLine } from '@/types/api';

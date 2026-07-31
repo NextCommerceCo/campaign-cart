@@ -3,7 +3,7 @@
  * Displays checkout state and form validation status
  */
 
-import { useCheckoutStore } from '@/state/checkout.state';
+import { useCheckoutStore } from '@/state/checkout';
 import { DebugPanel, PanelAction, PanelTab } from '../DebugPanels';
 import { RawDataHelper } from './RawDataHelper';
 import { lucide } from '../icons';

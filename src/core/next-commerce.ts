@@ -18,11 +18,11 @@ import type {
 import type { AddUpsellLine } from '@/types/api';
 import { useCartStore, cartOperations } from '@/state/cart';
 import { useCampaignStore } from '@/state/campaign';
-import { useCheckoutStore } from '@/state/checkout.state';
-import { useOrderStore } from '@/state/order.state';
-import { useConfigStore } from '@/state/config.state';
-import { useAttributionStore } from '@/state/attribution.state';
-import { useParameterStore } from '@/state/parameter.state';
+import { useCheckoutStore } from '@/state/checkout';
+import { useOrderStore } from '@/state/order';
+import { useConfigStore } from '@/state/config';
+import { useAttributionStore } from '@/state/attribution';
+import { useParameterStore } from '@/state/parameter';
 import { EventBus } from '@/core/events';
 import { Logger } from '@/core/logger';
 import { ApiClient } from '@/api/client';
@@ -865,7 +865,7 @@ export class NextCommerce {
       // Lazy load the enhancer
       if (!this.exitIntentEnhancer) {
         const { ExitIntentEnhancer } = await import(
-          '@/features/behavior/simple-exit-intent.enhancer'
+          '@/features/behavior/simple-exit-intent'
         );
         this.exitIntentEnhancer = new ExitIntentEnhancer();
         await this.exitIntentEnhancer.initialize();
@@ -911,7 +911,7 @@ export class NextCommerce {
       // Lazy load the enhancer
       if (!this.fomoEnhancer) {
         const { FomoPopupEnhancer } = await import(
-          '@/features/behavior/fomo-popup.enhancer'
+          '@/features/behavior/fomo-popup'
         );
         this.fomoEnhancer = new FomoPopupEnhancer();
         await this.fomoEnhancer.initialize();

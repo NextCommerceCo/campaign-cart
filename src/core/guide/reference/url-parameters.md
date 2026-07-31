@@ -234,7 +234,7 @@ Every parameter above, with the code that reads or writes it. Generated from the
 | `funnel` | `AttributionCollector.getFunnelName` *(has)* — `core/attribution/attribution-collector.ts:186` |
 | `gclid` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts:21` |
 | `ignore` | `NextAnalytics.checkAndSetIgnoreFlag` *(get)* — `core/analytics/index.ts:105`<br>`NextAnalytics.shouldIgnoreAnalytics` *(get)* — `core/analytics/index.ts:132` |
-| `order_ref_id` | `SDKInitializer.checkAndLoadOrder` *(get)* — `core/sdk-initializer.ts:701`<br>`OrderDisplayEnhancer.checkAndLoadOrderFromUrl` *(get)* — `features/display/order-display.enhancer.ts:49` |
+| `order_ref_id` | `SDKInitializer.checkAndLoadOrder` *(get)* — `core/sdk-initializer.ts:701`<br>`OrderDisplayEnhancer.checkAndLoadOrderFromUrl` *(get)* — `features/display/order-display/order-display.enhancer.ts:49` |
 | `payment_failed` | `CheckoutFormEnhancer.getFailureUrl` *(set)* — `features/checkout/checkout-form.enhancer.ts:2270`<br>`getFailureUrl` *(set)* — `features/checkout/utils/url-utils.ts:49` |
 | `q` | `ListAttributionTracker.detectListFromUrl` *(has)* — `core/analytics/tracking/ListAttributionTracker.ts:157` |
 | `query` | `ListAttributionTracker.detectListFromUrl` *(has)* — `core/analytics/tracking/ListAttributionTracker.ts:157` |

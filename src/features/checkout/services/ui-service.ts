@@ -11,7 +11,7 @@ import type { Logger } from '@/core/logger';
 import type { CartState } from '@/types/global';
 import { ErrorDisplayManager } from '../utils/error-display-utils';
 import { EventHandlerManager } from '../utils/event-handler-utils';
-import { useCheckoutStore } from '@/state/checkout.state';
+import { useCheckoutStore } from '@/state/checkout';
 
 export class UIService {
   private form: HTMLFormElement;

@@ -5,9 +5,9 @@
 
 import { BaseEnhancer } from '@/core/base/base-enhancer';
 import { useCartStore } from '@/state/cart';
-import { useConfigStore } from '@/state/config.state';
+import { useConfigStore } from '@/state/config';
 import { useCampaignStore } from '@/state/campaign';
-import { useAttributionStore } from '@/state/attribution.state';
+import { useAttributionStore } from '@/state/attribution';
 import { ApiClient } from '@/api/client';
 import type { CartBase, UserCreateCart } from '@/types/api';
 

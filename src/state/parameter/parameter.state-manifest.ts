@@ -4,7 +4,7 @@ export default defineStore({
   id: 'parameter',
   storeHook: 'useParameterStore',
   stateInterface: 'ParameterState',
-  interfaceFile: 'state/parameter.state.ts',
+  interfaceFile: 'state/parameter/parameter.state.ts',
   summary:
     'Holds the query-string parameters the visitor arrived with, kept for the whole session so a later page can still react to them — show a returning-visitor variant, skip a timer, hide a banner — after they have gone from the address bar.',
 

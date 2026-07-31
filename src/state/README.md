@@ -10,14 +10,24 @@ truth for runtime data.
 |-------|------|---------|
 | `useCartStore` | `cart/` (+ `operations/`) | Cart items, totals, coupons, shipping. Async logic in `operations/`; `cart-calculator.ts` wraps the calculate API (used by `operations/` and cart features) |
 | `useCampaignStore` | `campaign/` | Campaign/package data (10-min cache). Field is **`.data`**, not `.campaign` |
-| `useOrderStore` | `order.state.ts` | Post-purchase order/upsell (15-min expiry) |
-| `useCheckoutStore` | `checkout.state.ts` | Checkout form state & validation |
-| `useConfigStore` | `config.state.ts` | SDK configuration |
-| `useAttributionStore` | `attribution.state.ts` | UTM & referral tracking |
-| `useParameterStore` | `parameter.state.ts` | URL parameters |
+| `useOrderStore` | `order/` | Post-purchase order/upsell (15-min expiry) |
+| `useCheckoutStore` | `checkout/` | Checkout form state & validation |
+| `useConfigStore` | `config/` | SDK configuration |
+| `useAttributionStore` | `attribution/` | UTM & referral tracking |
+| `useParameterStore` | `parameter/` | URL parameters |
 
-Single-file stores are `*.state.ts`; a store grows into a `<domain>/` folder only
-when it earns it (`cart/`, `campaign/`).
+Every store is a `<domain>/` folder holding `<domain>.state.ts`, its
+`<domain>.state-manifest.ts`, its `guide/`, and an `index.ts` barrel — so the
+code and the docs that describe it sit together. Import a store through the
+folder (`@/state/order`), never through its inner file.
+
+A one-line shim still sits at each old path (`state/order.state.ts` →
+`export * from './order'`) so `src/index.ts`, `core/next-commerce.ts`, and two
+`utils/` files keep resolving while their imports are swept over. The shims
+re-export the folder barrel rather than redeclaring anything, which is what keeps
+both paths on **one** store instance —
+[`src/tests/contract/store-identity.test.ts`](../tests/contract/store-identity.test.ts)
+fails if that ever stops being true. Delete a shim once nothing imports it.
 
 ## Thin-state convention
 

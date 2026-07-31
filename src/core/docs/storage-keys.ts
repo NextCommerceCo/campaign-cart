@@ -301,7 +301,7 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
     clearing:
       'The order is submitted with no attribution, so the affiliate or ad network cannot match the conversion. The visitor sees a completely normal checkout, which is what makes this one expensive to miss.',
     notes:
-      "Written to **sessionStorage only** — the store's `persist` config supplies a custom storage whose `getItem`, `setItem` and `removeItem` all use sessionStorage (`state/attribution.state.ts:367-379`). The collector also reads this name out of **localStorage** in three places (`core/attribution/attribution-collector.ts:143`, `:230`, `:375`), and nothing ever writes it there, so those are dead branches. The consequence that does bite: `first_visit_timestamp` cannot be recovered in a new tab, so returning-visitor logic built on it always reports a first visit. Write your own marker to localStorage if you need truth across tabs.",
+      "Written to **sessionStorage only** — the store's `persist` config supplies a custom storage whose `getItem`, `setItem` and `removeItem` all use sessionStorage (`state/attribution/attribution.state.ts:367-379`). The collector also reads this name out of **localStorage** in three places (`core/attribution/attribution-collector.ts:143`, `:230`, `:375`), and nothing ever writes it there, so those are dead branches. The consequence that does bite: `first_visit_timestamp` cannot be recovered in a new tab, so returning-visitor logic built on it always reports a first visit. Write your own marker to localStorage if you need truth across tabs.",
   },
   {
     key: 'next_funnel_name',
@@ -674,7 +674,7 @@ export interface ExpiryMechanism {
 export const EXPIRY_MECHANISMS: ExpiryMechanism[] = [
   {
     name: '`EXPIRY_TIME` (order store)',
-    file: 'state/order.state.ts',
+    file: 'state/order/order.state.ts',
     evidence: 'const EXPIRY_TIME = 15 * 60 * 1000',
     window: '15 minutes',
     governs:

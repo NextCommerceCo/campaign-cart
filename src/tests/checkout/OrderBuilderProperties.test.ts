@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { OrderBuilder } from '@/features/checkout/builders/order-builder';
-import { useAttributionStore } from '@/state/attribution.state';
+import { useAttributionStore } from '@/state/attribution';
 import { useCampaignStore } from '@/state/campaign';
-import { useConfigStore } from '@/state/config.state';
+import { useConfigStore } from '@/state/config';
 
 // ─── Module mocks ─────────────────────────────────────────────────────────────
 

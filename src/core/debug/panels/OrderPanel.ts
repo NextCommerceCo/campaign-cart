@@ -3,7 +3,7 @@
  * Displays order state, items, upsells, and provides order management controls
  */
 
-import { useOrderStore } from '@/state/order.state';
+import { useOrderStore } from '@/state/order';
 import { DebugPanel, PanelAction, PanelTab } from '../DebugPanels';
 import { RawDataHelper } from './RawDataHelper';
 import { lucide } from '../icons';

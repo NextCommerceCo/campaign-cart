@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { RudderStackAdapter } from '@/core/analytics/providers/RudderStackAdapter';
 import type { DataLayerEvent } from '@/core/analytics/types';
-import { useConfigStore } from '@/state/config.state';
+import { useConfigStore } from '@/state/config';
 
 /**
  * Locks in the RudderStack Ecommerce Events Spec mapping:

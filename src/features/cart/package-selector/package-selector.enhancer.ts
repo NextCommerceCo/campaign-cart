@@ -97,7 +97,7 @@
 import { BaseEnhancer } from '@/core/base/base-enhancer';
 import { useCartStore, cartOperations } from '@/state/cart';
 import { useCampaignStore } from '@/state/campaign';
-import { useCheckoutStore } from '@/state/checkout.state';
+import { useCheckoutStore } from '@/state/checkout';
 import type { CartState, SelectorItem } from '@/types/global';
 import type { PackageDef, SelectorHandlerContext } from './package-selector.types';
 import { renderPackageTemplate } from './package-selector.renderer';

@@ -70,7 +70,7 @@ change; leaving it is a silent wrong answer.
 
 `applyCoupon` stores `code.toUpperCase().trim()`
 (`state/cart/operations/apply-coupon.ts:9`). `removeVoucher` filters on `v !== code`
-with no normalisation (`state/checkout.state.ts:154`), and `removeCoupon` passes the
+with no normalisation (`state/checkout/checkout.state.ts:154`), and `removeCoupon` passes the
 raw string through.
 
 So `next.applyCoupon('save10')` followed by `next.removeCoupon('save10')` removes
@@ -146,7 +146,7 @@ when there is no button at all.
 
 `core/attribution/attribution-collector.ts:143` falls back to
 `localStorage.getItem('next-attribution')`, but the store's persist storage writes
-**sessionStorage** only (`state/attribution.state.ts:367-379`). That key is never
+**sessionStorage** only (`state/attribution/attribution.state.ts:367-379`). That key is never
 written to localStorage, so the cross-session recovery path is dead code and every new
 tab looks like a first visit.
 
@@ -671,7 +671,7 @@ per window, named.
 
 `?ignore=true` is a real, undocumented analytics kill switch (`analytics/index.ts:100-138`) —
 it writes `analytics_ignore` to sessionStorage and returns before any provider initialises, and
-it now has a page. `config.tracking` is the opposite: `state/config.state.ts:249-251` stores it
+it now has a page. `config.tracking` is the opposite: `state/config/config.state.ts:249-251` stores it
 and **nothing reads it**, which `config.state-manifest.ts:256`, `:342` already noted. The
 meta-tag reference had been recommending it as the way to suppress events; corrected.
 **Fix:** implement `tracking` or delete the field.
@@ -708,7 +708,7 @@ replaces the state object on `set()`, so the captured snapshot never sees the up
 - **Attribution metadata is reverted on every cart change.** `:589` captures the attribution
   snapshot and `:603-609` calls `updateAttribution({ metadata: { ...attributionStore.metadata,
   … } })` with the **pre-`collect()`** metadata; `updateAttribution` merges as
-  `{...state.metadata, ...data.metadata}` (`state/attribution.state.ts:133-135`), so stale keys
+  `{...state.metadata, ...data.metadata}` (`state/attribution/attribution.state.ts:133-135`), so stale keys
   overwrite fresh ones. Same at `:645-653` (`cart:updated` → `conversion_timestamp`) and
   `:658-664` (`popstate` → `landing_page`).
 
@@ -716,7 +716,7 @@ replaces the state object on `set()`, so the captured snapshot never sees the up
 
 ### 67. `currencyBehavior` only exists at boot, despite its comment — *verified*
 
-`state/config.state.ts:69` comments it as "auto-switch currency on country change". The field is
+`state/config/config.state.ts:69` comments it as "auto-switch currency on country change". The field is
 read in exactly one place, `sdk-initializer.ts:160`, at boot. Changing the country in the
 checkout form reloads states and relabels fields but never re-prices; only the debug overlay's
 `core/debug/CountrySelector.ts:380-400` switches currency and reloads the campaign. So the
@@ -737,19 +737,19 @@ parameters are appended to it even with `applyToExternalLinks: false`. **Fix:** 
 
 `core/attribution/utm-transfer.ts:15` declares `debug?: boolean`, but `ConfigState.utmTransfer`
 (`types/global.ts:1316-1321`) omits it and `loadFromWindow` copies the object wholesale
-(`state/config.state.ts:264-269`). It works at runtime and cannot be typed, so it is left out of
+(`state/config/config.state.ts:264-269`). It works at runtime and cannot be typed, so it is left out of
 the documented example. **Fix:** add it to the `ConfigState` shape.
 
 ### 70. `facebook-pixel-id` and `os-facebook-pixel` have no precedence — *verified*
 
 `core/attribution/attribution-collector.ts:340-342` looks up both in a single `querySelector`, so
 with both present **document order** decides which wins. The Spreedly keys have the same shape at
-`state/config.state.ts:122-123`, except there the `||` gives a defined order. **Fix:** pick an
+`state/config/config.state.ts:122-123`, except there the `||` gives a defined order. **Fix:** pick an
 explicit precedence, as the Spreedly pair does.
 
 ### 71. `next-campaign-id` is stored and read by nothing but a debug panel — *verified*
 
-`state/config.state.ts:92-97` stores it; the only consumer is `core/debug/DebugPanels.ts:107`,
+`state/config/config.state.ts:92-97` stores it; the only consumer is `core/debug/DebugPanels.ts:107`,
 and `sdk-initializer.ts:438` confirms the API needs only the key. It looks like it selects which
 campaign loads and does not. Published as `status: 'inert'`. **Fix:** remove the tag and its
 parsing.
@@ -812,8 +812,8 @@ whether raw email to every configured provider is intended; if not, hash before 
 
 `config.testMode` is written and read only by the debug Config panel
 (`core/debug/panels/ConfigPanel.ts:128`, `:206`), and `checkout.testMode`'s `setTestMode`
-(`state/checkout.state.ts:142`) has no callers. Neither influences submission — that is decided
-entirely by `core/test-mode.ts`. `state/config.state-manifest.ts:176` says the submit path
+(`state/checkout/checkout.state.ts:142`) has no callers. Neither influences submission — that is decided
+entirely by `core/test-mode.ts`. `state/config/config.state-manifest.ts:176` says the submit path
 consults "`core/test-mode.ts` and the checkout store", and the checkout-store half is wrong.
 **Fix:** delete both fields, and correct that manifest line.
 
@@ -834,7 +834,7 @@ an external Fumadocs build to an in-repo TypeDoc HTML site (`documentation-plan.
 
 ### 80. `Order` vs `OrderData` — two declarations of one concept — *verified*
 
-`state/order.state.ts:13` types the store's `order` field as `Order`, imported from
+`state/order/order.state.ts:13` types the store's `order` field as `Order`, imported from
 `types/api.ts:129`. Only `OrderData` (`types/global.ts:1605`) is re-exported from
 `src/index.ts` (via `{@link OrderData}` at `:47`) — `Order` never is, and no page for it
 exists anywhere under `docs/site`. So the order store's real field type is unpublished. The
@@ -881,7 +881,7 @@ citations to their current paths.
 
 `typedoc.json`'s `entryPoints` lists `src/state` (`entryPointStrategy: "expand"`) but not
 `src/features`. That reaches the generated site: every `*.state-manifest.ts` gets a real
-module page — e.g. `state/checkout.state-manifest.ts` produces
+module page — e.g. `state/checkout/checkout.state-manifest.ts` produces
 `docs/site/modules/state_checkout.state-manifest.html` and
 `docs/site/variables/state_checkout.state-manifest.default.html` — while the 29
 `*.manifest.ts` files under `src/features` (e.g.

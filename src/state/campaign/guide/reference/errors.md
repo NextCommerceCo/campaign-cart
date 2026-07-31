@@ -19,7 +19,7 @@ Verify the API key is correct and that the campaign exists in the 29Next dashboa
 
 ```ts
 // Check which key is being used
-const { useConfigStore } = await import('@/state/config.state');
+const { useConfigStore } = await import('@/state/config');
 console.log(useConfigStore.getState().apiKey);
 ```
 

@@ -12,9 +12,9 @@
  */
 
 import { BaseEnhancer } from '@/core/base/base-enhancer';
-import { useConfigStore } from '@/state/config.state';
+import { useConfigStore } from '@/state/config';
 import { useCartStore } from '@/state/cart';
-import { useCheckoutStore } from '@/state/checkout.state';
+import { useCheckoutStore } from '@/state/checkout';
 import { useCampaignStore } from '@/state/campaign';
 import { ApiClient } from '@/api/client';
 import { OrderManager } from './managers/order-manager';

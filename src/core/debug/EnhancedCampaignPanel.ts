@@ -4,7 +4,7 @@
 
 import { useCampaignStore } from '@/state/campaign';
 import { useCartStore, cartOperations } from '@/state/cart';
-import { useConfigStore } from '@/state/config.state';
+import { useConfigStore } from '@/state/config';
 import { DebugPanel, PanelAction, PanelTab } from './DebugPanels';
 import { RawDataHelper } from './panels/RawDataHelper';
 import { lucide } from './icons';

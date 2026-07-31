@@ -4,7 +4,7 @@ export default defineStore({
   id: 'attribution',
   storeHook: 'useAttributionStore',
   stateInterface: 'AttributionState',
-  interfaceFile: 'state/attribution.state.ts',
+  interfaceFile: 'state/attribution/attribution.state.ts',
   summary:
     'Holds where this visitor came from — funnel, affiliate, UTM tags, click ids and the context of the visit — so the order created at checkout is credited to the traffic that produced it.',
 

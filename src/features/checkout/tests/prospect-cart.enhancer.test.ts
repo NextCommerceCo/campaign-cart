@@ -1,20 +1,20 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ProspectCartEnhancer } from '../prospect-cart.enhancer';
 import { useCartStore } from '@/state/cart';
-import { useConfigStore } from '@/state/config.state';
+import { useConfigStore } from '@/state/config';
 import { useCampaignStore } from '@/state/campaign';
-import { useAttributionStore } from '@/state/attribution.state';
+import { useAttributionStore } from '@/state/attribution';
 
 vi.mock('@/state/cart', () => ({
   useCartStore: { getState: vi.fn(), subscribe: vi.fn(() => () => {}) },
 }));
-vi.mock('@/state/config.state', () => ({
+vi.mock('@/state/config', () => ({
   useConfigStore: { getState: vi.fn() },
 }));
 vi.mock('@/state/campaign', () => ({
   useCampaignStore: { getState: vi.fn() },
 }));
-vi.mock('@/state/attribution.state', () => ({
+vi.mock('@/state/attribution', () => ({
   useAttributionStore: { getState: vi.fn() },
 }));
 

@@ -13,8 +13,8 @@ import type {
   ElevarImpression,
 } from '../types';
 import { useCampaignStore } from '@/state/campaign';
-import { useCheckoutStore } from '@/state/checkout.state';
-import { useConfigStore } from '@/state/config.state';
+import { useCheckoutStore } from '@/state/checkout';
+import { useConfigStore } from '@/state/config';
 import { createLogger } from '@/core/logger';
 import { getCookie } from '@/utils/cookies';
 

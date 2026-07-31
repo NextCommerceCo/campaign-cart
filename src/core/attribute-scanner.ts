@@ -254,19 +254,19 @@ export class AttributeScanner {
             return new CartDisplayEnhancer(element);
           } else if (parsed.object === 'selection') {
             this.logger.debug('Using SelectionDisplayEnhancer');
-            const { SelectionDisplayEnhancer } = await import('@/features/display/selection-display.enhancer');
+            const { SelectionDisplayEnhancer } = await import('@/features/display/selection-display');
             return new SelectionDisplayEnhancer(element);
           } else if (parsed.object === 'package' || parsed.object === 'campaign') {
             this.logger.debug('Using ProductDisplayEnhancer');
-            const { ProductDisplayEnhancer } = await import('@/features/display/product-display.enhancer');
+            const { ProductDisplayEnhancer } = await import('@/features/display/product-display');
             return new ProductDisplayEnhancer(element);
           } else if (parsed.object === 'order') {
             this.logger.debug('Using OrderDisplayEnhancer');
-            const { OrderDisplayEnhancer } = await import('@/features/display/order-display.enhancer');
+            const { OrderDisplayEnhancer } = await import('@/features/display/order-display');
             return new OrderDisplayEnhancer(element);
           } else if (parsed.object === 'shipping') {
             this.logger.debug('Using ShippingDisplayEnhancer');
-            const { ShippingDisplayEnhancer } = await import('@/features/display/shipping-display.enhancer');
+            const { ShippingDisplayEnhancer } = await import('@/features/display/shipping-display');
             return new ShippingDisplayEnhancer(element);
           } else if (parsed.object === 'bundle') {
             this.logger.debug('Using BundleDisplayEnhancer');
@@ -296,7 +296,7 @@ export class AttributeScanner {
             
             if (hasPackageContext) {
               this.logger.debug(`Using ProductDisplayEnhancer (fallback with package context)`);
-              const { ProductDisplayEnhancer } = await import('@/features/display/product-display.enhancer');
+              const { ProductDisplayEnhancer } = await import('@/features/display/product-display');
               return new ProductDisplayEnhancer(element);
             } else {
               // Default to cart display
@@ -333,7 +333,7 @@ export class AttributeScanner {
           return new PackageSelectorEnhancer(element);
           
         case 'timer':
-          const { TimerEnhancer } = await import('@/features/display/timer.enhancer');
+          const { TimerEnhancer } = await import('@/features/display/timer');
           return new TimerEnhancer(element);
           
         case 'conditional':
@@ -343,7 +343,7 @@ export class AttributeScanner {
             showAttr: element.getAttribute('data-next-show'),
             hideAttr: element.getAttribute('data-next-hide')
           });
-          const { ConditionalDisplayEnhancer } = await import('@/features/display/conditional-display.enhancer');
+          const { ConditionalDisplayEnhancer } = await import('@/features/display/conditional-display');
           return new ConditionalDisplayEnhancer(element);
           
         case 'checkout':
@@ -387,7 +387,7 @@ export class AttributeScanner {
 
 
         case 'order-items':
-          const { OrderItemListEnhancer } = await import('@/features/order/order-item-list.enhancer');
+          const { OrderItemListEnhancer } = await import('@/features/order/order-item-list');
           return new OrderItemListEnhancer(element);
 
         case 'quantity':
@@ -405,23 +405,23 @@ export class AttributeScanner {
           return new UpsellEnhancer(element);
 
         case 'coupon':
-          const { CouponEnhancer } = await import('@/features/cart/coupon.enhancer');
+          const { CouponEnhancer } = await import('@/features/cart/coupon');
           return new CouponEnhancer(element);
 
         case 'accordion':
-          const { AccordionEnhancer } = await import('@/features/ui/accordion.enhancer');
+          const { AccordionEnhancer } = await import('@/features/ui/accordion');
           return new AccordionEnhancer(element);
 
         case 'tooltip':
-          const { TooltipEnhancer } = await import('@/features/ui/tooltip.enhancer');
+          const { TooltipEnhancer } = await import('@/features/ui/tooltip');
           return new TooltipEnhancer(element);
 
         case 'scroll-hint':
-          const { ScrollHintEnhancer } = await import('@/features/ui/scroll-hint.enhancer');
+          const { ScrollHintEnhancer } = await import('@/features/ui/scroll-hint');
           return new ScrollHintEnhancer(element);
         
         case 'quantity-text':
-          const { QuantityTextEnhancer } = await import('@/features/display/quantity-text.enhancer');
+          const { QuantityTextEnhancer } = await import('@/features/display/quantity-text');
           return new QuantityTextEnhancer(element);
         
         default:

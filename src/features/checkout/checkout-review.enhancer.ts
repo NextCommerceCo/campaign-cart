@@ -4,7 +4,7 @@
  */
 
 import { BaseEnhancer } from '@/core/base/base-enhancer';
-import { useCheckoutStore } from '@/state/checkout.state';
+import { useCheckoutStore } from '@/state/checkout';
 import type { Logger } from '@/core/logger';
 
 interface CheckoutReviewConfig {

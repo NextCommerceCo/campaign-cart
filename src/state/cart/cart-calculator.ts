@@ -139,7 +139,7 @@ export async function calculateCart(
   params: CalculateCartParams
 ): Promise<CalculateCartResult> {
   const { ApiClient } = await import('@/api/client');
-  const { useConfigStore } = await import('@/state/config.state');
+  const { useConfigStore } = await import('@/state/config');
 
   const apiKey = useConfigStore.getState().apiKey;
   const key = await calcCacheKey(params, apiKey);
@@ -223,7 +223,7 @@ export async function calculateBundlePrice(
   items: BundlePriceItem[],
   options: BundlePriceOptions = {}
 ): Promise<CalculateCartResult> {
-  const { useConfigStore } = await import('@/state/config.state');
+  const { useConfigStore } = await import('@/state/config');
   const apiKey = useConfigStore.getState().apiKey;
   const ttl = options.ttl ?? BUNDLE_PRICE_CACHE_TTL_MS;
 

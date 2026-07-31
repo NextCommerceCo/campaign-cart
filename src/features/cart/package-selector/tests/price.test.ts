@@ -3,11 +3,11 @@ import { Decimal } from 'decimal.js';
 import { fetchAndUpdatePrice } from '../package-selector.price';
 import type { SelectorItem } from '@/types/global';
 import { useCampaignStore } from '@/state/campaign';
-import { useCheckoutStore } from '@/state/checkout.state';
+import { useCheckoutStore } from '@/state/checkout';
 import { calculateBundlePrice } from '@/state/cart/cart-calculator';
 
 vi.mock('@/state/campaign', () => ({ useCampaignStore: { getState: vi.fn() } }));
-vi.mock('@/state/checkout.state', () => ({ useCheckoutStore: { getState: vi.fn() } }));
+vi.mock('@/state/checkout', () => ({ useCheckoutStore: { getState: vi.fn() } }));
 vi.mock('@/state/cart/cart-calculator', () => ({ calculateBundlePrice: vi.fn() }));
 vi.mock('@/utils/currencyFormatter', () => ({
   formatCurrency: (n: number) => `$${n}`,

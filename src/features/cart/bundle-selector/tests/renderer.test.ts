@@ -10,7 +10,7 @@ import type { BundleCard, BundlePriceSummary } from '../bundle-selector.types';
 vi.mock('@/state/campaign', () => ({
   useCampaignStore: { getState: vi.fn(() => ({ packages: [], currency: 'USD' })) },
 }));
-vi.mock('@/state/config.state', () => ({
+vi.mock('@/state/config', () => ({
   useConfigStore: {
     getState: vi.fn(() => ({
       selectedCurrency: 'USD',

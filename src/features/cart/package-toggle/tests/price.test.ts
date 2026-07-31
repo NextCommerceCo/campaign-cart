@@ -3,7 +3,7 @@ import { fetchAndUpdateTogglePrice } from '../package-toggle.price';
 import type { ToggleCard } from '../package-toggle.types';
 import { useCartStore } from '@/state/cart';
 import { useCampaignStore } from '@/state/campaign';
-import { useCheckoutStore } from '@/state/checkout.state';
+import { useCheckoutStore } from '@/state/checkout';
 
 vi.mock('@/state/cart', () => ({
   useCartStore: { getState: vi.fn() },
@@ -11,7 +11,7 @@ vi.mock('@/state/cart', () => ({
 vi.mock('@/state/campaign', () => ({
   useCampaignStore: { getState: vi.fn() },
 }));
-vi.mock('@/state/checkout.state', () => ({
+vi.mock('@/state/checkout', () => ({
   useCheckoutStore: { getState: vi.fn() },
 }));
 vi.mock('@/state/cart/cart-calculator', () => ({

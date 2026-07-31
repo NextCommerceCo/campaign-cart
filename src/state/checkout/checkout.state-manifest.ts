@@ -4,7 +4,7 @@ export default defineStore({
   id: 'checkout',
   storeHook: 'useCheckoutStore',
   stateInterface: 'CheckoutState',
-  interfaceFile: 'state/checkout.state.ts',
+  interfaceFile: 'state/checkout/checkout.state.ts',
   summary:
     'Holds the checkout the shopper is part-way through: the contact and address fields they have typed, the payment and shipping they picked, the coupon codes they entered, and whether an order is currently being submitted.',
 

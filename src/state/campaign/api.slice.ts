@@ -24,7 +24,7 @@ export const createCampaignApiSlice: StateCreator<
     set({ isLoading: true, error: null });
 
     try {
-      const { useConfigStore } = await import('@/state/config.state');
+      const { useConfigStore } = await import('@/state/config');
       const configStore = useConfigStore.getState();
       const requestedCurrency = configStore.getCurrency();
 

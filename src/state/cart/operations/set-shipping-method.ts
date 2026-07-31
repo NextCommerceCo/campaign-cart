@@ -7,7 +7,7 @@ import { calculateTotals } from './calculate-totals';
 export async function setShippingMethod(methodId: number): Promise<void> {
   try {
     const { useCampaignStore } = await import('@/state/campaign');
-    const { useCheckoutStore } = await import('@/state/checkout.state');
+    const { useCheckoutStore } = await import('@/state/checkout');
 
     const campaignStore = useCampaignStore.getState();
     const checkoutStore = useCheckoutStore.getState();

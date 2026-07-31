@@ -6,7 +6,7 @@ import type { BundleCard, BundleSlot, PriceContext } from '../bundle-selector.ty
 vi.mock('@/state/campaign', () => ({
   useCampaignStore: { getState: vi.fn() },
 }));
-vi.mock('@/state/checkout.state', () => ({
+vi.mock('@/state/checkout', () => ({
   useCheckoutStore: { getState: vi.fn() },
 }));
 vi.mock('@/state/cart/cart-calculator', () => ({
@@ -14,7 +14,7 @@ vi.mock('@/state/cart/cart-calculator', () => ({
 }));
 
 import { useCampaignStore } from '@/state/campaign';
-import { useCheckoutStore } from '@/state/checkout.state';
+import { useCheckoutStore } from '@/state/checkout';
 import { calculateBundlePrice } from '@/state/cart/cart-calculator';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

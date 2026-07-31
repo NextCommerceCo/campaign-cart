@@ -8,7 +8,7 @@ import {
   formatDiscountPercentage,
 } from '@/utils/currencyFormatter';
 import { useCampaignStore } from '@/state/campaign/index';
-import { useConfigStore } from '@/state/config.state';
+import { useConfigStore } from '@/state/config';
 
 // Pin locale so Intl output is deterministic across environments.
 const LOCALE = 'en-US';

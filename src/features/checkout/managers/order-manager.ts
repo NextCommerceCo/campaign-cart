@@ -178,7 +178,7 @@ export class OrderManager {
         throw new Error('Cannot create express order with empty cart');
       }
       
-      const { useCheckoutStore } = await import('@/state/checkout.state');
+      const { useCheckoutStore } = await import('@/state/checkout');
       const vouchers = useCheckoutStore.getState().vouchers;
 
       // Build minimal order data for express checkout
@@ -222,7 +222,7 @@ export class OrderManager {
     });
     
     try {
-      const { useCheckoutStore } = await import('@/state/checkout.state');
+      const { useCheckoutStore } = await import('@/state/checkout');
       const vouchers = useCheckoutStore.getState().vouchers;
       
       // Build test order data

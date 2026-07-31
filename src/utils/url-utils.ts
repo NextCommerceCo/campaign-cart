@@ -3,7 +3,7 @@
  * Helper functions for URL manipulation and parameter preservation
  */
 
-import { useParameterStore } from '@/state/parameter.state';
+import { useParameterStore } from '@/state/parameter';
 
 /**
  * Preserves query parameters when navigating

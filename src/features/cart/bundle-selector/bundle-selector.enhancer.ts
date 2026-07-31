@@ -12,7 +12,7 @@
 
 import { BaseEnhancer } from '@/core/base/base-enhancer';
 import { useCartStore } from '@/state/cart';
-import { useCheckoutStore } from '@/state/checkout.state';
+import { useCheckoutStore } from '@/state/checkout';
 import { useCampaignStore } from '@/state/campaign';
 import type { CartState } from '@/types/global';
 

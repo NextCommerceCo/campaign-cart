@@ -1,17 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { addUpsellToOrder } from '../upsell.handlers';
 import type { UpsellHandlerContext } from '../upsell.types';
-import { useOrderStore } from '@/state/order.state';
+import { useOrderStore } from '@/state/order';
 import { useCampaignStore } from '@/state/campaign';
-import { useConfigStore } from '@/state/config.state';
+import { useConfigStore } from '@/state/config';
 
-vi.mock('@/state/order.state', () => ({
+vi.mock('@/state/order', () => ({
   useOrderStore: { getState: vi.fn() },
 }));
 vi.mock('@/state/campaign', () => ({
   useCampaignStore: { getState: vi.fn() },
 }));
-vi.mock('@/state/config.state', () => ({
+vi.mock('@/state/config', () => ({
   useConfigStore: { getState: vi.fn() },
 }));
 vi.mock('../upsell.renderer', () => ({

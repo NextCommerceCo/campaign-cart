@@ -4,7 +4,7 @@ import {
   DispatchError,
 } from './ProviderAdapter';
 import { DataLayerEvent } from '../types';
-import { useConfigStore } from '@/state/config.state';
+import { useConfigStore } from '@/state/config';
 
 declare global {
   interface Window {

@@ -3,7 +3,7 @@
  * Fixed position country switcher for testing multi-country functionality
  */
 
-import { useConfigStore } from '@/state/config.state';
+import { useConfigStore } from '@/state/config';
 import { useCampaignStore } from '@/state/campaign';
 import { cartOperations } from '@/state/cart';
 import { CountryService } from '@/core/country-service';

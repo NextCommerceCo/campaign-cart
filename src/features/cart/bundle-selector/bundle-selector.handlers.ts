@@ -1,5 +1,5 @@
 import { useCartStore, cartOperations } from '@/state/cart';
-import { useCheckoutStore } from '@/state/checkout.state';
+import { useCheckoutStore } from '@/state/checkout';
 import { useCampaignStore } from '@/state/campaign';
 import type { BundleCard, HandlerContext } from './bundle-selector.types';
 import { getEffectiveItems, makePackageState } from './bundle-selector.state';

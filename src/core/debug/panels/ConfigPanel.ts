@@ -3,7 +3,7 @@
  * Displays and manages SDK configuration
  */
 
-import { useConfigStore } from '@/state/config.state';
+import { useConfigStore } from '@/state/config';
 import { DebugPanel, PanelAction, PanelTab } from '../DebugPanels';
 import { RawDataHelper } from './RawDataHelper';
 import { lucide } from '../icons';

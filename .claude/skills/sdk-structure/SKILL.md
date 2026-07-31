@@ -197,9 +197,12 @@ Decide per store by asking **who uses it?**
 
 A store is a **state container**: state fields + sync setters only. Async /
 business logic lives in the **feature** (event-driven, coordinated via EventBus),
-not in the store — keep `state/` thin. **One file per store by default**
-(`state/cart.state.ts`); do not pre-split into items/ui/api slices. Split into a
-`state/<domain>/` folder only when it grows (~300 lines), by real sub-domain.
+not in the store — keep `state/` thin. **Every store is a `state/<domain>/`
+folder** holding `<domain>.state.ts`, its `<domain>.state-manifest.ts`, its
+`guide/`, and an `index.ts` barrel — import the folder (`@/state/order`), never
+the inner file. Inside it, **one file for the store is still the default**: do
+not pre-split into items/ui/api slices; add a `<sub>.slice.ts` only when the
+store grows (~300 lines), by real sub-domain.
 Details, persistence, and the store list: [references/state-authoring.md](references/state-authoring.md).
 **Never rename a store's `persist` key during a move** — it invalidates live
 customer sessions. After moving a store, confirm every import resolves to the

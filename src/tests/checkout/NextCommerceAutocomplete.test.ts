@@ -11,7 +11,7 @@ const storeMock = vi.hoisted(() => ({
   shippingMethod: null as null,
 }));
 
-vi.mock('@/state/checkout.state', () => ({
+vi.mock('@/state/checkout', () => ({
   useCheckoutStore: { getState: () => storeMock },
 }));
 

@@ -66,9 +66,9 @@ export { SDKInitializer } from '@/core/sdk-initializer';
 // Store exports
 export { useCartStore } from '@/state/cart';
 export { useCampaignStore } from '@/state/campaign';
-export { useConfigStore } from '@/state/config.state';
-export { useCheckoutStore } from '@/state/checkout.state';
-export { useOrderStore } from '@/state/order.state';
+export { useConfigStore } from '@/state/config';
+export { useCheckoutStore } from '@/state/checkout';
+export { useOrderStore } from '@/state/order';
 // Type exports
 export type * from './types/global';
 // The order shapes the API returns and the order store holds. `OrderData` (above)
@@ -136,9 +136,9 @@ if (typeof window !== 'undefined') {
         import('@/features/cart/package-selector');
         
         // Display enhancers
-        import('@/features/display/product-display.enhancer');
-        import('@/features/display/selection-display.enhancer');
-        import('@/features/display/timer.enhancer');
+        import('@/features/display/product-display');
+        import('@/features/display/selection-display');
+        import('@/features/display/timer');
       }, { timeout: 5000 });
       
       // Phase 2: Secondary modules (preload after critical)
@@ -148,7 +148,7 @@ if (typeof window !== 'undefined') {
         import('./features/checkout/express-checkout-container.enhancer');
 
         // Order/Upsell
-        import('@/features/display/order-display.enhancer');
+        import('@/features/display/order-display');
         import('@/features/order/upsell');
 
         // Attribution
@@ -162,11 +162,11 @@ if (typeof window !== 'undefined') {
       // Phase 3: Tertiary modules (preload when truly idle)
       requestIdleCallback(() => {
         // Less common enhancers
-        import('@/features/ui/accordion.enhancer');
-        import('@/features/cart/coupon.enhancer');
+        import('@/features/ui/accordion');
+        import('@/features/cart/coupon');
         
         // Behavior enhancers
-        import('@/features/behavior/simple-exit-intent.enhancer');
+        import('@/features/behavior/simple-exit-intent');
         
       }, { timeout: 5000 });
     } else {
@@ -174,7 +174,7 @@ if (typeof window !== 'undefined') {
       setTimeout(() => {
         // Just preload critical modules
         import('@/features/cart/cart-summary');
-        import('@/features/display/product-display.enhancer');
+        import('@/features/display/product-display');
         import('./core/analytics');
       }, 1000);
     }

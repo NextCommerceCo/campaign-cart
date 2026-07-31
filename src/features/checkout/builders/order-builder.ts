@@ -4,11 +4,11 @@
 
 import { API_PAYMENT_METHOD_MAP } from '../constants/field-mappings';
 import { getSuccessUrl, getFailureUrl } from '../utils/url-utils';
-import { useAttributionStore } from '@/state/attribution.state';
+import { useAttributionStore } from '@/state/attribution';
 import { useCampaignStore } from '@/state/campaign';
-import { useConfigStore } from '@/state/config.state';
+import { useConfigStore } from '@/state/config';
 import { useCartStore } from '@/state/cart';
-import { useCheckoutStore } from '@/state/checkout.state';
+import { useCheckoutStore } from '@/state/checkout';
 import type { CreateOrder, Address, Payment, Attribution } from '@/types/api';
 
 export class OrderBuilder {

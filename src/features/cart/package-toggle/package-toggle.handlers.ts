@@ -1,7 +1,7 @@
 import { useCartStore, cartOperations } from '@/state/cart';
 import { useCampaignStore } from '@/state/campaign';
-import { useOrderStore } from '@/state/order.state';
-import { useConfigStore } from '@/state/config.state';
+import { useOrderStore } from '@/state/order';
+import { useConfigStore } from '@/state/config';
 import { ApiClient } from '@/api/client';
 import { preserveQueryParams } from '@/utils/url-utils';
 import type { CartState, EventMap } from '@/types/global';

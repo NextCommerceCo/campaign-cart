@@ -3,9 +3,9 @@
  */
 
 import { BaseEnhancer } from '@/core/base/base-enhancer';
-import { useCheckoutStore, type CheckoutState } from '@/state/checkout.state';
+import { useCheckoutStore, type CheckoutState } from '@/state/checkout';
 import { useCartStore, cartOperations } from '@/state/cart';
-import { useConfigStore } from '@/state/config.state';
+import { useConfigStore } from '@/state/config';
 import { useCampaignStore } from '@/state/campaign';
 import { ApiClient } from '@/api/client';
 import { CountryService, type Country, type CountryConfig } from '@/core/country-service';
@@ -13,8 +13,8 @@ import type { CartState } from '@/types/global';
 import { CreditCardService, type CreditCardData } from './services/credit-card-service';
 import { CheckoutValidator } from './validation/checkout-validator';
 import { UIService } from './services/ui-service';
-import { useAttributionStore } from '@/state/attribution.state';
-import { useParameterStore } from '@/state/parameter.state';
+import { useAttributionStore } from '@/state/attribution';
+import { useParameterStore } from '@/state/parameter';
 import type { CreateOrder, Address, Payment, Attribution, PaymentMethod } from '@/types/api';
 import { AddressAutocompleteEnhancer } from './address-autocomplete/address-autocomplete.enhancer';
 import { ProspectCartEnhancer } from './prospect-cart.enhancer';
