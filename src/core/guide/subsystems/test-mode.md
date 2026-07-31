@@ -113,8 +113,8 @@ stores are reset and the browser is sent to the success page with the new order'
 - **The API decides whether the order is a test order, not the SDK.** The response's
   `is_test` field is what marks it (`types/global.ts › OrderData`); the SDK only reads it. An
   order display renders `🧪 TEST ORDER` from it
-  (`features/display/order-display/order-display.enhancer.ts › OrderDisplayEnhancer.getDisplayValue`) and `data-next-show="order.is_test"`
-  gates on it (`features/display/conditional-display/conditional-display.enhancer.ts › ConditionalDisplayEnhancer.getOrderPropertyValue`) — worth putting on
+  (`features/display/order-display/order-display.properties.ts › getDisplayValue`) and `data-next-show="order.is_test"`
+  gates on it (`features/display/conditional-display/conditional-display.order-properties.ts › getOrderPropertyValue`) — worth putting on
   a receipt or upsell page you test against, so a test run is visible on screen.
 - **`?test=true` follows the funnel once it is set.** Links the SDK builds carry the current
   URL's parameters plus everything the parameter store holds

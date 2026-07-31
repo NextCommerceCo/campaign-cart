@@ -27,6 +27,6 @@ The feature carried on, but something in the markup or the data was not what it 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Unknown order property: {propertyStr}` | `order-display.enhancer.ts › OrderDisplayEnhancer.getDisplayValue` | — |
+| `Unknown order property: {propertyStr}` | `order-display.properties.ts › getDisplayValue` | — |
 
 The **Extra context** column says whether the call passes a second argument — an object or an error logged alongside the message. Expand that entry in the console to see it; the message alone will not tell you which element or package was involved.

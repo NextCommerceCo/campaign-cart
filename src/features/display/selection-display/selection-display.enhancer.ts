@@ -3,11 +3,41 @@
  * Displays values based on the currently selected package in a selector
  */
 
-import { BaseDisplayEnhancer, PropertyResolver } from '@/core/base/base-display-enhancer';
-import { PriceCalculator } from '@/features/display/display-core';
+import {
+  BaseDisplayEnhancer,
+  PropertyResolver,
+} from '@/core/base/base-display-enhancer';
 import { useCampaignStore } from '@/state/campaign';
 import { useCartStore } from '@/state/cart';
 import type { Package, SelectorItem, CartState } from '@/types/global';
+import {
+  findSelectorIdFromContext,
+  findAssociatedSelector,
+  needsCartData,
+  loadPackageData,
+} from './selection-display.handlers';
+import {
+  getSelectionPrice,
+  getSelectionTotal,
+  getSelectionCompareTotal,
+  getSelectionSavingsAmount,
+  getSelectionSavingsPercentageFormatted,
+  getSelectionHasSavings,
+  getSelectionUnitPrice,
+  getSelectionTotalUnits,
+  getSelectionDiscountAmount,
+  getSelectionIsBundle,
+  calculateSelectionDiscountAmount,
+  calculateSelectionDiscountedPrice,
+  getSelectionHasDiscount,
+  getSelectionDiscountPercentage,
+  getSelectionAppliedDiscounts,
+  parseCalculatedField,
+} from './selection-display.price';
+import type {
+  LoadPackageDataResult,
+  SelectionPriceContext,
+} from './selection-display.types';
 
 export class SelectionDisplayEnhancer extends BaseDisplayEnhancer {
   private selectorId?: string;
@@ -20,28 +50,32 @@ export class SelectionDisplayEnhancer extends BaseDisplayEnhancer {
   override async initialize(): Promise<void> {
     this.validateElement();
     this.parseDisplayAttributes();
-    
+
     // Find associated selector
-    this.findAssociatedSelector();
-    
+    this.applySelectedItem(
+      findAssociatedSelector(this.selectorId, this.logger)
+    );
+
     this.setupStoreSubscriptions();
-    
+
     // Load package data if we found a selected item
     if (this.selectedItem) {
-      this.loadPackageData();
+      this.applyPackageData(
+        loadPackageData(this.selectedItem, this.campaignState, this.logger)
+      );
     }
-    
+
     await this.performInitialUpdate();
-    
+
     this.logger.debug(`SelectionDisplayEnhancer initialized:`, {
       displayPath: this.displayPath,
-      selectorId: this.selectorId
+      selectorId: this.selectorId,
     });
   }
 
   protected override parseDisplayAttributes(): void {
     super.parseDisplayAttributes();
-    
+
     // Check if selector ID is embedded in the display path
     // Format: selection.{selectorId}.{property}
     const pathParts = this.displayPath!.split('.');
@@ -53,83 +87,25 @@ export class SelectionDisplayEnhancer extends BaseDisplayEnhancer {
       }
       // Update property to be the remaining parts
       this.property = pathParts.slice(2).join('.');
-      
+
       this.logger.debug('Extracted selector ID from display path:', {
         displayPath: this.displayPath,
         selectorId: this.selectorId,
-        property: this.property
+        property: this.property,
       });
     } else {
       // Fallback to attribute or context-based detection
-      const selectorId = this.getAttribute('data-next-selector-id') || 
-                         this.getAttribute('data-selector-id') ||
-                         this.findSelectorIdFromContext();
+      const selectorId =
+        this.getAttribute('data-next-selector-id') ||
+        this.getAttribute('data-selector-id') ||
+        findSelectorIdFromContext(this.element.parentElement);
       if (selectorId) {
         this.selectorId = selectorId;
       }
     }
-    
+
     if (!this.selectorId) {
       this.logger.warn('No selector ID found for SelectionDisplayEnhancer');
-    }
-  }
-
-  private findSelectorIdFromContext(): string | undefined {
-    let current: HTMLElement | null = this.element.parentElement;
-    
-    while (current) {
-      const selectorId = current.getAttribute('data-next-selector-id') ?? undefined;
-      if (selectorId) return selectorId;
-      
-      // Check if this is a selector element itself
-      if (current.hasAttribute('data-next-cart-selector')) {
-        return current.getAttribute('data-next-selector-id') ?? 
-               current.getAttribute('data-next-id') ?? undefined;
-      }
-      
-      current = current.parentElement;
-    }
-    
-    return undefined;
-  }
-
-  private findAssociatedSelector(): void {
-    if (!this.selectorId) return;
-    
-    // Find the selector element
-    const selectorElement = document.querySelector(
-      `[data-next-selector-id="${this.selectorId}"]`
-    ) as HTMLElement;
-    
-    if (selectorElement) {
-      // Try to get the selected item from the selector's exposed methods
-      const getSelectedItem = (selectorElement as any)._getSelectedItem;
-      if (typeof getSelectedItem === 'function') {
-        this.selectedItem = getSelectedItem();
-        this.logger.debug('Got initial selected item from selector:', this.selectedItem);
-      } else {
-        // Fallback: Find the selected card directly if selector hasn't initialized yet
-        const selectedCard = selectorElement.querySelector('[data-next-selected="true"]') as HTMLElement;
-        if (selectedCard) {
-          const packageId = parseInt(selectedCard.getAttribute('data-next-package-id') || '0', 10);
-          const quantity = parseInt(selectedCard.getAttribute('data-next-quantity') || '1', 10);
-          
-          if (packageId > 0) {
-            this.selectedItem = {
-              packageId,
-              quantity,
-              element: selectedCard,
-              name: undefined,
-              price: undefined,
-              shippingId: selectedCard.getAttribute('data-next-shipping-id') || undefined,
-              isPreSelected: true
-            };
-            this.logger.debug('Found selected item from DOM:', this.selectedItem);
-          }
-        }
-      }
-    } else {
-      this.logger.debug(`Selector element not found for ID: ${this.selectorId}`);
     }
   }
 
@@ -137,39 +113,26 @@ export class SelectionDisplayEnhancer extends BaseDisplayEnhancer {
     // Subscribe to campaign store for package data
     this.subscribe(useCampaignStore, this.handleCampaignUpdate.bind(this));
     this.campaignState = useCampaignStore.getState();
-    
+
     // Subscribe to cart store only if needed for discount properties
-    if (this.needsCartData()) {
+    if (needsCartData(this.property)) {
       this.subscribe(useCartStore, this.handleCartUpdate.bind(this));
       this.cartState = useCartStore.getState();
     }
-    
+
     // Create bound handler for proper cleanup
     this.selectionChangeHandler = this.handleSelectionChange.bind(this);
-    
+
     // Subscribe to global selector events
     this.eventBus.on('selector:selection-changed', this.selectionChangeHandler);
     this.eventBus.on('selector:item-selected', this.selectionChangeHandler);
   }
 
-  private needsCartData(): boolean {
-    // Check if the property requires cart data for discount calculations
-    const discountProperties = [
-      'discountedPrice',
-      'finalPrice',
-      'discountAmount',
-      'appliedDiscountAmount',
-      'hasDiscount',
-      'appliedDiscounts',
-      'discountPercentage'
-    ];
-    
-    return this.property ? discountProperties.includes(this.property) : false;
-  }
-
   private handleCampaignUpdate(campaignState: any): void {
     this.campaignState = campaignState;
-    this.loadPackageData();
+    this.applyPackageData(
+      loadPackageData(this.selectedItem, this.campaignState, this.logger)
+    );
     this.updateDisplay();
   }
 
@@ -181,9 +144,9 @@ export class SelectionDisplayEnhancer extends BaseDisplayEnhancer {
   private handleSelectionChange(event: any): void {
     // Only handle events for our selector
     if (event.selectorId !== this.selectorId) return;
-    
+
     this.logger.debug('Selection changed:', event);
-    
+
     // Update selected item
     if (event.item) {
       this.selectedItem = event.item;
@@ -192,7 +155,7 @@ export class SelectionDisplayEnhancer extends BaseDisplayEnhancer {
       const selectorElement = document.querySelector(
         `[data-next-selector-id="${this.selectorId}"]`
       ) as HTMLElement;
-      
+
       if (selectorElement) {
         const getSelectedItem = (selectorElement as any)._getSelectedItem;
         if (typeof getSelectedItem === 'function') {
@@ -200,270 +163,126 @@ export class SelectionDisplayEnhancer extends BaseDisplayEnhancer {
         }
       }
     }
-    
-    this.loadPackageData();
+
+    this.applyPackageData(
+      loadPackageData(this.selectedItem, this.campaignState, this.logger)
+    );
     this.updateDisplay();
   }
 
-  private loadPackageData(): void {
-    if (!this.selectedItem || !this.campaignState) return;
-    
-    this.packageData = this.campaignState.packages?.find(
-      (pkg: Package) => pkg.ref_id === this.selectedItem!.packageId
-    );
-    
-    if (!this.packageData) {
-      this.logger.warn(`Package ${this.selectedItem.packageId} not found in campaign data`);
+  /** Assigns `selectedItem` only when the lookup produced a result — `undefined` means "no change". */
+  private applySelectedItem(
+    selectedItem: SelectorItem | null | undefined
+  ): void {
+    if (selectedItem !== undefined) {
+      this.selectedItem = selectedItem;
     }
+  }
+
+  /** Assigns `packageData` only when the guard in `loadPackageData` passed. */
+  private applyPackageData(result: LoadPackageDataResult): void {
+    if (result.changed) {
+      this.packageData = result.packageData;
+    }
+  }
+
+  private getPriceContext(): SelectionPriceContext {
+    return {
+      selectedItem: this.selectedItem,
+      packageData: this.packageData,
+      cartState: this.cartState,
+    };
   }
 
   protected getPropertyValue(): any {
     if (!this.selectedItem || !this.property) return undefined;
-    
+
+    // Snapshot once — selectedItem/packageData/cartState don't change mid-routing.
+    const ctx = this.getPriceContext();
+
     // Handle selection properties
     switch (this.property) {
       case 'hasSelection':
         return this.selectedItem !== null;
-      
       case 'packageId':
         return this.selectedItem.packageId;
-      
       case 'quantity':
         return this.selectedItem.quantity;
-      
       case 'name':
         return this.packageData?.name || this.selectedItem.name || '';
-      
+
       // Pricing properties
       case 'price':
-        return this.getSelectionPrice();
-      
+        return getSelectionPrice(ctx);
       case 'total':
       case 'price_total':
-        return this.getSelectionTotal();
-      
+        return getSelectionTotal(ctx);
       case 'compareTotal':
       case 'price_retail_total':
-        return this.getSelectionCompareTotal();
-      
+        return getSelectionCompareTotal(ctx);
       case 'savings':
       case 'savingsAmount':
-        return this.getSelectionSavingsAmount();
-      
+        return getSelectionSavingsAmount(ctx);
       case 'savingsPercentage':
-        return this.getSelectionSavingsPercentageFormatted();
-      
+        return getSelectionSavingsPercentageFormatted(ctx);
       case 'hasSavings':
-        return this.getSelectionHasSavings();
-      
+        return getSelectionHasSavings(ctx);
+
       // Additional calculated fields
       case 'unitPrice':
       case 'pricePerUnit':
-        return this.getSelectionUnitPrice();
-      
+        return getSelectionUnitPrice(ctx);
       case 'totalUnits':
       case 'totalQuantity':
-        return this.getSelectionTotalUnits();
-      
+        return getSelectionTotalUnits(ctx);
       case 'discountAmount':
-        return this.getSelectionDiscountAmount();
-      
+        return getSelectionDiscountAmount(ctx);
+
       // Cart discount properties
       case 'discountedPrice':
       case 'finalPrice':
-        return this.calculateSelectionDiscountedPrice();
-      
+        return calculateSelectionDiscountedPrice(ctx);
       case 'appliedDiscountAmount':
-        return this.calculateSelectionDiscountAmount();
-      
+        return calculateSelectionDiscountAmount(ctx);
       case 'hasDiscount':
-        return this.getSelectionHasDiscount();
-      
+        return getSelectionHasDiscount(ctx);
       case 'discountPercentage':
-        return this.getSelectionDiscountPercentage();
-      
+        return getSelectionDiscountPercentage(ctx);
       case 'appliedDiscounts':
-        return this.getSelectionAppliedDiscounts();
-      
+        return getSelectionAppliedDiscounts(ctx);
       case 'isMultiPack':
       case 'isBundle':
-        return this.getSelectionIsBundle();
-      
+        return getSelectionIsBundle(ctx);
       case 'isSingleUnit':
-        return !this.getSelectionIsBundle();
-      
-      default:
+        return !getSelectionIsBundle(ctx);
+
+      default: {
         // Check for custom calculated fields with operators
-        const calculatedValue = this.parseCalculatedField(this.property);
+        const calculatedValue = parseCalculatedField(
+          this.property,
+          ctx,
+          property => {
+            const oldProperty = this.property;
+            this.property = property;
+            const value = this.getPropertyValue();
+            this.property = oldProperty;
+            return value;
+          }
+        );
         if (calculatedValue !== undefined) {
           return calculatedValue;
         }
-        
+
         // Try to get from package data
         if (this.packageData) {
-          return PropertyResolver.getNestedProperty(this.packageData, this.property);
+          return PropertyResolver.getNestedProperty(
+            this.packageData,
+            this.property
+          );
         }
         return undefined;
-    }
-  }
-
-  private getSelectionPrice(): number {
-    if (!this.selectedItem) return 0;
-    
-    if (this.packageData) {
-      return parseFloat(this.packageData.price || '0');
-    }
-    
-    return this.selectedItem.price || 0;
-  }
-
-  private getSelectionTotal(): number {
-    if (!this.selectedItem) return 0;
-    
-    if (this.packageData) {
-      return parseFloat(this.packageData.price_total || '0') || 
-             (parseFloat(this.packageData.price || '0') * this.selectedItem.quantity);
-    }
-    
-    return (this.selectedItem.price || 0) * this.selectedItem.quantity;
-  }
-
-  private getSelectionCompareTotal(): number {
-    if (!this.selectedItem || !this.packageData) return 0;
-    
-    const retailTotal = parseFloat(this.packageData.price_retail_total || '0');
-    if (retailTotal > 0) return retailTotal;
-    
-    const retailPrice = parseFloat(this.packageData.price_retail || '0');
-    if (retailPrice > 0) {
-      return retailPrice * this.selectedItem.quantity;
-    }
-    
-    return this.getSelectionTotal();
-  }
-
-  private getSelectionMetrics() {
-    const total = this.getSelectionTotal();
-    const compareTotal = this.getSelectionCompareTotal();
-    
-    return {
-      total,
-      compareTotal,
-      savings: PriceCalculator.calculateSavings(compareTotal, total),
-      savingsPercentage: PriceCalculator.calculateSavingsPercentage(compareTotal, total)
-    };
-  }
-  
-  private getSelectionSavingsAmount(): number {
-    return this.getSelectionMetrics().savings;
-  }
-  
-  private getSelectionSavingsPercentageFormatted(): number {
-    return this.getSelectionMetrics().savingsPercentage;
-  }
-  
-  private getSelectionHasSavings(): boolean {
-    return this.getSelectionMetrics().savings > 0;
-  }
-
-  private getSelectionUnitPrice(): number {
-    const total = this.getSelectionTotal();
-    const units = this.getSelectionTotalUnits();
-    return units > 0 ? total / units : 0;
-  }
-
-  private getSelectionTotalUnits(): number {
-    if (!this.selectedItem) return 0;
-    // Return package qty (units in the package) not cart quantity
-    return this.packageData?.qty || 1;
-  }
-
-  private getSelectionDiscountAmount(): number {
-    // Same as savings but might be used for different display contexts
-    return this.getSelectionSavingsAmount();
-  }
-
-  private getSelectionIsBundle(): boolean {
-    return this.getSelectionTotalUnits() > 1;
-  }
-
-  // Discount calculation methods
-  private calculateSelectionDiscountAmount(): number {
-    // Discount amounts are computed server-side and returned in cartState.voucherDiscounts /
-    // offerDiscounts. Per-selection breakdown is not available here.
-    return 0;
-  }
-
-  private calculateSelectionDiscountedPrice(): number {
-    return this.getSelectionPrice();
-  }
-
-  private getSelectionHasDiscount(): boolean {
-    return (this.cartState?.hasDiscounts ?? false) && !this.cartState?.isEmpty;
-  }
-
-  private getSelectionDiscountPercentage(): number {
-    return 0;
-  }
-
-  private getSelectionAppliedDiscounts(): Array<{ code: string; amount: number }> {
-    return [];
-  }
-
-  // Parse custom calculated fields with mathematical expressions
-  private parseCalculatedField(field: string): number | undefined {
-    if (!this.selectedItem || !field) return undefined;
-    
-    // Support expressions like "total*0.1" for 10% of total
-    // or "price+5" for price plus 5
-    const operators = ['+', '-', '*', '/'];
-    
-    for (const op of operators) {
-      if (field.includes(op)) {
-        const parts = field.split(op);
-        if (parts.length === 2) {
-          const leftProperty = parts[0]?.trim() || '';
-          const rightValue = parseFloat(parts[1]?.trim() || '0');
-          
-          // Get the base value for the left side
-          let leftValue: number = 0;
-          switch (leftProperty) {
-            case 'total':
-            case 'price_total':
-              leftValue = this.getSelectionTotal();
-              break;
-            case 'price':
-              leftValue = this.getSelectionPrice();
-              break;
-            case 'savings':
-            case 'savingsAmount':
-              leftValue = this.getSelectionSavingsAmount();
-              break;
-            case 'compareTotal':
-              leftValue = this.getSelectionCompareTotal();
-              break;
-            default:
-              // Try to get the property value
-              const oldProperty = this.property;
-              this.property = leftProperty;
-              const value = this.getPropertyValue();
-              this.property = oldProperty;
-              leftValue = typeof value === 'number' ? value : 0;
-          }
-          
-          if (!isNaN(rightValue)) {
-            switch (op) {
-              case '+': return leftValue + rightValue;
-              case '-': return leftValue - rightValue;
-              case '*': return leftValue * rightValue;
-              case '/': return rightValue !== 0 ? leftValue / rightValue : 0;
-            }
-          }
-        }
       }
     }
-    
-    return undefined;
   }
 
   protected override async performInitialUpdate(): Promise<void> {
@@ -471,12 +290,16 @@ export class SelectionDisplayEnhancer extends BaseDisplayEnhancer {
     if (!this.selectedItem && this.selectorId) {
       // Give selector a chance to initialize
       await new Promise(resolve => setTimeout(resolve, 50));
-      this.findAssociatedSelector();
+      this.applySelectedItem(
+        findAssociatedSelector(this.selectorId, this.logger)
+      );
       if (this.selectedItem) {
-        this.loadPackageData();
+        this.applyPackageData(
+          loadPackageData(this.selectedItem, this.campaignState, this.logger)
+        );
       }
     }
-    
+
     await this.updateDisplay();
   }
 
@@ -487,7 +310,7 @@ export class SelectionDisplayEnhancer extends BaseDisplayEnhancer {
       this.hideElement();
       return;
     }
-    
+
     // Use the base class implementation which uses the clean pipeline
     await super.updateDisplay();
   }
@@ -495,10 +318,13 @@ export class SelectionDisplayEnhancer extends BaseDisplayEnhancer {
   public override destroy(): void {
     // Clean up event listeners
     if (this.selectionChangeHandler) {
-      this.eventBus.off('selector:selection-changed', this.selectionChangeHandler);
+      this.eventBus.off(
+        'selector:selection-changed',
+        this.selectionChangeHandler
+      );
       this.eventBus.off('selector:item-selected', this.selectionChangeHandler);
     }
-    
+
     super.destroy();
   }
 }

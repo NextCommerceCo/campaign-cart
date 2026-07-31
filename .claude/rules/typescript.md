@@ -22,6 +22,17 @@ Relative imports (`./foo`, `../bar`) are fine within the same directory or one l
 Files are **kebab-case with a dotted role suffix**: `<name>.<role>.ts`.
 
 - Roles: `enhancer`, `handlers`, `renderer`, `types`, `state`, `slice`, `api` — e.g. `add-to-cart.enhancer.ts`, `cart.state.ts`, `coupon.slice.ts`.
+- A feature that outgrows those four layers may add a role naming **what the file
+  computes**, as long as it already exists somewhere in `src/features/`: `price` (money
+  maths), `properties` (turning a `{object}.{property}` path into a value), `conditions`
+  (evaluating a condition to a boolean), `dependencies` (deciding which stores a feature
+  must subscribe to), `display` (deriving what to show without touching the DOM). Prefix
+  the role when one file per domain is clearer than one big file —
+  `conditional-display.order-properties.ts`, `order-display.line-properties.ts`. Do not
+  invent a sixth name for a job one of these already describes; two features naming the
+  same job differently is what makes a layout unlearnable.
+- Note `state` means *derived state*, not a Zustand store, when it sits inside a feature
+  folder (`bundle-selector.state.ts` builds a view model). Stores live in `src/state/`.
 - Folders are kebab-case too (`features/cart/add-to-cart/`).
 - `index.ts` stays `index.ts` (barrel — exports only).
 - **Kebab governs the file name only.** Identifiers inside keep normal JS casing: classes/types PascalCase (`AddToCartEnhancer`, `CartState`), functions/vars camelCase.

@@ -2,8 +2,9 @@
 
 Found while documenting the SDK on **2026-07-30**, plus finding 24 from writing the
 `accept-upsell` e2e coverage, findings 36–42 from documenting `src/core` (Phase 6),
-findings 80–85 from the Fumadocs→TypeDoc migration, and findings 86–91 from a further
-TypeDoc/reference-docs verification pass, all on **2026-07-31**. Nothing here is a
+findings 80–85 from the Fumadocs→TypeDoc migration, findings 86–91 from a further
+TypeDoc/reference-docs verification pass, and findings 92–94 from splitting the
+`features/display` enhancers by layer, all on **2026-07-31**. Nothing here is a
 documentation problem; each is a code change, and none has been made. The docs describe
 current behaviour, including the broken parts, so this list is the backlog rather than a
 description of what shipped.
@@ -1092,6 +1093,52 @@ Fixed by another job while this pass was running, confirmed against the working 
 example now uses `total_incl_tax`, `total_tax`, `supports_post_purchase_upsells`, `is_test`,
 and two `lines` entries each shaped as a real `OrderLine` (`id`, `product_title`,
 `quantity`, `price_incl_tax`, `is_upsell`). No further action needed.
+
+### 92. `ConditionalDisplayEnhancer.detectSelectorContext`'s condition branch is unreachable — *verified*
+
+`initialize` calls `detectSelectorContext()` **before** it parses `data-next-show` /
+`data-next-hide` into `this.condition`. So that method's opening `if (this.condition)`
+is always false, and the whole "read the selector id out of the condition itself" path
+never runs — only the DOM-ancestor fallback does. Two consequences:
+
+- A condition written as `selection.<selectorId>.<property>` does not use the selector id
+  it names. It silently falls back to the nearest ancestor `data-next-selector-id`, which
+  on a page with several selectors is a different selector.
+- `conditional-display/guide/reference/logs.md` publishes `Found selector ID in property:`
+  and `Found selector ID in comparison:` as debug output, generated from those two
+  unreachable `logger.debug` calls. Someone debugging a mis-resolved selector will search
+  for them and find nothing.
+
+**Fix:** move the `detectSelectorContext()` call below the condition parse. That is a
+behaviour change — it changes which selector wins for a `selection.<id>.<prop>` condition,
+which is the point — so it needs a test for both the named-id and ancestor cases first.
+Found while splitting the enhancer (2026-07-31); deliberately left alone there because that
+work was a pure move.
+
+### 93. `evaluateParamsCondition` is a second copy of `evaluateParamsConditionRecursive` — *verified*
+
+The `property` / `comparison` / `function` arms exist twice, differing only in whether the
+condition comes from the enhancer's own field or from a parameter. The other five condition
+families (cart, package, order, selection, shipping) all have the top-level function
+delegate to the recursive one; params is the only one that duplicates it.
+
+The visible symptom is divergent logging: the top-level copy carries a `logger` call the
+recursive copy lacks, so **the same condition logs differently depending on whether it is
+nested inside an `and` / `or`**. The evaluation result agrees today, which is what makes
+this a latent bug rather than a live one — the next edit to one arm silently misses the other.
+
+**Fix:** have `evaluateParamsCondition` delegate to `evaluateParamsConditionRecursive`, as
+the other five do. Now cheap: both live in `conditional-display.param-conditions.ts`.
+
+### 94. The only `logger.info` in `conditional-display` is on a hot path — *verified*
+
+`evaluateParamsCondition`'s comparison arm logs a nine-field object at **`info`**, on every
+parameter-store update. Every other diagnostic in this feature is `debug`, i.e. gated behind
+`?debug=true`. So a page using a `param.*` condition prints to the console on ordinary
+navigation for every visitor, not just for a developer debugging.
+
+**Fix:** downgrade it to `debug` to match the rest of the feature. One-line change, but it
+alters what a live page prints, so it is not part of a pure move.
 
 ---
 
