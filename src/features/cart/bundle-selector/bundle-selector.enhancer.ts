@@ -27,8 +27,8 @@ import type {
 import {
   autoRenderBundleCards,
   relenderVariables,
-  renderExternalSlotsForCard,
 } from './bundle-selector.renderer';
+import { renderExternalSlotsForCard } from './bundle-selector.slot-renderer';
 import {
   applyEffectiveChange,
   handleSelectVariantChange,
@@ -42,9 +42,9 @@ import {
   getAllKnownBundleVouchers,
   getEffectiveItems,
   parseClassNames,
-  pickAndLogDefaultCard,
-  resolveBundleTemplates,
 } from './bundle-selector.state';
+import { pickAndLogDefaultCard } from './bundle-selector.selection-state';
+import { resolveBundleTemplates } from './bundle-selector.template-state';
 import { registerCard, scanCards } from './bundle-selector.cards';
 
 export class BundleSelectorEnhancer extends BaseEnhancer {

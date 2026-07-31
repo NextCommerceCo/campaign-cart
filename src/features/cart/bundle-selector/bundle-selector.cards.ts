@@ -7,7 +7,7 @@ import type {
   BundleSlot,
   CardRegistrationContext,
 } from './bundle-selector.types';
-import { renderSlotsForCard } from './bundle-selector.renderer';
+import { renderSlotsForCard } from './bundle-selector.slot-renderer';
 import {
   handleCardClick,
   applyBundleQuantityChange,
