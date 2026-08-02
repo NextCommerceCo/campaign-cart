@@ -12,6 +12,10 @@ export default defineFeature({
   // instead of overwriting. See FeatureManifest.pages.
   pages: { logs: 'hand-written', errors: 'hand-written', relations: 'hand-written', getStarted: 'hand-written' },
   displayNamespace: 'package',
+  // Fifteen of the routed `package.` paths have no branch anywhere: they are the
+  // API's own field names, and `getPackageValue` reads them straight off the
+  // package. `Package` declaring the field is what makes each of them work.
+  displayFallback: [{ shape: 'Package' }],
 
   attributes: [
     {

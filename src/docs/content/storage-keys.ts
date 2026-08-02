@@ -715,7 +715,7 @@ export const EXPIRY_MECHANISMS: ExpiryMechanism[] = [
   },
   {
     name: '`STORAGE_EXPIRY_HOURS`',
-    file: 'core/debug/panels/event-timeline-panel.ts',
+    file: 'core/debug/panels/event-timeline/event-timeline-panel.persistence.ts',
     evidence: 'STORAGE_EXPIRY_HOURS = 2',
     window:
       '2 hours for the whole log, plus a 1-hour window on individual events',

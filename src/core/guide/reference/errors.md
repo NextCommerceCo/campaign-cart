@@ -81,7 +81,7 @@ Every part of `src/core`, and whether it raises anything of its own. "Nothing" i
 | `debug/country-selector.ts` | `[CountrySelector]` | nothing |
 | `debug/currency-selector.ts` | `[CurrencySelector]` | nothing |
 | `debug/debug-module.ts` | `[DebugModule]` | nothing |
-| `debug/debug-overlay.ts` | `[DebugOverlay]` | nothing |
+| `debug/debug-overlay/debug-overlay.ts` | `[DebugOverlay]` | nothing |
 | `debug/locale-selector.ts` | `[LocaleSelector]` | nothing |
 | `debug/upsell-selector.ts` | `[UpsellSelector]` | nothing |
 | `monitoring/error-handler.ts` | `[ErrorHandler]` | nothing |

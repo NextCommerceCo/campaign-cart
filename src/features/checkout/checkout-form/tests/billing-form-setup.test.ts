@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   scanBillingFields,
   convertShippingFieldsToBilling,
+  reconcileBillingToggle,
   setInitialBillingFormState,
   setupBillingForm,
   type BillingFormSetupContext,
@@ -180,6 +181,58 @@ describe('setInitialBillingFormState', () => {
     expect(() => setInitialBillingFormState(ctx)).not.toThrow();
     expect(mockLogger.warn).toHaveBeenCalledWith(
       '[Billing] Could not set initial state - missing elements'
+    );
+  });
+});
+
+// ─── reconcileBillingToggle ────────────────────────────────────────────────────
+
+describe('reconcileBillingToggle', () => {
+  function renderToggleAndSection(checked: boolean): {
+    ctx: BillingFormSetupContext;
+    toggle: HTMLInputElement;
+    section: HTMLElement;
+  } {
+    const form = document.createElement('form');
+    form.innerHTML = `<input type="checkbox" name="use_shipping_address"${checked ? ' checked' : ''} />`;
+    document.body.innerHTML =
+      '<div os-checkout-element="different-billing-address"></div>';
+
+    return {
+      ctx: createCtx({ form }),
+      toggle: form.querySelector('input') as HTMLInputElement,
+      section: document.querySelector(
+        '[os-checkout-element="different-billing-address"]'
+      ) as HTMLElement,
+    };
+  }
+
+  it('unticks the toggle and opens the section when the store says billing is separate', () => {
+    const { ctx, toggle, section } = renderToggleAndSection(true);
+
+    const inForce = reconcileBillingToggle(ctx, false);
+
+    expect(inForce).toBe(false);
+    expect(toggle.checked).toBe(false);
+    expect(section.classList.contains('billing-form-expanded')).toBe(true);
+  });
+
+  it('reports the markup back when the store holds only its default', () => {
+    // `true` is the store's untouched default, so an unticked checkbox is the page
+    // author's answer, not a stale one — it is reported for the caller to store.
+    const { ctx, toggle } = renderToggleAndSection(false);
+
+    expect(reconcileBillingToggle(ctx, true)).toBe(false);
+    expect(toggle.checked).toBe(false);
+  });
+
+  it('returns the stored choice unchanged when the page has no toggle', () => {
+    const mockLogger = createMockLogger();
+    const ctx = createCtx({ logger: mockLogger as unknown as Logger });
+
+    expect(reconcileBillingToggle(ctx, false)).toBe(false);
+    expect(mockLogger.debug).toHaveBeenCalledWith(
+      '[Billing] No toggle on this page - keeping the stored choice'
     );
   });
 });

@@ -19,7 +19,7 @@ The shortest page that works:
     Add to cart — <span data-next-display="package.price">$0.00</span>
   </button>
 
-  <span data-next-display="cart.quantity">0</span> items,
+  <span data-next-display="cart.totalQuantity">0</span> items,
   total <span data-next-display="cart.total">$0.00</span>
 </body>
 ```

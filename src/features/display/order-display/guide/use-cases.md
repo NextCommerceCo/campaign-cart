@@ -21,7 +21,7 @@ URL, so a generic receipt page needs nothing but the bindings:
 
 ```html
 <h1>Thanks — order <span data-next-display="order.number">—</span> is confirmed</h1>
-<p>Total charged: <span data-next-display="order.total_incl_tax">—</span></p>
+<p>Total charged: <span data-next-display="order.total">—</span></p>
 ```
 
 **Watch out for:** The order is kept for **15 minutes**. A receipt tab reopened the
@@ -88,11 +88,11 @@ page view.
 reference the original purchase — and should not appear at all for orders that
 cannot take upsells.
 
-**Why this enhancer:** `order.supports_upsells` and the `order.lines.*` summary
+**Why this enhancer:** `order.supportsUpsells` and the `order.lines.*` summary
 paths answer both questions without a second request:
 
 ```html
-<div data-next-display="order.supports_upsells" data-hide-if-false="true">
+<div data-next-display="order.supportsUpsells" data-hide-if-false="true">
   Add a refill to <span data-next-display="order.lines.mainProduct">your order</span>
 </div>
 ```

@@ -25,10 +25,13 @@ export const VALIDATION_PATTERNS = {
   EMAIL:
     /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/,
   PHONE: /^[\d\s\-\+\(\)]+$/,
-  NAME: /^[A-Za-zÀ-ÿ]+(?:[' -][A-Za-zÀ-ÿ]+)*$/,
+  // Name validation - letter runs (any script, via \p{L}) separated by a single
+  // apostrophe (straight or curly), hyphen, or space.
+  // Examples: "田中", "Владимир", "Anne-Marie du Pré", "O'Brien", "O’Brien"
+  NAME: /^\p{L}+(?:['’ -]\p{L}+)*$/u,
   // City validation - allows any Unicode letter, spaces, periods, apostrophes (both straight and curly), and hyphens
-  // Examples: "New York", "St. John's", "São Paulo", "Québec-City", "Mont-Saint-Michel", "O'Fallon"
-  CITY: /^[\p{L}\s.''-]+$/u,
+  // Examples: "New York", "St. John's", "St. John’s", "São Paulo", "Québec-City", "Mont-Saint-Michel", "O'Fallon"
+  CITY: /^[\p{L}\s.'’-]+$/u,
 } as const;
 
 /**
@@ -122,11 +125,13 @@ export function isValidPhone(phone: string): boolean {
 }
 
 /**
- * Whether a person's name contains only letters, spaces, hyphens, and apostrophes.
+ * Whether a person's name contains only letters — any script — spaces, hyphens, and
+ * apostrophes (straight or curly).
  *
  * @example
  * ```ts
  * isValidName("O'Brien-Smith"); // true
+ * isValidName('田中');          // true — any script is a letter
  * isValidName('Jane 2nd');      // false — digits are not allowed
  * ```
  */

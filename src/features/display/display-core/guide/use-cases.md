@@ -21,7 +21,7 @@ change. Repeating the binding costs nothing — there is no wiring to duplicate:
 
 ```html
 <span data-next-display="cart.total"></span>
-<span data-next-display="cart.quantity"></span>
+<span data-next-display="cart.totalQuantity"></span>
 ```
 
 **Watch out for:** An unrecognised namespace is **silent**. No feature claims the

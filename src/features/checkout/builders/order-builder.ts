@@ -9,9 +9,18 @@ import { useCampaignStore } from '@/state/campaign';
 import { useConfigStore } from '@/state/config';
 import { useCartStore } from '@/state/cart';
 import { useCheckoutStore } from '@/state/checkout';
-import type { CreateOrder, Address, Payment, Attribution } from '@/types/api';
+import { createLogger } from '@/core/logger';
+import type {
+  CreateOrder,
+  Address,
+  Payment,
+  Attribution,
+  PaymentMethod,
+} from '@/types/api';
 
 export class OrderBuilder {
+  private logger = createLogger('OrderBuilder');
+
   private getCurrency(): string {
     return (
       useCampaignStore.getState()?.currency ??
@@ -181,7 +190,7 @@ export class OrderBuilder {
     return testOrderData;
   }
 
-  private mapPaymentMethod(method: string): 'card_token' | 'paypal' | 'apple_pay' | 'google_pay' {
+  private mapPaymentMethod(method: string): PaymentMethod {
     return API_PAYMENT_METHOD_MAP[method] || 'card_token';
   }
 
@@ -194,13 +203,13 @@ export class OrderBuilder {
     
     // Use existing selection first - check cart store
     if (cartStore.shippingMethod?.id) {
-      console.log('[OrderBuilder] Using shipping method from cart:', cartStore.shippingMethod.id);
+      this.logger.debug('Using shipping method from cart:', cartStore.shippingMethod.id);
       return cartStore.shippingMethod.id;
     }
     
     // Then check checkout store
     if (checkoutStore.shippingMethod?.id) {
-      console.log('[OrderBuilder] Using shipping method from checkout:', checkoutStore.shippingMethod.id);
+      this.logger.debug('Using shipping method from checkout:', checkoutStore.shippingMethod.id);
       return checkoutStore.shippingMethod.id;
     }
     
@@ -209,13 +218,13 @@ export class OrderBuilder {
       const firstMethod = campaignStore.data.shipping_methods[0];
       if (firstMethod) {
         const firstMethodId = firstMethod.ref_id;
-        console.log('[OrderBuilder] Using first available shipping method:', firstMethodId);
+        this.logger.debug('Using first available shipping method:', firstMethodId);
         return firstMethodId;
       }
     }
     
     // Last resort fallback
-    console.warn('[OrderBuilder] No shipping method found, using fallback ID 1');
+    this.logger.warn('No shipping method found, using fallback ID 1');
     return 1;
   }
 

@@ -60,13 +60,13 @@ export default defineStore({
       description:
         'How the shopper is paying. `credit-card` is the default and covers the hosted card fields; `paypal`, `apple_pay`, and `google_pay` are the express buttons; `klarna` is pay-later; `card_token` is the API-side spelling of `credit-card` kept for callers that pass the API value straight through.',
       notes:
-        'Express methods are downgraded on the way to storage: if the shopper picked Apple Pay, Google Pay, or PayPal and then reloads, the store comes back as `credit-card`, because an express session does not survive the page. The symptom is a shopper who "loses" their Apple Pay choice on refresh — expected, not a bug. Also note `klarna` has no entry in `API_PAYMENT_METHOD_MAP`, so the submitted order falls back to `card_token`.',
+        'Express methods are downgraded on the way to storage: if the shopper picked Apple Pay, Google Pay, or PayPal and then reloads, the store comes back as `credit-card`, because an express session does not survive the page. The symptom is a shopper who "loses" their Apple Pay choice on refresh — expected, not a bug.',
     },
     {
       name: 'shippingMethod',
       kind: 'persisted',
       description:
-        'The shipping option the shopper chose, with its id, name, code, and price. `undefined` means they have not chosen one, in which case the order builder falls back to the cart\'s method and finally to shipping method id 1.',
+        "The shipping option the shopper chose, with its id, name, code, and price. `undefined` means they have not chosen one, in which case the order builder falls back to the cart's method, then to the campaign's first shipping method, and only then to shipping method id 1.",
     },
     {
       name: 'billingAddress',

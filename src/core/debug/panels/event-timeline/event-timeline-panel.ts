@@ -8,141 +8,48 @@
  * - Performance timeline
  */
 
-import { DebugPanel, PanelAction } from '../debug-panels';
-import { EventBus } from '../../events';
-import { RawDataHelper } from './raw-data-helper';
+import { DebugPanel, PanelAction } from '../../debug-panels';
+import { EventBus } from '../../../events';
+import { RawDataHelper } from '../raw-data-helper';
 import {
   validateDataLayerEvent,
   auditDataLayerEvent,
   worstLevel,
   type EventValidationIssue,
   type EventCheck,
-  type CheckStatus,
-} from './ecommerce-event-validator';
+} from '../ecommerce-event-validator';
 import {
   analyticsDebug,
   type DeliveryRecord,
-  type DeliveryStatus,
   type ProviderDebugInfo,
 } from '@/core/analytics/debug/analytics-debug-tracker';
-import { lucide, type IconName } from '../icons';
+import { lucide, type IconName } from '../../icons';
 import { eventTimelinePanelStyles } from './event-timeline-panel.styles';
-
-/** Which detail tab is shown in the event modal. */
-type DetailTab = 'flow' | 'validation';
-
-const DELIVERY_STATUS_ICON: Record<DeliveryStatus, IconName> = {
-  sent: 'check-circle',
-  blocked: 'ban',
-  skipped: 'minus-circle',
-  failed: 'x-circle',
-  pending: 'clock',
-};
-
-const DELIVERY_STATUS_COLOR: Record<DeliveryStatus, string> = {
-  sent: '#1f9d55',
-  blocked: '#9aa0a6',
-  skipped: '#6b7280',
-  failed: '#e3342f',
-  pending: '#d6a700',
-};
-
-// Flow-graph geometry for the event modal: fixed provider-node height/gap and
-// the connector-wire column width, all in px. The SVG connectors are drawn from
-// these numbers, so they must stay in sync with the .flow-node / .flow-col-wire
-// CSS further down.
-const FLOW_NODE_H = 42;
-const FLOW_NODE_GAP = 8;
-const FLOW_WIRE_W = 44;
-
-interface TimelineEvent {
-  id: string;
-  timestamp: number;
-  type: 'dataLayer' | 'internal' | 'dom' | 'performance';
-  name: string;
-  data: any;
-  source: string;
-  duration?: number;
-  relativeTime: string;
-  isInternal?: boolean;
-}
-
-// Map internal events from global.ts EventMap
-const INTERNAL_EVENT_PATTERNS = [
-  'cart:updated',
-  'cart:item-added',
-  'cart:item-removed',
-  'cart:quantity-changed',
-  'cart:package-swapped',
-  'campaign:loaded',
-  'checkout:started',
-  'checkout:form-initialized',
-  'checkout:spreedly-ready',
-  'checkout:express-started',
-  'order:completed',
-  'order:redirect-missing',
-  'error:occurred',
-  'timer:expired',
-  'config:updated',
-  'coupon:applied',
-  'coupon:removed',
-  'coupon:validation-failed',
-  'selector:item-selected',
-  'selector:action-completed',
-  'selector:selection-changed',
-  'shipping:method-selected',
-  'shipping:method-changed',
-  'action:success',
-  'action:failed',
-  'upsell:accepted',
-  'upsell-selector:item-selected',
-  'upsell:quantity-changed',
-  'upsell:option-selected',
-  'message:displayed',
-  'payment:tokenized',
-  'payment:error',
-  'checkout:express-completed',
-  'checkout:express-failed',
-  'express-checkout:initialized',
-  'express-checkout:error',
-  'express-checkout:started',
-  'express-checkout:failed',
-  'express-checkout:completed',
-  'express-checkout:redirect-missing',
-  'address:autocomplete-filled',
-  'address:location-fields-shown',
-  'checkout:location-fields-shown',
-  'checkout:billing-location-fields-shown',
-  'upsell:initialized',
-  'upsell:adding',
-  'upsell:added',
-  'upsell:error',
-  'accordion:toggled',
-  'accordion:opened',
-  'accordion:closed',
-  'upsell:skipped',
-  'upsell:viewed',
-  'exit-intent:shown',
-  'exit-intent:clicked',
-  'exit-intent:dismissed',
-  'exit-intent:closed',
-  'exit-intent:action',
-  'fomo:shown',
-];
-
-// Events to filter out (noise events)
-const FILTERED_EVENTS = [
-  'dataLayer.push',
-  'gtm.dom',
-  'gtm.js',
-  'gtm.load',
-  'gtm.click',
-  'gtm.linkClick',
-  'gtm.scrollDepth',
-  'gtm.timer',
-  'gtm.historyChange',
-  'gtm.video',
-];
+import type { DetailTab, TimelineEvent } from './event-timeline-panel.types';
+import { DELIVERY_STATUS_COLOR, DELIVERY_STATUS_ICON } from './event-timeline-panel.types';
+import {
+  loadSavedState as loadPersistedTimelineState,
+  saveEvents as savePersistedTimelineEvents,
+  EVENTS_STORAGE_KEY,
+  SHOW_INTERNAL_KEY,
+  VIEW_KEY,
+  type PersistenceHost,
+} from './event-timeline-panel.persistence';
+import {
+  watchDataLayer,
+  watchInternalEvents,
+  watchDOMEvents,
+  watchPerformanceEvents,
+  type EventCaptureHost,
+} from './event-timeline-panel.capture';
+import {
+  renderFlowDetail,
+  type FlowRenderDeps,
+} from './event-timeline-panel.flow';
+import {
+  renderValidationSection,
+  type ValidationRenderDeps,
+} from './event-timeline-panel.validation';
 
 export class EventTimelinePanel implements DebugPanel {
   id = 'event-timeline';
@@ -187,14 +94,6 @@ export class EventTimelinePanel implements DebugPanel {
 
   private eventBus = EventBus.getInstance();
 
-  // Storage keys
-  private static readonly EVENTS_STORAGE_KEY = 'debug-events-history';
-  private static readonly SHOW_INTERNAL_KEY = 'debug-events-show-internal';
-  private static readonly VIEW_KEY = 'debug-events-view';
-  private static readonly MAX_STORED_EVENTS = 100; // Reduced from 500 to keep localStorage smaller
-  private static readonly STORAGE_EXPIRY_KEY = 'debug-events-expiry';
-  private static readonly STORAGE_EXPIRY_HOURS = 2; // Clear after 2 hours
-
   constructor() {
     // Check if debug mode is actually enabled before initializing
     const urlParams = new URLSearchParams(window.location.search);
@@ -212,364 +111,93 @@ export class EventTimelinePanel implements DebugPanel {
     }
   }
 
+  /** Applies whichever fields of the saved state actually had a valid value. */
   private loadSavedState(): void {
-    // Check if stored events have expired
-    this.checkAndCleanExpiredStorage();
-
-    // Load show internal events preference
-    const savedShowInternal = localStorage.getItem(
-      EventTimelinePanel.SHOW_INTERNAL_KEY
-    );
-    if (savedShowInternal !== null) {
-      this.showInternalEvents = savedShowInternal === 'true';
+    const patch = loadPersistedTimelineState(ts => this.formatRelativeTime(ts));
+    if (patch.showInternalEvents !== undefined) {
+      this.showInternalEvents = patch.showInternalEvents;
     }
-
-    // Load active view (defaults to 'analytics').
-    const savedView = localStorage.getItem(EventTimelinePanel.VIEW_KEY);
-    if (savedView === 'analytics' || savedView === 'events') {
-      this.view = savedView;
+    if (patch.view !== undefined) {
+      this.view = patch.view;
     }
-
-    // Load saved events
-    try {
-      const savedEvents = localStorage.getItem(
-        EventTimelinePanel.EVENTS_STORAGE_KEY
-      );
-      if (savedEvents) {
-        const parsed = JSON.parse(savedEvents);
-        if (Array.isArray(parsed)) {
-          // Only load recent events (last hour)
-          const oneHourAgo = Date.now() - 60 * 60 * 1000;
-          this.events = parsed
-            .filter(event => event.timestamp > oneHourAgo)
-            .slice(0, EventTimelinePanel.MAX_STORED_EVENTS)
-            .map(event => ({
-              ...event,
-              relativeTime: this.formatRelativeTime(event.timestamp),
-            }));
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load saved events:', error);
-      // Clear corrupted data
-      localStorage.removeItem(EventTimelinePanel.EVENTS_STORAGE_KEY);
-    }
-  }
-
-  private checkAndCleanExpiredStorage(): void {
-    try {
-      const expiryTime = localStorage.getItem(
-        EventTimelinePanel.STORAGE_EXPIRY_KEY
-      );
-      const now = Date.now();
-
-      if (!expiryTime || parseInt(expiryTime) < now) {
-        // Clear expired events
-        localStorage.removeItem(EventTimelinePanel.EVENTS_STORAGE_KEY);
-
-        // Set new expiry time
-        const newExpiry =
-          now + EventTimelinePanel.STORAGE_EXPIRY_HOURS * 60 * 60 * 1000;
-        localStorage.setItem(
-          EventTimelinePanel.STORAGE_EXPIRY_KEY,
-          newExpiry.toString()
-        );
-      }
-    } catch (error) {
-      console.error('Failed to check storage expiry:', error);
+    if (patch.events !== undefined) {
+      this.events = patch.events;
     }
   }
 
   private saveEvents(): void {
-    // Debounce saves to avoid too many localStorage writes
-    if (this.saveTimeout) {
-      clearTimeout(this.saveTimeout);
-    }
-
-    this.saveTimeout = setTimeout(() => {
-      try {
-        // Filter out old events (only keep last hour) and limit count
-        const oneHourAgo = Date.now() - 60 * 60 * 1000;
-        const recentEvents = this.events
-          .filter(event => event.timestamp > oneHourAgo)
-          .slice(0, EventTimelinePanel.MAX_STORED_EVENTS);
-
-        // Only save if we have events
-        if (recentEvents.length > 0) {
-          // Simplify event data to reduce size
-          const simplifiedEvents = recentEvents.map(event => ({
-            id: event.id,
-            timestamp: event.timestamp,
-            type: event.type,
-            name: event.name,
-            // Limit data size to first 200 chars if it's a string
-            data:
-              typeof event.data === 'string' && event.data.length > 200
-                ? event.data.substring(0, 200) + '...'
-                : event.data,
-            source: event.source,
-            isInternal: event.isInternal,
-          }));
-
-          const serialized = this.safeStringify(simplifiedEvents);
-
-          // Check size before saving (localStorage typically has 5-10MB limit)
-          if (serialized.length > 500000) {
-            // 500KB limit per key
-            // If still too large, save only half the events
-            const halfEvents = simplifiedEvents.slice(
-              0,
-              Math.floor(simplifiedEvents.length / 2)
-            );
-            localStorage.setItem(
-              EventTimelinePanel.EVENTS_STORAGE_KEY,
-              this.safeStringify(halfEvents)
-            );
-          } else {
-            localStorage.setItem(
-              EventTimelinePanel.EVENTS_STORAGE_KEY,
-              serialized
-            );
-          }
-        }
-
-        // Update expiry if not set
-        if (!localStorage.getItem(EventTimelinePanel.STORAGE_EXPIRY_KEY)) {
-          const expiry =
-            Date.now() +
-            EventTimelinePanel.STORAGE_EXPIRY_HOURS * 60 * 60 * 1000;
-          localStorage.setItem(
-            EventTimelinePanel.STORAGE_EXPIRY_KEY,
-            expiry.toString()
-          );
-        }
-      } catch (error) {
-        console.error('Failed to save events:', error);
-        // If we hit quota exceeded, clear the events
-        if (
-          error instanceof DOMException &&
-          error.name === 'QuotaExceededError'
-        ) {
-          localStorage.removeItem(EventTimelinePanel.EVENTS_STORAGE_KEY);
-        }
-      }
-    }, 500); // Debounce for 500ms
+    savePersistedTimelineEvents(this.makePersistenceContext());
   }
 
-  private safeStringify(obj: any): string {
-    const seen = new WeakSet();
-    return JSON.stringify(obj, (_key, value) => {
-      // Handle circular references
-      if (typeof value === 'object' && value !== null) {
-        if (seen.has(value)) {
-          return '[Circular Reference]';
-        }
-        seen.add(value);
-      }
-
-      // Filter out DOM elements and Window objects
-      if (value instanceof Window) return '[Window]';
-      if (value instanceof Document) return '[Document]';
-      if (value instanceof HTMLElement) return '[HTMLElement]';
-      if (value instanceof Node) return '[Node]';
-      if (value instanceof Event) {
-        // Extract safe properties from Event objects
-        return {
-          type: value.type,
-          target: value.target ? '[EventTarget]' : undefined,
-          timeStamp: value.timeStamp,
-          bubbles: value.bubbles,
-          cancelable: value.cancelable,
-        };
-      }
-
-      // Filter out functions
-      if (typeof value === 'function') return '[Function]';
-
-      return value;
-    });
+  /** Live read/write view onto this panel's persisted-history state. */
+  private makePersistenceContext(): PersistenceHost {
+    const self = this;
+    return {
+      get events() {
+        return self.events;
+      },
+      get saveTimeout() {
+        return self.saveTimeout;
+      },
+      set saveTimeout(v) {
+        self.saveTimeout = v;
+      },
+    };
   }
 
   public toggleInternalEvents(): void {
     this.showInternalEvents = !this.showInternalEvents;
-    localStorage.setItem(
-      EventTimelinePanel.SHOW_INTERNAL_KEY,
-      String(this.showInternalEvents)
-    );
+    localStorage.setItem(SHOW_INTERNAL_KEY, String(this.showInternalEvents));
   }
 
   public setView(view: 'analytics' | 'events'): void {
     this.view = view;
-    localStorage.setItem(EventTimelinePanel.VIEW_KEY, view);
+    localStorage.setItem(VIEW_KEY, view);
   }
 
   private initializeEventWatching(): void {
-    this.watchDataLayer();
-    this.watchInternalEvents();
-    this.watchDOMEvents();
-    this.watchPerformanceEvents();
+    const ctx = this.makeCaptureContext();
+    watchDataLayer(ctx);
+    watchInternalEvents(ctx);
+    watchDOMEvents(EventTimelinePanel.getCaptureHost);
+    watchPerformanceEvents(ctx);
   }
 
-  private watchDataLayer(): void {
-    if (typeof window === 'undefined') return;
-
-    // Initialize dataLayer if it doesn't exist
-    window.dataLayer = window.dataLayer || [];
-
-    // Store original push method
-    const originalPush = window.dataLayer.push;
-
-    // Override push to capture events
-    window.dataLayer.push = (...args: any[]) => {
-      if (this.isRecording) {
-        args.forEach(event => {
-          // Determine source based on event content
-          let source = 'GTM DataLayer';
-          let isInternal = false;
-
-          if (event.event && event.event.startsWith('gtm_')) {
-            source = 'GTM Internal';
-            isInternal = true;
-          } else if (event.timestamp || event.event_context) {
-            source = 'Analytics Manager';
-          }
-
-          // Check if it's an internal SDK event
-          if (event.event && INTERNAL_EVENT_PATTERNS.includes(event.event)) {
-            isInternal = true;
-          }
-
-          this.addEvent({
-            type: 'dataLayer',
-            name: event.event || 'dataLayer.push',
-            data: event,
-            source,
-            isInternal,
-          });
-        });
-      }
-      return originalPush.apply(window.dataLayer, args);
-    };
-
-    // Watch for existing events
-    if (window.dataLayer.length > 0) {
-      window.dataLayer.forEach(event => {
-        if (typeof event === 'object' && event.event) {
-          this.addEvent({
-            type: 'dataLayer',
-            name: event.event,
-            data: event,
-            source: 'GTM DataLayer (Historical)',
-            isInternal: INTERNAL_EVENT_PATTERNS.includes(event.event),
-          });
-        }
-      });
-    }
-  }
-
-  private watchInternalEvents(): void {
-    // Subscribe to all EventBus events
-    const eventHandler = (eventName: string, data: any) => {
-      // Skip error events to prevent infinite loops
-      if (eventName.includes('error') || eventName.includes('Error')) {
-        return;
-      }
-
-      if (this.isRecording) {
-        this.addEvent({
-          type: 'internal',
-          name: eventName,
-          data: data,
-          source: 'SDK EventBus',
-          isInternal: true,
-        });
-      }
-    };
-
-    // Hook into EventBus emit method
-    const originalEmit = this.eventBus.emit.bind(this.eventBus);
-    (this.eventBus as any).emit = (event: string, data?: any) => {
-      eventHandler(event, data);
-      return originalEmit(event as any, data);
-    };
-  }
-
-  private watchDOMEvents(): void {
-    if (typeof window === 'undefined') return;
-
-    const eventsToWatch = [
-      'click',
-      'submit',
-      'change',
-      'focus',
-      'blur',
-      'scroll',
-      'resize',
-      'load',
-      // Removed 'error' to prevent infinite loops
-    ];
-
-    // Events to ignore (debug panel internal events and Webflow events)
-    const eventsToIgnore = [
-      'debug:event-added',
-      'debug:update-content',
-      'debug:panel-switched',
-      // Webflow interaction events
-      'ix2-animation-started',
-      'ix2-animation-stopped',
-      'ix2-animation-completed',
-      'ix2-animation-paused',
-      'ix2-animation-resumed',
-      'ix2-animation',
-      'ix2-element-hover',
-      'ix2-element-unhover',
-      'ix2-element-click',
-      'ix2-page-start',
-      'ix2-page-finish',
-      'ix2-scroll',
-      'ix2-tabs-change',
-      'ix2-slider-change',
-      'ix2-dropdown-open',
-      'ix2-dropdown-close',
-      // Other Webflow events
-      'w-close',
-      'w-open',
-      'w-tab-active',
-      'w-tab-inactive',
-      'w-slider-move',
-      'w-dropdown-toggle',
-    ];
-
-    // Override dispatchEvent for CustomEvents
-    const originalDispatch = EventTarget.prototype.dispatchEvent;
-    EventTarget.prototype.dispatchEvent = function (event: Event) {
-      // Skip error events, debug events, and Webflow events to prevent infinite loops and noise
-      if (
-        event instanceof CustomEvent &&
-        !eventsToWatch.includes(event.type) &&
-        !eventsToIgnore.includes(event.type) &&
-        !event.type.startsWith('debug:') &&
-        !event.type.startsWith('ix2-') &&
-        !event.type.startsWith('w-') &&
-        !event.type.includes('error') &&
-        !event.type.includes('Error')
-      ) {
-        const self = EventTimelinePanel.getInstance();
-        if (self && self.isRecording) {
-          try {
-            self.addEvent({
-              type: 'dom',
-              name: event.type,
-              data: event.detail || {},
-              source: 'DOM CustomEvent',
-              isInternal: INTERNAL_EVENT_PATTERNS.includes(event.type),
-            });
-          } catch (e) {
-            // Silently ignore errors in event tracking to prevent loops
-          }
-        }
-      }
-      return originalDispatch.call(this, event);
+  /**
+   * Live read/write view onto this panel's capture-related state, for the
+   * `watch*` hooks in `event-timeline-panel.capture.ts` — they fire well after
+   * this is built, so every field they touch is a live accessor, not a
+   * snapshot.
+   */
+  private makeCaptureContext(): EventCaptureHost {
+    const self = this;
+    return {
+      get isRecording() {
+        return self.isRecording;
+      },
+      get events() {
+        return self.events;
+      },
+      set events(v) {
+        self.events = v;
+      },
+      get maxEvents() {
+        return self.maxEvents;
+      },
+      get updateTimeout() {
+        return self.updateTimeout;
+      },
+      set updateTimeout(v) {
+        self.updateTimeout = v;
+      },
+      get eventBus() {
+        return self.eventBus;
+      },
+      get panelId() {
+        return self.id;
+      },
+      formatRelativeTime: (ts: number) => self.formatRelativeTime(ts),
+      saveEvents: () => self.saveEvents(),
     };
   }
 
@@ -579,100 +207,16 @@ export class EventTimelinePanel implements DebugPanel {
     return EventTimelinePanel.instance;
   }
 
-  private watchPerformanceEvents(): void {
-    if (typeof window === 'undefined' || !window.performance) return;
-
-    const self = this;
-
-    // Watch performance marks
-    const originalMark = performance.mark;
-    performance.mark = function (name: string) {
-      const result = originalMark.call(performance, name);
-      if (self.isRecording) {
-        self.addEvent({
-          type: 'performance',
-          name: `mark: ${name}`,
-          data: { markName: name },
-          source: 'Performance API',
-          isInternal: true,
-        });
-      }
-      return result;
-    };
-
-    // Watch performance measures
-    const originalMeasure = performance.measure;
-    performance.measure = function (
-      name: string,
-      startMark?: string,
-      endMark?: string
-    ) {
-      const result = originalMeasure.call(
-        performance,
-        name,
-        startMark,
-        endMark
-      );
-      if (self.isRecording) {
-        self.addEvent({
-          type: 'performance',
-          name: `measure: ${name}`,
-          data: { measureName: name, startMark, endMark },
-          source: 'Performance API',
-          isInternal: true,
-        });
-      }
-      return result;
-    };
-  }
-
-  private addEvent(eventData: Partial<TimelineEvent>): void {
-    // Filter out noise events
-    if (FILTERED_EVENTS.includes(eventData.name || '')) {
-      return;
-    }
-
-    const now = Date.now();
-    const event: TimelineEvent = {
-      id: `event_${now}_${Math.random().toString(36).substr(2, 9)}`,
-      timestamp: eventData.timestamp || now,
-      type: eventData.type || 'internal',
-      name: eventData.name || 'unknown',
-      data: eventData.data || {},
-      source: eventData.source || 'Unknown',
-      relativeTime: this.formatRelativeTime(eventData.timestamp || now),
-      isInternal: eventData.isInternal || false,
-    };
-
-    this.events.unshift(event); // Add to beginning for chronological order
-
-    // Limit event history
-    if (this.events.length > this.maxEvents) {
-      this.events = this.events.slice(0, this.maxEvents);
-    }
-
-    // Save events to localStorage
-    this.saveEvents();
-
-    // Trigger content update for real-time updates
-    if (typeof document !== 'undefined') {
-      // Debounce updates to avoid too frequent re-renders
-      if (this.updateTimeout) {
-        clearTimeout(this.updateTimeout);
-      }
-
-      this.updateTimeout = setTimeout(() => {
-        // Dispatch event to update content
-        document.dispatchEvent(
-          new CustomEvent('debug:event-added', {
-            detail: {
-              panelId: this.id,
-              event: event,
-            },
-          })
-        );
-      }, 100); // Small delay to batch rapid events
-    }
+  /**
+   * Builds a live capture context for whichever instance is currently
+   * registered. `watchDOMEvents`'s `dispatchEvent` override calls this at
+   * fire time (not at setup time), mirroring the original's dynamic
+   * `EventTimelinePanel.getInstance()` lookup rather than closing over one
+   * fixed instance like the other three watchers.
+   */
+  private static getCaptureHost(): EventCaptureHost | null {
+    const instance = EventTimelinePanel.getInstance();
+    return instance ? instance.makeCaptureContext() : null;
   }
 
   private formatRelativeTime(timestamp: number): string {
@@ -808,62 +352,21 @@ export class EventTimelinePanel implements DebugPanel {
     return `<span class="${cls}">${ico} ${isError ? 'INVALID' : 'CHECK'}</span>`;
   }
 
-  private static readonly CHECK_ICON: Record<CheckStatus, IconName> = {
-    pass: 'check-circle',
-    warning: 'alert',
-    error: 'x-circle',
-    skipped: 'minus-circle',
-  };
-
-  private renderCheckRow(check: EventCheck): string {
-    const icon = EventTimelinePanel.CHECK_ICON[check.status];
-    return `
-      <li class="event-check event-check-${check.status}">
-        <span class="event-check-status">${lucide(icon, { size: 14 })}</span>
-        <div class="event-check-body">
-          <div class="event-check-head">
-            <span class="event-check-label">${this.escapeHtml(check.label)}</span>
-            <code class="event-check-field">${this.escapeHtml(check.field)}</code>
-          </div>
-          <div class="event-check-detail">${this.escapeHtml(check.detail)}</div>
-        </div>
-      </li>`;
+  /** Pure helpers `renderValidationSection` needs — see `event-timeline-panel.validation.ts`. */
+  private validationDeps(): ValidationRenderDeps {
+    return { escapeHtml: value => this.escapeHtml(value) };
   }
 
-  private renderValidationSection(event: TimelineEvent): string {
-    const checks = this.getEventChecks(event);
-    if (checks.length === 0) return '';
-
-    const errors = checks.filter(c => c.status === 'error').length;
-    const warnings = checks.filter(c => c.status === 'warning').length;
-    const passed = checks.filter(c => c.status === 'pass').length;
-    const checked = checks.filter(c => c.status !== 'skipped').length;
-
-    const summaryClass = errors
-      ? 'event-validation-fail'
-      : warnings
-        ? 'event-validation-warn'
-        : 'event-validation-ok';
-    const summaryIcon = errors
-      ? 'x-circle'
-      : warnings
-        ? 'alert'
-        : 'check-circle';
-    const summaryText = errors
-      ? `${errors} failed, ${warnings} warning${warnings === 1 ? '' : 's'} of ${checked} checks`
-      : warnings
-        ? `${warnings} warning${warnings === 1 ? '' : 's'} of ${checked} checks`
-        : `All ${passed} checks passed`;
-
-    const rows = checks.map(c => this.renderCheckRow(c)).join('');
-    return `
-      <div class="event-validation ${summaryClass}">
-        <div class="event-validation-summary">
-          <span class="event-validation-icon">${lucide(summaryIcon, { size: 14 })}</span>
-          <span class="event-validation-summary-text">${summaryText}</span>
-        </div>
-        <ul class="event-check-list">${rows}</ul>
-      </div>`;
+  /** Pure helpers `renderFlowDetail` needs — see `event-timeline-panel.flow.ts`. */
+  private flowDeps(): FlowRenderDeps {
+    return {
+      getDeliveriesForEvent: event => this.getDeliveriesForEvent(event),
+      getEventId: event => this.getEventId(event),
+      formatDeliveryDuration: ms => this.formatDeliveryDuration(ms),
+      providerIcon: name => this.providerIcon(name),
+      escapeHtml: value => this.escapeHtml(value),
+      escapeAttr: value => this.escapeAttr(value),
+    };
   }
 
   private escapeHtml(value: string): string {
@@ -958,267 +461,6 @@ export class EventTimelinePanel implements DebugPanel {
     return map[name] ?? null;
   }
 
-  /**
-   * The Flow tab: a node graph of the event. The source ("Original event") node
-   * on the left fans out to one node per provider that handled it; the panel
-   * below shows the selected node's payload — the original event for the source
-   * node, the transformed payload each provider actually dispatched otherwise.
-   */
-  private renderFlowDetail(event: TimelineEvent): string {
-    const deliveries = this.getDeliveriesForEvent(event);
-
-    // No provider deliveries: still show the source node + original event, plus
-    // why nothing fanned out.
-    if (deliveries.length === 0) {
-      return `
-        <div class="flow">
-          <div class="flow-graph flow-graph-solo">
-            ${this.renderFlowSourceNode(event, [], true)}
-          </div>
-          <div class="flow-detail">
-            <div class="delivery-empty">
-              No provider deliveries recorded for this event.
-              ${
-                this.getEventId(event)
-                  ? 'Providers may have been disabled, or this event is not dispatched to the provider layer.'
-                  : 'This event has no <code>event_id</code>, so it cannot be matched to a provider delivery.'
-              }
-            </div>
-            <div class="flow-detail-view">${RawDataHelper.generateRawDataContent(event.data)}</div>
-          </div>
-        </div>`;
-    }
-
-    // The remembered node only applies if it belongs to this event; otherwise
-    // fall back to the source node.
-    const selected = this.selectedFlowNode
-      ? (deliveries.find(d => d.id === this.selectedFlowNode) ?? null)
-      : null;
-
-    const providerNodes = deliveries
-      .map(d => this.renderFlowProviderNode(d, selected?.id === d.id))
-      .join('');
-
-    const detail = selected
-      ? this.renderFlowProviderPanel(selected)
-      : this.renderFlowSourcePanel(event, deliveries.length);
-
-    return `
-      <div class="flow">
-        <div class="flow-graph">
-          <div class="flow-col flow-col-source">
-            ${this.renderFlowSourceNode(event, deliveries, selected === null)}
-          </div>
-          <div class="flow-col flow-col-wire">
-            ${this.renderFlowWire(deliveries, selected?.id ?? null)}
-          </div>
-          <div class="flow-col flow-col-providers">
-            ${providerNodes}
-          </div>
-        </div>
-        <div class="flow-detail">${detail}</div>
-      </div>`;
-  }
-
-  /**
-   * The source node — the original event every provider branches from. Shows a
-   * per-status delivery summary (e.g. "3 sent · 1 skipped") so you can gauge the
-   * fan-out without clicking each provider.
-   */
-  private renderFlowSourceNode(
-    event: TimelineEvent,
-    deliveries: DeliveryRecord[],
-    active: boolean
-  ): string {
-    const count = deliveries.length;
-    const sub =
-      count > 0 ? `${count} provider${count === 1 ? '' : 's'}` : 'no providers';
-
-    // One chip per status present, in a stable order, tinted by status colour.
-    const order: DeliveryStatus[] = [
-      'sent',
-      'skipped',
-      'blocked',
-      'failed',
-      'pending',
-    ];
-    const summary = order
-      .map(status => ({
-        status,
-        n: deliveries.filter(d => d.status === status).length,
-      }))
-      .filter(({ n }) => n > 0)
-      .map(
-        ({ status, n }) =>
-          `<span class="flow-summary-item">
-             <span class="flow-summary-dot" style="background:${DELIVERY_STATUS_COLOR[status]}"></span>${n} ${status}
-           </span>`
-      )
-      .join('');
-
-    return `
-      <button class="flow-node flow-node-source ${active ? 'active' : ''}"
-              onclick="window.eventTimelinePanel_selectFlowNode(null)">
-        <span class="flow-node-kind">Original event</span>
-        <span class="flow-node-name">${this.escapeHtml(event.name)}</span>
-        <span class="flow-node-sub">${sub}</span>
-        ${summary ? `<span class="flow-summary">${summary}</span>` : ''}
-      </button>`;
-  }
-
-  /**
-   * One provider node as a single table-like row: brand + name on the left,
-   * status + duration right-aligned. Tinted by status, clickable for its payload.
-   */
-  private renderFlowProviderNode(
-    record: DeliveryRecord,
-    active: boolean
-  ): string {
-    const color = DELIVERY_STATUS_COLOR[record.status];
-    const brand = this.providerIcon(record.provider);
-    const glyph = brand ? `${lucide(brand, { size: 14 })} ` : '';
-    const duration = this.formatDeliveryDuration(record.durationMs);
-    return `
-      <button class="flow-node flow-node-provider ${active ? 'active' : ''}"
-              style="--accent:${color}"
-              onclick="window.eventTimelinePanel_selectFlowNode('${this.escapeAttr(record.id)}')">
-        <span class="flow-node-dot" style="background:${color}"></span>
-        <span class="flow-node-name">${glyph}${this.escapeHtml(record.provider)}</span>
-        <span class="flow-node-status" style="color:${color}">
-          ${lucide(DELIVERY_STATUS_ICON[record.status], { size: 12 })} ${record.status}${duration ? ` · ${duration}` : ''}
-        </span>
-      </button>`;
-  }
-
-  /**
-   * SVG connectors from the source node to each provider node. Geometry is
-   * arithmetic: provider node `i` sits at `i * (H + GAP) + H/2`, and the source
-   * connects to the vertical centre of the whole column. The selected branch is
-   * drawn thicker and in its status colour; branches that never carried the
-   * event (blocked/failed) are dashed so it's clear it did not flow there.
-   */
-  private renderFlowWire(
-    deliveries: DeliveryRecord[],
-    selectedId: string | null
-  ): string {
-    const n = deliveries.length;
-    const colH = n * FLOW_NODE_H + (n - 1) * FLOW_NODE_GAP;
-    const sourceY = colH / 2;
-    const w = FLOW_WIRE_W;
-    const cx = w / 2;
-    const paths = deliveries
-      .map((d, i) => {
-        const y = i * (FLOW_NODE_H + FLOW_NODE_GAP) + FLOW_NODE_H / 2;
-        const active = selectedId === d.id;
-        const stroke = active
-          ? DELIVERY_STATUS_COLOR[d.status]
-          : 'rgba(255,255,255,0.18)';
-        const didNotFlow =
-          d.status === 'blocked' ||
-          d.status === 'skipped' ||
-          d.status === 'failed';
-        const dash = didNotFlow ? ' stroke-dasharray="4 3"' : '';
-        return `<path d="M0,${sourceY} C${cx},${sourceY} ${cx},${y} ${w},${y}" fill="none" stroke="${stroke}" stroke-width="${active ? 2 : 1.5}"${dash} />`;
-      })
-      .join('');
-    return `<svg class="flow-wire" width="${w}" height="${colH}" viewBox="0 0 ${w} ${colH}" preserveAspectRatio="none">${paths}</svg>`;
-  }
-
-  /** Detail panel for the source node: the original event payload. */
-  private renderFlowSourcePanel(
-    event: TimelineEvent,
-    providerCount: number
-  ): string {
-    return `
-      <div class="flow-detail-head">
-        <span class="flow-detail-title">Original event · ${this.escapeHtml(event.name)}</span>
-        <span class="flow-detail-meta">Dispatched to ${providerCount} provider${providerCount === 1 ? '' : 's'}</span>
-      </div>
-      <div class="flow-detail-view">${RawDataHelper.generateRawDataContent(event.data)}</div>`;
-  }
-
-  /**
-   * Detail panel for a provider node, framed by delivery outcome:
-   * - `sent` → the transformed payload the provider dispatched.
-   * - `blocked` / `skipped` → nothing was sent, so no provider payload exists;
-   *   show only the reason (the original event lives on the source node).
-   * - `failed` → the error plus whatever it attempted.
-   */
-  private renderFlowProviderPanel(record: DeliveryRecord): string {
-    const provider = this.escapeHtml(record.provider);
-    const dispatched = record.sentPayload !== undefined;
-    // Blocked/skipped mean the provider dispatched nothing — there is no
-    // provider-side payload to inspect.
-    const nothingSent =
-      record.status === 'blocked' || record.status === 'skipped';
-
-    const noteHtml = (text: string): string =>
-      `<div class="flow-detail-note">${text}</div>`;
-    let title: string;
-    let note = '';
-    switch (record.status) {
-      case 'blocked':
-        title = `Blocked — nothing sent to ${provider}`;
-        note = noteHtml(this.escapeHtml(record.detail || 'blocked by config'));
-        break;
-      case 'skipped':
-        title = `Skipped — nothing sent to ${provider}`;
-        note = noteHtml(
-          this.escapeHtml(record.detail || 'not handled by this provider')
-        );
-        break;
-      case 'failed':
-        title = `Failed — ${provider} errored`;
-        if (dispatched)
-          note = noteHtml(
-            'Prepared payload below — dispatch failed, so it was not confirmed delivered.'
-          );
-        break;
-      case 'pending':
-        title = `Sending to ${provider}…`;
-        break;
-      default:
-        title = `Sent to ${provider}`;
-        if (!dispatched)
-          note = noteHtml('No payload reported — showing original event.');
-    }
-
-    const meta = [
-      `<span class="flow-detail-status" style="color:${DELIVERY_STATUS_COLOR[record.status]}">${lucide(DELIVERY_STATUS_ICON[record.status], { size: 12 })} ${record.status}</span>`,
-      record.durationMs !== undefined
-        ? `<span>${this.formatDeliveryDuration(record.durationMs)}</span>`
-        : '',
-    ]
-      .filter(Boolean)
-      .join('');
-
-    const error = record.error
-      ? `<div class="flow-detail-error">${this.escapeHtml(record.error)}</div>`
-      : '';
-
-    // No provider payload for nothing-sent outcomes — point at the source node
-    // instead of repeating the original event.
-    let body: string;
-    if (nothingSent) {
-      body = `<div class="delivery-empty">Nothing was dispatched. Select the <strong>Original event</strong> node to inspect the payload.</div>`;
-    } else {
-      const payload = dispatched ? record.sentPayload : record.payload;
-      body =
-        payload !== undefined
-          ? `<div class="flow-detail-view">${RawDataHelper.generateRawDataContent(payload)}</div>`
-          : `<div class="delivery-empty">This provider reported no payload for this event.</div>`;
-    }
-
-    return `
-      <div class="flow-detail-head">
-        <span class="flow-detail-title">${title}</span>
-        <span class="flow-detail-meta">${meta}</span>
-      </div>
-      ${note}
-      ${error}
-      ${body}`;
-  }
-
   /** Tabbed detail body for the event modal: Flow / Validation. */
   private renderDetailTabs(event: TimelineEvent): string {
     const deliveryCount = this.getDeliveriesForEvent(event).length;
@@ -1242,9 +484,9 @@ export class EventTimelinePanel implements DebugPanel {
 
     const body =
       this.selectedDetailTab === 'validation'
-        ? this.renderValidationSection(event) ||
+        ? renderValidationSection(this.getEventChecks(event), this.validationDeps()) ||
           `<div class="delivery-empty">${this.noValidationReason(event)}</div>`
-        : this.renderFlowDetail(event);
+        : renderFlowDetail(event, this.selectedFlowNode, this.flowDeps());
 
     return `
       <div class="detail-tabs">
@@ -1795,7 +1037,7 @@ export class EventTimelinePanel implements DebugPanel {
         variant: 'danger',
         action: () => {
           this.events = [];
-          localStorage.removeItem(EventTimelinePanel.EVENTS_STORAGE_KEY);
+          localStorage.removeItem(EVENTS_STORAGE_KEY);
           analyticsDebug.clear();
         },
       },

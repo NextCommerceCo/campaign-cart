@@ -160,7 +160,7 @@ page is one the SDK does not answer.
 
 \`\`\`html
 <span data-next-display="cart.total"></span>
-<span data-next-display="cart.savingsAmount" data-hide-if-zero="true"></span>
+<span data-next-display="cart.totalDiscount" data-hide-if-zero="true"></span>
 <span data-next-display="package.101.price" data-divide-by="3"></span>
 <span data-next-display="order.number"></span>
 \`\`\`

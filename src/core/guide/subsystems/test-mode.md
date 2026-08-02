@@ -108,7 +108,7 @@ stores are reset and the browser is sent to the success page with the new order'
 - **Attribution is overwritten with test markers**, which is the cleanest way to find these
   orders later: `utm_source: 'konami_code'`, `utm_medium: 'test'`,
   `utm_campaign: 'debug_test_order'`, `utm_content: 'test_mode'`, and
-  `metadata.test_order: true` (`checkout-form.enhancer.ts › CheckoutFormEnhancer.getTestAttribution`). This replaces the visitor's real attribution
+  `metadata.test_order: true` (`order-builder.ts › OrderBuilder.getTestAttribution`). This replaces the visitor's real attribution
   for that order, so a Konami order never carries the affiliate or click id it arrived with.
 - **The API decides whether the order is a test order, not the SDK.** The response's
   `is_test` field is what marks it (`types/global.ts › OrderData`); the SDK only reads it. An

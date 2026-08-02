@@ -17,7 +17,7 @@ Every value the `toggle.` namespace can show. Write it as `data-next-display="to
 <span data-next-display="toggle.101.discountAmount" data-hide-if-zero="true"></span>
 ```
 
-The Format column is what you get with no `data-next-format`; set that attribute to override it. Formatting and hiding modifiers are the same for every namespace — see [display-core](../../../../display/display-core/guide/reference/attributes.md).
+The Format column is what you get with no `data-next-format`; set that attribute to override it. `auto` means nothing declares a format for the path, so the SDK picks one from the property name in `core/base/base-display-enhancer.ts › BaseDisplayEnhancer.getDefaultFormatType` — it is not a promise of unformatted output. Formatting and hiding modifiers are the same for every namespace — see [display-core](../../../../display/display-core/guide/reference/attributes.md).
 
 ## Identity
 

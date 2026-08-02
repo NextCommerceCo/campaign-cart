@@ -10,8 +10,8 @@
  * `dataLayer` / EventBus / performance APIs and belong in E2E.
  */
 import { describe, it, expect } from 'vitest';
-import { EventTimelinePanel } from '../panels/event-timeline-panel';
-import { eventTimelinePanelStyles } from '../panels/event-timeline-panel.styles';
+import { EventTimelinePanel } from '../panels/event-timeline/event-timeline-panel';
+import { eventTimelinePanelStyles } from '../panels/event-timeline/event-timeline-panel.styles';
 
 const EVENTS = [
   {

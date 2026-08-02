@@ -6,28 +6,23 @@ category: "Order Display"
 
 # Display Paths
 
-<!-- Generated from the feature manifest. Do not edit by hand:
-     edit <feature>.manifest.ts, then run `npm run docs:reference`. -->
+<!-- Generated from the enhancer that resolves this namespace, plus the
+     feature manifest. Do not edit by hand: change getPropertyValue or
+     <feature>.manifest.ts, then run `npm run docs:reference`. -->
 
 Every value the `order.` namespace can show. Write it as `data-next-display="order.{path}"`.
 
-The Format column is what you get with no `data-next-format`; set that attribute to override it. Formatting and hiding modifiers are the same for every namespace — see [display-core](../../../../display/display-core/guide/reference/attributes.md).
+The Format column is what you get with no `data-next-format`; set that attribute to override it. `auto` means nothing declares a format for the path, so the SDK picks one from the property name in `core/base/base-display-enhancer.ts › BaseDisplayEnhancer.getDefaultFormatType` — it is not a promise of unformatted output. Formatting and hiding modifiers are the same for every namespace — see [display-core](../../../../display/display-core/guide/reference/attributes.md).
 
 | Path | Format | Notes |
 |---|---|---|
 | `order.isLoading` | auto |  |
 | `order.hasError` | auto |  |
 | `order.errorMessage` | auto |  |
-| `order.id` | auto |  |
 | `order.number` | auto |  |
 | `order.ref_id` | auto |  |
 | `order.created_at` | `date` |  |
-| `order.total_incl_tax` | `currency` |  |
-| `order.order_status_url` | auto |  |
-| `order.is_test` | auto |  |
-| `order.supports_upsells` | auto |  |
 | `order.payment_method` | `text` |  |
-| `order.shipping_method` | `text` |  |
 | `order.refId` | auto |  |
 | `order.createdAt` | `date` |  |
 | `order.total` | `currency` |  |
@@ -36,7 +31,6 @@ The Format column is what you get with no `data-next-format`; set that attribute
 | `order.supportsUpsells` | auto |  |
 | `order.paymentMethod` | `text` |  |
 | `order.shippingMethod` | `text` |  |
-| `order.status` | auto |  |
 | `order.currency` | auto |  |
 | `order.testBadge` | `text` |  |
 | `order.subtotal` | `currency` |  |
@@ -83,7 +77,59 @@ The Format column is what you get with no `data-next-format`; set that attribute
 | `order.lines.upsellCount` | auto |  |
 | `order.lines.mainProduct` | auto |  |
 | `order.lines.mainProductSku` | auto |  |
-| `order.total.formatted` | auto |  |
-| `order.createdAt.formatted` | auto |  |
+| `order.user` | auto |  |
+| `order.user.name` | auto |  |
+| `order.user.email` | auto |  |
+| `order.user.firstName` | auto |  |
+| `order.user.lastName` | auto |  |
+| `order.user.phone` | auto |  |
+| `order.user.acceptsMarketing` | auto |  |
+| `order.user.language` | auto |  |
+| `order.user.ip` | auto |  |
+| `order.customer` | auto |  |
+| `order.customer.acceptsMarketing` | auto |  |
+| `order.customer.language` | auto |  |
+| `order.customer.ip` | auto |  |
+| `order.shippingAddress` | auto |  |
+| `order.shippingAddress.name` | auto |  |
+| `order.shippingAddress.phone` | auto |  |
+| `order.billingAddress` | auto |  |
+| `order.billingAddress.name` | auto |  |
+| `order.billingAddress.phone` | auto |  |
+| `order.items.count` | auto |  |
+| `order.items.totalQuantity` | auto |  |
+| `order.items.upsellCount` | auto |  |
+| `order.items.mainProduct` | auto |  |
+| `order.items.mainProductSku` | auto |  |
+| `order.attribution.source` | auto |  |
+| `order.attribution.utm_source` | auto |  |
+| `order.attribution.medium` | auto |  |
+| `order.attribution.utm_medium` | auto |  |
+| `order.attribution.campaign` | auto |  |
+| `order.attribution.utm_campaign` | auto |  |
+| `order.attribution.term` | auto |  |
+| `order.attribution.utm_term` | auto |  |
+| `order.attribution.content` | auto |  |
+| `order.attribution.utm_content` | auto |  |
+| `order.attribution.gclid` | auto |  |
+| `order.attribution.funnel` | auto |  |
+| `order.attribution.affiliate` | auto |  |
+| `order.attribution.hasTracking` | auto |  |
 
-Generated from the SDK's own routing table, so this list matches the shipped code rather than a transcription of it.
+## Declared but not answered
+
+`core/base/display-types.ts › PROPERTY_MAPPINGS` also lists these under `order`, and `order-display.enhancer.ts › OrderDisplayEnhancer.getPropertyValue` has no answer for any of them. Writing one renders nothing — or, where the routing entry declares a fallback value, renders that fallback, which reads as though it worked.
+
+| Path | Routed to | Write instead |
+|---|---|---|
+| `order.id` | `order.id` | Use `order.ref_id` for the reference the API keys on, or `order.number` for the one to show a customer. `Order` declares no `id`. |
+| `order.total_incl_tax` | — | Use `order.total`. |
+| `order.order_status_url` | — | Use `order.statusUrl`. |
+| `order.is_test` | — | Use `order.isTest`. |
+| `order.supports_upsells` | — | Use `order.supportsUpsells`. |
+| `order.shipping_method` | — | Use `order.shippingMethod`. |
+| `order.status` | `order.status` | Nothing — `Order` declares no `status`, and this entry's `fallback: 'Completed'` makes the path render `Completed` whatever the order did. Read the state from the fields that exist, such as `order.isTest`. |
+| `order.total.formatted` | `_formatted.total` | Use `order.total`, which is currency-formatted already. |
+| `order.createdAt.formatted` | `_formatted.createdAt` | Use `order.createdAt`, which is date-formatted already. |
+
+Generated from `order-display.enhancer.ts › OrderDisplayEnhancer.getPropertyValue` — the method that resolves these paths — so a name missing here is one the namespace does not answer, whatever else in the feature accepts it.

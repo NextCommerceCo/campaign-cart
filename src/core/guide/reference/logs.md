@@ -10,7 +10,7 @@ category: "Core Reference"
      src/docs/content/core-logs.ts. Do not edit by hand: change the log line in the
      code or the note in core-logs.ts, then run `npm run docs:reference`. -->
 
-Every message the SDK's own machinery can print — 494 of them, across 40 console prefixes plus 13 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
+Every message the SDK's own machinery can print — 497 of them, across 40 console prefixes plus 13 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
 
 Messages are listed at the wording the code uses. A `{name}` inside one is a value filled in at runtime, so search for the text on either side of it. **Extra context** means the call passes a second argument — an object or an error logged beside the message; expand that entry in the console, because the message alone will not tell you which element, package, or event was involved.
 
@@ -139,7 +139,7 @@ Console lines are prefixed with the part of the SDK that produced them. Find the
 | Prefix | What it does | Error | Warn | Info | Debug |
 |---|---|---|---|---|---|
 | `[DebugModule]` | Loads the debug overlay on demand when debug mode is on, so none of it is in the bundle a normal visitor downloads. | 2 | — | 2 | — |
-| `[DebugOverlay]` | The on-page debug panel itself — state inspectors, the event pipeline, and the country / currency / locale switchers. | — | — | 3 | — |
+| `[DebugOverlay]` | The on-page debug panel itself — state inspectors, the event pipeline, and the country / currency / locale switchers. | — | — | 3 | 3 |
 | `[CountrySelector]` | The debug overlay’s country switcher, for checking an address form and shipping options as a visitor in another country. | 2 | 1 | 6 | 6 |
 | `[CurrencySelector]` | The debug overlay’s currency switcher, for checking prices in every currency the campaign offers. | 1 | 1 | 4 | 6 |
 | `[LocaleSelector]` | The debug overlay’s locale switcher, for checking how prices and dates are formatted. | 1 | 1 | 4 | 5 |
@@ -2222,7 +2222,7 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 
 The on-page debug panel itself — state inspectors, the event pipeline, and the country / currency / locale switchers.
 
-Logged from `debug/debug-overlay.ts`.
+Logged from `debug/debug-overlay/debug-overlay.ts`.
 
 ### Info
 
@@ -2230,9 +2230,19 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Debug overlay initialized` | `debug/debug-overlay.ts › DebugOverlay.initialize` | — |
-| `Selector container initialized` | `debug/debug-overlay.ts › DebugOverlay.initialize` | — |
-| `Upsell selector initialized` | `debug/debug-overlay.ts › DebugOverlay.initialize` | — |
+| `Debug overlay initialized` | `debug/debug-overlay/debug-overlay.ts › DebugOverlay.initialize` | — |
+| `Selector container initialized` | `debug/debug-overlay/debug-overlay.ts › DebugOverlay.initialize` | — |
+| `Upsell selector initialized` | `debug/debug-overlay/debug-overlay.ts › DebugOverlay.initialize` | — |
+
+### Debug
+
+The detail behind the info lines. Expected in bulk, and only visible with debug mode on — a long list here is health, not trouble.
+
+| Message | Source | Extra context |
+|---|---|---|
+| `[Debug] Action clicked:` | `debug/debug-overlay/debug-overlay.ts › DebugOverlay.handleDebugAction` | yes |
+| `[Debug] Panel switch:` | `debug/debug-overlay/debug-overlay.ts › DebugOverlay.handleTabSwitch` | yes |
+| `[Debug] Horizontal tab switch:` | `debug/debug-overlay/debug-overlay.ts › DebugOverlay.handleTabSwitch` | yes |
 
 ## `[CountrySelector]`
 

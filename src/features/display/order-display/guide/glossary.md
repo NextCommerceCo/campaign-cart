@@ -38,5 +38,5 @@ an order reference, and therefore the only pages where `order.*` bindings resolv
 ## Upsell
 
 A one-click add-on offered after payment, charged against the existing order rather
-than through a fresh checkout. `order.supports_upsells` says whether the order can
+than through a fresh checkout. `order.supportsUpsells` says whether the order can
 take one; `order.hasUpsells` says whether one was already accepted.

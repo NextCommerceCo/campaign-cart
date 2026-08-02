@@ -24,6 +24,46 @@ export default defineFeature({
   // `CartDisplayEnhancer` lives here too and answers the `cart.` namespace, so
   // this feature owns that path inventory.
   displayNamespace: 'cart',
+  // `PROPERTY_MAPPINGS.cart` routes these, and `resolveValue` answers none of them.
+  // They were published as working paths until finding 127 — ten of the twenty-two
+  // rows on this page. Nothing here needs a fallback shape: the resolver is a closed
+  // switch over the cart state, with no `getNestedProperty` behind it.
+  displayUnanswered: [
+    {
+      name: 'hasItems',
+      instead: 'Use `cart.isEmpty`. The routing table declares the negation and the display resolver never applies it — `data-next-show="cart.hasItems"` does work, because `conditional-display` resolves conditions with its own reader.',
+    },
+    { name: 'quantity', instead: 'Use `cart.totalQuantity`.' },
+    { name: 'discounts', instead: 'Use `cart.totalDiscount`.' },
+    {
+      name: 'hasCoupons',
+      instead: 'No `cart.` path reads vouchers. The `coupon` feature renders the applied codes into its `data-next-coupon="display"` area.',
+    },
+    {
+      name: 'hasCoupon',
+      instead: 'Same as `hasCoupons` — use the `coupon` feature\'s display area.',
+    },
+    {
+      name: 'couponCount',
+      instead: 'No `cart.` path reads vouchers. Count the rows the `coupon` feature renders.',
+    },
+    {
+      name: 'coupons[0].code',
+      instead: 'No `cart.` path reads vouchers. The `coupon` feature lists every applied code.',
+    },
+    {
+      name: 'coupons[1].code',
+      instead: 'No `cart.` path reads vouchers. The `coupon` feature lists every applied code.',
+    },
+    {
+      name: 'discountCode',
+      instead: 'No `cart.` path reads vouchers — and this one renders an empty string rather than nothing, because its routing entry declares `fallback: \'\'`. Use the `coupon` feature.',
+    },
+    {
+      name: 'discountCodes',
+      instead: 'No `cart.` path reads vouchers. The `coupon` feature lists every applied code.',
+    },
+  ],
 
   attributes: [
     { name: 'data-next-cart-summary', type: 'boolean (presence)', required: true },

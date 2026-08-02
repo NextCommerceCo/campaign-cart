@@ -179,20 +179,29 @@ export class CheckoutValidator {
   }
 
   /**
-   * Validate only fields required for a specific checkout step
+   * Validate only fields required for a specific checkout step.
+   *
+   * `billingAddress` and `sameAsShipping` are used by step 3 only — it is the last gate
+   * before payment, so it runs the full form check. Pass the same pair the submit path
+   * passes to {@link CheckoutValidator.validateForm}, or the two paths will disagree about
+   * whether the billing address needs checking.
    */
   public async validateStep(
     step: number,
     formData: Record<string, any>,
     countryConfigs: Map<string, CountryConfig>,
-    currentCountryConfig?: CountryConfig
+    currentCountryConfig?: CountryConfig,
+    billingAddress?: any,
+    sameAsShipping: boolean = true
   ): Promise<FormValidationResult> {
     return validateStep(
       this.formContext(),
       step,
       formData,
       countryConfigs,
-      currentCountryConfig
+      currentCountryConfig,
+      billingAddress,
+      sameAsShipping
     );
   }
 

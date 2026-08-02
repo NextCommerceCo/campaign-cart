@@ -57,7 +57,9 @@ export interface FormValidationContext {
  * @param countryConfigs Country code → rules (state required, postal format).
  * @param currentCountryConfig The shopper's country, used only for the wording of messages.
  * @param includePayment Whether to check the card fields. Pass `true` for card payments.
- * @param billingAddress The separate billing address, when there is one.
+ * @param billingAddress The separate billing address, when there is one. When
+ * `sameAsShipping` is `false` and this is missing, every required billing field is
+ * reported missing — "nothing captured" is a failure, not a pass.
  * @param sameAsShipping When `true`, `billingAddress` is ignored.
  *
  * @example
@@ -213,12 +215,25 @@ export async function validateForm(
           );
           isValid = false;
         }
+      } else {
+        // No service installed (the Spreedly key arrived late, or never) means the card
+        // was never looked at — that is not the same thing as a card that passed. Keyed
+        // `general`, not a card field name: this is a system-readiness failure, not a
+        // shopper mistake, and no card field is actually wrong. `general` is also the key
+        // this file's caller already uses for the same class of "can't proceed" failure
+        // (see `checkout-form.enhancer.ts`'s `setError('general', …)` calls), and it steers
+        // clear of `focusFirstErrorField`'s card-field list (finding 133 #7), which does not
+        // reliably resolve every card field name to something focusable.
+        errors.general =
+          'Payment cannot be validated right now because the payment system is not ready. Please wait a moment and try again.';
+        isValid = false;
       }
     }
   }
 
-  // Billing address validation
-  if (!sameAsShipping && billingAddress) {
+  // Billing address validation. Guarded on the shopper's *choice* alone: no captured
+  // address is a missing billing address, not a reason to skip the check.
+  if (!sameAsShipping) {
     const billingErrors = validateBillingAddress(
       ctx,
       billingAddress,

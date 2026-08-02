@@ -26,6 +26,14 @@ function createContext(
 ): FormValidationContext {
   return {
     countryService: { validatePostalCode: vi.fn().mockReturnValue(true) },
+    // Step 3 asks `validateForm` for the payment check too, and finding 132 made a
+    // missing card service an invalid verdict rather than a silent pass. Steps 1 and 2
+    // never reach the card block, so a satisfied service by default lets each test
+    // assert the thing it is actually about; the cases that care override it.
+    creditCardService: {
+      checkSpreedlyFieldsReady: () => ({ hasEmptyFields: false, errors: [] }),
+      validateCreditCard: vi.fn().mockReturnValue({ isValid: true, errors: {} }),
+    } as unknown as FormValidationContext['creditCardService'],
     ...overrides,
   };
 }
@@ -131,22 +139,110 @@ describe('validateStep — step 3', () => {
   });
 
   /**
-   * DEFECT (left as found) — step 3 calls
-   * `validateForm(ctx, formData, countryConfigs, currentCountryConfig, true, undefined, true)`.
-   * The last two arguments are hard-coded: `billingAddress` is always `undefined` and
-   * `sameAsShipping` is always `true`, and `validateStep` has no parameter for either, so
-   * a caller cannot supply them.
-   *
-   * On a multi-step checkout, step 3 is the final gate before the order is built — and it
-   * is the *only* validation a step-navigating shopper gets for their billing address,
-   * because no earlier step covers it.
-   *
-   * What the shopper sees: they choose a separate billing address, leave it empty or fill
-   * it with nonsense, and step 3 passes them through. The order is built with an invalid
-   * billing address, which the gateway declines during Address Verification — after the
-   * shopper has been told everything was fine.
+   * Finding 131, fixed. Step 3 used to call `validateForm(…, true, undefined, true)` with
+   * the billing pair hard-coded, and had no parameter for either, so a caller could not
+   * supply them. On a multi-step checkout step 3 is the final gate before the order is
+   * built, and no earlier step covers billing — so a shopper could choose a separate
+   * billing address, fill it with nonsense, and be waved through to a gateway decline.
    */
-  it('DEFECT: step 3 discards the billing address entirely, valid or not', async () => {
+  it('checks the separate billing address the caller passes in', async () => {
+    const result = await validateStep(
+      createContext(),
+      3,
+      completeForm(),
+      configs,
+      undefined,
+      {
+        first_name: 'Ada',
+        last_name: '',
+        address1: '',
+        city: '',
+        country: 'US',
+      },
+      false
+    );
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors['billing-lname']).toBe(
+      'Billing last name is required'
+    );
+    expect(result.errors['billing-address1']).toBe(
+      'Billing address is required'
+    );
+    expect(result.errors['billing-city']).toBe('Billing city is required');
+    expect(result.errors['billing-postal']).toBe(
+      'Billing zip/postal code is required'
+    );
+  });
+
+  it('accepts a complete separate billing address', async () => {
+    const result = await validateStep(
+      createContext(),
+      3,
+      completeForm(),
+      configs,
+      undefined,
+      {
+        first_name: 'Ada',
+        last_name: 'Lovelace',
+        address1: '2 Side St',
+        city: 'Springfield',
+        postal: '90210',
+        country: 'US',
+      },
+      false
+    );
+
+    expect(result.isValid).toBe(true);
+    expect(result.errors).toEqual({});
+  });
+
+  /**
+   * The decision behind finding 131's fix: "the shopper asked for a separate billing
+   * address and nothing has been captured" is **not** the same as "billing is fine".
+   *
+   * It is reachable on exactly the path this fix is for: the checkout store drops an
+   * all-empty billing address when it persists (`partialize`), so a step-3 page loaded
+   * after a reload rehydrates `sameAsShipping: false` with `billingAddress: undefined`.
+   * Passing there would build an order that declares a separate billing address and
+   * carries none.
+   */
+  it('rejects a different-billing choice with nothing captured', async () => {
+    const result = await validateStep(
+      createContext(),
+      3,
+      completeForm(),
+      configs,
+      undefined,
+      undefined, // nothing captured
+      false // …but the shopper asked for a separate billing address
+    );
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors['billing-fname']).toBe(
+      'Billing first name is required'
+    );
+    expect(result.errors['billing-country']).toBe(
+      'Billing country is required'
+    );
+  });
+
+  it('ignores the billing address when it is the same as shipping', async () => {
+    const result = await validateStep(
+      createContext(),
+      3,
+      completeForm(),
+      configs,
+      undefined,
+      { first_name: '', last_name: '', address1: '', city: '', country: '' },
+      true
+    );
+
+    expect(result.isValid).toBe(true);
+    expect(result.errors).toEqual({});
+  });
+
+  it('defaults to the shipping address when the caller supplies neither', async () => {
     const result = await validateStep(
       createContext(),
       3,
@@ -156,6 +252,42 @@ describe('validateStep — step 3', () => {
 
     expect(result.isValid).toBe(true);
     expect(result.errors['billing-fname']).toBeUndefined();
+  });
+
+  /**
+   * Finding 132, fixed. Step 3 asks for the payment check unconditionally, so a card
+   * checkout whose Spreedly service never arrived used to pass with empty card fields —
+   * the verdict could not tell "the card is fine" from "nobody looked". It now reports
+   * that the payment system is not ready, which is a different sentence from "your card
+   * number is wrong" on purpose: no card field was examined.
+   */
+  it('refuses to pass a card checkout it could not check', async () => {
+    const ctx = createContext({ creditCardService: undefined });
+
+    const result = await validateStep(ctx, 3, completeForm(), configs);
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors.general).toMatch(/payment system is not ready/i);
+    expect(result.errors['cc-number']).toBeUndefined();
+  });
+
+  /**
+   * The same missing service must NOT block a shopper who is not paying by card —
+   * `validateForm`'s card block is gated on the payment method, and step 3 passes
+   * `includePayment: true` for every method.
+   */
+  it('does not block a non-card checkout when there is no card service', async () => {
+    const ctx = createContext({ creditCardService: undefined });
+
+    const result = await validateStep(
+      ctx,
+      3,
+      { ...completeForm(), paymentMethod: 'paypal' },
+      configs
+    );
+
+    expect(result.isValid).toBe(true);
+    expect(result.errors.general).toBeUndefined();
   });
 });
 

@@ -108,5 +108,5 @@ value.
 
 **Use instead:**
 [`cart-summary`](../../../cart/cart-summary/guide/overview.md) — bind
-`data-next-display="cart.quantity"` and write the surrounding words as ordinary
+`data-next-display="cart.totalQuantity"` and write the surrounding words as ordinary
 markup.

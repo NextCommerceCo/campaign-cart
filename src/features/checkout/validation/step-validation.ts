@@ -32,7 +32,8 @@ import type { FormValidationResult } from './validation.types';
  *   requires one and a phone when the markup marks it required.
  * - **Step 2** — the same list again, as a guard against a shopper reaching the shipping
  *   step with the address cleared behind them.
- * - **Step 3** — delegates to {@link validateForm} with payment checks on.
+ * - **Step 3** — delegates to {@link validateForm} with payment checks on, including the
+ *   separate billing address when the shopper asked for one.
  *
  * Any other step number validates nothing and returns valid.
  *
@@ -41,11 +42,22 @@ import type { FormValidationResult } from './validation.types';
  * @param formData The collected form values.
  * @param countryConfigs Country code → rules (state required, postal format).
  * @param currentCountryConfig The shopper's country, used for the wording of messages.
+ * @param billingAddress The separate billing address, when there is one. Used by step 3
+ * only. Pass what the checkout store holds — a missing address with `sameAsShipping`
+ * `false` is itself a failure, not a reason to skip the check.
+ * @param sameAsShipping Whether the shopper is billing to the shipping address. Used by
+ * step 3 only. Defaults to `true`, which skips the billing check entirely.
  *
  * @example
  * ```ts
  * const result = await validateStep(ctx, 1, formData, countryConfigs, usConfig);
  * if (result.isValid) goToStep(2);
+ *
+ * // Step 3 — the last gate before payment, so the billing address is checked too.
+ * const final = await validateStep(
+ *   ctx, 3, formData, countryConfigs, usConfig,
+ *   checkout.billingAddress, checkout.sameAsShipping
+ * );
  * ```
  */
 export async function validateStep(
@@ -53,7 +65,9 @@ export async function validateStep(
   step: number,
   formData: Record<string, any>,
   countryConfigs: Map<string, CountryConfig>,
-  currentCountryConfig?: CountryConfig
+  currentCountryConfig?: CountryConfig,
+  billingAddress?: any,
+  sameAsShipping: boolean = true
 ): Promise<FormValidationResult> {
   let isValid = true;
   let firstErrorField: string | undefined;
@@ -106,15 +120,15 @@ export async function validateStep(
       requiredFields.push('province');
     }
   } else if (step === 3) {
-    // Step 3: Payment (validate everything)
+    // Step 3: Payment (validate everything, billing address included)
     return validateForm(
       ctx,
       formData,
       countryConfigs,
       currentCountryConfig,
       true,
-      undefined,
-      true
+      billingAddress,
+      sameAsShipping
     );
   }
 

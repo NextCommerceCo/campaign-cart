@@ -9,6 +9,38 @@ export default defineFeature({
   activates: '[data-next-display]',
   logPrefix: 'OrderDisplayEnhancer',
   displayNamespace: 'order',
+  // A routed path with no branch is read off runtime data, and which object it lands
+  // on depends on the path: `order.total_incl_tax` off the order itself, everything
+  // else off the store state that holds it.
+  displayFallback: [
+    { mappedPrefix: 'order.', shape: 'Order' },
+    { shape: 'OrderState' },
+  ],
+  displayUnanswered: [
+    {
+      name: 'id',
+      instead:
+        'Use `order.ref_id` for the reference the API keys on, or `order.number` for the one to show a customer. `Order` declares no `id`.',
+    },
+    { name: 'total_incl_tax', instead: 'Use `order.total`.' },
+    { name: 'order_status_url', instead: 'Use `order.statusUrl`.' },
+    { name: 'is_test', instead: 'Use `order.isTest`.' },
+    { name: 'supports_upsells', instead: 'Use `order.supportsUpsells`.' },
+    { name: 'shipping_method', instead: 'Use `order.shippingMethod`.' },
+    {
+      name: 'status',
+      instead:
+        'Nothing — `Order` declares no `status`, and this entry\'s `fallback: \'Completed\'` makes the path render `Completed` whatever the order did. Read the state from the fields that exist, such as `order.isTest`.',
+    },
+    {
+      name: 'total.formatted',
+      instead: 'Use `order.total`, which is currency-formatted already.',
+    },
+    {
+      name: 'createdAt.formatted',
+      instead: 'Use `order.createdAt`, which is date-formatted already.',
+    },
+  ],
 
   attributes: [
     {
@@ -59,7 +91,7 @@ Use them rather than assuming the values are there on first paint:
 <div data-next-display="order.errorMessage"></div>
 
 <p>Order <span data-next-display="order.number"></span> —
-   <span data-next-display="order.total_incl_tax"></span></p>
+   <span data-next-display="order.total"></span></p>
 \`\`\`
 
 For a per-line breakdown of what was bought, use the order item list feature

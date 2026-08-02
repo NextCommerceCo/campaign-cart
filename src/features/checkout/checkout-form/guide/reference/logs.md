@@ -101,6 +101,8 @@ Normal progress, useful for confirming the feature ran at all.
 | `[Billing] Setting initial state` | `billing-form-setup.ts › setInitialBillingFormState` | yes |
 | `[Billing] Initial state: COLLAPSED (checkbox checked)` | `billing-form-setup.ts › setInitialBillingFormState` | — |
 | `[Billing] Initial state: EXPANDED (checkbox unchecked)` | `billing-form-setup.ts › setInitialBillingFormState` | — |
+| `[Billing] Restored the stored choice: separate billing` | `billing-form-setup.ts › reconcileBillingToggle` | — |
+| `[Billing] Adopted the markup choice into the store` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.restoreBillingChoice` | yes |
 | `Page restored from bfcache, resetting express checkout state` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupBfcacheRestoreHandler` | — |
 | `Resetting processing state after bfcache restore` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupBfcacheRestoreHandler` | — |
 | `Resetting payment method from` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupBfcacheRestoreHandler` | yes |
@@ -163,6 +165,7 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 | `[Billing] Expand animation started` | `billing-animation.ts › expandBillingForm` | yes |
 | `[Billing] Starting collapse animation` | `billing-animation.ts › collapseBillingForm` | yes |
 | `[Billing] Collapse animation started` | `billing-animation.ts › collapseBillingForm` | yes |
+| `[Billing] No toggle on this page - keeping the stored choice` | `billing-form-setup.ts › reconcileBillingToggle` | — |
 | `CheckoutFormEnhancer initialized` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initialize` | — |
 | `Found submit button:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.scanAllFields` | yes |
 | `No campaign shipping countries available, using config` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | — |

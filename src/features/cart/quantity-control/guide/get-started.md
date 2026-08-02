@@ -29,7 +29,7 @@ category: "Quantity Control"
         data-min="1"
       >−</button>
 
-      <span data-next-display="cart.item.quantity"></span>
+      <span>{item.quantity}</span>
 
       <button
         data-next-quantity="increase"

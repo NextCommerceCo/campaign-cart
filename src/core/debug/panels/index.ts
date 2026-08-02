@@ -5,7 +5,7 @@
 
 export { CartPanel } from './cart-panel';
 export { OrderPanel } from './order-panel';
-export { EventTimelinePanel } from './event-timeline-panel';
+export { EventTimelinePanel } from './event-timeline/event-timeline-panel';
 export { ConfigPanel } from './config-panel';
 export { CheckoutPanel } from './checkout-panel';
 export { StoragePanel } from './storage-panel';

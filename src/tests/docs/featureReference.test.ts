@@ -17,9 +17,10 @@ import {
 import { extractEventDocs } from '@/docs/extract/extract-event-docs';
 import {
   extractDisplayPaths,
-  extractEnhancerDisplayPaths,
+  extractResolvedDisplayPaths,
   findPropertyMappings,
 } from '@/docs/extract/extract-display-paths';
+import { declaresPath, readDeclaredShapes } from '@/docs/extract/type-shape';
 import { extractFixtureExample } from '@/docs/extract/extract-fixture-example';
 import { extractLogs, extractThrows } from '@/docs/extract/extract-logs';
 import { SDK_ATTRIBUTES } from '@/docs/content/sdk-attributes';
@@ -65,41 +66,140 @@ const eventDocs = extractEventDocs(join(SRC, 'types/global.ts'));
  * The old path stays listed on purpose: it costs one `existsSync` and it is what makes
  * this list a search rather than a second hardcoded path.
  */
-const displayPaths = extractDisplayPaths(
-  findPropertyMappings([
-    join(SRC, 'core/base/display-types.ts'),
-    join(SRC, 'features/display/display-types.ts'),
-  ])
-);
+const routingTableFile = findPropertyMappings([
+  join(SRC, 'core/base/display-types.ts'),
+  join(SRC, 'features/display/display-types.ts'),
+]);
 
 /**
- * Where one namespace's path list is read from.
+ * What `PROPERTY_MAPPINGS` **claims** each namespace can show.
  *
- * `PROPERTY_MAPPINGS` answers five namespaces; `selector`, `bundle` and `toggle` are
- * resolved by their own enhancer's `getPropertyValue` instead. The choice is made
- * here, from what the code actually contains, rather than declared in the manifest —
- * a manifest flag would be a second thing to keep true, and getting it wrong is
- * precisely what this page is supposed to make impossible.
+ * Not what it can show. The table decides a path's format, validator and fallback
+ * value; nothing in it makes a path resolve. Publishing it as the answer is what put
+ * ten dead paths on the `cart.` page while hiding six live ones (finding 127).
+ */
+const routingClaims = extractDisplayPaths(routingTableFile);
+
+/** `/abs/src/core/base/display-types.ts` → `core/base/display-types.ts`. */
+const routingTableAnchor = `${relative(SRC, routingTableFile)} › PROPERTY_MAPPINGS`;
+
+/**
+ * Every interface the SDK declares, for proving the paths no branch answers.
  *
- * There is no third branch. A namespace neither source answers throws out of
- * {@link extractEnhancerDisplayPaths}, which is the whole point: the page this
- * replaces would have published "No paths are declared for the `bundle.` namespace"
- * and looked deliberate.
+ * `package.price_retail_total` reaches no `case` and works, because the resolver ends
+ * in `PropertyResolver.getNestedProperty(packageData, path)` and `Package` has that
+ * field. Reading the declarations is what makes that provable instead of assumed —
+ * see `@/docs/extract/type-shape`.
+ */
+const declaredShapes = readDeclaredShapes(
+  Object.entries({
+    ...import.meta.glob<string>('../../types/**/*.ts', {
+      query: '?raw',
+      import: 'default',
+      eager: true,
+    }),
+    ...import.meta.glob<string>('../../state/**/*.ts', {
+      query: '?raw',
+      import: 'default',
+      eager: true,
+    }),
+  }).map(([path, text]) => [basename(path), text] as [string, string])
+);
+
+/** What one namespace answers, what it only claims, and where each came from. */
+interface DisplaySource {
+  paths: DisplayPath[];
+  where: string;
+  unanswered: Array<{ name: string; routedTo: string; instead: string }>;
+  claimedIn?: string;
+  /** Names the resolver has an explicit branch for — the trio's whole answer. */
+  branchNames: string[];
+  /** Names the routing table claims, answered or not. */
+  claimedNames: string[];
+  dataFallback?: string;
+  prefixSegments?: number;
+  formatsWithoutPath: string[];
+  formatWhere?: string;
+}
+
+/**
+ * Reads one namespace's paths out of the SDK, and checks the routing table against
+ * them rather than trusting it.
+ *
+ * Three answers can be true of a routed name, and only the first two put it on the
+ * page: the resolver has a branch for it; it has no branch but names a field of the
+ * shape the resolver's open branch reads (`manifest.displayFallback`); or nothing
+ * answers it at all, in which case it belongs in the "declared but not answered"
+ * table with a working alternative beside it.
  */
 function displaySourceFor(
   manifest: FeatureManifest,
   files: Array<[string, string]>
-): {
-  paths: DisplayPath[];
-  where?: string;
-  prefixSegments?: number;
-  formatsWithoutPath?: string[];
-  formatWhere?: string;
-} {
+): DisplaySource {
   const namespace = manifest.displayNamespace ?? '';
-  const routed = displayPaths[namespace];
-  if (routed?.length) return { paths: routed };
-  return extractEnhancerDisplayPaths(files, namespace);
+  const resolved = extractResolvedDisplayPaths(files, namespace);
+  const claimed = routingClaims[namespace] ?? [];
+  const byBranch = new Set(resolved.paths.map(p => p.name));
+
+  /** The declared shape whose field this name routes to, when one has it. */
+  const viaData = (entry: DisplayPath): boolean =>
+    (manifest.displayFallback ?? []).some(fallback => {
+      const path = entry.path ?? entry.name;
+      if (fallback.mappedPrefix && !path.startsWith(fallback.mappedPrefix)) {
+        return false;
+      }
+      const field = fallback.mappedPrefix
+        ? path.slice(fallback.mappedPrefix.length)
+        : path;
+      return declaresPath(declaredShapes, fallback.shape, field);
+    });
+
+  // A class that overrides `getDefaultFormatType` without calling `super` is the last
+  // word on its namespace's formats — the routing table's declarations never reach it.
+  const formatOf = (name: string, claim?: DisplayPath): string =>
+    resolved.formatsAreTotal
+      ? (resolved.formats[name] ?? 'auto')
+      : (claim?.format !== undefined && claim.format !== 'auto'
+          ? claim.format
+          : (resolved.formats[name] ?? 'auto'));
+
+  const answeredClaims = claimed.filter(e => byBranch.has(e.name) || viaData(e));
+  const claimedNames = new Set(claimed.map(e => e.name));
+  const notes = new Map(
+    (manifest.displayUnanswered ?? []).map(u => [u.name, u.instead])
+  );
+
+  return {
+    // Claimed-and-answered first, in the table's own order, so an existing page keeps
+    // its shape; then the paths only the resolver knew about.
+    paths: [
+      ...answeredClaims.map(e => ({
+        name: e.name,
+        format: formatOf(e.name, e),
+        negated: e.negated,
+      })),
+      ...resolved.paths
+        .filter(p => !claimedNames.has(p.name))
+        .map(p => ({ name: p.name, format: formatOf(p.name), negated: false })),
+    ],
+    where: resolved.where,
+    unanswered: claimed
+      .filter(e => !byBranch.has(e.name) && !viaData(e))
+      .map(e => ({
+        name: e.name,
+        routedTo: e.path ?? e.name,
+        instead: notes.get(e.name) ?? '',
+      })),
+    ...(claimed.length ? { claimedIn: routingTableAnchor } : {}),
+    branchNames: resolved.paths.map(p => p.name),
+    claimedNames: claimed.map(e => e.name),
+    ...(resolved.dataFallback ? { dataFallback: resolved.dataFallback } : {}),
+    ...(resolved.prefixSegments === undefined
+      ? {}
+      : { prefixSegments: resolved.prefixSegments }),
+    formatsWithoutPath: resolved.formatsWithoutPath,
+    ...(resolved.formatWhere ? { formatWhere: resolved.formatWhere } : {}),
+  };
 }
 
 /** Repo root, for reading `e2e/` and for the fixture paths printed in the docs. */
@@ -599,15 +699,21 @@ describe('feature reference docs', () => {
     });
 
     /**
-     * The gate finding 114 asked for, in both directions.
+     * The gate finding 114 asked for, in both directions — now for every namespace,
+     * not only the three that route through no table.
      *
-     * Forwards: a property added to `getPropertyValue` with no entry in the manifest
-     * fails here, so a new path cannot ship undocumented. Backwards: an entry for a
+     * Forwards: a property added to the resolver with no entry in the manifest fails
+     * here, so a new path cannot ship undocumented. Backwards: an entry for a
      * property the enhancer cannot answer fails here too — which is finding 109
      * exactly. `bundle-selector` documented `compare`, `savings`, `savingsPercentage`
      * and `hasSavings` for months because they exist in the card renderer's format
      * table, a different mechanism on a different attribute, and nothing compared the
      * doc against the method that actually answers a `bundle.` path.
+     *
+     * Prose is required for a namespace no table routes, because those pages replaced
+     * hand-written ones whose per-path meaning is the reason to read them. The routed
+     * five publish the API's own field names and carry no prose today; what they must
+     * carry instead is `displayUnanswered`, checked below.
      */
     it.runIf(!!manifest.displayNamespace)('documents exactly the paths its namespace resolves', () => {
       const source = displaySourceFor(
@@ -616,12 +722,10 @@ describe('feature reference docs', () => {
       );
 
       if (!manifest.displayPaths) {
-        // Prose is optional for a routing-table namespace, whose paths are the API's
-        // own field names, and required where the page replaced a hand-written one.
         expect(
-          source.where,
-          `${manifest.id} resolves its own display paths, so displayPaths must carry a description for each one`
-        ).toBeUndefined();
+          source.claimedNames,
+          `nothing routes \`${manifest.displayNamespace}.\`, so ${manifest.id} owns every path it answers and displayPaths must carry a description for each one`
+        ).not.toEqual([]);
         return;
       }
 
@@ -634,12 +738,89 @@ describe('feature reference docs', () => {
       ).toEqual([]);
       expect(
         documented.filter(name => !resolved.includes(name)),
-        `${manifest.id}.manifest.ts describes these display paths but ${source.where ?? 'the routing table'} does not answer them — the page would teach markup that renders nothing`
+        `${manifest.id}.manifest.ts describes these display paths but ${source.where} does not answer them — the page would teach markup that renders nothing`
       ).toEqual([]);
       expect(
         documented.filter(name => !manifest.displayPaths?.paths.find(p => p.name === name)?.description.trim()),
         'every documented path needs a description — the table is the reason the page exists'
       ).toEqual([]);
+    });
+
+    /**
+     * The routing table, checked as a claim rather than published as the answer.
+     *
+     * This is finding 127. `reference/display-paths.md` for `cart.` was rendered
+     * straight from `PROPERTY_MAPPINGS.cart`, so it named ten paths
+     * `CartDisplayEnhancer.resolveValue` has no branch for and omitted six it answers.
+     * A routing entry supplies a format, a validator and a fallback value — never a
+     * resolver. `discountCode` was the worst of them: its `fallback: ''` made a dead
+     * path render an empty string, which reads as deliberate.
+     *
+     * Both directions fail here. A name the table declares that nothing answers must
+     * be listed in `displayUnanswered`, and a name listed there that the resolver
+     * *does* answer must be removed — so the list can only shrink, and only by making
+     * the path work.
+     */
+    it.runIf(!!manifest.displayNamespace)('accounts for every path its routing table claims', () => {
+      const source = displaySourceFor(
+        manifest,
+        featureFiles(dir, manifest.id, ownFolder, manifest.extraSource)
+      );
+      const listed = (manifest.displayUnanswered ?? []).map(u => u.name);
+      const unanswered = source.unanswered.map(u => u.name);
+
+      expect(
+        unanswered.filter(name => !listed.includes(name)),
+        `\`${source.claimedIn}\` routes \`${manifest.displayNamespace}.\` to these, ${source.where} has no branch for them, and no declared shape has the field either — so writing one renders nothing. Add them to displayUnanswered with what to write instead, or add the branch that answers them`
+      ).toEqual([]);
+      expect(
+        listed.filter(name => !unanswered.includes(name)),
+        `${manifest.id}.manifest.ts lists these as unanswered, but ${source.where} answers them now — take them out of displayUnanswered so the page stops warning about a path that works`
+      ).toEqual([]);
+
+      const answered = new Set(source.paths.map(p => p.name));
+      const pointless = (manifest.displayUnanswered ?? []).flatMap(entry => {
+        if (!entry.instead.trim()) return [`${entry.name}: no alternative given`];
+        // A caution that points at a second dead path is worse than no caution.
+        return [...entry.instead.matchAll(/`([a-zA-Z]+)\.([\w.[\]]+)`/g)]
+          .filter(m => m[1] === manifest.displayNamespace && !answered.has(m[2] ?? ''))
+          .map(m => `${entry.name} → ${m[0]}`);
+      });
+      expect(
+        pointless,
+        'every unanswered path needs a working alternative, and a path of this namespace named in one must be answered'
+      ).toEqual([]);
+    });
+
+    /**
+     * `displayFallback` is a claim about the code as much as about the types.
+     *
+     * It only means anything where the resolver really ends in a
+     * `PropertyResolver.getNestedProperty(data, path)` — that branch is what makes
+     * `package.price_retail_total` work with no case behind it. Declaring shapes for a
+     * namespace that has no such branch would silently prove paths that cannot
+     * resolve; leaving them off one that does would report live paths as dead.
+     */
+    it.runIf(!!manifest.displayNamespace)('declares a fallback shape exactly when its resolver reads one', () => {
+      const source = displaySourceFor(
+        manifest,
+        featureFiles(dir, manifest.id, ownFolder, manifest.extraSource)
+      );
+      const declared = manifest.displayFallback ?? [];
+
+      expect(
+        declared.length > 0,
+        source.dataFallback
+          ? `${source.dataFallback} resolves a path with no branch by reading it off runtime data, so ${manifest.id}.manifest.ts must declare the shape that read lands on`
+          : `${manifest.id}.manifest.ts declares a displayFallback shape, but ${source.where} never reads a path off runtime data — every path it answers is an explicit branch, so the declaration would prove paths that cannot resolve`
+      ).toBe(!!source.dataFallback);
+
+      for (const fallback of declared) {
+        expect(
+          declaredShapes.has(fallback.shape),
+          `${manifest.id}.manifest.ts says its display fallback reads a \`${fallback.shape}\`, but no interface of that name is declared under src/types or src/state`
+        ).toBe(true);
+      }
     });
 
     /**

@@ -440,7 +440,7 @@ export const CORE_LOG_SOURCES: CoreLogSource[] = [
   },
   {
     prefix: 'DebugOverlay',
-    file: 'debug/debug-overlay.ts',
+    file: 'debug/debug-overlay/debug-overlay.ts',
     area: 'Debug tools',
     what: 'The on-page debug panel itself — state inspectors, the event pipeline, and the country / currency / locale switchers.',
   },

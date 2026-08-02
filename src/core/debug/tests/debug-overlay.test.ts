@@ -152,8 +152,8 @@ describe('DebugOverlay mini-cart', () => {
     expect(discounted).toContain('$5.00'); // charged
   });
 
-  it('only opens the cart-level popup when a voucher or a bare total is discounted', () => {
-    // Offers alone do not open it — they are usually already shown on the lines.
+  it('opens the cart-level popup for an offer, a voucher, or a bare total discount', () => {
+    // A cart-wide offer discount opens it too.
     setCart({
       items: [PLAIN],
       totalQuantity: 2,
@@ -163,7 +163,11 @@ describe('DebugOverlay mini-cart', () => {
         { offer_id: 9, description: 'Auto offer', amount: '5.00' },
       ],
     });
-    expect(renderMiniCart()).not.toContain('has-cart-discounts');
+    const withOffer = renderMiniCart();
+    expect(withOffer).toContain('has-cart-discounts');
+    expect(withOffer).toContain('OFFER');
+    expect(withOffer).toContain('Auto offer');
+    expect(withOffer).toContain('-$5.00');
 
     // A voucher does.
     setCart({

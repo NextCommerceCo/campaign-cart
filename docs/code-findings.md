@@ -14,7 +14,9 @@ findings 116–126 from wave 2 on the same day (the `core/debug/` kebab rename, 
 `CheckoutFormEnhancer.initialize` re-sequence, the `display-paths` generator, the API-seam
 hardening, and the `ui-service` split), and findings 127-137 from wave 3 (the teardown fixes,
 the format-table gate, the `core/debug` method breakup and the `checkout-validator` split);
-each wave has its own section near the end. **Findings 127 and 130-133 are the most serious
+and findings 138-148 from wave 4 (the order-payload reconciliation, the routed-display gate,
+the `core/debug` split, the `prospect-cart` split and the test type gate); each wave has its own
+section near the end. **Findings 127 and 130-133 are the most serious
 things this restructure has turned up** - a published page teaching ten paths that render
 nothing, and a validation layer that blocks non-Latin names while letting unvalidated billing
 and card data through. Nothing here is a
@@ -2050,7 +2052,7 @@ doubles (116), the format-table gate (124), the `core/debug` method breakup (125
 lines and zero tests**, and writing 89 of them turned up seventeen defects, several of which
 stop a real shopper from paying.
 
-### 127. The **generated** cart display-paths page documents ten paths that render nothing — *verified*
+### 127. ~~The **generated** cart display-paths page documents ten paths that render nothing~~ — **FIXED 2026-08-02. Four of the five routed namespaces were wrong, not one — see 143**
 
 This is finding 109 again at ten times the size, and this time on a page nobody hand-wrote.
 
@@ -2100,7 +2102,7 @@ it needs an e2e run behind it. It also means the generated `display-paths.md` pa
 three enhancers and ~250 lines on the live render path, and it only *works* if the ordering
 above is fixed in the same change. Do them together, or not at all.
 
-### 129. `npm run type-check` has never checked a single test file — *verified*
+### 129. ~~`npm run type-check` has never checked a single test file~~ — **FIXED 2026-08-02**: `npm run type-check:tests` runs the wider program, ratcheted against `scripts/type-check-tests.baseline.json`. Four of the 31 were a missing `vitest/globals` reference, not debt; 27 are frozen. It caught eight new errors within the same wave
 
 `tsconfig.json` excludes `**/*.test.ts` and `**/*.spec.ts`. So the command this repo treats as
 its type gate — and which every agent and every commit message in this restructure cited as
@@ -2208,7 +2210,7 @@ were leaking too. Two findings written from separate reviews, never cross-read. 
 fixed (the `clear()` calls run after `super.destroy()`), which is exactly the narrow rule
 finding 102 argues is the one that matters.
 
-### 135. Four `console.log`s in the debug overlay, one on a one-second repaint loop — *verified*
+### 135. ~~Four `console.log`s in the debug overlay, one on a one-second repaint loop~~ — **FIXED 2026-08-02** (the three in the click router became `logger.debug`, which added three genuinely new lines to the published log reference — as `console.log` they were invisible to it)
 
 `updateMiniCart` carries a bare `console.log(cartLevelDiscountList)` — no guard, no semicolon —
 and the overlay repaints on a 1 s interval, so an open overlay spams the console continuously.
@@ -2226,7 +2228,7 @@ Dead code found alongside, all in the mini-cart:
   offers**, so a cart whose only discount is a cart-wide offer fills `cartLevelDiscountList`
   and then never renders the popup. The new test pins current behaviour, not the intent.
 
-### 136. `src/core/debug/styles/event-timeline.css` is an orphan duplicate — *verified*
+### 136. ~~`src/core/debug/styles/event-timeline.css` is an orphan duplicate~~ — **FIXED 2026-08-02** (deleted after `diff` confirmed it byte-identical and unimported)
 
 Byte-identical to `src/styles/debug/event-timeline.css`, and nothing imports it —
 `debug-style-loader.ts` loads the `src/styles/` copy. 9.2 kB left behind by the `core/debug/`
@@ -2234,7 +2236,7 @@ rename; another instance of finding 126.
 
 **Fix:** delete it.
 
-### 137. The `core/debug` files still want a folder split, and every valuable seam moves a cited symbol — *deferred deliberately*
+### 137. ~~The `core/debug` files still want a folder split~~ — **DONE 2026-08-02.** The `+N more` trap it predicted did fire on exactly one row — see 147
 
 The method breakup is done — `getContent()` 1,074 → 20 lines, `updateMiniCart()` 312 → 73,
 `handleContainerClick` 102 → 15, and 905 lines of static CSS lifted into
@@ -2255,6 +2257,169 @@ Also learned here: **finding 125's "`addEventListeners` is ~155 lines" was wrong
 The long code was two *class-field arrow functions* beside it — `handleContainerClick` (102)
 and `handleContainerHover` (39) — which a symbol-based method scan folds into the neighbouring
 method. A tool that measures methods will keep missing fields; measure both.
+
+---
+
+## Found during the wave-4 restructure (2026-08-02)
+
+Six agents: the order-payload reconciliation, the routed-display-namespace gate (127), the
+`core/debug` folder split (135–137), the `prospect-cart` split, the test type gate (129), and
+a follow-up that fixed the fixtures the new gate immediately caught. Bond decided findings
+130, 131, 132, 120 and the order-payload question during this wave; the fixes for the first
+three shipped in it.
+
+### 138. ~~Two live order payloads~~ — **FIXED 2026-08-02, and there were three divergences, not one**
+
+Bond's call: `OrderBuilder` wins, `CheckoutFormEnhancer.buildOrderData` is deleted. Measuring
+the two builders field by field before merging turned up two differences the original entry
+never mentioned, and disproved its claim that `payment_detail` did not diverge:
+
+1. **`payment_detail` did diverge, and it was the Klarna trap from finding 1.** Two constants
+   named `API_PAYMENT_METHOD_MAP` exist; the one `order-builder.ts` imports had no `klarna`
+   key. Merging naively would have turned every Klarna order on the main submit path into
+   `card_token` — a silent money regression, caught by the failing-first test
+   (`expected 'card_token' to be 'klarna'`). The key was added to the shared map first.
+2. **The store precedence was reversed**, independently of the campaign fallback: the enhancer
+   read checkout → cart, `OrderBuilder` reads cart → checkout. When both stores hold a
+   different method, the order now carries the cart store's.
+3. **`success_url` / `payment_failed_url`** differed: the enhancer sent a meta-tag value
+   verbatim unless it began with `/`, while `OrderBuilder` makes it absolute. `content="thanks"`
+   used to be sent as the bare string; it is now `origin + '/thanks'`, matching what express
+   orders already sent.
+
+Also fixed with it: `OrderBuilder`'s four bare `console.log`/`console.warn` calls — including
+`[OrderBuilder] No shipping method found, using fallback ID 1`, the one line that says an order
+is about to ship by a guessed method — now route through `createLogger('OrderBuilder')`, which
+supplies the same prefix so the strings are byte-identical. Without that, the merge would have
+shipped four ungated console calls to every live checkout.
+
+**Worth knowing:** `OrderManager.createOrder` has **no live caller** (only `createExpressOrder`
+and `handleOrderRedirect` are used), so the Klarna defect was latent — it would have gone live
+the moment this merge landed.
+
+### 139. `ProspectCartEnhancer` never tears down its listeners, and the destroy gate cannot see it — *verified*
+
+The class has **no `destroy()` override at all** — confirmed by grep. `CheckoutFormEnhancer.destroy()`
+calls `this.prospectCartEnhancer.destroy()` believing it tears the feature down, but base
+`destroy()` only unsubscribes the cart-store subscription. Every listener `triggers.ts` registers
+outlives the enhancer: email/phone/name `blur`+`change`, and in `formStart` mode a `focus` and
+an `input` handler on **every field in the form**.
+
+**`src/tests/contract/destroy-contract.test.ts` cannot catch this**, because it only inspects
+classes that *do* override `destroy()`. A class that overrides nothing is invisible to it —
+which is the same blind spot as finding 95 (a gate that scans by shape misses what does not
+have the shape).
+
+**Fix:** override `destroy()`/`cleanupEventListeners()` here, and widen the contract test to
+assert that every enhancer registering listeners also removes them, rather than only checking
+the ordering inside those that override.
+
+### 140. `formStart` mode creates a prospect cart with no validation at all — *verified*
+
+The `formStart` trigger's handler calls `createProspectCart()` directly and sets
+`hasTriggered = true` on the first `focus` or `input` in *any* form field, never routing through
+`checkAndCreateCart`'s email/phone/name checks. A shopper who tabs into a field and leaves gets
+a prospect cart created from whatever is on the form at that instant. Pinned by a `DEFECT:` test
+in `prospect-cart/tests/triggers.test.ts`.
+
+### 141. Three of the four prospect-cart timeout fields are never assigned — *verified*
+
+`updateEmailTimeout`, `emailBlurTimeout` and `emailInputTimeout` are declared and cleared in two
+places each, and **written nowhere** — verified by reading every occurrence. Only
+`phoneBlurTimeout` is real. Harmless today only because the `hasTriggered` gate independently
+blocks a second creation; it is the residue of an incomplete earlier refactor.
+
+### 142. Two triggers in one tick can create two prospect carts — *verified*
+
+`createProspectCart`'s guard (`prospectCartRef.value` set) only flips *after* the awaited API
+call resolves, so two triggers firing in the same tick — a debounced blur landing as a manual
+check also passes — can both pass the guard and race two `createCart` calls. No existing test
+exercises it. Not fixed: it touches the money-adjacent create path.
+
+### 143. Four of the five routed display namespaces were wrong, not one — *verified, docs fixed*
+
+Finding 127 measured `cart`. Extending the gate to read what each resolver answers — and to
+treat `PROPERTY_MAPPINGS` as a claim rather than the source of truth — found the same hole in
+three more:
+
+| Namespace | Documented but unanswered | Answered but undocumented |
+|---|---|---|
+| `cart` | 10 | 6 |
+| `package` | 0 | 9 (`hasRetailPrice` + eight `.raw` variants) |
+| `selection` | 4 | 6 |
+| `shipping` | 0 | 2 (`cost.raw`, `price.raw`) |
+| `order` | **9** | **37** — the whole `user.*` alias tree, both address aliases, five `items.*` aliases, and all fourteen `attribution.*` paths |
+
+Five other guides were teaching dead paths and are corrected (`order.total_incl_tax`,
+`order.supports_upsells`, `cart.quantity`, `cart.savingsAmount`, and a
+`data-next-display="cart.item.quantity"` that was never a display path at all).
+
+The 23 dead routing entries are now **published as broken** rather than as working; deleting
+them from `PROPERTY_MAPPINGS` is a live-code change and was deliberately not done here.
+
+Two further defects surfaced and were left alone, both code rather than docs:
+
+- **`ProductDisplayEnhancer` answers a `campaign.` namespace** (`name`, `currency`, `language`,
+  routed in `attribute-scanner.ts`) that **no page documents and `PROPERTY_MAPPINGS` does not
+  contain.** `docs:coverage` scores it as covered because it counts by owning feature.
+- **`shipping.name` renders the code** — `ShippingDisplayEnhancer.getPropertyValue` returns
+  `shippingMethod.code` for both `name` and `code`.
+
+### 144. `order.status` renders "Completed" for every order, and `order.paymentMethod` renders "Credit Card" — *verified*
+
+`core/base/display-types.ts` routes them as:
+
+```ts
+status:        { path: 'order.status',         fallback: 'Completed' },
+paymentMethod: { path: 'order.payment_method', format: 'text', fallback: 'Credit Card' },
+```
+
+Neither `status` nor `payment_method` is declared on the `Order` shape the resolver checks, so
+the fallback is what a page actually shows. `data-next-display="order.status"` therefore tells
+every shopper their order is Completed regardless of its real state, and a PayPal order can be
+labelled "Credit Card". A blank would be honest; a confident wrong answer is not.
+
+**Fix:** either declare the fields and answer them, or drop the fallbacks so the value is empty
+when unknown. This is a live-page change, so it needs a decision — but it is the worst instance
+of the class finding 143 catalogues.
+
+### 145. `DisplayPath` was declared twice and the copies had already drifted — *fixed 2026-08-02*
+
+`src/docs/extract/extract-display-paths.ts` and `src/docs/render/render-feature-reference.ts`
+each declared an interface of that name; the renderer's copy lacked the `path` field, so a
+caller importing the type from the renderer could not read where a routing entry sends a name.
+The renderer now imports and re-exports the extractor's type. Caught by the new
+`type-check:tests` gate, not by `npm run type-check` — the only consumer of the difference was
+a test file.
+
+### 146. Running prettier on a guide `.md` breaks `npm run docs:coverage` — *verified, process trap*
+
+An agent ran `npx prettier --write` on `checkout-form/guide/use-cases.md`. Prettier rewrote the
+frontmatter's `"` quotes to `'`, and the coverage script's frontmatter reader strips only double
+quotes — so the title became `'Features/Checkout/Checkout Form/Use Cases` (leading quote
+included) and the gate failed with *"pages disagree on their sidebar path"*.
+
+**Rule:** never run prettier on a file under a `guide/` folder. The formatting decision on
+markdown is not free — it changes a value the nav gate parses. Repaired by restoring double
+quotes.
+
+### 147. A file move can rewrite a citation whose subject did not change — *verified*
+
+`extract-storage-keys.ts` sorts citing sites lexicographically and prints the first plus
+`+N more`. Splitting `event-timeline-panel.ts` changed which site sorts first for
+`debug-events-history`, and the new first site is a `localStorage.setItem` inside an anonymous
+`setTimeout` callback, which the anchor logic cannot attribute to a named symbol. The row went
+from `… › EventTimelinePanel.checkAndCleanExpiredStorage +3 more` to a bare
+`… persistence.ts +4 more` — same key, same behaviour, strictly less useful page.
+
+**Fix:** prefer a citation that resolves to a named symbol over the lexicographically first one.
+
+### 148. Two hand-written `file:` registries regeneration does not touch — *verified*
+
+`src/docs/content/storage-keys.ts` (`EXPIRY_MECHANISMS`) and `src/docs/content/core-logs.ts`
+(`CORE_LOG_SOURCES`) carry `file:` fields maintained by hand. `UPDATE_DOCS=1` does not update
+them, so a file move leaves them stale and only `sourceReferences.test.ts`'s file-exists
+assertion catches it — after the fact. Both were repaired by hand during the `core/debug` split.
 
 ---
 

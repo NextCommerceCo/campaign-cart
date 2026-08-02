@@ -2,6 +2,8 @@
  * Field mapping constants for checkout form
  */
 
+import type { PaymentMethod } from '@/types/api';
+
 export const COMMON_FIELD_PATTERNS = [
   { pattern: /country/i, key: 'country' },
   { pattern: /state|province|region/i, key: 'province' },
@@ -58,12 +60,18 @@ export const PAYMENT_METHOD_MAP: Record<string, 'card_token' | 'paypal' | 'apple
   'google-pay': 'google_pay'
 };
 
-export const API_PAYMENT_METHOD_MAP: Record<string, 'card_token' | 'paypal' | 'apple_pay' | 'google_pay'> = {
+/**
+ * Selected payment method -> the `payment_detail.payment_method` the orders API
+ * expects. The single map for every order path; anything not listed here is
+ * submitted as `card_token`.
+ */
+export const API_PAYMENT_METHOD_MAP: Record<string, PaymentMethod> = {
   'credit-card': 'card_token',
   'card_token': 'card_token',
   'paypal': 'paypal',
   'apple_pay': 'apple_pay',
-  'google_pay': 'google_pay'
+  'google_pay': 'google_pay',
+  'klarna': 'klarna'
 };
 
 export const EXPRESS_PAYMENT_METHOD_MAP: Record<string, 'paypal' | 'apple_pay' | 'google_pay'> = {

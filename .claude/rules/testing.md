@@ -25,6 +25,27 @@
 - Use `vi.fn()` for mocks, `vi.spyOn()` for spies
 - Test pure utils and store logic; enhancer DOM tests belong in E2E
 
+## Type-checking test files
+
+`npm run type-check` (`tsconfig.json`) excludes `**/*.test.ts` and `**/*.spec.ts` —
+tests are not part of the shipped build, so that gate never sees them. A test
+double typed as `Pick<IApiClient, …>` or similar only catches drift if
+something actually compiles it.
+
+`npm run type-check:tests` runs the wider program instead
+(`tsconfig.eslint.json` — same options, plus `e2e/`, `scripts/`, and the two
+build configs). It is a **ratchet**, same shape as `docs:coverage` /
+`docs-coverage.baseline.json`: pre-existing errors are frozen in
+`scripts/type-check-tests.baseline.json` and tolerated; a genuinely new error —
+in a new place, or a new *kind* of error in an already-frozen file — fails the
+run. Fixing an error and leaving the file otherwise alone shrinks the baseline
+(`npm run type-check:tests:update`); introducing a new error, even in a file
+that already has frozen ones, fails regardless of the total count. Do not
+"fix" a frozen error by editing the test's assertions/fixtures to make the
+compiler happy — if the type mismatch is real, it stays frozen until someone
+fixes the underlying code or fixture on purpose. See the header comment in
+`scripts/type-check-tests.mjs` for why fingerprints never cite a line number.
+
 ## What to Test
 - Pure utility functions in `src/utils/` — always unit test these
 - Store actions and state transitions — test with real Zustand store instances

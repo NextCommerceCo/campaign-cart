@@ -22,6 +22,7 @@ import type { Logger } from '@/core/logger';
 import {
   BILLING_CONTAINER_SELECTOR,
   BILLING_FORM_CONTAINER_SELECTOR,
+  BILLING_TOGGLE_SELECTOR,
   SHIPPING_FORM_SELECTOR,
 } from '../constants/selectors';
 
@@ -195,6 +196,55 @@ export function setInitialBillingFormState(ctx: BillingFormSetupContext): void {
   } else {
     ctx.logger.warn('[Billing] Could not set initial state - missing elements');
   }
+}
+
+/**
+ * Puts the toggle, the billing section and the shopper's stored choice into agreement.
+ *
+ * Three places hold one fact — the checkbox, the section's open/closed state, and
+ * `checkoutStore.sameAsShipping` — and only the store survives a page load. So a shopper
+ * who unticked the toggle on step 1 reaches step 3 with the checkbox back at its markup
+ * default and the section collapsed, while the store still says the billing address is
+ * separate. Step 3 validates from the store, so "next" then fails with `billing-` messages
+ * for fields that are not on screen: a checkout that looks like a dead button.
+ *
+ * Who wins is decided by which side can hold a shopper's *decision*:
+ *
+ * - **The store wins when it says `false`.** Only the toggle handler ever writes that, so
+ *   `false` is always a decision the shopper made — it is restored onto the checkbox.
+ * - **The markup wins when the store says `true`.** `true` is also the store's untouched
+ *   default, so it cannot be told apart from "never chosen", and a page whose author
+ *   renders the toggle unticked would otherwise be silently ticked on first paint. The
+ *   caller writes that answer back to the store.
+ *
+ * A page with no toggle can express neither, so the stored choice is left alone: the
+ * payment step of a multi-step checkout has no toggle, and the choice — with the address
+ * that goes with it — belongs to the step that did.
+ *
+ * @param storedSameAsShipping What `checkoutStore.sameAsShipping` currently holds.
+ * @returns The answer now in force on the page. The caller writes it back to the store when
+ *   it differs from what it passed in.
+ */
+export function reconcileBillingToggle(
+  ctx: BillingFormSetupContext,
+  storedSameAsShipping: boolean
+): boolean {
+  const billingToggle = ctx.form.querySelector(BILLING_TOGGLE_SELECTOR);
+
+  if (!(billingToggle instanceof HTMLInputElement)) {
+    ctx.logger.debug(
+      '[Billing] No toggle on this page - keeping the stored choice'
+    );
+    return storedSameAsShipping;
+  }
+
+  if (!storedSameAsShipping && billingToggle.checked) {
+    billingToggle.checked = false;
+    ctx.logger.info('[Billing] Restored the stored choice: separate billing');
+  }
+
+  setInitialBillingFormState(ctx);
+  return billingToggle.checked;
 }
 
 /**

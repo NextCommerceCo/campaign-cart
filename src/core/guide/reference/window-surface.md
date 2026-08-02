@@ -35,7 +35,7 @@ Every entry below is read out of the source, so the list cannot fall behind the 
 | [`window.NextInvalidateContext`](#windownextinvalidatecontext) | install | `core/analytics/index.ts` |
 | [`window.NextAnalyticsClearIgnore`](#windownextanalyticsclearignore) | install | `core/analytics/index.ts` |
 | [`window.nextCampaign`](#windownextcampaign) | read | `core/analytics/providers/next-campaign-adapter.ts › NextCampaignAdapter.sendEvent` and 3 more |
-| [`window.dataLayer`](#windowdatalayer) | install | `core/analytics/providers/gtm-adapter.ts › GTMAdapter.sendEvent`, `core/debug/panels/event-timeline-panel.ts › EventTimelinePanel.watchDataLayer` |
+| [`window.dataLayer`](#windowdatalayer) | install | `core/analytics/providers/gtm-adapter.ts › GTMAdapter.sendEvent`, `core/debug/panels/event-timeline/event-timeline-panel.capture.ts › watchDataLayer` |
 | [`window.ElevarDataLayer`](#windowelevardatalayer) | install | `core/analytics/providers/gtm-adapter.ts › GTMAdapter.sendEvent` |
 | [`window._nextForcePackageId`](#window_nextforcepackageid) | install | `core/sdk-initializer.ts › SDKInitializer.loadConfiguration` |
 | [`window._nextForceShippingId`](#window_nextforceshippingid) | install | `core/sdk-initializer.ts › SDKInitializer.loadConfiguration` |
@@ -98,7 +98,7 @@ The configuration object your page sets before the SDK loads — API key, debug 
 
 > ⚠️ Read during boot, so it has to be set before the SDK script runs; assigning it afterwards changes nothing. Meta tags override it where both are present.
 
-<sub>Read in `core/debug/debug-module.ts › DebugModule.initializeIfEnabled`, `core/debug/debug-module.ts › DebugModule.isDebugMode`, `core/debug/debug-overlay.ts › DebugOverlay.constructor`, `core/debug/debug-overlay.ts › DebugOverlay.initialize`, `core/debug/panels/event-timeline-panel.ts › EventTimelinePanel.constructor`, `core/logger.ts › isDebugModeEnabled`, `core/sdk-initializer.ts › SDKInitializer.loadConfiguration`, `core/test-mode.ts › TestModeManager.checkUrlTestMode`, `core/url-utils.ts › isDebugMode`, `core/url-utils.ts › isDebuggerMode`, `features/cart/cart-item-list/cart-item-list.renderer.ts › prepareCartItemData`</sub>
+<sub>Read in `core/debug/debug-module.ts › DebugModule.initializeIfEnabled`, `core/debug/debug-module.ts › DebugModule.isDebugMode`, `core/debug/debug-overlay/debug-overlay.ts › DebugOverlay.constructor`, `core/debug/debug-overlay/debug-overlay.ts › DebugOverlay.initialize`, `core/debug/panels/event-timeline/event-timeline-panel.ts › EventTimelinePanel.constructor`, `core/logger.ts › isDebugModeEnabled`, `core/sdk-initializer.ts › SDKInitializer.loadConfiguration`, `core/test-mode.ts › TestModeManager.checkUrlTestMode`, `core/url-utils.ts › isDebugMode`, `core/url-utils.ts › isDebuggerMode`, `features/cart/cart-item-list/cart-item-list.renderer.ts › prepareCartItemData`</sub>
 
 ### `window.__NEXT_SDK_VERSION__`
 
@@ -231,7 +231,7 @@ console.log(window.dataLayer.filter(e => e.event?.startsWith('dl_')));
 
 > ⚠️ Created with `window.dataLayer = window.dataLayer || []`, so an existing queue is preserved and load order does not matter. Do not reassign it — replacing the array orphans everything GTM has already read.
 
-<sub>Assigned in `core/analytics/providers/gtm-adapter.ts › GTMAdapter.sendEvent`, `core/debug/panels/event-timeline-panel.ts › EventTimelinePanel.watchDataLayer`</sub>
+<sub>Assigned in `core/analytics/providers/gtm-adapter.ts › GTMAdapter.sendEvent`, `core/debug/panels/event-timeline/event-timeline-panel.capture.ts › watchDataLayer`</sub>
 
 ### `window.ElevarDataLayer`
 

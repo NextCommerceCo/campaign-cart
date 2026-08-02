@@ -17,13 +17,14 @@ import { CheckoutValidator } from '../validation/checkout-validator';
 import { UIService } from '../services/ui-service';
 import { useAttributionStore } from '@/state/attribution';
 import { useParameterStore } from '@/state/parameter';
-import type { CreateOrder, Address, Payment, Attribution, PaymentMethod } from '@/types/api';
 import { AddressAutocompleteEnhancer } from '../address-autocomplete/address-autocomplete.enhancer';
 import { ProspectCartEnhancer } from '../prospect-cart/prospect-cart.enhancer';
 import { GeneralModal } from '@/core/ui/general-modal';
 import { LoadingOverlay } from '@/core/ui/loading-overlay';
 import { ExpressCheckoutProcessor } from '../processors/express-checkout-processor';
 import { OrderManager } from '../managers/order-manager';
+import { OrderBuilder } from '../builders/order-builder';
+import { getSuccessUrl } from '../utils/url-utils';
 import { nextAnalytics, EcommerceEvents } from '@/core/analytics/index';
 import { userDataStorage } from '@/core/analytics/user-data-storage';
 import {
@@ -37,6 +38,7 @@ import {
   type BillingAnimationContext,
 } from './billing-animation';
 import {
+  reconcileBillingToggle,
   scanBillingFields,
   setupBillingForm,
   type BillingFormSetupContext,
@@ -83,15 +85,13 @@ const PAYMENT_METHOD_MAP: Record<string, 'card_token' | 'paypal' | 'apple_pay' |
   'klarna': 'klarna'
 };
 
-const API_PAYMENT_METHOD_MAP: Record<string, PaymentMethod> = {
-  'credit-card': 'card_token',
-  'card_token': 'card_token',
-  'paypal': 'paypal',
-  'apple_pay': 'apple_pay',
-  'google_pay': 'google_pay',
-  'klarna': 'klarna'
-};
-
+/**
+ * The one builder that assembles the `CreateOrder` payload. Stateless — it reads
+ * the cart, checkout, campaign and attribution stores on each call — so the same
+ * instance serves every submit. Express checkout reaches it through
+ * `OrderManager`; this is the normal-submit door to the same code.
+ */
+const orderBuilder = new OrderBuilder();
 
 const BILLING_ADDRESS_FIELD_MAP: Record<string, string> = {
   'fname': 'first_name',
@@ -238,6 +238,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     this.initializeValidator();
     this.scanAllFields();
     this.cloneBillingFormFromShipping();
+    this.restoreBillingChoice();
     this.initializeUIService();
 
     if (config.spreedlyEnvironmentKey) {
@@ -326,6 +327,31 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const billingFormCloned = setupBillingForm(this.billingFormSetupContext());
     if (billingFormCloned) {
       scanBillingFields(this.billingFormSetupContext()); // Re-scan after cloning
+    }
+  }
+
+  /**
+   * Makes the billing checkbox, the billing section and `checkoutStore.sameAsShipping`
+   * agree before the shopper sees the page.
+   *
+   * Runs after the clone step so the section it opens has fields in it, and before the
+   * change handler is attached, so the checkbox is corrected by assignment rather than by
+   * a synthetic click that would animate it. `reconcileBillingToggle` decides which side
+   * wins — see its doc comment; a page with no toggle keeps whatever the store holds.
+   */
+  private restoreBillingChoice(): void {
+    const checkoutStore = useCheckoutStore.getState();
+    const stored = checkoutStore.sameAsShipping;
+    const onPage = reconcileBillingToggle(
+      this.billingFormSetupContext(),
+      stored
+    );
+
+    if (onPage !== stored) {
+      checkoutStore.setSameAsShipping(onPage);
+      this.logger.info('[Billing] Adopted the markup choice into the store', {
+        sameAsShipping: onPage,
+      });
     }
   }
 
@@ -1225,7 +1251,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
       if (action === 'confirm') {
         // Handle back button - navigate to the success URL
-        const successUrl = this.getSuccessUrl();
+        const successUrl = getSuccessUrl();
         if (successUrl) {
           // Add ref_id to the URL if not already present
           const url = new URL(successUrl, window.location.origin);
@@ -1261,72 +1287,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // ORDER MANAGEMENT
   // ============================================================================
 
-  private buildOrderData(checkoutStore: any, cartStore: any): CreateOrder {
-    const shippingAddress: Address = {
-      first_name: checkoutStore.formData.fname || '',
-      last_name: checkoutStore.formData.lname || '',
-      line1: checkoutStore.formData.address1 || '',
-      line2: checkoutStore.formData.address2,
-      line4: checkoutStore.formData.city || '',
-      state: checkoutStore.formData.province,
-      postcode: checkoutStore.formData.postal,
-      country: checkoutStore.formData.country || '',
-      phone_number: checkoutStore.formData.phone
-    };
-
-    let billingAddressData: Address | undefined;
-    if (!checkoutStore.sameAsShipping && checkoutStore.billingAddress) {
-      billingAddressData = {
-        first_name: checkoutStore.billingAddress.first_name || '',
-        last_name: checkoutStore.billingAddress.last_name || '',
-        line1: checkoutStore.billingAddress.address1 || '',
-        line4: checkoutStore.billingAddress.city || '',
-        country: checkoutStore.billingAddress.country || '',
-        ...(checkoutStore.billingAddress.address2 && { line2: checkoutStore.billingAddress.address2 }),
-        ...(checkoutStore.billingAddress.province && { state: checkoutStore.billingAddress.province }),
-        ...(checkoutStore.billingAddress.postal && { postcode: checkoutStore.billingAddress.postal }),
-        ...(checkoutStore.billingAddress.phone && { phone_number: checkoutStore.billingAddress.phone })
-      };
-    }
-
-    const payment: Payment = {
-      payment_method: API_PAYMENT_METHOD_MAP[checkoutStore.paymentMethod] || 'card_token',
-      ...(checkoutStore.paymentToken && { card_token: checkoutStore.paymentToken })
-    };
-
-    const attributionStore = useAttributionStore.getState();
-    const attribution = attributionStore.getAttributionForApi();
-
-    const vouchers = useCheckoutStore.getState().vouchers;
-
-    return {
-      lines: cartStore.items.map((item: any) => ({
-        package_id: item.packageId,
-        quantity: item.quantity,
-        is_upsell: item.is_upsell || false,
-        ...(item.properties !== undefined && { properties: item.properties }),
-      })),
-      shipping_address: shippingAddress,
-      ...(billingAddressData && { billing_address: billingAddressData }),
-      billing_same_as_shipping_address: checkoutStore.sameAsShipping,
-      shipping_method: checkoutStore.shippingMethod?.id || cartStore.shippingMethod?.id || 1,
-      payment_detail: payment,
-      user: {
-        email: checkoutStore.formData.email,
-        first_name: checkoutStore.formData.fname || '',
-        last_name: checkoutStore.formData.lname || '',
-        language: 'en',
-        phone_number: checkoutStore.formData.phone,
-        accepts_marketing: checkoutStore.formData.accepts_marketing ?? true
-      },
-      vouchers: vouchers,
-      attribution: attribution,
-      currency: this.getCurrency(),
-      success_url: this.getSuccessUrl(),
-      payment_failed_url: this.getFailureUrl()
-    };
-  }
-
   private async createOrder(): Promise<any> {
     const checkoutStore = useCheckoutStore.getState();
     const cartStore = useCartStore.getState();
@@ -1344,7 +1304,16 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         throw new Error('Payment token is required for credit card payments');
       }
 
-      const orderData = this.buildOrderData(checkoutStore, cartStore);
+      const orderData = orderBuilder.buildOrder(
+        checkoutStore.formData,
+        cartStore.items,
+        checkoutStore.paymentMethod,
+        checkoutStore.paymentToken,
+        checkoutStore.billingAddress,
+        checkoutStore.sameAsShipping,
+        undefined, // no explicit choice here — the builder resolves it from the stores
+        checkoutStore.vouchers
+      );
       const order = await this.apiClient.createOrder(orderData);
 
       if (!order.ref_id) {
@@ -1456,51 +1425,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     try {
       const vouchers = useCheckoutStore.getState().vouchers;
 
-      const testOrderData = {
-        lines: cartStore.items.length > 0
-          ? cartStore.items.map((item: any) => ({
-            package_id: item.packageId,
-            quantity: item.quantity,
-            is_upsell: item.is_upsell || false,
-            ...(item.properties !== undefined && { properties: item.properties }),
-          }))
-          : [{ package_id: 1, quantity: 1, is_upsell: false }],
-
-        shipping_address: {
-          first_name: 'Test',
-          last_name: 'Order',
-          line1: 'Test Address 123',
-          line2: '',
-          line4: 'Tempe',
-          state: 'AZ',
-          postcode: '85281',
-          country: 'US',
-          phone_number: '+14807581224'
-        },
-
-        billing_same_as_shipping_address: true,
-        shipping_method: cartStore.shippingMethod?.id || 1,
-
-        payment_detail: {
-          payment_method: 'card_token' as PaymentMethod,
-          card_token: 'test_card'
-        },
-
-        user: {
-          email: 'test@test.com',
-          first_name: 'Test',
-          last_name: 'Order',
-          language: 'en',
-          phone_number: '+14807581224',
-          accepts_marketing: true
-        },
-
-        vouchers: vouchers,
-        attribution: this.getTestAttribution(),
-        currency: this.getCurrency(),
-        success_url: this.getSuccessUrl(),
-        payment_failed_url: this.getFailureUrl()
-      };
+      const testOrderData = orderBuilder.buildTestOrder(
+        cartStore.items,
+        vouchers
+      );
 
       const order = await this.apiClient.createOrder(testOrderData);
       // cartStore.reset();
@@ -1511,24 +1439,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       this.logger.error('Failed to create test order:', error);
       throw error;
     }
-  }
-
-  private getTestAttribution(): Attribution {
-    const attributionStore = useAttributionStore.getState();
-    const baseAttribution = attributionStore.getAttributionForApi();
-
-    return {
-      ...baseAttribution,
-      utm_source: 'konami_code',
-      utm_medium: 'test',
-      utm_campaign: 'debug_test_order',
-      utm_content: 'test_mode',
-      metadata: {
-        ...baseAttribution.metadata,
-        test_order: true,
-        test_timestamp: Date.now()
-      }
-    };
   }
 
   private handleOrderRedirect(order: any): void {
@@ -1587,30 +1497,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     return preserveQueryParams(redirectUrl.href);
   }
 
-  private getCurrency(): string {
-    return (
-      useCampaignStore.getState()?.currency ??
-      useConfigStore.getState().getCurrency()
-    );
-  }
-
-  private getSuccessUrl(): string {
-    const metaTag = document.querySelector('meta[name="next-success-url"]') as HTMLMetaElement ||
-      document.querySelector('meta[name="next-next-url"]') as HTMLMetaElement ||
-      document.querySelector('meta[name="os-next-page"]') as HTMLMetaElement;
-
-    if (metaTag?.content) {
-      // Convert to absolute URL if it's a relative path
-      if (metaTag.content.startsWith('/')) {
-        return window.location.origin + metaTag.content;
-      }
-      // Return as-is if it's already an absolute URL
-      return metaTag.content;
-    }
-
-    return window.location.origin + '/success';
-  }
-
   private async validateExpressCheckoutFields(formData: any, requiredFields: string[]): Promise<any> {
     const errors: Record<string, string> = {};
     let firstErrorField: string | null = null;
@@ -1658,24 +1544,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     };
   }
 
-  private getFailureUrl(): string {
-    const metaTag = document.querySelector('meta[name="next-failure-url"]') as HTMLMetaElement ||
-      document.querySelector('meta[name="os-failure-url"]') as HTMLMetaElement;
-
-    if (metaTag?.content) {
-      // Convert to absolute URL if it's a relative path
-      if (metaTag.content.startsWith('/')) {
-        return window.location.origin + metaTag.content;
-      }
-      // Return as-is if it's already an absolute URL
-      return metaTag.content;
-    }
-
-    const currentUrl = new URL(window.location.href);
-    currentUrl.searchParams.set('payment_failed', 'true');
-    return currentUrl.href;
-  }
-
   // ============================================================================
   // MULTI-STEP CHECKOUT SUPPORT
   // ============================================================================
@@ -1705,6 +1573,25 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   }
 
   /**
+   * The billing pair every validation path must be given: the separate billing address the
+   * shopper entered, and whether they asked for one at all.
+   *
+   * The checkout store is the single source for both — `handleFormSubmit` reads the same
+   * two fields for its `validateForm` call, and `createOrder` hands the same two to
+   * `OrderBuilder`, which decides from them whether the order carries a `billing_address`
+   * block. Two answers to "is billing the
+   * same as shipping?" on one page is how a form passes validation and then builds an order
+   * that contradicts it.
+   */
+  private getBillingValidationInput(): {
+    billingAddress: CheckoutState['billingAddress'];
+    sameAsShipping: boolean;
+  } {
+    const { billingAddress, sameAsShipping } = useCheckoutStore.getState();
+    return { billingAddress, sameAsShipping };
+  }
+
+  /**
    * Handle step navigation for multi-step checkout
    */
   private async handleStepNavigation(checkoutStore: any, cartStore: any): Promise<void> {
@@ -1717,12 +1604,16 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
       this.logger.info(`Validating step ${this.currentStep} before navigation`);
 
-      // Validate only current step fields
+      // Validate only current step fields. Step 3 is the last gate before payment, so it
+      // needs the billing pair too — see getBillingValidationInput().
+      const billing = this.getBillingValidationInput();
       const validation = await this.validator.validateStep(
         this.currentStep,
         checkoutStore.formData,
         this.countryConfigs,
-        this.currentCountryConfig.value
+        this.currentCountryConfig.value,
+        billing.billingAddress,
+        billing.sameAsShipping
       );
 
       if (!validation.isValid) {

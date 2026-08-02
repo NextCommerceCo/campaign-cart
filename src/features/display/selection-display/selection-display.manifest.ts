@@ -9,6 +9,31 @@ export default defineFeature({
   activates: '[data-next-display]',
   logPrefix: 'SelectionDisplayEnhancer',
   displayNamespace: 'selection',
+  // An unmatched path falls through to the selected package, so a `Package` field
+  // still resolves. None of the four below is one.
+  displayFallback: [{ shape: 'Package' }],
+  displayUnanswered: [
+    {
+      name: 'monthlyPrice',
+      instead:
+        'Nothing computes it. Divide an answered path with the expression form: `data-next-display="selection.{selectorId}.total/12"`.',
+    },
+    {
+      name: 'yearlyPrice',
+      instead:
+        'Nothing computes it. Multiply an answered path: `data-next-display="selection.{selectorId}.total*12"`.',
+    },
+    {
+      name: 'pricePerDay',
+      instead:
+        'Nothing computes it. Divide an answered path by the number of days: `data-next-display="selection.{selectorId}.total/30"`.',
+    },
+    {
+      name: 'savingsPerUnit',
+      instead:
+        'Use `selection.savingsAmount` for the whole selection, or divide it by `selection.totalUnits` with the expression form.',
+    },
+  ],
 
   attributes: [
     {

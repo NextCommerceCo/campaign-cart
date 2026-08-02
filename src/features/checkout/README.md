@@ -108,11 +108,12 @@ environment key is configured).
 Also still in the enhancer: field scanning/population, address management, payment, and
 order submission itself.
 
-**Blocked, needs a decision:** `OrderBuilder.buildOrder` and the enhancer's own
-`buildOrderData` are **two live implementations of the order payload** that disagree about
-the shipping-method fallback — see [code-findings.md](../../../docs/code-findings.md).
-Reconciling them is a money decision, not a refactor, and it should happen before anyone
-extracts either one.
+**One order payload, one builder.** The enhancer used to hand-assemble its own `CreateOrder`
+alongside `OrderBuilder`, and the two disagreed about the shipping-method fallback. Every
+path — normal submit, express, and the test order — now builds through
+[`builders/order-builder.ts`](./builders/order-builder.ts), so a cart produces the same
+`shipping_method` and the same `payment_detail` whichever route the shopper walked. Do not
+re-introduce a second assembler: a payload built anywhere else is a payload that drifts.
 
 ### Shared by the features above
 

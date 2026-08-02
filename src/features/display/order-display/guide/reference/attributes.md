@@ -44,7 +44,7 @@ Use them rather than assuming the values are there on first paint:
 <div data-next-display="order.errorMessage"></div>
 
 <p>Order <span data-next-display="order.number"></span> —
-   <span data-next-display="order.total_incl_tax"></span></p>
+   <span data-next-display="order.total"></span></p>
 ```
 
 For a per-line breakdown of what was bought, use the order item list feature

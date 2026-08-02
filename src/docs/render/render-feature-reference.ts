@@ -20,14 +20,17 @@ import { featureNav } from '../content/nav';
  * One `data-next-display` path, extracted from whichever part of the SDK answers
  * the namespace, so the published list cannot drift from what resolves.
  */
-export interface DisplayPath {
-  /** The name written after the namespace, e.g. `total` in `cart.total`. */
-  name: string;
-  /** The format applied with no `data-next-format`, or `auto`. */
-  format: string;
-  /** True when the mapping negates another value (`hasItems: '!isEmpty'`). */
-  negated: boolean;
-}
+/**
+ * One path a display namespace answers.
+ *
+ * Re-exported from the extractor rather than declared again here: this file used to
+ * carry a second copy without the `path` field, so a caller that imported the type
+ * from the renderer could not read where a routing entry sends a name — the two
+ * copies had already drifted by one field.
+ */
+import type { DisplayPath } from '@/docs/extract/extract-display-paths';
+
+export type { DisplayPath };
 
 /**
  * The paths one namespace resolves, and where they were read from.
@@ -41,11 +44,21 @@ export interface DisplayPath {
 export interface DisplayPathSource {
   paths: DisplayPath[];
   /**
-   * The symbol the list came from, when an enhancer resolves the namespace itself —
-   * `bundle-selector.display.ts › BundleDisplayEnhancer.getPropertyValue`. Omitted
-   * for the namespaces that route through `PROPERTY_MAPPINGS`.
+   * The symbol the list came from —
+   * `bundle-selector.display.ts › BundleDisplayEnhancer.getPropertyValue`.
    */
   where?: string;
+  /**
+   * Routing-table entries nothing resolves, each with what to write instead. Renders
+   * as its own section: the names are already on live pages, so a reader who has one
+   * needs to be told it does nothing, not to find it silently missing.
+   */
+  unanswered?: Array<{ name: string; routedTo: string; instead: string }>;
+  /**
+   * Where the routing table that declares {@link unanswered} lives, for the section
+   * that tells a reader why a name they can find in the source is not on this page.
+   */
+  claimedIn?: string;
 }
 
 /**
@@ -211,11 +224,16 @@ const PATHS_TABLE_HEAD = ['| Path | Format | Notes |', '|---|---|---|'];
  * reference: a hand-written page keeps its prose and still gets a complete,
  * always-current path inventory beside it.
  *
- * The **list** comes from `source`, which the caller read out of the SDK. The
- * **prose** — the prefix grammar, what each value means, the cautions — comes from
- * `manifest.displayPaths`, because none of it is derivable and all of it is why the
- * page is worth opening. A namespace with no prose still gets its table, which is
- * what the routing-table namespaces publish today.
+ * The **list** comes from `source`, which the caller read out of the code that
+ * resolves the namespace. The **prose** — the prefix grammar, what each value means,
+ * the cautions — comes from `manifest.displayPaths`, because none of it is derivable
+ * and all of it is why the page is worth opening. A namespace with no prose still
+ * gets its table, which is what the routed namespaces publish today.
+ *
+ * A routed namespace also gets a second table: the names its routing table declares
+ * that nothing resolves. Those are not silently dropped, because a reader arriving
+ * with `cart.hasItems` in their markup needs to be told it renders nothing and what
+ * to write instead — the page missing it is what let it sit there for months.
  */
 export function renderDisplayPaths(
   manifest: FeatureManifest,
@@ -254,31 +272,51 @@ export function renderDisplayPaths(
     );
   }
 
-  const provenance = source.where
-    ? `Generated from \`${source.where}\` — the method that resolves these paths — ` +
-      'so a name missing here is one the namespace does not answer, whatever else ' +
-      'in the feature accepts it.'
-    : "Generated from the SDK's own routing table, so this list matches the " +
-      'shipped code rather than a transcription of it.';
+  const provenance =
+    `Generated from \`${source.where}\` — the method that resolves these paths — ` +
+    'so a name missing here is one the namespace does not answer, whatever else ' +
+    'in the feature accepts it.';
+
+  const unanswered = source.unanswered?.length
+    ? blocks(
+        '## Declared but not answered',
+        `\`${source.claimedIn ?? 'The routing table'}\` also lists these under ` +
+          `\`${namespace}\`, and \`${source.where}\` has no answer for any of them. ` +
+          'Writing one renders nothing — or, where the routing entry declares a ' +
+          'fallback value, renders that fallback, which reads as though it worked.',
+        [
+          '| Path | Routed to | Write instead |',
+          '|---|---|---|',
+          ...source.unanswered.map(u => {
+            // An entry that routes a name to itself says nothing extra; showing it
+            // reads as though the name were routed somewhere.
+            const routed = u.routedTo === u.name ? '—' : `\`${u.routedTo}\``;
+            return `| \`${prefix}.${u.name}\` | ${routed} | ${u.instead} |`;
+          }),
+        ].join('\n')
+      )
+    : undefined;
 
   return `${blocks(
     pageHeader(
       manifest,
       'Display Paths',
-      source.where
-        ? '<!-- Generated from the enhancer that resolves this namespace, plus the\n' +
-          '     feature manifest. Do not edit by hand: change getPropertyValue or\n' +
-          '     <feature>.manifest.ts, then run `npm run docs:reference`. -->'
-        : GENERATED
+      '<!-- Generated from the enhancer that resolves this namespace, plus the\n' +
+        '     feature manifest. Do not edit by hand: change getPropertyValue or\n' +
+        '     <feature>.manifest.ts, then run `npm run docs:reference`. -->'
     ),
     `Every value the \`${namespace}.\` namespace can show. Write it as ` +
       `\`data-next-display="${prefix}.{path}"\`${doc?.intro ? `, ${doc.intro}` : '.'}`,
     doc?.example ? `\`\`\`html\n${doc.example.trim()}\n\`\`\`` : undefined,
     'The Format column is what you get with no `data-next-format`; set that ' +
-      'attribute to override it. Formatting and hiding modifiers are the same for ' +
-      'every namespace — see ' +
+      'attribute to override it. `auto` means nothing declares a format for the ' +
+      'path, so the SDK picks one from the property name in ' +
+      '`core/base/base-display-enhancer.ts › BaseDisplayEnhancer.getDefaultFormatType`' +
+      ' — it is not a promise of unformatted output. Formatting and hiding modifiers ' +
+      'are the same for every namespace — see ' +
       '[display-core](../../../../display/display-core/guide/reference/attributes.md).',
     ...tables,
+    unanswered,
     doc?.footer,
     doc?.cautions?.length
       ? blocks('## Cautions', doc.cautions.map(c => `- ${c}`).join('\n'))

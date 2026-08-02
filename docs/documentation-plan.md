@@ -715,13 +715,26 @@ attribute to carry a description.
   omitted are the ones inside the rendered row — exactly the surface an integrator
   customising a cart row touches.
 
-### Display paths are generated from the routing table (160 of them)
+### Display paths are generated from the code that resolves them (~200 of them)
 
-`PROPERTY_MAPPINGS` in `display/display-types.ts` is the SDK's own routing table
-for `data-next-display`, so it is the only honest answer to "what can I put in
-this attribute?". `extract-display-paths.ts` reads it through the TypeScript AST
-and the generator emits a **`reference/display-paths.md`** per namespace — 160
-paths, each with the format it renders as by default.
+`extract-display-paths.ts` reads, through the TypeScript AST, the enhancer that
+answers each namespace — its `getPropertyValue` and whatever that hands the path on
+to — and the generator emits a **`reference/display-paths.md`** per namespace, each
+path with the format it renders as by default.
+
+> **Corrected 2026-08-02.** This originally read *"generated from the routing
+> table"*, and called `PROPERTY_MAPPINGS` "the only honest answer to what can I put
+> in this attribute". It is not an answer at all: a routing entry supplies a format,
+> a validator and a fallback value, and nothing in it makes a path resolve. Rendering
+> it as the answer published ten `cart.` paths that render nothing while hiding six
+> that work — finding 127, the third time the same hole produced a wrong page and the
+> first on a generated one. The table is now a **claim** the generator checks against
+> the resolver: a name it declares that nothing answers is published in a "declared
+> but not answered" table with what to write instead, and the set is gated both ways
+> in `featureReference.test.ts`. Where a resolver ends in
+> `PropertyResolver.getNestedProperty(data, path)`, the manifest names the declared
+> type that read lands on and `type-shape.ts` proves the field exists — so the
+> fifteen `package.` paths with no branch behind them are proved rather than assumed.
 
 Kept as its own page rather than a section inside `attributes.md`, so it works in
 both modes: a hand-written page keeps its prose and still gets a complete,
@@ -729,8 +742,10 @@ always-current path inventory beside it.
 
 **This closed the worst gap found so far.** The `cart.*` namespace — the most-used
 in the SDK — had **3 of its 22 paths documented**. `subtotal`, `itemCount`,
-`totalDiscount`, `hasCoupons`, `discountCode` and 14 more existed only in the
-source. All 22 are now listed.
+`totalDiscount` and more existed only in the source. (Two of the names once listed
+here as fixes, `hasCoupons` and `discountCode`, turned out to resolve to nothing —
+see the correction above. The namespace answers 18 paths, and the page now names all
+18 plus the 10 dead ones it used to publish as working.)
 
 `display-paths` was added to the site generator's reference ordering so the page
 appears in the nav.

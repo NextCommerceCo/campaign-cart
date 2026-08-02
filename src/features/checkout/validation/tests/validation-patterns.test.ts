@@ -62,45 +62,45 @@ describe('isValidName', () => {
     expect(isValidName('   ')).toBe(false);
   });
 
-  /**
-   * DEFECT (left as found) — `NAME` is `[A-Za-zÀ-ÿ]`, which is Latin-1 only, while the
-   * city check next door uses `\p{L}` and accepts every script. So a shopper whose name
-   * is written in Japanese, Cyrillic, Greek, Arabic, Thai or Chinese cannot get past the
-   * first name field: they are told "Name can only contain letters, spaces, hyphens, and
-   * apostrophes" about a name made entirely of letters.
-   *
-   * This blocks the sale outright — the same shopper may type their *city* in the same
-   * script and it passes.
-   */
-  it('DEFECT: rejects every non-Latin script, while the city check accepts them', () => {
-    expect(isValidName('田中')).toBe(false);
-    expect(isValidName('Владимир')).toBe(false);
-    expect(isValidName('Γεώργιος')).toBe(false);
+  // Finding 130 — NAME used to be [A-Za-zÀ-ÿ], Latin-1 only, while the city check next
+  // door already used \p{L} and accepted every script. A shopper whose name is written
+  // in Japanese, Cyrillic, Greek, Thai or Chinese could not get past the first name
+  // field, while the same shopper's city in the same script passed on the same form.
+  it('accepts names written in any script, matching the city check', () => {
+    expect(isValidName('田中')).toBe(true);
+    expect(isValidName('Владимир')).toBe(true);
+    expect(isValidName('Γεώργιος')).toBe(true);
+    expect(isValidName('สมชาย')).toBe(true);
 
     expect(isValidCity('東京')).toBe(true);
     expect(isValidCity('Москва')).toBe(true);
   });
 
-  /**
-   * DEFECT (left as found) — the range `À-ÿ` is a *code-point* range, and U+00D7 (×) and
-   * U+00F7 (÷) sit inside it. Both are maths symbols, not letters, so a name containing
-   * one passes a check whose whole purpose is to reject non-letters.
-   *
-   * Harmless to the shopper; it means the rule is looser than its own error message.
-   */
-  it('DEFECT: the Latin-1 range lets the multiplication and division signs through', () => {
-    expect(isValidName('A×B')).toBe(true);
-    expect(isValidName('A÷B')).toBe(true);
+  // \p{L} is a proper Unicode letter class, unlike the old À-ÿ code-point range, so it
+  // no longer lets U+00D7 (×) and U+00F7 (÷) — maths symbols, not letters — through.
+  it('rejects the multiplication and division signs the old Latin-1 range let through', () => {
+    expect(isValidName('A×B')).toBe(false);
+    expect(isValidName('A÷B')).toBe(false);
   });
 
-  /**
-   * DEFECT (left as found) — the separator class is `[' -]` with a **straight**
-   * apostrophe. iOS, macOS and Word all convert a typed `'` to the curly U+2019, so
-   * "O’Brien" as actually typed on an iPhone is rejected.
-   */
-  it('DEFECT: rejects the curly apostrophe every phone keyboard produces', () => {
+  // Finding 130 — the separator class held only the straight apostrophe (U+0027).
+  // iOS, macOS and Word all autocorrect a typed `'` to the curly U+2019, so
+  // "O'Brien" as actually typed on an iPhone was rejected with nothing on screen
+  // explaining why.
+  it('accepts both the straight and the curly apostrophe', () => {
     expect(isValidName("O'Brien")).toBe(true); // U+0027
-    expect(isValidName('O’Brien')).toBe(false); // U+2019, what an iPhone types
+    expect(isValidName('O’Brien')).toBe(true); // U+2019, what an iPhone types
+  });
+
+  it('still rejects a leading, trailing, or doubled separator', () => {
+    expect(isValidName('-Paris')).toBe(false);
+    expect(isValidName('Paris-')).toBe(false);
+    expect(isValidName('Anne--Marie')).toBe(false);
+  });
+
+  it('still rejects markup and digits mixed into an otherwise valid name', () => {
+    expect(isValidName('<script>')).toBe(false);
+    expect(isValidName('John3')).toBe(false);
   });
 });
 
@@ -119,22 +119,14 @@ describe('isValidCity', () => {
     expect(isValidCity('')).toBe(false);
   });
 
-  /**
-   * DEFECT (left as found) — the `CITY` character class is `[\p{L}\s.''-]`, in which the
-   * two apostrophes are **both** U+0027; the curly U+2019 is not in the class at all. The
-   * comment above the pattern says it allows "apostrophes (both straight and curly)" and
-   * lists `"St. John's"` and `"O'Fallon"` as working examples, so the code and its own
-   * documentation disagree.
-   *
-   * A shopper on an iPhone typing "St. John's" — where the keyboard produces U+2019 — is
-   * told "Please enter a valid city name" and cannot complete the order without knowing to
-   * retype the apostrophe.
-   */
-  it('DEFECT: the curly apostrophe the comment claims to allow is not in the pattern', () => {
+  // Finding 130 — the CITY class held U+0027 twice and no U+2019, despite the comment
+  // above the pattern claiming it handled "both straight and curly" and citing
+  // "St. John's" as a worked example. Now the class actually contains U+2019.
+  it('accepts the curly apostrophe the comment always claimed to allow', () => {
     const cityClass = VALIDATION_PATTERNS.CITY.source;
-    expect(cityClass).not.toContain('’');
+    expect(cityClass).toContain('’');
 
     expect(isValidCity("St. John's")).toBe(true); // U+0027
-    expect(isValidCity('St. John’s')).toBe(false); // U+2019, what an iPhone types
+    expect(isValidCity('St. John’s')).toBe(true); // U+2019, what an iPhone types
   });
 });

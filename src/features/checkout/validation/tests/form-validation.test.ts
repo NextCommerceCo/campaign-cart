@@ -177,23 +177,35 @@ describe('validateForm', () => {
   });
 
   /**
-   * DEFECT (left as found) — every card check sits inside `if (ctx.creditCardService)`,
-   * with no `else`. When the service was never installed — the Spreedly environment key is
-   * missing or arrived late, so `CheckoutFormEnhancer` never called
-   * `setCreditCardService` — `includePayment: true` runs *zero* card checks and the form
-   * is pronounced valid.
+   * Finding 132 (fixed) — every card check sat inside `if (ctx.creditCardService)`, with no
+   * `else`. When the service was never installed — the Spreedly environment key is missing
+   * or arrived late, so `CheckoutFormEnhancer` never called `setCreditCardService` —
+   * `includePayment: true` used to run *zero* card checks and the form was pronounced
+   * valid: a "valid" verdict reached by falling through rather than by passing, unable to
+   * tell "the card is fine" from "nobody looked".
    *
-   * This is a "valid" verdict reached by falling through rather than by passing: the code
-   * cannot tell "the card is fine" from "nobody looked".
-   *
-   * What the shopper sees: they press pay with the card fields empty, validation passes,
-   * and the failure surfaces later as a tokenization or gateway error with no field marked
-   * — or, worse, an order attempt with no card at all.
+   * Now a missing service is reported as invalid, under `errors.general` rather than a
+   * card field name — see the `else` branch in `form-validation.ts` for why.
    */
-  it('DEFECT: with no card service the card is not checked and the form passes', async () => {
+  it('reports invalid when no card service is installed, instead of passing unchecked', async () => {
     const result = await validateForm(
       createContext(),
       { ...completeForm(), 'exp-month': '', 'exp-year': '' },
+      configs,
+      undefined,
+      true // includePayment
+    );
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors.general).toBe(
+      'Payment cannot be validated right now because the payment system is not ready. Please wait a moment and try again.'
+    );
+  });
+
+  it('does not block a non-card payment method when no card service is installed', async () => {
+    const result = await validateForm(
+      createContext(),
+      { ...completeForm(), paymentMethod: 'paypal' },
       configs,
       undefined,
       true // includePayment
@@ -203,16 +215,18 @@ describe('validateForm', () => {
   });
 
   /**
-   * DEFECT (left as found) — `!sameAsShipping && billingAddress`. A shopper who ticked
-   * "use a different billing address" but whose billing fields have not reached the store
-   * yet (nothing typed, or the clone not populated) has `billingAddress` falsy, so the
-   * whole billing block is skipped and the form passes.
+   * The guard used to be `!sameAsShipping && billingAddress`, so a shopper who ticked "use
+   * a different billing address" but whose billing fields had not reached the store yet
+   * (nothing typed, or an all-empty address dropped by the store's `partialize` on
+   * reload) skipped the whole billing block and passed.
    *
-   * What the shopper sees: the order is submitted with a billing address that is empty or
-   * stale — the shipping one — despite them having asked for a different one. Address
-   * Verification at the gateway is what catches it, as a declined payment.
+   * It is now guarded on the shopper's choice alone: no captured address means every
+   * required billing field is missing, which is what it is. Changed as part of finding
+   * 131 — step 3 of a multi-step checkout now passes the real pair in, and a "valid"
+   * verdict there becomes an order that declares a separate billing address and carries
+   * none, declined at the gateway during Address Verification.
    */
-  it('DEFECT: a different-billing-address form with no captured address is judged valid', async () => {
+  it('rejects a different-billing-address form with no captured address', async () => {
     const result = await validateForm(
       createContext(),
       completeForm(),
@@ -223,7 +237,13 @@ describe('validateForm', () => {
       false // …but the shopper asked for a separate billing address
     );
 
-    expect(result.isValid).toBe(true);
+    expect(result.isValid).toBe(false);
+    expect(result.errors['billing-fname']).toBe(
+      'Billing first name is required'
+    );
+    expect(result.errors['billing-country']).toBe(
+      'Billing country is required'
+    );
   });
 
   /**

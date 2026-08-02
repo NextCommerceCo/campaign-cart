@@ -65,12 +65,15 @@ checkout always sends the shopper back through the hosted card fields.
   each submit, so anything present is from the current attempt.
 - **`sameAsShipping` overrides `billingAddress`.** When it is true the order is
   built with no billing block at all, even if a billing address is filled in.
-- **Shipping falls back in three steps** when the order is built: this store's
-  `shippingMethod`, then the cart store's, then shipping method id `1`.
+- **Shipping falls back in four steps** when the order is built: the cart store's
+  `shippingMethod`, then this store's, then the campaign's first
+  `shipping_methods` entry, then shipping method id `1`. Every order path —
+  normal submit, express, and test order — walks that same ladder, because they
+  all build through `OrderBuilder`.
 - **`paymentMethod` is a UI-side vocabulary that is mapped at submit.** The order
   builder translates it through `API_PAYMENT_METHOD_MAP` and falls back to
-  `card_token` for anything unmapped — which is what happens to `klarna`, since
-  it has no entry in that map.
+  `card_token` for anything unmapped. Every method the store can hold is mapped,
+  `klarna` included.
 - **Express choices do not outlive the page.** `apple_pay`, `google_pay`, and
   `paypal` are written to storage as `credit-card`, because the express session
   they belong to is gone after a load.

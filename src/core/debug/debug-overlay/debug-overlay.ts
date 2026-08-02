@@ -1,18 +1,18 @@
 /**
  * Debug Overlay - Main controller for debug utilities
- * 
+ *
  * Provides a comprehensive debugging interface when ?debug=true is present
  * in the URL. Features cart state inspection, store monitoring, and more.
  */
 
-import { Logger } from '../logger';
-import { DebugEventManager } from './debug-event-manager';
-import { EnhancedDebugUI } from './enhanced-debug-ui';
+import { Logger } from '../../logger';
+import { DebugEventManager } from '../debug-event-manager';
+import { EnhancedDebugUI } from '../enhanced-debug-ui';
 import { useCartStore, cartOperations } from '@/state/cart';
 import { useConfigStore } from '@/state/config';
-import { XrayManager } from './xray-styles';
-import { selectorContainer } from './selector-container';
-import { upsellSelector } from './upsell-selector';
+import { XrayManager } from '../xray-styles';
+import { selectorContainer } from '../selector-container';
+import { upsellSelector } from '../upsell-selector';
 import { formatCurrency } from '@/core/currency-formatter';
 import { analyticsDebug } from '@/core/analytics/debug/analytics-debug-tracker';
 import {
@@ -26,20 +26,13 @@ import {
   EnhancedCampaignPanel,
   DebugPanel,
   RawDataHelper
-} from './panels';
-
-/** The cart store's state, as the mini-cart reads it. */
-type CartStoreState = ReturnType<typeof useCartStore.getState>;
-
-/** One line in the cart, as the mini-cart renders it. */
-type MiniCartItem = CartStoreState['items'][number];
-
-/** A discount that applies to the cart as a whole rather than to one line. */
-interface CartLevelDiscount {
-  type: 'offer' | 'voucher';
-  label: string;
-  amount: number;
-}
+} from '../panels';
+import type { MiniCartHost } from './debug-overlay.types';
+import {
+  closeMiniCart as closeMiniCartImpl,
+  toggleMiniCart as toggleMiniCartImpl,
+  updateMiniCart as updateMiniCartImpl,
+} from './debug-overlay.mini-cart';
 
 export class DebugOverlay {
   private static instance: DebugOverlay;
@@ -281,7 +274,7 @@ export class DebugOverlay {
     if (!this.shadowRoot) return;
 
     // Load debug styles
-    const { DebugStyleLoader } = await import('./debug-style-loader');
+    const { DebugStyleLoader } = await import('../debug-style-loader');
     const styles = await DebugStyleLoader.getDebugStyles();
 
     // Create style element in shadow DOM
@@ -301,11 +294,11 @@ export class DebugOverlay {
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
       }
-      
+
       * {
         box-sizing: border-box;
       }
-      
+
       /* Ensure debug overlay is always on top */
       .debug-overlay {
         position: fixed;
@@ -413,7 +406,7 @@ export class DebugOverlay {
 
   /** One of the `data-action` buttons in the overlay chrome was clicked. */
   private handleDebugAction(action: string): void {
-    console.log('[Debug] Action clicked:', action);
+    this.logger.debug('[Debug] Action clicked:', action);
     switch (action) {
       case 'toggle-expand':
         this.isExpanded = !this.isExpanded;
@@ -464,7 +457,7 @@ export class DebugOverlay {
     const panelTab = target.closest('.debug-panel-tab') as HTMLElement;
     if (panelTab) {
       const panelId = panelTab.getAttribute('data-panel');
-      console.log('[Debug] Panel switch:', this.activePanel, '->', panelId);
+      this.logger.debug('[Debug] Panel switch:', this.activePanel, '->', panelId);
       if (panelId && panelId !== this.activePanel) {
         this.activePanel = panelId;
         this.activePanelTab = undefined; // Reset horizontal tab when switching panels
@@ -482,7 +475,7 @@ export class DebugOverlay {
     const horizontalTab = target.closest('.horizontal-tab') as HTMLElement;
     if (horizontalTab) {
       const tabId = horizontalTab.getAttribute('data-panel-tab');
-      console.log('[Debug] Horizontal tab switch:', this.activePanelTab, '->', tabId, 'in panel:', this.activePanel);
+      this.logger.debug('[Debug] Horizontal tab switch:', this.activePanelTab, '->', tabId, 'in panel:', this.activePanel);
       if (tabId && tabId !== this.activePanelTab) {
         this.activePanelTab = tabId;
 
@@ -647,521 +640,21 @@ export class DebugOverlay {
     URL.revokeObjectURL(url);
   }
 
-  private closeMiniCart(): void {
-    if (!this.shadowRoot) return;
-    const miniCart = this.shadowRoot.querySelector('#debug-mini-cart-display') as HTMLDivElement;
-    if (miniCart) {
-      miniCart.classList.remove('show');
-      localStorage.setItem('debug-mini-cart-visible', 'false');
+  /** The mini-cart's view of this overlay: just the shadow root it renders into. */
+  private miniCartHost(): MiniCartHost {
+    return { shadowRoot: this.shadowRoot };
+  }
 
-      // Update button state
-      const cartButton = this.shadowRoot.querySelector('[data-action="toggle-mini-cart"]');
-      if (cartButton) {
-        cartButton.classList.remove('active');
-        cartButton.setAttribute('title', 'Toggle Mini Cart');
-      }
-    }
+  private closeMiniCart(): void {
+    closeMiniCartImpl(this.miniCartHost());
   }
 
   private toggleMiniCart(forceShow?: boolean): void {
-    if (!this.shadowRoot) return;
-
-    let miniCart = this.shadowRoot.querySelector('#debug-mini-cart-display') as HTMLDivElement;
-
-    if (!miniCart) {
-      // Create mini cart if it doesn't exist
-      miniCart = document.createElement('div');
-      miniCart.id = 'debug-mini-cart-display';
-      miniCart.className = 'debug-mini-cart-display';
-      this.shadowRoot.appendChild(miniCart);
-
-      // Subscribe to cart changes for real-time updates
-      useCartStore.subscribe(() => {
-        const cart = this.shadowRoot?.querySelector('#debug-mini-cart-display');
-        if (cart && cart.classList.contains('show')) {
-          this.updateMiniCart();
-        }
-      });
-
-      // When creating for the first time via button click (not auto-restore), show it
-      if (forceShow !== false) {
-        miniCart.classList.add('show');
-        this.updateMiniCart();
-      }
-    } else {
-      // Toggle visibility
-      miniCart.classList.toggle('show');
-
-      // Update content if showing
-      if (miniCart.classList.contains('show')) {
-        this.updateMiniCart();
-      }
-    }
-
-    // Save state to localStorage
-    localStorage.setItem('debug-mini-cart-visible', miniCart.classList.contains('show').toString());
-
-    // Update cart button state - use shadowRoot!
-    const cartButton = this.shadowRoot?.querySelector('[data-action="toggle-mini-cart"]');
-    if (cartButton && miniCart) {
-      if (miniCart.classList.contains('show')) {
-        cartButton.classList.add('active');
-        cartButton.setAttribute('title', 'Hide Mini Cart');
-      } else {
-        cartButton.classList.remove('active');
-        cartButton.setAttribute('title', 'Toggle Mini Cart');
-      }
-    }
+    toggleMiniCartImpl(this.miniCartHost(), forceShow);
   }
 
   private updateMiniCart(): void {
-    if (!this.shadowRoot) return;
-    const miniCart = this.shadowRoot.querySelector('#debug-mini-cart-display') as HTMLDivElement;
-    if (!miniCart || !miniCart.classList.contains('show')) return;
-
-    const cartState = useCartStore.getState();
-
-    if (!cartState.items || cartState.items.length === 0) {
-      miniCart.innerHTML = this.renderMiniCartEmpty();
-      return;
-    }
-
-    const { itemsHtml, subtotalBeforeDiscounts } = this.renderMiniCartItems(
-      cartState.items
-    );
-
-    // Build totals breakdown - use calculated subtotal before discounts
-    const totalDiscount = cartState.totalDiscount.toNumber();
-    const shipping = cartState.shippingMethod?.price.toNumber() ?? 0;
-    const shippingDiscount = cartState.shippingMethod?.discountAmount.toNumber() ?? 0;
-    // If there's a shipping discount, the API returns net shipping, so we need to show original shipping
-    const displayShipping = shippingDiscount > 0 ? shipping + shippingDiscount : shipping;
-    const shippingLabel = displayShipping === 0 ? 'FREE' : formatCurrency(displayShipping);
-    const total = cartState.total.toNumber();
-
-    const { hasCartLevelDiscounts, cartLevelDiscountList } =
-      this.collectCartLevelDiscounts(cartState, totalDiscount);
-
-    console.log(cartLevelDiscountList)
-
-    // Build cart-level discount popup (similar to item discount popup)
-    const cartDiscountPopup = this.renderCartDiscountPopup(
-      hasCartLevelDiscounts,
-      cartLevelDiscountList
-    );
-
-    // Build shipping row with savings (inline format)
-    const shippingRow = this.renderShippingRow(
-      shipping,
-      displayShipping,
-      shippingLabel,
-      shippingDiscount
-    );
-
-    miniCart.innerHTML = `
-      <div class="debug-mini-cart-header">
-        <span>🛒 Debug Cart</span>
-        <button class="mini-cart-close" data-action="close-mini-cart">×</button>
-      </div>
-      <div class="debug-mini-cart-items">${itemsHtml}</div>
-      <div class="debug-mini-cart-totals${hasCartLevelDiscounts ? ' has-cart-discounts' : ''}">
-        ${cartDiscountPopup}
-        <div class="mini-cart-total-row">
-          <span>Subtotal:</span>
-          <span>${formatCurrency(subtotalBeforeDiscounts)}</span>
-        </div>
-        ${shippingRow}
-        <div class="mini-cart-total-row mini-cart-final-total">
-          <span>Total:</span>
-          <span class="mini-cart-total">${formatCurrency(total)}</span>
-        </div>
-      </div>
-      <div class="debug-mini-cart-footer">
-        <div class="mini-cart-stat">
-          <span>Items:</span>
-          <span>${cartState.totalQuantity}</span>
-        </div>
-      </div>
-      <div class="debug-mini-cart-resize-handle" title="Drag to resize"></div>
-    `;
-
-    this.bindResizeHandle(miniCart);
-  }
-
-  /** The mini-cart body when the cart has no lines. */
-  private renderMiniCartEmpty(): string {
-    return `
-        <div class="debug-mini-cart-header">
-          <span>🛒 Debug Cart</span>
-          <button class="mini-cart-close" data-action="close-mini-cart">×</button>
-        </div>
-        <div class="debug-mini-cart-empty">Cart empty</div>
-      `;
-  }
-
-  /** Every cart line, plus the subtotal accumulated from their line totals. */
-  private renderMiniCartItems(items: MiniCartItem[]): {
-    itemsHtml: string;
-    subtotalBeforeDiscounts: number;
-  } {
-    let itemsHtml = '';
-    let subtotalBeforeDiscounts = 0;
-
-    items.forEach(item => {
-      const { html, lineTotal } = this.renderMiniCartItem(item);
-      itemsHtml += html;
-      // Add CURRENT (discounted) price to running subtotal for clarity
-      subtotalBeforeDiscounts += lineTotal;
-    });
-
-    return { itemsHtml, subtotalBeforeDiscounts };
-  }
-
-  /** One cart line: its pricing maths, its hover card, and its markup. */
-  private renderMiniCartItem(item: MiniCartItem): {
-    html: string;
-    lineTotal: number;
-  } {
-    // Check for upsell flag
-    const isUpsell = item.is_upsell;
-    const upsellBadge = isUpsell ? '<span class="mini-cart-upsell-badge">UPSELL</span>' : '';
-
-    // Calculate pricing
-    const packagePriceExcl = item.original_package_price ? parseFloat(item.original_package_price) : 0;
-    const packagePriceIncl = item.package_price ? parseFloat(item.package_price) : item.price;
-
-    // Check if item has a discount applied (comparing package prices)
-    const itemHasDiscount = packagePriceExcl > 0 && packagePriceIncl < packagePriceExcl;
-
-    // For display: use the DISCOUNTED price (incl) as the current price
-    const currentUnitPrice = packagePriceIncl;
-    const originalUnitPrice = packagePriceExcl > 0 ? packagePriceExcl : packagePriceIncl;
-
-    // Line totals
-    const currentLineTotal = currentUnitPrice * item.quantity;
-    const originalLineTotal = originalUnitPrice * item.quantity;
-
-    // Build savings text (show total savings on this line)
-    const itemLineSavings = itemHasDiscount ? originalLineTotal - currentLineTotal : 0;
-    const savingsPercent = itemHasDiscount ? Math.round(((originalUnitPrice - currentUnitPrice) / originalUnitPrice) * 100) : 0;
-
-    const discountDetailsCard = this.renderItemDiscountCard(
-      item,
-      itemHasDiscount,
-      savingsPercent
-    );
-
-    // Build pricing display
-    let pricingHtml = '';
-    if (itemHasDiscount) {
-      pricingHtml = `
-        <div class="mini-cart-price-details">
-          <span class="mini-cart-original-price">${formatCurrency(originalUnitPrice)} each</span>
-          <span class="mini-cart-unit-price">${formatCurrency(currentUnitPrice)} each</span>
-        </div>
-        <div class="mini-cart-line-total">${formatCurrency(currentLineTotal)}</div>
-      `;
-    } else {
-      pricingHtml = `
-        <span class="mini-cart-unit-price">${formatCurrency(currentUnitPrice)} each</span>
-        <div class="mini-cart-line-total">${formatCurrency(currentLineTotal)}</div>
-      `;
-    }
-
-    const html = `
-        <div class="debug-mini-cart-item${itemHasDiscount ? ' has-discount' : ''}">
-          ${discountDetailsCard}
-          <div class="mini-cart-item-header">
-            <div class="mini-cart-item-title-row">
-              <div class="mini-cart-item-title">${item.title || 'Unknown'}</div>
-              <div class="mini-cart-line-total">${formatCurrency(currentLineTotal)}</div>
-            </div>
-            <div class="mini-cart-item-meta">
-              <span class="mini-cart-item-id">ID: ${item.packageId}</span>
-              ${upsellBadge}
-            </div>
-          </div>
-          ${itemHasDiscount ? `
-            <div class="mini-cart-item-price-breakdown">
-              <div class="mini-cart-price-row">
-                <span class="mini-cart-price-label">Was</span>
-                <span class="mini-cart-original-price">${formatCurrency(originalUnitPrice)} each</span>
-              </div>
-              <div class="mini-cart-price-row mini-cart-sale-row">
-                <span class="mini-cart-price-label">Now</span>
-                <span class="mini-cart-unit-price">${formatCurrency(currentUnitPrice)} each × ${item.quantity}</span>
-              </div>
-              <div class="mini-cart-price-row mini-cart-savings-row">
-                <span class="mini-cart-price-label">You save</span>
-                <span class="mini-cart-savings-amount">${formatCurrency(itemLineSavings)} (${savingsPercent}% off)</span>
-              </div>
-            </div>
-          ` : `
-            <div class="mini-cart-item-price-breakdown">
-              <div class="mini-cart-price-row">
-                <span class="mini-cart-unit-price">${formatCurrency(currentUnitPrice)} each × ${item.quantity}</span>
-              </div>
-            </div>
-          `}
-        </div>
-      `;
-
-    return { html, lineTotal: currentLineTotal };
-  }
-
-  /** The hover card listing a line's discounts and properties. */
-  private renderItemDiscountCard(
-    item: MiniCartItem,
-    itemHasDiscount: boolean,
-    savingsPercent: number
-  ): string {
-      // Build discount details hover card
-      let discountDetailsCard = '';
-
-      // Collect discount information from various sources
-      const discountList: string[] = [];
-
-      // Check for item.discounts array
-      if (item.discounts && item.discounts.length > 0) {
-        item.discounts.forEach(d => {
-          const discountName = d.description || d.description || `Offer #${d.offer_id}`;
-          discountList.push(discountName + ' ' + d.amount);
-        });
-      }
-
-      const hasProperties = item.properties && Object.keys(item.properties).length > 0;
-      const propertiesHtml = hasProperties
-        ? `<ul class="discount-card-list">
-            ${Object.entries(item.properties!).map(([k, v]) => `
-            <li class="prop-card-item">
-              <span class="discount-card-bullet">•</span>
-              <span class="prop-card-body">
-                <span class="prop-card-key">${escapeHtml(k)}</span>
-                <span class="prop-card-value">${escapeHtml(v)}</span>
-              </span>
-            </li>`).join('')}
-          </ul>`
-        : '';
-
-      // Only show hover card if we have discount info, discount pricing, or properties
-      if (itemHasDiscount || (item.discounts && item.discounts.length > 0) || hasProperties) {
-        let discountItemsHtml = '';
-
-        if (item.discounts && item.discounts.length > 0) {
-          discountItemsHtml = item.discounts.map(d => `
-            <li class="discount-card-item">
-              <span class="discount-card-bullet">•</span>
-              <span style="display: flex; justify-content: space-between; width: 100%;">
-                <span class="discount-card-text">${d.description}</span>
-                <span class="discount-card-text" style="text-align: right;">${formatCurrency(parseFloat(d.amount))}</span>
-              </span>
-            </li>
-          `).join('');
-        } else if (itemHasDiscount) {
-          // Show a generic message if we detect discount but no details
-          discountItemsHtml = `
-            <li class="discount-card-item">
-              <span class="discount-card-bullet">•</span>
-              <span class="discount-card-text">Price discount applied (${savingsPercent}% off)</span>
-            </li>
-          `;
-        }
-
-        const discountSection = discountItemsHtml ? `
-          <div class="discount-card-header">
-            <span class="discount-card-icon">🎯</span>
-            <span class="discount-card-title">Applied Discounts</span>
-          </div>
-          <ul class="discount-card-list">${discountItemsHtml}</ul>
-        ` : '';
-
-        const propertiesSection = propertiesHtml ? `
-          <div class="discount-card-header${discountSection ? ' discount-card-header--separator' : ''}">
-            <span class="discount-card-icon">🏷️</span>
-            <span class="discount-card-title">Properties</span>
-          </div>
-          ${propertiesHtml}
-        ` : '';
-
-        discountDetailsCard = `
-          <div class="mini-cart-discount-details-card">
-            ${discountSection}
-            ${propertiesSection}
-          </div>
-        `;
-      }
-
-    return discountDetailsCard;
-  }
-
-  /** Cart-wide offers and vouchers, minus anything already shown on a line. */
-  private collectCartLevelDiscounts(
-    cartState: CartStoreState,
-    totalDiscount: number
-  ): {
-    hasCartLevelDiscounts: boolean;
-    cartLevelDiscountList: CartLevelDiscount[];
-  } {
-    // Collect all item-level discount offer_ids to avoid showing them twice
-    const itemLevelOfferIds = new Set<number>();
-    cartState.items.forEach(item => {
-      if (item.discounts) {
-        item.discounts.forEach(d => itemLevelOfferIds.add(d.offer_id));
-      }
-    });
-
-    // Build detailed discount breakdown for cart-level offers and vouchers
-    let hasCartLevelDiscounts = false;
-    let cartLevelDiscountList: Array<{ type: 'offer' | 'voucher'; label: string; amount: number }> = [];
-
-    if (cartState.offerDiscounts || cartState.voucherDiscounts) {
-      const offerDiscounts = cartState.offerDiscounts ?? [];
-      const voucherDiscounts = cartState.voucherDiscounts ?? [];
-
-      // Collect offer discounts ONLY if they're not already shown on line items
-      // Cart-wide offers that apply to multiple items or the cart total should appear here
-      if (offerDiscounts.length > 0) {
-        offerDiscounts.forEach(discount => {
-          const label = discount.name || discount.description || (discount.offer_id ? `Offer #${discount.offer_id}` : 'Offer');
-          const amount = parseFloat(discount.amount);
-          cartLevelDiscountList.push({ type: 'offer', label, amount });
-        });
-      }
-
-      // Collect voucher discounts (these are always cart-level)
-      if (voucherDiscounts.length > 0) {
-        hasCartLevelDiscounts = true;
-        voucherDiscounts.forEach(discount => {
-          const amount = parseFloat(discount.amount);
-          const label = discount.name || discount.description || 'Voucher';
-          cartLevelDiscountList.push({ type: 'voucher', label, amount });
-        });
-      }
-    } else if (totalDiscount > 0) {
-      // Fallback: show single discount row if no details available
-      hasCartLevelDiscounts = true;
-      cartLevelDiscountList.push({ type: 'offer', label: 'Discount', amount: totalDiscount });
-    }
-
-    return { hasCartLevelDiscounts, cartLevelDiscountList };
-  }
-
-  /** The hover card over the totals block, listing cart-level discounts. */
-  private renderCartDiscountPopup(
-    hasCartLevelDiscounts: boolean,
-    cartLevelDiscountList: CartLevelDiscount[]
-  ): string {
-    let cartDiscountPopup = '';
-    if (hasCartLevelDiscounts) {
-      const discountItemsHtml = cartLevelDiscountList.map(discount => `
-        <li class="discount-card-item">
-          <span class="discount-card-bullet">•</span>
-          <span style="display: flex; justify-content: space-between; width: 100%; gap: 8px;">
-            <span class="discount-card-text">
-              <span class="mini-cart-discount-type">${discount.type.toUpperCase()}</span> ${discount.label}
-            </span>
-            <span class="discount-card-text" style="text-align: right;">-${formatCurrency(discount.amount)}</span>
-          </span>
-        </li>
-      `).join('');
-
-      cartDiscountPopup = `
-        <div class="mini-cart-cart-discount-popup">
-          <div class="mini-cart-discount-details-card">
-            <div class="discount-card-header">
-              <span class="discount-card-icon">🎁</span>
-              <span class="discount-card-title">Discounts</span>
-            </div>
-            <ul class="discount-card-list">${discountItemsHtml}</ul>
-          </div>
-        </div>
-      `;
-    }
-
-    return cartDiscountPopup;
-  }
-
-  /** The shipping total row, with the pre-discount price struck through. */
-  private renderShippingRow(
-    shipping: number,
-    displayShipping: number,
-    shippingLabel: string,
-    shippingDiscount: number
-  ): string {
-    let shippingRow = '';
-    if (shippingDiscount > 0) {
-      // Show shipping with original price strikethrough and discounted price
-      shippingRow = `
-        <div class="mini-cart-total-row mini-cart-shipping-row has-discount">
-          <span>Shipping:</span>
-          <span class="mini-cart-shipping-prices">
-            <span class="mini-cart-original-price">${formatCurrency(displayShipping)}</span>
-            <span class="mini-cart-shipping">${formatCurrency(shipping)}</span>
-          </span>
-        </div>
-      `;
-    } else {
-      // Regular shipping row
-      shippingRow = `
-        <div class="mini-cart-total-row">
-          <span>Shipping:</span>
-          <span class="mini-cart-shipping">${shippingLabel}</span>
-        </div>
-      `;
-    }
-
-    return shippingRow;
-  }
-
-  private bindResizeHandle(miniCart: HTMLElement): void {
-    const handle = miniCart.querySelector(
-      '.debug-mini-cart-resize-handle'
-    ) as HTMLElement | null;
-    const items = miniCart.querySelector(
-      '.debug-mini-cart-items'
-    ) as HTMLElement | null;
-    if (!handle || !items) return;
-
-    const savedHeight = localStorage.getItem('debug-mini-cart-height');
-    if (savedHeight) {
-      items.style.maxHeight = `${savedHeight}px`;
-      items.style.height = `${savedHeight}px`;
-    }
-
-    const firstItem = items.querySelector(
-      '.debug-mini-cart-item'
-    ) as HTMLElement | null;
-    const minHeight = firstItem
-      ? firstItem.offsetHeight + parseInt(getComputedStyle(items).paddingTop) + parseInt(getComputedStyle(items).paddingBottom)
-      : 40;
-
-    let startY = 0;
-    let startHeight = 0;
-
-    const clamp = (h: number) => Math.max(minHeight, Math.min(600, h));
-
-    const onMouseMove = (e: MouseEvent) => {
-      const newHeight = clamp(startHeight + (e.clientY - startY));
-      items.style.maxHeight = `${newHeight}px`;
-      items.style.height = `${newHeight}px`;
-    };
-
-    const onMouseUp = (e: MouseEvent) => {
-      const newHeight = clamp(startHeight + (e.clientY - startY));
-      localStorage.setItem('debug-mini-cart-height', String(newHeight));
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      handle.classList.remove('dragging');
-    };
-
-    handle.addEventListener('mousedown', (e: MouseEvent) => {
-      e.preventDefault();
-      startY = e.clientY;
-      startHeight = items.offsetHeight;
-      handle.classList.add('dragging');
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp);
-    });
+    updateMiniCartImpl(this.miniCartHost());
   }
 
   private toggleXray(): void {
@@ -1228,15 +721,6 @@ export class DebugOverlay {
     if (cartTotalEl) cartTotalEl.textContent = formatCurrency(cartState.total.toNumber());
     if (enhancedElementsEl) enhancedElementsEl.textContent = document.querySelectorAll('[data-next-]').length.toString();
   }
-}
-
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 }
 
 // Global instance

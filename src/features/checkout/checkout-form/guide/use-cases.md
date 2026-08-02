@@ -47,17 +47,19 @@ parameters (currency, country, UTM values) are carried into the next URL, so the
 session survives the hop.
 
 ```html
-<form data-next-checkout
-      data-next-checkout-step="/checkout/shipping"
-      data-next-step-number="1">
-  <input data-next-checkout-field="email" type="email">
-  <input data-next-checkout-field="fname">
-  <input data-next-checkout-field="lname">
+<form
+  data-next-checkout
+  data-next-checkout-step="/checkout/shipping"
+  data-next-step-number="1"
+>
+  <input data-next-checkout-field="email" type="email" />
+  <input data-next-checkout-field="fname" />
+  <input data-next-checkout-field="lname" />
   <button data-next-checkout-submit>Continue to shipping</button>
 </form>
 ```
 
-**Watch out for:** Because the attribute value is a URL, giving it a step *name*
+**Watch out for:** Because the attribute value is a URL, giving it a step _name_
 (`data-next-checkout-step="contact"`) sends the visitor to a relative path called
 `contact` and they land on a 404 with a full cart. Set it to the real path of the
 next page. With `?debug=true` the console confirms the form read it, logging
@@ -81,10 +83,11 @@ rather than at the top of the page.
 
 ```html
 <label>
-  <input type="radio" name="payment" data-next-checkout-payment="credit"> Card
+  <input type="radio" name="payment" data-next-checkout-payment="credit" /> Card
 </label>
 <label>
-  <input type="radio" name="payment" data-next-checkout-payment="paypal"> PayPal
+  <input type="radio" name="payment" data-next-checkout-payment="paypal" />
+  PayPal
 </label>
 
 <div data-next-component="credit-error">
@@ -126,6 +129,29 @@ group is **cloned** from the shipping one and stamped
 second one leaves the page with two country/state/postcode groups, one of which
 never populates its state list. Write the shipping group only, inside
 `data-next-component="location"`, and let the clone happen.
+
+A billing address that was asked for is now validated wherever the visitor pays
+from — the single-page submit and step 3 of a multi-step checkout both check it,
+and both treat "asked for a separate address, entered nothing" as a set of
+missing fields rather than as a pass. On a multi-step checkout, put the billing
+section on the step whose `data-next-step-number` is `3`, so the visitor can
+answer the messages on the page that raises them.
+
+The answer belongs to the checkout, not to the page. It is kept in the checkout
+store and put back on `input[name="use_shipping_address"]` while the form boots,
+so a visitor who asked for a separate billing address on step 1 lands on step 3
+with the box already unticked and the section already open. Two consequences for
+your markup:
+
+- **Render the box ticked** — "billing is the shipping address" — and let the SDK
+  untick it. A box that starts unticked is read as the page's own answer and is
+  stored as "separate billing" for the rest of the checkout, because a stored
+  ticked answer cannot be told apart from a visitor who never touched it.
+- **A page with no box changes nothing.** The answer from the page that had one
+  still stands, which is what lets a payment-only step build the order with the
+  billing address collected earlier. It also means a step-3 page that drops the
+  box cannot clear a half-filled billing address — keep the box and the section
+  on that step.
 
 ---
 

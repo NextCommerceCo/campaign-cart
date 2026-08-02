@@ -42,6 +42,8 @@
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
     "type-check": "tsc --noEmit",
+    "type-check:tests": "node scripts/type-check-tests.mjs",
+    "type-check:tests:update": "UPDATE_TYPE_CHECK_BASELINE=1 node scripts/type-check-tests.mjs",
     "validate:display": "ts-node scripts/validate-display-config.ts",
     "docs": "typedoc",
     "docs:serve": "node scripts/docs-serve.mjs --watch",

@@ -28,6 +28,7 @@ interface BootSteps {
   initialize(): Promise<void>;
   bindFormElement(): void;
   cloneBillingFormFromShipping(): void;
+  restoreBillingChoice(): void;
   setupPhoneValidation(): void;
   subscribeToStores(): void;
   setupDebugEventListeners(): void;
@@ -537,6 +538,7 @@ describe('initialize', () => {
     'initializeValidator',
     'scanAllFields',
     'cloneBillingFormFromShipping',
+    'restoreBillingChoice',
     'initializeUIService',
     'initializeCreditCard',
     'initializeAddressManagement',

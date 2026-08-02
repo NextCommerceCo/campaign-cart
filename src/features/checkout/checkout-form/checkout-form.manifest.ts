@@ -55,7 +55,10 @@ export default defineFeature({
       type: 'number',
       required: false,
       default: '1',
-      description: 'Which step this form is, when `data-next-checkout-step` is set.',
+      description:
+        'Which step this form is, when `data-next-checkout-step` is set. The number decides what pressing "next" checks: step 1 the contact details and the shipping address, step 2 that same address again in case it was cleared behind them, step 3 everything — the full form check, the card fields, and the separate billing address when the visitor asked for one. Any other number checks nothing.',
+      notes:
+        'On step 3, choosing "use a different billing address" and leaving it blank fails validation with `Billing first name is required` and one message per missing billing field. It used to be skipped on this path, and the order reached the gateway to be declined by Address Verification instead. Keep the billing reveal container on the step-3 page, or those messages have nowhere to render.',
     },
 
     {

@@ -264,14 +264,47 @@ export interface FeatureManifest {
    * of every path available under that namespace, read out of the SDK rather than
    * transcribed.
    *
-   * Two sources, picked automatically by whichever actually answers the namespace:
-   * `PROPERTY_MAPPINGS` in `core/base/display-types.ts` for the namespaces that route
-   * through it, and the owning enhancer's own `getPropertyValue` for the three that
-   * resolve their properties themselves (`selector`, `bundle`, `toggle`). Neither can
-   * yield an empty page — a namespace that resolves through neither fails the drift
-   * test instead of publishing "no paths".
+   * The list comes from the enhancer that resolves the namespace — its
+   * `getPropertyValue` and whatever that hands the path on to. `PROPERTY_MAPPINGS` in
+   * `core/base/display-types.ts` routes five of the namespaces, but a routing entry
+   * is a format and a fallback, not a promise that anything resolves the path, so it
+   * is checked against the resolver rather than published as if it were the answer.
+   * Reading it as the answer put ten paths that render nothing on the `cart.` page
+   * (finding 127 in `docs/code-findings.md`).
+   *
+   * A namespace nothing resolves fails the drift test instead of publishing "no
+   * paths".
    */
   displayNamespace?: string;
+  /**
+   * For a namespace whose resolver ends in
+   * `PropertyResolver.getNestedProperty(data, path)`: the declared types that read
+   * lands on, so a routing entry with no branch behind it can still be proved.
+   *
+   * `package.price_retail_total` has no `case` anywhere and works, because `Package`
+   * has that field. Without this the gate would report fifteen live paths as dead;
+   * with a hand-kept allowlist instead, it would be the same unchecked list that put
+   * four fictional properties on `bundle-selector`'s page. Every entry here is
+   * checked twice — the resolver must really have such a branch, and the type must
+   * really declare the field.
+   *
+   * Order matters: the first entry whose {@link DisplayFallback.mappedPrefix} the
+   * routed path starts with wins.
+   */
+  displayFallback?: DisplayFallback[];
+  /**
+   * Paths `PROPERTY_MAPPINGS` declares for this namespace that nothing resolves.
+   *
+   * These render nothing — or worse, a routing entry's `fallback` value, which looks
+   * deliberate. They are published rather than dropped because the names are already
+   * out there on live pages, and "this one does nothing, use that one" is the answer
+   * the reader is looking for.
+   *
+   * The set is checked against the code, both ways: a name here that the resolver
+   * *does* answer fails, and a routing entry that nothing answers and is not listed
+   * here fails. So the list can only shrink, and only by making the path work.
+   */
+  displayUnanswered?: UnansweredPath[];
   /**
    * Prose for {@link displayNamespace}'s page: what each path means, and the markup
    * grammar around it.
@@ -360,6 +393,37 @@ export interface DisplayPathDoc {
   group?: string;
   /** What the value means in product terms. Markdown; keep it to a table cell. */
   description: string;
+}
+
+/**
+ * Where a namespace's resolver reads a path it has no branch for.
+ *
+ * @example
+ * ```ts
+ * // order.total routes to `order.total_incl_tax`, read off the Order; everything
+ * // else routes to a field of the store state.
+ * displayFallback: [{ mappedPrefix: 'order.', shape: 'Order' }, { shape: 'OrderState' }]
+ * ```
+ */
+export interface DisplayFallback {
+  /**
+   * The prefix a routed path must start with to land on this shape, stripped before
+   * the field is looked up. Omit it for the shape everything else lands on.
+   */
+  mappedPrefix?: string;
+  /** Name of the interface the read lands on — `Package`, `Order`, `OrderState`. */
+  shape: string;
+}
+
+/** One routing-table entry that no branch and no data field answers. */
+export interface UnansweredPath {
+  /** The name as `PROPERTY_MAPPINGS` spells it, without the namespace. */
+  name: string;
+  /**
+   * What to write instead. A path of this namespace named in backticks is checked
+   * against the answered list, so a caution cannot point at a second dead path.
+   */
+  instead: string;
 }
 
 /**
