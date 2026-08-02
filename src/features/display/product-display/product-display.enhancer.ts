@@ -89,8 +89,9 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
     // Call base implementation first
     super.setupCurrencyChangeListener();
 
-    // Add our specific handling for package data refresh
-    document.addEventListener('next:currency-changed', async () => {
+    // Add our specific handling for package data refresh. `this.listen` binds it to
+    // this enhancer's lifetime — base `cleanupEventListeners()` drops it on destroy.
+    this.listen(document, 'next:currency-changed', async () => {
       this.logger.debug('Currency changed, reloading package data');
 
       // Get fresh campaign state

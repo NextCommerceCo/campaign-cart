@@ -40,7 +40,7 @@ Every entry below is read out of the source, so the list cannot fall behind the 
 | [`window._nextForcePackageId`](#window_nextforcepackageid) | install | `core/sdk-initializer.ts › SDKInitializer.loadConfiguration` |
 | [`window._nextForceShippingId`](#window_nextforceshippingid) | install | `core/sdk-initializer.ts › SDKInitializer.loadConfiguration` |
 | [`window._nextForceBundleId`](#window_nextforcebundleid) | install | `core/sdk-initializer.ts › SDKInitializer.loadConfiguration` |
-| [`window.nextDebug`](#windownextdebug) | install | `core/debug/debug-module.ts › DebugModule.setupGlobalDebugAccess`, `core/sdk-initializer.ts › SDKInitializer.setupGlobalDebugUtils` |
+| [`window.nextDebug`](#windownextdebug) | install | `core/debug/debug-module.ts › DebugModule.setupGlobalDebugAccess`, `core/sdk-initializer.debug-utils.ts › setupGlobalDebugUtils` |
 | [`window.validateFormats`](#windowvalidateformats) | install | `features/display/display-core/format-validator.ts` |
 | [`window.eventTimelinePanel_*`](#windoweventtimelinepanel_) | install | 11 names, see below |
 | [`window.fetch`](#windowfetch) | install | `core/debug/debug-event-manager.ts › DebugEventManager.interceptFetch` |
@@ -331,7 +331,7 @@ nextDebug.attribution.debug();
 
 > ⚠️ It hands out the six Zustand stores directly, and a `setState` on one of those skips every operation that carries the pricing and event logic — the cart will disagree with its totals and with analytics. Read through it; write through `next.*`. Absent entirely when debug mode is off, and assembled in two passes (boot, then the debug overlay), so a key can appear a moment after the object does.
 
-<sub>Assigned in `core/debug/debug-module.ts › DebugModule.setupGlobalDebugAccess`, `core/sdk-initializer.ts › SDKInitializer.setupGlobalDebugUtils`</sub>
+<sub>Assigned in `core/debug/debug-module.ts › DebugModule.setupGlobalDebugAccess`, `core/sdk-initializer.debug-utils.ts › setupGlobalDebugUtils`</sub>
 
 ### `window.validateFormats`
 

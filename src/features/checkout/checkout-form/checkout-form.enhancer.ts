@@ -26,7 +26,6 @@ import { OrderManager } from '../managers/order-manager';
 import { OrderBuilder } from '../builders/order-builder';
 import { getSuccessUrl } from '../utils/url-utils';
 import { nextAnalytics, EcommerceEvents } from '@/core/analytics/index';
-import { userDataStorage } from '@/core/analytics/user-data-storage';
 import {
   injectIntlTelInputStyles,
   initializePhoneInputs,
@@ -69,6 +68,19 @@ import {
   updateFieldValidationDisplay,
   type FieldValidationContext,
 } from './field-validation-display';
+import {
+  formatPostalCodeInPlace,
+  type PostalCodeFormatContext,
+} from './postal-code-format';
+import {
+  routeBillingField,
+  type BillingFieldRoutingContext,
+} from './billing-field-routing';
+import { readFieldValue } from './field-value';
+import {
+  persistContactField,
+  type ContactPersistenceContext,
+} from './contact-persistence';
 import 'intl-tel-input/build/css/intlTelInput.css';
 
 // Consolidated constants
@@ -93,20 +105,11 @@ const PAYMENT_METHOD_MAP: Record<string, 'card_token' | 'paypal' | 'apple_pay' |
  */
 const orderBuilder = new OrderBuilder();
 
-const BILLING_ADDRESS_FIELD_MAP: Record<string, string> = {
-  'fname': 'first_name',
-  'lname': 'last_name',
-  'address1': 'address1',
-  'address2': 'address2',
-  'city': 'city',
-  'province': 'province',
-  'postal': 'postal',
-  'country': 'country',
-  'phone': 'phone'
-};
-
 /** The config-store snapshot the boot steps read (API key, Spreedly key, debug flag). */
 type CheckoutFormConfig = ReturnType<typeof useConfigStore.getState>;
+
+/** The checkout-store snapshot the field-routing steps read and write through. */
+type CheckoutStoreSnapshot = ReturnType<typeof useCheckoutStore.getState>;
 
 export class CheckoutFormEnhancer extends BaseEnhancer {
   private form!: HTMLFormElement;
@@ -1969,6 +1972,18 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     }
   }
 
+  /**
+   * Routes one field interaction — a `blur`, an `input` or a `change` on any checkout
+   * field.
+   *
+   * Two independent jobs, in order. **Routing** branches on the field's *name*: billing
+   * names land in `billingAddress` under their API spellings, everything else in
+   * `formData`, and a handful of names carry side effects (refilling the province
+   * dropdown, revealing the address rows, remembering the shopper's contact details).
+   * **Display** branches on the *event type* and lives in
+   * [`field-validation-display.ts`](./field-validation-display.ts) — it runs for both
+   * branches, which is why it sits outside them.
+   */
   private async handleFieldChange(event: Event): Promise<void> {
     const target = event.target as HTMLInputElement | HTMLSelectElement;
     const fieldName = this.getFieldNameFromElement(target);
@@ -1978,156 +1993,14 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const checkoutStore = useCheckoutStore.getState();
 
     if (fieldName.startsWith('billing-')) {
-      // Handle billing postal code formatting
-      if (fieldName === 'billing-postal' && target instanceof HTMLInputElement) {
-        const billingCountryField = this.billingFields.get('billing-country');
-        const countryCode = billingCountryField instanceof HTMLSelectElement ? billingCountryField.value : '';
-
-        if (countryCode) {
-          const countryConfig = this.countryConfigs.get(countryCode);
-          if (countryConfig) {
-            const formatted = this.countryService.formatPostalCode(target.value, countryConfig);
-            if (formatted !== target.value) {
-              const cursorPos = target.selectionStart || 0;
-              const lengthDiff = formatted.length - target.value.length;
-              target.value = formatted;
-              // Restore cursor position after formatting
-              target.setSelectionRange(cursorPos + lengthDiff, cursorPos + lengthDiff);
-            }
-          }
-        }
-      }
-
-      // Billing fields are always strings (no checkboxes in billing)
-      this.handleBillingFieldChange(fieldName, target.value, checkoutStore);
-
-      if (fieldName === 'billing-country') {
-        const billingProvinceField = this.billingFields.get('billing-province');
-        if (billingProvinceField instanceof HTMLSelectElement) {
-          await updateBillingStateOptions(this.stateFieldsContext(), target.value, billingProvinceField, checkoutStore.formData.province);
-        }
-        // Currency is location-based only, not affected by billing or shipping country
-      }
+      await routeBillingField(
+        this.billingFieldRoutingContext(),
+        fieldName,
+        target,
+        checkoutStore
+      );
     } else {
-      // Handle shipping postal code formatting
-      if (fieldName === 'postal' && target instanceof HTMLInputElement) {
-        const countryField = this.fields.get('country');
-        const countryCode = countryField instanceof HTMLSelectElement ? countryField.value : '';
-
-        if (countryCode) {
-          const countryConfig = this.countryConfigs.get(countryCode);
-          if (countryConfig) {
-            const formatted = this.countryService.formatPostalCode(target.value, countryConfig);
-            if (formatted !== target.value) {
-              const cursorPos = target.selectionStart || 0;
-              const lengthDiff = formatted.length - target.value.length;
-              target.value = formatted;
-              // Restore cursor position after formatting
-              target.setSelectionRange(cursorPos + lengthDiff, cursorPos + lengthDiff);
-            }
-          }
-        }
-      }
-
-      // Get the correct value based on input type
-      // For phone fields, use intlTelInput's international format if available
-      let fieldValue: any;
-      if (fieldName === 'phone' || fieldName === 'billing-phone') {
-        const phoneType = fieldName === 'phone' ? 'shipping' : 'billing';
-        const phoneInstance = this.phoneInputs.get(phoneType);
-        if (phoneInstance) {
-          // Use intlTelInput's getNumber() for international format
-          fieldValue = phoneInstance.getNumber() || target.value;
-        } else {
-          fieldValue = target.value;
-        }
-      } else if (target instanceof HTMLInputElement && (target.type === 'checkbox' || target.type === 'radio')) {
-        fieldValue = target.checked;
-      } else {
-        fieldValue = target.value;
-      }
-
-      this.updateFormData({ [fieldName]: fieldValue });
-      checkoutStore.clearError(fieldName);
-
-      // Validate fields on blur - simplified without redundant fallback messages
-      const fieldsToValidate = ['email', 'city', 'fname', 'lname'];
-
-      if (fieldsToValidate.includes(fieldName) && (event.type === 'blur' || event.type === 'change')) {
-        const fieldValue = target.value.trim();
-        if (fieldValue) {
-          const validationResult = this.validator.validateField(fieldName, fieldValue);
-          if (!validationResult.isValid && validationResult.message) {
-            this.validator.setError(fieldName, validationResult.message);
-            this.logger.warn(`Invalid ${fieldName} detected on blur:`, fieldValue);
-          } else if (validationResult.isValid) {
-            this.validator.clearError(fieldName);
-          }
-        }
-      }
-
-      if (fieldName === 'country') {
-        const provinceField = this.fields.get('province');
-        if (provinceField instanceof HTMLSelectElement) {
-          await updateStateOptions(this.shippingStateFieldsContext(), target.value, provinceField);
-        }
-
-        // Save the user's country selection to sessionStorage
-        sessionStorage.setItem('next_selected_country', target.value);
-        this.logger.debug(`Saved user's country selection to session: ${target.value}`);
-
-        // Currency is now based on user's location, not shipping country
-        // Currency can only be changed via URL parameter or manual selection
-      }
-
-      // Show location fields when address1 is populated
-      if (fieldName === 'address1' && target.value && target.value.trim().length > 0) {
-        this.showLocationFields();
-
-        // Track add_shipping_info when user has entered a shipping address
-        // Check if we have enough address info to consider it "entered"
-        if (!this.hasTrackedShippingInfo.value && checkoutStore.formData.city && checkoutStore.formData.province) {
-          try {
-            // Get current shipping method if selected
-            const shippingMethod = checkoutStore.shippingMethod;
-            const shippingTier = shippingMethod ? shippingMethod.name : 'Standard';
-            nextAnalytics.track(EcommerceEvents.createAddShippingInfoEvent(shippingTier));
-            this.hasTrackedShippingInfo.value = true;
-            this.logger.info('Tracked add_shipping_info event (address complete)', { shippingTier });
-          } catch (error) {
-            this.logger.warn('Failed to track add_shipping_info event:', error);
-          }
-        }
-      }
-
-      // Only update prospect cart and storage on blur/change events, not on every input
-      if (event.type === 'blur' || event.type === 'change') {
-        // Update ProspectCartEnhancer when email changes
-        if (fieldName === 'email' && this.prospectCartEnhancer) {
-          this.prospectCartEnhancer.updateEmail(target.value);
-        }
-
-        // Save user data to cookies for persistence
-        if (fieldName === 'email' || fieldName === 'fname' || fieldName === 'lname' || fieldName === 'phone') {
-          const updates: any = {};
-          if (fieldName === 'email') updates.email = target.value;
-          if (fieldName === 'fname') updates.firstName = target.value;
-          if (fieldName === 'lname') updates.lastName = target.value;
-          if (fieldName === 'phone') {
-            // Use international format for phone if intlTelInput is available
-            const phoneInstance = this.phoneInputs.get('shipping');
-            updates.phone = phoneInstance ? (phoneInstance.getNumber() || target.value) : target.value;
-          }
-
-          userDataStorage.updateUserData(updates);
-          this.logger.debug('Updated user data storage:', fieldName, updates[fieldName === 'fname' ? 'firstName' : fieldName === 'lname' ? 'lastName' : fieldName]);
-        }
-
-        // Check if we have enough data to create prospect cart
-        if (this.prospectCartEnhancer && ['email', 'fname', 'lname'].includes(fieldName)) {
-          this.prospectCartEnhancer.checkAndCreateCart();
-        }
-      }
+      await this.routeShippingField(fieldName, target, event, checkoutStore);
     }
 
     updateFieldValidationDisplay(
@@ -2136,6 +2009,167 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       fieldName,
       target.value
     );
+  }
+
+  // ============================================================================
+  // FIELD VALUE ROUTING — the steps `handleFieldChange` runs, in order
+  // ============================================================================
+
+  /** The two things `postal-code-format.ts` needs from this form. */
+  private postalCodeFormatContext(): PostalCodeFormatContext {
+    return {
+      countryService: this.countryService,
+      countryConfigs: this.countryConfigs,
+    };
+  }
+
+  /** The three things `contact-persistence.ts` needs from this form. */
+  private contactPersistenceContext(): ContactPersistenceContext {
+    return {
+      prospectCartEnhancer: this.prospectCartEnhancer,
+      phoneInputs: this.phoneInputs,
+      logger: this.logger,
+    };
+  }
+
+  /** The three things `billing-field-routing.ts` needs from this form. */
+  private billingFieldRoutingContext(): BillingFieldRoutingContext {
+    return {
+      billingFields: this.billingFields,
+      postalCodeFormat: this.postalCodeFormatContext(),
+      stateFields: this.stateFieldsContext(),
+    };
+  }
+
+  /**
+   * Every other field: format its postcode, write its value into `formData`, then run
+   * whatever that particular name triggers.
+   */
+  private async routeShippingField(
+    fieldName: string,
+    target: HTMLInputElement | HTMLSelectElement,
+    event: Event,
+    checkoutStore: CheckoutStoreSnapshot
+  ): Promise<void> {
+    if (fieldName === 'postal' && target instanceof HTMLInputElement) {
+      formatPostalCodeInPlace(
+        this.postalCodeFormatContext(),
+        target,
+        this.fields.get('country')
+      );
+    }
+
+    this.updateFormData({
+      [fieldName]: readFieldValue(fieldName, target, this.phoneInputs),
+    });
+    checkoutStore.clearError(fieldName);
+
+    this.validateContactFieldOnCommit(fieldName, target, event.type);
+
+    if (fieldName === 'country') {
+      await this.applyCountrySelection(target);
+    }
+
+    if (fieldName === 'address1') {
+      this.revealAddressRows(target, checkoutStore);
+    }
+
+    // Only update prospect cart and storage on blur/change events, not on every input
+    if (event.type === 'blur' || event.type === 'change') {
+      persistContactField(
+        this.contactPersistenceContext(),
+        fieldName,
+        target.value
+      );
+    }
+  }
+
+  /**
+   * Validates the four fields whose format is worth judging the moment the shopper is
+   * done with them — an unusable email or a name of punctuation is better caught here than
+   * at the payment gateway.
+   */
+  private validateContactFieldOnCommit(
+    fieldName: string,
+    target: HTMLInputElement | HTMLSelectElement,
+    eventType: string
+  ): void {
+    // Validate fields on blur - simplified without redundant fallback messages
+    const fieldsToValidate = ['email', 'city', 'fname', 'lname'];
+
+    if (fieldsToValidate.includes(fieldName) && (eventType === 'blur' || eventType === 'change')) {
+      const fieldValue = target.value.trim();
+      if (fieldValue) {
+        const validationResult = this.validator.validateField(fieldName, fieldValue);
+        if (!validationResult.isValid && validationResult.message) {
+          this.validator.setError(fieldName, validationResult.message);
+          this.logger.warn(`Invalid ${fieldName} detected on blur:`, fieldValue);
+        } else if (validationResult.isValid) {
+          this.validator.clearError(fieldName);
+        }
+      }
+    }
+  }
+
+  /**
+   * A new shipping country: rebuild the province dropdown for it and remember the choice
+   * for the shopper's next page.
+   */
+  private async applyCountrySelection(
+    target: HTMLInputElement | HTMLSelectElement
+  ): Promise<void> {
+    const provinceField = this.fields.get('province');
+    if (provinceField instanceof HTMLSelectElement) {
+      await updateStateOptions(this.shippingStateFieldsContext(), target.value, provinceField);
+    }
+
+    // Save the user's country selection to sessionStorage
+    sessionStorage.setItem('next_selected_country', target.value);
+    this.logger.debug(`Saved user's country selection to session: ${target.value}`);
+
+    // Currency is now based on user's location, not shipping country
+    // Currency can only be changed via URL parameter or manual selection
+  }
+
+  /**
+   * Reveals the city / province / postcode rows once a street address exists, since forms
+   * that start collapsed hide them until there is something to put in them.
+   */
+  private revealAddressRows(
+    target: HTMLInputElement | HTMLSelectElement,
+    checkoutStore: CheckoutStoreSnapshot
+  ): void {
+    // Show location fields when address1 is populated
+    if (!(target.value && target.value.trim().length > 0)) return;
+
+    this.showLocationFields();
+    this.trackAddShippingInfoOnAddress(checkoutStore);
+  }
+
+  /**
+   * Fires `add_shipping_info` the first time a whole address is on the form.
+   *
+   * Kept here rather than shared with the copy in `autofill-detection.ts`: the two log
+   * different reasons (`address complete` vs `browser autofill`), and folding them into one
+   * templated message would take both lines out of the published log reference.
+   */
+  private trackAddShippingInfoOnAddress(
+    checkoutStore: CheckoutStoreSnapshot
+  ): void {
+    // Track add_shipping_info when user has entered a shipping address
+    // Check if we have enough address info to consider it "entered"
+    if (!this.hasTrackedShippingInfo.value && checkoutStore.formData.city && checkoutStore.formData.province) {
+      try {
+        // Get current shipping method if selected
+        const shippingMethod = checkoutStore.shippingMethod;
+        const shippingTier = shippingMethod ? shippingMethod.name : 'Standard';
+        nextAnalytics.track(EcommerceEvents.createAddShippingInfoEvent(shippingTier));
+        this.hasTrackedShippingInfo.value = true;
+        this.logger.info('Tracked add_shipping_info event (address complete)', { shippingTier });
+      } catch (error) {
+        this.logger.warn('Failed to track add_shipping_info event:', error);
+      }
+    }
   }
 
 
@@ -2162,20 +2196,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     if (billingField) return billingField;
 
     return null;
-  }
-
-  private handleBillingFieldChange(fieldName: string, value: string, checkoutStore: any): void {
-    const billingFieldName = fieldName.replace('billing-', '');
-    const currentBillingData = checkoutStore.billingAddress || {
-      first_name: '', last_name: '', address1: '', city: '', province: '', postal: '', country: '', phone: ''
-    };
-
-    const mappedFieldName = BILLING_ADDRESS_FIELD_MAP[billingFieldName] || billingFieldName;
-
-    checkoutStore.setBillingAddress({
-      ...currentBillingData,
-      [mappedFieldName]: value
-    } as CheckoutState['billingAddress']);
   }
 
   private handlePaymentMethodChange(event: Event): void {

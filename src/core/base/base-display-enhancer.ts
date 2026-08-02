@@ -229,6 +229,18 @@ export abstract class BaseDisplayEnhancer extends BaseEnhancer {
   protected multiplyBy?: number;
   protected lastValue?: any;
   private debugMode = process.env.NODE_ENV === 'development';
+  /**
+   * Aborts every listener registered through {@link listen}, for this instance only.
+   *
+   * This class is the base of *every* display enhancer, so one `document` listener it
+   * registers is one listener per element carrying `data-next-display` — the widest
+   * multiplier in the SDK. Before this controller existed,
+   * {@link setupCurrencyChangeListener} registered an inline arrow with no teardown
+   * anywhere in the hierarchy, so a re-enhance stacked a fresh generation of listeners
+   * on top of every generation before it (finding 149 in `docs/code-findings.md`).
+   * Same pattern as `checkout-form.enhancer.ts` and `prospect-cart.enhancer.ts`.
+   */
+  private displayListenerAbort = new AbortController();
 
   public async initialize(): Promise<void> {
     this.validateElement();
@@ -240,11 +252,44 @@ export abstract class BaseDisplayEnhancer extends BaseEnhancer {
   }
 
   /**
+   * `addEventListener` bound to this enhancer's lifetime.
+   *
+   * Use it for every `document`, `window` or element listener in a display enhancer.
+   * `removeEventListener` needs the exact handler reference back, which an inline
+   * arrow or a fresh `.bind(this)` can never give — so a listener registered directly
+   * is unremovable for the life of the page. {@link cleanupEventListeners} aborts the
+   * signal and every listener registered here goes with it.
+   */
+  protected listen<E extends Event>(
+    target: Document | Window | HTMLElement,
+    type: string,
+    handler: (event: E) => void
+  ): void {
+    target.addEventListener(type, handler as EventListener, {
+      signal: this.displayListenerAbort.signal,
+    });
+  }
+
+  /**
+   * Drops every listener registered through {@link listen}.
+   *
+   * Base `destroy()` calls this after unsubscribing store subscriptions, so a display
+   * enhancer needs no `destroy()` override to be cleaned up — which also keeps it
+   * clear of the `super.destroy()`-ordering trap that overriding `destroy()` invites.
+   *
+   * **A subclass that overrides this must call `super.cleanupEventListeners()`**, or
+   * it silently re-opens the leak for every display enhancer beneath it.
+   */
+  protected override cleanupEventListeners(): void {
+    this.displayListenerAbort.abort();
+  }
+
+  /**
    * Sets up listener for currency change events to refresh display
    */
   protected setupCurrencyChangeListener(): void {
     // Listen for currency changes and update display
-    document.addEventListener('next:currency-changed', () => {
+    this.listen(document, 'next:currency-changed', () => {
       this.logger.debug(`Currency changed, updating display for ${this.displayPath}`);
       // Clear formatter cache to ensure new currency is used
       CurrencyFormatter.clearCache();

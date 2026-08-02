@@ -6,18 +6,19 @@
 import { createLogger, Logger, LogLevel } from '@/core/logger';
 import { useConfigStore } from '@/state/config';
 import { useCampaignStore } from '@/state/campaign';
-import { useCheckoutStore } from '@/state/checkout';
 import { useCartStore, cartOperations } from '@/state/cart';
 import { useOrderStore } from '@/state/order';
 import { useAttributionStore } from '@/state/attribution';
 import { AttributeScanner } from './attribute-scanner';
 import { NextCommerce } from '@/core/next-commerce';
 // Debug overlay imported dynamically when needed
-import { testModeManager } from '@/core/test-mode';
 import { EventBus } from '@/core/events';
 import { getApiClient } from '@/client';
 import { CART_STORAGE_KEY } from '@/core/storage';
 import { CountryService, Country, LocationData } from '@/core/country-service';
+import * as urlParamMethods from '@/core/sdk-initializer.url-params';
+import * as storageResetMethods from '@/core/sdk-initializer.storage-reset';
+import * as debugUtilsMethods from '@/core/sdk-initializer.debug-utils';
 
 export class SDKInitializer {
   private static logger = createLogger('SDKInitializer');
@@ -134,58 +135,23 @@ export class SDKInitializer {
     }
   }
 
-  private static async captureUrlParameters(
-    urlParams: URLSearchParams
-  ): Promise<void> {
-    try {
-      // Import parameter store
-      const { useParameterStore } = await import('@/state/parameter');
-      const paramStore = useParameterStore.getState();
-
-      // Get existing stored parameters
-      const existingParams = { ...paramStore.params };
-
-      // Capture all current URL parameters
-      const currentParams: Record<string, string> = {};
-      urlParams.forEach((value, key) => {
-        currentParams[key] = value;
-      });
-
-      // Merge with existing parameters (new URL params override stored ones)
-      const mergedParams = { ...existingParams, ...currentParams };
-
-      // Update the store with merged parameters
-      if (Object.keys(mergedParams).length > 0) {
-        paramStore.updateParams(mergedParams);
-        this.logger.debug(
-          `Captured ${Object.keys(currentParams).length} URL parameters, total stored: ${Object.keys(mergedParams).length}`
-        );
-
-        // Log special parameters we're interested in for visibility control
-        const visibilityParams = [
-          'seen',
-          'timer',
-          'reviews',
-          'loading',
-          'banner',
-          'exit',
-        ];
-        const relevantParams = Object.keys(mergedParams).filter(key =>
-          visibilityParams.includes(key)
-        );
-        if (relevantParams.length > 0) {
-          this.logger.info(
-            'Visibility control parameters detected:',
-            relevantParams.map(k => `${k}=${mergedParams[k]}`).join(', ')
-          );
-        }
-      }
-    } catch (error) {
-      this.logger.warn('Failed to capture URL parameters:', error);
-      // Non-critical error, continue with initialization
-    }
-  }
-
+  /**
+   * Detects the visitor's country and picks the display currency, before
+   * campaign prices are fetched so they arrive in the right currency.
+   *
+   * Left whole here rather than split into a sibling module like
+   * `sdk-initializer.url-params.ts`: `src/tests/docs/coreLogs.test.ts`'s
+   * "samples healthy boot from messages that exist" check reads
+   * `CORE_HEALTHY_BOOT` against a `Map` keyed only by console prefix, not
+   * file — so once two files share the `SDKInitializer` prefix, only the
+   * *last*-declared file's messages are checked, and several of this
+   * method's `info` lines (`Initializing location and currency
+   * detection...`, `User location detected:`, `Using detected currency:`)
+   * are in `CORE_HEALTHY_BOOT`. Moving them to another file makes that check
+   * fail no matter which file is declared last, since the two files'
+   * messages can never both be the "last" one. See `docs/code-findings.md`
+   * if this needs revisiting.
+   */
   private static async initializeLocationAndCurrency(): Promise<void> {
     try {
       const configStore = useConfigStore.getState();
@@ -437,7 +403,7 @@ export class SDKInitializer {
     // Check for reset parameter first
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('reset') === 'true') {
-      await this.clearAllStorage();
+      await storageResetMethods.clearAllStorage({ logger: this.logger });
       // Remove the reset parameter from URL to avoid infinite loop
       urlParams.delete('reset');
       const newUrl =
@@ -447,7 +413,7 @@ export class SDKInitializer {
     }
 
     // NEW: Capture ALL URL parameters for session use
-    await this.captureUrlParameters(urlParams);
+    await urlParamMethods.captureUrlParameters({ logger: this.logger }, urlParams);
 
     // Check URL parameters for debug mode, forcePackageId, forceShippingId, and forceBundleId
     const windowConfig = (window as any).nextConfig;
@@ -530,10 +496,10 @@ export class SDKInitializer {
     }
 
     // Process forcePackageId parameter after campaign data is available
-    await this.processForcePackageId();
+    await urlParamMethods.processForcePackageId({ logger: this.logger });
 
     // Process forceShippingId parameter after campaign data is available
-    await this.processForceShippingId();
+    await urlParamMethods.processForceShippingId({ logger: this.logger });
 
     // Emit event to notify enhancers that URL parameters have been processed
     // This allows enhancers to re-evaluate their conditions after profiles are applied
@@ -542,138 +508,13 @@ export class SDKInitializer {
     this.logger.debug('Emitted sdk:url-parameters-processed event');
   }
 
-  private static async processForcePackageId(): Promise<void> {
-    const forcePackageId = (window as any)._nextForcePackageId;
-
-    if (!forcePackageId) {
-      return;
-    }
-
-    try {
-      this.logger.info('Processing forcePackageId parameter:', forcePackageId);
-
-      const campaignStore = useCampaignStore.getState();
-
-      // Clear existing cart
-      cartOperations.clear();
-      this.logger.debug('Cart cleared for forcePackageId');
-
-      // Parse the format: x:2,y:1 -> [{id: x, quantity: 2}, {id: y, quantity: 1}]
-      const packageSpecs = forcePackageId.split(',').map((spec: string) => {
-        const [idStr, quantityStr] = spec.trim().split(':');
-        const packageId = parseInt(idStr || '', 10);
-        const quantity = quantityStr ? parseInt(quantityStr, 10) : 1;
-
-        if (isNaN(packageId) || packageId <= 0) {
-          throw new Error(`Invalid package ID: ${idStr}`);
-        }
-
-        if (isNaN(quantity) || quantity <= 0) {
-          throw new Error(`Invalid quantity: ${quantityStr}`);
-        }
-
-        return { packageId, quantity };
-      });
-
-      this.logger.debug('Parsed package specifications:', packageSpecs);
-
-      // Add each package to cart
-      for (const spec of packageSpecs) {
-        const packageData = campaignStore.getPackage(spec.packageId);
-
-        if (!packageData) {
-          this.logger.warn(
-            `Package ${spec.packageId} not found in campaign data, skipping`
-          );
-          continue;
-        }
-
-        await cartOperations.addItem({
-          packageId: spec.packageId,
-          quantity: spec.quantity,
-          isUpsell: false,
-        });
-
-        this.logger.debug(
-          `Added package ${spec.packageId} with quantity ${spec.quantity} to cart`
-        );
-      }
-
-      this.logger.info(
-        `Successfully processed forcePackageId: added ${packageSpecs.length} package(s) to cart`
-      );
-
-      // Clean up the temporary storage
-      delete (window as any)._nextForcePackageId;
-    } catch (error) {
-      this.logger.error('Error processing forcePackageId parameter:', error);
-      // Don't throw - this shouldn't break SDK initialization
-    }
-  }
-
-  private static async processForceShippingId(): Promise<void> {
-    const forceShippingId = (window as any)._nextForceShippingId;
-
-    if (!forceShippingId) {
-      return;
-    }
-
-    try {
-      this.logger.info(
-        'Processing forceShippingId parameter:',
-        forceShippingId
-      );
-
-      const campaignStore = useCampaignStore.getState();
-
-      // Parse the shipping ID (should be a number)
-      const shippingId = parseInt(forceShippingId, 10);
-
-      if (isNaN(shippingId) || shippingId <= 0) {
-        throw new Error(`Invalid shipping ID: ${forceShippingId}`);
-      }
-
-      // Verify the shipping method exists in campaign data
-      const campaignData = campaignStore.data;
-      if (!campaignData?.shipping_methods) {
-        this.logger.warn('No shipping methods available in campaign data');
-        return;
-      }
-
-      const shippingMethod = campaignData.shipping_methods.find(
-        method => method.ref_id === shippingId
-      );
-
-      if (!shippingMethod) {
-        this.logger.warn(
-          `Shipping method ${shippingId} not found in campaign data`
-        );
-        this.logger.debug(
-          'Available shipping methods:',
-          campaignData.shipping_methods.map(m => ({
-            id: m.ref_id,
-            code: m.code,
-            price: m.price,
-          }))
-        );
-        return;
-      }
-
-      // Set the shipping method
-      await cartOperations.setShippingMethod(shippingId);
-
-      this.logger.info(
-        `Successfully set shipping method: ${shippingMethod.code} (ID: ${shippingId}, Price: $${shippingMethod.price})`
-      );
-
-      // Clean up the temporary storage
-      delete (window as any)._nextForceShippingId;
-    } catch (error) {
-      this.logger.error('Error processing forceShippingId parameter:', error);
-      // Don't throw - this shouldn't break SDK initialization
-    }
-  }
-
+  /**
+   * Captures where the visitor came from. Left whole for the same reason as
+   * `initializeLocationAndCurrency` above: two of its `info`/`debug` lines
+   * (`Initializing attribution...`, `Attribution initialized`) are in
+   * `CORE_HEALTHY_BOOT`, and moving them to another file breaks
+   * `coreLogs.test.ts`'s prefix-keyed healthy-boot check the same way.
+   */
   private static async initializeAttribution(): Promise<void> {
     try {
       this.logger.info('Initializing attribution...');
@@ -905,225 +746,14 @@ export class SDKInitializer {
       // testModeManager.addTestModeIndicator();
 
       // Set up global debug utilities
-      this.setupGlobalDebugUtils();
+      debugUtilsMethods.setupGlobalDebugUtils({
+        logger: this.logger,
+        reinitialize: () => this.reinitialize(),
+        getInitializationStats: () => this.getInitializationStats(),
+      });
 
       // Log debug info
       this.logger.info('Debug utilities initialized ✅');
-    }
-  }
-
-  private static setupGlobalDebugUtils(): void {
-    if (typeof window !== 'undefined') {
-      // Add global debug utilities to window for console access
-      (window as any).nextDebug = {
-        overlay: () =>
-          import('@/core/debug/debug-overlay').then(m => m.debugOverlay),
-        testMode: testModeManager,
-        stores: {
-          cart: useCartStore,
-          campaign: useCampaignStore,
-          config: useConfigStore,
-          checkout: useCheckoutStore,
-          order: useOrderStore,
-          attribution: useAttributionStore,
-        },
-        sdk: NextCommerce.getInstance(),
-        reinitialize: () => this.reinitialize(),
-        getStats: () => this.getInitializationStats(),
-
-        // Enhanced cart methods
-        addToCart: (packageId: number, quantity: number = 1) => {
-          const campaignStore = useCampaignStore.getState();
-          const packageData = campaignStore.getPackage(packageId);
-
-          if (packageData) {
-            void cartOperations.addItem({
-              packageId,
-              quantity,
-              price: parseFloat(packageData.price),
-              title: packageData.name,
-              isUpsell: false,
-            });
-          }
-        },
-
-        removeFromCart: (packageId: number) => {
-          void cartOperations.removeItem(packageId);
-        },
-
-        updateQuantity: (packageId: number, quantity: number) => {
-          void cartOperations.updateQuantity(packageId, quantity);
-        },
-
-        // Analytics methods (removed - will be combined with analytics below)
-
-        // Campaign methods
-        loadCampaign: () => {
-          const configStore = useConfigStore.getState();
-          return useCampaignStore.getState().loadCampaign(configStore.apiKey);
-        },
-
-        clearCampaignCache: () => {
-          useCampaignStore.getState().clearCache();
-        },
-
-        getCacheInfo: () => {
-          const info = useCampaignStore.getState().getCacheInfo();
-          console.table(info);
-          return info;
-        },
-
-        inspectPackage: (packageId: number) => {
-          const campaignStore = useCampaignStore.getState();
-          const packageData = campaignStore.getPackage(packageId);
-          console.group(`📦 Package ${packageId} Details`);
-          console.table(packageData);
-          console.groupEnd();
-        },
-
-        testShippingMethod: async (methodId: number) => {
-          console.log(`🚚 Testing shipping method ${methodId}`);
-          try {
-            const cartStore = useCartStore.getState();
-            await cartOperations.setShippingMethod(methodId);
-            console.log(`✅ Shipping method ${methodId} set successfully`);
-
-            // Get the updated cart state to show the shipping cost
-            const state = cartStore;
-            const shippingMethod = state.shippingMethod;
-            if (shippingMethod) {
-              console.log(
-                `📦 Shipping: ${shippingMethod.code} - $${shippingMethod.price}`
-              );
-            }
-
-            // Trigger UI update
-            document.dispatchEvent(new CustomEvent('debug:update-content'));
-          } catch (error) {
-            console.error(
-              `❌ Failed to set shipping method ${methodId}:`,
-              error
-            );
-          }
-        },
-
-        sortPackages: (sortBy: string) => {
-          console.log(`🔄 Sorting packages by ${sortBy}`);
-          // Trigger panel update with sorted packages
-          document.dispatchEvent(new CustomEvent('debug:update-content'));
-        },
-
-        // Analytics utilities - lazy loaded to avoid blocking
-        analytics: {
-          getStatus: async () => {
-            const { nextAnalytics } = await import('@/core/analytics/index');
-            return nextAnalytics.getStatus();
-          },
-          getProviders: async () => {
-            const { nextAnalytics } = await import('@/core/analytics/index');
-            return nextAnalytics.getStatus().providers;
-          },
-          track: async (name: string, data: any) => {
-            const { nextAnalytics } = await import('@/core/analytics/index');
-            return nextAnalytics.track({ event: name, ...data });
-          },
-          setDebugMode: async (enabled: boolean) => {
-            const { nextAnalytics } = await import('@/core/analytics/index');
-            return nextAnalytics.setDebugMode(enabled);
-          },
-          invalidateContext: async () => {
-            const { nextAnalytics } = await import('@/core/analytics/index');
-            return nextAnalytics.invalidateContext();
-          },
-        },
-
-        // Attribution utilities
-        attribution: {
-          debug: () => useAttributionStore.getState().debug(),
-          get: () => useAttributionStore.getState().getAttributionForApi(),
-          setFunnel: (funnel: string) =>
-            useAttributionStore.getState().setFunnelName(funnel),
-          setEvclid: (evclid: string) =>
-            useAttributionStore.getState().setEverflowClickId(evclid),
-          clearFunnel: () =>
-            useAttributionStore.getState().clearPersistedFunnel(),
-          getFunnel: () => {
-            const state = useAttributionStore.getState();
-            const persisted =
-              localStorage.getItem('next_funnel_name') ||
-              sessionStorage.getItem('next_funnel_name');
-            console.log('Current funnel:', state.funnel);
-            console.log('Persisted funnel:', persisted);
-            return state.funnel || persisted || '(not set)';
-          },
-        },
-
-        // Element highlighting
-        highlightElement: (selector: string) => {
-          this.logger.debug(`🎯 Highlighting element: ${selector}`);
-          // TODO: Implement element highlighting in DebugOverlay
-        },
-
-        addTestItems: () => {
-          [2, 7, 9].forEach(packageId => {
-            void cartOperations.addItem({
-              packageId,
-              quantity: 1,
-              price: 19.99,
-              title: `Test Package ${packageId}`,
-              isUpsell: false,
-            });
-          });
-        },
-
-        // Accordion utilities
-        accordion: {
-          open: (id: string) => {
-            document.dispatchEvent(
-              new CustomEvent('next:accordion-open', { detail: { id } })
-            );
-          },
-          close: (id: string) => {
-            document.dispatchEvent(
-              new CustomEvent('next:accordion-close', { detail: { id } })
-            );
-          },
-          toggle: (id: string) => {
-            document.dispatchEvent(
-              new CustomEvent('next:accordion-toggle', { detail: { id } })
-            );
-          },
-        },
-
-        // Order and upsell utilities
-        order: {
-          getJourney: () => {
-            const orderStore = useOrderStore.getState();
-            const journey = orderStore.getUpsellJourney();
-            console.table(journey);
-            return journey;
-          },
-          isExpired: () => useOrderStore.getState().isOrderExpired(),
-          clearCache: () => {
-            useOrderStore.getState().clearOrder();
-            console.log('Order cache cleared');
-          },
-          getStats: () => {
-            const orderStore = useOrderStore.getState();
-            return {
-              hasOrder: !!orderStore.order,
-              refId: orderStore.refId,
-              orderAge: orderStore.orderLoadedAt
-                ? `${Math.floor((Date.now() - orderStore.orderLoadedAt) / 1000 / 60)} minutes`
-                : 'N/A',
-              viewedUpsells: orderStore.viewedUpsells,
-              viewedUpsellPages: orderStore.viewedUpsellPages,
-              completedUpsells: orderStore.completedUpsells,
-              journeyLength: orderStore.upsellJourney.length,
-            };
-          },
-        },
-      };
     }
   }
 
@@ -1228,44 +858,5 @@ export class SDKInitializer {
         scannerStats: this.attributeScanner.getStats(),
       }),
     };
-  }
-
-  private static async clearAllStorage(): Promise<void> {
-    this.logger.info('Clearing all Next Campaign Cart storage...');
-
-    // Clear sessionStorage items
-    const sessionKeys = [];
-    for (let i = 0; i < sessionStorage.length; i++) {
-      const key = sessionStorage.key(i);
-      if (key && (key.startsWith('next-') || key.startsWith('_next'))) {
-        sessionKeys.push(key);
-      }
-    }
-    sessionKeys.forEach(key => sessionStorage.removeItem(key));
-
-    // Clear localStorage items
-    const localKeys = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && (key.startsWith('next-') || key.startsWith('_next'))) {
-        localKeys.push(key);
-      }
-    }
-    localKeys.forEach(key => localStorage.removeItem(key));
-
-    // Clear cookies (only those we can access)
-    document.cookie.split(';').forEach(cookie => {
-      const eqPos = cookie.indexOf('=');
-      const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
-      if (name.startsWith('next_') || name.startsWith('_next')) {
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`;
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${window.location.hostname};`;
-      }
-    });
-
-    this.logger.info(
-      `Cleared ${sessionKeys.length} sessionStorage items, ${localKeys.length} localStorage items`
-    );
   }
 }

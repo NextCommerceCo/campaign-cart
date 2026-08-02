@@ -16,6 +16,54 @@ export default defineFeature({
   // API's own field names, and `getPackageValue` reads them straight off the
   // package. `Package` declaring the field is what makes each of them work.
   displayFallback: [{ shape: 'Package' }],
+  // `campaign.` is answered by the same `getPropertyValue`, behind
+  // `this.displayPath?.startsWith('campaign.')`, but nothing routes it —
+  // `PROPERTY_MAPPINGS` has no `campaign` entry — so it needs its own prose the
+  // same way `selector`/`bundle`/`toggle` do. It used to be undocumented
+  // everywhere: not in PROPERTY_MAPPINGS, not on any page, and invisible to
+  // `docs:coverage` because that scan counts by owning feature, not by
+  // namespace (finding 143 in docs/code-findings.md).
+  additionalDisplayNamespaces: [
+    {
+      namespace: 'campaign',
+      displayPaths: {
+        prefix: 'campaign',
+        intro:
+          'with no package id in front of it — a campaign has exactly one ' +
+          'active currency and language at a time, so there is nothing to select between.',
+        example:
+          '<!-- The campaign\'s own name, currency, and language -->\n' +
+          '<span data-next-display="campaign.name"></span>\n' +
+          '<span data-next-display="campaign.currency"></span>\n' +
+          '<span data-next-display="campaign.language"></span>',
+        paths: [
+          {
+            name: 'name',
+            description: "The campaign's display name, as configured in NextCommerce.",
+          },
+          {
+            name: 'currency',
+            description:
+              'The ISO 4217 code of the currency prices are shown in on this page ' +
+              '(e.g. `USD`) — the same value `useCampaignStore.getState().data.currency` holds.',
+          },
+          {
+            name: 'language',
+            description:
+              'The BCP 47 language tag the campaign is configured for (e.g. `en`) — ' +
+              'not the visitor\'s browser language.',
+          },
+        ],
+        cautions: [
+          'Any other property after `campaign.` — `campaign.price`, ' +
+            '`campaign.id`, anything not `name`/`currency`/`language` — falls through ' +
+            'to `getCampaignProperty`\'s `default` case, which logs ' +
+            '`Unknown campaign property: {property}` and renders nothing. There is no ' +
+            'alias to `package.` here: a per-package value needs `package.{id}.{property}` instead.',
+        ],
+      },
+    },
+  ],
 
   attributes: [
     {
@@ -66,7 +114,11 @@ Formatting and hiding work the same as for every display namespace —
 documented once in
 [display-core](../../../../display/display-core/guide/reference/attributes.md).
 
-The \`campaign.\` namespace is an alias for \`package.\` and resolves identically.
+This same enhancer also answers a \`campaign.\` namespace — the campaign's own
+\`name\`, \`currency\` and \`language\`, with no package id in front of it. It is
+not an alias for \`package.\`: it answers exactly those three properties, not
+every \`package.\` one. See
+[its display-paths reference](./display-paths-campaign.md).
 
 \`\`\`html
 <!-- A package's price, and its per-unit price -->

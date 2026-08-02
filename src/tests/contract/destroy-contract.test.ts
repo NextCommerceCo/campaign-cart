@@ -429,36 +429,22 @@ describe('a class that registers a raw addEventListener has a teardown path', ()
   /**
    * Known violations, frozen the same way the ALLOWLIST above and
    * `docs-coverage.baseline.json` freeze known gaps: recorded and tolerated rather
-   * than invisible, each with a reason. Fixing finding 139 removes the
-   * `ProspectCartEnhancer` entry; the rest are separate decisions outside this
-   * change's file ownership (`src/features/checkout/prospect-cart/**` and this
-   * test only).
+   * than invisible, each with a reason.
+   *
+   * **It is empty, and that is the point** — every class that reaches a raw
+   * `addEventListener` now has a teardown path, so this check is a plain red gate
+   * rather than a ratchet. The last two entries were `BaseDisplayEnhancer` and
+   * `ProductDisplayEnhancer` (finding 149), which between them leaked one permanent
+   * `document` listener per `data-next-display` element on the page; both now register
+   * through `BaseDisplayEnhancer.listen()` and are aborted by its
+   * `cleanupEventListeners()`. Nothing may be added back here without the same
+   * scrutiny: an entry is a leak someone chose to keep.
    */
   const NO_TEARDOWN_ALLOWLIST: {
     file: string;
     className: string;
     reason: string;
-  }[] = [
-    {
-      file: 'core/base/base-display-enhancer.ts',
-      className: 'BaseDisplayEnhancer',
-      reason:
-        'setupCurrencyChangeListener() registers a document "next:currency-changed" ' +
-        'listener directly in the abstract base, with no destroy()/' +
-        'cleanupEventListeners() override anywhere in the base — every concrete ' +
-        'display enhancer inherits the leak. Out of scope here (owns src/core/base ' +
-        'is not part of this change; src/core/base/display-types.ts is the only ' +
-        'file in that folder named in scope, and this is a different file).',
-    },
-    {
-      file: 'features/display/product-display/product-display.enhancer.ts',
-      className: 'ProductDisplayEnhancer',
-      reason:
-        'Registers its own document "next:currency-changed" listener with no ' +
-        'destroy()/cleanupEventListeners() override. Out of scope for this change ' +
-        '(src/features/display is being edited by another session).',
-    },
-  ];
+  }[] = [];
 
   const noTeardownKey = (file: string, className: string): string =>
     `${file}::${className}`;
@@ -509,6 +495,126 @@ describe('a class that registers a raw addEventListener has a teardown path', ()
         'newly discovered, pre-existing violation rather than a regression, add it ' +
         'to NO_TEARDOWN_ALLOWLIST in this file with a one-line reason instead of ' +
         'fixing it here.'
+    ).toEqual([]);
+  });
+});
+
+/**
+ * `BaseEnhancer.cleanupEventListeners()` is an empty no-op, so for most enhancers an
+ * override that never calls `super` costs nothing. `BaseDisplayEnhancer`'s is **not**
+ * a no-op — it aborts the controller that holds the `next:currency-changed` listener
+ * every display enhancer inherits (finding 149). A display subclass that overrides
+ * `cleanupEventListeners()` and forgets `super.cleanupEventListeners()` therefore
+ * silently re-opens the leak for itself, with every other gate in this file still
+ * green: it *has* a teardown path, it just skips the one that matters.
+ *
+ * No subclass overrides it today. This exists so the first one that does cannot get it
+ * wrong quietly.
+ */
+describe('a display enhancer overriding cleanupEventListeners() calls super', () => {
+  /** `className -> superclass name`, for every class declared in `src/`. */
+  function collectHeritage(): Map<string, string> {
+    const heritage = new Map<string, string>();
+    for (const [path, text] of Object.entries(modules)) {
+      if (path.endsWith('.test.ts') || path.endsWith('.d.ts')) continue;
+      if (path.includes('/tests/')) continue;
+      const sf = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true);
+      ts.forEachChild(sf, node => {
+        if (!ts.isClassDeclaration(node) || !node.name) return;
+        const superExpr = node.heritageClauses?.find(
+          h => h.token === ts.SyntaxKind.ExtendsKeyword
+        )?.types[0]?.expression;
+        if (superExpr && ts.isIdentifier(superExpr)) {
+          heritage.set(node.name.text, superExpr.text);
+        }
+      });
+    }
+    return heritage;
+  }
+
+  const heritage = collectHeritage();
+
+  /** Walks the `extends` chain, so an indirect subclass counts too. */
+  function isDisplayEnhancer(className: string): boolean {
+    const seen = new Set<string>();
+    let current: string | undefined = heritage.get(className);
+    while (current && !seen.has(current)) {
+      if (current === 'BaseDisplayEnhancer') return true;
+      seen.add(current);
+      current = heritage.get(current);
+    }
+    return false;
+  }
+
+  interface Override {
+    file: string;
+    className: string;
+    callsSuper: boolean;
+  }
+
+  function findOverrides(): Override[] {
+    const found: Override[] = [];
+    for (const [path, text] of Object.entries(modules)) {
+      if (path.endsWith('.test.ts') || path.endsWith('.d.ts')) continue;
+      if (path.includes('/tests/')) continue;
+
+      const file = path.replace(/^\.\.\/\.\.\//, '');
+      const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+
+      ts.forEachChild(sf, node => {
+        if (!ts.isClassDeclaration(node) || !node.name) return;
+        if (!isDisplayEnhancer(node.name.text)) return;
+
+        const method = node.members.find(
+          (m): m is ts.MethodDeclaration =>
+            ts.isMethodDeclaration(m) &&
+            ts.isIdentifier(m.name) &&
+            m.name.text === 'cleanupEventListeners'
+        );
+        if (!method?.body) return;
+
+        let callsSuper = false;
+        const visit = (n: ts.Node): void => {
+          if (
+            ts.isCallExpression(n) &&
+            ts.isPropertyAccessExpression(n.expression) &&
+            n.expression.expression.kind === ts.SyntaxKind.SuperKeyword &&
+            n.expression.name.text === 'cleanupEventListeners'
+          ) {
+            callsSuper = true;
+          }
+          ts.forEachChild(n, visit);
+        };
+        visit(method.body);
+
+        found.push({ file, className: node.name.text, callsSuper });
+      });
+    }
+    return found;
+  }
+
+  it('resolves the display-enhancer hierarchy, so an empty result cannot pass by accident', () => {
+    // Guards the heritage walk itself: if it stopped resolving, every check below
+    // would inspect nothing and still be green.
+    const displayClasses = [...heritage.keys()].filter(isDisplayEnhancer);
+    expect(displayClasses.length).toBeGreaterThan(5);
+  });
+
+  it('calls super.cleanupEventListeners() somewhere in the override', () => {
+    const messages = findOverrides()
+      .filter(o => !o.callsSuper)
+      .map(
+        o =>
+          `${o.file} › ${o.className}.cleanupEventListeners() never calls ` +
+          `super.cleanupEventListeners(), so BaseDisplayEnhancer's ` +
+          `next:currency-changed listener is never aborted for this class`
+      );
+
+    expect(
+      messages,
+      "a display enhancer's cleanupEventListeners() override must call " +
+        'super.cleanupEventListeners() — the base implementation is not a no-op, ' +
+        'it aborts the AbortController holding the inherited document listener.'
     ).toEqual([]);
   });
 });

@@ -10,6 +10,7 @@
 import type {
   AttributeDoc,
   DisplayPathDoc,
+  DisplayPathsDoc,
   FeatureLink,
   FeatureManifest,
   WrittenDoc,
@@ -19,9 +20,6 @@ import { featureNav } from '../content/nav';
 /**
  * One `data-next-display` path, extracted from whichever part of the SDK answers
  * the namespace, so the published list cannot drift from what resolves.
- */
-/**
- * One path a display namespace answers.
  *
  * Re-exported from the extractor rather than declared again here: this file used to
  * carry a second copy without the `path` field, so a caller that imported the type
@@ -53,7 +51,22 @@ export interface DisplayPathSource {
    * as its own section: the names are already on live pages, so a reader who has one
    * needs to be told it does nothing, not to find it silently missing.
    */
-  unanswered?: Array<{ name: string; routedTo: string; instead: string }>;
+  unanswered?: Array<{
+    name: string;
+    routedTo: string;
+    instead: string;
+    /**
+     * The routing entry declares a `fallback:`. Whether that ever reaches a page
+     * depends on the resolver too — `BaseDisplayEnhancer` only applies it when the
+     * resolver returns `null`/`undefined` on the miss, which `order-display` never
+     * does (it returns `''`), so `order.status`'s declared fallback rendered nothing,
+     * ever, the whole time the page claimed otherwise (finding 144 in
+     * `docs/code-findings.md`). `cart.discountCode` is the one entry in the codebase
+     * today where this is actually true: `CartDisplayEnhancer.resolveValue` returns
+     * `undefined` on its `default:`, so the declared `fallback: ''` does render.
+     */
+    hasFallback: boolean;
+  }>;
   /**
    * Where the routing table that declares {@link unanswered} lives, for the section
    * that tells a reader why a name they can find in the source is not on this page.
@@ -234,13 +247,23 @@ const PATHS_TABLE_HEAD = ['| Path | Format | Notes |', '|---|---|---|'];
  * that nothing resolves. Those are not silently dropped, because a reader arriving
  * with `cart.hasItems` in their markup needs to be told it renders nothing and what
  * to write instead — the page missing it is what let it sit there for months.
+ *
+ * `namespace`/`doc`/`leaf` default to the manifest's primary
+ * {@link FeatureManifest.displayNamespace}/{@link FeatureManifest.displayPaths}, so
+ * every existing call site is unaffected. A feature that answers a second namespace
+ * from the same resolver — `ProductDisplayEnhancer` answers `package.` and
+ * `campaign.` — passes the entry from
+ * {@link FeatureManifest.additionalDisplayNamespaces} instead, which is what makes
+ * that namespace's page a distinct file with its own sidebar leaf rather than a
+ * second, silently-overwriting `Display Paths` page.
  */
 export function renderDisplayPaths(
   manifest: FeatureManifest,
-  source: DisplayPathSource
+  source: DisplayPathSource,
+  namespace: string = manifest.displayNamespace ?? '',
+  doc: DisplayPathsDoc | undefined = manifest.displayPaths,
+  leaf: string = 'Display Paths'
 ): string {
-  const namespace = manifest.displayNamespace ?? '';
-  const doc = manifest.displayPaths;
   const prefix = doc?.prefix ?? namespace;
   const formats = new Map(source.paths.map(p => [p.name, p]));
 
@@ -277,21 +300,35 @@ export function renderDisplayPaths(
     'so a name missing here is one the namespace does not answer, whatever else ' +
     'in the feature accepts it.';
 
+  // The "renders the fallback instead" clause is only true when *this* page has an
+  // entry where the routing table declares one — finding 144 found it asserted on
+  // every routed namespace's page, including `order.`, whose resolver returns `''`
+  // on a miss and so can never reach a declared fallback at all. Print the caveat
+  // only where a row below can actually exhibit it.
+  const anyFallback = source.unanswered?.some(u => u.hasFallback) ?? false;
+
   const unanswered = source.unanswered?.length
     ? blocks(
         '## Declared but not answered',
         `\`${source.claimedIn ?? 'The routing table'}\` also lists these under ` +
           `\`${namespace}\`, and \`${source.where}\` has no answer for any of them. ` +
-          'Writing one renders nothing — or, where the routing entry declares a ' +
-          'fallback value, renders that fallback, which reads as though it worked.',
+          (anyFallback
+            ? 'Writing most of these renders nothing — except the ones marked ' +
+              '`fallback value` in the Renders column below, which render that ' +
+              'value instead, reading as though it worked.'
+            : 'Writing one renders nothing.'),
         [
-          '| Path | Routed to | Write instead |',
-          '|---|---|---|',
+          anyFallback
+            ? '| Path | Routed to | Renders | Write instead |'
+            : '| Path | Routed to | Write instead |',
+          anyFallback ? '|---|---|---|---|' : '|---|---|---|',
           ...source.unanswered.map(u => {
             // An entry that routes a name to itself says nothing extra; showing it
             // reads as though the name were routed somewhere.
             const routed = u.routedTo === u.name ? '—' : `\`${u.routedTo}\``;
-            return `| \`${prefix}.${u.name}\` | ${routed} | ${u.instead} |`;
+            return anyFallback
+              ? `| \`${prefix}.${u.name}\` | ${routed} | ${u.hasFallback ? 'fallback value' : 'nothing'} | ${u.instead} |`
+              : `| \`${prefix}.${u.name}\` | ${routed} | ${u.instead} |`;
           }),
         ].join('\n')
       )
@@ -300,7 +337,7 @@ export function renderDisplayPaths(
   return `${blocks(
     pageHeader(
       manifest,
-      'Display Paths',
+      leaf,
       '<!-- Generated from the enhancer that resolves this namespace, plus the\n' +
         '     feature manifest. Do not edit by hand: change getPropertyValue or\n' +
         '     <feature>.manifest.ts, then run `npm run docs:reference`. -->'

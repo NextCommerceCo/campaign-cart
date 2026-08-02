@@ -70,8 +70,8 @@ The feature carried on, but something in the markup or the data was not what it 
 | `Payment error detected:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.createOrder` | yes |
 | `Step {currentStep} validation failed` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleStepNavigation` | yes |
 | `Validation failed` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFormSubmit` | yes |
-| `Invalid {fieldName} detected on blur:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFieldChange` | yes |
-| `Failed to track add_shipping_info event:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFieldChange` | yes |
+| `Invalid {fieldName} detected on blur:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.validateContactFieldOnCommit` | yes |
+| `Failed to track add_shipping_info event:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.trackAddShippingInfoOnAddress` | yes |
 | `[Billing] Click blocked - animation in progress` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleBillingAddressToggle` | — |
 | `Province {storedProvince} not found in options for country {storedCountry}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.populateFormData` | — |
 | `Cart is empty` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleCartUpdate` | — |
@@ -128,7 +128,7 @@ Normal progress, useful for confirming the feature ran at all.
 | `Processing express checkout for {paymentMethod} (skipping validation)` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFormSubmit` | — |
 | `Express payment {paymentMethod} requires validation (requireValidation: true)` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFormSubmit` | — |
 | `Processing express checkout for {paymentMethod} (after validation)` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFormSubmit` | — |
-| `Tracked add_shipping_info event (address complete)` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFieldChange` | yes |
+| `Tracked add_shipping_info event (address complete)` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.trackAddShippingInfoOnAddress` | yes |
 | `Tracked add_shipping_info event` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleShippingMethodChange` | yes |
 | `[Billing] Toggle clicked` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleBillingAddressToggle` | yes |
 | `[Billing] Processing toggle` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleBillingAddressToggle` | yes |
@@ -182,12 +182,12 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 | `Already shown warning for order` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handlePurchaseEvent` | yes |
 | `Preserving all session parameters in next step URL` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleStepNavigation` | — |
 | `Express payment config:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFormSubmit` | yes |
-| `Saved user's country selection to session: {value}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFieldChange` | — |
-| `Updated user data storage:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFieldChange` | yes |
+| `Saved user's country selection to session: {value}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.applyCountrySelection` | — |
 | `[Billing] Set country to:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleBillingAddressToggle` | yes |
 | `Converting phone to international format: {phone} -> {internationalNumber}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.populateFormData` | — |
 | `Restored province: {storedProvince}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.populateFormData` | — |
 | `begin_checkout already tracked, skipping duplicate` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.trackBeginCheckout` | — |
+| `Updated user data storage:` | `contact-persistence.ts › persistContactField` | yes |
 | `Reusing existing state loading promise for {country}` | `state-fields.ts › updateStateOptions` | — |
 | `Kept autofilled state: {currentProvinceValue}` | `state-fields.ts › updateStateOptions` | — |
 | `No valid state found, showing placeholder: Select {stateLabel}` | `state-fields.ts › updateStateOptions` | — |

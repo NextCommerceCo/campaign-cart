@@ -246,6 +246,15 @@ export interface Order {
   supports_post_purchase_upsells: boolean;
   /** `true` for a test-mode order — a real order record, but no money moved. */
   is_test: boolean;
+  /**
+   * What shows up next to the charge on the customer's card or bank statement.
+   * Up to 20 characters — letters, numbers, spaces, and `.`, `-`, `*`.
+   *
+   * `null` or absent when the store has not configured one; the gateway's own
+   * default descriptor applies instead. The SDK does not read this field today —
+   * declared because the orders API sends it on every order.
+   */
+  statement_descriptor?: string | null;
 }
 
 /**
@@ -284,6 +293,45 @@ export interface OrderLine {
   variant_title?: string;
   /** Units bought on this line. */
   quantity: number;
+  /**
+   * Catalog id of the product this line belongs to. `null` when the API has no
+   * catalog product for the line. The SDK does not read this field today —
+   * declared because the orders API sends it on every line.
+   */
+  product_id?: number | null;
+  /**
+   * Catalog id of the specific variant purchased (size, color, and similar
+   * choices). `null` when the product has no variants, or the line predates
+   * variant tracking. The SDK does not read this field today — declared because
+   * the orders API sends it on every line.
+   */
+  variant_id?: number | null;
+  /**
+   * Arbitrary key-value data attached to the line at checkout — internal keys
+   * the platform uses for its own bookkeeping, filtered out before this response
+   * is sent. `null` or absent when nothing was attached. The SDK does not read
+   * this field today — declared because the orders API sends it on every line.
+   */
+  metadata?: Record<string, unknown> | null;
+  /**
+   * Customer-facing custom values collected for this line at checkout — a gift
+   * note or an engraving, for example — as an ordered list rather than the
+   * {@link OrderLine.metadata | metadata} dictionary. `null` or empty when none
+   * were collected. The SDK does not read this field today — declared because
+   * the orders API sends it on every line.
+   */
+  properties?: OrderLineProperty[] | null;
+}
+
+/**
+ * One customer-facing custom value collected on an {@link OrderLine} at
+ * checkout — a gift message, an engraving, a personalization choice.
+ */
+export interface OrderLineProperty {
+  /** The field's name, e.g. `"engraving"`. */
+  key: string;
+  /** What the customer entered or chose for that field. */
+  value: string;
 }
 
 /**

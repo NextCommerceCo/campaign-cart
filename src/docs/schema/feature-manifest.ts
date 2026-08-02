@@ -319,6 +319,24 @@ export interface FeatureManifest {
    * hand-written ones whose per-path prose is the reason to read them.
    */
   displayPaths?: DisplayPathsDoc;
+  /**
+   * Further `data-next-display` namespaces this same feature answers, besides
+   * {@link displayNamespace}.
+   *
+   * `ProductDisplayEnhancer` is the reason this exists: it resolves both `package.`
+   * and `campaign.` out of one `getPropertyValue`, and the second was invisible to
+   * every gate above — `PROPERTY_MAPPINGS` has no entry for it, `docs:coverage`
+   * counted the feature as covered because it scores by *owning feature*, and no
+   * `displayPaths` prose existed for it to document. A namespace here gets exactly
+   * the same treatment as {@link displayNamespace}: its own generated
+   * `reference/display-paths-{namespace}.md`, checked both ways against the
+   * resolver, with its own {@link displayFallback} and {@link displayUnanswered}.
+   *
+   * Set {@link AdditionalDisplayNamespace.namespace} to the literal
+   * `AttributeScanner` routes to this feature — `campaign` for
+   * `parsed.object === 'package' || parsed.object === 'campaign'`.
+   */
+  additionalDisplayNamespaces?: AdditionalDisplayNamespace[];
   /** Attributes the integrator writes on the activated element. Required first. */
   attributes: AttributeDoc[];
   /**
@@ -451,6 +469,22 @@ export interface DisplayPathsDoc {
   footer?: string;
   /** The trap, the symptom, and the fix, one bullet each. Markdown. */
   cautions?: string[];
+}
+
+/**
+ * One further `data-next-display` namespace a feature answers, beyond its primary
+ * {@link FeatureManifest.displayNamespace}. See
+ * {@link FeatureManifest.additionalDisplayNamespaces}.
+ */
+export interface AdditionalDisplayNamespace {
+  /** The literal `AttributeScanner` routes to this feature, e.g. `campaign`. */
+  namespace: string;
+  /** Same meaning as {@link FeatureManifest.displayFallback}, scoped to this namespace. */
+  displayFallback?: DisplayFallback[];
+  /** Same meaning as {@link FeatureManifest.displayUnanswered}, scoped to this namespace. */
+  displayUnanswered?: UnansweredPath[];
+  /** Same meaning as {@link FeatureManifest.displayPaths}, scoped to this namespace. */
+  displayPaths?: DisplayPathsDoc;
 }
 
 /**

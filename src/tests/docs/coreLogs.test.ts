@@ -476,12 +476,20 @@ describe('core logs and errors reference', () => {
   // ── Healthy boot sample ───────────────────────────────────────────────────
 
   it('samples healthy boot from messages that exist', () => {
-    const byPrefix = new Map(
-      CORE_LOG_SOURCES.map(s => [
-        s.prefix,
-        new Set((logsByFile.get(s.file) ?? []).map(l => l.message)),
-      ])
-    );
+    // One console prefix can span several files — a facade split across modules
+    // keeps printing under the name of the class that owns the logger. Building
+    // this as `new Map(sources.map(...))` silently kept only the last-declared
+    // file per prefix, so a healthy-boot line from any earlier file read as
+    // invented. That narrowed the check without failing, and it blocked two
+    // otherwise-clean splits of `sdk-initializer.ts`. Accumulate instead.
+    const byPrefix = new Map<string, Set<string>>();
+    for (const source of CORE_LOG_SOURCES) {
+      const messages = byPrefix.get(source.prefix) ?? new Set<string>();
+      for (const log of logsByFile.get(source.file) ?? []) {
+        messages.add(log.message);
+      }
+      byPrefix.set(source.prefix, messages);
+    }
     const invented = CORE_HEALTHY_BOOT.filter(
       line => !byPrefix.get(line.prefix)?.has(line.message)
     ).map(line => `[${line.prefix}] ${line.message}`);

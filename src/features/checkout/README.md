@@ -43,6 +43,10 @@ field list and nothing more.
 | `state-fields.ts` | Refilling the state/province dropdown per country, including hiding it entirely for countries with neither states nor a requirement | 4 (billing) / 8 (shipping) |
 | `autofill-detection.ts` | Polling for **browser** autofill, which fires no events — without it the store stays empty while the form looks full, and the order submits blank | 4 fields |
 | `field-validation-display.ts` | The error/tick states as a shopper interacts: blur commits a verdict (but never errors an empty field), input only clears, change validates a value that arrived without typing | 2 fields |
+| `postal-code-format.ts` | Rewriting a postcode into its country's shape as it is typed, and putting the caret back where the shopper left it | 2 fields |
+| `field-value.ts` | What a field is *worth* to the order — a phone as E.164, a checkbox as a boolean, everything else as typed | 1 field |
+| `billing-field-routing.ts` | Where a `billing-*` value goes: renamed to the orders API's spelling (`fname` → `first_name`) on its way into `billingAddress`, plus the billing postcode and province dropdown | 3 fields |
+| `contact-persistence.ts` | What happens once the shopper *finishes* with a contact field — the prospect cart's email, user-data storage, and creating the prospect cart. Never on `input` | 3 fields |
 
 Each has a colocated test in `checkout-form/tests/`.
 
@@ -74,16 +78,39 @@ estimated (`handleFieldChange` as it now stands, after the display half came out
 |---|---|---|---|
 | `handleFormSubmit` | 240 | 11 | 5 |
 | `initialize` | ~~223~~ → 59 | ~~18~~ | ~~18~~ — **done, see below** |
-| `handleFieldChange` (value routing, remainder) | ~160 | 9 | 7 |
+| `handleFieldChange` | ~~168~~ → 26 | ~~9~~ | ~~7~~ — **done, see below** |
 
-**`handleFieldChange` — half done.** It looked like one big switch but was really **two**
-fused: the top half branches on the *field name* to route a value into the store, and the
-bottom half branched on the *event type* (`blur` / `input` / `change`) to show or clear
-errors. Two independent jobs sharing one entry point. **The event-type half is now
+**`handleFieldChange` — done, and it was never two halves.** It looked like one big switch
+but was really **two** fused: one half branches on the *field name* to route a value into
+the store, the other branched on the *event type* (`blur` / `input` / `change`) to show or
+clear errors. Two independent jobs sharing one entry point. **The event-type half is now
 `field-validation-display.ts`** — it needed only two things from the form despite the whole
-method touching nine, which is the evidence the split was real. The field-name routing half
-remains; it is the more entangled of the two because it writes to the store and drives the
-state dropdowns.
+method touching nine, which is the evidence the split was real.
+
+The field-name half was billed as "the more entangled of the two, because it writes to the
+store and drives the state dropdowns". Measured, that was wrong twice over. Its 9 fields and
+7 calls are not shared: they partition into **seven small jobs run in sequence**, each
+needing 1–3 things — a pipeline, not a knot. And routing a value is only two of those seven.
+The rest are a postcode formatter, an analytics event, cross-page contact storage, the
+prospect cart's lifecycle, and a *second* validation pass over four fields. Naming the jobs
+is what the method needed; four of them came out as modules with 1–3 dependencies, and the
+three that reach into the form's own state stayed as named steps under a
+`FIELD VALUE ROUTING` banner, in the order they run.
+
+One thing deliberately did **not** come out: the `add_shipping_info` block. It is nearly
+identical to the copy in `autofill-detection.ts`, but the two log *different* reasons
+(`address complete` vs `browser autofill`). Sharing them would collapse two literal log
+strings into one templated message — which is exactly the mistake the second rule above
+records, and would delete both lines from the published `logs.md`. Duplication was the
+cheaper price.
+
+`tests/field-routing.test.ts` pins the dispatch and the step order; each module has its own
+colocated test. Four defects those tests reproduce are documented at the test and **left as
+found** — see the `DEFECT:` tests. The one that reaches an order: a **billing** phone is
+stored as the national text the shopper typed, overwriting the E.164 number
+`phone-input.ts` wrote on the same event, because the E.164 arm of the value reader tests
+for `billing-phone` inside a branch the billing prefix already excluded. The shipping phone
+is unaffected.
 
 **`handleFormSubmit` — split by submit path.** Its five calls
 (`validateExpressCheckoutFields`, `processOrder`, `handleStepNavigation`,

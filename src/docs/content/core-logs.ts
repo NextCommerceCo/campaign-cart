@@ -203,6 +203,42 @@ export const CORE_HEALTHY_BOOT: CoreHealthyLine[] = [
 
 export const CORE_LOG_SOURCES: CoreLogSource[] = [
   // ── Boot and wiring ────────────────────────────────────────────────────────
+  // Several entries below share the `SDKInitializer` prefix, because the boot
+  // sequence is split across files that all print under the logger the class
+  // owns. The healthy-boot check in `src/tests/docs/coreLogs.test.ts` used to
+  // build its lookup as `new Map(CORE_LOG_SOURCES.map(s => [s.prefix, …]))`,
+  // which silently kept only the last-declared file per prefix — so the order
+  // of these entries decided what the check could see, and two clean splits of
+  // `sdk-initializer.ts` were abandoned to work around it. That lookup now
+  // accumulates across every file sharing a prefix, so declaration order here
+  // carries no meaning beyond readability.
+  {
+    prefix: 'SDKInitializer',
+    file: 'sdk-initializer.url-params.ts',
+    area: 'Boot and wiring',
+    what: 'The `forcePackageId` / `forceShippingId` URL overrides and the session\'s captured URL parameters, applied once configuration and campaign data are loaded.',
+    dynamicPrefix: true,
+    prefixFrom: 'sdk-initializer.ts',
+    prefixNote: 'A free function, not a class with its own logger. `SDKInitializer` builds one `Logger(\'SDKInitializer\')` in `sdk-initializer.ts` and passes it in through a `{ logger }` context, so every line here prints under `[SDKInitializer]`.',
+  },
+  {
+    prefix: 'SDKInitializer',
+    file: 'sdk-initializer.storage-reset.ts',
+    area: 'Boot and wiring',
+    what: 'Clears the SDK\'s own sessionStorage, localStorage, and cookies when the page carries `?reset=true`, for a clean-slate reload.',
+    dynamicPrefix: true,
+    prefixFrom: 'sdk-initializer.ts',
+    prefixNote: 'A free function, not a class with its own logger. `SDKInitializer` builds one `Logger(\'SDKInitializer\')` in `sdk-initializer.ts` and passes it in through a `{ logger }` context, so every line here prints under `[SDKInitializer]`.',
+  },
+  {
+    prefix: 'SDKInitializer',
+    file: 'sdk-initializer.debug-utils.ts',
+    area: 'Boot and wiring',
+    what: 'Builds `window.nextDebug` — the console surface for inspecting and driving the stores, the cart, campaign, attribution, and analytics from devtools.',
+    dynamicPrefix: true,
+    prefixFrom: 'sdk-initializer.ts',
+    prefixNote: 'A free function, not a class with its own logger. `SDKInitializer` builds one `Logger(\'SDKInitializer\')` in `sdk-initializer.ts` and passes it in through a `{ logger }` context, so every line here prints under `[SDKInitializer]`.',
+  },
   {
     prefix: 'SDKInitializer',
     file: 'sdk-initializer.ts',
@@ -535,7 +571,9 @@ export const CORE_LOG_SOURCES: CoreLogSource[] = [
 ];
 
 export const CORE_LOG_NOTES: CoreLogNote[] = [
-  // ── sdk-initializer.ts ─────────────────────────────────────────────────────
+  // ── sdk-initializer.ts (+ sdk-initializer.url-params.ts, whose messages are
+  //    interspersed below at the points where `loadConfiguration` and
+  //    `loadCampaignData` call into it) ───────────────────────────────────────
   {
     level: 'warn',
     message: 'SDK already initialized',
@@ -1996,9 +2034,9 @@ export const CORE_CONSOLE_LOGS: CoreConsoleLog[] = [
       'Nothing. Some browsers do not implement the estimate at all, and the SDK works either way.',
   },
 
-  // ── sdk-initializer.ts ─────────────────────────────────────────────────────
+  // ── sdk-initializer.debug-utils.ts ────────────────────────────────────────
   {
-    file: 'sdk-initializer.ts',
+    file: 'sdk-initializer.debug-utils.ts',
     level: 'error',
     anchor: 'Failed to set shipping method ${methodId}:',
     message: '❌ Failed to set shipping method {methodId}:',

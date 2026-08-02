@@ -24,7 +24,12 @@ export const CORE_SUBSYSTEMS: CoreSubsystem[] = [
     title: 'Boot sequence',
     summary:
       'Starts the SDK: reads your configuration, works out the currency, loads the campaign, then scans the page and wires up every feature. Nothing else on this list works until it has finished.',
-    sources: ['core/sdk-initializer.ts'],
+    sources: [
+      'core/sdk-initializer.ts',
+      'core/sdk-initializer.url-params.ts',
+      'core/sdk-initializer.storage-reset.ts',
+      'core/sdk-initializer.debug-utils.ts',
+    ],
     howAuthorsReachIt: ['observed', 'configured'],
     // `storage-keys` is here because boot owns `?reset=true`, and what that does and does
     // not clear is a storage question a reader follows straight out of this page.

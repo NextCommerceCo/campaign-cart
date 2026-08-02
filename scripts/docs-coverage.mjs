@@ -313,20 +313,35 @@ function scanFeatures() {
 
 /**
  * Every `data-next-display` namespace, the feature that owns it, and whether that
- * feature publishes a **generated** list of the paths the namespace can show
- * (`guide/reference/display-paths.md`).
+ * namespace has its own **generated** list of the paths it can show
+ * (`guide/reference/display-paths.md`, or `display-paths-{namespace}.md` for a
+ * feature that answers more than one).
  *
  * Read from `AttributeScanner`'s display routing rather than from the manifests, so
  * the denominator is every namespace the SDK really answers — a namespace whose
  * manifest forgot `displayNamespace` has to count as a gap, not vanish from the
  * total. That is the documentation half of finding 95.
  *
+ * **One row per namespace, not per feature** — finding 143's second defect.
+ * `product-display` answers both `package.` and `campaign.` from one
+ * `getPropertyValue`, and the old version of this scan kept one row per *feature*,
+ * so a `package.` page alone scored the whole row covered and `campaign.` — routed
+ * nowhere, documented nowhere — vanished into a metric reading 8/8. Two namespace
+ * literals joined by `||` in the same `AttributeScanner` branch are only counted
+ * separately when the feature's own source actually tells them apart (a
+ * `startsWith('{ns}.')` or `=== '{ns}'` guard on that literal) — `cart`/`cart-summary`
+ * share one branch and one untouched resolver, so they fold into a single `cart` row;
+ * `package`/`campaign` share a branch too, but `product-display` guards on
+ * `campaign.` explicitly, so they are two rows. That is the same test
+ * `extract-display-paths.ts › claimsNamespace` runs against the resolver, kept as a
+ * plain regex here since this script does not carry a TypeScript AST walker.
+ *
  * **Generated, not merely present**, since finding 114: the three cart namespaces
  * were hand-written for want of a generator, and a hand-written property table is
  * unchecked by definition. `bundle-selector`'s listed four properties its enhancer
  * has no case for (finding 109) while this metric read 8/8. Counting the "do not
- * edit by hand" marker is what stops a page quietly reverting to prose the next time
- * one is added.
+ * edit by hand" marker, and the exact namespace's own opening sentence, is what stops
+ * a page quietly reverting to prose or being credited to the wrong namespace.
  */
 function scanDisplayNamespaces() {
   const file = join(SRC, 'core/attribute-scanner.ts');
@@ -342,22 +357,41 @@ function scanDisplayNamespaces() {
   const start = src.indexOf("case 'display':");
   const block = start === -1 ? '' : src.slice(start).split(/\n\s+case '/)[0];
 
-  const byFeature = new Map();
+  const rows = [];
   // One chunk per branch of the routing chain, so a branch that answers to two
-  // namespace names (`'cart' || 'cart-summary'`) keeps both against one owner.
+  // namespace names (`'cart' || 'cart-summary'`) is examined as one unit.
   for (const chunk of block.split(/\belse\s+if\s*\(/)) {
     const namespaces = [
-      ...chunk.matchAll(/parsed\.object\s*===\s*'([a-z0-9-]+)'/g),
-    ].map(m => m[1]);
+      ...new Set(
+        [...chunk.matchAll(/parsed\.object\s*===\s*'([a-z0-9-]+)'/g)].map(
+          m => m[1]
+        )
+      ),
+    ];
     const cls = /new\s+(\w+Enhancer)\s*\(/.exec(chunk)?.[1];
     const dir = cls ? owner.get(cls) : undefined;
     if (!namespaces.length || !dir) continue;
-    const row = byFeature.get(dir) ?? { namespaces: [], dir };
-    row.namespaces.push(...namespaces);
-    byFeature.set(dir, row);
+
+    const [primary, ...rest] = namespaces;
+    const featureSource = walk(dir, name => name.endsWith('.ts')).map(f =>
+      readFileSync(f, 'utf8')
+    ).join('\n');
+
+    // A namespace the feature's own code never guards on is resolved identically to
+    // `primary` — same resolver, same behaviour, so it is not a separate thing to
+    // document. One that IS guarded on gets its own row.
+    const distinct = rest.filter(ns =>
+      new RegExp(
+        `(===\\s*['"\`]${ns}['"\`])|(startsWith\\(\\s*['"\`]${ns}\\.['"\`])`
+      ).test(featureSource)
+    );
+
+    for (const namespace of [primary, ...distinct]) {
+      rows.push({ dir, namespace });
+    }
   }
 
-  if (byFeature.size === 0) {
+  if (rows.length === 0) {
     throw new Error(
       `No display namespaces found in ${relative(ROOT, file)}. The scan reads the ` +
         "`case 'display':` routing chain — if that changed shape, update " +
@@ -365,15 +399,24 @@ function scanDisplayNamespaces() {
     );
   }
 
-  return [...byFeature.values()]
-    .map(row => {
-      const page = join(row.dir, 'guide/reference/display-paths.md');
+  return rows
+    .map(({ dir, namespace }) => {
+      const feature = dir.split(/[\\/]/).pop();
+      // The primary namespace's page keeps the plain name; every further one this
+      // feature answers gets its own file, `display-paths-{namespace}.md` — see
+      // `FeatureManifest.additionalDisplayNamespaces`.
+      const bare = join(dir, 'guide/reference/display-paths.md');
+      const named = join(dir, `guide/reference/display-paths-${namespace}.md`);
+      const claims = page =>
+        existsSync(page) &&
+        readFileSync(page, 'utf8').includes('Do not edit by hand') &&
+        readFileSync(page, 'utf8').includes(`the \`${namespace}.\` namespace can show`);
+
       return {
-        id: row.dir.split(/[\\/]/).pop(),
-        namespaces: [...new Set(row.namespaces)].sort(),
-        hasPaths:
-          existsSync(page) &&
-          readFileSync(page, 'utf8').includes('Do not edit by hand'),
+        id: `${feature}:${namespace}`,
+        feature,
+        namespace,
+        hasPaths: claims(bare) || claims(named),
       };
     })
     .sort((a, b) => a.id.localeCompare(b.id));

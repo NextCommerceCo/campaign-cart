@@ -46,7 +46,7 @@ The Format column is what you get with no `data-next-format`; set that attribute
 
 ## Declared but not answered
 
-`core/base/display-types.ts › PROPERTY_MAPPINGS` also lists these under `selection`, and `selection-display.enhancer.ts › SelectionDisplayEnhancer.getPropertyValue` has no answer for any of them. Writing one renders nothing — or, where the routing entry declares a fallback value, renders that fallback, which reads as though it worked.
+`core/base/display-types.ts › PROPERTY_MAPPINGS` also lists these under `selection`, and `selection-display.enhancer.ts › SelectionDisplayEnhancer.getPropertyValue` has no answer for any of them. Writing one renders nothing.
 
 | Path | Routed to | Write instead |
 |---|---|---|

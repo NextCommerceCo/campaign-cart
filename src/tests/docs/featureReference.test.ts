@@ -2,7 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { basename, dirname, join, relative } from 'node:path';
-import type { FeatureManifest } from '@/docs/schema/feature-manifest';
+import type {
+  DisplayFallback,
+  FeatureManifest,
+  UnansweredPath,
+} from '@/docs/schema/feature-manifest';
 import type { DisplayPath } from '@/docs/render/render-feature-reference';
 import {
   renderAttributes,
@@ -110,7 +114,12 @@ const declaredShapes = readDeclaredShapes(
 interface DisplaySource {
   paths: DisplayPath[];
   where: string;
-  unanswered: Array<{ name: string; routedTo: string; instead: string }>;
+  unanswered: Array<{
+    name: string;
+    routedTo: string;
+    instead: string;
+    hasFallback: boolean;
+  }>;
   claimedIn?: string;
   /** Names the resolver has an explicit branch for — the trio's whole answer. */
   branchNames: string[];
@@ -128,22 +137,30 @@ interface DisplaySource {
  *
  * Three answers can be true of a routed name, and only the first two put it on the
  * page: the resolver has a branch for it; it has no branch but names a field of the
- * shape the resolver's open branch reads (`manifest.displayFallback`); or nothing
- * answers it at all, in which case it belongs in the "declared but not answered"
- * table with a working alternative beside it.
+ * shape the resolver's open branch reads (`fallbackShapes`); or nothing answers it
+ * at all, in which case it belongs in the "declared but not answered" table with a
+ * working alternative beside it.
+ *
+ * Takes the namespace and its per-namespace declarations directly rather than a
+ * whole manifest, because a feature can answer more than one namespace from the
+ * same resolver — `product-display` answers `package.` from
+ * `manifest.displayNamespace` and `campaign.` from
+ * `manifest.additionalDisplayNamespaces`, each with its own fallback shapes and
+ * unanswered list, and both must run through exactly the same checks.
  */
 function displaySourceFor(
-  manifest: FeatureManifest,
-  files: Array<[string, string]>
+  files: Array<[string, string]>,
+  namespace: string,
+  fallbackShapes: DisplayFallback[] = [],
+  unansweredNotes: UnansweredPath[] = []
 ): DisplaySource {
-  const namespace = manifest.displayNamespace ?? '';
   const resolved = extractResolvedDisplayPaths(files, namespace);
   const claimed = routingClaims[namespace] ?? [];
   const byBranch = new Set(resolved.paths.map(p => p.name));
 
   /** The declared shape whose field this name routes to, when one has it. */
   const viaData = (entry: DisplayPath): boolean =>
-    (manifest.displayFallback ?? []).some(fallback => {
+    fallbackShapes.some(fallback => {
       const path = entry.path ?? entry.name;
       if (fallback.mappedPrefix && !path.startsWith(fallback.mappedPrefix)) {
         return false;
@@ -165,9 +182,7 @@ function displaySourceFor(
 
   const answeredClaims = claimed.filter(e => byBranch.has(e.name) || viaData(e));
   const claimedNames = new Set(claimed.map(e => e.name));
-  const notes = new Map(
-    (manifest.displayUnanswered ?? []).map(u => [u.name, u.instead])
-  );
+  const notes = new Map(unansweredNotes.map(u => [u.name, u.instead]));
 
   return {
     // Claimed-and-answered first, in the table's own order, so an existing page keeps
@@ -177,10 +192,16 @@ function displaySourceFor(
         name: e.name,
         format: formatOf(e.name, e),
         negated: e.negated,
+        hasFallback: e.hasFallback,
       })),
       ...resolved.paths
         .filter(p => !claimedNames.has(p.name))
-        .map(p => ({ name: p.name, format: formatOf(p.name), negated: false })),
+        .map(p => ({
+          name: p.name,
+          format: formatOf(p.name),
+          negated: false,
+          hasFallback: false,
+        })),
     ],
     where: resolved.where,
     unanswered: claimed
@@ -189,6 +210,7 @@ function displaySourceFor(
         name: e.name,
         routedTo: e.path ?? e.name,
         instead: notes.get(e.name) ?? '',
+        hasFallback: e.hasFallback,
       })),
     ...(claimed.length ? { claimedIn: routingTableAnchor } : {}),
     branchNames: resolved.paths.map(p => p.name),
@@ -679,24 +701,66 @@ describe('feature reference docs', () => {
       ).toEqual([]);
     });
 
+    /**
+     * Every `data-next-display` namespace this feature answers — the primary
+     * {@link FeatureManifest.displayNamespace} plus any in
+     * {@link FeatureManifest.additionalDisplayNamespaces} — run through exactly the
+     * same checks below. `product-display` is why this is a list rather than one
+     * namespace: it resolves both `package.` and `campaign.` out of the same
+     * `getPropertyValue`, and `campaign.` had none of the checks below until this
+     * loop existed — `PROPERTY_MAPPINGS` has no entry for it and `docs:coverage`
+     * scored the feature covered because it counts by owning feature, not by
+     * namespace (finding 143 in `docs/code-findings.md`).
+     */
+    const displayNamespaces = [
+      ...(manifest.displayNamespace
+        ? [
+            {
+              namespace: manifest.displayNamespace,
+              doc: manifest.displayPaths,
+              fallback: manifest.displayFallback,
+              unanswered: manifest.displayUnanswered,
+              file: 'display-paths.md',
+              leaf: 'Display Paths',
+            },
+          ]
+        : []),
+      ...(manifest.additionalDisplayNamespaces ?? []).map(a => ({
+        namespace: a.namespace,
+        doc: a.displayPaths,
+        fallback: a.displayFallback,
+        unanswered: a.displayUnanswered,
+        file: `display-paths-${a.namespace}.md`,
+        leaf: `${a.namespace.charAt(0).toUpperCase()}${a.namespace.slice(1)} Display Paths`,
+      })),
+    ];
+
     // The path inventory is generated for both modes: a hand-written page keeps
     // its prose and still gets a complete, current list of paths beside it.
-    it.runIf(!!manifest.displayNamespace)('display-paths.md matches the source that resolves the namespace', () => {
-      const file = join(refDir, 'display-paths.md');
-      const expected = renderDisplayPaths(
-        manifest,
-        displaySourceFor(
+    it.each(displayNamespaces)(
+      '$namespace: display-paths.md matches the source that resolves the namespace',
+      ({ namespace, doc, fallback, unanswered, file, leaf }) => {
+        const path = join(refDir, file);
+        const expected = renderDisplayPaths(
           manifest,
-          featureFiles(dir, manifest.id, ownFolder, manifest.extraSource)
-        )
-      );
-      if (UPDATE) {
-        mkdirSync(refDir, { recursive: true });
-        writeFileSync(file, expected);
+          displaySourceFor(
+            featureFiles(dir, manifest.id, ownFolder, manifest.extraSource),
+            namespace,
+            fallback ?? [],
+            unanswered ?? []
+          ),
+          namespace,
+          doc,
+          leaf
+        );
+        if (UPDATE) {
+          mkdirSync(refDir, { recursive: true });
+          writeFileSync(path, expected);
+        }
+        expect(existsSync(path), `${relative(SRC, path)} is missing`).toBe(true);
+        expect(readFileSync(path, 'utf8')).toBe(expected);
       }
-      expect(existsSync(file), `${relative(SRC, file)} is missing`).toBe(true);
-      expect(readFileSync(file, 'utf8')).toBe(expected);
-    });
+    );
 
     /**
      * The gate finding 114 asked for, in both directions — now for every namespace,
@@ -715,36 +779,41 @@ describe('feature reference docs', () => {
      * five publish the API's own field names and carry no prose today; what they must
      * carry instead is `displayUnanswered`, checked below.
      */
-    it.runIf(!!manifest.displayNamespace)('documents exactly the paths its namespace resolves', () => {
-      const source = displaySourceFor(
-        manifest,
-        featureFiles(dir, manifest.id, ownFolder, manifest.extraSource)
-      );
+    it.each(displayNamespaces)(
+      '$namespace: documents exactly the paths its namespace resolves',
+      ({ namespace, doc, fallback, unanswered }) => {
+        const source = displaySourceFor(
+          featureFiles(dir, manifest.id, ownFolder, manifest.extraSource),
+          namespace,
+          fallback ?? [],
+          unanswered ?? []
+        );
 
-      if (!manifest.displayPaths) {
+        if (!doc) {
+          expect(
+            source.claimedNames,
+            `nothing routes \`${namespace}.\`, so ${manifest.id} owns every path it answers and displayPaths must carry a description for each one`
+          ).not.toEqual([]);
+          return;
+        }
+
+        const resolved = source.paths.map(p => p.name);
+        const documented = doc.paths.map(p => p.name);
+
         expect(
-          source.claimedNames,
-          `nothing routes \`${manifest.displayNamespace}.\`, so ${manifest.id} owns every path it answers and displayPaths must carry a description for each one`
-        ).not.toEqual([]);
-        return;
+          resolved.filter(name => !documented.includes(name)),
+          `${manifest.id} resolves these \`${namespace}.\` display paths but its manifest does not describe them — add them to displayPaths.paths, or a page author gets a value with no documentation`
+        ).toEqual([]);
+        expect(
+          documented.filter(name => !resolved.includes(name)),
+          `${manifest.id}.manifest.ts describes these \`${namespace}.\` display paths but ${source.where} does not answer them — the page would teach markup that renders nothing`
+        ).toEqual([]);
+        expect(
+          documented.filter(name => !doc.paths.find(p => p.name === name)?.description.trim()),
+          'every documented path needs a description — the table is the reason the page exists'
+        ).toEqual([]);
       }
-
-      const resolved = source.paths.map(p => p.name);
-      const documented = manifest.displayPaths.paths.map(p => p.name);
-
-      expect(
-        resolved.filter(name => !documented.includes(name)),
-        `${manifest.id} resolves these display paths but its manifest does not describe them — add them to displayPaths.paths, or a page author gets a value with no documentation`
-      ).toEqual([]);
-      expect(
-        documented.filter(name => !resolved.includes(name)),
-        `${manifest.id}.manifest.ts describes these display paths but ${source.where} does not answer them — the page would teach markup that renders nothing`
-      ).toEqual([]);
-      expect(
-        documented.filter(name => !manifest.displayPaths?.paths.find(p => p.name === name)?.description.trim()),
-        'every documented path needs a description — the table is the reason the page exists'
-      ).toEqual([]);
-    });
+    );
 
     /**
      * The routing table, checked as a claim rather than published as the answer.
@@ -761,36 +830,41 @@ describe('feature reference docs', () => {
      * *does* answer must be removed — so the list can only shrink, and only by making
      * the path work.
      */
-    it.runIf(!!manifest.displayNamespace)('accounts for every path its routing table claims', () => {
-      const source = displaySourceFor(
-        manifest,
-        featureFiles(dir, manifest.id, ownFolder, manifest.extraSource)
-      );
-      const listed = (manifest.displayUnanswered ?? []).map(u => u.name);
-      const unanswered = source.unanswered.map(u => u.name);
+    it.each(displayNamespaces)(
+      '$namespace: accounts for every path its routing table claims',
+      ({ namespace, fallback, unanswered: declaredUnanswered }) => {
+        const source = displaySourceFor(
+          featureFiles(dir, manifest.id, ownFolder, manifest.extraSource),
+          namespace,
+          fallback ?? [],
+          declaredUnanswered ?? []
+        );
+        const listed = (declaredUnanswered ?? []).map(u => u.name);
+        const unanswered = source.unanswered.map(u => u.name);
 
-      expect(
-        unanswered.filter(name => !listed.includes(name)),
-        `\`${source.claimedIn}\` routes \`${manifest.displayNamespace}.\` to these, ${source.where} has no branch for them, and no declared shape has the field either — so writing one renders nothing. Add them to displayUnanswered with what to write instead, or add the branch that answers them`
-      ).toEqual([]);
-      expect(
-        listed.filter(name => !unanswered.includes(name)),
-        `${manifest.id}.manifest.ts lists these as unanswered, but ${source.where} answers them now — take them out of displayUnanswered so the page stops warning about a path that works`
-      ).toEqual([]);
+        expect(
+          unanswered.filter(name => !listed.includes(name)),
+          `\`${source.claimedIn}\` routes \`${namespace}.\` to these, ${source.where} has no branch for them, and no declared shape has the field either — so writing one renders nothing. Add them to displayUnanswered with what to write instead, or add the branch that answers them`
+        ).toEqual([]);
+        expect(
+          listed.filter(name => !unanswered.includes(name)),
+          `${manifest.id}.manifest.ts lists these as unanswered for \`${namespace}.\`, but ${source.where} answers them now — take them out of displayUnanswered so the page stops warning about a path that works`
+        ).toEqual([]);
 
-      const answered = new Set(source.paths.map(p => p.name));
-      const pointless = (manifest.displayUnanswered ?? []).flatMap(entry => {
-        if (!entry.instead.trim()) return [`${entry.name}: no alternative given`];
-        // A caution that points at a second dead path is worse than no caution.
-        return [...entry.instead.matchAll(/`([a-zA-Z]+)\.([\w.[\]]+)`/g)]
-          .filter(m => m[1] === manifest.displayNamespace && !answered.has(m[2] ?? ''))
-          .map(m => `${entry.name} → ${m[0]}`);
-      });
-      expect(
-        pointless,
-        'every unanswered path needs a working alternative, and a path of this namespace named in one must be answered'
-      ).toEqual([]);
-    });
+        const answered = new Set(source.paths.map(p => p.name));
+        const pointless = (declaredUnanswered ?? []).flatMap(entry => {
+          if (!entry.instead.trim()) return [`${entry.name}: no alternative given`];
+          // A caution that points at a second dead path is worse than no caution.
+          return [...entry.instead.matchAll(/`([a-zA-Z]+)\.([\w.[\]]+)`/g)]
+            .filter(m => m[1] === namespace && !answered.has(m[2] ?? ''))
+            .map(m => `${entry.name} → ${m[0]}`);
+        });
+        expect(
+          pointless,
+          'every unanswered path needs a working alternative, and a path of this namespace named in one must be answered'
+        ).toEqual([]);
+      }
+    );
 
     /**
      * `displayFallback` is a claim about the code as much as about the types.
@@ -801,27 +875,30 @@ describe('feature reference docs', () => {
      * namespace that has no such branch would silently prove paths that cannot
      * resolve; leaving them off one that does would report live paths as dead.
      */
-    it.runIf(!!manifest.displayNamespace)('declares a fallback shape exactly when its resolver reads one', () => {
-      const source = displaySourceFor(
-        manifest,
-        featureFiles(dir, manifest.id, ownFolder, manifest.extraSource)
-      );
-      const declared = manifest.displayFallback ?? [];
+    it.each(displayNamespaces)(
+      '$namespace: declares a fallback shape exactly when its resolver reads one',
+      ({ namespace, fallback }) => {
+        const source = displaySourceFor(
+          featureFiles(dir, manifest.id, ownFolder, manifest.extraSource),
+          namespace
+        );
+        const declared = fallback ?? [];
 
-      expect(
-        declared.length > 0,
-        source.dataFallback
-          ? `${source.dataFallback} resolves a path with no branch by reading it off runtime data, so ${manifest.id}.manifest.ts must declare the shape that read lands on`
-          : `${manifest.id}.manifest.ts declares a displayFallback shape, but ${source.where} never reads a path off runtime data — every path it answers is an explicit branch, so the declaration would prove paths that cannot resolve`
-      ).toBe(!!source.dataFallback);
-
-      for (const fallback of declared) {
         expect(
-          declaredShapes.has(fallback.shape),
-          `${manifest.id}.manifest.ts says its display fallback reads a \`${fallback.shape}\`, but no interface of that name is declared under src/types or src/state`
-        ).toBe(true);
+          declared.length > 0,
+          source.dataFallback
+            ? `${source.dataFallback} resolves a \`${namespace}.\` path with no branch by reading it off runtime data, so ${manifest.id}.manifest.ts must declare the shape that read lands on`
+            : `${manifest.id}.manifest.ts declares a displayFallback shape for \`${namespace}.\`, but ${source.where} never reads a path off runtime data — every path it answers is an explicit branch, so the declaration would prove paths that cannot resolve`
+        ).toBe(!!source.dataFallback);
+
+        for (const shape of declared) {
+          expect(
+            declaredShapes.has(shape.shape),
+            `${manifest.id}.manifest.ts says its \`${namespace}.\` display fallback reads a \`${shape.shape}\`, but no interface of that name is declared under src/types or src/state`
+          ).toBe(true);
+        }
       }
-    });
+    );
 
     /**
      * The root cause behind finding 109, gated in the source instead of on the page.
@@ -841,39 +918,45 @@ describe('feature reference docs', () => {
      * Vacuous for the namespaces `PROPERTY_MAPPINGS` routes, which have no per-enhancer
      * table to compare.
      */
-    it.runIf(!!manifest.displayNamespace)('declares no format for a property its resolver cannot answer', () => {
-      const source = displaySourceFor(
-        manifest,
-        featureFiles(dir, manifest.id, ownFolder, manifest.extraSource)
-      );
+    it.each(displayNamespaces)(
+      '$namespace: declares no format for a property its resolver cannot answer',
+      ({ namespace }) => {
+        const source = displaySourceFor(
+          featureFiles(dir, manifest.id, ownFolder, manifest.extraSource),
+          namespace
+        );
 
-      expect(
-        source.formatsWithoutPath ?? [],
-        `${source.formatWhere ?? manifest.id} declares a default format for these, but ` +
-          `${source.where ?? 'the resolver'} has no case for any of them, so ` +
-          `\`data-next-display="${manifest.displayNamespace}.…"\` using one renders ` +
-          'nothing. A format table is not an inventory of paths, but it reads like one — ' +
-          'that is how four fictional bundle paths reached a published page (finding 109 ' +
-          'in docs/code-findings.md). Delete the entry, or add the case that answers it'
-      ).toEqual([]);
-    });
+        expect(
+          source.formatsWithoutPath ?? [],
+          `${source.formatWhere ?? manifest.id} declares a default format for these, but ` +
+            `${source.where ?? 'the resolver'} has no case for any of them, so ` +
+            `\`data-next-display="${namespace}.…"\` using one renders ` +
+            'nothing. A format table is not an inventory of paths, but it reads like one — ' +
+            'that is how four fictional bundle paths reached a published page (finding 109 ' +
+            'in docs/code-findings.md). Delete the entry, or add the case that answers it'
+        ).toEqual([]);
+      }
+    );
 
     /**
      * `prefix` is a claim about the markup a reader types. Checking its segment count
      * against the `parts.slice(n)` the enhancer parses is what stops it going stale
      * the day a class reads one more segment out of the path.
      */
-    it.runIf(!!manifest.displayPaths)('publishes a prefix with as many segments as the enhancer parses', () => {
-      const source = displaySourceFor(
-        manifest,
-        featureFiles(dir, manifest.id, ownFolder, manifest.extraSource)
-      );
-      if (source.prefixSegments === undefined) return;
-      expect(
-        manifest.displayPaths?.prefix.split('.').length,
-        `${manifest.id}'s prefix "${manifest.displayPaths?.prefix}" does not match the ${source.prefixSegments} segments ${source.where} parses before the property`
-      ).toBe(source.prefixSegments);
-    });
+    it.each(displayNamespaces.filter(n => !!n.doc))(
+      '$namespace: publishes a prefix with as many segments as the enhancer parses',
+      ({ namespace, doc }) => {
+        const source = displaySourceFor(
+          featureFiles(dir, manifest.id, ownFolder, manifest.extraSource),
+          namespace
+        );
+        if (source.prefixSegments === undefined) return;
+        expect(
+          doc?.prefix.split('.').length,
+          `${manifest.id}'s \`${namespace}.\` prefix "${doc?.prefix}" does not match the ${source.prefixSegments} segments ${source.where} parses before the property`
+        ).toBe(source.prefixSegments);
+      }
+    );
 
     /**
      * Log messages, read from the feature's own `logger.*` calls. A console line is

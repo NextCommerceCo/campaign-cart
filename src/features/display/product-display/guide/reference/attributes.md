@@ -64,7 +64,11 @@ Formatting and hiding work the same as for every display namespace —
 documented once in
 [display-core](../../../../display/display-core/guide/reference/attributes.md).
 
-The `campaign.` namespace is an alias for `package.` and resolves identically.
+This same enhancer also answers a `campaign.` namespace — the campaign's own
+`name`, `currency` and `language`, with no package id in front of it. It is
+not an alias for `package.`: it answers exactly those three properties, not
+every `package.` one. See
+[its display-paths reference](./display-paths-campaign.md).
 
 ```html
 <!-- A package's price, and its per-unit price -->

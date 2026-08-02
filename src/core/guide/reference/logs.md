@@ -10,7 +10,7 @@ category: "Core Reference"
      src/docs/content/core-logs.ts. Do not edit by hand: change the log line in the
      code or the note in core-logs.ts, then run `npm run docs:reference`. -->
 
-Every message the SDK's own machinery can print — 497 of them, across 46 console prefixes plus 13 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
+Every message the SDK's own machinery can print — 497 of them, across 49 console prefixes plus 13 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
 
 Messages are listed at the wording the code uses. A `{name}` inside one is a value filled in at runtime, so search for the text on either side of it. **Extra context** means the call passes a second argument — an object or an error logged beside the message; expand that entry in the console, because the message alone will not tell you which element, package, or event was involved.
 
@@ -69,7 +69,10 @@ Console lines are prefixed with the part of the SDK that produced them. Find the
 
 | Prefix | What it does | Error | Warn | Info | Debug |
 |---|---|---|---|---|---|
-| `[SDKInitializer]` | Starts the SDK: reads configuration, detects country and currency, loads the campaign, applies URL parameters such as `forcePackageId`, then hands over to the DOM scan. Most "the page did nothing" investigations start here. | 7 | 12 | 31 | 23 |
+| `[SDKInitializer]` | The `forcePackageId` / `forceShippingId` URL overrides and the session's captured URL parameters, applied once configuration and campaign data are loaded. | 2 | 4 | 5 | 5 |
+| `[SDKInitializer]` | Clears the SDK's own sessionStorage, localStorage, and cookies when the page carries `?reset=true`, for a clean-slate reload. | — | — | 2 | — |
+| `[SDKInitializer]` | Builds `window.nextDebug` — the console surface for inspecting and driving the stores, the cart, campaign, attribution, and analytics from devtools. | — | — | — | 1 |
+| `[SDKInitializer]` | Starts the SDK: reads configuration, detects country and currency, loads the campaign, applies URL parameters such as `forcePackageId`, then hands over to the DOM scan. Most "the page did nothing" investigations start here. | 5 | 8 | 24 | 17 |
 | `[AttributeScanner]` | Finds every `data-next-*` element on the page and starts the feature bound to it. If a feature never runs, this is where its element was either skipped or failed to initialize. | 5 | 3 | 3 | 28 |
 | `[NextCommerce]` | Part of the `window.next` API — the analytics calls a page makes by hand — tracking a view, a sign-up, or a custom event through the SDK rather than the provider. | — | 1 | — | 3 |
 | `[NextCommerce]` | Part of the `window.next` API — metadata and attribution a page sets on itself, which every later order carries. | 7 | — | — | 4 |
@@ -153,6 +156,121 @@ Console lines are prefixed with the part of the SDK that produced them. Find the
 
 ## `[SDKInitializer]`
 
+The `forcePackageId` / `forceShippingId` URL overrides and the session's captured URL parameters, applied once configuration and campaign data are loaded.
+
+Logged from `sdk-initializer.url-params.ts`. A free function, not a class with its own logger. `SDKInitializer` builds one `Logger('SDKInitializer')` in `sdk-initializer.ts` and passes it in through a `{ logger }` context, so every line here prints under `[SDKInitializer]`.
+
+### Error
+
+Something did not work. Each of these means a visitor saw the wrong thing, or a piece of data went missing. Every one carries what it means and what to do.
+
+#### `Error processing forcePackageId parameter:`
+
+`sdk-initializer.url-params.ts › processForcePackageId` · extra context attached
+
+**Meaning:** The `forcePackageId` parameter could not be applied, so the cart is not pre-filled. Boot deliberately continues — a bad link should not take the page down.
+
+**Action:** Read the attached error: `Invalid package ID` and `Invalid quantity` name the offending value. The parameter format is `id` or `id:quantity`, comma-separated.
+
+#### `Error processing forceShippingId parameter:`
+
+`sdk-initializer.url-params.ts › processForceShippingId` · extra context attached
+
+**Meaning:** Applying `forceShippingId` threw, so shipping is unchanged. Boot continues.
+
+**Action:** Read the attached error — `Invalid shipping ID` means the parameter was not a positive number. Otherwise the cart update itself failed, and the visitor picks shipping manually.
+
+### Warn
+
+The SDK carried on, but something in the markup, the configuration, or the campaign data was not what it expected. Worth fixing even when the page looks right — several of these are how tracking goes quietly wrong.
+
+#### `Failed to capture URL parameters:`
+
+`sdk-initializer.url-params.ts › captureUrlParameters` · extra context attached
+
+**Meaning:** Reading the current URL’s parameters threw, so `forcePackageId`, currency overrides, and visibility parameters are not applied on this page. Boot continues.
+
+**Action:** Check the attached error. A malformed URL or a blocked `sessionStorage` are the realistic causes; the page still works, but any behaviour driven by a URL parameter is silently off.
+
+#### `Package {packageId} not found in campaign data, skipping`
+
+`sdk-initializer.url-params.ts › processForcePackageId`
+
+**Meaning:** A `forcePackageId` entry names a package the campaign does not contain, so that entry is skipped. Other valid entries in the same parameter are still added.
+
+**Action:** Check the id against the campaign’s packages — it must be the package `ref_id`, not a product or variant id. A link built for a different campaign is the usual cause.
+
+#### `No shipping methods available in campaign data`
+
+`sdk-initializer.url-params.ts › processForceShippingId`
+
+**Meaning:** `forceShippingId` was asked for, but the campaign came back with no shipping methods at all, so nothing could be selected.
+
+**Action:** Check the campaign has shipping methods configured. Every visitor on this campaign will reach checkout with no shipping option, not only the ones using the parameter.
+
+#### `Shipping method {shippingId} not found in campaign data`
+
+`sdk-initializer.url-params.ts › processForceShippingId`
+
+**Meaning:** The id in `forceShippingId` does not match any shipping method in this campaign, so the cart keeps whatever method it had.
+
+**Action:** Use a `ref_id` from the campaign’s shipping methods — the debug line `Available shipping methods:` right after this one lists the valid ids, codes, and prices.
+
+### Info
+
+Normal progress. Read these as the play-by-play of what the SDK decided: which country it detected, which currency it chose, what it loaded.
+
+| Message | Source | Extra context |
+|---|---|---|
+| `Visibility control parameters detected:` | `sdk-initializer.url-params.ts › captureUrlParameters` | yes |
+| `Processing forcePackageId parameter:` | `sdk-initializer.url-params.ts › processForcePackageId` | yes |
+| `Successfully processed forcePackageId: added {length} package(s) to cart` | `sdk-initializer.url-params.ts › processForcePackageId` | — |
+| `Processing forceShippingId parameter:` | `sdk-initializer.url-params.ts › processForceShippingId` | yes |
+| `Successfully set shipping method: {code} (ID: {shippingId}, Price: ${price})` | `sdk-initializer.url-params.ts › processForceShippingId` | — |
+
+### Debug
+
+The detail behind the info lines. Expected in bulk, and only visible with debug mode on — a long list here is health, not trouble.
+
+| Message | Source | Extra context |
+|---|---|---|
+| `Captured {length} URL parameters, total stored: {length}` | `sdk-initializer.url-params.ts › captureUrlParameters` | — |
+| `Cart cleared for forcePackageId` | `sdk-initializer.url-params.ts › processForcePackageId` | — |
+| `Parsed package specifications:` | `sdk-initializer.url-params.ts › processForcePackageId` | yes |
+| `Added package {packageId} with quantity {quantity} to cart` | `sdk-initializer.url-params.ts › processForcePackageId` | — |
+| `Available shipping methods:` | `sdk-initializer.url-params.ts › processForceShippingId` | yes |
+
+## `[SDKInitializer]`
+
+Clears the SDK's own sessionStorage, localStorage, and cookies when the page carries `?reset=true`, for a clean-slate reload.
+
+Logged from `sdk-initializer.storage-reset.ts`. A free function, not a class with its own logger. `SDKInitializer` builds one `Logger('SDKInitializer')` in `sdk-initializer.ts` and passes it in through a `{ logger }` context, so every line here prints under `[SDKInitializer]`.
+
+### Info
+
+Normal progress. Read these as the play-by-play of what the SDK decided: which country it detected, which currency it chose, what it loaded.
+
+| Message | Source | Extra context |
+|---|---|---|
+| `Clearing all Next Campaign Cart storage...` | `sdk-initializer.storage-reset.ts › clearAllStorage` | — |
+| `Cleared {length} sessionStorage items, {length} localStorage items` | `sdk-initializer.storage-reset.ts › clearAllStorage` | — |
+
+## `[SDKInitializer]`
+
+Builds `window.nextDebug` — the console surface for inspecting and driving the stores, the cart, campaign, attribution, and analytics from devtools.
+
+Logged from `sdk-initializer.debug-utils.ts`. A free function, not a class with its own logger. `SDKInitializer` builds one `Logger('SDKInitializer')` in `sdk-initializer.ts` and passes it in through a `{ logger }` context, so every line here prints under `[SDKInitializer]`.
+
+### Debug
+
+The detail behind the info lines. Expected in bulk, and only visible with debug mode on — a long list here is health, not trouble.
+
+| Message | Source | Extra context |
+|---|---|---|
+| `🎯 Highlighting element: {selector}` | `sdk-initializer.debug-utils.ts › highlightElement` | — |
+
+## `[SDKInitializer]`
+
 Starts the SDK: reads configuration, detects country and currency, loads the campaign, applies URL parameters such as `forcePackageId`, then hands over to the DOM scan. Most "the page did nothing" investigations start here.
 
 Logged from `sdk-initializer.ts`.
@@ -176,22 +294,6 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 **Meaning:** The request for the forced country’s configuration threw rather than returning a bad answer. Detection is used instead, so the address form and currency may not match the forced country.
 
 **Action:** Read the attached error. It is normally a network failure and clears on reload, since the result is cached once a request succeeds.
-
-#### `Error processing forcePackageId parameter:`
-
-`sdk-initializer.ts › SDKInitializer.processForcePackageId` · extra context attached
-
-**Meaning:** The `forcePackageId` parameter could not be applied, so the cart is not pre-filled. Boot deliberately continues — a bad link should not take the page down.
-
-**Action:** Read the attached error: `Invalid package ID` and `Invalid quantity` name the offending value. The parameter format is `id` or `id:quantity`, comma-separated.
-
-#### `Error processing forceShippingId parameter:`
-
-`sdk-initializer.ts › SDKInitializer.processForceShippingId` · extra context attached
-
-**Meaning:** Applying `forceShippingId` threw, so shipping is unchanged. Boot continues.
-
-**Action:** Read the attached error — `Invalid shipping ID` means the parameter was not a positive number. Otherwise the cart update itself failed, and the visitor picks shipping manually.
 
 #### `Attribution initialization failed:`
 
@@ -237,14 +339,6 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 **Action:** Nothing while the retries are running. If you see the third attempt, treat the page as broken for that visitor and fix the error logged above it — retrying a missing API key never succeeds.
 
-#### `Failed to capture URL parameters:`
-
-`sdk-initializer.ts › SDKInitializer.captureUrlParameters` · extra context attached
-
-**Meaning:** Reading the current URL’s parameters threw, so `forcePackageId`, currency overrides, and visibility parameters are not applied on this page. Boot continues.
-
-**Action:** Check the attached error. A malformed URL or a blocked `sessionStorage` are the realistic causes; the page still works, but any behaviour driven by a URL parameter is silently off.
-
 #### `Failed to fetch country config for {forcedCountry}, falling back to detection`
 
 `sdk-initializer.ts › SDKInitializer.initializeLocationAndCurrency`
@@ -277,30 +371,6 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 **Action:** Read the attached error. Prices are being shown in the default currency, so treat this as a revenue-visible problem rather than a cosmetic one.
 
-#### `Package {packageId} not found in campaign data, skipping`
-
-`sdk-initializer.ts › SDKInitializer.processForcePackageId`
-
-**Meaning:** A `forcePackageId` entry names a package the campaign does not contain, so that entry is skipped. Other valid entries in the same parameter are still added.
-
-**Action:** Check the id against the campaign’s packages — it must be the package `ref_id`, not a product or variant id. A link built for a different campaign is the usual cause.
-
-#### `No shipping methods available in campaign data`
-
-`sdk-initializer.ts › SDKInitializer.processForceShippingId`
-
-**Meaning:** `forceShippingId` was asked for, but the campaign came back with no shipping methods at all, so nothing could be selected.
-
-**Action:** Check the campaign has shipping methods configured. Every visitor on this campaign will reach checkout with no shipping option, not only the ones using the parameter.
-
-#### `Shipping method {shippingId} not found in campaign data`
-
-`sdk-initializer.ts › SDKInitializer.processForceShippingId`
-
-**Meaning:** The id in `forceShippingId` does not match any shipping method in this campaign, so the cart keeps whatever method it had.
-
-**Action:** Use a `ref_id` from the campaign’s shipping methods — the debug line `Available shipping methods:` right after this one lists the valid ids, codes, and prices.
-
 #### `Analytics v2 initialization failed (non-critical):`
 
 `sdk-initializer.ts › SDKInitializer.initializeAnalytics` · extra context attached
@@ -325,7 +395,6 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 |---|---|---|
 | `Initializing NextCommerce Campaign Cart SDK v2...` | `sdk-initializer.ts › SDKInitializer.initialize` | — |
 | `SDK initialization complete ✅` | `sdk-initializer.ts › SDKInitializer.initialize` | — |
-| `Visibility control parameters detected:` | `sdk-initializer.ts › SDKInitializer.captureUrlParameters` | yes |
 | `Skipping location/currency detection (currencyBehavior is not set to auto)` | `sdk-initializer.ts › SDKInitializer.initializeLocationAndCurrency` | — |
 | `Initializing location and currency detection...` | `sdk-initializer.ts › SDKInitializer.initializeLocationAndCurrency` | — |
 | `Using forced country: {forcedCountry} (source: {countryOverride ? 'URL' : 'session'})` | `sdk-initializer.ts › SDKInitializer.initializeLocationAndCurrency` | — |
@@ -338,10 +407,6 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 | `forceShippingId parameter detected:` | `sdk-initializer.ts › SDKInitializer.loadConfiguration` | yes |
 | `forceBundleId parameter detected:` | `sdk-initializer.ts › SDKInitializer.loadConfiguration` | yes |
 | `Campaign shipping countries set globally:` | `sdk-initializer.ts › SDKInitializer.loadCampaignData` | yes |
-| `Processing forcePackageId parameter:` | `sdk-initializer.ts › SDKInitializer.processForcePackageId` | yes |
-| `Successfully processed forcePackageId: added {length} package(s) to cart` | `sdk-initializer.ts › SDKInitializer.processForcePackageId` | — |
-| `Processing forceShippingId parameter:` | `sdk-initializer.ts › SDKInitializer.processForceShippingId` | yes |
-| `Successfully set shipping method: {code} (ID: {shippingId}, Price: ${price})` | `sdk-initializer.ts › SDKInitializer.processForceShippingId` | — |
 | `Initializing attribution...` | `sdk-initializer.ts › SDKInitializer.initializeAttribution` | — |
 | `Initializing analytics v2...` | `sdk-initializer.ts › SDKInitializer.initializeAnalytics` | — |
 | `Page loaded with {paramName} parameter, auto-loading order:` | `sdk-initializer.ts › SDKInitializer.checkAndLoadOrder` | yes |
@@ -352,8 +417,6 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 | `Logger level set to DEBUG` | `sdk-initializer.ts › SDKInitializer.initializeDebugMode` | — |
 | `Debug utilities initialized ✅` | `sdk-initializer.ts › SDKInitializer.initializeDebugMode` | — |
 | `Reinitializing SDK...` | `sdk-initializer.ts › SDKInitializer.reinitialize` | — |
-| `Clearing all Next Campaign Cart storage...` | `sdk-initializer.ts › SDKInitializer.clearAllStorage` | — |
-| `Cleared {length} sessionStorage items, {length} localStorage items` | `sdk-initializer.ts › SDKInitializer.clearAllStorage` | — |
 
 ### Debug
 
@@ -362,15 +425,10 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 | Message | Source | Extra context |
 |---|---|---|
 | `Cart cleared on init (next-clear-cart)` | `sdk-initializer.ts › SDKInitializer.initialize` | — |
-| `Captured {length} URL parameters, total stored: {length}` | `sdk-initializer.ts › SDKInitializer.captureUrlParameters` | — |
 | `Location and currency initialized:` | `sdk-initializer.ts › SDKInitializer.initializeLocationAndCurrency` | yes |
 | `Configuration loaded (metatags have priority):` | `sdk-initializer.ts › SDKInitializer.loadConfiguration` | yes |
 | `Campaign data loaded` | `sdk-initializer.ts › SDKInitializer.loadCampaignData` | — |
 | `Emitted sdk:url-parameters-processed event` | `sdk-initializer.ts › SDKInitializer.loadCampaignData` | — |
-| `Cart cleared for forcePackageId` | `sdk-initializer.ts › SDKInitializer.processForcePackageId` | — |
-| `Parsed package specifications:` | `sdk-initializer.ts › SDKInitializer.processForcePackageId` | yes |
-| `Added package {packageId} with quantity {quantity} to cart` | `sdk-initializer.ts › SDKInitializer.processForcePackageId` | — |
-| `Available shipping methods:` | `sdk-initializer.ts › SDKInitializer.processForceShippingId` | yes |
 | `Added SDK version to attribution metadata: {sdkVersion}` | `sdk-initializer.ts › SDKInitializer.initializeAttribution` | — |
 | `Added user IP to attribution metadata: {userIp}` | `sdk-initializer.ts › SDKInitializer.initializeAttribution` | — |
 | `UTM transfer initialized` | `sdk-initializer.ts › SDKInitializer.initializeAttribution` | — |
@@ -380,7 +438,6 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 | `Analytics v2 initialized successfully` | `sdk-initializer.ts › SDKInitializer.initializeAnalytics` | — |
 | `Error handler initialized` | `sdk-initializer.ts › SDKInitializer.initializeErrorHandler` | — |
 | `nextReady callback system and window.next API initialized` | `sdk-initializer.ts › SDKInitializer.setupReadyCallbacks` | — |
-| `🎯 Highlighting element: {selector}` | `sdk-initializer.ts › highlightElement` | — |
 | `Waiting for cart store rehydration...` | `sdk-initializer.ts › SDKInitializer.waitForStoreRehydration` | — |
 | `Cart store rehydration complete` | `sdk-initializer.ts › SDKInitializer.waitForStoreRehydration` | yes |
 | `No cart data to rehydrate` | `sdk-initializer.ts › SDKInitializer.waitForStoreRehydration` | — |
@@ -2538,7 +2595,7 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 - **Not gated by debug mode or the log level.** On the module bundle they print for every visitor. On the UMD bundle they are stripped like everything else.
 - **`Logger.setLogLevel()` cannot silence them.**
 
-They come from `attribution/attribution-collector.ts`, `events.ts`, `storage.ts`, `sdk-initializer.ts`, `url-utils.ts`. The debug tooling under `core/debug/` also writes to the console directly; that output is the tool talking to whoever opened it, so it is not listed here.
+They come from `attribution/attribution-collector.ts`, `events.ts`, `storage.ts`, `sdk-initializer.debug-utils.ts`, `url-utils.ts`. The debug tooling under `core/debug/` also writes to the console directly; that output is the tool talking to whoever opened it, so it is not listed here.
 
 ### `[AttributionCollector] Error storing {key} in sessionStorage:`
 
@@ -2630,7 +2687,7 @@ They come from `attribution/attribution-collector.ts`, `events.ts`, `storage.ts`
 
 ### `❌ Failed to set shipping method {methodId}:`
 
-`sdk-initializer.ts › testShippingMethod` · `console.error` · extra context attached
+`sdk-initializer.debug-utils.ts › testShippingMethod` · `console.error` · extra context attached
 
 **Meaning:** The `testShippingMethod()` debug helper could not apply a shipping method. It only appears when someone calls that helper from the console, never on its own.
 

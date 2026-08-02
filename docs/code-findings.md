@@ -15,7 +15,7 @@ findings 116–126 from wave 2 on the same day (the `core/debug/` kebab rename, 
 hardening, and the `ui-service` split), and findings 127-137 from wave 3 (the teardown fixes,
 the format-table gate, the `core/debug` method breakup and the `checkout-validator` split);
 and findings 138-148 from wave 4 (the order-payload reconciliation, the routed-display gate,
-the `core/debug` split, the `prospect-cart` split and the test type gate); and findings 149-153 from wave 5; each wave has its own
+the `core/debug` split, the `prospect-cart` split and the test type gate); findings 149-153 from wave 5, and findings 154-161 from wave 6; each wave has its own
 section near the end. **Finding 144 was wrong as written and is corrected in place.** **Findings 127 and 130-133 are the most serious
 things this restructure has turned up** - a published page teaching ten paths that render
 nothing, and a validation layer that blocks non-Latin names while letting unvalidated billing
@@ -2446,7 +2446,7 @@ Four agents: the `order.status` investigation (144), the `payment:error` contrac
 prospect-cart teardown plus a widened destroy gate (139/141), and the `next-commerce.ts` split.
 Bond decided 144 and 120 during this wave.
 
-### 149. Every display enhancer leaks an unremovable `document` listener — *verified*
+### 149. ~~Every display enhancer leaks an unremovable `document` listener~~ — **FIXED 2026-08-02.** `BaseDisplayEnhancer` now carries one `AbortController` and a `listen()` helper; the destroy-contract allowlist is empty
 
 The destroy gate widened for finding 139 — "a class registering a raw `addEventListener` must
 have a teardown path" — immediately flagged two classes beyond the one it was written for:
@@ -2530,6 +2530,123 @@ eventually not be. Not applied — it would also block Bond's own use, so it is 
   Same finding as the earlier `removeCoupon` entry, now isolated in `next-commerce.coupons.ts`.
 - `formatPrice` uses a CommonJS `require('@/core/currency-formatter')` inside an ESM module.
   Pre-existing, moved verbatim into `next-commerce.utility.ts`.
+
+---
+
+## Found during the wave-6 restructure (2026-08-02)
+
+Four agents: the display teardown (149), the `handleFieldChange` remainder, the
+`sdk-initializer.ts` split, and the `campaign.` namespace. **Findings 156 and 157 are the two
+worth acting on soonest** — both put wrong data on a real order.
+
+### 154. `AttributeScanner.destroy()` destroys no live enhancer — *verified*
+
+Found while fixing 149. The scanner tracks instances in a `WeakMap`, which cannot be iterated,
+so a full SDK teardown leaves every enhancer — and everything it registered — attached. The
+per-instance leak in 149 is fixed; this is the layer above it, and it means "tear the SDK down"
+has never actually done so.
+
+**Fix:** keep an iterable registry alongside the `WeakMap`, or hold instances in a `Set` and let
+the `WeakMap` stay the element→instance index.
+
+### 155. The healthy-boot gate silently narrowed itself when a prefix spanned two files — *fixed 2026-08-02*
+
+`coreLogs.test.ts` built its lookup as `new Map(CORE_LOG_SOURCES.map(s => [s.prefix, …]))`.
+A `Map` built that way keeps the **last** entry per key, so once one console prefix covered
+several files — which is exactly what splitting a facade produces — every message from the
+earlier files read as "invented" and the check quietly stopped covering them.
+
+It never failed, so nothing announced it. What it did instead was **block two clean splits**:
+`initializeLocationAndCurrency` (244 lines, one dependency) and `initializeAttribution` were
+left in `sdk-initializer.ts` solely to keep all five `CORE_HEALTHY_BOOT` lines in the
+last-declared file, and a comment was added to `core-logs.ts` instructing future editors to
+preserve the declaration order. The lookup now accumulates across every file sharing a prefix,
+the comment is corrected, and **both clusters are now splittable.**
+
+**The general lesson:** a gate that reads from a keyed collection built off a list is only as
+strong as the key's uniqueness. Two entries with one key is silent data loss inside a test.
+
+### 156. A separate billing address survives `checkoutStore.reset()` — and so do the payment token and shipping method — *verified*
+
+`reset: () => set(initialState)`. Zustand's `set` **merges**, and `initialState` declares no
+`billingAddress`, `paymentToken` or `shippingMethod` — I compared the interface against the
+literal field by field. All three are in `partialize`, so they persist to sessionStorage.
+
+`handleOrderRedirect()` calls this reset, and `features/checkout/README.md` states in as many
+words that it clears the billing address. It does not. Finish an order that used a separate
+billing address, start another in the same session — on a shared or kiosk browser, that is the
+previous shopper's address and card token carried into someone else's checkout.
+
+**Fix:** list all three in `initialState` (or `set(initialState, true)` to replace rather than
+merge — but that drops any field a future edit forgets to add, so the explicit list is safer).
+Then correct the README.
+
+### 157. A billing phone never reaches the order in E.164 — *verified*
+
+`readFieldValue`'s `|| fieldName === 'billing-phone'` arm is unreachable: `handleFieldChange`
+routes every `billing-*` name down the billing branch first, and that branch writes the raw
+typed text into `billingAddress.phone`. `phone-input.ts` writes the correct E.164 value on the
+same `input` event, but its listener registers at boot step 13 against the enhancer's step 15,
+so the raw write lands second and wins — and on `blur`/`change` it is the only write at all.
+
+**Shopper:** a separate billing address with a non-US number reaches the order as
+`07700 900123` rather than `+447700900123`. AVS checks and any SMS to that number fail.
+
+### 158. Four more defects in the field-routing half — *verified, each pinned by a `DEFECT:` test*
+
+- **`change` errors four fields that `field-validation-display.ts` documents it never errors.**
+  The leftover `fieldsToValidate` block calls `setError` on `change` as well as `blur`, so a
+  Google Places suggestion whose city the pattern rejects turns red the instant it lands.
+- **Values are stored untrimmed while validation trims them.** `readFieldValue` returns
+  `target.value`; the validation one line later uses `.trim()`. `"  ada@example.com  "` gets a
+  green tick and goes into `formData`, into user-data storage, and onto the order.
+- **Two unguarded `sessionStorage.setItem` calls** (`next_selected_country`), where
+  `simple-exit-intent.handlers.ts` wraps the same operation in try/catch. In Safari private mode
+  the throw escapes an async listener and skips the validation-display update that follows.
+- **`BILLING_ADDRESS_FIELD_MAP` was duplicated** — the enhancer carried a private copy of the
+  constant exported from `constants/field-mappings.ts`. Editing the shared one would have had no
+  effect. The copy moved with the code; **the exported original now has no importers at all.**
+
+### 159. The display-paths extractor leaked one namespace's properties into another — *fixed 2026-08-02*
+
+`extract-display-paths.ts`'s namespace scoping understood a *nested* guard but not an
+*early-return* one. `ProductDisplayEnhancer.getPropertyValue` does
+`if (startsWith('campaign.')) { return … }` and then handles `package.` as a sibling — so
+computing the `campaign.` list picked up all 28 `package.` properties as if they belonged to it.
+Caught before publishing only because the agent traced the output rather than trusting it.
+
+Fixed by teaching the extractor that everything after a terminal early-return guard runs only
+when that guard was false.
+
+Two related corrections shipped with it: `docs-coverage.mjs` counted display namespaces **by
+feature**, so one page satisfied the whole row (this was finding 143's root cause) — it now
+emits one row per distinct namespace, 8/8 → **9/9**. And `product-display`'s attributes page
+claimed *"`campaign.` is an alias for `package.` and resolves identically"*, which is false: it
+answers three unrelated fields (`name`, `currency`, `language`).
+
+### 160. The generator's fallback sentence was true for one namespace out of five — *fixed 2026-08-02*
+
+`render-feature-reference.ts` printed, on every routed namespace's page, that a declared
+`fallback` "renders that fallback, which reads as though it worked". Checked against each
+resolver's actual miss-return:
+
+- **`cart`** — true, and exercised: `cart.discountCode` declares `fallback: ''`.
+- **`package`, `selection`, `shipping`** — mechanically possible, but no unanswered entry
+  declares a fallback today.
+- **`order`** — impossible, structurally: its resolver returns `''` on every miss, never
+  `null`/`undefined`, so the fallback path cannot fire. This is what made finding 144 wrong.
+
+The sentence is now emitted only for a page that actually has an unanswered entry with a
+fallback, with the affected row marked. It was not softened into something vaguer — it is either
+true of that page or absent.
+
+### 161. `OrderLineProperty` was added to the public export surface — *needs Bond's sign-off*
+
+`src/index.ts` gained one type export so `OrderLine.properties` can be named by a consumer.
+Additive and trivially revertible, but §0.1 of the `sdk-structure` skill says the export surface
+does not change without explicit approval, so it is recorded here rather than treated as routine.
+The API returns line properties as `Array<{ key, value }>`, not the dict shape cart lines use —
+confirmed against `OrderLineSerializer` and its tests.
 
 ---
 
