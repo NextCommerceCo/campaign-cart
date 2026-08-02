@@ -53,6 +53,12 @@ async function flushDOMObserver(): Promise<void> {
   await new Promise(resolve => setTimeout(resolve, 40));
 }
 
+/** The observer's 16ms throttle *plus* the scanner's 50ms enhancement debounce —
+ *  long enough for anything a removal could still set in motion to have run. */
+async function flushEnhancementQueue(): Promise<void> {
+  await new Promise(resolve => setTimeout(resolve, 120));
+}
+
 describe('AttributeScanner teardown', () => {
   let scanner: AttributeScanner | undefined;
 
@@ -219,6 +225,151 @@ describe('AttributeScanner teardown', () => {
 
     setCartItems(2);
     expect(el.textContent, 'a destroyed scanner must enhance nothing').toBe('');
+    expect(scanner.getStats().enhancedElements).toBe(0);
+  });
+});
+
+/**
+ * Removing a container has to take the features inside it with it (finding 164 in
+ * `docs/code-findings.md`). Before this, `DOMObserver` reported only the node that
+ * was removed, and only when that node itself carried one of the eight attributes it
+ * filters on — so pulling out a wrapper `<div>` left every enhancer inside it
+ * subscribed, listening and running timers for the rest of the page's life.
+ *
+ * These tests drive the real `MutationObserver`, so "cleaned up" means what it means
+ * on a page: the element stops re-rendering when the cart changes.
+ */
+describe('AttributeScanner cleanup on removal', () => {
+  let scanner: AttributeScanner | undefined;
+
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    useCartStore.getState().reset();
+  });
+
+  afterEach(() => {
+    scanner?.destroy();
+    scanner = undefined;
+    vi.restoreAllMocks();
+    useCartStore.getState().reset();
+    document.body.innerHTML = '';
+  });
+
+  it('tears down an enhancer inside a removed wrapper', async () => {
+    const wrapper = document.createElement('div');
+    document.body.appendChild(wrapper);
+    const el = document.createElement('span');
+    el.id = 'inside';
+    el.setAttribute('data-next-display', 'cart.itemCount');
+    wrapper.appendChild(el);
+
+    scanner = new AttributeScanner();
+    await scanner.scanAndEnhance(document.body);
+
+    setCartItems(2);
+    expect(el.textContent, 'enhancer is live before the wrapper goes').toBe(
+      '2'
+    );
+
+    wrapper.remove();
+    await flushDOMObserver();
+
+    setCartItems(5);
+    expect(
+      el.textContent,
+      'the enhancer inside the removed wrapper kept its cart subscription'
+    ).toBe('2');
+    expect(scanner.getStats().enhancedElements).toBe(0);
+  });
+
+  it('tears down an element carrying an attribute the observer does not watch', async () => {
+    const wrapper = document.createElement('div');
+    wrapper.setAttribute('data-next-package-id', '5');
+    document.body.appendChild(wrapper);
+    const el = document.createElement('div');
+    el.setAttribute('data-next-quantity-text', '{qty} Packs');
+    wrapper.appendChild(el);
+
+    scanner = new AttributeScanner();
+    await scanner.scanAndEnhance(document.body);
+    expect(
+      scanner.getStats().enhancedElements,
+      'data-next-quantity-text is one of the 30 the scanner activates'
+    ).toBe(1);
+
+    const destroySpy = vi.spyOn(BaseEnhancer.prototype, 'destroy');
+
+    wrapper.remove();
+    await flushDOMObserver();
+
+    expect(
+      destroySpy,
+      'the removal walk must ask the scanner what it enhanced, not the ' +
+        "observer's eight-attribute filter"
+    ).toHaveBeenCalledTimes(1);
+    expect(scanner.getStats().enhancedElements).toBe(0);
+  });
+
+  it('keeps the enhancer when a wrapper is removed and re-attached in the same frame', async () => {
+    const wrapper = document.createElement('div');
+    document.body.appendChild(wrapper);
+    const el = document.createElement('span');
+    el.setAttribute('data-next-display', 'cart.itemCount');
+    wrapper.appendChild(el);
+
+    scanner = new AttributeScanner();
+    await scanner.scanAndEnhance(document.body);
+
+    // A re-render: the subtree leaves and comes back inside one task, so nothing
+    // ever observed it missing from the document.
+    wrapper.remove();
+    document.body.appendChild(wrapper);
+    await flushEnhancementQueue();
+
+    setCartItems(3);
+    expect(
+      el.textContent,
+      're-attaching in the same frame must not leave the element inert'
+    ).toBe('3');
+    expect(scanner.getStats().enhancedElements).toBe(1);
+  });
+
+  it('does not re-enhance an element it just cleaned up', async () => {
+    const el = displayElement('gone');
+    scanner = new AttributeScanner();
+    await scanner.scanAndEnhance(document.body);
+
+    el.remove();
+    await flushEnhancementQueue();
+
+    expect(
+      scanner.getStats().enhancedElements,
+      'the removed element was queued for enhancement and came back into the ' +
+        'registry detached, which is a leak the removal created'
+    ).toBe(0);
+  });
+
+  it('destroys an enhancer inside a removed wrapper exactly once', async () => {
+    const wrapper = document.createElement('div');
+    document.body.appendChild(wrapper);
+    const el = document.createElement('span');
+    el.setAttribute('data-next-display', 'cart.itemCount');
+    wrapper.appendChild(el);
+
+    scanner = new AttributeScanner();
+    await scanner.scanAndEnhance(document.body);
+
+    const destroySpy = vi.spyOn(BaseEnhancer.prototype, 'destroy');
+
+    wrapper.remove();
+    await flushDOMObserver();
+    expect(destroySpy).toHaveBeenCalledTimes(1);
+
+    scanner.destroy();
+    expect(
+      destroySpy,
+      'destroy() re-destroyed an enhancer the removal already cleaned up'
+    ).toHaveBeenCalledTimes(1);
     expect(scanner.getStats().enhancedElements).toBe(0);
   });
 });

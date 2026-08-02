@@ -60,6 +60,7 @@ The feature carried on, but something in the markup or the data was not what it 
 | `[Billing] Expand fallback triggered - forcing completion` | `billing-animation.ts › expandBillingForm` | — |
 | `[Billing] Collapse fallback triggered - forcing completion` | `billing-animation.ts › collapseBillingForm` | — |
 | `[Billing] Could not set initial state - missing elements` | `billing-form-setup.ts › setInitialBillingFormState` | — |
+| `[Billing] Some stored billing values have no field` | `billing-form-setup.ts › restoreBillingAddressFields` | yes |
 | `Submit button not found in checkout form` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.scanAllFields` | — |
 | `Stored country {storedCountry} not in available countries` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | — |
 | `Country {countryCode} from URL not in available countries` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | — |
@@ -102,6 +103,7 @@ Normal progress, useful for confirming the feature ran at all.
 | `[Billing] Initial state: COLLAPSED (checkbox checked)` | `billing-form-setup.ts › setInitialBillingFormState` | — |
 | `[Billing] Initial state: EXPANDED (checkbox unchecked)` | `billing-form-setup.ts › setInitialBillingFormState` | — |
 | `[Billing] Restored the stored choice: separate billing` | `billing-form-setup.ts › reconcileBillingToggle` | — |
+| `[Billing] Restored the stored billing address` | `billing-form-setup.ts › restoreBillingAddressFields` | yes |
 | `[Billing] Adopted the markup choice into the store` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.restoreBillingChoice` | yes |
 | `Page restored from bfcache, resetting express checkout state` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupBfcacheRestoreHandler` | — |
 | `Resetting processing state after bfcache restore` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupBfcacheRestoreHandler` | — |

@@ -153,6 +153,22 @@ your markup:
   box cannot clear a half-filled billing address — keep the box and the section
   on that step.
 
+The address the visitor typed comes back with the answer. The cloned billing
+inputs are blank by construction — a clone would otherwise arrive holding the
+shipping address — so the SDK types the stored billing address back into them
+while the form boots, right after it does the same for the shipping fields. The
+billing state list is rebuilt for the **stored billing** country first, so a
+billing region that differs from the shipping one survives the reload. Two more
+things to know:
+
+- **Nothing is restored while the box is ticked.** A billing address left in the
+  store by an earlier order is never written into the collapsed section, so a
+  shared browser cannot show one visitor's address to the next.
+- **A stored value with no field on the page is reported, not dropped.**
+  `[Billing] Some stored billing values have no field` names it; the usual cause
+  is an `address2` the shipping form never rendered, so the clone has nowhere to
+  put it. Add the field to the shipping group if the order needs it.
+
 ---
 
 ## Making phone mandatory for fulfilment

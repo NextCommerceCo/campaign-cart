@@ -134,7 +134,14 @@ observer.pause() / resume()
 
 Default attribute filter: `data-next-display`, `data-next-toggle`, `data-next-timer`, `data-next-show`, `data-next-hide`, `data-next-checkout`, `data-next-validate`, `data-next-express-checkout`.
 
-Throttles notifications at ~60fps (16ms batching).
+The filter applies to **added** elements and attribute changes. **Removals are not
+filtered**: every element that leaves the document is reported, because the observer
+does not know what was enhanced — the handler does. It also does not walk a removed
+subtree; a handler that owns elements inside it finds them from its own registry.
+
+Throttles notifications at ~60fps (16ms batching). A node removed and put back within
+the same batch is reported as neither removed nor added — that is a re-render, not a
+removal.
 
 ---
 

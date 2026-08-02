@@ -7,7 +7,7 @@ category: "Accordion"
 # Accordion
 
 > Category: `ui`
-> Last reviewed: 2026-07-30
+> Last reviewed: 2026-08-03
 > Owner: Campaigns
 
 Collapses a section behind a trigger — an order summary on mobile, an FAQ, a
@@ -44,6 +44,12 @@ already uses for an expanded state.
   go.
 - `accordion:toggled` fires for both directions and carries `isOpen`;
   `accordion:opened` and `accordion:closed` are the one-directional equivalents.
+- The trigger listens for a click and for `Enter`/`Space`, and gets `tabindex="0"`
+  (unless the markup already sets one) plus `aria-expanded` and `aria-controls`.
+- Both trigger listeners live exactly as long as the accordion: they are registered
+  against an `AbortSignal` that teardown aborts, so an accordion the SDK has torn
+  down — a re-scan, a removed section — stops responding to clicks and keystrokes
+  instead of toggling a panel nobody is managing any more.
 
 ## Decisions
 
@@ -60,8 +66,9 @@ already uses for an expanded state.
 
 - Does not enforce one-open-at-a-time. Several accordions are independent; group
   behaviour is yours to write.
-- Does not manage focus or keyboard interaction beyond a click on the trigger — add
-  `role` and key handling if you need full keyboard support.
+- Handles `Enter` and `Space` on the trigger and nothing else: no arrow-key movement
+  between accordions, no focus moved into the panel when it opens, and no `role`
+  written for you. Add those if you need a full keyboard pattern.
 - Does not remember its state across page loads.
 - Does not measure content changes. A panel that grows while open may need its height
   refreshed by your own code.

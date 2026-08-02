@@ -221,11 +221,6 @@ const ALLOWLIST: { file: string; className: string; reason: string }[] = [
     reason: 'Clears its countdown interval before calling super.destroy().',
   },
   {
-    file: 'features/ui/accordion/accordion.enhancer.ts',
-    className: 'AccordionEnhancer',
-    reason: 'Clears this.accordions before calling super.destroy().',
-  },
-  {
     file: 'features/ui/scroll-hint/scroll-hint.enhancer.ts',
     className: 'ScrollHintEnhancer',
     reason:
@@ -615,6 +610,464 @@ describe('a display enhancer overriding cleanupEventListeners() calls super', ()
       "a display enhancer's cleanupEventListeners() override must call " +
         'super.cleanupEventListeners() — the base implementation is not a no-op, ' +
         'it aborts the AbortController holding the inherited document listener.'
+    ).toEqual([]);
+  });
+});
+
+/**
+ * The gate above asks whether a *teardown path exists*. The accordion answered yes
+ * and removed nothing: it registered `click` and `keydown` on its triggers as inline
+ * arrows, and its `destroy()` cleared a `Map`. A destroyed accordion went on toggling
+ * whenever someone clicked its header (finding 165 in `docs/code-findings.md`).
+ *
+ * That was the **second** escape from the same gate in two waves — the first was
+ * `ProspectCartEnhancer`, which overrode nothing at all (finding 139). Two escapes in
+ * two waves is a pattern, and the pattern has a name: *a rule that checks shape gets
+ * satisfied by shape*. Both classes could be made green by adding a method. Neither
+ * fix had to remove a listener.
+ *
+ * **So this rule does not look at the class at all — it looks at the registration.**
+ * For every `addEventListener` in the enhancer layer it asks the one question a
+ * teardown method cannot answer on the listener's behalf: *is there any way to take
+ * this listener back?*
+ *
+ * A registration is removable when it is one of exactly two shapes:
+ *
+ * 1. it passes `signal:` in its options — teardown aborts the controller and the
+ *    listener goes with it, no reference needed; or
+ * 2. its handler is a **stable stored reference** — a field (`this.boundHandleClick`),
+ *    or a local that is also stored somewhere (`clickHandlers.set(el, handler)`) —
+ *    which `removeEventListener` can be handed back.
+ *
+ * Everything else is unremovable *by construction*, and no `destroy()`, however
+ * diligent, can fix it:
+ *
+ * - an **inline arrow or `function` expression**: nothing anywhere holds the
+ *   reference, so `removeEventListener` has nothing to be given (the accordion);
+ * - a **freshly built function** — `handler.bind(this)`, `makeHandler()` — which
+ *   returns a different object on every call, so removal silently no-ops;
+ * - a **local used nowhere but this one call**, which is an inline arrow with a name:
+ *   hoisting the arrow to `const h = () => …` satisfies shape 2's *look* while leaving
+ *   the reference just as unreachable. That clause is here because it is the obvious
+ *   way to satisfy this rule without fixing anything, and writing it down beforehand
+ *   is cheaper than another finding 165 next wave. It is not theoretical — it is what
+ *   caught `floating-labels.ts`.
+ *
+ * And because `signal:` would otherwise become its own shape to satisfy — declare a
+ * controller, pass its signal, never abort it — every `AbortController` constructed
+ * in the enhancer layer must be `.abort()`ed in the file that constructs it.
+ *
+ * **Scope: `src/features/` and `src/core/base/`** — the enhancer layer, stated as a
+ * directory rather than an import graph. The wave-5 rule followed relative imports out
+ * of an enhancer file to find its helpers, which made the answer depend on how a
+ * feature happened to be split and let a listener move out of range by moving file; a
+ * rule about *call sites* has no reason to care where the call sits. `src/core/`
+ * outside `base/` is deliberately out: those are page-lifetime singletons and dev
+ * tooling with no per-element `destroy()` for a listener to outlive.
+ *
+ * This is a ratchet like the two above, with one difference that matters: each entry
+ * freezes a **count**. An allowlisted file may keep the unremovable listeners it has;
+ * it may not gain one. Without the count, allowlisting a file would hand it a
+ * permanent exemption — which is how a gate stops being a gate.
+ */
+describe('every listener registered in the enhancer layer is removable', () => {
+  /** Which registrations this rule can prove unremovable, and why. */
+  type Unremovable =
+    | 'inline-handler'
+    | 'fresh-function-handler'
+    | 'write-only-local-handler'
+    | 'controller-never-aborted';
+
+  interface Finding {
+    file: string;
+    /** Line of the call. A line number is wrong in a *generated page* and right in a
+     *  failure message — this is a developer being pointed at a call site. */
+    line: number;
+    kind: Unremovable;
+    source: string;
+  }
+
+  const EXPLANATIONS: Record<Unremovable, string> = {
+    'inline-handler':
+      'the handler is an inline arrow/function, so no reference to it exists and ' +
+      'removeEventListener can never be given one — pass { signal } or store the handler',
+    'fresh-function-handler':
+      'the handler is built at the call (.bind(...) or a factory call), so it is a ' +
+      'different function object every time and removal would silently no-op — ' +
+      'bind once into a field, or pass { signal }',
+    'write-only-local-handler':
+      'the handler is a local used nowhere but this call, which is an inline arrow ' +
+      'with a name — store it somewhere teardown can reach, or pass { signal }',
+    'controller-never-aborted':
+      'this AbortController is never .abort()ed in this file, so every listener ' +
+      'registered with its signal outlives the enhancer',
+  };
+
+  /** Strips `!`, `(…)` and `as T` so the handler underneath is what gets classified. */
+  function unwrap(expr: ts.Expression): ts.Expression {
+    let current: ts.Expression = expr;
+    for (;;) {
+      if (
+        ts.isNonNullExpression(current) ||
+        ts.isParenthesizedExpression(current) ||
+        ts.isAsExpression(current)
+      ) {
+        current = current.expression;
+      } else {
+        return current;
+      }
+    }
+  }
+
+  /** True when the options argument carries a `signal:` property. */
+  function passesSignal(options: ts.Expression | undefined): boolean {
+    return (
+      options !== undefined &&
+      ts.isObjectLiteralExpression(options) &&
+      options.properties.some(
+        p => p.name && ts.isIdentifier(p.name) && p.name.text === 'signal'
+      )
+    );
+  }
+
+  /** How many times an identifier of this name appears anywhere in the file. Two —
+   *  the declaration and the registration — means nothing else can reach it. */
+  function countIdentifierUses(sf: ts.SourceFile, name: string): number {
+    let count = 0;
+    const visit = (n: ts.Node): void => {
+      if (ts.isIdentifier(n) && n.text === name) count++;
+      ts.forEachChild(n, visit);
+    };
+    visit(sf);
+    return count;
+  }
+
+  /**
+   * Names bound by a parameter or an import in this file.
+   *
+   * Both are stable references someone outside this file holds — a callback passed
+   * in, a shared handler imported — so `removeEventListener` can be given one even
+   * though it appears just twice here. Only a **local declaration** used nowhere but
+   * the registration is an inline arrow wearing a name, so those are exempt from that
+   * clause and this is what keeps its wording true.
+   */
+  function collectStableNames(sf: ts.SourceFile): Set<string> {
+    const names = new Set<string>();
+    const visit = (n: ts.Node): void => {
+      if (ts.isParameter(n) && ts.isIdentifier(n.name)) names.add(n.name.text);
+      if (ts.isImportSpecifier(n) || ts.isImportClause(n)) {
+        const bound = ts.isImportSpecifier(n) ? n.name : n.name;
+        if (bound && ts.isIdentifier(bound)) names.add(bound.text);
+      }
+      ts.forEachChild(n, visit);
+    };
+    visit(sf);
+    return names;
+  }
+
+  const inEnhancerLayer = (file: string): boolean =>
+    file.startsWith('features/') || file.startsWith('core/base/');
+
+  function findUnremovable(): Finding[] {
+    const found: Finding[] = [];
+
+    for (const [path, text] of Object.entries(modules)) {
+      if (path.endsWith('.test.ts') || path.endsWith('.d.ts')) continue;
+      if (path.includes('/tests/')) continue;
+
+      const file = path.replace(/^\.\.\/\.\.\//, '');
+      if (!inEnhancerLayer(file)) continue;
+      if (
+        !text.includes('addEventListener') &&
+        !text.includes('AbortController')
+      ) {
+        continue;
+      }
+
+      const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+      const abortsSomething = /\.abort\(\)/.test(text);
+      const stableNames = collectStableNames(sf);
+
+      const record = (node: ts.Node, kind: Unremovable): void => {
+        found.push({
+          file,
+          line: sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1,
+          kind,
+          source: node.getText(sf).replace(/\s+/g, ' ').slice(0, 100),
+        });
+      };
+
+      const visit = (node: ts.Node): void => {
+        if (
+          ts.isNewExpression(node) &&
+          ts.isIdentifier(node.expression) &&
+          node.expression.text === 'AbortController' &&
+          !abortsSomething
+        ) {
+          record(node, 'controller-never-aborted');
+        }
+
+        if (
+          ts.isCallExpression(node) &&
+          ts.isPropertyAccessExpression(node.expression) &&
+          node.expression.name.text === 'addEventListener' &&
+          !passesSignal(node.arguments[2])
+        ) {
+          const handlerArg = node.arguments[1];
+          const handler = handlerArg ? unwrap(handlerArg) : undefined;
+
+          if (
+            handler &&
+            (ts.isArrowFunction(handler) || ts.isFunctionExpression(handler))
+          ) {
+            record(node, 'inline-handler');
+          } else if (handler && ts.isCallExpression(handler)) {
+            record(node, 'fresh-function-handler');
+          } else if (
+            handler &&
+            ts.isIdentifier(handler) &&
+            !stableNames.has(handler.text) &&
+            countIdentifierUses(sf, handler.text) <= 2
+          ) {
+            record(node, 'write-only-local-handler');
+          }
+        }
+
+        ts.forEachChild(node, visit);
+      };
+
+      visit(sf);
+    }
+
+    return found;
+  }
+
+  /**
+   * Files that register listeners nothing can remove, frozen with the count they had
+   * when this rule was written. Each entry is a judgement, not a shrug: *why* is it
+   * acceptable that these particular listeners are never removed?
+   *
+   * The judgements fall into three groups:
+   *
+   * - **Dies with its element** — the listener sits on a node this module created and
+   *   later discards. When the node goes, the listener is collected with it, so there
+   *   is nothing to leak. This is legitimate; it is also the excuse a real leak wears,
+   *   which is why each entry names the element.
+   * - **Page-lifetime by design** — a one-shot boot listener, or dev tooling compiled
+   *   out of production. Nothing owns a teardown for it.
+   * - **REAL LEAK** — an enhancer-lifetime listener on author-supplied DOM the
+   *   enhancer does not own, which therefore survives `destroy()`. Same shape as the
+   *   accordion. Named here so it stays visible rather than silently allowed.
+   *
+   * `count` is the number of unremovable registrations in the file. Gaining one fails
+   * the gate; fixing one fails it too, with a message saying to lower the count. An
+   * entry without a count would be a permanent exemption for the file.
+   */
+  const UNREMOVABLE_ALLOWLIST: {
+    file: string;
+    count: number;
+    reason: string;
+  }[] = [
+    {
+      file: 'features/behavior/fomo-popup/fomo-popup.enhancer.ts',
+      count: 1,
+      reason:
+        'Page-lifetime by design: a one-shot DOMContentLoaded awaited in ' +
+        'initialize(), registered only while document.readyState is "loading" and ' +
+        'fired at most once per page. `{ once: true }` would say so in code.',
+    },
+    {
+      file: 'features/behavior/simple-exit-intent/simple-exit-intent.enhancer.ts',
+      count: 1,
+      reason:
+        'Page-lifetime by design: the same one-shot DOMContentLoaded await as ' +
+        'fomo-popup.',
+    },
+    {
+      file: 'features/behavior/simple-exit-intent/simple-exit-intent.renderer.ts',
+      count: 11,
+      reason:
+        'Dies with its element: all eleven are on the popup, overlay and close ' +
+        'button this module creates. hidePopup() -> hidePopupElements() calls ' +
+        '.remove() on both and nulls the references, so the listeners are collected ' +
+        'with the nodes.',
+    },
+    {
+      file: 'features/cart/bundle-selector/bundle-selector.slot-renderer.ts',
+      count: 2,
+      reason:
+        'Dies with its element: input/blur on the data-next-property fields inside a ' +
+        'slot card the renderer just built, which is replaced wholesale on re-render. ' +
+        'If a slot is ever reused rather than rebuilt, these stack.',
+    },
+    {
+      file: 'features/cart/coupon/coupon.enhancer.ts',
+      count: 4,
+      reason:
+        'REAL LEAK (3 of 4), same shape as the accordion: input/keypress on ' +
+        'this.input and click on this.button are author-supplied elements the ' +
+        'enhancer does not own, so a destroyed coupon field still applies coupons. ' +
+        'The fourth (the remove button in a cloned coupon card) dies with its ' +
+        'element — renderCoupons() .remove()s the cards before rebuilding them.',
+    },
+    {
+      file: 'features/cart/package-toggle/package-toggle.handlers.ts',
+      count: 1,
+      reason:
+        'Page-lifetime by design: a module-scope beforeunload clearing a ' +
+        'module-scope Set. One per page load, and the page is going away.',
+    },
+    {
+      file: 'features/cart/shared/properties.ts',
+      count: 1,
+      reason:
+        'REAL LEAK: input on the author-supplied data-next-property fields inside a ' +
+        'card, writing into a properties object the enhancer owns. Survives the ' +
+        'enhancer, and re-enhancing the same card stacks another. Its blur sibling ' +
+        'is never removed either — it passes a reference, which is why only one of ' +
+        'the two is counted here.',
+    },
+    {
+      file: 'features/checkout/address-autocomplete/google-maps-autocomplete.ts',
+      count: 4,
+      reason:
+        'REAL LEAK: focus/keydown on the checkout address input and change on both ' +
+        'country selects — all author DOM. Re-initialising autocomplete stacks ' +
+        'another set. src/features/checkout is owned by another session.',
+    },
+    {
+      file: 'features/checkout/address-autocomplete/next-commerce-autocomplete.ts',
+      count: 6,
+      reason:
+        'Mixed: 2 die with their element (the suggestion container and each ' +
+        'suggestion row this module creates and discards); 4 are a REAL LEAK on ' +
+        'this.input, the author-supplied address field. Owned by another session.',
+    },
+    {
+      file: 'features/checkout/checkout-form/phone-input.ts',
+      count: 2,
+      reason:
+        'REAL LEAK: input on the phone field and change on the country select, both ' +
+        'author DOM. Destroying the intlTelInput instance does not remove them. ' +
+        'Owned by another session.',
+    },
+    {
+      file: 'features/checkout/services/credit-card-service.ts',
+      count: 6,
+      reason:
+        'REAL LEAK: change on the expiry month/year selects and click on the ' +
+        'Spreedly number/cvv fields and their wrappers — author DOM, and the service ' +
+        'is rebuilt on every checkout-form init. Owned by another session.',
+    },
+    {
+      file: 'features/checkout/services/ui-service/floating-labels.ts',
+      count: 1,
+      reason:
+        'REAL LEAK, and the one the write-only-local clause found: focusHandler is ' +
+        'built fresh inside a forEach on every responsive adjustment and stored ' +
+        'nowhere, so each pass under the mobile breakpoint adds another focus handler ' +
+        'to every field. Owned by another session.',
+    },
+    {
+      file: 'features/checkout/utils/create-close-button.ts',
+      count: 2,
+      reason:
+        'Dies with its element: the mouseenter/mouseleave pair is on the button this ' +
+        'function creates and returns, and the caller removes it along with its PAC ' +
+        'container. Its third listener, click -> the onClose parameter, is a stable ' +
+        'reference the caller holds and so is not counted here.',
+    },
+    {
+      file: 'features/display/display-core/display-debug-panel.ts',
+      count: 3,
+      reason:
+        'Page-lifetime by design, dev only: init() returns early unless ' +
+        'NODE_ENV === "development", so this is dead code in the production bundle, ' +
+        'and DisplayDebugPanel is static-only — no instance, nothing to destroy. ' +
+        'Worth knowing in dev: the mouseover/mouseout pair keeps running after the ' +
+        'panel is toggled off, gated only by an isEnabled flag.',
+    },
+    {
+      file: 'features/display/index.ts',
+      count: 1,
+      reason:
+        'Page-lifetime by design, dev only: module-scope, NODE_ENV-guarded, one-shot ' +
+        'DOMContentLoaded that dynamically imports the debug panel.',
+    },
+    {
+      file: 'features/order/upsell/upsell.interaction-handlers.ts',
+      count: 2,
+      reason:
+        'REAL LEAK: click on each option card and change on the upsell select, both ' +
+        'author DOM. Notable because this same file already has the removable ' +
+        'pattern — its bind() helper pushes a removeEventListener onto ' +
+        'state.scanTeardowns — and these two registrations bypass it.',
+    },
+    {
+      file: 'features/ui/tooltip/tooltip.renderer.ts',
+      count: 2,
+      reason:
+        'Dies with its element: mouseenter/mouseleave on the tooltip node this ' +
+        'renderer creates; the enhancer calls removeTooltipNow() on hide and on ' +
+        'destroy.',
+    },
+  ];
+
+  const findings = findUnremovable();
+
+  const countsByFile = new Map<string, number>();
+  for (const f of findings) {
+    countsByFile.set(f.file, (countsByFile.get(f.file) ?? 0) + 1);
+  }
+
+  it('finds addEventListener calls in the enhancer layer, so an empty result cannot pass by accident', () => {
+    // Without this, a glob or AST change that stopped matching anything would make
+    // every check below `[] vs []` — green, and checking nothing.
+    const scanned = Object.entries(modules).filter(
+      ([p, text]) =>
+        inEnhancerLayer(p.replace(/^\.\.\/\.\.\//, '')) &&
+        !p.includes('/tests/') &&
+        text.includes('.addEventListener(')
+    );
+    expect(scanned.length).toBeGreaterThan(20);
+  });
+
+  it('registers no listener that nothing can remove, unless the file is allowlisted', () => {
+    const allowed = new Map(UNREMOVABLE_ALLOWLIST.map(e => [e.file, e.count]));
+
+    const messages = findings
+      .filter(f => (countsByFile.get(f.file) ?? 0) > (allowed.get(f.file) ?? 0))
+      .map(
+        f => `${f.file}:${f.line} — ${EXPLANATIONS[f.kind]}\n      ${f.source}`
+      );
+
+    expect(
+      messages,
+      'a listener registered in src/features/ or src/core/base/ must be removable: ' +
+        'pass { signal: <controller>.signal } and abort that controller from ' +
+        'cleanupEventListeners(), or hand addEventListener a stored handler ' +
+        'reference. See listen() in base-display-enhancer.ts, ' +
+        'checkout-form.enhancer.ts or accordion.enhancer.ts for the worked pattern. ' +
+        'If this is a pre-existing registration rather than a new one, add its file ' +
+        'to UNREMOVABLE_ALLOWLIST with a count and a judgement — do not fix a file ' +
+        'you do not own.'
+    ).toEqual([]);
+  });
+
+  it('has no allowlist entry whose count is now too high', () => {
+    const slack = UNREMOVABLE_ALLOWLIST.filter(
+      e => (countsByFile.get(e.file) ?? 0) < e.count
+    ).map(
+      e =>
+        `${e.file} — allowlisted for ${e.count} unremovable listener(s), found ` +
+        `${countsByFile.get(e.file) ?? 0}. Lower the count (or delete the entry at ` +
+        `0) so the fix cannot be undone silently.`
+    );
+
+    expect(
+      slack,
+      'the allowlist is a ratchet: it may only shrink. An entry with slack in it ' +
+        'lets a removed listener come back for free.'
     ).toEqual([]);
   });
 });

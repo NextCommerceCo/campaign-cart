@@ -15,9 +15,15 @@
  * The **initial** open/closed state is set here too, deliberately without animation — see
  * {@link setInitialBillingFormState}. Animating between states afterwards is
  * `billing-animation.ts`.
+ *
+ * Everything the billing section looks like on first paint is decided in this file: the
+ * fields ({@link setupBillingForm}), whether the section is open ({@link
+ * reconcileBillingToggle}), and what is typed into it ({@link
+ * restoreBillingAddressFields}).
  */
 
 import type { Logger } from '@/core/logger';
+import type { CheckoutState } from '@/state/checkout';
 
 import {
   BILLING_CONTAINER_SELECTOR,
@@ -25,6 +31,11 @@ import {
   BILLING_TOGGLE_SELECTOR,
   SHIPPING_FORM_SELECTOR,
 } from '../constants/selectors';
+
+import {
+  updateBillingStateOptions,
+  type StateFieldsContext,
+} from './state-fields';
 
 /** Marks a cloned row so the shipping scan does not pick it up again. */
 const LOCATION_COMPONENT = '[data-next-component="location"]';
@@ -317,4 +328,141 @@ export function setupBillingForm(ctx: BillingFormSetupContext): boolean {
 
   setInitialBillingFormState(ctx);
   return true;
+}
+
+/**
+ * Stored billing-address key → the billing field name that holds it, minus the
+ * `billing-` prefix.
+ *
+ * This is the inverse of `BILLING_ADDRESS_FIELD_MAP` in
+ * [`billing-field-routing.ts`](./billing-field-routing.ts), which renames each field on its
+ * way *into* the store. Only two names actually differ; every other key is already its own
+ * field name, and a key with no entry here is read back as `billing-{key}` — the same
+ * pass-through the forward map applies, so a page that invents `billing-company` gets its
+ * value back too. `tests/billing-address-restore.test.ts` pushes a value through both
+ * directions for every field to prove the two stay inverses.
+ */
+const BILLING_FIELD_SUFFIX_BY_ADDRESS_KEY: Record<string, string> = {
+  first_name: 'fname',
+  last_name: 'lname',
+};
+
+/** What {@link restoreBillingAddressFields} needs on top of the setup context. */
+export interface BillingAddressRestoreContext extends BillingFormSetupContext {
+  /**
+   * Passed through to {@link updateBillingStateOptions}. The billing province `<select>`
+   * is empty until some country fills it, and nothing at boot does — so the stored
+   * province has nowhere to land unless this step loads the list first.
+   */
+  stateFields: StateFieldsContext;
+}
+
+/**
+ * Whether a value can be written into this element. The billing map is typed
+ * `HTMLElement`, so a page that puts a field attribute on a `<div>` lands here.
+ */
+function isWritableField(
+  element: HTMLElement | undefined
+): element is HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement {
+  return (
+    element instanceof HTMLInputElement ||
+    element instanceof HTMLSelectElement ||
+    element instanceof HTMLTextAreaElement
+  );
+}
+
+/**
+ * Types the shopper's stored billing address back into the cloned billing fields.
+ *
+ * {@link convertShippingFieldsToBilling} clears every input it clones, and it has to — a
+ * clone otherwise arrives holding the shipping address. So a returning shopper whose
+ * section {@link reconcileBillingToggle} has just re-opened is looking at empty fields
+ * while the store still holds their address, and step 3 validates from that store: the
+ * form can report itself complete on values nobody can see. This is the step that closes
+ * that gap.
+ *
+ * The country and province are restored first and differently. The province list is built
+ * per country, so its `<select>` is refilled from the *stored billing* country before the
+ * value is written — passing the shipping province here instead would preselect the wrong
+ * region on an address the shopper entered precisely because it differs.
+ *
+ * Values are written exactly as stored, including a phone number kept as raw text rather
+ * than E.164 (finding 157): restoring is not the place to change what the order will
+ * carry.
+ *
+ * @param billingAddress What `checkoutStore.billingAddress` holds. `undefined` is the
+ *   normal "chose a separate billing address, has not filled it in yet" state — the store
+ *   drops an all-empty address on persist while keeping the choice — and returns without
+ *   touching the form.
+ *
+ * @example
+ * ```ts
+ * await restoreBillingAddressFields(
+ *   { ...billingFormSetupContext, stateFields },
+ *   { first_name: 'Grace', last_name: 'Hopper', address1: '2 Side St',
+ *     city: 'Arlington', province: 'VA', postal: '22201', country: 'US', phone: '' }
+ * );
+ * // → <input data-next-checkout-field="billing-fname"> now reads "Grace"
+ * ```
+ */
+export async function restoreBillingAddressFields(
+  ctx: BillingAddressRestoreContext,
+  billingAddress: CheckoutState['billingAddress']
+): Promise<void> {
+  if (!billingAddress) return;
+
+  const country = billingAddress.country ?? '';
+  const province = billingAddress.province ?? '';
+
+  const countryField = ctx.billingFields.get('billing-country');
+  if (country && isWritableField(countryField)) {
+    countryField.value = country;
+  }
+
+  const provinceField = ctx.billingFields.get('billing-province');
+  if (country && provinceField instanceof HTMLSelectElement) {
+    await updateBillingStateOptions(
+      ctx.stateFields,
+      country,
+      provinceField,
+      province
+    );
+  }
+
+  const restored: string[] = [];
+  const unrestored: string[] = [];
+
+  Object.entries(billingAddress).forEach(([key, value]) => {
+    if (typeof value !== 'string' || value === '') return;
+
+    const suffix = BILLING_FIELD_SUFFIX_BY_ADDRESS_KEY[key] ?? key;
+    const fieldName = `billing-${suffix}`;
+    const field = ctx.billingFields.get(fieldName);
+
+    if (!isWritableField(field)) {
+      unrestored.push(fieldName);
+      return;
+    }
+
+    field.value = value;
+    // A `<select>` silently keeps its old value when the option does not exist, so the
+    // write is read back rather than assumed — that read is the only thing that tells a
+    // stored province the country no longer offers apart from one that took.
+    if (field.value === value) {
+      restored.push(fieldName);
+    } else {
+      unrestored.push(fieldName);
+    }
+  });
+
+  ctx.logger.info('[Billing] Restored the stored billing address', {
+    restored,
+    unrestored,
+  });
+
+  if (unrestored.length > 0) {
+    ctx.logger.warn('[Billing] Some stored billing values have no field', {
+      fields: unrestored,
+    });
+  }
 }

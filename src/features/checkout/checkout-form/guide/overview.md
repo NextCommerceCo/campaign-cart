@@ -7,7 +7,7 @@ category: "Checkout Form"
 # Checkout Form
 
 > Category: `checkout`
-> Last reviewed: 2026-07-30
+> Last reviewed: 2026-08-03
 > Owner: Campaigns
 
 Turns a plain HTML form into a working checkout. You write the markup and name each
@@ -52,6 +52,11 @@ the two can never drift apart.
 - After the order is created the visitor is redirected using the URL the API
   returns. When that URL is missing, `order:redirect-missing` fires — otherwise
   they would sit on a checkout page for an order that already succeeded.
+- The separate billing address survives a reload **as a whole** — the answer goes
+  back on the checkbox and the stored address goes back into the fields, so what
+  the order will carry is what the visitor can read. Nothing is put back while
+  "billing is the shipping address" is ticked, which keeps an address left over
+  from an earlier order off a shared browser's screen.
 - Legacy `os-checkout-*` attributes are still read as fallbacks, so forms written
   before this convention keep working.
 

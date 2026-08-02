@@ -33,6 +33,18 @@ export class AccordionEnhancer extends BaseEnhancer {
   private accordions = new Map<string, AccordionInstance>();
   // Use protected eventBus from BaseEnhancer
 
+  /**
+   * Holds every trigger listener this accordion registers, so {@link cleanupEventListeners}
+   * can drop them all at once.
+   *
+   * The trigger `click`/`keydown` handlers used to be inline arrows, which
+   * `removeEventListener` can never take back — so a destroyed accordion went on
+   * toggling whenever someone clicked its header (finding 165 in
+   * `docs/code-findings.md`). Same pattern as `base-display-enhancer.ts` and
+   * `checkout-form.enhancer.ts`.
+   */
+  private listenerAbort = new AbortController();
+
   override async initialize(): Promise<void> {
     this.enhance();
   }
@@ -69,10 +81,28 @@ export class AccordionEnhancer extends BaseEnhancer {
     };
   }
 
+  /**
+   * `addEventListener` bound to this accordion's lifetime.
+   *
+   * Use it for every trigger listener. `removeEventListener` needs the exact handler
+   * reference back, which an inline arrow can never give, so a listener registered
+   * directly would outlive `destroy()`. {@link cleanupEventListeners} aborts the
+   * signal and every listener registered here goes with it.
+   */
+  private listen<E extends Event>(
+    target: HTMLElement,
+    type: string,
+    handler: (event: E) => void
+  ): void {
+    target.addEventListener(type, handler as EventListener, {
+      signal: this.listenerAbort.signal,
+    });
+  }
+
   private setupEventListeners(instance: AccordionInstance): void {
     // Set up trigger click listeners
     instance.triggers.forEach(trigger => {
-      trigger.addEventListener('click', (e) => {
+      this.listen(trigger, 'click', (e: Event) => {
         e.preventDefault();
         e.stopPropagation();
         this.toggleAccordion(instance);
@@ -81,13 +111,13 @@ export class AccordionEnhancer extends BaseEnhancer {
 
     // Set up keyboard accessibility
     instance.triggers.forEach(trigger => {
-      trigger.addEventListener('keydown', (e) => {
+      this.listen(trigger, 'keydown', (e: KeyboardEvent) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           this.toggleAccordion(instance);
         }
       });
-      
+
       // Make triggers focusable if not already
       if (!trigger.hasAttribute('tabindex')) {
         trigger.setAttribute('tabindex', '0');
@@ -256,9 +286,21 @@ export class AccordionEnhancer extends BaseEnhancer {
     return Array.from(this.accordions.keys());
   }
 
+  /**
+   * Drops every trigger listener registered through {@link listen}.
+   *
+   * Base `destroy()` calls this after unsubscribing store subscriptions, so a
+   * destroyed accordion stops responding to clicks and keystrokes.
+   */
+  protected override cleanupEventListeners(): void {
+    this.listenerAbort.abort();
+  }
+
   override destroy(): void {
-    this.accordions.clear();
+    // First, so base destroy() runs cleanupEventListeners() while the instances it
+    // describes are still in the map.
     super.destroy();
+    this.accordions.clear();
   }
 }
 

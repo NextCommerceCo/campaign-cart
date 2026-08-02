@@ -15,7 +15,7 @@ findings 116–126 from wave 2 on the same day (the `core/debug/` kebab rename, 
 hardening, and the `ui-service` split), and findings 127-137 from wave 3 (the teardown fixes,
 the format-table gate, the `core/debug` method breakup and the `checkout-validator` split);
 and findings 138-148 from wave 4 (the order-payload reconciliation, the routed-display gate,
-the `core/debug` split, the `prospect-cart` split and the test type gate); findings 149-153 from wave 5, findings 154-161 from wave 6, and findings 162-167 from wave 7; each wave has its own
+the `core/debug` split, the `prospect-cart` split and the test type gate); findings 149-153 from wave 5, findings 154-161 from wave 6, findings 162-167 from wave 7, and findings 168-171 from wave 8; each wave has its own
 section near the end. **Finding 144 was wrong as written and is corrected in place.** **Findings 127 and 130-133 are the most serious
 things this restructure has turned up** - a published page teaching ten paths that render
 nothing, and a validation layer that blocks non-Latin names while letting unvalidated billing
@@ -2698,14 +2698,14 @@ Leaving both is how the next reader assumes the correct one is in use.
 Found alongside it: `formatElevarProduct` calls `getCurrency()` — a store read that can emit a
 warn — and drops the result, because `ElevarProduct` has no currency field at all.
 
-### 164. `DOMObserver` never cleans up inside a removed container — *verified*
+### 164. ~~`DOMObserver` never cleans up inside a removed container~~ — **FIXED 2026-08-03, and the real defect was worse — see 168**
 
 `processChildListMutation` walks descendants for **added** nodes but not for **removed** ones,
 so removing a wrapper element notifies nothing about the enhanced elements inside it, even when
 they carry one of the eight attributes the observer filters on. Combined with 162's new
 registry, this is the main reason the scanner can hold an element longer than the DOM does.
 
-### 165. `AccordionEnhancer` satisfies the teardown gate while removing nothing — *verified*
+### 165. ~~`AccordionEnhancer` satisfies the teardown gate while removing nothing~~ — **FIXED 2026-08-03.** The gate now inspects registrations, not classes, and found 50 more — see 169
 
 It registers `click` and `keydown` on its trigger children as **inline arrows** and never
 removes them; `destroy()` only clears `this.accordions`. So a destroyed accordion still toggles
@@ -2718,7 +2718,7 @@ spot found in the same gate in two waves — the first was a class that overrode
 **Fix:** the `AbortController` pattern, and then a gate rule with teeth — every listener
 registered must be traceable to a removal, not merely to the existence of an override.
 
-### 166. `boot-sequence.md` silently drops a step that stops being a `this.` call — *verified, worked around*
+### 166. ~~`boot-sequence.md` silently drops a step that stops being a `this.` call~~ — **FIXED 2026-08-03.** The extractor follows imported functions now and the two workaround wrappers are gone
 
 `extract-boot-sequence.ts` recognises a boot step only when `initialize()` calls it as
 `this.methodName()`. Extracting a step to a free function does not just move its anchor — the
@@ -2753,6 +2753,113 @@ hand, inconsistently, all over the tree: `!isNaN(qty)` in `product-display.enhan
 Four documents pointed at the dead path and were corrected: `.claude/rules/testing.md`,
 `.claude/rules/typescript.md`, `.claude/skills/sdk-structure/SKILL.md` and `src/core/README.md`
 — the last two also had `utils/` holding files that moved to `core/` two waves ago.
+
+---
+
+## Found during the wave-8 restructure (2026-08-03)
+
+Five agents: the accordion teardown and a third rewrite of the teardown gate (165), the
+removed-subtree cleanup (164), the boot-sequence extractor (166), the billing-value restore,
+and the rest of the event-timeline split.
+
+### 168. Removing an enhanced element re-enhanced it, detached, forever — *verified, fixed 2026-08-03*
+
+Finding 164 said a removed **container** never notified about the features inside it. That was
+the smaller half of the defect, and the framing was wrong in a way worth recording.
+
+- **`addElementForProcessing` gated the *direct* removal notification on the same eight
+  attributes**, so removing an enhanced element on its own leaked too. **22 of the 30
+  activation attributes never produced a removal notification under any circumstances.**
+- **For the eight that did pass the filter, removal did not merely fail to clean up — it
+  re-created the enhancer.** The removed element went into `pendingChanges` as well, so 16 ms
+  later it was announced as *added*, queued, and 50 ms after that enhanced again — **while
+  detached, permanently, with nothing able to report it removed a second time.** A test
+  measured `enhancedElements === 1` after removing the page's only element.
+- The page was already paying for the expensive half of the work: `hasRelevantDescendants` ran
+  a `querySelector` over every removed subtree and then discarded the answer.
+
+**The fix inverted the design rather than extending it.** The observer stops filtering and
+stops deciding what is "ours" — it reports departures. The scanner answers from the iterable
+registry finding 162 gave it, which is exact where the attribute filter was a guess: it covers
+all 30 selectors and correctly *excludes* elements the scan deliberately skipped (template
+children, `{token}` package ids) that an attribute walk would have claimed.
+
+**It is now cheaper than before**: relevance per removal went from a `querySelector` over the
+whole removed subtree to one `instanceof`, and the sweep is one `isConnected` read per
+registered element per 16 ms frame. Measured under happy-dom on a 5,000-node subtree:
+16.18 ms → 0.009 ms.
+
+Re-attached inside the same frame keeps its enhancer; re-attached later is a real teardown and
+the element returns inert unless it carries one of the eight watched attributes — the
+pre-existing added-path limit (finding 52), now documented as a trap.
+
+### 169. The teardown gate had to stop looking at classes: 50 unremovable listeners in 17 files — *verified*
+
+Rewritten a third time, after two escapes in two waves. The new rule ignores the class and
+inspects the **registration**, because that is the thing a teardown method cannot fake on a
+listener's behalf. A registration is removable only if it passes `signal:` or hands
+`addEventListener` a stable stored reference. Three shapes fail by construction: an inline
+arrow, a freshly built function (`.bind(this)`, `makeHandler()`), and **a local used nowhere
+but that one call** — that last clause exists because hoisting an arrow to a `const` is the
+obvious way to satisfy the rule without fixing anything, and it is what caught
+`floating-labels.ts`.
+
+**Why the two earlier rules kept missing it: 12 of the 17 flagged files declare no enhancer
+class at all** — renderers, handler modules, services, a static-only class, a barrel. The leak
+surface in this layer lives in helper modules, so the gate is now scoped by **directory**
+(`src/features/`, `src/core/base/`) rather than by class or by import graph. Following imports
+was itself a flaw: it made the answer depend on how a feature happened to be split, and let a
+listener leave range by moving file.
+
+**Seven real leaks, allowlisted with counts, none fixed** (each is enhancer-lifetime, on author
+DOM the enhancer does not own, and survives `destroy()`):
+
+| File | n | What it means |
+|---|---|---|
+| `cart/coupon/coupon.enhancer.ts` | 3 | a destroyed coupon field still applies coupons |
+| `cart/shared/properties.ts` | 1 | re-enhancing a card stacks another |
+| `checkout/address-autocomplete/google-maps-autocomplete.ts` | 4 | address input and both country selects |
+| `checkout/address-autocomplete/next-commerce-autocomplete.ts` | 4 | on `this.input` |
+| `checkout/checkout-form/phone-input.ts` | 2 | destroying intlTelInput does not remove these |
+| `checkout/services/credit-card-service.ts` | 6 | rebuilt on every form init |
+| `checkout/services/ui-service/floating-labels.ts` | 1 | **every resize past the mobile breakpoint adds another focus handler to every field** |
+| `order/upsell/upsell.interaction-handlers.ts` | 2 | the same file already has a removable helper; these two bypass it |
+
+Eighteen more die with their element (the popup is `.remove()`d and the ref nulled) and seven
+are page-lifetime by design, including the two dev-only cases — judged individually, not
+assumed.
+
+**Each allowlist entry freezes a count**, so an allowlisted file may keep what it has and may
+not gain one. The ratchet fired in the shrinking direction during the work itself
+(*"allowlisted for 3, found 2. Lower the count."*) — which is the behaviour that stops an
+allowlist becoming a permanent exemption.
+
+Correction to finding 165: the accordion was **already** a recorded violator in that same file,
+under the super-`destroy()`-ordering allowlist. The file knew about it; the rule that mattered
+did not.
+
+### 170. A `git stash` in a shared tree cost four agents their uncommitted work — *process, contained*
+
+An agent ran `git stash` / `git stash pop` while four siblings were mid-edit. `stash` took
+**every tracked file's changes across the whole tree** — 12 files spanning all five agents —
+and the `pop` hit a conflict on `dom-activation.md` and aborted, leaving them at HEAD. Two
+other agents independently noticed their files reverting under them and rewrote from their own
+scratchpad copies; nothing was ultimately lost, and untracked files were never at risk because
+`git stash` without `-u` ignores them.
+
+This is the **fifth** violation of the same prohibition this session, in prompts that stated it
+in bold, listed it as "not even `git stash`", and explained the previous incident. **A rule that
+must be read to be followed is not a control for concurrent work.** The fix is one line in
+`.claude/settings.json`'s `permissions.deny`, alongside the push/deploy bans that have held
+perfectly all session precisely because they are enforced at the tool layer. Not applied — it
+would also block Bond's own use, so it is Bond's call.
+
+### 171. `RawDataHelper` was imported and unused for a whole wave — *fixed 2026-08-03*
+
+Left behind when the previous split moved every use into `event-timeline-panel.flow.ts`.
+`noUnusedLocals` and `noUnusedParameters` are both `false` in `tsconfig.json`, so nothing
+reported it. Worth knowing that dead imports are currently invisible to every gate this repo
+has.
 
 ---
 

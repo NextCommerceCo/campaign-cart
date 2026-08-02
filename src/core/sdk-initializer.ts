@@ -60,10 +60,12 @@ export class SDKInitializer {
       await this.loadConfiguration();
 
       // NEW: Initialize location and currency detection EARLY (before campaign data)
-      await this.initializeLocationAndCurrency();
+      await locationCurrencyMethods.initializeLocationAndCurrency({
+        logger: this.logger,
+      });
 
       // Initialize attribution store
-      await this.initializeAttribution();
+      await attributionMethods.initializeAttribution(this.attributionCtx);
 
       // Load campaign data (will now use the detected/selected currency)
       await this.loadCampaignData();
@@ -140,26 +142,6 @@ export class SDKInitializer {
       });
 
       throw error;
-    }
-  }
-
-  /**
-   * Detects the visitor's country and picks the display currency. The real
-   * logic lives in `sdk-initializer.location-currency.ts` (moved there
-   * verbatim); this stays a thin boot-step wrapper so `boot-sequence.md`
-   * keeps citing it as `initializeLocationAndCurrency` rather than the
-   * module's import name, and keeps documenting it as "logged, boot
-   * continues" — the sibling function already resolves every failure to a
-   * fallback and never rejects, so this catch is a second, currently-dead
-   * boundary that only matters if that guarantee is ever weakened.
-   */
-  private static async initializeLocationAndCurrency(): Promise<void> {
-    try {
-      await locationCurrencyMethods.initializeLocationAndCurrency({
-        logger: this.logger,
-      });
-    } catch {
-      // unreachable today — see the note above.
     }
   }
 
@@ -272,22 +254,6 @@ export class SDKInitializer {
     const eventBus = EventBus.getInstance();
     eventBus.emit('sdk:url-parameters-processed', {});
     this.logger.debug('Emitted sdk:url-parameters-processed event');
-  }
-
-  /**
-   * Captures where the visitor came from. The real logic lives in
-   * `sdk-initializer.attribution.ts` (moved there verbatim); this stays a
-   * thin boot-step wrapper for the same reason as
-   * `initializeLocationAndCurrency` above — `boot-sequence.md` needs a real
-   * `this.*` method to cite by this name, and to keep reading "logged, boot
-   * continues".
-   */
-  private static async initializeAttribution(): Promise<void> {
-    try {
-      await attributionMethods.initializeAttribution(this.attributionCtx);
-    } catch {
-      // unreachable today — see the note above.
-    }
   }
 
   private static async initializeAnalytics(): Promise<void> {

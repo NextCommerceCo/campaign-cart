@@ -38,8 +38,10 @@ import {
 } from './billing-animation';
 import {
   reconcileBillingToggle,
+  restoreBillingAddressFields,
   scanBillingFields,
   setupBillingForm,
+  type BillingAddressRestoreContext,
   type BillingFormSetupContext,
 } from './billing-form-setup';
 import {
@@ -261,6 +263,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     this.setupDebugEventListeners();
 
     await this.populateFormData();
+    await this.restoreBillingAddress();
     this.initializeLocationFieldVisibility();
     await this.initializeProspectCart();
 
@@ -1033,6 +1036,17 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       form: this.form,
       billingFields: this.billingFields,
       logger: this.logger,
+    };
+  }
+
+  /**
+   * The same three plus the state-field context, for the one billing-setup step that has
+   * to refill the province dropdown before it can write a province into it.
+   */
+  private billingAddressRestoreContext(): BillingAddressRestoreContext {
+    return {
+      ...this.billingFormSetupContext(),
+      stateFields: this.stateFieldsContext(),
     };
   }
 
@@ -2486,6 +2500,33 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     }
 
     // Update floating labels for populated data
+    this.ui.updateLabelsForPopulatedData();
+  }
+
+  /**
+   * The billing half of {@link populateFormData}: puts the stored billing address back
+   * into the cloned billing fields.
+   *
+   * Runs immediately after that step, and **before**
+   * {@link initializeLocationFieldVisibility} — that step decides whether the billing
+   * city/state/postcode rows are on screen by reading `billing-address1`, so a value
+   * written after it would sit behind an empty check and stay hidden.
+   *
+   * Restores only when the store says the shopper chose a *separate* billing address.
+   * `checkoutStore.reset()` returns `sameAsShipping` to `true` but leaves `billingAddress`
+   * behind (finding 156), so a page booted after a completed order can still hold the
+   * previous shopper's address. Gating on the choice keeps that out of the DOM instead of
+   * writing it into collapsed inputs that a later untick would put on screen.
+   */
+  private async restoreBillingAddress(): Promise<void> {
+    const { sameAsShipping, billingAddress } = useCheckoutStore.getState();
+    if (sameAsShipping || !billingAddress) return;
+
+    await restoreBillingAddressFields(
+      this.billingAddressRestoreContext(),
+      billingAddress
+    );
+
     this.ui.updateLabelsForPopulatedData();
   }
 

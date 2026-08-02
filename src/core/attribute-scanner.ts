@@ -33,8 +33,10 @@ export class AttributeScanner {
    * Kept in step with `enhancers`: an element is added where the WeakMap entry is
    * written, and removed in `cleanupElement()`, which is the single exit for both.
    * Membership here is a **strong** reference, so an element that leaves the DOM
-   * without the observer noticing stays reachable until `destroy()` — the price of
-   * being able to tear anything down at all.
+   * without the observer noticing — while it is stopped or paused — stays reachable
+   * until `destroy()`. That is the price of being able to tear anything down at all,
+   * and it is also what makes `cleanupDetachedElements()` possible: this list is the
+   * only place the question "what did that removal take with it" can be answered.
    */
   private enhancedElements = new Set<HTMLElement>();
   private enhancerCount = 0; // Track count separately since WeakMap doesn't have .size
@@ -45,6 +47,8 @@ export class AttributeScanner {
   private scanQueue = new Set<HTMLElement>();
   /** Pending `processQueue()` timer, so `destroy()` can cancel it. */
   private queueTimer: number | undefined;
+  /** Collapses a batch of removals into one registry sweep. */
+  private detachedSweepScheduled = false;
   private enhancerStats = new Map<string, { totalTime: number; count: number }>();
   private isDebugMode = false;
 
@@ -498,6 +502,7 @@ export class AttributeScanner {
         
       case 'removed':
         this.cleanupElement(event.element);
+        this.scheduleDetachedSweep();
         break;
         
       case 'attributeChanged':
@@ -514,6 +519,52 @@ export class AttributeScanner {
           this.queueElementForEnhancement(event.element);
         }
         break;
+    }
+  }
+
+  /**
+   * Runs the detached sweep once per batch of removals rather than once per removed
+   * node: `DOMObserver` reports every element that left the document, and a single
+   * view swap reports hundreds of them in one flush.
+   */
+  private scheduleDetachedSweep(): void {
+    if (this.isDestroyed || this.detachedSweepScheduled) {
+      return;
+    }
+
+    this.detachedSweepScheduled = true;
+    queueMicrotask(() => {
+      this.detachedSweepScheduled = false;
+      this.cleanupDetachedElements();
+    });
+  }
+
+  /**
+   * Tears down every enhanced element that is no longer in the document.
+   *
+   * This is the answer to "what inside the removed subtree was ours": the registry,
+   * not the observer's attribute filter. The filter watches eight attributes where
+   * the scanner activates thirty, and it would still have to walk the removed
+   * subtree to find them; the registry already lists exactly the elements that were
+   * enhanced — including the ones activation *skipped*, which an attribute walk would
+   * wrongly claim — and `isConnected` answers per element in constant time, whatever
+   * the size of what was removed.
+   *
+   * The one thing it cannot represent: an element enhanced while detached from the
+   * document is torn down by the first sweep. Nothing does that today — the initial
+   * scan runs on `<body>` and the queue only ever holds elements the observer saw
+   * arrive — and `processQueue()` refuses to enhance a detached element anyway.
+   */
+  private cleanupDetachedElements(): void {
+    if (this.isDestroyed || this.enhancedElements.size === 0) {
+      return;
+    }
+
+    // Snapshot: cleanupElement() mutates the registry as it goes.
+    for (const element of Array.from(this.enhancedElements)) {
+      if (!element.isConnected) {
+        this.cleanupElement(element);
+      }
     }
   }
 
@@ -553,6 +604,13 @@ export class AttributeScanner {
     this.logger.debug(`Processing ${elements.length} queued elements`);
 
     for (const element of elements) {
+      // The queue is 50ms behind the DOM: an element added and removed again inside
+      // that window would otherwise be enhanced while detached, and nothing would
+      // ever report it as removed a second time.
+      if (!element.isConnected) {
+        continue;
+      }
+
       try {
         await this.enhanceElement(element);
       } catch (error) {

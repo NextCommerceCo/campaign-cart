@@ -10,7 +10,6 @@
 
 import { DebugPanel, PanelAction } from '../../debug-panels';
 import { EventBus } from '../../../events';
-import { RawDataHelper } from '../raw-data-helper';
 import {
   validateDataLayerEvent,
   auditDataLayerEvent,
@@ -18,15 +17,10 @@ import {
   type EventValidationIssue,
   type EventCheck,
 } from '../ecommerce-event-validator';
-import {
-  analyticsDebug,
-  type DeliveryRecord,
-  type ProviderDebugInfo,
-} from '@/core/analytics/debug/analytics-debug-tracker';
-import { lucide, type IconName } from '../../icons';
+import { analyticsDebug } from '@/core/analytics/debug/analytics-debug-tracker';
+import { lucide } from '../../icons';
 import { eventTimelinePanelStyles } from './event-timeline-panel.styles';
 import type { DetailTab, TimelineEvent } from './event-timeline-panel.types';
-import { DELIVERY_STATUS_COLOR, DELIVERY_STATUS_ICON } from './event-timeline-panel.types';
 import {
   loadSavedState as loadPersistedTimelineState,
   saveEvents as savePersistedTimelineEvents,
@@ -42,14 +36,33 @@ import {
   watchPerformanceEvents,
   type EventCaptureHost,
 } from './event-timeline-panel.capture';
+import type { FlowRenderDeps } from './event-timeline-panel.flow';
+import type { ValidationRenderDeps } from './event-timeline-panel.validation';
 import {
-  renderFlowDetail,
-  type FlowRenderDeps,
-} from './event-timeline-panel.flow';
+  getEventId,
+  getDeliveriesForEvent,
+  formatDeliveryDuration,
+  providerIcon,
+  renderDeliverySummary,
+  renderProviderStrip,
+} from './event-timeline-panel.providers';
 import {
-  renderValidationSection,
-  type ValidationRenderDeps,
-} from './event-timeline-panel.validation';
+  renderFilterDrawer,
+  type FilterDrawerState,
+} from './event-timeline-panel.filters';
+import {
+  renderViewTabs,
+  renderEventsHeader,
+  renderEventsTable,
+  type EventRowDeps,
+} from './event-timeline-panel.table';
+import {
+  showEventModal,
+  closeEventModal,
+  renderEventModal,
+  type ModalHost,
+  type EventModalDeps,
+} from './event-timeline-panel.modal';
 
 export class EventTimelinePanel implements DebugPanel {
   id = 'event-timeline';
@@ -266,9 +279,7 @@ export class EventTimelinePanel implements DebugPanel {
 
     if (this.providerFilter) {
       events = events.filter(e =>
-        this.getDeliveriesForEvent(e).some(
-          d => d.provider === this.providerFilter
-        )
+        getDeliveriesForEvent(e).some(d => d.provider === this.providerFilter)
       );
     }
 
@@ -281,7 +292,7 @@ export class EventTimelinePanel implements DebugPanel {
 
   /** True when an event failed/was blocked by a provider, or fails validation. */
   private eventHasIssues(event: TimelineEvent): boolean {
-    const deliveryProblem = this.getDeliveriesForEvent(event).some(
+    const deliveryProblem = getDeliveriesForEvent(event).some(
       d => d.status === 'failed' || d.status === 'blocked'
     );
     return deliveryProblem || Boolean(worstLevel(this.getEventIssues(event)));
@@ -341,17 +352,6 @@ export class EventTimelinePanel implements DebugPanel {
     return `Not a <code>dl_</code> event, so there is no dataLayer contract to validate.`;
   }
 
-  private renderValidationBadge(event: TimelineEvent): string {
-    const level = worstLevel(this.getEventIssues(event));
-    if (!level) return '';
-    const isError = level === 'error';
-    const cls = isError
-      ? 'validation-badge validation-badge-error'
-      : 'validation-badge validation-badge-warning';
-    const ico = lucide(isError ? 'x-circle' : 'alert', { size: 12 });
-    return `<span class="${cls}">${ico} ${isError ? 'INVALID' : 'CHECK'}</span>`;
-  }
-
   /** Pure helpers `renderValidationSection` needs — see `event-timeline-panel.validation.ts`. */
   private validationDeps(): ValidationRenderDeps {
     return { escapeHtml: value => this.escapeHtml(value) };
@@ -360,10 +360,10 @@ export class EventTimelinePanel implements DebugPanel {
   /** Pure helpers `renderFlowDetail` needs — see `event-timeline-panel.flow.ts`. */
   private flowDeps(): FlowRenderDeps {
     return {
-      getDeliveriesForEvent: event => this.getDeliveriesForEvent(event),
-      getEventId: event => this.getEventId(event),
-      formatDeliveryDuration: ms => this.formatDeliveryDuration(ms),
-      providerIcon: name => this.providerIcon(name),
+      getDeliveriesForEvent: event => getDeliveriesForEvent(event),
+      getEventId: event => getEventId(event),
+      formatDeliveryDuration: ms => formatDeliveryDuration(ms),
+      providerIcon: name => providerIcon(name),
       escapeHtml: value => this.escapeHtml(value),
       escapeAttr: value => this.escapeAttr(value),
     };
@@ -376,437 +376,23 @@ export class EventTimelinePanel implements DebugPanel {
       .replace(/>/g, '&gt;');
   }
 
-  // ── Provider delivery correlation ──────────────────────────────────────────
-  // dataLayer events carry `event_id`; provider delivery records carry the same
-  // id, so a timeline event can be joined to "who received it".
-
-  private getEventId(event: TimelineEvent): string | undefined {
-    const id = event.data?.event_id;
-    return typeof id === 'string' ? id : undefined;
-  }
-
-  /** Delivery records that belong to this timeline event (matched by event_id). */
-  private getDeliveriesForEvent(event: TimelineEvent): DeliveryRecord[] {
-    const eventId = this.getEventId(event);
-    if (!eventId) return [];
-    return analyticsDebug
-      .getDeliveries()
-      .filter(record => record.eventId === eventId);
-  }
-
-  private formatDeliveryDuration(ms?: number): string {
-    if (ms === undefined) return '';
-    return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(2)}s`;
-  }
-
-  /**
-   * Per-provider delivery chips shown on an event row — one chip per provider
-   * that handled the event, tinted by its delivery status (sent/failed/…), so
-   * you can see at a glance who received it without opening the modal.
-   */
-  private renderDeliverySummary(event: TimelineEvent): string {
-    const deliveries = this.getDeliveriesForEvent(event);
-    if (deliveries.length === 0) return '';
-
-    const chips = deliveries
-      .map(d => {
-        const color = DELIVERY_STATUS_COLOR[d.status];
-        const duration = this.formatDeliveryDuration(d.durationMs);
-        const title =
-          `${d.provider}: ${d.status}` +
-          (duration ? ` · ${duration}` : '') +
-          (d.error ? ` · ${d.error}` : d.detail ? ` · ${d.detail}` : '');
-        // Lead with the provider's brand glyph when it has one; otherwise the
-        // status icon. Either way the chip colour still encodes delivery status.
-        const brand = this.providerIcon(d.provider);
-        const glyph = brand
-          ? lucide(brand, { size: 11 })
-          : lucide(DELIVERY_STATUS_ICON[d.status], { size: 11 });
-        return `<span class="delivery-chip" style="--chip:${color}" title="${this.escapeAttr(title)}">${glyph}<span class="delivery-chip-name">${this.escapeHtml(this.providerAbbrev(d.provider))}</span></span>`;
-      })
-      .join('');
-
-    return `<span class="delivery-summary" title="Provider delivery">${chips}</span>`;
-  }
-
-  /**
-   * Short provider label for compact row chips (Facebook → FB, RudderStack → RS).
-   * Falls back to the capital-letter acronym, then the first 3 characters.
-   */
-  private providerAbbrev(name: string): string {
-    const known: Record<string, string> = {
-      NextCampaign: 'NEXT',
-      GTM: 'GTM',
-      Facebook: 'FB',
-      RudderStack: 'RS',
-    };
-    if (known[name]) return known[name];
-    const caps = name.replace(/[^A-Z]/g, '');
-    return (caps.length >= 2 ? caps : name.slice(0, 3)).toUpperCase();
-  }
-
-  /**
-   * Brand icon for a provider, when one exists (GTM, Facebook, RudderStack,
-   * NextCampaign). Returns null for providers without a brand glyph (e.g.
-   * Custom), so callers fall back to a generic/status icon.
-   */
-  private providerIcon(name: string): IconName | null {
-    const map: Record<string, IconName> = {
-      // NextCampaign is the SDK's own provider — its "N" brand mark.
-      NextCampaign: 'next',
-      GTM: 'gtm',
-      Facebook: 'facebook',
-      RudderStack: 'rudderstack',
-    };
-    return map[name] ?? null;
-  }
-
-  /** Tabbed detail body for the event modal: Flow / Validation. */
-  private renderDetailTabs(event: TimelineEvent): string {
-    const deliveryCount = this.getDeliveriesForEvent(event).length;
-    const issues = this.getEventIssues(event);
-    const issueLevel = worstLevel(issues);
-
-    const flowBadge =
-      deliveryCount > 0
-        ? `<span class="tab-count">${deliveryCount}</span>`
-        : '';
-    const validationBadge = issueLevel
-      ? `<span class="tab-count tab-count-${issueLevel}">${issues.length}</span>`
-      : '';
-
-    const tab = (id: DetailTab, label: string, badge = ''): string => `
-      <button
-        class="detail-tab ${this.selectedDetailTab === id ? 'active' : ''}"
-        onclick="window.eventTimelinePanel_setTab('${id}')">
-        ${label}${badge}
-      </button>`;
-
-    const body =
-      this.selectedDetailTab === 'validation'
-        ? renderValidationSection(this.getEventChecks(event), this.validationDeps()) ||
-          `<div class="delivery-empty">${this.noValidationReason(event)}</div>`
-        : renderFlowDetail(event, this.selectedFlowNode, this.flowDeps());
-
-    return `
-      <div class="detail-tabs">
-        ${tab('flow', 'Flow', flowBadge)}
-        ${tab('validation', 'Validation', validationBadge)}
-      </div>
-      <div class="detail-tab-body detail-tab-body-${this.selectedDetailTab}">${body}</div>`;
-  }
-
-  /** Top strip: which analytics providers are registered and ready. */
-  private renderProviderStrip(): string {
-    const providers = analyticsDebug.getProviders();
-    if (providers.length === 0) {
-      return `
-        <div class="provider-strip provider-strip-empty">
-          No analytics providers registered (analytics disabled or not yet initialized).
-        </div>`;
-    }
-
-    const chips = providers
-      .map((p: ProviderDebugInfo) => {
-        const status = !p.enabled
-          ? lucide('pause', { size: 13, style: 'color:#9aa0a6' })
-          : p.ready
-            ? lucide('check-circle', { size: 13, style: 'color:#1f9d55' })
-            : lucide('clock', { size: 13, style: 'color:#d6a700' });
-        // Lead with the provider's brand glyph when it has one; the ready/
-        // disabled state stays as a trailing status icon.
-        const brand = this.providerIcon(p.name);
-        const brandIcon = brand
-          ? `<span class="provider-chip-brand">${lucide(brand, { size: 13 })}</span>`
-          : '';
-        const state = !p.enabled ? 'disabled' : p.ready ? 'ready' : 'not ready';
-        const blocked =
-          p.blockedEvents.length > 0
-            ? ` · blocks ${p.blockedEvents.length}`
-            : '';
-        const active = this.providerFilter === p.name ? ' active' : '';
-        const hint = `${p.name}: ${state}${blocked} · click to filter timeline`;
-        return `
-          <button
-            class="provider-chip${active}"
-            title="${this.escapeHtml(hint)}"
-            onclick="window.eventTimelinePanel_filterProvider('${this.escapeAttr(p.name)}')">
-            ${brandIcon}
-            <span class="provider-chip-name">${this.escapeHtml(p.name)}</span>
-            <span class="provider-chip-icon">${status}</span>
-          </button>`;
-      })
-      .join('');
-
-    return `
-      <div class="provider-strip">
-        <span class="provider-strip-label">Providers</span>
-        ${chips}
-      </div>`;
-  }
-
-  /** Empty-state message, aware of the dl_-only default filter. */
-  private renderEmptyState(): string {
-    if (this.events.length === 0) {
-      return `
-        <div class="empty-state">
-          <div class="empty-state-icon">${lucide('inbox', { size: 44 })}</div>
-          <div class="empty-state-text">No events captured yet</div>
-        </div>`;
-    }
-
-    // Analytics view shows only dl_ events; surface non-dl_ events captured.
-    const hiddenByView =
-      this.view === 'analytics' &&
-      this.events.some(e => !e.name.startsWith('dl_'));
-    if (hiddenByView && !this.hasActiveFilters()) {
-      const other = this.events.filter(e => !e.name.startsWith('dl_')).length;
-      return `
-        <div class="empty-state">
-          <div class="empty-state-icon">${lucide('inbox', { size: 44 })}</div>
-          <div class="empty-state-text">No <code>dl_</code> events yet</div>
-          <div class="empty-state-sub">${other} non-dl_ event${other === 1 ? '' : 's'} captured — switch to the Events view to see them.</div>
-          <button class="filter-clear" onclick="window.eventTimelinePanel_setView('events')">Go to Events</button>
-        </div>`;
-    }
-
-    return `
-      <div class="empty-state">
-        <div class="empty-state-icon">${lucide('search-x', { size: 44 })}</div>
-        <div class="empty-state-text">No events match the current filters</div>
-        ${
-          this.hasActiveFilters()
-            ? `
-          <button class="filter-clear" onclick="window.eventTimelinePanel_clearFilters()">
-            Clear filters
-          </button>`
-            : ''
-        }
-      </div>`;
-  }
-
-  /** Segmented control switching between the Analytics and Events views. */
-  private renderViewTabs(): string {
-    const dlCount = this.events.filter(e => e.name.startsWith('dl_')).length;
-    const allCount = this.events.length;
-    const tab = (
-      id: 'analytics' | 'events',
-      label: string,
-      ico: IconName,
-      count: number
-    ): string => `
-      <button class="view-tab ${this.view === id ? 'active' : ''}"
-              onclick="window.eventTimelinePanel_setView('${id}')">
-        ${lucide(ico, { size: 14 })}
-        <span>${label}</span>
-        <span class="view-tab-count">${count}</span>
-      </button>`;
-    return `
-      <div class="view-tabs">
-        ${tab('analytics', 'Analytics', 'chart', dlCount)}
-        ${tab('events', 'Events', 'bolt', allCount)}
-      </div>`;
-  }
-
-  /** Compact ecommerce figures for an Analytics row: total value and item count. */
-  private getEcommerceSummary(event: TimelineEvent): {
-    value: string | null;
-    items: number | null;
-  } {
-    const ec = (event.data as any)?.ecommerce;
-    if (!ec || typeof ec !== 'object') return { value: null, items: null };
-
-    const raw = ec.value ?? ec.value_change;
-    const num =
-      typeof raw === 'number'
-        ? raw
-        : typeof raw === 'string'
-          ? parseFloat(raw)
-          : NaN;
-    const currency = typeof ec.currency === 'string' ? ec.currency : '';
-    const value = Number.isFinite(num)
-      ? `${num.toFixed(2)}${currency ? ` ${currency}` : ''}`
-      : null;
-
-    const arr = Array.isArray(ec.items)
-      ? ec.items
-      : Array.isArray(ec.items_added)
-        ? ec.items_added
-        : null;
-    return { value, items: arr ? arr.length : null };
-  }
-
-  private renderTableHead(): string {
-    const cols =
-      this.view === 'analytics'
-        ? `<th style="width:13%">Time</th>
-           <th style="width:33%">Event</th>
-           <th style="width:16%">Value</th>
-           <th style="width:9%">Items</th>
-           <th style="width:29%">Delivery</th>`
-        : `<th style="width:14%">Time</th>
-           <th style="width:11%">Type</th>
-           <th style="width:41%">Event</th>
-           <th style="width:34%">Source</th>`;
-    return `<thead><tr>${cols}</tr></thead>`;
-  }
-
-  private renderEventRow(event: TimelineEvent): string {
-    const open = `window.eventTimelinePanel_showModal('${event.id}')`;
-    const time = `<td class="event-time">${this.formatTimestamp(event.timestamp)}</td>`;
-    const typeBadge = `<span class="event-type-badge" style="background:${this.getEventTypeColor(event.type)}22;color:${this.getEventTypeColor(event.type)};">${this.getEventTypeBadge(event.type)}</span>`;
-
-    if (this.view === 'analytics') {
-      const { value, items } = this.getEcommerceSummary(event);
-      const delivery = this.renderDeliverySummary(event);
-      return `
-        <tr class="event-row" onclick="${open}">
-          ${time}
-          <td>
-            <span class="event-name">${event.name}</span>
-            ${this.renderValidationBadge(event)}
-          </td>
-          <td class="event-num">${value ?? '<span class="event-muted">—</span>'}</td>
-          <td class="event-num">${items ?? '<span class="event-muted">—</span>'}</td>
-          <td>${delivery || '<span class="event-muted">—</span>'}</td>
-        </tr>`;
-    }
-
-    return `
-      <tr class="event-row" onclick="${open}">
-        ${time}
-        <td>${typeBadge}</td>
-        <td>
-          <span class="event-name">${event.name}</span>
-          ${event.isInternal ? '<span class="internal-badge">INTERNAL</span>' : ''}
-          ${this.renderValidationBadge(event)}
-        </td>
-        <td class="event-source">${event.source}</td>
-      </tr>`;
-  }
-
-  /**
-   * Right-side filter drawer. The single home for all timeline filters — add
-   * future filters as new `.filter-section` blocks here. Rendered only when
-   * open; a transparent backdrop closes it on outside click.
-   */
-  private renderFilterDrawer(): string {
-    if (!this.filterDrawerOpen) return '';
-
-    const providers = analyticsDebug.getProviders();
-    const providerSection = providers.length
-      ? providers
-          .map(p => {
-            const on = this.providerFilter === p.name;
-            return `
-              <button class="filter-chip ${on ? 'active' : ''}"
-                      onclick="window.eventTimelinePanel_filterProvider('${this.escapeAttr(p.name)}')">
-                ${on ? lucide('check', { size: 13 }) : ''}
-                ${this.escapeHtml(p.name)}
-              </button>`;
-          })
-          .join('')
-      : `<span class="filter-hint">No providers registered.</span>`;
-
-    const toggle = (
-      active: boolean,
-      label: string,
-      onclick: string
-    ): string => `
-      <button class="filter-row-toggle ${active ? 'active' : ''}" onclick="${onclick}">
-        <span class="filter-checkbox">${active ? lucide('check', { size: 12 }) : ''}</span>
-        ${label}
-      </button>`;
-
-    return `
-      <div class="filter-backdrop" onclick="window.eventTimelinePanel_toggleDrawer()"></div>
-      <aside class="filter-drawer" role="dialog" aria-label="Timeline filters">
-        <header class="filter-drawer-header">
-          <span class="filter-drawer-title">${lucide('filter', { size: 15 })} Filters</span>
-          <button class="filter-drawer-close" title="Close" onclick="window.eventTimelinePanel_toggleDrawer()">
-            ${lucide('x', { size: 16 })}
-          </button>
-        </header>
-
-        <div class="filter-drawer-body">
-          <div class="filter-section">
-            <label class="filter-label">Search</label>
-            <div class="events-search-wrap">
-              ${lucide('search', { size: 14, style: 'opacity:0.6' })}
-              <input
-                class="events-search"
-                data-debug-search
-                type="search"
-                placeholder="Event name or source…"
-                value="${this.escapeHtml(this.searchTerm).replace(/"/g, '&quot;')}"
-                oninput="window.eventTimelinePanel_search(this.value)" />
-            </div>
-          </div>
-
-          <div class="filter-section">
-            <label class="filter-label">Provider</label>
-            <div class="filter-chips">${providerSection}</div>
-          </div>
-
-          ${
-            this.view === 'events'
-              ? `
-            <div class="filter-section">
-              <label class="filter-label">Events</label>
-              ${toggle(this.showInternalEvents, 'Include internal SDK events', 'window.eventTimelinePanel_toggleInternal()')}
-            </div>`
-              : ''
-          }
-
-          <div class="filter-section">
-            <label class="filter-label">Status</label>
-            ${toggle(this.issuesOnly, 'Issues only (failed/blocked or invalid)', 'window.eventTimelinePanel_toggleIssues()')}
-          </div>
-        </div>
-
-        <footer class="filter-drawer-footer">
-          <span class="filter-hint">${this.activeFilterCount()} active</span>
-          ${
-            this.hasActiveFilters()
-              ? `<button class="filter-clear" onclick="window.eventTimelinePanel_clearFilters()">Clear all</button>`
-              : ''
-          }
-        </footer>
-      </aside>`;
-  }
-
   private escapeAttr(value: string): string {
     return String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
   }
 
+  /** Shared `{escapeHtml, escapeAttr}` deps for the providers and filters modules. */
+  private escapeDeps(): {
+    escapeHtml(value: string): string;
+    escapeAttr(value: string): string;
+  } {
+    return {
+      escapeHtml: value => this.escapeHtml(value),
+      escapeAttr: value => this.escapeAttr(value),
+    };
+  }
+
   /** Ask the overlay to re-render this panel's content. */
   private requestRerender(): void {
-    if (typeof document !== 'undefined') {
-      document.dispatchEvent(
-        new CustomEvent('debug:update-content', {
-          detail: { panelId: this.id },
-        })
-      );
-    }
-  }
-
-  private showEventModal(eventId: string): void {
-    this.selectedEventId = eventId;
-    // Each freshly opened event starts on its source node.
-    this.selectedFlowNode = null;
-    // Trigger re-render
-    if (typeof document !== 'undefined') {
-      document.dispatchEvent(
-        new CustomEvent('debug:update-content', {
-          detail: { panelId: this.id },
-        })
-      );
-    }
-  }
-
-  private closeEventModal(): void {
-    this.selectedEventId = null;
-    // Trigger re-render
     if (typeof document !== 'undefined') {
       document.dispatchEvent(
         new CustomEvent('debug:update-content', {
@@ -826,7 +412,14 @@ export class EventTimelinePanel implements DebugPanel {
       : null;
 
     // Add modal HTML if an event is selected
-    const modalHtml = selectedEvent ? this.renderEventModal(selectedEvent) : '';
+    const modalHtml = selectedEvent
+      ? renderEventModal(
+          selectedEvent,
+          this.selectedDetailTab,
+          this.selectedFlowNode,
+          this.eventModalDeps()
+        )
+      : '';
 
     this.exposeModalHandlers();
 
@@ -837,37 +430,41 @@ export class EventTimelinePanel implements DebugPanel {
     `;
   }
 
-  /** The detail modal for one selected event. */
-  private renderEventModal(selectedEvent: TimelineEvent): string {
-    return `
-      <div class="event-modal-overlay" onclick="window.eventTimelinePanel_closeModal()">
-        <div class="event-modal" onclick="event.stopPropagation()">
-          <div class="event-modal-header">
-            <h3 class="event-modal-title">${selectedEvent.name}</h3>
-            <button class="event-modal-close" onclick="window.eventTimelinePanel_closeModal()">${lucide('x', { size: 16 })}</button>
-          </div>
-          <div class="event-modal-body">
-            <div class="event-modal-meta">
-              <span class="event-modal-meta-item">
-                <span class="event-type-badge" style="background: ${this.getEventTypeColor(selectedEvent.type)}22; color: ${this.getEventTypeColor(selectedEvent.type)};">
-                  ${this.getEventTypeBadge(selectedEvent.type)}
-                </span>
-              </span>
-              <span class="event-modal-meta-item">
-                <span class="event-modal-meta-label">Source</span>
-                <span>${selectedEvent.source}</span>
-              </span>
-              <span class="event-modal-meta-item">
-                <span class="event-modal-meta-label">Time</span>
-                <span>${this.formatTimestamp(selectedEvent.timestamp)}</span>
-                <span class="event-modal-meta-muted">· ${selectedEvent.relativeTime}</span>
-              </span>
-            </div>
-            ${this.renderDetailTabs(selectedEvent)}
-          </div>
-        </div>
-      </div>
-    `;
+  /** Pure helpers `renderEventModal` needs — see `event-timeline-panel.modal.ts`. */
+  private eventModalDeps(): EventModalDeps {
+    return {
+      getEventTypeColor: type => this.getEventTypeColor(type),
+      getEventTypeBadge: type => this.getEventTypeBadge(type),
+      formatTimestamp: ts => this.formatTimestamp(ts),
+      getDeliveriesForEvent: event => getDeliveriesForEvent(event),
+      getEventIssues: event => this.getEventIssues(event),
+      getEventChecks: event => this.getEventChecks(event),
+      noValidationReason: event => this.noValidationReason(event),
+      validationDeps: () => this.validationDeps(),
+      flowDeps: () => this.flowDeps(),
+    };
+  }
+
+  /** Live read/write view the modal's open/close needs — see `event-timeline-panel.modal.ts`. */
+  private modalHost(): ModalHost {
+    const self = this;
+    return {
+      get selectedEventId() {
+        return self.selectedEventId;
+      },
+      set selectedEventId(v) {
+        self.selectedEventId = v;
+      },
+      get selectedFlowNode() {
+        return self.selectedFlowNode;
+      },
+      set selectedFlowNode(v) {
+        self.selectedFlowNode = v;
+      },
+      get panelId() {
+        return self.id;
+      },
+    };
   }
 
   /**
@@ -878,10 +475,10 @@ export class EventTimelinePanel implements DebugPanel {
     // Setup global functions for modal interaction
     if (typeof window !== 'undefined') {
       (window as any).eventTimelinePanel_showModal = (eventId: string) => {
-        this.showEventModal(eventId);
+        showEventModal(this.modalHost(), eventId);
       };
       (window as any).eventTimelinePanel_closeModal = () => {
-        this.closeEventModal();
+        closeEventModal(this.modalHost());
       };
       (window as any).eventTimelinePanel_setTab = (tab: DetailTab) => {
         this.selectedDetailTab = tab;
@@ -940,87 +537,53 @@ export class EventTimelinePanel implements DebugPanel {
   ): string {
     return `
       <div class="events-table-container">
-        ${this.renderViewTabs()}
-        ${this.view === 'analytics' ? this.renderProviderStrip() : ''}
-        ${this.renderEventsHeader(filteredEvents, invalidCount)}
-        ${this.renderEventsTable(filteredEvents)}
-        ${this.renderFilterDrawer()}
+        ${renderViewTabs(this.events, this.view)}
+        ${this.view === 'analytics' ? renderProviderStrip(this.providerFilter, this.escapeDeps()) : ''}
+        ${renderEventsHeader(
+          filteredEvents,
+          invalidCount,
+          this.view,
+          this.events.length,
+          this.activeFilterCount(),
+          this.filterDrawerOpen,
+          this.isRecording
+        )}
+        ${renderEventsTable(
+          filteredEvents,
+          this.view,
+          this.events,
+          this.hasActiveFilters(),
+          this.eventRowDeps()
+        )}
+        ${renderFilterDrawer(this.filterDrawerState(), this.escapeDeps())}
       </div>
     `;
   }
 
-  /** Event counts on the left, filter button and recording state on the right. */
-  private renderEventsHeader(
-    filteredEvents: TimelineEvent[],
-    invalidCount: number
-  ): string {
-    return `
-        <div class="events-header">
-          <div class="events-stats">
-            <div class="event-stat">
-              <span class="event-stat-value">${filteredEvents.length}</span>
-              <span class="event-stat-label">${this.view === 'analytics' ? 'dl_ events' : 'Events'}</span>
-            </div>
-            ${
-              this.view === 'analytics'
-                ? `
-              <div class="event-stat">
-                <span class="event-stat-value" style="color: ${invalidCount > 0 ? '#f44336' : 'inherit'};">${invalidCount}</span>
-                <span class="event-stat-label">Invalid</span>
-              </div>
-            `
-                : `
-              <div class="event-stat">
-                <span class="event-stat-value">${this.events.length}</span>
-                <span class="event-stat-label">Total captured</span>
-              </div>
-            `
-            }
-          </div>
-
-          <div class="events-controls">
-            <button class="filter-button ${this.activeFilterCount() > 0 ? 'active' : ''} ${this.filterDrawerOpen ? 'open' : ''}"
-                    title="Filters"
-                    onclick="window.eventTimelinePanel_toggleDrawer()">
-              ${lucide('filter', { size: 15 })}
-              <span>Filters</span>
-              ${
-                this.activeFilterCount() > 0
-                  ? `<span class="filter-button-badge">${this.activeFilterCount()}</span>`
-                  : ''
-              }
-            </button>
-
-            <div class="recording-status">
-              <span class="recording-dot"></span>
-              <span>${this.isRecording ? 'Recording' : 'Paused'}</span>
-            </div>
-          </div>
-        </div>
-    `;
+  /** Pure helpers `renderEventRow` needs — see `event-timeline-panel.table.ts`. */
+  private eventRowDeps(): EventRowDeps {
+    return {
+      formatTimestamp: ts => this.formatTimestamp(ts),
+      getEventTypeColor: type => this.getEventTypeColor(type),
+      getEventTypeBadge: type => this.getEventTypeBadge(type),
+      getEventIssues: event => this.getEventIssues(event),
+      renderDeliverySummary: event =>
+        renderDeliverySummary(event, this.escapeDeps()),
+    };
   }
 
-  /** The first 100 filtered events as a table, or the empty state. */
-  private renderEventsTable(filteredEvents: TimelineEvent[]): string {
-    return `
-        ${
-          filteredEvents.length === 0
-            ? this.renderEmptyState()
-            : `
-          <div style="flex: 1; overflow-y: auto;">
-            <table class="events-table">
-              ${this.renderTableHead()}
-              <tbody>
-                ${filteredEvents
-                  .slice(0, 100)
-                  .map(event => this.renderEventRow(event))
-                  .join('')}
-              </tbody>
-            </table>
-          </div>
-        `
-        }
-    `;
+  /** Timeline filter state `renderFilterDrawer` needs — see `event-timeline-panel.filters.ts`. */
+  private filterDrawerState(): FilterDrawerState {
+    return {
+      filterDrawerOpen: this.filterDrawerOpen,
+      view: this.view,
+      searchTerm: this.searchTerm,
+      providerFilter: this.providerFilter,
+      showInternalEvents: this.showInternalEvents,
+      issuesOnly: this.issuesOnly,
+      activeFilterCount: this.activeFilterCount(),
+      hasActiveFilters: this.hasActiveFilters(),
+    };
   }
 
   getActions(): PanelAction[] {

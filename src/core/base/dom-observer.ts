@@ -1,6 +1,17 @@
 /**
  * DOM Observer
  * Performance-optimized MutationObserver for dynamic content and attribute changes
+ *
+ * The two directions are deliberately asymmetric:
+ *
+ * - **Added** nodes are filtered by attribute, because the observer has to decide on
+ *   its own whether a new element is worth activating, and only the attribute says so.
+ * - **Removed** nodes are not filtered at all: the observer reports every element that
+ *   left the document and lets the handler decide whether it owned it. A filter here
+ *   was wrong twice over — it is narrower than what `AttributeScanner` activates, and
+ *   it never looked past the removed node itself, so a removed wrapper took its
+ *   enhanced children out of the DOM with nothing torn down (finding 164 in
+ *   `docs/code-findings.md`).
  */
 
 import { Logger, createLogger } from '@/core/logger';
@@ -33,6 +44,12 @@ export class DOMObserver {
   private config: DOMObserverConfig;
   private throttleTimeout: number | undefined;
   private pendingChanges = new Set<HTMLElement>();
+  /**
+   * Elements seen leaving the document since the last flush. Held until the flush
+   * rather than reported at mutation time, so a subtree that is removed and put back
+   * inside the same frame — a re-render — is never reported as removed at all.
+   */
+  private pendingRemovals = new Set<HTMLElement>();
 
   constructor(config: DOMObserverConfig = {}) {
     this.logger = createLogger('DOMObserver');
@@ -102,6 +119,7 @@ export class DOMObserver {
     this.isObserving = false;
     this.clearThrottle();
     this.pendingChanges.clear();
+    this.pendingRemovals.clear();
     this.logger.debug('Stopped observing DOM changes');
   }
 
@@ -160,9 +178,12 @@ export class DOMObserver {
   private isRelevantMutation(mutation: MutationRecord): boolean {
     switch (mutation.type) {
       case 'childList':
-        // Check if added/removed nodes have our attributes or contain elements with them
-        return this.hasRelevantNodes(mutation.addedNodes) || 
-               this.hasRelevantNodes(mutation.removedNodes);
+        // Added nodes are matched on attributes; a removal is relevant as soon as an
+        // element left, because only the handler knows whether it owned it. That test
+        // is an `instanceof` per removed node, where the attribute match it replaced
+        // ran a `querySelector` over the whole removed subtree.
+        return this.hasRelevantNodes(mutation.addedNodes) ||
+               this.hasRemovedElements(mutation.removedNodes);
       
       case 'attributes':
         // Check if the attribute change is for one of our data attributes
@@ -184,6 +205,18 @@ export class DOMObserver {
         if (this.hasRelevantAttributes(node) || this.hasRelevantDescendants(node)) {
           return true;
         }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Check if a NodeList contains any element at all — the whole test a removal gets
+   */
+  private hasRemovedElements(nodeList: NodeList): boolean {
+    for (const node of nodeList) {
+      if (node instanceof HTMLElement) {
+        return true;
       }
     }
     return false;
@@ -228,25 +261,28 @@ export class DOMObserver {
     // Handle added nodes
     for (const node of mutation.addedNodes) {
       if (node instanceof HTMLElement) {
-        this.addElementForProcessing(node, 'added');
-        
+        this.addElementForProcessing(node);
+
         // Also check descendants
         if (this.config.attributeFilter) {
           const selector = this.config.attributeFilter.map(attr => `[${attr}]`).join(',');
           const descendants = node.querySelectorAll(selector);
           descendants.forEach(desc => {
             if (desc instanceof HTMLElement) {
-              this.addElementForProcessing(desc, 'added');
+              this.addElementForProcessing(desc);
             }
           });
         }
       }
     }
 
-    // Handle removed nodes
+    // Handle removed nodes. The descendants are deliberately not walked: whoever
+    // owns them can find them far more cheaply than a `querySelectorAll` over a
+    // subtree that may be the whole page — `AttributeScanner` reads one
+    // `isConnected` flag per element it actually enhanced.
     for (const node of mutation.removedNodes) {
       if (node instanceof HTMLElement) {
-        this.addElementForProcessing(node, 'removed');
+        this.pendingRemovals.add(node);
       }
     }
   }
@@ -274,20 +310,9 @@ export class DOMObserver {
   /**
    * Add an element to the pending changes queue
    */
-  private addElementForProcessing(element: HTMLElement, type: 'added' | 'removed'): void {
+  private addElementForProcessing(element: HTMLElement): void {
     if (this.hasRelevantAttributes(element)) {
       this.pendingChanges.add(element);
-      
-      // Immediately notify for removed elements since they're about to be gone
-      if (type === 'removed') {
-        this.notifyHandlers({
-          type: 'removed',
-          element,
-          attributeName: undefined,
-          oldValue: undefined,
-          newValue: undefined
-        });
-      }
     }
   }
 
@@ -309,6 +334,8 @@ export class DOMObserver {
    * Process all pending changes
    */
   private processePendingChanges(): void {
+    this.processPendingRemovals();
+
     if (this.pendingChanges.size === 0) {
       return;
     }
@@ -326,6 +353,36 @@ export class DOMObserver {
     }
 
     this.pendingChanges.clear();
+  }
+
+  /**
+   * Report the elements that are still out of the document at flush time.
+   *
+   * A node that is back in the document was moved or re-rendered, not removed, so it
+   * is dropped here rather than reported. Removals go out before additions so that a
+   * flush never announces an element's arrival and then its departure.
+   */
+  private processPendingRemovals(): void {
+    if (this.pendingRemovals.size === 0) {
+      return;
+    }
+
+    const removed = Array.from(this.pendingRemovals);
+    this.pendingRemovals.clear();
+
+    for (const element of removed) {
+      if (element.isConnected) {
+        continue;
+      }
+
+      this.notifyHandlers({
+        type: 'removed',
+        element,
+        attributeName: undefined,
+        oldValue: undefined,
+        newValue: undefined
+      });
+    }
   }
 
   /**
