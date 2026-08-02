@@ -5,10 +5,10 @@
 
 import { createLogger } from '@/core/logger';
 import { useCartStore } from '@/state/cart';
-import { dataLayer } from '../DataLayerManager';
+import { dataLayer } from '../data-layer-manager';
 import { EventBus } from '@/core/events';
-import { userDataStorage } from '../userDataStorage';
-import { UserEvents } from '../events/UserEvents';
+import { userDataStorage } from '../user-data-storage';
+import { UserEvents } from '../events/user-events';
 
 const logger = createLogger('UserDataTracker');
 

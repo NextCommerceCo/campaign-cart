@@ -7,7 +7,8 @@ import { useCheckoutStore, type CheckoutState } from '@/state/checkout';
 import { useCartStore, cartOperations } from '@/state/cart';
 import { useConfigStore } from '@/state/config';
 import { useCampaignStore } from '@/state/campaign';
-import { ApiClient } from '@/api/client';
+import { getApiClient } from '@/client';
+import type { IApiClient } from '@/api/client.types';
 import { CountryService, type Country, type CountryConfig } from '@/core/country-service';
 import { preserveQueryParams } from '@/core/url-utils';
 import type { CartState } from '@/types/global';
@@ -24,7 +25,7 @@ import { LoadingOverlay } from '@/core/ui/loading-overlay';
 import { ExpressCheckoutProcessor } from '../processors/express-checkout-processor';
 import { OrderManager } from '../managers/order-manager';
 import { nextAnalytics, EcommerceEvents } from '@/core/analytics/index';
-import { userDataStorage } from '@/core/analytics/userDataStorage';
+import { userDataStorage } from '@/core/analytics/user-data-storage';
 import {
   injectIntlTelInputStyles,
   initializePhoneInputs,
@@ -106,7 +107,7 @@ const BILLING_ADDRESS_FIELD_MAP: Record<string, string> = {
 
 export class CheckoutFormEnhancer extends BaseEnhancer {
   private form!: HTMLFormElement;
-  private apiClient!: ApiClient;
+  private apiClient!: IApiClient;
   private countryService!: CountryService;
   private creditCardService?: CreditCardService;
   private validator!: CheckoutValidator;
@@ -216,7 +217,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     // Initialize core dependencies
     const config = useConfigStore.getState();
-    this.apiClient = new ApiClient(config.apiKey);
+    this.apiClient = getApiClient(config.apiKey);
     this.countryService = CountryService.getInstance();
 
     // Re-initialize attribution to ensure we have current page data

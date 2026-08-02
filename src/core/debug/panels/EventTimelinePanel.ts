@@ -24,7 +24,7 @@ import {
   type DeliveryRecord,
   type DeliveryStatus,
   type ProviderDebugInfo,
-} from '@/core/analytics/debug/AnalyticsDebugTracker';
+} from '@/core/analytics/debug/analytics-debug-tracker';
 import { lucide, type IconName } from '../icons';
 
 /** Which detail tab is shown in the event modal. */

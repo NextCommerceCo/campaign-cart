@@ -5,10 +5,10 @@
 
 import { createLogger } from '@/core/logger';
 import { useCampaignStore } from '@/state/campaign';
-import { dataLayer } from '../DataLayerManager';
-import { listAttributionTracker } from './ListAttributionTracker';
-import { EcommerceEvents } from '../events/EcommerceEvents';
-import { metaTagController } from './MetaTagController';
+import { dataLayer } from '../data-layer-manager';
+import { listAttributionTracker } from './list-attribution-tracker';
+import { EcommerceEvents } from '../events/ecommerce-events';
+import { metaTagController } from './meta-tag-controller';
 
 const logger = createLogger('ViewItemListTracker');
 

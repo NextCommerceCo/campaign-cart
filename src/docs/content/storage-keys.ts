@@ -707,7 +707,7 @@ export const EXPIRY_MECHANISMS: ExpiryMechanism[] = [
   },
   {
     name: '`LIST_EXPIRY_MS`',
-    file: 'core/analytics/tracking/ListAttributionTracker.ts',
+    file: 'core/analytics/tracking/list-attribution-tracker.ts',
     evidence: 'const LIST_EXPIRY_MS = 30 * 60 * 1000',
     window: '30 minutes',
     governs:
@@ -724,7 +724,7 @@ export const EXPIRY_MECHANISMS: ExpiryMechanism[] = [
   },
   {
     name: 'pending-event staleness check (inline literal)',
-    file: 'core/analytics/tracking/PendingEventsHandler.ts',
+    file: 'core/analytics/tracking/pending-events-handler.ts',
     evidence: '5 * 60 * 1000',
     window: '5 minutes, per event',
     governs:
@@ -732,7 +732,7 @@ export const EXPIRY_MECHANISMS: ExpiryMechanism[] = [
   },
   {
     name: 'dataLayer `sessionTimeout`',
-    file: 'core/analytics/DataLayerManager.ts',
+    file: 'core/analytics/data-layer-manager.ts',
     evidence: '30 * 60 * 1000',
     window: '30 minutes of inactivity, configurable',
     governs:
@@ -748,7 +748,7 @@ export const EXPIRY_MECHANISMS: ExpiryMechanism[] = [
   },
   {
     name: '`next_user_data` cookie',
-    file: 'core/analytics/userDataStorage.ts',
+    file: 'core/analytics/user-data-storage.ts',
     evidence: 'cookieExpiryDays = 365',
     window: '365 days',
     governs:

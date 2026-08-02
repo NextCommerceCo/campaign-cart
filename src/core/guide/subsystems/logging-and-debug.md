@@ -142,8 +142,10 @@ listing is in [storage keys](../reference/storage-keys.md).
   by `[` or by the prefix you care about; the gated `Logger` lines are the ones the
   [logs reference](../reference/logs.md) catalogues, and the raw ones are not in it.
 - **What prints depends on which bundle loaded, and one of them cannot be talked round.**
-  The module bundle (`/index.js`, what almost every visitor runs) is not minified, so every
-  `console` call is still in the shipped file and debug mode genuinely reveals them. The
+  The module bundle (`/index.js`, what almost every visitor runs) is minified, but only for
+  size — its Terser pass sets no `drop_console`, so every `console` call is still in the
+  shipped chunk and debug mode genuinely reveals them
+  (`vite.config.ts › minifyEsLibChunks`). The
   fallback UMD bundle (`dist/index.umd.js`, used for `nomodule` browsers and when the
   module import fails — `public/loader.js`, in the module and nomodule fallback branches)
   is minified with `drop_console` (`vite.config.ts` defines the Terser options; they are
@@ -158,9 +160,17 @@ listing is in [storage keys](../reference/storage-keys.md).
 - **The error handler replaces `console.error`**, so a line your own code logs there also
   arrives as an `error:occurred` event. That is [error capture](./error-handling.md)'s
   behaviour, not the logger's.
-- **The overlay is loaded on demand and only in debug mode**, as a dynamic import
-  (`core/sdk-initializer.ts › SDKInitializer.initializeDebugMode`). A shopper never
-  downloads it on the module bundle.
+- **The overlay is *evaluated* on demand, but its chunk is downloaded either way.** The
+  import is dynamic (`core/sdk-initializer.ts › SDKInitializer.initializeDebugMode`), so no
+  overlay code runs and no panel is built without debug mode. The bytes still arrive: the
+  `debug` chunk (`vite.config.ts › manualChunks`) also holds shared runtime modules —
+  `core/currency-formatter.ts` and `core/country-service.ts` among them — so other chunks
+  import it *statically*, and it is reachable from `/index.js` without any dynamic import.
+  A shopper on the module bundle fetches it: 281 kB, 56 kB gzipped.
+  **Trap:** reading "dynamic import" as "not shipped" when budgeting a page's weight.
+  **Symptom:** the network panel shows a `chunks/debug-*.js` request on a page nobody put
+  `?debugger=true` on. **Fix:** nothing you can set at runtime changes it — count those
+  bytes as unconditional until the chunking is changed.
 - **The overlay remembers itself in `localStorage`**, under `debug-overlay-expanded`,
   `debug-overlay-active-panel`, `debug-overlay-active-tab` (`core/debug/DebugOverlay.ts ›
   DebugOverlay`, the class's storage-key constants), `debug-mini-cart-visible`

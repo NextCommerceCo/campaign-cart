@@ -5,8 +5,7 @@
 
 import { BaseDisplayEnhancer } from '@/core/base/base-display-enhancer';
 import { useOrderStore } from '@/state/order';
-import { useConfigStore } from '@/state/config';
-import { ApiClient } from '@/api/client';
+import { getApiClient } from '@/client';
 import type { IApiClient } from '@/api/client.types';
 import { getDisplayValue } from './order-display.properties';
 
@@ -57,8 +56,7 @@ export class OrderDisplayEnhancer extends BaseDisplayEnhancer {
         orderStore.refId !== refId
       ) {
         try {
-          const config = useConfigStore.getState();
-          this.apiClient = new ApiClient(config.apiKey);
+          this.apiClient = getApiClient();
 
           await orderStore.loadOrder(refId, this.apiClient);
         } catch (error) {

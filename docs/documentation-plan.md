@@ -1756,7 +1756,7 @@ and every one was off.**
 | 11 URL parameters | **40** — the count missed 24 attribution names read through `getStoredValue(key)`, five list-attribution names, and `payment_failed` |
 | ~40 storage keys, six TTL constants | **49 rows**, and **ten** independent expiry windows |
 | 483 log call sites under 37 prefixes | **480** sites, **36** prefixes (five decided at runtime) |
-| GA4/FB/Rudder "strip `dl_`" | They **rename via fixed tables**. The only literal strip is `GTMAdapter.ts:349`, and it is unreachable for canonical events — `sendEvent` returns early for anything `dl_`-prefixed. There is **no GA4 adapter** in this build |
+| GA4/FB/Rudder "strip `dl_`" | They **rename via fixed tables**. The only literal strip is `gtm-adapter.ts:349`, and it is unreachable for canonical events — `sendEvent` returns early for anything `dl_`-prefixed. There is **no GA4 adapter** in this build |
 | the overlay needs `?debugger`, the `next-debug` meta tag, **or** `nextConfig.debug` | **Only `debugger`.** The meta tag and `nextConfig.debug` install `window.nextDebug` and then call `initialize()`, which returns at the `debugger`-only gate (`DebugOverlay.ts:154`) |
 
 That last one produced the most useful table in the whole phase, because there are **four**

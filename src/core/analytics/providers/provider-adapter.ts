@@ -3,7 +3,7 @@ import { createLogger, type Logger } from '@/core/logger';
 import {
   analyticsDebug,
   type ProviderDebugInfo,
-} from '../debug/AnalyticsDebugTracker';
+} from '../debug/analytics-debug-tracker';
 
 /**
  * Construction options shared by every provider adapter.

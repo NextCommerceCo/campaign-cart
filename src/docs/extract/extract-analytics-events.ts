@@ -648,10 +648,10 @@ function dlOnly(map: Record<string, string>): Record<string, string> {
 export function extractProviderEventMaps(
   providersDir: string
 ): ProviderEventMaps {
-  const facebook = parse(join(providersDir, 'FacebookAdapter.ts'));
-  const rudder = parse(join(providersDir, 'RudderStackAdapter.ts'));
-  const nextCampaign = parse(join(providersDir, 'NextCampaignAdapter.ts'));
-  const gtm = parse(join(providersDir, 'GTMAdapter.ts'));
+  const facebook = parse(join(providersDir, 'facebook-adapter.ts'));
+  const rudder = parse(join(providersDir, 'rudderstack-adapter.ts'));
+  const nextCampaign = parse(join(providersDir, 'next-campaign-adapter.ts'));
+  const gtm = parse(join(providersDir, 'gtm-adapter.ts'));
 
   return {
     facebook: dlOnly(

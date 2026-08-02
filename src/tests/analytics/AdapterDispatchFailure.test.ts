@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { FacebookAdapter } from '@/core/analytics/providers/FacebookAdapter';
-import { NextCampaignAdapter } from '@/core/analytics/providers/NextCampaignAdapter';
-import { DispatchError } from '@/core/analytics/providers/ProviderAdapter';
+import { FacebookAdapter } from '@/core/analytics/providers/facebook-adapter';
+import { NextCampaignAdapter } from '@/core/analytics/providers/next-campaign-adapter';
+import { DispatchError } from '@/core/analytics/providers/provider-adapter';
 import type { DataLayerEvent } from '@/core/analytics/types';
 
 /**

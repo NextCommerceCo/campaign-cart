@@ -16,7 +16,7 @@ import { useConfigStore } from '@/state/config';
 import { useCartStore } from '@/state/cart';
 import { useCheckoutStore } from '@/state/checkout';
 import { useCampaignStore } from '@/state/campaign';
-import { ApiClient } from '@/api/client';
+import { getApiClient } from '@/client';
 import { OrderManager } from '../managers/order-manager';
 import { ExpressCheckoutProcessor } from '../processors/express-checkout-processor';
 import { PAYPAL_SVG, APPLE_PAY_SVG, GOOGLE_PAY_SVG } from '../constants/payment-icons';
@@ -71,8 +71,7 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
     }
     
     // Initialize dependencies
-    const config = useConfigStore.getState();
-    const apiClient = new ApiClient(config.apiKey);
+    const apiClient = getApiClient();
     
     this.orderManager = new OrderManager(
       apiClient,

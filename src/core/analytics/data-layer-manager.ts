@@ -13,9 +13,9 @@ import type {
   DebugOptions,
 } from './types';
 import { DEFAULT_CONFIG, STORAGE_KEYS, EVENT_VALIDATION_RULES } from './config';
-import { pendingEventsHandler } from './tracking/PendingEventsHandler';
+import { pendingEventsHandler } from './tracking/pending-events-handler';
 import { createLogger } from '@/core/logger';
-import { EventBuilder } from './events/EventBuilder';
+import { EventBuilder } from './events/event-builder';
 
 const logger = createLogger('NextDataLayer');
 

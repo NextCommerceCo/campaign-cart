@@ -138,8 +138,8 @@ export const createCampaignApiSlice: StateCreator<
         `Fetching campaign data from API with currency: ${requestedCurrency}...`
       );
 
-      const { ApiClient } = await import('@/api/client');
-      const client = new ApiClient(apiKey);
+      const { getApiClient } = await import('@/client');
+      const client = getApiClient(apiKey);
       const campaign = await client.getCampaigns(requestedCurrency);
 
       if (!campaign) {

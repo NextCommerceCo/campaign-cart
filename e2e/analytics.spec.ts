@@ -9,8 +9,8 @@ import { stubCampaign, stubCart, bootSdk } from './fixtures/routes';
  *
  * The fixture enables analytics + the GTM provider via `window.nextConfig`
  * (analytics is OFF by default). Event names verified in
- * src/core/analytics/tracking/AutoEventListener.ts +
- * src/core/analytics/providers/GTMAdapter.ts.
+ * src/core/analytics/tracking/auto-event-listener.ts +
+ * src/core/analytics/providers/gtm-adapter.ts.
  */
 
 const FIXTURE = '/e2e/fixtures/analytics.html';

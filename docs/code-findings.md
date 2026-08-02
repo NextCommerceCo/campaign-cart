@@ -8,7 +8,9 @@ TypeDoc/reference-docs verification pass, findings 92–94 from splitting the
 `features/ui`, `features/behavior` and `features/order` ones, all on **2026-07-31**.
 Findings 97–99 are on the upsell money path. Findings 101–102 came from the contract test
 written to enforce the `super.destroy()` rule — 101 is a second instance of 98, in the
-checkout form. Nothing here is a
+checkout form. Findings 106–115 came out of the wave-1 restructure on **2026-08-02** (the
+composition root, the `core/analytics/` kebab rename, and the fixes for 95 and 105) and have
+their own section near the end. Nothing here is a
 documentation problem; each is a code change, and none has been made. The docs describe
 current behaviour, including the broken parts, so this list is the backlog rather than a
 description of what shipped.
@@ -60,7 +62,7 @@ A fix to one silently misses the other — finding 1 is an instance of exactly t
 
 `enrichedItems` is assigned `[]` at `cart.state.ts:15` and again inside `partialize`
 at `:112`, and **nothing anywhere writes to it** — the analytics code says so in a
-comment (`core/analytics/events/EcommerceEvents.ts:23,352`). It is exposed publicly as
+comment (`core/analytics/events/ecommerce-events.ts:23,352`). It is exposed publicly as
 `cartLines` at `core/next-commerce.ts:191`, and its TSDoc
 (`types/global.ts:1034`) describes it as "enriched with full pricing breakdown for
 display".
@@ -341,7 +343,7 @@ a version from years ago. **Fix:** use `VERSION`.
 
 ### 28. `next-analytics-disable` / `-enable-only` are parsed and never enforced — *verified*
 
-`MetaTagController.shouldBlockEvent()` (`analytics/tracking/MetaTagController.ts:125`) has
+`MetaTagController.shouldBlockEvent()` (`analytics/tracking/meta-tag-controller.ts:125`) has
 **no caller** — its declaration is the only reference in the repo, and `disabledEvents` /
 `enabledOnlyEvents` are read nowhere else. So a page that sets those meta tags to suppress
 events still sends every one of them, and the tags are even logged as applied (`:78-79`,
@@ -501,7 +503,7 @@ crash, so this wants its own change with an e2e run behind it, not a size-driven
 likely shape is to give those shared formatters a chunk of their own so `debug` is left holding
 only debug code.
 
-### 105. The production-bundle gate only reads the UMD file, not the chunks customers load — *verified*
+### 105. ~~The production-bundle gate only reads the UMD file, not the chunks customers load~~ — **FIXED 2026-08-02, and the worse half of it is finding 111**
 
 `src/tests/contract/bundle-contents.test.ts:25` resolves `dist/index.umd.js` and scans that.
 The UMD is the fallback build; every campaign page loads the ESM chunks. So the gate that exists
@@ -568,7 +570,7 @@ Both READMEs were corrected. What they now say, and why the old text was wrong:
   dead import paths (`@/utils/analytics/v2`, which does not exist — the real path is
   `@/core/analytics`), told the reader to call `window.NextDataLayer.setDebugMode(true)` on
   what is a plain `DataLayerEvent[]` array, and claimed `RudderStackAdapter` remaps
-  `campaign_*` to camelCase. `buildContextProps` (`RudderStackAdapter.ts:69-86`) keeps them
+  `campaign_*` to camelCase. `buildContextProps` (`rudderstack-adapter.ts:69-86`) keeps them
   snake_case and says so in its own comment. All corrected, with the provider table now
   pointing at the generated
   [`analytics-providers.md`](../src/core/guide/reference/analytics-providers.md) so a
@@ -633,9 +635,9 @@ provider configured to expect one waits forever.
 
 `dl_accepted_upsell` is the worst of the seven because it looks maintained: declared at
 `analytics/schemas/events.ts:194`, given a schema at `schemas/index.ts:462`, specially
-validated at `validation/EventValidator.ts:446-449`, and mapped for Meta at
-`providers/FacebookAdapter.ts:35` — while `createAcceptedUpsellEvent` actually builds
-`dl_upsell_purchase` (`events/EcommerceEvents.ts:654`).
+validated at `validation/event-validator.ts:446-449`, and mapped for Meta at
+`providers/facebook-adapter.ts:35` — while `createAcceptedUpsellEvent` actually builds
+`dl_upsell_purchase` (`events/ecommerce-events.ts:654`).
 
 The generated catalogue now marks all seven, and the drift test requires the mark to match
 "zero emit sites" exactly. **Fix:** emit them or remove them; either way the vocabulary
@@ -719,10 +721,10 @@ rather than falsiness.
 
 ### 47. `CustomAdapter`'s retry queue can never fire, and two GTM fields are always undefined — *verified*
 
-The retry queue keys on `event.id` (`providers/CustomAdapter.ts:200-206`) and nothing ever
-sets `id` — the pipeline sets `event_id` (`DataLayerManager.ts:296`). So `maxRetries: 3` is
+The retry queue keys on `event.id` (`providers/custom-adapter.ts:200-206`) and nothing ever
+sets `id` — the pipeline sets `event_id` (`data-layer-manager.ts:296`). So `maxRetries: 3` is
 inert and a failed custom-endpoint delivery is simply lost. The same mismatch makes
-`GTMAdapter.ts:79` send `event_id: undefined` and `event_timestamp: undefined` on every
+`gtm-adapter.ts:79` send `event_id: undefined` and `event_timestamp: undefined` on every
 event. **Fix:** read `event_id` / `event_timestamp`.
 
 ### 48. GTM's entire GA4 shaping path is unreachable for canonical events — *verified*
@@ -734,8 +736,8 @@ only runs for non-`dl_` pushes. Since every canonical SDK event is `dl_`-prefixe
 code is dead for all of them.
 
 This also corrects a claim carried in the plan: **no adapter strips the prefix to pick GA4
-field rules.** Facebook (`FacebookAdapter.ts:15-54`) and RudderStack
-(`RudderStackAdapter.ts:325-365`) rename through fixed tables instead. The net effect the
+field rules.** Facebook (`facebook-adapter.ts:15-54`) and RudderStack
+(`rudderstack-adapter.ts:325-365`) rename through fixed tables instead. The net effect the
 plan described is right — no vendor API sees a `dl_` name — but the mechanism is not.
 **Fix:** decide whether the GA4 shaping is meant to apply, and either route canonical
 events through it or delete it.
@@ -891,8 +893,8 @@ branch.
 `CACHE_EXPIRY_MS = 10 * 60 * 1000` is declared **twice**, in `state/campaign/api.slice.ts:10`
 and `state/campaign/items.slice.ts:12` — the reader and the writer of the same cache each hold
 their own copy, so changing one desynchronises them silently. Two more windows are inline
-literals with no constant: `5 * 60 * 1000` at `analytics/tracking/PendingEventsHandler.ts:102`
-and `30 * 60 * 1000` at `analytics/DataLayerManager.ts:338`. Ten independent windows exist in
+literals with no constant: `5 * 60 * 1000` at `analytics/tracking/pending-events-handler.ts:102`
+and `30 * 60 * 1000` at `analytics/data-layer-manager.ts:338`. Ten independent windows exist in
 total, itemised on the generated
 [storage reference](../src/core/guide/reference/storage-keys.md). **Fix:** one shared constant
 per window, named.
@@ -1011,8 +1013,8 @@ teardown, and refresh the event list.
 ### 75. Analytics email leaves the page in the clear — *verified*
 
 `analytics/index.ts:391`, `:397` (`trackSignUp` / `trackLogin`) put the address into the event as
-`customer_email`, `events/EventBuilder.ts:126` adds it from the checkout form, and
-`events/EcommerceEvents.ts:406` adds it from the order. **There is no hashing anywhere under
+`customer_email`, `events/event-builder.ts:126` adds it from the checkout form, and
+`events/ecommerce-events.ts:406` adds it from the order. **There is no hashing anywhere under
 `src/core/`** — no `sha256`, no `crypto.subtle.digest`, no helper — and no `customer_email_hash`.
 
 Worth flagging on its own terms: a project memory recorded PII hashing as implemented, which is
@@ -1370,7 +1372,7 @@ navigation for every visitor, not just for a developer debugging.
 **Fix:** downgrade it to `debug` to match the rest of the feature. One-line change, but it
 alters what a live page prints, so it is not part of a pure move.
 
-### 95. Four DOM-activated features are invisible to the docs-coverage feature scan — *verified*
+### 95. ~~Four DOM-activated features are invisible to the docs-coverage feature scan~~ — **FIXED 2026-08-02** (the naming collision is a separate, declined decision — see 113)
 
 `scanFeatures` in `scripts/docs-coverage.mjs` finds features by walking for `*.enhancer.ts`
 and keeping the ones that extend a base enhancer. These four extend `BaseDisplayEnhancer`
@@ -1746,6 +1748,128 @@ Listed so they are not re-reported. All were one-line or docs-only.
 | The billing expand/collapse animation **never removed its `transitionend` listener** except when the listener fired naturally and removed itself. Two paths left one attached: the 350 ms fallback force-completing an animation, and a shopper re-toggling before the transition finished. Stale handlers then all ran on the next real `transitionend` — each re-settling its own animation and logging a "complete" for a direction the section was no longer going — and accumulated without bound across repeated toggles | `features/checkout/checkout-form/billing-animation.ts` | **fixed** — listeners now registered with an `AbortSignal`; `cancelPending` and the fallback both abort. Found by the unit tests written for the extraction, reproduced as two failing tests first, and those tests now guard it |
 | `ApiClient.request()` computes `duration`, `statusCode`, `errorType` and `retryAfter` on every call and **never reads any of them** — telemetry scaffolding that was wired up to nothing. Harmless but misleading: it reads as if API latency and error classification are being reported somewhere, and `getErrorType()` exists only to feed a dead variable | `api/client.ts` (`request`) | reported — either report them or delete them; 3 of the 4 are already `no-unused-vars` errors |
 | ~154 line refs in **hand-written** prose (`core-subsystems.ts`, `storage-keys.ts`, `meta-tags.ts`, the `source:` fields in `analytics-events.ts`) are literal strings no extractor regenerates, so **no gate can catch them going stale**. A reformat makes them quietly wrong rather than loudly wrong — the opposite of the generated case, which now fails loudly or not at all | `src/docs/content/`, `src/docs/render/` | reported — not fixed; needs either symbol refs by hand or a check that each cited line still contains what the prose claims |
+
+---
+
+## Found during the wave-1 restructure (2026-08-02)
+
+Four parallel agents did the composition root (`src/client.ts`), the `core/analytics/`
+kebab rename, finding 95, and finding 105. These came out of that work. Everything below
+was verified against the source; where an agent's claim was checked by hand that is said
+explicitly.
+
+### 106. `useOrderStore.loadOrder` types the API client `any`, erasing the `IApiClient` seam — *verified*
+
+`state/order/order.state.ts › OrderState.loadOrder` is `(refId: string, apiClient: any)`.
+Every gain from typing the holders at the interface is thrown away at that boundary — which
+is also why `order-display`, `order-item-list` and `sdk-initializer` type-checked identically
+whether their field was `ApiClient` or `IApiClient`, and why the "no type changes needed"
+estimate for the composition root was wrong (five declarations across four files did need
+widening).
+
+**Fix:** type the parameter `IApiClient`. One line, no runtime change.
+
+### 107. `setApiKey`/`getApiKey` are dead, and the shared client makes them hazardous — *verified*
+
+Nothing in `src/` calls `setApiKey`. Before `src/client.ts` existed it was inert; now it
+mutates the *shared* instance while `client.ts`'s memo key goes stale, so a later
+`getApiClient(oldKey)` returns a client that has been silently re-keyed underneath it. Not
+reachable today.
+
+**Fix:** drop them from `IApiClient`, or make `getApiClient` the only re-keying path.
+
+### 108. `state/` and `core/` now import the composition root, which sits above them — *known, documented*
+
+`state/cart/cart-calculator.ts`, `state/campaign/api.slice.ts`, `core/sdk-initializer.ts`
+and `core/next-commerce.ts` import `@/client`. The `sdk-structure` skill §2 says neither
+layer may import upward. This is the shape of "fetch your dependency" rather than "receive
+it", and it is recorded in [`src/api/README.md`](../src/api/README.md) rather than hidden.
+
+**Fix:** the next §6 phase — features and stores receive an injected client instead of
+asking for one. That means changing enhancer constructor signatures and how
+`AttributeScanner` instantiates features, so it is its own phase.
+
+### 109. ~~`bundle-selector`'s attributes reference documented four properties the enhancer does not implement~~ — **FIXED 2026-08-02**
+
+`guide/reference/attributes.md` listed `compare`, `savings`, `savingsPercentage` and
+`hasSavings` as "deprecated properties (still supported for backwards compatibility)" of the
+`bundle.` display namespace, and its own example used
+`data-next-display="bundle.upsellBundleMV.savings"`. `bundle-selector.display.ts ›
+BundleDisplayEnhancer.getPropertyValue` has no case for any of them — verified by hand: its
+cases are `isSelected`, `name`, `price`, `originalPrice`, `discountAmount`,
+`discountPercentage`, `hasDiscount`, `unitPrice`, `originalUnitPrice`, `currency`, then
+`default:`, which logs `Unknown bundle display property`. So the doc taught markup that
+silently renders nothing. The four names do exist in `bundle-selector.renderer.ts`'s
+`FORMAT_MAP`, which serves the in-card `data-next-bundle-display` — presumably what the doc
+was read off. Example corrected, table replaced with a link plus an explicit
+"not part of this namespace" note.
+
+### 110. ~~`vite.config.legacy.ts` had no `define`, so `build:cf` overwrote the good UMD with one that throws~~ — **FIXED 2026-08-02**
+
+Verified against `git show HEAD:vite.config.legacy.ts`: no `define` block at all, so
+`__VERSION__` — declared in `vite-env.d.ts` and read by `core/analytics/events/event-builder.ts`
+— survived into the legacy output as a bare identifier (2 occurrences in the built UMD).
+`npm run build:cf` runs the legacy config *after* the main one with `emptyOutDir: false`, so
+it replaced the working UMD with one that raises `ReferenceError: __VERSION__ is not defined`
+on the first analytics event. The committed `dist/index.umd.js` has 0 occurrences, so this
+never shipped — but `build:cf` is a live script.
+
+### 111. The bundle gate can never see the code under review, because CI builds after it tests — *verified*
+
+Finding 105's fix widens `src/tests/contract/bundle-contents.test.ts` to every
+`dist/chunks/*.js`. It does not fix the deeper problem: `.github/workflows/build.yml` runs
+`bun run test:coverage` at step `:27` and `bun run build` at step `:41`, and `dist/` is
+committed rather than gitignored. So in CI this gate always reads the `dist/` that arrived
+with the checkout, never one built from the PR. A change that pulls the docs machinery into
+a customer chunk goes green, and only fails once someone rebuilds and commits `dist/` — after
+it has shipped.
+
+**Fix:** build before testing in the workflow, or have the test build to a temp dir itself.
+Not applied — reordering CI is a human's call.
+
+### 112. The `state`-chunk co-location rule in `manualChunks` is stale, and repairing it measurably helps — *verified, deliberately not applied*
+
+The rule keys on `/utils/(logger|storage|events).ts`; those files are `core/*` now, so it
+matches nothing. Repairing it is one token (`/utils/` → `/core/`) and was measured: chunk-level
+cycles drop **9 → 4**, `state` sheds its edges to `analytics` (today `state` cannot initialise
+without pulling the 119 kB `analytics` chunk, and through it `debug`), and ES output shrinks
+243 B.
+
+**Not applied** because it rewrites two chunks customers download (`analytics` −1,578 B,
+`state` +1,485 B, both re-hashed), and a chunk reassignment is exactly what caused the TDZ
+crash the surrounding comment records. Needs an e2e run behind it.
+
+### 113. Splitting the four `.display.ts` enhancers into their own feature folders — *declined 2026-08-02*
+
+Finding 95 named this as the deeper fix for `.display.ts` meaning two different things in
+`features/cart/` and `features/display/`. Declined: each split adds a feature id, hence a new
+sidebar branch and new URLs, and the natural follow-through moves already-published pages —
+which the documentation rules treat as a breaking change to customer links. The benefit was
+naming hygiene for contributors, and the gate change bought that more cheaply:
+**registration in `attribute-scanner.ts`, not the file name, now decides whether a class is a
+feature**, so the suffix no longer hides anything from the count. If it is worth ending later,
+do it as a rename wave with redirects, together with the `features/display/*.display.ts` layer
+files that share the suffix.
+
+### 114. Content drift on the three hand-written `display-paths.md` pages is ungated — *verified*
+
+The new coverage metric checks the page **exists**, not that it matches the code. The three
+cart namespaces (`selector.`, `bundle.`, `toggle.`) cannot use the generator, because
+`PROPERTY_MAPPINGS` in `core/base/display-types.ts` covers only `cart`, `package`, `selection`,
+`shipping` and `order` — setting `displayNamespace` on their manifests would make the drift
+test overwrite each page with "No paths are declared". So they are hand-written, and finding
+109 is what an ungated hand-written property table costs.
+
+**Fix:** a generator that reads each enhancer's `getPropertyValue` cases. It cannot read
+`FORMAT_MAP`, which is a superset — that superset is what made bundle's doc wrong.
+
+### 115. `features/checkout/debug/test-order-manager.ts` has no importers — *verified*
+
+Nothing in `src/` or `e2e/` imports it, so it never enters the module graph in any build. It
+was named in `manualChunks`' debug rule, which made it look live; the clause was redundant
+anyway since the file already sits under `/debug/`.
+
+**Fix:** delete it, or wire it up if the test-order flow is still wanted.
 
 ---
 

@@ -4,12 +4,12 @@
  */
 
 import type { DataLayerEvent, EcommerceData, EcommerceItem } from '../types';
-import { EventBuilder } from './EventBuilder';
+import { EventBuilder } from './event-builder';
 import { useCartStore } from '@/state/cart';
 import { useCampaignStore } from '@/state/campaign';
 import type { CartItem, EnrichedCartLine } from '@/types/global';
 import { createLogger } from '@/core/logger';
-import { resolveOrderTaxBasis } from '../taxBasis';
+import { resolveOrderTaxBasis } from '../tax-basis';
 
 const logger = createLogger('EcommerceEvents');
 

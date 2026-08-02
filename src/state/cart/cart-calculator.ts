@@ -130,7 +130,7 @@ export interface CalculateCartResult {
 
 /**
  * Call the /calculate API with arbitrary lines and return totals + raw summary.
- * Lazily imports ApiClient and configStore to avoid circular dependencies.
+ * Lazily imports the shared API client and configStore to avoid circular dependencies.
  *
  * Results are cached in-memory by payload (30s TTL). Concurrent calls with the
  * same payload share a single in-flight request (promise dedup).
@@ -138,7 +138,7 @@ export interface CalculateCartResult {
 export async function calculateCart(
   params: CalculateCartParams
 ): Promise<CalculateCartResult> {
-  const { ApiClient } = await import('@/api/client');
+  const { getApiClient } = await import('@/client');
   const { useConfigStore } = await import('@/state/config');
 
   const apiKey = useConfigStore.getState().apiKey;
@@ -160,7 +160,7 @@ export async function calculateCart(
     calcCache.delete(key);
   }
 
-  const client = new ApiClient(apiKey);
+  const client = getApiClient(apiKey);
 
   const cartData: CartCalculateSummary = {
     lines: params.lines,

@@ -39,7 +39,7 @@ vi.mock('@/core/ui/general-modal', () => ({
   GeneralModal: { showDuplicateUpsell: vi.fn().mockResolvedValue(true) },
 }));
 vi.mock('@/core/url-utils', () => ({ preserveQueryParams: (u: string) => u }));
-vi.mock('@/core/analytics/taxBasis', () => ({
+vi.mock('@/core/analytics/tax-basis', () => ({
   resolveOrderTaxBasis: vi.fn().mockReturnValue('incl'),
 }));
 

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import Decimal from 'decimal.js';
-import { EcommerceEvents } from '@/core/analytics/events/EcommerceEvents';
-import { EventBuilder } from '@/core/analytics/events/EventBuilder';
+import { EcommerceEvents } from '@/core/analytics/events/ecommerce-events';
+import { EventBuilder } from '@/core/analytics/events/event-builder';
 import { useCampaignStore } from '@/state/campaign';
 import { useCartStore } from '@/state/cart';
 

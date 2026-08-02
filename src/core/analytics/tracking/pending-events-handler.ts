@@ -6,7 +6,7 @@
  */
 
 import { createLogger } from '@/core/logger';
-import { dataLayer } from '../DataLayerManager';
+import { dataLayer } from '../data-layer-manager';
 import type { DataLayerEvent } from '../types';
 
 const logger = createLogger('PendingEventsHandler');

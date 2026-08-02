@@ -120,7 +120,7 @@ export const CORE_SUBSYSTEMS: CoreSubsystem[] = [
       'core/debug/',
       // The Analytics panel's per-provider delivery status comes from here, not from
       // core/debug/ — a reader chasing "my provider got nothing" ends up in this file.
-      'core/analytics/debug/AnalyticsDebugTracker.ts',
+      'core/analytics/debug/analytics-debug-tracker.ts',
     ],
     howAuthorsReachIt: ['debug-only', 'observed'],
     reference: ['logs', 'url-parameters', 'meta-tags'],

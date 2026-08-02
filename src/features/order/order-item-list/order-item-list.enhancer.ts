@@ -6,8 +6,8 @@
 
 import { BaseEnhancer } from '@/core/base/base-enhancer';
 import { useOrderStore } from '@/state/order';
-import { useConfigStore } from '@/state/config';
-import { ApiClient } from '@/api/client';
+import { getApiClient } from '@/client';
+import type { IApiClient } from '@/api/client.types';
 import { TemplateRenderer, TemplateFormatters } from '@/core/rendering/template-renderer';
 import { DisplayFormatter } from '@/core/base/base-display-enhancer';
 import type { OrderLine } from '@/types/api';
@@ -17,7 +17,7 @@ import type { OrderLine } from '@/types/api';
 export class OrderItemListEnhancer extends BaseEnhancer {
   private template?: string;
   private emptyTemplate?: string;
-  private apiClient?: ApiClient;
+  private apiClient?: IApiClient;
 
   public async initialize(): Promise<void> {
     this.validateElement();
@@ -72,8 +72,7 @@ export class OrderItemListEnhancer extends BaseEnhancer {
       // Only load if not already loaded or loading
       if (!orderStore.order && !orderStore.isLoading && orderStore.refId !== refId) {
         try {
-          const config = useConfigStore.getState();
-          this.apiClient = new ApiClient(config.apiKey);
+          this.apiClient = getApiClient();
           
           await orderStore.loadOrder(refId, this.apiClient);
         } catch (error) {

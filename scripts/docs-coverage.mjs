@@ -180,25 +180,95 @@ function isDomActivated(file) {
   return /class\s+\w+\s+extends\s+Base\w*Enhancer/.test(readFileSync(file, 'utf8'));
 }
 
+/** Every base-enhancer subclass a file declares. */
+function enhancerClassesIn(file) {
+  return [
+    ...readFileSync(file, 'utf8').matchAll(
+      /class\s+(\w+)\s+extends\s+Base\w*Enhancer/g
+    ),
+  ].map(m => m[1]);
+}
+
+/**
+ * Every enhancer class `AttributeScanner` instantiates — the authority on what a
+ * `data-next-*` attribute can actually reach.
+ *
+ * The file-name test above cannot answer that on its own, and the gap was real:
+ * four registered display enhancers live in `*.display.ts` files
+ * (`package-selector.display.ts`, `bundle-selector.display.ts`,
+ * `package-toggle.display.ts`, `cart-summary.display.ts`), so the `*.enhancer.ts`
+ * walk never reached them and they sat in neither the numerator nor the
+ * denominator — and, unlike the files the walk does reject, they were not named in
+ * the "excluded" list either. Registration is what tells the two cases apart: a
+ * subclass nobody registers is a helper, a subclass named here is a feature.
+ */
+function registeredEnhancers() {
+  const file = join(SRC, 'core/attribute-scanner.ts');
+  const names = new Set(
+    [...readFileSync(file, 'utf8').matchAll(/new\s+(\w+Enhancer)\s*\(/g)].map(m => m[1])
+  );
+  if (names.size === 0) {
+    throw new Error(
+      `No enhancer registrations found in ${relative(ROOT, file)}. The scan reads ` +
+        '`new <Class>Enhancer(` from its routing switch — if that changed shape, ' +
+        'update registeredEnhancers() rather than letting the denominator collapse.'
+    );
+  }
+  return names;
+}
+
+/**
+ * Every file that carries a DOM-activated class: the `*.enhancer.ts` files, plus any
+ * other feature file whose class `AttributeScanner` registers. See
+ * {@link registeredEnhancers}.
+ */
+function domActivatedFiles() {
+  const registered = registeredEnhancers();
+  const enhancerFiles = walk(FEATURES, name => name.endsWith('.enhancer.ts'));
+  const others = walk(FEATURES, isSourceTs).filter(
+    f => !f.endsWith('.enhancer.ts') && !f.endsWith('.manifest.ts')
+  );
+  return {
+    included: [
+      ...enhancerFiles.filter(isDomActivated),
+      ...others.filter(f => enhancerClassesIn(f).some(c => registered.has(c))),
+    ],
+    // Named out loud, because a silent exclusion is what finding 95 was.
+    excluded: [
+      ...enhancerFiles.filter(f => !isDomActivated(f)),
+      ...others.filter(f => {
+        const classes = enhancerClassesIn(f);
+        return classes.length > 0 && !classes.some(c => registered.has(c));
+      }),
+    ],
+  };
+}
+
 /**
  * Every DOM-activated feature, and whether it has a guide and a manifest. The
  * guide lives either in the enhancer's own folder (`add-to-cart/guide/`) or, for
  * enhancers that still sit flat in a category folder
  * (`features/display/product-display.enhancer.ts`), in a sibling folder named
  * after it (`features/display/product-display/guide/`).
+ *
+ * A row is one activated class, not one folder, so the four `*.display.ts` enhancers
+ * each get their own row (`package-selector.display`). Their docs are their parent
+ * feature's — one `data-next-display` namespace does not want a second guide tree —
+ * so every page lookup resolves against the folder name, which is the file's base
+ * before the role suffix.
  */
 function scanFeatures() {
-  const enhancers = walk(FEATURES, name => name.endsWith('.enhancer.ts')).filter(
-    isDomActivated
-  );
-  return enhancers
-    .map(file => {
+  return domActivatedFiles()
+    .included.map(file => {
       const dir = dirname(file);
-      const base = file.split(/[\\/]/).pop().replace('.enhancer.ts', '');
+      const name = file.split(/[\\/]/).pop().replace(/\.ts$/, '');
+      // `add-to-cart.enhancer` → `add-to-cart`; `package-selector.display` → the same
+      // `package-selector`, whose guide and manifest the display class shares.
+      const base = name.split('.')[0];
       const ownFolder = dir.split(/[\\/]/).pop() === base;
       const guideDirs = ownFolder ? [dir] : [dir, join(dir, base)];
       return {
-        id: base,
+        id: name.endsWith('.enhancer') ? base : name,
         path: relative(ROOT, file),
         hasGuide: guideDirs.some(d => existsSync(join(d, 'guide/overview.md'))),
         hasManifest: guideDirs.some(d => existsSync(join(d, `${base}.manifest.ts`))),
@@ -240,6 +310,66 @@ function scanFeatures() {
     .sort((a, b) => a.id.localeCompare(b.id));
 }
 
+
+/**
+ * Every `data-next-display` namespace, the feature that owns it, and whether that
+ * feature publishes the list of paths the namespace can show
+ * (`guide/reference/display-paths.md`).
+ *
+ * Read from `AttributeScanner`'s display routing rather than from the manifests,
+ * because the manifest field only exists for the five namespaces whose paths come
+ * from `PROPERTY_MAPPINGS`. The other three — `selector.`, `bundle.`, `toggle.` —
+ * resolve their properties inside their own enhancer, so nothing declared them and
+ * nothing measured them: an author could write
+ * `data-next-display="selector.{id}.{pkg}.savings"`, have it resolve, and find no
+ * page anywhere that says the path exists. That is the documentation half of
+ * finding 95.
+ */
+function scanDisplayNamespaces() {
+  const file = join(SRC, 'core/attribute-scanner.ts');
+  const src = readFileSync(file, 'utf8');
+
+  const owner = new Map();
+  for (const m of src.matchAll(
+    /const \{ (\w+) \} = await import\('@\/features\/([a-z0-9-]+)\/([a-z0-9-]+)'\)/g
+  )) {
+    owner.set(m[1], join(FEATURES, m[2], m[3]));
+  }
+
+  const start = src.indexOf("case 'display':");
+  const block = start === -1 ? '' : src.slice(start).split(/\n\s+case '/)[0];
+
+  const byFeature = new Map();
+  // One chunk per branch of the routing chain, so a branch that answers to two
+  // namespace names (`'cart' || 'cart-summary'`) keeps both against one owner.
+  for (const chunk of block.split(/\belse\s+if\s*\(/)) {
+    const namespaces = [
+      ...chunk.matchAll(/parsed\.object\s*===\s*'([a-z0-9-]+)'/g),
+    ].map(m => m[1]);
+    const cls = /new\s+(\w+Enhancer)\s*\(/.exec(chunk)?.[1];
+    const dir = cls ? owner.get(cls) : undefined;
+    if (!namespaces.length || !dir) continue;
+    const row = byFeature.get(dir) ?? { namespaces: [], dir };
+    row.namespaces.push(...namespaces);
+    byFeature.set(dir, row);
+  }
+
+  if (byFeature.size === 0) {
+    throw new Error(
+      `No display namespaces found in ${relative(ROOT, file)}. The scan reads the ` +
+        "`case 'display':` routing chain — if that changed shape, update " +
+        'scanDisplayNamespaces() rather than letting the denominator collapse.'
+    );
+  }
+
+  return [...byFeature.values()]
+    .map(row => ({
+      id: row.dir.split(/[\\/]/).pop(),
+      namespaces: [...new Set(row.namespaces)].sort(),
+      hasPaths: existsSync(join(row.dir, 'guide/reference/display-paths.md')),
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+}
 
 // ---------------------------------------------------------------------------
 // 4. Stores
@@ -590,6 +720,10 @@ const events = scanEvents();
 const undescribedEvents = events.filter(e => !e.described).map(e => e.name);
 
 const features = scanFeatures();
+const displayNamespaces = scanDisplayNamespaces();
+const displayNamespacesWithoutPaths = displayNamespaces
+  .filter(n => !n.hasPaths)
+  .map(n => n.id);
 const stores = scanStores();
 const storesWithoutReference = stores.filter(t => !t.hasReference).map(t => t.id);
 const storesWithoutOverview = stores.filter(t => !t.hasOverview).map(t => t.id);
@@ -670,6 +804,7 @@ const current = {
   featuresWithoutRelations,
   featuresWithoutGetStarted,
   featuresWithoutUseCases,
+  displayNamespacesWithoutPaths,
   attributesNotInAManifest,
   storesWithoutReference,
   storesWithoutOverview,
@@ -698,6 +833,7 @@ if (UPDATE) {
       relations: `${features.length - featuresWithoutRelations.length}/${features.length}`,
       getStarted: `${features.length - featuresWithoutGetStarted.length}/${features.length}`,
       useCases: `${features.length - featuresWithoutUseCases.length}/${features.length}`,
+      displayPaths: `${displayNamespaces.length - displayNamespacesWithoutPaths.length}/${displayNamespaces.length}`,
       stores: `${stores.length - storesWithoutReference.length}/${stores.length}`,
       storeOverviews: `${stores.length - storesWithoutOverview.length}/${stores.length}`,
       coreSubsystemOverviews: `${coreSubsystems.length - coreSubsystemsWithoutOverview.length}/${coreSubsystems.length}`,
@@ -789,6 +925,16 @@ const KINDS = [
     fix: 'write guide/use-cases.md per .claude/rules/guide.md — 2+ scenarios with effort signals, and a "When NOT to use this"',
   },
   {
+    key: 'displayNamespacesWithoutPaths',
+    label: 'data-next-display namespaces with a reference/display-paths.md',
+    have: displayNamespaces.length - displayNamespacesWithoutPaths.length,
+    total: displayNamespaces.length,
+    fix:
+      'add guide/reference/display-paths.md to the owning feature — generated from ' +
+      'PROPERTY_MAPPINGS when the manifest sets displayNamespace, hand-written when ' +
+      'the enhancer resolves its own properties',
+  },
+  {
     key: 'storesWithoutReference',
     label: 'stores with a generated state reference',
     have: stores.length - storesWithoutReference.length,
@@ -869,9 +1015,7 @@ for (const kind of KINDS) {
   console.log(`  ${String(pct(kind.have, kind.total)).padStart(3)}%  ${kind.have}/${kind.total}  ${kind.label}`);
 }
 
-const notActivated = walk(FEATURES, name => name.endsWith('.enhancer.ts')).filter(
-  f => !isDomActivated(f)
-);
+const notActivated = domActivatedFiles().excluded;
 if (notActivated.length) {
   console.log(
     `\n  excluded from the counts above — not DOM-activated:\n` +

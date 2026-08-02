@@ -8,7 +8,7 @@ import { useCartStore } from '@/state/cart';
 import { useConfigStore } from '@/state/config';
 import { useCampaignStore } from '@/state/campaign';
 import { useAttributionStore } from '@/state/attribution';
-import { ApiClient } from '@/api/client';
+import { getApiClient } from '@/client';
 import type { IApiClient } from '@/api/client.types';
 import type { CartBase, UserCreateCart } from '@/types/api';
 
@@ -58,8 +58,7 @@ export class ProspectCartEnhancer extends BaseEnhancer {
     });
 
     // Initialize API client
-    const config = useConfigStore.getState();
-    this.apiClient = new ApiClient(config.apiKey);
+    this.apiClient = getApiClient();
 
     // Load configuration
     this.loadConfig();

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync, existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
+import { resolve, join, relative } from 'node:path';
 
 /**
  * Production-bundle contract.
@@ -17,12 +17,39 @@ import { resolve } from 'node:path';
  * existing test or gate would notice.
  *
  * This test was the gate for moving that machinery out of `core/` and stays the gate
- * against it creeping back in. It needs a built bundle, so it skips when `dist/` is
- * absent (a clean checkout, or `npm run test` before a build) and asserts whenever
- * CI or a local `npm run build` has produced one.
+ * against it creeping back in.
+ *
+ * ## What it reads
+ *
+ * Every JavaScript file `npm run build` emits into `dist/`:
+ *
+ * - `dist/index.js` and `dist/styles.js` — the two ES entries;
+ * - `dist/chunks/*.js` — the ES chunks, **the files a campaign page actually
+ *   fetches**;
+ * - `dist/index.umd.js` — the single-file UMD fallback.
+ *
+ * It deliberately does not read `dist/loader.js`: that is copied verbatim from
+ * `public/loader.js` by the `build` script and is hand-written, not build output.
+ *
+ * Until 2026-08-02 only the UMD was scanned, which left the gate blind to exactly
+ * the case its own comment claimed to guard — the docs layer sitting in a sibling
+ * chunk. See finding 105 in `docs/code-findings.md`.
+ *
+ * ## What it cannot prove
+ *
+ * `dist/` is committed, and this test asserts on whatever is committed — not on a
+ * bundle built from the current working tree. `.github/workflows/build.yml` runs
+ * `bun run test:coverage` **before** `bun run build`, so in CI it always reads the
+ * `dist/` that came with the checkout. A change that adds a runtime import of the
+ * docs machinery therefore goes green here and only starts failing once someone
+ * rebuilds and commits `dist/`. Treat a pass as "the artifact we ship today is
+ * clean", not "the source we just wrote is clean". The tests below make that
+ * failure mode loud in one direction at least: they fail if the ES chunks are
+ * missing, so a `dist/` with no chunk output cannot pass by scanning nothing.
  */
 
-const BUNDLE = resolve(__dirname, '../../../dist/index.umd.js');
+const DIST = resolve(__dirname, '../../../dist');
+const CHUNKS = join(DIST, 'chunks');
 
 /**
  * Strings that exist only in the documentation layer. Each is a real substring of
@@ -36,25 +63,67 @@ const DOCS_ONLY_MARKERS = [
   'single source of truth', // recurring phrasing in the docs machinery
 ] as const;
 
+/** Build output only — `loader.js` is copied from `public/`, not emitted. */
+const ENTRY_FILES = ['index.js', 'styles.js', 'index.umd.js'];
+
+function shippedFiles(): string[] {
+  const entries = ENTRY_FILES.map(f => join(DIST, f)).filter(existsSync);
+  const chunks = existsSync(CHUNKS)
+    ? readdirSync(CHUNKS)
+        .filter(f => f.endsWith('.js'))
+        .map(f => join(CHUNKS, f))
+    : [];
+  return [...entries, ...chunks];
+}
+
 describe('production bundle contract', () => {
-  const built = existsSync(BUNDLE);
+  // Skips on a clean checkout, or on `npm run test` before any build.
+  const built = existsSync(DIST);
 
   it.skipIf(!built)('ships no documentation machinery', () => {
-    const bundle = readFileSync(BUNDLE, 'utf8');
+    const leaked: string[] = [];
 
-    const leaked = DOCS_ONLY_MARKERS.filter(marker => bundle.includes(marker));
+    for (const file of shippedFiles()) {
+      const contents = readFileSync(file, 'utf8');
+      for (const marker of DOCS_ONLY_MARKERS) {
+        if (contents.includes(marker)) {
+          leaked.push(`${relative(DIST, file)}: ${marker}`);
+        }
+      }
+    }
 
-    // Named so a failure says which marker got in, not just that one did.
+    // Named so a failure says which marker got into which file, not just that
+    // one did.
     expect(
       leaked,
-      'these strings exist only in the docs layer — a runtime import pulled the documentation machinery into the customer bundle'
+      'these strings exist only in the docs layer — a runtime import pulled the documentation machinery into a shipped bundle'
     ).toEqual([]);
   });
 
-  it.skipIf(!built)('is a single self-contained UMD file', () => {
-    // Guards the assumption above: if the entry stopped being one bundled file,
-    // the marker scan could pass while the docs layer sat in a sibling chunk.
-    const bundle = readFileSync(BUNDLE, 'utf8');
-    expect(bundle.length).toBeGreaterThan(100_000);
+  it.skipIf(!built)(
+    'scans the ES chunks a campaign page loads, not just the UMD',
+    () => {
+      // Without this the marker scan could pass by covering almost nothing: the
+      // ES chunks are what a page fetches, and the UMD is only the fallback.
+      expect(
+        existsSync(join(DIST, 'index.js')),
+        'dist/index.js — the ES entry — is missing'
+      ).toBe(true);
+
+      const chunks = shippedFiles().filter(f => f.startsWith(CHUNKS));
+      expect(
+        chunks.length,
+        'dist/chunks/ holds no .js files, so the scan covered no chunks'
+      ).toBeGreaterThan(10);
+    }
+  );
+
+  it.skipIf(!built)('emits no empty bundle file', () => {
+    // A truncated or zero-byte artifact would also let the marker scan pass.
+    const empty = shippedFiles()
+      .filter(f => statSync(f).size === 0)
+      .map(f => relative(DIST, f));
+
+    expect(empty, 'these shipped files are zero bytes').toEqual([]);
   });
 });

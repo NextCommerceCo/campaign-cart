@@ -14,7 +14,7 @@ import { XrayManager } from './XrayStyles';
 import { selectorContainer } from './SelectorContainer';
 import { upsellSelector } from './UpsellSelector';
 import { formatCurrency } from '@/core/currency-formatter';
-import { analyticsDebug } from '@/core/analytics/debug/AnalyticsDebugTracker';
+import { analyticsDebug } from '@/core/analytics/debug/analytics-debug-tracker';
 import {
   CartPanel,
   OrderPanel,

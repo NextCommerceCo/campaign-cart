@@ -163,13 +163,13 @@ Every tag above, with the code that reads it. This table is generated from the s
 |---|---|
 | `data-next-tracking-tag` | `AttributionCollector.getFunnelName` — `core/attribution/attribution-collector.ts`<br>`AttributionCollector.collectTrackingTags` — `core/attribution/attribution-collector.ts` |
 | `facebook-pixel-id` | `AttributionCollector.getFacebookPixelId` — `core/attribution/attribution-collector.ts` |
-| `next-analytics-disable` | `MetaTagController.initialize` — `core/analytics/tracking/MetaTagController.ts` |
-| `next-analytics-enable-only` | `MetaTagController.initialize` — `core/analytics/tracking/MetaTagController.ts` |
-| `next-analytics-list-id` | `MetaTagController.parseListContext` — `core/analytics/tracking/MetaTagController.ts` |
-| `next-analytics-list-name` | `MetaTagController.parseListContext` — `core/analytics/tracking/MetaTagController.ts` |
-| `next-analytics-scroll-tracking` | `MetaTagController.parseScrollThresholds` — `core/analytics/tracking/MetaTagController.ts` |
-| `next-analytics-view-item` | `MetaTagController.parseViewItemConfig` — `core/analytics/tracking/MetaTagController.ts` |
-| `next-analytics-view-item-list` | `MetaTagController.parseViewItemListConfig` — `core/analytics/tracking/MetaTagController.ts` |
+| `next-analytics-disable` | `MetaTagController.initialize` — `core/analytics/tracking/meta-tag-controller.ts` |
+| `next-analytics-enable-only` | `MetaTagController.initialize` — `core/analytics/tracking/meta-tag-controller.ts` |
+| `next-analytics-list-id` | `MetaTagController.parseListContext` — `core/analytics/tracking/meta-tag-controller.ts` |
+| `next-analytics-list-name` | `MetaTagController.parseListContext` — `core/analytics/tracking/meta-tag-controller.ts` |
+| `next-analytics-scroll-tracking` | `MetaTagController.parseScrollThresholds` — `core/analytics/tracking/meta-tag-controller.ts` |
+| `next-analytics-view-item` | `MetaTagController.parseViewItemConfig` — `core/analytics/tracking/meta-tag-controller.ts` |
+| `next-analytics-view-item-list` | `MetaTagController.parseViewItemListConfig` — `core/analytics/tracking/meta-tag-controller.ts` |
 | `next-api-key` | `loadFromMeta` — `state/config/config.state.ts` |
 | `next-campaign-id` | `loadFromMeta` — `state/config/config.state.ts` |
 | `next-clear-cart` | `loadFromMeta` — `state/config/config.state.ts` |
@@ -177,8 +177,8 @@ Every tag above, with the code that reads it. This table is generated from the s
 | `next-failure-url` | `CheckoutFormEnhancer.getFailureUrl` — `features/checkout/checkout-form/checkout-form.enhancer.ts`<br>*top level of the file* — `features/checkout/constants/selectors.ts`<br>`getFailureUrl` — `features/checkout/utils/url-utils.ts`<br>…and 1 more |
 | `next-funnel` | `AttributionCollector.getFunnelName` — `core/attribution/attribution-collector.ts` |
 | `next-next-url` | `CheckoutFormEnhancer.getNextPageUrlFromMeta` — `features/checkout/checkout-form/checkout-form.enhancer.ts`<br>`CheckoutFormEnhancer.getSuccessUrl` — `features/checkout/checkout-form/checkout-form.enhancer.ts`<br>*top level of the file* — `features/checkout/constants/selectors.ts`<br>…and 3 more |
-| `next-page-name` | `RudderStackAdapter.getPageMetadata` — `core/analytics/providers/RudderStackAdapter.ts` |
-| `next-page-type` | `RudderStackAdapter.getPageMetadata` — `core/analytics/providers/RudderStackAdapter.ts`<br>`UpsellSelector.checkIfUpsellPage` — `core/debug/UpsellSelector.ts`<br>`trackUpsellPageView` — `features/order/upsell/upsell.handlers.ts`<br>…and 1 more |
+| `next-page-name` | `RudderStackAdapter.getPageMetadata` — `core/analytics/providers/rudderstack-adapter.ts` |
+| `next-page-type` | `RudderStackAdapter.getPageMetadata` — `core/analytics/providers/rudderstack-adapter.ts`<br>`UpsellSelector.checkIfUpsellPage` — `core/debug/UpsellSelector.ts`<br>`trackUpsellPageView` — `features/order/upsell/upsell.handlers.ts`<br>…and 1 more |
 | `next-payment-env-key` | `loadFromMeta` — `state/config/config.state.ts` |
 | `next-spreedly-key` | `loadFromMeta` — `state/config/config.state.ts` |
 | `next-success-url` | `CheckoutFormEnhancer.getNextPageUrlFromMeta` — `features/checkout/checkout-form/checkout-form.enhancer.ts`<br>`CheckoutFormEnhancer.getSuccessUrl` — `features/checkout/checkout-form/checkout-form.enhancer.ts`<br>*top level of the file* — `features/checkout/constants/selectors.ts`<br>…and 3 more |

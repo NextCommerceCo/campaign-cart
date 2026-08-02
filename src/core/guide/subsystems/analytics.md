@@ -108,7 +108,7 @@ from an absence.
   reaching a provider.
 - **Two different validators, and only one of them can drop an event.** The
   required-field rules in `analytics/config.ts` run on every push and **drop** the
-  event before it reaches the array (`DataLayerManager.ts › DataLayerManager.push`) — for example
+  event before it reaches the array (`data-layer-manager.ts › DataLayerManager.push`) — for example
   `dl_add_to_cart` without `ecommerce.currency`. The richer field-schema validator runs
   **only in debug mode** and only reports; it never blocks. So a payload problem you
   can see logged in debug may have been shipped in production.

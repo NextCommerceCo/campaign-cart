@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { EcommerceEvents } from '@/core/analytics/events/EcommerceEvents';
+import { EcommerceEvents } from '@/core/analytics/events/ecommerce-events';
 import { useCampaignStore } from '@/state/campaign';
 
 // Regression tests for issue #54: accepted-upsell GTM dataLayer event

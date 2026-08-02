@@ -1,7 +1,6 @@
 import { BaseActionEnhancer } from '@/core/base/base-action-enhancer';
 import { useOrderStore } from '@/state/order';
-import { useConfigStore } from '@/state/config';
-import { ApiClient } from '@/api/client';
+import { getApiClient } from '@/client';
 import type { IApiClient } from '@/api/client.types';
 import { LoadingOverlay } from '@/core/ui/loading-overlay';
 import { acceptUpsell } from './accept-upsell.handlers';
@@ -48,7 +47,7 @@ export class AcceptUpsellEnhancer extends BaseActionEnhancer {
     const nextUrlAttr = this.getAttribute('data-next-url');
     if (nextUrlAttr) this.nextUrl = nextUrlAttr;
 
-    this.apiClient = new ApiClient(useConfigStore.getState().apiKey);
+    this.apiClient = getApiClient();
     this.element.addEventListener('click', this.boundHandleClick);
 
     if (this.selectorId) this.setupSelectorListener();

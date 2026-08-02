@@ -308,7 +308,7 @@ export const CORE_LOG_SOURCES: CoreLogSource[] = [
   },
   {
     prefix: 'NextDataLayer',
-    file: 'analytics/DataLayerManager.ts',
+    file: 'analytics/data-layer-manager.ts',
     area: 'Analytics core',
     what: 'Pushes finished events onto `window.dataLayer` and fans them out to the providers, adding attribution and validating required fields on the way.',
   },
@@ -320,31 +320,31 @@ export const CORE_LOG_SOURCES: CoreLogSource[] = [
   },
   {
     prefix: 'UserDataStorage',
-    file: 'analytics/userDataStorage.ts',
+    file: 'analytics/user-data-storage.ts',
     area: 'Analytics core',
     what: 'Remembers who the visitor is across pages — email, name, ids — in a cookie plus sessionStorage, so events after a redirect still identify them.',
   },
   {
     prefix: 'EventBuilder',
-    file: 'analytics/events/EventBuilder.ts',
+    file: 'analytics/events/event-builder.ts',
     area: 'Analytics core',
     what: 'Builds each event’s payload: campaign context, currency, and the item fields taken from the package in the campaign data.',
   },
   {
     prefix: 'EcommerceEvents',
-    file: 'analytics/events/EcommerceEvents.ts',
+    file: 'analytics/events/ecommerce-events.ts',
     area: 'Analytics core',
     what: 'Builds the purchase-funnel events — view item, add to cart, begin checkout, purchase, upsell.',
   },
   {
     prefix: 'UserEvents',
-    file: 'analytics/events/UserEvents.ts',
+    file: 'analytics/events/user-events.ts',
     area: 'Analytics core',
     what: 'Builds the `dl_user_data` event that identifies the visitor and carries the current cart contents.',
   },
   {
     prefix: 'EventValidator',
-    file: 'analytics/validation/EventValidator.ts',
+    file: 'analytics/validation/event-validator.ts',
     area: 'Analytics core',
     what: 'Checks an event against its schema in debug mode, so a missing or mistyped field is caught while you are looking rather than in a report a week later.',
   },
@@ -352,37 +352,37 @@ export const CORE_LOG_SOURCES: CoreLogSource[] = [
   // ── Analytics tracking ─────────────────────────────────────────────────────
   {
     prefix: 'AutoEventListener',
-    file: 'analytics/tracking/AutoEventListener.ts',
+    file: 'analytics/tracking/auto-event-listener.ts',
     area: 'Analytics tracking',
     what: 'Turns the SDK’s own cart, upsell, and exit-intent events into analytics events, so a page gets tracking without writing any.',
   },
   {
     prefix: 'MetaTagController',
-    file: 'analytics/tracking/MetaTagController.ts',
+    file: 'analytics/tracking/meta-tag-controller.ts',
     area: 'Analytics tracking',
     what: 'Fires `view_item` / `view_item_list` and scroll-depth events from `<meta>` tags, including reading the package id out of a URL parameter and waiting for a time, an element, or a scroll threshold.',
   },
   {
     prefix: 'PendingEventsHandler',
-    file: 'analytics/tracking/PendingEventsHandler.ts',
+    file: 'analytics/tracking/pending-events-handler.ts',
     area: 'Analytics tracking',
     what: 'Holds events that were raised as the page was navigating away, and replays them on the next page so a redirect does not lose a purchase.',
   },
   {
     prefix: 'UserDataTracker',
-    file: 'analytics/tracking/UserDataTracker.ts',
+    file: 'analytics/tracking/user-data-tracker.ts',
     area: 'Analytics tracking',
     what: 'Fires `dl_user_data` first on every page and again when the visitor is identified or the route changes.',
   },
   {
     prefix: 'ViewItemListTracker',
-    file: 'analytics/tracking/ViewItemListTracker.ts',
+    file: 'analytics/tracking/view-item-list-tracker.ts',
     area: 'Analytics tracking',
     what: 'Detects the products present on a page and fires `view_item` / `view_item_list` for them without any meta tags.',
   },
   {
     prefix: 'ListAttributionTracker',
-    file: 'analytics/tracking/ListAttributionTracker.ts',
+    file: 'analytics/tracking/list-attribution-tracker.ts',
     area: 'Analytics tracking',
     what: 'Remembers which list a product was clicked from so the next page’s events can say where the visitor came from within the site.',
   },
@@ -390,7 +390,7 @@ export const CORE_LOG_SOURCES: CoreLogSource[] = [
   // ── Analytics providers ────────────────────────────────────────────────────
   {
     prefix: '{ProviderName}',
-    file: 'analytics/providers/ProviderAdapter.ts',
+    file: 'analytics/providers/provider-adapter.ts',
     area: 'Analytics providers',
     dynamicPrefix: true,
     prefixNote:
@@ -399,7 +399,7 @@ export const CORE_LOG_SOURCES: CoreLogSource[] = [
   },
   {
     prefix: 'Facebook',
-    file: 'analytics/providers/FacebookAdapter.ts',
+    file: 'analytics/providers/facebook-adapter.ts',
     area: 'Analytics providers',
     dynamicPrefix: true,
     prefixNote:
@@ -408,7 +408,7 @@ export const CORE_LOG_SOURCES: CoreLogSource[] = [
   },
   {
     prefix: 'NextCampaign',
-    file: 'analytics/providers/NextCampaignAdapter.ts',
+    file: 'analytics/providers/next-campaign-adapter.ts',
     area: 'Analytics providers',
     dynamicPrefix: true,
     prefixNote:
@@ -417,13 +417,13 @@ export const CORE_LOG_SOURCES: CoreLogSource[] = [
   },
   {
     prefix: 'RudderStack',
-    file: 'analytics/providers/RudderStackAdapter.ts',
+    file: 'analytics/providers/rudderstack-adapter.ts',
     area: 'Analytics providers',
     what: 'Translates events into RudderStack’s track / page / identify calls.',
   },
   {
     prefix: 'Custom',
-    file: 'analytics/providers/CustomAdapter.ts',
+    file: 'analytics/providers/custom-adapter.ts',
     area: 'Analytics providers',
     dynamicPrefix: true,
     prefixNote:
@@ -1061,7 +1061,7 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
       'Nothing to act on from a page. For a provider that genuinely will not start, look for `Provider "{key}" is enabled but {required} is missing …` from `NextAnalytics`.',
   },
 
-  // ── analytics/DataLayerManager.ts ──────────────────────────────────────────
+  // ── analytics/data-layer-manager.ts ──────────────────────────────────────────
   {
     level: 'error',
     message: 'Failed to persist debug mode',
@@ -1071,7 +1071,7 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
       'Add `?debug=true` to the URL instead of relying on the saved setting. The attached error is normally storage being blocked.',
   },
 
-  // ── analytics/userDataStorage.ts ───────────────────────────────────────────
+  // ── analytics/user-data-storage.ts ───────────────────────────────────────────
   {
     level: 'warn',
     message: 'Failed to parse user data cookie:',
@@ -1105,7 +1105,7 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
       'Read the attached error. While this happens, events on later pages are anonymous even though the visitor identified themselves.',
   },
 
-  // ── analytics/events/EventBuilder.ts ───────────────────────────────────────
+  // ── analytics/events/event-builder.ts ───────────────────────────────────────
   {
     level: 'warn',
     message: 'Could not access store state for user properties:',
@@ -1187,7 +1187,7 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
       'Read the attached error. If it appears in bulk, the campaign store failed to load and the same reason explains most other analytics warnings on the page.',
   },
 
-  // ── analytics/events/EcommerceEvents.ts ────────────────────────────────────
+  // ── analytics/events/ecommerce-events.ts ────────────────────────────────────
   {
     level: 'warn',
     message: 'Could not access campaign store for upsell data:',
@@ -1197,7 +1197,7 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
       'Read the attached error. Upsell revenue is still counted; the product name attached to it may be missing.',
   },
 
-  // ── analytics/events/UserEvents.ts ─────────────────────────────────────────
+  // ── analytics/events/user-events.ts ─────────────────────────────────────────
   {
     level: 'warn',
     message: 'Could not add cart contents to user data event:',
@@ -1207,7 +1207,7 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
       'Read the attached error. It usually means the cart store was not ready when the event fired, which is expected very early in a page load.',
   },
 
-  // ── analytics/validation/EventValidator.ts ─────────────────────────────────
+  // ── analytics/validation/event-validator.ts ─────────────────────────────────
   {
     level: 'error',
     message: 'Validation failed for {event}:',
@@ -1217,7 +1217,7 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
       'Fix the fields in the attachment. Nothing outside debug mode prints this, so make a `?debug=true` pass part of launching a page rather than a reaction to bad data.',
   },
 
-  // ── analytics/tracking/AutoEventListener.ts ────────────────────────────────
+  // ── analytics/tracking/auto-event-listener.ts ────────────────────────────────
   {
     level: 'warn',
     message: 'Package not found for add to cart:',
@@ -1259,7 +1259,7 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
       'Read the attached error. If it coincides with a purchase, check that order’s value in the destination before trusting revenue reporting for the period.',
   },
 
-  // ── analytics/tracking/MetaTagController.ts ────────────────────────────────
+  // ── analytics/tracking/meta-tag-controller.ts ────────────────────────────────
   {
     level: 'warn',
     message: 'URL param "{paramName}" not found for view_item event',
@@ -1326,7 +1326,7 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
       'Check the whole id list against the campaign. This is usually a page reused from another campaign whose ids do not exist here.',
   },
 
-  // ── analytics/tracking/PendingEventsHandler.ts ─────────────────────────────
+  // ── analytics/tracking/pending-events-handler.ts ─────────────────────────────
   {
     level: 'error',
     message: 'Failed to queue event:',
@@ -1376,7 +1376,7 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
       'Read the attached error. If purchase events are duplicated in reports, this line is the reason to look at first.',
   },
 
-  // ── analytics/tracking/ViewItemListTracker.ts ──────────────────────────────
+  // ── analytics/tracking/view-item-list-tracker.ts ──────────────────────────────
   {
     level: 'warn',
     message: 'Package not found in store:',
@@ -1386,7 +1386,7 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
       'The id is attached. Check the `data-next-package-id` on that element against the campaign’s packages; a leftover card from another campaign is the usual cause.',
   },
 
-  // ── analytics/tracking/ListAttributionTracker.ts ───────────────────────────
+  // ── analytics/tracking/list-attribution-tracker.ts ───────────────────────────
   {
     level: 'error',
     message: 'Error loading list context from storage:',
@@ -1412,7 +1412,7 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
       'Read the attached error, then clear the SDK’s sessionStorage keys if you are checking list attribution, so you are not reading a leftover value.',
   },
 
-  // ── analytics/providers/ProviderAdapter.ts ─────────────────────────────────
+  // ── analytics/providers/provider-adapter.ts ─────────────────────────────────
   {
     level: 'warn',
     message: 'Event "{event}" not delivered: {message}',
@@ -1430,7 +1430,7 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
       'Read the attached error. The provider is identified by the log prefix; that adapter’s own errors are in [errors.md](./errors.md).',
   },
 
-  // ── analytics/providers/NextCampaignAdapter.ts ─────────────────────────────
+  // ── analytics/providers/next-campaign-adapter.ts ─────────────────────────────
   {
     level: 'warn',
     message: 'No API key available for NextCampaign initialization',
@@ -1456,7 +1456,7 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
       'Read the attached error — it comes from the NextCampaign script rather than from this SDK.',
   },
 
-  // ── analytics/providers/CustomAdapter.ts ───────────────────────────────────
+  // ── analytics/providers/custom-adapter.ts ───────────────────────────────────
   {
     level: 'error',
     message: 'Error sending batch to custom endpoint:',
@@ -1673,7 +1673,7 @@ export const CORE_UNREADABLE_LOGS: CoreUnreadableLog[] = [
 
   // ── Provider adapters — one-off "the snippet is missing" warnings ──────────
   {
-    file: 'analytics/providers/FacebookAdapter.ts',
+    file: 'analytics/providers/facebook-adapter.ts',
     level: 'warn',
     anchor: 'Meta Pixel (fbq) not found',
     message:
@@ -1684,7 +1684,7 @@ export const CORE_UNREADABLE_LOGS: CoreUnreadableLog[] = [
       'Add the Meta Pixel base code above the SDK loader. If it is already there, an ad blocker removed it — verify in a clean browser profile before changing the page.',
   },
   {
-    file: 'analytics/providers/NextCampaignAdapter.ts',
+    file: 'analytics/providers/next-campaign-adapter.ts',
     level: 'warn',
     anchor: 'NextCampaign SDK failed to load',
     message:
@@ -1695,7 +1695,7 @@ export const CORE_UNREADABLE_LOGS: CoreUnreadableLog[] = [
       'Confirm the campaign API key is set and that `campaigns.apps.29next.com` is reachable from the visitor’s network.',
   },
   {
-    file: 'analytics/providers/RudderStackAdapter.ts',
+    file: 'analytics/providers/rudderstack-adapter.ts',
     level: 'warn',
     anchor: 'rudderanalytics not found',
     message:
@@ -1706,11 +1706,11 @@ export const CORE_UNREADABLE_LOGS: CoreUnreadableLog[] = [
       'Add the RudderStack JavaScript SDK snippet above the SDK loader, then reload and check for `Processing event "…"` lines.',
   },
 
-  // ── analytics/DataLayerManager.ts — forwarded through a private helper ─────
+  // ── analytics/data-layer-manager.ts — forwarded through a private helper ─────
   // Every error here goes through `private error(message, …)`, so the `logger.error`
   // call site carries a variable and the wording lives at the caller.
   {
-    file: 'analytics/DataLayerManager.ts',
+    file: 'analytics/data-layer-manager.ts',
     level: 'error',
     anchor: 'Error pushing event to data layer',
     message: 'Error pushing event to data layer',
@@ -1722,7 +1722,7 @@ export const CORE_UNREADABLE_LOGS: CoreUnreadableLog[] = [
       'Read the attached error and data. Note that these `NextDataLayer` errors print only when `debug.logErrors` is on, so an apparently silent console does not mean nothing failed.',
   },
   {
-    file: 'analytics/DataLayerManager.ts',
+    file: 'analytics/data-layer-manager.ts',
     level: 'error',
     anchor: 'Failed to save user properties',
     message: 'Failed to save user properties',
@@ -1734,7 +1734,7 @@ export const CORE_UNREADABLE_LOGS: CoreUnreadableLog[] = [
       'Read the attached error — storage being blocked is the usual cause.',
   },
   {
-    file: 'analytics/DataLayerManager.ts',
+    file: 'analytics/data-layer-manager.ts',
     level: 'error',
     anchor: 'Failed to load user properties',
     message: 'Failed to load user properties',
@@ -1746,7 +1746,7 @@ export const CORE_UNREADABLE_LOGS: CoreUnreadableLog[] = [
       'Read the attached error. A corrupt stored value keeps failing until it is cleared.',
   },
   {
-    file: 'analytics/DataLayerManager.ts',
+    file: 'analytics/data-layer-manager.ts',
     level: 'error',
     anchor: 'Missing required field: ',
     message: 'Missing required field: {field}',
@@ -1758,7 +1758,7 @@ export const CORE_UNREADABLE_LOGS: CoreUnreadableLog[] = [
       'The event is attached — find where it is built and set the named field. Fields required of every event are the shared ones (event name, id, timestamp), so this normally means an event was hand-built rather than made by `EventBuilder`.',
   },
   {
-    file: 'analytics/DataLayerManager.ts',
+    file: 'analytics/data-layer-manager.ts',
     level: 'error',
     anchor: 'Missing required field for ',
     message: 'Missing required field for {event}: {field}',
@@ -1770,7 +1770,7 @@ export const CORE_UNREADABLE_LOGS: CoreUnreadableLog[] = [
       'Set the named field where that event is built. Destinations may accept the event and then report it as unattributed, which is harder to notice than a rejected event.',
   },
   {
-    file: 'analytics/DataLayerManager.ts',
+    file: 'analytics/data-layer-manager.ts',
     level: 'error',
     anchor: 'Invalid type for field ',
     message:
@@ -1783,7 +1783,7 @@ export const CORE_UNREADABLE_LOGS: CoreUnreadableLog[] = [
       'Convert the field at the point the event is built. Revenue fields are the ones to check first, since a string total can be dropped or read as zero.',
   },
   {
-    file: 'analytics/DataLayerManager.ts',
+    file: 'analytics/data-layer-manager.ts',
     level: 'error',
     anchor: 'Error in provider ',
     message: 'Error in provider {name}',

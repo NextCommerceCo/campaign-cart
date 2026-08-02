@@ -1,6 +1,6 @@
 import type { Logger } from '@/core/logger';
 import type { LoadingOverlay } from '@/core/ui/loading-overlay';
-import type { ApiClient } from '@/api/client';
+import type { IApiClient } from '@/api/client.types';
 import type { EventMap } from '@/types/global';
 
 /** One line of a bundle selection: which package, how many, and its own properties. */
@@ -83,7 +83,7 @@ export interface UpsellHandlerContext {
   currentQuantitySelectorId: string | undefined;
   actionButtons: HTMLElement[];
   loadingOverlay: LoadingOverlay;
-  apiClient: ApiClient;
+  apiClient: IApiClient;
   bundleItems?: UpsellBundleItem[] | null;
   bundleVouchers?: string[];
   defaultProperties?: Record<string, string>;

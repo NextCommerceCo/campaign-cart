@@ -1273,7 +1273,7 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 Pushes finished events onto `window.dataLayer` and fans them out to the providers, adding attribution and validating required fields on the way.
 
-Logged from `analytics/DataLayerManager.ts`.
+Logged from `analytics/data-layer-manager.ts`.
 
 Rows marked *wording lives at the caller* are passed to a private logging helper, so the `logger.*` call is elsewhere in the file. The location given is where the wording is, which is the line you want.
 
@@ -1283,7 +1283,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to persist debug mode`
 
-`analytics/DataLayerManager.ts › DataLayerManager.setDebugMode` · extra context attached
+`analytics/data-layer-manager.ts › DataLayerManager.setDebugMode` · extra context attached
 
 **Meaning:** Debug mode was switched on or off but the choice could not be saved to localStorage, so it will not survive a page navigation.
 
@@ -1291,7 +1291,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Error pushing event to data layer`
 
-`analytics/DataLayerManager.ts › DataLayerManager.push` · extra context attached · wording lives at the caller
+`analytics/data-layer-manager.ts › DataLayerManager.push` · extra context attached · wording lives at the caller
 
 **Meaning:** An event could not be pushed to `window.dataLayer`, so nothing downstream — GTM included — sees it. The event is lost, not retried.
 
@@ -1299,7 +1299,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to save user properties`
 
-`analytics/DataLayerManager.ts › DataLayerManager.setUserProperties` · extra context attached · wording lives at the caller
+`analytics/data-layer-manager.ts › DataLayerManager.setUserProperties` · extra context attached · wording lives at the caller
 
 **Meaning:** User properties could not be stored, so later events on this page load may go out without them.
 
@@ -1307,7 +1307,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to load user properties`
 
-`analytics/DataLayerManager.ts › DataLayerManager.getUserProperties` · extra context attached · wording lives at the caller
+`analytics/data-layer-manager.ts › DataLayerManager.getUserProperties` · extra context attached · wording lives at the caller
 
 **Meaning:** Stored user properties could not be read back, so events start without them even though the visitor identified themselves earlier.
 
@@ -1315,7 +1315,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Missing required field: {field}`
 
-`analytics/DataLayerManager.ts › DataLayerManager.validateEvent` · extra context attached · wording lives at the caller
+`analytics/data-layer-manager.ts › DataLayerManager.validateEvent` · extra context attached · wording lives at the caller
 
 **Meaning:** An event reached the data layer without a field every event must have. It is still pushed, so the destination receives an incomplete event rather than none.
 
@@ -1323,7 +1323,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Missing required field for {event}: {field}`
 
-`analytics/DataLayerManager.ts › DataLayerManager.validateEvent` · extra context attached · wording lives at the caller
+`analytics/data-layer-manager.ts › DataLayerManager.validateEvent` · extra context attached · wording lives at the caller
 
 **Meaning:** An event is missing a field its own type requires — a purchase with no transaction id, for example. It is still pushed.
 
@@ -1331,7 +1331,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Invalid type for field {field}: expected {expectedType}, got {typeof value}`
 
-`analytics/DataLayerManager.ts › DataLayerManager.validateEvent` · extra context attached · wording lives at the caller
+`analytics/data-layer-manager.ts › DataLayerManager.validateEvent` · extra context attached · wording lives at the caller
 
 **Meaning:** A field has the wrong type — most often a number sent as a string, or the reverse. The event is still pushed, and destinations that coerce silently will report a wrong value rather than an error.
 
@@ -1339,7 +1339,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Error in provider {name}`
 
-`analytics/DataLayerManager.ts › DataLayerManager.notifyProviders` · extra context attached · wording lives at the caller
+`analytics/data-layer-manager.ts › DataLayerManager.notifyProviders` · extra context attached · wording lives at the caller
 
 **Meaning:** One provider threw while handling an event. The others still receive it, so this is a gap in one destination rather than a lost event.
 
@@ -1375,7 +1375,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 Remembers who the visitor is across pages — email, name, ids — in a cookie plus sessionStorage, so events after a redirect still identify them.
 
-Logged from `analytics/userDataStorage.ts`.
+Logged from `analytics/user-data-storage.ts`.
 
 ### Error
 
@@ -1383,7 +1383,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to load user data:`
 
-`analytics/userDataStorage.ts › UserDataStorage.loadUserData` · extra context attached
+`analytics/user-data-storage.ts › UserDataStorage.loadUserData` · extra context attached
 
 **Meaning:** Loading visitor data threw, so events go out without identity fields and without a stable session id. Purchase attribution to a visitor’s earlier pages breaks.
 
@@ -1391,7 +1391,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to save user data:`
 
-`analytics/userDataStorage.ts › UserDataStorage.saveUserData` · extra context attached
+`analytics/user-data-storage.ts › UserDataStorage.saveUserData` · extra context attached
 
 **Meaning:** Newly captured visitor details — typically an email typed at checkout — could not be stored, so the next page will not know them.
 
@@ -1403,7 +1403,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Failed to parse user data cookie:`
 
-`analytics/userDataStorage.ts › UserDataStorage.loadUserData` · extra context attached
+`analytics/user-data-storage.ts › UserDataStorage.loadUserData` · extra context attached
 
 **Meaning:** The stored visitor cookie is not valid JSON, so it is ignored. Events on this page will not identify the visitor from the cookie; a fresh identity is built when they next enter their details.
 
@@ -1411,7 +1411,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Failed to parse sessionStorage user data:`
 
-`analytics/userDataStorage.ts › UserDataStorage.loadUserData` · extra context attached
+`analytics/user-data-storage.ts › UserDataStorage.loadUserData` · extra context attached
 
 **Meaning:** The sessionStorage copy of the visitor data could not be parsed, so the older cookie copy is used. Recent details, such as an email typed on the previous step, may be missing from events.
 
@@ -1423,8 +1423,8 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 
 | Message | Source | Extra context |
 |---|---|---|
-| `User email updated:` | `analytics/userDataStorage.ts › UserDataStorage.updateUserData` | yes |
-| `User data cleared` | `analytics/userDataStorage.ts › UserDataStorage.clearUserData` | — |
+| `User email updated:` | `analytics/user-data-storage.ts › UserDataStorage.updateUserData` | yes |
+| `User data cleared` | `analytics/user-data-storage.ts › UserDataStorage.clearUserData` | — |
 
 ### Debug
 
@@ -1432,16 +1432,16 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Loaded user data from cookie:` | `analytics/userDataStorage.ts › UserDataStorage.loadUserData` | yes |
-| `Merged user data from sessionStorage` | `analytics/userDataStorage.ts › UserDataStorage.loadUserData` | — |
-| `Saved user data to storage:` | `analytics/userDataStorage.ts › UserDataStorage.saveUserData` | yes |
-| `Updated user data from form fields:` | `analytics/userDataStorage.ts › UserDataStorage.updateFromFormFields` | yes |
+| `Loaded user data from cookie:` | `analytics/user-data-storage.ts › UserDataStorage.loadUserData` | yes |
+| `Merged user data from sessionStorage` | `analytics/user-data-storage.ts › UserDataStorage.loadUserData` | — |
+| `Saved user data to storage:` | `analytics/user-data-storage.ts › UserDataStorage.saveUserData` | yes |
+| `Updated user data from form fields:` | `analytics/user-data-storage.ts › UserDataStorage.updateFromFormFields` | yes |
 
 ## `[EventBuilder]`
 
 Builds each event’s payload: campaign context, currency, and the item fields taken from the package in the campaign data.
 
-Logged from `analytics/events/EventBuilder.ts`.
+Logged from `analytics/events/event-builder.ts`.
 
 ### Warn
 
@@ -1449,7 +1449,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Could not access store state for user properties:`
 
-`analytics/events/EventBuilder.ts › EventBuilder.getUserProperties` · extra context attached
+`analytics/events/event-builder.ts › EventBuilder.getUserProperties` · extra context attached
 
 **Meaning:** The event was built without user properties because reading the stores threw. It is still sent, minus the customer fields.
 
@@ -1457,7 +1457,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Could not build campaign context:`
 
-`analytics/events/EventBuilder.ts › EventBuilder.getCampaignContext` · extra context attached
+`analytics/events/event-builder.ts › EventBuilder.getCampaignContext` · extra context attached
 
 **Meaning:** The event carries no campaign identifiers — campaign id, name, currency, language — because building them threw. Destinations that group by campaign will file it under nothing.
 
@@ -1465,7 +1465,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Could not access campaign store for currency:`
 
-`analytics/events/EventBuilder.ts › EventBuilder.getCurrency` · extra context attached
+`analytics/events/event-builder.ts › EventBuilder.getCurrency` · extra context attached
 
 **Meaning:** Currency could not be read and the event fell back to `USD`. Revenue from a non-USD campaign is then reported in the wrong currency, which looks like a change in order value rather than an error.
 
@@ -1473,7 +1473,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Could not access campaign store for item formatting:`
 
-`analytics/events/EventBuilder.ts › EventBuilder.formatEcommerceItem` · extra context attached
+`analytics/events/event-builder.ts › EventBuilder.formatEcommerceItem` · extra context attached
 
 **Meaning:** An item in the event has no image URL because the campaign data could not be read. Everything else about the item is intact.
 
@@ -1481,7 +1481,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Could not find package data for packageId: {packageId}`
 
-`analytics/events/EventBuilder.ts › EventBuilder.formatEcommerceItem` · extra context attached
+`analytics/events/event-builder.ts › EventBuilder.formatEcommerceItem` · extra context attached
 
 **Meaning:** The event refers to a package that is not in the loaded campaign data, so the item falls back to ids instead of product name, SKU, and variant. The attachment lists the packages that *were* available, which is the fastest way to see what went wrong.
 
@@ -1489,7 +1489,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Could not access campaign store for product data:`
 
-`analytics/events/EventBuilder.ts › EventBuilder.formatEcommerceItem` · extra context attached
+`analytics/events/event-builder.ts › EventBuilder.formatEcommerceItem` · extra context attached
 
 **Meaning:** Product details for an item could not be read, so the item is reported with ids only — no name, no SKU.
 
@@ -1497,7 +1497,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Could not access campaign store for quantity:`
 
-`analytics/events/EventBuilder.ts › EventBuilder.formatEcommerceItem` · extra context attached
+`analytics/events/event-builder.ts › EventBuilder.formatEcommerceItem` · extra context attached
 
 **Meaning:** The units-per-package figure could not be read, so quantity is reported as the number of packages rather than the number of units. A "3-pack" then counts as 1.
 
@@ -1505,7 +1505,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Could not access campaign store for price:`
 
-`analytics/events/EventBuilder.ts › EventBuilder.formatEcommerceItem` · extra context attached
+`analytics/events/event-builder.ts › EventBuilder.formatEcommerceItem` · extra context attached
 
 **Meaning:** The catalogue price could not be read, so the item’s price field is left at its default. Revenue on the event may be understated.
 
@@ -1513,7 +1513,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Could not access campaign store for retail price:`
 
-`analytics/events/EventBuilder.ts › EventBuilder.formatEcommerceItem` · extra context attached
+`analytics/events/event-builder.ts › EventBuilder.formatEcommerceItem` · extra context attached
 
 **Meaning:** The pre-discount retail price could not be read, so the event has no "price before discount". Discount reporting is affected; revenue is not.
 
@@ -1521,7 +1521,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Could not access campaign store:`
 
-`analytics/events/EventBuilder.ts › EventBuilder.formatElevarProduct` · extra context attached
+`analytics/events/event-builder.ts › EventBuilder.formatElevarProduct` · extra context attached
 
 **Meaning:** Campaign data could not be read while building an item, so it is sent with whatever fields were already resolved.
 
@@ -1531,7 +1531,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 Builds the purchase-funnel events — view item, add to cart, begin checkout, purchase, upsell.
 
-Logged from `analytics/events/EcommerceEvents.ts`.
+Logged from `analytics/events/ecommerce-events.ts`.
 
 ### Warn
 
@@ -1539,7 +1539,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Could not access campaign store for upsell data:`
 
-`analytics/events/EcommerceEvents.ts › EcommerceEvents.createAcceptedUpsellEvent` · extra context attached
+`analytics/events/ecommerce-events.ts › EcommerceEvents.createAcceptedUpsellEvent` · extra context attached
 
 **Meaning:** An upsell event was built without campaign name or package details because the campaign store could not be read. The event is still sent.
 
@@ -1549,7 +1549,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 Builds the `dl_user_data` event that identifies the visitor and carries the current cart contents.
 
-Logged from `analytics/events/UserEvents.ts`.
+Logged from `analytics/events/user-events.ts`.
 
 ### Warn
 
@@ -1557,7 +1557,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Could not add cart contents to user data event:`
 
-`analytics/events/UserEvents.ts › UserEvents.createUserDataEvent` · extra context attached
+`analytics/events/user-events.ts › UserEvents.createUserDataEvent` · extra context attached
 
 **Meaning:** `dl_user_data` went out without the cart contents. Identity fields are intact; audiences built on "has these products in cart" will not see this visitor.
 
@@ -1567,7 +1567,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 Checks an event against its schema in debug mode, so a missing or mistyped field is caught while you are looking rather than in a report a week later.
 
-Logged from `analytics/validation/EventValidator.ts`.
+Logged from `analytics/validation/event-validator.ts`.
 
 ### Error
 
@@ -1575,7 +1575,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Validation failed for {event}:`
 
-`analytics/validation/EventValidator.ts › EventValidator.validateEvent` · extra context attached
+`analytics/validation/event-validator.ts › EventValidator.validateEvent` · extra context attached
 
 **Meaning:** Debug-mode validation rejected an event and the attached list names each problem. The event is still delivered — validation reports, it does not block.
 
@@ -1585,7 +1585,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 Turns the SDK’s own cart, upsell, and exit-intent events into analytics events, so a page gets tracking without writing any.
 
-Logged from `analytics/tracking/AutoEventListener.ts`.
+Logged from `analytics/tracking/auto-event-listener.ts`.
 
 ### Error
 
@@ -1593,7 +1593,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Error getting cart data:`
 
-`analytics/tracking/AutoEventListener.ts › AutoEventListener.getCartData` · extra context attached
+`analytics/tracking/auto-event-listener.ts › AutoEventListener.getCartData` · extra context attached
 
 **Meaning:** Reading the cart for an event threw, so the event goes out with no cart value and no items — or is skipped, depending on which event needed it.
 
@@ -1605,7 +1605,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Package not found for add to cart:`
 
-`analytics/tracking/AutoEventListener.ts › handleAddToCart` · extra context attached
+`analytics/tracking/auto-event-listener.ts › handleAddToCart` · extra context attached
 
 **Meaning:** Something was added to the cart but the matching package is not in the campaign data, so **no** `add_to_cart` event is sent. The cart itself is correct; the funnel loses a step.
 
@@ -1613,7 +1613,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Package not found for remove from cart:`
 
-`analytics/tracking/AutoEventListener.ts › handleRemoveFromCart` · extra context attached
+`analytics/tracking/auto-event-listener.ts › handleRemoveFromCart` · extra context attached
 
 **Meaning:** An item was removed from the cart but its package could not be found, so no `remove_from_cart` event is sent.
 
@@ -1621,7 +1621,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Package data not found for swap:`
 
-`analytics/tracking/AutoEventListener.ts › handlePackageSwapped` · extra context attached
+`analytics/tracking/auto-event-listener.ts › handlePackageSwapped` · extra context attached
 
 **Meaning:** A package swap happened but one or both packages are missing from the campaign data, so no swap event is sent. The cart still holds the right item.
 
@@ -1629,7 +1629,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Package not found for upsell view:`
 
-`analytics/tracking/AutoEventListener.ts › handleUpsellViewed` · extra context attached
+`analytics/tracking/auto-event-listener.ts › handleUpsellViewed` · extra context attached
 
 **Meaning:** An upsell was shown but its package is not in the campaign data, so no upsell view event is sent. Accept and skip events for the same offer are affected in the same way.
 
@@ -1641,12 +1641,12 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 
 | Message | Source | Extra context |
 |---|---|---|
-| `AutoEventListener initialized` | `analytics/tracking/AutoEventListener.ts › AutoEventListener.initialize` | — |
-| `Tracked upsell page view:` | `analytics/tracking/AutoEventListener.ts › handleUpsellViewed` | yes |
-| `Tracked upsell view:` | `analytics/tracking/AutoEventListener.ts › handleUpsellViewed` | yes |
-| `Tracked upsell accepted:` | `analytics/tracking/AutoEventListener.ts › handleUpsellAccepted` | yes |
-| `Tracked upsell skipped:` | `analytics/tracking/AutoEventListener.ts › handleUpsellSkipped` | yes |
-| `Tracked purchase:` | `analytics/tracking/AutoEventListener.ts › handleOrderCompleted` | yes |
+| `AutoEventListener initialized` | `analytics/tracking/auto-event-listener.ts › AutoEventListener.initialize` | — |
+| `Tracked upsell page view:` | `analytics/tracking/auto-event-listener.ts › handleUpsellViewed` | yes |
+| `Tracked upsell view:` | `analytics/tracking/auto-event-listener.ts › handleUpsellViewed` | yes |
+| `Tracked upsell accepted:` | `analytics/tracking/auto-event-listener.ts › handleUpsellAccepted` | yes |
+| `Tracked upsell skipped:` | `analytics/tracking/auto-event-listener.ts › handleUpsellSkipped` | yes |
+| `Tracked purchase:` | `analytics/tracking/auto-event-listener.ts › handleOrderCompleted` | yes |
 
 ### Debug
 
@@ -1654,26 +1654,26 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Event {eventName} debounced` | `analytics/tracking/AutoEventListener.ts › AutoEventListener.shouldProcessEvent` | — |
-| `Tracked add to cart:` | `analytics/tracking/AutoEventListener.ts › handleAddToCart` | yes |
-| `Tracked remove from cart:` | `analytics/tracking/AutoEventListener.ts › handleRemoveFromCart` | yes |
-| `Tracked package swap:` | `analytics/tracking/AutoEventListener.ts › handlePackageSwapped` | yes |
-| `Upsell event already marked for queueing due to redirect` | `analytics/tracking/AutoEventListener.ts › handleUpsellAccepted` | — |
-| `Marked purchase event for queueing with _willRedirect = true` | `analytics/tracking/AutoEventListener.ts › handleOrderCompleted` | — |
-| `Tracked exit intent shown:` | `analytics/tracking/AutoEventListener.ts › handleExitIntentShown` | yes |
-| `Tracked exit intent accepted:` | `analytics/tracking/AutoEventListener.ts › handleExitIntentClicked` | yes |
-| `Tracked exit intent dismissed:` | `analytics/tracking/AutoEventListener.ts › handleExitIntentDismissed` | yes |
-| `Tracked exit intent closed:` | `analytics/tracking/AutoEventListener.ts › handleExitIntentClosed` | yes |
-| `Tracked exit intent action:` | `analytics/tracking/AutoEventListener.ts › handleExitIntentAction` | yes |
-| `AutoEventListener reset` | `analytics/tracking/AutoEventListener.ts › AutoEventListener.reset` | — |
-| `AutoEventListener destroyed` | `analytics/tracking/AutoEventListener.ts › AutoEventListener.destroy` | — |
-| `Updated debounce config:` | `analytics/tracking/AutoEventListener.ts › AutoEventListener.setDebounceConfig` | yes |
+| `Event {eventName} debounced` | `analytics/tracking/auto-event-listener.ts › AutoEventListener.shouldProcessEvent` | — |
+| `Tracked add to cart:` | `analytics/tracking/auto-event-listener.ts › handleAddToCart` | yes |
+| `Tracked remove from cart:` | `analytics/tracking/auto-event-listener.ts › handleRemoveFromCart` | yes |
+| `Tracked package swap:` | `analytics/tracking/auto-event-listener.ts › handlePackageSwapped` | yes |
+| `Upsell event already marked for queueing due to redirect` | `analytics/tracking/auto-event-listener.ts › handleUpsellAccepted` | — |
+| `Marked purchase event for queueing with _willRedirect = true` | `analytics/tracking/auto-event-listener.ts › handleOrderCompleted` | — |
+| `Tracked exit intent shown:` | `analytics/tracking/auto-event-listener.ts › handleExitIntentShown` | yes |
+| `Tracked exit intent accepted:` | `analytics/tracking/auto-event-listener.ts › handleExitIntentClicked` | yes |
+| `Tracked exit intent dismissed:` | `analytics/tracking/auto-event-listener.ts › handleExitIntentDismissed` | yes |
+| `Tracked exit intent closed:` | `analytics/tracking/auto-event-listener.ts › handleExitIntentClosed` | yes |
+| `Tracked exit intent action:` | `analytics/tracking/auto-event-listener.ts › handleExitIntentAction` | yes |
+| `AutoEventListener reset` | `analytics/tracking/auto-event-listener.ts › AutoEventListener.reset` | — |
+| `AutoEventListener destroyed` | `analytics/tracking/auto-event-listener.ts › AutoEventListener.destroy` | — |
+| `Updated debounce config:` | `analytics/tracking/auto-event-listener.ts › AutoEventListener.setDebounceConfig` | yes |
 
 ## `[MetaTagController]`
 
 Fires `view_item` / `view_item_list` and scroll-depth events from `<meta>` tags, including reading the package id out of a URL parameter and waiting for a time, an element, or a scroll threshold.
 
-Logged from `analytics/tracking/MetaTagController.ts`.
+Logged from `analytics/tracking/meta-tag-controller.ts`.
 
 ### Warn
 
@@ -1681,7 +1681,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `URL param "{paramName}" not found for view_item event`
 
-`analytics/tracking/MetaTagController.ts › MetaTagController.parseViewItemConfig`
+`analytics/tracking/meta-tag-controller.ts › MetaTagController.parseViewItemConfig`
 
 **Meaning:** A meta tag asked for the package id to come from a URL parameter (`content="url:pid"`) and that parameter is not in the URL, so no `view_item` fires.
 
@@ -1689,7 +1689,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `URL param "{paramName}" not found for view_item_list event`
 
-`analytics/tracking/MetaTagController.ts › MetaTagController.parseViewItemListConfig`
+`analytics/tracking/meta-tag-controller.ts › MetaTagController.parseViewItemListConfig`
 
 **Meaning:** Same as above for `view_item_list`: the URL parameter naming the package list is missing, so no list event fires.
 
@@ -1697,7 +1697,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Package {packageId} not found for view_item event`
 
-`analytics/tracking/MetaTagController.ts › MetaTagController.fireViewItemEvent`
+`analytics/tracking/meta-tag-controller.ts › MetaTagController.fireViewItemEvent`
 
 **Meaning:** The meta tag names a package the campaign does not contain, so no `view_item` fires for it and the page reports no product view.
 
@@ -1705,7 +1705,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Invalid time trigger value: {triggerValue}, firing immediately`
 
-`analytics/tracking/MetaTagController.ts › MetaTagController.fireViewItemEvent`
+`analytics/tracking/meta-tag-controller.ts › MetaTagController.fireViewItemEvent`
 
 **Meaning:** A time-based trigger was configured with something that is not a positive number of milliseconds, so the event fired at once instead of after the delay. The event is not lost, only mistimed.
 
@@ -1713,7 +1713,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Element {selector} not found for view_item trigger, firing immediately`
 
-`analytics/tracking/MetaTagController.ts › MetaTagController.fireViewItemEvent`
+`analytics/tracking/meta-tag-controller.ts › MetaTagController.fireViewItemEvent`
 
 **Meaning:** The event was meant to wait until an element scrolled into view, but no element matches that selector, so it fired immediately.
 
@@ -1721,7 +1721,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Unknown trigger type: {triggerType}, firing immediately`
 
-`analytics/tracking/MetaTagController.ts › MetaTagController.fireViewItemEvent`
+`analytics/tracking/meta-tag-controller.ts › MetaTagController.fireViewItemEvent`
 
 **Meaning:** The trigger in the meta tag is not one the SDK recognises, so it fired immediately. A typo in the trigger name is the usual reason.
 
@@ -1729,7 +1729,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Package {packageId} not found for view_item_list event`
 
-`analytics/tracking/MetaTagController.ts › MetaTagController.fireViewItemListEvent`
+`analytics/tracking/meta-tag-controller.ts › MetaTagController.fireViewItemListEvent`
 
 **Meaning:** One package in a `view_item_list` meta tag is not in the campaign data and is left out of the list. The event still fires with the remaining packages, so the list is quietly shorter than intended.
 
@@ -1737,7 +1737,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `No valid packages found for view_item_list event`
 
-`analytics/tracking/MetaTagController.ts › MetaTagController.fireViewItemListEvent`
+`analytics/tracking/meta-tag-controller.ts › MetaTagController.fireViewItemListEvent`
 
 **Meaning:** Every package in the meta tag was missing from the campaign data, so no list event fires at all.
 
@@ -1749,16 +1749,16 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Initializing MetaTagController...` | `analytics/tracking/MetaTagController.ts › MetaTagController.initialize` | — |
-| `Set list context from meta tags:` | `analytics/tracking/MetaTagController.ts › MetaTagController.initialize` | yes |
-| `MetaTagController initialized` | `analytics/tracking/MetaTagController.ts › MetaTagController.initialize` | yes |
-| `Parsed view_item from URL param: {paramName}={packageId}` | `analytics/tracking/MetaTagController.ts › MetaTagController.parseViewItemConfig` | — |
-| `Parsed view_item from meta tag: packageId={content}, trigger={trigger \|\| 'immediate'}` | `analytics/tracking/MetaTagController.ts › MetaTagController.parseViewItemConfig` | — |
-| `Parsed view_item_list from URL param: {paramName}={join(',')}` | `analytics/tracking/MetaTagController.ts › MetaTagController.parseViewItemListConfig` | — |
-| `Parsed view_item_list from meta tag: {join(',')}` | `analytics/tracking/MetaTagController.ts › MetaTagController.parseViewItemListConfig` | — |
-| `Fired dl_view_item from meta tag:` | `analytics/tracking/MetaTagController.ts › fireEvent` | yes |
-| `Fired dl_view_item_list from meta tag:` | `analytics/tracking/MetaTagController.ts › MetaTagController.fireViewItemListEvent` | yes |
-| `Setting up scroll tracking for thresholds:` | `analytics/tracking/MetaTagController.ts › MetaTagController.setupScrollTracking` | yes |
+| `Initializing MetaTagController...` | `analytics/tracking/meta-tag-controller.ts › MetaTagController.initialize` | — |
+| `Set list context from meta tags:` | `analytics/tracking/meta-tag-controller.ts › MetaTagController.initialize` | yes |
+| `MetaTagController initialized` | `analytics/tracking/meta-tag-controller.ts › MetaTagController.initialize` | yes |
+| `Parsed view_item from URL param: {paramName}={packageId}` | `analytics/tracking/meta-tag-controller.ts › MetaTagController.parseViewItemConfig` | — |
+| `Parsed view_item from meta tag: packageId={content}, trigger={trigger \|\| 'immediate'}` | `analytics/tracking/meta-tag-controller.ts › MetaTagController.parseViewItemConfig` | — |
+| `Parsed view_item_list from URL param: {paramName}={join(',')}` | `analytics/tracking/meta-tag-controller.ts › MetaTagController.parseViewItemListConfig` | — |
+| `Parsed view_item_list from meta tag: {join(',')}` | `analytics/tracking/meta-tag-controller.ts › MetaTagController.parseViewItemListConfig` | — |
+| `Fired dl_view_item from meta tag:` | `analytics/tracking/meta-tag-controller.ts › fireEvent` | yes |
+| `Fired dl_view_item_list from meta tag:` | `analytics/tracking/meta-tag-controller.ts › MetaTagController.fireViewItemListEvent` | yes |
+| `Setting up scroll tracking for thresholds:` | `analytics/tracking/meta-tag-controller.ts › MetaTagController.setupScrollTracking` | yes |
 
 ### Debug
 
@@ -1766,25 +1766,25 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `MetaTagController already initialized` | `analytics/tracking/MetaTagController.ts › MetaTagController.initialize` | — |
-| `Parsed meta tag config:` | `analytics/tracking/MetaTagController.ts › MetaTagController.initialize` | yes |
-| `Event {eventName} blocked by enable-only whitelist` | `analytics/tracking/MetaTagController.ts › MetaTagController.shouldBlockEvent` | — |
-| `Event {eventName} blocked by disable list` | `analytics/tracking/MetaTagController.ts › MetaTagController.shouldBlockEvent` | — |
-| `Campaign data not yet loaded, deferring view_item event` | `analytics/tracking/MetaTagController.ts › MetaTagController.fireViewItemEvent` | — |
-| `view_item already fired from meta tag, skipping` | `analytics/tracking/MetaTagController.ts › fireEvent` | — |
-| `Scheduling view_item to fire after {duration}ms` | `analytics/tracking/MetaTagController.ts › MetaTagController.fireViewItemEvent` | — |
-| `Setting up IntersectionObserver for view_item trigger: {selector}` | `analytics/tracking/MetaTagController.ts › MetaTagController.fireViewItemEvent` | — |
-| `Campaign data not yet loaded, deferring view_item_list event` | `analytics/tracking/MetaTagController.ts › MetaTagController.fireViewItemListEvent` | — |
-| `view_item_list already fired from meta tag, skipping` | `analytics/tracking/MetaTagController.ts › MetaTagController.fireViewItemListEvent` | — |
-| `Fired dl_scroll_depth at {threshold}%` | `analytics/tracking/MetaTagController.ts › scrollHandler` | — |
-| `All scroll thresholds reached, removing listener` | `analytics/tracking/MetaTagController.ts › scrollHandler` | — |
-| `MetaTagController reset` | `analytics/tracking/MetaTagController.ts › MetaTagController.reset` | — |
+| `MetaTagController already initialized` | `analytics/tracking/meta-tag-controller.ts › MetaTagController.initialize` | — |
+| `Parsed meta tag config:` | `analytics/tracking/meta-tag-controller.ts › MetaTagController.initialize` | yes |
+| `Event {eventName} blocked by enable-only whitelist` | `analytics/tracking/meta-tag-controller.ts › MetaTagController.shouldBlockEvent` | — |
+| `Event {eventName} blocked by disable list` | `analytics/tracking/meta-tag-controller.ts › MetaTagController.shouldBlockEvent` | — |
+| `Campaign data not yet loaded, deferring view_item event` | `analytics/tracking/meta-tag-controller.ts › MetaTagController.fireViewItemEvent` | — |
+| `view_item already fired from meta tag, skipping` | `analytics/tracking/meta-tag-controller.ts › fireEvent` | — |
+| `Scheduling view_item to fire after {duration}ms` | `analytics/tracking/meta-tag-controller.ts › MetaTagController.fireViewItemEvent` | — |
+| `Setting up IntersectionObserver for view_item trigger: {selector}` | `analytics/tracking/meta-tag-controller.ts › MetaTagController.fireViewItemEvent` | — |
+| `Campaign data not yet loaded, deferring view_item_list event` | `analytics/tracking/meta-tag-controller.ts › MetaTagController.fireViewItemListEvent` | — |
+| `view_item_list already fired from meta tag, skipping` | `analytics/tracking/meta-tag-controller.ts › MetaTagController.fireViewItemListEvent` | — |
+| `Fired dl_scroll_depth at {threshold}%` | `analytics/tracking/meta-tag-controller.ts › scrollHandler` | — |
+| `All scroll thresholds reached, removing listener` | `analytics/tracking/meta-tag-controller.ts › scrollHandler` | — |
+| `MetaTagController reset` | `analytics/tracking/meta-tag-controller.ts › MetaTagController.reset` | — |
 
 ## `[PendingEventsHandler]`
 
 Holds events that were raised as the page was navigating away, and replays them on the next page so a redirect does not lose a purchase.
 
-Logged from `analytics/tracking/PendingEventsHandler.ts`.
+Logged from `analytics/tracking/pending-events-handler.ts`.
 
 ### Error
 
@@ -1792,7 +1792,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to queue event:`
 
-`analytics/tracking/PendingEventsHandler.ts › PendingEventsHandler.queueEvent` · extra context attached
+`analytics/tracking/pending-events-handler.ts › PendingEventsHandler.queueEvent` · extra context attached
 
 **Meaning:** An event raised while the page was navigating away could not be stored, so it will not be replayed on the next page — it is lost. A purchase event on a redirect is the case that matters.
 
@@ -1800,7 +1800,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to get pending events:`
 
-`analytics/tracking/PendingEventsHandler.ts › PendingEventsHandler.getPendingEvents` · extra context attached
+`analytics/tracking/pending-events-handler.ts › PendingEventsHandler.getPendingEvents` · extra context attached
 
 **Meaning:** The queue of events held for after a redirect could not be read, so nothing is replayed on this page. Anything queued before is lost.
 
@@ -1808,7 +1808,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to process pending event:`
 
-`analytics/tracking/PendingEventsHandler.ts › PendingEventsHandler.processPendingEvents` · extra context attached
+`analytics/tracking/pending-events-handler.ts › PendingEventsHandler.processPendingEvents` · extra context attached
 
 **Meaning:** Replaying one queued event threw. That event is dropped; the rest of the queue is still processed.
 
@@ -1816,7 +1816,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to clear pending events:`
 
-`analytics/tracking/PendingEventsHandler.ts › PendingEventsHandler.clearPendingEvents` · extra context attached
+`analytics/tracking/pending-events-handler.ts › PendingEventsHandler.clearPendingEvents` · extra context attached
 
 **Meaning:** The queue could not be emptied, so events already replayed may be replayed again — duplicate events in the destination.
 
@@ -1828,7 +1828,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Skipping queued dl_user_data - current page should fire its own`
 
-`analytics/tracking/PendingEventsHandler.ts › PendingEventsHandler.processPendingEvents`
+`analytics/tracking/pending-events-handler.ts › PendingEventsHandler.processPendingEvents`
 
 **Meaning:** A queued `dl_user_data` was dropped on purpose: every page fires its own, and replaying an old one would report stale details. Expected behaviour, not a problem.
 
@@ -1836,7 +1836,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Skipping stale event:`
 
-`analytics/tracking/PendingEventsHandler.ts › PendingEventsHandler.processPendingEvents` · extra context attached
+`analytics/tracking/pending-events-handler.ts › PendingEventsHandler.processPendingEvents` · extra context attached
 
 **Meaning:** A queued event was more than five minutes old and was discarded rather than replayed. It normally means the visitor left the tab and came back much later.
 
@@ -1848,8 +1848,8 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Event queued for after redirect: {event} ({length} total queued)` | `analytics/tracking/PendingEventsHandler.ts › PendingEventsHandler.queueEvent` | — |
-| `Processing {length} pending analytics events` | `analytics/tracking/PendingEventsHandler.ts › PendingEventsHandler.processPendingEvents` | — |
+| `Event queued for after redirect: {event} ({length} total queued)` | `analytics/tracking/pending-events-handler.ts › PendingEventsHandler.queueEvent` | — |
+| `Processing {length} pending analytics events` | `analytics/tracking/pending-events-handler.ts › PendingEventsHandler.processPendingEvents` | — |
 
 ### Debug
 
@@ -1857,18 +1857,18 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `No pending analytics events to process` | `analytics/tracking/PendingEventsHandler.ts › PendingEventsHandler.processPendingEvents` | — |
-| `Processed pending event:` | `analytics/tracking/PendingEventsHandler.ts › PendingEventsHandler.processPendingEvents` | yes |
-| `Removed processed events:` | `analytics/tracking/PendingEventsHandler.ts › PendingEventsHandler.processPendingEvents` | yes |
-| `Cleared all pending events` | `analytics/tracking/PendingEventsHandler.ts › PendingEventsHandler.clearPendingEvents` | — |
-| `PendingEventsHandler reset` | `analytics/tracking/PendingEventsHandler.ts › PendingEventsHandler.reset` | — |
-| `PendingEventsHandler initialized` | `analytics/tracking/PendingEventsHandler.ts › PendingEventsHandler.initialize` | — |
+| `No pending analytics events to process` | `analytics/tracking/pending-events-handler.ts › PendingEventsHandler.processPendingEvents` | — |
+| `Processed pending event:` | `analytics/tracking/pending-events-handler.ts › PendingEventsHandler.processPendingEvents` | yes |
+| `Removed processed events:` | `analytics/tracking/pending-events-handler.ts › PendingEventsHandler.processPendingEvents` | yes |
+| `Cleared all pending events` | `analytics/tracking/pending-events-handler.ts › PendingEventsHandler.clearPendingEvents` | — |
+| `PendingEventsHandler reset` | `analytics/tracking/pending-events-handler.ts › PendingEventsHandler.reset` | — |
+| `PendingEventsHandler initialized` | `analytics/tracking/pending-events-handler.ts › PendingEventsHandler.initialize` | — |
 
 ## `[UserDataTracker]`
 
 Fires `dl_user_data` first on every page and again when the visitor is identified or the route changes.
 
-Logged from `analytics/tracking/UserDataTracker.ts`.
+Logged from `analytics/tracking/user-data-tracker.ts`.
 
 ### Info
 
@@ -1876,7 +1876,7 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 
 | Message | Source | Extra context |
 |---|---|---|
-| `UserDataTracker initialized - dl_user_data fired first` | `analytics/tracking/UserDataTracker.ts › UserDataTracker.initialize` | — |
+| `UserDataTracker initialized - dl_user_data fired first` | `analytics/tracking/user-data-tracker.ts › UserDataTracker.initialize` | — |
 
 ### Debug
 
@@ -1884,29 +1884,29 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `User data tracking listeners set up after initial tracking` | `analytics/tracking/UserDataTracker.ts › UserDataTracker.initialize` | — |
-| `trackUserData called after initial:` | `analytics/tracking/UserDataTracker.ts › UserDataTracker.trackUserData` | yes |
-| `User data tracking debounced` | `analytics/tracking/UserDataTracker.ts › UserDataTracker.trackUserData` | — |
-| `No user data to track` | `analytics/tracking/UserDataTracker.ts › UserDataTracker.trackUserData` | — |
-| `Tracked user data:` | `analytics/tracking/UserDataTracker.ts › UserDataTracker.trackUserData` | yes |
-| `Cart store not available or error accessing:` | `analytics/tracking/UserDataTracker.ts › UserDataTracker.collectUserData` | yes |
-| `Error getting checkout data:` | `analytics/tracking/UserDataTracker.ts › UserDataTracker.collectUserData` | yes |
-| `Route changed, tracking user data` | `analytics/tracking/UserDataTracker.ts › UserDataTracker.setupListeners` | — |
-| `SDK route invalidated, tracking user data` | `analytics/tracking/UserDataTracker.ts › UserDataTracker.setupListeners` | — |
-| `User logged in, tracking user data` | `analytics/tracking/UserDataTracker.ts › UserDataTracker.setupListeners` | — |
-| `User logged out, tracking user data` | `analytics/tracking/UserDataTracker.ts › UserDataTracker.setupListeners` | — |
-| `Browser navigation, tracking user data` | `analytics/tracking/UserDataTracker.ts › UserDataTracker.setupListeners` | — |
-| `pushState changed path, tracking user data` | `analytics/tracking/UserDataTracker.ts › UserDataTracker.setupListeners` | — |
-| `replaceState called, not tracking user data (query param update)` | `analytics/tracking/UserDataTracker.ts › UserDataTracker.setupListeners` | — |
-| `User data tracking listeners set up` | `analytics/tracking/UserDataTracker.ts › UserDataTracker.setupListeners` | — |
-| `UserDataTracker reset` | `analytics/tracking/UserDataTracker.ts › UserDataTracker.reset` | — |
-| `UserDataTracker destroyed` | `analytics/tracking/UserDataTracker.ts › UserDataTracker.destroy` | — |
+| `User data tracking listeners set up after initial tracking` | `analytics/tracking/user-data-tracker.ts › UserDataTracker.initialize` | — |
+| `trackUserData called after initial:` | `analytics/tracking/user-data-tracker.ts › UserDataTracker.trackUserData` | yes |
+| `User data tracking debounced` | `analytics/tracking/user-data-tracker.ts › UserDataTracker.trackUserData` | — |
+| `No user data to track` | `analytics/tracking/user-data-tracker.ts › UserDataTracker.trackUserData` | — |
+| `Tracked user data:` | `analytics/tracking/user-data-tracker.ts › UserDataTracker.trackUserData` | yes |
+| `Cart store not available or error accessing:` | `analytics/tracking/user-data-tracker.ts › UserDataTracker.collectUserData` | yes |
+| `Error getting checkout data:` | `analytics/tracking/user-data-tracker.ts › UserDataTracker.collectUserData` | yes |
+| `Route changed, tracking user data` | `analytics/tracking/user-data-tracker.ts › UserDataTracker.setupListeners` | — |
+| `SDK route invalidated, tracking user data` | `analytics/tracking/user-data-tracker.ts › UserDataTracker.setupListeners` | — |
+| `User logged in, tracking user data` | `analytics/tracking/user-data-tracker.ts › UserDataTracker.setupListeners` | — |
+| `User logged out, tracking user data` | `analytics/tracking/user-data-tracker.ts › UserDataTracker.setupListeners` | — |
+| `Browser navigation, tracking user data` | `analytics/tracking/user-data-tracker.ts › UserDataTracker.setupListeners` | — |
+| `pushState changed path, tracking user data` | `analytics/tracking/user-data-tracker.ts › UserDataTracker.setupListeners` | — |
+| `replaceState called, not tracking user data (query param update)` | `analytics/tracking/user-data-tracker.ts › UserDataTracker.setupListeners` | — |
+| `User data tracking listeners set up` | `analytics/tracking/user-data-tracker.ts › UserDataTracker.setupListeners` | — |
+| `UserDataTracker reset` | `analytics/tracking/user-data-tracker.ts › UserDataTracker.reset` | — |
+| `UserDataTracker destroyed` | `analytics/tracking/user-data-tracker.ts › UserDataTracker.destroy` | — |
 
 ## `[ViewItemListTracker]`
 
 Detects the products present on a page and fires `view_item` / `view_item_list` for them without any meta tags.
 
-Logged from `analytics/tracking/ViewItemListTracker.ts`.
+Logged from `analytics/tracking/view-item-list-tracker.ts`.
 
 ### Warn
 
@@ -1914,7 +1914,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Package not found in store:`
 
-`analytics/tracking/ViewItemListTracker.ts › ViewItemListTracker.trackViewItemForSelected` · extra context attached
+`analytics/tracking/view-item-list-tracker.ts › ViewItemListTracker.trackViewItemForSelected` · extra context attached
 
 **Meaning:** A product element on the page names a package that is not in the campaign data, so it is left out of automatic `view_item` / `view_item_list` tracking.
 
@@ -1926,7 +1926,7 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 
 | Message | Source | Extra context |
 |---|---|---|
-| `ViewItemListTracker initialized` | `analytics/tracking/ViewItemListTracker.ts › ViewItemListTracker.initialize` | — |
+| `ViewItemListTracker initialized` | `analytics/tracking/view-item-list-tracker.ts › ViewItemListTracker.initialize` | — |
 
 ### Debug
 
@@ -1934,30 +1934,30 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Scan debounced (too soon after last scan)` | `analytics/tracking/ViewItemListTracker.ts › ViewItemListTracker.scan` | — |
-| `Both view_item and view_item_list handled by meta tags, skipping auto-detection` | `analytics/tracking/ViewItemListTracker.ts › ViewItemListTracker.scan` | — |
-| `No products found on page` | `analytics/tracking/ViewItemListTracker.ts › ViewItemListTracker.scan` | — |
-| `Found {length} products on page` | `analytics/tracking/ViewItemListTracker.ts › ViewItemListTracker.scan` | — |
-| `view_item handled by meta tag, skipping auto-detection` | `analytics/tracking/ViewItemListTracker.ts › ViewItemListTracker.scan` | — |
-| `view_item_list handled by meta tag, skipping auto-detection` | `analytics/tracking/ViewItemListTracker.ts › ViewItemListTracker.scan` | — |
-| `Manual rescan triggered` | `analytics/tracking/ViewItemListTracker.ts › ViewItemListTracker.rescan` | — |
-| `Found {length} products in selectors` | `analytics/tracking/ViewItemListTracker.ts › ViewItemListTracker.findProductElements` | — |
-| `Campaign data not yet loaded, deferring tracking` | `analytics/tracking/ViewItemListTracker.ts › ViewItemListTracker.trackViewItemForSelected` | — |
-| `Tracked view_item for selected package:` | `analytics/tracking/ViewItemListTracker.ts › ViewItemListTracker.trackViewItemForSelected` | yes |
-| `Product already tracked:` | `analytics/tracking/ViewItemListTracker.ts › ViewItemListTracker.trackViewItem` | yes |
-| `Tracked view_item:` | `analytics/tracking/ViewItemListTracker.ts › ViewItemListTracker.trackViewItem` | yes |
-| `No new products to track` | `analytics/tracking/ViewItemListTracker.ts › ViewItemListTracker.trackViewItemList` | — |
-| `Tracked view_item_list with {length} items` | `analytics/tracking/ViewItemListTracker.ts › ViewItemListTracker.trackViewItemList` | — |
-| `Detected DOM changes with products` | `analytics/tracking/ViewItemListTracker.ts › ViewItemListTracker.setupObserver` | — |
-| `Mutation observer set up` | `analytics/tracking/ViewItemListTracker.ts › ViewItemListTracker.setupObserver` | — |
-| `ViewItemListTracker reset` | `analytics/tracking/ViewItemListTracker.ts › ViewItemListTracker.reset` | — |
-| `ViewItemListTracker destroyed` | `analytics/tracking/ViewItemListTracker.ts › ViewItemListTracker.destroy` | — |
+| `Scan debounced (too soon after last scan)` | `analytics/tracking/view-item-list-tracker.ts › ViewItemListTracker.scan` | — |
+| `Both view_item and view_item_list handled by meta tags, skipping auto-detection` | `analytics/tracking/view-item-list-tracker.ts › ViewItemListTracker.scan` | — |
+| `No products found on page` | `analytics/tracking/view-item-list-tracker.ts › ViewItemListTracker.scan` | — |
+| `Found {length} products on page` | `analytics/tracking/view-item-list-tracker.ts › ViewItemListTracker.scan` | — |
+| `view_item handled by meta tag, skipping auto-detection` | `analytics/tracking/view-item-list-tracker.ts › ViewItemListTracker.scan` | — |
+| `view_item_list handled by meta tag, skipping auto-detection` | `analytics/tracking/view-item-list-tracker.ts › ViewItemListTracker.scan` | — |
+| `Manual rescan triggered` | `analytics/tracking/view-item-list-tracker.ts › ViewItemListTracker.rescan` | — |
+| `Found {length} products in selectors` | `analytics/tracking/view-item-list-tracker.ts › ViewItemListTracker.findProductElements` | — |
+| `Campaign data not yet loaded, deferring tracking` | `analytics/tracking/view-item-list-tracker.ts › ViewItemListTracker.trackViewItemForSelected` | — |
+| `Tracked view_item for selected package:` | `analytics/tracking/view-item-list-tracker.ts › ViewItemListTracker.trackViewItemForSelected` | yes |
+| `Product already tracked:` | `analytics/tracking/view-item-list-tracker.ts › ViewItemListTracker.trackViewItem` | yes |
+| `Tracked view_item:` | `analytics/tracking/view-item-list-tracker.ts › ViewItemListTracker.trackViewItem` | yes |
+| `No new products to track` | `analytics/tracking/view-item-list-tracker.ts › ViewItemListTracker.trackViewItemList` | — |
+| `Tracked view_item_list with {length} items` | `analytics/tracking/view-item-list-tracker.ts › ViewItemListTracker.trackViewItemList` | — |
+| `Detected DOM changes with products` | `analytics/tracking/view-item-list-tracker.ts › ViewItemListTracker.setupObserver` | — |
+| `Mutation observer set up` | `analytics/tracking/view-item-list-tracker.ts › ViewItemListTracker.setupObserver` | — |
+| `ViewItemListTracker reset` | `analytics/tracking/view-item-list-tracker.ts › ViewItemListTracker.reset` | — |
+| `ViewItemListTracker destroyed` | `analytics/tracking/view-item-list-tracker.ts › ViewItemListTracker.destroy` | — |
 
 ## `[ListAttributionTracker]`
 
 Remembers which list a product was clicked from so the next page’s events can say where the visitor came from within the site.
 
-Logged from `analytics/tracking/ListAttributionTracker.ts`.
+Logged from `analytics/tracking/list-attribution-tracker.ts`.
 
 ### Error
 
@@ -1965,7 +1965,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Error loading list context from storage:`
 
-`analytics/tracking/ListAttributionTracker.ts › ListAttributionTracker.loadFromStorage` · extra context attached
+`analytics/tracking/list-attribution-tracker.ts › ListAttributionTracker.loadFromStorage` · extra context attached
 
 **Meaning:** The record of which list a product was clicked from could not be read, so events on this page cannot say where within the site the visitor came from. Nothing else is affected.
 
@@ -1973,7 +1973,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Error saving list context to storage:`
 
-`analytics/tracking/ListAttributionTracker.ts › ListAttributionTracker.saveToStorage` · extra context attached
+`analytics/tracking/list-attribution-tracker.ts › ListAttributionTracker.saveToStorage` · extra context attached
 
 **Meaning:** The list a product was clicked from could not be stored, so the next page will not know it and its events lose the list name and position.
 
@@ -1981,7 +1981,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Error removing list context from storage:`
 
-`analytics/tracking/ListAttributionTracker.ts › ListAttributionTracker.removeFromStorage` · extra context attached
+`analytics/tracking/list-attribution-tracker.ts › ListAttributionTracker.removeFromStorage` · extra context attached
 
 **Meaning:** An expired list record could not be deleted, so a stale list name may be attached to events it does not belong to — wrong attribution rather than missing attribution.
 
@@ -1993,19 +1993,19 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `ListAttributionTracker initialized` | `analytics/tracking/ListAttributionTracker.ts › ListAttributionTracker.initialize` | — |
-| `Set current list:` | `analytics/tracking/ListAttributionTracker.ts › ListAttributionTracker.setCurrentList` | yes |
-| `List context expired` | `analytics/tracking/ListAttributionTracker.ts › ListAttributionTracker.getCurrentList` | — |
-| `Cleared current list` | `analytics/tracking/ListAttributionTracker.ts › ListAttributionTracker.clearCurrentList` | — |
-| `ListAttributionTracker reset` | `analytics/tracking/ListAttributionTracker.ts › ListAttributionTracker.reset` | — |
-| `Detected list from URL:` | `analytics/tracking/ListAttributionTracker.ts › ListAttributionTracker.detectListFromUrl` | yes |
-| `Loaded list context from storage:` | `analytics/tracking/ListAttributionTracker.ts › ListAttributionTracker.loadFromStorage` | yes |
+| `ListAttributionTracker initialized` | `analytics/tracking/list-attribution-tracker.ts › ListAttributionTracker.initialize` | — |
+| `Set current list:` | `analytics/tracking/list-attribution-tracker.ts › ListAttributionTracker.setCurrentList` | yes |
+| `List context expired` | `analytics/tracking/list-attribution-tracker.ts › ListAttributionTracker.getCurrentList` | — |
+| `Cleared current list` | `analytics/tracking/list-attribution-tracker.ts › ListAttributionTracker.clearCurrentList` | — |
+| `ListAttributionTracker reset` | `analytics/tracking/list-attribution-tracker.ts › ListAttributionTracker.reset` | — |
+| `Detected list from URL:` | `analytics/tracking/list-attribution-tracker.ts › ListAttributionTracker.detectListFromUrl` | yes |
+| `Loaded list context from storage:` | `analytics/tracking/list-attribution-tracker.ts › ListAttributionTracker.loadFromStorage` | yes |
 
 ## `[{ProviderName}]`
 
 The delivery contract every provider shares: the enabled and blocked-event gate, and reporting each event as sent, skipped, or failed.
 
-Logged from `analytics/providers/ProviderAdapter.ts`. The shared adapter base logs under the provider’s own name, so these lines appear as `[GTM]`, `[Facebook]`, `[RudderStack]`, `[NextCampaign]`, or `[Custom]` depending on which provider was delivering the event.
+Logged from `analytics/providers/provider-adapter.ts`. The shared adapter base logs under the provider’s own name, so these lines appear as `[GTM]`, `[Facebook]`, `[RudderStack]`, `[NextCampaign]`, or `[Custom]` depending on which provider was delivering the event.
 
 ### Error
 
@@ -2013,7 +2013,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to send event "{event}"`
 
-`analytics/providers/ProviderAdapter.ts › reject` · extra context attached
+`analytics/providers/provider-adapter.ts › reject` · extra context attached
 
 **Meaning:** A provider threw something the delivery layer did not expect, so this event is lost for that provider. Unlike `Event "{event}" not delivered:`, this is not a known delivery outcome — it points at a fault in the adapter or the vendor script.
 
@@ -2025,7 +2025,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Event "{event}" not delivered: {message}`
 
-`analytics/providers/ProviderAdapter.ts › reject`
+`analytics/providers/provider-adapter.ts › reject`
 
 **Meaning:** One provider could not deliver one event, for a reason it expected — its script never loaded, or the vendor call threw. The reason is in the message. Other providers are unaffected, and the visitor sees nothing. The provider name is the log prefix.
 
@@ -2037,13 +2037,13 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Event "{event}" is blocked for {name}` | `analytics/providers/ProviderAdapter.ts › ProviderAdapter.trackEvent` | — |
+| `Event "{event}" is blocked for {name}` | `analytics/providers/provider-adapter.ts › ProviderAdapter.trackEvent` | — |
 
 ## `[Facebook]`
 
 Delivers events to the Meta Pixel (`fbq`).
 
-Logged from `analytics/providers/FacebookAdapter.ts`. Set by the name the adapter passes to the shared base — `super('Facebook')`.
+Logged from `analytics/providers/facebook-adapter.ts`. Set by the name the adapter passes to the shared base — `super('Facebook')`.
 
 Rows marked *message assembled in code* are built from several string literals joined together, so searching the source for the whole sentence finds nothing — search for the first few words instead. The location given is where the message text begins, which is a line or two after the `logger.*` call itself.
 
@@ -2053,7 +2053,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Meta Pixel (fbq) not found — add the Meta Pixel base code to the page so events can be delivered. See https://www.facebook.com/business/help/952192354843755`
 
-`analytics/providers/FacebookAdapter.ts › FacebookAdapter.warnScriptMissing` · message assembled in code
+`analytics/providers/facebook-adapter.ts › FacebookAdapter.warnScriptMissing` · message assembled in code
 
 **Meaning:** The Facebook provider is running but `fbq` is not on the page, so nothing can be delivered to Meta. Printed once per page load, not once per event.
 
@@ -2063,7 +2063,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 Loads the NextCampaign script with the campaign API key and sends it the page view.
 
-Logged from `analytics/providers/NextCampaignAdapter.ts`. Set by the name the adapter passes to the shared base — `super('NextCampaign')`.
+Logged from `analytics/providers/next-campaign-adapter.ts`. Set by the name the adapter passes to the shared base — `super('NextCampaign')`.
 
 Rows marked *message assembled in code* are built from several string literals joined together, so searching the source for the whole sentence finds nothing — search for the first few words instead. The location given is where the message text begins, which is a line or two after the `logger.*` call itself.
 
@@ -2073,7 +2073,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to load NextCampaign SDK:`
 
-`analytics/providers/NextCampaignAdapter.ts › NextCampaignAdapter.loadScript` · extra context attached
+`analytics/providers/next-campaign-adapter.ts › NextCampaignAdapter.loadScript` · extra context attached
 
 **Meaning:** The NextCampaign script did not load, so no events reach it. The error is re-thrown, which surfaces as a failed provider initialization in the analytics log above.
 
@@ -2081,7 +2081,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Error sending initial page view to NextCampaign:`
 
-`analytics/providers/NextCampaignAdapter.ts › NextCampaignAdapter.sendPageView` · extra context attached
+`analytics/providers/next-campaign-adapter.ts › NextCampaignAdapter.sendPageView` · extra context attached
 
 **Meaning:** The script loaded but the first `page_view` threw, so that page view is missing from NextCampaign reporting. Later events are still attempted.
 
@@ -2093,7 +2093,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `No API key available for NextCampaign initialization`
 
-`analytics/providers/NextCampaignAdapter.ts › NextCampaignAdapter.initialize`
+`analytics/providers/next-campaign-adapter.ts › NextCampaignAdapter.initialize`
 
 **Meaning:** The NextCampaign provider is enabled but has no API key, so it stops before loading its script. Nothing is sent to it; the rest of analytics is unaffected.
 
@@ -2101,7 +2101,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `NextCampaign SDK failed to load — check that a valid apiKey is set and that campaigns.apps.29next.com is reachable.`
 
-`analytics/providers/NextCampaignAdapter.ts › NextCampaignAdapter.warnScriptMissing` · message assembled in code
+`analytics/providers/next-campaign-adapter.ts › NextCampaignAdapter.warnScriptMissing` · message assembled in code
 
 **Meaning:** The NextCampaign script never became available, so its events cannot be delivered. Printed once per page load.
 
@@ -2113,12 +2113,12 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 
 | Message | Source | Extra context |
 |---|---|---|
-| `NextCampaign adapter initializing...` | `analytics/providers/NextCampaignAdapter.ts › NextCampaignAdapter.initialize` | — |
-| `API key provided via config parameter` | `analytics/providers/NextCampaignAdapter.ts › NextCampaignAdapter.initialize` | — |
-| `API key from config store: {apiKey ? 'found' : 'not found'}` | `analytics/providers/NextCampaignAdapter.ts › NextCampaignAdapter.initialize` | — |
-| `NextCampaign API key found: {substring(0, 8)}...{length - 4)}` | `analytics/providers/NextCampaignAdapter.ts › NextCampaignAdapter.initialize` | — |
-| `NextCampaign SDK loaded and initialized successfully ✅` | `analytics/providers/NextCampaignAdapter.ts › NextCampaignAdapter.loadScript` | — |
-| `Initial page_view event sent to NextCampaign` | `analytics/providers/NextCampaignAdapter.ts › NextCampaignAdapter.sendPageView` | — |
+| `NextCampaign adapter initializing...` | `analytics/providers/next-campaign-adapter.ts › NextCampaignAdapter.initialize` | — |
+| `API key provided via config parameter` | `analytics/providers/next-campaign-adapter.ts › NextCampaignAdapter.initialize` | — |
+| `API key from config store: {apiKey ? 'found' : 'not found'}` | `analytics/providers/next-campaign-adapter.ts › NextCampaignAdapter.initialize` | — |
+| `NextCampaign API key found: {substring(0, 8)}...{length - 4)}` | `analytics/providers/next-campaign-adapter.ts › NextCampaignAdapter.initialize` | — |
+| `NextCampaign SDK loaded and initialized successfully ✅` | `analytics/providers/next-campaign-adapter.ts › NextCampaignAdapter.loadScript` | — |
+| `Initial page_view event sent to NextCampaign` | `analytics/providers/next-campaign-adapter.ts › NextCampaignAdapter.sendPageView` | — |
 
 ### Debug
 
@@ -2126,14 +2126,14 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `NextCampaign script loaded` | `analytics/providers/NextCampaignAdapter.ts › NextCampaignAdapter.performLoad` | — |
-| `NextCampaign configured with API key` | `analytics/providers/NextCampaignAdapter.ts › NextCampaignAdapter.performLoad` | — |
+| `NextCampaign script loaded` | `analytics/providers/next-campaign-adapter.ts › NextCampaignAdapter.performLoad` | — |
+| `NextCampaign configured with API key` | `analytics/providers/next-campaign-adapter.ts › NextCampaignAdapter.performLoad` | — |
 
 ## `[RudderStack]`
 
 Translates events into RudderStack’s track / page / identify calls.
 
-Logged from `analytics/providers/RudderStackAdapter.ts`.
+Logged from `analytics/providers/rudderstack-adapter.ts`.
 
 Rows marked *message assembled in code* are built from several string literals joined together, so searching the source for the whole sentence finds nothing — search for the first few words instead. The location given is where the message text begins, which is a line or two after the `logger.*` call itself.
 
@@ -2143,7 +2143,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `rudderanalytics not found — add the RudderStack JavaScript SDK snippet to the page so events can be delivered. See https://www.rudderstack.com/docs/sources/event-streams/sdks/rudderstack-javascript-sdk/`
 
-`analytics/providers/RudderStackAdapter.ts › RudderStackAdapter.warnScriptMissing` · message assembled in code
+`analytics/providers/rudderstack-adapter.ts › RudderStackAdapter.warnScriptMissing` · message assembled in code
 
 **Meaning:** The RudderStack provider is running but its SDK is not on the page, so nothing is delivered. Printed once per page load.
 
@@ -2155,13 +2155,13 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Processing event "{event}"` | `analytics/providers/RudderStackAdapter.ts › RudderStackAdapter.sendEvent` | yes |
+| `Processing event "{event}"` | `analytics/providers/rudderstack-adapter.ts › RudderStackAdapter.sendEvent` | yes |
 
 ## `[Custom]`
 
 Posts batches of events to an endpoint you configure, with a retry queue for the ones that fail.
 
-Logged from `analytics/providers/CustomAdapter.ts`. Set by the name the adapter passes to the shared base — `super('Custom')`.
+Logged from `analytics/providers/custom-adapter.ts`. Set by the name the adapter passes to the shared base — `super('Custom')`.
 
 ### Error
 
@@ -2169,7 +2169,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Error sending batch to custom endpoint:`
 
-`analytics/providers/CustomAdapter.ts › CustomAdapter.sendBatch` · extra context attached
+`analytics/providers/custom-adapter.ts › CustomAdapter.sendBatch` · extra context attached
 
 **Meaning:** A batch of events was rejected or the request failed. Every event in the batch goes onto the retry queue, so this alone does not mean they are lost.
 
@@ -2177,7 +2177,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to send event after {maxRetries} attempts:`
 
-`analytics/providers/CustomAdapter.ts › CustomAdapter.addToRetryQueue` · extra context attached
+`analytics/providers/custom-adapter.ts › CustomAdapter.addToRetryQueue` · extra context attached
 
 **Meaning:** The retries for one event are exhausted and it is dropped. This is the point at which data is actually lost, unlike the batch error above.
 

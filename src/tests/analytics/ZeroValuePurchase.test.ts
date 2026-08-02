@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { dataLayer } from '@/core/analytics/DataLayerManager';
-import { EcommerceEvents } from '@/core/analytics/events/EcommerceEvents';
+import { dataLayer } from '@/core/analytics/data-layer-manager';
+import { EcommerceEvents } from '@/core/analytics/events/ecommerce-events';
 import { useCampaignStore } from '@/state/campaign';
 import type { CampaignStore } from '@/state/campaign';
 import type { DataLayerEvent } from '@/core/analytics/types';

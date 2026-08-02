@@ -263,7 +263,7 @@ An \`items: []\` is treated as nothing provided, so guard an empty selection bef
   {
     message: 'HTTP {status}: {statusText}',
     owner: 'Custom',
-    file: 'analytics/providers/CustomAdapter.ts',
+    file: 'analytics/providers/custom-adapter.ts',
     kind: 'recoverable',
     cause:
       'The custom analytics endpoint answered a batch of events with a non-OK status.',
@@ -274,7 +274,7 @@ An \`items: []\` is treated as nothing provided, so guard an empty selection bef
   {
     message: 'Facebook Pixel load timeout',
     owner: 'Facebook',
-    file: 'analytics/providers/FacebookAdapter.ts',
+    file: 'analytics/providers/facebook-adapter.ts',
     kind: 'recoverable',
     cause:
       '`fbq` never appeared on the page within the adapter’s wait, so there was nothing to deliver the event to. The Meta Pixel base code is missing, or an extension blocked it.',
@@ -286,7 +286,7 @@ An \`items: []\` is treated as nothing provided, so guard an empty selection bef
     message: 'Facebook dispatch failed: {message}',
     extracted: 'Facebook dispatch failed: {message : String(error)}',
     owner: 'Facebook',
-    file: 'analytics/providers/FacebookAdapter.ts',
+    file: 'analytics/providers/facebook-adapter.ts',
     kind: 'recoverable',
     cause:
       '`fbq` was on the page but threw when the event was handed to it. The message after the colon is whatever the pixel raised.',
@@ -297,7 +297,7 @@ An \`items: []\` is treated as nothing provided, so guard an empty selection bef
   {
     message: 'NextCampaign SDK load failed',
     owner: 'NextCampaign',
-    file: 'analytics/providers/NextCampaignAdapter.ts',
+    file: 'analytics/providers/next-campaign-adapter.ts',
     kind: 'recoverable',
     cause:
       'The NextCampaign script never loaded, so its `page_view` could not be delivered. A missing API key or an unreachable campaigns host both produce this.',
@@ -309,7 +309,7 @@ An \`items: []\` is treated as nothing provided, so guard an empty selection bef
     message: 'NextCampaign dispatch failed: {message}',
     extracted: 'NextCampaign dispatch failed: {message : String(error)}',
     owner: 'NextCampaign',
-    file: 'analytics/providers/NextCampaignAdapter.ts',
+    file: 'analytics/providers/next-campaign-adapter.ts',
     kind: 'recoverable',
     cause:
       'The NextCampaign script was loaded but threw when the event was handed to it. The text after the colon is its own message.',
@@ -320,7 +320,7 @@ An \`items: []\` is treated as nothing provided, so guard an empty selection bef
   {
     message: 'RudderStack load timeout',
     owner: 'RudderStack',
-    file: 'analytics/providers/RudderStackAdapter.ts',
+    file: 'analytics/providers/rudderstack-adapter.ts',
     kind: 'recoverable',
     cause:
       '`rudderanalytics` never appeared on the page within the adapter’s wait, so the event had nowhere to go.',

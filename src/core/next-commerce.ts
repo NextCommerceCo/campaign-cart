@@ -25,7 +25,7 @@ import { useAttributionStore } from '@/state/attribution';
 import { useParameterStore } from '@/state/parameter';
 import { EventBus } from '@/core/events';
 import { Logger } from '@/core/logger';
-import { ApiClient } from '@/api/client';
+import { getApiClient } from '@/client';
 
 /**
  * The programmatic SDK facade — the scriptable counterpart to the `data-next-*`
@@ -968,8 +968,8 @@ export class NextCommerce {
       );
     }
 
-    // Create API client
-    const apiClient = new ApiClient(configStore.apiKey);
+    // The shared API client for this page
+    const apiClient = getApiClient(configStore.apiKey);
 
     // Build upsell data - support both single item and multiple items
     let lines: Array<{ package_id: number; quantity: number }> = [];

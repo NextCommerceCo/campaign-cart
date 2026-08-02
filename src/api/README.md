@@ -9,6 +9,9 @@ decides *when* to create an order; this decides *what* `POST /api/v1/orders/` lo
 | `client.types.ts` | `IApiClient` — the fourteen calls, as an interface. **This is what features should depend on.** |
 | `client.ts` | `ApiClient` — the one implementation. Owns the base URL, the `Authorization` header, rate-limit handling, error enrichment, and telling an aborted request apart from a failed one |
 
+One more file matters and it lives outside this folder:
+[`src/client.ts`](../client.ts) — the composition root, which hands out **the** client.
+
 ## Depend on the interface, not the class
 
 If you only need to *call* the API, type it as `IApiClient`:
@@ -31,11 +34,40 @@ Two reasons, and the first is the one that bites:
 - **The implementation can be swapped** — the transport rework in the `sdk-structure`
   skill §6, or a recording client for E2E — without touching a feature.
 
-Import the concrete `ApiClient` only where one is actually **constructed**. Several
-enhancers still do (`new ApiClient(useConfigStore.getState().apiKey)`) and hold the result
-in an `IApiClient` field: the seam is already in place, so moving construction to a
-composition root changes one line each and no types. That move is its own phase — see the
-skill's §6.
+## Get the client from the composition root, never with `new`
+
+There is **one** `ApiClient` per page, and [`src/client.ts`](../client.ts) owns it:
+
+```ts
+import { getApiClient } from '@/client';
+
+const order = await getApiClient().getOrder('ORD-1234');
+```
+
+`getApiClient()` memoizes, and defaults its key from `useConfigStore.getState().apiKey`.
+Pass a key — `getApiClient(apiKey)` — only if you were already handed one, as the campaign
+and cart state layers are; a key that differs from the current instance's builds a new
+instance. Before this existed, twelve places each ran
+`new ApiClient(useConfigStore.getState().apiKey)`, so a page carried a dozen clients that
+differed in nothing.
+
+Sharing one is safe because `ApiClient` holds no per-caller state — a base URL, the key,
+and a logger, with every method a one-shot `fetch`. There is no request cache, no
+in-flight map, and no abort controller inside it; an `AbortSignal` is passed in per call
+by whoever owns it. **If you ever add per-caller state to `ApiClient`, that assumption
+breaks and every holder shares it** — put the state in the caller instead.
+
+So import the concrete `ApiClient` only in `src/client.ts`, where the one instance is
+built. Everywhere else, type the field `IApiClient` and get the value from
+`getApiClient()`.
+
+Two known layering wrinkles, live rather than hidden: `src/state/cart/cart-calculator.ts`
+and `src/state/campaign/api.slice.ts` reach up to `@/client`, and `src/core/` does too
+(`sdk-initializer.ts`, `next-commerce.ts`) — the `sdk-structure` skill §2 has `state` and
+`core` importing nothing above them. Both state files do it behind an existing `await
+import('@/client')`, which is what keeps the cycle they were already avoiding broken. The
+real fix is the next phase of §6: features and stores receive the client instead of
+fetching it.
 
 ## Why domain methods and not `get`/`post`
 

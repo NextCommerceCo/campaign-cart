@@ -2,7 +2,7 @@ import { useCartStore, cartOperations } from '@/state/cart';
 import { useCampaignStore } from '@/state/campaign';
 import { useOrderStore } from '@/state/order';
 import { useConfigStore } from '@/state/config';
-import { ApiClient } from '@/api/client';
+import { getApiClient } from '@/client';
 import { preserveQueryParams } from '@/core/url-utils';
 import type { CartState, EventMap } from '@/types/global';
 import type { AddUpsellLine } from '@/types/api';
@@ -98,7 +98,7 @@ async function handleUpsellCardClick(
     const campaign = useCampaignStore.getState().data;
     const currency =
       campaign?.currency ?? useConfigStore.getState().getCurrency();
-    const apiClient = new ApiClient(useConfigStore.getState().apiKey);
+    const apiClient = getApiClient();
 
     const properties = applyPropertyExclusion(mergeWithDefaults(card.properties), parseExcludeProperty(card.excludeProperties));
     const upsellData: AddUpsellLine = {

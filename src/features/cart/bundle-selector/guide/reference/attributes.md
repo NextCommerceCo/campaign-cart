@@ -543,31 +543,16 @@ Use `data-next-display="bundle.{selectorId}.{property}"` on any element in the d
 ```html
 <span data-next-display="bundle.upsellBundleMV.price"></span>
 <span data-next-display="bundle.upsellBundleMV.isSelected"></span>
-<span data-next-display="bundle.upsellBundleMV.savings" data-hide-if-zero="true"></span>
+<span data-next-display="bundle.upsellBundleMV.discountAmount" data-hide-if-zero="true"></span>
 ```
 
-**Supported properties:**
+Every path the namespace resolves, with its default format, is listed in
+[display-paths.md](./display-paths.md).
 
-| Property | Format | Description |
-|---|---|---|
-| `isSelected` | boolean | `true` when this bundle card is the currently selected card |
-| `name` | text | Value of `data-next-bundle-name` on the card element |
-| `price` | currency | Total price for the bundle after all discounts |
-| `originalPrice` | currency | Retail / compare-at price (subtotal before discount) |
-| `discountAmount` | currency | Total discount applied to the bundle |
-| `discountPercentage` | percentage | Discount as a percentage of the original price |
-| `hasDiscount` | boolean | `true` when a discount is applied to the bundle |
-| `unitPrice` | currency | Bundle total price divided by total visible slot quantity |
-| `originalUnitPrice` | currency | Original (pre-discount) price divided by total visible slot quantity |
-
-**Deprecated properties** (still supported for backwards compatibility):
-
-| Property | Use instead |
-|---|---|
-| `compare` | `originalPrice` |
-| `savings` | `discountAmount` |
-| `savingsPercentage` | `discountPercentage` |
-| `hasSavings` | `hasDiscount` |
+The names `compare`, `savings`, `savingsPercentage` and `hasSavings` belong to
+`data-next-bundle-display` below and are **not** part of this namespace — a
+`bundle.{bundleId}.savings` binding renders nothing and logs a warning. Use
+`originalPrice`, `discountAmount`, `discountPercentage` and `hasDiscount` here.
 
 Supports all standard display modifiers: `data-next-format`, `data-hide-if-zero`, `data-hide-if-false`.
 

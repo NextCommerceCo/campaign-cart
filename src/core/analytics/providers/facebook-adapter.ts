@@ -1,4 +1,4 @@
-import { ProviderAdapter, notSupported, DispatchError } from './ProviderAdapter';
+import { ProviderAdapter, notSupported, DispatchError } from './provider-adapter';
 import { DataLayerEvent } from '../types';
 
 declare global {

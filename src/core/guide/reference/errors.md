@@ -36,12 +36,12 @@ Fatal first, since those recur for every visitor until something changes.
 | `Failed to fetch states for {countryCode}: {statusText}` | Recoverable | `country-service.ts` |
 | `Order does not support post-purchase upsells or is currently processing.` | Recoverable | `next-commerce.ts` |
 | `Failed to add upsell - no updated order returned` | Recoverable | `next-commerce.ts` |
-| `HTTP {status}: {statusText}` | Recoverable | `analytics/providers/CustomAdapter.ts` |
-| `Facebook Pixel load timeout` | Recoverable | `analytics/providers/FacebookAdapter.ts` |
-| `Facebook dispatch failed: {message}` | Recoverable | `analytics/providers/FacebookAdapter.ts` |
-| `NextCampaign SDK load failed` | Recoverable | `analytics/providers/NextCampaignAdapter.ts` |
-| `NextCampaign dispatch failed: {message}` | Recoverable | `analytics/providers/NextCampaignAdapter.ts` |
-| `RudderStack load timeout` | Recoverable | `analytics/providers/RudderStackAdapter.ts` |
+| `HTTP {status}: {statusText}` | Recoverable | `analytics/providers/custom-adapter.ts` |
+| `Facebook Pixel load timeout` | Recoverable | `analytics/providers/facebook-adapter.ts` |
+| `Facebook dispatch failed: {message}` | Recoverable | `analytics/providers/facebook-adapter.ts` |
+| `NextCampaign SDK load failed` | Recoverable | `analytics/providers/next-campaign-adapter.ts` |
+| `NextCampaign dispatch failed: {message}` | Recoverable | `analytics/providers/next-campaign-adapter.ts` |
+| `RudderStack load timeout` | Recoverable | `analytics/providers/rudderstack-adapter.ts` |
 
 ## Which parts can throw
 
@@ -49,25 +49,25 @@ Every part of `src/core`, and whether it raises anything of its own. "Nothing" i
 
 | Part | Console prefix | Throws |
 |---|---|---|
-| `analytics/DataLayerManager.ts` | `[NextDataLayer]` | nothing |
 | `analytics/config.ts` | `[AnalyticsConfig]` | nothing |
-| `analytics/events/EcommerceEvents.ts` | `[EcommerceEvents]` | nothing |
-| `analytics/events/EventBuilder.ts` | `[EventBuilder]` | nothing |
-| `analytics/events/UserEvents.ts` | `[UserEvents]` | nothing |
+| `analytics/data-layer-manager.ts` | `[NextDataLayer]` | nothing |
+| `analytics/events/ecommerce-events.ts` | `[EcommerceEvents]` | nothing |
+| `analytics/events/event-builder.ts` | `[EventBuilder]` | nothing |
+| `analytics/events/user-events.ts` | `[UserEvents]` | nothing |
 | `analytics/index.ts` | `[NextAnalytics]` | nothing |
-| `analytics/providers/CustomAdapter.ts` | `[Custom]` | 1 — `HTTP {status}: {statusText}` |
-| `analytics/providers/FacebookAdapter.ts` | `[Facebook]` | 2 — `Facebook Pixel load timeout`, `Facebook dispatch failed: {message}` |
-| `analytics/providers/NextCampaignAdapter.ts` | `[NextCampaign]` | 2 — `NextCampaign SDK load failed`, `NextCampaign dispatch failed: {message}` |
-| `analytics/providers/ProviderAdapter.ts` | `[{ProviderName}]` | nothing |
-| `analytics/providers/RudderStackAdapter.ts` | `[RudderStack]` | 1 — `RudderStack load timeout` |
-| `analytics/tracking/AutoEventListener.ts` | `[AutoEventListener]` | nothing |
-| `analytics/tracking/ListAttributionTracker.ts` | `[ListAttributionTracker]` | nothing |
-| `analytics/tracking/MetaTagController.ts` | `[MetaTagController]` | nothing |
-| `analytics/tracking/PendingEventsHandler.ts` | `[PendingEventsHandler]` | nothing |
-| `analytics/tracking/UserDataTracker.ts` | `[UserDataTracker]` | nothing |
-| `analytics/tracking/ViewItemListTracker.ts` | `[ViewItemListTracker]` | nothing |
-| `analytics/userDataStorage.ts` | `[UserDataStorage]` | nothing |
-| `analytics/validation/EventValidator.ts` | `[EventValidator]` | nothing |
+| `analytics/providers/custom-adapter.ts` | `[Custom]` | 1 — `HTTP {status}: {statusText}` |
+| `analytics/providers/facebook-adapter.ts` | `[Facebook]` | 2 — `Facebook Pixel load timeout`, `Facebook dispatch failed: {message}` |
+| `analytics/providers/next-campaign-adapter.ts` | `[NextCampaign]` | 2 — `NextCampaign SDK load failed`, `NextCampaign dispatch failed: {message}` |
+| `analytics/providers/provider-adapter.ts` | `[{ProviderName}]` | nothing |
+| `analytics/providers/rudderstack-adapter.ts` | `[RudderStack]` | 1 — `RudderStack load timeout` |
+| `analytics/tracking/auto-event-listener.ts` | `[AutoEventListener]` | nothing |
+| `analytics/tracking/list-attribution-tracker.ts` | `[ListAttributionTracker]` | nothing |
+| `analytics/tracking/meta-tag-controller.ts` | `[MetaTagController]` | nothing |
+| `analytics/tracking/pending-events-handler.ts` | `[PendingEventsHandler]` | nothing |
+| `analytics/tracking/user-data-tracker.ts` | `[UserDataTracker]` | nothing |
+| `analytics/tracking/view-item-list-tracker.ts` | `[ViewItemListTracker]` | nothing |
+| `analytics/user-data-storage.ts` | `[UserDataStorage]` | nothing |
+| `analytics/validation/event-validator.ts` | `[EventValidator]` | nothing |
 | `attribute-scanner.ts` | `[AttributeScanner]` | nothing |
 | `attribution/attribution-collector.ts` | `[AttributionCollector]` | nothing |
 | `attribution/utm-transfer.ts` | `[UtmTransfer]` | nothing |
@@ -331,7 +331,7 @@ The namespace before the dot decides which part of the SDK answers — see the d
 | | |
 |---|---|
 | Type | Recoverable |
-| Thrown by | `analytics/providers/CustomAdapter.ts` — logs under `[Custom]` |
+| Thrown by | `analytics/providers/custom-adapter.ts` — logs under `[Custom]` |
 | Cause | The custom analytics endpoint answered a batch of events with a non-OK status. |
 | Caught | Caught by the adapter, which logs `Error sending batch to custom endpoint:` and puts every event in the batch on its retry queue. After the configured number of attempts it gives up with `Failed to send event after {maxRetries} attempts:`. |
 
@@ -344,7 +344,7 @@ The namespace before the dot decides which part of the SDK answers — see the d
 | | |
 |---|---|
 | Type | Recoverable |
-| Thrown by | `analytics/providers/FacebookAdapter.ts` — logs under `[Facebook]` |
+| Thrown by | `analytics/providers/facebook-adapter.ts` — logs under `[Facebook]` |
 | Cause | `fbq` never appeared on the page within the adapter’s wait, so there was nothing to deliver the event to. The Meta Pixel base code is missing, or an extension blocked it. |
 | Caught | Thrown as a `DispatchError`, which the shared adapter base treats as an expected delivery outcome: it logs the warn `Event "{event}" not delivered: Facebook Pixel load timeout` and records the payload it would have sent in the debug overlay. The visitor sees nothing. |
 
@@ -357,7 +357,7 @@ The namespace before the dot decides which part of the SDK answers — see the d
 | | |
 |---|---|
 | Type | Recoverable |
-| Thrown by | `analytics/providers/FacebookAdapter.ts` — logs under `[Facebook]` |
+| Thrown by | `analytics/providers/facebook-adapter.ts` — logs under `[Facebook]` |
 | Cause | `fbq` was on the page but threw when the event was handed to it. The message after the colon is whatever the pixel raised. |
 | Caught | A `DispatchError`, so the adapter base logs `Event "{event}" not delivered: Facebook dispatch failed: …` and records the attempted payload. One provider failing never stops the others. |
 
@@ -370,7 +370,7 @@ The namespace before the dot decides which part of the SDK answers — see the d
 | | |
 |---|---|
 | Type | Recoverable |
-| Thrown by | `analytics/providers/NextCampaignAdapter.ts` — logs under `[NextCampaign]` |
+| Thrown by | `analytics/providers/next-campaign-adapter.ts` — logs under `[NextCampaign]` |
 | Cause | The NextCampaign script never loaded, so its `page_view` could not be delivered. A missing API key or an unreachable campaigns host both produce this. |
 | Caught | A `DispatchError`: the adapter base logs `Event "{event}" not delivered: NextCampaign SDK load failed` and keeps the prepared payload for the debug overlay. |
 
@@ -383,7 +383,7 @@ The namespace before the dot decides which part of the SDK answers — see the d
 | | |
 |---|---|
 | Type | Recoverable |
-| Thrown by | `analytics/providers/NextCampaignAdapter.ts` — logs under `[NextCampaign]` |
+| Thrown by | `analytics/providers/next-campaign-adapter.ts` — logs under `[NextCampaign]` |
 | Cause | The NextCampaign script was loaded but threw when the event was handed to it. The text after the colon is its own message. |
 | Caught | A `DispatchError`, logged by the adapter base as `Event "{event}" not delivered: NextCampaign dispatch failed: …`. |
 
@@ -396,7 +396,7 @@ The namespace before the dot decides which part of the SDK answers — see the d
 | | |
 |---|---|
 | Type | Recoverable |
-| Thrown by | `analytics/providers/RudderStackAdapter.ts` — logs under `[RudderStack]` |
+| Thrown by | `analytics/providers/rudderstack-adapter.ts` — logs under `[RudderStack]` |
 | Cause | `rudderanalytics` never appeared on the page within the adapter’s wait, so the event had nowhere to go. |
 | Caught | A `DispatchError`: the adapter base logs `Event "{event}" not delivered: RudderStack load timeout` and records the descriptor it had prepared. |
 

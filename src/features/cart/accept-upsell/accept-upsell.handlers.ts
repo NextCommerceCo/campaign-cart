@@ -4,7 +4,7 @@ import { useConfigStore } from '@/state/config';
 import { GeneralModal } from '@/core/ui/general-modal';
 import { preserveQueryParams } from '@/core/url-utils';
 import type { AddUpsellLine } from '@/types/api';
-import { resolveOrderTaxBasis } from '@/core/analytics/taxBasis';
+import { resolveOrderTaxBasis } from '@/core/analytics/tax-basis';
 import type { UpsellHandlerContext } from './accept-upsell.types';
 
 function resolvePackageId(ctx: UpsellHandlerContext): number | undefined {

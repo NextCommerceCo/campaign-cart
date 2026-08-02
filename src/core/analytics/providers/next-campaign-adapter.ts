@@ -2,7 +2,7 @@ import {
   ProviderAdapter,
   notSupported,
   DispatchError,
-} from './ProviderAdapter';
+} from './provider-adapter';
 import { DataLayerEvent } from '../types';
 import { useConfigStore } from '@/state/config';
 

@@ -1,4 +1,4 @@
-import { defineConfig, type Rollup, type UserConfig } from 'vite';
+import { defineConfig, type Plugin, type Rollup, type UserConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 import { resolve } from 'path';
 import { minify as terserMinify } from 'terser';
@@ -69,7 +69,12 @@ const umdTerserOptions = {
   compress: {
     ...terserOptions.compress,
     drop_console: true,
-    pure_funcs: ['console.log', 'console.info', 'console.warn', 'console.debug'],
+    pure_funcs: [
+      'console.log',
+      'console.info',
+      'console.warn',
+      'console.debug',
+    ],
   },
 };
 
@@ -111,14 +116,20 @@ export default defineConfig({
     // TypeScript declarations
     dts({
       include: ['src/**/*'],
+      // Paths here are matched against the real tree — a pattern that matches
+      // nothing is indistinguishable from one that works, so keep them honest.
+      // `src/utils/testMode.ts`, `src/utils/testDataHandler.ts` and
+      // `src/utils/debugOverlay.ts` used to be listed and matched nothing after
+      // the `utils/` → `core/` migration: the overlay moved under
+      // `src/core/debug/` (already covered by `src/**/debug/**`), the test-data
+      // handler was deleted, and test mode became `src/core/test-mode.ts` —
+      // which stays emitted, because `core/sdk-initializer.ts` imports it and
+      // its declaration would dangle without it.
       exclude: [
         'src/**/*.test.ts',
         'src/**/*.spec.ts',
         'src/**/tests/**',
         'src/**/debug/**',
-        'src/utils/testMode.ts',
-        'src/utils/testDataHandler.ts',
-        'src/utils/debugOverlay.ts',
       ],
       insertTypesEntry: true,
       copyDtsFiles: true,
@@ -154,57 +165,70 @@ export default defineConfig({
     // }),
 
     // Bundle analyzer - only enabled when --analyze flag is passed
-    process.env.ANALYZE && visualizer({
-      filename: 'dist/stats.html',
-      open: true,
-      gzipSize: true,
-      brotliSize: true,
-      template: 'treemap',
-      sourcemap: true,
-    }),
+    process.env.ANALYZE &&
+      visualizer({
+        filename: 'dist/stats.html',
+        open: true,
+        gzipSize: true,
+        brotliSize: true,
+        template: 'treemap',
+        sourcemap: true,
+      }),
 
     // Custom plugin for additional builds
-    {
-      name: 'build-additional-formats',
-      async closeBundle() {
-        const { build } = await import('vite');
+    ((): Plugin => {
+      // Follow whatever outDir this build resolved to instead of hard-coding
+      // `dist/`. Vite resolves `build.outDir` to an absolute path, so the
+      // truthful-compression-log reason for OUT_DIR still holds — and
+      // `vite build --outDir <scratch>` now puts the UMD in the scratch
+      // directory too, instead of overwriting the committed `dist/index.umd.js`
+      // while the ES chunks go somewhere else.
+      let outDir = OUT_DIR;
+      return {
+        name: 'build-additional-formats',
+        configResolved(config) {
+          outDir = config.build.outDir;
+        },
+        async closeBundle() {
+          const { build } = await import('vite');
 
-        // Build UMD bundle
-        await build({
-          configFile: false,
-          resolve: sharedResolve,
-          define: sharedDefine,
-          build: {
-            outDir: OUT_DIR,
-            emptyOutDir: false,
-            lib: {
-              entry: resolve(__dirname, 'src/index.ts'),
-              name: 'NextCommerce',
-              formats: ['umd'],
-              fileName: () => 'index.umd.js',
-            },
-            rollupOptions: {
-              external: [
-                // More specific external patterns
-                resolve(__dirname, 'src/config.ts'),
-                (id: string) => /node_modules/.test(id) && !/vite/.test(id),
-              ],
-              output: {
-                globals: {
-                  // Add any global mappings here
-                },
-                inlineDynamicImports: true,
+          // Build UMD bundle
+          await build({
+            configFile: false,
+            resolve: sharedResolve,
+            define: sharedDefine,
+            build: {
+              outDir,
+              emptyOutDir: false,
+              lib: {
+                entry: resolve(__dirname, 'src/index.ts'),
+                name: 'NextCommerce',
+                formats: ['umd'],
+                fileName: () => 'index.umd.js',
               },
+              rollupOptions: {
+                external: [
+                  // More specific external patterns
+                  resolve(__dirname, 'src/config.ts'),
+                  (id: string) => /node_modules/.test(id) && !/vite/.test(id),
+                ],
+                output: {
+                  globals: {
+                    // Add any global mappings here
+                  },
+                  inlineDynamicImports: true,
+                },
+              },
+              // UMD is a single non-ES-format file, so Vite's own terser pass applies.
+              minify: 'terser',
+              terserOptions: umdTerserOptions,
+              sourcemap: false,
+              target: 'es2015', // UMD should support older browsers
             },
-            // UMD is a single non-ES-format file, so Vite's own terser pass applies.
-            minify: 'terser',
-            terserOptions: umdTerserOptions,
-            sourcemap: false,
-            target: 'es2015', // UMD should support older browsers
-          },
-        } as UserConfig);
-      }
-    }
+          } as UserConfig);
+        },
+      };
+    })(),
   ].filter(Boolean),
 
   resolve: sharedResolve,
@@ -275,18 +299,29 @@ export default defineConfig({
           // a vendor → debug → state → vendor cycle. Keep all node_modules
           // together; the size cost is paid back by avoiding TDZ bugs.
           if (id.includes('node_modules')) {
-            // Further split large libraries
-            if (id.includes('lodash')) {
-              return 'vendor-lodash';
-            }
-            if (id.includes('date-fns')) {
-              return 'vendor-date';
-            }
             return 'vendor';
           }
 
-          // Separate debug code into its own chunk (won't be loaded unless ?debug=true)
-          if (id.includes('/debug/') || id.includes('/testMode') || id.includes('test-order-manager')) {
+          // The debug overlay and its panels, from wherever they live:
+          // `src/core/debug/`, `src/core/analytics/debug/`,
+          // `src/features/checkout/debug/`, `src/styles/debug/`.
+          //
+          // This chunk is NOT lazy, despite what the rule looks like: nine
+          // chunks import it statically, so every campaign page downloads it.
+          // See finding 104 in docs/code-findings.md — fixing that is a
+          // behaviour change and wants its own e2e run.
+          //
+          // Two more clauses used to sit on this line and matched nothing after
+          // the `utils/` → `core/` migration: `/testMode` (the file is
+          // `src/core/test-mode.ts` now) and `test-order-manager` (it already
+          // lives under `/debug/`, and nothing imports it, so it never enters
+          // the graph). Neither is restored. `core/sdk-initializer.ts` imports
+          // `test-mode.ts` statically and instantiates its singleton at module
+          // scope, so no chunk assignment can make test mode lazy — pointing
+          // this rule at the new name would only move bytes between two chunks
+          // the page already downloads, and add a tenth static edge into
+          // `debug` for a later fix to unpick.
+          if (id.includes('/debug/')) {
             return 'debug';
           }
 
@@ -295,10 +330,27 @@ export default defineConfig({
             return 'analytics';
           }
 
-          // Co-locate state stores with the leaf utils they require at
+          // Co-locate state stores with the leaf modules they require at
           // module-init time (logger/storage/events). Without this, a `utils` ↔
           // `state` chunk cycle triggers a TDZ on Zustand's `create` import in
           // production.
+          //
+          // STALE, DELIBERATELY LEFT AS-IS — the second test is dead. Those three
+          // files are `src/core/logger.ts`, `src/core/storage.ts` and
+          // `src/core/events.ts` since the `utils/` → `core/` migration, so
+          // `/utils/(…)` matches none of them and only `storage.ts` still lands
+          // in `state`, by Rollup's own placement. `logger.ts` and `events.ts`
+          // land in `analytics` instead, which is why `state` currently cannot
+          // initialise without pulling the 119 kB `analytics` chunk (and through
+          // it `debug`).
+          //
+          // Repairing it is one word — `/utils/` → `/core/` — and measurably
+          // better: chunk-level cycles drop from 9 to 4, `state` sheds its edges
+          // to `analytics`, and the ES output shrinks 243 B. It is not applied
+          // here because it rewrites two chunks every campaign page downloads
+          // (`analytics` −1,578 B, `state` +1,485 B, both re-hashed), and a
+          // chunk reassignment is what caused the TDZ crash this comment records.
+          // It wants its own change with an e2e run behind it.
           if (
             id.includes('/src/state/') ||
             /\/utils\/(logger|storage|events)\.ts$/.test(id)
@@ -306,10 +358,16 @@ export default defineConfig({
             return 'state';
           }
 
-          // Split utilities into separate chunk (excluding debug and analytics)
-          if ((id.includes('/utils/') || id.includes('/helpers/')) &&
+          // Split utilities into their own chunk. Note this catches
+          // `src/features/*/utils/` too, not just `src/utils/` — after the
+          // migration most of what lands here is checkout feature helpers.
+          // (An `|| id.includes('/helpers/')` arm was dropped: there is no
+          // `helpers/` folder anywhere under `src/`.)
+          if (
+            id.includes('/utils/') &&
             !id.includes('/debug/') &&
-            !id.includes('/analytics/')) {
+            !id.includes('/analytics/')
+          ) {
             return 'utils';
           }
 
@@ -326,9 +384,12 @@ export default defineConfig({
         // Better file naming for caching
         entryFileNames: '[name].js',
         chunkFileNames: 'chunks/[name]-[hash].js',
-        assetFileNames: (assetInfo) => {
+        assetFileNames: assetInfo => {
           // Extract CSS with proper naming
-          if (assetInfo.name === 'style.css' || assetInfo.name?.endsWith('.css')) {
+          if (
+            assetInfo.name === 'style.css' ||
+            assetInfo.name?.endsWith('.css')
+          ) {
             return 'campaign-cart.css';
           }
           // Other assets

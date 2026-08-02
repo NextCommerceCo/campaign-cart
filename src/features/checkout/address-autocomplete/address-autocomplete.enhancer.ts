@@ -1,6 +1,6 @@
 import { createLogger } from '@/core/logger';
 import { EventBus } from '@/core/events';
-import { ApiClient } from '@/api/client';
+import type { IApiClient } from '@/api/client.types';
 import { GoogleMapsAutocomplete } from './google-maps-autocomplete';
 import { NextCommerceAutocomplete } from './next-commerce-autocomplete';
 import type { AutocompleteContext } from '../checkout.types';
@@ -23,7 +23,7 @@ export interface AddressAutocompleteOptions {
  */
 export class AddressAutocompleteEnhancer {
   private ctx: AutocompleteContext;
-  private apiClient: ApiClient;
+  private apiClient: IApiClient;
 
   private googleMaps?: GoogleMapsAutocomplete;
   private nextCommerce?: NextCommerceAutocomplete;
@@ -31,7 +31,7 @@ export class AddressAutocompleteEnhancer {
   constructor(deps: {
     fields: Map<string, HTMLElement>;
     billingFields: Map<string, HTMLElement>;
-    apiClient: ApiClient;
+    apiClient: IApiClient;
     getDetectedCountryCode: () => string;
     getHasTrackedShippingInfo: () => boolean;
     setHasTrackedShippingInfo: (value: boolean) => void;

@@ -243,20 +243,33 @@ So: features depend on `IApiClient`; the transport stays private to `ApiClient`.
 Do not "fix" it back. Details and the rough edges in
 [`src/api/README.md`](../../../src/api/README.md).
 
-**Done so far** (the type-only half — no construction changed, so it carried no
-runtime risk): `IApiClient` exists, `ApiClient implements` it, and every site
-that *holds* a client is typed at the interface — `OrderManager`,
-`NextCommerceAutocomplete`, the accept-upsell context, and the `apiClient` field
-on the order-display / accept-upsell / prospect-cart enhancers.
-`src/tests/contract/api-surface.test.ts` gates both directions, because
-`implements` only checks one: an endpoint added to the class and missed on the
-interface is otherwise silent.
+**Done so far.** `IApiClient` exists, `ApiClient implements` it, and
+**`src/client.ts` is now the only place a client is constructed** —
+`getApiClient(apiKey?)` memoizes one instance per page and re-creates it only
+when the key changes. All twelve former `new ApiClient(…)` call sites go through
+it, and every field that holds a client is typed `IApiClient`. Sharing one
+instance is safe because `ApiClient` holds only a base URL, the key and a logger;
+**if you add per-caller state to it, that breaks and every holder shares it.**
+`src/tests/contract/api-surface.test.ts` gates the interface both directions
+(because `implements` only checks one: an endpoint added to the class and missed
+on the interface is otherwise silent), and
+`src/tests/contract/api-client-instance.test.ts` gates the single-instance and
+re-keying behaviour.
 
-**Still to do:** the enhancers above still call `new ApiClient(…)` themselves.
-Because their fields are already `IApiClient`, moving construction to a
-composition root is one line each and no type changes. That, and removing
-`Logger`/`EventBus`/`ApiClient` from `src/index.ts`, is a **breaking public-API
-change needing explicit approval** (§0.1) — keep it separate.
+An earlier version of this paragraph said every holder was already typed at the
+interface. It was wrong — only three were, and five declarations across four
+files had to be widened when construction moved. Do not size this kind of work
+off a "type-only half is done" claim without grepping.
+
+**Still to do:** features and stores still *fetch* the client from the
+composition root rather than *receiving* it, so `state/` (`cart-calculator.ts`,
+`campaign/api.slice.ts`) and `core/` (`sdk-initializer.ts`, `next-commerce.ts`)
+import `@/client`, which §2 says they must not. Closing that means changing
+enhancer constructor signatures and how `AttributeScanner` instantiates features
+— the next phase. Separately, `useOrderStore.loadOrder(refId, apiClient: any)`
+types the client `any` and erases the seam at the store boundary. Removing
+`Logger`/`EventBus`/`ApiClient` from `src/index.ts` remains a **breaking
+public-API change needing explicit approval** (§0.1) — keep it separate.
 
 This section is a **redesign of today's `.getInstance()` singletons** (§0.2).
 Migrate it as its own phase, behind green tests, after the folder moves.

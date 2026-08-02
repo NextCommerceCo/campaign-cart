@@ -23,8 +23,8 @@
  */
 import { BaseEnhancer } from '@/core/base/base-enhancer';
 import { useOrderStore } from '@/state/order';
-import { useConfigStore } from '@/state/config';
-import { ApiClient } from '@/api/client';
+import { getApiClient } from '@/client';
+import type { IApiClient } from '@/api/client.types';
 import { LoadingOverlay } from '@/core/ui/loading-overlay';
 import { renderProcessingState } from './upsell.renderer';
 import { trackUpsellPageView } from './upsell.handlers';
@@ -51,7 +51,7 @@ import type {
 } from './upsell.types';
 
 export class UpsellEnhancer extends BaseEnhancer {
-  private apiClient!: ApiClient;
+  private apiClient!: IApiClient;
   private clickHandler?: (event: Event) => void;
   private keydownHandler?: (event: KeyboardEvent) => void;
   private pageShowHandler?: (event: PageTransitionEvent) => void;
@@ -142,8 +142,7 @@ export class UpsellEnhancer extends BaseEnhancer {
         orderStore.markUpsellViewed(this.state.packageId.toString());
     }
 
-    const config = useConfigStore.getState();
-    this.apiClient = new ApiClient(config.apiKey);
+    this.apiClient = getApiClient();
 
     scanUpsellElements(this.makeInteractionContext());
     const { clickHandler, keydownHandler } = setupEventHandlers(

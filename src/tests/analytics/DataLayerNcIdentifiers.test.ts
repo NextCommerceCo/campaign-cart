@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { dataLayer } from '@/core/analytics/DataLayerManager';
+import { dataLayer } from '@/core/analytics/data-layer-manager';
 import { useConfigStore } from '@/state/config';
 import { useCampaignStore } from '@/state/campaign';
 

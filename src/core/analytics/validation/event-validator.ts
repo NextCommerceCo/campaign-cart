@@ -6,7 +6,7 @@ import {
   FieldDefinition,
 } from '../schemas';
 import { createLogger } from '@/core/logger';
-import { reconcileValue } from './reconcileValue';
+import { reconcileValue } from './reconcile-value';
 
 const logger = createLogger('EventValidator');
 

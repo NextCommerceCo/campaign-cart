@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { EventValidator } from '@/core/analytics/validation/EventValidator';
+import { EventValidator } from '@/core/analytics/validation/event-validator';
 
 // Runtime (debug-mode) validator. Complements EcommerceEventValidator (which
 // powers the debug overlay) — this one feeds console diagnostics and must cover

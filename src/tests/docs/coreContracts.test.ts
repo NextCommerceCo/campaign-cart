@@ -133,7 +133,7 @@ describe('core contract docs', () => {
       const sources = coreContractSources();
       const callers = sources.filter(
         ([name, text]) =>
-          !name.endsWith('MetaTagController.ts') &&
+          !name.endsWith('meta-tag-controller.ts') &&
           /\.shouldBlockEvent\s*\(/.test(text)
       );
       expect(

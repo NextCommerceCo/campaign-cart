@@ -11,7 +11,7 @@
  * on in all builds; the panels simply read the latest snapshot on render.
  */
 
-import type { ProviderAdapter } from '../providers/ProviderAdapter';
+import type { ProviderAdapter } from '../providers/provider-adapter';
 
 /**
  * Outcome of handing one event to one provider.

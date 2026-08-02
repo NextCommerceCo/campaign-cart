@@ -19,15 +19,15 @@ of `core/` that talks to third parties.
 | Path | What it is |
 |------|------------|
 | `index.ts` | `NextAnalytics` — the subsystem's facade and singleton (`nextAnalytics`), and the `window.*` installs |
-| `DataLayerManager.ts` | Owns `window.NextDataLayer`, enriches every event, applies `window.NextDataLayerTransformFn`, then fans out to the providers |
+| `data-layer-manager.ts` | Owns `window.NextDataLayer`, enriches every event, applies `window.NextDataLayerTransformFn`, then fans out to the providers |
 | `providers/` | One adapter per destination, all extending `ProviderAdapter` |
 | `events/` | `EventBuilder` (shared context stamping) plus the `EcommerceEvents` and `UserEvents` factories |
 | `schemas/` | `DL_EVENTS` — the event vocabulary, and the generated `events.manifest.json` that gates it |
 | `tracking/` | Automatic capture: route changes, list attribution, pending events, user data, `MetaTagController` |
 | `validation/` | `EventValidator` (schema check before the push) and `reconcileValue` |
 | `debug/` | `AnalyticsDebugTracker` — per-provider outcome, payload, error, and duration for every event |
-| `taxBasis.ts` | Decides whether a value is tax-inclusive or exclusive |
-| `userDataStorage.ts` | Persists the user identity fields between page loads |
+| `tax-basis.ts` | Decides whether a value is tax-inclusive or exclusive |
+| `user-data-storage.ts` | Persists the user identity fields between page loads |
 
 ## Providers
 
@@ -106,7 +106,7 @@ stamps them centrally, so events that bypass `EventBuilder.createEvent` — page
 upsells, route changes — carry them too, for every provider.
 
 They stay `snake_case` all the way out. `RudderStackAdapter.buildContextProps`
-(`providers/RudderStackAdapter.ts:69-86`) copies the six keys onto the RudderStack payload
+(`providers/rudderstack-adapter.ts:69-86`) copies the six keys onto the RudderStack payload
 **unchanged**, omitting empty values. An earlier version of this README claimed the adapter
 remapped them to camelCase (`campaignName`, `campaignApiKey`, …); it does not, and a
 downstream consumer built on that claim would have looked for fields that never arrive.

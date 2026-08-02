@@ -13,11 +13,10 @@
  * - **The implementation can be swapped** without touching a feature — the retry/transport
  *   rework in the `sdk-structure` skill §6, or a recording client for E2E.
  *
- * Several call sites already receive the client as a constructor argument
- * (`OrderManager`, `NextCommerceAutocomplete`, the accept-upsell context), so they gain
- * this immediately. Sites that still call `new ApiClient(…)` themselves are unchanged —
- * moving construction to a composition root is a separate, deliberate phase (§6), not
- * something to mix into a type change.
+ * Nothing outside `src/client.ts` constructs a client any more: every call site either
+ * receives one as a constructor argument (`OrderManager`, `NextCommerceAutocomplete`, the
+ * accept-upsell context) or asks the composition root for the shared one with
+ * `getApiClient()`. Type the field `IApiClient`, never `ApiClient`.
  *
  * **Why the domain methods and not `get`/`post`.** The skill sketches `IHttpClient` as a
  * transport facade over `fetch`. That is the right shape for the *inside* of the client —

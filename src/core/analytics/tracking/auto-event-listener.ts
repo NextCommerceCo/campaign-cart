@@ -7,9 +7,9 @@ import { createLogger } from '@/core/logger';
 import { EventBus } from '@/core/events';
 import { useCampaignStore } from '@/state/campaign';
 import { useCartStore } from '@/state/cart';
-import { dataLayer } from '../DataLayerManager';
-import { listAttributionTracker } from './ListAttributionTracker';
-import { EcommerceEvents } from '../events/EcommerceEvents';
+import { dataLayer } from '../data-layer-manager';
+import { listAttributionTracker } from './list-attribution-tracker';
+import { EcommerceEvents } from '../events/ecommerce-events';
 
 const logger = createLogger('AutoEventListener');
 

@@ -16,10 +16,10 @@
 
 import { createLogger } from '@/core/logger';
 import { useCampaignStore } from '@/state/campaign';
-import { dataLayer } from '../DataLayerManager';
-import { EcommerceEvents } from '../events/EcommerceEvents';
-import { EventBuilder } from '../events/EventBuilder';
-import { ListAttributionTracker } from './ListAttributionTracker';
+import { dataLayer } from '../data-layer-manager';
+import { EcommerceEvents } from '../events/ecommerce-events';
+import { EventBuilder } from '../events/event-builder';
+import { ListAttributionTracker } from './list-attribution-tracker';
 
 const logger = createLogger('MetaTagController');
 

@@ -1,4 +1,4 @@
-import { ProviderAdapter, notSupported } from './ProviderAdapter';
+import { ProviderAdapter, notSupported } from './provider-adapter';
 import { DataLayerEvent } from '../types';
 
 interface CustomAdapterConfig {

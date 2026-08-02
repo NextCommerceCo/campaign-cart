@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-import { NextCampaignAdapter } from '@/core/analytics/providers/NextCampaignAdapter';
-import { RudderStackAdapter } from '@/core/analytics/providers/RudderStackAdapter';
-import { CustomAdapter } from '@/core/analytics/providers/CustomAdapter';
+import { NextCampaignAdapter } from '@/core/analytics/providers/next-campaign-adapter';
+import { RudderStackAdapter } from '@/core/analytics/providers/rudderstack-adapter';
+import { CustomAdapter } from '@/core/analytics/providers/custom-adapter';
 import type { DataLayerEvent } from '@/core/analytics/types';
 
 /**

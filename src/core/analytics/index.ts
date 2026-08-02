@@ -5,22 +5,22 @@
  * It provides a simple API for tracking events following industry best practices.
  */
 
-import { dataLayer } from './DataLayerManager';
-import { GTMAdapter } from './providers/GTMAdapter';
-import { FacebookAdapter } from './providers/FacebookAdapter';
-import { RudderStackAdapter } from './providers/RudderStackAdapter';
-import { NextCampaignAdapter } from './providers/NextCampaignAdapter';
-import { CustomAdapter } from './providers/CustomAdapter';
-import type { ProviderAdapter } from './providers/ProviderAdapter';
-import { ListAttributionTracker } from './tracking/ListAttributionTracker';
-import { ViewItemListTracker } from './tracking/ViewItemListTracker';
-import { UserDataTracker } from './tracking/UserDataTracker';
-import { AutoEventListener } from './tracking/AutoEventListener';
-import { PendingEventsHandler } from './tracking/PendingEventsHandler';
-import { MetaTagController } from './tracking/MetaTagController';
-import { EventValidator } from './validation/EventValidator';
-import { EcommerceEvents } from './events/EcommerceEvents';
-import { UserEvents } from './events/UserEvents';
+import { dataLayer } from './data-layer-manager';
+import { GTMAdapter } from './providers/gtm-adapter';
+import { FacebookAdapter } from './providers/facebook-adapter';
+import { RudderStackAdapter } from './providers/rudderstack-adapter';
+import { NextCampaignAdapter } from './providers/next-campaign-adapter';
+import { CustomAdapter } from './providers/custom-adapter';
+import type { ProviderAdapter } from './providers/provider-adapter';
+import { ListAttributionTracker } from './tracking/list-attribution-tracker';
+import { ViewItemListTracker } from './tracking/view-item-list-tracker';
+import { UserDataTracker } from './tracking/user-data-tracker';
+import { AutoEventListener } from './tracking/auto-event-listener';
+import { PendingEventsHandler } from './tracking/pending-events-handler';
+import { MetaTagController } from './tracking/meta-tag-controller';
+import { EventValidator } from './validation/event-validator';
+import { EcommerceEvents } from './events/ecommerce-events';
+import { UserEvents } from './events/user-events';
 import { createLogger } from '@/core/logger';
 import { useConfigStore } from '@/state/config';
 import type { DataLayerEvent } from './types';
@@ -440,14 +440,14 @@ export type {
   DlEventCategory,
   DlEventDefinition,
 } from './schemas/events';
-export { EventValidator } from './validation/EventValidator';
-export { EcommerceEvents } from './events/EcommerceEvents';
-export { UserEvents } from './events/UserEvents';
-export { dataLayer } from './DataLayerManager';
+export { EventValidator } from './validation/event-validator';
+export { EcommerceEvents } from './events/ecommerce-events';
+export { UserEvents } from './events/user-events';
+export { dataLayer } from './data-layer-manager';
 export {
   MetaTagController,
   metaTagController,
-} from './tracking/MetaTagController';
+} from './tracking/meta-tag-controller';
 
 // Set up global access for debugging
 if (typeof window !== 'undefined') {

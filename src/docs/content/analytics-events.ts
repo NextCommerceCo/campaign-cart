@@ -216,7 +216,7 @@ export const ANALYTICS_FAILURE_STEPS: AnalyticsFailureStep[] = [
       'dl_add_to_cart: ecommerce.currency`) and **nothing in ' +
       '`window.NextDataLayer`** — the event is dropped before the push, so no ' +
       'provider is ever asked and the overlay has no row for it at all.',
-    source: 'core/analytics/DataLayerManager.ts › DataLayerManager.push',
+    source: 'core/analytics/data-layer-manager.ts › DataLayerManager.push',
     fix: 'Fix the payload at the source, not the provider. An event missing here never existed as far as every downstream tag is concerned.',
   },
   {
@@ -227,7 +227,7 @@ export const ANALYTICS_FAILURE_STEPS: AnalyticsFailureStep[] = [
     symptom:
       'Debug log `Event filtered out by transform function`, no array entry, no ' +
       'provider call.',
-    source: 'core/analytics/DataLayerManager.ts › DataLayerManager.push',
+    source: 'core/analytics/data-layer-manager.ts › DataLayerManager.push',
     fix: 'Return the event (or a modified copy) from your transform. Returning nothing filters it out.',
   },
   {
@@ -238,7 +238,7 @@ export const ANALYTICS_FAILURE_STEPS: AnalyticsFailureStep[] = [
     symptom:
       'Nothing on this page; the event appears on the *next* page once the ' +
       'pending-events handler replays it, about 200 ms after that page boots.',
-    source: 'core/analytics/DataLayerManager.ts › DataLayerManager.push',
+    source: 'core/analytics/data-layer-manager.ts › DataLayerManager.push',
     fix: 'Look for it after the redirect. This is intended behaviour, not a loss — it prevents the duplicate that firing on both pages would create.',
   },
   {
@@ -262,7 +262,7 @@ export const ANALYTICS_FAILURE_STEPS: AnalyticsFailureStep[] = [
     symptom:
       'Overlay status **blocked**, with detail `blockedEvents` or `provider ' +
       'disabled`. Other providers still receive it.',
-    source: 'core/analytics/providers/ProviderAdapter.ts › ProviderAdapter.trackEvent',
+    source: 'core/analytics/providers/provider-adapter.ts › ProviderAdapter.trackEvent',
     fix: 'Remove the name from `blockedEvents`. Match the canonical name exactly — `purchase` blocks nothing, `dl_purchase` does.',
   },
   {
@@ -275,7 +275,7 @@ export const ANALYTICS_FAILURE_STEPS: AnalyticsFailureStep[] = [
       'Overlay status **skipped** with the reason spelled out (`NextCampaign ' +
       'only tracks page_view`, `no identifiable user (guest)`, `no Facebook ' +
       'mapping for this event`). No error, no log at warn level.',
-    source: 'core/analytics/providers/ProviderAdapter.ts › ProviderAdapter.trackEvent',
+    source: 'core/analytics/providers/provider-adapter.ts › ProviderAdapter.trackEvent',
     fix: "Nothing to fix if the reason is by design. If you need the event at that destination, add it to that adapter's mapping table.",
   },
   {
@@ -289,7 +289,7 @@ export const ANALYTICS_FAILURE_STEPS: AnalyticsFailureStep[] = [
       'still visible so you can check the mapping, plus a one-time warning ' +
       'carrying the fix (`Meta Pixel (fbq) not found — add the Meta Pixel base ' +
       'code to the page`).',
-    source: 'core/analytics/providers/ProviderAdapter.ts › ProviderAdapter.trackEvent',
+    source: 'core/analytics/providers/provider-adapter.ts › ProviderAdapter.trackEvent',
     fix: 'Add the vendor snippet to the page. The SDK maps and reports the event but never loads the Meta or RudderStack script for you.',
   },
   {
@@ -299,7 +299,7 @@ export const ANALYTICS_FAILURE_STEPS: AnalyticsFailureStep[] = [
       'Overlay status **failed** with the error message. Every other provider ' +
       'still receives the event — the base class catches both throws and ' +
       'rejections so one broken destination cannot stop the loop.',
-    source: 'core/analytics/providers/ProviderAdapter.ts › ProviderAdapter.trackEvent',
+    source: 'core/analytics/providers/provider-adapter.ts › ProviderAdapter.trackEvent',
     fix: 'Read the recorded error. A swallowed failure is invisible in the console at error level only for expected delivery problems, which are logged as warnings instead.',
   },
 ];

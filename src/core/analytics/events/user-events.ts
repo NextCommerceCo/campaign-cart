@@ -4,7 +4,7 @@
  */
 
 import type { DataLayerEvent, UserProperties, EcommerceItem, EcommerceData } from '../types';
-import { EventBuilder } from './EventBuilder';
+import { EventBuilder } from './event-builder';
 import { useCartStore } from '@/state/cart';
 import { useCampaignStore } from '@/state/campaign';
 import { createLogger } from '@/core/logger';

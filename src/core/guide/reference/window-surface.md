@@ -27,16 +27,16 @@ Every entry below is read out of the source, so the list cannot fall behind the 
 | [`window.nextReady`](#windownextready) | install | `core/sdk-initializer.ts › SDKInitializer.setupReadyCallbacks` |
 | [`window.nextConfig`](#windownextconfig) | read | `core/debug/DebugModule.ts › DebugModule.initializeIfEnabled` and 10 more |
 | [`window.__NEXT_SDK_VERSION__`](#window__next_sdk_version__) | read | `core/debug/panels/ConfigPanel.ts › ConfigPanel.getOverviewContent` and 3 more |
-| [`window.NextDataLayer`](#windownextdatalayer) | install | `core/analytics/DataLayerManager.ts › DataLayerManager.initializeDataLayer`, `core/analytics/DataLayerManager.ts › DataLayerManager.clear` |
-| [`window.NextDataLayerTransformFn`](#windownextdatalayertransformfn) | install | `core/analytics/DataLayerManager.ts › DataLayerManager.initializeDataLayer` and 2 more |
+| [`window.NextDataLayer`](#windownextdatalayer) | install | `core/analytics/data-layer-manager.ts › DataLayerManager.initializeDataLayer`, `core/analytics/data-layer-manager.ts › DataLayerManager.clear` |
+| [`window.NextDataLayerTransformFn`](#windownextdatalayertransformfn) | install | `core/analytics/data-layer-manager.ts › DataLayerManager.initializeDataLayer` and 2 more |
 | [`window.NextAnalytics`](#windownextanalytics) | install | `core/analytics/index.ts` |
 | [`window.NextDataLayerManager`](#windownextdatalayermanager) | install | `core/analytics/index.ts` |
 | [`window.NextMetaTagController`](#windownextmetatagcontroller) | install | `core/analytics/index.ts` |
 | [`window.NextInvalidateContext`](#windownextinvalidatecontext) | install | `core/analytics/index.ts` |
 | [`window.NextAnalyticsClearIgnore`](#windownextanalyticsclearignore) | install | `core/analytics/index.ts` |
-| [`window.nextCampaign`](#windownextcampaign) | read | `core/analytics/providers/NextCampaignAdapter.ts › NextCampaignAdapter.sendEvent` and 3 more |
-| [`window.dataLayer`](#windowdatalayer) | install | `core/analytics/providers/GTMAdapter.ts › GTMAdapter.sendEvent`, `core/debug/panels/EventTimelinePanel.ts › EventTimelinePanel.watchDataLayer` |
-| [`window.ElevarDataLayer`](#windowelevardatalayer) | install | `core/analytics/providers/GTMAdapter.ts › GTMAdapter.sendEvent` |
+| [`window.nextCampaign`](#windownextcampaign) | read | `core/analytics/providers/next-campaign-adapter.ts › NextCampaignAdapter.sendEvent` and 3 more |
+| [`window.dataLayer`](#windowdatalayer) | install | `core/analytics/providers/gtm-adapter.ts › GTMAdapter.sendEvent`, `core/debug/panels/EventTimelinePanel.ts › EventTimelinePanel.watchDataLayer` |
+| [`window.ElevarDataLayer`](#windowelevardatalayer) | install | `core/analytics/providers/gtm-adapter.ts › GTMAdapter.sendEvent` |
 | [`window._nextForcePackageId`](#window_nextforcepackageid) | install | `core/sdk-initializer.ts › SDKInitializer.loadConfiguration` |
 | [`window._nextForceShippingId`](#window_nextforceshippingid) | install | `core/sdk-initializer.ts › SDKInitializer.loadConfiguration` |
 | [`window._nextForceBundleId`](#window_nextforcebundleid) | install | `core/sdk-initializer.ts › SDKInitializer.loadConfiguration` |
@@ -126,7 +126,7 @@ console.table(window.NextDataLayer);
 
 > ⚠️ Emptied when the data layer reinitialises, so it is a live view rather than a complete session log. Do not read a length from it and assume it only grows.
 
-<sub>Assigned in `core/analytics/DataLayerManager.ts › DataLayerManager.initializeDataLayer`, `core/analytics/DataLayerManager.ts › DataLayerManager.clear`</sub>
+<sub>Assigned in `core/analytics/data-layer-manager.ts › DataLayerManager.initializeDataLayer`, `core/analytics/data-layer-manager.ts › DataLayerManager.clear`</sub>
 
 ### `window.NextDataLayerTransformFn`
 
@@ -141,7 +141,7 @@ window.NextDataLayerTransformFn = event => ({
 
 > ⚠️ Assign it **after** the SDK is up — from inside `window.nextReady.push()`. The analytics engine's constructor sets this slot to `null` unconditionally, so a transform assigned in a `<script>` tag before the SDK loads is discarded and every event goes out untransformed. It also runs on every event, so a throw inside it costs you analytics across the whole page — keep it free of anything that can fail.
 
-<sub>Assigned in `core/analytics/DataLayerManager.ts › DataLayerManager.initializeDataLayer`, `core/analytics/DataLayerManager.ts › DataLayerManager.setTransformFunction`, `core/analytics/index.ts › NextAnalytics.constructor`</sub>
+<sub>Assigned in `core/analytics/data-layer-manager.ts › DataLayerManager.initializeDataLayer`, `core/analytics/data-layer-manager.ts › DataLayerManager.setTransformFunction`, `core/analytics/index.ts › NextAnalytics.constructor`</sub>
 
 ### `window.NextAnalytics`
 
@@ -215,7 +215,7 @@ if (window.nextCampaign) {
 
 > ⚠️ Loaded by the SDK when that provider is configured, and read back once present. If the script never loads, events raise a dispatch failure rather than being silently dropped — check the console before assuming the provider is off.
 
-<sub>Read in `core/analytics/providers/NextCampaignAdapter.ts › NextCampaignAdapter.sendEvent`, `core/analytics/providers/NextCampaignAdapter.ts › NextCampaignAdapter.performLoad`, `core/analytics/providers/NextCampaignAdapter.ts › NextCampaignAdapter.sendPageView`, `core/analytics/providers/NextCampaignAdapter.ts › NextCampaignAdapter.waitForNextCampaign`</sub>
+<sub>Read in `core/analytics/providers/next-campaign-adapter.ts › NextCampaignAdapter.sendEvent`, `core/analytics/providers/next-campaign-adapter.ts › NextCampaignAdapter.performLoad`, `core/analytics/providers/next-campaign-adapter.ts › NextCampaignAdapter.sendPageView`, `core/analytics/providers/next-campaign-adapter.ts › NextCampaignAdapter.waitForNextCampaign`</sub>
 
 ## Third-party arrays the SDK fills
 
@@ -231,7 +231,7 @@ console.log(window.dataLayer.filter(e => e.event?.startsWith('dl_')));
 
 > ⚠️ Created with `window.dataLayer = window.dataLayer || []`, so an existing queue is preserved and load order does not matter. Do not reassign it — replacing the array orphans everything GTM has already read.
 
-<sub>Assigned in `core/analytics/providers/GTMAdapter.ts › GTMAdapter.sendEvent`, `core/debug/panels/EventTimelinePanel.ts › EventTimelinePanel.watchDataLayer`</sub>
+<sub>Assigned in `core/analytics/providers/gtm-adapter.ts › GTMAdapter.sendEvent`, `core/debug/panels/EventTimelinePanel.ts › EventTimelinePanel.watchDataLayer`</sub>
 
 ### `window.ElevarDataLayer`
 
@@ -239,7 +239,7 @@ Elevar's event queue, created and filled the same way as `dataLayer`.
 
 > ⚠️ Created even when Elevar is not in use, in which case it stays an empty array.
 
-<sub>Assigned in `core/analytics/providers/GTMAdapter.ts › GTMAdapter.sendEvent`</sub>
+<sub>Assigned in `core/analytics/providers/gtm-adapter.ts › GTMAdapter.sendEvent`</sub>
 
 ## Preview and QA overrides
 

@@ -23,10 +23,18 @@ import type { IApiClient } from './client.types';
  * rate-limit handling, error enrichment, and telling an aborted request apart from a
  * failed one — so no endpoint method repeats it and no feature touches `fetch`.
  *
+ * **Do not construct one.** `src/client.ts` builds the single instance this page uses;
+ * ask it with `getApiClient()`. Twelve places used to run `new ApiClient(…)` themselves,
+ * which produced a dozen identical clients.
+ *
  * **Depend on `IApiClient`, not on this class**, wherever you only need to call the
  * API: it is what lets a test supply a compiler-checked fake instead of mocking the
  * module by path. The interface is intentionally not re-exported from `src/index.ts` —
  * that is the frozen public surface — so import it from `@/api/client.types`.
+ *
+ * Because the instance is shared, **every field here must stay per-page, not per-caller**.
+ * A cache, an in-flight map or an abort controller added to this class would silently be
+ * shared by every holder — that state belongs in the caller.
  */
 export class ApiClient implements IApiClient {
   private baseURL = 'https://campaigns.apps.29next.com';

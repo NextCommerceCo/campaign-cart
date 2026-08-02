@@ -1,4 +1,4 @@
-import { ProviderAdapter } from './ProviderAdapter';
+import { ProviderAdapter } from './provider-adapter';
 import { DataLayerEvent } from '../types';
 
 declare global {

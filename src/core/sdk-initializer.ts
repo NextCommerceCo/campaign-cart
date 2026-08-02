@@ -15,7 +15,7 @@ import { NextCommerce } from '@/core/next-commerce';
 // Debug overlay imported dynamically when needed
 import { testModeManager } from '@/core/test-mode';
 import { EventBus } from '@/core/events';
-import { ApiClient } from '@/api/client';
+import { getApiClient } from '@/client';
 import { CART_STORAGE_KEY } from '@/core/storage';
 import { CountryService, Country, LocationData } from '@/core/country-service';
 
@@ -819,7 +819,7 @@ export class SDKInitializer {
       try {
         const configStore = useConfigStore.getState();
         const orderStore = useOrderStore.getState();
-        const apiClient = new ApiClient(configStore.apiKey);
+        const apiClient = getApiClient(configStore.apiKey);
 
         await orderStore.loadOrder(refId, apiClient);
         this.logger.info('Order loaded successfully:', orderStore.order);

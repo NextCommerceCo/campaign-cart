@@ -3,7 +3,7 @@
 // Why this file exists
 // --------------------
 // The SDK fires/handles ~35 distinct `dl_*` dataLayer events, but their names
-// historically lived scattered across `events/`, `tracking/AutoEventListener.ts`,
+// historically lived scattered across `events/`, `tracking/auto-event-listener.ts`,
 // and the provider adapters. Consumers that need the list — the Map Builder's
 // blocked-events picker and the campaign-spec `AnalyticsContractShape` validator —
 // were forced to hardcode their own copies, which drift. (A hardcoded

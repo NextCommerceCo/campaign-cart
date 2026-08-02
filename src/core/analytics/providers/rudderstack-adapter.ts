@@ -4,7 +4,7 @@ import {
   asSkipResult,
   DispatchError,
   type SkipResult,
-} from './ProviderAdapter';
+} from './provider-adapter';
 import { DataLayerEvent } from '../types';
 import { createLogger } from '@/core/logger';
 import { useConfigStore } from '@/state/config';

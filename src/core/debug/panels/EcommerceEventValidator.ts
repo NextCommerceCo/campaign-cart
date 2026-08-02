@@ -25,7 +25,7 @@
  * tested and reused outside the debug overlay.
  */
 
-import { reconcileValue } from '@/core/analytics/validation/reconcileValue';
+import { reconcileValue } from '@/core/analytics/validation/reconcile-value';
 
 export interface EventValidationIssue {
   level: 'error' | 'warning';
