@@ -110,7 +110,7 @@ console.log(window.__NEXT_SDK_VERSION__ ?? 'set by the loader only');
 
 > ⚠️ Only the loader sets it. On a page that imports the bundle directly it is `undefined`, and `next.getVersion()` falls back to the build-time version — which is the accurate one in that case.
 
-<sub>Read in `core/debug/panels/config-panel.ts › ConfigPanel.getOverviewContent`, `core/debug/panels/config-panel.ts › ConfigPanel.getSettingsContent`, `core/next-commerce.utility.ts › getVersion`, `core/sdk-initializer.ts › SDKInitializer.initializeAttribution`</sub>
+<sub>Read in `core/debug/panels/config-panel.ts › ConfigPanel.getOverviewContent`, `core/debug/panels/config-panel.ts › ConfigPanel.getSettingsContent`, `core/next-commerce.utility.ts › getVersion`, `core/sdk-initializer.attribution.ts › initializeAttribution`</sub>
 
 ## Analytics and tag-manager hooks
 

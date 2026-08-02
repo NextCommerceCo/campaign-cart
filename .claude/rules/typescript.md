@@ -54,7 +54,10 @@ The project uses TypeScript strict mode. Follow these:
 - No non-null assertions (`!`) — use optional chaining (`?.`) or explicit null checks
 - Prefer nullish coalescing (`??`) over `||` for default values
 - Prefer optional chaining (`?.`) over manual null checks
-- No `any` unless truly unavoidable; prefer `unknown` with type guards (`src/utils/typeGuards.ts`)
+- No `any` unless truly unavoidable; prefer `unknown` with a type guard. There is no shared
+  guard module: `src/utils/typeGuards.ts` had 23 exports and zero callers and was deleted
+  2026-08-02. Write the guard where it is used, or factor one into `src/utils/` if a second
+  call site appears
 - No unused variables — prefix intentionally unused params with `_`
 
 ## Type Definitions

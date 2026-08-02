@@ -534,7 +534,7 @@ No field schema is declared for this event, so validation only checks that it ha
 
 **Reaches:** GTM (verbatim), Meta `ViewedUpsell` (custom), RudderStack `Upsell Viewed`
 
-**Built at:** `core/analytics/tracking/auto-event-listener.ts › handleUpsellViewed`
+**Built at:** `core/analytics/tracking/auto-event-upsell-handlers.ts › handleUpsellViewed`
 
 Both vendor names are custom events, outside either vendor's standard set — define them at the destination before reporting on them.
 
@@ -577,7 +577,7 @@ Mapped by Meta to `AcceptedUpsell`, and validated as if it fired. No RudderStack
 
 **Reaches:** GTM (verbatim), Meta `SkippedUpsell` (custom), RudderStack `Upsell Skipped`
 
-**Built at:** `core/analytics/tracking/auto-event-listener.ts › handleUpsellSkipped`
+**Built at:** `core/analytics/tracking/auto-event-upsell-handlers.ts › handleUpsellSkipped`
 
 Both vendor names are custom events, outside either vendor's standard set.
 
@@ -640,7 +640,7 @@ No field schema is declared for this event, so validation only checks that it ha
 
 **Reaches:** GTM (verbatim)
 
-**Built at:** `core/analytics/events/ecommerce-events.ts › EcommerceEvents.createPackageSwappedEvent`, `core/analytics/tracking/auto-event-listener.ts › handlePackageSwapped`
+**Built at:** `core/analytics/events/ecommerce-events.ts › EcommerceEvents.createPackageSwappedEvent`, `core/analytics/tracking/auto-event-cart-handlers.ts › handlePackageSwapped`
 
 No vendor models a swap as one action, so neither Meta nor RudderStack maps it — a swap is visible to your GTM container only.
 
@@ -656,7 +656,7 @@ No field schema is declared for this event, so validation only checks that it ha
 
 **Reaches:** GTM (verbatim), Meta `PageView`, RudderStack (own handler), NextCampaign `page_view`
 
-**Built at:** `core/analytics/tracking/auto-event-listener.ts › handlePageView`
+**Built at:** `core/analytics/tracking/auto-event-page-handlers.ts › handlePageView`
 
 The only event NextCampaign forwards. RudderStack turns it into a `page()` call plus a `{PageType} Page View` track event, and sends it **once per page load** — a second page view in the same load is skipped as a duplicate. Meta maps it to `PageView`.
 
@@ -668,7 +668,7 @@ No field schema is declared for this event, so validation only checks that it ha
 
 **Reaches:** GTM (verbatim)
 
-**Built at:** `core/analytics/tracking/auto-event-listener.ts › handleRouteChanged`
+**Built at:** `core/analytics/tracking/auto-event-page-handlers.ts › handleRouteChanged`
 
 Redundant with `dl_page_view`, which fires for the same navigation — report on one of the two, not both.
 
@@ -692,7 +692,7 @@ No field schema is declared for this event, so validation only checks that it ha
 
 **Reaches:** GTM (verbatim)
 
-**Built at:** `core/analytics/tracking/auto-event-listener.ts › handleExitIntentShown`
+**Built at:** `core/analytics/tracking/auto-event-exit-intent-handlers.ts › handleExitIntentShown`
 
 No field schema is declared for this event, so validation only checks that it has a name. Treat its payload as whatever the code that builds it puts there.
 
@@ -702,7 +702,7 @@ No field schema is declared for this event, so validation only checks that it ha
 
 **Reaches:** GTM (verbatim)
 
-**Built at:** `core/analytics/tracking/auto-event-listener.ts › handleExitIntentClicked`
+**Built at:** `core/analytics/tracking/auto-event-exit-intent-handlers.ts › handleExitIntentClicked`
 
 No field schema is declared for this event, so validation only checks that it has a name. Treat its payload as whatever the code that builds it puts there.
 
@@ -712,7 +712,7 @@ No field schema is declared for this event, so validation only checks that it ha
 
 **Reaches:** GTM (verbatim)
 
-**Built at:** `core/analytics/tracking/auto-event-listener.ts › handleExitIntentDismissed`
+**Built at:** `core/analytics/tracking/auto-event-exit-intent-handlers.ts › handleExitIntentDismissed`
 
 No field schema is declared for this event, so validation only checks that it has a name. Treat its payload as whatever the code that builds it puts there.
 
@@ -722,7 +722,7 @@ No field schema is declared for this event, so validation only checks that it ha
 
 **Reaches:** GTM (verbatim)
 
-**Built at:** `core/analytics/tracking/auto-event-listener.ts › handleExitIntentClosed`
+**Built at:** `core/analytics/tracking/auto-event-exit-intent-handlers.ts › handleExitIntentClosed`
 
 No field schema is declared for this event, so validation only checks that it has a name. Treat its payload as whatever the code that builds it puts there.
 
@@ -732,7 +732,7 @@ No field schema is declared for this event, so validation only checks that it ha
 
 **Reaches:** GTM (verbatim)
 
-**Built at:** `core/analytics/tracking/auto-event-listener.ts › handleExitIntentAction`
+**Built at:** `core/analytics/tracking/auto-event-exit-intent-handlers.ts › handleExitIntentAction`
 
 No field schema is declared for this event, so validation only checks that it has a name. Treat its payload as whatever the code that builds it puts there.
 

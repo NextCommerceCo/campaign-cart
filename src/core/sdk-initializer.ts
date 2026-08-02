@@ -8,17 +8,19 @@ import { useConfigStore } from '@/state/config';
 import { useCampaignStore } from '@/state/campaign';
 import { useCartStore, cartOperations } from '@/state/cart';
 import { useOrderStore } from '@/state/order';
-import { useAttributionStore } from '@/state/attribution';
 import { AttributeScanner } from './attribute-scanner';
 import { NextCommerce } from '@/core/next-commerce';
 // Debug overlay imported dynamically when needed
 import { EventBus } from '@/core/events';
 import { getApiClient } from '@/client';
 import { CART_STORAGE_KEY } from '@/core/storage';
-import { CountryService, Country, LocationData } from '@/core/country-service';
+import { CountryService } from '@/core/country-service';
 import * as urlParamMethods from '@/core/sdk-initializer.url-params';
 import * as storageResetMethods from '@/core/sdk-initializer.storage-reset';
 import * as debugUtilsMethods from '@/core/sdk-initializer.debug-utils';
+import * as locationCurrencyMethods from '@/core/sdk-initializer.location-currency';
+import * as attributionMethods from '@/core/sdk-initializer.attribution';
+import type { AttributionCtx } from '@/core/sdk-initializer.attribution';
 
 export class SDKInitializer {
   private static logger = createLogger('SDKInitializer');
@@ -30,7 +32,13 @@ export class SDKInitializer {
   private static campaignLoadStartTime = 0;
   private static campaignLoadTime = 0;
   private static campaignFromCache = false;
-  private static attributionListenersCleanup: (() => void) | null = null;
+  // Shared with `sdk-initializer.attribution.ts` — `attributionListenersCleanup`
+  // must persist across calls so `setupAttributionListeners` stays idempotent
+  // through a boot retry or `reinitialize()` (finding #30).
+  private static attributionCtx: AttributionCtx = {
+    logger: this.logger,
+    attributionListenersCleanup: null,
+  };
 
   public static async initialize(): Promise<void> {
     if (this.initialized) {
@@ -136,264 +144,22 @@ export class SDKInitializer {
   }
 
   /**
-   * Detects the visitor's country and picks the display currency, before
-   * campaign prices are fetched so they arrive in the right currency.
-   *
-   * Left whole here rather than split into a sibling module like
-   * `sdk-initializer.url-params.ts`: `src/tests/docs/coreLogs.test.ts`'s
-   * "samples healthy boot from messages that exist" check reads
-   * `CORE_HEALTHY_BOOT` against a `Map` keyed only by console prefix, not
-   * file — so once two files share the `SDKInitializer` prefix, only the
-   * *last*-declared file's messages are checked, and several of this
-   * method's `info` lines (`Initializing location and currency
-   * detection...`, `User location detected:`, `Using detected currency:`)
-   * are in `CORE_HEALTHY_BOOT`. Moving them to another file makes that check
-   * fail no matter which file is declared last, since the two files'
-   * messages can never both be the "last" one. See `docs/code-findings.md`
-   * if this needs revisiting.
+   * Detects the visitor's country and picks the display currency. The real
+   * logic lives in `sdk-initializer.location-currency.ts` (moved there
+   * verbatim); this stays a thin boot-step wrapper so `boot-sequence.md`
+   * keeps citing it as `initializeLocationAndCurrency` rather than the
+   * module's import name, and keeps documenting it as "logged, boot
+   * continues" — the sibling function already resolves every failure to a
+   * fallback and never rejects, so this catch is a second, currently-dead
+   * boundary that only matters if that guarantee is ever weakened.
    */
   private static async initializeLocationAndCurrency(): Promise<void> {
     try {
-      const configStore = useConfigStore.getState();
-
-      // Only initialize if currencyBehavior is explicitly set to 'auto'
-      if (
-        !configStore.currencyBehavior ||
-        configStore.currencyBehavior !== 'auto'
-      ) {
-        this.logger.info(
-          'Skipping location/currency detection (currencyBehavior is not set to auto)'
-        );
-        // Even when auto-detection is disabled, restore a previously chosen
-        // currency from session so subsequent page loads (post-checkout,
-        // upsells, etc.) keep the same currency the user paid in.
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlCurrency = urlParams.get('currency');
-        const savedCurrency = sessionStorage.getItem('next_selected_currency');
-        const restored =
-          (urlCurrency && urlCurrency.toUpperCase()) || savedCurrency || '';
-        if (restored) {
-          if (urlCurrency) {
-            sessionStorage.setItem('next_selected_currency', restored);
-          }
-          configStore.updateConfig({ selectedCurrency: restored });
-        }
-        return;
-      }
-
-      this.logger.info('Initializing location and currency detection...');
-
-      // Initialize country service early
-      const countryService = CountryService.getInstance();
-
-      // Check for country override in URL or session
-      const urlParams = new URLSearchParams(window.location.search);
-      const countryOverride = urlParams.get('country');
-      const savedCountry = sessionStorage.getItem('next_selected_country');
-
-      // Priority: URL param > saved preference > auto-detection
-      const forcedCountry = countryOverride || savedCountry;
-
-      let locationData: LocationData | null = null;
-
-      if (forcedCountry) {
-        // Use forced country instead of detection
-        this.logger.info(
-          `Using forced country: ${forcedCountry} (source: ${countryOverride ? 'URL' : 'session'})`
-        );
-
-        try {
-          const response = await fetch(
-            `https://cdn-countries.muddy-wind-c7ca.workers.dev/countries/${forcedCountry.toUpperCase()}/states`
-          );
-
-          if (response.ok) {
-            const data = await response.json();
-
-            // Format response to match location detection structure
-            locationData = {
-              detectedCountryCode: forcedCountry.toUpperCase(),
-              detectedCountryConfig: data.countryConfig || {
-                currencyCode: 'USD',
-                currencySymbol: '$',
-                stateLabel: 'State / Province',
-                stateRequired: true,
-                postcodeLabel: 'Postcode / ZIP',
-                postcodeMinLength: 2,
-                postcodeMaxLength: 20,
-              },
-              detectedStates: data.states || [],
-              countries: [] as Country[],
-            };
-
-            // Save to session if from URL
-            if (countryOverride) {
-              sessionStorage.setItem(
-                'next_selected_country',
-                countryOverride.toUpperCase()
-              );
-            }
-
-            this.logger.info('Country config loaded:', {
-              country: locationData?.detectedCountryCode,
-              currency: locationData?.detectedCountryConfig.currencyCode,
-            });
-          } else {
-            this.logger.warn(
-              `Failed to fetch country config for ${forcedCountry}, falling back to detection`
-            );
-          }
-        } catch (error) {
-          this.logger.error('Error fetching country config:', error);
-        }
-      }
-
-      // If no forced country or fetch failed, use normal detection
-      if (!locationData) {
-        // Apply address config if available
-        if (configStore.addressConfig) {
-          countryService.setConfig(configStore.addressConfig);
-        }
-
-        // Fetch location data with timeout to prevent blocking
-        const locationDataPromise = countryService.getLocationData();
-        const timeoutPromise = new Promise<null>((_, reject) =>
-          setTimeout(
-            () => reject(new Error('Location detection timeout')),
-            3000
-          )
-        );
-
-        try {
-          locationData = await Promise.race([
-            locationDataPromise,
-            timeoutPromise,
-          ]);
-        } catch (error) {
-          this.logger.warn(
-            'Location detection failed or timed out, using defaults:',
-            error
-          );
-          // Use fallback data
-          locationData = {
-            detectedCountryCode: 'US',
-            detectedCountryConfig: {
-              stateLabel: 'State',
-              stateRequired: true,
-              postcodeLabel: 'ZIP Code',
-              postcodeRegex: '^\\d{5}(-\\d{4})?$',
-              postcodeMinLength: 5,
-              postcodeMaxLength: 10,
-              postcodeExample: '12345',
-              postcodeFormat: null,
-              currencyCode: 'USD',
-              currencySymbol: '$',
-            },
-            detectedStates: [],
-            countries: [] as Country[],
-          };
-        }
-      } else if (locationData && !locationData.countries?.length) {
-        // If we have forced country data but no countries list, fetch just the countries
-        try {
-          const countriesData = await countryService.getLocationData();
-          locationData.countries = countriesData.countries || [];
-        } catch (error) {
-          this.logger.warn('Failed to fetch countries list:', error);
-        }
-      }
-
-      if (locationData) {
-        this.logger.info('User location detected:', {
-          country: locationData.detectedCountryCode,
-          currency: locationData.detectedCountryConfig.currencyCode,
-          currencySymbol: locationData.detectedCountryConfig.currencySymbol,
-          ip: locationData.detectedIp,
-        });
-
-        // Store in config for global access
-        configStore.updateConfig({
-          detectedCountry: locationData.detectedCountryCode,
-          detectedCurrency: locationData.detectedCountryConfig.currencyCode,
-          detectedIp: locationData.detectedIp || '', // Store user IP address
-          locationData: locationData, // Cache the entire response
-        });
-
-        // Determine selected currency with proper priority:
-        // 1. URL parameter (highest priority - immediate override)
-        // 2. Previously saved user selection (from session)
-        // 3. Detected currency from location (default)
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlCurrency = urlParams.get('currency');
-        const savedCurrency = sessionStorage.getItem('next_selected_currency');
-        const detectedCurrency =
-          locationData.detectedCountryConfig.currencyCode;
-
-        let selectedCurrency: string;
-
-        if (urlCurrency) {
-          // URL parameter has highest priority
-          selectedCurrency = urlCurrency.toUpperCase();
-          this.logger.info('Currency override from URL:', selectedCurrency);
-          // Save to session for persistence
-          sessionStorage.setItem('next_selected_currency', selectedCurrency);
-        } else if (savedCurrency) {
-          // Use previously saved selection
-          selectedCurrency = savedCurrency;
-          this.logger.info(
-            'Using saved currency preference:',
-            selectedCurrency
-          );
-        } else {
-          // Use detected currency as default
-          selectedCurrency = detectedCurrency;
-          this.logger.info('Using detected currency:', selectedCurrency);
-        }
-
-        // Lock the currency in for the session so later page loads
-        // (success page, upsells) cannot drift to a different currency if
-        // geo-detection returns a different result or is skipped.
-        if (selectedCurrency) {
-          sessionStorage.setItem('next_selected_currency', selectedCurrency);
-        }
-
-        configStore.updateConfig({
-          selectedCurrency,
-        });
-
-        this.logger.debug('Location and currency initialized:', {
-          detectedCountry: configStore.detectedCountry,
-          detectedCurrency: configStore.detectedCurrency,
-          selectedCurrency: configStore.selectedCurrency,
-        });
-      }
-    } catch (error) {
-      this.logger.warn(
-        'Failed to initialize location/currency, using defaults:',
-        error
-      );
-
-      // Check for saved currency even in fallback case
-      const savedCurrency = sessionStorage.getItem('next_selected_currency');
-      const urlParams = new URLSearchParams(window.location.search);
-      const urlCurrency = urlParams.get('currency');
-
-      // Determine fallback currency with priority
-      let fallbackCurrency = 'USD';
-      if (urlCurrency) {
-        fallbackCurrency = urlCurrency.toUpperCase();
-        sessionStorage.setItem('next_selected_currency', fallbackCurrency);
-      } else if (savedCurrency) {
-        fallbackCurrency = savedCurrency;
-      }
-
-      const configStore = useConfigStore.getState();
-      configStore.updateConfig({
-        detectedCountry: 'US',
-        detectedCurrency: 'USD',
-        selectedCurrency: fallbackCurrency,
+      await locationCurrencyMethods.initializeLocationAndCurrency({
+        logger: this.logger,
       });
+    } catch {
+      // unreachable today — see the note above.
     }
   }
 
@@ -509,108 +275,19 @@ export class SDKInitializer {
   }
 
   /**
-   * Captures where the visitor came from. Left whole for the same reason as
-   * `initializeLocationAndCurrency` above: two of its `info`/`debug` lines
-   * (`Initializing attribution...`, `Attribution initialized`) are in
-   * `CORE_HEALTHY_BOOT`, and moving them to another file breaks
-   * `coreLogs.test.ts`'s prefix-keyed healthy-boot check the same way.
+   * Captures where the visitor came from. The real logic lives in
+   * `sdk-initializer.attribution.ts` (moved there verbatim); this stays a
+   * thin boot-step wrapper for the same reason as
+   * `initializeLocationAndCurrency` above — `boot-sequence.md` needs a real
+   * `this.*` method to cite by this name, and to keep reading "logged, boot
+   * continues".
    */
   private static async initializeAttribution(): Promise<void> {
     try {
-      this.logger.info('Initializing attribution...');
-
-      const attributionStore = useAttributionStore.getState();
-      const configStore = useConfigStore.getState();
-
-      // Initialize attribution data collection
-      await attributionStore.initialize();
-
-      // Add SDK version and user IP to metadata
-      const sdkVersion =
-        typeof window !== 'undefined' && window.__NEXT_SDK_VERSION__
-          ? window.__NEXT_SDK_VERSION__
-          : 'unknown';
-
-      // Get user IP from config store (set during location detection)
-      const userIp = configStore.detectedIp || '';
-
-      attributionStore.updateAttribution({
-        metadata: {
-          ...attributionStore.metadata,
-          sdk_version: sdkVersion,
-          user_ip: userIp,
-        },
-      });
-
-      this.logger.debug(
-        `Added SDK version to attribution metadata: ${sdkVersion}`
-      );
-      if (userIp) {
-        this.logger.debug(`Added user IP to attribution metadata: ${userIp}`);
-      }
-
-      // Set up event listeners for attribution updates
-      this.setupAttributionListeners();
-
-      // Initialize UTM transfer if enabled
-      if (configStore.utmTransfer?.enabled) {
-        const { UtmTransfer } = await import('@/core/attribution/utm-transfer');
-        const utmTransfer = new UtmTransfer(configStore.utmTransfer);
-        utmTransfer.init();
-        this.logger.debug('UTM transfer initialized');
-      }
-
-      this.logger.debug('Attribution initialized');
-    } catch (error) {
-      this.logger.error('Attribution initialization failed:', error);
-      // Continue with initialization - attribution failure shouldn't break SDK
+      await attributionMethods.initializeAttribution(this.attributionCtx);
+    } catch {
+      // unreachable today — see the note above.
     }
-  }
-
-  private static setupAttributionListeners(): void {
-    // Idempotent: a boot retry or reinitialize() calls this again, and
-    // without tearing down the previous registration first, every cart
-    // update and popstate would re-run once per past call (finding #30).
-    this.attributionListenersCleanup?.();
-
-    const eventBus = EventBus.getInstance();
-    const attributionStore = useAttributionStore.getState();
-
-    // Update funnel when campaign loads
-    const offCampaignLoaded = eventBus.on('campaign:loaded', campaign => {
-      if (campaign?.name && !attributionStore.funnel) {
-        attributionStore.setFunnelName(campaign.name);
-        this.logger.debug('Set funnel name from campaign:', campaign.name);
-      }
-    });
-
-    // Track conversion timestamp on cart creation
-    const offCartUpdated = eventBus.on('cart:updated', () => {
-      attributionStore.updateAttribution({
-        metadata: {
-          ...attributionStore.metadata,
-          conversion_timestamp: Date.now(),
-        },
-      });
-      this.logger.debug('Updated attribution with conversion timestamp');
-    });
-
-    // Listen for page changes to update landing page
-    const onPopState = () => {
-      attributionStore.updateAttribution({
-        metadata: {
-          ...attributionStore.metadata,
-          landing_page: window.location.href,
-        },
-      });
-    };
-    window.addEventListener('popstate', onPopState);
-
-    this.attributionListenersCleanup = () => {
-      offCampaignLoaded();
-      offCartUpdated();
-      window.removeEventListener('popstate', onPopState);
-    };
   }
 
   private static async initializeAnalytics(): Promise<void> {

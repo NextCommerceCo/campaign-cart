@@ -105,13 +105,14 @@ key** — the rest derives from the campaign data it loads:
 stamps them centrally, so events that bypass `EventBuilder.createEvent` — page views,
 upsells, route changes — carry them too, for every provider.
 
-They stay `snake_case` all the way out. `RudderStackAdapter.buildContextProps`
-(`providers/rudderstack-adapter.ts:69-86`) copies the six keys onto the RudderStack payload
+They stay `snake_case` all the way out. `buildContextProps` in
+`providers/rudderstack-context.ts` copies the six keys onto the RudderStack payload
 **unchanged**, omitting empty values. An earlier version of this README claimed the adapter
 remapped them to camelCase (`campaignName`, `campaignApiKey`, …); it does not, and a
 downstream consumer built on that claim would have looked for fields that never arrive.
-The camelCase spelling exists only in `getCampaignData()` (`:742`), an internal shape used
-to fill `currency` and `affiliation` defaults — it is not what leaves the page.
+The camelCase spelling exists only in `getCampaignData()`, also in
+`providers/rudderstack-context.ts`, an internal shape used to fill `currency` and
+`affiliation` defaults — it is not what leaves the page.
 
 Without an API key the SDK warns at init (visible in debug mode) and events go out with
 no campaign identifiers.

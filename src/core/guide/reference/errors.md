@@ -52,7 +52,9 @@ Every part of `src/core`, and whether it raises anything of its own. "Nothing" i
 | `analytics/config.ts` | `[AnalyticsConfig]` | nothing |
 | `analytics/data-layer-manager.ts` | `[NextDataLayer]` | nothing |
 | `analytics/events/ecommerce-events.ts` | `[EcommerceEvents]` | nothing |
-| `analytics/events/event-builder.ts` | `[EventBuilder]` | nothing |
+| `analytics/events/ecommerce-item-formatter.ts` | `[EventBuilder]` | nothing |
+| `analytics/events/elevar-legacy-formatter.ts` | `[EventBuilder]` | nothing |
+| `analytics/events/event-builder.context.ts` | `[EventBuilder]` | nothing |
 | `analytics/events/user-events.ts` | `[UserEvents]` | nothing |
 | `analytics/index.ts` | `[NextAnalytics]` | nothing |
 | `analytics/providers/custom-adapter.ts` | `[Custom]` | 1 — `HTTP {status}: {statusText}` |
@@ -60,7 +62,12 @@ Every part of `src/core`, and whether it raises anything of its own. "Nothing" i
 | `analytics/providers/next-campaign-adapter.ts` | `[NextCampaign]` | 2 — `NextCampaign SDK load failed`, `NextCampaign dispatch failed: {message}` |
 | `analytics/providers/provider-adapter.ts` | `[{ProviderName}]` | nothing |
 | `analytics/providers/rudderstack-adapter.ts` | `[RudderStack]` | 1 — `RudderStack load timeout` |
+| `analytics/providers/rudderstack-properties.ts` | `[RudderStack]` | nothing |
+| `analytics/tracking/auto-event-cart-handlers.ts` | `[AutoEventListener]` | nothing |
+| `analytics/tracking/auto-event-checkout-handlers.ts` | `[AutoEventListener]` | nothing |
+| `analytics/tracking/auto-event-exit-intent-handlers.ts` | `[AutoEventListener]` | nothing |
 | `analytics/tracking/auto-event-listener.ts` | `[AutoEventListener]` | nothing |
+| `analytics/tracking/auto-event-upsell-handlers.ts` | `[AutoEventListener]` | nothing |
 | `analytics/tracking/list-attribution-tracker.ts` | `[ListAttributionTracker]` | nothing |
 | `analytics/tracking/meta-tag-controller.ts` | `[MetaTagController]` | nothing |
 | `analytics/tracking/pending-events-handler.ts` | `[PendingEventsHandler]` | nothing |
@@ -93,7 +100,9 @@ Every part of `src/core`, and whether it raises anything of its own. "Nothing" i
 | `next-commerce.upsells.ts` | `[NextCommerce]` | 4 — `No order found. Upsells can only be added after order completion.`, `Order does not support post-purchase upsells or is currently processing.`, `Either packageId or items array must be provided`, `Failed to add upsell - no updated order returned` |
 | `next-commerce.url-params.ts` | `[NextCommerce]` | nothing |
 | `rendering/template-renderer.ts` | `[TemplateRenderer]` | nothing |
+| `sdk-initializer.attribution.ts` | `[SDKInitializer]` | nothing |
 | `sdk-initializer.debug-utils.ts` | `[SDKInitializer]` | nothing |
+| `sdk-initializer.location-currency.ts` | `[SDKInitializer]` | nothing |
 | `sdk-initializer.storage-reset.ts` | `[SDKInitializer]` | nothing |
 | `sdk-initializer.ts` | `[SDKInitializer]` | 1 — `API key not found. Please set next-api-key meta tag or window.nextConfig.apiKey` |
 | `sdk-initializer.url-params.ts` | `[SDKInitializer]` | 3 — `Invalid package ID: {idStr}`, `Invalid quantity: {quantityStr}`, `Invalid shipping ID: {forceShippingId}` |

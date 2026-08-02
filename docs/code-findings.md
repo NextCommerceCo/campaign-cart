@@ -15,7 +15,7 @@ findings 116–126 from wave 2 on the same day (the `core/debug/` kebab rename, 
 hardening, and the `ui-service` split), and findings 127-137 from wave 3 (the teardown fixes,
 the format-table gate, the `core/debug` method breakup and the `checkout-validator` split);
 and findings 138-148 from wave 4 (the order-payload reconciliation, the routed-display gate,
-the `core/debug` split, the `prospect-cart` split and the test type gate); findings 149-153 from wave 5, and findings 154-161 from wave 6; each wave has its own
+the `core/debug` split, the `prospect-cart` split and the test type gate); findings 149-153 from wave 5, findings 154-161 from wave 6, and findings 162-167 from wave 7; each wave has its own
 section near the end. **Finding 144 was wrong as written and is corrected in place.** **Findings 127 and 130-133 are the most serious
 things this restructure has turned up** - a published page teaching ten paths that render
 nothing, and a validation layer that blocks non-Latin names while letting unvalidated billing
@@ -2539,7 +2539,7 @@ Four agents: the display teardown (149), the `handleFieldChange` remainder, the
 `sdk-initializer.ts` split, and the `campaign.` namespace. **Findings 156 and 157 are the two
 worth acting on soonest** — both put wrong data on a real order.
 
-### 154. `AttributeScanner.destroy()` destroys no live enhancer — *verified*
+### 154. ~~`AttributeScanner.destroy()` destroys no live enhancer~~ — **FIXED 2026-08-02.** The proposed fix was insufficient — see 162
 
 Found while fixing 149. The scanner tracks instances in a `WeakMap`, which cannot be iterated,
 so a full SDK teardown leaves every enhancer — and everything it registered — attached. The
@@ -2647,6 +2647,112 @@ Additive and trivially revertible, but §0.1 of the `sdk-structure` skill says t
 does not change without explicit approval, so it is recorded here rather than treated as routine.
 The API returns line properties as `Array<{ key, value }>`, not the dict shape cart lines use —
 confirmed against `OrderLineSerializer` and its tests.
+
+---
+
+## Found during the wave-7 restructure (2026-08-02)
+
+Five agents: `AttributeScanner.destroy()` (154), the two `sdk-initializer` clusters that
+finding 155 unblocked, the docs-generator split, the analytics split, and the dead
+`typeGuards.ts`. **Finding 163 is the one that puts wrong numbers in a real analytics report.**
+
+### 162. Two more things `AttributeScanner.destroy()` needed, and a count that was a lie — *fixed 2026-08-02*
+
+Finding 154's proposed fix — "keep an iterable registry alongside the `WeakMap`" — was not
+enough on its own. Two holes only showed up once a test drove them:
+
+- **An in-flight scan repopulates the registry after teardown.** `enhanceElement` suspends on a
+  dynamic `import()`; a `destroy()` landing in that window let the scan finish, register fresh
+  enhancers nothing would ever tear down, and restart the MutationObserver `destroy()` had just
+  stopped. Needed an `isDestroyed` flag checked after the await.
+- **One throwing `destroy()` aborted every teardown after it** — the classic partial teardown,
+  which leaves a page worse off than no teardown at all.
+
+And the reason nobody noticed: **`getStats().enhancedElements` returned `0` after `destroy()`
+while every enhancer was still live**, because the code reset the counter with a comment saying
+it could not iterate. A test asserting "no live enhancers after destroy()" passed against that
+number for as long as it existed. A count that is assigned rather than measured is not evidence.
+
+Corrections to 154 itself: `destroy()` was inert, but the `cleanupElement()` path — DOM removal
+and `data-next-*` attribute change — worked correctly all along. And the file's own header claim
+that enhancers are garbage-collected when their elements go is false twice over: `DOMObserver`
+never walks descendants of a *removed* node (see 164), and an enhancer with a store subscription
+is held by the store regardless of what the scanner does.
+
+### 163. The purchase event reports the cart, not the order — while the correct data sits unused beside it — *verified*
+
+`handleOrderCompleted` builds a complete `purchaseData` object from `order.lines` — real
+per-line SKU, price and discount from the order the customer actually placed — and **never reads
+it**. The event that ships comes from
+`EcommerceEvents.createPurchaseEvent(…, items: cartStore.items, …)`: the pre-order cart snapshot.
+
+Whenever the finalised order differs from the cart — a coupon that changes lines, any
+post-purchase adjustment — the purchase event reports the wrong items and the wrong revenue,
+with the right answer computed and discarded on the line above. This repo has already had to
+correct GA4 purchase value once (see the analytics section); this is the same class of defect
+one layer up.
+
+**Fix:** use `purchaseData`, or delete it and say why the cart snapshot is the intended source.
+Leaving both is how the next reader assumes the correct one is in use.
+
+Found alongside it: `formatElevarProduct` calls `getCurrency()` — a store read that can emit a
+warn — and drops the result, because `ElevarProduct` has no currency field at all.
+
+### 164. `DOMObserver` never cleans up inside a removed container — *verified*
+
+`processChildListMutation` walks descendants for **added** nodes but not for **removed** ones,
+so removing a wrapper element notifies nothing about the enhanced elements inside it, even when
+they carry one of the eight attributes the observer filters on. Combined with 162's new
+registry, this is the main reason the scanner can hold an element longer than the DOM does.
+
+### 165. `AccordionEnhancer` satisfies the teardown gate while removing nothing — *verified*
+
+It registers `click` and `keydown` on its trigger children as **inline arrows** and never
+removes them; `destroy()` only clears `this.accordions`. So a destroyed accordion still toggles
+when clicked.
+
+**It passes `destroy-contract.test.ts`,** because the rule added in wave 5 asks whether a
+teardown path *exists*, not whether it removes what was registered. That is the second blind
+spot found in the same gate in two waves — the first was a class that overrode nothing at all.
+
+**Fix:** the `AbortController` pattern, and then a gate rule with teeth — every listener
+registered must be traceable to a removal, not merely to the existence of an override.
+
+### 166. `boot-sequence.md` silently drops a step that stops being a `this.` call — *verified, worked around*
+
+`extract-boot-sequence.ts` recognises a boot step only when `initialize()` calls it as
+`this.methodName()`. Extracting a step to a free function does not just move its anchor — the
+step **disappears from the published boot sequence**, and its "if it fails" behaviour is
+relabelled as "aborts the boot" or "not analysed here".
+
+Discovered while splitting `initializeLocationAndCurrency` and `initializeAttribution`; worked
+around by keeping thin `this.*` wrapper methods for exactly those two steps, which is why
+`boot-sequence.md` came out byte-identical. The wrappers are a workaround for a generator
+limitation, not a design choice — that is worth knowing before someone "cleans them up".
+
+**Fix:** teach the extractor to follow a call to an imported function the same way it follows a
+method call.
+
+### 167. `src/utils/typeGuards.ts` was 267 lines of dead code — *deleted 2026-08-02*
+
+Twenty-three exports (not the twelve a first grep suggested), **zero callers** anywhere in
+`src/`, `e2e/`, `scripts/`, `examples/` or the root config — checked by identifier and by path
+string, and it was never on the public export surface. Retrievable from any commit before this
+one.
+
+The five apparent hits on `isValidNumber` were a **false friend**: every one is
+`intlTelInput`'s own `.isValidNumber()` instance method.
+
+**The interesting part is what replaced it.** The job those guards were written for is done by
+hand, inconsistently, all over the tree: `!isNaN(qty)` in `product-display.enhancer.ts`,
+`package-context-resolver.ts`, `add-to-cart.enhancer.ts` and `package-toggle.cards.ts`;
+`Number.isFinite(...)` in `cart-summary.condition-context.ts` and `prospect-cart/config.ts`; and
+`typeof x === 'string'`/`'number'` chains in `config.state.ts`, `checkout.state.ts` and
+`product-display.properties.ts`. Somebody wrote the shared guards; nobody found them.
+
+Four documents pointed at the dead path and were corrected: `.claude/rules/testing.md`,
+`.claude/rules/typescript.md`, `.claude/skills/sdk-structure/SKILL.md` and `src/core/README.md`
+— the last two also had `utils/` holding files that moved to `core/` two waves ago.
 
 ---
 

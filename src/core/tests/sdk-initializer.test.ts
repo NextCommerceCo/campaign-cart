@@ -17,6 +17,10 @@ import { SDKInitializer } from '@/core/sdk-initializer';
 import { useConfigStore } from '@/state/config';
 import { useAttributionStore } from '@/state/attribution';
 import { EventBus } from '@/core/events';
+import {
+  setupAttributionListeners,
+  type AttributionCtx,
+} from '@/core/sdk-initializer.attribution';
 import type { CartState, ErrorData } from '@/types/global';
 
 // SDKInitializer keeps all boot state on private static fields with no public
@@ -25,8 +29,7 @@ import type { CartState, ErrorData } from '@/types/global';
 type InitializerInternals = {
   initialized: boolean;
   retryAttempts: number;
-  attributionListenersCleanup: (() => void) | null;
-  setupAttributionListeners: () => void;
+  attributionCtx: AttributionCtx;
 };
 const internals = SDKInitializer as unknown as InitializerInternals;
 
@@ -104,8 +107,8 @@ describe('SDKInitializer boot failure (missing API key)', () => {
 
 describe('SDKInitializer.setupAttributionListeners idempotence (finding #30)', () => {
   beforeEach(() => {
-    internals.attributionListenersCleanup?.();
-    internals.attributionListenersCleanup = null;
+    internals.attributionCtx.attributionListenersCleanup?.();
+    internals.attributionCtx.attributionListenersCleanup = null;
   });
 
   it('does not stack a second cart:updated handler when called again, as a retry or reinitialize() would', () => {
@@ -116,8 +119,8 @@ describe('SDKInitializer.setupAttributionListeners idempotence (finding #30)', (
 
     // Simulates what a failed-boot retry does today: initializeAttribution()
     // — and this call inside it — reruns from the top on every attempt.
-    internals.setupAttributionListeners();
-    internals.setupAttributionListeners();
+    setupAttributionListeners(internals.attributionCtx);
+    setupAttributionListeners(internals.attributionCtx);
 
     EventBus.getInstance().emit('cart:updated', {} as unknown as CartState);
 
@@ -128,8 +131,8 @@ describe('SDKInitializer.setupAttributionListeners idempotence (finding #30)', (
     const addSpy = vi.spyOn(window, 'addEventListener');
     const removeSpy = vi.spyOn(window, 'removeEventListener');
 
-    internals.setupAttributionListeners();
-    internals.setupAttributionListeners();
+    setupAttributionListeners(internals.attributionCtx);
+    setupAttributionListeners(internals.attributionCtx);
 
     const popstateAdds = addSpy.mock.calls.filter(
       ([type]) => type === 'popstate'

@@ -49,7 +49,13 @@ fixes the underlying code or fixture on purpose. See the header comment in
 ## What to Test
 - Pure utility functions in `src/utils/` — always unit test these
 - Store actions and state transitions — test with real Zustand store instances
-- Type guard functions (`src/utils/typeGuards.ts`) — test all branches
+- Type guard / validation-predicate functions — test all branches, wherever they
+  live. There is no dedicated `src/utils/typeGuards.ts` module anymore: it had
+  zero callers across `src/`, `e2e/`, `scripts/` and `examples/` and was removed
+  as dead code. Validation like this is currently written ad hoc per call site
+  (e.g. `!isNaN(qty)` / `Number.isFinite(...)` in `src/features/cart/**` and
+  `src/features/display/**`) — if you factor a guard back out, it still belongs
+  in `src/utils/` and still needs this same branch coverage.
 - Display formatting / currency formatting — unit test edge cases
 
 ## What NOT to Unit Test

@@ -56,7 +56,9 @@ what belonged in it.
 read state — `url-utils` also *writes* to `parameter.state` — and `src/utils/` is for
 pure helpers that import nothing above them. Leaving them there made the rule in
 `CLAUDE.md` ("do not import stores here") false in two of that folder's four files.
-`utils/` now holds only `cookies.ts` and `typeGuards.ts`, and the rule is true again.
+`utils/` now holds only `cookies.ts` and `voucher.ts`, and the rule is true again.
+(`typeGuards.ts` was there too until 2026-08-02, when it turned out to have 23 exports and
+no callers at all.)
 
 ## Pending redesign (skill §6)
 

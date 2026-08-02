@@ -209,9 +209,28 @@ export const CORE_LOG_SOURCES: CoreLogSource[] = [
   // build its lookup as `new Map(CORE_LOG_SOURCES.map(s => [s.prefix, …]))`,
   // which silently kept only the last-declared file per prefix — so the order
   // of these entries decided what the check could see, and two clean splits of
-  // `sdk-initializer.ts` were abandoned to work around it. That lookup now
+  // `sdk-initializer.ts` (location/currency detection, attribution capture)
+  // were abandoned to work around it (finding #155). That lookup now
   // accumulates across every file sharing a prefix, so declaration order here
   // carries no meaning beyond readability.
+  {
+    prefix: 'SDKInitializer',
+    file: 'sdk-initializer.location-currency.ts',
+    area: 'Boot and wiring',
+    what: 'Detects the visitor\'s country and picks the display currency, before campaign prices are fetched so they arrive in the right currency. Runs as its own boot step, right after configuration loads.',
+    dynamicPrefix: true,
+    prefixFrom: 'sdk-initializer.ts',
+    prefixNote: 'A free function, not a class with its own logger. `SDKInitializer` builds one `Logger(\'SDKInitializer\')` in `sdk-initializer.ts` and passes it in through a `{ logger }` context, so every line here prints under `[SDKInitializer]`.',
+  },
+  {
+    prefix: 'SDKInitializer',
+    file: 'sdk-initializer.attribution.ts',
+    area: 'Boot and wiring',
+    what: 'Captures where the visitor came from — funnel name, UTM transfer, conversion timestamp, landing page — and keeps the attribution event listeners idempotent across a boot retry or `reinitialize()`. Runs as its own boot step, right after location/currency detection.',
+    dynamicPrefix: true,
+    prefixFrom: 'sdk-initializer.ts',
+    prefixNote: 'A free function, not a class with its own logger. `SDKInitializer` builds one `Logger(\'SDKInitializer\')` in `sdk-initializer.ts` and passes it in through a `{ logger }` context, so every line here prints under `[SDKInitializer]`.',
+  },
   {
     prefix: 'SDKInitializer',
     file: 'sdk-initializer.url-params.ts',
@@ -243,7 +262,7 @@ export const CORE_LOG_SOURCES: CoreLogSource[] = [
     prefix: 'SDKInitializer',
     file: 'sdk-initializer.ts',
     area: 'Boot and wiring',
-    what: 'Starts the SDK: reads configuration, detects country and currency, loads the campaign, applies URL parameters such as `forcePackageId`, then hands over to the DOM scan. Most "the page did nothing" investigations start here.',
+    what: 'Starts the SDK: reads configuration, delegates to location/currency detection and attribution capture, loads the campaign, applies URL parameters such as `forcePackageId`, then hands over to the DOM scan. Most "the page did nothing" investigations start here.',
   },
   {
     prefix: 'AttributeScanner',
@@ -426,9 +445,51 @@ export const CORE_LOG_SOURCES: CoreLogSource[] = [
   },
   {
     prefix: 'EventBuilder',
-    file: 'analytics/events/event-builder.ts',
-    area: 'Analytics core',
-    what: 'Builds each event’s payload: campaign context, currency, and the item fields taken from the package in the campaign data.',
+    file: 'analytics/events/event-builder.context.ts',
+    area: 'Analytics',
+    what: 'Session, page and campaign context attached to every analytics event.',
+  },
+  {
+    prefix: 'EventBuilder',
+    file: 'analytics/events/ecommerce-item-formatter.ts',
+    area: 'Analytics',
+    what: 'Turning a cart or order line into the item shape every provider expects — price, discount and currency resolution live here.',
+  },
+  {
+    prefix: 'EventBuilder',
+    file: 'analytics/events/elevar-legacy-formatter.ts',
+    area: 'Analytics',
+    what: 'The deprecated Elevar payload shape, kept for pages still reading it.',
+  },
+  {
+    prefix: 'RudderStack',
+    file: 'analytics/providers/rudderstack-properties.ts',
+    area: 'Analytics',
+    what: 'The per-event property builders the RudderStack adapter sends.',
+  },
+  {
+    prefix: 'AutoEventListener',
+    file: 'analytics/tracking/auto-event-cart-handlers.ts',
+    area: 'Analytics',
+    what: 'Cart events picked up from the event bus and pushed to the data layer.',
+  },
+  {
+    prefix: 'AutoEventListener',
+    file: 'analytics/tracking/auto-event-checkout-handlers.ts',
+    area: 'Analytics',
+    what: 'Checkout and order-completed events picked up from the event bus.',
+  },
+  {
+    prefix: 'AutoEventListener',
+    file: 'analytics/tracking/auto-event-upsell-handlers.ts',
+    area: 'Analytics',
+    what: 'Post-purchase upsell events picked up from the event bus.',
+  },
+  {
+    prefix: 'AutoEventListener',
+    file: 'analytics/tracking/auto-event-exit-intent-handlers.ts',
+    area: 'Analytics',
+    what: 'Exit-intent popup events picked up from the event bus.',
   },
   {
     prefix: 'EcommerceEvents',
@@ -795,6 +856,22 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
       'The element is attached. Treat it as `Failed to enhance element:`: compare its attributes with an equivalent element that was present at boot.',
   },
 
+  {
+    level: 'error',
+    message: 'Failed to destroy enhancer:',
+    meaning:
+      "One feature's own `destroy()` threw while the scanner was tearing the page down. The scanner carries on with the rest, so the other features are still torn down — but this one may have left a listener, a timer or a subscription behind.",
+    action:
+      'Fix the `destroy()` named in the attached error. Until then, expect the leak that teardown was meant to prevent: on a single-page flow that re-enhances, the stale handler keeps firing on an element nobody is managing.',
+  },
+  {
+    level: 'warn',
+    message: 'Scanner destroyed, ignoring scan request',
+    meaning:
+      'Something asked the scanner to scan after `destroy()` had already run. Expected during teardown — a queued or in-flight scan finishing after the SDK was torn down — and the scan is correctly refused rather than enhancing elements nothing would ever clean up.',
+    action:
+      'Nothing, if the page is unloading or re-initializing. If it appears on a page that is still live, something is calling `scanAndEnhance()` on a scanner it already destroyed — use the new instance instead.',
+  },
   // ── next-commerce.ts ───────────────────────────────────────────────────────
   {
     level: 'error',

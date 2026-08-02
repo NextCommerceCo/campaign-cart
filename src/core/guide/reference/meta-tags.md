@@ -177,8 +177,8 @@ Every tag above, with the code that reads it. This table is generated from the s
 | `next-failure-url` | *top level of the file* — `features/checkout/constants/selectors.ts`<br>`getFailureUrl` — `features/checkout/utils/url-utils.ts`<br>`CheckoutFormEnhancer.setFailureUrl` — `features/checkout/checkout-form/checkout-form.enhancer.ts` |
 | `next-funnel` | `AttributionCollector.getFunnelName` — `core/attribution/attribution-collector.ts` |
 | `next-next-url` | `CheckoutFormEnhancer.getNextPageUrlFromMeta` — `features/checkout/checkout-form/checkout-form.enhancer.ts`<br>*top level of the file* — `features/checkout/constants/selectors.ts`<br>`getNextPageUrlFromMeta` — `features/checkout/utils/meta-tag-utils.ts`<br>…and 2 more |
-| `next-page-name` | `RudderStackAdapter.getPageMetadata` — `core/analytics/providers/rudderstack-adapter.ts` |
-| `next-page-type` | `RudderStackAdapter.getPageMetadata` — `core/analytics/providers/rudderstack-adapter.ts`<br>`UpsellSelector.checkIfUpsellPage` — `core/debug/upsell-selector.ts`<br>`trackUpsellPageView` — `features/order/upsell/upsell.handlers.ts`<br>…and 1 more |
+| `next-page-name` | `getPageMetadata` — `core/analytics/providers/rudderstack-context.ts` |
+| `next-page-type` | `getPageMetadata` — `core/analytics/providers/rudderstack-context.ts`<br>`UpsellSelector.checkIfUpsellPage` — `core/debug/upsell-selector.ts`<br>`trackUpsellPageView` — `features/order/upsell/upsell.handlers.ts`<br>…and 1 more |
 | `next-payment-env-key` | `loadFromMeta` — `state/config/config.state.ts` |
 | `next-spreedly-key` | `loadFromMeta` — `state/config/config.state.ts` |
 | `next-success-url` | `CheckoutFormEnhancer.getNextPageUrlFromMeta` — `features/checkout/checkout-form/checkout-form.enhancer.ts`<br>*top level of the file* — `features/checkout/constants/selectors.ts`<br>`getNextPageUrlFromMeta` — `features/checkout/utils/meta-tag-utils.ts`<br>…and 2 more |

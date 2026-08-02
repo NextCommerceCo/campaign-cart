@@ -10,7 +10,7 @@ category: "Core Reference"
      src/docs/content/core-logs.ts. Do not edit by hand: change the log line in the
      code or the note in core-logs.ts, then run `npm run docs:reference`. -->
 
-Every message the SDK's own machinery can print — 497 of them, across 49 console prefixes plus 13 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
+Every message the SDK's own machinery can print — 500 of them, across 58 console prefixes plus 13 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
 
 Messages are listed at the wording the code uses. A `{name}` inside one is a value filled in at runtime, so search for the text on either side of it. **Extra context** means the call passes a second argument — an object or an error logged beside the message; expand that entry in the console, because the message alone will not tell you which element, package, or event was involved.
 
@@ -69,11 +69,13 @@ Console lines are prefixed with the part of the SDK that produced them. Find the
 
 | Prefix | What it does | Error | Warn | Info | Debug |
 |---|---|---|---|---|---|
+| `[SDKInitializer]` | Detects the visitor's country and picks the display currency, before campaign prices are fetched so they arrive in the right currency. Runs as its own boot step, right after configuration loads. | 1 | 4 | 8 | 1 |
+| `[SDKInitializer]` | Captures where the visitor came from — funnel name, UTM transfer, conversion timestamp, landing page — and keeps the attribution event listeners idempotent across a boot retry or `reinitialize()`. Runs as its own boot step, right after location/currency detection. | 1 | — | 1 | 6 |
 | `[SDKInitializer]` | The `forcePackageId` / `forceShippingId` URL overrides and the session's captured URL parameters, applied once configuration and campaign data are loaded. | 2 | 4 | 5 | 5 |
 | `[SDKInitializer]` | Clears the SDK's own sessionStorage, localStorage, and cookies when the page carries `?reset=true`, for a clean-slate reload. | — | — | 2 | — |
 | `[SDKInitializer]` | Builds `window.nextDebug` — the console surface for inspecting and driving the stores, the cart, campaign, attribution, and analytics from devtools. | — | — | — | 1 |
-| `[SDKInitializer]` | Starts the SDK: reads configuration, detects country and currency, loads the campaign, applies URL parameters such as `forcePackageId`, then hands over to the DOM scan. Most "the page did nothing" investigations start here. | 5 | 8 | 24 | 17 |
-| `[AttributeScanner]` | Finds every `data-next-*` element on the page and starts the feature bound to it. If a feature never runs, this is where its element was either skipped or failed to initialize. | 5 | 3 | 3 | 28 |
+| `[SDKInitializer]` | Starts the SDK: reads configuration, delegates to location/currency detection and attribution capture, loads the campaign, applies URL parameters such as `forcePackageId`, then hands over to the DOM scan. Most "the page did nothing" investigations start here. | 3 | 4 | 15 | 10 |
+| `[AttributeScanner]` | Finds every `data-next-*` element on the page and starts the feature bound to it. If a feature never runs, this is where its element was either skipped or failed to initialize. | 6 | 4 | 3 | 28 |
 | `[NextCommerce]` | Part of the `window.next` API — the analytics calls a page makes by hand — tracking a view, a sign-up, or a custom event through the SDK rather than the provider. | — | 1 | — | 3 |
 | `[NextCommerce]` | Part of the `window.next` API — metadata and attribution a page sets on itself, which every later order carries. | 7 | — | — | 4 |
 | `[NextCommerce]` | Part of the `window.next` API — the cart operations a page drives directly — adding, swapping, clearing. | — | — | — | 1 |
@@ -117,16 +119,28 @@ Console lines are prefixed with the part of the SDK that produced them. Find the
 | `[NextDataLayer]` | Pushes finished events onto `window.dataLayer` and fans them out to the providers, adding attribution and validating required fields on the way. | 8 | — | — | — |
 | `[AnalyticsConfig]` | Holds the per-provider settings — which fields each provider needs before it can be switched on. | 2 | — | — | — |
 | `[UserDataStorage]` | Remembers who the visitor is across pages — email, name, ids — in a cookie plus sessionStorage, so events after a redirect still identify them. | 2 | 2 | 2 | 4 |
-| `[EventBuilder]` | Builds each event’s payload: campaign context, currency, and the item fields taken from the package in the campaign data. | — | 10 | — | — |
 | `[EcommerceEvents]` | Builds the purchase-funnel events — view item, add to cart, begin checkout, purchase, upsell. | — | 1 | — | — |
 | `[UserEvents]` | Builds the `dl_user_data` event that identifies the visitor and carries the current cart contents. | — | 1 | — | — |
 | `[EventValidator]` | Checks an event against its schema in debug mode, so a missing or mistyped field is caught while you are looking rather than in a report a week later. | 1 | — | — | — |
+
+### Analytics
+
+| Prefix | What it does | Error | Warn | Info | Debug |
+|---|---|---|---|---|---|
+| `[EventBuilder]` | Session, page and campaign context attached to every analytics event. | — | 2 | — | — |
+| `[EventBuilder]` | Turning a cart or order line into the item shape every provider expects — price, discount and currency resolution live here. | — | 7 | — | — |
+| `[EventBuilder]` | The deprecated Elevar payload shape, kept for pages still reading it. | — | 1 | — | — |
+| `[RudderStack]` | The per-event property builders the RudderStack adapter sends. | — | — | — | 1 |
+| `[AutoEventListener]` | Cart events picked up from the event bus and pushed to the data layer. | 1 | 3 | — | 3 |
+| `[AutoEventListener]` | Checkout and order-completed events picked up from the event bus. | — | — | 1 | 1 |
+| `[AutoEventListener]` | Post-purchase upsell events picked up from the event bus. | — | 1 | 4 | 1 |
+| `[AutoEventListener]` | Exit-intent popup events picked up from the event bus. | — | — | — | 5 |
 
 ### Analytics tracking
 
 | Prefix | What it does | Error | Warn | Info | Debug |
 |---|---|---|---|---|---|
-| `[AutoEventListener]` | Turns the SDK’s own cart, upsell, and exit-intent events into analytics events, so a page gets tracking without writing any. | 1 | 4 | 6 | 14 |
+| `[AutoEventListener]` | Turns the SDK’s own cart, upsell, and exit-intent events into analytics events, so a page gets tracking without writing any. | — | — | 1 | 4 |
 | `[MetaTagController]` | Fires `view_item` / `view_item_list` and scroll-depth events from `<meta>` tags, including reading the package id out of a URL parameter and waiting for a time, an element, or a scroll threshold. | — | 8 | 10 | 13 |
 | `[PendingEventsHandler]` | Holds events that were raised as the page was navigating away, and replays them on the next page so a redirect does not lose a purchase. | 4 | 2 | 2 | 6 |
 | `[UserDataTracker]` | Fires `dl_user_data` first on every page and again when the visitor is identified or the route changes. | — | — | 1 | 17 |
@@ -153,6 +167,122 @@ Console lines are prefixed with the part of the SDK that produced them. Find the
 | `[CurrencySelector]` | The debug overlay’s currency switcher, for checking prices in every currency the campaign offers. | 1 | 1 | 4 | 6 |
 | `[LocaleSelector]` | The debug overlay’s locale switcher, for checking how prices and dates are formatted. | 1 | 1 | 4 | 5 |
 | `[UpsellSelector]` | The debug overlay’s post-purchase upsell inspector: what the page offers and what is currently selected. | — | — | 1 | 12 |
+
+## `[SDKInitializer]`
+
+Detects the visitor's country and picks the display currency, before campaign prices are fetched so they arrive in the right currency. Runs as its own boot step, right after configuration loads.
+
+Logged from `sdk-initializer.location-currency.ts`. A free function, not a class with its own logger. `SDKInitializer` builds one `Logger('SDKInitializer')` in `sdk-initializer.ts` and passes it in through a `{ logger }` context, so every line here prints under `[SDKInitializer]`.
+
+### Error
+
+Something did not work. Each of these means a visitor saw the wrong thing, or a piece of data went missing. Every one carries what it means and what to do.
+
+#### `Error fetching country config:`
+
+`sdk-initializer.location-currency.ts › initializeLocationAndCurrency` · extra context attached
+
+**Meaning:** The request for the forced country’s configuration threw rather than returning a bad answer. Detection is used instead, so the address form and currency may not match the forced country.
+
+**Action:** Read the attached error. It is normally a network failure and clears on reload, since the result is cached once a request succeeds.
+
+### Warn
+
+The SDK carried on, but something in the markup, the configuration, or the campaign data was not what it expected. Worth fixing even when the page looks right — several of these are how tracking goes quietly wrong.
+
+#### `Failed to fetch country config for {forcedCountry}, falling back to detection`
+
+`sdk-initializer.location-currency.ts › initializeLocationAndCurrency`
+
+**Meaning:** A country was forced — by `?country=` or a previous choice saved in the session — but the API returned no configuration for it, so normal detection is used instead. The visitor may see a different country than the one that was forced.
+
+**Action:** Check that the forced code is a two-letter code the campaign ships to; the shipping list is logged at boot as `Campaign shipping countries set globally:`. Clear `next_selected_country` from sessionStorage to stop a stale saved choice from repeating this.
+
+#### `Location detection failed or timed out, using defaults:`
+
+`sdk-initializer.location-currency.ts › initializeLocationAndCurrency` · extra context attached
+
+**Meaning:** Location detection did not answer within three seconds, so boot continued with the built-in defaults — the United States and the campaign’s default currency. Prices are still correct for that default, not for the visitor’s real country.
+
+**Action:** Expected occasionally on slow connections. If it is constant, check that the campaigns host is reachable and not blocked by an extension, because every visitor is then being treated as US.
+
+#### `Failed to fetch countries list:`
+
+`sdk-initializer.location-currency.ts › initializeLocationAndCurrency` · extra context attached
+
+**Meaning:** The country a visitor is in was resolved, but the list of *all* countries was not, so the country dropdown in the address form has nothing to offer.
+
+**Action:** Check the attached error. Until it succeeds a visitor cannot change country at checkout; a reload usually fixes it, as the list is cached once fetched.
+
+#### `Failed to initialize location/currency, using defaults:`
+
+`sdk-initializer.location-currency.ts › initializeLocationAndCurrency` · extra context attached
+
+**Meaning:** The whole location-and-currency step threw. Boot continues with defaults and with any currency the visitor had already chosen this session.
+
+**Action:** Read the attached error. Prices are being shown in the default currency, so treat this as a revenue-visible problem rather than a cosmetic one.
+
+### Info
+
+Normal progress. Read these as the play-by-play of what the SDK decided: which country it detected, which currency it chose, what it loaded.
+
+| Message | Source | Extra context |
+|---|---|---|
+| `Skipping location/currency detection (currencyBehavior is not set to auto)` | `sdk-initializer.location-currency.ts › initializeLocationAndCurrency` | — |
+| `Initializing location and currency detection...` | `sdk-initializer.location-currency.ts › initializeLocationAndCurrency` | — |
+| `Using forced country: {forcedCountry} (source: {countryOverride ? 'URL' : 'session'})` | `sdk-initializer.location-currency.ts › initializeLocationAndCurrency` | — |
+| `Country config loaded:` | `sdk-initializer.location-currency.ts › initializeLocationAndCurrency` | yes |
+| `User location detected:` | `sdk-initializer.location-currency.ts › initializeLocationAndCurrency` | yes |
+| `Currency override from URL:` | `sdk-initializer.location-currency.ts › initializeLocationAndCurrency` | yes |
+| `Using saved currency preference:` | `sdk-initializer.location-currency.ts › initializeLocationAndCurrency` | yes |
+| `Using detected currency:` | `sdk-initializer.location-currency.ts › initializeLocationAndCurrency` | yes |
+
+### Debug
+
+The detail behind the info lines. Expected in bulk, and only visible with debug mode on — a long list here is health, not trouble.
+
+| Message | Source | Extra context |
+|---|---|---|
+| `Location and currency initialized:` | `sdk-initializer.location-currency.ts › initializeLocationAndCurrency` | yes |
+
+## `[SDKInitializer]`
+
+Captures where the visitor came from — funnel name, UTM transfer, conversion timestamp, landing page — and keeps the attribution event listeners idempotent across a boot retry or `reinitialize()`. Runs as its own boot step, right after location/currency detection.
+
+Logged from `sdk-initializer.attribution.ts`. A free function, not a class with its own logger. `SDKInitializer` builds one `Logger('SDKInitializer')` in `sdk-initializer.ts` and passes it in through a `{ logger }` context, so every line here prints under `[SDKInitializer]`.
+
+### Error
+
+Something did not work. Each of these means a visitor saw the wrong thing, or a piece of data went missing. Every one carries what it means and what to do.
+
+#### `Attribution initialization failed:`
+
+`sdk-initializer.attribution.ts › initializeAttribution` · extra context attached
+
+**Meaning:** Attribution did not start, so the order will be missing UTM tags, funnel name, and click ids. The page and checkout still work — this is a reporting problem, not a buying one.
+
+**Action:** Read the attached error. Orders placed while this is happening cannot be attributed after the fact, so it is worth fixing quickly on paid traffic.
+
+### Info
+
+Normal progress. Read these as the play-by-play of what the SDK decided: which country it detected, which currency it chose, what it loaded.
+
+| Message | Source | Extra context |
+|---|---|---|
+| `Initializing attribution...` | `sdk-initializer.attribution.ts › initializeAttribution` | — |
+
+### Debug
+
+The detail behind the info lines. Expected in bulk, and only visible with debug mode on — a long list here is health, not trouble.
+
+| Message | Source | Extra context |
+|---|---|---|
+| `Added SDK version to attribution metadata: {sdkVersion}` | `sdk-initializer.attribution.ts › initializeAttribution` | — |
+| `Added user IP to attribution metadata: {userIp}` | `sdk-initializer.attribution.ts › initializeAttribution` | — |
+| `UTM transfer initialized` | `sdk-initializer.attribution.ts › initializeAttribution` | — |
+| `Attribution initialized` | `sdk-initializer.attribution.ts › initializeAttribution` | — |
+| `Set funnel name from campaign:` | `sdk-initializer.attribution.ts › setupAttributionListeners` | yes |
+| `Updated attribution with conversion timestamp` | `sdk-initializer.attribution.ts › setupAttributionListeners` | — |
 
 ## `[SDKInitializer]`
 
@@ -271,7 +401,7 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 ## `[SDKInitializer]`
 
-Starts the SDK: reads configuration, detects country and currency, loads the campaign, applies URL parameters such as `forcePackageId`, then hands over to the DOM scan. Most "the page did nothing" investigations start here.
+Starts the SDK: reads configuration, delegates to location/currency detection and attribution capture, loads the campaign, applies URL parameters such as `forcePackageId`, then hands over to the DOM scan. Most "the page did nothing" investigations start here.
 
 Logged from `sdk-initializer.ts`.
 
@@ -286,22 +416,6 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 **Meaning:** Boot threw before it finished. Nothing on the page is enhanced yet: prices show their placeholders and buttons do nothing. The attached error says which step failed.
 
 **Action:** Read the attached error first. A missing API key is the most common cause and says so plainly. Boot retries up to three times (`Retrying initialization …`); if all attempts fail the page stays un-enhanced, so fix the cause rather than reloading.
-
-#### `Error fetching country config:`
-
-`sdk-initializer.ts › SDKInitializer.initializeLocationAndCurrency` · extra context attached
-
-**Meaning:** The request for the forced country’s configuration threw rather than returning a bad answer. Detection is used instead, so the address form and currency may not match the forced country.
-
-**Action:** Read the attached error. It is normally a network failure and clears on reload, since the result is cached once a request succeeds.
-
-#### `Attribution initialization failed:`
-
-`sdk-initializer.ts › SDKInitializer.initializeAttribution` · extra context attached
-
-**Meaning:** Attribution did not start, so the order will be missing UTM tags, funnel name, and click ids. The page and checkout still work — this is a reporting problem, not a buying one.
-
-**Action:** Read the attached error. Orders placed while this is happening cannot be attributed after the fact, so it is worth fixing quickly on paid traffic.
 
 #### `Failed to auto-load order:`
 
@@ -339,38 +453,6 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 **Action:** Nothing while the retries are running. If you see the third attempt, treat the page as broken for that visitor and fix the error logged above it — retrying a missing API key never succeeds.
 
-#### `Failed to fetch country config for {forcedCountry}, falling back to detection`
-
-`sdk-initializer.ts › SDKInitializer.initializeLocationAndCurrency`
-
-**Meaning:** A country was forced — by `?country=` or a previous choice saved in the session — but the API returned no configuration for it, so normal detection is used instead. The visitor may see a different country than the one that was forced.
-
-**Action:** Check that the forced code is a two-letter code the campaign ships to; the shipping list is logged at boot as `Campaign shipping countries set globally:`. Clear `next_selected_country` from sessionStorage to stop a stale saved choice from repeating this.
-
-#### `Location detection failed or timed out, using defaults:`
-
-`sdk-initializer.ts › SDKInitializer.initializeLocationAndCurrency` · extra context attached
-
-**Meaning:** Location detection did not answer within three seconds, so boot continued with the built-in defaults — the United States and the campaign’s default currency. Prices are still correct for that default, not for the visitor’s real country.
-
-**Action:** Expected occasionally on slow connections. If it is constant, check that the campaigns host is reachable and not blocked by an extension, because every visitor is then being treated as US.
-
-#### `Failed to fetch countries list:`
-
-`sdk-initializer.ts › SDKInitializer.initializeLocationAndCurrency` · extra context attached
-
-**Meaning:** The country a visitor is in was resolved, but the list of *all* countries was not, so the country dropdown in the address form has nothing to offer.
-
-**Action:** Check the attached error. Until it succeeds a visitor cannot change country at checkout; a reload usually fixes it, as the list is cached once fetched.
-
-#### `Failed to initialize location/currency, using defaults:`
-
-`sdk-initializer.ts › SDKInitializer.initializeLocationAndCurrency` · extra context attached
-
-**Meaning:** The whole location-and-currency step threw. Boot continues with defaults and with any currency the visitor had already chosen this session.
-
-**Action:** Read the attached error. Prices are being shown in the default currency, so treat this as a revenue-visible problem rather than a cosmetic one.
-
 #### `Analytics v2 initialization failed (non-critical):`
 
 `sdk-initializer.ts › SDKInitializer.initializeAnalytics` · extra context attached
@@ -395,19 +477,10 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 |---|---|---|
 | `Initializing NextCommerce Campaign Cart SDK v2...` | `sdk-initializer.ts › SDKInitializer.initialize` | — |
 | `SDK initialization complete ✅` | `sdk-initializer.ts › SDKInitializer.initialize` | — |
-| `Skipping location/currency detection (currencyBehavior is not set to auto)` | `sdk-initializer.ts › SDKInitializer.initializeLocationAndCurrency` | — |
-| `Initializing location and currency detection...` | `sdk-initializer.ts › SDKInitializer.initializeLocationAndCurrency` | — |
-| `Using forced country: {forcedCountry} (source: {countryOverride ? 'URL' : 'session'})` | `sdk-initializer.ts › SDKInitializer.initializeLocationAndCurrency` | — |
-| `Country config loaded:` | `sdk-initializer.ts › SDKInitializer.initializeLocationAndCurrency` | yes |
-| `User location detected:` | `sdk-initializer.ts › SDKInitializer.initializeLocationAndCurrency` | yes |
-| `Currency override from URL:` | `sdk-initializer.ts › SDKInitializer.initializeLocationAndCurrency` | yes |
-| `Using saved currency preference:` | `sdk-initializer.ts › SDKInitializer.initializeLocationAndCurrency` | yes |
-| `Using detected currency:` | `sdk-initializer.ts › SDKInitializer.initializeLocationAndCurrency` | yes |
 | `forcePackageId parameter detected:` | `sdk-initializer.ts › SDKInitializer.loadConfiguration` | yes |
 | `forceShippingId parameter detected:` | `sdk-initializer.ts › SDKInitializer.loadConfiguration` | yes |
 | `forceBundleId parameter detected:` | `sdk-initializer.ts › SDKInitializer.loadConfiguration` | yes |
 | `Campaign shipping countries set globally:` | `sdk-initializer.ts › SDKInitializer.loadCampaignData` | yes |
-| `Initializing attribution...` | `sdk-initializer.ts › SDKInitializer.initializeAttribution` | — |
 | `Initializing analytics v2...` | `sdk-initializer.ts › SDKInitializer.initializeAnalytics` | — |
 | `Page loaded with {paramName} parameter, auto-loading order:` | `sdk-initializer.ts › SDKInitializer.checkAndLoadOrder` | yes |
 | `Order loaded successfully:` | `sdk-initializer.ts › SDKInitializer.checkAndLoadOrder` | yes |
@@ -425,16 +498,9 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 | Message | Source | Extra context |
 |---|---|---|
 | `Cart cleared on init (next-clear-cart)` | `sdk-initializer.ts › SDKInitializer.initialize` | — |
-| `Location and currency initialized:` | `sdk-initializer.ts › SDKInitializer.initializeLocationAndCurrency` | yes |
 | `Configuration loaded (metatags have priority):` | `sdk-initializer.ts › SDKInitializer.loadConfiguration` | yes |
 | `Campaign data loaded` | `sdk-initializer.ts › SDKInitializer.loadCampaignData` | — |
 | `Emitted sdk:url-parameters-processed event` | `sdk-initializer.ts › SDKInitializer.loadCampaignData` | — |
-| `Added SDK version to attribution metadata: {sdkVersion}` | `sdk-initializer.ts › SDKInitializer.initializeAttribution` | — |
-| `Added user IP to attribution metadata: {userIp}` | `sdk-initializer.ts › SDKInitializer.initializeAttribution` | — |
-| `UTM transfer initialized` | `sdk-initializer.ts › SDKInitializer.initializeAttribution` | — |
-| `Attribution initialized` | `sdk-initializer.ts › SDKInitializer.initializeAttribution` | — |
-| `Set funnel name from campaign:` | `sdk-initializer.ts › SDKInitializer.setupAttributionListeners` | yes |
-| `Updated attribution with conversion timestamp` | `sdk-initializer.ts › SDKInitializer.setupAttributionListeners` | — |
 | `Analytics v2 initialized successfully` | `sdk-initializer.ts › SDKInitializer.initializeAnalytics` | — |
 | `Error handler initialized` | `sdk-initializer.ts › SDKInitializer.initializeErrorHandler` | — |
 | `nextReady callback system and window.next API initialized` | `sdk-initializer.ts › SDKInitializer.setupReadyCallbacks` | — |
@@ -492,9 +558,25 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 **Action:** The element is attached. Treat it as `Failed to enhance element:`: compare its attributes with an equivalent element that was present at boot.
 
+#### `Failed to destroy enhancer:`
+
+`attribute-scanner.ts › AttributeScanner.destroyEnhancers` · extra context attached
+
+**Meaning:** One feature's own `destroy()` threw while the scanner was tearing the page down. The scanner carries on with the rest, so the other features are still torn down — but this one may have left a listener, a timer or a subscription behind.
+
+**Action:** Fix the `destroy()` named in the attached error. Until then, expect the leak that teardown was meant to prevent: on a single-page flow that re-enhances, the stale handler keeps firing on an element nobody is managing.
+
 ### Warn
 
 The SDK carried on, but something in the markup, the configuration, or the campaign data was not what it expected. Worth fixing even when the page looks right — several of these are how tracking goes quietly wrong.
+
+#### `Scanner destroyed, ignoring scan request`
+
+`attribute-scanner.ts › AttributeScanner.scanAndEnhance`
+
+**Meaning:** Something asked the scanner to scan after `destroy()` had already run. Expected during teardown — a queued or in-flight scan finishing after the SDK was torn down — and the scan is correctly refused rather than enhancing elements nothing would ever clean up.
+
+**Action:** Nothing, if the page is unloading or re-initializing. If it appears on a page that is still live, something is calling `scanAndEnhance()` on a scanner it already destroyed — use the new instance instead.
 
 #### `Already scanning, queuing request`
 
@@ -1578,9 +1660,9 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 ## `[EventBuilder]`
 
-Builds each event’s payload: campaign context, currency, and the item fields taken from the package in the campaign data.
+Session, page and campaign context attached to every analytics event.
 
-Logged from `analytics/events/event-builder.ts`.
+Logged from `analytics/events/event-builder.context.ts`.
 
 ### Warn
 
@@ -1588,7 +1670,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Could not access store state for user properties:`
 
-`analytics/events/event-builder.ts › EventBuilder.getUserProperties` · extra context attached
+`analytics/events/event-builder.context.ts › getUserProperties` · extra context attached
 
 **Meaning:** The event was built without user properties because reading the stores threw. It is still sent, minus the customer fields.
 
@@ -1596,15 +1678,25 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Could not build campaign context:`
 
-`analytics/events/event-builder.ts › EventBuilder.getCampaignContext` · extra context attached
+`analytics/events/event-builder.context.ts › getCampaignContext` · extra context attached
 
 **Meaning:** The event carries no campaign identifiers — campaign id, name, currency, language — because building them threw. Destinations that group by campaign will file it under nothing.
 
 **Action:** Read the attached error. If `apiKey` is unset, the separate warning `No campaign apiKey configured …` names the fix; otherwise the campaign store had not loaded when the event was built.
 
+## `[EventBuilder]`
+
+Turning a cart or order line into the item shape every provider expects — price, discount and currency resolution live here.
+
+Logged from `analytics/events/ecommerce-item-formatter.ts`.
+
+### Warn
+
+The SDK carried on, but something in the markup, the configuration, or the campaign data was not what it expected. Worth fixing even when the page looks right — several of these are how tracking goes quietly wrong.
+
 #### `Could not access campaign store for currency:`
 
-`analytics/events/event-builder.ts › EventBuilder.getCurrency` · extra context attached
+`analytics/events/ecommerce-item-formatter.ts › getCurrency` · extra context attached
 
 **Meaning:** Currency could not be read and the event fell back to `USD`. Revenue from a non-USD campaign is then reported in the wrong currency, which looks like a change in order value rather than an error.
 
@@ -1612,7 +1704,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Could not access campaign store for item formatting:`
 
-`analytics/events/event-builder.ts › EventBuilder.formatEcommerceItem` · extra context attached
+`analytics/events/ecommerce-item-formatter.ts › formatEcommerceItem` · extra context attached
 
 **Meaning:** An item in the event has no image URL because the campaign data could not be read. Everything else about the item is intact.
 
@@ -1620,7 +1712,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Could not find package data for packageId: {packageId}`
 
-`analytics/events/event-builder.ts › EventBuilder.formatEcommerceItem` · extra context attached
+`analytics/events/ecommerce-item-formatter.ts › formatEcommerceItem` · extra context attached
 
 **Meaning:** The event refers to a package that is not in the loaded campaign data, so the item falls back to ids instead of product name, SKU, and variant. The attachment lists the packages that *were* available, which is the fastest way to see what went wrong.
 
@@ -1628,7 +1720,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Could not access campaign store for product data:`
 
-`analytics/events/event-builder.ts › EventBuilder.formatEcommerceItem` · extra context attached
+`analytics/events/ecommerce-item-formatter.ts › formatEcommerceItem` · extra context attached
 
 **Meaning:** Product details for an item could not be read, so the item is reported with ids only — no name, no SKU.
 
@@ -1636,7 +1728,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Could not access campaign store for quantity:`
 
-`analytics/events/event-builder.ts › EventBuilder.formatEcommerceItem` · extra context attached
+`analytics/events/ecommerce-item-formatter.ts › formatEcommerceItem` · extra context attached
 
 **Meaning:** The units-per-package figure could not be read, so quantity is reported as the number of packages rather than the number of units. A "3-pack" then counts as 1.
 
@@ -1644,7 +1736,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Could not access campaign store for price:`
 
-`analytics/events/event-builder.ts › EventBuilder.formatEcommerceItem` · extra context attached
+`analytics/events/ecommerce-item-formatter.ts › formatEcommerceItem` · extra context attached
 
 **Meaning:** The catalogue price could not be read, so the item’s price field is left at its default. Revenue on the event may be understated.
 
@@ -1652,19 +1744,176 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Could not access campaign store for retail price:`
 
-`analytics/events/event-builder.ts › EventBuilder.formatEcommerceItem` · extra context attached
+`analytics/events/ecommerce-item-formatter.ts › formatEcommerceItem` · extra context attached
 
 **Meaning:** The pre-discount retail price could not be read, so the event has no "price before discount". Discount reporting is affected; revenue is not.
 
 **Action:** Read the attached error. Low urgency unless you report on discount depth.
 
+## `[EventBuilder]`
+
+The deprecated Elevar payload shape, kept for pages still reading it.
+
+Logged from `analytics/events/elevar-legacy-formatter.ts`.
+
+### Warn
+
+The SDK carried on, but something in the markup, the configuration, or the campaign data was not what it expected. Worth fixing even when the page looks right — several of these are how tracking goes quietly wrong.
+
 #### `Could not access campaign store:`
 
-`analytics/events/event-builder.ts › EventBuilder.formatElevarProduct` · extra context attached
+`analytics/events/elevar-legacy-formatter.ts › formatElevarProduct` · extra context attached
 
 **Meaning:** Campaign data could not be read while building an item, so it is sent with whatever fields were already resolved.
 
 **Action:** Read the attached error. If it appears in bulk, the campaign store failed to load and the same reason explains most other analytics warnings on the page.
+
+## `[RudderStack]`
+
+The per-event property builders the RudderStack adapter sends.
+
+Logged from `analytics/providers/rudderstack-properties.ts`.
+
+### Debug
+
+The detail behind the info lines. Expected in bulk, and only visible with debug mode on — a long list here is health, not trouble.
+
+| Message | Source | Extra context |
+|---|---|---|
+| `User Identified on Purchase` | `analytics/providers/rudderstack-properties.ts › identifyFromUserProperties` | yes |
+
+## `[AutoEventListener]`
+
+Cart events picked up from the event bus and pushed to the data layer.
+
+Logged from `analytics/tracking/auto-event-cart-handlers.ts`.
+
+### Error
+
+Something did not work. Each of these means a visitor saw the wrong thing, or a piece of data went missing. Every one carries what it means and what to do.
+
+#### `Error getting cart data:`
+
+`analytics/tracking/auto-event-cart-handlers.ts › getCartData` · extra context attached
+
+**Meaning:** Reading the cart for an event threw, so the event goes out with no cart value and no items — or is skipped, depending on which event needed it.
+
+**Action:** Read the attached error. If it coincides with a purchase, check that order’s value in the destination before trusting revenue reporting for the period.
+
+### Warn
+
+The SDK carried on, but something in the markup, the configuration, or the campaign data was not what it expected. Worth fixing even when the page looks right — several of these are how tracking goes quietly wrong.
+
+#### `Package not found for add to cart:`
+
+`analytics/tracking/auto-event-cart-handlers.ts › handleAddToCart` · extra context attached
+
+**Meaning:** Something was added to the cart but the matching package is not in the campaign data, so **no** `add_to_cart` event is sent. The cart itself is correct; the funnel loses a step.
+
+**Action:** The id is attached. Check it against the campaign’s packages — markup pointing at a package from another campaign is the usual cause. Add-to-cart counts will be lower than orders until it is fixed.
+
+#### `Package not found for remove from cart:`
+
+`analytics/tracking/auto-event-cart-handlers.ts › handleRemoveFromCart` · extra context attached
+
+**Meaning:** An item was removed from the cart but its package could not be found, so no `remove_from_cart` event is sent.
+
+**Action:** The id is attached; check it against the campaign’s packages. Same cause as the add-to-cart version, and the two normally appear together.
+
+#### `Package data not found for swap:`
+
+`analytics/tracking/auto-event-cart-handlers.ts › handlePackageSwapped` · extra context attached
+
+**Meaning:** A package swap happened but one or both packages are missing from the campaign data, so no swap event is sent. The cart still holds the right item.
+
+**Action:** Both ids are attached. Check each against the campaign’s packages; a selector offering a package the campaign no longer contains produces this.
+
+### Debug
+
+The detail behind the info lines. Expected in bulk, and only visible with debug mode on — a long list here is health, not trouble.
+
+| Message | Source | Extra context |
+|---|---|---|
+| `Tracked add to cart:` | `analytics/tracking/auto-event-cart-handlers.ts › handleAddToCart` | yes |
+| `Tracked remove from cart:` | `analytics/tracking/auto-event-cart-handlers.ts › handleRemoveFromCart` | yes |
+| `Tracked package swap:` | `analytics/tracking/auto-event-cart-handlers.ts › handlePackageSwapped` | yes |
+
+## `[AutoEventListener]`
+
+Checkout and order-completed events picked up from the event bus.
+
+Logged from `analytics/tracking/auto-event-checkout-handlers.ts`.
+
+### Info
+
+Normal progress. Read these as the play-by-play of what the SDK decided: which country it detected, which currency it chose, what it loaded.
+
+| Message | Source | Extra context |
+|---|---|---|
+| `Tracked purchase:` | `analytics/tracking/auto-event-checkout-handlers.ts › handleOrderCompleted` | yes |
+
+### Debug
+
+The detail behind the info lines. Expected in bulk, and only visible with debug mode on — a long list here is health, not trouble.
+
+| Message | Source | Extra context |
+|---|---|---|
+| `Marked purchase event for queueing with _willRedirect = true` | `analytics/tracking/auto-event-checkout-handlers.ts › handleOrderCompleted` | — |
+
+## `[AutoEventListener]`
+
+Post-purchase upsell events picked up from the event bus.
+
+Logged from `analytics/tracking/auto-event-upsell-handlers.ts`.
+
+### Warn
+
+The SDK carried on, but something in the markup, the configuration, or the campaign data was not what it expected. Worth fixing even when the page looks right — several of these are how tracking goes quietly wrong.
+
+#### `Package not found for upsell view:`
+
+`analytics/tracking/auto-event-upsell-handlers.ts › handleUpsellViewed` · extra context attached
+
+**Meaning:** An upsell was shown but its package is not in the campaign data, so no upsell view event is sent. Accept and skip events for the same offer are affected in the same way.
+
+**Action:** The id is attached. Check the upsell markup’s package id against the campaign — an upsell page reused across campaigns is the common cause.
+
+### Info
+
+Normal progress. Read these as the play-by-play of what the SDK decided: which country it detected, which currency it chose, what it loaded.
+
+| Message | Source | Extra context |
+|---|---|---|
+| `Tracked upsell page view:` | `analytics/tracking/auto-event-upsell-handlers.ts › handleUpsellViewed` | yes |
+| `Tracked upsell view:` | `analytics/tracking/auto-event-upsell-handlers.ts › handleUpsellViewed` | yes |
+| `Tracked upsell accepted:` | `analytics/tracking/auto-event-upsell-handlers.ts › handleUpsellAccepted` | yes |
+| `Tracked upsell skipped:` | `analytics/tracking/auto-event-upsell-handlers.ts › handleUpsellSkipped` | yes |
+
+### Debug
+
+The detail behind the info lines. Expected in bulk, and only visible with debug mode on — a long list here is health, not trouble.
+
+| Message | Source | Extra context |
+|---|---|---|
+| `Upsell event already marked for queueing due to redirect` | `analytics/tracking/auto-event-upsell-handlers.ts › handleUpsellAccepted` | — |
+
+## `[AutoEventListener]`
+
+Exit-intent popup events picked up from the event bus.
+
+Logged from `analytics/tracking/auto-event-exit-intent-handlers.ts`.
+
+### Debug
+
+The detail behind the info lines. Expected in bulk, and only visible with debug mode on — a long list here is health, not trouble.
+
+| Message | Source | Extra context |
+|---|---|---|
+| `Tracked exit intent shown:` | `analytics/tracking/auto-event-exit-intent-handlers.ts › handleExitIntentShown` | yes |
+| `Tracked exit intent accepted:` | `analytics/tracking/auto-event-exit-intent-handlers.ts › handleExitIntentClicked` | yes |
+| `Tracked exit intent dismissed:` | `analytics/tracking/auto-event-exit-intent-handlers.ts › handleExitIntentDismissed` | yes |
+| `Tracked exit intent closed:` | `analytics/tracking/auto-event-exit-intent-handlers.ts › handleExitIntentClosed` | yes |
+| `Tracked exit intent action:` | `analytics/tracking/auto-event-exit-intent-handlers.ts › handleExitIntentAction` | yes |
 
 ## `[EcommerceEvents]`
 
@@ -1726,54 +1975,6 @@ Turns the SDK’s own cart, upsell, and exit-intent events into analytics events
 
 Logged from `analytics/tracking/auto-event-listener.ts`.
 
-### Error
-
-Something did not work. Each of these means a visitor saw the wrong thing, or a piece of data went missing. Every one carries what it means and what to do.
-
-#### `Error getting cart data:`
-
-`analytics/tracking/auto-event-listener.ts › AutoEventListener.getCartData` · extra context attached
-
-**Meaning:** Reading the cart for an event threw, so the event goes out with no cart value and no items — or is skipped, depending on which event needed it.
-
-**Action:** Read the attached error. If it coincides with a purchase, check that order’s value in the destination before trusting revenue reporting for the period.
-
-### Warn
-
-The SDK carried on, but something in the markup, the configuration, or the campaign data was not what it expected. Worth fixing even when the page looks right — several of these are how tracking goes quietly wrong.
-
-#### `Package not found for add to cart:`
-
-`analytics/tracking/auto-event-listener.ts › handleAddToCart` · extra context attached
-
-**Meaning:** Something was added to the cart but the matching package is not in the campaign data, so **no** `add_to_cart` event is sent. The cart itself is correct; the funnel loses a step.
-
-**Action:** The id is attached. Check it against the campaign’s packages — markup pointing at a package from another campaign is the usual cause. Add-to-cart counts will be lower than orders until it is fixed.
-
-#### `Package not found for remove from cart:`
-
-`analytics/tracking/auto-event-listener.ts › handleRemoveFromCart` · extra context attached
-
-**Meaning:** An item was removed from the cart but its package could not be found, so no `remove_from_cart` event is sent.
-
-**Action:** The id is attached; check it against the campaign’s packages. Same cause as the add-to-cart version, and the two normally appear together.
-
-#### `Package data not found for swap:`
-
-`analytics/tracking/auto-event-listener.ts › handlePackageSwapped` · extra context attached
-
-**Meaning:** A package swap happened but one or both packages are missing from the campaign data, so no swap event is sent. The cart still holds the right item.
-
-**Action:** Both ids are attached. Check each against the campaign’s packages; a selector offering a package the campaign no longer contains produces this.
-
-#### `Package not found for upsell view:`
-
-`analytics/tracking/auto-event-listener.ts › handleUpsellViewed` · extra context attached
-
-**Meaning:** An upsell was shown but its package is not in the campaign data, so no upsell view event is sent. Accept and skip events for the same offer are affected in the same way.
-
-**Action:** The id is attached. Check the upsell markup’s package id against the campaign — an upsell page reused across campaigns is the common cause.
-
 ### Info
 
 Normal progress. Read these as the play-by-play of what the SDK decided: which country it detected, which currency it chose, what it loaded.
@@ -1781,11 +1982,6 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 | Message | Source | Extra context |
 |---|---|---|
 | `AutoEventListener initialized` | `analytics/tracking/auto-event-listener.ts › AutoEventListener.initialize` | — |
-| `Tracked upsell page view:` | `analytics/tracking/auto-event-listener.ts › handleUpsellViewed` | yes |
-| `Tracked upsell view:` | `analytics/tracking/auto-event-listener.ts › handleUpsellViewed` | yes |
-| `Tracked upsell accepted:` | `analytics/tracking/auto-event-listener.ts › handleUpsellAccepted` | yes |
-| `Tracked upsell skipped:` | `analytics/tracking/auto-event-listener.ts › handleUpsellSkipped` | yes |
-| `Tracked purchase:` | `analytics/tracking/auto-event-listener.ts › handleOrderCompleted` | yes |
 
 ### Debug
 
@@ -1794,16 +1990,6 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 | Message | Source | Extra context |
 |---|---|---|
 | `Event {eventName} debounced` | `analytics/tracking/auto-event-listener.ts › AutoEventListener.shouldProcessEvent` | — |
-| `Tracked add to cart:` | `analytics/tracking/auto-event-listener.ts › handleAddToCart` | yes |
-| `Tracked remove from cart:` | `analytics/tracking/auto-event-listener.ts › handleRemoveFromCart` | yes |
-| `Tracked package swap:` | `analytics/tracking/auto-event-listener.ts › handlePackageSwapped` | yes |
-| `Upsell event already marked for queueing due to redirect` | `analytics/tracking/auto-event-listener.ts › handleUpsellAccepted` | — |
-| `Marked purchase event for queueing with _willRedirect = true` | `analytics/tracking/auto-event-listener.ts › handleOrderCompleted` | — |
-| `Tracked exit intent shown:` | `analytics/tracking/auto-event-listener.ts › handleExitIntentShown` | yes |
-| `Tracked exit intent accepted:` | `analytics/tracking/auto-event-listener.ts › handleExitIntentClicked` | yes |
-| `Tracked exit intent dismissed:` | `analytics/tracking/auto-event-listener.ts › handleExitIntentDismissed` | yes |
-| `Tracked exit intent closed:` | `analytics/tracking/auto-event-listener.ts › handleExitIntentClosed` | yes |
-| `Tracked exit intent action:` | `analytics/tracking/auto-event-listener.ts › handleExitIntentAction` | yes |
 | `AutoEventListener reset` | `analytics/tracking/auto-event-listener.ts › AutoEventListener.reset` | — |
 | `AutoEventListener destroyed` | `analytics/tracking/auto-event-listener.ts › AutoEventListener.destroy` | — |
 | `Updated debounce config:` | `analytics/tracking/auto-event-listener.ts › AutoEventListener.setDebounceConfig` | yes |

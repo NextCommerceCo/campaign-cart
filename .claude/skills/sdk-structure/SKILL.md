@@ -18,10 +18,13 @@ How to structure, move, and split files in the Campaign Cart SDK, and how to
 migrate safely toward the target layout. These encode deliberate decisions — do
 not "improve" the structure by ignoring them.
 
-> **This describes the TARGET structure.** Today's code uses `enhancers/` +
-> `stores/` and `.getInstance()` singletons; the target below (`features/` +
-> `state/` + injected dependencies) is where we are migrating to. Until a folder
-> is migrated, the authoring reference files still govern it.
+> **The folder migration is done** (2026-08-02). `features/`, `state/` and `core/`
+> are the real layout — `enhancers/` and `stores/` no longer exist, and the
+> "Today → Target" table in §1 is history rather than a plan. What is **not**
+> finished is the injection redesign in §6: `src/client.ts` is the only place a
+> client is constructed, but features still *fetch* their dependencies from it
+> rather than receiving them, and `.getInstance()` singletons remain. Read §6
+> before assuming a layer is wired the way §1 draws it.
 
 ## Reference files (read the one that fits the task)
 
@@ -98,9 +101,10 @@ Supporting (repo root): `examples/`, `tests/`, `docs/`, `typedoc.json`,
 | `utils/analytics/` | `core/analytics/` ✅ done | cross-cutting subsystem, not a feature; stays a lazy `analytics` chunk |
 | `utils/debug/` | `core/debug/` ✅ done | code-split via dynamic `import()` so it never ships in prod |
 
-After this pass `utils/` holds only pure, cross-feature helpers (`cookies`,
-`currencyFormatter`, `typeGuards`, `url-utils`); domain calculators moved to their
-layer (`CartCalculator` → `state/cart/`, `PriceCalculator` → `features/display/`).
+After this pass `utils/` holds only pure, cross-feature helpers — today that is
+`cookies.ts` and `voucher.ts`. `currencyFormatter` and `url-utils` ended up in
+`core/` rather than here, and domain calculators moved to their layer
+(`CartCalculator` → `state/cart/`, `PriceCalculator` → `features/display/`).
 
 ---
 

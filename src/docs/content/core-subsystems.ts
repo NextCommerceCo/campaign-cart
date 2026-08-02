@@ -26,6 +26,8 @@ export const CORE_SUBSYSTEMS: CoreSubsystem[] = [
       'Starts the SDK: reads your configuration, works out the currency, loads the campaign, then scans the page and wires up every feature. Nothing else on this list works until it has finished.',
     sources: [
       'core/sdk-initializer.ts',
+      'core/sdk-initializer.location-currency.ts',
+      'core/sdk-initializer.attribution.ts',
       'core/sdk-initializer.url-params.ts',
       'core/sdk-initializer.storage-reset.ts',
       'core/sdk-initializer.debug-utils.ts',

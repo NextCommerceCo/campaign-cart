@@ -1,12 +1,18 @@
 /**
  * Attribute Scanner
  * Scans DOM for data attributes and instantiates appropriate enhancers
- * 
+ *
  * Memory Management:
- * - Uses WeakMap for automatic garbage collection of enhancers
- * - Elements removed from DOM will have their enhancers cleaned up automatically
- * - Tracks enhancer count separately since WeakMap doesn't support .size
- * 
+ * - `enhancers` (WeakMap) is the element → instance index: it answers "is this
+ *   element already enhanced, and with what".
+ * - `enhancedElements` (Set) is the *iterable* registry beside it, and the only
+ *   thing that makes a full teardown possible — a WeakMap cannot be iterated, so
+ *   `destroy()` had no way to reach a single live instance and tore down nothing
+ *   (finding 154 in `docs/code-findings.md`).
+ * - The Set holds its elements **strongly**, so every element in it must leave
+ *   through `cleanupElement()` — that is the one place an element is dropped from
+ *   both structures and its enhancers destroyed. `destroy()` empties it.
+ *
  * Performance:
  * - Batch processing with yield between batches
  * - Debounced queue processing
@@ -21,10 +27,24 @@ import { DOMObserver, type DOMChangeEvent } from '@/core/base/dom-observer';
 export class AttributeScanner {
   private logger: Logger;
   private enhancers = new WeakMap<HTMLElement, BaseEnhancer[]>();
+  /**
+   * Every element currently holding enhancers — the iterable half of the index.
+   *
+   * Kept in step with `enhancers`: an element is added where the WeakMap entry is
+   * written, and removed in `cleanupElement()`, which is the single exit for both.
+   * Membership here is a **strong** reference, so an element that leaves the DOM
+   * without the observer noticing stays reachable until `destroy()` — the price of
+   * being able to tear anything down at all.
+   */
+  private enhancedElements = new Set<HTMLElement>();
   private enhancerCount = 0; // Track count separately since WeakMap doesn't have .size
   private domObserver: DOMObserver;
   private isScanning = false;
+  /** Set by `destroy()`. Terminal: a destroyed scanner never enhances again. */
+  private isDestroyed = false;
   private scanQueue = new Set<HTMLElement>();
+  /** Pending `processQueue()` timer, so `destroy()` can cancel it. */
+  private queueTimer: number | undefined;
   private enhancerStats = new Map<string, { totalTime: number; count: number }>();
   private isDebugMode = false;
 
@@ -42,6 +62,11 @@ export class AttributeScanner {
   }
 
   public async scanAndEnhance(root: Element): Promise<void> {
+    if (this.isDestroyed) {
+      this.logger.warn('Scanner destroyed, ignoring scan request');
+      return;
+    }
+
     if (this.isScanning) {
       this.logger.warn('Already scanning, queuing request');
       return;
@@ -131,7 +156,14 @@ export class AttributeScanner {
       
       // Wait for any remaining promises
       await Promise.all(enhancePromises);
-      
+
+      // destroy() can land on any of the awaits above. Everything it built has
+      // already been torn down by enhanceElement(); what is left is to not
+      // announce the page as enhanced and not restart the observer just stopped.
+      if (this.isDestroyed) {
+        return;
+      }
+
       this.logger.debug(`Enhanced ${enhancedCount} elements successfully`);
       
       // Show performance report in debug mode
@@ -162,6 +194,10 @@ export class AttributeScanner {
   }
 
   private async enhanceElement(element: HTMLElement): Promise<void> {
+    if (this.isDestroyed) {
+      return;
+    }
+
     // Skip if already enhanced
     if (this.enhancers.has(element)) {
       this.logger.debug('Element already enhanced, skipping', element);
@@ -220,8 +256,17 @@ export class AttributeScanner {
         }
       }
       
+      // Between the awaits above, destroy() may have emptied the registry. These
+      // instances were never in it, so registering them now would resurrect the
+      // page silently; tear them down instead.
+      if (this.isDestroyed) {
+        this.destroyEnhancers(elementEnhancers);
+        return;
+      }
+
       if (elementEnhancers.length > 0) {
         this.enhancers.set(element, elementEnhancers);
+        this.enhancedElements.add(element);
         this.enhancerCount += elementEnhancers.length;
         this.logger.debug(`Enhanced element with ${elementEnhancers.length} enhancer(s)`, {
           element: element.tagName,
@@ -442,6 +487,10 @@ export class AttributeScanner {
   }
 
   private handleDOMChange(event: DOMChangeEvent): void {
+    if (this.isDestroyed) {
+      return;
+    }
+
     switch (event.type) {
       case 'added':
         this.queueElementForEnhancement(event.element);
@@ -469,16 +518,32 @@ export class AttributeScanner {
   }
 
   private queueElementForEnhancement(element: HTMLElement): void {
+    if (this.isDestroyed) {
+      return;
+    }
+
     this.scanQueue.add(element);
     this.processQueueDebounced();
   }
 
-  private processQueueDebounced = this.debounce(() => {
-    this.processQueue();
-  }, 50);
+  /**
+   * Trailing 50ms debounce on `processQueue()`. The timer id is a field rather than
+   * a closure so `destroy()` can cancel a run already scheduled — otherwise it fires
+   * after teardown and enhances elements nothing will ever destroy.
+   */
+  private processQueueDebounced(): void {
+    if (this.queueTimer !== undefined) {
+      clearTimeout(this.queueTimer);
+    }
+
+    this.queueTimer = window.setTimeout(() => {
+      this.queueTimer = undefined;
+      void this.processQueue();
+    }, 50);
+  }
 
   private async processQueue(): Promise<void> {
-    if (this.scanQueue.size === 0) {
+    if (this.isDestroyed || this.scanQueue.size === 0) {
       return;
     }
 
@@ -496,34 +561,72 @@ export class AttributeScanner {
     }
   }
 
-  private debounce(func: Function, wait: number): Function {
-    let timeout: number | undefined;
-    return function (this: any, ...args: any[]) {
-      clearTimeout(timeout);
-      timeout = window.setTimeout(() => func.apply(this, args), wait);
-    };
+  /**
+   * The one exit for an enhanced element: drops it from both the registry and the
+   * index, then destroys what was bound to it.
+   *
+   * De-registering *before* destroying is deliberate. An enhancer's `destroy()` can
+   * mutate the DOM, which routes back here through the observer; with the entry
+   * already gone, that re-entry finds nothing and cannot double-destroy.
+   */
+  private cleanupElement(element: HTMLElement): void {
+    this.enhancedElements.delete(element);
+
+    const enhancers = this.enhancers.get(element);
+    if (!enhancers) {
+      return;
+    }
+
+    this.enhancers.delete(element);
+    this.enhancerCount -= enhancers.length;
+    this.destroyEnhancers(enhancers);
   }
 
-  private cleanupElement(element: HTMLElement): void {
-    const enhancers = this.enhancers.get(element);
-    if (enhancers) {
-      enhancers.forEach(enhancer => enhancer.destroy());
-      this.enhancerCount -= enhancers.length;
-      this.enhancers.delete(element);
+  /**
+   * Destroys each instance, containing a throw to the instance that threw.
+   *
+   * A teardown that aborts half-way is worse than none: the page is left with some
+   * features torn down and the rest still subscribed, which no amount of reloading
+   * state explains.
+   */
+  private destroyEnhancers(enhancers: BaseEnhancer[]): void {
+    for (const enhancer of enhancers) {
+      try {
+        enhancer.destroy();
+      } catch (error) {
+        this.logger.error(
+          'Failed to destroy enhancer:',
+          error,
+          enhancer.constructor.name
+        );
+      }
     }
   }
 
+  /**
+   * Tears down every enhancer this scanner created, then stops it for good.
+   *
+   * Safe to call twice, and safe while a scan is in flight: `isDestroyed` makes the
+   * suspended scan tear down whatever it finishes building instead of registering it.
+   */
   public destroy(): void {
+    this.isDestroyed = true;
     this.domObserver.destroy();
-    
+
     // Clear any pending queue processing
+    if (this.queueTimer !== undefined) {
+      clearTimeout(this.queueTimer);
+      this.queueTimer = undefined;
+    }
     this.scanQueue.clear();
-    
-    // Note: WeakMap doesn't support iteration or clear()
-    // Enhancers will be garbage collected when their elements are removed
-    // Reset the count since we can't iterate to destroy remaining enhancers
+
+    // Snapshot: cleanupElement() mutates the registry as it goes.
+    const elements = Array.from(this.enhancedElements);
+    this.enhancedElements.clear();
+    elements.forEach(element => this.cleanupElement(element));
+
     this.enhancerCount = 0;
-    
+
     this.logger.debug('AttributeScanner destroyed');
   }
 
@@ -533,6 +636,12 @@ export class AttributeScanner {
   }
 
   public resume(root: Element = document.body): void {
+    // destroy() cleared the observer's handlers, so resuming would leave a
+    // MutationObserver running that notifies nobody.
+    if (this.isDestroyed) {
+      return;
+    }
+
     this.domObserver.resume(root);
     this.logger.debug('AttributeScanner resumed');
   }
