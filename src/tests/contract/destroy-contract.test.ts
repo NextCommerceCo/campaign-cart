@@ -289,3 +289,226 @@ describe('destroy() calls super.destroy() first', () => {
     ).toEqual([]);
   });
 });
+
+/**
+ * The gate above only ever inspects classes that *override* `destroy()` — which is
+ * exactly the blind spot finding 139 fell through: `ProspectCartEnhancer` had **no**
+ * `destroy()` or `cleanupEventListeners()` override at all, so it never appeared in
+ * `findDestroyOverrides()`, and every listener its sibling module `triggers.ts`
+ * registered (email/phone/name `blur`+`change`, plus a `focus`+`input` pair on every
+ * form field in `formStart` mode) outlived the enhancer with nothing to catch it.
+ *
+ * **The rule this section enforces:** a class extending one of the four base
+ * enhancers, whose own file or a same-folder sibling it imports registers a raw
+ * `addEventListener(...)` call, must override `destroy()` or
+ * `cleanupEventListeners()` — otherwise base `cleanupEventListeners()` (a no-op) is
+ * the only teardown that ever runs, and the listener can never be removed.
+ *
+ * This does not check that the override actually removes what was registered (that
+ * would require tracing which listener the override's body targets) — only that a
+ * teardown path exists at all, which is the one thing a class that overrides
+ * nothing cannot dodge. `this.on()` / `this.subscribe()` calls are out of scope
+ * here: those are auto-cleaned by base `destroy()` already (finding 103), so a raw
+ * `addEventListener` reachable from the class is the only shape this needs to catch.
+ *
+ * Scoped to `.addEventListener(` (not `eventBus.on(`/`this.on(`) because the DOM
+ * listener path is the one with no built-in cleanup — see `BaseEnhancer.on()`'s own
+ * doc comment for why event-bus listeners already record their unsubscribe.
+ *
+ * This is a ratchet, like the allowlist above: it fails today on more than
+ * `ProspectCartEnhancer` (see NO_TEARDOWN_ALLOWLIST below), each with a reason. Fix
+ * finding 139 shrinks it by one; the other entries are separate decisions for
+ * whoever owns that file, not something this change makes for them.
+ */
+describe('a class that registers a raw addEventListener has a teardown path', () => {
+  interface ListenerRegisteringClass {
+    file: string;
+    className: string;
+    /** True when the class itself overrides `destroy()` or `cleanupEventListeners()`. */
+    hasTeardown: boolean;
+    /** Where the raw `addEventListener(` call was found: the class's own file, or a
+     *  same-folder sibling file reached through a relative `import`. */
+    listenerSource: string;
+  }
+
+  /** `import.meta.glob` keys are POSIX-style relative paths (`../../foo/bar.ts`).
+   *  Resolves a relative import specifier from `fromKey` to another glob key,
+   *  trying `spec.ts` then `spec/index.ts` — the two shapes this repo's relative
+   *  imports use. */
+  function resolveRelativeImport(
+    fromKey: string,
+    spec: string
+  ): string | undefined {
+    const fromParts = fromKey.split('/').slice(0, -1);
+    const specParts = spec.split('/');
+    const parts = [...fromParts];
+    for (const part of specParts) {
+      if (part === '.' || part === '') continue;
+      if (part === '..') parts.pop();
+      else parts.push(part);
+    }
+    const joined = parts.join('/');
+    return [`${joined}.ts`, `${joined}/index.ts`].find(k => k in modules);
+  }
+
+  const RAW_LISTENER = /\.addEventListener\(/;
+
+  function findListenerRegisteringClasses(): ListenerRegisteringClass[] {
+    const found: ListenerRegisteringClass[] = [];
+
+    for (const [path, text] of Object.entries(modules)) {
+      if (path.endsWith('.test.ts') || path.endsWith('.d.ts')) continue;
+      if (path.includes('/tests/')) continue;
+
+      const file = path.replace(/^\.\.\/\.\.\//, '');
+      const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+
+      const relativeImportSpecs: string[] = [];
+      sf.forEachChild(node => {
+        if (
+          ts.isImportDeclaration(node) &&
+          ts.isStringLiteral(node.moduleSpecifier) &&
+          node.moduleSpecifier.text.startsWith('.')
+        ) {
+          relativeImportSpecs.push(node.moduleSpecifier.text);
+        }
+      });
+
+      ts.forEachChild(sf, node => {
+        if (!ts.isClassDeclaration(node) || !node.name) return;
+
+        const extendsClause = node.heritageClauses?.find(
+          h => h.token === ts.SyntaxKind.ExtendsKeyword
+        );
+        const superExpr = extendsClause?.types[0]?.expression;
+        if (
+          !superExpr ||
+          !ts.isIdentifier(superExpr) ||
+          !BASE_ENHANCER_NAMES.has(superExpr.text)
+        ) {
+          return;
+        }
+
+        const hasTeardown = node.members.some(
+          m =>
+            ts.isMethodDeclaration(m) &&
+            ts.isIdentifier(m.name) &&
+            (m.name.text === 'destroy' ||
+              m.name.text === 'cleanupEventListeners')
+        );
+
+        let listenerSource: string | undefined;
+        if (RAW_LISTENER.test(text)) {
+          listenerSource = file;
+        } else {
+          for (const spec of relativeImportSpecs) {
+            const resolved = resolveRelativeImport(path, spec);
+            if (!resolved || resolved === path) continue;
+            const siblingText = modules[resolved];
+            if (siblingText && RAW_LISTENER.test(siblingText)) {
+              listenerSource = resolved.replace(/^\.\.\/\.\.\//, '');
+              break;
+            }
+          }
+        }
+
+        if (!listenerSource) return;
+
+        found.push({
+          file,
+          className: node.name.text,
+          hasTeardown,
+          listenerSource,
+        });
+      });
+    }
+
+    return found;
+  }
+
+  /**
+   * Known violations, frozen the same way the ALLOWLIST above and
+   * `docs-coverage.baseline.json` freeze known gaps: recorded and tolerated rather
+   * than invisible, each with a reason. Fixing finding 139 removes the
+   * `ProspectCartEnhancer` entry; the rest are separate decisions outside this
+   * change's file ownership (`src/features/checkout/prospect-cart/**` and this
+   * test only).
+   */
+  const NO_TEARDOWN_ALLOWLIST: {
+    file: string;
+    className: string;
+    reason: string;
+  }[] = [
+    {
+      file: 'core/base/base-display-enhancer.ts',
+      className: 'BaseDisplayEnhancer',
+      reason:
+        'setupCurrencyChangeListener() registers a document "next:currency-changed" ' +
+        'listener directly in the abstract base, with no destroy()/' +
+        'cleanupEventListeners() override anywhere in the base — every concrete ' +
+        'display enhancer inherits the leak. Out of scope here (owns src/core/base ' +
+        'is not part of this change; src/core/base/display-types.ts is the only ' +
+        'file in that folder named in scope, and this is a different file).',
+    },
+    {
+      file: 'features/display/product-display/product-display.enhancer.ts',
+      className: 'ProductDisplayEnhancer',
+      reason:
+        'Registers its own document "next:currency-changed" listener with no ' +
+        'destroy()/cleanupEventListeners() override. Out of scope for this change ' +
+        '(src/features/display is being edited by another session).',
+    },
+  ];
+
+  const noTeardownKey = (file: string, className: string): string =>
+    `${file}::${className}`;
+  const noTeardownMap = new Map(
+    NO_TEARDOWN_ALLOWLIST.map(e => [noTeardownKey(e.file, e.className), e])
+  );
+
+  const classes = findListenerRegisteringClasses();
+
+  it('finds classes that register a raw addEventListener, so an empty list cannot pass by accident', () => {
+    expect(classes.length).toBeGreaterThan(0);
+  });
+
+  it('has no allowlist entries left for classes that no longer register a raw listener without teardown', () => {
+    const found = new Set(
+      classes
+        .filter(c => !c.hasTeardown)
+        .map(c => noTeardownKey(c.file, c.className))
+    );
+    const stale = NO_TEARDOWN_ALLOWLIST.filter(
+      e => !found.has(noTeardownKey(e.file, e.className))
+    );
+    expect(
+      stale.map(e => `${e.file} › ${e.className}`),
+      'allowlisted but no longer a violation — remove the entry (class renamed, ' +
+        'moved, gained a destroy()/cleanupEventListeners() override, or no longer ' +
+        'reaches a raw addEventListener)'
+    ).toEqual([]);
+  });
+
+  it('overrides destroy() or cleanupEventListeners(), unless allowlisted', () => {
+    const violations = classes.filter(
+      c =>
+        !c.hasTeardown && !noTeardownMap.has(noTeardownKey(c.file, c.className))
+    );
+
+    const messages = violations.map(
+      c =>
+        `${c.file} › ${c.className} — registers a raw addEventListener via ` +
+        `${c.listenerSource} but overrides neither destroy() nor ` +
+        `cleanupEventListeners(), so it can never be removed`
+    );
+
+    expect(
+      messages,
+      'a class reaching a raw addEventListener must override destroy() or ' +
+        'cleanupEventListeners() so it has somewhere to remove it. If this is a ' +
+        'newly discovered, pre-existing violation rather than a regression, add it ' +
+        'to NO_TEARDOWN_ALLOWLIST in this file with a one-line reason instead of ' +
+        'fixing it here.'
+    ).toEqual([]);
+  });
+});

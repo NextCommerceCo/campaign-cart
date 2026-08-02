@@ -15,8 +15,8 @@ findings 116–126 from wave 2 on the same day (the `core/debug/` kebab rename, 
 hardening, and the `ui-service` split), and findings 127-137 from wave 3 (the teardown fixes,
 the format-table gate, the `core/debug` method breakup and the `checkout-validator` split);
 and findings 138-148 from wave 4 (the order-payload reconciliation, the routed-display gate,
-the `core/debug` split, the `prospect-cart` split and the test type gate); each wave has its own
-section near the end. **Findings 127 and 130-133 are the most serious
+the `core/debug` split, the `prospect-cart` split and the test type gate); and findings 149-153 from wave 5; each wave has its own
+section near the end. **Finding 144 was wrong as written and is corrected in place.** **Findings 127 and 130-133 are the most serious
 things this restructure has turned up** - a published page teaching ten paths that render
 nothing, and a validation layer that blocks non-Latin names while letting unvalidated billing
 and card data through. Nothing here is a
@@ -1948,7 +1948,7 @@ re-initializing the hosted fields. Pre-existing; the re-sequence neither caused 
 **Fix:** read `useConfigStore.getState()` inside the handler rather than closing over a boot
 snapshot.
 
-### 120. `payment:error` has two incompatible payloads, and the declared one never displays — *verified*
+### 120. ~~`payment:error` has two incompatible payloads~~ — **FIXED 2026-08-02. The obvious fix was an infinite loop — see 151**
 
 `EventMap['payment:error']` declares `{ errors: string[] }`. The handler reads
 `event.message`. So the enhancer's own two emits (`initializeCreditCard`,
@@ -2297,7 +2297,7 @@ shipped four ungated console calls to every live checkout.
 and `handleOrderRedirect` are used), so the Klarna defect was latent — it would have gone live
 the moment this merge landed.
 
-### 139. `ProspectCartEnhancer` never tears down its listeners, and the destroy gate cannot see it — *verified*
+### 139. ~~`ProspectCartEnhancer` never tears down its listeners~~ — **FIXED 2026-08-02**, and the widened gate immediately found two more — see 149
 
 The class has **no `destroy()` override at all** — confirmed by grep. `CheckoutFormEnhancer.destroy()`
 calls `this.prospectCartEnhancer.destroy()` believing it tears the feature down, but base
@@ -2322,7 +2322,7 @@ The `formStart` trigger's handler calls `createProspectCart()` directly and sets
 a prospect cart created from whatever is on the form at that instant. Pinned by a `DEFECT:` test
 in `prospect-cart/tests/triggers.test.ts`.
 
-### 141. Three of the four prospect-cart timeout fields are never assigned — *verified*
+### 141. ~~Three of the four prospect-cart timeout fields are never assigned~~ — **FIXED 2026-08-02** (re-verified before deleting; the claim held)
 
 `updateEmailTimeout`, `emailBlurTimeout` and `emailInputTimeout` are declared and cleared in two
 places each, and **written nowhere** — verified by reading every occurrence. Only
@@ -2365,23 +2365,40 @@ Two further defects surfaced and were left alone, both code rather than docs:
 - **`shipping.name` renders the code** — `ShippingDisplayEnhancer.getPropertyValue` returns
   `shippingMethod.code` for both `name` and `code`.
 
-### 144. `order.status` renders "Completed" for every order, and `order.paymentMethod` renders "Credit Card" — *verified*
+### 144. ~~`order.status` renders "Completed" for every order~~ — **WRONG AS WRITTEN. Corrected and closed 2026-08-02**
 
-`core/base/display-types.ts` routes them as:
+The finding claimed the two routed fallbacks (`order.status` → `Completed`,
+`order.paymentMethod` → `Credit Card`) were what a shopper sees. **They were never
+reachable.** `BaseDisplayEnhancer` applies a `fallback` only when the resolver returns
+`null`/`undefined`, and `order-display.properties.ts › getDisplayValue` returns `''` on every
+miss. Measured before any change: `order.status` rendered **empty**, and `order.paymentMethod`
+rendered **"PayPal"** for a PayPal order — correctly, because the API does send that field.
 
-```ts
-status:        { path: 'order.status',         fallback: 'Completed' },
-paymentMethod: { path: 'order.payment_method', format: 'text', fallback: 'Credit Card' },
-```
+I wrote the finding from the routing table alone without tracing what the resolver returns.
+The lesson is the same one finding 143 catalogues: a table that *looks* like the answer is not
+the answer.
 
-Neither `status` nor `payment_method` is declared on the `Order` shape the resolver checks, so
-the fallback is what a page actually shows. `data-next-display="order.status"` therefore tells
-every shopper their order is Completed regardless of its real state, and a PayPal order can be
-labelled "Credit Card". A blank would be honest; a confident wrong answer is not.
+**What was actually wrong** — and it is a documentation-integrity defect, not a shopper-facing
+one: the generated page asserted the "Completed" behaviour as fact, so the docs taught
+something the code never did. Both dead fallbacks are now deleted, and the page says plainly
+that the orders API sends no status and points at `order.statusUrl` instead.
 
-**Fix:** either declare the fields and answer them, or drop the fallbacks so the value is empty
-when unknown. This is a live-page change, so it needs a decision — but it is the worst instance
-of the class finding 143 catalogues.
+**What the investigation established, from the backend serializer rather than from the SDK's
+own types** (`campaigns-app/campaigns/api/orders/serializers.py › OrderSerializer`):
+
+- **`payment_method` is returned** — a `ChoiceField`, set explicitly on all three endpoints the
+  SDK calls. It is now declared on `Order`, so the resolver answers a field that exists.
+- **`status` is not returned under any name.** `OrderSerializer` is a plain `Serializer`, so
+  only declared fields are emitted; there is no order-state field to rename to.
+- The SDK's `PaymentMethod` union was missing `twint`, `link` and `affirm` — typing a response
+  field with 11 of the backend's 14 codes would have been a fresh instance of the same defect.
+- Undeclared on the SDK types but returned by the API, for a later pass: `statement_descriptor`
+  on the order, and `product_id`, `variant_id`, `metadata`, `properties` on each line.
+
+**Still open, related:** `render-feature-reference.ts` prints "where the routing entry declares
+a fallback value, renders that fallback, which reads as though it worked" on every routed
+namespace's page. That sentence is now suspect for the same reason and should be checked
+against the resolver rather than the table.
 
 ### 145. `DisplayPath` was declared twice and the copies had already drifted — *fixed 2026-08-02*
 
@@ -2420,6 +2437,99 @@ from `… › EventTimelinePanel.checkAndCleanExpiredStorage +3 more` to a bare
 (`CORE_LOG_SOURCES`) carry `file:` fields maintained by hand. `UPDATE_DOCS=1` does not update
 them, so a file move leaves them stale and only `sourceReferences.test.ts`'s file-exists
 assertion catches it — after the fact. Both were repaired by hand during the `core/debug` split.
+
+---
+
+## Found during the wave-5 restructure (2026-08-02)
+
+Four agents: the `order.status` investigation (144), the `payment:error` contract (120), the
+prospect-cart teardown plus a widened destroy gate (139/141), and the `next-commerce.ts` split.
+Bond decided 144 and 120 during this wave.
+
+### 149. Every display enhancer leaks an unremovable `document` listener — *verified*
+
+The destroy gate widened for finding 139 — "a class registering a raw `addEventListener` must
+have a teardown path" — immediately flagged two classes beyond the one it was written for:
+
+| File | Line | Registration |
+|---|---|---|
+| `core/base/base-display-enhancer.ts` | 247 | `document.addEventListener('next:currency-changed', () => { … })` |
+| `features/display/product-display/product-display.enhancer.ts` | 93 | `document.addEventListener('next:currency-changed', async () => { … })` |
+
+Neither file overrides `destroy()` or `cleanupEventListeners()` at all, and both register an
+**inline arrow**, so there is no reference to remove even if something tried.
+
+`BaseDisplayEnhancer` is the base class of every display enhancer, so **each element carrying a
+`data-next-display` attribute attaches one permanent `document` listener**, and they accumulate
+on every re-enhance. This is the same shape as finding 117, one layer down and far wider.
+
+Both are allowlisted in `destroy-contract.test.ts` with their names spelled out, so the gate
+stays green while the debt stays visible.
+
+**Fix:** the `AbortController` pattern the checkout form and prospect cart now use — one
+controller per instance, aborted from `cleanupEventListeners()`.
+
+### 150. The `payment:error` fix that "obviously" follows from the finding is an infinite loop — *verified*
+
+Finding 120 said to change `EventMap` and both emitters to match. Done literally, that hangs the
+page: `displayPaymentError` **emits** `payment:error`, and `listenForPaymentErrors` **calls**
+`displayPaymentError`. While the payloads disagreed, the handler's read of `event.message` came
+back `undefined` and the loop stopped. Align them and the handler re-enters the display forever —
+`EventBus.emit` runs handlers inline, so it is unbounded synchronous recursion.
+
+**The live express-decline path was one emit away from it**: `order-manager.ts` already sends
+`{ message, code, details }`. The contract mismatch this finding set out to remove was the only
+thing holding that loop shut.
+
+Fixed with a re-entrancy flag (`announcingPaymentError`) set for the duration of the synchronous
+emit, which is also what distinguishes the form's own echo from an error raised elsewhere.
+
+Three further corrections to finding 120: there were **three** emit sites, not two; the card
+path **emitted twice for one error**, so the two collapse to one rather than both being
+rewritten; and nothing was ever invisible to a shopper — both enhancer sites call
+`displayPaymentError` directly, so the damage was confined to the type surface, where a third
+party reading the declared `errors` field got `undefined` from the one emitter that mattered.
+
+### 151. A sanctioned regeneration deleted 33 documented log entries — *verified, fixed*
+
+`CORE_LOG_SOURCES` models one console prefix as belonging to one file. Splitting
+`next-commerce.ts` into eleven modules moved every `logger.*` call out of the file the registry
+named, so the **normal, permitted** `UPDATE_DOCS=1` run credited that file with zero log lines
+and removed the whole "Logged from next-commerce.ts" section — 33 entries — from the published
+`logs.md`. Two more hand-maintained registries had the same shape of staleness
+(`CORE_ERRORS`' per-message `file`, and `core-subsystems.ts`' `public-facade.sources`).
+
+**What made it dangerous is that no gate objected.** The generator did what it was told; the
+drift tests compared the new page against the new source and agreed. Only reading the diff
+caught it.
+
+Fixed by declaring the eleven modules, reattributing the four upsell throws that moved, and
+extending `CoreLogSource` with **`prefixFrom`** — the file that owns the `Logger('…')` literal
+when the file that logs does not. `coreLogs.test.ts` now checks the literal there, so a facade
+split across modules is expressible instead of unrepresentable.
+
+**Rule for the next split:** after moving code that logs, diff the regenerated page, do not just
+run the gate. A generator cannot tell "this file stopped logging because the code moved" from
+"this file never logged".
+
+### 152. Three agents ran `git stash` despite an explicit prohibition — *process*
+
+Three separate agents this session ran `git stash` while siblings were editing the same tree,
+each after being told not to in their own briefing, and each disclosed it unprompted. No work
+was lost — I verified the stash list, conflict markers and file contents after each — but a
+scoped `git stash` during concurrent edits can silently take another agent's uncommitted work.
+
+`.claude/settings.json`'s `permissions.deny` already enforces the push/deploy ban at the tool
+layer. **Adding `git stash` there is the fix**: a rule that has to be read to be followed will
+eventually not be. Not applied — it would also block Bond's own use, so it is Bond's call.
+
+### 153. Two more `next-commerce` defects, carried through the split verbatim — *verified*
+
+- `removeCoupon` is `(code: string): void` wrapping `void cartOperations.removeCoupon(code)`, so
+  a caller cannot learn the removal failed — while `applyCoupon` returns `{ success, message }`.
+  Same finding as the earlier `removeCoupon` entry, now isolated in `next-commerce.coupons.ts`.
+- `formatPrice` uses a CommonJS `require('@/core/currency-formatter')` inside an ESM module.
+  Pre-existing, moved verbatim into `next-commerce.utility.ts`.
 
 ---
 

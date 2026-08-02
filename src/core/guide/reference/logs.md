@@ -10,7 +10,7 @@ category: "Core Reference"
      src/docs/content/core-logs.ts. Do not edit by hand: change the log line in the
      code or the note in core-logs.ts, then run `npm run docs:reference`. -->
 
-Every message the SDK's own machinery can print — 497 of them, across 40 console prefixes plus 13 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
+Every message the SDK's own machinery can print — 497 of them, across 46 console prefixes plus 13 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
 
 Messages are listed at the wording the code uses. A `{name}` inside one is a value filled in at runtime, so search for the text on either side of it. **Extra context** means the call passes a second argument — an object or an error logged beside the message; expand that entry in the console, because the message alone will not tell you which element, package, or event was involved.
 
@@ -71,7 +71,13 @@ Console lines are prefixed with the part of the SDK that produced them. Find the
 |---|---|---|---|---|---|
 | `[SDKInitializer]` | Starts the SDK: reads configuration, detects country and currency, loads the campaign, applies URL parameters such as `forcePackageId`, then hands over to the DOM scan. Most "the page did nothing" investigations start here. | 7 | 12 | 31 | 23 |
 | `[AttributeScanner]` | Finds every `data-next-*` element on the page and starts the feature bound to it. If a feature never runs, this is where its element was either skipped or failed to initialize. | 5 | 3 | 3 | 28 |
-| `[NextCommerce]` | The `window.next` API a page calls directly — callbacks, attribution, URL parameters, exit intent, FOMO, post-purchase upsells. | 11 | 1 | 1 | 15 |
+| `[NextCommerce]` | Part of the `window.next` API — the analytics calls a page makes by hand — tracking a view, a sign-up, or a custom event through the SDK rather than the provider. | — | 1 | — | 3 |
+| `[NextCommerce]` | Part of the `window.next` API — metadata and attribution a page sets on itself, which every later order carries. | 7 | — | — | 4 |
+| `[NextCommerce]` | Part of the `window.next` API — the cart operations a page drives directly — adding, swapping, clearing. | — | — | — | 1 |
+| `[NextCommerce]` | Part of the `window.next` API — the callbacks a page registers through `next.on…`, and the SDK calling them back. | 1 | — | — | — |
+| `[NextCommerce]` | Part of the `window.next` API — exit-intent and FOMO popups a page turns on or off from JavaScript. | 2 | — | — | 2 |
+| `[NextCommerce]` | Part of the `window.next` API — post-purchase upsells accepted from JavaScript rather than from markup. | 1 | — | 1 | — |
+| `[NextCommerce]` | Part of the `window.next` API — the URL parameters a page reads or applies through the API. | — | — | — | 5 |
 | `[ErrorHandler]` | Catches uncaught page errors and rejected promises, wraps them with SDK version and URL, and re-publishes them as the `error:occurred` event. | 1 | — | — | 1 |
 | `[StorageManager]` | The thin wrapper the SDK uses for its own sessionStorage and localStorage reads and writes. Its errors are storage being unavailable, not data being wrong. | 4 | — | — | 5 |
 
@@ -504,101 +510,9 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 ## `[NextCommerce]`
 
-The `window.next` API a page calls directly — callbacks, attribution, URL parameters, exit intent, FOMO, post-purchase upsells.
+Part of the `window.next` API — the analytics calls a page makes by hand — tracking a view, a sign-up, or a custom event through the SDK rather than the provider.
 
-Logged from `next-commerce.ts`.
-
-### Error
-
-Something did not work. Each of these means a visitor saw the wrong thing, or a piece of data went missing. Every one carries what it means and what to do.
-
-#### `Callback error for {type}:`
-
-`next-commerce.ts › NextCommerce.triggerCallback` · extra context attached
-
-**Meaning:** One of your own callbacks registered through `next.on…` threw. The SDK caught it and carried on with the other callbacks for that type.
-
-**Action:** Fix the callback named in the attached error. The SDK’s own state is unaffected, but anything your callback was supposed to do — a pixel, a redirect — did not happen.
-
-#### `Failed to add attribution metadata:`
-
-`next-commerce.ts › NextCommerce.addMetadata` · extra context attached
-
-**Meaning:** A single metadata value could not be added, so it will be missing from the order. Nothing else is affected.
-
-**Action:** Read the attached error. Values must be serialisable — a DOM element or a function passed as metadata fails here.
-
-#### `Failed to set attribution metadata:`
-
-`next-commerce.ts › NextCommerce.setMetadata` · extra context attached
-
-**Meaning:** A whole metadata object could not be merged in, so none of those values reach the order.
-
-**Action:** Read the attached error and check the object is plain and serialisable. Confirm afterwards with `next.getMetadata()`.
-
-#### `Failed to clear attribution metadata:`
-
-`next-commerce.ts › NextCommerce.clearMetadata` · extra context attached
-
-**Meaning:** Resetting metadata failed, so previously set values may still be attached to the next order.
-
-**Action:** Read the attached error, then verify with `next.getMetadata()` rather than assuming the reset worked.
-
-#### `Failed to get attribution metadata:`
-
-`next-commerce.ts › NextCommerce.getMetadata` · extra context attached
-
-**Meaning:** Reading metadata threw, and `next.getMetadata()` returned `undefined` — which is indistinguishable from "no metadata set" to the caller.
-
-**Action:** Read the attached error. Do not treat the `undefined` as proof there is no metadata; check the attribution store in the debug overlay.
-
-#### `Failed to set attribution:`
-
-`next-commerce.ts › NextCommerce.setAttribution` · extra context attached
-
-**Meaning:** Updating attribution threw, so the values you passed are not recorded and the order will carry whatever was there before.
-
-**Action:** Read the attached error and confirm with `next.getAttribution()`. On paid traffic this is worth fixing quickly, since it decides which channel gets credit for the sale.
-
-#### `Failed to get attribution:`
-
-`next-commerce.ts › NextCommerce.getAttribution` · extra context attached
-
-**Meaning:** Reading attribution threw and `next.getAttribution()` returned `undefined`.
-
-**Action:** Read the attached error. Inspect the attribution store in the debug overlay before concluding attribution is empty.
-
-#### `Failed to debug attribution:`
-
-`next-commerce.ts › NextCommerce.debugAttribution` · extra context attached
-
-**Meaning:** The `next.debugAttribution()` helper threw. It only prints attribution state, so nothing about the page or the order changed.
-
-**Action:** Nothing on a customer page — this call exists for debugging. Read the attached error if you were using it to investigate something else.
-
-#### `Failed to setup exit intent:`
-
-`next-commerce.ts › NextCommerce.exitIntent` · extra context attached
-
-**Meaning:** The exit-intent popup could not be configured, so it will never show. The error is also re-thrown, so your own `await next.exitIntent(...)` rejects.
-
-**Action:** Read the attached error and check the options you passed, particularly the image URL. Handle the rejection in your own code so a popup failing does not stop the rest of your setup.
-
-#### `Failed to start FOMO popup:`
-
-`next-commerce.ts › NextCommerce.fomo` · extra context attached
-
-**Meaning:** The FOMO popup did not start, so no social-proof messages appear. The error is re-thrown to your caller.
-
-**Action:** Read the attached error and check the configuration you passed — an empty or malformed customer list is the usual cause.
-
-#### `Failed to add upsell(s) via SDK:`
-
-`next-commerce.ts › NextCommerce.addUpsell` · extra context attached
-
-**Meaning:** A post-purchase upsell could not be added. The error is re-thrown, so the promise from `next.addUpsell()` rejects.
-
-**Action:** Read the attached error before offering the visitor a retry: the line may already exist on the order, and a blind retry can charge them twice. Re-read the order first.
+Logged from `next-commerce.analytics.ts`. A free function, not a class with its own logger. `NextCommerce` builds one `Logger('NextCommerce')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.
 
 ### Warn
 
@@ -606,19 +520,11 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Package not found in store:`
 
-`next-commerce.ts › NextCommerce.trackViewItem` · extra context attached
+`next-commerce.analytics.ts › trackViewItem` · extra context attached
 
 **Meaning:** A product element on the page names a package that is not in the campaign data, so it is left out of automatic `view_item` / `view_item_list` tracking.
 
 **Action:** The id is attached. Check the `data-next-package-id` on that element against the campaign’s packages; a leftover card from another campaign is the usual cause.
-
-### Info
-
-Normal progress. Read these as the play-by-play of what the SDK decided: which country it detected, which currency it chose, what it loaded.
-
-| Message | Source | Extra context |
-|---|---|---|
-| `Adding upsell(s) via SDK:` | `next-commerce.ts › NextCommerce.addUpsell` | yes |
 
 ### Debug
 
@@ -626,21 +532,197 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Cart swapped with {length} items` | `next-commerce.ts › NextCommerce.swapCart` | — |
-| `Analytics tracking failed (non-critical):` | `next-commerce.ts › NextCommerce.trackViewItemList` | yes |
-| `Analytics debug mode failed (non-critical):` | `next-commerce.ts › NextCommerce.setDebugMode` | yes |
-| `Analytics context invalidation failed (non-critical):` | `next-commerce.ts › NextCommerce.invalidateAnalyticsContext` | yes |
-| `Attribution metadata added: {key}` | `next-commerce.ts › NextCommerce.addMetadata` | yes |
-| `Attribution metadata set:` | `next-commerce.ts › NextCommerce.setMetadata` | yes |
-| `Attribution metadata cleared` | `next-commerce.ts › NextCommerce.clearMetadata` | — |
-| `Attribution set:` | `next-commerce.ts › NextCommerce.setAttribution` | yes |
-| `Exit intent configured with image:` | `next-commerce.ts › NextCommerce.exitIntent` | yes |
-| `FOMO popup started` | `next-commerce.ts › NextCommerce.fomo` | — |
-| `URL parameter set: {key}={value}` | `next-commerce.ts › NextCommerce.setParam` | — |
-| `URL parameters set:` | `next-commerce.ts › NextCommerce.setParams` | yes |
-| `URL parameter cleared: {key}` | `next-commerce.ts › NextCommerce.clearParam` | — |
-| `All URL parameters cleared` | `next-commerce.ts › NextCommerce.clearAllParams` | — |
-| `URL parameters merged:` | `next-commerce.ts › NextCommerce.mergeParams` | yes |
+| `Analytics tracking failed (non-critical):` | `next-commerce.analytics.ts › trackViewItemList` | yes |
+| `Analytics debug mode failed (non-critical):` | `next-commerce.analytics.ts › setDebugMode` | yes |
+| `Analytics context invalidation failed (non-critical):` | `next-commerce.analytics.ts › invalidateAnalyticsContext` | yes |
+
+## `[NextCommerce]`
+
+Part of the `window.next` API — metadata and attribution a page sets on itself, which every later order carries.
+
+Logged from `next-commerce.attribution.ts`. A free function, not a class with its own logger. `NextCommerce` builds one `Logger('NextCommerce')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.
+
+### Error
+
+Something did not work. Each of these means a visitor saw the wrong thing, or a piece of data went missing. Every one carries what it means and what to do.
+
+#### `Failed to add attribution metadata:`
+
+`next-commerce.attribution.ts › addMetadata` · extra context attached
+
+**Meaning:** A single metadata value could not be added, so it will be missing from the order. Nothing else is affected.
+
+**Action:** Read the attached error. Values must be serialisable — a DOM element or a function passed as metadata fails here.
+
+#### `Failed to set attribution metadata:`
+
+`next-commerce.attribution.ts › setMetadata` · extra context attached
+
+**Meaning:** A whole metadata object could not be merged in, so none of those values reach the order.
+
+**Action:** Read the attached error and check the object is plain and serialisable. Confirm afterwards with `next.getMetadata()`.
+
+#### `Failed to clear attribution metadata:`
+
+`next-commerce.attribution.ts › clearMetadata` · extra context attached
+
+**Meaning:** Resetting metadata failed, so previously set values may still be attached to the next order.
+
+**Action:** Read the attached error, then verify with `next.getMetadata()` rather than assuming the reset worked.
+
+#### `Failed to get attribution metadata:`
+
+`next-commerce.attribution.ts › getMetadata` · extra context attached
+
+**Meaning:** Reading metadata threw, and `next.getMetadata()` returned `undefined` — which is indistinguishable from "no metadata set" to the caller.
+
+**Action:** Read the attached error. Do not treat the `undefined` as proof there is no metadata; check the attribution store in the debug overlay.
+
+#### `Failed to set attribution:`
+
+`next-commerce.attribution.ts › setAttribution` · extra context attached
+
+**Meaning:** Updating attribution threw, so the values you passed are not recorded and the order will carry whatever was there before.
+
+**Action:** Read the attached error and confirm with `next.getAttribution()`. On paid traffic this is worth fixing quickly, since it decides which channel gets credit for the sale.
+
+#### `Failed to get attribution:`
+
+`next-commerce.attribution.ts › getAttribution` · extra context attached
+
+**Meaning:** Reading attribution threw and `next.getAttribution()` returned `undefined`.
+
+**Action:** Read the attached error. Inspect the attribution store in the debug overlay before concluding attribution is empty.
+
+#### `Failed to debug attribution:`
+
+`next-commerce.attribution.ts › debugAttribution` · extra context attached
+
+**Meaning:** The `next.debugAttribution()` helper threw. It only prints attribution state, so nothing about the page or the order changed.
+
+**Action:** Nothing on a customer page — this call exists for debugging. Read the attached error if you were using it to investigate something else.
+
+### Debug
+
+The detail behind the info lines. Expected in bulk, and only visible with debug mode on — a long list here is health, not trouble.
+
+| Message | Source | Extra context |
+|---|---|---|
+| `Attribution metadata added: {key}` | `next-commerce.attribution.ts › addMetadata` | yes |
+| `Attribution metadata set:` | `next-commerce.attribution.ts › setMetadata` | yes |
+| `Attribution metadata cleared` | `next-commerce.attribution.ts › clearMetadata` | — |
+| `Attribution set:` | `next-commerce.attribution.ts › setAttribution` | yes |
+
+## `[NextCommerce]`
+
+Part of the `window.next` API — the cart operations a page drives directly — adding, swapping, clearing.
+
+Logged from `next-commerce.cart.ts`. A free function, not a class with its own logger. `NextCommerce` builds one `Logger('NextCommerce')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.
+
+### Debug
+
+The detail behind the info lines. Expected in bulk, and only visible with debug mode on — a long list here is health, not trouble.
+
+| Message | Source | Extra context |
+|---|---|---|
+| `Cart swapped with {length} items` | `next-commerce.cart.ts › swapCart` | — |
+
+## `[NextCommerce]`
+
+Part of the `window.next` API — the callbacks a page registers through `next.on…`, and the SDK calling them back.
+
+Logged from `next-commerce.events.ts`. A free function, not a class with its own logger. `NextCommerce` builds one `Logger('NextCommerce')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.
+
+### Error
+
+Something did not work. Each of these means a visitor saw the wrong thing, or a piece of data went missing. Every one carries what it means and what to do.
+
+#### `Callback error for {type}:`
+
+`next-commerce.events.ts › triggerCallback` · extra context attached
+
+**Meaning:** One of your own callbacks registered through `next.on…` threw. The SDK caught it and carried on with the other callbacks for that type.
+
+**Action:** Fix the callback named in the attached error. The SDK’s own state is unaffected, but anything your callback was supposed to do — a pixel, a redirect — did not happen.
+
+## `[NextCommerce]`
+
+Part of the `window.next` API — exit-intent and FOMO popups a page turns on or off from JavaScript.
+
+Logged from `next-commerce.popups.ts`. A free function, not a class with its own logger. `NextCommerce` builds one `Logger('NextCommerce')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.
+
+### Error
+
+Something did not work. Each of these means a visitor saw the wrong thing, or a piece of data went missing. Every one carries what it means and what to do.
+
+#### `Failed to setup exit intent:`
+
+`next-commerce.popups.ts › exitIntent` · extra context attached
+
+**Meaning:** The exit-intent popup could not be configured, so it will never show. The error is also re-thrown, so your own `await next.exitIntent(...)` rejects.
+
+**Action:** Read the attached error and check the options you passed, particularly the image URL. Handle the rejection in your own code so a popup failing does not stop the rest of your setup.
+
+#### `Failed to start FOMO popup:`
+
+`next-commerce.popups.ts › fomo` · extra context attached
+
+**Meaning:** The FOMO popup did not start, so no social-proof messages appear. The error is re-thrown to your caller.
+
+**Action:** Read the attached error and check the configuration you passed — an empty or malformed customer list is the usual cause.
+
+### Debug
+
+The detail behind the info lines. Expected in bulk, and only visible with debug mode on — a long list here is health, not trouble.
+
+| Message | Source | Extra context |
+|---|---|---|
+| `Exit intent configured with image:` | `next-commerce.popups.ts › exitIntent` | yes |
+| `FOMO popup started` | `next-commerce.popups.ts › fomo` | — |
+
+## `[NextCommerce]`
+
+Part of the `window.next` API — post-purchase upsells accepted from JavaScript rather than from markup.
+
+Logged from `next-commerce.upsells.ts`. A free function, not a class with its own logger. `NextCommerce` builds one `Logger('NextCommerce')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.
+
+### Error
+
+Something did not work. Each of these means a visitor saw the wrong thing, or a piece of data went missing. Every one carries what it means and what to do.
+
+#### `Failed to add upsell(s) via SDK:`
+
+`next-commerce.upsells.ts › addUpsell` · extra context attached
+
+**Meaning:** A post-purchase upsell could not be added. The error is re-thrown, so the promise from `next.addUpsell()` rejects.
+
+**Action:** Read the attached error before offering the visitor a retry: the line may already exist on the order, and a blind retry can charge them twice. Re-read the order first.
+
+### Info
+
+Normal progress. Read these as the play-by-play of what the SDK decided: which country it detected, which currency it chose, what it loaded.
+
+| Message | Source | Extra context |
+|---|---|---|
+| `Adding upsell(s) via SDK:` | `next-commerce.upsells.ts › addUpsell` | yes |
+
+## `[NextCommerce]`
+
+Part of the `window.next` API — the URL parameters a page reads or applies through the API.
+
+Logged from `next-commerce.url-params.ts`. A free function, not a class with its own logger. `NextCommerce` builds one `Logger('NextCommerce')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.
+
+### Debug
+
+The detail behind the info lines. Expected in bulk, and only visible with debug mode on — a long list here is health, not trouble.
+
+| Message | Source | Extra context |
+|---|---|---|
+| `URL parameter set: {key}={value}` | `next-commerce.url-params.ts › setParam` | — |
+| `URL parameters set:` | `next-commerce.url-params.ts › setParams` | yes |
+| `URL parameter cleared: {key}` | `next-commerce.url-params.ts › clearParam` | — |
+| `All URL parameters cleared` | `next-commerce.url-params.ts › clearAllParams` | — |
+| `URL parameters merged:` | `next-commerce.url-params.ts › mergeParams` | yes |
 
 ## `[ErrorHandler]`
 

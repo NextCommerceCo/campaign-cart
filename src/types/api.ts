@@ -214,6 +214,21 @@ export interface Order {
    * ids, affiliate and funnel. Absent when the visit carried none.
    */
   attribution?: MarketingAttribution;
+  /**
+   * How the order was paid for, as the API's own code — `"paypal"`,
+   * `"card_token"`, `"apple_pay"` and so on. The orders API records the method
+   * chosen at checkout and returns it on every order it sends back, so a
+   * receipt page can name it.
+   *
+   * `null` on an order the platform has no method recorded for. There is no
+   * "assume card" default: a page that shows this shows nothing when it is
+   * null, rather than naming a method the shopper did not use.
+   *
+   * `data-next-display="order.paymentMethod"` renders this through a friendlier
+   * label for the common methods — see the order-display guide's
+   * [display paths](../features/display/order-display/guide/reference/display-paths.md).
+   */
+  payment_method?: PaymentMethod | null;
   /** URL of the hosted order-status/receipt page for this order. */
   order_status_url: string;
   /**
@@ -401,6 +416,15 @@ export interface Voucher {
   name?: string;
 }
 
+/**
+ * How an order is paid for — the code the orders API accepts on
+ * {@link Payment.payment_method | payment_detail.payment_method} and reports
+ * back on {@link Order.payment_method | Order.payment_method}.
+ *
+ * `card_token` is a tokenised card (what most stores mean by "credit card");
+ * `external` is a payment taken outside the platform and recorded on the order.
+ * The rest name the wallet or scheme the shopper used.
+ */
 export type PaymentMethod =
   | 'apple_pay'
   | 'card_token'
@@ -412,6 +436,9 @@ export type PaymentMethod =
   | 'google_pay'
   | 'sofort'
   | 'sepa_debit'
+  | 'twint'
+  | 'link'
+  | 'affirm'
   | 'external';
 
 // Request/Response types

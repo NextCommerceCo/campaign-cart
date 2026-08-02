@@ -63,7 +63,10 @@ export interface HasTriggeredRef {
 /** Needs from the enhancer: the fields to listen on, the trigger's config, a place to
  *  park the phone-trigger's debounce handle, and the gate to call once a debounce settles.
  *  `createProspectCart` and `hasTriggeredRef` exist only for `formStart`, which creates
- *  the cart directly instead of going through `checkAndCreateCart`'s validation. */
+ *  the cart directly instead of going through `checkAndCreateCart`'s validation.
+ *  `signal` is the enhancer's `cleanupEventListeners()`-aborted controller — every
+ *  `addEventListener` this module makes must pass it, or the listener outlives the
+ *  enhancer (see finding 139 in `docs/code-findings.md`). */
 export interface TriggerContext {
   element: HTMLElement;
   emailField: HTMLInputElement | undefined;
@@ -71,6 +74,7 @@ export interface TriggerContext {
   logger: Logger;
   phoneBlurTimeoutRef: TimeoutRef;
   hasTriggeredRef: HasTriggeredRef;
+  signal: AbortSignal;
   isValidPhone: (phone: string) => boolean;
   checkAndCreateCart: () => void;
   createProspectCart: () => Promise<void>;

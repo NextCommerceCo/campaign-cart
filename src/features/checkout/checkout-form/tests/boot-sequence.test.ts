@@ -247,18 +247,32 @@ describe('listenForPaymentErrors', () => {
       .mockImplementation(() => {});
     steps.listenForPaymentErrors();
 
-    // `order-manager` emits `{ message, code, details }` here — not the
-    // `{ errors }` the EventMap declares. See the note in the test below.
+    // What `order-manager` emits for a declined express order — and, since
+    // finding 120, what the EventMap declares.
     EventBus.getInstance().emit('payment:error', {
       message: 'Your card was declined.',
-    } as unknown as { errors: string[] });
+      code: 'gateway_declined',
+    });
 
     expect(display).toHaveBeenCalledWith('Your card was declined.');
   });
 
-  // The declared `payment:error` payload is `{ errors: string[] }`, which this
-  // step never displays: only the off-contract `{ message }` shape that
-  // `order-manager` emits gets through.
+  // The form's own emit used to be `{ errors: [message] }` while this step read
+  // `message`, so an error the form raised never reached the display path. One
+  // shape now, so it does.
+  it('displays an error another component put on the bus through the form', () => {
+    const raiser = createEnhancer().steps;
+    const { steps } = createEnhancer();
+    const display = vi
+      .spyOn(steps, 'displayPaymentError')
+      .mockImplementation(() => {});
+    steps.listenForPaymentErrors();
+
+    raiser.displayPaymentError('Your card was declined.');
+
+    expect(display).toHaveBeenCalledWith('Your card was declined.');
+  });
+
   it('ignores a payment error with no message', () => {
     const { steps } = createEnhancer();
     const display = vi
@@ -266,11 +280,23 @@ describe('listenForPaymentErrors', () => {
       .mockImplementation(() => {});
     steps.listenForPaymentErrors();
 
-    EventBus.getInstance().emit('payment:error', {
-      errors: ['Your card was declined.'],
-    });
+    EventBus.getInstance().emit('payment:error', { message: '' });
 
     expect(display).not.toHaveBeenCalled();
+  });
+
+  // `displayPaymentError` emits the event this step listens for, so without the
+  // re-entrancy guard the form displays its own echo — forever.
+  it('does not display its own echo a second time', () => {
+    const { steps, logger } = createEnhancer();
+    steps.listenForPaymentErrors();
+
+    steps.displayPaymentError('Your card was declined.');
+
+    const displayed = logger.info.mock.calls.filter(
+      ([message]) => message === '[Payment Error] Displaying error:'
+    );
+    expect(displayed).toHaveLength(1);
   });
 });
 

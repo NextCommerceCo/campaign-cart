@@ -49,6 +49,16 @@ export class ProspectCartEnhancer extends BaseEnhancer {
   private emailField?: HTMLInputElement;
   private phoneField?: HTMLInputElement;
   private hasTriggeredRef: HasTriggeredRef = { value: false };
+  /**
+   * Aborts every listener `triggers.ts` registers (email/phone/name `blur`+`change`,
+   * and in `formStart` mode a `focus`+`input` pair on every form field).
+   * `cleanupEventListeners()` aborts it, so base `destroy()` drops them all in one
+   * call — same pattern as `checkout-form.enhancer.ts`'s `domListenerAbort`. Before
+   * this, the class had no `destroy()`/`cleanupEventListeners()` override at all, so
+   * every one of those listeners outlived the enhancer (finding 139 in
+   * `docs/code-findings.md`).
+   */
+  private domListenerAbort = new AbortController();
 
   public async initialize(): Promise<void> {
     this.validateElement();
@@ -99,6 +109,15 @@ export class ProspectCartEnhancer extends BaseEnhancer {
     }
   }
 
+  /**
+   * Drops every listener `triggers.ts` registered on `domListenerAbort.signal`.
+   * Base `destroy()` calls this after unsubscribing the cart-store subscription,
+   * so no `destroy()` override is needed here — see `domListenerAbort`'s doc comment.
+   */
+  protected override cleanupEventListeners(): void {
+    this.domListenerAbort.abort();
+  }
+
   // ============================================================================
   // CONTEXT FACTORIES — the explicit dependency lists each sibling module needs
   // ============================================================================
@@ -114,6 +133,7 @@ export class ProspectCartEnhancer extends BaseEnhancer {
       logger: this.logger,
       phoneBlurTimeoutRef: this.phoneBlurTimeoutRef,
       hasTriggeredRef: this.hasTriggeredRef,
+      signal: this.domListenerAbort.signal,
       isValidPhone: phone => this.isValidPhone(phone),
       checkAndCreateCart: () => this.checkAndCreateCart(),
       createProspectCart: () => this.createProspectCart(),
@@ -288,17 +308,13 @@ export class ProspectCartEnhancer extends BaseEnhancer {
 
   // ============================================================================
   // GATE — combines trigger state + field validation before creating the cart.
-  // Kept here rather than lifted: it touches config, four timeout handles, the
+  // Kept here rather than lifted: it touches config, the phone debounce handle, the
   // hasTriggered flag, and createProspectCart — a context object for it would be
   // close to the whole class, the same call the checkout-form split made for
   // `initialize()`.
   // ============================================================================
 
   private phoneBlurTimeoutRef: TimeoutRef = { value: undefined };
-  private updateEmailTimeout: number | undefined;
-  // Store timeouts at class level to coordinate between blur and updateEmail
-  private emailInputTimeout: number | undefined;
-  private emailBlurTimeout: number | undefined;
 
   /**
    * Check if we have enough data to create prospect cart and create it immediately
@@ -365,11 +381,6 @@ export class ProspectCartEnhancer extends BaseEnhancer {
     });
 
     if (emailBlocks || phoneBlocks || !hasValidFirstName || !hasValidLastName) {
-      if (this.updateEmailTimeout !== undefined) {
-        clearTimeout(this.updateEmailTimeout);
-        this.updateEmailTimeout = undefined;
-      }
-
       if (emailBlocks) {
         this.logger.debug(
           'Invalid or incomplete email, skipping cart creation:',
@@ -396,17 +407,7 @@ export class ProspectCartEnhancer extends BaseEnhancer {
     }
 
     // All required fields are valid - create cart immediately
-    // Clear any pending timeouts
-    if (this.updateEmailTimeout !== undefined) {
-      clearTimeout(this.updateEmailTimeout);
-      this.updateEmailTimeout = undefined;
-    }
-    if (this.emailBlurTimeout !== undefined) {
-      clearTimeout(this.emailBlurTimeout);
-    }
-    if (this.emailInputTimeout !== undefined) {
-      clearTimeout(this.emailInputTimeout);
-    }
+    // Clear any pending timeout
     if (this.phoneBlurTimeoutRef.value !== undefined) {
       clearTimeout(this.phoneBlurTimeoutRef.value);
     }

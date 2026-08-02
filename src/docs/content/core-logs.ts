@@ -57,6 +57,13 @@ export interface CoreLogSource {
    * agree with the source.
    */
   dynamicPrefix?: boolean;
+  /**
+   * The file that owns the `Logger('…')` literal, when this file does not. A facade
+   * split across modules — `next-commerce.ts` and its `next-commerce.*.ts` siblings —
+   * builds one logger and hands it to each module, so the prefix a reader sees in the
+   * console is declared in a file they would not think to open.
+   */
+  prefixFrom?: string;
   /** How the prefix is arrived at, for a reader who cannot find it in the file. */
   prefixNote?: string;
 }
@@ -210,9 +217,66 @@ export const CORE_LOG_SOURCES: CoreLogSource[] = [
   },
   {
     prefix: 'NextCommerce',
-    file: 'next-commerce.ts',
+    file: 'next-commerce.analytics.ts',
     area: 'Boot and wiring',
-    what: 'The `window.next` API a page calls directly — callbacks, attribution, URL parameters, exit intent, FOMO, post-purchase upsells.',
+    what: 'Part of the `window.next` API — the analytics calls a page makes by hand — tracking a view, a sign-up, or a custom event through the SDK rather than the provider.',
+    dynamicPrefix: true,
+    prefixFrom: 'next-commerce.ts',
+    prefixNote: 'A free function, not a class with its own logger. `NextCommerce` builds one `Logger(\'NextCommerce\')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.',
+  },
+  {
+    prefix: 'NextCommerce',
+    file: 'next-commerce.attribution.ts',
+    area: 'Boot and wiring',
+    what: 'Part of the `window.next` API — metadata and attribution a page sets on itself, which every later order carries.',
+    dynamicPrefix: true,
+    prefixFrom: 'next-commerce.ts',
+    prefixNote: 'A free function, not a class with its own logger. `NextCommerce` builds one `Logger(\'NextCommerce\')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.',
+  },
+  {
+    prefix: 'NextCommerce',
+    file: 'next-commerce.cart.ts',
+    area: 'Boot and wiring',
+    what: 'Part of the `window.next` API — the cart operations a page drives directly — adding, swapping, clearing.',
+    dynamicPrefix: true,
+    prefixFrom: 'next-commerce.ts',
+    prefixNote: 'A free function, not a class with its own logger. `NextCommerce` builds one `Logger(\'NextCommerce\')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.',
+  },
+  {
+    prefix: 'NextCommerce',
+    file: 'next-commerce.events.ts',
+    area: 'Boot and wiring',
+    what: 'Part of the `window.next` API — the callbacks a page registers through `next.on…`, and the SDK calling them back.',
+    dynamicPrefix: true,
+    prefixFrom: 'next-commerce.ts',
+    prefixNote: 'A free function, not a class with its own logger. `NextCommerce` builds one `Logger(\'NextCommerce\')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.',
+  },
+  {
+    prefix: 'NextCommerce',
+    file: 'next-commerce.popups.ts',
+    area: 'Boot and wiring',
+    what: 'Part of the `window.next` API — exit-intent and FOMO popups a page turns on or off from JavaScript.',
+    dynamicPrefix: true,
+    prefixFrom: 'next-commerce.ts',
+    prefixNote: 'A free function, not a class with its own logger. `NextCommerce` builds one `Logger(\'NextCommerce\')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.',
+  },
+  {
+    prefix: 'NextCommerce',
+    file: 'next-commerce.upsells.ts',
+    area: 'Boot and wiring',
+    what: 'Part of the `window.next` API — post-purchase upsells accepted from JavaScript rather than from markup.',
+    dynamicPrefix: true,
+    prefixFrom: 'next-commerce.ts',
+    prefixNote: 'A free function, not a class with its own logger. `NextCommerce` builds one `Logger(\'NextCommerce\')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.',
+  },
+  {
+    prefix: 'NextCommerce',
+    file: 'next-commerce.url-params.ts',
+    area: 'Boot and wiring',
+    what: 'Part of the `window.next` API — the URL parameters a page reads or applies through the API.',
+    dynamicPrefix: true,
+    prefixFrom: 'next-commerce.ts',
+    prefixNote: 'A free function, not a class with its own logger. `NextCommerce` builds one `Logger(\'NextCommerce\')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.',
   },
   {
     prefix: 'ErrorHandler',

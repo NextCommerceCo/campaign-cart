@@ -69,12 +69,14 @@ Subscribe with `next.on('<event>', handler)`. Payloads are the exact shapes decl
 
 | Field | Type | Description |
 |---|---|---|
-| `errors` | `string[]` | Messages already worded for display to the visitor. |
+| `message` | `string` | The failure, already worded for display to the visitor. When the payment form reported several problems at once they arrive joined into this one string, in the order the form reported them. |
+| `code?` | `string` | The gateway's response code, when the failure came back from an order attempt. |
+| `details?` | `unknown` | The raw error response, for logging. Absent for card-field errors. |
 
 **Example:**
 
 ```json
-{ "errors": ["Your card was declined."] }
+{ "message": "Your card was declined.", "code": "gateway_declined" }
 ```
 
 ---

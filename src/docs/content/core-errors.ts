@@ -190,7 +190,7 @@ In almost every case the better answer is to add the feature's \`data-next-*\` a
     message:
       'No order found. Upsells can only be added after order completion.',
     owner: 'NextCommerce',
-    file: 'next-commerce.ts',
+    file: 'next-commerce.upsells.ts',
     kind: 'fatal',
     cause:
       '`next.addUpsell()` was called with no order in the order store. Either the page is not a post-purchase page, or it is one but the order has not finished loading yet.',
@@ -211,7 +211,7 @@ If the page has no \`?ref_id=\`, there is no order to add to and no amount of wa
     message:
       'Order does not support post-purchase upsells or is currently processing.',
     owner: 'NextCommerce',
-    file: 'next-commerce.ts',
+    file: 'next-commerce.upsells.ts',
     kind: 'recoverable',
     cause:
       'Two different situations share this message. Either the order came back with `supports_post_purchase_upsells: false` — the payment method or the campaign does not allow adding to a completed order — or another upsell request is still in flight.',
@@ -221,7 +221,7 @@ If the page has no \`?ref_id=\`, there is no order to add to and no amount of wa
   {
     message: 'Either packageId or items array must be provided',
     owner: 'NextCommerce',
-    file: 'next-commerce.ts',
+    file: 'next-commerce.upsells.ts',
     kind: 'fatal',
     cause:
       '`next.addUpsell()` was called with neither `packageId` nor a non-empty `items` array — often an options object built from a variable that turned out to be `undefined`.',
@@ -238,7 +238,7 @@ An \`items: []\` is treated as nothing provided, so guard an empty selection bef
   {
     message: 'Failed to add upsell - no updated order returned',
     owner: 'NextCommerce',
-    file: 'next-commerce.ts',
+    file: 'next-commerce.upsells.ts',
     kind: 'recoverable',
     cause:
       'The upsell request completed but the order store had no updated order to return.',

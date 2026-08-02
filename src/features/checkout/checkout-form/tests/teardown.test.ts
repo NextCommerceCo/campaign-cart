@@ -92,10 +92,7 @@ describe('destroy: event-bus handlers', () => {
       .mockImplementation(() => {});
     steps.listenForPaymentErrors();
 
-    // `order-manager` emits this off-contract `{ message }` shape — see finding 120.
-    const declined = { message: 'Your card was declined.' } as unknown as {
-      errors: string[];
-    };
+    const declined = { message: 'Your card was declined.' };
     EventBus.getInstance().emit('payment:error', declined);
     expect(display).toHaveBeenCalledTimes(1);
 

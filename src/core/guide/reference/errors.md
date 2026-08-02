@@ -28,14 +28,14 @@ Fatal first, since those recur for every visitor until something changes.
 | `Invalid shipping ID: {forceShippingId}` | Fatal | `sdk-initializer.ts` |
 | `Required attribute {name} not found on element` | Fatal | `base/base-enhancer.ts` |
 | `Element is required` | Fatal | `base/base-enhancer.ts` |
-| `No order found. Upsells can only be added after order completion.` | Fatal | `next-commerce.ts` |
-| `Either packageId or items array must be provided` | Fatal | `next-commerce.ts` |
+| `No order found. Upsells can only be added after order completion.` | Fatal | `next-commerce.upsells.ts` |
+| `Either packageId or items array must be provided` | Fatal | `next-commerce.upsells.ts` |
 | `No test cards available` | Fatal | `test-mode.ts` |
 | `{name}: data-next-display attribute is required` | Fatal | `base/base-display-enhancer.ts` |
 | `Failed to fetch location data: {statusText}` | Recoverable | `country-service.ts` |
 | `Failed to fetch states for {countryCode}: {statusText}` | Recoverable | `country-service.ts` |
-| `Order does not support post-purchase upsells or is currently processing.` | Recoverable | `next-commerce.ts` |
-| `Failed to add upsell - no updated order returned` | Recoverable | `next-commerce.ts` |
+| `Order does not support post-purchase upsells or is currently processing.` | Recoverable | `next-commerce.upsells.ts` |
+| `Failed to add upsell - no updated order returned` | Recoverable | `next-commerce.upsells.ts` |
 | `HTTP {status}: {statusText}` | Recoverable | `analytics/providers/custom-adapter.ts` |
 | `Facebook Pixel load timeout` | Recoverable | `analytics/providers/facebook-adapter.ts` |
 | `Facebook dispatch failed: {message}` | Recoverable | `analytics/providers/facebook-adapter.ts` |
@@ -85,7 +85,13 @@ Every part of `src/core`, and whether it raises anything of its own. "Nothing" i
 | `debug/locale-selector.ts` | `[LocaleSelector]` | nothing |
 | `debug/upsell-selector.ts` | `[UpsellSelector]` | nothing |
 | `monitoring/error-handler.ts` | `[ErrorHandler]` | nothing |
-| `next-commerce.ts` | `[NextCommerce]` | 4 — `No order found. Upsells can only be added after order completion.`, `Order does not support post-purchase upsells or is currently processing.`, `Either packageId or items array must be provided`, `Failed to add upsell - no updated order returned` |
+| `next-commerce.analytics.ts` | `[NextCommerce]` | nothing |
+| `next-commerce.attribution.ts` | `[NextCommerce]` | nothing |
+| `next-commerce.cart.ts` | `[NextCommerce]` | nothing |
+| `next-commerce.events.ts` | `[NextCommerce]` | nothing |
+| `next-commerce.popups.ts` | `[NextCommerce]` | nothing |
+| `next-commerce.upsells.ts` | `[NextCommerce]` | 4 — `No order found. Upsells can only be added after order completion.`, `Order does not support post-purchase upsells or is currently processing.`, `Either packageId or items array must be provided`, `Failed to add upsell - no updated order returned` |
+| `next-commerce.url-params.ts` | `[NextCommerce]` | nothing |
 | `rendering/template-renderer.ts` | `[TemplateRenderer]` | nothing |
 | `sdk-initializer.ts` | `[SDKInitializer]` | 4 — `API key not found. Please set next-api-key meta tag or window.nextConfig.apiKey`, `Invalid package ID: {idStr}`, `Invalid quantity: {quantityStr}`, `Invalid shipping ID: {forceShippingId}` |
 | `storage.ts` | `[StorageManager]` | nothing |
@@ -204,7 +210,7 @@ In almost every case the better answer is to add the feature's `data-next-*` att
 | | |
 |---|---|
 | Type | Fatal |
-| Thrown by | `next-commerce.ts` — logs under `[NextCommerce]` |
+| Thrown by | `next-commerce.upsells.ts` — logs under `[NextCommerce]` |
 | Cause | `next.addUpsell()` was called with no order in the order store. Either the page is not a post-purchase page, or it is one but the order has not finished loading yet. |
 | Caught | Nothing catches it — it rejects the promise `next.addUpsell()` returned, so your own `catch` sees it. |
 
@@ -226,7 +232,7 @@ If the page has no `?ref_id=`, there is no order to add to and no amount of wait
 | | |
 |---|---|
 | Type | Fatal |
-| Thrown by | `next-commerce.ts` — logs under `[NextCommerce]` |
+| Thrown by | `next-commerce.upsells.ts` — logs under `[NextCommerce]` |
 | Cause | `next.addUpsell()` was called with neither `packageId` nor a non-empty `items` array — often an options object built from a variable that turned out to be `undefined`. |
 | Caught | Nothing catches it — the promise rejects. |
 
@@ -305,7 +311,7 @@ The namespace before the dot decides which part of the SDK answers — see the d
 | | |
 |---|---|
 | Type | Recoverable |
-| Thrown by | `next-commerce.ts` — logs under `[NextCommerce]` |
+| Thrown by | `next-commerce.upsells.ts` — logs under `[NextCommerce]` |
 | Cause | Two different situations share this message. Either the order came back with `supports_post_purchase_upsells: false` — the payment method or the campaign does not allow adding to a completed order — or another upsell request is still in flight. |
 | Caught | Nothing catches it — the promise from `next.addUpsell()` rejects. |
 
@@ -318,7 +324,7 @@ The namespace before the dot decides which part of the SDK answers — see the d
 | | |
 |---|---|
 | Type | Recoverable |
-| Thrown by | `next-commerce.ts` — logs under `[NextCommerce]` |
+| Thrown by | `next-commerce.upsells.ts` — logs under `[NextCommerce]` |
 | Cause | The upsell request completed but the order store had no updated order to return. |
 | Caught | Nothing catches it — the promise rejects. |
 

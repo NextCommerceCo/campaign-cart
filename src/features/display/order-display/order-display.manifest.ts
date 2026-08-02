@@ -30,7 +30,7 @@ export default defineFeature({
     {
       name: 'status',
       instead:
-        'Nothing — `Order` declares no `status`, and this entry\'s `fallback: \'Completed\'` makes the path render `Completed` whatever the order did. Read the state from the fields that exist, such as `order.isTest`.',
+        'Nothing — the orders API sends no order status, so `Order` declares none and this path renders empty. Reaching a page with a `ref_id` already means the order was placed; use `order.isTest` to tell a test order apart, and link `order.statusUrl` for the hosted page that does show fulfilment state.',
     },
     {
       name: 'total.formatted',

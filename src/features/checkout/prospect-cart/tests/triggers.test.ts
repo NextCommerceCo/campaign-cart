@@ -42,6 +42,7 @@ function makeContext(
     logger: logger as unknown as Logger,
     phoneBlurTimeoutRef: { value: undefined },
     hasTriggeredRef: { value: false },
+    signal: new AbortController().signal,
     isValidPhone: () => true,
     checkAndCreateCart,
     createProspectCart,
@@ -161,6 +162,33 @@ describe('setupEmailEntryTrigger', () => {
     expect(checkAndCreateCart).not.toHaveBeenCalled();
     vi.advanceTimersByTime(300);
     expect(checkAndCreateCart).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * Pins finding 139's fix: every listener this module registers is tied to
+   * `context.signal`, so aborting it (what `ProspectCartEnhancer.cleanupEventListeners`
+   * does on destroy) removes the listener rather than leaving it to outlive whatever
+   * created the context.
+   */
+  it('stops reacting to blur once context.signal aborts', () => {
+    const controller = new AbortController();
+    const container = buildContainer(
+      '<input data-next-checkout-field="email" />'
+    );
+    const { context, checkAndCreateCart } = makeContext(container, {
+      emailField: container.querySelector('input') as HTMLInputElement,
+      signal: controller.signal,
+    });
+    setupEmailEntryTrigger(context);
+
+    controller.abort();
+
+    const email = context.emailField as HTMLInputElement;
+    email.value = 'user@example.com';
+    email.dispatchEvent(new Event('blur'));
+    vi.advanceTimersByTime(300);
+
+    expect(checkAndCreateCart).not.toHaveBeenCalled();
   });
 
   it('does not debounce a blur for an email missing a TLD', () => {

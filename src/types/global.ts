@@ -469,12 +469,20 @@ export interface EventMap {
    *
    * @example
    * ```json
-   * { "errors": ["Your card was declined."] }
+   * { "message": "Your card was declined.", "code": "gateway_declined" }
    * ```
    */
   'payment:error': {
-    /** Messages already worded for display to the visitor. */
-    errors: string[];
+    /**
+     * The failure, already worded for display to the visitor. When the payment
+     * form reported several problems at once they arrive joined into this one
+     * string, in the order the form reported them.
+     */
+    message: string;
+    /** The gateway's response code, when the failure came back from an order attempt. */
+    code?: string;
+    /** The raw error response, for logging. Absent for card-field errors. */
+    details?: unknown;
   };
   /**
    * An express checkout attempt finished.

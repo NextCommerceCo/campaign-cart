@@ -128,7 +128,7 @@ The Format column is what you get with no `data-next-format`; set that attribute
 | `order.is_test` | — | Use `order.isTest`. |
 | `order.supports_upsells` | — | Use `order.supportsUpsells`. |
 | `order.shipping_method` | — | Use `order.shippingMethod`. |
-| `order.status` | `order.status` | Nothing — `Order` declares no `status`, and this entry's `fallback: 'Completed'` makes the path render `Completed` whatever the order did. Read the state from the fields that exist, such as `order.isTest`. |
+| `order.status` | `order.status` | Nothing — the orders API sends no order status, so `Order` declares none and this path renders empty. Reaching a page with a `ref_id` already means the order was placed; use `order.isTest` to tell a test order apart, and link `order.statusUrl` for the hosted page that does show fulfilment state. |
 | `order.total.formatted` | `_formatted.total` | Use `order.total`, which is currency-formatted already. |
 | `order.createdAt.formatted` | `_formatted.createdAt` | Use `order.createdAt`, which is date-formatted already. |
 

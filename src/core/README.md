@@ -23,7 +23,7 @@ never imports `SDKInitializer` and depends entirely on what it does.
 |------|------------|
 | `attribute-scanner.ts` | Discovers `data-next-*` elements and instantiates the bound feature (dynamic `import()` per feature) |
 | `sdk-initializer.ts` | Boot sequence — config, location/currency, campaign load, analytics, DOM scan |
-| `next-commerce.ts` | The programmatic SDK facade (`NextCommerce` / `sdk.*`, incl. `sdk.cart.*`) |
+| `next-commerce.ts` | The programmatic SDK facade (`NextCommerce` / `sdk.*`, incl. `sdk.cart.*`). The class — constructor, singleton, and every method's signature/TSDoc — stays here; each method's body delegates to a same-named function in a sibling module grouped by `@category`: `next-commerce.cart.ts`, `next-commerce.campaign.ts`, `next-commerce.events.ts`, `next-commerce.analytics.ts`, `next-commerce.attribution.ts` (Metadata + Attribution), `next-commerce.shipping.ts`, `next-commerce.utility.ts`, `next-commerce.coupons.ts`, `next-commerce.popups.ts`, `next-commerce.upsells.ts`, `next-commerce.url-params.ts` |
 | `base/` | Base feature classes (`base-enhancer`, `base-cart-enhancer`, `base-action-enhancer`, `base-display-enhancer` + the display routing table, validator and error boundary it needs) + `attribute-parser`, `dom-observer`. See [`base/README.md`](./base/README.md) for why the display base is here rather than in `features/display/` |
 | `analytics/` | Analytics subsystem (providers, events, tracking) — a lazy `analytics` chunk, not a feature |
 | `debug/` | Dev-only debug overlay/panels — loaded via dynamic `import()` so it never ships in the production bundle |

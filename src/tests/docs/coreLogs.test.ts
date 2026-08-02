@@ -337,9 +337,15 @@ describe('core logs and errors reference', () => {
       }
       // A runtime prefix that is not a `{placeholder}` comes from a literal elsewhere in
       // the file — `super('Facebook')` — and that literal is checkable.
+      // A facade split across modules declares `prefixFrom`: the literal lives in the
+      // file that builds the logger and hands it over, not in the file that logs.
+      const prefixText = source.prefixFrom
+        ? (sourceOf.get(source.prefixFrom) ?? '')
+        : text;
+
       if (
         !source.prefix.includes('{') &&
-        !text.includes(`'${source.prefix}'`)
+        !prefixText.includes(`'${source.prefix}'`)
       ) {
         wrong.push(
           `${source.file}: declared prefix '${source.prefix}' appears nowhere in the file`

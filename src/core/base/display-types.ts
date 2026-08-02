@@ -298,9 +298,13 @@ export const PROPERTY_MAPPINGS: Record<string, PropertyMap> = {
     statusUrl: 'order.order_status_url',
     isTest: 'order.is_test',
     supportsUpsells: 'order.supports_post_purchase_upsells',
-    paymentMethod: { path: 'order.payment_method', format: 'text', fallback: 'Credit Card' },
+    // No `fallback` on either of these on purpose. The orders API sends
+    // `payment_method` and does not send `status` (see the `Order` type), so a
+    // fallback here could only ever invent a specific, plausible, wrong value —
+    // "Credit Card" on a PayPal order, "Completed" on an order that is not.
+    paymentMethod: { path: 'order.payment_method', format: 'text' },
     shippingMethod: { path: 'order.shipping_method', format: 'text' },
-    status: { path: 'order.status', fallback: 'Completed' },
+    status: { path: 'order.status' },
     currency: 'order.currency',
     testBadge: { path: 'order.is_test', format: 'text' }, // Will need custom formatting
     

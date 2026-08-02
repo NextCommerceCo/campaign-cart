@@ -851,6 +851,69 @@ describe('ProspectCartEnhancer', () => {
     });
   });
 
+  describe('destroy', () => {
+    /**
+     * Pins finding 139: the class had no `destroy()`/`cleanupEventListeners()`
+     * override at all, so every listener `triggers.ts` registered (here, the
+     * `emailEntry` blur+change pair) outlived the enhancer. `CheckoutFormEnhancer`
+     * calls `this.prospectCartEnhancer.destroy()` believing it tears the feature
+     * down — this proves it now actually does.
+     */
+    it('stops creating carts from a blur once destroyed', async () => {
+      vi.useFakeTimers();
+      try {
+        const container = buildContainer(`
+          <input data-next-checkout-field="email" type="email" />
+          <input data-next-checkout-field="fname" value="Jane" />
+          <input data-next-checkout-field="lname" value="Doe" />
+        `);
+        container.setAttribute('data-trigger-on', 'emailEntry');
+
+        const enhancer = new ProspectCartEnhancer(container);
+        await enhancer.initialize();
+
+        enhancer.destroy();
+
+        const email = container.querySelector(
+          '[data-next-checkout-field="email"]'
+        ) as HTMLInputElement;
+        email.value = 'user@example.com';
+        email.dispatchEvent(new Event('blur'));
+        email.dispatchEvent(new Event('change'));
+
+        // The blur/change handlers debounce through a 300ms setTimeout before
+        // calling checkAndCreateCart — advance past it so a still-attached
+        // listener would have had the chance to fire.
+        await vi.advanceTimersByTimeAsync(300);
+
+        expect(createCartMock).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('stops creating carts from formStart focus/input once destroyed', async () => {
+      const container = buildContainer(`
+        <input data-next-checkout-field="email" type="email" />
+      `);
+      container.setAttribute('data-trigger-on', 'formStart');
+
+      const enhancer = new ProspectCartEnhancer(container);
+      await enhancer.initialize();
+
+      enhancer.destroy();
+
+      const email = container.querySelector('input') as HTMLInputElement;
+      email.dispatchEvent(new Event('focus'));
+      email.dispatchEvent(new Event('input'));
+
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(createCartMock).not.toHaveBeenCalled();
+    });
+  });
+
   describe('field discovery selectors', () => {
     it('finds email field via os-checkout-field legacy attribute', async () => {
       const container = buildContainer('<input os-checkout-field="email" />');

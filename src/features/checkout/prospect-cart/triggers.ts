@@ -47,8 +47,14 @@ export function setupFormStartTrigger(context: TriggerContext): void {
       }
     };
 
-    field.addEventListener('focus', handler, { once: true });
-    field.addEventListener('input', handler, { once: true });
+    field.addEventListener('focus', handler, {
+      once: true,
+      signal: context.signal,
+    });
+    field.addEventListener('input', handler, {
+      once: true,
+      signal: context.signal,
+    });
   });
 }
 
@@ -92,84 +98,111 @@ export function setupEmailEntryTrigger(context: TriggerContext): void {
   };
 
   // Set up email field listeners
-  context.emailField.addEventListener('blur', () => {
-    const currentEmail = context.emailField!.value.trim();
+  context.emailField.addEventListener(
+    'blur',
+    () => {
+      const currentEmail = context.emailField!.value.trim();
 
-    // Only process if email has changed and appears complete
-    if (currentEmail !== lastEmailValue && currentEmail.length > 0) {
-      lastEmailValue = currentEmail;
+      // Only process if email has changed and appears complete
+      if (currentEmail !== lastEmailValue && currentEmail.length > 0) {
+        lastEmailValue = currentEmail;
 
-      context.logger.debug('Email blur event processed, value:', currentEmail);
-
-      // Only check if email looks complete (has @ and a domain with TLD)
-      if (
-        currentEmail.includes('@') &&
-        currentEmail.split('@')[1]?.includes('.')
-      ) {
-        checkForCartCreation();
-      } else {
         context.logger.debug(
-          'Email appears incomplete, skipping cart creation:',
+          'Email blur event processed, value:',
           currentEmail
         );
+
+        // Only check if email looks complete (has @ and a domain with TLD)
+        if (
+          currentEmail.includes('@') &&
+          currentEmail.split('@')[1]?.includes('.')
+        ) {
+          checkForCartCreation();
+        } else {
+          context.logger.debug(
+            'Email appears incomplete, skipping cart creation:',
+            currentEmail
+          );
+        }
       }
-    }
-  });
+    },
+    { signal: context.signal }
+  );
 
   // Also listen for change event on email (more reliable for autofill)
-  context.emailField.addEventListener('change', () => {
-    const currentEmail = context.emailField!.value.trim();
-    if (isValidEmail(currentEmail)) {
-      context.logger.debug(
-        'Valid email detected on change event:',
-        currentEmail
-      );
-      checkForCartCreation();
-    }
-  });
+  context.emailField.addEventListener(
+    'change',
+    () => {
+      const currentEmail = context.emailField!.value.trim();
+      if (isValidEmail(currentEmail)) {
+        context.logger.debug(
+          'Valid email detected on change event:',
+          currentEmail
+        );
+        checkForCartCreation();
+      }
+    },
+    { signal: context.signal }
+  );
 
   // Set up first name field listeners
   if (firstNameField) {
-    firstNameField.addEventListener('blur', () => {
-      const firstName = firstNameField.value.trim();
-      if (firstName.length >= 2) {
-        context.logger.debug('First name blur event, checking cart creation');
-        checkForCartCreation();
-      }
-    });
+    firstNameField.addEventListener(
+      'blur',
+      () => {
+        const firstName = firstNameField.value.trim();
+        if (firstName.length >= 2) {
+          context.logger.debug('First name blur event, checking cart creation');
+          checkForCartCreation();
+        }
+      },
+      { signal: context.signal }
+    );
 
-    firstNameField.addEventListener('change', () => {
-      const firstName = firstNameField.value.trim();
-      if (isValidName(firstName)) {
-        context.logger.debug(
-          'Valid first name detected on change event:',
-          firstName
-        );
-        checkForCartCreation();
-      }
-    });
+    firstNameField.addEventListener(
+      'change',
+      () => {
+        const firstName = firstNameField.value.trim();
+        if (isValidName(firstName)) {
+          context.logger.debug(
+            'Valid first name detected on change event:',
+            firstName
+          );
+          checkForCartCreation();
+        }
+      },
+      { signal: context.signal }
+    );
   }
 
   // Set up last name field listeners
   if (lastNameField) {
-    lastNameField.addEventListener('blur', () => {
-      const lastName = lastNameField.value.trim();
-      if (lastName.length >= 2) {
-        context.logger.debug('Last name blur event, checking cart creation');
-        checkForCartCreation();
-      }
-    });
+    lastNameField.addEventListener(
+      'blur',
+      () => {
+        const lastName = lastNameField.value.trim();
+        if (lastName.length >= 2) {
+          context.logger.debug('Last name blur event, checking cart creation');
+          checkForCartCreation();
+        }
+      },
+      { signal: context.signal }
+    );
 
-    lastNameField.addEventListener('change', () => {
-      const lastName = lastNameField.value.trim();
-      if (isValidName(lastName)) {
-        context.logger.debug(
-          'Valid last name detected on change event:',
-          lastName
-        );
-        checkForCartCreation();
-      }
-    });
+    lastNameField.addEventListener(
+      'change',
+      () => {
+        const lastName = lastNameField.value.trim();
+        if (isValidName(lastName)) {
+          context.logger.debug(
+            'Valid last name detected on change event:',
+            lastName
+          );
+          checkForCartCreation();
+        }
+      },
+      { signal: context.signal }
+    );
   }
 }
 
@@ -200,33 +233,41 @@ export function setupPhoneEntryTrigger(context: TriggerContext): void {
     }, 300);
   };
 
-  context.phoneField.addEventListener('blur', () => {
-    const currentPhone = context.phoneField!.value.trim();
-    if (currentPhone !== lastPhoneValue && currentPhone.length > 0) {
-      lastPhoneValue = currentPhone;
+  context.phoneField.addEventListener(
+    'blur',
+    () => {
+      const currentPhone = context.phoneField!.value.trim();
+      if (currentPhone !== lastPhoneValue && currentPhone.length > 0) {
+        lastPhoneValue = currentPhone;
+        if (context.isValidPhone(currentPhone)) {
+          context.logger.debug(
+            'Phone blur event processed, value:',
+            currentPhone
+          );
+          scheduleCheck();
+        } else {
+          context.logger.debug(
+            'Phone appears incomplete, skipping cart creation:',
+            currentPhone
+          );
+        }
+      }
+    },
+    { signal: context.signal }
+  );
+
+  context.phoneField.addEventListener(
+    'change',
+    () => {
+      const currentPhone = context.phoneField!.value.trim();
       if (context.isValidPhone(currentPhone)) {
         context.logger.debug(
-          'Phone blur event processed, value:',
+          'Valid phone detected on change event:',
           currentPhone
         );
         scheduleCheck();
-      } else {
-        context.logger.debug(
-          'Phone appears incomplete, skipping cart creation:',
-          currentPhone
-        );
       }
-    }
-  });
-
-  context.phoneField.addEventListener('change', () => {
-    const currentPhone = context.phoneField!.value.trim();
-    if (context.isValidPhone(currentPhone)) {
-      context.logger.debug(
-        'Valid phone detected on change event:',
-        currentPhone
-      );
-      scheduleCheck();
-    }
-  });
+    },
+    { signal: context.signal }
+  );
 }

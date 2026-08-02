@@ -120,6 +120,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private loadingOverlay: LoadingOverlay;
   private expressProcessor?: ExpressCheckoutProcessor;
   private orderManager?: OrderManager;
+  /** True only while {@link displayPaymentError} is emitting — see {@link listenForPaymentErrors}. */
+  private announcingPaymentError = false;
 
   constructor(element: HTMLElement) {
     super(element);
@@ -401,9 +403,15 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
    * Registered through `this.on`, not `this.eventBus.on`: the bus is a page-lifetime
    * singleton, so a handler it does not record an unsubscribe for keeps firing on a
    * destroyed enhancer.
+   *
+   * {@link displayPaymentError} emits `payment:error` itself, so its own echo comes
+   * straight back here and would re-enter the display forever. `announcingPaymentError`
+   * is set only for the duration of that synchronous emit, which is what tells the echo
+   * apart from an error raised elsewhere.
    */
   private listenForPaymentErrors(): void {
-    this.on('payment:error', (event: any) => {
+    this.on('payment:error', event => {
+      if (this.announcingPaymentError) return;
       if (event.message) {
         this.displayPaymentError(event.message);
       }
@@ -1085,9 +1093,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
       this.creditCardService.setOnError((errors) => {
         this.logger.warn('[Spreedly] Credit card validation errors:', errors);
-        this.emit('payment:error', { errors });
 
-        // Display credit card validation errors
+        // Display credit card validation errors. Every message the card fields
+        // reported is joined into the one string the visitor reads, and
+        // `displayPaymentError` is what puts that string on the bus as
+        // `payment:error` — so this path emits once, not twice.
         if (errors && errors.length > 0) {
           const errorMessage = errors.map((err: any) => err.message || err).join('. ');
           this.displayPaymentError(errorMessage);
@@ -2763,8 +2773,14 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       }
     }, 100); // Small delay to ensure DOM is ready
 
-    // Also emit an event for other components to handle
-    this.emit('payment:error', { errors: [message] });
+    // Also emit an event for other components to handle. The flag marks this as
+    // our own echo, so `listenForPaymentErrors` does not display it a second time.
+    this.announcingPaymentError = true;
+    try {
+      this.emit('payment:error', { message });
+    } finally {
+      this.announcingPaymentError = false;
+    }
   }
 
   /**
