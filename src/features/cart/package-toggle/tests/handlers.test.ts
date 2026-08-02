@@ -9,6 +9,7 @@ import {
 import type { ToggleHandlerContext } from '../package-toggle.handlers';
 import type { ToggleCard } from '../package-toggle.types';
 import type { CartItem, CartState } from '@/types/global';
+import type { IApiClient } from '@/api/client.types';
 import { useCartStore } from '@/state/cart';
 import { useCampaignStore } from '@/state/campaign';
 import { useOrderStore } from '@/state/order';
@@ -45,7 +46,20 @@ vi.mock('@/state/order', () => ({
 vi.mock('@/state/config', () => ({
   useConfigStore: { getState: vi.fn() },
 }));
-vi.mock('@/api/client', () => ({ ApiClient: vi.fn() }));
+/**
+ * The upsell path only forwards the client to `orderStore.addUpsell`, which is
+ * mocked, so `getApiKey` — the one member `getApiClient()` calls on the instance it
+ * memoizes — is all this double owes. `Pick` and not `Partial`: `Partial` still
+ * compiles with the method missing, which is exactly the drift being closed.
+ */
+vi.mock('@/api/client', () => ({
+  ApiClient: class implements Pick<IApiClient, 'getApiKey'> {
+    public constructor(private readonly apiKey: string) {}
+    public getApiKey(): string {
+      return this.apiKey;
+    }
+  },
+}));
 vi.mock('@/core/url-utils', () => ({
   preserveQueryParams: (url: string) => url,
 }));
@@ -265,12 +279,15 @@ describe('handleCardClick — upsell context', () => {
   });
 
   it('logs error and clears loading on failure', async () => {
-    mockOrderStore(true, vi.fn().mockRejectedValue(new Error('fail')));
+    const { addUpsell } = mockOrderStore(true, vi.fn().mockRejectedValue(new Error('fail')));
     const card = makeCard(101);
     const ctx = makeCtx({ isUpsellContext: true });
 
     await handleCardClick(new Event('click'), card, ctx);
 
+    // The `catch` reports any throw from the whole block, so assert the run reached
+    // the upsell call — otherwise a client that blows up before it reads as a pass.
+    expect(addUpsell).toHaveBeenCalled();
     expect(ctx.logger.error).toHaveBeenCalled();
     expect(card.element.classList.contains('next-loading')).toBe(false);
   });

@@ -14,6 +14,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { Mock } from 'vitest';
+import type { IApiClient } from '@/api/client.types';
 import { AcceptUpsellEnhancer } from '../accept-upsell.enhancer';
 import { useOrderStore } from '@/state/order';
 import { useCampaignStore } from '@/state/campaign';
@@ -28,7 +29,20 @@ vi.mock('@/state/campaign', () => ({
 vi.mock('@/state/config', () => ({
   useConfigStore: { getState: vi.fn() },
 }));
-vi.mock('@/api/client', () => ({ ApiClient: class {} }));
+/**
+ * The enhancer hands the client to `orderStore.addUpsell`, which is mocked, so the
+ * only member this double owes is the one `getApiClient()` reads back off the
+ * instance it memoizes. `Pick` and not `Partial`: `Partial` would keep compiling
+ * once `getApiKey` is gone, which is the drift this typing exists to catch.
+ */
+vi.mock('@/api/client', () => ({
+  ApiClient: class implements Pick<IApiClient, 'getApiKey'> {
+    public constructor(private readonly apiKey: string) {}
+    public getApiKey(): string {
+      return this.apiKey;
+    }
+  },
+}));
 vi.mock('@/core/ui/loading-overlay', () => ({
   LoadingOverlay: class {
     public show(): void {}
@@ -49,7 +63,7 @@ interface SubmittedPayload {
 }
 type AddUpsell = (
   payload: SubmittedPayload,
-  apiClient: unknown
+  apiClient: IApiClient
 ) => Promise<unknown>;
 
 let addUpsell: Mock<AddUpsell>;

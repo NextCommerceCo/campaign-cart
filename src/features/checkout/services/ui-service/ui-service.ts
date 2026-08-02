@@ -17,12 +17,11 @@
  * | [`payment-form-display.ts`](./payment-form-display.ts) | Revealing the chosen payment method's fields | 3 |
  * | [`floating-labels.ts`](./floating-labels.ts) | Labels that float above filled inputs | 5 |
  *
- * **Caution — nothing calls `destroy()` today.** `CheckoutFormEnhancer.destroy()` tears
- * down its validator, card service, prospect cart, phone inputs, and autocomplete, but
- * not this service. The symptom is a checkout page that keeps a 500 ms interval and every
- * floating-label listener alive after the form is gone — invisible on a normal checkout,
- * which navigates away, and a slow leak on a single-page flow that re-enhances a form.
- * The fix is one line in that enhancer's `destroy()`: `this.ui?.destroy();`.
+ * **Call `destroy()` when the form goes away.** It stops a 500 ms poll and removes every
+ * floating-label listener; skip it and both stay alive after the form is gone — invisible
+ * on a checkout that navigates away, a slow leak on a single-page flow that re-enhances a
+ * form. `CheckoutFormEnhancer.destroy()` does call it (it did not until 2026-08-02), so a
+ * new caller of this service has to do the same.
  */
 
 import type { Logger } from '@/core/logger';

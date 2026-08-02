@@ -7,6 +7,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { Mock } from 'vitest';
+import type { IApiClient } from '@/api/client.types';
 import { UpsellEnhancer } from '../upsell.enhancer';
 import { useOrderStore } from '@/state/order';
 import { useCampaignStore } from '@/state/campaign';
@@ -21,8 +22,20 @@ vi.mock('@/state/campaign', () => ({
 vi.mock('@/state/config', () => ({
   useConfigStore: { getState: vi.fn() },
 }));
+/**
+ * The enhancer never calls the API itself — it hands the client to
+ * `orderStore.addUpsell`, which is mocked. So the only member this double owes is
+ * the one `getApiClient()` reads back off the instance it memoizes. Typing it
+ * `Pick<IApiClient, 'getApiKey'>` rather than `Partial<IApiClient>` is what makes
+ * that a promise: `Partial` would still compile with the method gone.
+ */
 vi.mock('@/api/client', () => ({
-  ApiClient: class {},
+  ApiClient: class implements Pick<IApiClient, 'getApiKey'> {
+    public constructor(private readonly apiKey: string) {}
+    public getApiKey(): string {
+      return this.apiKey;
+    }
+  },
 }));
 vi.mock('@/core/ui/loading-overlay', () => ({
   LoadingOverlay: class {
@@ -43,7 +56,7 @@ interface SubmittedPayload {
 }
 type AddUpsell = (
   payload: SubmittedPayload,
-  apiClient: unknown
+  apiClient: IApiClient
 ) => Promise<unknown>;
 
 /** Stand-in store objects: only the members the enhancer actually reads. */

@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { IApiClient } from '@/api/client.types';
+import type { Cart, CartBase } from '@/types/api';
 import { ProspectCartEnhancer } from '../prospect-cart.enhancer';
 import { useCartStore } from '@/state/cart';
 import { useConfigStore } from '@/state/config';
@@ -18,11 +20,31 @@ vi.mock('@/state/attribution', () => ({
   useAttributionStore: { getState: vi.fn() },
 }));
 
-const createCartMock = vi.fn();
+/**
+ * `createCart` takes the real argument type, so every `mock.calls[0][0]` assertion
+ * below is checked against the payload the API actually receives. The resolved
+ * value stays loose — these cases only read `checkout_url`, and a full `Cart`
+ * literal per case would say nothing extra.
+ */
+const createCartMock =
+  vi.fn<(data: CartBase & { currency?: string }) => Promise<unknown>>();
+
+/**
+ * `Pick` of the two members this test really needs: `createCart` because the
+ * enhancer calls it, and `getApiKey` because `getApiClient()` reads the key back
+ * off the instance it memoizes. `Partial<IApiClient>` would compile with either one
+ * missing, so it would not hold the double to the real surface.
+ */
 vi.mock('@/api/client', () => ({
-  ApiClient: vi.fn().mockImplementation(() => ({
-    createCart: createCartMock,
-  })),
+  ApiClient: class implements Pick<IApiClient, 'createCart' | 'getApiKey'> {
+    public constructor(private readonly apiKey: string) {}
+    public getApiKey(): string {
+      return this.apiKey;
+    }
+    public createCart(data: CartBase & { currency?: string }): Promise<Cart> {
+      return createCartMock(data) as Promise<Cart>;
+    }
+  },
 }));
 
 function buildContainer(html: string): HTMLElement {
@@ -608,7 +630,7 @@ describe('ProspectCartEnhancer', () => {
         { package_id: 1, quantity: 1, is_upsell: false },
       ]);
       expect(callArg.currency).toBe('EUR');
-      expect(callArg.attribution.funnel).toBe('CH01');
+      expect(callArg.attribution?.funnel).toBe('CH01');
 
       expect(result).toMatchObject({
         id: 'https://checkout.example/abc',

@@ -33,7 +33,7 @@ interface BootSteps {
   setupDebugEventListeners(): void;
   listenForPaymentErrors(): void;
   listenForDebugCountryChanges(): void;
-  setupBfcacheRestoreHandler(config: { spreedlyEnvironmentKey?: string }): void;
+  setupBfcacheRestoreHandler(): void;
   setupWindowFocusHandler(): void;
   scheduleBeginCheckoutTracking(): void;
 
@@ -312,13 +312,14 @@ describe('listenForDebugCountryChanges', () => {
 // ─── setupBfcacheRestoreHandler ───────────────────────────────────────────────
 
 describe('setupBfcacheRestoreHandler', () => {
-  function pageshow(
-    steps: BootSteps,
-    config: { spreedlyEnvironmentKey?: string } = {}
-  ): (event: unknown) => void {
+  function pageshow(steps: BootSteps): (event: unknown) => void {
     return captureListener(window, 'pageshow', () =>
-      steps.setupBfcacheRestoreHandler(config)
+      steps.setupBfcacheRestoreHandler()
     );
+  }
+
+  function spreedlyKeyIs(key: string | undefined): void {
+    useConfigStore.setState({ spreedlyEnvironmentKey: key });
   }
 
   it('does nothing on a fresh navigation', () => {
@@ -388,12 +389,39 @@ describe('setupBfcacheRestoreHandler', () => {
     steps.creditCardService = {
       initialize: vi.fn().mockResolvedValue(undefined),
     };
+    const restore = pageshow(steps);
 
-    pageshow(steps, {})({ persisted: true });
+    spreedlyKeyIs(undefined);
+    restore({ persisted: true });
     expect(steps.creditCardService.initialize).not.toHaveBeenCalled();
 
-    pageshow(steps, { spreedlyEnvironmentKey: 'env_key' })({ persisted: true });
+    spreedlyKeyIs('env_key');
+    restore({ persisted: true });
     expect(steps.creditCardService.initialize).toHaveBeenCalledTimes(1);
+    spreedlyKeyIs(undefined);
+  });
+
+  /**
+   * `handleConfigUpdate` creates the credit-card service when the key arrives *after*
+   * boot. The handler used to close over the config snapshot `initialize` captured, so
+   * in exactly that case it saw a truthy `creditCardService` and no key, and skipped
+   * re-initializing the hosted fields it had just checked for. Finding 119.
+   */
+  it('reads the Spreedly key live, not from the boot-time snapshot', () => {
+    spreedlyKeyIs(undefined);
+    const { steps } = createEnhancer();
+    vi.spyOn(steps, 'handlePurchaseEvent').mockResolvedValue(undefined);
+    steps.creditCardService = {
+      initialize: vi.fn().mockResolvedValue(undefined),
+    };
+
+    // Registered while the key is still missing; it arrives only afterwards.
+    const restore = pageshow(steps);
+    spreedlyKeyIs('env_key');
+    restore({ persisted: true });
+
+    expect(steps.creditCardService.initialize).toHaveBeenCalledTimes(1);
+    spreedlyKeyIs(undefined);
   });
 
   it('logs a failed credit card re-initialization instead of throwing', async () => {
@@ -403,8 +431,9 @@ describe('setupBfcacheRestoreHandler', () => {
     steps.creditCardService = {
       initialize: vi.fn().mockRejectedValue(failure),
     };
+    spreedlyKeyIs('env_key');
 
-    pageshow(steps, { spreedlyEnvironmentKey: 'env_key' })({ persisted: true });
+    pageshow(steps)({ persisted: true });
     await Promise.resolve();
     await Promise.resolve();
 
@@ -412,6 +441,7 @@ describe('setupBfcacheRestoreHandler', () => {
       'Failed to re-initialize credit card service:',
       failure
     );
+    spreedlyKeyIs(undefined);
   });
 });
 

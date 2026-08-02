@@ -61,9 +61,7 @@ export function getApiClient(apiKey?: string): IApiClient {
   // Ask the instance which key it is carrying rather than remembering a copy here:
   // `ApiClient.setApiKey` is public, so a copy could go stale and hand the next caller a
   // client that is authenticating with something else. Derived, the two cannot disagree.
-  // A stand-in client that cannot answer is not the one this caller asked for either, so
-  // it is replaced rather than reused.
-  if (instance?.getApiKey?.() !== key) {
+  if (instance?.getApiKey() !== key) {
     instance = new ApiClient(key);
   }
 

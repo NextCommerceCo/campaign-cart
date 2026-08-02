@@ -160,6 +160,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private billingAddressToggleHandler?: (event: Event) => void;
   private boundHandleTestDataFilled?: EventListener;
   private boundHandleKonamiActivation?: EventListener;
+  /**
+   * Aborts every listener registered through {@link listen}. `cleanupEventListeners()`
+   * aborts it, so base `destroy()` drops them all in one call. Same pattern as
+   * `expiration-fields.ts` and `billing-animation.ts`.
+   */
+  private domListenerAbort = new AbortController();
 
   // Animation state management
   /**
@@ -187,6 +193,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
    */
   private stopAutofillDetection?: () => void;
   private hasTrackedBeginCheckout = false;
+  /**
+   * Handle for the `begin_checkout` delay, so a form destroyed inside that window
+   * does not still report the event — see {@link scheduleBeginCheckoutTracking}.
+   */
+  private beginCheckoutTimer?: ReturnType<typeof setTimeout>;
 
   // Multi-step checkout support
   private isMultiStep = false;
@@ -249,7 +260,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     this.listenForPaymentErrors();
     this.listenForDebugCountryChanges();
-    this.setupBfcacheRestoreHandler(config);
+    this.setupBfcacheRestoreHandler();
     this.setupWindowFocusHandler();
 
     // Check for fresh purchase on initial load
@@ -357,9 +368,16 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     document.addEventListener('next:test-mode-activated', this.boundHandleKonamiActivation as EventListener);
   }
 
-  /** Payment errors raised by other components (express checkout, Spreedly) surface in this form. */
+  /**
+   * Payment errors raised by other components (express checkout, Spreedly) surface in
+   * this form.
+   *
+   * Registered through `this.on`, not `this.eventBus.on`: the bus is a page-lifetime
+   * singleton, so a handler it does not record an unsubscribe for keeps firing on a
+   * destroyed enhancer.
+   */
   private listenForPaymentErrors(): void {
-    this.eventBus.on('payment:error', (event: any) => {
+    this.on('payment:error', (event: any) => {
       if (event.message) {
         this.displayPaymentError(event.message);
       }
@@ -368,7 +386,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
   /** The debug country selector changes the country outside the form's own dropdown. */
   private listenForDebugCountryChanges(): void {
-    document.addEventListener('next:country-changed', async (e) => {
+    this.listen(document, 'next:country-changed', async (e) => {
       const customEvent = e as CustomEvent;
       const { to: newCountry } = customEvent.detail;
       if (newCountry) {
@@ -377,9 +395,17 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     });
   }
 
-  /** Restores a sane state when the browser serves this page back from bfcache. */
-  private setupBfcacheRestoreHandler(config: CheckoutFormConfig): void {
-    window.addEventListener('pageshow', (event) => {
+  /**
+   * Restores a sane state when the browser serves this page back from bfcache.
+   *
+   * Reads the config store live rather than closing over a boot-time snapshot:
+   * `spreedlyEnvironmentKey` can arrive *after* boot, in which case
+   * {@link handleConfigUpdate} creates the credit-card service and a captured snapshot
+   * would still say the key is missing — so the restore would skip re-initializing the
+   * hosted fields it just checked for.
+   */
+  private setupBfcacheRestoreHandler(): void {
+    this.listen<PageTransitionEvent>(window, 'pageshow', (event) => {
       if (event.persisted ||
         (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming)?.type === 'back_forward') {
         // Page was restored from bfcache
@@ -407,7 +433,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         }
 
         // Re-initialize credit card service if needed
-        if (this.creditCardService && config.spreedlyEnvironmentKey) {
+        if (this.creditCardService && useConfigStore.getState().spreedlyEnvironmentKey) {
           this.logger.info('Re-initializing credit card service after bfcache restore');
           this.creditCardService.initialize().catch(error => {
             this.logger.error('Failed to re-initialize credit card service:', error);
@@ -425,7 +451,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
    * to the page without triggering `pageshow`.
    */
   private setupWindowFocusHandler(): void {
-    window.addEventListener('focus', () => {
+    this.listen(window, 'focus', () => {
       const checkoutStore = useCheckoutStore.getState();
 
       // Only reset if we're in processing state (likely from express checkout)
@@ -453,9 +479,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   /**
    * `begin_checkout` fires from here and nowhere else. The delay lets the
    * analytics providers finish registering first.
+   *
+   * The handle is kept so `destroy()` can cancel it — a form torn down inside those
+   * 500 ms must not report a checkout the shopper never reached.
    */
   private scheduleBeginCheckoutTracking(): void {
-    setTimeout(() => {
+    this.beginCheckoutTimer = setTimeout(() => {
       this.trackBeginCheckout();
     }, 500);
   }
@@ -738,9 +767,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const addressField = this.fields.get('address1');
     if (addressField instanceof HTMLInputElement) {
       // Listen for changes on address1 field
-      addressField.addEventListener('input', this.handleAddressInput.bind(this));
-      addressField.addEventListener('change', this.handleAddressInput.bind(this));
-      addressField.addEventListener('blur', this.handleAddressInput.bind(this));
+      this.listen(addressField, 'input', this.handleAddressInput.bind(this));
+      this.listen(addressField, 'change', this.handleAddressInput.bind(this));
+      this.listen(addressField, 'blur', this.handleAddressInput.bind(this));
 
       // Check initial state
       if (addressField.value && addressField.value.trim().length > 0) {
@@ -752,9 +781,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const billingAddressField = this.billingFields?.get('billing-address1');
     if (billingAddressField instanceof HTMLInputElement) {
       // Listen for changes on billing address1 field
-      billingAddressField.addEventListener('input', this.handleBillingAddressInput.bind(this));
-      billingAddressField.addEventListener('change', this.handleBillingAddressInput.bind(this));
-      billingAddressField.addEventListener('blur', this.handleBillingAddressInput.bind(this));
+      const onBillingInput = this.handleBillingAddressInput.bind(this);
+      this.listen(billingAddressField, 'input', onBillingInput);
+      this.listen(billingAddressField, 'change', onBillingInput);
+      this.listen(billingAddressField, 'blur', onBillingInput);
 
       // Check initial state
       if (billingAddressField.value && billingAddressField.value.trim().length > 0) {
@@ -762,8 +792,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       }
     }
 
-    // Listen for autocomplete fill events
-    this.eventBus.on('address:autocomplete-filled', (event: any) => {
+    // Listen for autocomplete fill events. `this.on` records the unsubscribe that
+    // `destroy()` runs; `this.eventBus.on` would outlive the form.
+    this.on('address:autocomplete-filled', (event: any) => {
       if (event.type === 'shipping') {
         this.showLocationFields();
       } else if (event.type === 'billing') {
@@ -879,12 +910,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       await this.prospectCartEnhancer.initialize();
 
       // Listen for prospect cart events
-      this.form.addEventListener('next:prospect-cart-created', (event: Event) => {
+      this.listen(this.form, 'next:prospect-cart-created', (event: Event) => {
         const customEvent = event as CustomEvent;
         this.logger.info('Prospect cart created', customEvent.detail);
       });
 
-      this.form.addEventListener('next:prospect-cart-abandoned', (event: Event) => {
+      this.listen(this.form, 'next:prospect-cart-abandoned', (event: Event) => {
         const customEvent = event as CustomEvent;
         this.logger.info('Prospect cart abandoned', customEvent.detail);
       });
@@ -2727,6 +2758,24 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     this.initializePhoneInputs();
   }
 
+  /**
+   * `addEventListener` bound to this form's lifetime.
+   *
+   * Use it for every `document`, `window` or element listener whose handler is an
+   * inline arrow or a fresh `.bind(this)` — `removeEventListener` needs the exact
+   * reference back, which neither of those can give, so the listener would otherwise
+   * be unremovable. {@link cleanupEventListeners} aborts the signal and they all go.
+   */
+  private listen<E extends Event>(
+    target: Document | Window | HTMLElement,
+    type: string,
+    handler: (event: E) => void
+  ): void {
+    target.addEventListener(type, handler as EventListener, {
+      signal: this.domListenerAbort.signal,
+    });
+  }
+
   protected override cleanupEventListeners(): void {
     if (this.submitHandler) {
       this.form.removeEventListener('submit', this.submitHandler);
@@ -2777,6 +2826,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     if (this.boundHandleKonamiActivation) {
       document.removeEventListener('next:test-mode-activated', this.boundHandleKonamiActivation);
     }
+
+    // Everything registered with an inline arrow or a fresh `.bind(this)`: the
+    // `next:country-changed`, `pageshow` and `focus` handlers, the address-field
+    // listeners, and the prospect-cart ones on the form.
+    this.domListenerAbort.abort();
   }
 
   private displayPaymentError(message: string): void {
@@ -2872,6 +2926,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     this.billingListenerAbort.value?.abort();
     this.billingListenerAbort.value = null;
 
+    // A form torn down inside the 500 ms analytics delay must not still report.
+    if (this.beginCheckoutTimer) {
+      clearTimeout(this.beginCheckoutTimer);
+      this.beginCheckoutTimer = undefined;
+    }
+
     if (this.validator) {
       this.validator.destroy();
     }
@@ -2895,10 +2955,16 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     this.autocompleteEnhancer?.destroy();
 
+    // Stops the 500 ms autofill poll and every floating-label listener.
+    this.ui?.destroy();
+
+    super.destroy();
+
+    // After `super.destroy()`, never before: it runs `cleanupEventListeners()`, which
+    // removes the change/blur/input handlers by iterating these very maps. Clearing
+    // them first left every checkout field holding all three listeners.
     this.fields.clear();
     this.billingFields.clear();
     this.paymentButtons.clear();
-
-    super.destroy();
   }
 }

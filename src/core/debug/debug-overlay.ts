@@ -28,6 +28,19 @@ import {
   RawDataHelper
 } from './panels';
 
+/** The cart store's state, as the mini-cart reads it. */
+type CartStoreState = ReturnType<typeof useCartStore.getState>;
+
+/** One line in the cart, as the mini-cart renders it. */
+type MiniCartItem = CartStoreState['items'][number];
+
+/** A discount that applies to the cart as a whole rather than to one line. */
+interface CartLevelDiscount {
+  type: 'offer' | 'voucher';
+  label: string;
+  amount: number;
+}
+
 export class DebugOverlay {
   private static instance: DebugOverlay;
   private visible = false;
@@ -388,49 +401,65 @@ export class DebugOverlay {
 
     // Handle main debug actions
     if (action) {
-      console.log('[Debug] Action clicked:', action);
-      switch (action) {
-        case 'toggle-expand':
-          this.isExpanded = !this.isExpanded;
-          // Save expanded state to localStorage
-          localStorage.setItem(DebugOverlay.EXPANDED_STORAGE_KEY, this.isExpanded.toString());
-          this.updateBodyHeight();
-          this.updateOverlay();
-          // Emit event for selector container
-          document.dispatchEvent(new CustomEvent('debug:panel-toggled', {
-            detail: { isExpanded: this.isExpanded }
-          }));
-          break;
-        case 'close':
-          this.hide();
-          break;
-        case 'clear-cart':
-          this.clearCart();
-          break;
-        case 'export-data':
-          this.exportAllData();
-          break;
-        case 'toggle-mini-cart':
-          this.toggleMiniCart();
-          break;
-        case 'toggle-xray':
-          this.toggleXray();
-          break;
-        case 'close-mini-cart':
-          this.closeMiniCart();
-          break;
-        case 'toggle-internal-events':
-          // Toggle internal events for the Events panel
-          const eventPanel = this.panels.find(p => p.id === 'event-timeline') as any;
-          if (eventPanel && eventPanel.toggleInternalEvents) {
-            eventPanel.toggleInternalEvents();
-            this.updateContent();
-          }
-          break;
-      }
+      this.handleDebugAction(action);
       return;
     }
 
+    // Handle panel and horizontal tab switching
+    if (this.handleTabSwitch(target)) return;
+
+    this.runPanelAction(target);
+  };
+
+  /** One of the `data-action` buttons in the overlay chrome was clicked. */
+  private handleDebugAction(action: string): void {
+    console.log('[Debug] Action clicked:', action);
+    switch (action) {
+      case 'toggle-expand':
+        this.isExpanded = !this.isExpanded;
+        // Save expanded state to localStorage
+        localStorage.setItem(DebugOverlay.EXPANDED_STORAGE_KEY, this.isExpanded.toString());
+        this.updateBodyHeight();
+        this.updateOverlay();
+        // Emit event for selector container
+        document.dispatchEvent(new CustomEvent('debug:panel-toggled', {
+          detail: { isExpanded: this.isExpanded }
+        }));
+        break;
+      case 'close':
+        this.hide();
+        break;
+      case 'clear-cart':
+        this.clearCart();
+        break;
+      case 'export-data':
+        this.exportAllData();
+        break;
+      case 'toggle-mini-cart':
+        this.toggleMiniCart();
+        break;
+      case 'toggle-xray':
+        this.toggleXray();
+        break;
+      case 'close-mini-cart':
+        this.closeMiniCart();
+        break;
+      case 'toggle-internal-events':
+        // Toggle internal events for the Events panel
+        const eventPanel = this.panels.find(p => p.id === 'event-timeline') as any;
+        if (eventPanel && eventPanel.toggleInternalEvents) {
+          eventPanel.toggleInternalEvents();
+          this.updateContent();
+        }
+        break;
+    }
+  }
+
+  /**
+   * Switches the vertical panel or the horizontal tab inside it.
+   * Returns true when the click was one of those, so the caller stops.
+   */
+  private handleTabSwitch(target: HTMLElement): boolean {
     // Handle panel tab switching
     const panelTab = target.closest('.debug-panel-tab') as HTMLElement;
     if (panelTab) {
@@ -446,7 +475,7 @@ export class DebugOverlay {
 
         this.updateOverlay();
       }
-      return;
+      return true;
     }
 
     // Handle horizontal tab switching within panels
@@ -462,9 +491,14 @@ export class DebugOverlay {
 
         this.updateOverlay();
       }
-      return;
+      return true;
     }
 
+    return false;
+  }
+
+  /** Runs the active panel's own action button, matched by its label. */
+  private runPanelAction(target: HTMLElement): void {
     // Handle panel action buttons
     const panelActionBtn = target.closest('.panel-action-btn') as HTMLElement;
     if (panelActionBtn) {
@@ -483,7 +517,7 @@ export class DebugOverlay {
       }
       return;
     }
-  };
+  }
 
   private handleContainerHover = (event: Event) => {
     const target = event.target as HTMLElement;
@@ -688,46 +722,199 @@ export class DebugOverlay {
     const cartState = useCartStore.getState();
 
     if (!cartState.items || cartState.items.length === 0) {
-      miniCart.innerHTML = `
+      miniCart.innerHTML = this.renderMiniCartEmpty();
+      return;
+    }
+
+    const { itemsHtml, subtotalBeforeDiscounts } = this.renderMiniCartItems(
+      cartState.items
+    );
+
+    // Build totals breakdown - use calculated subtotal before discounts
+    const totalDiscount = cartState.totalDiscount.toNumber();
+    const shipping = cartState.shippingMethod?.price.toNumber() ?? 0;
+    const shippingDiscount = cartState.shippingMethod?.discountAmount.toNumber() ?? 0;
+    // If there's a shipping discount, the API returns net shipping, so we need to show original shipping
+    const displayShipping = shippingDiscount > 0 ? shipping + shippingDiscount : shipping;
+    const shippingLabel = displayShipping === 0 ? 'FREE' : formatCurrency(displayShipping);
+    const total = cartState.total.toNumber();
+
+    const { hasCartLevelDiscounts, cartLevelDiscountList } =
+      this.collectCartLevelDiscounts(cartState, totalDiscount);
+
+    console.log(cartLevelDiscountList)
+
+    // Build cart-level discount popup (similar to item discount popup)
+    const cartDiscountPopup = this.renderCartDiscountPopup(
+      hasCartLevelDiscounts,
+      cartLevelDiscountList
+    );
+
+    // Build shipping row with savings (inline format)
+    const shippingRow = this.renderShippingRow(
+      shipping,
+      displayShipping,
+      shippingLabel,
+      shippingDiscount
+    );
+
+    miniCart.innerHTML = `
+      <div class="debug-mini-cart-header">
+        <span>🛒 Debug Cart</span>
+        <button class="mini-cart-close" data-action="close-mini-cart">×</button>
+      </div>
+      <div class="debug-mini-cart-items">${itemsHtml}</div>
+      <div class="debug-mini-cart-totals${hasCartLevelDiscounts ? ' has-cart-discounts' : ''}">
+        ${cartDiscountPopup}
+        <div class="mini-cart-total-row">
+          <span>Subtotal:</span>
+          <span>${formatCurrency(subtotalBeforeDiscounts)}</span>
+        </div>
+        ${shippingRow}
+        <div class="mini-cart-total-row mini-cart-final-total">
+          <span>Total:</span>
+          <span class="mini-cart-total">${formatCurrency(total)}</span>
+        </div>
+      </div>
+      <div class="debug-mini-cart-footer">
+        <div class="mini-cart-stat">
+          <span>Items:</span>
+          <span>${cartState.totalQuantity}</span>
+        </div>
+      </div>
+      <div class="debug-mini-cart-resize-handle" title="Drag to resize"></div>
+    `;
+
+    this.bindResizeHandle(miniCart);
+  }
+
+  /** The mini-cart body when the cart has no lines. */
+  private renderMiniCartEmpty(): string {
+    return `
         <div class="debug-mini-cart-header">
           <span>🛒 Debug Cart</span>
           <button class="mini-cart-close" data-action="close-mini-cart">×</button>
         </div>
         <div class="debug-mini-cart-empty">Cart empty</div>
       `;
-      return;
-    }
+  }
 
+  /** Every cart line, plus the subtotal accumulated from their line totals. */
+  private renderMiniCartItems(items: MiniCartItem[]): {
+    itemsHtml: string;
+    subtotalBeforeDiscounts: number;
+  } {
     let itemsHtml = '';
     let subtotalBeforeDiscounts = 0;
 
-    cartState.items.forEach(item => {
-      // Check for upsell flag
-      const isUpsell = item.is_upsell;
-      const upsellBadge = isUpsell ? '<span class="mini-cart-upsell-badge">UPSELL</span>' : '';
-
-      // Calculate pricing
-      const packagePriceExcl = item.original_package_price ? parseFloat(item.original_package_price) : 0;
-      const packagePriceIncl = item.package_price ? parseFloat(item.package_price) : item.price;
-
-      // Check if item has a discount applied (comparing package prices)
-      const itemHasDiscount = packagePriceExcl > 0 && packagePriceIncl < packagePriceExcl;
-
-      // For display: use the DISCOUNTED price (incl) as the current price
-      const currentUnitPrice = packagePriceIncl;
-      const originalUnitPrice = packagePriceExcl > 0 ? packagePriceExcl : packagePriceIncl;
-
-      // Line totals
-      const currentLineTotal = currentUnitPrice * item.quantity;
-      const originalLineTotal = originalUnitPrice * item.quantity;
-
+    items.forEach(item => {
+      const { html, lineTotal } = this.renderMiniCartItem(item);
+      itemsHtml += html;
       // Add CURRENT (discounted) price to running subtotal for clarity
-      subtotalBeforeDiscounts += currentLineTotal;
+      subtotalBeforeDiscounts += lineTotal;
+    });
 
-      // Build savings text (show total savings on this line)
-      const itemLineSavings = itemHasDiscount ? originalLineTotal - currentLineTotal : 0;
-      const savingsPercent = itemHasDiscount ? Math.round(((originalUnitPrice - currentUnitPrice) / originalUnitPrice) * 100) : 0;
+    return { itemsHtml, subtotalBeforeDiscounts };
+  }
 
+  /** One cart line: its pricing maths, its hover card, and its markup. */
+  private renderMiniCartItem(item: MiniCartItem): {
+    html: string;
+    lineTotal: number;
+  } {
+    // Check for upsell flag
+    const isUpsell = item.is_upsell;
+    const upsellBadge = isUpsell ? '<span class="mini-cart-upsell-badge">UPSELL</span>' : '';
+
+    // Calculate pricing
+    const packagePriceExcl = item.original_package_price ? parseFloat(item.original_package_price) : 0;
+    const packagePriceIncl = item.package_price ? parseFloat(item.package_price) : item.price;
+
+    // Check if item has a discount applied (comparing package prices)
+    const itemHasDiscount = packagePriceExcl > 0 && packagePriceIncl < packagePriceExcl;
+
+    // For display: use the DISCOUNTED price (incl) as the current price
+    const currentUnitPrice = packagePriceIncl;
+    const originalUnitPrice = packagePriceExcl > 0 ? packagePriceExcl : packagePriceIncl;
+
+    // Line totals
+    const currentLineTotal = currentUnitPrice * item.quantity;
+    const originalLineTotal = originalUnitPrice * item.quantity;
+
+    // Build savings text (show total savings on this line)
+    const itemLineSavings = itemHasDiscount ? originalLineTotal - currentLineTotal : 0;
+    const savingsPercent = itemHasDiscount ? Math.round(((originalUnitPrice - currentUnitPrice) / originalUnitPrice) * 100) : 0;
+
+    const discountDetailsCard = this.renderItemDiscountCard(
+      item,
+      itemHasDiscount,
+      savingsPercent
+    );
+
+    // Build pricing display
+    let pricingHtml = '';
+    if (itemHasDiscount) {
+      pricingHtml = `
+        <div class="mini-cart-price-details">
+          <span class="mini-cart-original-price">${formatCurrency(originalUnitPrice)} each</span>
+          <span class="mini-cart-unit-price">${formatCurrency(currentUnitPrice)} each</span>
+        </div>
+        <div class="mini-cart-line-total">${formatCurrency(currentLineTotal)}</div>
+      `;
+    } else {
+      pricingHtml = `
+        <span class="mini-cart-unit-price">${formatCurrency(currentUnitPrice)} each</span>
+        <div class="mini-cart-line-total">${formatCurrency(currentLineTotal)}</div>
+      `;
+    }
+
+    const html = `
+        <div class="debug-mini-cart-item${itemHasDiscount ? ' has-discount' : ''}">
+          ${discountDetailsCard}
+          <div class="mini-cart-item-header">
+            <div class="mini-cart-item-title-row">
+              <div class="mini-cart-item-title">${item.title || 'Unknown'}</div>
+              <div class="mini-cart-line-total">${formatCurrency(currentLineTotal)}</div>
+            </div>
+            <div class="mini-cart-item-meta">
+              <span class="mini-cart-item-id">ID: ${item.packageId}</span>
+              ${upsellBadge}
+            </div>
+          </div>
+          ${itemHasDiscount ? `
+            <div class="mini-cart-item-price-breakdown">
+              <div class="mini-cart-price-row">
+                <span class="mini-cart-price-label">Was</span>
+                <span class="mini-cart-original-price">${formatCurrency(originalUnitPrice)} each</span>
+              </div>
+              <div class="mini-cart-price-row mini-cart-sale-row">
+                <span class="mini-cart-price-label">Now</span>
+                <span class="mini-cart-unit-price">${formatCurrency(currentUnitPrice)} each × ${item.quantity}</span>
+              </div>
+              <div class="mini-cart-price-row mini-cart-savings-row">
+                <span class="mini-cart-price-label">You save</span>
+                <span class="mini-cart-savings-amount">${formatCurrency(itemLineSavings)} (${savingsPercent}% off)</span>
+              </div>
+            </div>
+          ` : `
+            <div class="mini-cart-item-price-breakdown">
+              <div class="mini-cart-price-row">
+                <span class="mini-cart-unit-price">${formatCurrency(currentUnitPrice)} each × ${item.quantity}</span>
+              </div>
+            </div>
+          `}
+        </div>
+      `;
+
+    return { html, lineTotal: currentLineTotal };
+  }
+
+  /** The hover card listing a line's discounts and properties. */
+  private renderItemDiscountCard(
+    item: MiniCartItem,
+    itemHasDiscount: boolean,
+    savingsPercent: number
+  ): string {
       // Build discount details hover card
       let discountDetailsCard = '';
 
@@ -804,71 +991,17 @@ export class DebugOverlay {
         `;
       }
 
-      // Build pricing display
-      let pricingHtml = '';
-      if (itemHasDiscount) {
-        pricingHtml = `
-          <div class="mini-cart-price-details">
-            <span class="mini-cart-original-price">${formatCurrency(originalUnitPrice)} each</span>
-            <span class="mini-cart-unit-price">${formatCurrency(currentUnitPrice)} each</span>
-          </div>
-          <div class="mini-cart-line-total">${formatCurrency(currentLineTotal)}</div>
-        `;
-      } else {
-        pricingHtml = `
-          <span class="mini-cart-unit-price">${formatCurrency(currentUnitPrice)} each</span>
-          <div class="mini-cart-line-total">${formatCurrency(currentLineTotal)}</div>
-        `;
-      }
+    return discountDetailsCard;
+  }
 
-      itemsHtml += `
-        <div class="debug-mini-cart-item${itemHasDiscount ? ' has-discount' : ''}">
-          ${discountDetailsCard}
-          <div class="mini-cart-item-header">
-            <div class="mini-cart-item-title-row">
-              <div class="mini-cart-item-title">${item.title || 'Unknown'}</div>
-              <div class="mini-cart-line-total">${formatCurrency(currentLineTotal)}</div>
-            </div>
-            <div class="mini-cart-item-meta">
-              <span class="mini-cart-item-id">ID: ${item.packageId}</span>
-              ${upsellBadge}
-            </div>
-          </div>
-          ${itemHasDiscount ? `
-            <div class="mini-cart-item-price-breakdown">
-              <div class="mini-cart-price-row">
-                <span class="mini-cart-price-label">Was</span>
-                <span class="mini-cart-original-price">${formatCurrency(originalUnitPrice)} each</span>
-              </div>
-              <div class="mini-cart-price-row mini-cart-sale-row">
-                <span class="mini-cart-price-label">Now</span>
-                <span class="mini-cart-unit-price">${formatCurrency(currentUnitPrice)} each × ${item.quantity}</span>
-              </div>
-              <div class="mini-cart-price-row mini-cart-savings-row">
-                <span class="mini-cart-price-label">You save</span>
-                <span class="mini-cart-savings-amount">${formatCurrency(itemLineSavings)} (${savingsPercent}% off)</span>
-              </div>
-            </div>
-          ` : `
-            <div class="mini-cart-item-price-breakdown">
-              <div class="mini-cart-price-row">
-                <span class="mini-cart-unit-price">${formatCurrency(currentUnitPrice)} each × ${item.quantity}</span>
-              </div>
-            </div>
-          `}
-        </div>
-      `;
-    });
-
-    // Build totals breakdown - use calculated subtotal before discounts
-    const totalDiscount = cartState.totalDiscount.toNumber();
-    const shipping = cartState.shippingMethod?.price.toNumber() ?? 0;
-    const shippingDiscount = cartState.shippingMethod?.discountAmount.toNumber() ?? 0;
-    // If there's a shipping discount, the API returns net shipping, so we need to show original shipping
-    const displayShipping = shippingDiscount > 0 ? shipping + shippingDiscount : shipping;
-    const shippingLabel = displayShipping === 0 ? 'FREE' : formatCurrency(displayShipping);
-    const total = cartState.total.toNumber();
-
+  /** Cart-wide offers and vouchers, minus anything already shown on a line. */
+  private collectCartLevelDiscounts(
+    cartState: CartStoreState,
+    totalDiscount: number
+  ): {
+    hasCartLevelDiscounts: boolean;
+    cartLevelDiscountList: CartLevelDiscount[];
+  } {
     // Collect all item-level discount offer_ids to avoid showing them twice
     const itemLevelOfferIds = new Set<number>();
     cartState.items.forEach(item => {
@@ -910,9 +1043,14 @@ export class DebugOverlay {
       cartLevelDiscountList.push({ type: 'offer', label: 'Discount', amount: totalDiscount });
     }
 
-    console.log(cartLevelDiscountList)
+    return { hasCartLevelDiscounts, cartLevelDiscountList };
+  }
 
-    // Build cart-level discount popup (similar to item discount popup)
+  /** The hover card over the totals block, listing cart-level discounts. */
+  private renderCartDiscountPopup(
+    hasCartLevelDiscounts: boolean,
+    cartLevelDiscountList: CartLevelDiscount[]
+  ): string {
     let cartDiscountPopup = '';
     if (hasCartLevelDiscounts) {
       const discountItemsHtml = cartLevelDiscountList.map(discount => `
@@ -940,7 +1078,16 @@ export class DebugOverlay {
       `;
     }
 
-    // Build shipping row with savings (inline format)
+    return cartDiscountPopup;
+  }
+
+  /** The shipping total row, with the pre-discount price struck through. */
+  private renderShippingRow(
+    shipping: number,
+    displayShipping: number,
+    shippingLabel: string,
+    shippingDiscount: number
+  ): string {
     let shippingRow = '';
     if (shippingDiscount > 0) {
       // Show shipping with original price strikethrough and discounted price
@@ -963,34 +1110,7 @@ export class DebugOverlay {
       `;
     }
 
-    miniCart.innerHTML = `
-      <div class="debug-mini-cart-header">
-        <span>🛒 Debug Cart</span>
-        <button class="mini-cart-close" data-action="close-mini-cart">×</button>
-      </div>
-      <div class="debug-mini-cart-items">${itemsHtml}</div>
-      <div class="debug-mini-cart-totals${hasCartLevelDiscounts ? ' has-cart-discounts' : ''}">
-        ${cartDiscountPopup}
-        <div class="mini-cart-total-row">
-          <span>Subtotal:</span>
-          <span>${formatCurrency(subtotalBeforeDiscounts)}</span>
-        </div>
-        ${shippingRow}
-        <div class="mini-cart-total-row mini-cart-final-total">
-          <span>Total:</span>
-          <span class="mini-cart-total">${formatCurrency(total)}</span>
-        </div>
-      </div>
-      <div class="debug-mini-cart-footer">
-        <div class="mini-cart-stat">
-          <span>Items:</span>
-          <span>${cartState.totalQuantity}</span>
-        </div>
-      </div>
-      <div class="debug-mini-cart-resize-handle" title="Drag to resize"></div>
-    `;
-
-    this.bindResizeHandle(miniCart);
+    return shippingRow;
   }
 
   private bindResizeHandle(miniCart: HTMLElement): void {

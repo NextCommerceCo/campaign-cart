@@ -2,18 +2,33 @@ import { BaseDisplayEnhancer } from '@/core/base/base-display-enhancer';
 import type { FormatType } from '@/core/base/display-types';
 import { BundleSelectorEnhancer } from './bundle-selector.enhancer';
 
+/**
+ * Default format per property, for a page that sets no `data-next-format`.
+ *
+ * One key per `case` in `BundleDisplayEnhancer.getPropertyValue`, and no more.
+ * It used to also carry `compare`, `savings`, `savingsPercentage` and `hasSavings`,
+ * which the resolver has never answered — and a reference page was written off this
+ * table rather than off the resolver, so it taught four `bundle.` paths that render
+ * nothing (finding 109 in `docs/code-findings.md`). A format for a property nothing
+ * resolves is not harmless dead code: it reads as proof the property exists.
+ * `src/tests/docs/featureReference.test.ts` now fails on one.
+ *
+ * None of these formats currently reach the DOM: `parseDisplayAttributes` below calls
+ * `super` — which is what computes the format — *before* it narrows `this.property`
+ * from `{bundleId}.{name}` down to `{name}`, so every lookup here misses and the
+ * format falls back to `auto`. Restoring
+ * it means recomputing the format after the narrowing, and that changes what renders
+ * (`auto` prints a whole-number price as `100`, `currency` as `$100.00`), so it is a
+ * behaviour change and not a tidy-up.
+ */
 const FORMAT_MAP: Record<string, FormatType> = {
   isSelected: 'boolean',
   hasDiscount: 'boolean',
   name: 'text',
   price: 'currency',
-  compare: 'currency',
   originalPrice: 'currency',
-  savings: 'currency',
   discountAmount: 'currency',
-  savingsPercentage: 'percentage',
   discountPercentage: 'percentage',
-  hasSavings: 'boolean',
   unitPrice: 'currency',
   originalUnitPrice: 'currency',
   currency: 'text',

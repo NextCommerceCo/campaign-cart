@@ -19,7 +19,9 @@
  * That is why {@link extractEnhancerDisplayPaths} takes the **names** only from
  * `getPropertyValue`. It reads the format table too, but only to look up the default
  * format *of a name the method already answers* — a name that appears solely in the
- * format table never reaches the page.
+ * format table never reaches the page. Those names are reported separately, as
+ * {@link EnhancerDisplayPaths.formatsWithoutPath}, so the docs suite can fail on the
+ * trap in the source instead of waiting for the next page to be written off it.
  *
  * **It finds the table by name, not by path.** This used to take the one file the
  * table happened to live in, hardcoded in two places, and moving that file failed
@@ -168,6 +170,23 @@ export interface EnhancerDisplayPaths {
    * is 2; `selector.{selectorId}.{packageId}` is 3.
    */
   prefixSegments: number;
+  /**
+   * Names the format table declares a format for that the resolver has no answer
+   * for — always empty in a healthy enhancer.
+   *
+   * This is the raw material for the gate on the root cause of finding 109. The
+   * extractor already refuses to *publish* a name that only exists in the format
+   * table, but a reader opening the source still meets the table first, and the
+   * table is what the wrong page was transcribed from. Reporting the difference
+   * lets the docs suite fail on the trap itself rather than on its next victim.
+   */
+  formatsWithoutPath: string[];
+  /**
+   * `bundle-selector.display.ts › BundleDisplayEnhancer.getDefaultFormatType` — where
+   * {@link formatsWithoutPath} was read from, so a failure names the file to edit.
+   * `undefined` when the class declares no format table at all.
+   */
+  formatWhere: string | undefined;
 }
 
 /** Every class in a source file, so the namespace check can pick the right one. */
@@ -293,9 +312,10 @@ function resolvedNames(
  * Deliberately found through that method rather than by the table's name: the name is
  * a local convention, while "the object `getDefaultFormatType` looks the property up
  * in" is what the format actually comes from. Callers may only use this to answer
- * *what format does this path have* — never *does this path exist*. The table is a
- * superset in at least one enhancer, and treating it as an inventory is the mistake
- * that published four paths which resolve to nothing.
+ * *what format does this path have*, or *which of these formats answers no path at
+ * all* ({@link EnhancerDisplayPaths.formatsWithoutPath}) — never *does this path
+ * exist*. Treating the table as an inventory is the mistake that published four
+ * paths which resolve to nothing.
  */
 function formatTable(
   cls: ts.ClassDeclaration,
@@ -384,11 +404,13 @@ export function extractEnhancerDisplayPaths(
       if (!method?.body || !claimsNamespace(cls, namespace)) continue;
 
       const formats = formatTable(cls, sf);
-      const paths = resolvedNames(method, sf).map(propertyName => ({
+      const resolved = resolvedNames(method, sf);
+      const paths = resolved.map(propertyName => ({
         name: propertyName,
         format: formats[propertyName] ?? 'auto',
         negated: false,
       }));
+      const formatter = methodNamed(cls, FORMATTER, sf);
 
       if (paths.length === 0) {
         throw new Error(
@@ -415,6 +437,12 @@ export function extractEnhancerDisplayPaths(
         paths,
         where: anchor(name, functionName(method, sf) ?? RESOLVER),
         prefixSegments: segments,
+        formatsWithoutPath: Object.keys(formats).filter(
+          formatted => !resolved.includes(formatted)
+        ),
+        formatWhere: formatter
+          ? anchor(name, functionName(formatter, sf) ?? FORMATTER)
+          : undefined,
       };
     }
   }

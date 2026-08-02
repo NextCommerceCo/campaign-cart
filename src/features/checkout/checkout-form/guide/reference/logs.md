@@ -86,7 +86,7 @@ The feature carried on, but something in the markup or the data was not what it 
 | `Spreedly field not found: {fieldName}` | `floating-labels.ts › handleSpreedlyFieldFocus` | — |
 | `No label found for floating label setup` | `floating-labels.ts › setupFloatingLabel` | — |
 | `Cart is empty, redirecting to cart page` | `ui-service.ts › UIService.handleCartUpdate` | — |
-| `Field not found for error display: {fieldName}` | `checkout-validator.ts › CheckoutValidator.showError` | — |
+| `Field not found for error display: {fieldName}` | `error-display.ts › showError` | — |
 
 ## Info
 
@@ -267,7 +267,7 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 | `Cleared payment form errors` | `payment-form-display.ts › clearPaymentFormErrors` | — |
 | `UIService initialized` | `ui-service.ts › UIService.initialize` | — |
 | `UIService destroyed` | `ui-service.ts › UIService.destroy` | — |
-| `Showing error for field {fieldName}:` | `checkout-validator.ts › CheckoutValidator.showError` | yes |
 | `CheckoutValidator destroyed` | `checkout-validator.ts › CheckoutValidator.destroy` | — |
+| `Showing error for field {fieldName}:` | `error-display.ts › showError` | yes |
 
 The **Extra context** column says whether the call passes a second argument — an object or an error logged alongside the message. Expand that entry in the console to see it; the message alone will not tell you which element or package was involved.

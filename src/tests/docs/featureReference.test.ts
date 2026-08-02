@@ -89,7 +89,13 @@ const displayPaths = extractDisplayPaths(
 function displaySourceFor(
   manifest: FeatureManifest,
   files: Array<[string, string]>
-): { paths: DisplayPath[]; where?: string; prefixSegments?: number } {
+): {
+  paths: DisplayPath[];
+  where?: string;
+  prefixSegments?: number;
+  formatsWithoutPath?: string[];
+  formatWhere?: string;
+} {
   const namespace = manifest.displayNamespace ?? '';
   const routed = displayPaths[namespace];
   if (routed?.length) return { paths: routed };
@@ -633,6 +639,41 @@ describe('feature reference docs', () => {
       expect(
         documented.filter(name => !manifest.displayPaths?.paths.find(p => p.name === name)?.description.trim()),
         'every documented path needs a description — the table is the reason the page exists'
+      ).toEqual([]);
+    });
+
+    /**
+     * The root cause behind finding 109, gated in the source instead of on the page.
+     *
+     * The check above compares the *manifest* against the resolver, which stops a wrong
+     * page from being published. It does not touch what made the page wrong: a
+     * `FORMAT_MAP` sitting twenty lines above `getPropertyValue` and listing four
+     * properties it has no case for. Whoever wrote that reference read the table, and
+     * the table gave no hint that half of it was fiction — a declared format reads as
+     * proof the property exists.
+     *
+     * So the table must be a subset of what the resolver answers. An entry with no case
+     * behind it is dead in every direction — the format is never applied, because a
+     * property nothing resolves has no value to format — and its only remaining effect
+     * is to mislead the next reader.
+     *
+     * Vacuous for the namespaces `PROPERTY_MAPPINGS` routes, which have no per-enhancer
+     * table to compare.
+     */
+    it.runIf(!!manifest.displayNamespace)('declares no format for a property its resolver cannot answer', () => {
+      const source = displaySourceFor(
+        manifest,
+        featureFiles(dir, manifest.id, ownFolder, manifest.extraSource)
+      );
+
+      expect(
+        source.formatsWithoutPath ?? [],
+        `${source.formatWhere ?? manifest.id} declares a default format for these, but ` +
+          `${source.where ?? 'the resolver'} has no case for any of them, so ` +
+          `\`data-next-display="${manifest.displayNamespace}.…"\` using one renders ` +
+          'nothing. A format table is not an inventory of paths, but it reads like one — ' +
+          'that is how four fictional bundle paths reached a published page (finding 109 ' +
+          'in docs/code-findings.md). Delete the entry, or add the case that answers it'
       ).toEqual([]);
     });
 

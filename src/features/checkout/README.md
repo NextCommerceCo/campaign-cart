@@ -122,7 +122,7 @@ extracts either one.
 | `managers/order-manager.ts` | `OrderManager` | Builds and submits the order API call. Takes an `IApiClient` — see [`api/README.md`](../../api/README.md) |
 | `services/credit-card-service.ts` | `CreditCardService` | Tokenizes card data (Stripe/Braintree) |
 | `services/ui-service/` | `UIService` | Manages form UI state (errors, loading, payment forms, floating labels). Split — see below |
-| `validation/checkout-validator.ts` | `CheckoutValidator` | Field validation rules |
+| `validation/` | `CheckoutValidator` | Field validation rules. Split — see below |
 | `builders/order-builder.ts` | `OrderBuilder` | Assembles `CreateOrder` payload |
 | `address-autocomplete/` | `AddressAutocompleteEnhancer` | Address suggestions in the form |
 | `constants/` | — | Field mappings, selectors, payment icons, validation config |
@@ -153,6 +153,42 @@ field's parent while `ErrorDisplayManager` writes it to the `.form-group`. **And
 calls `UIService.destroy()`** — `CheckoutFormEnhancer.destroy()` tears down its validator,
 card service, prospect cart, phone inputs, and autocomplete, but not this service, so the
 autofill poll and every label listener outlive the form.
+
+#### Inside `validation/` — split by layer
+
+`checkout-validator.ts` was 777 lines. `CheckoutValidator` is now an orchestrator: it owns
+the mutable pieces (the rule table, the map of fields currently failing, and the two
+services the form installs after startup) and delegates each job to a sibling module taking
+an explicit **context object**, the same shape `ui-service/` uses. The file name is
+unchanged, so `../validation/checkout-validator` still resolves and nothing outside the
+folder moved.
+
+| Module | What it owns | Needs from the validator |
+|---|---|---|
+| `validation-patterns.ts` | Whether one value looks like an email, phone, name or city — with no knowledge of forms or countries | 0 |
+| `field-labels.ts` | The name a shopper sees for a field in a message, including the country's word for "state" and "postcode" | 0 |
+| `first-error-field.ts` | Which of several problems to scroll to (topmost on the page), and handing card fields to Spreedly's own focus | 0 |
+| `field-rules.ts` | The per-field rule table and running one rule — the path used while the shopper types | 2 |
+| `billing-address-validation.ts` | The separate billing address, which arrives with API field names and gets "Billing …" messages | 2 |
+| `error-display.ts` | Remembering which fields failed and putting that on the page — clearing an error never marks a field correct | 4 |
+| `form-validation.ts` | The submit-time verdict: every problem at once, plus card and billing | 4 |
+| `step-validation.ts` | One step of a multi-step checkout; step 3 hands over to the form check | shares `form-validation`'s 4 |
+
+Each has a colocated test in `validation/tests/`, plus `checkout-validator.test.ts` pinning
+the public surface the form calls. Everything came out **verbatim** — the only shape change
+is braces around the `postal` arm of `applyRule`, so its `const` is scoped to the case
+rather than the switch.
+
+Those tests pin down a set of defects, each documented at the test that reproduces it and
+**left as found** — this is the checkout path, and changing which orders are accepted is
+not a refactor. The two that block a sale: `isValidName` is Latin-1 only, so a name in any
+other script cannot be entered (while the city check next door accepts every script), and
+neither the name nor the city pattern contains the curly apostrophe an iPhone keyboard
+produces. The two that let a bad order through: `validateStep(3)` passes `billingAddress:
+undefined, sameAsShipping: true` unconditionally, so a multi-step checkout never validates
+a separate billing address; and every card check sits inside `if (creditCardService)` with
+no `else`, so a form whose Spreedly key never arrived is pronounced valid with the card
+fields empty. See the `DEFECT:` tests in `validation/tests/` for the rest.
 
 **Attributes and errors documented by `checkout-form` are read and thrown in the shared
 folders** — `ui-service` reads `data-next-payment-method`, `order-manager` and

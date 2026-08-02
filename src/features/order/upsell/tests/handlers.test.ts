@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { IApiClient } from '@/api/client.types';
 import { addUpsellToOrder } from '../upsell.handlers';
 import type { UpsellHandlerContext } from '../upsell.types';
 import { useOrderStore } from '@/state/order';
@@ -24,6 +25,30 @@ vi.mock('@/core/ui/general-modal', () => ({
 }));
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * A stand-in client. Nothing here calls it — the handler only forwards it to the
+ * mocked `orderStore.addUpsell` — but `UpsellHandlerContext.apiClient` is the whole
+ * `IApiClient`, and naming every member is what lets the compiler check the double
+ * against the real surface instead of a cast waving it through.
+ */
+function apiClientDouble(): IApiClient {
+  return {
+    getCampaigns: vi.fn(),
+    createCart: vi.fn(),
+    calculateSummary: vi.fn(),
+    createOrder: vi.fn(),
+    getOrder: vi.fn(),
+    addUpsell: vi.fn(),
+    createProspectCart: vi.fn(),
+    updateProspectCart: vi.fn(),
+    getProspectCart: vi.fn(),
+    abandonProspectCart: vi.fn(),
+    convertProspectCart: vi.fn(),
+    getAddressesAutocomplete: vi.fn(),
+    getApiKey: vi.fn(() => 'test-key'),
+  };
+}
 
 function makeOrderStore(overrides: Record<string, any> = {}) {
   const addUpsell = vi.fn().mockResolvedValue({ ref_id: 'ord-1', lines: [] });
@@ -55,7 +80,7 @@ function makeCtx(overrides: Partial<UpsellHandlerContext> = {}): UpsellHandlerCo
     currentQuantitySelectorId: undefined,
     actionButtons: [],
     loadingOverlay: { show: vi.fn(), hide: vi.fn() } as any,
-    apiClient: {} as any,
+    apiClient: apiClientDouble(),
     bundleItems: null,
     bundleVouchers: [],
     defaultProperties: undefined,

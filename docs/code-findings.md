@@ -12,7 +12,12 @@ checkout form. Findings 106–115 came out of the wave-1 restructure on **2026-0
 composition root, the `core/analytics/` kebab rename, and the fixes for 95 and 105) and
 findings 116–126 from wave 2 on the same day (the `core/debug/` kebab rename, the
 `CheckoutFormEnhancer.initialize` re-sequence, the `display-paths` generator, the API-seam
-hardening, and the `ui-service` split); both have their own sections near the end. Nothing here is a
+hardening, and the `ui-service` split), and findings 127-137 from wave 3 (the teardown fixes,
+the format-table gate, the `core/debug` method breakup and the `checkout-validator` split);
+each wave has its own section near the end. **Findings 127 and 130-133 are the most serious
+things this restructure has turned up** - a published page teaching ten paths that render
+nothing, and a validation layer that blocks non-Latin names while letting unvalidated billing
+and card data through. Nothing here is a
 documentation problem; each is a code change, and none has been made. The docs describe
 current behaviour, including the broken parts, so this list is the backlog rather than a
 description of what shipped.
@@ -1590,7 +1595,7 @@ listeners before re-scanning — which requires finding 98's cleanup to work fir
   (share it via `core/` or `utils/`, or keep two copies knowingly) rather than an oversight
   — but it should be made rather than inherited.
 
-### 101. `CheckoutFormEnhancer.destroy` leaks a listener on every checkout field — *verified*
+### 101. ~~`CheckoutFormEnhancer.destroy` leaks a listener on every checkout field~~ — **FIXED 2026-08-02**
 
 The same defect as finding 98, in the checkout form, and worth more because of where it sits:
 
@@ -1883,7 +1888,7 @@ re-sequence, the `display-paths` generator (finding 114), the API-seam hardening
 Nothing here was fixed unless it says so — each is a behaviour change, and the agents were
 told to report rather than force one.
 
-### 116. Four test files mock `@/api/client` with a fake that implements nothing — *verified*
+### 116. ~~Four test files mock `@/api/client` with a fake that implements nothing~~ — **FIXED 2026-08-02.** All four threw, not three; each double is now `Pick<IApiClient, …>` (not `Partial`, which `{}` satisfies) and `getApiClient` calls `getApiKey()` plainly. But see finding 129: the project's type gate does not read test files, so these annotations are not yet enforced
 
 `vi.mock('@/api/client', () => ({ ApiClient: class {} }))` and variants, in
 `features/order/upsell/tests/enhancer.test.ts`,
@@ -1900,7 +1905,7 @@ fakes throw on a plain `instance.getApiKey()`, and doing so failed **79 tests**.
 **Fix:** type each fake `Partial<IApiClient>` (or `Pick<IApiClient, …>`) so the compiler checks
 it; then the optional call in `getApiClient` can become a plain one.
 
-### 117. `CheckoutFormEnhancer`'s boot sequence leaks five listeners past `destroy()` — *verified*
+### 117. ~~`CheckoutFormEnhancer`'s boot sequence leaks five listeners past `destroy()`~~ — **FIXED 2026-08-02. There were thirteen, not five** — see 134
 
 `cleanupEventListeners()` removes the submit / change / payment / shipping / billing-toggle /
 test-data / Konami listeners. It does not remove these, all registered during boot:
@@ -1921,7 +1926,7 @@ steps earlier in the same method — `boundHandleTestDataFilled` is stored and r
 `AbortSignal`, as `expiration-fields.ts` and `billing-animation.ts` now use) for the three DOM
 ones. It changes destroy behaviour, which is the point, so it needs its own step.
 
-### 118. The `begin_checkout` timer is never cleared, so a destroyed form still reports — *verified*
+### 118. ~~The `begin_checkout` timer is never cleared, so a destroyed form still reports~~ — **FIXED 2026-08-02**
 
 `scheduleBeginCheckoutTracking` waits 500 ms for analytics providers to register. `destroy()`
 clears the billing-animation timers but not this one, so an enhancer destroyed inside that
@@ -1929,7 +1934,7 @@ window still fires `begin_checkout`.
 
 **Fix:** hold the handle and clear it in `destroy()`.
 
-### 119. A stale `config` snapshot means bfcache never re-initialises Spreedly — *verified*
+### 119. ~~A stale `config` snapshot means bfcache never re-initialises Spreedly~~ — **FIXED 2026-08-02** (the handler reads the store live; it was four awaits, not three)
 
 `initialize` captures `const config` before three awaits, and `setupBfcacheRestoreHandler`
 closes over that snapshot. `handleConfigUpdate` exists precisely because
@@ -1953,7 +1958,7 @@ emitter that does is `managers/order-manager.ts`, which sends the off-contract
 keep the handler reading that one field. Two tests currently pin the *present* behaviour, so
 they will need updating with it.
 
-### 121. Nothing calls `UIService.destroy()` — *verified*
+### 121. ~~Nothing calls `UIService.destroy()`~~ — **FIXED 2026-08-02**
 
 `CheckoutFormEnhancer.destroy()` tears down the validator, the card service, the prospect
 cart, the phone inputs and the autocomplete. It does not touch `this.ui`, so the 500 ms
@@ -1997,7 +2002,7 @@ in production:
 **Fix:** decide per method whether it is wanted. Dead-but-broken public API is worse than
 either dead or broken alone — it reads as available.
 
-### 124. `bundle-selector.display.ts`'s `FORMAT_MAP` still declares four properties the resolver rejects — *verified*
+### 124. ~~`bundle-selector.display.ts`'s `FORMAT_MAP` still declares four properties the resolver rejects~~ — **FIXED 2026-08-02**, gate added. The stated reason it was safe to delete was wrong — see 128
 
 Finding 109 fixed the doc. The source still carries `compare`, `savings`,
 `savingsPercentage` and `hasSavings` in `FORMAT_MAP`, twenty lines above the
@@ -2009,7 +2014,7 @@ file for the next reader.
 called with a property the resolver answered), and add the gate that closes the root cause —
 "the format table declares no format for a property the resolver cannot answer".
 
-### 125. Two debug classes hide a thousand-line method each — *verified*
+### 125. ~~Two debug classes hide a thousand-line method each~~ — **FIXED 2026-08-02** (84% of `getContent` was a static CSS literal). The folder split is deferred — see 137
 
 Renaming `core/debug/` surfaced where the real problem is. It is not the file sizes:
 
@@ -2034,6 +2039,222 @@ renamed (`debug-panels.ts`: `// EventsPanel moved to panels/EventTimelinePanel.t
 
 **Fix, for the next rename:** sweep both `Name.ts` and `dir/Name'`, and sweep inside the target
 directory as well as outside it.
+
+---
+
+## Found during the wave-3 restructure (2026-08-02)
+
+Five parallel agents did the checkout-form teardown fixes (117–121), the API-client test
+doubles (116), the format-table gate (124), the `core/debug` method breakup (125), and the
+`checkout-validator.ts` split. The split is where most of this came from: the file had **777
+lines and zero tests**, and writing 89 of them turned up seventeen defects, several of which
+stop a real shopper from paying.
+
+### 127. The **generated** cart display-paths page documents ten paths that render nothing — *verified*
+
+This is finding 109 again at ten times the size, and this time on a page nobody hand-wrote.
+
+`features/cart/cart-summary/guide/reference/display-paths.md` is generated from
+`PROPERTY_MAPPINGS.cart`. What answers `cart.*` at runtime is
+`cart-summary.display.ts › CartDisplayEnhancer.resolveValue`, and the two disagree in both
+directions:
+
+| Documented, but the resolver has no case | Answered, but never documented |
+|---|---|
+| `hasItems`, `quantity`, `discounts`, `hasCoupons`, `hasCoupon`, `couponCount`, `coupons[0].code`, `coupons[1].code`, `discountCode`, `discountCodes` | `isFreeShipping`, `isCalculating`, `shippingName`, `shippingCode`, `currency`, `totalQuantity` |
+
+A page author following the published page gets `undefined` and a
+`Unknown cart display property` debug log; `discountCode` renders `''` through its config
+fallback, which is worse because it looks deliberate.
+
+**The new gate cannot see this.** It reads the enhancer only for namespaces that have no
+routing-table entry; `cart` has one, so that branch never opens the source. And the method is
+called `resolveValue`, not `getPropertyValue`, so the extractor's walk would miss it even if
+it looked. Same shape as finding 95: what the gate cannot see is what rots.
+
+**Fix:** teach the extractor the `resolveValue` shape, then run the both-ways comparison for
+routed namespaces too — `PROPERTY_MAPPINGS` becomes a claim to check rather than the source of
+truth. Ten wrong rows on a published page is the bill for treating it as the latter.
+
+### 128. All three selector-style `FORMAT_MAP`s are dead at runtime — *verified*
+
+`bundle-selector.display.ts`, `package-selector.display.ts` and `package-toggle.display.ts`
+each override `parseDisplayAttributes` to narrow `this.property` — but they call
+`super.parseDisplayAttributes()` **first**, and it is the super call that computes the format.
+At that moment the key is still the full path (`upsellMV.savings`, selector id included), so
+every lookup misses, including the ones for properties that do exist. `formatType` is never
+recomputed after narrowing.
+
+Measured effect: `data-next-display="bundle.{id}.price"` on a whole-dollar price renders
+`100`, not `$100.00` — `formatAuto` only currency-formats numbers with exactly two decimals.
+`cart-summary` is unaffected: it does not override `parseDisplayAttributes`, so its lookups
+hit.
+
+**Not fixed** — recomputing the format after narrowing changes what renders on live pages, so
+it needs an e2e run behind it. It also means the generated `display-paths.md` pages publish a
+`format` column that does not describe what a shopper sees.
+
+**The deeper fix, and its cost:** fold the format in beside each resolved property
+(`name → { format, resolve }`) so the two lists cannot disagree by construction —
+`package-toggle`'s resolver is already an object literal and is 90% of the way there. That is
+three enhancers and ~250 lines on the live render path, and it only *works* if the ordering
+above is fixed in the same change. Do them together, or not at all.
+
+### 129. `npm run type-check` has never checked a single test file — *verified*
+
+`tsconfig.json` excludes `**/*.test.ts` and `**/*.spec.ts`. So the command this repo treats as
+its type gate — and which every agent and every commit message in this restructure cited as
+proof — covers no test code at all. `tsconfig.eslint.json` exists for the wider program and
+currently reports **31 errors** (bundle-selector fixtures, a `this` typing in `cart-summary`,
+two `Cannot find name 'vi'`, `vite.config.ts`), which is presumably why it was never wired to a
+script.
+
+This is why finding 116's `Pick<IApiClient, …>` annotations are documentation rather than a
+gate today.
+
+**Fix:** a `type-check:tests` script over `tsconfig.eslint.json`, ratcheted from 31 the way
+`docs-coverage.baseline.json` ratchets. See the open decision on lint — same shape, same
+argument.
+
+### 130. Shoppers whose name is not written in Latin script cannot check out — *verified*
+
+```
+NAME: /^[A-Za-zÀ-ÿ]+(?:[' -][A-Za-zÀ-ÿ]+)*$/     ← no u flag, Latin-1 only
+CITY: /^[\p{L}\s.''-]+$/u                          ← every script
+```
+
+田中, Владимир and Γεώργιος are rejected with *"Name can only contain letters…"* — about a
+name made entirely of letters. The same shopper's **city** in the same script passes, on the
+same form, because `isValidCity` uses `\p{L}` and `isValidName` does not.
+
+Compounding it: neither class contains the curly apostrophe U+2019, and `CITY`'s comment
+claims it handles *"both straight and curly"* while the class holds U+0027 twice. An iPhone
+autocorrects `'` to `’`, so "St. John's" and "O'Brien" are rejected with no visible cause.
+
+**Fix:** `\p{L}` with the `u` flag in `NAME`, and U+2019 in both classes. Small, and it is the
+difference between a market being able to buy and not.
+
+### 131. A multi-step checkout never validates a separate billing address — *verified*
+
+`step-validation.ts`, step 3 — the only gate a step-navigating shopper passes through:
+
+```ts
+return validateForm(ctx, formData, countryConfigs, currentCountryConfig,
+                    true, undefined, true);
+//                        ^^^^^^^^^  ^^^^  billingAddress = undefined, sameAsShipping = true
+```
+
+Both are hard-coded, and `validateStep` has no parameter for either. Downstream,
+`validateForm` guards the billing block with `!sameAsShipping && billingAddress`, so it is
+skipped twice over. A shopper who ticks "use a different billing address" is told everything is
+fine and finds out at the gateway, as an AVS decline.
+
+**Fix:** thread the billing address and the `sameAsShipping` flag through `validateStep`. It is
+a signature change, and it will start rejecting orders that are currently accepted — which is
+the point, but it needs to be a decision rather than a side effect.
+
+### 132. Card fields go unchecked when the card service is absent, and nothing can tell — *verified*
+
+Every card check in `form-validation.ts` sits inside `if (ctx.creditCardService) { … }` with no
+`else`. A form whose Spreedly key arrived late — or never — passes `includePayment: true` with
+empty card fields. The verdict object cannot distinguish *"the card is fine"* from *"nobody
+looked"*, so neither can any caller.
+
+**Fix:** treat a missing card service as "cannot validate" rather than "valid" when
+`includePayment` is on. Related: finding 119's stale-config path is one way the service ends up
+missing.
+
+### 133. Fourteen further validation defects, all pre-existing — *verified, pinned by tests*
+
+Found writing the first tests this file has ever had. Each is pinned by a test that documents
+*current* behaviour, so fixing one starts as a failing test.
+
+| # | Defect | What a shopper sees |
+|---|---|---|
+| 1 | `isValidPhone`'s ten-digit floor is a US assumption | a complete Norwegian/Danish/Icelandic number is rejected on any page without `intl-tel-input` |
+| 2 | Billing phone has no `phoneInputManager` fallback, only `isValidPhone` | billing phone judged more crudely than shipping phone on the same form |
+| 3 | Billing city is never format-checked | `12345` accepted as a billing city, rejected as a shipping city |
+| 4 | `province` is only checked for emptiness, never against the country's state list | a nonexistent province passes |
+| 5 | Required-phone detection reads `document.querySelector('[name="phone"]')`, not `FieldFinder` | a required phone marked only with `data-next-checkout-field` is never enforced; with two forms on a page, the *other* form decides the rule |
+| 6 | `applyRule`'s `postal`, `custom` and `default` arms are unreachable — `createValidationRules` emits neither type and nothing can register a rule | blur a US ZIP containing `ABCDE` → green; submit → rejected. Blur and pay disagree |
+| 7 | `focusFirstErrorField`'s card list has `number` but not `cc-number`, the only key the validator emits | the error renders below the fold and the page never scrolls to it |
+| 8 | `applyRule`'s phone rule ignores `phoneValidator` and, with `phoneInputManager` present, hard-selects the **shipping** widget while ignoring the value it was handed | billing phone validated against the shipping field |
+| 9 | `validateField` returns valid for any field with no rule | `province`, `address2` and every `billing-*` field report correct on blur whatever is typed |
+| 10 | `clearAllErrors` clears the map unconditionally but only clears the display for elements carrying the SDK attribute, while `setError` reaches fields by `name`/`id`/`data-field` too | a red message stays on screen while `isValid()` says the form is clean |
+| 11 | `step-validation` picks `firstErrorField` by source order; `form-validation` picks by page position | the two paths send the shopper to different fields on identical markup |
+| 12 | The two paths also differ in shape — step always emits `firstErrorField` (as `undefined`), form omits it | a caller reading the key gets `undefined` vs missing depending on the flow |
+| 13 | `formData[field].trim()` throws on a non-string (a numeric postal from rehydrated session data) in both `validateForm` and `validateBillingAddress` | pay throws out of validation with no message; the form stays stuck in processing |
+| 14 | `!sameAsShipping && billingAddress` — ticking "different billing address" with nothing captured skips the whole billing block | same class as 131, on the single-page path |
+
+### 134. Two teardown gaps remain in `CheckoutFormEnhancer` — *verified*
+
+Findings 117/118/119/121 are fixed and the class now routes every DOM listener through one
+`listen()` helper backed by an `AbortController`. Two things were left because both need code
+that is gated behind other decisions:
+
+- **`cleanupEventListeners()` removes the payment radios, shipping radios and billing toggle by
+  re-querying the DOM at destroy time** instead of remembering the nodes it bound. If the
+  billing form was cloned or the DOM changed since `setupEventHandlers`, the removal misses.
+  Fixing it means touching `setupEventHandlers`, which sits beside the gated
+  `handleFieldChange`.
+- **`displayPaymentError` schedules an untracked 100 ms + 10 s pair**, so a form destroyed in
+  between still writes to the error container. One-shot and cosmetic.
+
+Also recorded, because it cost real time: **findings 101 and 117 contradicted each other and
+neither noticed.** 117 asserted that `cleanupEventListeners()` already removed the
+change/blur/input group; 101 said `destroy()` cleared the maps that method iterates *before*
+calling it. Both were right about their own half, so the field listeners 117 treated as safe
+were leaking too. Two findings written from separate reviews, never cross-read. 101 is now
+fixed (the `clear()` calls run after `super.destroy()`), which is exactly the narrow rule
+finding 102 argues is the one that matters.
+
+### 135. Four `console.log`s in the debug overlay, one on a one-second repaint loop — *verified*
+
+`updateMiniCart` carries a bare `console.log(cartLevelDiscountList)` — no guard, no semicolon —
+and the overlay repaints on a 1 s interval, so an open overlay spams the console continuously.
+Three more sit in the click router. `no-console` flags all four; CLAUDE.md forbids them.
+
+Dead code found alongside, all in the mini-cart:
+
+- `pricingHtml` — 16 lines building two markup variants, assigned in both branches, never read.
+- `discountList` — built from `item.discounts`, never read. Its line reads
+  `d.description || d.description || \`Offer #${d.offer_id}\`` — the same operand twice, so the
+  `Offer #` fallback is the only branch that can fire.
+- `collectCartLevelDiscounts` builds `itemLevelOfferIds` and never uses it; the "avoid showing
+  them twice" filter its comment promises was never written.
+- **`hasCartLevelDiscounts` is set for vouchers and for the no-detail fallback but never for
+  offers**, so a cart whose only discount is a cart-wide offer fills `cartLevelDiscountList`
+  and then never renders the popup. The new test pins current behaviour, not the intent.
+
+### 136. `src/core/debug/styles/event-timeline.css` is an orphan duplicate — *verified*
+
+Byte-identical to `src/styles/debug/event-timeline.css`, and nothing imports it —
+`debug-style-loader.ts` loads the `src/styles/` copy. 9.2 kB left behind by the `core/debug/`
+rename; another instance of finding 126.
+
+**Fix:** delete it.
+
+### 137. The `core/debug` files still want a folder split, and every valuable seam moves a cited symbol — *deferred deliberately*
+
+The method breakup is done — `getContent()` 1,074 → 20 lines, `updateMiniCart()` 312 → 73,
+`handleContainerClick` 102 → 15, and 905 lines of static CSS lifted into
+`event-timeline-panel.styles.ts`. The files are still 1,818 and 1,249 lines.
+
+The folder split was **not** done because of a mechanism worth knowing:
+`extract-storage-keys.ts` sorts sources lexicographically and prints only the first plus
+`+N more`, so a new sibling named `debug-overlay.handlers.ts` sorts *before* `debug-overlay.ts`
+and rewrites the visible text of rows whose subject did not change. The high-value seams
+(`*.mini-cart.ts` at ~480 lines, `*.persistence.ts`, `*.capture.ts`) each move a cited symbol —
+`closeMiniCart`, `bindResizeHandle`, `loadSavedState`, `watchDataLayer` — so the split has to be
+one deliberate step with a single regeneration, not five.
+
+Two seams move nothing and are safe today: the flow diagram (~340 lines) and the validation
+rendering (~100).
+
+Also learned here: **finding 125's "`addEventListeners` is ~155 lines" was wrong.** It is 11.
+The long code was two *class-field arrow functions* beside it — `handleContainerClick` (102)
+and `handleContainerHover` (39) — which a symbol-based method scan folds into the neighbouring
+method. A tool that measures methods will keep missing fields; measure both.
 
 ---
 
