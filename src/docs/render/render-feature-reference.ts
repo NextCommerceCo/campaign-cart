@@ -9,6 +9,7 @@
 
 import type {
   AttributeDoc,
+  DisplayPathDoc,
   FeatureLink,
   FeatureManifest,
   WrittenDoc,
@@ -16,8 +17,8 @@ import type {
 import { featureNav } from '../content/nav';
 
 /**
- * One `data-next-display` path, extracted from `PROPERTY_MAPPINGS` — the SDK's
- * own routing table — so the published list cannot drift from what resolves.
+ * One `data-next-display` path, extracted from whichever part of the SDK answers
+ * the namespace, so the published list cannot drift from what resolves.
  */
 export interface DisplayPath {
   /** The name written after the namespace, e.g. `total` in `cart.total`. */
@@ -26,6 +27,25 @@ export interface DisplayPath {
   format: string;
   /** True when the mapping negates another value (`hasItems: '!isEmpty'`). */
   negated: boolean;
+}
+
+/**
+ * The paths one namespace resolves, and where they were read from.
+ *
+ * A resolved source, not a lookup table: the caller has already decided which of the
+ * two extractors answers this namespace. That is what removes the failure mode this
+ * page used to have — handed a table it was not in, it rendered "No paths are
+ * declared for the `bundle.` namespace", which reads as a fact about the SDK rather
+ * than as the generator missing its source.
+ */
+export interface DisplayPathSource {
+  paths: DisplayPath[];
+  /**
+   * The symbol the list came from, when an enhancer resolves the namespace itself —
+   * `bundle-selector.display.ts › BundleDisplayEnhancer.getPropertyValue`. Omitted
+   * for the namespaces that route through `PROPERTY_MAPPINGS`.
+   */
+  where?: string;
 }
 
 /**
@@ -163,44 +183,107 @@ function writtenSection(
   return blocks(`## ${title}`, intro, writtenTable(items));
 }
 
+/** Groups render in the order they first appear; ungrouped entries come first. */
+function groupPaths(
+  docs: DisplayPathDoc[]
+): Array<[string | undefined, DisplayPathDoc[]]> {
+  const order: Array<string | undefined> = [];
+  const byGroup = new Map<string | undefined, DisplayPathDoc[]>();
+  for (const doc of docs) {
+    if (!byGroup.has(doc.group)) {
+      byGroup.set(doc.group, []);
+      order.push(doc.group);
+    }
+    byGroup.get(doc.group)?.push(doc);
+  }
+  return [
+    ...order.filter(g => g === undefined),
+    ...order.filter(g => g !== undefined),
+  ].map(g => [g, byGroup.get(g) ?? []]);
+}
+
+const PATHS_TABLE_HEAD = ['| Path | Format | Notes |', '|---|---|---|'];
+
 /**
  * Every `data-next-display` path a namespace can show, as its own page.
  *
  * Kept separate from `attributes.md` so it works whichever mode owns the
  * reference: a hand-written page keeps its prose and still gets a complete,
  * always-current path inventory beside it.
+ *
+ * The **list** comes from `source`, which the caller read out of the SDK. The
+ * **prose** — the prefix grammar, what each value means, the cautions — comes from
+ * `manifest.displayPaths`, because none of it is derivable and all of it is why the
+ * page is worth opening. A namespace with no prose still gets its table, which is
+ * what the routing-table namespaces publish today.
  */
 export function renderDisplayPaths(
   manifest: FeatureManifest,
-  displayPaths?: Record<string, DisplayPath[]>
+  source: DisplayPathSource
 ): string {
   const namespace = manifest.displayNamespace ?? '';
-  const paths = displayPaths?.[namespace];
+  const doc = manifest.displayPaths;
+  const prefix = doc?.prefix ?? namespace;
+  const formats = new Map(source.paths.map(p => [p.name, p]));
 
-  if (!paths?.length) {
-    return `${blocks(
-      pageHeader(manifest, 'Display Paths'),
-      `No paths are declared for the \`${namespace}.\` namespace.`
-    )}\n`;
+  const row = (name: string, notes: string): string => {
+    const path = formats.get(name);
+    const format = !path || path.format === 'auto' ? 'auto' : `\`${path.format}\``;
+    const negated = path?.negated ? 'Inverse of another value.' : '';
+    return `| \`${prefix}.${name}\` | ${format} | ${notes || negated} |`;
+  };
+
+  // With prose, the manifest's order and grouping win; without it, source order.
+  const tables: string[] = [];
+  if (doc) {
+    for (const [group, docs] of groupPaths(doc.paths)) {
+      if (group) tables.push(`## ${group}`);
+      tables.push(
+        [
+          ...PATHS_TABLE_HEAD,
+          ...docs.map(d => row(d.name, d.description)),
+        ].join('\n')
+      );
+    }
+  } else {
+    tables.push(
+      [
+        ...PATHS_TABLE_HEAD,
+        ...source.paths.map(p => row(p.name, '')),
+      ].join('\n')
+    );
   }
 
-  const rows = paths.map(p => {
-    const format = p.format === 'auto' ? 'auto' : `\`${p.format}\``;
-    const note = p.negated ? 'Inverse of another value.' : '';
-    return `| \`${namespace}.${p.name}\` | ${format} | ${note} |`;
-  });
+  const provenance = source.where
+    ? `Generated from \`${source.where}\` — the method that resolves these paths — ` +
+      'so a name missing here is one the namespace does not answer, whatever else ' +
+      'in the feature accepts it.'
+    : "Generated from the SDK's own routing table, so this list matches the " +
+      'shipped code rather than a transcription of it.';
 
   return `${blocks(
-    pageHeader(manifest, 'Display Paths'),
+    pageHeader(
+      manifest,
+      'Display Paths',
+      source.where
+        ? '<!-- Generated from the enhancer that resolves this namespace, plus the\n' +
+          '     feature manifest. Do not edit by hand: change getPropertyValue or\n' +
+          '     <feature>.manifest.ts, then run `npm run docs:reference`. -->'
+        : GENERATED
+    ),
     `Every value the \`${namespace}.\` namespace can show. Write it as ` +
-      `\`data-next-display="${namespace}.{path}"\`.`,
+      `\`data-next-display="${prefix}.{path}"\`${doc?.intro ? `, ${doc.intro}` : '.'}`,
+    doc?.example ? `\`\`\`html\n${doc.example.trim()}\n\`\`\`` : undefined,
     'The Format column is what you get with no `data-next-format`; set that ' +
       'attribute to override it. Formatting and hiding modifiers are the same for ' +
       'every namespace — see ' +
       '[display-core](../../../../display/display-core/guide/reference/attributes.md).',
-    ['| Path | Format | Notes |', '|---|---|---|', ...rows].join('\n'),
-    'Generated from the SDK\'s own routing table, so this list matches the ' +
-      'shipped code rather than a transcription of it.'
+    ...tables,
+    doc?.footer,
+    doc?.cautions?.length
+      ? blocks('## Cautions', doc.cautions.map(c => `- ${c}`).join('\n'))
+      : undefined,
+    provenance
   )}\n`;
 }
 

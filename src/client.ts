@@ -18,15 +18,20 @@ import type { IApiClient } from '@/api/client.types';
 import { useConfigStore } from '@/state/config';
 
 let instance: IApiClient | undefined;
-let instanceKey: string | undefined;
 
 /**
  * The shared {@link IApiClient} for this page.
  *
- * Returns the same instance on every call. A new one is built only when the API key
- * differs from the key the current instance was built with — which happens once in
+ * Returns the same instance on every call. A new one is built only when the requested key
+ * differs from the key the current instance is *carrying* — which happens once in
  * practice, on the first call after `SDKInitializer` has read the key from the
  * `next-api-key` meta tag or `window.nextConfig`.
+ *
+ * The comparison reads the key back off the instance instead of remembering it here, so
+ * this is also the only path that can change which key the page's client uses: re-key the
+ * shared instance directly with `ApiClient.setApiKey` and the very next call replaces it,
+ * rather than handing the next caller credentials it did not ask for. That is why
+ * `setApiKey` is not on {@link IApiClient} — see `src/tests/contract/api-surface.test.ts`.
  *
  * Sharing is safe because {@link ApiClient} carries no per-caller state: it holds a base
  * URL, the key, and a logger, and every method is a one-shot `fetch`. There is no cache,
@@ -53,9 +58,13 @@ let instanceKey: string | undefined;
 export function getApiClient(apiKey?: string): IApiClient {
   const key = apiKey ?? useConfigStore.getState().apiKey;
 
-  if (!instance || instanceKey !== key) {
+  // Ask the instance which key it is carrying rather than remembering a copy here:
+  // `ApiClient.setApiKey` is public, so a copy could go stale and hand the next caller a
+  // client that is authenticating with something else. Derived, the two cannot disagree.
+  // A stand-in client that cannot answer is not the one this caller asked for either, so
+  // it is replaced rather than reused.
+  if (instance?.getApiKey?.() !== key) {
     instance = new ApiClient(key);
-    instanceKey = key;
   }
 
   return instance;
@@ -71,5 +80,4 @@ export function getApiClient(apiKey?: string): IApiClient {
  */
 export function resetApiClient(): void {
   instance = undefined;
-  instanceKey = undefined;
 }

@@ -434,37 +434,37 @@ export const CORE_LOG_SOURCES: CoreLogSource[] = [
   // ── Debug tools ────────────────────────────────────────────────────────────
   {
     prefix: 'DebugModule',
-    file: 'debug/DebugModule.ts',
+    file: 'debug/debug-module.ts',
     area: 'Debug tools',
     what: 'Loads the debug overlay on demand when debug mode is on, so none of it is in the bundle a normal visitor downloads.',
   },
   {
     prefix: 'DebugOverlay',
-    file: 'debug/DebugOverlay.ts',
+    file: 'debug/debug-overlay.ts',
     area: 'Debug tools',
     what: 'The on-page debug panel itself — state inspectors, the event pipeline, and the country / currency / locale switchers.',
   },
   {
     prefix: 'CountrySelector',
-    file: 'debug/CountrySelector.ts',
+    file: 'debug/country-selector.ts',
     area: 'Debug tools',
     what: 'The debug overlay’s country switcher, for checking an address form and shipping options as a visitor in another country.',
   },
   {
     prefix: 'CurrencySelector',
-    file: 'debug/CurrencySelector.ts',
+    file: 'debug/currency-selector.ts',
     area: 'Debug tools',
     what: 'The debug overlay’s currency switcher, for checking prices in every currency the campaign offers.',
   },
   {
     prefix: 'LocaleSelector',
-    file: 'debug/LocaleSelector.ts',
+    file: 'debug/locale-selector.ts',
     area: 'Debug tools',
     what: 'The debug overlay’s locale switcher, for checking how prices and dates are formatted.',
   },
   {
     prefix: 'UpsellSelector',
-    file: 'debug/UpsellSelector.ts',
+    file: 'debug/upsell-selector.ts',
     area: 'Debug tools',
     what: 'The debug overlay’s post-purchase upsell inspector: what the page offers and what is currently selected.',
   },
@@ -1474,7 +1474,7 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
       'Read the attached event and fix the endpoint before comparing its numbers with anything else. The count in the message is the configured `maxRetries`.',
   },
 
-  // ── debug/CountrySelector.ts ───────────────────────────────────────────────
+  // ── debug/country-selector.ts ──────────────────────────────────────────────
   {
     level: 'error',
     message: 'Failed to load countries:',
@@ -1499,7 +1499,7 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
       'Read the attached error and reload before continuing to test, so you are not looking at a half-applied state. Debug-only.',
   },
 
-  // ── debug/CurrencySelector.ts ──────────────────────────────────────────────
+  // ── debug/currency-selector.ts ─────────────────────────────────────────────
   {
     level: 'warn',
     message: 'Currency change already in progress',
@@ -1516,7 +1516,7 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
       'Read the attached error and reload, then check whether the campaign actually offers that currency — `currency:fallback` is emitted when it does not. Debug-only.',
   },
 
-  // ── debug/LocaleSelector.ts ────────────────────────────────────────────────
+  // ── debug/locale-selector.ts ───────────────────────────────────────────────
   {
     level: 'warn',
     message: 'Locale change already in progress',
@@ -1533,7 +1533,7 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
       'Read the attached error. An unsupported locale string is the usual cause. Debug-only.',
   },
 
-  // ── debug/DebugModule.ts ───────────────────────────────────────────────────
+  // ── debug/debug-module.ts ──────────────────────────────────────────────────
   {
     level: 'error',
     message: 'Failed to load debug overlay module:',

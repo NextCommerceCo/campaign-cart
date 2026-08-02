@@ -6,24 +6,18 @@ category: "Package Toggle"
 
 # Display Paths
 
-<!-- Hand-written. The `toggle.` paths are resolved inside
-     package-toggle.display.ts › PackageToggleDisplayEnhancer.getPropertyValue, not by
-     the PROPERTY_MAPPINGS routing table, so there is nothing to generate this page
-     from. Update it in the same change as that method or its FORMAT_MAP. -->
+<!-- Generated from the enhancer that resolves this namespace, plus the
+     feature manifest. Do not edit by hand: change getPropertyValue or
+     <feature>.manifest.ts, then run `npm run docs:reference`. -->
 
-Every value the `toggle.` namespace can show. Write it as
-`data-next-display="toggle.{packageId}.{path}"`, where `{packageId}` is a card's
-`data-next-package-id`. The element does not have to sit inside the card, or inside
-the container.
+Every value the `toggle.` namespace can show. Write it as `data-next-display="toggle.{packageId}.{path}"`, where `{packageId}` is a card's `data-next-package-id`. The element does not have to sit inside the card, or inside the container.
 
 ```html
 <span data-next-display="toggle.101.price"></span>
 <span data-next-display="toggle.101.discountAmount" data-hide-if-zero="true"></span>
 ```
 
-The Format column is what you get with no `data-next-format`; set that attribute to
-override it. Formatting and hiding modifiers are the same for every namespace — see
-[display-core](../../../../display/display-core/guide/reference/attributes.md).
+The Format column is what you get with no `data-next-format`; set that attribute to override it. Formatting and hiding modifiers are the same for every namespace — see [display-core](../../../../display/display-core/guide/reference/attributes.md).
 
 ## Identity
 
@@ -66,13 +60,8 @@ override it. Formatting and hiding modifiers are the same for every namespace �
 
 ## Cautions
 
-- **A money path renders nothing until the card's price fetch lands.** The card
-  dispatches a `toggle:price-updated` DOM event when the numbers arrive — a browser
-  event on the element, not one of the SDK events in [events.md](./events.md) — and
-  the binding fills in then. Before that the element shows its markup fallback.
-- **A path that names no live card stays silent.** A `{packageId}` no
-  `[data-next-package-id]` card carries leaves the element untouched with no error —
-  check the number against the markup when a binding never fills in.
-- **An unrecognised property logs and stops.** Anything outside the tables above
-  produces `Unknown toggle display property: "{property}"` at warn level; see
-  [logs.md](./logs.md).
+- **A money path renders nothing until the card's price fetch lands.** The card dispatches a `toggle:price-updated` DOM event when the numbers arrive — a browser event on the element, not one of the SDK events in [events.md](./events.md) — and the binding fills in then. Before that the element shows its markup fallback.
+- **A path that names no live card stays silent.** A `{packageId}` no `[data-next-package-id]` card carries leaves the element untouched with no error — check the number against the markup when a binding never fills in.
+- **An unrecognised property logs and stops.** Anything outside the tables above produces `Unknown toggle display property: "{property}"` at warn level; see [logs.md](./logs.md).
+
+Generated from `package-toggle.display.ts › PackageToggleDisplayEnhancer.getPropertyValue` — the method that resolves these paths — so a name missing here is one the namespace does not answer, whatever else in the feature accepts it.

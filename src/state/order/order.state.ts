@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Order, AddUpsellLine } from '@/types/api';
+import type { IApiClient } from '@/api/client.types';
 import { createLogger } from '@/core/logger';
 
 export interface OrderState {
@@ -46,14 +47,26 @@ export interface OrderActions {
   // Order management
   setOrder: (order: Order) => void;
   setRefId: (refId: string) => void;
-  loadOrder: (refId: string, apiClient: any) => Promise<void>;
+  /**
+   * Fetches the order behind `refId` and stores it.
+   *
+   * @param apiClient The shared client — `getApiClient()` from
+   *   [`@/client`](../../client.ts). Typed at the interface so a test can pass a
+   *   `Pick<IApiClient, 'getOrder'>` fake the compiler checks.
+   */
+  loadOrder: (refId: string, apiClient: IApiClient) => Promise<void>;
   clearOrder: () => void;
   isOrderExpired: () => boolean;
 
   // Upsell management
+  /**
+   * Adds an accepted post-purchase offer to the stored order.
+   *
+   * @param apiClient The shared client — see {@link OrderActions.loadOrder}.
+   */
   addUpsell: (
     upsellData: AddUpsellLine,
-    apiClient: any
+    apiClient: IApiClient
   ) => Promise<Order | null>;
   addPendingUpsell: (upsellData: AddUpsellLine) => void;
   removePendingUpsell: (index: number) => void;

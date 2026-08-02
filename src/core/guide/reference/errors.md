@@ -78,12 +78,12 @@ Every part of `src/core`, and whether it raises anything of its own. "Nothing" i
 | `base/display-value-validator.ts` | `[DisplayValueValidator]` | nothing |
 | `base/dom-observer.ts` | `[DOMObserver]` | nothing |
 | `country-service.ts` | `[CountryService]` | 2 — `Failed to fetch location data: {statusText}`, `Failed to fetch states for {countryCode}: {statusText}` |
-| `debug/CountrySelector.ts` | `[CountrySelector]` | nothing |
-| `debug/CurrencySelector.ts` | `[CurrencySelector]` | nothing |
-| `debug/DebugModule.ts` | `[DebugModule]` | nothing |
-| `debug/DebugOverlay.ts` | `[DebugOverlay]` | nothing |
-| `debug/LocaleSelector.ts` | `[LocaleSelector]` | nothing |
-| `debug/UpsellSelector.ts` | `[UpsellSelector]` | nothing |
+| `debug/country-selector.ts` | `[CountrySelector]` | nothing |
+| `debug/currency-selector.ts` | `[CurrencySelector]` | nothing |
+| `debug/debug-module.ts` | `[DebugModule]` | nothing |
+| `debug/debug-overlay.ts` | `[DebugOverlay]` | nothing |
+| `debug/locale-selector.ts` | `[LocaleSelector]` | nothing |
+| `debug/upsell-selector.ts` | `[UpsellSelector]` | nothing |
 | `monitoring/error-handler.ts` | `[ErrorHandler]` | nothing |
 | `next-commerce.ts` | `[NextCommerce]` | 4 — `No order found. Upsells can only be added after order completion.`, `Order does not support post-purchase upsells or is currently processing.`, `Either packageId or items array must be provided`, `Failed to add upsell - no updated order returned` |
 | `rendering/template-renderer.ts` | `[TemplateRenderer]` | nothing |

@@ -9,8 +9,10 @@ TypeDoc/reference-docs verification pass, findings 92–94 from splitting the
 Findings 97–99 are on the upsell money path. Findings 101–102 came from the contract test
 written to enforce the `super.destroy()` rule — 101 is a second instance of 98, in the
 checkout form. Findings 106–115 came out of the wave-1 restructure on **2026-08-02** (the
-composition root, the `core/analytics/` kebab rename, and the fixes for 95 and 105) and have
-their own section near the end. Nothing here is a
+composition root, the `core/analytics/` kebab rename, and the fixes for 95 and 105) and
+findings 116–126 from wave 2 on the same day (the `core/debug/` kebab rename, the
+`CheckoutFormEnhancer.initialize` re-sequence, the `display-paths` generator, the API-seam
+hardening, and the `ui-service` split); both have their own sections near the end. Nothing here is a
 documentation problem; each is a code change, and none has been made. The docs describe
 current behaviour, including the broken parts, so this list is the backlog rather than a
 description of what shipped.
@@ -260,7 +262,7 @@ bound to a parameter goes stale. `core/next-commerce.ts` around `:984-1037`.
 | 16 | `CACHE_EXPIRY_MS` (10 min) is duplicated in `state/campaign/api.slice.ts:10` and `items.slice.ts:12` — two copies that can drift. `config.cacheTtl` does not control it. | — | reported |
 | 17 | 14 `ConfigState` fields are read nowhere outside the debug panel, including `cacheTtl`, `retryAttempts`, `maxRetries`, `enableAnalytics`, and `tracking`. Analytics reads `config.analytics?.enabled` instead. | `types/global.ts` | reported |
 | 18 | `campaignId` is never sent anywhere — requests authenticate by `apiKey` alone. | — | reported |
-| 19 | Config load order differs between boot and the debug panel: `sdk-initializer.ts:395-398` lets meta tags win, `core/debug/DebugPanels.ts:144-145` lets `window.nextConfig` win. A value shown after a debug reload can differ from the one used at boot. | — | reported |
+| 19 | Config load order differs between boot and the debug panel: `sdk-initializer.ts:395-398` lets meta tags win, `core/debug/debug-panels.ts:144-145` lets `window.nextConfig` win. A value shown after a debug reload can differ from the one used at boot. | — | reported |
 | 20 | `campaign` store `reset()` does not clear `isFromCache` / `cacheAge` — `initialCampaignState` omits both keys and Zustand `set` merges, so a reset store keeps reporting the previous load's cache status. | — | reported |
 | 21 | `src/types/cart.ts` holds a second, dead `CartState` (numbers, `tax`, `shipping`, `coupon`) that disagrees with the live one in `types/global.ts` (Decimals, `vouchers`, `summary`), plus stale duplicate `CartItem`, `EnrichedCartLine`, `ShippingMethod`. Candidate for deletion. | `types/cart.ts:16` | reported |
 | 22 | `checkout.testMode` / `setTestMode` are dead — test-order behaviour comes from `core/test-mode.ts`. | — | reported |
@@ -400,8 +402,8 @@ no entry in `PROVIDER_FACTORIES` for either. A reader configures them and nothin
 
 ### 33. ~280 lines of dead debug code — *reported*
 
-`debug/DebugModule.ts` (184 lines) and `debug/test-components.ts` (96) have no importers,
-and the four panel classes in `debug/DebugPanels.ts` are superseded by `panels/` and not
+`debug/debug-module.ts` (184 lines) and `debug/test-components.ts` (96) have no importers,
+and the four panel classes in `debug/debug-panels.ts` are superseded by `panels/` and not
 exported — one of them calls `require()` inside an ESM file, so it would throw if anything
 did reach it. **Fix:** delete.
 
@@ -595,7 +597,7 @@ SDK's own error path.
 ### 39. A debug-chunk fetch failure aborts a boot that would have succeeded in production — *verified*
 
 `sdk-initializer.ts:87` awaits `initializeDebugMode`, which at `:783` does an unguarded
-`await import('@/core/debug/DebugOverlay')`. In debug mode a failed chunk fetch therefore
+`await import('@/core/debug/debug-overlay')`. In debug mode a failed chunk fetch therefore
 throws inside the boot try block and takes the whole SDK down — on the exact page someone
 is trying to debug. **Fix:** wrap it; debug tooling must never be able to fail the boot.
 
@@ -755,7 +757,7 @@ as a caution on the catalogue. **Fix:** add the fields to the schemas.
 `AnalyticsDebugTracker` records per-provider `pending|sent|blocked|skipped|failed` with the
 payload, the error, and the duration, unconditionally — no debug gate. But
 `analyticsDebug` is never attached to `window`; its only consumers are
-`debug/DebugOverlay.ts:130` and the event timeline panel. So on a page where the overlay
+`debug/debug-overlay.ts:130` and the event timeline panel. So on a page where the overlay
 cannot be opened, the one data source that answers "why did my provider get nothing" is
 unreachable. **Fix:** expose it on `window.nextDebug`, which is where a reader would look.
 
@@ -837,7 +839,7 @@ or read the existing value first.
 ### 57. `require()` in ESM source — *verified as present, runtime effect unconfirmed*
 
 `core/next-commerce.ts:783` has `const { formatCurrency } = require('@/core/currency-formatter');`
-inside `formatPrice()`, and `core/debug/DebugPanels.ts:173` has another. The library builds ESM
+inside `formatPrice()`, and `core/debug/debug-panels.ts:173` has another. The library builds ESM
 (`vite.config.ts` `formats: ['es']`), where `require` is not defined, so `next.formatPrice()`
 plausibly throws `require is not defined` in the browser. Worth a 30-second check in a real
 page — it is a public method. Note `src/state/campaign/guide/overview.md:48` claims the last
@@ -914,11 +916,11 @@ Confirmed unreachable, no importer anywhere under `src/`:
 
 | File | Lines | Note |
 |---|---|---|
-| `core/debug/DebugModule.ts` | 184 | Live path is `SDKInitializer.initializeDebugMode`. Its `?debugger` set/delete sites look like real behaviour and never run |
+| `core/debug/debug-module.ts` | 184 | Live path is `SDKInitializer.initializeDebugMode`. Its `?debugger` set/delete sites look like real behaviour and never run |
 | `core/debug/test-components.ts` | 96 | `testDebugComponents()` never called |
 | `features/checkout/debug/test-order-manager.ts` | 206 | The enhancer has its own inline Konami handler |
 
-`core/debug/DebugStyleLoader.ts` is **not** dead (`DebugOverlay.ts:271`) — worth stating, since
+`core/debug/debug-style-loader.ts` is **not** dead (`debug-overlay.ts:271`) — worth stating, since
 an earlier pass grouped it with these. Also dead in `core/storage.ts`, none with a non-test
 caller: `createStoragePersist`, `onStorageChange`, `getStorageQuota`, `localStorageManager`,
 `StorageManager.clear/has/keys/size`, `TIMER_STORAGE_PREFIX`, `getTimerKey`. `onStorageChange`
@@ -951,7 +953,7 @@ replaces the state object on `set()`, so the captured snapshot never sees the up
 `state/config/config.state.ts:69` comments it as "auto-switch currency on country change". The field is
 read in exactly one place, `sdk-initializer.ts:160`, at boot. Changing the country in the
 checkout form reloads states and relabels fields but never re-prices; only the debug overlay's
-`core/debug/CountrySelector.ts:380-400` switches currency and reloads the campaign. So the
+`core/debug/country-selector.ts:380-400` switches currency and reloads the campaign. So the
 comment describes behaviour that exists only in a debug tool. **Fix:** correct the comment, or
 implement re-pricing on country change.
 
@@ -981,7 +983,7 @@ explicit precedence, as the Spreedly pair does.
 
 ### 71. `next-campaign-id` is stored and read by nothing but a debug panel — *verified*
 
-`state/config/config.state.ts:92-97` stores it; the only consumer is `core/debug/DebugPanels.ts:107`,
+`state/config/config.state.ts:92-97` stores it; the only consumer is `core/debug/debug-panels.ts:107`,
 and `sdk-initializer.ts:438` confirms the API needs only the key. It looks like it selects which
 campaign loads and does not. Published as `status: 'inert'`. **Fix:** remove the tag and its
 parsing.
@@ -1004,7 +1006,7 @@ type; consider exposing plain numbers.
 
 ### 74. `window.fetch` is monkey-patched in debug mode and never restored — *verified*
 
-`core/debug/DebugEventManager.ts:44-56` replaces it for the life of the page, with no restore on
+`core/debug/debug-event-manager.ts:44-56` replaces it for the life of the page, with no restore on
 `hide()` or `destroy()`. It delegates correctly, but anything else on the page that wraps `fetch`
 ends up wrapping the SDK's wrapper. Its captured-event list (`:23-32`) is also stale DOM names
 (`next:cart-updated`, `next:item-added`) that nothing dispatches any more. **Fix:** restore on
@@ -1043,7 +1045,7 @@ whether raw email to every configured provider is intended; if not, hash before 
 ### 78. Inert test-mode state fields — *verified*
 
 `config.testMode` is written and read only by the debug Config panel
-(`core/debug/panels/ConfigPanel.ts:128`, `:206`), and `checkout.testMode`'s `setTestMode`
+(`core/debug/panels/config-panel.ts:128`, `:206`), and `checkout.testMode`'s `setTestMode`
 (`state/checkout/checkout.state.ts:142`) has no callers. Neither influences submission — that is decided
 entirely by `core/test-mode.ts`. `state/config/config.state-manifest.ts:176` says the submit path
 consults "`core/test-mode.ts` and the checkout store", and the checkout-store half is wrong.
@@ -1673,7 +1675,7 @@ module-level handler shared by two instances would now die on the first `destroy
 they are inline arrows nothing can reference: `product-display.enhancer.ts:112`,
 `quantity-text.enhancer.ts:63`, `conditional-display.enhancer.ts:118` (its third handler — only
 two of three are cleaned), and `checkout-form.enhancer.ts:317, :715`. Switching each to
-`this.on()` fixes them for free. Outside `features/`, `core/debug/UpsellSelector.ts` and
+`this.on()` fixes them for free. Outside `features/`, `core/debug/upsell-selector.ts` and
 `core/sdk-initializer.ts` register inline arrows that are never removed either.
 
 The original diagnosis follows.
@@ -1758,7 +1760,7 @@ kebab rename, finding 95, and finding 105. These came out of that work. Everythi
 was verified against the source; where an agent's claim was checked by hand that is said
 explicitly.
 
-### 106. `useOrderStore.loadOrder` types the API client `any`, erasing the `IApiClient` seam — *verified*
+### 106. ~~`useOrderStore.loadOrder` types the API client `any`, erasing the `IApiClient` seam~~ — **FIXED 2026-08-02, and it was two operations, not one**
 
 `state/order/order.state.ts › OrderState.loadOrder` is `(refId: string, apiClient: any)`.
 Every gain from typing the holders at the interface is thrown away at that boundary — which
@@ -1769,7 +1771,7 @@ widening).
 
 **Fix:** type the parameter `IApiClient`. One line, no runtime change.
 
-### 107. `setApiKey`/`getApiKey` are dead, and the shared client makes them hazardous — *verified*
+### 107. ~~`setApiKey`/`getApiKey` are dead, and the shared client makes them hazardous~~ — **FIXED 2026-08-02. Half the title was wrong: `getApiKey` was never dead**
 
 Nothing in `src/` calls `setApiKey`. Before `src/client.ts` existed it was inert; now it
 mutates the *shared* instance while `client.ts`'s memo key goes stale, so a later
@@ -1851,7 +1853,7 @@ feature**, so the suffix no longer hides anything from the count. If it is worth
 do it as a rename wave with redirects, together with the `features/display/*.display.ts` layer
 files that share the suffix.
 
-### 114. Content drift on the three hand-written `display-paths.md` pages is ungated — *verified*
+### 114. ~~Content drift on the three hand-written `display-paths.md` pages is ungated~~ — **FIXED 2026-08-02**
 
 The new coverage metric checks the page **exists**, not that it matches the code. The three
 cart namespaces (`selector.`, `bundle.`, `toggle.`) cannot use the generator, because
@@ -1870,6 +1872,168 @@ was named in `manualChunks`' debug rule, which made it look live; the clause was
 anyway since the file already sits under `/debug/`.
 
 **Fix:** delete it, or wire it up if the test-order flow is still wanted.
+
+---
+
+## Found during the wave-2 restructure (2026-08-02)
+
+Five parallel agents did the `core/debug/` kebab rename, the `CheckoutFormEnhancer.initialize`
+re-sequence, the `display-paths` generator (finding 114), the API-seam hardening (findings
+106–107), and the `services/ui-service.ts` split. Everything below came out of that work.
+Nothing here was fixed unless it says so — each is a behaviour change, and the agents were
+told to report rather than force one.
+
+### 116. Four test files mock `@/api/client` with a fake that implements nothing — *verified*
+
+`vi.mock('@/api/client', () => ({ ApiClient: class {} }))` and variants, in
+`features/order/upsell/tests/enhancer.test.ts`,
+`features/cart/accept-upsell/tests/accept-upsell.enhancer.test.ts`,
+`features/cart/package-toggle/tests/handlers.test.ts` and
+`features/checkout/prospect-cart/tests/prospect-cart.enhancer.test.ts`. This is the failure
+mode `api/client.types.ts` documents: the fake is keyed on a path string and checked by
+nobody, so it satisfies no interface and drifts silently.
+
+**It has already cost something concrete.** `src/client.ts` cannot call a method on the client
+it memoizes without an optional call — `instance?.getApiKey?.()` — because three of these
+fakes throw on a plain `instance.getApiKey()`, and doing so failed **79 tests**.
+
+**Fix:** type each fake `Partial<IApiClient>` (or `Pick<IApiClient, …>`) so the compiler checks
+it; then the optional call in `getApiClient` can become a plain one.
+
+### 117. `CheckoutFormEnhancer`'s boot sequence leaks five listeners past `destroy()` — *verified*
+
+`cleanupEventListeners()` removes the submit / change / payment / shipping / billing-toggle /
+test-data / Konami listeners. It does not remove these, all registered during boot:
+
+| Registration | Why it survives |
+|---|---|
+| `this.eventBus.on('payment:error', …)` | bypasses `this.on()`, the wrapper that records an unsubscribe. `EventBus` is a page-lifetime singleton, so it keeps firing on a destroyed enhancer — the exact case CLAUDE.md names |
+| `this.eventBus.on('address:autocomplete-filled', …)` | same, outside `initialize` |
+| `document.addEventListener('next:country-changed', …)` | inline arrow — no reference is kept, so it cannot be removed at all |
+| `window.addEventListener('pageshow', …)` | inline arrow, **and it writes `checkoutStore`** |
+| `window.addEventListener('focus', …)` | inline arrow, **and it writes `checkoutStore`** |
+
+The last two are the expensive ones: after a re-enhance, every stale instance also resets
+processing state and the payment method. The pattern for doing this right already exists two
+steps earlier in the same method — `boundHandleTestDataFilled` is stored and removed.
+
+**Fix:** `this.on(...)` for the two bus handlers; a stored bound reference (or an
+`AbortSignal`, as `expiration-fields.ts` and `billing-animation.ts` now use) for the three DOM
+ones. It changes destroy behaviour, which is the point, so it needs its own step.
+
+### 118. The `begin_checkout` timer is never cleared, so a destroyed form still reports — *verified*
+
+`scheduleBeginCheckoutTracking` waits 500 ms for analytics providers to register. `destroy()`
+clears the billing-animation timers but not this one, so an enhancer destroyed inside that
+window still fires `begin_checkout`.
+
+**Fix:** hold the handle and clear it in `destroy()`.
+
+### 119. A stale `config` snapshot means bfcache never re-initialises Spreedly — *verified*
+
+`initialize` captures `const config` before three awaits, and `setupBfcacheRestoreHandler`
+closes over that snapshot. `handleConfigUpdate` exists precisely because
+`spreedlyEnvironmentKey` can arrive *after* boot and creates the credit-card service then — in
+which case `this.creditCardService` is truthy while the captured
+`config.spreedlyEnvironmentKey` is still undefined, so a back/forward restore silently skips
+re-initializing the hosted fields. Pre-existing; the re-sequence neither caused nor fixed it.
+
+**Fix:** read `useConfigStore.getState()` inside the handler rather than closing over a boot
+snapshot.
+
+### 120. `payment:error` has two incompatible payloads, and the declared one never displays — *verified*
+
+`EventMap['payment:error']` declares `{ errors: string[] }`. The handler reads
+`event.message`. So the enhancer's own two emits (`initializeCreditCard`,
+`displayPaymentError`), which send `{ errors }`, never reach the display path; the only
+emitter that does is `managers/order-manager.ts`, which sends the off-contract
+`{ message, code, details }`.
+
+**Fix:** decide which shape is the contract, change `EventMap` and both emitters to match, and
+keep the handler reading that one field. Two tests currently pin the *present* behaviour, so
+they will need updating with it.
+
+### 121. Nothing calls `UIService.destroy()` — *verified*
+
+`CheckoutFormEnhancer.destroy()` tears down the validator, the card service, the prospect
+cart, the phone inputs and the autocomplete. It does not touch `this.ui`, so the 500 ms
+autofill poll and every floating-label listener outlive the form.
+
+**Fix:** `this.ui?.destroy();` — one line, but it is a real teardown change, so it belongs with
+finding 117 rather than on its own.
+
+### 122. Switching payment method twice inside 300 ms leaves the deselected form open — *verified*
+
+Each reveal/collapse schedules an untracked 300 ms `setTimeout`. Switch twice inside that
+window and two timers point at one form; the *expand* timer — registered first, so it fires
+first — wipes the `height: 0px` the collapse just pinned. Final state carries both
+`--expanded` and `--collapsed` with no height, so the deselected method's fields stay visible
+**and in the tab order**. Pinned by a passing test in
+`services/ui-service/tests/payment-form-display.test.ts`.
+
+**Fix:** track the handle per form and clear the pending one before scheduling.
+
+### 123. Eleven of `UIService`'s nineteen public methods have no caller, and four of them are broken — *verified*
+
+`displayErrors`, `focusFirstError`, `updateFieldState`, `handleCheckoutUpdate`,
+`handleCartUpdate`, `updateProgress`, `handleResponsiveUI`, `enhanceAccessibility` and
+`destroy` are never called from the enhancer. That is why the following have never been seen
+in production:
+
+- **`updateFieldState(name, 'valid')` leaves the error on screen** — it clears
+  `next-error-field` only, while `displayErrors` also set `has-error`, an error icon on the
+  wrapper, and the message element. Same shape as the bug fixed in `field-validation-display.ts`.
+- **`enhanceAccessibility` never finds the message it describes** — it looks for
+  `.next-error-label` in `field.parentElement`, but `ErrorDisplayManager` appends it to the
+  enclosing `.form-group`, which is the **grand**parent (input → `.form-input` → `.form-group`).
+  A screen reader is told the field is valid while a message is visible.
+- **A second `initialize()` orphans the autofill poll** — `startPeriodicCheck` overwrites the
+  interval id without clearing, so `destroy()` can only ever stop the last one.
+- **`handleResponsiveUI` leaks focus listeners** — attached straight to the element instead of
+  through `EventHandlerManager`, so `destroy()` cannot remove them and a second call stacks
+  them. Not a one-line fix: routing them through the manager would *replace* the `focus`
+  handler `setupFloatingLabel` already registered on the same element.
+
+**Fix:** decide per method whether it is wanted. Dead-but-broken public API is worse than
+either dead or broken alone — it reads as available.
+
+### 124. `bundle-selector.display.ts`'s `FORMAT_MAP` still declares four properties the resolver rejects — *verified*
+
+Finding 109 fixed the doc. The source still carries `compare`, `savings`,
+`savingsPercentage` and `hasSavings` in `FORMAT_MAP`, twenty lines above the
+`getPropertyValue` that has no case for them. That table is what the wrong doc was read off,
+and the new generator is deliberately built not to trust it — but the trap is still in the
+file for the next reader.
+
+**Fix:** delete the four keys (behaviourally a no-op: `getDefaultFormatType` is only ever
+called with a property the resolver answered), and add the gate that closes the root cause —
+"the format table declares no format for a property the resolver cannot answer".
+
+### 125. Two debug classes hide a thousand-line method each — *verified*
+
+Renaming `core/debug/` surfaced where the real problem is. It is not the file sizes:
+
+- `panels/event-timeline-panel.ts` (2,685 lines) has five clean seams — persistence, capture,
+  validation rendering, flow diagram — **but `getContent()` alone spans ~1,075 lines.**
+  Splitting the file around it would move the blob, not break it up.
+- `debug-overlay.ts` (1,129 lines): the mini-cart is ~40% of the file and
+  `updateMiniCart()` alone is ~310 lines; `addEventListeners` is ~155.
+
+Both classes' methods are cited by symbol in generated pages (`storage-keys.md`,
+`window-surface.md`, `url-parameters.md`, `logs.md`), so any split regenerates those in the
+same step. `STORAGE_EXPIRY_HOURS` in particular is cited and must stay resolvable.
+
+**Fix:** break the two methods up first, in place; split the files only afterwards.
+
+### 126. A rename sweep anchored on `\.ts` misses import paths — *verified, process note*
+
+The `core/debug/` rename found `docs/code-findings.md` citing
+`await import('@/core/debug/DebugOverlay')` — an import path with **no** `.ts` suffix, which a
+`Name.ts` sweep does not match. It also found a filename cited *inside* the directory being
+renamed (`debug-panels.ts`: `// EventsPanel moved to panels/EventTimelinePanel.ts`).
+
+**Fix, for the next rename:** sweep both `Name.ts` and `dir/Name'`, and sweep inside the target
+directory as well as outside it.
 
 ---
 

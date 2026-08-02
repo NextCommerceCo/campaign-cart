@@ -399,30 +399,12 @@ twin `data-next-toggle-price`) for slots **inside** a card, and by
 `data-next-display="toggle.{packageId}.{field}"` for elements **anywhere** in the
 page. One list serves both — an unrecognised name leaves the element untouched.
 
-| Field | Format | Shows |
-|---|---|---|
-| `packageId` | text | The package `ref_id` |
-| `name` | text | Package display name |
-| `image` | image | Package image — sets `src` on an `<img>`, text otherwise |
-| `quantity` | text | The card's quantity |
-| `variantName` | text | Product variant name |
-| `productName` | text | Product name |
-| `sku` | text | Product SKU; empty when unset |
-| `price` | currency | Total for the card's quantity |
-| `unitPrice` | currency | Price per unit |
-| `originalPrice` | currency | Retail / compare-at total; empty when unset |
-| `originalUnitPrice` | currency | Retail / compare-at per unit; empty when unset |
-| `discountAmount` | currency | Compare price minus total; empty when there is no discount |
-| `discountPercentage` | percentage | Discount as a share of the compare price |
-| `hasDiscount` | boolean | Shown when a discount applies, hidden otherwise |
-| `isSelected` | boolean | Shown when the package is selected |
-| `isRecurring` | boolean | Shown when the package bills on a schedule |
-| `recurringPrice` | currency | Recurring charge for the card's quantity |
-| `originalRecurringPrice` | currency | Recurring price before discounts |
-| `interval` | text | Billing interval: `day` or `month` |
-| `intervalCount` | auto | Intervals between charges |
-| `frequency` | text | Cadence in words: `Per month`, `Every 3 months`, `One time` |
-| `currency` | text | ISO 4217 currency code |
+Every field, with its default format and what it shows, is listed once in
+[display-paths.md](./display-paths.md) — read out of the method that answers the
+path, so it cannot drift from what renders. Two of them behave differently in the
+in-card form: `image` sets `src` on an `<img>` rather than writing text, and
+`isSelected` reflects `data-next-selected` as of the last price update rather than
+live cart state.
 
 The standard display modifiers apply to the `data-next-display` form:
 `data-next-format`, `data-hide-if-zero`, `data-hide-if-false`.

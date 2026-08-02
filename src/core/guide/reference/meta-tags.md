@@ -178,7 +178,7 @@ Every tag above, with the code that reads it. This table is generated from the s
 | `next-funnel` | `AttributionCollector.getFunnelName` — `core/attribution/attribution-collector.ts` |
 | `next-next-url` | `CheckoutFormEnhancer.getNextPageUrlFromMeta` — `features/checkout/checkout-form/checkout-form.enhancer.ts`<br>`CheckoutFormEnhancer.getSuccessUrl` — `features/checkout/checkout-form/checkout-form.enhancer.ts`<br>*top level of the file* — `features/checkout/constants/selectors.ts`<br>…and 3 more |
 | `next-page-name` | `RudderStackAdapter.getPageMetadata` — `core/analytics/providers/rudderstack-adapter.ts` |
-| `next-page-type` | `RudderStackAdapter.getPageMetadata` — `core/analytics/providers/rudderstack-adapter.ts`<br>`UpsellSelector.checkIfUpsellPage` — `core/debug/UpsellSelector.ts`<br>`trackUpsellPageView` — `features/order/upsell/upsell.handlers.ts`<br>…and 1 more |
+| `next-page-type` | `RudderStackAdapter.getPageMetadata` — `core/analytics/providers/rudderstack-adapter.ts`<br>`UpsellSelector.checkIfUpsellPage` — `core/debug/upsell-selector.ts`<br>`trackUpsellPageView` — `features/order/upsell/upsell.handlers.ts`<br>…and 1 more |
 | `next-payment-env-key` | `loadFromMeta` — `state/config/config.state.ts` |
 | `next-spreedly-key` | `loadFromMeta` — `state/config/config.state.ts` |
 | `next-success-url` | `CheckoutFormEnhancer.getNextPageUrlFromMeta` — `features/checkout/checkout-form/checkout-form.enhancer.ts`<br>`CheckoutFormEnhancer.getSuccessUrl` — `features/checkout/checkout-form/checkout-form.enhancer.ts`<br>*top level of the file* — `features/checkout/constants/selectors.ts`<br>…and 3 more |

@@ -19,7 +19,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or no
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Failed to re-initialize credit card service:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initialize` | yes |
+| `Failed to re-initialize credit card service:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupBfcacheRestoreHandler` | yes |
 | `Failed to load country data:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | yes |
 | `Failed to initialize credit card service:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeCreditCard` | yes |
 | `Error clearing checkout fields:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.clearAllCheckoutFields` | yes |
@@ -80,12 +80,12 @@ The feature carried on, but something in the markup or the data was not what it 
 | `Failed to track add_payment_info event:` | `express-checkout-processor.ts › ExpressCheckoutProcessor.handleExpressCheckout` | yes |
 | `Failed to reload Spreedly fields:` | `credit-card-service.ts › CreditCardService.clearFields` | yes |
 | `[Spreedly] No selector found for field type: {fieldType}` | `credit-card-service.ts › CreditCardService.setCreditCardFieldError` | — |
-| `Field element not found for error: {fieldName}` | `ui-service.ts › UIService.displayErrors` | — |
-| `Field '{fieldName}' not found for scrolling` | `ui-service.ts › UIService.focusFirstError` | — |
-| `Field '{fieldName}' not found for state update` | `ui-service.ts › UIService.updateFieldState` | — |
+| `Field element not found for error: {fieldName}` | `field-error-display.ts › displayErrors` | — |
+| `Field '{fieldName}' not found for scrolling` | `field-error-display.ts › focusFirstError` | — |
+| `Field '{fieldName}' not found for state update` | `field-error-display.ts › updateFieldState` | — |
+| `Spreedly field not found: {fieldName}` | `floating-labels.ts › handleSpreedlyFieldFocus` | — |
+| `No label found for floating label setup` | `floating-labels.ts › setupFloatingLabel` | — |
 | `Cart is empty, redirecting to cart page` | `ui-service.ts › UIService.handleCartUpdate` | — |
-| `Spreedly field not found: {fieldName}` | `ui-service.ts › UIService.handleSpreedlyFieldFocus` | — |
-| `No label found for floating label setup` | `ui-service.ts › UIService.setupFloatingLabel` | — |
 | `Field not found for error display: {fieldName}` | `checkout-validator.ts › CheckoutValidator.showError` | — |
 
 ## Info
@@ -101,11 +101,11 @@ Normal progress, useful for confirming the feature ran at all.
 | `[Billing] Setting initial state` | `billing-form-setup.ts › setInitialBillingFormState` | yes |
 | `[Billing] Initial state: COLLAPSED (checkbox checked)` | `billing-form-setup.ts › setInitialBillingFormState` | — |
 | `[Billing] Initial state: EXPANDED (checkbox unchecked)` | `billing-form-setup.ts › setInitialBillingFormState` | — |
-| `Page restored from bfcache, resetting express checkout state` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initialize` | — |
-| `Resetting processing state after bfcache restore` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initialize` | — |
-| `Resetting payment method from` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initialize` | yes |
-| `Re-initializing credit card service after bfcache restore` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initialize` | — |
-| `Window focused with processing=true, resetting express checkout state` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initialize` | — |
+| `Page restored from bfcache, resetting express checkout state` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupBfcacheRestoreHandler` | — |
+| `Resetting processing state after bfcache restore` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupBfcacheRestoreHandler` | — |
+| `Resetting payment method from` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupBfcacheRestoreHandler` | yes |
+| `Re-initializing credit card service after bfcache restore` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupBfcacheRestoreHandler` | — |
+| `Window focused with processing=true, resetting express checkout state` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupWindowFocusHandler` | — |
 | `Setting campaign shipping countries:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | yes |
 | `Shipping country selection priority check (does not affect currency):` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | yes |
 | `✅ Using stored country from previous step: {storedCountry}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | — |
@@ -237,35 +237,35 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 | `[Spreedly] Clearing error for field: {fieldType}` | `credit-card-service.ts › CreditCardService.clearCreditCardFieldError` | — |
 | `[Spreedly] Removing error label: {textContent}` | `credit-card-service.ts › CreditCardService.clearCreditCardFieldError` | — |
 | `CreditCardService destroyed` | `credit-card-service.ts › CreditCardService.destroy` | — |
+| `Could not focus field after scroll:` | `field-error-display.ts › focusFirstError` | yes |
+| `Scrolled to field: {fieldName}` | `field-error-display.ts › focusFirstError` | — |
+| `Updated field {fieldName} state to: {state}` | `field-error-display.ts › updateFieldState` | — |
+| `Enhanced accessibility features` | `field-error-display.ts › enhanceAccessibility` | — |
+| `Initializing floating labels` | `floating-labels.ts › initializeFloatingLabels` | — |
+| `Initialized {size} floating labels` | `floating-labels.ts › initializeFloatingLabels` | — |
+| `Set up Spreedly floating label for credit card number` | `floating-labels.ts › setupSpreedlyFloatingLabels` | — |
+| `Set up Spreedly floating label for CVV` | `floating-labels.ts › setupSpreedlyFloatingLabels` | — |
+| `Spreedly field focused: {fieldName}` | `floating-labels.ts › handleSpreedlyFieldFocus` | — |
+| `Spreedly field blurred: {fieldName}, hasValue: {hasValue}` | `floating-labels.ts › handleSpreedlyFieldBlur` | — |
+| `Spreedly field input: {fieldName}, hasValue: {hasValue}` | `floating-labels.ts › handleSpreedlyFieldInput` | — |
+| `Set up floating label for field:` | `floating-labels.ts › setupFloatingLabel` | yes |
+| `Added has-value class for field ({reason}):` | `floating-labels.ts › floatLabelUp` | yes |
+| `Removed has-value class for field:` | `floating-labels.ts › floatLabelDown` | yes |
+| `Updated all floating labels for populated data` | `floating-labels.ts › updateLabelsForPopulatedData` | — |
+| `Handled responsive UI adjustments for {isMobile ? 'mobile' : isTablet ? 'tablet' : 'desktop'}` | `floating-labels.ts › handleResponsiveUI` | — |
+| `Showing loading state for section: {section}` | `loading-state.ts › showLoading` | — |
+| `Hiding loading state for section: {section}` | `loading-state.ts › hideLoading` | — |
+| `Updated progress to step: {step}` | `loading-state.ts › updateProgress` | — |
+| `Initializing payment forms` | `payment-form-display.ts › initializePaymentForms` | — |
+| `Payment method from store:` | `payment-form-display.ts › initializePaymentForms` | yes |
+| `Expanded payment method: {methodType} (store: {storePaymentMethod})` | `payment-form-display.ts › initializePaymentForms` | — |
+| `Collapsed payment method: {methodType}` | `payment-form-display.ts › initializePaymentForms` | — |
+| `Updating payment form visibility for method:` | `payment-form-display.ts › updatePaymentFormVisibility` | yes |
+| `Payment method {value}: {isSelected ? 'selected' : 'not selected'}` | `payment-form-display.ts › updatePaymentFormVisibility` | — |
+| `Expanded payment form` | `payment-form-display.ts › expandPaymentForm` | — |
+| `Collapsed payment form` | `payment-form-display.ts › collapsePaymentForm` | — |
+| `Cleared payment form errors` | `payment-form-display.ts › clearPaymentFormErrors` | — |
 | `UIService initialized` | `ui-service.ts › UIService.initialize` | — |
-| `Showing loading state for section: {section}` | `ui-service.ts › UIService.showLoading` | — |
-| `Hiding loading state for section: {section}` | `ui-service.ts › UIService.hideLoading` | — |
-| `Updated progress to step: {step}` | `ui-service.ts › UIService.updateProgress` | — |
-| `Could not focus field after scroll:` | `ui-service.ts › UIService.focusFirstError` | yes |
-| `Scrolled to field: {fieldName}` | `ui-service.ts › UIService.focusFirstError` | — |
-| `Updated field {fieldName} state to: {state}` | `ui-service.ts › UIService.updateFieldState` | — |
-| `Initializing payment forms` | `ui-service.ts › UIService.initializePaymentForms` | — |
-| `Payment method from store:` | `ui-service.ts › UIService.initializePaymentForms` | yes |
-| `Expanded payment method: {methodType} (store: {storePaymentMethod})` | `ui-service.ts › UIService.initializePaymentForms` | — |
-| `Collapsed payment method: {methodType}` | `ui-service.ts › UIService.initializePaymentForms` | — |
-| `Updating payment form visibility for method:` | `ui-service.ts › UIService.updatePaymentFormVisibility` | yes |
-| `Payment method {value}: {isSelected ? 'selected' : 'not selected'}` | `ui-service.ts › UIService.updatePaymentFormVisibility` | — |
-| `Expanded payment form` | `ui-service.ts › UIService.expandPaymentForm` | — |
-| `Collapsed payment form` | `ui-service.ts › UIService.collapsePaymentForm` | — |
-| `Cleared payment form errors` | `ui-service.ts › UIService.clearPaymentFormErrors` | — |
-| `Initializing floating labels` | `ui-service.ts › UIService.initializeFloatingLabels` | — |
-| `Initialized {size} floating labels` | `ui-service.ts › UIService.initializeFloatingLabels` | — |
-| `Set up Spreedly floating label for credit card number` | `ui-service.ts › UIService.setupSpreedlyFloatingLabels` | — |
-| `Set up Spreedly floating label for CVV` | `ui-service.ts › UIService.setupSpreedlyFloatingLabels` | — |
-| `Spreedly field focused: {fieldName}` | `ui-service.ts › UIService.handleSpreedlyFieldFocus` | — |
-| `Spreedly field blurred: {fieldName}, hasValue: {hasValue}` | `ui-service.ts › UIService.handleSpreedlyFieldBlur` | — |
-| `Spreedly field input: {fieldName}, hasValue: {hasValue}` | `ui-service.ts › UIService.handleSpreedlyFieldInput` | — |
-| `Set up floating label for field:` | `ui-service.ts › UIService.setupFloatingLabel` | yes |
-| `Added has-value class for field ({reason}):` | `ui-service.ts › UIService.floatLabelUp` | yes |
-| `Removed has-value class for field:` | `ui-service.ts › UIService.floatLabelDown` | yes |
-| `Updated all floating labels for populated data` | `ui-service.ts › UIService.updateLabelsForPopulatedData` | — |
-| `Handled responsive UI adjustments for {isMobile ? 'mobile' : isTablet ? 'tablet' : 'desktop'}` | `ui-service.ts › UIService.handleResponsiveUI` | — |
-| `Enhanced accessibility features` | `ui-service.ts › UIService.enhanceAccessibility` | — |
 | `UIService destroyed` | `ui-service.ts › UIService.destroy` | — |
 | `Showing error for field {fieldName}:` | `checkout-validator.ts › CheckoutValidator.showError` | yes |
 | `CheckoutValidator destroyed` | `checkout-validator.ts › CheckoutValidator.destroy` | — |

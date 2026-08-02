@@ -131,16 +131,20 @@ Written to the element as state changes. Read these from CSS or tests instead of
 The first segment of `data-next-display` selects which feature resolves the rest
 of the path. The modifiers above work with all of them.
 
-| Namespace | Resolves against | Reference |
+Each **Paths** link is the complete list of what can follow that namespace, read out
+of the code that resolves it rather than transcribed — so a path that is not on the
+page is one the SDK does not answer.
+
+| Namespace | Resolves against | Paths |
 |---|---|---|
-| `cart.` / `cart-summary.` | The cart: totals, counts, shipping, discounts | [cart-summary](../../../../cart/cart-summary/guide/reference/attributes.md) |
-| `package.` / `campaign.` | A campaign package's own fields and prices | [product-display](../../../../display/product-display/guide/reference/attributes.md) |
-| `selection.` | What a selector currently has selected | [selection-display](../../../../display/selection-display/guide/reference/attributes.md) |
-| `order.` | A completed order, on receipt and upsell pages | [order-display](../../../../display/order-display/guide/reference/attributes.md) |
-| `shipping.` | A shipping method's name and cost | [shipping-display](../../../../display/shipping-display/guide/reference/attributes.md) |
-| `selector.` | One card inside a package selector | [package-selector](../../../../cart/package-selector/guide/reference/attributes.md) |
-| `bundle.` | A bundle selector's current bundle | [bundle-selector](../../../../cart/bundle-selector/guide/reference/attributes.md) |
-| `toggle.` | One package toggle's state and price | [package-toggle](../../../../cart/package-toggle/guide/reference/attributes.md) |
+| `cart.` / `cart-summary.` | The cart: totals, counts, shipping, discounts | [cart-summary](../../../../cart/cart-summary/guide/reference/display-paths.md) |
+| `package.` / `campaign.` | A campaign package's own fields and prices | [product-display](../../../../display/product-display/guide/reference/display-paths.md) |
+| `selection.` | What a selector currently has selected | [selection-display](../../../../display/selection-display/guide/reference/display-paths.md) |
+| `order.` | A completed order, on receipt and upsell pages | [order-display](../../../../display/order-display/guide/reference/display-paths.md) |
+| `shipping.` | A shipping method's name and cost | [shipping-display](../../../../display/shipping-display/guide/reference/display-paths.md) |
+| `selector.` | One card inside a package selector | [package-selector](../../../../cart/package-selector/guide/reference/display-paths.md) |
+| `bundle.` | A bundle selector's current bundle | [bundle-selector](../../../../cart/bundle-selector/guide/reference/display-paths.md) |
+| `toggle.` | One package toggle's state and price | [package-toggle](../../../../cart/package-toggle/guide/reference/display-paths.md) |
 
 ```html
 <span data-next-display="cart.total"></span>

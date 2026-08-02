@@ -4,8 +4,8 @@
  */
 
 import { useCheckoutStore } from '@/state/checkout';
-import { DebugPanel, PanelAction, PanelTab } from '../DebugPanels';
-import { RawDataHelper } from './RawDataHelper';
+import { DebugPanel, PanelAction, PanelTab } from '../debug-panels';
+import { RawDataHelper } from './raw-data-helper';
 import { lucide } from '../icons';
 
 export class CheckoutPanel implements DebugPanel {

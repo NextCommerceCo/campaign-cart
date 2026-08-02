@@ -222,12 +222,21 @@ export class ApiClient implements IApiClient {
     }
   }
 
-  // Update API key
+  /**
+   * Re-keys this client in place.
+   *
+   * **Not part of `IApiClient`, and not for feature code.** There is one client per
+   * page, so this changes the credentials of every holder at once — including holders
+   * that cached the instance and will never ask for it again. Use `getApiClient(newKey)`
+   * from [`@/client`](../client.ts), which builds a client for that key; it reads the key
+   * back off the instance, so calling this behind its back gets the shared client
+   * replaced on the next call rather than silently reused.
+   */
   public setApiKey(apiKey: string): void {
     this.apiKey = apiKey;
   }
 
-  // Get current API key
+  /** The key this client authenticates with. */
   public getApiKey(): string {
     return this.apiKey;
   }

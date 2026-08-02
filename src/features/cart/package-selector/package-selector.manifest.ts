@@ -17,6 +17,74 @@ export default defineFeature({
   // instead of overwriting. See FeatureManifest.pages.
   pages: { logs: 'hand-written', errors: 'hand-written', relations: 'hand-written', getStarted: 'hand-written' },
 
+  displayNamespace: 'selector',
+  displayPaths: {
+    prefix: 'selector.{selectorId}.{packageId}',
+    intro:
+      "where `{selectorId}` is the container's `data-next-selector-id` and " +
+      "`{packageId}` is a card's `data-next-package-id`. The element does not have to " +
+      'sit inside the card, or inside the container.',
+    example:
+      '<span data-next-display="selector.main.101.price"></span>\n' +
+      '<span data-next-display="selector.main.101.savings" data-hide-if-zero="true"></span>',
+    paths: [
+      {
+        name: 'isSelected',
+        description:
+          "The card the visitor has picked. Reads the card's own `data-next-selected`, so it tracks the selection, not the cart.",
+      },
+      {
+        name: 'isInCart',
+        description:
+          "The card's package is in the cart — including when it got there as a swap of another package.",
+      },
+      { name: 'price', description: 'Card total at its current quantity.' },
+      {
+        name: 'compare',
+        description:
+          'Retail / compare-at total. Empty when the package has no `price_retail`.',
+      },
+      {
+        name: 'savings',
+        description: "Compare price minus the card's subtotal.",
+      },
+      {
+        name: 'savingsPercentage',
+        description: '`savings ÷ compare × 100`, on a 0–100 scale.',
+      },
+      {
+        name: 'hasSavings',
+        description:
+          '`savings > 0`. Pair with `data-hide-if-false` to hide a whole savings block.',
+      },
+    ],
+    footer:
+      'The four money paths read the raw numbers the selector writes onto the card ' +
+      '(`data-package-price-total`, `-compare`, `-savings`, `-savings-pct` — see ' +
+      '[attributes.md](./attributes.md)), so they carry the price the API returned, ' +
+      'not a re-parse of formatted text.',
+    cautions: [
+      "**A money path renders nothing until the card's price fetch lands.** The card " +
+        'dispatches a `selector:price-updated` DOM event when the numbers arrive — a ' +
+        'browser event on the element, not one of the SDK events in ' +
+        '[events.md](./events.md) — and the binding fills in then. Before that the ' +
+        'element shows its markup fallback, so put the wanted placeholder inside it ' +
+        'rather than expecting a `0`.',
+      '**Zero reads as "no value".** `price`, `compare` and `savings` resolve through ' +
+        '`parseFloat(...) || undefined`, so a genuine `0` is indistinguishable from a ' +
+        'missing attribute and the element stays empty. For a free package, show the ' +
+        'wording with [conditional display](../../../../display/conditional-display/guide/overview.md) ' +
+        'instead of relying on this path to print `0.00`.',
+      '**A path that names no live card stays silent.** A `{selectorId}` or ' +
+        '`{packageId}` that matches no `[data-next-selector-card]` leaves the element ' +
+        'untouched with no error — check both values against the markup when a binding ' +
+        'never fills in.',
+      '**An unrecognised property logs and stops.** Anything outside the table above ' +
+        'produces `Unknown selector display property: "{property}"` at warn level; see ' +
+        '[logs.md](./logs.md).',
+    ],
+  },
+
   attributes: [
     {
       group: CONTAINER,
@@ -294,20 +362,9 @@ To show a card's state somewhere else on the page, bind an element with
 \`data-next-display="selector.{selectorId}.{packageId}.{property}"\`. The element
 does not have to live inside the card, or even inside the container.
 
-\`\`\`html
-<span data-next-display="selector.main.101.price"></span>
-<span data-next-display="selector.main.101.savings" data-hide-if-zero="true"></span>
-\`\`\`
-
-| Property | Format | Shows |
-|---|---|---|
-| \`isSelected\` | boolean | Whether this card is the current selection |
-| \`isInCart\` | boolean | Whether this card's package is in the cart |
-| \`price\` | currency | Total for the package at its current quantity |
-| \`compare\` | currency | Retail / compare-at price |
-| \`savings\` | currency | Compare price minus total |
-| \`savingsPercentage\` | percentage | Discount as a share of the compare price |
-| \`hasSavings\` | boolean | Whether savings are above zero |
+Every property the namespace resolves, with its default format and what it shows,
+is listed once in [display-paths.md](./display-paths.md) — read out of the method
+that answers the path, so it cannot drift from what renders.
 
 The standard display modifiers apply: \`data-next-format\`, \`data-hide-if-zero\`,
 \`data-hide-if-false\`.

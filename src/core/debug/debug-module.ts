@@ -49,11 +49,11 @@ export class DebugModule {
 
     try {
       // Load styles first
-      const { DebugStyleLoader } = await import('./DebugStyleLoader');
+      const { DebugStyleLoader } = await import('./debug-style-loader');
       await DebugStyleLoader.loadDebugStyles();
 
       // Then load the debug overlay
-      const { debugOverlay } = await import('./DebugOverlay');
+      const { debugOverlay } = await import('./debug-overlay');
       
       debugOverlayInstance = debugOverlay;
       isLoading = false;
@@ -125,7 +125,7 @@ export class DebugModule {
     }
 
     // Optionally clean up styles
-    import('./DebugStyleLoader').then(({ DebugStyleLoader }) => {
+    import('./debug-style-loader').then(({ DebugStyleLoader }) => {
       DebugStyleLoader.removeDebugStyles();
     });
   }

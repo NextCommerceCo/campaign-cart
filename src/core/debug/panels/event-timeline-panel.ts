@@ -8,9 +8,9 @@
  * - Performance timeline
  */
 
-import { DebugPanel, PanelAction } from '../DebugPanels';
+import { DebugPanel, PanelAction } from '../debug-panels';
 import { EventBus } from '../../events';
-import { RawDataHelper } from './RawDataHelper';
+import { RawDataHelper } from './raw-data-helper';
 import {
   validateDataLayerEvent,
   auditDataLayerEvent,
@@ -18,7 +18,7 @@ import {
   type EventValidationIssue,
   type EventCheck,
   type CheckStatus,
-} from './EcommerceEventValidator';
+} from './ecommerce-event-validator';
 import {
   analyticsDebug,
   type DeliveryRecord,

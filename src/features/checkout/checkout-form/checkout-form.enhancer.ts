@@ -105,6 +105,9 @@ const BILLING_ADDRESS_FIELD_MAP: Record<string, string> = {
   'phone': 'phone'
 };
 
+/** The config-store snapshot the boot steps read (API key, Spreedly key, debug flag). */
+type CheckoutFormConfig = ReturnType<typeof useConfigStore.getState>;
+
 export class CheckoutFormEnhancer extends BaseEnhancer {
   private form!: HTMLFormElement;
   private apiClient!: IApiClient;
@@ -190,7 +193,79 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private currentStep = 1;
   private nextStepUrl?: string;
 
+  /**
+   * Boot sequence for the checkout form, in the order the steps run.
+   *
+   * Each line below is one step; the order is the contract. A step that runs
+   * before another needs what that earlier step produced — the validator needs
+   * the phone inputs, the UI service needs the scanned fields, the store
+   * subscriptions need the handlers they fire into.
+   */
   public async initialize(): Promise<void> {
+    this.bindFormElement();
+
+    // Injects the CSS variables intl-tel-input needs for its flag/globe images.
+    injectIntlTelInputStyles();
+
+    this.detectMultiStepCheckout();
+    this.loadingOverlay = new LoadingOverlay();
+
+    // NOTE: Currency is initialized separately based on:
+    // 1. URL parameter (?currency=XXX) - highest priority
+    // 2. Session storage (previous selection) - medium priority
+    // 3. Detected location - lowest priority
+    // Currency does NOT change when shipping/billing country changes
+    const config = useConfigStore.getState();
+
+    this.initializeApiDependencies(config);
+    await this.refreshAttribution();
+    this.initializeOrderProcessors();
+
+    // intl-tel-input is now bundled with the SDK - always available
+    this.isIntlTelInputAvailable = true;
+
+    this.initializeValidator();
+    this.scanAllFields();
+    this.cloneBillingFormFromShipping();
+    this.initializeUIService();
+
+    if (config.spreedlyEnvironmentKey) {
+      await this.initializeCreditCard(config.spreedlyEnvironmentKey, config.debug);
+    }
+
+    await this.initializeAddressManagement(config);
+    this.initializePhoneInputs();
+    this.setupPhoneValidation();
+
+    populateExpirationFields(this.expirationFieldsContext());
+
+    this.setupEventHandlers();
+    this.subscribeToStores();
+    this.setupDebugEventListeners();
+
+    await this.populateFormData();
+    this.initializeLocationFieldVisibility();
+    await this.initializeProspectCart();
+
+    this.listenForPaymentErrors();
+    this.listenForDebugCountryChanges();
+    this.setupBfcacheRestoreHandler(config);
+    this.setupWindowFocusHandler();
+
+    // Check for fresh purchase on initial load
+    this.handlePurchaseEvent();
+
+    this.scheduleBeginCheckoutTracking();
+
+    this.logger.debug('CheckoutFormEnhancer initialized');
+    this.emit('checkout:form-initialized', { form: this.form });
+  }
+
+  // ============================================================================
+  // BOOT SEQUENCE STEPS — listed in the order `initialize` runs them
+  // ============================================================================
+
+  private bindFormElement(): void {
     this.validateElement();
 
     if (!(this.element instanceof HTMLFormElement)) {
@@ -199,32 +274,20 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     this.form = this.element;
     this.form.noValidate = true;
+  }
 
-    // Inject intl-tel-input CSS variables for flag/globe images
-    injectIntlTelInputStyles();
-
-    // Check if this is a multi-step checkout
-    this.detectMultiStepCheckout();
-
-    // Initialize loading overlay
-    this.loadingOverlay = new LoadingOverlay();
-
-    // NOTE: Currency is initialized separately based on:
-    // 1. URL parameter (?currency=XXX) - highest priority
-    // 2. Session storage (previous selection) - medium priority  
-    // 3. Detected location - lowest priority
-    // Currency does NOT change when shipping/billing country changes
-
-    // Initialize core dependencies
-    const config = useConfigStore.getState();
+  private initializeApiDependencies(config: CheckoutFormConfig): void {
     this.apiClient = getApiClient(config.apiKey);
     this.countryService = CountryService.getInstance();
+  }
 
-    // Re-initialize attribution to ensure we have current page data
+  /** Re-initializes attribution so the order carries this page's data, not the previous page's. */
+  private async refreshAttribution(): Promise<void> {
     const attributionStore = useAttributionStore.getState();
     await attributionStore.initialize();
+  }
 
-    // Initialize OrderManager and ExpressCheckoutProcessor
+  private initializeOrderProcessors(): void {
     this.orderManager = new OrderManager(
       this.apiClient,
       this.logger,
@@ -238,27 +301,24 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       (event: string, data: any) => this.emit(event as any, data),
       this.orderManager
     );
+  }
 
-    // intl-tel-input is now bundled with the SDK - always available
-    this.isIntlTelInputAvailable = true;
-
-    // Initialize validator
+  private initializeValidator(): void {
     this.validator = new CheckoutValidator(
       this.logger,
       this.countryService,
       undefined // PhoneInputManager will be handled by us
     );
+  }
 
-    // Scan for all fields and buttons
-    this.scanAllFields();
-
-    // Setup billing form (clone from shipping if needed)
+  private cloneBillingFormFromShipping(): void {
     const billingFormCloned = setupBillingForm(this.billingFormSetupContext());
     if (billingFormCloned) {
       scanBillingFields(this.billingFormSetupContext()); // Re-scan after cloning
     }
+  }
 
-    // Initialize UI service
+  private initializeUIService(): void {
     this.ui = new UIService(
       this.form,
       this.fields,
@@ -269,19 +329,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     // Initialize payment forms to sync with DOM state
     this.ui.initializePaymentForms();
+  }
 
-    // Initialize credit card service
-    if (config.spreedlyEnvironmentKey) {
-      await this.initializeCreditCard(config.spreedlyEnvironmentKey, config.debug);
-    }
-
-    // Initialize address/country functionality
-    await this.initializeAddressManagement(config);
-
-    // Initialize phone inputs
-    this.initializePhoneInputs();
-
-    // Set up phone validation callback for validator after phone inputs are initialized
+  /** Runs after {@link initializePhoneInputs} so the validator can ask a live intl-tel-input instance. */
+  private setupPhoneValidation(): void {
     this.validator.setPhoneValidator((phoneNumber: string, type: 'shipping' | 'billing' = 'shipping') => {
       const instance = this.phoneInputs.get(type);
       if (instance) {
@@ -291,41 +342,32 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       // Fallback to basic validation if instance not found
       return /^[\d\s\-\+\(\)]+$/.test(phoneNumber);
     });
+  }
 
-    // Populate expiration fields
-    populateExpirationFields(this.expirationFieldsContext());
-
-    // Setup event handlers
-    this.setupEventHandlers();
-
-    // Subscribe to store changes
+  private subscribeToStores(): void {
     this.subscribe(useCheckoutStore, this.handleCheckoutUpdate.bind(this));
     this.subscribe(useCartStore, this.handleCartUpdate.bind(this));
     this.subscribe(useConfigStore, this.handleConfigUpdate.bind(this));
+  }
 
-    // Setup debug event listeners
+  private setupDebugEventListeners(): void {
     this.boundHandleTestDataFilled = this.handleTestDataFilled.bind(this);
     this.boundHandleKonamiActivation = this.handleKonamiActivation.bind(this);
     document.addEventListener('checkout:test-data-filled', this.boundHandleTestDataFilled as EventListener);
     document.addEventListener('next:test-mode-activated', this.boundHandleKonamiActivation as EventListener);
+  }
 
-    // Initialize form with existing data
-    await this.populateFormData();
-
-    // Initialize location field visibility
-    this.initializeLocationFieldVisibility();
-
-    // Initialize ProspectCartEnhancer
-    await this.initializeProspectCart();
-
-    // Listen for payment errors from other components
+  /** Payment errors raised by other components (express checkout, Spreedly) surface in this form. */
+  private listenForPaymentErrors(): void {
     this.eventBus.on('payment:error', (event: any) => {
       if (event.message) {
         this.displayPaymentError(event.message);
       }
     });
+  }
 
-    // Listen for country changes from debug selector
+  /** The debug country selector changes the country outside the form's own dropdown. */
+  private listenForDebugCountryChanges(): void {
     document.addEventListener('next:country-changed', async (e) => {
       const customEvent = e as CustomEvent;
       const { to: newCountry } = customEvent.detail;
@@ -333,8 +375,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         await this.handleCountryChange(newCountry);
       }
     });
+  }
 
-    // Handle page restoration from bfcache (back/forward navigation)
+  /** Restores a sane state when the browser serves this page back from bfcache. */
+  private setupBfcacheRestoreHandler(config: CheckoutFormConfig): void {
     window.addEventListener('pageshow', (event) => {
       if (event.persisted ||
         (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming)?.type === 'back_forward') {
@@ -374,9 +418,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         this.handlePurchaseEvent();
       }
     });
+  }
 
-    // Handle window focus to reset express checkout state when user returns
-    // This catches cases where the user cancels PayPal/etc without triggering pageshow
+  /**
+   * Catches the user cancelling PayPal/Apple Pay/Google Pay, which returns focus
+   * to the page without triggering `pageshow`.
+   */
+  private setupWindowFocusHandler(): void {
     window.addEventListener('focus', () => {
       const checkoutStore = useCheckoutStore.getState();
 
@@ -400,18 +448,16 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         }
       }
     });
+  }
 
-    // Check for fresh purchase on initial load
-    this.handlePurchaseEvent();
-
-    // Track begin_checkout event - only from here, nowhere else
-    // Small delay to ensure analytics providers are ready
+  /**
+   * `begin_checkout` fires from here and nowhere else. The delay lets the
+   * analytics providers finish registering first.
+   */
+  private scheduleBeginCheckoutTracking(): void {
     setTimeout(() => {
       this.trackBeginCheckout();
     }, 500);
-
-    this.logger.debug('CheckoutFormEnhancer initialized');
-    this.emit('checkout:form-initialized', { form: this.form });
   }
 
   // ============================================================================

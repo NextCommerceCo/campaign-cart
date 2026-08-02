@@ -3,7 +3,7 @@
  * Displays and manages localStorage and sessionStorage data
  */
 
-import { DebugPanel, PanelAction, PanelTab } from '../DebugPanels';
+import { DebugPanel, PanelAction, PanelTab } from '../debug-panels';
 import { lucide } from '../icons';
 
 export class StoragePanel implements DebugPanel {

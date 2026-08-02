@@ -229,8 +229,10 @@ customer sessions. After moving a store, confirm every import resolves to the
 
 This section used to name the interface `IHttpClient` and have features call
 `http.get()/post()`. **That was wrong, and the shipped interface is
-[`IApiClient`](../../../src/api/client.types.ts) instead** — the fourteen typed
-endpoint calls (`createOrder`, `calculateSummary`, …).
+[`IApiClient`](../../../src/api/client.types.ts) instead** — the thirteen typed
+endpoint calls (`createOrder`, `calculateSummary`, …). `setApiKey` is
+deliberately **not** on it: re-keying is the composition root's job, and the
+gate carries that as a named exemption rather than a silent gap.
 
 Two different abstractions were being conflated. A *transport* facade
 (`get`/`post`) is the right shape for the **inside** of the client, and
@@ -266,10 +268,14 @@ composition root rather than *receiving* it, so `state/` (`cart-calculator.ts`,
 `campaign/api.slice.ts`) and `core/` (`sdk-initializer.ts`, `next-commerce.ts`)
 import `@/client`, which §2 says they must not. Closing that means changing
 enhancer constructor signatures and how `AttributeScanner` instantiates features
-— the next phase. Separately, `useOrderStore.loadOrder(refId, apiClient: any)`
-types the client `any` and erases the seam at the store boundary. Removing
-`Logger`/`EventBus`/`ApiClient` from `src/index.ts` remains a **breaking
-public-API change needing explicit approval** (§0.1) — keep it separate.
+— the next phase. The store boundary is closed: `loadOrder` and `addUpsell` both
+take an `IApiClient` now, and neither change touched a caller — which is exactly
+why the `any` had gone unnoticed. What still erases the seam is test-side: four
+feature tests mock `@/api/client` with a fake that implements nothing, which is
+why `getApiClient` has to call `instance?.getApiKey?.()` optionally rather than
+plainly. Removing `Logger`/`EventBus`/`ApiClient` from `src/index.ts` remains a
+**breaking public-API change needing explicit approval** (§0.1) — keep it
+separate.
 
 This section is a **redesign of today's `.getInstance()` singletons** (§0.2).
 Migrate it as its own phase, behind green tests, after the folder moves.

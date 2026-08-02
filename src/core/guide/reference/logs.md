@@ -2187,7 +2187,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 Loads the debug overlay on demand when debug mode is on, so none of it is in the bundle a normal visitor downloads.
 
-Logged from `debug/DebugModule.ts`.
+Logged from `debug/debug-module.ts`.
 
 ### Error
 
@@ -2195,7 +2195,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to load debug overlay module:`
 
-`debug/DebugModule.ts › DebugModule.loadDebugOverlay` · extra context attached
+`debug/debug-module.ts › DebugModule.loadDebugOverlay` · extra context attached
 
 **Meaning:** The debug overlay code could not be fetched, so no overlay appears even though debug mode is on. The SDK itself keeps working.
 
@@ -2203,7 +2203,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to initialize debug mode:`
 
-`debug/DebugModule.ts › DebugModule.initializeIfEnabled` · extra context attached
+`debug/debug-module.ts › DebugModule.initializeIfEnabled` · extra context attached
 
 **Meaning:** Debug mode did not start: no overlay, and none of the `window` debug helpers. Log level is still raised, so debug lines continue to print.
 
@@ -2215,14 +2215,14 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Loading debug overlay module...` | `debug/DebugModule.ts › DebugModule.loadDebugOverlay` | — |
-| `Debug overlay module loaded successfully ✅` | `debug/DebugModule.ts › DebugModule.loadDebugOverlay` | — |
+| `Loading debug overlay module...` | `debug/debug-module.ts › DebugModule.loadDebugOverlay` | — |
+| `Debug overlay module loaded successfully ✅` | `debug/debug-module.ts › DebugModule.loadDebugOverlay` | — |
 
 ## `[DebugOverlay]`
 
 The on-page debug panel itself — state inspectors, the event pipeline, and the country / currency / locale switchers.
 
-Logged from `debug/DebugOverlay.ts`.
+Logged from `debug/debug-overlay.ts`.
 
 ### Info
 
@@ -2230,15 +2230,15 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Debug overlay initialized` | `debug/DebugOverlay.ts › DebugOverlay.initialize` | — |
-| `Selector container initialized` | `debug/DebugOverlay.ts › DebugOverlay.initialize` | — |
-| `Upsell selector initialized` | `debug/DebugOverlay.ts › DebugOverlay.initialize` | — |
+| `Debug overlay initialized` | `debug/debug-overlay.ts › DebugOverlay.initialize` | — |
+| `Selector container initialized` | `debug/debug-overlay.ts › DebugOverlay.initialize` | — |
+| `Upsell selector initialized` | `debug/debug-overlay.ts › DebugOverlay.initialize` | — |
 
 ## `[CountrySelector]`
 
 The debug overlay’s country switcher, for checking an address form and shipping options as a visitor in another country.
 
-Logged from `debug/CountrySelector.ts`.
+Logged from `debug/country-selector.ts`.
 
 ### Error
 
@@ -2246,7 +2246,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to load countries:`
 
-`debug/CountrySelector.ts › CountrySelector.loadCountries` · extra context attached
+`debug/country-selector.ts › CountrySelector.loadCountries` · extra context attached
 
 **Meaning:** The debug overlay’s country switcher has no countries to offer and hides itself. Only the debug tool is affected — the page’s own address form is separate.
 
@@ -2254,7 +2254,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to change country:`
 
-`debug/CountrySelector.ts › CountrySelector.handleCountryChange` · extra context attached
+`debug/country-selector.ts › CountrySelector.handleCountryChange` · extra context attached
 
 **Meaning:** Switching country from the debug overlay failed and the overlay shows its error state. The page may be left part-way: currency updated, country not, or the reverse.
 
@@ -2266,7 +2266,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Country change already in progress`
 
-`debug/CountrySelector.ts › CountrySelector.setupEventListeners`
+`debug/country-selector.ts › CountrySelector.setupEventListeners`
 
 **Meaning:** A second country was picked in the debug overlay while the first change was still applying; the second was ignored. Expected when clicking quickly.
 
@@ -2278,12 +2278,12 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Country selector initialized` | `debug/CountrySelector.ts › CountrySelector.initialize` | — |
-| `Changing country to {newCountry}` | `debug/CountrySelector.ts › CountrySelector.handleCountryChange` | — |
-| `Cleared selected country override, using detected country` | `debug/CountrySelector.ts › CountrySelector.handleCountryChange` | — |
-| `Saved selected country to session: {newCountry}` | `debug/CountrySelector.ts › CountrySelector.handleCountryChange` | — |
-| `Country currency is {currencyCode}, updating...` | `debug/CountrySelector.ts › CountrySelector.handleCountryChange` | — |
-| `Country changed successfully to {newCountry}` | `debug/CountrySelector.ts › CountrySelector.handleCountryChange` | — |
+| `Country selector initialized` | `debug/country-selector.ts › CountrySelector.initialize` | — |
+| `Changing country to {newCountry}` | `debug/country-selector.ts › CountrySelector.handleCountryChange` | — |
+| `Cleared selected country override, using detected country` | `debug/country-selector.ts › CountrySelector.handleCountryChange` | — |
+| `Saved selected country to session: {newCountry}` | `debug/country-selector.ts › CountrySelector.handleCountryChange` | — |
+| `Country currency is {currencyCode}, updating...` | `debug/country-selector.ts › CountrySelector.handleCountryChange` | — |
+| `Country changed successfully to {newCountry}` | `debug/country-selector.ts › CountrySelector.handleCountryChange` | — |
 
 ### Debug
 
@@ -2291,18 +2291,18 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Loaded {length} countries` | `debug/CountrySelector.ts › CountrySelector.loadCountries` | — |
-| `No countries available, hiding country selector` | `debug/CountrySelector.ts › CountrySelector.doRender` | — |
-| `Country select changed to: {newCountry}` | `debug/CountrySelector.ts › CountrySelector.setupEventListeners` | — |
-| `Resetting to detected country:` | `debug/CountrySelector.ts › CountrySelector.setupEventListeners` | yes |
-| `External country change detected, re-rendering selector` | `debug/CountrySelector.ts › CountrySelector.setupEventListeners` | — |
-| `Event listeners attached to country selector` | `debug/CountrySelector.ts › CountrySelector.setupEventListeners` | — |
+| `Loaded {length} countries` | `debug/country-selector.ts › CountrySelector.loadCountries` | — |
+| `No countries available, hiding country selector` | `debug/country-selector.ts › CountrySelector.doRender` | — |
+| `Country select changed to: {newCountry}` | `debug/country-selector.ts › CountrySelector.setupEventListeners` | — |
+| `Resetting to detected country:` | `debug/country-selector.ts › CountrySelector.setupEventListeners` | yes |
+| `External country change detected, re-rendering selector` | `debug/country-selector.ts › CountrySelector.setupEventListeners` | — |
+| `Event listeners attached to country selector` | `debug/country-selector.ts › CountrySelector.setupEventListeners` | — |
 
 ## `[CurrencySelector]`
 
 The debug overlay’s currency switcher, for checking prices in every currency the campaign offers.
 
-Logged from `debug/CurrencySelector.ts`.
+Logged from `debug/currency-selector.ts`.
 
 ### Error
 
@@ -2310,7 +2310,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to change currency:`
 
-`debug/CurrencySelector.ts › CurrencySelector.handleCurrencyChange` · extra context attached
+`debug/currency-selector.ts › CurrencySelector.handleCurrencyChange` · extra context attached
 
 **Meaning:** Switching currency from the debug overlay failed. Prices on the page may still be in the previous currency while the selector shows the new one.
 
@@ -2322,7 +2322,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Currency change already in progress`
 
-`debug/CurrencySelector.ts › CurrencySelector.setupEventListeners`
+`debug/currency-selector.ts › CurrencySelector.setupEventListeners`
 
 **Meaning:** A second currency was picked while the first change was still applying, and was ignored.
 
@@ -2334,10 +2334,10 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Currency selector initialized` | `debug/CurrencySelector.ts › CurrencySelector.initialize` | — |
-| `Changing currency to {newCurrency}` | `debug/CurrencySelector.ts › CurrencySelector.handleCurrencyChange` | — |
-| `Saved currency preference to session: {newCurrency}` | `debug/CurrencySelector.ts › CurrencySelector.handleCurrencyChange` | — |
-| `Currency changed successfully to {newCurrency}` | `debug/CurrencySelector.ts › CurrencySelector.handleCurrencyChange` | — |
+| `Currency selector initialized` | `debug/currency-selector.ts › CurrencySelector.initialize` | — |
+| `Changing currency to {newCurrency}` | `debug/currency-selector.ts › CurrencySelector.handleCurrencyChange` | — |
+| `Saved currency preference to session: {newCurrency}` | `debug/currency-selector.ts › CurrencySelector.handleCurrencyChange` | — |
+| `Currency changed successfully to {newCurrency}` | `debug/currency-selector.ts › CurrencySelector.handleCurrencyChange` | — |
 
 ### Debug
 
@@ -2345,18 +2345,18 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Campaign currency changed or data loaded, re-rendering currency selector` | `debug/CurrencySelector.ts › CurrencySelector.setupStoreSubscriptions` | — |
-| `No campaign data available yet, skipping currency selector render` | `debug/CurrencySelector.ts › CurrencySelector.doRender` | — |
-| `Only one currency available, hiding currency selector` | `debug/CurrencySelector.ts › CurrencySelector.doRender` | — |
-| `Currency select changed to: {newCurrency}` | `debug/CurrencySelector.ts › CurrencySelector.setupEventListeners` | — |
-| `External currency change detected, re-rendering selector` | `debug/CurrencySelector.ts › CurrencySelector.setupEventListeners` | — |
-| `Event listeners attached to currency selector` | `debug/CurrencySelector.ts › CurrencySelector.setupEventListeners` | — |
+| `Campaign currency changed or data loaded, re-rendering currency selector` | `debug/currency-selector.ts › CurrencySelector.setupStoreSubscriptions` | — |
+| `No campaign data available yet, skipping currency selector render` | `debug/currency-selector.ts › CurrencySelector.doRender` | — |
+| `Only one currency available, hiding currency selector` | `debug/currency-selector.ts › CurrencySelector.doRender` | — |
+| `Currency select changed to: {newCurrency}` | `debug/currency-selector.ts › CurrencySelector.setupEventListeners` | — |
+| `External currency change detected, re-rendering selector` | `debug/currency-selector.ts › CurrencySelector.setupEventListeners` | — |
+| `Event listeners attached to currency selector` | `debug/currency-selector.ts › CurrencySelector.setupEventListeners` | — |
 
 ## `[LocaleSelector]`
 
 The debug overlay’s locale switcher, for checking how prices and dates are formatted.
 
-Logged from `debug/LocaleSelector.ts`.
+Logged from `debug/locale-selector.ts`.
 
 ### Error
 
@@ -2364,7 +2364,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to change locale:`
 
-`debug/LocaleSelector.ts › LocaleSelector.handleLocaleChange` · extra context attached
+`debug/locale-selector.ts › LocaleSelector.handleLocaleChange` · extra context attached
 
 **Meaning:** Switching locale from the debug overlay failed, so number and date formatting stays as it was.
 
@@ -2376,7 +2376,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Locale change already in progress`
 
-`debug/LocaleSelector.ts › LocaleSelector.setupEventListeners`
+`debug/locale-selector.ts › LocaleSelector.setupEventListeners`
 
 **Meaning:** A second locale was picked while the first change was still applying, and was ignored.
 
@@ -2388,10 +2388,10 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Locale selector initialized` | `debug/LocaleSelector.ts › LocaleSelector.initialize` | — |
-| `Changing locale to {newLocale}` | `debug/LocaleSelector.ts › LocaleSelector.handleLocaleChange` | — |
-| `Cleared selected locale override, using browser locale` | `debug/LocaleSelector.ts › LocaleSelector.handleLocaleChange` | — |
-| `Saved selected locale to session: {newLocale}` | `debug/LocaleSelector.ts › LocaleSelector.handleLocaleChange` | — |
+| `Locale selector initialized` | `debug/locale-selector.ts › LocaleSelector.initialize` | — |
+| `Changing locale to {newLocale}` | `debug/locale-selector.ts › LocaleSelector.handleLocaleChange` | — |
+| `Cleared selected locale override, using browser locale` | `debug/locale-selector.ts › LocaleSelector.handleLocaleChange` | — |
+| `Saved selected locale to session: {newLocale}` | `debug/locale-selector.ts › LocaleSelector.handleLocaleChange` | — |
 
 ### Debug
 
@@ -2399,17 +2399,17 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Locale select changed to: {newLocale}` | `debug/LocaleSelector.ts › LocaleSelector.setupEventListeners` | — |
-| `Resetting to browser locale:` | `debug/LocaleSelector.ts › LocaleSelector.setupEventListeners` | yes |
-| `External locale change detected, re-rendering selector` | `debug/LocaleSelector.ts › LocaleSelector.setupEventListeners` | — |
-| `Event listeners attached to locale selector` | `debug/LocaleSelector.ts › LocaleSelector.setupEventListeners` | — |
-| `Refreshed {length} potential currency displays` | `debug/LocaleSelector.ts › LocaleSelector.refreshAllCurrencyDisplays` | — |
+| `Locale select changed to: {newLocale}` | `debug/locale-selector.ts › LocaleSelector.setupEventListeners` | — |
+| `Resetting to browser locale:` | `debug/locale-selector.ts › LocaleSelector.setupEventListeners` | yes |
+| `External locale change detected, re-rendering selector` | `debug/locale-selector.ts › LocaleSelector.setupEventListeners` | — |
+| `Event listeners attached to locale selector` | `debug/locale-selector.ts › LocaleSelector.setupEventListeners` | — |
+| `Refreshed {length} potential currency displays` | `debug/locale-selector.ts › LocaleSelector.refreshAllCurrencyDisplays` | — |
 
 ## `[UpsellSelector]`
 
 The debug overlay’s post-purchase upsell inspector: what the page offers and what is currently selected.
 
-Logged from `debug/UpsellSelector.ts`.
+Logged from `debug/upsell-selector.ts`.
 
 ### Info
 
@@ -2417,7 +2417,7 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 
 | Message | Source | Extra context |
 |---|---|---|
-| `UpsellSelector initialized` | `debug/UpsellSelector.ts › UpsellSelector.initialize` | — |
+| `UpsellSelector initialized` | `debug/upsell-selector.ts › UpsellSelector.initialize` | — |
 
 ### Debug
 
@@ -2425,18 +2425,18 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Not an upsell page, skipping initialization` | `debug/UpsellSelector.ts › UpsellSelector.initialize` | — |
-| `Scanning for existing upsell elements:` | `debug/UpsellSelector.ts › UpsellSelector.scanExistingUpsells` | yes |
-| `No upsell elements found` | `debug/UpsellSelector.ts › UpsellSelector.scanExistingUpsells` | — |
-| `Initialized state from bundle selector:` | `debug/UpsellSelector.ts › UpsellSelector.scanExistingUpsells` | yes |
-| `Found selected option:` | `debug/UpsellSelector.ts › UpsellSelector.scanExistingUpsells` | yes |
-| `Found first available option:` | `debug/UpsellSelector.ts › UpsellSelector.scanExistingUpsells` | yes |
-| `Found nested selector:` | `debug/UpsellSelector.ts › UpsellSelector.scanExistingUpsells` | yes |
-| `Initialized state from existing upsell element:` | `debug/UpsellSelector.ts › UpsellSelector.scanExistingUpsells` | yes |
-| `Upsell initialized:` | `debug/UpsellSelector.ts › UpsellSelector.setupEventListeners` | yes |
-| `Bundle selection changed:` | `debug/UpsellSelector.ts › UpsellSelector.setupEventListeners` | yes |
-| `Upsell option selected:` | `debug/UpsellSelector.ts › UpsellSelector.setupEventListeners` | yes |
-| `Upsell quantity changed:` | `debug/UpsellSelector.ts › UpsellSelector.setupEventListeners` | yes |
+| `Not an upsell page, skipping initialization` | `debug/upsell-selector.ts › UpsellSelector.initialize` | — |
+| `Scanning for existing upsell elements:` | `debug/upsell-selector.ts › UpsellSelector.scanExistingUpsells` | yes |
+| `No upsell elements found` | `debug/upsell-selector.ts › UpsellSelector.scanExistingUpsells` | — |
+| `Initialized state from bundle selector:` | `debug/upsell-selector.ts › UpsellSelector.scanExistingUpsells` | yes |
+| `Found selected option:` | `debug/upsell-selector.ts › UpsellSelector.scanExistingUpsells` | yes |
+| `Found first available option:` | `debug/upsell-selector.ts › UpsellSelector.scanExistingUpsells` | yes |
+| `Found nested selector:` | `debug/upsell-selector.ts › UpsellSelector.scanExistingUpsells` | yes |
+| `Initialized state from existing upsell element:` | `debug/upsell-selector.ts › UpsellSelector.scanExistingUpsells` | yes |
+| `Upsell initialized:` | `debug/upsell-selector.ts › UpsellSelector.setupEventListeners` | yes |
+| `Bundle selection changed:` | `debug/upsell-selector.ts › UpsellSelector.setupEventListeners` | yes |
+| `Upsell option selected:` | `debug/upsell-selector.ts › UpsellSelector.setupEventListeners` | yes |
+| `Upsell quantity changed:` | `debug/upsell-selector.ts › UpsellSelector.setupEventListeners` | yes |
 
 ## Lines that bypass the logger
 

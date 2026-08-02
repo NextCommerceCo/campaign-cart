@@ -122,12 +122,12 @@ stores are reset and the browser is sent to the success page with the new order'
   Konami code on step one leaves every later page in test mode until a link is opened
   without it.
 - **Neither `config.testMode` nor `checkout.testMode` is this switch.** The debug Config
-  panel toggles `config.testMode` (`core/debug/panels/ConfigPanel.ts › ConfigPanel.toggleTestMode`) and nothing reads
+  panel toggles `config.testMode` (`core/debug/panels/config-panel.ts › ConfigPanel.toggleTestMode`) and nothing reads
   it; `checkout.testMode` has a setter no code calls. Flipping either does not put the page
   into test mode, and neither marks an order.
 - **The debug overlay's own test helper is the restrained one.** "Fill Test Data" in the
   Checkout State panel fills the same address, sets the payment method to credit card, and
-  stops — no token, no submit (`core/debug/panels/CheckoutPanel.ts › CheckoutPanel.fillTestData`). Use it when
+  stops — no token, no submit (`core/debug/panels/checkout-panel.ts › CheckoutPanel.fillTestData`). Use it when
   what you want is a filled form rather than an order.
 
 ### Cautions

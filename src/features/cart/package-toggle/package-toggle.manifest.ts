@@ -5,6 +5,12 @@ const CARD = 'Card attributes';
 const SLOTS = 'Display slots (inside a card)';
 const UPSELL = 'Upsell navigation';
 
+// Groups for the `toggle.` display paths — a reader looking for a price should not
+// have to read past the identity fields to find one.
+const IDENTITY = 'Identity';
+const PRICE = 'Price';
+const SUBSCRIPTION = 'Subscription';
+
 export default defineFeature({
   id: 'package-toggle',
   category: 'cart',
@@ -19,6 +25,162 @@ export default defineFeature({
   // `data-next-discounts` containers are rendered by this shared util, not by
   // the feature's own files.
   extraSource: ['src/core/rendering/discount-renderer.ts'],
+
+  displayNamespace: 'toggle',
+  displayPaths: {
+    prefix: 'toggle.{packageId}',
+    intro:
+      "where `{packageId}` is a card's `data-next-package-id`. The element does not " +
+      'have to sit inside the card, or inside the container.',
+    example:
+      '<span data-next-display="toggle.101.price"></span>\n' +
+      '<span data-next-display="toggle.101.discountAmount" data-hide-if-zero="true"></span>',
+    paths: [
+      {
+        group: IDENTITY,
+        name: 'packageId',
+        description: 'The package `ref_id` the card is bound to.',
+      },
+      {
+        group: IDENTITY,
+        name: 'name',
+        description: 'Package display name from the campaign.',
+      },
+      {
+        group: IDENTITY,
+        name: 'image',
+        description:
+          'Package image URL. Renders as text — to set an `<img src>`, use the in-card `data-next-toggle-display="image"` form instead ([attributes.md](./attributes.md)).',
+      },
+      {
+        group: IDENTITY,
+        name: 'quantity',
+        description: 'Units this card adds to the cart.',
+      },
+      {
+        group: IDENTITY,
+        name: 'productId',
+        description:
+          'Product the package belongs to. Empty when the campaign does not carry one.',
+      },
+      {
+        group: IDENTITY,
+        name: 'variantId',
+        description:
+          'Product variant. Empty when the package is not a variant.',
+      },
+      {
+        group: IDENTITY,
+        name: 'variantName',
+        description: 'Variant display name, e.g. `Large`.',
+      },
+      {
+        group: IDENTITY,
+        name: 'productName',
+        description: 'Product display name.',
+      },
+      {
+        group: IDENTITY,
+        name: 'sku',
+        description: 'Product SKU. Empty when the product has none.',
+      },
+      {
+        group: IDENTITY,
+        name: 'isSelected',
+        description:
+          'The package is in the cart right now. Unlike the in-card `data-next-toggle-display="isSelected"`, this tracks live cart state.',
+      },
+      {
+        group: PRICE,
+        name: 'price',
+        description: "Total for the card's quantity, after discounts.",
+      },
+      {
+        group: PRICE,
+        name: 'originalPrice',
+        description: 'The same total before discounts.',
+      },
+      {
+        group: PRICE,
+        name: 'unitPrice',
+        description: 'What one unit costs after discounts.',
+      },
+      {
+        group: PRICE,
+        name: 'originalUnitPrice',
+        description: 'What one unit costs before discounts.',
+      },
+      {
+        group: PRICE,
+        name: 'discountAmount',
+        description: 'Total discount on the line. `0` when there is none.',
+      },
+      {
+        group: PRICE,
+        name: 'discountPercentage',
+        description:
+          '`discountAmount ÷ originalPrice × 100`, on a 0–100 scale.',
+      },
+      {
+        group: PRICE,
+        name: 'hasDiscount',
+        description:
+          '`discountAmount > 0`. Pair with `data-hide-if-false` to hide a whole savings block.',
+      },
+      {
+        group: PRICE,
+        name: 'currency',
+        description: 'ISO 4217 code for the prices above, e.g. `USD`.',
+      },
+      {
+        group: SUBSCRIPTION,
+        name: 'isRecurring',
+        description: 'The package bills on a schedule rather than once.',
+      },
+      {
+        group: SUBSCRIPTION,
+        name: 'interval',
+        description:
+          'Billing interval: `day` or `month`. Empty on a one-time package.',
+      },
+      {
+        group: SUBSCRIPTION,
+        name: 'intervalCount',
+        description:
+          'Intervals between charges — `3` with `interval: month` is quarterly.',
+      },
+      {
+        group: SUBSCRIPTION,
+        name: 'frequency',
+        description:
+          'The cadence in words: `Per month`, `Every 3 months`, `One time`.',
+      },
+      {
+        group: SUBSCRIPTION,
+        name: 'recurringPrice',
+        description:
+          "What each later charge costs, for the card's quantity.",
+      },
+      {
+        group: SUBSCRIPTION,
+        name: 'originalRecurringPrice',
+        description: 'The recurring charge before discounts.',
+      },
+    ],
+    cautions: [
+      "**A money path renders nothing until the card's price fetch lands.** The card " +
+        'dispatches a `toggle:price-updated` DOM event when the numbers arrive — a ' +
+        'browser event on the element, not one of the SDK events in ' +
+        '[events.md](./events.md) — and the binding fills in then. Before that the ' +
+        'element shows its markup fallback.',
+      '**A path that names no live card stays silent.** A `{packageId}` no ' +
+        '`[data-next-package-id]` card carries leaves the element untouched with no ' +
+        'error — check the number against the markup when a binding never fills in.',
+      '**An unrecognised property logs and stops.** Anything outside the tables above ' +
+        'produces `Unknown toggle display property: "{property}"` at warn level; see ' +
+        '[logs.md](./logs.md).',
+    ],
+  },
 
   attributes: [
     {
@@ -321,30 +483,12 @@ twin \`data-next-toggle-price\`) for slots **inside** a card, and by
 \`data-next-display="toggle.{packageId}.{field}"\` for elements **anywhere** in the
 page. One list serves both — an unrecognised name leaves the element untouched.
 
-| Field | Format | Shows |
-|---|---|---|
-| \`packageId\` | text | The package \`ref_id\` |
-| \`name\` | text | Package display name |
-| \`image\` | image | Package image — sets \`src\` on an \`<img>\`, text otherwise |
-| \`quantity\` | text | The card's quantity |
-| \`variantName\` | text | Product variant name |
-| \`productName\` | text | Product name |
-| \`sku\` | text | Product SKU; empty when unset |
-| \`price\` | currency | Total for the card's quantity |
-| \`unitPrice\` | currency | Price per unit |
-| \`originalPrice\` | currency | Retail / compare-at total; empty when unset |
-| \`originalUnitPrice\` | currency | Retail / compare-at per unit; empty when unset |
-| \`discountAmount\` | currency | Compare price minus total; empty when there is no discount |
-| \`discountPercentage\` | percentage | Discount as a share of the compare price |
-| \`hasDiscount\` | boolean | Shown when a discount applies, hidden otherwise |
-| \`isSelected\` | boolean | Shown when the package is selected |
-| \`isRecurring\` | boolean | Shown when the package bills on a schedule |
-| \`recurringPrice\` | currency | Recurring charge for the card's quantity |
-| \`originalRecurringPrice\` | currency | Recurring price before discounts |
-| \`interval\` | text | Billing interval: \`day\` or \`month\` |
-| \`intervalCount\` | auto | Intervals between charges |
-| \`frequency\` | text | Cadence in words: \`Per month\`, \`Every 3 months\`, \`One time\` |
-| \`currency\` | text | ISO 4217 currency code |
+Every field, with its default format and what it shows, is listed once in
+[display-paths.md](./display-paths.md) — read out of the method that answers the
+path, so it cannot drift from what renders. Two of them behave differently in the
+in-card form: \`image\` sets \`src\` on an \`<img>\` rather than writing text, and
+\`isSelected\` reflects \`data-next-selected\` as of the last price update rather than
+live cart state.
 
 The standard display modifiers apply to the \`data-next-display\` form:
 \`data-next-format\`, \`data-hide-if-zero\`, \`data-hide-if-false\`.

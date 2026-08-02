@@ -6,7 +6,7 @@ decides *when* to create an order; this decides *what* `POST /api/v1/orders/` lo
 
 | File | What it is |
 |------|------------|
-| `client.types.ts` | `IApiClient` — the fourteen calls, as an interface. **This is what features should depend on.** |
+| `client.types.ts` | `IApiClient` — the thirteen calls, as an interface. **This is what features should depend on.** |
 | `client.ts` | `ApiClient` — the one implementation. Owns the base URL, the `Authorization` header, rate-limit handling, error enrichment, and telling an aborted request apart from a failed one |
 
 One more file matters and it lives outside this folder:
@@ -47,7 +47,10 @@ const order = await getApiClient().getOrder('ORD-1234');
 `getApiClient()` memoizes, and defaults its key from `useConfigStore.getState().apiKey`.
 Pass a key — `getApiClient(apiKey)` — only if you were already handed one, as the campaign
 and cart state layers are; a key that differs from the current instance's builds a new
-instance. Before this existed, twelve places each ran
+instance. It compares against the key read *off the instance* (`getApiKey()`), not a copy
+kept beside it, so the memo and the client it hands out cannot disagree — re-key the shared
+client behind its back and the next call replaces it instead of handing on credentials
+nobody asked for. Before this existed, twelve places each ran
 `new ApiClient(useConfigStore.getState().apiKey)`, so a page carried a dozen clients that
 differed in nothing.
 
@@ -88,8 +91,15 @@ the class and the interface describe the same methods, **in both directions**.
 and forget `IApiClient` and nothing else would complain, leaving the new call unreachable
 through the seam. Add both, or the gate fails by name.
 
-`getApiKey` / `setApiKey` are on the interface too, so a caller that re-keys an existing
-client does not need the concrete class either.
+One member is exempt by name: **`setApiKey` is public on the class and deliberately not on
+`IApiClient`**. There is one client per page, so re-keying it changes the credentials of
+every holder at once, including holders that cached the instance and will never ask again.
+Changing the key belongs to `src/client.ts` — call `getApiClient(newKey)`. The gate lists
+that one exemption and asserts the method still exists on the class, so it cannot rot into
+hiding a missing endpoint; every *endpoint* still has to appear on both sides.
+
+`getApiKey` stays on the interface — reading the key is harmless, and `getApiClient` is
+built on it.
 
 ## Known rough edge
 

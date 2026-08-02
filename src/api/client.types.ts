@@ -1,7 +1,7 @@
 /**
  * The campaign API surface, as an interface features can depend on.
  *
- * Everything a feature needs from the API is one of these fourteen calls. Depending on
+ * Everything a feature needs from the API is one of these thirteen calls. Depending on
  * the interface rather than on {@link ApiClient} buys two things:
  *
  * - **A test can pass a fake object.** Today a test that needs a stubbed API reaches for
@@ -43,10 +43,14 @@ import type {
 /**
  * Every call the SDK makes against the campaigns API.
  *
- * Signatures mirror {@link ApiClient} exactly, including the `any`s on the prospect-cart
- * and autocomplete calls — this interface documents the surface as it is, so adopting it
- * changes no types at any call site. Tightening those `any`s is worth doing, but as its
+ * Signatures mirror {@link ApiClient}, including the `any`s on the prospect-cart and
+ * autocomplete calls — this interface documents the surface as it is, so adopting it
+ * changed no types at any call site. Tightening those `any`s is worth doing, but as its
  * own change where the fallout is visible.
+ *
+ * One deliberate exception: `setApiKey` is public on the class but absent here, because
+ * mutating the key of a page-wide shared client is not something a feature may do. The
+ * surface gate knows about that one omission by name and fails on any other.
  *
  * @example
  * ```ts
@@ -110,7 +114,14 @@ export interface IApiClient {
   ): Promise<any>;
 
   // ── Credentials ───────────────────────────────────────────────────────────
-  /** Replaces the key on an existing client, rather than rebuilding it. */
-  setApiKey(apiKey: string): void;
+  /**
+   * The key this client authenticates with.
+   *
+   * Read-only on purpose. `ApiClient.setApiKey` exists and is public, but it is **not**
+   * on this seam: the client is shared page-wide, so re-keying it changes the credentials
+   * of every holder at once — including holders that cached the instance and will never
+   * ask again. Changing the key is `src/client.ts`'s job; call `getApiClient(newKey)` and
+   * let it build a client for that key.
+   */
   getApiKey(): string;
 }

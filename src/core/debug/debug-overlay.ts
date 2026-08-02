@@ -6,13 +6,13 @@
  */
 
 import { Logger } from '../logger';
-import { DebugEventManager } from './DebugEventManager';
-import { EnhancedDebugUI } from './EnhancedDebugUI';
+import { DebugEventManager } from './debug-event-manager';
+import { EnhancedDebugUI } from './enhanced-debug-ui';
 import { useCartStore, cartOperations } from '@/state/cart';
 import { useConfigStore } from '@/state/config';
-import { XrayManager } from './XrayStyles';
-import { selectorContainer } from './SelectorContainer';
-import { upsellSelector } from './UpsellSelector';
+import { XrayManager } from './xray-styles';
+import { selectorContainer } from './selector-container';
+import { upsellSelector } from './upsell-selector';
 import { formatCurrency } from '@/core/currency-formatter';
 import { analyticsDebug } from '@/core/analytics/debug/analytics-debug-tracker';
 import {
@@ -268,7 +268,7 @@ export class DebugOverlay {
     if (!this.shadowRoot) return;
 
     // Load debug styles
-    const { DebugStyleLoader } = await import('./DebugStyleLoader');
+    const { DebugStyleLoader } = await import('./debug-style-loader');
     const styles = await DebugStyleLoader.getDebugStyles();
 
     // Create style element in shadow DOM

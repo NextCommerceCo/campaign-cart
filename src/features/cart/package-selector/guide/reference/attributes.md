@@ -310,20 +310,9 @@ To show a card's state somewhere else on the page, bind an element with
 `data-next-display="selector.{selectorId}.{packageId}.{property}"`. The element
 does not have to live inside the card, or even inside the container.
 
-```html
-<span data-next-display="selector.main.101.price"></span>
-<span data-next-display="selector.main.101.savings" data-hide-if-zero="true"></span>
-```
-
-| Property | Format | Shows |
-|---|---|---|
-| `isSelected` | boolean | Whether this card is the current selection |
-| `isInCart` | boolean | Whether this card's package is in the cart |
-| `price` | currency | Total for the package at its current quantity |
-| `compare` | currency | Retail / compare-at price |
-| `savings` | currency | Compare price minus total |
-| `savingsPercentage` | percentage | Discount as a share of the compare price |
-| `hasSavings` | boolean | Whether savings are above zero |
+Every property the namespace resolves, with its default format and what it shows,
+is listed once in [display-paths.md](./display-paths.md) — read out of the method
+that answers the path, so it cannot drift from what renders.
 
 The standard display modifiers apply: `data-next-format`, `data-hide-if-zero`,
 `data-hide-if-false`.

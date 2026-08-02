@@ -260,11 +260,32 @@ export interface FeatureManifest {
   extraSource?: string[];
   /**
    * For a `data-next-display` feature: the namespace it answers, e.g. `cart` or
-   * `package`. Set it and the reference gains a table of every path available
-   * under that namespace, generated from `PROPERTY_MAPPINGS` in
-   * `display-types.ts` — the SDK's own routing table — rather than transcribed.
+   * `package`. Set it and the reference gains `reference/display-paths.md`, a table
+   * of every path available under that namespace, read out of the SDK rather than
+   * transcribed.
+   *
+   * Two sources, picked automatically by whichever actually answers the namespace:
+   * `PROPERTY_MAPPINGS` in `core/base/display-types.ts` for the namespaces that route
+   * through it, and the owning enhancer's own `getPropertyValue` for the three that
+   * resolve their properties themselves (`selector`, `bundle`, `toggle`). Neither can
+   * yield an empty page — a namespace that resolves through neither fails the drift
+   * test instead of publishing "no paths".
    */
   displayNamespace?: string;
+  /**
+   * Prose for {@link displayNamespace}'s page: what each path means, and the markup
+   * grammar around it.
+   *
+   * The split is the same one {@link errors} uses. The **source** decides which paths
+   * exist — the drift test rejects a documented path the code cannot answer and an
+   * answered path with no entry here — while the manifest carries what no generator
+   * can derive: what a value means in product terms, how the prefix is written, and
+   * the traps.
+   *
+   * Required for a namespace answered by an enhancer, because those pages replaced
+   * hand-written ones whose per-path prose is the reason to read them.
+   */
+  displayPaths?: DisplayPathsDoc;
   /** Attributes the integrator writes on the activated element. Required first. */
   attributes: AttributeDoc[];
   /**
@@ -323,6 +344,49 @@ export interface FeatureSection {
   title: string;
   /** Markdown body. Headings inside it must start at `###` or deeper. */
   body: string;
+}
+
+/** What one `data-next-display` path shows, for the namespace's paths page. */
+export interface DisplayPathDoc {
+  /**
+   * The property as written after the prefix, e.g. `unitPrice`. Must be one the
+   * owning enhancer resolves — the drift test checks the whole set both ways.
+   */
+  name: string;
+  /**
+   * Heading to file the path under, e.g. `Price`. Paths with no group render in one
+   * table before the grouped ones; groups render in the order they first appear.
+   */
+  group?: string;
+  /** What the value means in product terms. Markdown; keep it to a table cell. */
+  description: string;
+}
+
+/**
+ * The prose half of `reference/display-paths.md`. The path list itself comes from
+ * the code — see {@link FeatureManifest.displayPaths}.
+ */
+export interface DisplayPathsDoc {
+  /**
+   * Everything a reader writes before the property, with runtime values as `{TOKEN}`
+   * — `bundle.{bundleId}`, `selector.{selectorId}.{packageId}`. Its segment count is
+   * checked against the segments the enhancer parses, so a class that starts reading
+   * one more segment cannot leave this claim behind.
+   */
+  prefix: string;
+  /**
+   * Continues the opening sentence after "Write it as `data-next-display=…`" — so it
+   * starts lower-case and explains the `{TOKEN}`s. Omit it and the sentence just ends.
+   */
+  intro?: string;
+  /** HTML the reader can paste, shown under the opening paragraph. */
+  example?: string;
+  /** One entry per path the enhancer answers, in the order they should be read. */
+  paths: DisplayPathDoc[];
+  /** Markdown after the tables — where the numbers come from, and what that implies. */
+  footer?: string;
+  /** The trap, the symptom, and the fix, one bullet each. Markdown. */
+  cautions?: string[];
 }
 
 /**

@@ -3,9 +3,9 @@
  * Manages the container for Currency and Country selectors
  */
 
-import { currencySelector } from './CurrencySelector';
-import { countrySelector } from './CountrySelector';
-import { localeSelector } from './LocaleSelector';
+import { currencySelector } from './currency-selector';
+import { countrySelector } from './country-selector';
+import { localeSelector } from './locale-selector';
 
 export class SelectorContainer {
   private static instance: SelectorContainer;

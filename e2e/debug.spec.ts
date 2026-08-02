@@ -12,7 +12,7 @@ import { stubCampaign, stubCart, bootSdk } from './fixtures/routes';
  * so `SDKInitializer.initializeDebugMode()` never runs and
  * `DebugOverlay.initialize()` early-returns. Verified against
  * src/core/sdk-initializer.ts (loadConfiguration reads `debugger`) and
- * src/core/debug/DebugOverlay.ts (initialize gates on `debugger`).
+ * src/core/debug/debug-overlay.ts (initialize gates on `debugger`).
  */
 
 const FIXTURE = '/e2e/fixtures/debug.html';

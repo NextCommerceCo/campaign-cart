@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { basename, dirname, join, relative } from 'node:path';
 import type { FeatureManifest } from '@/docs/schema/feature-manifest';
+import type { DisplayPath } from '@/docs/render/render-feature-reference';
 import {
   renderAttributes,
   renderDisplayPaths,
@@ -16,6 +17,7 @@ import {
 import { extractEventDocs } from '@/docs/extract/extract-event-docs';
 import {
   extractDisplayPaths,
+  extractEnhancerDisplayPaths,
   findPropertyMappings,
 } from '@/docs/extract/extract-display-paths';
 import { extractFixtureExample } from '@/docs/extract/extract-fixture-example';
@@ -69,6 +71,30 @@ const displayPaths = extractDisplayPaths(
     join(SRC, 'features/display/display-types.ts'),
   ])
 );
+
+/**
+ * Where one namespace's path list is read from.
+ *
+ * `PROPERTY_MAPPINGS` answers five namespaces; `selector`, `bundle` and `toggle` are
+ * resolved by their own enhancer's `getPropertyValue` instead. The choice is made
+ * here, from what the code actually contains, rather than declared in the manifest —
+ * a manifest flag would be a second thing to keep true, and getting it wrong is
+ * precisely what this page is supposed to make impossible.
+ *
+ * There is no third branch. A namespace neither source answers throws out of
+ * {@link extractEnhancerDisplayPaths}, which is the whole point: the page this
+ * replaces would have published "No paths are declared for the `bundle.` namespace"
+ * and looked deliberate.
+ */
+function displaySourceFor(
+  manifest: FeatureManifest,
+  files: Array<[string, string]>
+): { paths: DisplayPath[]; where?: string; prefixSegments?: number } {
+  const namespace = manifest.displayNamespace ?? '';
+  const routed = displayPaths[namespace];
+  if (routed?.length) return { paths: routed };
+  return extractEnhancerDisplayPaths(files, namespace);
+}
 
 /** Repo root, for reading `e2e/` and for the fixture paths printed in the docs. */
 const ROOT = join(SRC, '..');
@@ -549,15 +575,82 @@ describe('feature reference docs', () => {
 
     // The path inventory is generated for both modes: a hand-written page keeps
     // its prose and still gets a complete, current list of paths beside it.
-    it.runIf(!!manifest.displayNamespace)('display-paths.md matches the routing table', () => {
+    it.runIf(!!manifest.displayNamespace)('display-paths.md matches the source that resolves the namespace', () => {
       const file = join(refDir, 'display-paths.md');
-      const expected = renderDisplayPaths(manifest, displayPaths);
+      const expected = renderDisplayPaths(
+        manifest,
+        displaySourceFor(
+          manifest,
+          featureFiles(dir, manifest.id, ownFolder, manifest.extraSource)
+        )
+      );
       if (UPDATE) {
         mkdirSync(refDir, { recursive: true });
         writeFileSync(file, expected);
       }
       expect(existsSync(file), `${relative(SRC, file)} is missing`).toBe(true);
       expect(readFileSync(file, 'utf8')).toBe(expected);
+    });
+
+    /**
+     * The gate finding 114 asked for, in both directions.
+     *
+     * Forwards: a property added to `getPropertyValue` with no entry in the manifest
+     * fails here, so a new path cannot ship undocumented. Backwards: an entry for a
+     * property the enhancer cannot answer fails here too — which is finding 109
+     * exactly. `bundle-selector` documented `compare`, `savings`, `savingsPercentage`
+     * and `hasSavings` for months because they exist in the card renderer's format
+     * table, a different mechanism on a different attribute, and nothing compared the
+     * doc against the method that actually answers a `bundle.` path.
+     */
+    it.runIf(!!manifest.displayNamespace)('documents exactly the paths its namespace resolves', () => {
+      const source = displaySourceFor(
+        manifest,
+        featureFiles(dir, manifest.id, ownFolder, manifest.extraSource)
+      );
+
+      if (!manifest.displayPaths) {
+        // Prose is optional for a routing-table namespace, whose paths are the API's
+        // own field names, and required where the page replaced a hand-written one.
+        expect(
+          source.where,
+          `${manifest.id} resolves its own display paths, so displayPaths must carry a description for each one`
+        ).toBeUndefined();
+        return;
+      }
+
+      const resolved = source.paths.map(p => p.name);
+      const documented = manifest.displayPaths.paths.map(p => p.name);
+
+      expect(
+        resolved.filter(name => !documented.includes(name)),
+        `${manifest.id} resolves these display paths but its manifest does not describe them — add them to displayPaths.paths, or a page author gets a value with no documentation`
+      ).toEqual([]);
+      expect(
+        documented.filter(name => !resolved.includes(name)),
+        `${manifest.id}.manifest.ts describes these display paths but ${source.where ?? 'the routing table'} does not answer them — the page would teach markup that renders nothing`
+      ).toEqual([]);
+      expect(
+        documented.filter(name => !manifest.displayPaths?.paths.find(p => p.name === name)?.description.trim()),
+        'every documented path needs a description — the table is the reason the page exists'
+      ).toEqual([]);
+    });
+
+    /**
+     * `prefix` is a claim about the markup a reader types. Checking its segment count
+     * against the `parts.slice(n)` the enhancer parses is what stops it going stale
+     * the day a class reads one more segment out of the path.
+     */
+    it.runIf(!!manifest.displayPaths)('publishes a prefix with as many segments as the enhancer parses', () => {
+      const source = displaySourceFor(
+        manifest,
+        featureFiles(dir, manifest.id, ownFolder, manifest.extraSource)
+      );
+      if (source.prefixSegments === undefined) return;
+      expect(
+        manifest.displayPaths?.prefix.split('.').length,
+        `${manifest.id}'s prefix "${manifest.displayPaths?.prefix}" does not match the ${source.prefixSegments} segments ${source.where} parses before the property`
+      ).toBe(source.prefixSegments);
     });
 
     /**

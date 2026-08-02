@@ -50,9 +50,9 @@ mode, renders into its own shadow root (`#next-debug-overlay-host`) so your CSS 
 cannot reach each other, reads the stores on a one-second poll rather than subscribing, and
 keeps its own preferences in `localStorage`. It also does three things to the page while it
 is open: it wraps `window.fetch` to record API calls
-(`core/debug/DebugEventManager.ts › DebugEventManager.interceptFetch`),
+(`core/debug/debug-event-manager.ts › DebugEventManager.interceptFetch`),
 it adds a `debug-body-expanded` class to `<body>` and `<html>` when expanded
-(`core/debug/DebugOverlay.ts › DebugOverlay.updateBodyHeight`), and it puts the page into
+(`core/debug/debug-overlay.ts › DebugOverlay.updateBodyHeight`), and it puts the page into
 [test mode](./test-mode.md).
 
 ### Which switch does what
@@ -86,7 +86,7 @@ Read the surprises in that table rather than the pattern:
   which is how the mismatch survives review.)
 - **Only `debugger` opens the overlay.** `debugOverlay.initialize()` is called for any
   value of `config.debug`, and returns at its own gate unless `?debugger=true` or
-  `window.nextConfig.debugger === true` (`core/debug/DebugOverlay.ts › DebugOverlay.initialize`).
+  `window.nextConfig.debugger === true` (`core/debug/debug-overlay.ts › DebugOverlay.initialize`).
   **Symptom:** louder logs, `window.nextDebug` present, no panel. **Fix:** the parameter
   is `?debugger=true` — one letter, and it is the only way in.
 
@@ -111,7 +111,7 @@ Read the surprises in that table rather than the pattern:
 
 ### What the overlay shows
 
-Eight panels (`core/debug/DebugOverlay.ts › DebugOverlay.initializePanels`): **Cart** (items, totals, discounts),
+Eight panels (`core/debug/debug-overlay.ts › DebugOverlay.initializePanels`): **Cart** (items, totals, discounts),
 **Offers**, **Order** (the post-purchase order and its upsell journey), **Config**,
 **Campaign** (every package and price the campaign returned), **Checkout State** (form
 fields, validation, raw data), **Analytics & Events** (every `dl_*` event with per-provider
@@ -172,23 +172,23 @@ listing is in [storage keys](../reference/storage-keys.md).
   `?debugger=true` on. **Fix:** nothing you can set at runtime changes it — count those
   bytes as unconditional until the chunking is changed.
 - **The overlay remembers itself in `localStorage`**, under `debug-overlay-expanded`,
-  `debug-overlay-active-panel`, `debug-overlay-active-tab` (`core/debug/DebugOverlay.ts ›
+  `debug-overlay-active-panel`, `debug-overlay-active-tab` (`core/debug/debug-overlay.ts ›
   DebugOverlay`, the class's storage-key constants), `debug-mini-cart-visible`
-  (`core/debug/DebugOverlay.ts › DebugOverlay.show`), and `debug-xray-active`
-  (`core/debug/XrayStyles.ts › XrayManager`). **Trap:** those names do not begin with
+  (`core/debug/debug-overlay.ts › DebugOverlay.show`), and `debug-xray-active`
+  (`core/debug/xray-styles.ts › XrayManager`). **Trap:** those names do not begin with
   `next-`, so `?reset=true` does not clear them (see [storage and expiry](./storage.md)).
   **Symptom:** the overlay reopens expanded, on a panel you were using yesterday, or the
   page still has x-ray outlines. **Fix:** collapse or toggle it off through the overlay
   itself, which rewrites the key.
 - **An expanded overlay changes the page's own layout.** It adds `debug-body-expanded` to
-  `<body>` and `<html>` (`core/debug/DebugOverlay.ts › DebugOverlay.updateBodyHeight`).
+  `<body>` and `<html>` (`core/debug/debug-overlay.ts › DebugOverlay.updateBodyHeight`).
   **Trap:** a layout bug that only appears with the overlay open is the overlay's.
   **Fix:** collapse it before measuring anything.
 - **Only three panels live-update.** The one-second poll refreshes the quick stats plus the
   Cart, Config, and Campaign panels, and skips a panel whose "raw" tab is showing
-  (`core/debug/DebugOverlay.ts › DebugOverlay.startAutoUpdate`); the Analytics panel
+  (`core/debug/debug-overlay.ts › DebugOverlay.startAutoUpdate`); the Analytics panel
   re-renders when the delivery tracker changes
-  (`core/debug/DebugOverlay.ts › DebugOverlay.setupEventListeners`).
+  (`core/debug/debug-overlay.ts › DebugOverlay.setupEventListeners`).
   **Trap:** a panel not on that list can show state from when you opened it. **Fix:**
   switch away and back, which forces a re-render.
 - **Opening the overlay arms test mode.** `?debugger=true` and
@@ -235,12 +235,12 @@ listing is in [storage keys](../reference/storage-keys.md).
   combination, so a page already loaded without `?debugger=true` needs a reload with the
   parameter. `window.nextDebug.overlay()` can be toggled by hand, but the instance builds
   its panels only if `?debug`, `?debugger`, `nextConfig.debug`, or `nextConfig.debugger` was
-  present when it was constructed (`core/debug/DebugOverlay.ts › DebugOverlay.constructor`)
+  present when it was constructed (`core/debug/debug-overlay.ts › DebugOverlay.constructor`)
   — with the `next-debug` meta tag alone it has none, and toggling renders an empty
   overlay.
 - **The overlay is not a supported interface.** Panel names, tabs, and its `localStorage`
   keys are internal and change between releases; nothing should be automated against them.
 - **The overlay does not show console output.** It records a fixed list of DOM events and
   the SDK's API calls, not log lines — the console remains the only place to read those.
-- **`core/debug/DebugModule.ts` is unreachable.** Nothing under `src/` imports it; the live
+- **`core/debug/debug-module.ts` is unreachable.** Nothing under `src/` imports it; the live
   path is `SDKInitializer.initializeDebugMode`. Its behaviour is not a contract to build on.

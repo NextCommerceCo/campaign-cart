@@ -3,7 +3,7 @@
  * Modern design with better UX and comprehensive functionality
  */
 
-import { DebugPanel } from './DebugPanels';
+import { DebugPanel } from './debug-panels';
 
 export class EnhancedDebugUI {
 

@@ -182,7 +182,7 @@ export class CampaignPanel implements DebugPanel {
   }
 }
 
-// EventsPanel moved to panels/EventTimelinePanel.ts for enhanced functionality
+// EventsPanel moved to panels/event-timeline-panel.ts for enhanced functionality
 // The EventTimelinePanel is now the primary events panel with dataLayer watching
 
 export class StoragePanel implements DebugPanel {

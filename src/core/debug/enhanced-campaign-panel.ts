@@ -5,8 +5,8 @@
 import { useCampaignStore } from '@/state/campaign';
 import { useCartStore, cartOperations } from '@/state/cart';
 import { useConfigStore } from '@/state/config';
-import { DebugPanel, PanelAction, PanelTab } from './DebugPanels';
-import { RawDataHelper } from './panels/RawDataHelper';
+import { DebugPanel, PanelAction, PanelTab } from './debug-panels';
+import { RawDataHelper } from './panels/raw-data-helper';
 import { lucide } from './icons';
 
 interface Package {

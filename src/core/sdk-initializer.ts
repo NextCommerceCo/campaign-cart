@@ -897,7 +897,7 @@ export class SDKInitializer {
       this.logger.info('Logger level set to DEBUG');
 
       // Initialize debug overlay only in debug mode
-      const { debugOverlay } = await import('@/core/debug/DebugOverlay');
+      const { debugOverlay } = await import('@/core/debug/debug-overlay');
       debugOverlay.initialize();
 
       // Initialize test mode manager
@@ -917,7 +917,7 @@ export class SDKInitializer {
       // Add global debug utilities to window for console access
       (window as any).nextDebug = {
         overlay: () =>
-          import('@/core/debug/DebugOverlay').then(m => m.debugOverlay),
+          import('@/core/debug/debug-overlay').then(m => m.debugOverlay),
         testMode: testModeManager,
         stores: {
           cart: useCartStore,

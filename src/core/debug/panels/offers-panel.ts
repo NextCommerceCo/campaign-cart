@@ -9,9 +9,9 @@ import { useCartStore, cartOperations } from '@/state/cart';
 import { useCampaignStore } from '@/state/campaign';
 import { EventBus } from '../../events';
 import type { Offer } from '../../../types/campaign';
-import { DebugPanel, PanelAction, PanelTab } from '../DebugPanels';
+import { DebugPanel, PanelAction, PanelTab } from '../debug-panels';
 import { lucide } from '../icons';
-import { RawDataHelper } from './RawDataHelper';
+import { RawDataHelper } from './raw-data-helper';
 
 type AttemptResult = 'applied' | 'failed' | 'removed';
 

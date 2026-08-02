@@ -25,8 +25,8 @@ Every entry below is read out of the source, so the list cannot fall behind the 
 |---|---|---|
 | [`window.next`](#windownext) | install | `core/sdk-initializer.ts › SDKInitializer.setupReadyCallbacks` |
 | [`window.nextReady`](#windownextready) | install | `core/sdk-initializer.ts › SDKInitializer.setupReadyCallbacks` |
-| [`window.nextConfig`](#windownextconfig) | read | `core/debug/DebugModule.ts › DebugModule.initializeIfEnabled` and 10 more |
-| [`window.__NEXT_SDK_VERSION__`](#window__next_sdk_version__) | read | `core/debug/panels/ConfigPanel.ts › ConfigPanel.getOverviewContent` and 3 more |
+| [`window.nextConfig`](#windownextconfig) | read | `core/debug/debug-module.ts › DebugModule.initializeIfEnabled` and 10 more |
+| [`window.__NEXT_SDK_VERSION__`](#window__next_sdk_version__) | read | `core/debug/panels/config-panel.ts › ConfigPanel.getOverviewContent` and 3 more |
 | [`window.NextDataLayer`](#windownextdatalayer) | install | `core/analytics/data-layer-manager.ts › DataLayerManager.initializeDataLayer`, `core/analytics/data-layer-manager.ts › DataLayerManager.clear` |
 | [`window.NextDataLayerTransformFn`](#windownextdatalayertransformfn) | install | `core/analytics/data-layer-manager.ts › DataLayerManager.initializeDataLayer` and 2 more |
 | [`window.NextAnalytics`](#windownextanalytics) | install | `core/analytics/index.ts` |
@@ -35,15 +35,15 @@ Every entry below is read out of the source, so the list cannot fall behind the 
 | [`window.NextInvalidateContext`](#windownextinvalidatecontext) | install | `core/analytics/index.ts` |
 | [`window.NextAnalyticsClearIgnore`](#windownextanalyticsclearignore) | install | `core/analytics/index.ts` |
 | [`window.nextCampaign`](#windownextcampaign) | read | `core/analytics/providers/next-campaign-adapter.ts › NextCampaignAdapter.sendEvent` and 3 more |
-| [`window.dataLayer`](#windowdatalayer) | install | `core/analytics/providers/gtm-adapter.ts › GTMAdapter.sendEvent`, `core/debug/panels/EventTimelinePanel.ts › EventTimelinePanel.watchDataLayer` |
+| [`window.dataLayer`](#windowdatalayer) | install | `core/analytics/providers/gtm-adapter.ts › GTMAdapter.sendEvent`, `core/debug/panels/event-timeline-panel.ts › EventTimelinePanel.watchDataLayer` |
 | [`window.ElevarDataLayer`](#windowelevardatalayer) | install | `core/analytics/providers/gtm-adapter.ts › GTMAdapter.sendEvent` |
 | [`window._nextForcePackageId`](#window_nextforcepackageid) | install | `core/sdk-initializer.ts › SDKInitializer.loadConfiguration` |
 | [`window._nextForceShippingId`](#window_nextforceshippingid) | install | `core/sdk-initializer.ts › SDKInitializer.loadConfiguration` |
 | [`window._nextForceBundleId`](#window_nextforcebundleid) | install | `core/sdk-initializer.ts › SDKInitializer.loadConfiguration` |
-| [`window.nextDebug`](#windownextdebug) | install | `core/debug/DebugModule.ts › DebugModule.setupGlobalDebugAccess`, `core/sdk-initializer.ts › SDKInitializer.setupGlobalDebugUtils` |
+| [`window.nextDebug`](#windownextdebug) | install | `core/debug/debug-module.ts › DebugModule.setupGlobalDebugAccess`, `core/sdk-initializer.ts › SDKInitializer.setupGlobalDebugUtils` |
 | [`window.validateFormats`](#windowvalidateformats) | install | `features/display/display-core/format-validator.ts` |
 | [`window.eventTimelinePanel_*`](#windoweventtimelinepanel_) | install | 11 names, see below |
-| [`window.fetch`](#windowfetch) | install | `core/debug/DebugEventManager.ts › DebugEventManager.interceptFetch` |
+| [`window.fetch`](#windowfetch) | install | `core/debug/debug-event-manager.ts › DebugEventManager.interceptFetch` |
 
 ## What your page should use
 
@@ -98,7 +98,7 @@ The configuration object your page sets before the SDK loads — API key, debug 
 
 > ⚠️ Read during boot, so it has to be set before the SDK script runs; assigning it afterwards changes nothing. Meta tags override it where both are present.
 
-<sub>Read in `core/debug/DebugModule.ts › DebugModule.initializeIfEnabled`, `core/debug/DebugModule.ts › DebugModule.isDebugMode`, `core/debug/DebugOverlay.ts › DebugOverlay.constructor`, `core/debug/DebugOverlay.ts › DebugOverlay.initialize`, `core/debug/panels/EventTimelinePanel.ts › EventTimelinePanel.constructor`, `core/logger.ts › isDebugModeEnabled`, `core/sdk-initializer.ts › SDKInitializer.loadConfiguration`, `core/test-mode.ts › TestModeManager.checkUrlTestMode`, `core/url-utils.ts › isDebugMode`, `core/url-utils.ts › isDebuggerMode`, `features/cart/cart-item-list/cart-item-list.renderer.ts › prepareCartItemData`</sub>
+<sub>Read in `core/debug/debug-module.ts › DebugModule.initializeIfEnabled`, `core/debug/debug-module.ts › DebugModule.isDebugMode`, `core/debug/debug-overlay.ts › DebugOverlay.constructor`, `core/debug/debug-overlay.ts › DebugOverlay.initialize`, `core/debug/panels/event-timeline-panel.ts › EventTimelinePanel.constructor`, `core/logger.ts › isDebugModeEnabled`, `core/sdk-initializer.ts › SDKInitializer.loadConfiguration`, `core/test-mode.ts › TestModeManager.checkUrlTestMode`, `core/url-utils.ts › isDebugMode`, `core/url-utils.ts › isDebuggerMode`, `features/cart/cart-item-list/cart-item-list.renderer.ts › prepareCartItemData`</sub>
 
 ### `window.__NEXT_SDK_VERSION__`
 
@@ -110,7 +110,7 @@ console.log(window.__NEXT_SDK_VERSION__ ?? 'set by the loader only');
 
 > ⚠️ Only the loader sets it. On a page that imports the bundle directly it is `undefined`, and `next.getVersion()` falls back to the build-time version — which is the accurate one in that case.
 
-<sub>Read in `core/debug/panels/ConfigPanel.ts › ConfigPanel.getOverviewContent`, `core/debug/panels/ConfigPanel.ts › ConfigPanel.getSettingsContent`, `core/next-commerce.ts › NextCommerce.getVersion`, `core/sdk-initializer.ts › SDKInitializer.initializeAttribution`</sub>
+<sub>Read in `core/debug/panels/config-panel.ts › ConfigPanel.getOverviewContent`, `core/debug/panels/config-panel.ts › ConfigPanel.getSettingsContent`, `core/next-commerce.ts › NextCommerce.getVersion`, `core/sdk-initializer.ts › SDKInitializer.initializeAttribution`</sub>
 
 ## Analytics and tag-manager hooks
 
@@ -231,7 +231,7 @@ console.log(window.dataLayer.filter(e => e.event?.startsWith('dl_')));
 
 > ⚠️ Created with `window.dataLayer = window.dataLayer || []`, so an existing queue is preserved and load order does not matter. Do not reassign it — replacing the array orphans everything GTM has already read.
 
-<sub>Assigned in `core/analytics/providers/gtm-adapter.ts › GTMAdapter.sendEvent`, `core/debug/panels/EventTimelinePanel.ts › EventTimelinePanel.watchDataLayer`</sub>
+<sub>Assigned in `core/analytics/providers/gtm-adapter.ts › GTMAdapter.sendEvent`, `core/debug/panels/event-timeline-panel.ts › EventTimelinePanel.watchDataLayer`</sub>
 
 ### `window.ElevarDataLayer`
 
@@ -331,7 +331,7 @@ nextDebug.attribution.debug();
 
 > ⚠️ It hands out the six Zustand stores directly, and a `setState` on one of those skips every operation that carries the pricing and event logic — the cart will disagree with its totals and with analytics. Read through it; write through `next.*`. Absent entirely when debug mode is off, and assembled in two passes (boot, then the debug overlay), so a key can appear a moment after the object does.
 
-<sub>Assigned in `core/debug/DebugModule.ts › DebugModule.setupGlobalDebugAccess`, `core/sdk-initializer.ts › SDKInitializer.setupGlobalDebugUtils`</sub>
+<sub>Assigned in `core/debug/debug-module.ts › DebugModule.setupGlobalDebugAccess`, `core/sdk-initializer.ts › SDKInitializer.setupGlobalDebugUtils`</sub>
 
 ### `window.validateFormats`
 
@@ -359,7 +359,7 @@ The browser's own `fetch`, wrapped by the debug event manager so API calls appea
 
 > ⚠️ A monkey-patch of a browser global — the one entry here that changes behaviour outside the SDK. It delegates to the original and only adds logging, but it is installed for the life of the page and never restored, so anything that also wraps `fetch` will see the patched version. Debug mode only.
 
-<sub>Assigned in `core/debug/DebugEventManager.ts › DebugEventManager.interceptFetch`</sub>
+<sub>Assigned in `core/debug/debug-event-manager.ts › DebugEventManager.interceptFetch`</sub>
 
 ## Cautions
 

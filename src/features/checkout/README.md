@@ -73,7 +73,7 @@ estimated (`handleFieldChange` as it now stands, after the display half came out
 | Method | Lines | `this.` fields | `this.` calls |
 |---|---|---|---|
 | `handleFormSubmit` | 240 | 11 | 5 |
-| `initialize` | 228 | **23** | **18** |
+| `initialize` | ~~223~~ → 59 | ~~18~~ | ~~18~~ — **done, see below** |
 | `handleFieldChange` (value routing, remainder) | ~160 | 9 | 7 |
 
 **`handleFieldChange` — half done.** It looked like one big switch but was really **two**
@@ -92,13 +92,18 @@ multi-step navigation, and the normal order submit. Extract one function per rou
 thin dispatcher. **This is the money path** — each route needs its own E2E before and after,
 not just the suite as a whole.
 
-**`initialize` — do not extract it; re-sequence it.** With 23 fields and 18 calls it touches
-nearly the whole class, so pulling pieces out would produce a context object that is simply
-the enhancer again. What it actually is, is a **boot sequence**: an ordered list of named
-steps. `core/sdk-initializer.ts` already has exactly this shape, and the docs generator
-reads that order to publish `core/guide/reference/boot-sequence.md`. Give this the same
-treatment — a flat, ordered list of well-named private steps, each doing one thing — and it
-becomes readable without moving a line out of the file. Extraction is the wrong tool here.
+**`initialize` — re-sequenced, not extracted (done).** With 18 fields and 18 calls it touched
+nearly the whole class, so pulling pieces out would have produced a context object that was
+simply the enhancer again. What it actually is, is a **boot sequence**: an ordered list of
+named steps, the shape `core/sdk-initializer.ts` already has. It now reads as one: 223 lines
+became 59, a 25-step sequence — 15 of them new private methods listed under a
+`BOOT SEQUENCE STEPS` banner in the order they run — with every line moved verbatim and no
+statement reordered. Extraction was the wrong tool; nothing left the file.
+
+The order is the contract, so it is asserted rather than described: `tests/boot-sequence.test.ts`
+replaces every step with a recorder and compares the recorded order against the full list,
+including the one conditional step (`initializeCreditCard`, which runs only when a Spreedly
+environment key is configured).
 
 Also still in the enhancer: field scanning/population, address management, payment, and
 order submission itself.
@@ -116,7 +121,7 @@ extracts either one.
 | `processors/express-checkout-processor.ts` | `ExpressCheckoutProcessor` | Handles express payment flows |
 | `managers/order-manager.ts` | `OrderManager` | Builds and submits the order API call. Takes an `IApiClient` — see [`api/README.md`](../../api/README.md) |
 | `services/credit-card-service.ts` | `CreditCardService` | Tokenizes card data (Stripe/Braintree) |
-| `services/ui-service.ts` | `UIService` | Manages form UI state (errors, loading, button) |
+| `services/ui-service/` | `UIService` | Manages form UI state (errors, loading, payment forms, floating labels). Split — see below |
 | `validation/checkout-validator.ts` | `CheckoutValidator` | Field validation rules |
 | `builders/order-builder.ts` | `OrderBuilder` | Assembles `CreateOrder` payload |
 | `address-autocomplete/` | `AddressAutocompleteEnhancer` | Address suggestions in the form |
@@ -124,6 +129,30 @@ extracts either one.
 | `utils/`, `debug/` | — | URL/redirect helpers and the checkout debug panel |
 | `checkout.types.ts` | — | Types shared across the checkout features |
 | `tests/` | — | Tests for the shared pieces above (`OrderBuilder`). A feature's own tests live in that feature's folder |
+
+#### Inside `services/ui-service/` — split by layer
+
+`ui-service.ts` was 1,080 lines holding four unrelated jobs. It is now a folder whose
+`ui-service.ts` is an orchestrator: it owns the mutable state and delegates each job to a
+module taking an explicit **context object**, the same shape the `checkout-form/` modules
+use. `index.ts` keeps the import path callers already use — `../services/ui-service` — so
+nothing outside the folder changed.
+
+| Module | What it owns | Needs from the service |
+|---|---|---|
+| `loading-state.ts` | Which sections are busy, and the progress bar. The form is `next-processing` while **any** section is, which is why the per-section map exists | 3 fields |
+| `field-error-display.ts` | Validation messages on the fields, scroll-and-focus to the first problem, and the ARIA that describes both | 5 fields |
+| `payment-form-display.ts` | Revealing the chosen payment method's fields and collapsing the rest — snapped at startup from the store, animated on a change | 3 fields |
+| `floating-labels.ts` | Labels that float above filled inputs, including the poll that catches browser autofill and the bridge for the hosted card fields | 5 fields |
+
+Each has a colocated test in `ui-service/tests/`. Three defects those tests pin down are
+left as found, each documented at the test that reproduces it: switching payment method
+twice inside 300 ms leaves the deselected form open, `updateFieldState('valid')` leaves the
+error icon and message behind, and `enhanceAccessibility` looks for the message in the
+field's parent while `ErrorDisplayManager` writes it to the `.form-group`. **And nothing
+calls `UIService.destroy()`** — `CheckoutFormEnhancer.destroy()` tears down its validator,
+card service, prospect cart, phone inputs, and autocomplete, but not this service, so the
+autofill poll and every label listener outlive the form.
 
 **Attributes and errors documented by `checkout-form` are read and thrown in the shared
 folders** — `ui-service` reads `data-next-payment-method`, `order-manager` and

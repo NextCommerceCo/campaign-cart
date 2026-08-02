@@ -313,17 +313,20 @@ function scanFeatures() {
 
 /**
  * Every `data-next-display` namespace, the feature that owns it, and whether that
- * feature publishes the list of paths the namespace can show
+ * feature publishes a **generated** list of the paths the namespace can show
  * (`guide/reference/display-paths.md`).
  *
- * Read from `AttributeScanner`'s display routing rather than from the manifests,
- * because the manifest field only exists for the five namespaces whose paths come
- * from `PROPERTY_MAPPINGS`. The other three — `selector.`, `bundle.`, `toggle.` —
- * resolve their properties inside their own enhancer, so nothing declared them and
- * nothing measured them: an author could write
- * `data-next-display="selector.{id}.{pkg}.savings"`, have it resolve, and find no
- * page anywhere that says the path exists. That is the documentation half of
- * finding 95.
+ * Read from `AttributeScanner`'s display routing rather than from the manifests, so
+ * the denominator is every namespace the SDK really answers — a namespace whose
+ * manifest forgot `displayNamespace` has to count as a gap, not vanish from the
+ * total. That is the documentation half of finding 95.
+ *
+ * **Generated, not merely present**, since finding 114: the three cart namespaces
+ * were hand-written for want of a generator, and a hand-written property table is
+ * unchecked by definition. `bundle-selector`'s listed four properties its enhancer
+ * has no case for (finding 109) while this metric read 8/8. Counting the "do not
+ * edit by hand" marker is what stops a page quietly reverting to prose the next time
+ * one is added.
  */
 function scanDisplayNamespaces() {
   const file = join(SRC, 'core/attribute-scanner.ts');
@@ -363,11 +366,16 @@ function scanDisplayNamespaces() {
   }
 
   return [...byFeature.values()]
-    .map(row => ({
-      id: row.dir.split(/[\\/]/).pop(),
-      namespaces: [...new Set(row.namespaces)].sort(),
-      hasPaths: existsSync(join(row.dir, 'guide/reference/display-paths.md')),
-    }))
+    .map(row => {
+      const page = join(row.dir, 'guide/reference/display-paths.md');
+      return {
+        id: row.dir.split(/[\\/]/).pop(),
+        namespaces: [...new Set(row.namespaces)].sort(),
+        hasPaths:
+          existsSync(page) &&
+          readFileSync(page, 'utf8').includes('Do not edit by hand'),
+      };
+    })
     .sort((a, b) => a.id.localeCompare(b.id));
 }
 
@@ -926,13 +934,14 @@ const KINDS = [
   },
   {
     key: 'displayNamespacesWithoutPaths',
-    label: 'data-next-display namespaces with a reference/display-paths.md',
+    label: 'data-next-display namespaces with a generated reference/display-paths.md',
     have: displayNamespaces.length - displayNamespacesWithoutPaths.length,
     total: displayNamespaces.length,
     fix:
-      'add guide/reference/display-paths.md to the owning feature — generated from ' +
-      'PROPERTY_MAPPINGS when the manifest sets displayNamespace, hand-written when ' +
-      'the enhancer resolves its own properties',
+      'set displayNamespace on the owning feature\'s manifest, then run npm run ' +
+      'docs:reference — the paths come from PROPERTY_MAPPINGS or from the enhancer\'s ' +
+      'own getPropertyValue, whichever answers the namespace, and an enhancer-answered ' +
+      'one also needs displayPaths for the prose',
   },
   {
     key: 'storesWithoutReference',
