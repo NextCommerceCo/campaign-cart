@@ -15,7 +15,7 @@ findings 116–126 from wave 2 on the same day (the `core/debug/` kebab rename, 
 hardening, and the `ui-service` split), and findings 127-137 from wave 3 (the teardown fixes,
 the format-table gate, the `core/debug` method breakup and the `checkout-validator` split);
 and findings 138-148 from wave 4 (the order-payload reconciliation, the routed-display gate,
-the `core/debug` split, the `prospect-cart` split and the test type gate); findings 149-153 from wave 5, findings 154-161 from wave 6, findings 162-167 from wave 7, findings 168-171 from wave 8, findings 172-178 from wave 9, and findings 179-184 from wave 10; each wave has its own
+the `core/debug` split, the `prospect-cart` split and the test type gate); findings 149-153 from wave 5, findings 154-161 from wave 6, findings 162-167 from wave 7, findings 168-171 from wave 8, findings 172-178 from wave 9, findings 179-184 from wave 10, and findings 185-190 from wave 11; each wave has its own
 section near the end. **Finding 144 was wrong as written and is corrected in place.** **Findings 127 and 130-133 are the most serious
 things this restructure has turned up** - a published page teaching ten paths that render
 nothing, and a validation layer that blocks non-Latin names while letting unvalidated billing
@@ -3126,6 +3126,108 @@ utm and debug parameters survive a normal submit and are dropped on an express o
 
 `setOrCreateMetaTag` was a third, byte-identical copy; the new `meta-tags.ts` imports the shared
 one instead of carrying its own.
+
+---
+
+## Found during the wave-11 restructure (2026-08-03)
+
+Four agents: the last liftable `checkout-form` clusters, the unused-export backlog, the
+`next-commerce` / `ecommerce-events` splits, and the debug overlay. **Finding 185 is a gate a
+page author sets that the SDK opens by itself.**
+
+### 185. The submit button re-enables itself, defeating an author's own gate — *verified*
+
+`handleCheckoutUpdate` runs on **every** checkout-store change, and its `isProcessing === false`
+arm writes `submitButton.disabled = false` rather than leaving the button as it found it. On a
+normal page the first change is the shopper's first keystroke.
+
+So a pay button an author holds shut until terms are accepted — the ordinary way to gate a
+checkout — **opens itself**, and the order can be submitted through a gate the page meant to
+keep closed. Pinned by a `DEFECT:` test in `checkout-form/tests/store-subscriptions.test.ts`.
+
+**Fix:** only re-enable what this code disabled. Track the button's state on the way in, or
+stop touching `disabled` on the not-processing path at all.
+
+### 186. Three defects on the prospect-cart path, none of them a race — *verified*
+
+Each was reproduced with a throwaway probe rather than inferred:
+
+- **A cart is created on the server 300 ms after the form is destroyed.** Every email/name/phone
+  blur is debounced 300 ms and the cart-update path 1,000 ms, but
+  `ProspectCartEnhancer.cleanupEventListeners()` aborts only the `AbortController` — which drops
+  listeners and never a scheduled timer — and there is no `destroy()` override that clears them.
+  A shopper whose form was torn down (SPA swap, `next.destroy()`) is still recorded as an
+  abandoned prospect, and on a swap to a *different* checkout the wrong one is recorded.
+- **A failed creation is never retried for the rest of the page.** `checkAndCreateCart()` sets
+  `hasTriggeredRef.value = true` unconditionally after calling an un-awaited
+  `createProspectCart()`, which swallows every failure into a `logger.error`. One 500 — or one
+  moment with an unhydrated cart, which trips the same latch through the
+  `isEmpty || items.length === 0` early return — and the recovery email is never sent, with
+  nothing in the UI to say so.
+- **Correcting an email after the cart exists never reaches the server.** `updateProspectCart()`
+  is a documented no-op and the latch blocks a second create. Type `ada@gmial.com`, blur, fix it
+  to `ada@gmail.com`, submit — the recovery email still goes to the typo. **This is not a
+  race:** the payload is snapshotted synchronously before the first `await`, so *every* later
+  edit is dropped, not merely fast ones.
+
+### 187. `checkout-form`'s teardown is not liftable, and that is now measured — *closed*
+
+`cleanupEventListeners` (56 lines, 12 fields) plus `destroy` (53, 13) measures **109 lines and
+23 fields** — worse than `initialize` (18) and `initializeAddressManagement` (10), the two this
+feature re-sequenced in place rather than lift. It is also *already* the flat ordered
+named-step shape re-sequencing produces, so a second pass would add methods without removing a
+line.
+
+Recorded so the next reader does not re-open it: the enhancer is ~2,389 lines and what remains
+is the Spreedly wiring, `handleFormSubmit` and its three routes, `createTestOrder`,
+`getNextPageUrlFromMeta`, and this teardown. **Only the first two are worth another wave, and
+both are gated on a decision.**
+
+### 188. `.d.ts` emit outranks the unused-export gate — *verified, and it will bite again*
+
+Unexporting a class that an exported `const x = X.getInstance()` names **breaks declaration
+emit**. `tsc --noEmit` does not see it; `npm run type-check` passes; the failure appears only in
+`npm run build`. Seven symbols stay exported for exactly this reason —
+`DataLayerManager`, `CountrySelector`, `CurrencySelector`, `LocaleSelector`, `UpsellSelector`,
+`SelectorContainer`, `PROVIDER_SETTINGS`.
+
+Also worth knowing before the next pass: **`check:unused-exports:update` freezes whatever the
+tree reports at that instant.** During a parallel wave that includes another agent's half-wired
+files. Diff the baseline against `HEAD`'s before committing it. Both notes are now in
+`.claude/rules/typescript.md`.
+
+### 189. Four kinds of dead export that are not dead — *verified*
+
+Working the baseline from 172 to 91 turned up four categories a naive sweep removes and
+should not:
+
+- **A literal a generator reads out of the file's text.** `META_TAG_SELECTORS` has no importer,
+  but `core/guide/reference/meta-tags.md` cites it on **five rows**, read from its
+  `meta[name="…"]` literals. Deleting it silently drops citations from a published page.
+- **A symbol whose unreachability is itself the published fact.** `core/debug/debug-module.ts`
+  is cited by four generated pages, and `subsystems/logging-and-debug.md` states in prose that
+  nothing imports it. The same for `validateProviderConfig`, which `logs.md` documents as
+  *"exported but never called anywhere in the SDK"* — even dropping the keyword makes that
+  sentence false.
+- **An interface that looks like a legacy class's neighbour.** `debug-panels.ts`'s four classes
+  really were superseded, but its three *interfaces* are the contract nine live panels and
+  `debug-overlay.ts` implement. Deleting the file would have broken the overlay.
+- **Test-only importers.** A helper used solely by tests is test infrastructure, not dead code.
+
+Corrections to finding 182's clustering: the "abandoned analytics-provider build-out" is not
+abandoned — `analytics/index.ts` drives all four of those classes; what was dead was four eager
+module-level singletons and thirteen in-file helpers. And **the baseline was 172, not the 235 I
+recorded.**
+
+### 190. Moving a TSDoc comment can break a `{@link}` that compiles fine — *verified*
+
+Lifting method documentation out of `NextCommerce` and onto its sibling functions broke ten
+short-form `{@link NextCommerce.addItem}` references, because TypeDoc resolves an unqualified
+link relative to the file it sits in. `tsc` is silent; `docs:check` fails with
+*"Failed to resolve link"*. Fixed by qualifying to `{@link core/next-commerce!NextCommerce.X}`.
+
+This is the same family as finding 183 — a generator reading something the type checker does
+not — one layer up: not the code's location, but the comment's.
 
 ---
 
