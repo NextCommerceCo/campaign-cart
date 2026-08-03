@@ -12,6 +12,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The versioned docs site is one folder per released tag, and
+          # src/tests/docs/docsVersions.test.ts asserts that index is well-formed.
+          # actions/checkout fetches no tags by default, so the test read an empty
+          # list and failed on every run since the versioned site landed.
+          # scripts/docs-versions.mjs reads `git for-each-ref refs/tags`, so the refs
+          # are all it needs — the default depth of 1 stays, no full history.
+          fetch-tags: true
 
       - uses: oven-sh/setup-bun@v2
         with:

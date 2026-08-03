@@ -81,7 +81,15 @@ const eligible = generate(['--all']);
 
 describe('docs site version index', () => {
   it('finds at least one release eligible for a versioned docs build', () => {
-    expect(eligible.length).toBeGreaterThan(0);
+    // Zero here almost always means the checkout has no tags rather than that the
+    // project has no releases — `actions/checkout` fetches none unless asked, which
+    // failed this suite on every CI run until `fetch-tags: true` was added. The other
+    // two cases in this file then fail with `undefined.version`, which says nothing
+    // about the cause; say it here instead.
+    expect(
+      eligible.length,
+      'no release tags visible — in CI check that actions/checkout runs with `fetch-tags: true`; locally check `git for-each-ref refs/tags`'
+    ).toBeGreaterThan(0);
   });
 
   it('lists versions newest first', () => {
