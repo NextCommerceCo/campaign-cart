@@ -42,6 +42,8 @@
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
     "type-check": "tsc --noEmit",
+    "ci:local": "bash scripts/ci-local.sh",
+    "ci:checkout-probe": "bash scripts/ci-checkout-probe.sh",
     "type-check:tests": "node scripts/type-check-tests.mjs",
     "type-check:tests:update": "UPDATE_TYPE_CHECK_BASELINE=1 node scripts/type-check-tests.mjs",
     "check:unused": "node scripts/check-unused.mjs",
