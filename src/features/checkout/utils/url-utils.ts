@@ -2,11 +2,6 @@
  * URL utility functions for checkout forms
  */
 
-export function getUrlParam(param: string): string | undefined {
-  const urlParams = new URLSearchParams(window.location.search);
-  return urlParams.get(param) || undefined;
-}
-
 export function getSuccessUrl(): string {
   // Check for meta tag first (support both new and legacy names)
   const metaTag = document.querySelector('meta[name="next-success-url"]') as HTMLMetaElement ||

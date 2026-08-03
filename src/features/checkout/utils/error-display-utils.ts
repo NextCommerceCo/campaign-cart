@@ -200,5 +200,3 @@ export class ErrorDisplayManager {
   }
 }
 
-// Export singleton instance for common use
-export const errorDisplayManager = new ErrorDisplayManager();

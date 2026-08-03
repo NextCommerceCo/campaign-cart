@@ -348,7 +348,7 @@ Container for express payment buttons. Manages visibility of PayPal/Apple Pay/Go
 
 ## Validation
 
-`CheckoutValidator` validates fields on submit and optionally on blur. Validation rules are defined in `constants/validation-config.ts`.
+`CheckoutValidator` validates fields on submit and optionally on blur. The rules live in `validation/`: `validation/field-rules.ts` builds the per-field rule set, `validation/validation-patterns.ts` holds the email/phone/name checks, and `validation/field-labels.ts` turns a field name into the wording an error message uses.
 
 Error display is handled by `UIService` which looks for `[data-next-error="<fieldName>"]` or `[os-checkout-error="<fieldName>"]` elements adjacent to or within each field.
 

@@ -51,28 +51,6 @@ export function isPayPalAvailable(): boolean {
   return true;
 }
 
-/**
- * Filter payment methods based on device/browser capabilities
- */
-export function filterAvailablePaymentMethods(methods: string[]): string[] {
-  return methods.filter(method => {
-    switch (method) {
-      case 'apple_pay':
-        return isApplePayAvailable();
-      case 'google_pay':
-        return isGooglePayAvailable();
-      case 'paypal':
-        return isPayPalAvailable();
-      default:
-        // Unknown methods are allowed by default
-        return true;
-    }
-  });
-}
-
-/**
- * Get detailed device payment capabilities
- */
 export function getPaymentCapabilities(): {
   applePay: boolean;
   googlePay: boolean;

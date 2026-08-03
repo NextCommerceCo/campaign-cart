@@ -65,7 +65,7 @@ export interface DetailTabsDeps {
 }
 
 /** Tabbed detail body for the event modal: Flow / Validation. */
-export function renderDetailTabs(
+function renderDetailTabs(
   event: TimelineEvent,
   selectedDetailTab: DetailTab,
   selectedFlowNode: string | null,

@@ -43,7 +43,7 @@ export function renderViewTabs(
 }
 
 /** Compact ecommerce figures for an Analytics row: total value and item count. */
-export function getEcommerceSummary(event: TimelineEvent): {
+function getEcommerceSummary(event: TimelineEvent): {
   value: string | null;
   items: number | null;
 } {
@@ -70,7 +70,7 @@ export function getEcommerceSummary(event: TimelineEvent): {
   return { value, items: arr ? arr.length : null };
 }
 
-export function renderTableHead(view: 'analytics' | 'events'): string {
+function renderTableHead(view: 'analytics' | 'events'): string {
   const cols =
     view === 'analytics'
       ? `<th style="width:13%">Time</th>
@@ -94,7 +94,7 @@ export interface EventRowDeps {
   renderDeliverySummary(event: TimelineEvent): string;
 }
 
-export function renderValidationBadge(
+function renderValidationBadge(
   event: TimelineEvent,
   deps: Pick<EventRowDeps, 'getEventIssues'>
 ): string {
@@ -108,7 +108,7 @@ export function renderValidationBadge(
   return `<span class="${cls}">${ico} ${isError ? 'INVALID' : 'CHECK'}</span>`;
 }
 
-export function renderEventRow(
+function renderEventRow(
   event: TimelineEvent,
   view: 'analytics' | 'events',
   deps: EventRowDeps
@@ -147,7 +147,7 @@ export function renderEventRow(
 }
 
 /** Empty-state message, aware of the dl_-only default filter. */
-export function renderEmptyState(
+function renderEmptyState(
   events: TimelineEvent[],
   view: 'analytics' | 'events',
   hasActiveFilters: boolean

@@ -77,7 +77,38 @@ leaves open — both frozen-baseline scripts, same shape as `type-check-tests.mj
 
 Run `npm run check:unused-exports:update` (or `check:unused:update` for the sibling gate) to
 re-freeze the baseline after a deliberate change to what is tolerated, with a `notes` entry
-saying why.
+saying why. **`:update` freezes whatever the tree reports at that moment**, including findings
+another agent's half-finished edit just created — diff the baseline against `HEAD`'s copy before
+committing, and note anything you did not judge yourself.
+
+### Clearing an unused export
+
+Three outcomes, in order of preference:
+
+1. **Drop the `export` keyword.** The default when the symbol still has callers inside its own
+   file. The code stays, the module surface shrinks, and nothing a generator reads changes —
+   the file, the symbol name, and every string literal are untouched, so a source anchor like
+   `analytics/config.ts › validateProviderConfig` still resolves.
+2. **Delete the symbol.** Only when nothing calls it at all, and only after you can say what it
+   was for and where to get it back (name the file whose history holds it).
+3. **Keep it, with a `notes` entry.** For the cases below.
+
+Two hard blockers on 1 and 2, both of which have bitten:
+
+- **`declaration: true` outranks the gate.** An exported `const x = new X()` cannot be emitted
+  into the `.d.ts` if `X` is private to the module, and the same goes for a parameter or return
+  type. So the class behind an exported `.getInstance()` singleton, and a constant another
+  exported signature names with `typeof`, **must stay exported** however dead the name looks.
+  `tsc --noEmit` does not catch this — only the build does, which is why it reaches CI.
+- **A generated page can be the only consumer.** `META_TAG_SELECTORS` has no importer, yet its
+  `meta[name="…"]` literals are extracted from the file's *text* into
+  `core/guide/reference/meta-tags.md`; `core/debug/debug-module.ts` is cited by four generated
+  pages precisely *because* nothing imports it. Before deleting, grep the symbol **and its
+  string values** across `src/core/guide/`, `src/docs/` and `src/tests/docs/`, then run
+  `npx vitest run src/tests/docs/` — finding 183: the feature's own suite passes either way.
+
+A helper whose only importer is a test is **test infrastructure**, not dead code. Say so in the
+notes rather than deleting it.
 
 ## Type Definitions
 - Global event types: `src/types/global.ts` → `EventMap`

@@ -11,7 +11,7 @@ const logger = createLogger('AnalyticsConfig');
 /**
  * Default debug configuration
  */
-export const DEFAULT_DEBUG_CONFIG: DebugOptions = {
+const DEFAULT_DEBUG_CONFIG: DebugOptions = {
   enabled: false,
   verbose: false,
   logEvents: true,
@@ -134,43 +134,6 @@ export const STORAGE_KEYS = {
   SESSION_START: 'nextDataLayer_sessionStart',
   USER_PROPERTIES: 'nextDataLayer_userProperties',
 } as const;
-
-/**
- * Analytics event names (following GA4 conventions)
- */
-export const ANALYTICS_EVENTS = {
-  // Ecommerce events
-  VIEW_ITEM: 'view_item',
-  VIEW_ITEM_LIST: 'view_item_list',
-  SELECT_ITEM: 'select_item',
-  ADD_TO_CART: 'add_to_cart',
-  REMOVE_FROM_CART: 'remove_from_cart',
-  VIEW_CART: 'view_cart',
-  BEGIN_CHECKOUT: 'begin_checkout',
-  ADD_SHIPPING_INFO: 'add_shipping_info',
-  ADD_PAYMENT_INFO: 'add_payment_info',
-  PURCHASE: 'purchase',
-  REFUND: 'refund',
-  
-  // User events
-  LOGIN: 'login',
-  SIGN_UP: 'sign_up',
-  
-  // Engagement events
-  PAGE_VIEW: 'page_view',
-  SEARCH: 'search',
-  SHARE: 'share',
-  
-  // Custom events
-  CUSTOM: 'custom_event',
-} as const;
-
-/**
- * Get provider configuration by name
- */
-export function getProviderConfig(providerName: keyof typeof PROVIDER_SETTINGS): typeof PROVIDER_SETTINGS[keyof typeof PROVIDER_SETTINGS] {
-  return PROVIDER_SETTINGS[providerName];
-}
 
 /**
  * Validate provider configuration

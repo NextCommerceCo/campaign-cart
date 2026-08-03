@@ -202,14 +202,6 @@ export async function calculateCart(
 }
 
 /**
- * Clear the in-memory calculateCart cache.
- * Call when server-side state may have changed independently of the payload.
- */
-export function clearCalculateCache(): void {
-  calcCache.clear();
-}
-
-/**
  * Calculate the price for a set of bundle items and cache the result in
  * sessionStorage.
  *
@@ -267,7 +259,7 @@ export async function calculateBundlePrice(
  * Pure function – no side effects, easy to test.
  * All price fields are Decimal instances for precision arithmetic.
  */
-export function buildCartFields(
+function buildCartFields(
   response: CartSummary,
 ): Omit<CalculateCartResult, 'summary' | 'vouchers'> {
   const subtotal = new Decimal(response.subtotal);

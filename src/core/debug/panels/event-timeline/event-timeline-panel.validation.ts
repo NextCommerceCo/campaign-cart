@@ -21,7 +21,7 @@ export interface ValidationRenderDeps {
   escapeHtml(value: string): string;
 }
 
-export function renderCheckRow(
+function renderCheckRow(
   check: EventCheck,
   deps: ValidationRenderDeps
 ): string {

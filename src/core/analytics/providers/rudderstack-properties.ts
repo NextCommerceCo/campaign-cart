@@ -73,7 +73,7 @@ export function buildEventProperties(
 /**
  * Coerce a value to a finite number, defaulting to 0.
  */
-export function toNumber(value: unknown): number {
+function toNumber(value: unknown): number {
   const n = typeof value === 'number' ? value : parseFloat(String(value));
   return Number.isFinite(n) ? n : 0;
 }
@@ -82,7 +82,7 @@ export function toNumber(value: unknown): number {
  * Build Product Viewed / Product Clicked properties.
  * Spec: top-level Product fields + currency.
  */
-export function buildProductViewedProps(data: any, baseProps: any): any {
+function buildProductViewedProps(data: any, baseProps: any): any {
   const item = (data.items || [])[0] || {};
   const campaignData = getCampaignData(data);
 
@@ -97,7 +97,7 @@ export function buildProductViewedProps(data: any, baseProps: any): any {
  * Build Product List Viewed properties.
  * Spec: list_id, category, products[].
  */
-export function buildProductListViewedProps(data: any, baseProps: any): any {
+function buildProductListViewedProps(data: any, baseProps: any): any {
   const campaignData = getCampaignData(data);
   const props: any = {
     products: formatProducts(data.items || []),
@@ -117,7 +117,7 @@ export function buildProductListViewedProps(data: any, baseProps: any): any {
  * Spec: cart_id + top-level Product fields. cart_id is the per-session id
  * (see buildEventProperties); omitted only if the session id is unavailable.
  */
-export function buildProductAddedRemovedProps(
+function buildProductAddedRemovedProps(
   data: any,
   baseProps: any,
   cartId?: string
@@ -137,7 +137,7 @@ export function buildProductAddedRemovedProps(
  * Build Cart Viewed properties.
  * Spec: cart_id + products[]; value/currency added for reporting.
  */
-export function buildCartViewedProps(
+function buildCartViewedProps(
   data: any,
   baseProps: any,
   cartId?: string
@@ -157,7 +157,7 @@ export function buildCartViewedProps(
  * Build Checkout Step Completed properties for the shipping step.
  * Spec: checkout_id, step, shipping_method, payment_method.
  */
-export function buildShippingStepProps(
+function buildShippingStepProps(
   data: any,
   baseProps: any,
   checkoutId?: string
@@ -175,7 +175,7 @@ export function buildShippingStepProps(
  * Build Payment Info Entered properties.
  * Spec: checkout_id, order_id, step, shipping_method, payment_method.
  */
-export function buildPaymentInfoProps(
+function buildPaymentInfoProps(
   data: any,
   baseProps: any,
   checkoutId?: string
@@ -193,7 +193,7 @@ export function buildPaymentInfoProps(
  * Spec: order_id, affiliation, value, revenue, shipping, tax, discount,
  * coupon, currency, products[].
  */
-export function buildCheckoutStartedProps(data: any, baseProps: any): any {
+function buildCheckoutStartedProps(data: any, baseProps: any): any {
   const campaignData = getCampaignData(data);
   // value = order revenue after discounts/coupons; revenue = the same figure
   // excluding shipping and tax. At checkout start both equal item revenue.
@@ -220,7 +220,7 @@ export function buildCheckoutStartedProps(data: any, baseProps: any): any {
  * Spec: order_id, affiliation, subtotal, total, revenue, shipping, tax,
  * discount, coupon, currency, products[].
  */
-export function buildOrderCompletedProps(
+function buildOrderCompletedProps(
   data: any,
   baseProps: any,
   checkoutId?: string
@@ -259,7 +259,7 @@ export function buildOrderCompletedProps(
  * their payload on `event.upsell` ({ package_id, package_name, price,
  * currency }) with the source order on `event.order_id`.
  */
-export function buildUpsellProps(event: DataLayerEvent, baseProps: any): any {
+function buildUpsellProps(event: DataLayerEvent, baseProps: any): any {
   const upsell = (event as any).upsell || {};
   const campaignData = getCampaignData({});
 
@@ -280,7 +280,7 @@ export function buildUpsellProps(event: DataLayerEvent, baseProps: any): any {
  * Identify the customer from the event's user_properties (fired on purchase).
  * Traits use the RudderStack-recommended names.
  */
-export function identifyFromUserProperties(
+function identifyFromUserProperties(
   userProperties: Record<string, any> | undefined,
   fallbackId?: string
 ): void {
@@ -315,7 +315,7 @@ export function identifyFromUserProperties(
  * item_image …) to a RudderStack spec Product object. Optional fields are
  * only included when present so the payload stays clean.
  */
-export function formatProduct(item: any): Record<string, any> {
+function formatProduct(item: any): Record<string, any> {
   const product: Record<string, any> = {
     // product_id = the product's database ID; sku = the stock-keeping unit.
     // GA4 `item_id` holds the product SKU, `item_product_id` the numeric id.
@@ -348,7 +348,7 @@ export function formatProduct(item: any): Record<string, any> {
 /**
  * Map an array of GA4-format items to RudderStack spec Product objects.
  */
-export function formatProducts(items: any[]): any[] {
+function formatProducts(items: any[]): any[] {
   if (!Array.isArray(items)) return [];
   return items.map(item => formatProduct(item));
 }

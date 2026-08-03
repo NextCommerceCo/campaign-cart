@@ -107,7 +107,7 @@ export interface EventCaptureHost {
   saveEvents(): void;
 }
 
-export function addEvent(
+function addEvent(
   ctx: EventCaptureHost,
   eventData: Partial<TimelineEvent>
 ): void {

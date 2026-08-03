@@ -565,5 +565,3 @@ export class EventValidator {
   }
 }
 
-// Export a singleton instance for convenience
-export const eventValidator = new EventValidator();

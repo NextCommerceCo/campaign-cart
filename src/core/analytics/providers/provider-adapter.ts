@@ -28,18 +28,15 @@ export interface SkipResult {
 }
 
 /**
- * Return this (or {@link NOT_SUPPORTED}) from `sendEvent` when the provider sent
- * nothing for this event. Prefer a specific `reason` — return this instead of
- * `undefined`, which the base treats as "sent, no payload".
+ * Return this from `sendEvent` when the provider sent nothing for this event.
+ * Prefer a specific `reason` — return this instead of `undefined`, which the
+ * base treats as "sent, no payload".
  */
 export function notSupported(
   reason = 'event not handled by this provider'
 ): SkipResult {
   return { [SKIP_TAG]: true, reason };
 }
-
-/** Shorthand skip with the generic reason. */
-export const NOT_SUPPORTED: SkipResult = notSupported();
 
 /** Narrow a `sendEvent` result to a {@link SkipResult}, if it is one. */
 export function asSkipResult(result: unknown): SkipResult | null {
