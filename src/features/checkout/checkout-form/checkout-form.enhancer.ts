@@ -4,7 +4,7 @@
 
 import { BaseEnhancer } from '@/core/base/base-enhancer';
 import { useCheckoutStore, type CheckoutState } from '@/state/checkout';
-import { useCartStore, cartOperations } from '@/state/cart';
+import { useCartStore } from '@/state/cart';
 import { useConfigStore } from '@/state/config';
 import { useCampaignStore } from '@/state/campaign';
 import { getApiClient } from '@/client';
@@ -19,23 +19,17 @@ import { useAttributionStore } from '@/state/attribution';
 import { useParameterStore } from '@/state/parameter';
 import { AddressAutocompleteEnhancer } from '../address-autocomplete/address-autocomplete.enhancer';
 import { ProspectCartEnhancer } from '../prospect-cart/prospect-cart.enhancer';
-import { GeneralModal } from '@/core/ui/general-modal';
 import { LoadingOverlay } from '@/core/ui/loading-overlay';
 import { ExpressCheckoutProcessor } from '../processors/express-checkout-processor';
 import { OrderManager } from '../managers/order-manager';
 import { OrderBuilder } from '../builders/order-builder';
-import { getSuccessUrl } from '../utils/url-utils';
 import { nextAnalytics, EcommerceEvents } from '@/core/analytics/index';
 import {
   injectIntlTelInputStyles,
   initializePhoneInputs,
   type PhoneInputContext,
 } from './phone-input';
-import {
-  collapseBillingForm,
-  expandBillingForm,
-  type BillingAnimationContext,
-} from './billing-animation';
+import type { BillingAnimationContext } from './billing-animation';
 import {
   reconcileBillingToggle,
   restoreBillingAddressFields,
@@ -103,20 +97,38 @@ import {
   type CountryApplicationContext,
   type CountryResolutionContext,
 } from './country-selection';
+import {
+  detectMultiStepCheckout,
+  handleStepNavigation,
+  type MultiStepDetectionContext,
+  type StepNavigationContext,
+} from './multi-step-navigation';
+import {
+  handlePurchaseEvent,
+  type DuplicatePurchaseWarningContext,
+} from './duplicate-purchase-warning';
+import {
+  handleBillingAddressToggle,
+  type BillingToggleContext,
+} from './billing-toggle';
+import {
+  handlePaymentMethodChange,
+  handleShippingMethodChange,
+  type PaymentMethodContext,
+  type ShippingMethodContext,
+} from './method-selection';
+import {
+  handleKonamiActivation,
+  handleTestDataFilled,
+  type KonamiTestOrderContext,
+  type TestDataFillContext,
+} from './test-order';
+import { applyFailureUrlMetaTags, applySuccessUrlMetaTags } from './meta-tags';
 import 'intl-tel-input/build/css/intlTelInput.css';
 
 // Consolidated constants
-const BILLING_CONTAINER_SELECTOR = '[os-checkout-element="different-billing-address"], [data-next-component="different-billing-address"]';
 const SHIPPING_FORM_SELECTOR = '[os-checkout-component="shipping-form"], [data-next-component="shipping-form"]';
 const BILLING_FORM_CONTAINER_SELECTOR = '[os-checkout-component="billing-form"], [data-next-component="billing-form"]';
-
-const PAYMENT_METHOD_MAP: Record<string, 'card_token' | 'paypal' | 'apple_pay' | 'google_pay' | 'klarna' | 'credit-card'> = {
-  'credit': 'credit-card',
-  'paypal': 'paypal',
-  'apple-pay': 'apple_pay',
-  'google-pay': 'google_pay',
-  'klarna': 'klarna'
-};
 
 /**
  * The one builder that assembles the `CreateOrder` payload. Stateless — it reads
@@ -205,7 +217,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
    * give each side its own flag.
    */
   private billingAnimationInProgress = { value: false };
-  private billingAnimationDebounceTimer?: NodeJS.Timeout;
+  /**
+   * The billing toggle's pending debounce timer, as a ref for the same reason as
+   * {@link billingAnimationInProgress}: `billing-toggle.ts` sets and clears it while
+   * {@link destroy} has to be able to clear it too.
+   */
+  private billingAnimationDebounceTimer: { value?: NodeJS.Timeout } = {};
   private billingAnimationTimeouts: Set<NodeJS.Timeout> = new Set();
   /**
    * Aborts the in-flight billing `transitionend` listener. Held here, alongside the
@@ -1078,89 +1095,20 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // PURCHASE EVENT HANDLING
   // ============================================================================
 
+  /** The four things `duplicate-purchase-warning.ts` needs from this form. */
+  private duplicatePurchaseWarningContext(): DuplicatePurchaseWarningContext {
+    return {
+      logger: this.logger,
+      ui: this.ui,
+      populateFormData: () => {
+        void this.populateFormData();
+      },
+      clearAllCheckoutFields: () => this.clearAllCheckoutFields(),
+    };
+  }
+
   private async handlePurchaseEvent(): Promise<void> {
-    // Check for existing order in sessionStorage
-    const orderDataStr = sessionStorage.getItem('next-order');
-    if (!orderDataStr) return;
-
-    try {
-      const orderData = JSON.parse(orderDataStr);
-      const order = orderData?.state?.order;
-
-      // Check if we have a valid order
-      if (!order?.ref_id || !order?.number) return;
-
-      // Check if we've already shown the modal for this order
-      const shownOrdersStr = sessionStorage.getItem('next-shown-order-warnings');
-      const shownOrders = shownOrdersStr ? JSON.parse(shownOrdersStr) : [];
-
-      if (shownOrders.includes(order.ref_id)) {
-        this.logger.debug('Already shown warning for order', order.ref_id);
-        return;
-      }
-
-      this.logger.info('Fresh purchase detected, showing attention modal', {
-        orderNumber: order.number,
-        refId: order.ref_id
-      });
-
-      // Track modal shown time for duration calculation
-      const modalShownTime = Date.now();
-
-      // Ensure checkout is not in processing state before showing modal
-      const checkoutStore = useCheckoutStore.getState();
-      checkoutStore.setProcessing(false);
-
-      const action = await GeneralModal.show({
-        title: 'Attention',
-        content: 'Your initial order has been successfully processed. Please check your email for the order confirmation. Entering your payment details again will result in a secondary purchase.',
-        buttons: [
-          { text: 'Close', action: 'cancel' },
-          { text: 'Back', action: 'confirm' }
-        ],
-        className: 'purchase-warning-modal'
-      });
-
-      // Mark this order as shown
-      shownOrders.push(order.ref_id);
-      sessionStorage.setItem('next-shown-order-warnings', JSON.stringify(shownOrders));
-
-      // Track the duplicate order prevention event with user action
-      const timeOnModal = Date.now() - modalShownTime;
-
-
-      if (action === 'confirm') {
-        // Handle back button - navigate to the success URL
-        const successUrl = getSuccessUrl();
-        if (successUrl) {
-          // Add ref_id to the URL if not already present
-          const url = new URL(successUrl, window.location.origin);
-          if (!url.searchParams.has('ref_id') && order.ref_id) {
-            url.searchParams.set('ref_id', order.ref_id);
-          }
-          // Preserve all current session parameters
-          const finalUrl = preserveQueryParams(url.href);
-          window.location.href = finalUrl;
-        }
-      } else {
-        // User clicked 'Close' - ensure form is properly initialized
-        // Re-populate form data if it exists in the store
-        this.populateFormData();
-
-        // Ensure UI is in correct state
-        if (this.ui) {
-          this.ui.hideLoading('checkout');
-        }
-
-        // Clear all form fields and reset checkout state
-        this.clearAllCheckoutFields();
-      }
-    } catch (error) {
-      this.logger.error('Failed to parse order data from sessionStorage:', error);
-      // Ensure we're not stuck in processing state
-      const checkoutStore = useCheckoutStore.getState();
-      checkoutStore.setProcessing(false);
-    }
+    await handlePurchaseEvent(this.duplicatePurchaseWarningContext());
   }
 
   // ============================================================================
@@ -1428,28 +1376,28 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // MULTI-STEP CHECKOUT SUPPORT
   // ============================================================================
 
+  /** The three things `multi-step-navigation.ts` needs to recognise a step. */
+  private multiStepDetectionContext(): MultiStepDetectionContext {
+    return {
+      form: this.form,
+      logger: this.logger,
+      setStep: step => useCheckoutStore.getState().setStep(step),
+    };
+  }
+
   /**
    * Detect if this is a multi-step checkout by checking for step attributes
+   *
+   * A single-page checkout gets `null` back and keeps the defaults these three fields
+   * were declared with — the same no-op the original's `if (stepAttr)` produced.
    */
   private detectMultiStepCheckout(): void {
-    // Check for data-next-checkout-step attribute on form
-    const stepAttr = this.form.getAttribute('data-next-checkout-step') ||
-      this.form.getAttribute('os-checkout-step');
+    const state = detectMultiStepCheckout(this.multiStepDetectionContext());
+    if (!state) return;
 
-    if (stepAttr) {
-      this.isMultiStep = true;
-      this.currentStep = parseInt(this.form.getAttribute('data-next-step-number') || '1', 10);
-      this.nextStepUrl = stepAttr;
-
-      this.logger.info('Multi-step checkout detected', {
-        currentStep: this.currentStep,
-        nextStepUrl: this.nextStepUrl
-      });
-
-      // Update store step
-      const checkoutStore = useCheckoutStore.getState();
-      checkoutStore.setStep(this.currentStep);
-    }
+    this.isMultiStep = state.isMultiStep;
+    this.currentStep = state.currentStep;
+    this.nextStepUrl = state.nextStepUrl;
   }
 
   /**
@@ -1472,80 +1420,34 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   }
 
   /**
+   * The eight things `multi-step-navigation.ts` needs to move to the next step.
+   *
+   * Built fresh per call: `currentStep` and `nextStepUrl` are read at submit time, and a
+   * context captured at boot would still hold the values detection wrote.
+   */
+  private stepNavigationContext(): StepNavigationContext {
+    return {
+      currentStep: this.currentStep,
+      nextStepUrl: this.nextStepUrl,
+      validator: this.validator,
+      countryConfigs: this.countryConfigs,
+      currentCountryConfig: this.currentCountryConfig,
+      loadingOverlay: this.loadingOverlay,
+      getBillingValidationInput: () => this.getBillingValidationInput(),
+      logger: this.logger,
+    };
+  }
+
+  /**
    * Handle step navigation for multi-step checkout
+   *
+   * `cartStore` is passed by {@link handleFormSubmit} and has never been read — a step
+   * navigation creates no order. It is kept on the signature rather than dropped so the
+   * submit path stays untouched by this move.
    */
   private async handleStepNavigation(checkoutStore: any, cartStore: any): Promise<void> {
-    try {
-      checkoutStore.clearAllErrors();
-      checkoutStore.setProcessing(true);
-
-      // Show loading overlay
-      this.loadingOverlay.show();
-
-      this.logger.info(`Validating step ${this.currentStep} before navigation`);
-
-      // Validate only current step fields. Step 3 is the last gate before payment, so it
-      // needs the billing pair too — see getBillingValidationInput().
-      const billing = this.getBillingValidationInput();
-      const validation = await this.validator.validateStep(
-        this.currentStep,
-        checkoutStore.formData,
-        this.countryConfigs,
-        this.currentCountryConfig.value,
-        billing.billingAddress,
-        billing.sameAsShipping
-      );
-
-      if (!validation.isValid) {
-        this.logger.warn(`Step ${this.currentStep} validation failed`, validation.errors);
-
-        // Display errors
-        if (validation.errors) {
-          Object.entries(validation.errors).forEach(([field, error]) => {
-            checkoutStore.setError(field, error as string);
-            this.validator.showError(field, error as string);
-          });
-        }
-
-        // Focus first error field
-        if (validation.firstErrorField) {
-          setTimeout(() => {
-            this.validator.focusFirstErrorField(validation.firstErrorField);
-          }, 100);
-        }
-
-        // Clear processing state and hide overlay on validation error
-        checkoutStore.setProcessing(false);
-        this.loadingOverlay.hide(true);
-        return;
-      }
-
-      // Validation passed - data is already saved in checkoutStore via field change handlers
-      // Navigate to next step
-      this.logger.info(`Step ${this.currentStep} validated successfully, navigating to: ${this.nextStepUrl}`);
-
-      // Update step in store before navigation
-      checkoutStore.setStep(this.currentStep + 1);
-
-      // Build next URL with all session parameters preserved (currency, country, utm params, etc.)
-      const nextUrl = preserveQueryParams(this.nextStepUrl!);
-      this.logger.debug('Preserving all session parameters in next step URL');
-
-      // Add a small delay to show the loading spinner before navigation
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Clear processing state before navigation to prevent it persisting to next page
-      checkoutStore.setProcessing(false);
-
-      // Navigate to next page (loading overlay will be cleared by page navigation)
-      window.location.href = nextUrl;
-
-    } catch (error) {
-      this.logger.error('Step navigation error:', error);
-      checkoutStore.setError('general', 'Failed to proceed to next step. Please try again.');
-      checkoutStore.setProcessing(false);
-      this.loadingOverlay.hide(true);
-    }
+    void cartStore;
+    await handleStepNavigation(this.stepNavigationContext(), checkoutStore);
   }
 
   // ============================================================================
@@ -2048,149 +1950,42 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     return getFieldByName(this.fieldLookupContext(), fieldName);
   }
 
+  /** The one thing `method-selection.ts` needs to switch payment method. */
+  private paymentMethodContext(): PaymentMethodContext {
+    return { ui: this.ui };
+  }
+
   private handlePaymentMethodChange(event: Event): void {
-    const target = event.target as HTMLInputElement;
-    const checkoutStore = useCheckoutStore.getState();
-
-    const mappedMethod = PAYMENT_METHOD_MAP[target.value] || 'credit-card';
-    checkoutStore.setPaymentMethod(mappedMethod as any);
-
-    // Hide any payment-specific errors when switching methods
-    const paypalError = document.querySelector('[data-next-component="paypal-error"]');
-    if (paypalError instanceof HTMLElement) {
-      paypalError.style.display = 'none';
-    }
-
-    const creditError = document.querySelector('[data-next-component="credit-error"]');
-    if (creditError instanceof HTMLElement) {
-      creditError.style.display = 'none';
-    }
-
-    this.ui.updatePaymentFormVisibility(target.value);
-
-    // Note: For credit card payments, add_payment_info is tracked when card fields are complete (via CreditCardService)
-    // For express payments (PayPal, Apple Pay, Google Pay), it's tracked when the button is clicked (via ExpressCheckoutProcessor)
+    handlePaymentMethodChange(this.paymentMethodContext(), event);
   }
 
   // Methods moved to CheckoutUIHelpers class - expandPaymentForm and collapsePaymentForm
 
+  /** The two things `method-selection.ts` needs to switch shipping method. */
+  private shippingMethodContext(): ShippingMethodContext {
+    return {
+      hasTrackedShippingInfo: this.hasTrackedShippingInfo,
+      logger: this.logger,
+    };
+  }
+
   private handleShippingMethodChange(event: Event): void {
-    const target = event.target as HTMLInputElement;
-    const checkoutStore = useCheckoutStore.getState();
+    handleShippingMethodChange(this.shippingMethodContext(), event);
+  }
 
-    const shippingMethods = [
-      { id: 1, name: 'Standard Shipping', price: 0, code: 'standard' },
-      { id: 2, name: 'Subscription Shipping', price: 5, code: 'subscription' },
-      { id: 3, name: 'Expedited: Standard Overnight', price: 28, code: 'overnight' }
-    ];
-
-    const parsedValue = parseInt(target.value);
-    if (isNaN(parsedValue)) return;
-
-    const selectedMethod = shippingMethods.find(m => m.id === parsedValue);
-    if (selectedMethod) {
-      checkoutStore.setShippingMethod(selectedMethod);
-
-      void cartOperations.setShippingMethod(selectedMethod.id);
-
-      // Track add_shipping_info event when shipping method is selected
-      if (!this.hasTrackedShippingInfo.value) {
-        try {
-          // Map shipping codes to tier names for GA4
-          const shippingTierMap: Record<string, string> = {
-            'standard': 'Standard',
-            'subscription': 'Subscription',
-            'overnight': 'Express'
-          };
-
-          const shippingTier = shippingTierMap[selectedMethod.code] || selectedMethod.name;
-          nextAnalytics.track(EcommerceEvents.createAddShippingInfoEvent(shippingTier));
-          this.hasTrackedShippingInfo.value = true;
-          this.logger.info('Tracked add_shipping_info event', { shippingTier });
-        } catch (error) {
-          this.logger.warn('Failed to track add_shipping_info event:', error);
-        }
-      }
-    }
+  /** The five things `billing-toggle.ts` needs from this form. */
+  private billingToggleContext(): BillingToggleContext {
+    return {
+      animationInProgress: this.billingAnimationInProgress,
+      debounceTimer: this.billingAnimationDebounceTimer,
+      animation: this.billingAnimationContext(),
+      billingFields: this.billingFields,
+      logger: this.logger,
+    };
   }
 
   private handleBillingAddressToggle(event: Event): void {
-    const target = event.target as HTMLInputElement;
-
-    this.logger.info('[Billing] Toggle clicked', {
-      checked: target.checked,
-      animationInProgress: this.billingAnimationInProgress.value
-    });
-
-    // Prevent rapid clicks during animation
-    if (this.billingAnimationInProgress.value) {
-      event.preventDefault();
-      // Revert checkbox state
-      target.checked = !target.checked;
-      this.logger.warn('[Billing] Click blocked - animation in progress');
-      return;
-    }
-
-    // Clear any existing debounce timer
-    if (this.billingAnimationDebounceTimer) {
-      clearTimeout(this.billingAnimationDebounceTimer);
-    }
-
-    // Reduced debounce to 10ms (just enough to prevent double-clicks)
-    this.billingAnimationDebounceTimer = setTimeout(() => {
-      const checkoutStore = useCheckoutStore.getState();
-      const billingSection = document.querySelector(BILLING_CONTAINER_SELECTOR);
-
-      if (!billingSection || !(billingSection instanceof HTMLElement)) {
-        this.logger.error('[Billing] CRITICAL: Billing section not found!');
-        return;
-      }
-
-      this.logger.info('[Billing] Processing toggle', {
-        targetChecked: target.checked,
-        currentHeight: billingSection.style.height,
-        currentOverflow: billingSection.style.overflow,
-        currentTransition: billingSection.style.transition,
-        classes: billingSection.className
-      });
-
-      // Update store state
-      checkoutStore.setSameAsShipping(target.checked);
-
-      if (target.checked) {
-        this.logger.info('[Billing] Collapsing form...');
-        collapseBillingForm(this.billingAnimationContext(), billingSection);
-      } else {
-        this.logger.info('[Billing] Expanding form...');
-        expandBillingForm(this.billingAnimationContext(), billingSection);
-
-        // Populate billing fields after expansion
-        setTimeout(() => {
-          // Only set the country and trigger state loading
-          const shippingCountry = checkoutStore.formData.country;
-          const billingCountryField = this.billingFields.get('billing-country');
-
-          if (shippingCountry && billingCountryField instanceof HTMLSelectElement) {
-            billingCountryField.value = shippingCountry;
-            billingCountryField.dispatchEvent(new Event('change', { bubbles: true }));
-            this.logger.debug('[Billing] Set country to:', shippingCountry);
-          }
-
-          // Clear the billing address in the store (except country)
-          checkoutStore.setBillingAddress({
-            first_name: '',
-            last_name: '',
-            address1: '',
-            address2: '',
-            city: '',
-            province: '',
-            postal: '',
-            country: shippingCountry || '',
-            phone: ''
-          });
-        }, 50);
-      }
-    }, 10); // Reduced debounce delay from 50ms to 10ms
+    handleBillingAddressToggle(this.billingToggleContext(), event);
   }
 
   /**
@@ -2308,98 +2103,37 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     this.ui.updateLabelsForPopulatedData();
   }
 
+  /** The three things `test-order.ts` needs to refill the form from the debug panel. */
+  private testDataFillContext(): TestDataFillContext {
+    return {
+      fields: this.fields,
+      ui: this.ui,
+      populateFormData: () => {
+        void this.populateFormData();
+      },
+    };
+  }
+
   private handleTestDataFilled(_event: Event): void {
-    setTimeout(() => {
-      this.populateFormData();
+    handleTestDataFilled(this.testDataFillContext());
+  }
 
-      this.fields.forEach((field) => {
-        if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement) {
-          field.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-      });
-
-      // Update UI for test data
-      this.ui.updateLabelsForPopulatedData();
-    }, 150);
+  /** The six things `test-order.ts` needs to place a Konami test order. */
+  private konamiTestOrderContext(): KonamiTestOrderContext {
+    return {
+      validator: this.validator,
+      logger: this.logger,
+      populateFormData: () => {
+        void this.populateFormData();
+      },
+      createTestOrder: () => this.createTestOrder(),
+      emit: (event, order) => this.emit(event, order),
+      handleOrderRedirect: order => this.handleOrderRedirect(order),
+    };
   }
 
   private async handleKonamiActivation(event: Event): Promise<void> {
-    const checkoutStore = useCheckoutStore.getState();
-    // const cartStore = useCartStore.getState();
-
-    const customEvent = event as CustomEvent;
-    const activationMethod = customEvent.detail?.method;
-
-    if (activationMethod === 'konami') {
-      try {
-        const testFormData = {
-          email: 'test@test.com',
-          fname: 'Test',
-          lname: 'Order',
-          phone: '+14807581224',
-          address1: 'Test Address 123',
-          address2: '',
-          city: 'Tempe',
-          province: 'AZ',
-          postal: '85281',
-          country: 'US',
-          accepts_marketing: true
-        };
-
-        checkoutStore.clearAllErrors();
-        this.validator.clearAllErrors();
-        checkoutStore.updateFormData(testFormData);
-        checkoutStore.setPaymentMethod('credit-card');
-        checkoutStore.setPaymentToken('test_card');
-        checkoutStore.setSameAsShipping(true);
-        // Use existing shipping method from cart if available
-        const cartStore = useCartStore.getState();
-        const cartShipping = cartStore.shippingMethod;
-        const existingShipping = cartShipping
-          ? { id: cartShipping.id, name: cartShipping.name, price: cartShipping.price.toNumber(), code: cartShipping.code }
-          : checkoutStore.shippingMethod;
-        if (existingShipping) {
-          checkoutStore.setShippingMethod(existingShipping);
-        } else {
-          // Fallback to first available from campaign
-          const campaignStore = useCampaignStore.getState();
-          if (campaignStore.data?.shipping_methods && campaignStore.data.shipping_methods.length > 0) {
-            const firstMethod = campaignStore.data.shipping_methods[0];
-            if (firstMethod) {
-              checkoutStore.setShippingMethod({
-                id: firstMethod.ref_id,
-                name: firstMethod.code,
-                price: parseFloat(firstMethod.price || '0'),
-                code: firstMethod.code
-              });
-            }
-          } else {
-            // Last resort fallback
-            checkoutStore.setShippingMethod({
-              id: 1,
-              name: 'Standard Shipping',
-              price: 0,
-              code: 'standard'
-            });
-          }
-        }
-
-        this.populateFormData();
-
-        setTimeout(async () => {
-          try {
-            const order = await this.createTestOrder();
-            this.emit('order:completed', order);
-            this.handleOrderRedirect(order);
-          } catch (error) {
-            this.logger.error('Failed to create test order:', error);
-          }
-        }, 1000);
-
-      } catch (error) {
-        this.logger.error('Error filling test data for Konami order:', error);
-      }
-    }
+    await handleKonamiActivation(this.konamiTestOrderContext(), event);
   }
 
   private handleCheckoutUpdate(state: any): void {
@@ -2457,26 +2191,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // ============================================================================
 
   public setSuccessUrl(url: string): void {
-    this.setOrCreateMetaTag('next-success-url', url);
-    this.setOrCreateMetaTag('next-next-url', url);
-    this.setOrCreateMetaTag('os-next-page', url);
+    applySuccessUrlMetaTags(url);
   }
 
   public setFailureUrl(url: string): void {
-    this.setOrCreateMetaTag('next-failure-url', url);
-    this.setOrCreateMetaTag('os-failure-url', url);
-  }
-
-  private setOrCreateMetaTag(name: string, content: string): void {
-    let metaTag = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement;
-
-    if (!metaTag) {
-      metaTag = document.createElement('meta');
-      metaTag.name = name;
-      document.head.appendChild(metaTag);
-    }
-
-    metaTag.content = content;
+    applyFailureUrlMetaTags(url);
   }
 
   public validateField(fieldName: string, value: any): { isValid: boolean; errorMessage?: string } {
@@ -2662,8 +2381,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
   public override destroy(): void {
     // Clear any pending animation timers
-    if (this.billingAnimationDebounceTimer) {
-      clearTimeout(this.billingAnimationDebounceTimer);
+    if (this.billingAnimationDebounceTimer.value) {
+      clearTimeout(this.billingAnimationDebounceTimer.value);
     }
 
     // Clear all animation timeouts

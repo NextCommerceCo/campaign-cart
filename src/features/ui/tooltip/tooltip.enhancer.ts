@@ -72,13 +72,16 @@ export class TooltipEnhancer extends BaseEnhancer {
   }
 
   public override destroy(): void {
+    // `super.destroy()` runs cleanupEventListeners(), which only detaches listeners —
+    // none of the tooltip/timer state `hide()` reads below is touched by it.
+    super.destroy();
+
     this.hide();
     // `hide()` above may have just scheduled a 200ms dismissal for the
     // tooltip that was visible — finish it synchronously instead of leaving a
     // DOM node (and a timer) to outlive the enhancer.
     this.finalizeStaleDismissal();
     cleanupTimeouts(this.timers);
-    super.destroy();
   }
 
   protected override cleanupEventListeners(): void {

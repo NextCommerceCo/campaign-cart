@@ -23,6 +23,13 @@ import { Logger, createLogger } from '@/core/logger';
 import { BaseEnhancer } from '@/core/base/base-enhancer';
 import { AttributeParser } from '@/core/base/attribute-parser';
 import { DOMObserver, type DOMChangeEvent } from '@/core/base/dom-observer';
+import {
+  detectDebugMode,
+  recordEnhancerTime,
+  showEnhancerPerformanceReport,
+  enhancerPerformanceSnapshot,
+  type EnhancerStats,
+} from '@/core/attribute-scanner.performance';
 
 export class AttributeScanner {
   private logger: Logger;
@@ -49,20 +56,16 @@ export class AttributeScanner {
   private queueTimer: number | undefined;
   /** Collapses a batch of removals into one registry sweep. */
   private detachedSweepScheduled = false;
-  private enhancerStats = new Map<string, { totalTime: number; count: number }>();
+  private enhancerStats: EnhancerStats = new Map();
   private isDebugMode = false;
 
   constructor() {
     this.logger = createLogger('AttributeScanner');
     this.domObserver = new DOMObserver();
     this.domObserver.addHandler(this.handleDOMChange.bind(this));
-    
+
     // Check if debug mode is enabled
-    this.isDebugMode = new URLSearchParams(location.search).get('debug') === 'true';
-    
-    if (this.isDebugMode) {
-      console.log('🐛 AttributeScanner: Debug mode enabled for performance tracking');
-    }
+    this.isDebugMode = detectDebugMode();
   }
 
   public async scanAndEnhance(root: Element): Promise<void> {
@@ -172,7 +175,7 @@ export class AttributeScanner {
       
       // Show performance report in debug mode
       if (this.isDebugMode && this.enhancerStats.size > 0) {
-        this.showPerformanceReport();
+        showEnhancerPerformanceReport(this.enhancerStats);
       }
       
       // Add class to HTML element to indicate display is finished
@@ -245,7 +248,7 @@ export class AttributeScanner {
               const enhancerTime = performance.now() - enhancerStart;
               
               // Track performance stats
-              this.updateEnhancerStats(type, enhancerTime);
+              recordEnhancerTime(this.enhancerStats, type, enhancerTime);
               
               // console.log(`🔧 ${type}: ${enhancerTime.toFixed(2)}ms`, element);
               this.logger.debug(`Initialized ${type} enhancer for element`, element);
@@ -704,48 +707,7 @@ export class AttributeScanner {
     this.logger.debug('AttributeScanner resumed');
   }
 
-  private updateEnhancerStats(type: string, time: number): void {
-    const current = this.enhancerStats.get(type) || { totalTime: 0, count: 0 };
-    current.totalTime += time;
-    current.count += 1;
-    this.enhancerStats.set(type, current);
-  }
-
-  private showPerformanceReport(): void {
-    console.group('🚀 Enhancement Performance Report');
-    
-    // Convert to array and sort by total time
-    const sortedStats = Array.from(this.enhancerStats.entries())
-      .map(([type, stats]) => ({
-        Enhancer: type,
-        'Total Time (ms)': stats.totalTime.toFixed(2),
-        'Average Time (ms)': (stats.totalTime / stats.count).toFixed(2),
-        'Count': stats.count,
-        'Impact': stats.totalTime > 50 ? '🔴 High' : stats.totalTime > 20 ? '🟡 Medium' : '🟢 Low'
-      }))
-      .sort((a, b) => parseFloat(b['Total Time (ms)']) - parseFloat(a['Total Time (ms)']));
-    
-    console.table(sortedStats);
-    
-    // Show top slowest enhancers
-    const topSlow = sortedStats.slice(0, 3);
-    if (topSlow.length > 0) {
-      console.log('🐌 Slowest enhancers:');
-      topSlow.forEach((stat, index) => {
-        console.log(`${index + 1}. ${stat.Enhancer}: ${stat['Total Time (ms)']}ms (${stat.Count} instances)`);
-      });
-    }
-    
-    const totalTime = Array.from(this.enhancerStats.values())
-      .reduce((sum, stats) => sum + stats.totalTime, 0);
-    const totalCount = Array.from(this.enhancerStats.values())
-      .reduce((sum, stats) => sum + stats.count, 0);
-    
-    console.log(`📊 Total enhancement time: ${totalTime.toFixed(2)}ms across ${totalCount} enhancers`);
-    console.groupEnd();
-  }
-
-  public getStats(): { 
+  public getStats(): {
     enhancedElements: number; 
     queuedElements: number; 
     isObserving: boolean;
@@ -761,14 +723,7 @@ export class AttributeScanner {
 
     // Include performance stats in debug mode
     if (this.isDebugMode && this.enhancerStats.size > 0) {
-      stats.performanceStats = {};
-      for (const [type, data] of this.enhancerStats.entries()) {
-        stats.performanceStats[type] = {
-          totalTime: data.totalTime,
-          averageTime: data.totalTime / data.count,
-          count: data.count
-        };
-      }
+      stats.performanceStats = enhancerPerformanceSnapshot(this.enhancerStats);
     }
 
     return stats;

@@ -244,6 +244,8 @@ export class AcceptUpsellEnhancer extends BaseActionEnhancer {
   }
 
   public override destroy(): void {
+    super.destroy();
+
     this.element.removeEventListener('click', this.boundHandleClick);
     window.removeEventListener('pageshow', this.boundHandlePageShow);
 
@@ -263,7 +265,5 @@ export class AcceptUpsellEnhancer extends BaseActionEnhancer {
       this.eventBus.off('bundle:selected', this.boundHandleBundleSelectionChange);
       this.eventBus.off('bundle:selection-changed', this.boundHandleBundleSelectionChange);
     }
-
-    super.destroy();
   }
 }

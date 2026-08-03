@@ -186,6 +186,8 @@ export class ScrollHintEnhancer extends BaseEnhancer {
   }
 
   public override destroy(): void {
+    super.destroy();
+
     // Clean up event listeners
     if (this.scrollTarget && this.scrollHandler) {
       this.scrollTarget.removeEventListener('scroll', this.scrollHandler);
@@ -204,7 +206,5 @@ export class ScrollHintEnhancer extends BaseEnhancer {
     if (this.rafId) {
       cancelAnimationFrame(this.rafId);
     }
-    
-    super.destroy();
   }
 }

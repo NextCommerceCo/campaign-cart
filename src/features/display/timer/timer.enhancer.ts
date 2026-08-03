@@ -115,9 +115,9 @@ export class TimerEnhancer extends BaseEnhancer {
   }
 
   public override destroy(): void {
+    super.destroy();
     if (this.interval) {
       clearInterval(this.interval);
     }
-    super.destroy();
   }
 }

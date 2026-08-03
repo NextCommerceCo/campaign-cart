@@ -48,6 +48,8 @@
     "type-check:tests:update": "UPDATE_TYPE_CHECK_BASELINE=1 node scripts/type-check-tests.mjs",
     "check:unused": "node scripts/check-unused.mjs",
     "check:unused:update": "UPDATE_UNUSED_BASELINE=1 node scripts/check-unused.mjs",
+    "check:unused-exports": "node scripts/check-unused-exports.mjs",
+    "check:unused-exports:update": "UPDATE_UNUSED_EXPORTS_BASELINE=1 node scripts/check-unused-exports.mjs",
     "validate:display": "ts-node scripts/validate-display-config.ts",
     "docs": "typedoc",
     "docs:serve": "node scripts/docs-serve.mjs --watch",

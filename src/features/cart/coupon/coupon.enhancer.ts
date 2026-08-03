@@ -32,6 +32,11 @@ export class CouponEnhancer extends BaseActionEnhancer {
    */
   private listenerAbort = new AbortController();
 
+  /** The `addEventListener` options every listener in this class registers with. */
+  private get listenerOptions(): AddEventListenerOptions {
+    return { signal: this.listenerAbort.signal };
+  }
+
   async initialize(): Promise<void> {
     this.logger.debug('Enhancing coupon element:', this.element);
 
@@ -91,7 +96,7 @@ export class CouponEnhancer extends BaseActionEnhancer {
       () => {
         this.updateButtonState();
       },
-      { signal: this.listenerAbort.signal }
+      this.listenerOptions
     );
 
     this.input.addEventListener(
@@ -102,7 +107,7 @@ export class CouponEnhancer extends BaseActionEnhancer {
           this.applyCoupon();
         }
       },
-      { signal: this.listenerAbort.signal }
+      this.listenerOptions
     );
   }
 
@@ -115,7 +120,7 @@ export class CouponEnhancer extends BaseActionEnhancer {
         e.preventDefault();
         this.applyCoupon();
       },
-      { signal: this.listenerAbort.signal }
+      this.listenerOptions
     );
   }
 
@@ -208,7 +213,7 @@ export class CouponEnhancer extends BaseActionEnhancer {
           () => {
             this.removeCoupon(code);
           },
-          { signal: this.listenerAbort.signal }
+          this.listenerOptions
         );
       }
 
@@ -280,16 +285,17 @@ export class CouponEnhancer extends BaseActionEnhancer {
   }
 
   override destroy(): void {
+    // Aborts the listeners via cleanupEventListeners() above.
+    super.destroy();
+
     this.logger.debug('Destroying coupon enhancer');
 
-    // Unsubscribe from cart changes
+    // Unsubscribe from cart changes — this one is a hand-held useCartStore
+    // subscription (it needs a selector), so base destroy() does not know about it.
     if (this.unsubscribe) {
       this.unsubscribe();
       this.unsubscribe = null;
     }
-
-    // Remove event listeners (BaseEnhancer handles this)
-    super.destroy();
 
     // Clear references
     this.input = null;

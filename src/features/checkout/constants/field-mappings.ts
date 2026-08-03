@@ -41,18 +41,6 @@ export const BILLING_FIELD_MAPPING: Record<string, string> = {
   'phone': 'billing-phone'
 };
 
-export const BILLING_ADDRESS_FIELD_MAP: Record<string, string> = {
-  'fname': 'first_name',
-  'lname': 'last_name',
-  'address1': 'address1',
-  'address2': 'address2',
-  'city': 'city',
-  'province': 'province',
-  'postal': 'postal',
-  'country': 'country',
-  'phone': 'phone'
-};
-
 export const PAYMENT_METHOD_MAP: Record<string, 'card_token' | 'paypal' | 'apple_pay' | 'google_pay' | 'credit-card'> = {
   'credit': 'credit-card',
   'paypal': 'paypal',

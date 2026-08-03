@@ -19,10 +19,26 @@ import ts from 'typescript';
  * classes live outside `*.enhancer.ts` (e.g. `CartDisplayEnhancer` in
  * `cart-summary.display.ts`), so a filename-based scan would miss them.
  *
- * This is a ratchet, not a red test: 18 of the 22 classes found today violate the
- * rule (see ALLOWLIST below), each with a one-line reason. It fails on any violation
- * that is *not* already named there, so no new violator can land silently, and the
- * list is meant to shrink as each entry gets fixed — never to grow.
+ * This started as a ratchet with 18 violators. **One is left** (see ALLOWLIST below),
+ * and it is left because it belongs to another session's file, not because it is
+ * unfixable. Two of the other 17 were bugs — findings 98 and 101 — and the remaining
+ * 15 were each moved to `super.destroy()`-first only after checking the one thing
+ * that makes a late `super.destroy()` actually harmful.
+ *
+ * That check is short, because base `destroy()` is short: it runs the recorded
+ * unsubscribes, then calls `cleanupEventListeners()`. So the order can only matter
+ * when the subclass's own pre-`super` code destroys state that its own
+ * `cleanupEventListeners()` override then reads — which is exactly what findings 98
+ * and 101 were. For the other 15 the move was behaviour-neutral, and neutral for the
+ * same reason each time: nothing observable runs between the two positions.
+ * Unsubscribing a store or bus listener does not invoke it, and removing a DOM
+ * listener, clearing a timer, disconnecting an observer or detaching a node
+ * dispatches nothing — so no callback of this enhancer's can run during the swap and
+ * notice it happened.
+ *
+ * With the list at one, this is a red gate for everything else: any new violation
+ * fails. Adding an entry back is a decision to ship a teardown whose order nobody
+ * checked.
  */
 
 // Eager + raw so every source file's text is available synchronously for the
@@ -126,112 +142,14 @@ function findDestroyOverrides(): DestroyOverride[] {
  */
 const ALLOWLIST: { file: string; className: string; reason: string }[] = [
   {
-    file: 'features/behavior/fomo-popup/fomo-popup.enhancer.ts',
-    className: 'FomoPopupEnhancer',
-    reason:
-      'Calls this.cleanupEventListeners() manually before super.destroy(), which ' +
-      'calls it again — same listener removal runs twice.',
-  },
-  {
-    file: 'features/behavior/simple-exit-intent/simple-exit-intent.enhancer.ts',
-    className: 'ExitIntentEnhancer',
-    reason:
-      'Calls this.cleanupEventListeners() manually before super.destroy(), which ' +
-      'calls it again — same listener removal runs twice.',
-  },
-  {
-    file: 'features/cart/accept-upsell/accept-upsell.enhancer.ts',
-    className: 'AcceptUpsellEnhancer',
-    reason:
-      'Removes its click/pageshow/eventBus listeners before super.destroy() — the ' +
-      'base subscription cleanup runs after, not before, this hand-rolled teardown.',
-  },
-  {
-    file: 'features/cart/add-to-cart/add-to-cart.enhancer.ts',
-    className: 'AddToCartEnhancer',
-    reason:
-      'Clears propertyListenerCleanups and removes its click/eventBus listeners ' +
-      'before super.destroy() runs the base cleanup.',
-  },
-  {
-    file: 'features/cart/bundle-selector/bundle-selector.enhancer.ts',
-    className: 'BundleSelectorEnhancer',
-    reason:
-      'First statement is BundleSelectorEnhancer._instances.delete(this); ' +
-      'super.destroy() is second, and card class-list cleanup runs after that.',
-  },
-  {
-    file: 'features/cart/coupon/coupon.enhancer.ts',
-    className: 'CouponEnhancer',
-    reason:
-      'Logs and unsubscribes from the cart store before calling super.destroy().',
-  },
-  {
-    file: 'features/cart/package-selector/package-selector.enhancer.ts',
-    className: 'PackageSelectorEnhancer',
-    reason:
-      'Calls this.cleanupEventListeners() and clears this.items before ' +
-      'super.destroy() runs the base cleanup.',
-  },
-  {
-    file: 'features/cart/package-toggle/package-toggle.enhancer.ts',
-    className: 'PackageToggleEnhancer',
-    reason:
-      'First statement is PackageToggleEnhancer._instances.delete(this); ' +
-      'super.destroy() is second, and cleanupEventListeners/card cleanup runs after.',
-  },
-  {
     file: 'features/checkout/checkout-form/checkout-form.enhancer.ts',
     className: 'CheckoutFormEnhancer',
     reason:
       'Tears down its own timers, validator, credit-card service, prospect-cart ' +
-      'enhancer and phone inputs before calling super.destroy(). Out of scope for ' +
-      'this change (src/features/checkout is being edited by another session).',
-  },
-  {
-    file: 'features/checkout/checkout-review/checkout-review.enhancer.ts',
-    className: 'CheckoutReviewEnhancer',
-    reason:
-      'Unsubscribes from its store subscription before calling super.destroy(). ' +
-      'Out of scope for this change (src/features/checkout is being edited by ' +
-      'another session).',
-  },
-  {
-    file: 'features/checkout/express-checkout-container/express-checkout-container.enhancer.ts',
-    className: 'ExpressCheckoutContainerEnhancer',
-    reason:
-      'Calls this.clearButtons() before super.destroy(). Out of scope for this ' +
-      'change (src/features/checkout is being edited by another session).',
-  },
-  {
-    file: 'features/display/conditional-display/conditional-display.enhancer.ts',
-    className: 'ConditionalDisplayEnhancer',
-    reason:
-      'Removes its selection-change listeners before calling super.destroy().',
-  },
-  {
-    file: 'features/display/selection-display/selection-display.enhancer.ts',
-    className: 'SelectionDisplayEnhancer',
-    reason:
-      'Removes its selection-change listeners before calling super.destroy().',
-  },
-  {
-    file: 'features/display/timer/timer.enhancer.ts',
-    className: 'TimerEnhancer',
-    reason: 'Clears its countdown interval before calling super.destroy().',
-  },
-  {
-    file: 'features/ui/scroll-hint/scroll-hint.enhancer.ts',
-    className: 'ScrollHintEnhancer',
-    reason:
-      'Removes its scroll/resize listeners, disconnects its MutationObserver and ' +
-      'cancels a pending animation frame before calling super.destroy().',
-  },
-  {
-    file: 'features/ui/tooltip/tooltip.enhancer.ts',
-    className: 'TooltipEnhancer',
-    reason:
-      'Calls this.hide() and clears its timers before calling super.destroy().',
+      'enhancer and phone inputs before calling super.destroy(). The only entry ' +
+      'left, and the only one this change could not verify: checkout-form was ' +
+      'being edited by another session, so its teardown order was not this ' +
+      "change's to reorder or prove.",
   },
 ];
 
@@ -719,15 +637,121 @@ describe('every listener registered in the enhancer layer is removable', () => {
     }
   }
 
-  /** True when the options argument carries a `signal:` property. */
-  function passesSignal(options: ts.Expression | undefined): boolean {
-    return (
-      options !== undefined &&
-      ts.isObjectLiteralExpression(options) &&
-      options.properties.some(
-        p => p.name && ts.isIdentifier(p.name) && p.name.text === 'signal'
-      )
-    );
+  /**
+   * The object literal an options expression resolves to, or `undefined` when this
+   * file cannot show one.
+   *
+   * Resolution is **syntactic and same-file**: a name is matched to a declaration
+   * of that name in the same source file. There is no `ts.Program` here (each file
+   * is parsed on its own), so there is no type checker to ask, and a name is not
+   * scope-resolved — two same-named locals in different functions are one name to
+   * this. That is acceptable for what it decides: it only ever grants an exemption
+   * to a registration whose options this file also declares.
+   *
+   * Followed: object literals, `const opts = {…}`, `this.listenerOptions` as a
+   * getter or an initialized property, `this.listenerOptions()` as a method whose
+   * body is a single `return {…}`, and `{ ...base, once: true }` spreads of any of
+   * those.
+   */
+  function resolveOptionsObject(
+    sf: ts.SourceFile,
+    expr: ts.Expression,
+    seen: Set<ts.Node> = new Set()
+  ): ts.ObjectLiteralExpression | undefined {
+    const node = unwrap(expr);
+    if (seen.has(node)) return undefined;
+    seen.add(node);
+
+    if (ts.isObjectLiteralExpression(node)) return node;
+
+    // `this.listenerOptions()` / `helper()` — follow the callee's declaration.
+    const target = ts.isCallExpression(node) ? unwrap(node.expression) : node;
+
+    let name: string | undefined;
+    if (ts.isIdentifier(target)) name = target.text;
+    else if (ts.isPropertyAccessExpression(target)) name = target.name.text;
+    if (!name) return undefined;
+
+    /** The expression a declaration of `name` evaluates to, if this file has one. */
+    let value: ts.Expression | undefined;
+
+    const singleReturn = (
+      body: ts.Node | undefined
+    ): ts.Expression | undefined => {
+      if (!body || !ts.isBlock(body)) return undefined;
+      const ret = body.statements.find(ts.isReturnStatement);
+      return ret?.expression;
+    };
+
+    const findDeclaration = (n: ts.Node): void => {
+      if (value) return;
+      if (
+        (ts.isVariableDeclaration(n) || ts.isPropertyDeclaration(n)) &&
+        ts.isIdentifier(n.name) &&
+        n.name.text === name &&
+        n.initializer
+      ) {
+        value = n.initializer;
+      } else if (
+        (ts.isGetAccessorDeclaration(n) ||
+          ts.isMethodDeclaration(n) ||
+          ts.isFunctionDeclaration(n)) &&
+        n.name &&
+        ts.isIdentifier(n.name) &&
+        n.name.text === name
+      ) {
+        value = singleReturn(n.body);
+      }
+      if (!value) ts.forEachChild(n, findDeclaration);
+    };
+    findDeclaration(sf);
+
+    return value ? resolveOptionsObject(sf, value, seen) : undefined;
+  }
+
+  /**
+   * True when the options argument carries a `signal:` property — written inline, or
+   * held in a reference this file declares.
+   *
+   * Accepting only an inline literal was wrong, and it was wrong in the direction
+   * that costs the most: a hoisted
+   * `private get listenerOptions() { return { signal: this.abort.signal }; }` reads
+   * identically to a human, is just as removable, and was counted unremovable
+   * anyway. An agent that factored the repeated literal out that way had the ratchet
+   * fail all eight files it had just fixed (finding 174).
+   *
+   * **The limitation that remains, stated so it is not rediscovered:** resolution
+   * stops at the file boundary and at anything not syntactically an object. Options
+   * imported from another module, returned by a call this file does not declare,
+   * built conditionally (`cond ? a : b`), or assembled by mutation
+   * (`opts.signal = …`) are **not** followed, and the registration is reported. That
+   * is deliberate rather than a gap to close: this rule's premise is that a
+   * listener's removability must be provable *at the call site*, and a value the
+   * file cannot show is not provable here. If you hit it, either inline
+   * `{ signal }` at the registration or declare the options object in the same file
+   * — do not widen the resolver to chase it across modules, which would make the
+   * answer depend on how the feature happens to be split (the same mistake the
+   * wave-5 import-following rule made; see the scope note above).
+   */
+  function passesSignal(
+    sf: ts.SourceFile,
+    options: ts.Expression | undefined
+  ): boolean {
+    if (options === undefined) return false;
+
+    const hasSignal = (
+      object: ts.ObjectLiteralExpression | undefined
+    ): boolean =>
+      object !== undefined &&
+      object.properties.some(p =>
+        ts.isSpreadAssignment(p)
+          ? hasSignal(resolveOptionsObject(sf, p.expression))
+          : p.name !== undefined &&
+            ts.isIdentifier(p.name) &&
+            p.name.text === 'signal'
+      );
+
+    return hasSignal(resolveOptionsObject(sf, options));
   }
 
   /** How many times an identifier of this name appears anywhere in the file. Two —
@@ -811,7 +835,7 @@ describe('every listener registered in the enhancer layer is removable', () => {
           ts.isCallExpression(node) &&
           ts.isPropertyAccessExpression(node.expression) &&
           node.expression.name.text === 'addEventListener' &&
-          !passesSignal(node.arguments[2])
+          !passesSignal(sf, node.arguments[2])
         ) {
           const handlerArg = node.arguments[1];
           const handler = handlerArg ? unwrap(handlerArg) : undefined;

@@ -60,6 +60,25 @@ The project uses TypeScript strict mode. Follow these:
   call site appears
 - No unused variables — prefix intentionally unused params with `_`
 
+## Dead-code gates
+`tsconfig.json` sets `noUnusedLocals`/`noUnusedParameters` to `false`, so the compiler never
+reports a dead import, local, or parameter on its own. Two ratcheted gates cover what that
+leaves open — both frozen-baseline scripts, same shape as `type-check-tests.mjs`:
+- `npm run check:unused` — unused locals/parameters/imports (`scripts/check-unused.mjs`),
+  via `tsconfig.unused-check.json` with those two flags turned on for this run only.
+- `npm run check:unused-exports` — unused *exports*: a named export nothing in
+  `src/`/`e2e/`/`scripts/` imports (`scripts/check-unused-exports.mjs`). This is the gap the
+  first gate cannot see — `noUnusedLocals` only inspects a binding inside its own file, never
+  whether another file imports it. It is a hand-rolled TypeScript-AST scanner, not ts-prune or
+  knip: both were evaluated and knip silently returned zero findings on this repo's full tree
+  (see the script's header comment for the reproduction). `src/index.ts` and `src/styles.ts`
+  (the two real build entries) are exempt by design, as is anything only reachable through a
+  computed `import()` path — see the header comment before adding a third exemption.
+
+Run `npm run check:unused-exports:update` (or `check:unused:update` for the sibling gate) to
+re-freeze the baseline after a deliberate change to what is tolerated, with a `notes` entry
+saying why.
+
 ## Type Definitions
 - Global event types: `src/types/global.ts` → `EventMap`
 - Campaign/package/product types: `src/types/campaign.ts`

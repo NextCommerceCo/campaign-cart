@@ -316,6 +316,8 @@ export class SelectionDisplayEnhancer extends BaseDisplayEnhancer {
   }
 
   public override destroy(): void {
+    super.destroy();
+
     // Clean up event listeners
     if (this.selectionChangeHandler) {
       this.eventBus.off(
@@ -324,7 +326,5 @@ export class SelectionDisplayEnhancer extends BaseDisplayEnhancer {
       );
       this.eventBus.off('selector:item-selected', this.selectionChangeHandler);
     }
-
-    super.destroy();
   }
 }

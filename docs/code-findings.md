@@ -15,7 +15,7 @@ findings 116–126 from wave 2 on the same day (the `core/debug/` kebab rename, 
 hardening, and the `ui-service` split), and findings 127-137 from wave 3 (the teardown fixes,
 the format-table gate, the `core/debug` method breakup and the `checkout-validator` split);
 and findings 138-148 from wave 4 (the order-payload reconciliation, the routed-display gate,
-the `core/debug` split, the `prospect-cart` split and the test type gate); findings 149-153 from wave 5, findings 154-161 from wave 6, findings 162-167 from wave 7, findings 168-171 from wave 8, and findings 172-178 from wave 9; each wave has its own
+the `core/debug` split, the `prospect-cart` split and the test type gate); findings 149-153 from wave 5, findings 154-161 from wave 6, findings 162-167 from wave 7, findings 168-171 from wave 8, findings 172-178 from wave 9, and findings 179-184 from wave 10; each wave has its own
 section near the end. **Finding 144 was wrong as written and is corrected in place.** **Findings 127 and 130-133 are the most serious
 things this restructure has turned up** - a published page teaching ten paths that render
 nothing, and a validation layer that blocks non-Latin names while letting unvalidated billing
@@ -1620,7 +1620,7 @@ Not fixed here: `checkout-form.enhancer.ts` was being actively rewritten by a pa
 session when this was found, and a blind edit would have collided. **It is in the gate's
 allowlist — remove the entry when fixing, and the gate will then hold the line.**
 
-### 102. The "`super.destroy()` first" rule is violated by 18 of 22 classes — *verified*
+### 102. ~~The "`super.destroy()` first" rule is violated by 18 of 22 classes~~ — **RESOLVED 2026-08-03: the allowlist is at 1, and the finding's own recommendation was wrong — see 179**
 
 `src/tests/contract/destroy-contract.test.ts` was written to enforce the rule stated in
 `CLAUDE.md` and the `sdk-structure` skill. It found that **18 of the 22** classes overriding
@@ -2917,7 +2917,7 @@ still select.
 **The general shape is worth remembering: a teardown array is a lifetime, and two lifetimes in
 one array is a bug waiting for the second one to be shorter.**
 
-### 174. The teardown gate cannot see a hoisted options object — *verified, limitation*
+### 174. ~~The teardown gate cannot see a hoisted options object~~ — **FIXED 2026-08-03**
 
 `passesSignal` only accepts an object literal written inline at `addEventListener`'s third
 argument. A `private get listenerOptions() { return { signal: this.abort.signal }; }` reads
@@ -2942,7 +2942,7 @@ page author who marks a button `data-next-checkout-payment` gets no behaviour at
 phone→E.164 rewrite runs on an untracked `setTimeout(…, 50)`, so a form destroyed inside that
 window still writes the store.
 
-### 176. Dead code now has a gate, and here is what it still cannot see — *fixed 2026-08-03*
+### 176. ~~Dead code now has a gate, and here is what it still cannot see~~ — **the export half landed 2026-08-03: `npm run check:unused-exports`, 172 frozen — see 182**
 
 `tsconfig.json` had `noUnusedLocals` and `noUnusedParameters` both `false`, so nothing reported
 an unused import, local or parameter. `npm run check:unused` runs the flags over a gate-only
@@ -3006,6 +3006,126 @@ wrong. The README now says so.
 
 Revealing a row also forces `display: flex`, so a location row laid out as `grid` or `block`
 re-lays-out the moment the shopper types an address.
+
+---
+
+## Found during the wave-10 restructure (2026-08-03)
+
+Five agents: the rest of the `checkout-form` split, the `super.destroy()` allowlist plus the
+registration rule (102, 174), the unused-export gate (176), the `attribute-scanner` /
+`country-service` splits, and the two docs extractors. **Findings 180 and 181 reach a
+shopper; 183 is the one to read before the next split.**
+
+### 179. Finding 102's recommendation was wrong, and the allowlist is now at 1 — *resolved 2026-08-03*
+
+102 offered a choice: narrow the `super.destroy()`-first rule to what demonstrably matters, or
+work the allowlist to zero. It leaned toward narrowing, on the grounds that 16 of its 18
+violations were "noise".
+
+**Checked one class at a time, none of the 16 was noise in the sense that mattered — and none
+was harmful either.** Eleven have no `cleanupEventListeners()` override at all, so harm is
+impossible by construction; the five that do never read state their pre-`super` code destroyed.
+All 15 in scope were moved and each proved neutral individually. The sixteenth,
+`CheckoutFormEnhancer`, is untouched only because another agent held the file — its entry now
+records the exact edit and says it must be re-checked against their final version.
+
+The general argument, now in the gate's header: **nothing observable happens between the two
+positions.** Unsubscribing a store or bus listener does not invoke it; removing a listener,
+clearing a timer, disconnecting an observer or detaching a node dispatches nothing.
+
+So the rule was cheap to satisfy after all, and narrowing it would have thrown away a
+mechanically checkable invariant to avoid work that took one pass. Two of the sixteen entries
+also carried a stale reason (*"out of scope — `src/features/checkout` is being edited"*) for
+classes that were never under `checkout-form/`.
+
+### 180. Clicking a shipping method does nothing on any campaign whose method ids are not 1, 2, 3 — *verified*
+
+`handleShippingMethodChange` maps the radio's value through a **hard-coded** table of ref_id
+1/2/3, with hard-coded prices ($5 / $28). On a campaign whose shipping methods carry any other
+id, the change handler matches nothing: **no store write, no cart recalculation, no log.** The
+shopper selects "Express", the total does not move, and the order ships on whatever method was
+already set.
+
+The prices are the second half of it — anything reading `checkoutStore.shippingMethod.price`
+can show a shipping cost the order will not charge, because the cart is corrected from the
+campaign and the checkout store is not.
+
+### 181. Three more ways the checkout misleads a shopper — *verified, each pinned by a test*
+
+- **A non-numeric step number disables validation entirely.** `parseInt('two')` is `NaN`, and
+  `validateStep` returns valid for any step that is not 1, 2 or 3. On a form with
+  `data-next-step-number="two"` — or any 4-step checkout — pressing *next* with every field
+  empty reaches payment, and `NaN` is written into the store as the current step.
+- **The duplicate-purchase modal can open twice.** The "already warned" mark is written only
+  *after* the shopper answers, and `handlePurchaseEvent` runs at boot **and** on every bfcache
+  restore: two stacked modals, two backdrops, and dismissing one leaves the page dimmed.
+- **Its Close path fills the form and then empties it.** `populateFormData()` is async and
+  un-awaited; `clearAllCheckoutFields()` then wipes the boxes and resets the store, after which
+  the pending populate writes back values captured *before* the reset. The previous order's
+  address reappears in a form that was just cleared, and the phone-reformat timer writes the
+  old phone into the reset store.
+
+Alongside them: the Konami test-order path needs **no test-mode flag**. Ten keystrokes on a
+live page replace a real visitor's email and address with `test@test.com` in Tempe AZ and place
+a real order on it. And three navigation/test timers (1,000 ms ×2, 150 ms, 100 ms) are
+untracked, so a destroyed form still navigates, still creates the order, and still emits
+`order:completed`.
+
+### 182. The unused-export gate, and why it is hand-rolled — *landed 2026-08-03*
+
+Finding 176 named the gap: `check:unused` cannot see an export nobody imports, which is how a
+267-line module with 23 exports (167) and a duplicated constant (158) survived.
+
+**`ts-prune` is in maintenance mode** and its README now points at `knip`. `knip` 6.31.0 was
+installed and run against this tree and returned **zero** unused exports — including for a
+synthetic dead export added on purpose, and for `core/logger.ts`'s dead singleton. Bisecting
+its graph builder showed that of ~690 files, only `src/index.ts` ever had a non-empty exports
+map once any of `src/features/**` was present; every other file came back empty, silently,
+exit 0. **A gate that reports "clean" on a codebase with known dead exports is worse than no
+gate**, so it was abandoned and `scripts/check-unused-exports.mjs` written instead — the same
+AST technique, scoped and auditable, ratcheted like its two siblings.
+
+Raw candidates 175 → **172 frozen**, after one real false positive (`src/styles.ts` is a second
+Vite entry point) and two deletions: `core/logger.ts`'s unused `logger` singleton, and
+`BILLING_ADDRESS_FIELD_MAP` — finding 158's exact case, closed.
+
+The 172 are not noise; they cluster into an apparently abandoned analytics-provider build-out, a
+legacy debug-panel UI superseded by `core/debug/panels/**`, an orphaned `checkout/utils/**`
+layer (`form-utils.ts` has no importer for any value export), and ~50 exports that are only
+ever called inside their own file — where the `export` keyword is what is dead, not the code.
+
+### 183. Verbatim extraction can still break a literal-scanner, and the feature's own tests will not catch it — *verified*
+
+Two clusters in `attribute-scanner.ts` and `country-service.ts` measured as the safest possible
+lifts — 0 and 3 dependencies, clean concerns — and both had to be **reverted** after the move:
+
+- **The selector array.** `featureReference.test.ts` scans the *raw text* of
+  `core/attribute-scanner.ts` for `'[data-next-…]',` lines to prove every feature's activating
+  selector is really queried. Moving the array to a sibling made ten features' selectors
+  invisible to that check.
+- **The cache cluster.** `extract-storage-keys.ts` resolves `this.cachePrefix + key` back to the
+  literal `next_country_{key}` by reading the class field's initializer. Once `cachePrefix`
+  became a function parameter, the resolver treats it as OPAQUE — documented behaviour — and the
+  published key pattern degraded to `{cachePrefix}{key}`.
+
+The rule this repo already had — *a templated `logger.*` message stops being a literal at the
+call site* — is a special case of something wider: **a generator that reads source text or
+resolves an initializer is broken by any move that changes where the literal lives, whether or
+not the code is identical.** And the feature's own suite cannot see it: running
+`attribute-scanner.test.ts` plus `dynamic-imports.test.ts` — exactly what the task asked for —
+passed both times. Only `src/tests/docs/` caught them.
+
+**Before the next split: run the docs suite, not just the feature's.**
+
+### 184. Two `getNextPageUrlFromMeta` that disagree about the query string — *verified*
+
+The enhancer's copy wraps the result in `preserveQueryParams`; the one in
+`checkout/utils/meta-tag-utils.ts` — used by `OrderManager` and `redirect-handler` for
+**express checkout and upsell redirects** — does not. Same meta tag, same shopper: currency,
+utm and debug parameters survive a normal submit and are dropped on an express one.
+
+`setOrCreateMetaTag` was a third, byte-identical copy; the new `meta-tags.ts` imports the shared
+one instead of carrying its own.
 
 ---
 

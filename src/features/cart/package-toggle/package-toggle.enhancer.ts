@@ -394,9 +394,10 @@ export class PackageToggleEnhancer extends BaseEnhancer {
   }
 
   public override destroy(): void {
-    PackageToggleEnhancer._instances.delete(this);
+    // `super.destroy()` already runs cleanupEventListeners(); calling it again here
+    // only repeated an idempotent teardown.
     super.destroy();
-    this.cleanupEventListeners();
+    PackageToggleEnhancer._instances.delete(this);
     this.cards.forEach(c => {
       c.element.classList.remove(
         'next-toggle-card',

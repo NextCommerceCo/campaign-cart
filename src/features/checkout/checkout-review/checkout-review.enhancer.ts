@@ -284,9 +284,9 @@ export class CheckoutReviewEnhancer extends BaseEnhancer {
   }
 
   public destroy(): void {
+    super.destroy();
     if (this.unsubscribe) {
       this.unsubscribe();
     }
-    super.destroy();
   }
 }

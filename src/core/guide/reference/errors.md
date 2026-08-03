@@ -84,6 +84,8 @@ Every part of `src/core`, and whether it raises anything of its own. "Nothing" i
 | `base/display-error-boundary.ts` | `[DisplayErrorBoundary]` | nothing |
 | `base/display-value-validator.ts` | `[DisplayValueValidator]` | nothing |
 | `base/dom-observer.ts` | `[DOMObserver]` | nothing |
+| `country-service.filtering.ts` | `[CountryService]` | nothing |
+| `country-service.postal-code.ts` | `[CountryService]` | nothing |
 | `country-service.ts` | `[CountryService]` | 2 — `Failed to fetch location data: {statusText}`, `Failed to fetch states for {countryCode}: {statusText}` |
 | `debug/country-selector.ts` | `[CountrySelector]` | nothing |
 | `debug/currency-selector.ts` | `[CurrencySelector]` | nothing |

@@ -488,8 +488,11 @@ export class BundleSelectorEnhancer extends BaseEnhancer {
   }
 
   public override destroy(): void {
-    BundleSelectorEnhancer._instances.delete(this);
+    // `super.destroy()` runs cleanupEventListeners(), which reads `this.cards` for
+    // pending debounces — so the card teardown below stays after it, and dropping
+    // this instance from the static registry is safe either side of it.
     super.destroy();
+    BundleSelectorEnhancer._instances.delete(this);
     this.cards.forEach(c =>
       c.element.classList.remove(
         this.classNames.bundleCard,

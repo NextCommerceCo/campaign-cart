@@ -304,6 +304,8 @@ export class AddToCartEnhancer extends BaseActionEnhancer {
   public update(_data?: unknown): void {}
 
   public override destroy(): void {
+    super.destroy();
+
     this.propertyListenerCleanups.forEach(cleanup => cleanup());
     this.propertyListenerCleanups = [];
     if (this.clickHandler) {
@@ -316,6 +318,5 @@ export class AddToCartEnhancer extends BaseActionEnhancer {
       this.eventBus.off('bundle:selection-changed', this.selectorChangeHandler);
       this.eventBus.off('bundle:quantity-changed', this.selectorChangeHandler);
     }
-    super.destroy();
   }
 }

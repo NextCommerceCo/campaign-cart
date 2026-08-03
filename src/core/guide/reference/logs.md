@@ -10,7 +10,7 @@ category: "Core Reference"
      src/docs/content/core-logs.ts. Do not edit by hand: change the log line in the
      code or the note in core-logs.ts, then run `npm run docs:reference`. -->
 
-Every message the SDK's own machinery can print — 500 of them, across 58 console prefixes plus 13 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
+Every message the SDK's own machinery can print — 500 of them, across 60 console prefixes plus 13 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
 
 Messages are listed at the wording the code uses. A `{name}` inside one is a value filled in at runtime, so search for the text on either side of it. **Extra context** means the call passes a second argument — an object or an error logged beside the message; expand that entry in the console, because the message alone will not tell you which element, package, or event was involved.
 
@@ -102,7 +102,9 @@ Console lines are prefixed with the part of the SDK that produced them. Find the
 
 | Prefix | What it does | Error | Warn | Info | Debug |
 |---|---|---|---|---|---|
-| `[CountryService]` | Detects the visitor’s country, fetches the country and state lists for the address form, filters them to the campaign’s shipping countries, and caches the results. | 3 | 6 | 7 | 6 |
+| `[CountryService]` | Validates and formats a postal code against a country’s rules, and holds the built-in per-country defaults used when the CDN has none for a country. | 1 | — | — | — |
+| `[CountryService]` | Filters the country and state lists to what the campaign actually ships to, and picks a fallback country when the visitor’s detected one is not on that list. | — | 2 | 7 | — |
+| `[CountryService]` | Detects the visitor’s country, fetches and caches the country and state lists for the address form, and delegates postal-code rules and shipping-country filtering to its sibling modules. | 2 | 4 | — | 6 |
 
 ### Attribution
 
@@ -1166,7 +1168,65 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 ## `[CountryService]`
 
-Detects the visitor’s country, fetches the country and state lists for the address form, filters them to the campaign’s shipping countries, and caches the results.
+Validates and formats a postal code against a country’s rules, and holds the built-in per-country defaults used when the CDN has none for a country.
+
+Logged from `country-service.postal-code.ts`. A free function, not a class with its own logger. `CountryService` builds one `Logger('CountryService')` in `country-service.ts` and passes it in as a parameter, so every line here prints under `[CountryService]`.
+
+### Error
+
+Something did not work. Each of these means a visitor saw the wrong thing, or a piece of data went missing. Every one carries what it means and what to do.
+
+#### `Invalid postal code regex:`
+
+`country-service.postal-code.ts › validatePostalCode` · extra context attached
+
+**Meaning:** The postal-code pattern configured for a country is not a valid regular expression, so validation was skipped and any postal code is accepted. Orders can be placed with an address the carrier will reject.
+
+**Action:** Fix the pattern in the country configuration. Until then postal codes are unvalidated — the failure is silent from the visitor’s side, so do not wait for a complaint.
+
+## `[CountryService]`
+
+Filters the country and state lists to what the campaign actually ships to, and picks a fallback country when the visitor’s detected one is not on that list.
+
+Logged from `country-service.filtering.ts`. A free function, not a class with its own logger. `CountryService` builds one `Logger('CountryService')` in `country-service.ts` and passes it in through a `{ campaignShippingCountries, config, logger }` context, so every line here prints under `[CountryService]`.
+
+### Warn
+
+The SDK carried on, but something in the markup, the configuration, or the campaign data was not what it expected. Worth fixing even when the page looks right — several of these are how tracking goes quietly wrong.
+
+#### `⚠️ Using deprecated showCountries config. Please use campaign API instead.`
+
+`country-service.filtering.ts › applyCountryFiltering`
+
+**Meaning:** The country list is being filtered by the `showCountries` setting in configuration. That setting is deprecated: the campaign’s `available_shipping_countries` is the intended source, and it is ignored while `showCountries` is set.
+
+**Action:** Set the shipping countries on the campaign, then remove `showCountries` from the page configuration. Leaving both in place means the page and the campaign can disagree about where you ship.
+
+#### `⚠️ No countries available in filtered list. Using config defaultCountry: {defaultCountry}`
+
+`country-service.filtering.ts › applyCountryFiltering`
+
+**Meaning:** Filtering left no countries at all, so the configured default is used on its own. The visitor sees a country dropdown with one entry, whatever their real location.
+
+**Action:** Check the campaign’s shipping countries and any `showCountries` filter — an overlap of zero between them produces this. This one blocks visitors from ordering, so treat it as urgent.
+
+### Info
+
+Normal progress. Read these as the play-by-play of what the SDK decided: which country it detected, which currency it chose, what it loaded.
+
+| Message | Source | Extra context |
+|---|---|---|
+| `✅ Filtering countries based on campaign API (available_shipping_countries):` | `country-service.filtering.ts › applyCountryFiltering` | yes |
+| `Using custom countries list from addressConfig.countries` | `country-service.filtering.ts › applyCountryFiltering` | — |
+| `Filtering countries based on addressConfig.showCountries (legacy):` | `country-service.filtering.ts › applyCountryFiltering` | yes |
+| `✅ Detected country ({detectedCountryCode}) not available for shipping. Using fallback: United States (US)` | `country-service.filtering.ts › applyCountryFiltering` | — |
+| `✅ Detected country ({detectedCountryCode}) not available and US not in list. Using first available country: {fallbackCountryCode}` | `country-service.filtering.ts › applyCountryFiltering` | — |
+| `Preserving detected currency: {currencyCode} from detected location: {detectedCountryCode}` | `country-service.filtering.ts › applyCountryFiltering` | — |
+| `✅ Using detected country: {detectedCountryCode} (available for shipping)` | `country-service.filtering.ts › applyCountryFiltering` | — |
+
+## `[CountryService]`
+
+Detects the visitor’s country, fetches and caches the country and state lists for the address form, and delegates postal-code rules and shipping-country filtering to its sibling modules.
 
 Logged from `country-service.ts`.
 
@@ -1189,14 +1249,6 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 **Meaning:** The state list for that country could not be loaded, so the state field renders with no options. In countries where a state is required, the visitor cannot complete the address.
 
 **Action:** Read the attached error and re-select the country to retry; a good response is cached. If one country always fails, check that its code is in the campaign’s shipping countries.
-
-#### `Invalid postal code regex:`
-
-`country-service.ts › CountryService.validatePostalCode` · extra context attached
-
-**Meaning:** The postal-code pattern configured for a country is not a valid regular expression, so validation was skipped and any postal code is accepted. Orders can be placed with an address the carrier will reject.
-
-**Action:** Fix the pattern in the country configuration. Until then postal codes are unvalidated — the failure is silent from the visitor’s side, so do not wait for a complaint.
 
 ### Warn
 
@@ -1233,36 +1285,6 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 **Meaning:** A response could not be cached, so the next page will fetch it again. Nothing is wrong with the data.
 
 **Action:** Nothing. Persistent occurrences mean storage is full or blocked, which costs a request per page rather than breaking anything.
-
-#### `⚠️ Using deprecated showCountries config. Please use campaign API instead.`
-
-`country-service.ts › CountryService.applyCountryFiltering`
-
-**Meaning:** The country list is being filtered by the `showCountries` setting in configuration. That setting is deprecated: the campaign’s `available_shipping_countries` is the intended source, and it is ignored while `showCountries` is set.
-
-**Action:** Set the shipping countries on the campaign, then remove `showCountries` from the page configuration. Leaving both in place means the page and the campaign can disagree about where you ship.
-
-#### `⚠️ No countries available in filtered list. Using config defaultCountry: {defaultCountry}`
-
-`country-service.ts › CountryService.applyCountryFiltering`
-
-**Meaning:** Filtering left no countries at all, so the configured default is used on its own. The visitor sees a country dropdown with one entry, whatever their real location.
-
-**Action:** Check the campaign’s shipping countries and any `showCountries` filter — an overlap of zero between them produces this. This one blocks visitors from ordering, so treat it as urgent.
-
-### Info
-
-Normal progress. Read these as the play-by-play of what the SDK decided: which country it detected, which currency it chose, what it loaded.
-
-| Message | Source | Extra context |
-|---|---|---|
-| `✅ Filtering countries based on campaign API (available_shipping_countries):` | `country-service.ts › CountryService.applyCountryFiltering` | yes |
-| `Using custom countries list from addressConfig.countries` | `country-service.ts › CountryService.applyCountryFiltering` | — |
-| `Filtering countries based on addressConfig.showCountries (legacy):` | `country-service.ts › CountryService.applyCountryFiltering` | yes |
-| `✅ Detected country ({detectedCountryCode}) not available for shipping. Using fallback: United States (US)` | `country-service.ts › CountryService.applyCountryFiltering` | — |
-| `✅ Detected country ({detectedCountryCode}) not available and US not in list. Using first available country: {fallbackCountryCode}` | `country-service.ts › CountryService.applyCountryFiltering` | — |
-| `Preserving detected currency: {currencyCode} from detected location: {detectedCountryCode}` | `country-service.ts › CountryService.applyCountryFiltering` | — |
-| `✅ Using detected country: {detectedCountryCode} (available for shipping)` | `country-service.ts › CountryService.applyCountryFiltering` | — |
 
 ### Debug
 

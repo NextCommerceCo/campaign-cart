@@ -124,5 +124,3 @@ export function createLogger(context: string): Logger {
   // In development, use regular logger
   return new Logger(context);
 }
-
-export const logger = createLogger('SDK');

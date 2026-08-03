@@ -256,6 +256,11 @@ export class ExitIntentEnhancer extends BaseEnhancer {
     );
   }
 
+  /**
+   * Base `destroy()` calls this after unsubscribing, so there is no `destroy()`
+   * override here — one that called `this.cleanupEventListeners()` before
+   * `super.destroy()` would only run this twice.
+   */
   protected override cleanupEventListeners(): void {
     if (this.mouseLeaveHandler) {
       document.documentElement.removeEventListener(
@@ -271,10 +276,5 @@ export class ExitIntentEnhancer extends BaseEnhancer {
     }
 
     this.hidePopup();
-  }
-
-  public override destroy(): void {
-    this.cleanupEventListeners();
-    super.destroy();
   }
 }
