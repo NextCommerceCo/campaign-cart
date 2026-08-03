@@ -314,9 +314,9 @@ export const CORE_LOG_SOURCES: CoreLogSource[] = [
   },
   {
     prefix: 'EcommerceEvents',
-    file: 'analytics/events/ecommerce-events.ts',
+    file: 'analytics/events/ecommerce-events.upsell.ts',
     area: 'Analytics core',
-    what: 'Builds the purchase-funnel events — view item, add to cart, begin checkout, purchase, upsell.',
+    what: 'Builds the purchase-funnel events — view item, add to cart, begin checkout, purchase, upsell. Split across `ecommerce-events.browse.ts` / `.cart.ts` / `.checkout.ts` / `.upsell.ts`, this is the only one of the four that logs (a warn when the campaign store cannot be read for an accepted-upsell item).',
   },
   {
     prefix: 'UserEvents',

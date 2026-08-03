@@ -9,6 +9,11 @@
 import { useAttributionStore } from '@/state/attribution';
 import type { Logger } from '@/core/logger';
 
+/**
+ * Adds one key to the attribution metadata sent with the order, merging so
+ * the automatically collected fields survive.
+ * @category Metadata
+ */
 export function addMetadata(logger: Logger, key: string, value: any): void {
   try {
     const store = useAttributionStore.getState();
@@ -27,6 +32,12 @@ export function addMetadata(logger: Logger, key: string, value: any): void {
   }
 }
 
+/**
+ * Adds several keys to the attribution metadata. Merges rather than
+ * replaces, despite the name — a true replace would wipe the automatic
+ * fields.
+ * @category Metadata
+ */
 export function setMetadata(
   logger: Logger,
   metadata: Record<string, any>
@@ -49,6 +60,12 @@ export function setMetadata(
   }
 }
 
+/**
+ * Drops caller-supplied metadata while preserving the automatic fields
+ * (`landing_page`, `referrer`, `device`, `device_type`, `domain`,
+ * `timestamp`).
+ * @category Metadata
+ */
 export function clearMetadata(logger: Logger): void {
   try {
     const store = useAttributionStore.getState();
@@ -71,6 +88,11 @@ export function clearMetadata(logger: Logger): void {
   }
 }
 
+/**
+ * The attribution metadata as stored. `undefined` means the read failed; an
+ * empty bag is `{}`.
+ * @category Metadata
+ */
 export function getMetadata(logger: Logger): Record<string, any> | undefined {
   try {
     const store = useAttributionStore.getState();
@@ -81,6 +103,11 @@ export function getMetadata(logger: Logger): Record<string, any> | undefined {
   }
 }
 
+/**
+ * Overwrites the collected attribution — funnel, affiliate, `utm_*`. This
+ * decides who is credited for the sale, so it is a reporting change.
+ * @category Attribution
+ */
 export function setAttribution(
   logger: Logger,
   attribution: Record<string, any>
@@ -95,6 +122,11 @@ export function setAttribution(
   }
 }
 
+/**
+ * Attribution in the shape sent to the order API, not the raw store — the
+ * right thing to log when an order is attributed wrongly.
+ * @category Attribution
+ */
 export function getAttribution(
   logger: Logger
 ): Record<string, any> | undefined {
@@ -107,6 +139,11 @@ export function getAttribution(
   }
 }
 
+/**
+ * Prints the whole attribution state to the console. Returns nothing; use
+ * {@link core/next-commerce!NextCommerce.getAttribution} when you need a value.
+ * @category Attribution
+ */
 export function debugAttribution(logger: Logger): void {
   try {
     const store = useAttributionStore.getState();

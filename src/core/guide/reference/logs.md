@@ -121,7 +121,7 @@ Console lines are prefixed with the part of the SDK that produced them. Find the
 | `[NextDataLayer]` | Pushes finished events onto `window.dataLayer` and fans them out to the providers, adding attribution and validating required fields on the way. | 8 | — | — | — |
 | `[AnalyticsConfig]` | Holds the per-provider settings — which fields each provider needs before it can be switched on. | 2 | — | — | — |
 | `[UserDataStorage]` | Remembers who the visitor is across pages — email, name, ids — in a cookie plus sessionStorage, so events after a redirect still identify them. | 2 | 2 | 2 | 4 |
-| `[EcommerceEvents]` | Builds the purchase-funnel events — view item, add to cart, begin checkout, purchase, upsell. | — | 1 | — | — |
+| `[EcommerceEvents]` | Builds the purchase-funnel events — view item, add to cart, begin checkout, purchase, upsell. Split across `ecommerce-events.browse.ts` / `.cart.ts` / `.checkout.ts` / `.upsell.ts`, this is the only one of the four that logs (a warn when the campaign store cannot be read for an accepted-upsell item). | — | 1 | — | — |
 | `[UserEvents]` | Builds the `dl_user_data` event that identifies the visitor and carries the current cart contents. | — | 1 | — | — |
 | `[EventValidator]` | Checks an event against its schema in debug mode, so a missing or mistyped field is caught while you are looking rather than in a report a week later. | 1 | — | — | — |
 
@@ -1939,9 +1939,9 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 ## `[EcommerceEvents]`
 
-Builds the purchase-funnel events — view item, add to cart, begin checkout, purchase, upsell.
+Builds the purchase-funnel events — view item, add to cart, begin checkout, purchase, upsell. Split across `ecommerce-events.browse.ts` / `.cart.ts` / `.checkout.ts` / `.upsell.ts`, this is the only one of the four that logs (a warn when the campaign store cannot be read for an accepted-upsell item).
 
-Logged from `analytics/events/ecommerce-events.ts`.
+Logged from `analytics/events/ecommerce-events.upsell.ts`.
 
 ### Warn
 
@@ -1949,7 +1949,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Could not access campaign store for upsell data:`
 
-`analytics/events/ecommerce-events.ts › EcommerceEvents.createAcceptedUpsellEvent` · extra context attached
+`analytics/events/ecommerce-events.upsell.ts › createAcceptedUpsellEvent` · extra context attached
 
 **Meaning:** An upsell event was built without campaign name or package details because the campaign store could not be read. The event is still sent.
 

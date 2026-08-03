@@ -321,7 +321,7 @@ The shipping methods the campaign offers, and which one the visitor has chosen. 
 ### `next.getShippingMethods()`
 
 ```ts
-getShippingMethods(): Array<{ ref_id: number; code: string; price: string; }>
+getShippingMethods(): ShippingMethodInfo[]
 ```
 
 Every shipping method the loaded campaign offers, with its id, code, and price.
@@ -339,7 +339,7 @@ for (const method of next.getShippingMethods()) {
 ### `next.getSelectedShippingMethod()`
 
 ```ts
-getSelectedShippingMethod(): { id: number; name: string; price: number; code: string; } | null
+getSelectedShippingMethod(): SelectedShippingMethod | null
 ```
 
 The shipping method the visitor has chosen, or `null` when they have not chosen one yet.
@@ -1008,7 +1008,7 @@ Offers added to an order that has already been paid for. They only work on a pag
 ### `next.addUpsell()`
 
 ```ts
-addUpsell(options: { packageId?: number; quantity?: number; items?: Array<{ packageId: number; quantity?: number }>; }): Promise<any>
+addUpsell(options: AddUpsellOptions): Promise<any>
 ```
 
 Adds one or more packages to the order the visitor has already paid for, charging their saved payment method.
@@ -1086,7 +1086,7 @@ Two behaviours with no `data-next-*` attribute of their own: you turn them on by
 ### `next.exitIntent()`
 
 ```ts
-exitIntent(options: { image?: string; template?: string; action?: () => void | Promise<void>; disableOnMobile?: boolean; mobileScrollTrigger?: boolean; maxTriggers?: number; useSessionStorage?: boolean; sessionStorageKey?: string; overlayClosable?: boolean; showCloseButton?: boolean; imageClickable?: boolean; actionButtonText?: string; }): Promise<void>
+exitIntent(options: ExitIntentOptions): Promise<void>
 ```
 
 Shows an image or template popup when the visitor looks like they are about to leave.
@@ -1123,7 +1123,7 @@ next.disableExitIntent();
 ### `next.fomo()`
 
 ```ts
-fomo(config?: { items?: Array<{ text: string; image: string }>; customers?: { [country: string]: string[] }; maxMobileShows?: number; displayDuration?: number; delayBetween?: number; initialDelay?: number; }): Promise<void>
+fomo(config?: FomoConfig): Promise<void>
 ```
 
 Starts the rotating social-proof popup — "someone in Denver bought this a moment ago" — from a list you supply.

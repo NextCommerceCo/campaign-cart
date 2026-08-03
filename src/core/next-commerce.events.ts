@@ -14,6 +14,15 @@ export interface NextCommerceEventsContext {
   logger: Logger;
 }
 
+/**
+ * Subscribes to an SDK event. Names and payloads are typed via `EventMap`.
+ *
+ * @example
+ * ```ts
+ * sdk.on('cart:item-added', ({ packageId, quantity }) => { ... });
+ * ```
+ * @category Events
+ */
 export function on<K extends keyof EventMap>(
   ctx: NextCommerceEventsContext,
   event: K,
@@ -22,6 +31,10 @@ export function on<K extends keyof EventMap>(
   ctx.eventBus.on(event, handler);
 }
 
+/**
+ * Unsubscribes a handler previously registered with {@link core/next-commerce!NextCommerce.on}.
+ * @category Events
+ */
 export function off<K extends keyof EventMap>(
   ctx: NextCommerceEventsContext,
   event: K,
@@ -30,6 +43,11 @@ export function off<K extends keyof EventMap>(
   ctx.eventBus.off(event, handler);
 }
 
+/**
+ * Registers a callback for a lifecycle callback type (e.g. cart/order hooks).
+ * Prefer {@link core/next-commerce!NextCommerce.on} for event-style subscriptions.
+ * @category Events
+ */
 export function registerCallback(
   ctx: NextCommerceEventsContext,
   type: CallbackType,
@@ -41,6 +59,10 @@ export function registerCallback(
   ctx.callbacks.get(type)!.add(callback);
 }
 
+/**
+ * Removes a callback registered with {@link core/next-commerce!NextCommerce.registerCallback}.
+ * @category Events
+ */
 export function unregisterCallback(
   ctx: NextCommerceEventsContext,
   type: CallbackType,
@@ -49,6 +71,10 @@ export function unregisterCallback(
   ctx.callbacks.get(type)?.delete(callback);
 }
 
+/**
+ * Invokes all callbacks registered for a type (errors are caught and logged).
+ * @category Events
+ */
 export function triggerCallback(
   ctx: NextCommerceEventsContext,
   type: CallbackType,
