@@ -108,8 +108,39 @@ export function setQuantity(
 }
 
 /**
+ * `addEventListener` that records how to take the listener back.
+ *
+ * Every listener this module puts on author DOM goes through here, and the caller
+ * chooses which array on {@link UpsellState} records the undo — which is the same
+ * choice as "how long should this live":
+ *
+ * - `state.scanTeardowns` for anything a scan attaches. {@link scanUpsellElements}
+ *   empties that array and re-runs it on every `update()`.
+ * - `state.selectorTeardowns` for the option cards and the dropdown, which are wired
+ *   once at initialize and must survive every later scan.
+ *
+ * Putting the second group in the first array is the trap this split exists to
+ * prevent: the next scan would have removed the option listeners and never re-added
+ * them, so the offer would stop responding to clicks after its first update.
+ */
+function bind(
+  teardowns: (() => void)[],
+  target: Element | null,
+  type: string,
+  listener: EventListener
+): void {
+  if (!target) return;
+  target.addEventListener(type, listener);
+  teardowns.push(() => target.removeEventListener(type, listener));
+}
+
+/**
  * Wires selector mode: option cards and/or a `<select>` dropdown, plus any
  * option already marked `data-next-selected="true"`.
+ *
+ * The card and dropdown listeners are recorded in `state.selectorTeardowns` so the
+ * enhancer can take them off the author's markup on destroy — without that they
+ * outlived it, and a re-enhanced container answered every click twice.
  */
 export function initializeSelectorMode(ctx: UpsellInteractionContext): void {
   const { element, state } = ctx;
@@ -119,7 +150,7 @@ export function initializeSelectorMode(ctx: UpsellInteractionContext): void {
     const pkgId = parseInt(el.getAttribute('data-next-package-id') ?? '', 10);
     if (isNaN(pkgId)) return;
     state.options.set(pkgId, el);
-    el.addEventListener('click', () => selectOption(pkgId, ctx));
+    bind(state.selectorTeardowns, el, 'click', () => selectOption(pkgId, ctx));
     if (el.getAttribute('data-next-selected') === 'true')
       selectOption(pkgId, ctx);
   });
@@ -132,7 +163,7 @@ export function initializeSelectorMode(ctx: UpsellInteractionContext): void {
         ) as HTMLSelectElement | null);
 
   if (selectEl) {
-    selectEl.addEventListener('change', () => {
+    bind(state.selectorTeardowns, selectEl, 'change', () => {
       if (selectEl.value) {
         const pkgId = parseInt(selectEl.value, 10);
         if (!isNaN(pkgId)) selectOption(pkgId, ctx);
@@ -164,16 +195,6 @@ export function scanUpsellElements(ctx: UpsellInteractionContext): void {
   state.scanTeardowns = [];
   state.actionButtons = [];
 
-  const bind = (
-    target: Element | null,
-    type: string,
-    listener: EventListener
-  ): void => {
-    if (!target) return;
-    target.addEventListener(type, listener);
-    state.scanTeardowns.push(() => target.removeEventListener(type, listener));
-  };
-
   element.querySelectorAll('[data-next-upsell-action]').forEach(el => {
     if (el instanceof HTMLElement) state.actionButtons.push(el);
   });
@@ -189,8 +210,12 @@ export function scanUpsellElements(ctx: UpsellInteractionContext): void {
     decBtn?.getAttribute('data-next-quantity-selector-id') ??
     state.selectorId;
 
-  bind(incBtn, 'click', () => adjustQuantity(1, qtySelectorId, ctx));
-  bind(decBtn, 'click', () => adjustQuantity(-1, qtySelectorId, ctx));
+  bind(state.scanTeardowns, incBtn, 'click', () =>
+    adjustQuantity(1, qtySelectorId, ctx)
+  );
+  bind(state.scanTeardowns, decBtn, 'click', () =>
+    adjustQuantity(-1, qtySelectorId, ctx)
+  );
 
   element
     .querySelectorAll('[data-next-upsell-quantity-toggle]')
@@ -200,7 +225,7 @@ export function scanUpsellElements(ctx: UpsellInteractionContext): void {
         toggle.getAttribute('data-next-upsell-quantity-toggle') ?? '1',
         10
       );
-      bind(toggle, 'click', () => setQuantity(ctx, qty));
+      bind(state.scanTeardowns, toggle, 'click', () => setQuantity(ctx, qty));
     });
 
   renderQuantity(ctx);

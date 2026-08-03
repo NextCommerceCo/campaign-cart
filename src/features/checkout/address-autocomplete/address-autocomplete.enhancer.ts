@@ -61,6 +61,7 @@ export class AddressAutocompleteEnhancer {
 
   public destroy(): void {
     this.googleMaps?.destroy();
+    this.nextCommerce?.destroy();
   }
 
   // ============================================================================

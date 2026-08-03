@@ -38,7 +38,11 @@ the `sdk-docs` skill §5b.
 builds one folder per released tag and checks it against Cloudflare's asset limits
 ([`docs/wrangler.jsonc`](../../docs/wrangler.jsonc)); it stops short of deploying,
 which stays a human's command. So a doc fix reaches readers when the release that
-carries it is tagged — not when it lands on a branch.
+carries it is tagged — not when it lands on a branch. The one exception is `main/`,
+the unreleased folder built from the `main` branch tip (`npm run docs:main`): it
+carries merged-but-untagged docs, is not a version entry, and is never indexed. It
+does not make a doc fix "published" — a reader on a pinned SDK still reads the tag
+they load. See [documentation-plan.md §8c](../../docs/documentation-plan.md).
 
 **Guide markdown must stay plain markdown.** The TypeDoc theme has no MDX
 components — `<Callout>`, `<Tabs>`, `<Cards>`, `<Steps>` render as literal text,

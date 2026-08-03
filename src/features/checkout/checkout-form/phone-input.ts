@@ -68,6 +68,10 @@ export interface PhoneInputContext {
   /**
    * Live instances, keyed by {@link PhoneFieldType}. Held by the caller because the form
    * also destroys them on teardown, and re-initialising must replace rather than stack.
+   *
+   * Destroying one also removes the `input` and `change` listeners this module put on
+   * the form's own markup — see {@link initializePhoneInputs}. Dropping an instance
+   * without calling `destroy()` therefore leaks both.
    */
   phoneInputs: Map<string, Iti>;
   /** Country to start a field on when its country `<select>` has no value yet. */
@@ -176,39 +180,59 @@ function initializePhoneInput(
 
     ctx.phoneInputs.set(type, instance);
 
+    // Both listeners below sit on the page author's markup, and the only handle the
+    // caller keeps is this `Iti` instance — so the listeners have to come off when it
+    // is destroyed, which is the call both teardown paths already make (the
+    // replace-on-re-init above, and the form's own loop over `phoneInputs`). Without
+    // this they outlived the form and a re-init stacked another pair on the same field.
+    const listenerAbort = new AbortController();
+    const destroyInstance = instance.destroy.bind(instance);
+    instance.destroy = () => {
+      listenerAbort.abort();
+      destroyInstance();
+    };
+
     // Store the full international number, not the national text the shopper sees —
     // the order needs E.164.
-    phoneField.addEventListener('input', () => {
-      const fullNumber = instance.getNumber();
-      if (type === 'shipping') {
-        ctx.updateFormData({ phone: fullNumber });
-        return;
-      }
-      const checkoutStore = useCheckoutStore.getState();
-      const currentBillingData = checkoutStore.billingAddress ?? {
-        first_name: '',
-        last_name: '',
-        address1: '',
-        city: '',
-        province: '',
-        postal: '',
-        country: '',
-        phone: '',
-      };
-      checkoutStore.setBillingAddress({
-        ...currentBillingData,
-        phone: fullNumber,
-      });
-    });
+    phoneField.addEventListener(
+      'input',
+      () => {
+        const fullNumber = instance.getNumber();
+        if (type === 'shipping') {
+          ctx.updateFormData({ phone: fullNumber });
+          return;
+        }
+        const checkoutStore = useCheckoutStore.getState();
+        const currentBillingData = checkoutStore.billingAddress ?? {
+          first_name: '',
+          last_name: '',
+          address1: '',
+          city: '',
+          province: '',
+          postal: '',
+          country: '',
+          phone: '',
+        };
+        checkoutStore.setBillingAddress({
+          ...currentBillingData,
+          phone: fullNumber,
+        });
+      },
+      { signal: listenerAbort.signal }
+    );
 
     // Changing the address country re-bases the phone country, so a shopper who
     // switches country does not keep the previous dial code.
     if (countryField instanceof HTMLSelectElement) {
-      countryField.addEventListener('change', () => {
-        const countryCode = countryField.value;
-        if (countryCode)
-          instance.setCountry(asCountryCode(countryCode.toLowerCase()));
-      });
+      countryField.addEventListener(
+        'change',
+        () => {
+          const countryCode = countryField.value;
+          if (countryCode)
+            instance.setCountry(asCountryCode(countryCode.toLowerCase()));
+        },
+        { signal: listenerAbort.signal }
+      );
     }
   } catch (error) {
     ctx.logger.error(`Failed to initialize ${type} phone field:`, error);

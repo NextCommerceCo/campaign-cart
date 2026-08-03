@@ -214,7 +214,7 @@ export class UpsellSelector {
 
     // Listen for quantity changes via EventBus
     this.eventBus.on('upsell:quantity-changed', (data) => {
-      const { quantity, selectorId, packageId } = data;
+      const { quantity } = data;
       this.logger.debug('Upsell quantity changed:', data);
 
       // Always update quantity since we're on an upsell page

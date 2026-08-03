@@ -159,7 +159,7 @@ export class ViewItemListTracker {
     if (selectSelectors.length > 0) {
       selectSelectors.forEach(selector => {
         const selectorCards = selector.querySelectorAll('[data-next-selector-card]');
-        selectorCards.forEach((card, index) => {
+        selectorCards.forEach(card => {
           const packageId = card.getAttribute('data-next-package-id');
           if (packageId && !seen.has(packageId)) {
             seen.add(packageId);
@@ -328,7 +328,7 @@ export class ViewItemListTracker {
                        listAttributionTracker.detectListFromUrl() ||
                        { listId: 'product_list', listName: 'Product List' };
 
-    products.forEach((product, index) => {
+    products.forEach(product => {
       if (this.trackedProducts.has(product.packageId)) {
         return; // Skip already tracked products
       }

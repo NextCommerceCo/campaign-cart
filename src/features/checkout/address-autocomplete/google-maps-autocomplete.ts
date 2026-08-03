@@ -19,6 +19,18 @@ export class GoogleMapsAutocomplete {
   private autocompleteInstances: Map<string, any> = new Map();
   private countryListenersAttached = false;
 
+  /**
+   * Holds every listener this provider puts on the checkout form's own markup, so
+   * {@link destroy} can take them all back.
+   *
+   * All four were inline arrows, which `removeEventListener` can never be handed back —
+   * so they outlived the form and a second lazy load stacked another set (finding 169 in
+   * `docs/code-findings.md`). The `keydown` one had teeth: it calls `preventDefault()`
+   * unconditionally, so a destroyed provider went on swallowing the Enter key in the
+   * address field. Same pattern as `accordion.enhancer.ts`.
+   */
+  private listenerAbort = new AbortController();
+
   constructor(ctx: AutocompleteContext) {
     this.ctx = ctx;
   }
@@ -44,6 +56,7 @@ export class GoogleMapsAutocomplete {
   }
 
   public destroy(): void {
+    this.listenerAbort.abort();
     this.autocompleteInstances.clear();
   }
 
@@ -218,8 +231,8 @@ export class GoogleMapsAutocomplete {
         await this.fillAddress(place, type);
       });
 
-      input.addEventListener('focus', () => setTimeout(addCloseButton, 100));
-      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') e.preventDefault(); });
+      input.addEventListener('focus', () => setTimeout(addCloseButton, 100), { signal: this.listenerAbort.signal });
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') e.preventDefault(); }, { signal: this.listenerAbort.signal });
 
     } catch (error) {
       this.ctx.logger.error(`Failed to create autocomplete for ${fieldKey}:`, error);
@@ -241,7 +254,7 @@ export class GoogleMapsAutocomplete {
           autocomplete.setComponentRestrictions({ country: countryValue });
           this.ctx.logger.debug(`Shipping autocomplete restricted to: ${countryValue}`);
         }
-      });
+      }, { signal: this.listenerAbort.signal });
     }
 
     const billingCountryField = billingFields.get('billing-country');
@@ -253,7 +266,7 @@ export class GoogleMapsAutocomplete {
           autocomplete.setComponentRestrictions({ country: countryValue });
           this.ctx.logger.debug(`Billing autocomplete restricted to: ${countryValue}`);
         }
-      });
+      }, { signal: this.listenerAbort.signal });
     }
 
     this.countryListenersAttached = true;

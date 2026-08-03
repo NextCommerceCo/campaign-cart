@@ -28,10 +28,6 @@ export class SDKInitializer {
   private static attributeScanner: AttributeScanner | null = null;
   private static retryAttempts = 0;
   private static maxRetries = 3;
-  private static initStartTime = 0;
-  private static campaignLoadStartTime = 0;
-  private static campaignLoadTime = 0;
-  private static campaignFromCache = false;
   // Shared with `sdk-initializer.attribution.ts` — `attributionListenersCleanup`
   // must persist across calls so `setupAttributionListeners` stays idempotent
   // through a boot retry or `reinitialize()` (finding #30).
@@ -48,7 +44,6 @@ export class SDKInitializer {
 
     try {
       this.logger.info('Initializing NextCommerce Campaign Cart SDK v2...');
-      this.initStartTime = Date.now();
 
       // Wait for DOM to be ready
       await this.waitForDOM();
@@ -99,7 +94,6 @@ export class SDKInitializer {
       await this.initializeDebugMode();
 
       this.initialized = true;
-      const initTime = Date.now() - this.initStartTime;
       this.logger.info('SDK initialization complete ✅');
 
       this.retryAttempts = 0;
@@ -223,10 +217,7 @@ export class SDKInitializer {
     // Campaign ID is deprecated and not used by the API - only the API key is needed
     // No need to check or warn about it anymore
 
-    this.campaignLoadStartTime = Date.now();
     await campaignStore.loadCampaign(configStore.apiKey);
-    this.campaignLoadTime = Date.now() - this.campaignLoadStartTime;
-    this.campaignFromCache = campaignStore.isFromCache || false;
 
     this.logger.debug('Campaign data loaded');
 
@@ -445,7 +436,6 @@ export class SDKInitializer {
 
     if (storedData) {
       this.logger.debug('Waiting for cart store rehydration...');
-      const rehydrationStartTime = Date.now();
 
       // Give the store time to rehydrate and recalculate totals
       // The store's onRehydrateStorage callback calls calculateTotals()
@@ -458,8 +448,6 @@ export class SDKInitializer {
 
       // Force a recalculation to ensure everything is up to date
       cartOperations.calculateTotals();
-
-      const rehydrationTime = Date.now() - rehydrationStartTime;
 
       this.logger.debug('Cart store rehydration complete', {
         itemCount: cartStore.items.length,

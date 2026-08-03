@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { handleClick } from '../remove-item.handlers';
 import type { HandlerContext } from '../remove-item.types';
-import { useCartStore, cartOperations } from '@/state/cart';
+import { useCartStore } from '@/state/cart';
 
 vi.mock('@/state/cart', () => {
   const getState = vi.fn();

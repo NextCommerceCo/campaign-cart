@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { FacebookAdapter } from '@/core/analytics/providers/facebook-adapter';
 import { NextCampaignAdapter } from '@/core/analytics/providers/next-campaign-adapter';
 import { DispatchError } from '@/core/analytics/providers/provider-adapter';

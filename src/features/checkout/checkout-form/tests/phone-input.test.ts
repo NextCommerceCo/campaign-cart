@@ -173,3 +173,82 @@ describe('initializePhoneInputs', () => {
     expect(ctx.phoneInputs.has('shipping')).toBe(false);
   });
 });
+
+/**
+ * The two listeners this module puts on the page — `input` on the phone field and
+ * `change` on the address country `<select>` — sit on author DOM, and nothing but the
+ * `Iti` instance is handed back to the caller. Destroying that instance used to leave
+ * both attached, so a torn-down form went on writing phone numbers into checkout state
+ * and a re-init stacked another pair (finding 169 in `docs/code-findings.md`).
+ *
+ * The fix hangs an `AbortController` off the instance's own `destroy()`, which is the
+ * one call both teardown paths already make: the replace-on-re-init inside this module,
+ * and the form's own teardown loop over `phoneInputs`.
+ */
+describe('phone-input teardown', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /** A form whose shipping country is a real `<select>`, so the change listener binds. */
+  function makeCtxWithCountry(): {
+    ctx: PhoneInputContext;
+    phone: HTMLInputElement;
+    country: HTMLSelectElement;
+  } {
+    const phone = document.createElement('input');
+    const country = document.createElement('select');
+    country.innerHTML = '<option value="US">US</option><option value="CA">CA</option>';
+
+    const fields = new Map<string, HTMLElement>([
+      ['phone', phone],
+      ['country', country],
+    ]);
+    return {
+      ctx: makeCtx({ fields, billingFields: makeFields([]) }),
+      phone,
+      country,
+    };
+  }
+
+  it('stops writing the phone number once the instance is destroyed', () => {
+    const { ctx, phone } = makeCtxWithCountry();
+
+    initializePhoneInputs(ctx);
+    phone.dispatchEvent(new Event('input'));
+    expect(ctx.updateFormData).toHaveBeenCalledWith({
+      phone: '+15551234567',
+    });
+
+    ctx.phoneInputs.get('shipping')?.destroy();
+    vi.mocked(ctx.updateFormData).mockClear();
+    phone.dispatchEvent(new Event('input'));
+
+    expect(ctx.updateFormData).not.toHaveBeenCalled();
+  });
+
+  it('stops re-basing the country once the instance is destroyed', () => {
+    const { ctx, country } = makeCtxWithCountry();
+
+    initializePhoneInputs(ctx);
+    country.value = 'CA';
+    country.dispatchEvent(new Event('change'));
+    expect(mockSetCountry).toHaveBeenCalledWith('ca');
+
+    ctx.phoneInputs.get('shipping')?.destroy();
+    mockSetCountry.mockClear();
+    country.value = 'US';
+    country.dispatchEvent(new Event('change'));
+
+    expect(mockSetCountry).not.toHaveBeenCalled();
+  });
+
+  it("still runs the library's own destroy", () => {
+    const { ctx } = makeCtxWithCountry();
+
+    initializePhoneInputs(ctx);
+    ctx.phoneInputs.get('shipping')?.destroy();
+
+    expect(mockDestroy).toHaveBeenCalledTimes(1);
+  });
+});

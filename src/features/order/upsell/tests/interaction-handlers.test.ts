@@ -12,6 +12,7 @@ import {
   onQuantityChanged,
   quantityKey,
   quantitySnapshot,
+  initializeSelectorMode,
   scanUpsellElements,
   setQuantity,
 } from '../upsell.interaction-handlers';
@@ -31,6 +32,7 @@ function makeState(overrides: Partial<UpsellState> = {}): UpsellState {
     currentQuantitySelectorId: undefined,
     actionButtons: [],
     scanTeardowns: [],
+    selectorTeardowns: [],
     ...overrides,
   };
 }
@@ -301,5 +303,83 @@ describe('onQuantityChanged', () => {
     onQuantityChanged({ quantity: 9, packageId: 99 }, ctx);
 
     expect(ctx.state.quantity).toBe(2);
+  });
+});
+
+/**
+ * Selector mode binds a `click` to every option card and a `change` to the offer's
+ * `<select>` — both author DOM. They used to be registered raw, so they survived
+ * `destroy()` and a re-enhanced container answered every click twice (finding 169 in
+ * `docs/code-findings.md`).
+ *
+ * They go through the same `bind` helper the quantity controls use, but into
+ * `state.selectorTeardowns` rather than `state.scanTeardowns`: a scan resets its own
+ * array on every `update()`, and sharing it would have torn the option listeners off
+ * on the very next scan without ever putting them back.
+ */
+describe('initializeSelectorMode teardown', () => {
+  const SELECTOR_HTML = `
+    <div data-next-upsell-option data-next-package-id="11">A</div>
+    <div data-next-upsell-option data-next-package-id="12">B</div>
+    <select data-next-upsell-select="protection">
+      <option value="">none</option>
+      <option value="11">A</option>
+      <option value="12">B</option>
+    </select>`;
+
+  function selectorCtx(): TestCtx {
+    return makeCtx(
+      makeState({ selectorId: 'protection', packageId: undefined }),
+      SELECTOR_HTML
+    );
+  }
+
+  it('stops selecting options once the recorded teardowns run', () => {
+    const ctx = selectorCtx();
+    initializeSelectorMode(ctx);
+
+    const card = ctx.element.querySelector<HTMLElement>(
+      '[data-next-package-id="11"]'
+    );
+    card?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(ctx.state.selectedPackageId).toBe(11);
+
+    ctx.state.selectorTeardowns.forEach(off => off());
+    ctx.state.selectedPackageId = undefined;
+
+    ctx.element
+      .querySelector<HTMLElement>('[data-next-package-id="12"]')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    expect(ctx.state.selectedPackageId).toBeUndefined();
+  });
+
+  it('stops reacting to the dropdown once the recorded teardowns run', () => {
+    const ctx = selectorCtx();
+    initializeSelectorMode(ctx);
+
+    const select = ctx.element.querySelector('select') as HTMLSelectElement;
+    select.value = '11';
+    select.dispatchEvent(new Event('change'));
+    expect(ctx.state.selectedPackageId).toBe(11);
+
+    ctx.state.selectorTeardowns.forEach(off => off());
+    select.value = '12';
+    select.dispatchEvent(new Event('change'));
+
+    expect(ctx.state.selectedPackageId).toBe(11);
+  });
+
+  it('keeps the option listeners through a re-scan, which resets only its own array', () => {
+    const ctx = selectorCtx();
+    initializeSelectorMode(ctx);
+
+    scanUpsellElements(ctx);
+
+    ctx.element
+      .querySelector<HTMLElement>('[data-next-package-id="12"]')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    expect(ctx.state.selectedPackageId).toBe(12);
   });
 });

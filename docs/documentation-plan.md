@@ -2626,3 +2626,66 @@ in build, test, docs or CI depended on the directory.
    is repo size).
 5. **`render-html-custom-data.ts`** still points VS Code hovers at the retired
    `developers.nextcommerce.com` — blocked on item 2.
+
+---
+
+## 8c. An unreleased `main/` folder (2026-08-03)
+
+The site published one folder per released tag plus `latest/`. There was no address for
+"what is merged but not tagged yet" — `--dev` builds the *working tree* into `dev/`, which
+`docs-publish.mjs` prunes on purpose because it describes one person's checkout. Asked for
+by Bond; the folder is `main/`, built from the branch tip.
+
+```bash
+npm run docs:main                       # main tip -> docs/site/main   (~12s, 208 files)
+npm run docs:version -- --branch main   # the same thing, any branch name
+npm run docs:publish                    # every eligible tag + latest/ + main/
+npm run docs:publish -- --no-branch     # releases only, as before
+```
+
+### Why the folder is named after the branch
+
+`next` was rejected: it is the product's own word (`data-next-*`, `window.next`, 29next),
+so `/next/` reads as "the Next docs" rather than "the unreleased docs". `canary` and
+`nightly` promise a build cadence nothing here provides — this folder moves when a human
+runs `docs:publish`. `unreleased` says what the banner already says, at twice the length.
+`main` is the ref it was built from, which is the one thing a reader needs to know to judge
+what they are looking at. The name is a parameter (`--branch <name>`), so a repo that
+renames its default branch renames the folder with it — at the cost of a moved URL.
+
+### What it is not
+
+- **Not a version.** `versions.json` is generated from release tags and
+  [`docsVersions.test.ts`](../src/tests/docs/docsVersions.test.ts) holds every entry to a
+  tag shape, so `main` cannot be an entry — the switcher offers it by name instead
+  ([`docs/assets/site.js`](assets/site.js), `UNRELEASED`). It is never `latest/` either.
+- **Not indexable.** `robots.txt` disallows `/main/` unconditionally: it documents code no
+  page loads, and it changes under the same URL on every publish, so an indexed copy is
+  stale the moment it is crawled.
+- **Not cached between publishes.** A tag's docs are frozen once built, so tag folders
+  build with `--skip-existing`; a branch tip is not, so `main/` is always rebuilt. A stale
+  `main/` is the one folder that can silently misdescribe the code it names.
+
+### Three things worth knowing before running it
+
+1. **`main` is behind this branch, so the folder is thinner than `dev/`.** At `dfde911`
+   (2026-07-09) `main` still has the *old* layout — `src/enhancers` + `src/stores`, 98
+   guide files, **208 files built**, `documents/enhancers_cart_AcceptUpsell_…`. The
+   `LAYOUTS` table already covered that generation for old tags, so no new code was needed
+   — but until the docs work merges, `main/` is the pre-guide site and `dev/` is the real
+   one. This is also §8a's URL break, visible: `main/` and a future release do not share
+   page names.
+2. **Only the local branch is built**, never `origin/main`. A ref the reader did not ask
+   for is worse than being one fetch behind; the build prints a warning when the two
+   differ, with the sha and date it actually used.
+3. **A branch name has to survive being a URL segment.** `feature/offers` is refused
+   rather than nested (the slash would create a level nothing else on the site knows
+   about), as are names colliding with `latest`, `dev`, the generated root files, or a tag
+   shape (`v0.4.31`, which would overwrite that tag's folder).
+
+Verified in Chromium against an assembled two-version site: from `v0.4.29/` the switcher
+lists `main` and navigates to it; on `main/` the banner reads *"You are reading unreleased
+docs, built from the main branch. The current release is v0.4.30."* and links to the
+current release's copy of the same page; on `latest/` and the current tag there is no
+banner. The existing stale banner and the `dev/`-only option still behave as they did —
+`renderStaleBanner` became `renderBanner`, one function for both cases.

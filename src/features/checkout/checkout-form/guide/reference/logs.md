@@ -22,7 +22,6 @@ Something did not work. Each of these means a visitor saw the wrong thing, or no
 | `Failed to re-initialize credit card service:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupBfcacheRestoreHandler` | yes |
 | `Failed to load country data:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | yes |
 | `Failed to initialize credit card service:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeCreditCard` | yes |
-| `Error clearing checkout fields:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.clearAllCheckoutFields` | yes |
 | `Failed to parse order data from sessionStorage:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handlePurchaseEvent` | yes |
 | `Failed to create order:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.createOrder` | yes |
 | `Failed to create test order:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.createTestOrder` | yes |
@@ -32,6 +31,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or no
 | `Error filling test data for Konami order:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleKonamiActivation` | yes |
 | `Error handling config update:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleConfigUpdate` | yes |
 | `[Payment Error] Could not find error container element` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.displayPaymentError` | — |
+| `Error clearing checkout fields:` | `form-population.ts › clearAllCheckoutFields` | yes |
 | `Failed to initialize {type} phone field:` | `phone-input.ts › initializePhoneInput` | yes |
 | `Failed to load states:` | `state-fields.ts › updateStateOptions` | yes |
 | `Failed to load billing states:` | `state-fields.ts › updateBillingStateOptions` | yes |
@@ -61,10 +61,6 @@ The feature carried on, but something in the markup or the data was not what it 
 | `[Billing] Collapse fallback triggered - forcing completion` | `billing-animation.ts › collapseBillingForm` | — |
 | `[Billing] Could not set initial state - missing elements` | `billing-form-setup.ts › setInitialBillingFormState` | — |
 | `[Billing] Some stored billing values have no field` | `billing-form-setup.ts › restoreBillingAddressFields` | yes |
-| `Submit button not found in checkout form` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.scanAllFields` | — |
-| `Stored country {storedCountry} not in available countries` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | — |
-| `Country {countryCode} from URL not in available countries` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | — |
-| `Saved country {savedCountryOverride} not in available countries` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | — |
 | `Failed to initialize ProspectCartEnhancer:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeProspectCart` | yes |
 | `[Spreedly] Credit card validation errors:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeCreditCard` | yes |
 | `API 400 error response:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.createOrder` | yes |
@@ -74,9 +70,13 @@ The feature carried on, but something in the markup or the data was not what it 
 | `Invalid {fieldName} detected on blur:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.validateContactFieldOnCommit` | yes |
 | `Failed to track add_shipping_info event:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.trackAddShippingInfoOnAddress` | yes |
 | `[Billing] Click blocked - animation in progress` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleBillingAddressToggle` | — |
-| `Province {storedProvince} not found in options for country {storedCountry}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.populateFormData` | — |
 | `Cart is empty` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleCartUpdate` | — |
 | `Failed to track begin_checkout event:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.trackBeginCheckout` | yes |
+| `Stored country {storedCountry} not in available countries` | `country-selection.ts › resolveShippingCountry` | — |
+| `Country {countryCode} from URL not in available countries` | `country-selection.ts › resolveShippingCountry` | — |
+| `Saved country {savedCountryOverride} not in available countries` | `country-selection.ts › resolveShippingCountry` | — |
+| `Submit button not found in checkout form` | `field-scanning.ts › scanAllFields` | — |
+| `Province {storedProvince} not found in options for country {storedCountry}` | `form-population.ts › populateFormData` | — |
 | `Cannot checkout with empty cart` | `express-checkout-processor.ts › ExpressCheckoutProcessor.handleExpressCheckout` | — |
 | `Failed to track add_payment_info event:` | `express-checkout-processor.ts › ExpressCheckoutProcessor.handleExpressCheckout` | yes |
 | `Failed to reload Spreedly fields:` | `credit-card-service.ts › CreditCardService.clearFields` | yes |
@@ -110,18 +110,10 @@ Normal progress, useful for confirming the feature ran at all.
 | `Resetting payment method from` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupBfcacheRestoreHandler` | yes |
 | `Re-initializing credit card service after bfcache restore` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupBfcacheRestoreHandler` | — |
 | `Window focused with processing=true, resetting express checkout state` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupWindowFocusHandler` | — |
-| `Setting campaign shipping countries:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | yes |
-| `Shipping country selection priority check (does not affect currency):` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | yes |
-| `✅ Using stored country from previous step: {storedCountry}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | — |
-| `✅ Using shipping country from URL parameter: {countryCode} (currency unaffected)` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | — |
-| `✅ Using shipping country from session storage: {savedCountryOverride} (currency unaffected)` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | — |
-| `✅ Using detected/default shipping country: {selectedCountryCode} (currency unaffected)` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | — |
-| `Handling country change to: {newCountry}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleCountryChange` | — |
-| `Country field updated to: {newCountry}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleCountryChange` | — |
+| `Setting campaign shipping countries:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.configureCountryService` | yes |
 | `Prospect cart created` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeProspectCart` | yes |
 | `Prospect cart abandoned` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeProspectCart` | yes |
 | `[Spreedly] Payment token received:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeCreditCard` | yes |
-| `All checkout fields cleared` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.clearAllCheckoutFields` | — |
 | `Fresh purchase detected, showing attention modal` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handlePurchaseEvent` | yes |
 | `Order created successfully` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.createOrder` | yes |
 | `Multi-step checkout detected` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.detectMultiStepCheckout` | yes |
@@ -136,10 +128,18 @@ Normal progress, useful for confirming the feature ran at all.
 | `[Billing] Processing toggle` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleBillingAddressToggle` | yes |
 | `[Billing] Collapsing form...` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleBillingAddressToggle` | — |
 | `[Billing] Expanding form...` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleBillingAddressToggle` | — |
-| `Restoring saved country: {currentCountryValue}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.populateFormData` | — |
 | `[Payment Error] Displaying error:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.displayPaymentError` | yes |
 | `[Payment Error] Error container shown with message:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.displayPaymentError` | yes |
 | `Tracked begin_checkout event on checkout form initialization` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.trackBeginCheckout` | — |
+| `Shipping country selection priority check (does not affect currency):` | `country-selection.ts › resolveShippingCountry` | yes |
+| `✅ Using stored country from previous step: {storedCountry}` | `country-selection.ts › resolveShippingCountry` | — |
+| `✅ Using shipping country from URL parameter: {countryCode} (currency unaffected)` | `country-selection.ts › resolveShippingCountry` | — |
+| `✅ Using shipping country from session storage: {savedCountryOverride} (currency unaffected)` | `country-selection.ts › resolveShippingCountry` | — |
+| `✅ Using detected/default shipping country: {selectedCountryCode} (currency unaffected)` | `country-selection.ts › resolveShippingCountry` | — |
+| `Handling country change to: {newCountry}` | `country-selection.ts › applyCountryToAddressForms` | — |
+| `Country field updated to: {newCountry}` | `country-selection.ts › applyCountryToAddressForms` | — |
+| `Restoring saved country: {currentCountryValue}` | `form-population.ts › populateFormData` | — |
+| `All checkout fields cleared` | `form-population.ts › clearAllCheckoutFields` | — |
 | `createExpressOrder called with:` | `order-manager.ts › OrderManager.createExpressOrder` | yes |
 | `Express order data built` | `order-manager.ts › OrderManager.createExpressOrder` | — |
 | `Express order created:` | `order-manager.ts › OrderManager.createExpressOrder` | yes |
@@ -169,15 +169,7 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 | `[Billing] Collapse animation started` | `billing-animation.ts › collapseBillingForm` | yes |
 | `[Billing] No toggle on this page - keeping the stored choice` | `billing-form-setup.ts › reconcileBillingToggle` | — |
 | `CheckoutFormEnhancer initialized` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initialize` | — |
-| `Found submit button:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.scanAllFields` | yes |
-| `No campaign shipping countries available, using config` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | — |
-| `No shipping location elements found` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeLocationFieldVisibility` | — |
-| `No billing location elements found` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeLocationFieldVisibility` | — |
-| `Location field visibility initialized` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeLocationFieldVisibility` | yes |
-| `Location fields hidden` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.hideLocationFields` | — |
-| `Location fields shown` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.showLocationFields` | — |
-| `Billing location fields hidden` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.hideBillingLocationFields` | — |
-| `Billing location fields shown` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.showBillingLocationFields` | — |
+| `No campaign shipping countries available, using config` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.configureCountryService` | — |
 | `ProspectCartEnhancer initialized` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeProspectCart` | — |
 | `[Spreedly] Credit card service ready` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeCreditCard` | — |
 | `[Spreedly] Connected floating label callbacks` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeCreditCard` | — |
@@ -186,10 +178,18 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 | `Express payment config:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFormSubmit` | yes |
 | `Saved user's country selection to session: {value}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.applyCountrySelection` | — |
 | `[Billing] Set country to:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleBillingAddressToggle` | yes |
-| `Converting phone to international format: {phone} -> {internationalNumber}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.populateFormData` | — |
-| `Restored province: {storedProvince}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.populateFormData` | — |
 | `begin_checkout already tracked, skipping duplicate` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.trackBeginCheckout` | — |
 | `Updated user data storage:` | `contact-persistence.ts › persistContactField` | yes |
+| `Found submit button:` | `field-scanning.ts › scanAllFields` | yes |
+| `Converting phone to international format: {phone} -> {internationalNumber}` | `form-population.ts › populateFormData` | — |
+| `Restored province: {storedProvince}` | `form-population.ts › populateFormData` | — |
+| `Location fields hidden` | `location-field-visibility.ts › hideLocationFields` | — |
+| `Location fields shown` | `location-field-visibility.ts › showLocationFields` | — |
+| `Billing location fields hidden` | `location-field-visibility.ts › hideBillingLocationFields` | — |
+| `Billing location fields shown` | `location-field-visibility.ts › showBillingLocationFields` | — |
+| `No shipping location elements found` | `location-field-visibility.ts › initialize` | — |
+| `No billing location elements found` | `location-field-visibility.ts › initialize` | — |
+| `Location field visibility initialized` | `location-field-visibility.ts › initialize` | yes |
 | `Reusing existing state loading promise for {country}` | `state-fields.ts › updateStateOptions` | — |
 | `Kept autofilled state: {currentProvinceValue}` | `state-fields.ts › updateStateOptions` | — |
 | `No valid state found, showing placeholder: Select {stateLabel}` | `state-fields.ts › updateStateOptions` | — |

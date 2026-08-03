@@ -22,6 +22,16 @@ class AddressAutocomplete {
   private _lastSearchText: string | null = null;
   private _documentClickHandler: ((e: MouseEvent) => void) | null = null;
 
+  /**
+   * Holds every listener this instance registers — the four on `this.input`, which is
+   * the checkout form's own address field, plus the two on the nodes it builds.
+   *
+   * All six were inline arrows, which `removeEventListener` can never be handed back, so
+   * they outlived the form and a second lazy load stacked another set on the same field
+   * (finding 169 in `docs/code-findings.md`). Aborted by {@link destroy}.
+   */
+  private _listenerAbort = new AbortController();
+
   constructor(
     input: HTMLInputElement,
     ctx: AutocompleteContext,
@@ -35,6 +45,19 @@ class AddressAutocomplete {
     this.type = type;
     this.defaultCountry = defaultCountry;
     this._init();
+  }
+
+  /**
+   * Takes every listener off the page and closes anything still open.
+   *
+   * Called by {@link NextCommerceAutocomplete.destroy}, which the checkout form calls
+   * when it tears down.
+   */
+  public destroy(): void {
+    this._listenerAbort.abort();
+    this._abortController?.abort();
+    this._abortController = null;
+    this._tearDownAddressSuggestion();
   }
 
   private _getCountryValue(): string {
@@ -91,7 +114,9 @@ class AddressAutocomplete {
     container.className = 'pac-container-nextcommerce pac-logo';
     container.style.cssText = 'display:none; position:absolute; z-index:9999';
     document.body.appendChild(container);
-    container.addEventListener('mousedown', e => e.preventDefault());
+    container.addEventListener('mousedown', e => e.preventDefault(), {
+      signal: this._listenerAbort.signal,
+    });
     this._documentClickHandler = e => {
       if (!container.contains(e.target as Node) && e.target !== this.input) {
         container.style.display = 'none';
@@ -133,12 +158,16 @@ class AddressAutocomplete {
       icon.className = 'pac-icon pac-icon-marker';
       div.appendChild(icon);
       div.appendChild(this._buildHighlightedLabel(searchText, addr.label));
-      div.addEventListener('click', () => {
-        this._originalSearchText = null;
-        this.input.value = addr.label;
-        this._fillAddress(addr);
-        container.style.display = 'none';
-      });
+      div.addEventListener(
+        'click',
+        () => {
+          this._originalSearchText = null;
+          this.input.value = addr.label;
+          this._fillAddress(addr);
+          container.style.display = 'none';
+        },
+        { signal: this._listenerAbort.signal }
+      );
       container.appendChild(div);
     });
 
@@ -204,7 +233,7 @@ class AddressAutocomplete {
         return;
       }
       this._keyNavigating = false;
-    });
+    }, { signal: this._listenerAbort.signal });
 
     this.input.addEventListener('focus', async () => {
       if (this._addressSuggestionContainer && this._lastData?.results?.length) {
@@ -221,12 +250,12 @@ class AddressAutocomplete {
           throw e;
         }
       }
-    });
+    }, { signal: this._listenerAbort.signal });
 
     this.input.addEventListener('blur', () => {
       if (!this._keyNavigating) this._tearDownAddressSuggestion();
       this._keyNavigating = false;
-    });
+    }, { signal: this._listenerAbort.signal });
 
     this.input.addEventListener('input', event => {
       if (this._keyNavigating) {
@@ -256,7 +285,7 @@ class AddressAutocomplete {
           throw e;
         }
       }, 300);
-    });
+    }, { signal: this._listenerAbort.signal });
   }
 
   private async _fillAddress(place: AddressAutocompleteResult): Promise<void> {
@@ -355,6 +384,8 @@ class AddressAutocomplete {
 export class NextCommerceAutocomplete {
   private ctx: AutocompleteContext;
   private apiClient: IApiClient;
+  /** One per address field wired by {@link setup}, held so {@link destroy} can reach them. */
+  private instances: AddressAutocomplete[] = [];
 
   constructor(ctx: AutocompleteContext, apiClient: IApiClient) {
     this.ctx = ctx;
@@ -367,12 +398,27 @@ export class NextCommerceAutocomplete {
 
     const addressField = fields.get('address1');
     if (addressField instanceof HTMLInputElement) {
-      new AddressAutocomplete(addressField, this.ctx, this.apiClient, 'shipping', defaultCountry);
+      this.instances.push(
+        new AddressAutocomplete(addressField, this.ctx, this.apiClient, 'shipping', defaultCountry)
+      );
     }
 
     const billingAddressField = billingFields.get('billing-address1');
     if (billingAddressField instanceof HTMLInputElement) {
-      new AddressAutocomplete(billingAddressField, this.ctx, this.apiClient, 'billing', defaultCountry);
+      this.instances.push(
+        new AddressAutocomplete(billingAddressField, this.ctx, this.apiClient, 'billing', defaultCountry)
+      );
     }
+  }
+
+  /**
+   * Removes every listener the address fields were given and closes any open dropdown.
+   *
+   * Called from `AddressAutocompleteEnhancer.destroy()`. Before this existed the
+   * instances were built and dropped, so nothing could reach their listeners again.
+   */
+  public destroy(): void {
+    this.instances.forEach(instance => instance.destroy());
+    this.instances = [];
   }
 }

@@ -1,0 +1,18 @@
+{
+  // Gate-only config for `npm run check:unused` (scripts/check-unused.mjs).
+  //
+  // `tsconfig.json` has `noUnusedLocals: false` and `noUnusedParameters: false` —
+  // turning them on there would change what the production build type-checks
+  // (see docs/code-findings.md #171), and that file's owner decides that, not
+  // this gate. So this config exists only to flip the two flags on for the
+  // *check*, over the same wide program `tsconfig.eslint.json` already builds
+  // (src + e2e + scripts + the two build configs, with the vitest globals typed
+  // so test files don't false-positive on `vi`/`describe`/etc.).
+  //
+  // Nothing here changes `dist/` or what `npm run build`/`type-check` compiles.
+  "extends": "./tsconfig.eslint.json",
+  "compilerOptions": {
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  }
+}

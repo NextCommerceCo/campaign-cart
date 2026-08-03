@@ -65,6 +65,19 @@ export class CreditCardService {
   private originalPlaceholders: { number: string; cvv: string } = { number: 'Card Number', cvv: 'CVV *' };
   private labelBehavior: { number: string | null; cvv: string | null } = { number: null, cvv: null };
 
+  /**
+   * Holds every listener this service puts on the checkout form's own markup — the
+   * `change` on each expiry select and the `click` on the two hosted card fields and
+   * their wrappers.
+   *
+   * All six were inline arrows, which `removeEventListener` can never be handed back,
+   * and the form builds a fresh service on every init: each one added another generation
+   * to the same four elements (finding 169 in `docs/code-findings.md`). {@link destroy}
+   * aborts it. Nothing here concerns the Spreedly bridge, whose own `window.Spreedly.on`
+   * callbacks are a separate, page-lifetime registration.
+   */
+  private listenerAbort = new AbortController();
+
   constructor(environmentKey: string, config?: CardInputConfig) {
     this.environmentKey = environmentKey;
     this.config = config;
@@ -432,7 +445,7 @@ export class CreditCardService {
       this.monthField = monthField;
       // Add event listener to check payment info when month changes
       if (monthField instanceof HTMLSelectElement) {
-        monthField.addEventListener('change', () => this.checkAndTrackPaymentInfo());
+        monthField.addEventListener('change', () => this.checkAndTrackPaymentInfo(), { signal: this.listenerAbort.signal });
       }
     }
     
@@ -443,7 +456,7 @@ export class CreditCardService {
       this.yearField = yearField;
       // Add event listener to check payment info when year changes
       if (yearField instanceof HTMLSelectElement) {
-        yearField.addEventListener('change', () => this.checkAndTrackPaymentInfo());
+        yearField.addEventListener('change', () => this.checkAndTrackPaymentInfo(), { signal: this.listenerAbort.signal });
       }
     }
 
@@ -559,14 +572,14 @@ export class CreditCardService {
             this.logger.debug('Transferring focus to credit card number field');
           }
         }
-      });
+      }, { signal: this.listenerAbort.signal });
       
       // Also add to the field itself for direct clicks
       this.numberField.addEventListener('click', () => {
         if (window.Spreedly && this.isReady) {
           window.Spreedly.transferFocus('number');
         }
-      });
+      }, { signal: this.listenerAbort.signal });
     }
     
     // Add click handler to CVV field container
@@ -583,14 +596,14 @@ export class CreditCardService {
             this.logger.debug('Transferring focus to CVV field');
           }
         }
-      });
+      }, { signal: this.listenerAbort.signal });
       
       // Also add to the field itself for direct clicks
       this.cvvField.addEventListener('click', () => {
         if (window.Spreedly && this.isReady) {
           window.Spreedly.transferFocus('cvv');
         }
-      });
+      }, { signal: this.listenerAbort.signal });
     }
   }
 
@@ -1209,6 +1222,7 @@ export class CreditCardService {
   }
 
   public destroy(): void {
+    this.listenerAbort.abort();
     this.clearAllErrors();
     this.isReady = false;
     delete this.onReadyCallback;

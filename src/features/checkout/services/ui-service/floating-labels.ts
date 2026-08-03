@@ -363,7 +363,17 @@ function handleInput(ctx: FloatingLabelContext, event: Event): void {
   }
 }
 
-/** The field gained focus. Only `placeholder` behaviour floats on focus alone. */
+/**
+ * The field gained focus. Only `placeholder` behaviour — and phones — float on focus
+ * alone.
+ *
+ * The phone rule lives here, as a branch, rather than in a second `focus` listener of
+ * its own. {@link handleResponsiveUI} used to attach one per field on every crossing of
+ * the mobile breakpoint, which stacked and could never be removed; and it could not
+ * simply be moved into {@link FloatingLabelContext.events}, because that manager keeps
+ * one handler per element/event pair and would have *replaced* this one (finding 169 in
+ * `docs/code-findings.md`). One handler that knows both rules has neither problem.
+ */
 function handleFocus(ctx: FloatingLabelContext, event: Event): void {
   const field = event.target as HTMLInputElement | HTMLSelectElement;
   const label = ctx.labels.get(field);
@@ -374,13 +384,25 @@ function handleFocus(ctx: FloatingLabelContext, event: Event): void {
     if (behavior === 'placeholder') {
       // Placeholder behavior: always float up on focus
       floatLabelUp(ctx, label, field as HTMLInputElement, 'focus');
-    } else {
-      // Default Shopify behavior: only float up if field has value
-      if (hasValue(field)) {
-        floatLabelUp(ctx, label, field);
-      }
+    } else if (isMobileForm(ctx) || hasValue(field)) {
+      // On a phone the keyboard covers the field, so the label is the only thing left
+      // telling the shopper what the box is for — float it whether or not it is filled.
+      // Otherwise the default Shopify behaviour: float up only if the field has a value.
+      floatLabelUp(ctx, label, field);
     }
   }
+}
+
+/**
+ * Whether the form is currently on a phone.
+ *
+ * Read from the class {@link handleResponsiveUI} writes rather than from
+ * `window.innerWidth`, so there is one place that decides where the mobile breakpoint
+ * is. A form nobody called `handleResponsiveUI` for carries no viewport class and is
+ * therefore treated as not mobile.
+ */
+function isMobileForm(ctx: FloatingLabelContext): boolean {
+  return ctx.form.classList.contains('next-mobile');
 }
 
 /** The field lost focus. A `placeholder` field drops its label again unless it was filled. */
@@ -586,17 +608,20 @@ export function updateLabelsForPopulatedData(ctx: FloatingLabelContext): void {
 }
 
 /**
- * Tags the form with its viewport class and, on phones, floats every label on focus.
+ * Tags the form with the viewport class the rest of this module reads.
  *
- * Lives here rather than in `ui-service.ts` because everything it does past the three
- * class toggles is label behaviour — it reads the same map and calls the same float.
+ * Safe to call on every resize: it registers nothing and allocates nothing, it only
+ * toggles three classes. `next-mobile` is what makes {@link handleFocus} float a label
+ * on focus whether or not the field holds anything — the phone rule is a branch in that
+ * one handler, not a second listener this function attaches.
  *
- * **Caution — the mobile branch leaks listeners.** Those `focus` handlers are attached
- * straight to the element instead of through {@link FloatingLabelContext.events}, so
- * `UIService.destroy()` cannot remove them, and calling this twice attaches a second set.
- * Left as found: routing them through the manager would *replace* the `focus` handler
- * {@link setupFloatingLabel} already registered for the same element, which is a
- * behaviour change and belongs in its own commit.
+ * It used to attach a fresh `focus` handler to every tracked field on each pass under
+ * the mobile breakpoint. Those could never be removed, so `UIService.destroy()` left
+ * them live and a resizing browser stacked a new set every time (finding 169 in
+ * `docs/code-findings.md`).
+ *
+ * Lives here rather than in `ui-service.ts` because the class it writes is read as label
+ * behaviour.
  */
 export function handleResponsiveUI(ctx: FloatingLabelContext): void {
   const isMobile = window.innerWidth <= 768;
@@ -606,17 +631,6 @@ export function handleResponsiveUI(ctx: FloatingLabelContext): void {
   ctx.form.classList.toggle('next-mobile', isMobile);
   ctx.form.classList.toggle('next-tablet', isTablet);
   ctx.form.classList.toggle('next-desktop', !isMobile && !isTablet);
-
-  // Adjust floating label behavior for mobile
-  if (isMobile) {
-    // On mobile, always float labels up when focused for better UX
-    ctx.labels.forEach((label, field) => {
-      const focusHandler = () => {
-        floatLabelUp(ctx, label, field as HTMLInputElement | HTMLSelectElement);
-      };
-      field.addEventListener('focus', focusHandler);
-    });
-  }
 
   ctx.logger.debug(
     `Handled responsive UI adjustments for ${isMobile ? 'mobile' : isTablet ? 'tablet' : 'desktop'}`

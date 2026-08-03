@@ -18,6 +18,20 @@ export class CouponEnhancer extends BaseActionEnhancer {
   private template: HTMLElement | null = null;
   private unsubscribe: (() => void) | null = null;
 
+  /**
+   * Holds every listener this enhancer puts on the page, so
+   * {@link cleanupEventListeners} can drop them all at once.
+   *
+   * The input, keypress, apply-click and per-card remove-click handlers used to be
+   * inline arrows, which `removeEventListener` can never be handed back — so they
+   * stayed on the author's coupon field for the life of the page and re-enhancing it
+   * stacked another set (finding 169 in `docs/code-findings.md`). The remove button
+   * was the one with teeth: it does not check the element refs `destroy()` nulls, so a
+   * destroyed coupon card went on removing coupons from a live cart. Same pattern as
+   * `accordion.enhancer.ts` and `base-display-enhancer.ts`.
+   */
+  private listenerAbort = new AbortController();
+
   async initialize(): Promise<void> {
     this.logger.debug('Enhancing coupon element:', this.element);
 
@@ -72,25 +86,37 @@ export class CouponEnhancer extends BaseActionEnhancer {
   private setupInputListener(): void {
     if (!this.input) return;
 
-    this.input.addEventListener('input', () => {
-      this.updateButtonState();
-    });
+    this.input.addEventListener(
+      'input',
+      () => {
+        this.updateButtonState();
+      },
+      { signal: this.listenerAbort.signal }
+    );
 
-    this.input.addEventListener('keypress', e => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        this.applyCoupon();
-      }
-    });
+    this.input.addEventListener(
+      'keypress',
+      e => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          this.applyCoupon();
+        }
+      },
+      { signal: this.listenerAbort.signal }
+    );
   }
 
   private setupButtonListener(): void {
     if (!this.button) return;
 
-    this.button.addEventListener('click', e => {
-      e.preventDefault();
-      this.applyCoupon();
-    });
+    this.button.addEventListener(
+      'click',
+      e => {
+        e.preventDefault();
+        this.applyCoupon();
+      },
+      { signal: this.listenerAbort.signal }
+    );
   }
 
   private updateButtonState(): void {
@@ -177,9 +203,13 @@ export class CouponEnhancer extends BaseActionEnhancer {
       // Setup remove button
       const removeBtn = couponEl.querySelector('[pb-checkout="coupon-remove"]');
       if (removeBtn) {
-        removeBtn.addEventListener('click', () => {
-          this.removeCoupon(code);
-        });
+        removeBtn.addEventListener(
+          'click',
+          () => {
+            this.removeCoupon(code);
+          },
+          { signal: this.listenerAbort.signal }
+        );
       }
 
       this.display!.appendChild(couponEl);
@@ -237,6 +267,16 @@ export class CouponEnhancer extends BaseActionEnhancer {
   override async update(): Promise<void> {
     // Update display when cart state changes
     this.renderAppliedCoupons();
+  }
+
+  /**
+   * Drops every listener registered against {@link listenerAbort}.
+   *
+   * Base `destroy()` calls this, so the coupon field stops applying and removing
+   * coupons the moment the enhancer goes.
+   */
+  protected override cleanupEventListeners(): void {
+    this.listenerAbort.abort();
   }
 
   override destroy(): void {

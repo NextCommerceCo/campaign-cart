@@ -81,6 +81,7 @@ export class UpsellEnhancer extends BaseEnhancer {
     currentQuantitySelectorId: undefined,
     actionButtons: [],
     scanTeardowns: [],
+    selectorTeardowns: [],
   };
 
   constructor(element: HTMLElement) {
@@ -260,6 +261,8 @@ export class UpsellEnhancer extends BaseEnhancer {
   protected override cleanupEventListeners(): void {
     this.state.scanTeardowns.forEach(off => off());
     this.state.scanTeardowns = [];
+    this.state.selectorTeardowns.forEach(off => off());
+    this.state.selectorTeardowns = [];
     const handler = this.clickHandler;
     if (handler) {
       this.state.actionButtons.forEach(btn =>
@@ -273,7 +276,7 @@ export class UpsellEnhancer extends BaseEnhancer {
 
   public override destroy(): void {
     // super.destroy() first: it calls cleanupEventListeners(), which needs
-    // `actionButtons` and `scanTeardowns` still populated to remove anything.
+    // `actionButtons` and the two teardown arrays still populated to remove anything.
     super.destroy();
     if (this.pageViewTimer) clearTimeout(this.pageViewTimer);
     if (this.pageShowHandler)

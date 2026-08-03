@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import Decimal from 'decimal.js';
 import {
   makePackageState,
   getEffectiveItems,

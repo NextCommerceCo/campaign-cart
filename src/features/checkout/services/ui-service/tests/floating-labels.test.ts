@@ -430,16 +430,11 @@ describe('handleResponsiveUI', () => {
   });
 
   /**
-   * **Defect, left as found.** The mobile `focus` handlers are attached straight to the
-   * element rather than through the context's `EventHandlerManager`, so
-   * `UIService.destroy()` cannot remove them and the form keeps a live reference after
-   * teardown. Calling this twice — a resize handler would — attaches a second set.
-   *
-   * Not fixed here: routing them through the manager would *replace* the `focus` handler
-   * `setupFloatingLabel` already registered on the same element, because `addHandler`
-   * keeps one handler per element/event pair. That is a behaviour change, not a move.
+   * The mobile rule is a branch inside the one `focus` handler `setupFloatingLabel`
+   * registers, not a second handler of its own — so `UIService.destroy()` removes it
+   * along with everything else it tracks (finding 169 in `docs/code-findings.md`).
    */
-  it('leaves its focus handlers attached after every tracked listener is removed (known defect)', () => {
+  it('stops floating labels on focus once every tracked listener is removed', () => {
     setViewport(375);
     const { ctx, events } = createHarness(group('email'));
     setupFloatingLabel(ctx, fieldOf(ctx, 'email'));
@@ -448,6 +443,26 @@ describe('handleResponsiveUI', () => {
     events.removeAllHandlers();
     fieldOf(ctx, 'email').dispatchEvent(new Event('focus'));
 
-    expect(labelOf(ctx, 'email').classList.contains('has-value')).toBe(true);
+    expect(labelOf(ctx, 'email').classList.contains('has-value')).toBe(false);
+  });
+
+  /**
+   * A resize handler calls this on every crossing of the mobile breakpoint. It used to
+   * attach a fresh `focus` handler to every tracked field each time, so the count grew
+   * without bound; now it registers nothing at all.
+   */
+  it('registers no listener of its own, however often it runs', () => {
+    setViewport(375);
+    const { ctx } = createHarness(group('email'));
+    setupFloatingLabel(ctx, fieldOf(ctx, 'email'));
+
+    const field = fieldOf(ctx, 'email');
+    const added = vi.spyOn(field, 'addEventListener');
+
+    handleResponsiveUI(ctx);
+    handleResponsiveUI(ctx);
+    handleResponsiveUI(ctx);
+
+    expect(added).not.toHaveBeenCalled();
   });
 });

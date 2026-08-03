@@ -160,6 +160,12 @@ export class PackageToggleEnhancer extends BaseEnhancer {
   private template: string = '';
   private cards: ToggleCard[] = [];
   private clickHandlers = new Map<HTMLElement, (e: Event) => void>();
+  /**
+   * Holds the property-field listeners each registered card puts on author DOM.
+   * They used to be unremovable, so they outlived the enhancer and a re-scan stacked
+   * another set (finding 169 in `docs/code-findings.md`).
+   */
+  private listenerAbort = new AbortController();
   private mutationObserver: MutationObserver | null = null;
   private boundCurrencyChangeHandler: (() => void) | null = null;
   private currencyChangeTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -307,6 +313,7 @@ export class PackageToggleEnhancer extends BaseEnhancer {
     return {
       cards: this.cards,
       clickHandlers: this.clickHandlers,
+      listenerSignal: this.listenerAbort.signal,
       logger: this.logger,
       makeHandlerContext: () => this.makeHandlerContext(),
     };
@@ -364,6 +371,7 @@ export class PackageToggleEnhancer extends BaseEnhancer {
   protected override cleanupEventListeners(): void {
     this.clickHandlers.forEach((h, el) => el.removeEventListener('click', h));
     this.clickHandlers.clear();
+    this.listenerAbort.abort();
     if (this.priceSyncDebounce !== null) {
       clearTimeout(this.priceSyncDebounce);
       this.priceSyncDebounce = null;

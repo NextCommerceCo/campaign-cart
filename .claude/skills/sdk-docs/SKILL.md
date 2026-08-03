@@ -173,7 +173,9 @@ the same page; put the simple usage first and the depth below it.
   and preflights Cloudflare's asset limits
   ([`docs/wrangler.jsonc`](../../../docs/wrangler.jsonc)). It never deploys — the
   `wrangler deploy` step is Bond's. Your guide reaches readers when its release
-  is tagged.
+  is tagged. It also publishes `main/` from the `main` branch tip
+  (`npm run docs:main`) — merged-but-untagged docs, noindex, not a version entry,
+  and never `latest/`. `dev/` (`--dev`) stays local and is pruned at publish.
 
 ## 6. Writing style (applies everywhere)
 

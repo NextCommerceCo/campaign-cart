@@ -530,3 +530,59 @@ describe('focus event', () => {
     expect(api.getAddressesAutocomplete).toHaveBeenCalledWith('123 Main St', 'US', undefined, expect.any(AbortSignal));
   });
 });
+
+/**
+ * Four of this provider's six listeners sit on `this.input` — the checkout form's own
+ * address field — and used to be inline arrows nothing could take back, so they outlived
+ * the form and a second lazy load stacked another set (finding 169 in
+ * `docs/code-findings.md`). The other two are on nodes this module creates, and go the
+ * same way for the same price.
+ *
+ * `destroy()` is what the enhancer above it now calls; before this it had none at all,
+ * so the instances were simply dropped on the floor.
+ */
+describe('NextCommerceAutocomplete.destroy()', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('stops querying the address API once destroyed', async () => {
+    const api = makeApiClient();
+    const { autocomplete, addressInput } = setup(api);
+
+    await openSuggestions(addressInput);
+    expect(api.getAddressesAutocomplete).toHaveBeenCalledTimes(1);
+
+    autocomplete.destroy();
+    vi.mocked(api.getAddressesAutocomplete!).mockClear();
+    await openSuggestions(addressInput, '456 Other Ave');
+
+    expect(api.getAddressesAutocomplete).not.toHaveBeenCalled();
+  });
+
+  it('stops swallowing the Enter key once destroyed', async () => {
+    const { autocomplete, addressInput } = setup();
+    await openSuggestions(addressInput);
+
+    autocomplete.destroy();
+    const event = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      bubbles: true,
+      cancelable: true,
+    });
+    addressInput.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it('takes its suggestion container off the page', async () => {
+    const { autocomplete, addressInput } = setup();
+    await openSuggestions(addressInput);
+    expect(
+      document.querySelector('.pac-container-nextcommerce')
+    ).not.toBeNull();
+
+    autocomplete.destroy();
+
+    expect(document.querySelector('.pac-container-nextcommerce')).toBeNull();
+  });
+});

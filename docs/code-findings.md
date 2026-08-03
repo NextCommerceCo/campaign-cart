@@ -15,7 +15,7 @@ findings 116–126 from wave 2 on the same day (the `core/debug/` kebab rename, 
 hardening, and the `ui-service` split), and findings 127-137 from wave 3 (the teardown fixes,
 the format-table gate, the `core/debug` method breakup and the `checkout-validator` split);
 and findings 138-148 from wave 4 (the order-payload reconciliation, the routed-display gate,
-the `core/debug` split, the `prospect-cart` split and the test type gate); findings 149-153 from wave 5, findings 154-161 from wave 6, findings 162-167 from wave 7, and findings 168-171 from wave 8; each wave has its own
+the `core/debug` split, the `prospect-cart` split and the test type gate); findings 149-153 from wave 5, findings 154-161 from wave 6, findings 162-167 from wave 7, findings 168-171 from wave 8, and findings 172-178 from wave 9; each wave has its own
 section near the end. **Finding 144 was wrong as written and is corrected in place.** **Findings 127 and 130-133 are the most serious
 things this restructure has turned up** - a published page teaching ten paths that render
 nothing, and a validation layer that blocks non-Latin names while letting unvalidated billing
@@ -2793,7 +2793,7 @@ Re-attached inside the same frame keeps its enhancer; re-attached later is a rea
 the element returns inert unless it carries one of the eight watched attributes — the
 pre-existing added-path limit (finding 52), now documented as a trap.
 
-### 169. The teardown gate had to stop looking at classes: 50 unremovable listeners in 17 files — *verified*
+### 169. ~~The teardown gate had to stop looking at classes: 50 unremovable listeners in 17 files~~ — **the seven real leaks are FIXED 2026-08-03, but five of the seven rows named the wrong listener — see 172**
 
 Rewritten a third time, after two escapes in two waves. The new rule ignores the class and
 inspects the **registration**, because that is the thing a teardown method cannot fake on a
@@ -2854,12 +2854,158 @@ must be read to be followed is not a control for concurrent work.** The fix is o
 perfectly all session precisely because they are enforced at the tool layer. Not applied — it
 would also block Bond's own use, so it is Bond's call.
 
-### 171. `RawDataHelper` was imported and unused for a whole wave — *fixed 2026-08-03*
+### 171. ~~`RawDataHelper` was imported and unused for a whole wave~~ — **FIXED 2026-08-03**, and dead code now has a gate: `npm run check:unused` (see 176)
 
 Left behind when the previous split moved every use into `event-timeline-panel.flow.ts`.
 `noUnusedLocals` and `noUnusedParameters` are both `false` in `tsconfig.json`, so nothing
 reported it. Worth knowing that dead imports are currently invisible to every gate this repo
 has.
+
+---
+
+## Found during the wave-9 restructure (2026-08-03)
+
+Four agents: the seven listener leaks (169), the unused-code gate (171), the
+`checkout-form` field/address split, and the `core-logs.ts` split. **Findings 173 and 178
+reach a shopper.**
+
+### 172. Five of finding 169's seven rows named the wrong listener — *verified*
+
+The table said which registrations leaked. Checking whether each was actually *reachable*
+after `destroy()` moved the answer in five of seven cases, and in one of them the real leak was
+a registration the allowlist had **excused**:
+
+- **coupon — the three flagged were inert; the excused fourth was the live one.** `destroy()`
+  nulls `input`/`button` and every handler guards on them. But `renderAppliedCoupons()` runs
+  only from the cart-store subscription that `destroy()` unsubscribes, so after teardown the
+  cards are never re-rendered — they sit on the page with live handlers — and `removeCoupon()`
+  has **no ref guard**. **A destroyed coupon card removed coupons from a live cart.** The
+  allowlist had waved it through as "dies with its element".
+- **credit-card-service — wrong symptom.** All four `click` handlers check
+  `window.Spreedly && this.isReady`, and `destroy()` clears `isReady`. The live pair is the
+  expiry month/year `change` → `checkAndTrackPaymentInfo()`, which checks nothing: **a
+  destroyed service fired a spurious `add_payment_info` analytics event.**
+- **google-maps — wrong symptom.** The country `change` handlers read a map `destroy()`
+  clears, and re-init is guarded, so nothing stacked. The live pair is `focus`/`keydown` on
+  the address input, and `keydown` calls `preventDefault()` unconditionally: **a destroyed
+  provider kept swallowing the Enter key in the address field.**
+- **next-commerce-autocomplete — understated.** `NextCommerceAutocomplete` had **no
+  `destroy()` at all**, and `AddressAutocompleteEnhancer.destroy()` only tore down googleMaps.
+  There was no teardown to fix, only one to write.
+- **floating-labels — accurate, but never fired.** `handleResponsiveUI` has no caller
+  (finding 123), so the per-resize stacking could not happen in production. Fixed anyway, by
+  **deleting** the second handler: "on a phone, always float" is now a branch in the one
+  `focus` handler `setupFloatingLabel` already registers, keyed on the `next-mobile` class
+  `handleResponsiveUI` itself writes. `handleResponsiveUI` now registers nothing, which beats
+  routing it through `EventHandlerManager` — that manager keeps one handler per element/event
+  pair and would have replaced the real one (finding 123's trap).
+
+`properties.ts` and `phone-input.ts` were accurate as written, counts included.
+
+### 173. The obvious fix for the upsell leak would have stopped the offer responding to clicks — *verified*
+
+Finding 169 said to use the `bind()` helper already in `upsell.interaction-handlers.ts`, which
+records a `removeEventListener` onto `state.scanTeardowns`. But **`scanUpsellElements` empties
+and re-runs that array on every `update()`**, while `initializeSelectorMode` runs once. Putting
+the option listeners there would have torn them off at `upsell.enhancer.ts:147` — eighteen
+lines after they were attached, still inside `initialize()` — and never re-added them.
+
+Fixed by naming the second lifetime (`state.selectorTeardowns`) rather than sharing the array.
+A test pins it: after `initializeSelectorMode` + `scanUpsellElements`, an option click must
+still select.
+
+**The general shape is worth remembering: a teardown array is a lifetime, and two lifetimes in
+one array is a bug waiting for the second one to be shorter.**
+
+### 174. The teardown gate cannot see a hoisted options object — *verified, limitation*
+
+`passesSignal` only accepts an object literal written inline at `addEventListener`'s third
+argument. A `private get listenerOptions() { return { signal: this.abort.signal }; }` reads
+identically to a human and is still counted unremovable — the agent's first pass did exactly
+that and the ratchet failed all eight files at their original counts. Worth writing into the
+rule's doc comment before it bites someone who is doing the right thing.
+
+### 175. A shopper can click Pay twice, and a `false` never survives a reload — *verified*
+
+Two independent defects in the newly-split `field-scanning.ts` / `form-population.ts`:
+
+- **The submit control must be a real `<button>`.** `[data-next-checkout-submit]` on an `<a>`,
+  a `<div>` or an `<input type="submit">` matches the selector and then fails the `instanceof`,
+  so the form logs "Submit button not found" and **never disables it or sets `aria-busy`
+  during submit** — the shopper can click Pay a second time mid-order.
+- **A stored `false` is never restored.** `populateFormData`'s loop skips falsy values, so a
+  shopper who unticks `accepts_marketing` on a page whose box is checked by default gets it
+  **re-checked on reload**. The opt-out does not survive.
+
+Also there: `paymentButtons` is scanned, stored, cleared on destroy, and **never read** — a
+page author who marks a button `data-next-checkout-payment` gets no behaviour at all. And the
+phone→E.164 rewrite runs on an untracked `setTimeout(…, 50)`, so a form destroyed inside that
+window still writes the store.
+
+### 176. Dead code now has a gate, and here is what it still cannot see — *fixed 2026-08-03*
+
+`tsconfig.json` had `noUnusedLocals` and `noUnusedParameters` both `false`, so nothing reported
+an unused import, local or parameter. `npm run check:unused` runs the flags over a gate-only
+config with a ratcheted baseline, in the same shape as `type-check:tests`. Measured 31, **fixed
+17**, froze the rest — and closed two standing findings by deletion: **finding 42** (four
+boot-timing fields written and never read) and **finding 43** (a dead impressions schema).
+
+**It does not see unused *exports*** — `noUnusedLocals` only inspects bindings in their own
+scope. That is exactly why finding 167's 267-line module with 23 exports and zero callers, and
+finding 158's exported constant with no importers, went unnoticed. Catching those needs a
+project-wide reference count (`ts-prune` or equivalent), which is a different tool.
+
+Two false positives worth knowing: `updateMiniCart` and `collectUtmData` are exercised only
+through an `as any` cast in tests, which hides the reference from the type checker. And one
+genuine smell surfaced: **`package-selector.handlers.ts`'s `updateCart(previous, …)` never
+reads `previous`, while callers construct a real value for it** (`{ ...item, packageId: oldId }`)
+— flagged rather than silenced with an underscore, because it looks like swap logic that was
+started and abandoned.
+
+### 177. "Address management" was three clusters, and the README undersold what is left — *verified*
+
+The split measured before cutting, and the measurements disagreed with the plan: field
+scanning/population was **two** jobs (DOM→map, and store↔DOM), address management was
+**three** (country choice/application, province loading, collapsed rows) sharing almost no
+dependencies, and `initializeAddressManagement` measured 10 fields + 6 calls — `initialize`'s
+profile, so it was re-sequenced in place rather than lifted.
+
+More usefully: **the README's "field scanning/population, address management, payment, and
+order submission" was materially incomplete.** Also still in that file, in none of those
+buckets: the Spreedly wiring, the duplicate-purchase modal, multi-step navigation, the billing
+toggle and its animation driving, the prospect-cart lifecycle, the payment-error display, the
+method-change handlers, three store subscriptions, the Konami test-order path, the meta-tag
+public API, and teardown. Anyone sizing the next wave off that sentence would have got it
+wrong. The README now says so.
+
+### 178. The billing rows are revealed by luck, and two country features are configured but ignored — *verified*
+
+- **`initializeLocationFieldVisibility` tests `formData['billing-address1']` — a key nothing in
+  the SDK writes.** Billing values live on `checkoutStore.billingAddress` under API names
+  (`address1`); `billing-field-routing.ts` renames every one. The billing rows appear today
+  **only because `restoreBillingAddress` happens to run first** and puts the value in the
+  input. Reorder those two boot steps and a returning shopper's billing city/state/postcode
+  stay hidden.
+- **Asymmetric selectors for the same concept.** Shipping rows are found under
+  `data-next-component="location"` *or* `data-next-component-location="location"`; billing rows
+  only under `data-next-component="billing-location"`. A page using the second spelling for
+  billing gets rows that are never managed — visible from first paint while shipping collapses.
+  The same asymmetry appears in `country-fields.ts`, whose `BILLING_CONTAINER` accepts only the
+  legacy `os-checkout-element` spelling, so a page using the documented
+  `data-next-component="different-billing-address"` gets **no billing label relabelling** — a
+  Canadian billing section keeps saying "State" and "ZIP".
+- **`?country=CA` is ignored outright once any country is stored**, and not remembered for the
+  session either: a merchant's country-specific landing link silently does nothing for a
+  returning shopper.
+- **`addressConfig.defaultCountry` is read, named in the priority log as
+  `addressConfigDefault`, and never used as a candidate.** Configured, logged, ignored.
+- **The two country paths disagree**: the debug selector's path does not write
+  `next_selected_country` while the shopper's dropdown does, so a debug-applied country is
+  forgotten on the next page — and it dispatches a bubbling `change` *after* refilling the
+  provinces, so the list rebuilds twice, visibly.
+
+Revealing a row also forces `display: flex`, so a location row laid out as `grid` or `block`
+re-lays-out the moment the shopper types an address.
 
 ---
 

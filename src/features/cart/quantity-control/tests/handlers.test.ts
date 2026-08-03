@@ -5,7 +5,7 @@ import {
   handleNumberInput,
 } from '../quantity-control.handlers';
 import type { HandlerContext } from '../quantity-control.types';
-import { useCartStore, cartOperations } from '@/state/cart';
+import { useCartStore } from '@/state/cart';
 
 vi.mock('@/state/cart', () => {
   const getState = vi.fn();

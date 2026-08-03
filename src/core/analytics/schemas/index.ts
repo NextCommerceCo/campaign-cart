@@ -135,18 +135,6 @@ const ecommerceWithItemsFields: Record<string, FieldDefinition> = {
   }
 };
 
-const ecommerceWithImpressionsFields: Record<string, FieldDefinition> = {
-  currency: { type: 'string' },
-  value: { type: 'number' },
-  impressions: {
-    type: 'array',
-    items: {
-      type: 'object',
-      properties: productFields
-    }
-  }
-};
-
 // Event schemas definitions
 export const eventSchemas: Record<string, EventSchema> = {
   dl_user_data: {

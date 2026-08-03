@@ -5,7 +5,6 @@
 import type { Decimal } from 'decimal.js';
 import type { Offer } from './campaign';
 
-import { AddressAutocompleteResult } from './api';
 import type { Order } from './api';
 
 /**

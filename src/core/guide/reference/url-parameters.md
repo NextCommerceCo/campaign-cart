@@ -222,7 +222,7 @@ Every parameter above, with the code that reads or writes it. Generated from the
 | `category` | `ListAttributionTracker.detectListFromUrl` *(has)* — `core/analytics/tracking/list-attribution-tracker.ts` |
 | `clickid` | `AttributionCollector.collectMetadata` *(get)* — `core/attribution/attribution-collector.ts` |
 | `collection` | `ListAttributionTracker.detectListFromUrl` *(has)* — `core/analytics/tracking/list-attribution-tracker.ts` |
-| `country` | `initializeLocationAndCurrency` *(get)* — `core/sdk-initializer.location-currency.ts`<br>`CheckoutFormEnhancer.initializeAddressManagement` *(get)* — `features/checkout/checkout-form/checkout-form.enhancer.ts` |
+| `country` | `initializeLocationAndCurrency` *(get)* — `core/sdk-initializer.location-currency.ts`<br>`resolveShippingCountry` *(get)* — `features/checkout/checkout-form/country-selection.ts` |
 | `currency` | `initializeLocationAndCurrency` *(get)* — `core/sdk-initializer.location-currency.ts`<br>`loadCampaign` *(get)* — `state/campaign/api.slice.ts` |
 | `debug` | `AttributeScanner.constructor` *(get)* — `core/attribute-scanner.ts`<br>`DebugOverlay.constructor` *(get)* — `core/debug/debug-overlay/debug-overlay.ts`<br>`EventTimelinePanel.constructor` *(get)* — `core/debug/panels/event-timeline/event-timeline-panel.ts`<br>…and 3 more |
 | `debugger` | `DebugModule.initializeIfEnabled` *(get)* — `core/debug/debug-module.ts`<br>`DebugModule.enableDebugMode` *(set)* — `core/debug/debug-module.ts`<br>`DebugModule.disableDebugMode` *(delete)* — `core/debug/debug-module.ts`<br>…and 9 more |

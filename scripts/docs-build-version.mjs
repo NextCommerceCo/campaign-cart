@@ -5,14 +5,20 @@
  * A released tag is checked out into a throwaway `git worktree`, this checkout's
  * `node_modules` is linked into it, and TypeDoc runs there with `out` pointing at
  * `<site>/v<version>`. The worktree is removed afterwards, including on failure.
+ * `--branch <name>` builds a branch tip the same way, into `<site>/<name>`.
  * `--dev` skips the worktree and builds the working tree into `<site>/dev`.
  *
  * Usage:
  *   node scripts/docs-build-version.mjs v0.4.30        # one released version
+ *   node scripts/docs-build-version.mjs --branch main  # branch tip -> <site>/main
  *   node scripts/docs-build-version.mjs --dev          # working tree -> <site>/dev
  *   node scripts/docs-build-version.mjs v0.4.30 --out /tmp/site --base-url https://…
  *
  * Options:
+ *   --branch <name>      Build that branch's tip into `<site>/<name>` — the unreleased
+ *                        docs. Not a release, so it never becomes `latest/` and never
+ *                        enters `versions.json`; the in-page switcher offers it by name
+ *                        (see `docs/assets/site.js`).
  *   --dev                Build the working tree into `<site>/dev`. Never published.
  *   --out <dir>          Site root (default `docs/site`).
  *   --base-url <url>     Site root URL. Sets TypeDoc `hostedBaseUrl` to
@@ -115,9 +121,28 @@ const LAYOUTS = [
  */
 const ASSET_OPTIONS = ['customCss', 'customJs', 'readme'];
 
+/**
+ * Names a branch folder may not take, because the published site root already uses them.
+ *
+ * `latest/` is the alias for the current release, `dev/` is the working-tree build, and
+ * the rest are the files `docs-publish.mjs` and `docs-versions.mjs` write at the root. A
+ * tag-shaped branch name is rejected separately — `main` and a `v0.4.31` branch are not
+ * the same kind of thing, and one folder cannot be both.
+ */
+const RESERVED_FOLDERS = new Set([
+  'latest',
+  'dev',
+  '_headers',
+  '404.html',
+  'index.html',
+  'robots.txt',
+  'versions.json',
+]);
+
 function parseArgs(argv) {
   const opts = {
     tag: null,
+    branch: null,
     dev: false,
     root: null,
     baseUrl: process.env.DOCS_BASE_URL ?? null,
@@ -130,6 +155,7 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--dev') opts.dev = true;
+    else if (arg === '--branch') opts.branch = argv[++i];
     else if (arg === '--out') opts.root = argv[++i];
     else if (arg === '--base-url') opts.baseUrl = argv[++i];
     else if (arg === '--floor') opts.floor = argv[++i];
@@ -230,6 +256,120 @@ function writeOptions(sourceRoot, config) {
   return file;
 }
 
+/** `git rev-parse --short <ref>`, or `null` when the ref does not exist. */
+function revParse(ref) {
+  try {
+    return execFileSync('git', ['rev-parse', '--verify', '--short', ref], {
+      cwd: REPO,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+  } catch {
+    return null;
+  }
+}
+
+/** A ref's commit date as `YYYY-MM-DD`, for the line the build prints. */
+function refDate(ref) {
+  return execFileSync('git', ['log', '-1', '--format=%cs', ref], {
+    cwd: REPO,
+    encoding: 'utf8',
+  }).trim();
+}
+
+/**
+ * Resolves `--branch <name>` to a local branch, or throws with what to do about it.
+ *
+ * The name becomes a folder and a URL segment, so a branch with a slash in it
+ * (`feature/offers`) cannot be built — it would nest a second level under the site root
+ * that nothing else on the site knows about. Only the local branch is built: `origin/…`
+ * is reported when it differs, but silently documenting a ref the reader never asked for
+ * is worse than being one fetch behind.
+ */
+function resolveBranch(name) {
+  if (!/^[A-Za-z0-9._-]+$/.test(name))
+    throw new Error(
+      `--branch ${name} cannot be a site folder: use a name of letters, digits, ` +
+        `dot, dash or underscore. A branch with a slash needs a different folder name.`
+    );
+  if (RESERVED_FOLDERS.has(name))
+    throw new Error(
+      `--branch ${name} collides with a folder the published site already uses ` +
+        `(${[...RESERVED_FOLDERS].join(', ')}).`
+    );
+  if (parseTag(name))
+    throw new Error(
+      `--branch ${name} is shaped like a release tag, and would overwrite that tag's ` +
+        `version folder. Build the tag instead: ${name}`
+    );
+
+  const head = revParse(`refs/heads/${name}`);
+  if (!head) {
+    const remote = revParse(`refs/remotes/origin/${name}`);
+    throw new Error(
+      `No local branch "${name}" in this repository.` +
+        (remote
+          ? `\norigin/${name} exists at ${remote} — create the local branch first: ` +
+            `git branch ${name} origin/${name}`
+          : '')
+    );
+  }
+
+  const remote = revParse(`refs/remotes/origin/${name}`);
+  return { name, head, date: refDate(head), remote };
+}
+
+/**
+ * Builds a committed ref — a tag or a branch tip — into `outDir`.
+ *
+ * The ref is checked out detached into a throwaway worktree so the build never touches the
+ * working tree, and this checkout's `node_modules` is linked in rather than installed: old
+ * tags predate today's lockfile, installing per ref would be minutes each and could
+ * resolve differently every run. One known-good TypeDoc builds every folder.
+ */
+function buildRef({
+  ref,
+  slug,
+  base,
+  outDir,
+  hostedBaseUrl,
+  gitRevision,
+  strict,
+}) {
+  const worktree = mkdtempSync(join(tmpdir(), `cc-docs-${slug}-`));
+  // mkdtemp created it; `git worktree add` needs the path free.
+  rmSync(worktree, { recursive: true, force: true });
+
+  try {
+    process.stdout.write(`Checking out ${ref} into ${worktree}\n`);
+    execFileSync(
+      'git',
+      ['worktree', 'add', '--detach', '--quiet', worktree, ref],
+      {
+        cwd: REPO,
+        stdio: 'inherit',
+      }
+    );
+    symlinkSync(
+      join(REPO, 'node_modules'),
+      join(worktree, 'node_modules'),
+      'junction'
+    );
+
+    const config = versionConfig({
+      base,
+      sourceRoot: worktree,
+      outDir,
+      hostedBaseUrl,
+      gitRevision,
+      strict,
+    });
+    runTypedoc({ cwd: worktree, optionsFile: writeOptions(worktree, config) });
+  } finally {
+    cleanupWorktree(worktree);
+  }
+}
+
 /**
  * Points `<root>/latest` at `folder`.
  *
@@ -268,9 +408,10 @@ function cleanupWorktree(path) {
   }
 }
 
-const USAGE = `Usage: node scripts/docs-build-version.mjs <tag> | --dev [options]
+const USAGE = `Usage: node scripts/docs-build-version.mjs <tag> | --branch <name> | --dev [options]
 
   <tag>              Released tag to build, e.g. v0.4.30.
+  --branch <name>    Build that branch's tip into <site>/<name> — the unreleased docs.
   --dev              Build the working tree into <site>/dev instead. Never published.
   --out <dir>        Site root (default ${DEFAULT_SITE_ROOT}).
   --base-url <url>   Site root URL; sets hostedBaseUrl to <url>/<folder>/.
@@ -282,14 +423,15 @@ const USAGE = `Usage: node scripts/docs-build-version.mjs <tag> | --dev [options
 
 function main(argv) {
   const opts = parseArgs(argv);
-  if (opts.help || (!opts.tag && !opts.dev)) {
+  if (opts.help || (!opts.tag && !opts.dev && !opts.branch)) {
     process.stdout.write(USAGE);
     return opts.help ? 0 : 1;
   }
-  if (opts.tag && opts.dev) throw new Error('Pass a tag or --dev, not both.');
+  if ([opts.tag, opts.dev, opts.branch].filter(Boolean).length > 1)
+    throw new Error('Pass one of <tag>, --branch <name>, or --dev.');
 
   const root = resolve(opts.root ?? join(REPO, DEFAULT_SITE_ROOT));
-  const folder = opts.dev ? 'dev' : opts.tag;
+  const folder = opts.dev ? 'dev' : (opts.branch ?? opts.tag);
   const outDir = join(root, folder);
 
   if (opts.skipExisting && existsSync(outDir)) {
@@ -322,6 +464,36 @@ function main(argv) {
     return 0;
   }
 
+  if (opts.branch) {
+    const branch = resolveBranch(opts.branch);
+    buildRef({
+      ref: branch.head,
+      slug: branch.name,
+      base,
+      outDir,
+      hostedBaseUrl,
+      // Source links point at the branch, not the commit — the whole point of this folder
+      // is "what is on `main` now", and a detached sha is not a URL a reader can browse.
+      gitRevision: branch.name,
+      // Same reason a tag build is lenient: the markdown being built is not in this
+      // working tree, so a broken link in it cannot be fixed from here. `npm run
+      // docs:check` is the gate that runs on the tree you can actually edit.
+      strict: opts.strict,
+    });
+
+    process.stdout.write(
+      `\nBuilt ${branch.name} (${branch.head}, ${branch.date}) -> ${short(outDir)}\n` +
+        `Unreleased: no versions.json entry and never latest/ — the switcher offers it by name.\n`
+    );
+    if (branch.remote && branch.remote !== branch.head) {
+      process.stderr.write(
+        `warning: origin/${branch.name} is at ${branch.remote}, this build is ${branch.head}.\n` +
+          `  Fetch and merge first if the published folder should match the remote.\n`
+      );
+    }
+    return 0;
+  }
+
   const tag = parseTag(opts.tag);
   if (!tag)
     throw new Error(
@@ -344,41 +516,15 @@ function main(argv) {
     throw new Error(`No such tag in this repository: ${tag.tag}`);
   }
 
-  const worktree = mkdtempSync(join(tmpdir(), `cc-docs-${tag.tag}-`));
-  // mkdtemp created it; `git worktree add` needs the path free.
-  rmSync(worktree, { recursive: true, force: true });
-
-  try {
-    process.stdout.write(`Checking out ${tag.tag} into ${worktree}\n`);
-    execFileSync(
-      'git',
-      ['worktree', 'add', '--detach', '--quiet', worktree, tag.tag],
-      {
-        cwd: REPO,
-        stdio: 'inherit',
-      }
-    );
-    // Old tags predate today's lockfile; installing per tag would be minutes per version
-    // and could resolve differently each run. Linking this checkout's modules keeps every
-    // version built by one known-good TypeDoc.
-    symlinkSync(
-      join(REPO, 'node_modules'),
-      join(worktree, 'node_modules'),
-      'junction'
-    );
-
-    const config = versionConfig({
-      base,
-      sourceRoot: worktree,
-      outDir,
-      hostedBaseUrl,
-      gitRevision: tag.tag,
-      strict: opts.strict,
-    });
-    runTypedoc({ cwd: worktree, optionsFile: writeOptions(worktree, config) });
-  } finally {
-    cleanupWorktree(worktree);
-  }
+  buildRef({
+    ref: tag.tag,
+    slug: tag.tag,
+    base,
+    outDir,
+    hostedBaseUrl,
+    gitRevision: tag.tag,
+    strict: opts.strict,
+  });
 
   process.stdout.write(`\nBuilt ${tag.tag} -> ${short(outDir)}\n`);
 

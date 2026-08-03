@@ -157,7 +157,7 @@ export function extractResolvedDisplayPaths(
   files: Array<[string, string]>,
   namespace: string
 ): ResolvedDisplayPaths {
-  const { cls, method, sf, file } = findResolver(files, namespace);
+  const { cls, sf, file } = findResolver(files, namespace);
 
   // Index by callee name so a delegation can be followed without resolving imports.
   // The resolving class's own methods win: `shipping-display` has a private

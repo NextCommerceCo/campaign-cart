@@ -54,6 +54,16 @@ export interface UpsellState {
    * have to come off first — otherwise one press steps the quantity twice.
    */
   scanTeardowns: (() => void)[];
+  /**
+   * Undo functions for the selector-mode listeners — the `click` on each option
+   * card and the `change` on the offer's `<select>`.
+   *
+   * Separate from {@link scanTeardowns} because they have a different lifetime:
+   * they are attached once, at initialize, and every later scan must leave them
+   * alone. Sharing the scan's array would have removed them on the first
+   * `update()` and never put them back.
+   */
+  selectorTeardowns: (() => void)[];
 }
 
 /** What the interaction handlers need: the container, the live state, logging, events. */

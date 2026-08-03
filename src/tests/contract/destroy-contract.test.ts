@@ -847,7 +847,7 @@ describe('every listener registered in the enhancer layer is removable', () => {
    * when this rule was written. Each entry is a judgement, not a shrug: *why* is it
    * acceptable that these particular listeners are never removed?
    *
-   * The judgements fall into three groups:
+   * Two judgements remain, and **no entry here is a leak any more**:
    *
    * - **Dies with its element** — the listener sits on a node this module created and
    *   later discards. When the node goes, the listener is collected with it, so there
@@ -855,9 +855,15 @@ describe('every listener registered in the enhancer layer is removable', () => {
    *   which is why each entry names the element.
    * - **Page-lifetime by design** — a one-shot boot listener, or dev tooling compiled
    *   out of production. Nothing owns a teardown for it.
-   * - **REAL LEAK** — an enhancer-lifetime listener on author-supplied DOM the
-   *   enhancer does not own, which therefore survives `destroy()`. Same shape as the
-   *   accordion. Named here so it stays visible rather than silently allowed.
+   *
+   * A third group, **REAL LEAK**, is gone as of 2026-08-03: the eight files that held
+   * enhancer-lifetime listeners on author DOM — coupon, the shared property fields, both
+   * address-autocomplete providers, the phone fields, the credit-card service, the
+   * floating labels and the upsell options — now register with `{ signal }` (or, for the
+   * upsell, through the `bind` helper that was already in the file) and are torn down
+   * with their owner. Do not add that group back: a listener on markup the SDK did not
+   * create, outliving the thing that created it, is the shape this whole rule exists to
+   * catch.
    *
    * `count` is the number of unremovable registrations in the file. Gaining one fails
    * the gate; fixing one fails it too, with a message saying to lower the count. An
@@ -901,72 +907,11 @@ describe('every listener registered in the enhancer layer is removable', () => {
         'If a slot is ever reused rather than rebuilt, these stack.',
     },
     {
-      file: 'features/cart/coupon/coupon.enhancer.ts',
-      count: 4,
-      reason:
-        'REAL LEAK (3 of 4), same shape as the accordion: input/keypress on ' +
-        'this.input and click on this.button are author-supplied elements the ' +
-        'enhancer does not own, so a destroyed coupon field still applies coupons. ' +
-        'The fourth (the remove button in a cloned coupon card) dies with its ' +
-        'element — renderCoupons() .remove()s the cards before rebuilding them.',
-    },
-    {
       file: 'features/cart/package-toggle/package-toggle.handlers.ts',
       count: 1,
       reason:
         'Page-lifetime by design: a module-scope beforeunload clearing a ' +
         'module-scope Set. One per page load, and the page is going away.',
-    },
-    {
-      file: 'features/cart/shared/properties.ts',
-      count: 1,
-      reason:
-        'REAL LEAK: input on the author-supplied data-next-property fields inside a ' +
-        'card, writing into a properties object the enhancer owns. Survives the ' +
-        'enhancer, and re-enhancing the same card stacks another. Its blur sibling ' +
-        'is never removed either — it passes a reference, which is why only one of ' +
-        'the two is counted here.',
-    },
-    {
-      file: 'features/checkout/address-autocomplete/google-maps-autocomplete.ts',
-      count: 4,
-      reason:
-        'REAL LEAK: focus/keydown on the checkout address input and change on both ' +
-        'country selects — all author DOM. Re-initialising autocomplete stacks ' +
-        'another set. src/features/checkout is owned by another session.',
-    },
-    {
-      file: 'features/checkout/address-autocomplete/next-commerce-autocomplete.ts',
-      count: 6,
-      reason:
-        'Mixed: 2 die with their element (the suggestion container and each ' +
-        'suggestion row this module creates and discards); 4 are a REAL LEAK on ' +
-        'this.input, the author-supplied address field. Owned by another session.',
-    },
-    {
-      file: 'features/checkout/checkout-form/phone-input.ts',
-      count: 2,
-      reason:
-        'REAL LEAK: input on the phone field and change on the country select, both ' +
-        'author DOM. Destroying the intlTelInput instance does not remove them. ' +
-        'Owned by another session.',
-    },
-    {
-      file: 'features/checkout/services/credit-card-service.ts',
-      count: 6,
-      reason:
-        'REAL LEAK: change on the expiry month/year selects and click on the ' +
-        'Spreedly number/cvv fields and their wrappers — author DOM, and the service ' +
-        'is rebuilt on every checkout-form init. Owned by another session.',
-    },
-    {
-      file: 'features/checkout/services/ui-service/floating-labels.ts',
-      count: 1,
-      reason:
-        'REAL LEAK, and the one the write-only-local clause found: focusHandler is ' +
-        'built fresh inside a forEach on every responsive adjustment and stored ' +
-        'nowhere, so each pass under the mobile breakpoint adds another focus handler ' +
-        'to every field. Owned by another session.',
     },
     {
       file: 'features/checkout/utils/create-close-button.ts',
@@ -993,15 +938,6 @@ describe('every listener registered in the enhancer layer is removable', () => {
       reason:
         'Page-lifetime by design, dev only: module-scope, NODE_ENV-guarded, one-shot ' +
         'DOMContentLoaded that dynamically imports the debug panel.',
-    },
-    {
-      file: 'features/order/upsell/upsell.interaction-handlers.ts',
-      count: 2,
-      reason:
-        'REAL LEAK: click on each option card and change on the upsell select, both ' +
-        'author DOM. Notable because this same file already has the removable ' +
-        'pattern — its bind() helper pushes a removeEventListener onto ' +
-        'state.scanTeardowns — and these two registrations bypass it.',
     },
     {
       file: 'features/ui/tooltip/tooltip.renderer.ts',

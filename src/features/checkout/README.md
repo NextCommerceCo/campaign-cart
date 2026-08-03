@@ -43,6 +43,10 @@ field list and nothing more.
 | `state-fields.ts` | Refilling the state/province dropdown per country, including hiding it entirely for countries with neither states nor a requirement | 4 (billing) / 8 (shipping) |
 | `autofill-detection.ts` | Polling for **browser** autofill, which fires no events — without it the store stays empty while the form looks full, and the order submits blank | 4 fields |
 | `field-validation-display.ts` | The error/tick states as a shopper interacts: blur commits a verdict (but never errors an empty field), input only clears, change validates a value that arrived without typing | 2 fields |
+| `field-scanning.ts` | Which elements on the page become order data — the `data-next-checkout-field` / `os-checkout-field` scan, the submit button, the payment buttons, and the two name↔element lookups | 4 (scan) / 2 (lookup) |
+| `form-population.ts` | Putting the stored checkout data back into the boxes after a reload or a step back, and the reverse: emptying every box and resetting the store after a duplicate-purchase warning | 7 (populate) / 5 (clear) |
+| `location-field-visibility.ts` | The city/state/postcode rows that stay collapsed until a street address exists — shipping and billing each with their own element list and their own one-way latch | 6 |
+| `country-selection.ts` | Which country the shipping form opens on (stored → URL → session → detected), and pointing both address forms at a country chosen outside the form | 3 (resolve) / 6 (apply) |
 | `postal-code-format.ts` | Rewriting a postcode into its country's shape as it is typed, and putting the caret back where the shopper left it | 2 fields |
 | `field-value.ts` | What a field is *worth* to the order — a phone as E.164, a checkbox as a boolean, everything else as typed | 1 field |
 | `billing-field-routing.ts` | Where a `billing-*` value goes: renamed to the orders API's spelling (`fname` → `first_name`) on its way into `billingAddress`, plus the billing postcode and province dropdown | 3 fields |
@@ -132,8 +136,27 @@ replaces every step with a recorder and compares the recorded order against the 
 including the one conditional step (`initializeCreditCard`, which runs only when a Spreedly
 environment key is configured).
 
-Also still in the enhancer: field scanning/population, address management, payment, and
-order submission itself.
+**Field scanning/population and address management — done, and neither was one cluster.**
+"Field scanning/population" was two: finding the elements (`field-scanning.ts`) and moving
+values between them and the store (`form-population.ts`). "Address management" was three:
+choosing and applying a country (`country-selection.ts`), loading its provinces (already
+`state-fields.ts`), and the collapsed address rows (`location-field-visibility.ts`), which
+share almost no dependencies. `initializeAddressManagement` measured 10 fields and 6 calls —
+`initialize`'s situation, not an extraction's — so it was **re-sequenced in place** into four
+named steps with only the country-priority chain lifted out.
+
+Nine defects those modules' tests pin down are left as found. The two that reach a shopper:
+a page whose billing rows use `data-next-component-location="billing-location"` gets rows
+that are never managed at all, and `initializeLocationFieldVisibility`'s billing check reads
+`formData['billing-address1']`, a key nothing in the SDK writes — the billing rows appear
+today only because `restoreBillingAddress` runs first. Reorder those two boot steps and a
+returning shopper's billing address rows stay hidden.
+
+Also still in the enhancer, and none of it is payment or order submission: the credit-card /
+Spreedly wiring, the duplicate-purchase warning modal, multi-step navigation, the billing
+toggle and its animation driving, the prospect-cart lifecycle, the payment-error display,
+the payment/shipping method change handlers, the three store subscriptions, the Konami
+test-order path, the meta-tag public API, and teardown.
 
 **One order payload, one builder.** The enhancer used to hand-assemble its own `CreateOrder`
 alongside `OrderBuilder`, and the two disagreed about the shipping-method fallback. Every

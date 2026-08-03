@@ -8,7 +8,8 @@
  * What it does:
  *   1. Renders a version `<select>` in the page toolbar, from `versions.json` at the
  *      site root, and jumps to the *same page* in the version the reader picks.
- *   2. Shows a banner when the reader is on an older version than the current release.
+ *   2. Shows a banner when the reader is on an older version than the current release,
+ *      or on one of the unreleased folders (`main/`, `dev/`).
  *
  * That is all it does. Mermaid rendering is *not* here — `@boneskull/typedoc-plugin-mermaid`
  * (`"mermaidSource": "local"` in `typedoc.json`) injects its own module script and copies
@@ -37,10 +38,40 @@
   /** The site root — one level above the version folder, where `versions.json` lives. */
   const siteRoot = new URL('../', versionRoot);
 
-  /** Folder name the reader is in: `v0.4.30`, `latest`, `dev`, or a plain build's folder. */
+  /**
+   * Folder name the reader is in: `v0.4.30`, `latest`, `main`, `dev`, or a plain build's
+   * folder.
+   */
   const currentFolder = decodeURIComponent(
     versionRoot.pathname.replace(/\/+$/, '').split('/').pop() || ''
   );
+
+  /**
+   * Folders that hold docs for something that was never released.
+   *
+   * They cannot be entries in `versions.json` — that file is generated from release tags
+   * and `src/tests/docs/docsVersions.test.ts` holds it to tag-shaped entries — so the
+   * switcher offers them by name instead.
+   *
+   * `main` is the branch tip, published by `docs-publish.mjs`, and is `probe`d for because
+   * a reader on a released version should be able to reach it. `dev` is a local
+   * working-tree build that is never published, so it is offered only to a reader already
+   * in it — probing for it on the published site would cost a request that always 404s.
+   */
+  const UNRELEASED = [
+    {
+      folder: 'main',
+      label: 'main (unreleased)',
+      source: 'the main branch',
+      probe: true,
+    },
+    {
+      folder: 'dev',
+      label: 'dev (working tree)',
+      source: 'a local working tree',
+      probe: false,
+    },
+  ];
 
   /**
    * Path of the current page inside its version folder, e.g.
@@ -89,9 +120,9 @@
    * The entry the reader is currently on.
    *
    * `latest/` is an alias for the current release, so a reader there is on whichever
-   * entry carries `current: true`. Returns `null` for `dev/` and for any folder not in
-   * the index — those get the switcher but no stale banner, because there is nothing
-   * truthful to say about how far behind they are.
+   * entry carries `current: true`. Returns `null` for the unreleased folders and for any
+   * folder not in the index — those are not a release, so there is nothing truthful to
+   * say about how far behind they are.
    */
   function findCurrent(versions) {
     if (currentFolder === 'latest')
@@ -102,7 +133,30 @@
     );
   }
 
-  function renderSwitcher(versions, active) {
+  /** The {@link UNRELEASED} entry for the folder the reader is in, or `null`. */
+  const unreleasedHere = () =>
+    UNRELEASED.find(entry => entry.folder === currentFolder) ?? null;
+
+  /**
+   * Unreleased folders to list: the one the reader is in, plus any `probe` folder that
+   * exists on this site. The probe is one `HEAD` per page load and its result is what
+   * makes a local build (no `main/`) and the published site behave correctly without
+   * either being configured.
+   */
+  async function unreleasedOptions() {
+    const found = [];
+    for (const entry of UNRELEASED) {
+      if (entry.folder === currentFolder) found.push(entry);
+      else if (
+        entry.probe &&
+        (await exists(pageIn(entry.folder, 'index.html')))
+      )
+        found.push(entry);
+    }
+    return found;
+  }
+
+  async function renderSwitcher(versions, active) {
     const host = document.getElementById('tsd-toolbar-links');
     if (!host) return;
 
@@ -112,13 +166,13 @@
     const select = document.createElement('select');
     select.setAttribute('aria-label', 'Documentation version');
 
-    // `latest` and `dev` are real folders but not index entries, so they are offered
-    // explicitly — otherwise a reader in `dev/` could never get back out.
+    // `latest`, `main` and `dev` are real folders but not index entries, so they are
+    // offered explicitly — otherwise a reader in `dev/` could never get back out.
     const options = [];
     if (currentFolder === 'latest')
       options.push({ value: 'latest', text: 'latest' });
-    if (currentFolder === 'dev')
-      options.push({ value: 'dev', text: 'dev (unreleased)' });
+    for (const entry of await unreleasedOptions())
+      options.push({ value: entry.folder, text: entry.label });
     for (const version of versions) {
       options.push({
         value: version.path,
@@ -129,7 +183,7 @@
     }
 
     const selected =
-      currentFolder === 'latest' || currentFolder === 'dev'
+      currentFolder === 'latest' || unreleasedHere()
         ? currentFolder
         : (active?.path ?? null);
 
@@ -140,8 +194,8 @@
       if (option.value === selected) element.selected = true;
       select.append(element);
     }
-    // A folder outside the index and outside latest/dev: show it so the control is not
-    // silently lying about where the reader is.
+    // A folder outside the index, `latest` and the unreleased list: show it so the
+    // control is not silently lying about where the reader is.
     if (selected === null) {
       const element = document.createElement('option');
       element.value = currentFolder;
@@ -166,10 +220,21 @@
     host.append(label);
   }
 
-  function renderStaleBanner(versions, active) {
-    if (!active || active.current) return;
-    const latest = versions.find(v => v.current);
-    if (!latest) return;
+  /**
+   * Banner above the page, for the two ways a reader can be off the current release:
+   * reading an older version, or reading an unreleased folder. Both point at the current
+   * release, because that is the docs for the SDK a page actually loads.
+   */
+  function renderBanner(versions, active) {
+    const current = versions.find(v => v.current);
+    if (!current) return;
+
+    const unreleased = unreleasedHere();
+    if (!unreleased && (!active || active.current)) return;
+
+    const message = unreleased
+      ? `You are reading unreleased docs, built from ${unreleased.source}. The current release is v${current.version}.`
+      : `You are reading v${active.version}. Latest is v${current.version}.`;
 
     const main = document.querySelector('.container-main');
     if (!main) return;
@@ -179,14 +244,14 @@
     banner.setAttribute('role', 'note');
 
     const text = document.createElement('span');
-    text.textContent = `You are reading v${active.version}. Latest is v${latest.version}.`;
+    text.textContent = message;
 
     const link = document.createElement('a');
-    link.textContent = `Go to v${latest.version}`;
-    link.href = pageIn(latest.path, 'index.html');
-    // Same page in the latest version when it still exists there.
-    void exists(pageIn(latest.path, pagePath)).then(ok => {
-      if (ok) link.href = pageIn(latest.path, pagePath);
+    link.textContent = `Go to v${current.version}`;
+    link.href = pageIn(current.path, 'index.html');
+    // Same page in the current release when it still exists there.
+    void exists(pageIn(current.path, pagePath)).then(ok => {
+      if (ok) link.href = pageIn(current.path, pagePath);
     });
 
     banner.append(text, link);
@@ -237,8 +302,8 @@
     if (!versions) return;
     const active = findCurrent(versions);
     injectStyles();
-    renderSwitcher(versions, active);
-    renderStaleBanner(versions, active);
+    await renderSwitcher(versions, active);
+    renderBanner(versions, active);
   }
 
   void start();

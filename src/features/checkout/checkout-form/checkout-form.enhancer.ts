@@ -46,18 +46,14 @@ import {
 } from './billing-form-setup';
 import {
   populateExpirationFields,
-  scanExpirationFields,
   type ExpirationFieldsContext,
 } from './expiration-fields';
 import {
   populateBillingCountryDropdown,
   populateCountryDropdown,
-  updateBillingFormLabels,
-  updateFormLabels,
   type CountryFieldsContext,
 } from './country-fields';
 import {
-  updateBillingStateOptions,
   updateStateOptions,
   type ShippingStateFieldsContext,
   type StateFieldsContext,
@@ -83,10 +79,33 @@ import {
   persistContactField,
   type ContactPersistenceContext,
 } from './contact-persistence';
+import {
+  getFieldByName,
+  getFieldNameFromElement,
+  scanAllFields,
+  type FieldLookupContext,
+  type FieldScanContext,
+} from './field-scanning';
+import {
+  clearAllCheckoutFields,
+  populateFormData,
+  type FormClearingContext,
+  type FormPopulationContext,
+} from './form-population';
+import {
+  createLocationFieldVisibility,
+  type LocationFieldVisibility,
+  type LocationFieldsContext,
+} from './location-field-visibility';
+import {
+  applyCountryToAddressForms,
+  resolveShippingCountry,
+  type CountryApplicationContext,
+  type CountryResolutionContext,
+} from './country-selection';
 import 'intl-tel-input/build/css/intlTelInput.css';
 
 // Consolidated constants
-const FIELD_SELECTORS = ['[data-next-checkout-field]', '[os-checkout-field]'] as const;
 const BILLING_CONTAINER_SELECTOR = '[os-checkout-element="different-billing-address"], [data-next-component="different-billing-address"]';
 const SHIPPING_FORM_SELECTOR = '[os-checkout-component="shipping-form"], [data-next-component="shipping-form"]';
 const BILLING_FORM_CONTAINER_SELECTOR = '[os-checkout-component="billing-form"], [data-next-component="billing-form"]';
@@ -153,11 +172,16 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private phoneInputs: Map<string, any> = new Map();
   private isIntlTelInputAvailable = false;
 
-  // Location field visibility management
-  private locationElements: NodeListOf<Element> | null = null;
-  private billingLocationElements: NodeListOf<Element> | null = null;
-  private locationFieldsShown: boolean = false;
-  private billingLocationFieldsShown: boolean = false;
+  /**
+   * The city/state/postcode rows that stay collapsed until an address exists — see
+   * `location-field-visibility.ts`, which owns their state.
+   *
+   * Undefined until {@link initializeLocationFieldVisibility} runs, which is late in the
+   * boot sequence. Every call site therefore uses `?.`: a store update arriving before
+   * that step must do nothing, exactly as it did when this was a method guarding on a
+   * null element list.
+   */
+  private locationFields?: LocationFieldVisibility;
 
   // Event handlers
   private submitHandler?: (event: Event) => void;
@@ -533,201 +557,83 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // FIELD SCANNING AND MANAGEMENT
   // ============================================================================
 
-  private scanAllFields(): void {
-    // Scan checkout fields
-    FIELD_SELECTORS.forEach(selector => {
-      this.form.querySelectorAll(selector).forEach(element => {
-        const fieldName = element.getAttribute(selector.includes('data-next') ? 'data-next-checkout-field' : 'os-checkout-field');
-        if (fieldName && element instanceof HTMLElement) {
-          this.fields.set(fieldName, element);
-        }
-      });
-    });
-
-    // Find submit button
-    const submitButton = this.form.querySelector('button[type="submit"]') ||
-      this.form.querySelector('[data-next-checkout-submit]') ||
-      this.form.querySelector('[os-checkout-submit]');
-    if (submitButton instanceof HTMLButtonElement) {
-      this.submitButton = submitButton;
-      this.logger.debug('Found submit button:', submitButton);
-    } else {
-      this.logger.warn('Submit button not found in checkout form');
-    }
-
-    // Scan payment buttons
-    const paymentSelectors = [
-      '[data-next-checkout-payment]',
-      '[os-checkout-payment]'
-    ];
-    paymentSelectors.forEach(selector => {
-      document.querySelectorAll(selector).forEach(element => {
-        const paymentMethod = element.getAttribute(selector.includes('data-next') ? 'data-next-checkout-payment' : 'os-checkout-payment');
-        if (paymentMethod && element instanceof HTMLElement) {
-          this.paymentButtons.set(paymentMethod, element);
-        }
-      });
-    });
-
-    // Scan for expiration fields and add them if not found
-    scanExpirationFields(this.expirationFieldsContext());
+  /** The five things `field-scanning.ts` needs from this form. */
+  private fieldScanContext(): FieldScanContext {
+    return {
+      form: this.form,
+      fields: this.fields,
+      paymentButtons: this.paymentButtons,
+      logger: this.logger,
+      expirationFields: this.expirationFieldsContext(),
+    };
   }
 
+  /** The two maps a field name could resolve in. */
+  private fieldLookupContext(): FieldLookupContext {
+    return { fields: this.fields, billingFields: this.billingFields };
+  }
 
-
-  // ============================================================================
-  // BILLING FORM MANAGEMENT
-  // ============================================================================
-
-
-
+  private scanAllFields(): void {
+    const submitButton = scanAllFields(this.fieldScanContext());
+    if (submitButton) {
+      this.submitButton = submitButton;
+    }
+  }
 
   // ============================================================================
   // ADDRESS AND COUNTRY MANAGEMENT
   // ============================================================================
 
+  /**
+   * Gets the address half of the form working: which countries can be shipped to, which
+   * one this shopper starts on, what its provinces are, and address autocomplete.
+   *
+   * Written as an ordered list of named steps rather than lifted into a module — it needs
+   * ten of this class's fields, so a context object for it would have been the enhancer
+   * again. The one genuinely self-contained decision inside it, *which* country to open
+   * on, did come out: [`country-selection.ts`](./country-selection.ts).
+   *
+   * The whole sequence is wrapped so a country service that cannot answer leaves a usable
+   * form rather than a half-initialized one, and so the loading class always comes off.
+   */
   private async initializeAddressManagement(config: any): Promise<void> {
     try {
       this.addClass('next-loading-countries');
 
-      if (config.addressConfig) {
-        this.countryService.setConfig(config.addressConfig);
-      }
+      this.configureCountryService(config);
 
-      // IMPORTANT: Set campaign shipping countries from campaign API
-      // This takes priority over showCountries in addressConfig
-      const campaignState = useCampaignStore.getState();
-      if (campaignState.data?.available_shipping_countries) {
-        this.logger.info('Setting campaign shipping countries:', campaignState.data.available_shipping_countries);
-        this.countryService.setCampaignShippingCountries(campaignState.data.available_shipping_countries);
-      } else {
-        this.logger.debug('No campaign shipping countries available, using config');
-      }
-
-      // Check if autocomplete should be enabled
-      const googleMapsConfig = config.googleMapsConfig || {};
-      const enableGoogleMaps = googleMapsConfig.enableAutocomplete !== false && !!googleMapsConfig.apiKey;
-      const enableNextCommerce = config.addressConfig?.enableAutocomplete === true && !!config.apiKey;
-
-      this.autocompleteEnhancer = new AddressAutocompleteEnhancer({
-        fields: this.fields,
-        billingFields: this.billingFields,
-        apiClient: this.apiClient,
-        getDetectedCountryCode: () => this.detectedCountryCode,
-        getHasTrackedShippingInfo: () => this.hasTrackedShippingInfo.value,
-        setHasTrackedShippingInfo: (value) => { this.hasTrackedShippingInfo.value = value; },
-      });
-
+      // Built before the country list is fetched, but initialized after — it holds the
+      // field maps by reference, so only its `initialize` call depends on the timing.
+      const autocompleteOptions = this.createAddressAutocomplete(config);
 
       const locationData = await this.countryService.getLocationData();
       this.countries = locationData.countries;
 
-      // Check for shipping country override from URL or sessionStorage
-      // NOTE: This only affects the shipping country dropdown, NOT currency
-      let selectedCountryCode = locationData.detectedCountryCode;
-
-      const countryConfig = this.countryService.getConfig();
       const checkoutStore = useCheckoutStore.getState();
       const storedCountry = checkoutStore.formData.country;
-
-      this.logger.info('Shipping country selection priority check (does not affect currency):', {
-        detectedCountry: locationData.detectedCountryCode,
-        addressConfigDefault: countryConfig?.defaultCountry,
-        storedCountry: storedCountry,
-        urlParam: new URLSearchParams(window.location.search).get('country'),
-        sessionOverride: sessionStorage.getItem('next_selected_country')
-      });
-
-      // Priority 1: Stored country from checkoutStore (from previous step)
-      if (storedCountry) {
-        const countryExists = this.countries.some(c => c.code === storedCountry);
-        if (countryExists) {
-          selectedCountryCode = storedCountry;
-          this.logger.info(`✅ Using stored country from previous step: ${storedCountry}`);
-        } else {
-          this.logger.warn(`Stored country ${storedCountry} not in available countries`);
-        }
-      }
-      // Priority 2: URL parameter (?country=XX for shipping destination)
-      else {
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlCountry = urlParams.get('country');
-        if (urlCountry) {
-          const countryCode = urlCountry.toUpperCase();
-          // Verify the country exists in the available countries
-          const countryExists = this.countries.some(c => c.code === countryCode);
-          if (countryExists) {
-            selectedCountryCode = countryCode;
-            // Save to sessionStorage for persistence
-            sessionStorage.setItem('next_selected_country', countryCode);
-            this.logger.info(`✅ Using shipping country from URL parameter: ${countryCode} (currency unaffected)`);
-          } else {
-            this.logger.warn(`Country ${countryCode} from URL not in available countries`);
-          }
-        }
-        // Priority 3: sessionStorage override (from previous URL param or user selection)
-        else {
-          const savedCountryOverride = sessionStorage.getItem('next_selected_country');
-          if (savedCountryOverride) {
-            const countryExists = this.countries.some(c => c.code === savedCountryOverride);
-            if (countryExists) {
-              selectedCountryCode = savedCountryOverride;
-              this.logger.info(`✅ Using shipping country from session storage: ${savedCountryOverride} (currency unaffected)`);
-            } else {
-              this.logger.warn(`Saved country ${savedCountryOverride} not in available countries`);
-            }
-          } else {
-            this.logger.info(`✅ Using detected/default shipping country: ${selectedCountryCode} (currency unaffected)`);
-          }
-        }
-      }
-
-      this.detectedCountryCode = selectedCountryCode;
-
-      const countryField = this.fields.get('country');
-      if (countryField instanceof HTMLSelectElement) {
-        populateCountryDropdown(countryField, locationData.countries, selectedCountryCode);
-
-        if (selectedCountryCode) {
-          this.updateFormData({ country: selectedCountryCode });
-          this.clearError('country');
-        }
-      }
-
-      // NOTE: We don't need to fetch config here because updateStateOptions()
-      // will fetch the correct country config (line 1336) and update form labels (line 1340)
-      // This ensures postcode label/regex/validation always matches the selected country
-
       // IMPORTANT: Save stored province before loading states (updateStateOptions clears it)
       const storedProvince = checkoutStore.formData.province;
 
-      if (selectedCountryCode) {
-        const provinceField = this.fields.get('province');
-        if (provinceField instanceof HTMLSelectElement) {
-          // updateStateOptions fetches the correct country config and updates form labels
-          await updateStateOptions(this.shippingStateFieldsContext(), selectedCountryCode, provinceField);
-          // this.currentCountryConfig.value is already set by updateStateOptions (line 1337)
+      const selectedCountryCode = resolveShippingCountry(
+        this.countryResolutionContext(),
+        locationData.detectedCountryCode,
+        storedCountry
+      );
+      this.detectedCountryCode = selectedCountryCode;
 
-          // Restore stored province after states are loaded (if country matches)
-          if (storedProvince && storedCountry === selectedCountryCode) {
-            const optionExists = Array.from(provinceField.options).some(opt => opt.value === storedProvince);
-            if (optionExists) {
-              provinceField.value = storedProvince;
-              this.updateFormData({ province: storedProvince });
-            }
-          }
-        }
-
-        // updateFormLabels is already called by updateStateOptions (line 1340)
-        // No need to call it again here
-      }
+      this.applySelectedCountry(selectedCountryCode, locationData.countries);
+      await this.loadProvincesForSelectedCountry(
+        selectedCountryCode,
+        storedCountry,
+        storedProvince
+      );
 
       if (this.billingFields.size > 0) {
         populateBillingCountryDropdown(this.countryFieldsContext());
       }
 
       // Initialize address autocomplete
-      await this.autocompleteEnhancer!.initialize({ enableGoogleMaps, enableNextCommerce });
+      await this.autocompleteEnhancer!.initialize(autocompleteOptions);
 
     } catch (error) {
       this.logger.error('Failed to load country data:', error);
@@ -736,101 +642,174 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     }
   }
 
-
-  private async handleCountryChange(newCountry: string): Promise<void> {
-    this.logger.info(`Handling country change to: ${newCountry}`);
-
-    // Update the country dropdown
-    const countryField = this.fields.get('country');
-    if (countryField instanceof HTMLSelectElement) {
-      countryField.value = newCountry;
-
-      // Update form data in checkout store
-      this.updateFormData({ country: newCountry });
-
-      // Update state options for the new country
-      const provinceField = this.fields.get('province');
-      if (provinceField instanceof HTMLSelectElement) {
-        await updateStateOptions(this.shippingStateFieldsContext(), newCountry, provinceField);
-      }
-
-      // Trigger change event to update any dependent fields
-      countryField.dispatchEvent(new Event('change', { bubbles: true }));
-
-      this.logger.info(`Country field updated to: ${newCountry}`);
+  /**
+   * Tells the country service which countries this campaign ships to.
+   *
+   * The campaign API wins over `addressConfig.showCountries`: a merchant who cannot ship
+   * somewhere must not be able to re-offer it from page config.
+   */
+  private configureCountryService(config: any): void {
+    if (config.addressConfig) {
+      this.countryService.setConfig(config.addressConfig);
     }
 
-    // Also update billing country if billing form is visible
-    const billingCountryField = this.billingFields.get('billing-country');
-    if (billingCountryField instanceof HTMLSelectElement) {
-      billingCountryField.value = newCountry;
-
-      // Update billing state options
-      const billingProvinceField = this.billingFields.get('billing-province');
-      if (billingProvinceField instanceof HTMLSelectElement) {
-        // Pass the shipping province value if "same as shipping" is checked
-        const checkoutStore = useCheckoutStore.getState();
-        const shippingProvince = checkoutStore.sameAsShipping ? checkoutStore.formData.province : undefined;
-        await updateBillingStateOptions(this.stateFieldsContext(), newCountry, billingProvinceField, shippingProvince);
-      }
-
-      billingCountryField.dispatchEvent(new Event('change', { bubbles: true }));
+    // IMPORTANT: Set campaign shipping countries from campaign API
+    // This takes priority over showCountries in addressConfig
+    const campaignState = useCampaignStore.getState();
+    if (campaignState.data?.available_shipping_countries) {
+      this.logger.info('Setting campaign shipping countries:', campaignState.data.available_shipping_countries);
+      this.countryService.setCampaignShippingCountries(campaignState.data.available_shipping_countries);
+    } else {
+      this.logger.debug('No campaign shipping countries available, using config');
     }
   }
 
+  /**
+   * Constructs the address-suggestion enhancer and returns which providers it may use.
+   *
+   * Google Maps is on unless the page turns it off and a key exists; the NextCommerce
+   * lookup is off unless the page turns it on. The flags are returned rather than stored
+   * because the enhancer is only *initialized* later, once the country list has arrived.
+   */
+  private createAddressAutocomplete(config: any): {
+    enableGoogleMaps: boolean;
+    enableNextCommerce: boolean;
+  } {
+    // Check if autocomplete should be enabled
+    const googleMapsConfig = config.googleMapsConfig || {};
+    const enableGoogleMaps = googleMapsConfig.enableAutocomplete !== false && !!googleMapsConfig.apiKey;
+    const enableNextCommerce = config.addressConfig?.enableAutocomplete === true && !!config.apiKey;
 
+    this.autocompleteEnhancer = new AddressAutocompleteEnhancer({
+      fields: this.fields,
+      billingFields: this.billingFields,
+      apiClient: this.apiClient,
+      getDetectedCountryCode: () => this.detectedCountryCode,
+      getHasTrackedShippingInfo: () => this.hasTrackedShippingInfo.value,
+      setHasTrackedShippingInfo: (value) => { this.hasTrackedShippingInfo.value = value; },
+    });
+
+    return { enableGoogleMaps, enableNextCommerce };
+  }
+
+  /**
+   * Fills the shipping country dropdown and selects the resolved country.
+   *
+   * Selecting it dispatches a bubbling `change` — but this runs before
+   * {@link setupEventHandlers}, so nothing is listening yet, which is why the store write
+   * and the error clear below are done here by hand rather than left to the change handler.
+   */
+  private applySelectedCountry(
+    selectedCountryCode: string,
+    countries: Country[]
+  ): void {
+    const countryField = this.fields.get('country');
+    if (countryField instanceof HTMLSelectElement) {
+      populateCountryDropdown(countryField, countries, selectedCountryCode);
+
+      if (selectedCountryCode) {
+        this.updateFormData({ country: selectedCountryCode });
+        this.clearError('country');
+      }
+    }
+  }
+
+  /**
+   * Refills the province dropdown for the resolved country and puts a stored province
+   * back into it.
+   *
+   * `updateStateOptions` clears the stored province as a side effect of rebuilding the
+   * list, which is why the caller reads it *before* calling here. It is only restored when
+   * the stored country is the one that won — a province from a different country is not a
+   * valid choice in this list.
+   */
+  private async loadProvincesForSelectedCountry(
+    selectedCountryCode: string,
+    storedCountry: string | undefined,
+    storedProvince: string | undefined
+  ): Promise<void> {
+    // NOTE: We don't need to fetch config here because updateStateOptions()
+    // will fetch the correct country config and update form labels
+    // This ensures postcode label/regex/validation always matches the selected country
+    if (!selectedCountryCode) return;
+
+    const provinceField = this.fields.get('province');
+    if (provinceField instanceof HTMLSelectElement) {
+      // updateStateOptions fetches the correct country config and updates form labels
+      await updateStateOptions(this.shippingStateFieldsContext(), selectedCountryCode, provinceField);
+      // this.currentCountryConfig.value is already set by updateStateOptions
+
+      // Restore stored province after states are loaded (if country matches)
+      if (storedProvince && storedCountry === selectedCountryCode) {
+        const optionExists = Array.from(provinceField.options).some(opt => opt.value === storedProvince);
+        if (optionExists) {
+          provinceField.value = storedProvince;
+          this.updateFormData({ province: storedProvince });
+        }
+      }
+    }
+
+    // updateFormLabels is already called by updateStateOptions
+    // No need to call it again here
+  }
+
+  /** The three things `country-selection.ts` needs to resolve the starting country. */
+  private countryResolutionContext(): CountryResolutionContext {
+    return {
+      countries: this.countries,
+      countryService: this.countryService,
+      logger: this.logger,
+    };
+  }
+
+  /** The six things `country-selection.ts` needs to apply a country to both forms. */
+  private countryApplicationContext(): CountryApplicationContext {
+    return {
+      logger: this.logger,
+      fields: this.fields,
+      billingFields: this.billingFields,
+      updateFormData: data => this.updateFormData(data),
+      shippingStateFields: this.shippingStateFieldsContext(),
+      stateFields: this.stateFieldsContext(),
+    };
+  }
+
+  private async handleCountryChange(newCountry: string): Promise<void> {
+    await applyCountryToAddressForms(
+      this.countryApplicationContext(),
+      newCountry
+    );
+  }
 
   // ============================================================================
   // LOCATION FIELD VISIBILITY MANAGEMENT
   // ============================================================================
 
+  /** The six things `location-field-visibility.ts` needs from this form. */
+  private locationFieldsContext(): LocationFieldsContext {
+    return {
+      form: this.form,
+      fields: this.fields,
+      billingFields: this.billingFields,
+      logger: this.logger,
+      eventBus: this.eventBus,
+      listen: (target, type, handler) => this.listen(target, type, handler),
+    };
+  }
+
+  /**
+   * Reveals the collapsed address rows once there is an address, and keeps doing so as
+   * one arrives from typing, autofill or autocomplete.
+   *
+   * Runs after {@link populateFormData} and {@link restoreBillingAddress} on purpose: it
+   * decides whether each set is already worth showing by reading the address input's
+   * current value.
+   */
   private initializeLocationFieldVisibility(): void {
-    // Find all location elements - check both possible attributes
-    this.locationElements = this.form.querySelectorAll('[data-next-component="location"], [data-next-component-location="location"]');
-
-    // Also find billing location elements
-    this.billingLocationElements = this.form.querySelectorAll('[data-next-component="billing-location"]');
-
-    if (!this.locationElements || this.locationElements.length === 0) {
-      this.logger.debug('No shipping location elements found');
-    }
-
-    if (!this.billingLocationElements || this.billingLocationElements.length === 0) {
-      this.logger.debug('No billing location elements found');
-    }
-
-    // Hide location fields initially
-    this.hideLocationFields();
-    this.hideBillingLocationFields();
-
-    // Set up address field listeners for shipping
-    const addressField = this.fields.get('address1');
-    if (addressField instanceof HTMLInputElement) {
-      // Listen for changes on address1 field
-      this.listen(addressField, 'input', this.handleAddressInput.bind(this));
-      this.listen(addressField, 'change', this.handleAddressInput.bind(this));
-      this.listen(addressField, 'blur', this.handleAddressInput.bind(this));
-
-      // Check initial state
-      if (addressField.value && addressField.value.trim().length > 0) {
-        this.showLocationFields();
-      }
-    }
-
-    // Set up address field listeners for billing
-    const billingAddressField = this.billingFields?.get('billing-address1');
-    if (billingAddressField instanceof HTMLInputElement) {
-      // Listen for changes on billing address1 field
-      const onBillingInput = this.handleBillingAddressInput.bind(this);
-      this.listen(billingAddressField, 'input', onBillingInput);
-      this.listen(billingAddressField, 'change', onBillingInput);
-      this.listen(billingAddressField, 'blur', onBillingInput);
-
-      // Check initial state
-      if (billingAddressField.value && billingAddressField.value.trim().length > 0) {
-        this.showBillingLocationFields();
-      }
-    }
+    this.locationFields = createLocationFieldVisibility(
+      this.locationFieldsContext()
+    );
+    this.locationFields.initialize();
 
     // Listen for autocomplete fill events. `this.on` records the unsubscribe that
     // `destroy()` runs; `this.eventBus.on` would outlive the form.
@@ -841,100 +820,14 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         this.showBillingLocationFields();
       }
     });
-
-    // Listen for address field changes via store updates
-    const checkoutStore = useCheckoutStore.getState();
-    if (checkoutStore.formData.address1 && checkoutStore.formData.address1.trim().length > 0) {
-      this.showLocationFields();
-    }
-    if (checkoutStore.formData['billing-address1'] && checkoutStore.formData['billing-address1'].trim().length > 0) {
-      this.showBillingLocationFields();
-    }
-
-    this.logger.debug('Location field visibility initialized', {
-      shippingLocationElementsCount: this.locationElements?.length || 0,
-      billingLocationElementsCount: this.billingLocationElements?.length || 0
-    });
-  }
-
-  private handleAddressInput(event: Event): void {
-    const field = event.target as HTMLInputElement;
-    if (field.value && field.value.trim().length > 0) {
-      this.showLocationFields();
-    }
-  }
-
-  private handleBillingAddressInput(event: Event): void {
-    const field = event.target as HTMLInputElement;
-    if (field.value && field.value.trim().length > 0) {
-      this.showBillingLocationFields();
-    }
-  }
-
-  private hideLocationFields(): void {
-    if (!this.locationElements) return;
-
-    this.locationElements.forEach(el => {
-      if (el instanceof HTMLElement) {
-        el.style.display = 'none';
-        el.classList.add('next-location-hidden');
-      }
-    });
-
-    this.locationFieldsShown = false;
-    this.logger.debug('Location fields hidden');
   }
 
   private showLocationFields(): void {
-    if (this.locationFieldsShown || !this.locationElements) return;
-
-    this.locationElements.forEach(el => {
-      if (el instanceof HTMLElement) {
-        el.style.display = 'flex';
-        el.classList.remove('next-location-hidden');
-      }
-    });
-
-    this.locationFieldsShown = true;
-
-    // Emit event for other components
-    this.eventBus.emit('checkout:location-fields-shown', {});
-    this.form.dispatchEvent(new CustomEvent('checkout:location-fields-shown'));
-
-    this.logger.debug('Location fields shown');
-  }
-
-  private hideBillingLocationFields(): void {
-    if (!this.billingLocationElements) return;
-
-    this.billingLocationElements.forEach(el => {
-      if (el instanceof HTMLElement) {
-        el.style.display = 'none';
-        el.classList.add('next-location-hidden');
-      }
-    });
-
-    this.billingLocationFieldsShown = false;
-    this.logger.debug('Billing location fields hidden');
+    this.locationFields?.showLocationFields();
   }
 
   private showBillingLocationFields(): void {
-    if (this.billingLocationFieldsShown || !this.billingLocationElements) return;
-
-    this.billingLocationElements.forEach(el => {
-      if (el instanceof HTMLElement) {
-        el.style.display = 'flex';
-        el.classList.remove('next-location-hidden');
-      }
-    });
-
-    this.billingLocationFieldsShown = true;
-
-    // Emit event for other components
-    this.eventBus.emit('checkout:billing-location-fields-shown', {});
-    this.form.dispatchEvent(new CustomEvent('checkout:billing-location-fields-shown'));
-
-    this.logger.debug('Billing location fields shown');
+    this.locationFields?.showBillingLocationFields();
   }
 
   // ============================================================================
@@ -1161,64 +1054,24 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // FORM CLEARING
   // ============================================================================
 
+  /** The five things `form-population.ts` needs to empty this form. */
+  private formClearingContext(): FormClearingContext {
+    return {
+      form: this.form,
+      fields: this.fields,
+      billingFields: this.billingFields,
+      detectedCountryCode: this.detectedCountryCode,
+      logger: this.logger,
+      clearCardFields:
+        this.creditCardService &&
+        typeof this.creditCardService.clearFields === 'function'
+          ? () => this.creditCardService?.clearFields()
+          : undefined,
+    };
+  }
+
   private clearAllCheckoutFields(): void {
-    try {
-      // Clear all shipping fields
-      this.fields.forEach((field) => {
-        if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
-          if (field.type === 'checkbox' || field.type === 'radio') {
-            (field as HTMLInputElement).checked = false;
-          } else {
-            field.value = '';
-          }
-        } else if (field instanceof HTMLSelectElement) {
-          field.selectedIndex = 0;
-        }
-      });
-
-      // Clear all billing fields
-      this.billingFields.forEach((field) => {
-        if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
-          if (field.type === 'checkbox' || field.type === 'radio') {
-            (field as HTMLInputElement).checked = false;
-          } else {
-            field.value = '';
-          }
-        } else if (field instanceof HTMLSelectElement) {
-          field.selectedIndex = 0;
-        }
-      });
-
-      // Clear credit card fields if credit card service exists
-      if (this.creditCardService && typeof this.creditCardService.clearFields === 'function') {
-        this.creditCardService.clearFields();
-      }
-
-      // Reset checkout store
-      const checkoutStore = useCheckoutStore.getState();
-      checkoutStore.reset();
-
-      // Clear any errors
-      checkoutStore.clearAllErrors();
-
-      // Re-initialize country dropdowns with detected country
-      const countryField = this.fields.get('country');
-      if (countryField instanceof HTMLSelectElement && this.detectedCountryCode) {
-        countryField.value = this.detectedCountryCode;
-        countryField.dispatchEvent(new Event('change', { bubbles: true }));
-      }
-
-      // Reset billing same as shipping checkbox
-      const billingToggle = this.form.querySelector('input[name="use_shipping_address"]') as HTMLInputElement;
-      if (billingToggle) {
-        billingToggle.checked = true;
-        billingToggle.dispatchEvent(new Event('change', { bubbles: true }));
-      }
-
-      this.logger.info('All checkout fields cleared');
-    } catch (error) {
-      this.logger.error('Error clearing checkout fields:', error);
-    }
+    clearAllCheckoutFields(this.formClearingContext());
   }
 
   // ============================================================================
@@ -2188,28 +2041,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
 
   private getFieldNameFromElement(element: HTMLElement): string | null {
-    const checkoutFieldName = element.getAttribute('data-next-checkout-field') ||
-      element.getAttribute('os-checkout-field');
-
-    if (checkoutFieldName) return checkoutFieldName;
-
-    if (element instanceof HTMLInputElement || element instanceof HTMLSelectElement) {
-      if (element.name) return element.name;
-    }
-
-    return null;
+    return getFieldNameFromElement(element);
   }
 
   private getFieldByName(fieldName: string): HTMLElement | null {
-    // Check shipping fields first
-    const shippingField = this.fields.get(fieldName);
-    if (shippingField) return shippingField;
-
-    // Check billing fields
-    const billingField = this.billingFields.get(fieldName);
-    if (billingField) return billingField;
-
-    return null;
+    return getFieldByName(this.fieldLookupContext(), fieldName);
   }
 
   private handlePaymentMethodChange(event: Event): void {
@@ -2428,79 +2264,21 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     checkoutStore.clearError(field);
   }
 
+  /** The seven things `form-population.ts` needs to refill this form. */
+  private formPopulationContext(): FormPopulationContext {
+    return {
+      fields: this.fields,
+      detectedCountryCode: this.detectedCountryCode,
+      logger: this.logger,
+      phoneInputs: this.phoneInputs,
+      shippingStateFields: this.shippingStateFieldsContext(),
+      updateFormData: data => this.updateFormData(data),
+      updateLabelsForPopulatedData: () => this.ui.updateLabelsForPopulatedData(),
+    };
+  }
+
   private async populateFormData(): Promise<void> {
-    const checkoutStore = useCheckoutStore.getState();
-
-    // Check if country is stored and different from current
-    const storedCountry = checkoutStore.formData.country;
-    const countryField = this.fields.get('country');
-
-    if (storedCountry && countryField instanceof HTMLSelectElement) {
-      // Set country first
-      countryField.value = storedCountry;
-
-      // If country changed, load states for that country
-      const currentCountryValue = countryField.value;
-      if (currentCountryValue && currentCountryValue !== this.detectedCountryCode) {
-        this.logger.info(`Restoring saved country: ${currentCountryValue}`);
-
-        // Load states for the stored country
-        const provinceField = this.fields.get('province');
-        if (provinceField instanceof HTMLSelectElement) {
-          await updateStateOptions(this.shippingStateFieldsContext(), currentCountryValue, provinceField);
-        }
-      }
-    }
-
-    // Now populate all fields including province
-    this.fields.forEach((field, name) => {
-      if (checkoutStore.formData[name] && (field instanceof HTMLInputElement || field instanceof HTMLSelectElement)) {
-        // Skip province if we just loaded states - it will be set below
-        if (name !== 'province' || !(field instanceof HTMLSelectElement)) {
-          field.value = checkoutStore.formData[name];
-        }
-      }
-    });
-
-    // After populating phone field, ensure it's stored in international format
-    // This handles the case where phone was persisted in national format before intlTelInput processed it
-    const shippingPhoneInstance = this.phoneInputs.get('shipping');
-    if (shippingPhoneInstance && checkoutStore.formData.phone) {
-      // Give intlTelInput a moment to process the value we just set
-      setTimeout(() => {
-        const internationalNumber = shippingPhoneInstance.getNumber();
-        if (internationalNumber && internationalNumber !== checkoutStore.formData.phone) {
-          this.logger.debug(`Converting phone to international format: ${checkoutStore.formData.phone} -> ${internationalNumber}`);
-          this.updateFormData({ phone: internationalNumber });
-        }
-      }, 50);
-    }
-
-    // Set province value after states are loaded
-    const storedProvince = checkoutStore.formData.province;
-    const provinceField = this.fields.get('province');
-
-    if (storedProvince && provinceField instanceof HTMLSelectElement) {
-      const availableOptions = Array.from(provinceField.options).map(opt => ({
-        value: opt.value,
-        text: opt.text
-      }));
-
-      // Check if the option exists
-      const optionExists = Array.from(provinceField.options).some(opt => opt.value === storedProvince);
-
-      if (optionExists) {
-        provinceField.value = storedProvince;
-        // IMPORTANT: Also update the store since updateStateOptions cleared it
-        this.updateFormData({ province: storedProvince });
-        this.logger.debug(`Restored province: ${storedProvince}`);
-      } else {
-        this.logger.warn(`Province ${storedProvince} not found in options for country ${storedCountry}`);
-      }
-    }
-
-    // Update floating labels for populated data
-    this.ui.updateLabelsForPopulatedData();
+    await populateFormData(this.formPopulationContext());
   }
 
   /**

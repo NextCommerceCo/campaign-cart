@@ -8,7 +8,7 @@ import {
 } from '../package-selector.handlers';
 import type { SelectorHandlerContext } from '../package-selector.types';
 import type { SelectorItem } from '@/types/global';
-import { useCartStore, cartOperations } from '@/state/cart';
+import { useCartStore } from '@/state/cart';
 
 vi.mock('@/state/cart', () => {
   const getState = vi.fn();

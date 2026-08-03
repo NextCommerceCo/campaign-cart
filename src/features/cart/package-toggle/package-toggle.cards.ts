@@ -20,6 +20,12 @@ import { attachPropertyListeners } from '@/features/cart/shared/properties';
 export interface CardRegistrationContext {
   cards: ToggleCard[];
   clickHandlers: Map<HTMLElement, (e: Event) => void>;
+  /**
+   * Aborted by the enhancer's `cleanupEventListeners()`. The property-field
+   * listeners a card registers sit on author DOM, so they need a way off the page
+   * that does not depend on holding each handler's reference.
+   */
+  listenerSignal: AbortSignal;
   logger: Logger;
   makeHandlerContext: () => ToggleHandlerContext;
 }
@@ -182,6 +188,7 @@ export function registerCard(
     attachPropertyListeners(
       el,
       card.properties,
+      ctx.listenerSignal,
       () => void updateCartItemProperties(card)
     );
   }

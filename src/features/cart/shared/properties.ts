@@ -60,10 +60,23 @@ export function mergeWithDefaults(
  * inputs within `containerEl`. On each keystroke the current value is written
  * into `properties` (or the key is removed when the field is cleared). On blur
  * the optional `onBlur` callback is called so the caller can sync the cart.
+ *
+ * The fields are the page author's, not the enhancer's, so `signal` is required
+ * rather than optional: without it these listeners survived `destroy()` and
+ * re-enhancing the same card stacked another set on top of the first (finding 169
+ * in `docs/code-findings.md`). Pass the signal of a controller the calling enhancer
+ * aborts from its `cleanupEventListeners()`.
+ *
+ * @example
+ * // Inside an enhancer holding `private listenerAbort = new AbortController()`:
+ * attachPropertyListeners(cardEl, card.properties, this.listenerAbort.signal, () =>
+ *   void updateCartItemProperties(card)
+ * );
  */
 export function attachPropertyListeners(
   containerEl: HTMLElement,
   properties: Record<string, string>,
+  signal: AbortSignal,
   onBlur?: () => void,
 ): void {
   containerEl
@@ -73,13 +86,17 @@ export function attachPropertyListeners(
     .forEach(el => {
       const key = el.getAttribute('data-next-property');
       if (!key) return;
-      el.addEventListener('input', () => {
-        if (el.value) {
-          properties[key] = el.value;
-        } else {
-          delete properties[key];
-        }
-      });
-      if (onBlur) el.addEventListener('blur', onBlur);
+      el.addEventListener(
+        'input',
+        () => {
+          if (el.value) {
+            properties[key] = el.value;
+          } else {
+            delete properties[key];
+          }
+        },
+        { signal },
+      );
+      if (onBlur) el.addEventListener('blur', onBlur, { signal });
     });
 }
