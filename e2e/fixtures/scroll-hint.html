@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Scroll hint</title>
+    <style>
+      /* Fixed-height scrollable list so scrollHeight > clientHeight. */
+      #list {
+        height: 120px;
+        overflow-y: auto;
+      }
+      #list .row {
+        height: 60px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Scroll hint fixture</h1>
+
+    <!-- docs:example A hint that hides once the list is scrolled -->
+    <div class="cart-items">
+      <div data-next-component="scroll-hint" data-next-scroll-target="#list">
+        Scroll for more items
+      </div>
+      <div id="list">
+        <div class="row">Row 1</div>
+        <div class="row">Row 2</div>
+        <div class="row">Row 3</div>
+        <div class="row">Row 4</div>
+        <div class="row">Row 5</div>
+        <div class="row">Row 6</div>
+      </div>
+    </div>
+    <!-- /docs:example -->
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

@@ -13,9 +13,30 @@ import type {
   CartCalculateSummary,
   CartSummary,
 } from '@/types/api';
-import { Logger, createLogger } from '@/utils/logger';
+import { Logger, createLogger } from '@/core/logger';
+import type { IApiClient } from './client.types';
 
-export class ApiClient {
+/**
+ * The one implementation of `IApiClient` (`@/api/client.types`).
+ *
+ * Owns everything shared by every call — the base URL, the `Authorization` header,
+ * rate-limit handling, error enrichment, and telling an aborted request apart from a
+ * failed one — so no endpoint method repeats it and no feature touches `fetch`.
+ *
+ * **Do not construct one.** `src/client.ts` builds the single instance this page uses;
+ * ask it with `getApiClient()`. Twelve places used to run `new ApiClient(…)` themselves,
+ * which produced a dozen identical clients.
+ *
+ * **Depend on `IApiClient`, not on this class**, wherever you only need to call the
+ * API: it is what lets a test supply a compiler-checked fake instead of mocking the
+ * module by path. The interface is intentionally not re-exported from `src/index.ts` —
+ * that is the frozen public surface — so import it from `@/api/client.types`.
+ *
+ * Because the instance is shared, **every field here must stay per-page, not per-caller**.
+ * A cache, an in-flight map or an abort controller added to this class would silently be
+ * shared by every holder — that state belongs in the caller.
+ */
+export class ApiClient implements IApiClient {
   private baseURL = 'https://campaigns.apps.29next.com';
   private apiKey: string;
   private logger: Logger;
@@ -125,29 +146,6 @@ export class ApiClient {
     );
   }
 
-  // Get request type from endpoint
-  private getRequestType(endpoint: string): string {
-    if (endpoint.includes('/campaigns')) return 'campaign';
-    if (endpoint.includes('/upsells')) return 'upsell';
-    if (endpoint.includes('/orders')) return 'order';
-    if (endpoint.includes('/prospect-carts')) return 'prospect_cart';
-    if (endpoint.includes('/carts')) return 'cart';
-    if (endpoint.includes('/addresses')) return 'addresses';
-    return 'campaign'; // default
-  }
-
-  // Get error type from status code
-  private getErrorType(
-    status: number
-  ): 'network' | 'rate_limit' | 'auth' | 'server_error' | 'client_error' {
-    if (status === 0) return 'network';
-    if (status === 429) return 'rate_limit';
-    if (status === 401 || status === 403) return 'auth';
-    if (status >= 500) return 'server_error';
-    if (status >= 400) return 'client_error';
-    return 'network';
-  }
-
   // Generic request handler with error handling and rate limiting
   private async request<T>(
     endpoint: string,
@@ -164,16 +162,7 @@ export class ApiClient {
 
     this.logger.debug(`API Request: ${method} ${url}`);
 
-    const startTime = performance.now();
-    let statusCode = 0;
     let errorMessage: string | undefined;
-    let errorType:
-      | 'network'
-      | 'rate_limit'
-      | 'auth'
-      | 'server_error'
-      | 'client_error'
-      | undefined;
     let retryAfter: number | undefined;
 
     try {
@@ -181,14 +170,11 @@ export class ApiClient {
         ...options,
         headers,
       });
-      const duration = performance.now() - startTime;
-      statusCode = response.status;
 
       // Handle rate limiting
       if (response.status === 429) {
         retryAfter = parseInt(response.headers.get('Retry-After') || '60');
         errorMessage = `Rate limited. Retry after ${retryAfter} seconds`;
-        errorType = 'rate_limit';
         this.logger.warn(errorMessage);
 
         throw new Error(errorMessage);
@@ -197,7 +183,6 @@ export class ApiClient {
       // Handle other errors
       if (!response.ok) {
         errorMessage = `API Error: ${response.status} ${response.statusText}`;
-        errorType = this.getErrorType(response.status);
 
         // Try to parse error response body
         let errorData: any = {};
@@ -237,12 +222,21 @@ export class ApiClient {
     }
   }
 
-  // Update API key
+  /**
+   * Re-keys this client in place.
+   *
+   * **Not part of `IApiClient`, and not for feature code.** There is one client per
+   * page, so this changes the credentials of every holder at once — including holders
+   * that cached the instance and will never ask for it again. Use `getApiClient(newKey)`
+   * from [`@/client`](../client.ts), which builds a client for that key; it reads the key
+   * back off the instance, so calling this behind its back gets the shared client
+   * replaced on the next call rather than silently reused.
+   */
   public setApiKey(apiKey: string): void {
     this.apiKey = apiKey;
   }
 
-  // Get current API key
+  /** The key this client authenticates with. */
   public getApiKey(): string {
     return this.apiKey;
   }

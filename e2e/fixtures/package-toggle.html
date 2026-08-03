@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Package toggle</title>
+  </head>
+  <body>
+    <h1>Package toggle fixture</h1>
+
+    <!-- docs:example An add-on the visitor turns on and off -->
+    <div data-next-package-toggle>
+      <div data-next-toggle-card data-next-package-id="1">Add / remove Widget</div>
+    </div>
+
+    <span data-next-display="cart.totalQuantity">0</span>
+    <!-- /docs:example -->
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

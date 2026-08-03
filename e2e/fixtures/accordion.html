@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Accordion</title>
+  </head>
+  <body>
+    <h1>Accordion fixture</h1>
+
+    <!-- docs:example A collapsible FAQ row, closed on load -->
+    <!-- Closed-by-default accordion. Defaults: open-text "Hide", close-text
+         "Show", toggle-class "next-expanded". -->
+    <div data-next-accordion="faq1" data-initial-state="closed">
+      <div data-next-accordion-trigger="faq1">
+        <span data-next-accordion-text="faq1">Show</span>
+      </div>
+      <div data-next-accordion-panel="faq1">
+        <p>Frequently asked answer body.</p>
+      </div>
+    </div>
+    <!-- /docs:example -->
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Cart summary</title>
+  </head>
+  <body>
+    <h1>Cart summary fixture</h1>
+
+    <!-- docs:example A summary with a custom template -->
+    <button data-next-action="add-to-cart" data-next-package-id="1">
+      Add to cart
+    </button>
+
+    <!-- A custom template replaces the default summary rows. The {subtotal} /
+         {total} / {itemCount} tokens are substituted on every cart change. -->
+    <div data-next-cart-summary>
+      <template>
+        <div class="row">
+          <span>Subtotal</span>
+          <span id="subtotal">{subtotal}</span>
+        </div>
+        <div class="row">
+          <span>Total</span>
+          <span id="total">{total}</span>
+        </div>
+        <div class="row">
+          <span>Items</span>
+          <span id="item-count">{itemCount}</span>
+        </div>
+      </template>
+    </div>
+    <!-- /docs:example -->
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

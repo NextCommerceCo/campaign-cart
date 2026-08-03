@@ -1,0 +1,572 @@
+import { ProviderAdapter, notSupported, DispatchError } from './provider-adapter';
+import { DataLayerEvent } from '../types';
+
+declare global {
+  interface Window {
+    fbq: (command: string, event: string, parameters?: any, eventData?: { eventID?: string }) => void;
+  }
+}
+
+/**
+ * Facebook Pixel adapter
+ */
+export class FacebookAdapter extends ProviderAdapter {
+  private storeName?: string;
+  private eventMapping: Record<string, string> = {
+    // Data layer events to Facebook events
+    'dl_user_data': 'PageView',  // User data acts as PageView
+    'dl_page_view': 'PageView',
+    'dl_view_item': 'ViewContent',
+    'dl_add_to_cart': 'AddToCart',
+    'dl_remove_from_cart': 'RemoveFromCart',
+    'dl_begin_checkout': 'InitiateCheckout',
+    'dl_add_shipping_info': 'AddShippingInfo',
+    'dl_add_payment_info': 'AddPaymentInfo',
+    'dl_purchase': 'Purchase',
+    'dl_search': 'Search',
+    'dl_add_to_wishlist': 'AddToWishlist',
+    'dl_sign_up': 'CompleteRegistration',
+    'dl_login': 'Login',
+    'dl_subscribe': 'Subscribe',
+    'dl_start_trial': 'StartTrial',
+    'dl_view_cart': 'ViewCart',
+    // Upsell events - using custom events
+    'dl_viewed_upsell': 'ViewedUpsell',
+    'dl_accepted_upsell': 'AcceptedUpsell',
+    'dl_skipped_upsell': 'SkippedUpsell',
+    // Standard event names
+    'user_data': 'PageView',
+    'page_view': 'PageView',
+    'view_item': 'ViewContent',
+    'add_to_cart': 'AddToCart',
+    'remove_from_cart': 'RemoveFromCart',
+    'begin_checkout': 'InitiateCheckout',
+    'add_shipping_info': 'AddShippingInfo',
+    'add_payment_info': 'AddPaymentInfo',
+    'purchase': 'Purchase',
+    'search': 'Search',
+    'add_to_wishlist': 'AddToWishlist',
+    'sign_up': 'CompleteRegistration',
+    'login': 'Login',
+    'subscribe': 'Subscribe',
+    'start_trial': 'StartTrial',
+    'view_cart': 'ViewCart'
+  };
+
+  // Facebook Custom Events (use trackCustom instead of track)
+  private customEvents: string[] = [
+    'AddShippingInfo',    // Not a standard Facebook event
+    'RemoveFromCart',     // Not a standard Facebook event
+    'Login',              // Not a standard Facebook event
+    'Subscribe',          // Not a standard Facebook event
+    'StartTrial',         // Not a standard Facebook event
+    'ViewCart',           // Not a standard Facebook event
+    'ViewedUpsell',       // Custom upsell event
+    'AcceptedUpsell',     // Custom upsell event
+    'SkippedUpsell'       // Custom upsell event
+  ];
+
+  private loadWarned = false;
+
+  constructor(config?: { blockedEvents?: string[]; storeName?: string }) {
+    super('Facebook', { blockedEvents: config?.blockedEvents });
+    if (config?.storeName) {
+      this.storeName = config.storeName;
+    }
+  }
+
+  /** Warn once, with the fix, when the Meta Pixel never loads. */
+  private warnScriptMissing(): void {
+    if (this.loadWarned) return;
+    this.loadWarned = true;
+    this.logger.warn(
+      'Meta Pixel (fbq) not found — add the Meta Pixel base code to the page ' +
+        'so events can be delivered. See ' +
+        'https://www.facebook.com/business/help/952192354843755'
+    );
+  }
+
+  /**
+   * Check if Facebook Pixel is loaded
+   */
+  private isFbqLoaded(): boolean {
+    return this.isBrowser() && typeof window.fbq === 'function';
+  }
+
+  protected override isReady(): boolean {
+    return this.isFbqLoaded();
+  }
+
+  protected override getDebugDetails(): Record<string, string | number | boolean> {
+    return {
+      fbqLoaded: this.isFbqLoaded(),
+      storeName: this.storeName ?? '(none)',
+    };
+  }
+
+  /**
+   * Send event to Facebook Pixel.
+   *
+   * Returns the transformed fbq payload actually dispatched. When the pixel is
+   * not loaded yet, returns the promise that resolves to that payload once it
+   * loads — or rejects (recorded as `failed`) if the pixel never loads, e.g. a
+   * missing/misconfigured pixel. Returning a resolved-but-empty value here would
+   * wrongly show a green `sent` for a pixel that never fired.
+   */
+  sendEvent(event: DataLayerEvent): unknown | Promise<unknown> {
+    if (!this.isFbqLoaded()) {
+      const fbEventName = this.mapEventName(event.event);
+      if (!fbEventName) {
+        return notSupported('no Facebook mapping for this event');
+      }
+      // Build the payload now (mapping is pixel-independent) so the overlay can
+      // show what we'd send even if the pixel never loads.
+      const prepared = {
+        method: 'fbq',
+        event: fbEventName,
+        parameters: this.transformParameters(event, fbEventName),
+      };
+      return this.waitForFbq()
+        .then(() => this.sendEventInternal(event))
+        .catch(() => {
+          this.warnScriptMissing();
+          throw new DispatchError('Facebook Pixel load timeout', prepared);
+        });
+    }
+
+    return this.sendEventInternal(event);
+  }
+
+  /**
+   * Wait for Facebook Pixel to be loaded
+   */
+  private async waitForFbq(timeout: number = 5000): Promise<void> {
+    const start = Date.now();
+    
+    return new Promise((resolve, reject) => {
+      const checkInterval = setInterval(() => {
+        if (this.isFbqLoaded()) {
+          clearInterval(checkInterval);
+          resolve();
+        } else if (Date.now() - start > timeout) {
+          clearInterval(checkInterval);
+          reject(new Error('Facebook Pixel load timeout'));
+        }
+      }, 100);
+    });
+  }
+
+  /**
+   * Internal method to send event after fbq is confirmed loaded
+   */
+  private sendEventInternal(event: DataLayerEvent): unknown {
+    const fbEventName = this.mapEventName(event.event);
+    if (!fbEventName) {
+      this.debug(`No Facebook mapping for event: ${event.event}`);
+      return notSupported('no Facebook mapping for this event');
+    }
+
+    const parameters = this.transformParameters(event, fbEventName);
+
+    try {
+      if (window.fbq) {
+        // Check if this is a custom event (not a standard Facebook event)
+        if (this.customEvents.includes(fbEventName)) {
+          window.fbq('trackCustom', fbEventName, parameters);
+          this.debug(`Custom event sent to Facebook: ${fbEventName}`, parameters);
+        }
+        // For Purchase events, include eventID for deduplication if storeName is configured
+        else if (fbEventName === 'Purchase' && this.storeName) {
+          // Use order_number if available, fallback to order_id (ref_id)
+          const orderIdentifier = parameters.order_number || parameters.order_id;
+          if (orderIdentifier) {
+            const eventId = `${this.storeName}-${orderIdentifier}`;
+            // Pass eventID as 4th parameter to fbq track call for proper deduplication
+            window.fbq('track', fbEventName, parameters, { eventID: eventId });
+            this.debug(`Event sent to Facebook: ${fbEventName} with eventID: ${eventId}`, parameters);
+          } else {
+            window.fbq('track', fbEventName, parameters);
+            this.debug(`Event sent to Facebook: ${fbEventName} (no order identifier for eventID)`, parameters);
+          }
+        } else {
+          // Standard Facebook events use track
+          window.fbq('track', fbEventName, parameters);
+          this.debug(`Event sent to Facebook: ${fbEventName}`, parameters);
+        }
+      }
+    } catch (error) {
+      // Re-throw so the base records `failed`, not a misleading `sent`.
+      throw new DispatchError(
+        `Facebook dispatch failed: ${error instanceof Error ? error.message : String(error)}`,
+        { method: 'fbq', event: fbEventName, parameters }
+      );
+    }
+
+    // Report the exact shape dispatched to fbq for the debug overlay.
+    return { method: 'fbq', event: fbEventName, parameters };
+  }
+
+  /**
+   * Map data layer event name to Facebook event name
+   */
+  private mapEventName(eventName: string): string | null {
+    return this.eventMapping[eventName] || null;
+  }
+
+  /**
+   * Transform event parameters for Facebook Pixel
+   */
+  private transformParameters(event: DataLayerEvent, fbEventName: string): any {
+    const params: any = {};
+
+    // Common parameters
+    if (event.data?.value) {
+      params.value = parseFloat(this.formatCurrency(event.data.value));
+    }
+
+    if (event.data?.currency) {
+      params.currency = event.data.currency;
+    }
+
+    // Handle different event types
+    switch (fbEventName) {
+      case 'ViewContent':
+        return this.buildViewContentParams(event);
+      
+      case 'AddToCart':
+      case 'RemoveFromCart':
+        return this.buildAddToCartParams(event);
+      
+      case 'InitiateCheckout':
+        return this.buildCheckoutParams(event);
+      
+      case 'AddShippingInfo':
+        return this.buildShippingInfoParams(event);
+      
+      case 'AddPaymentInfo':
+        return this.buildPaymentInfoParams(event);
+      
+      case 'Purchase':
+        return this.buildPurchaseParams(event);
+      
+      case 'Search':
+        return this.buildSearchParams(event);
+      
+      case 'CompleteRegistration':
+        return this.buildRegistrationParams(event);
+      
+      case 'ViewedUpsell':
+      case 'AcceptedUpsell':
+      case 'SkippedUpsell':
+        return this.buildUpsellParams(event, fbEventName);
+      
+      default:
+        return this.buildGenericParams(event);
+    }
+  }
+
+  /**
+   * Calculate total value from items array
+   */
+  private calculateTotalValue(items: any[]): number {
+    return items.reduce((sum: number, item: any) => {
+      const price = item.price || item.item_price || 0;
+      const quantity = item.quantity || 1;
+      return sum + (price * quantity);
+    }, 0);
+  }
+
+  /**
+   * Build ViewContent parameters
+   */
+  private buildViewContentParams(event: DataLayerEvent): any {
+    const ecommerceData = this.extractEcommerceData(event);
+    const items = ecommerceData.items || [];
+
+    const params: any = {
+      content_type: 'product',
+      currency: ecommerceData.currency || 'USD',
+      value: ecommerceData.value || this.calculateTotalValue(items)
+    };
+
+    if (items.length > 0) {
+      params.content_ids = items.map((item: any) => 
+        item.item_id || item.id || item.product_id || item.sku || item.external_id
+      );
+      params.contents = items.map((item: any) => ({
+        id: item.item_id || item.id || item.product_id || item.sku || item.external_id,
+        quantity: item.quantity || 1,
+        item_price: item.price || item.item_price || 0
+      }));
+      params.content_name = items[0].item_name || items[0].name || items[0].title;
+      params.content_category = items[0].item_category || items[0].category || 'uncategorized';
+    }
+
+    return params;
+  }
+
+  /**
+   * Build AddToCart/RemoveFromCart parameters
+   */
+  private buildAddToCartParams(event: DataLayerEvent): any {
+    const ecommerceData = this.extractEcommerceData(event);
+    const items = ecommerceData.items || [];
+
+    const params: any = {
+      content_type: 'product',
+      currency: ecommerceData.currency || 'USD',
+      value: ecommerceData.value || this.calculateTotalValue(items)
+    };
+
+    if (items.length > 0) {
+      // Fix: Map item_id to content_ids (was causing [null])
+      params.content_ids = items.map((item: any) => 
+        item.item_id || item.id || item.product_id || item.sku || item.external_id
+      );
+      
+      // Include product names
+      const itemNames = items.map((item: any) => item.item_name || item.name || item.title).filter(Boolean);
+      if (itemNames.length > 0) {
+        params.content_name = itemNames.join(', ');
+      }
+      
+      // Include category (if available)
+      const firstItemCategory = items[0].item_category || items[0].category;
+      if (firstItemCategory) {
+        params.content_category = firstItemCategory;
+      }
+      
+      // Calculate total quantity
+      const totalQuantity = items.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0);
+      params.num_items = totalQuantity;
+      
+      // Build contents array with proper field mapping
+      params.contents = items.map((item: any) => ({
+        id: item.item_id || item.id || item.product_id || item.sku || item.external_id,
+        quantity: item.quantity || 1,
+        item_price: item.price || item.item_price || 0,
+        // Include additional fields Facebook can use
+        name: item.item_name || item.name,
+        category: item.item_category || item.category || 'uncategorized'
+      }));
+    }
+
+    return params;
+  }
+
+  /**
+   * Build AddShippingInfo parameters
+   */
+  private buildShippingInfoParams(event: DataLayerEvent): any {
+    const ecommerceData = this.extractEcommerceData(event);
+    const items = ecommerceData.items || [];
+
+    const params: any = {
+      content_type: 'product',
+      currency: ecommerceData.currency || 'USD',
+      value: ecommerceData.value || this.calculateTotalValue(items),
+      num_items: items.length
+    };
+
+    if (items.length > 0) {
+      params.content_ids = items.map((item: any) => 
+        item.item_id || item.id || item.product_id || item.sku || item.external_id
+      );
+      params.contents = items.map((item: any) => ({
+        id: item.item_id || item.id || item.product_id || item.sku || item.external_id,
+        quantity: item.quantity || 1,
+        item_price: item.price || item.item_price || 0
+      }));
+    }
+
+    // Include shipping tier if available
+    if (ecommerceData.shipping_tier || event.data?.shipping_tier) {
+      params.shipping_tier = ecommerceData.shipping_tier || event.data?.shipping_tier;
+    }
+
+    return params;
+  }
+
+  /**
+   * Build AddPaymentInfo parameters
+   */
+  private buildPaymentInfoParams(event: DataLayerEvent): any {
+    const ecommerceData = this.extractEcommerceData(event);
+    const items = ecommerceData.items || [];
+
+    const params: any = {
+      content_type: 'product',
+      currency: ecommerceData.currency || 'USD',
+      value: ecommerceData.value || this.calculateTotalValue(items),
+      num_items: items.length
+    };
+
+    if (items.length > 0) {
+      params.content_ids = items.map((item: any) => 
+        item.item_id || item.id || item.product_id || item.sku || item.external_id
+      );
+      params.contents = items.map((item: any) => ({
+        id: item.item_id || item.id || item.product_id || item.sku || item.external_id,
+        quantity: item.quantity || 1,
+        item_price: item.price || item.item_price || 0
+      }));
+    }
+
+    // Include payment type if available
+    if (ecommerceData.payment_type || event.data?.payment_type) {
+      params.payment_type = ecommerceData.payment_type || event.data?.payment_type;
+    }
+
+    return params;
+  }
+
+  /**
+   * Build InitiateCheckout parameters
+   */
+  private buildCheckoutParams(event: DataLayerEvent): any {
+    // Check for ecommerce data first (GA4 format), then fall back to data
+    const ecommerceData = event.ecommerce || event.data || {};
+    const items = ecommerceData.items || ecommerceData.products || [];
+
+    const params: any = {
+      content_type: 'product',
+      currency: ecommerceData.currency || 'USD',
+      value: ecommerceData.value || ecommerceData.total || this.calculateTotalValue(items),
+      num_items: items.length
+    };
+
+    if (items.length > 0) {
+      params.content_ids = items.map((item: any) => 
+        item.item_id || item.id || item.product_id || item.sku || item.external_id
+      );
+      params.contents = items.map((item: any) => ({
+        id: item.item_id || item.id || item.product_id || item.sku || item.external_id,
+        quantity: item.quantity || 1,
+        item_price: item.price || item.item_price || 0
+      }));
+    }
+
+    if (ecommerceData.coupon || ecommerceData.discount_code || event.data?.coupon) {
+      params.coupon = ecommerceData.coupon || ecommerceData.discount_code || event.data?.coupon;
+    }
+
+    return params;
+  }
+
+  /**
+   * Build Purchase parameters
+   */
+  private buildPurchaseParams(event: DataLayerEvent): any {
+    const ecommerceData = this.extractEcommerceData(event);
+    const items = ecommerceData.items || [];
+
+    const params: any = {
+      content_type: 'product',
+      currency: ecommerceData.currency || 'USD',
+      value: ecommerceData.value || this.calculateTotalValue(items),
+      num_items: items.length,
+      order_id: ecommerceData.transaction_id || event.data?.order_id,
+      order_number: event.data?.order_number // Include order_number for eventID deduplication
+    };
+
+    if (items.length > 0) {
+      params.content_ids = items.map((item: any) => 
+        item.item_id || item.id || item.product_id || item.sku || item.external_id
+      );
+      params.contents = items.map((item: any) => ({
+        id: item.item_id || item.id || item.product_id || item.sku || item.external_id,
+        quantity: item.quantity || 1,
+        item_price: item.price || item.item_price || 0
+      }));
+    }
+
+    return params;
+  }
+
+  /**
+   * Build Search parameters
+   */
+  private buildSearchParams(event: DataLayerEvent): any {
+    const data = event.data || {};
+    
+    return {
+      search_string: data.search_term || data.query || '',
+      content_category: data.category,
+      content_ids: data.product_ids || []
+    };
+  }
+
+  /**
+   * Build Registration parameters
+   */
+  private buildRegistrationParams(event: DataLayerEvent): any {
+    const data = event.data || {};
+    
+    return {
+      content_name: data.registration_method || 'email',
+      status: data.status || 'completed',
+      value: data.value || 0,
+      currency: data.currency || 'USD'
+    };
+  }
+
+  /**
+   * Build Upsell parameters
+   */
+  private buildUpsellParams(event: DataLayerEvent, fbEventName: string): any {
+    // The event structure has order_id and upsell object
+    const params: any = {
+      content_type: 'product',
+      order_id: event.order_id || event.data?.order_id,
+      event_name: fbEventName
+    };
+
+    // Handle upsell data
+    if (event.upsell) {
+      params.content_ids = [event.upsell.package_id];
+      params.content_name = event.upsell.package_name || `Package ${event.upsell.package_id}`;
+      
+      if (event.upsell.value !== undefined) {
+        params.value = parseFloat(this.formatCurrency(event.upsell.value));
+      }
+      if (event.upsell.price !== undefined) {
+        params.value = parseFloat(this.formatCurrency(event.upsell.price));
+      }
+      if (event.upsell.currency) {
+        params.currency = event.upsell.currency;
+      }
+      if (event.upsell.quantity !== undefined) {
+        params.num_items = event.upsell.quantity;
+      }
+    }
+
+    return params;
+  }
+
+  /**
+   * Build generic parameters for other events
+   */
+  private buildGenericParams(event: DataLayerEvent): any {
+    const data = event.data || {};
+    const params: any = {};
+
+    // Copy over common parameters
+    if (data.value !== undefined) {
+      params.value = data.value;
+    }
+    if (data.currency) {
+      params.currency = data.currency;
+    }
+    if (data.content_name) {
+      params.content_name = data.content_name;
+    }
+    if (data.content_type) {
+      params.content_type = data.content_type;
+    }
+    if (data.content_category) {
+      params.content_category = data.content_category;
+    }
+
+    return params;
+  }
+}

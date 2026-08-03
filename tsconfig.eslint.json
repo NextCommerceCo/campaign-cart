@@ -1,0 +1,30 @@
+{
+  // ESLint's type-aware rules need every file they lint to be in a TS program.
+  // `tsconfig.json` excludes `**/*.test.ts` (tests are not part of the shipped
+  // build), which made ESLint fail with "was configured to run on this file but
+  // could not find it in any project" on all 51 colocated feature test files —
+  // so the tests were silently unlinted.
+  //
+  // This config exists only for ESLint: same options, wider include.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // `vitest.config.ts` sets `test.globals: true`, so test files are written
+    // relying on `vi`/`beforeEach`/etc. as globals as often as they import them
+    // explicitly. Without this, any file that leans on the global form fails
+    // with "Cannot find name 'vi'" here even though it runs fine under Vitest —
+    // this makes the wider program agree with how the tests actually execute.
+    // Listing "node" alongside it is required: naming `types` at all replaces
+    // TS's default of auto-including every `@types/*` package, so it has to be
+    // repeated explicitly or `process`/`Buffer` etc. stop resolving.
+    "types": ["node", "vitest/globals"]
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "e2e/**/*.ts",
+    "scripts/**/*.ts",
+    "vite.config.ts",
+    "vitest.config.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

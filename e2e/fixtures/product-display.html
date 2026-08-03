@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Product display</title>
+  </head>
+  <body>
+    <h1>Product display fixture</h1>
+
+    <!-- docs:example Package values, by explicit id and by ancestor context -->
+    <!-- Package referenced by explicit id in the display path (package.1.*). -->
+    <span id="p1-name" data-next-display="package.1.name">?</span>
+    <span id="p1-price" data-next-display="package.1.price">?</span>
+    <img id="p1-image" data-next-display="package.1.image" alt="" />
+
+    <!-- Package referenced by ancestor context ([data-next-package-id]). -->
+    <div data-next-package-id="2">
+      <span id="p2-name" data-next-display="package.name">?</span>
+      <span id="p2-price" data-next-display="package.price">?</span>
+    </div>
+    <!-- /docs:example -->
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

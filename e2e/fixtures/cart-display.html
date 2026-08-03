@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Cart display</title>
+  </head>
+  <body>
+    <h1>Cart display fixture</h1>
+
+    <!-- Adds package 1 ($29.99, qty 1) so cart displays have data to react to. -->
+    <button data-next-action="add-to-cart" data-next-package-id="1">
+      Add to cart
+    </button>
+
+    <!-- Live cart values, driven by CartDisplayEnhancer. -->
+    <span id="subtotal" data-next-display="cart.subtotal">?</span>
+    <span id="qty" data-next-display="cart.totalQuantity">?</span>
+    <span id="currency" data-next-display="cart.currency">?</span>
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,3032 @@
+# Code findings — triage list
+
+Found while documenting the SDK on **2026-07-30**, plus finding 24 from writing the
+`accept-upsell` e2e coverage, findings 36–42 from documenting `src/core` (Phase 6),
+findings 80–85 from the Fumadocs→TypeDoc migration, findings 86–91 from a further
+TypeDoc/reference-docs verification pass, findings 92–94 from splitting the
+`features/display` enhancers by layer, and findings 95–100 from splitting the `features/cart`,
+`features/ui`, `features/behavior` and `features/order` ones, all on **2026-07-31**.
+Findings 97–99 are on the upsell money path. Findings 101–102 came from the contract test
+written to enforce the `super.destroy()` rule — 101 is a second instance of 98, in the
+checkout form. Findings 106–115 came out of the wave-1 restructure on **2026-08-02** (the
+composition root, the `core/analytics/` kebab rename, and the fixes for 95 and 105) and
+findings 116–126 from wave 2 on the same day (the `core/debug/` kebab rename, the
+`CheckoutFormEnhancer.initialize` re-sequence, the `display-paths` generator, the API-seam
+hardening, and the `ui-service` split), and findings 127-137 from wave 3 (the teardown fixes,
+the format-table gate, the `core/debug` method breakup and the `checkout-validator` split);
+and findings 138-148 from wave 4 (the order-payload reconciliation, the routed-display gate,
+the `core/debug` split, the `prospect-cart` split and the test type gate); findings 149-153 from wave 5, findings 154-161 from wave 6, findings 162-167 from wave 7, findings 168-171 from wave 8, and findings 172-178 from wave 9; each wave has its own
+section near the end. **Finding 144 was wrong as written and is corrected in place.** **Findings 127 and 130-133 are the most serious
+things this restructure has turned up** - a published page teaching ten paths that render
+nothing, and a validation layer that blocks non-Latin names while letting unvalidated billing
+and card data through. Nothing here is a
+documentation problem; each is a code change, and none has been made. The docs describe
+current behaviour, including the broken parts, so this list is the backlog rather than a
+description of what shipped.
+
+Two entries were **closed** on 2026-07-31 rather than fixed in code: finding 34 turned out
+to be answerable by measurement (and uncovered finding 36 doing it), and finding 35 was a
+documentation fix, so it was made. Both are kept in place so the reasoning is not lost.
+
+**Verified** means I read the code myself and reproduced the reasoning at the cited
+line. **Reported** means it came out of a parallel review and is precise enough to act
+on, but I have not personally confirmed it — check before scheduling.
+
+Nothing in this file authorises a push or a deploy.
+
+---
+
+## P1 — wrong data reaches the customer or the API
+
+### 1. Klarna is submitted as `card_token` on one of the two order paths — *verified*
+
+There are **two** constants named `API_PAYMENT_METHOD_MAP`:
+
+| Where | Has `klarna`? | Used by |
+|---|---|---|
+| `src/features/checkout/checkout-form.enhancer.ts:44` | **yes** | the standard submit, `:1838` |
+| `src/features/checkout/constants/field-mappings.ts:61` | **no** | `builders/order-builder.ts:5`, applied at `:185` |
+
+`order-builder.ts:185` is `API_PAYMENT_METHOD_MAP[method] || 'card_token'`, so a Klarna
+order built through `OrderBuilder` — the path `OrderManager` and express checkout use —
+reaches the API as a card charge. The standard form path is unaffected, which is why
+this has not been obvious.
+
+**Fix:** delete the local copy in the enhancer and import the shared one, then add
+`klarna` to it. Two copies of a payment map is the underlying defect; see finding 2.
+
+### 2. Order creation is implemented twice — *verified*
+
+`CheckoutFormEnhancer.createOrder()` (`checkout-form.enhancer.ts:1875`) and
+`OrderManager.createOrder()` (`managers/order-manager.ts:38`) are separate
+implementations of the same thing: the same three validations, the same messages, the
+same 429/401/422/5xx mapping. The enhancer **constructs an `OrderManager` at `:165`
+and never calls it** for the standard path; `OrderManager` serves express checkout only.
+
+A fix to one silently misses the other — finding 1 is an instance of exactly that.
+
+**Fix:** make the standard path use `OrderManager`, and delete the enhancer's copy.
+
+### 3. `sdk.getCartData().cartLines` is always empty — *verified*
+
+`enrichedItems` is assigned `[]` at `cart.state.ts:15` and again inside `partialize`
+at `:112`, and **nothing anywhere writes to it** — the analytics code says so in a
+comment (`core/analytics/events/ecommerce-events.ts:23,352`). It is exposed publicly as
+`cartLines` at `core/next-commerce.ts:191`, and its TSDoc
+(`types/global.ts:1034`) describes it as "enriched with full pricing breakdown for
+display".
+
+Any integration reading `cartLines` gets an empty array and no error.
+
+**Fix:** either populate it or remove it from the public snapshot. Removing is an API
+change; leaving it is a silent wrong answer.
+
+### 4. ~~`removeCoupon` is case-sensitive while `applyCoupon` is not~~ — **FIXED 2026-07-31**
+
+Fixed test-first: `expected [ 'SAVE10' ] to deeply equal []` — `applyCoupon('save10')` then
+`removeCoupon('save10')` left the voucher in place. 8 new tests across
+`state/cart/operations/coupon.test.ts` and `state/checkout/checkout.state.test.ts`, covering
+the exact-casing round trip and the `' Save10 '` whitespace/mixed-case variants in both
+directions.
+
+The normaliser is now shared — `normalizeVoucherCode()` in `src/utils/voucher.ts` — and **two**
+comparison sites use it, not the one this entry named:
+
+- `removeVoucher` (`checkout.state.ts`) normalises both the incoming code and each stored entry.
+- `applyCoupon`'s duplicate check normalises each stored entry instead of assuming they are
+  already normalised. They are not: `bundle-selector.handlers.ts:189,193` calls
+  `addVoucher`/`removeVoucher` **directly** with bundle-configured codes, bypassing
+  `applyCoupon` entirely — so a bundle voucher stored as `save10` would have let a
+  shopper-typed `SAVE10` apply on top of it as a duplicate.
+
+**`addVoucher` was deliberately left un-normalising.** Normalising what gets *stored* would
+change what `bundle-selector.handlers.ts` puts in the array, and that file compares raw
+(`!toApply.includes(code)`), so normalising storage without also normalising that comparison
+would convert a latent casing bug into a live duplicate-push on every bundle voucher swap.
+Normalising both sides of the *comparisons* fixes the reported bug without touching storage
+semantics.
+
+Nothing depended on the raw casing: the coupon display renders from the already-normalised
+stored array, and no API payload carries the argument passed to `removeCoupon` —
+`core/next-commerce.ts` needed no change.
+
+**Still open:** a **third** copy of this normaliser lives in
+`features/display/conditional-display/conditional-display.conditions.ts:128-131` as a private
+`normalizeCouponCode`. It is correct today, so nothing is broken — but it should point at
+`@/utils/voucher.ts` so a future change to the rule reaches all three.
+
+The original diagnosis follows.
+
+
+
+`applyCoupon` stores `code.toUpperCase().trim()`
+(`state/cart/operations/apply-coupon.ts:9`). `removeVoucher` filters on `v !== code`
+with no normalisation (`state/checkout/checkout.state.ts:154`), and `removeCoupon` passes the
+raw string through.
+
+So `next.applyCoupon('save10')` followed by `next.removeCoupon('save10')` removes
+nothing, returns no error, and still recalculates totals — the shopper keeps a discount
+the page believes it removed.
+
+**Fix:** normalise in `removeVoucher`, the same way `applyCoupon` does.
+
+### 24. ~~A selector-driven accept button boots enabled or disabled at random~~ — **FIXED 2026-07-31**
+
+Fixed in code, and the docs that had been corrected *to describe the bug* were corrected back.
+The fix is the one line this entry predicted: `[data-next-package-selector][data-next-selector-id]`
+added at the front of `findSelectorElement()`'s query.
+
+Reproduced first. The new `tests/accept-upsell.enhancer.test.ts` arms `_getSelectedPackageId`
+on the container **before** constructing the enhancer — which is the ordering hazard, not just
+the missing selector — and failed with `expected true to be false` on
+`button.hasAttribute('disabled')` plus `expected "spy" to be called … Number of calls: 0` on
+the order call, both alongside the `Selector "upsell-pkg" not found` warn.
+
+**The warn stays**, because it can still fire for real: an id mismatch, or a container that
+renders later than the 100 ms init read (a tab, a modal, a deferred script). In that case the
+button still recovers on the visitor's first click. `overview.md`'s Limitations now says that
+narrower thing instead of "cannot reliably see the selection", and `get-started.md`,
+`reference/logs.md` and the manifest note on `data-next-selector-id` were rewritten to match.
+
+The original diagnosis follows.
+
+
+
+Numbered 24 to keep the existing numbers stable; by impact it belongs with the P1s
+above — the failing outcome is a dead accept button on a post-purchase page.
+
+Two facts that only bite together:
+
+1. `PackageSelectorEnhancer` in upsell context **always pre-selects** — 
+   `initializeSelection()` (`features/cart/package-selector/package-selector.enhancer.ts:224`)
+   takes `items.find(i => i.isPreSelected) ?? this.items[0]` and selects it, emitting
+   `selector:item-selected`.
+2. `AcceptUpsellEnhancer.findSelectorElement()`
+   (`features/cart/accept-upsell/accept-upsell.enhancer.ts:125`) matches
+   `[data-next-upsell-selector][data-next-selector-id="<id>"]`,
+   `[data-next-upsell-select="<id>"]`, and
+   `[data-next-upsell][data-next-selector-id="<id>"]` — **never
+   `[data-next-package-selector]`**, which is the container the feature's own
+   `guide/get-started.md` (Option B) and `package-selector`'s guide both recommend.
+
+So the 100 ms read in `setupSelectorListener` — the one whose whole job is to pick up a
+selection that already exists — always misses, and logs
+`Selector "<id>" not found` as a **warn on a correct page**. The button's only route to
+the selection is the event, and whether it hears the pre-selection depends on which of
+the two enhancers the scanner finished initializing first. Both outcomes observed on
+identical markup:
+
+- 10 runs of the same fixture across two Playwright projects: the button was `enabled`
+  with `class=""` in some, `disabled` + `next-disabled` in others — the reason the e2e
+  spec asserts the disabled state on a button with no selector instead.
+- With `data-next-selected="true"` on the first card it was still `disabled="true"` a
+  full second after the order had loaded: a card that looks chosen next to a button
+  that does nothing until the visitor clicks a card.
+
+The selector element *does* expose `_getSelectedPackageId` — the query simply never
+finds it.
+
+**Fix:** add `[data-next-package-selector][data-next-selector-id="<id>"]` to
+`findSelectorElement()`'s query. The init read then works, the warn goes away, and the
+pre-selection behaves the way three guide pages used to claim it did.
+
+The docs were corrected rather than the code (`accept-upsell`'s `overview.md`
+Limitations, `reference/logs.md`, `get-started.md`, and the manifest note on
+`data-next-selector-id`), so an author reading them today is not misled.
+
+---
+
+## P2 — silently wrong behaviour a page author cannot diagnose
+
+### 5. The first `<button>` in a coupon container wins — *verified*
+
+`features/cart/coupon/coupon.enhancer.ts:32-33`:
+
+```ts
+this.element.querySelector('button') ||
+  this.element.querySelector('[data-next-coupon="apply"]');
+```
+
+The generic query runs **first**, so an unrelated earlier button — a "Continue" — becomes
+the apply trigger and gets `preventDefault()`. The explicit attribute is only consulted
+when there is no button at all.
+
+**Fix:** swap the order.
+
+### 6. `first_visit_timestamp` never survives a session — *verified*
+
+`core/attribution/attribution-collector.ts:143` falls back to
+`localStorage.getItem('next-attribution')`, but the store's persist storage writes
+**sessionStorage** only (`state/attribution/attribution.state.ts:367-379`). That key is never
+written to localStorage, so the cross-session recovery path is dead code and every new
+tab looks like a first visit.
+
+**Fix:** decide which storage owns it, and use one.
+
+### 7. `CartItem.properties` TSDoc contradicts the code — *verified*
+
+`types/global.ts:981` says "Two items with the same packageId but different properties
+are treated as separate lines." `state/cart/operations/add-item.ts:57-58` matches on
+`packageId` **alone** and merges the quantity, discarding the incoming `properties`.
+Separate property lines are only reachable through `swapCart`.
+
+**Fix:** correct the TSDoc, or implement the documented behaviour. The docs currently
+describe the code, not the comment.
+
+### 8. Attribution `metadata` is an unprotected namespace — *reported*
+
+`collectTrackingTags()` assigns every `os-tracking-tag` / `data-next-tracking-tag` meta
+straight into `metadata`, so a tag named `device`, `domain`, `referrer`, or `timestamp`
+overwrites the SDK's own value — and `getAttributionForApi()` forwards the result.
+
+**Fix:** namespace custom tags, or reject collisions with a warning.
+
+### 9. `getAllParams()` returns the store object by reference — *reported*
+
+Mutating the returned object edits state without notifying subscribers, so a display
+bound to a parameter goes stale. `core/next-commerce.ts` around `:984-1037`.
+
+**Fix:** return a shallow copy.
+
+### 10. `getTotalWeight()` computes no weight — *reported*
+
+`state/cart/cart.state.ts:43-47` is byte-identical to `getTotalItemCount()`: a sum of
+`quantity`. Anything using it for shipping is wrong.
+
+**Fix:** implement it or remove it.
+
+---
+
+## P3 — contradictions and dead surface
+
+| # | Finding | Where | Status |
+|---|---|---|---|
+| 11 | `express-checkout:started` / `completed` / `failed` / `error` are emitted by `processors/express-checkout-processor.ts`, yet `types/global.ts` marks all four `@deprecated — never emitted by this build`. The source contradicts itself; docs point readers at `order:completed` / `payment:error` and take no side. | `types/global.ts`, `processors/express-checkout-processor.ts` | reported |
+| 12 | `campaign:loaded` has a live subscriber (`core/sdk-initializer.ts:639`) and no emitter. | — | reported |
+| 13 | 16 `EventMap` events are never emitted. Removing them is an API change. | `types/global.ts` | verified earlier |
+| 14 | `data-cart-item-id` vs `data-next-cart-item-id` — cart-item-list writes one, display-context reads the other, so display bindings never resolve cart-line context in a row. | — | reported |
+| 15 | `accordion`'s `aria-controls` never resolves: the trigger gets `aria-controls="{id}"` while the panel is given `id="{id}-content"`. Accessibility, and no fix a page author can apply. | `features/ui/accordion/accordion.enhancer.ts` | reported |
+| 16 | `CACHE_EXPIRY_MS` (10 min) is duplicated in `state/campaign/api.slice.ts:10` and `items.slice.ts:12` — two copies that can drift. `config.cacheTtl` does not control it. | — | reported |
+| 17 | 14 `ConfigState` fields are read nowhere outside the debug panel, including `cacheTtl`, `retryAttempts`, `maxRetries`, `enableAnalytics`, and `tracking`. Analytics reads `config.analytics?.enabled` instead. | `types/global.ts` | reported |
+| 18 | `campaignId` is never sent anywhere — requests authenticate by `apiKey` alone. | — | reported |
+| 19 | Config load order differs between boot and the debug panel: `sdk-initializer.ts:395-398` lets meta tags win, `core/debug/debug-panels.ts:144-145` lets `window.nextConfig` win. A value shown after a debug reload can differ from the one used at boot. | — | reported |
+| 20 | `campaign` store `reset()` does not clear `isFromCache` / `cacheAge` — `initialCampaignState` omits both keys and Zustand `set` merges, so a reset store keeps reporting the previous load's cache status. | — | reported |
+| 21 | `src/types/cart.ts` holds a second, dead `CartState` (numbers, `tax`, `shipping`, `coupon`) that disagrees with the live one in `types/global.ts` (Decimals, `vouchers`, `summary`), plus stale duplicate `CartItem`, `EnrichedCartLine`, `ShippingMethod`. Candidate for deletion. | `types/cart.ts:16` | reported |
+| 22 | `checkout.testMode` / `setTestMode` are dead — test-order behaviour comes from `core/test-mode.ts`. | — | reported |
+| 23 | `getProduct(id)` is an alias of `getPackage(id)` despite the name implying a product lookup. | `state/campaign/items.slice.ts:56` | reported |
+
+---
+
+## Found while inventorying `src/core` for Phase 6 (2026-07-31)
+
+Numbered 25+ to keep the existing numbers stable. These came out of the inventory in
+[documentation-plan.md](./documentation-plan.md) §5q, not from a bug hunt, so severity
+varies. *verified* = I read the cited line myself; *reported* = precise from the
+inventory, unconfirmed by me.
+
+### 25. `next:ready` fires before the SDK is ready — *reported, P1-shaped*
+
+`public/loader.js:153` dispatches `next:ready` immediately after importing the module;
+boot then runs 19 more steps and fires `next:initialized`
+(`core/sdk-initializer.ts:1070`). A page that waits for `next:ready` and calls
+`next.getCartData()` races the whole boot — campaign not loaded, cart not rehydrated,
+`window.next` possibly not assigned. **Fix:** either rename/retire the loader event or
+make it wait; documenting it is not enough, because the name is the trap.
+
+### 26. ~~A missing API key un-hides the page it was supposed to keep hidden~~ — **FIXED 2026-07-31, together with 41 and 30**
+
+All three were one coherent pass over the boot/retry path, and 26 and 41 turned out to be
+**the same line** — the `setAttribute('data-next-sdk-loading', 'false')` in `initialize()`'s
+catch block. Removing it fixes both: the attribute is now only ever set to `"true"`, and only
+cleared when boot actually succeeds.
+
+Failing assertions before the fix:
+
+- `expected [ 'true', 'false', 'true', …(5) ] to not include 'false'` — the attribute cycled
+  true→false on *every* attempt, which is finding 41.
+- `expected "spy" to be called 1 times, but got 0 times` — nothing was emitted on permanent
+  boot failure.
+- `expected "updateAttribution" to be called 1 times, but got 2 times` and
+  `expected [] to have a length of 1 but got +0` — finding 30's duplicate listeners, and no
+  `removeEventListener('popstate', …)` between calls.
+
+**The new author-facing contract, which is a real trade-off and not a pure win:**
+`data-next-sdk-loading` stays `"true"` on failure, so it is now **indistinguishable from a boot
+still in progress**. The page stays hidden rather than showing `{price}` placeholders, which is
+the right default — but a page that wants to render a fallback must listen for
+`error:occurred` with `code: 'SDK_INIT_FAILED'` (payload carries `retryAttempts`), and must
+subscribe via `EventBus.getInstance().on(…)` because `window.next` is never published on a boot
+that fails this early. `core/guide/reference/boot-sequence.md` and
+`core/guide/subsystems/boot.md` now say exactly this.
+
+Finding 30 was fixed by making `setupAttributionListeners()` idempotent — a static
+`attributionListenersCleanup` holds the unsubscribes (using the return value of `EventBus.on()`,
+which only exists because finding 103 was fixed earlier the same day) and runs them before
+re-registering. That covers the retry recursion and `reinitialize()` with one change.
+
+`src/tests/docs/bootSequence.test.ts` had encoded the **old** behaviour — it asserted the
+failure path clears the attribute — so the gate failed on the fix. It now asserts the
+asymmetry, with a message naming this finding so a regression is self-explaining.
+
+One process note: the two boot-failure tests use **real timers**. `vi.useFakeTimers()` plus
+`runAllTimersAsync()` deadlocked reproducibly against the dynamic imports inside the recursive
+retry, so they run on a 15s budget against the real 1s/2s/3s ladder.
+
+The original diagnosis follows.
+
+
+
+`sdk-initializer.ts:434` throws `API key not found…` at step 7, so nothing after it runs:
+no DOM scan, no `window.next`, no `next:display-ready`, and `window.nextReady` callbacks
+never drain. But `body[data-next-sdk-loading]` is set to `false` anyway (`:103`), which is
+the documented hook for revealing markup — so the visitor sees the un-enhanced page with
+`{price}` placeholders instead of nothing. Three retries at 1s/2s/3s follow, then an
+uncaught rejection. **Fix:** leave the loading flag set when boot fails, and surface the
+failure through `error:occurred`.
+
+### 27. `next:initialized` reports version `'0.2.0'` — *verified*
+
+`sdk-initializer.ts:1072` hard-codes it while `VERSION` (`index.ts:78`) resolves the real
+one (currently 0.4.30). Anything keying analytics or support triage off that payload sees
+a version from years ago. **Fix:** use `VERSION`.
+
+### 28. `next-analytics-disable` / `-enable-only` are parsed and never enforced — *verified*
+
+`MetaTagController.shouldBlockEvent()` (`analytics/tracking/meta-tag-controller.ts:125`) has
+**no caller** — its declaration is the only reference in the repo, and `disabledEvents` /
+`enabledOnlyEvents` are read nowhere else. So a page that sets those meta tags to suppress
+events still sends every one of them, and the tags are even logged as applied (`:78-79`,
+`:117`). Both are published as `status: 'inert'` on the generated
+[meta-tag reference](../src/core/guide/reference/meta-tags.md), and a test now fails if
+`shouldBlockEvent()` ever gains a caller, so the docs cannot silently go stale either way.
+**Fix:** call it in the push path, or delete the meta tags and the parser together.
+
+### 29. `?reset=true` clears only part of what the SDK wrote, and the two branches disagree — *verified*
+
+`sdk-initializer.ts:1098-1133` sweeps only keys starting `next-` or `_next` from both
+storages — while the **cookie** branch at `:1125` checks `next_`. So the two halves of the
+same function use different prefixes, and every underscore key survives a "reset":
+`next_selected_currency`, `next_selected_country`, `next_selected_locale`,
+`next_funnel_name`, `next_prospect_cart`, `next_utm_data`, `next_v2_pending_events`,
+`next_country_*`, `nextDataLayer_*` — plus `analytics_*`, `visitor_id`, `user_data`,
+`session_id`, `evclid`, `tn_tag_*`, `upsells_*`, and every `debug-*` key.
+
+Symptom during QA: you "cleared all storage" and the page still comes up in the previous
+currency, still attributed to the previous funnel, and still silently untracked if
+`analytics_ignore` was set. The same gap applies to `SDKInitializer.clearAllStorage()`,
+which is what `?reset=true` calls. **Fix:** match `next_` as well, and derive the list from
+[`core/docs/storage-keys.ts`](../src/core/docs/storage-keys.ts), which now enumerates all
+49 rows for exactly this purpose.
+
+### 30. `reinitialize()` **and every failed-boot retry** stack duplicate listeners — *verified*
+
+`setupAttributionListeners()` (`sdk-initializer.ts:617`, registering at `:634-665`) has no
+idempotence guard, and `reinitialize()` (`:1001`) does not remove what it registered. So
+each call adds another `campaign:loaded` handler, another `cart:updated` handler, and
+another `popstate` listener.
+
+Originally reported as affecting only the debug panel's reload path. It is worse than that:
+**the retry path hits it too**, so a first boot that failed at step 5 or later leaves
+duplicated attribution `conversion_timestamp` writes on every subsequent cart update — on a
+normal customer page, with no debug tooling involved. **Fix:** guard the registration, or
+track the handlers and remove them before re-registering.
+
+### 31. `storage.ts` timer helpers write the wrong storage — *verified*
+
+`saveTimerState` / `loadTimerState` / `clearTimerState` (`storage.ts:157-170`) write
+`next-timer-*` to **sessionStorage** and are called from nowhere; the only code using that
+prefix, `features/display/timer/timer.enhancer.ts:39,45,100`, uses **localStorage**. So two
+mechanisms exist for one key family and the helpers can never read what the timer wrote — a
+future caller would silently get a different lifetime. Also `CONFIG_STORAGE_KEY =
+'next-config-state'` (`storage.ts:146`) is exported and never read or written anywhere under
+`src/`. **Fix:** delete all four, or make the helpers match their consumer.
+
+### 32. `config.ts` documents two analytics providers that do not exist — *reported*
+
+`analytics/config.ts:37-62` describes `GA4` and `SEGMENT` settings; there is no adapter and
+no entry in `PROVIDER_FACTORIES` for either. A reader configures them and nothing happens.
+**Fix:** delete the entries, or say plainly they are not implemented.
+
+### 33. ~280 lines of dead debug code — *reported*
+
+`debug/debug-module.ts` (184 lines) and `debug/test-components.ts` (96) have no importers,
+and the four panel classes in `debug/debug-panels.ts` are superseded by `panels/` and not
+exported — one of them calls `require()` inside an ESM file, so it would throw if anything
+did reach it. **Fix:** delete.
+
+### 34. ~~`drop_console: true` may contradict every published log reference~~ — **ANSWERED 2026-07-31, and it is a different problem**
+
+Measured against a fresh `npm run build`, so this no longer threatens the 28 published
+`reference/logs.md` pages — but only because a *second* defect cancels the first.
+
+| Bundle | Loaded when | `console.error` | `warn` / `info` / `debug` / `log` |
+|---|---|---|---|
+| `dist/index.js` + `dist/chunks/*` (ESM) | **always** — `public/loader.js:50` sets `PROD_ENTRY_PATH = '/index.js'` | present | **present** |
+| `dist/index.umd.js` | `nomodule` browsers, and when the module import fails (`loader.js:170`, `:192`) | **zero** | **zero** |
+
+Precision on that second row, because a first pass got it wrong: the UMD contains **0
+`console.*` call sites**. Four textual occurrences of `console.error` exist and none is a
+call — one read and one assignment from the error handler replacing it, and two inside
+string literals (`source: "console.error"`). `drop_console: true` removes error calls along
+with the rest, so **the UMD fallback prints nothing at all, including errors.**
+
+The published log pages are therefore accurate for the bundle customers actually get.
+`Logger` (`core/logger.ts`) gates the non-error levels behind
+`isProduction && !isDebugModeEnabled()`, so they print only with `?debug=true`,
+`?debugger=true`, `nextConfig.debug`, or `nextConfig.debugger`; `Logger.error` has no
+production guard and always prints. Two facts worth carrying into the docs, now written up
+on [`src/core/guide/subsystems/logging-and-debug.md`](../src/core/guide/subsystems/logging-and-debug.md):
+on the UMD fallback debug mode **cannot** bring the missing levels back, because the calls
+were removed at build time rather than gated at runtime.
+
+**The reason they survive is finding 36.** No fix is needed on the log pages.
+
+### 36. ~~The ESM bundle — the one every customer page loads — is not minified~~ — **FIXED 2026-07-31**
+
+`dist/chunks/*.js` went **2,271,386 → 1,372,827 bytes raw (−39.6%)**, gzip −25.2%, brotli
+−23.6%. `state` −49.9%, `vendor` −40.8%, `utils` −49.2%, a feature chunk −33.2%.
+
+**Why terser was skipped, actually:** not the `build.lib` multi-entry config and not the UMD
+plugin hook, but a hard-coded exemption inside Vite. `vite:terser`'s `renderChunk` returns
+`null` when `config.build.lib && outputOptions.format === 'es'`, with no escape hatch — the
+reasoning being that a *library* ES output is consumed by another bundler, so `/*#__PURE__*/`
+annotations must survive. This SDK is fetched straight from a `<script>` loader, so nothing
+downstream ever tree-shakes it and the exemption bought nothing. The fix is a terser pass
+registered under `rollupOptions.output.plugins` — **not** as an `enforce: 'post'` plugin,
+because user post-plugins run *before* `vite:esbuild-transpile`, which would re-indent
+everything away.
+
+Same investigation found the top-level `esbuild: { minifyIdentifiers, … }` block in
+`vite.config.ts` is **dead config** and always has been: `resolveEsbuildTranspileOptions`
+returns everything `false` unless `build.minify === 'esbuild'`. Safe to delete.
+
+**`mangle.properties` had to be turned off — for both builds — and this is the important part.**
+The regex `/^_/` mangled the `_`-prefixed properties the SDK uses as cross-feature handshakes,
+**per chunk**. Measured on a proof build: `_getSelectedBundleItems` became `i` where it is
+written and `i`, `t` and `l` in its three readers, and `_getSelectedBundleVouchers`'s writer
+name `o` collided with `_selectedItem` in another chunk. Had that shipped, bundle add-to-cart
+via accept-upsell and all voucher resolution would return `undefined` **in production only**.
+A `reserved` list was rejected as too fragile: it would have to cover the documented
+`_nextForce*` window surface too, and it cannot help `display-types.ts:430`, which compares the
+string literal `'_expression'` against a dotted read of the same property — terser rewrites one
+and not the other.
+
+**That last case was already broken in the UMD build**, which has had property mangling on all
+along: `_expression` occurrences in `dist/index.umd.js` went **0 → 1** with this change, meaning
+`supportsExpressions()` has been returning `false` for every expression binding in the UMD. The
+UMD grew 6.5 kB (+0.47%) as the price of that correctness.
+
+`src/tests/contract/cross-chunk-handshakes.test.ts` now asserts each handshake name survives in
+both the ESM chunks and the UMD, so the whole class is self-enforcing rather than a comment.
+
+**`drop_console` was deliberately left off the ESM chunks.** It removes *all* `console.*`, and
+`core/logger.ts` is nothing but four such calls — enabling it would delete the SDK's entire log
+surface and make `core/guide/reference/logs.md` plus every per-feature `reference/logs.md`
+wrong. Measured cost of that safety: 9,118 bytes, 0.7% of the minified total. `terserOptions`
+(ESM, keeps console) and `umdTerserOptions` (UMD, drops it) are now separate in the config.
+
+The `dist//home/bond/...` path in the build log was **a logging bug, not a misplacement** —
+`vite-plugin-compression` strips the raw `build.outDir` (`'dist'`) off an absolute path, so
+nothing matches. The `.br`/`.gz` files were always beside their chunks. Fixed by making
+`build.outDir` absolute.
+
+The original diagnosis follows.
+
+### 104. Every campaign page downloads the `debug` chunk — 281 kB, unconditionally — *verified*
+
+`dist/index.js` → `chunks/index-*.js` → `import { C as p } from "./debug-*.js"`. **Nine chunks
+statically import it**, including `base-display-enhancer` and `analytics`; only one of them also
+does the dynamic `import()` that the overlay was supposed to be gated behind. So the "won't be
+loaded unless `?debug=true`" comment in `vite.config.ts:225` is wrong, and every visitor pays
+281,620 B (55,954 B gzip) for it — the largest remaining performance item now that finding 36 is
+fixed, bigger than the whole minification win on some chunks.
+
+Cause: `manualChunks` seeds `debug` from `/debug/`, `/testMode` and `test-order-manager`, and
+Rollup then parks shared modules there because their importer sets match. The bindings actually
+dragged across are `CurrencyFormatter`, `formatCurrency`, `formatNumber`, `formatPercentage`,
+`formatDiscountPercentage`, `CountryService` and `analyticsDebug` — none of which are debug code.
+
+**Not fixed deliberately.** The comment at `vite.config.ts:210-213` records that a previous
+chunk reassignment produced a `vendor → debug → state → vendor` cycle and a production TDZ
+crash, so this wants its own change with an e2e run behind it, not a size-driven guess. The
+likely shape is to give those shared formatters a chunk of their own so `debug` is left holding
+only debug code.
+
+### 105. ~~The production-bundle gate only reads the UMD file, not the chunks customers load~~ — **FIXED 2026-08-02, and the worse half of it is finding 111**
+
+`src/tests/contract/bundle-contents.test.ts:25` resolves `dist/index.umd.js` and scans that.
+The UMD is the fallback build; every campaign page loads the ESM chunks. So the gate that exists
+to prove the docs machinery never reaches a customer cannot see the files customers actually
+fetch — and its own comment at `:54-59` says it guards against the docs layer "sitting in a
+sibling chunk", which is precisely the case its file selection excludes.
+
+**Fix:** scan `dist/chunks/*.js` as well as the UMD. Cheap, and it closes a gate that currently
+reads as stronger than it is.
+
+
+
+`vite.config.ts:323-324` sets `minify: 'terser'` with `terserOptions` on the main build,
+and the UMD build at `:137-138` does the same. It takes effect for the UMD and **not** for
+the ESM output:
+
+| File | Lines | Avg line length | Minified? |
+|---|---|---|---|
+| `dist/index.umd.js` | 2 | ~697,000 | yes |
+| `dist/chunks/state-*.js` | 2,245 | 36 | **no** |
+| `dist/chunks/display-core-*.js` | 837 | 37 | **no** |
+| `dist/chunks/vendor-*.js` | 16,452 | 41 | **no** |
+
+The chunks ship original identifiers, indentation, and template literals — e.g.
+`if (isNaN(num)) { console.warn(\`Invalid percentage value: ${value}\`); ...`. So every
+campaign page downloads unminified JavaScript, `drop_console` never runs on it, and the
+`mangle.properties.regex: /^_/` setting never applies either.
+
+Not a documentation problem, and the largest single performance item found so far: the
+uncompressed chunk total exceeds 2 MB, with `vendor` alone at 656 kB and `debug` at 349 kB.
+**Fix:** find out why terser is skipped for the library ESM build — most likely the
+`build.lib` multi-entry configuration or the plugin `config` hook that adds the UMD pass —
+then re-measure. Worth confirming whether the `debug` chunk is reachable from a production
+page at all before optimising anything else.
+
+Related, and probably the same root cause: the build log writes the compression plugin's
+output to `dist//home/bond/29next/campaigns/campaign-cart/chunks/…` — an absolute path
+pasted after `dist/`, so the `.br` artefacts land in a nested directory tree instead of
+beside the chunks.
+
+### 35. ~~Two stale claims in core READMEs~~ — **FIXED 2026-07-31**
+
+Both READMEs were corrected. What they now say, and why the old text was wrong:
+
+- `src/core/README.md` claimed core stays out of the public reference because it is marked
+  `@internal` with `excludeInternal: true`. An AST scan finds **zero `@internal` tags on
+  any exported declaration** in core — the only seven are file-header blocks in
+  `core/docs/`, attached to nothing. It is excluded by being unreachable from the single
+  `entryPoints: ["src/index.ts"]` (four core symbols re-exported) **plus**
+  `DROP_DIRS = ['classes']` in `scripts/typedoc-fumadocs.mjs:26`, which deletes the class
+  pages. The README now says that, and spells out the consequence: TSDoc inside
+  `src/core/**` is a contributor artefact that reaches no reader.
+
+  **Addendum, added while switching the docs site to TypeDoc:** `scripts/typedoc-fumadocs.mjs`
+  — the file named in the bullet above — has since been deleted as part of that switch, and
+  `src/core` is now itself a TypeDoc entry point (`typedoc.json:3-7`) with real class pages
+  under `docs/site/classes/`. The reasoning above is kept as the historical record it was
+  accurate to at the time (the README's old `@internal` excuse really was wrong, for the
+  reason given) rather than rewritten, matching how finding 34 is handled. `src/core/README.md`
+  already carries the corrected, current story. Four other places still cited the deleted file
+  by name — see finding 85.
+- `src/core/analytics/README.md` advertised "GTM, Facebook Pixel, custom endpoints" while
+  `providers/` holds five concrete adapters (**+ RudderStack, + NextCampaign**), had two
+  dead import paths (`@/utils/analytics/v2`, which does not exist — the real path is
+  `@/core/analytics`), told the reader to call `window.NextDataLayer.setDebugMode(true)` on
+  what is a plain `DataLayerEvent[]` array, and claimed `RudderStackAdapter` remaps
+  `campaign_*` to camelCase. `buildContextProps` (`rudderstack-adapter.ts:69-86`) keeps them
+  snake_case and says so in its own comment. All corrected, with the provider table now
+  pointing at the generated
+  [`analytics-providers.md`](../src/core/guide/reference/analytics-providers.md) so a
+  hand-maintained list cannot drift again.
+
+### 37. A failed dynamic import in `initializeErrorHandler` is unhandled, and error capture silently never installs — *verified*
+
+`sdk-initializer.ts:689-692` calls `import('...').then(...)` with no `.catch`, and it is
+not awaited (`:75`). The enclosing `try` cannot catch a rejected dynamic import, so a
+chunk-fetch failure becomes an unhandled rejection **and** global error capture is never
+installed — while boot reports success. Because it is not awaited, its install time is also
+unordered relative to the rest of boot, so an error thrown early in a later step may or may
+not be captured. **Fix:** `await` it and catch, or accept the async install and say so.
+
+### 38. `SDKInitializer.initialize()` is a floating promise at both call sites — *verified*
+
+`src/index.ts:89` and `:93` call it with no handler. After three failed retries
+`sdk-initializer.ts:115` re-throws, so the only trace of a completely failed boot is an
+unhandled rejection in the console. **Fix:** attach a `.catch` that reports through the
+SDK's own error path.
+
+### 39. A debug-chunk fetch failure aborts a boot that would have succeeded in production — *verified*
+
+`sdk-initializer.ts:87` awaits `initializeDebugMode`, which at `:783` does an unguarded
+`await import('@/core/debug/debug-overlay')`. In debug mode a failed chunk fetch therefore
+throws inside the boot try block and takes the whole SDK down — on the exact page someone
+is trying to debug. **Fix:** wrap it; debug tooling must never be able to fail the boot.
+
+### 40. `scanAndEnhance` swallows its own error, making `data-next-sdk-loading="false"` unusable alone — *verified*
+
+`attribute-scanner.ts:53-158` catches at `:157`, so `next:initialized` can fire and the body
+attribute can flip to `"false"` while `next-display-ready` / `next:display-ready` never
+arrive and no feature was activated. A reveal rule keyed on the attribute alone un-hides a
+page of raw `{price}` placeholders. The generated
+[`boot-sequence.md`](../src/core/guide/reference/boot-sequence.md) documents the two-signal
+workaround, so this is a code decision to confirm rather than a docs gap. **Fix:** either
+re-throw, or emit a distinct failure signal the page can style off.
+
+### 41. Retrying the boot cycles the loading attribute, un-hiding the page mid-retry — *verified*
+
+On the retry path `data-next-sdk-loading` goes `"false"` (`:103`) → `"true"` (`:47`) →
+`"false"`, so a page can visibly un-hide showing placeholder markup *between* attempts,
+not only after the last one. Finding 34's table explains why the console gives no clue on a
+production build. **Fix:** leave the attribute at `"true"` while a retry is pending.
+
+### 42. Four boot statistics are written and never read — *verified*
+
+`initTime` (`sdk-initializer.ts:90`), `campaignLoadTime` (`:443`), `campaignFromCache`
+(`:444`), and `rehydrationTime` (`:1056`) are assigned and never read;
+`getInitializationStats()` (`:1086`) reports none of them. Hidden by
+`noUnusedLocals: false` in `tsconfig.json`. **Fix:** report them from
+`getInitializationStats()` — they are the timings anyone debugging a slow boot wants — or
+delete them.
+
+### 43. Seven of the 35 analytics events are never built by any SDK code — *verified*
+
+Machine-checked against the emit sites while generating the event catalogue:
+`dl_search`, `dl_add_to_wishlist`, `dl_refund`, `dl_view_promotion`,
+`dl_select_promotion`, `dl_start_trial`, and `dl_accepted_upsell` have zero construction
+sites. They are indistinguishable from live events to anyone reading `DL_EVENTS`, so a
+provider configured to expect one waits forever.
+
+`dl_accepted_upsell` is the worst of the seven because it looks maintained: declared at
+`analytics/schemas/events.ts:194`, given a schema at `schemas/index.ts:462`, specially
+validated at `validation/event-validator.ts:446-449`, and mapped for Meta at
+`providers/facebook-adapter.ts:35` — while `createAcceptedUpsellEvent` actually builds
+`dl_upsell_purchase` (`events/ecommerce-events.ts:654`).
+
+The generated catalogue now marks all seven, and the drift test requires the mark to match
+"zero emit sites" exactly. **Fix:** emit them or remove them; either way the vocabulary
+should not advertise events the SDK cannot send.
+
+### 44. The analytics vocabulary gate cannot detect finding 43 — *verified*
+
+`src/tests/utils/analyticsVocabulary.test.ts:117-123` looks for each event name as **raw
+text** anywhere under `src/core/analytics`, so a name that exists only as a key in a
+provider's mapping table counts as "emitted". That is exactly why all seven dead events
+pass it today.
+
+Worth fixing because this test is the precedent the whole documentation programme was
+modelled on (§2 of the plan) — it is cited as the example of a gate that works.
+**Fix:** match construction sites (an event object being built) rather than any textual
+occurrence, the way `extract-analytics-events.ts` now does.
+
+### 45. ~~`blockedEvents` is silently ignored by three of the five providers~~ — **FIXED 2026-07-31**
+
+Fixed test-first: three assertions of the form
+`expected "sendEvent" to not be called at all, but actually been called 1 times`, one each for
+`NextCampaignAdapter`, `RudderStackAdapter` and `CustomAdapter`.
+
+The three adapters did not merely miss the option — they **did not accept it**. Each now takes
+the config and forwards it to `super()`, matching the GTM/Meta pattern, and all five factories
+in `analytics/index.ts` pass it through (`custom` merges it into the settings object it builds).
+
+**Finding 28 is not brought closer by this**, contrary to what one might assume from the shared
+vocabulary. `MetaTagController.shouldBlockEvent()` is a global, per-dispatch check driven by
+parsed meta tags; what was fixed here is each provider's static, construction-time list.
+Wiring 28 up means adding a call in the dispatch path (`DataLayerManager.push` or
+`NextAnalytics.track`) — a different file and a different call site.
+
+The original diagnosis follows.
+
+
+
+`analytics/index.ts:50` (`nextCampaign`), `:56` (`rudderstack`), and `:58` (`custom`)
+construct their adapters with no options, so `ProviderAdapter.blockedEvents` is `[]` for
+all three. Only `gtm` and `facebook` receive the list. A page that blocks an event sees it
+suppressed for two destinations and delivered to the other three, which is worse than not
+being able to block at all. **Fix:** pass the options through in all five factories.
+
+### 46. ~~A 100%-discount order sends no purchase event at all~~ — **FIXED 2026-07-31**
+
+Fixed test-first. `expected undefined to be defined` — a `dl_purchase` built from a genuinely
+free order (`price_excl_tax: '0'`) never arrived in `window.NextDataLayer`, with
+`[NextDataLayer] Missing required field for dl_purchase: ecommerce.value` on the console.
+
+**The fix is type-aware rather than a blanket `undefined` check**, which is better than this
+entry proposed: `isFieldMissing()` consults `EVENT_VALIDATION_RULES.fieldTypes`, so a field
+typed `number`/`boolean` counts `0`/`false` as present while every other required field keeps
+the falsy check — an empty-string `transaction_id` or currency is still correctly rejected.
+Five events were affected (`dl_purchase`, `dl_upsell_purchase`, and legacy
+`purchase`/`add_payment_info`/`add_shipping_info`); all now accept `0`.
+
+The test asserts the payload is *correct*, not merely delivered: `value: 0` arrives with its
+real `transaction_id`, `currency` and populated `items`.
+
+**Note for anyone reading historical numbers:** conversion counts from before 2026-07-31
+under-report free orders entirely. That is data loss already banked, not something the fix
+backfills.
+
+Four other falsy checks were audited and deliberately left, each with a reason — the two in
+`EventValidator`/`schemas` already test `undefined`/`null`; `reconcileValue`'s `if (tax && …)`
+guards are diagnosis heuristics where zero genuinely means nothing to diagnose;
+`validateUpsellEvent`'s `!package_id` matches an intentional domain rule that treats `'0'` as
+unresolved; and the `|| 0` defaults in the provider adapters shape optional fields rather than
+gating delivery.
+
+The original diagnosis follows.
+
+
+
+`DataLayerManager.validateEvent` tests the value with a falsy check (`:212`, `:222`), and
+`EVENT_VALIDATION_RULES.eventSpecific` requires `ecommerce.value` for `dl_purchase`
+(`analytics/config.ts:74`) and `dl_upsell_purchase` (`:90`). A zero-value order therefore
+fails validation and never reaches the data layer or any provider — so a free order is
+invisible to every analytics destination, with no error. **Fix:** check for `undefined`
+rather than falsiness.
+
+### 47. `CustomAdapter`'s retry queue can never fire, and two GTM fields are always undefined — *verified*
+
+The retry queue keys on `event.id` (`providers/custom-adapter.ts:200-206`) and nothing ever
+sets `id` — the pipeline sets `event_id` (`data-layer-manager.ts:296`). So `maxRetries: 3` is
+inert and a failed custom-endpoint delivery is simply lost. The same mismatch makes
+`gtm-adapter.ts:79` send `event_id: undefined` and `event_timestamp: undefined` on every
+event. **Fix:** read `event_id` / `event_timestamp`.
+
+### 48. GTM's entire GA4 shaping path is unreachable for canonical events — *verified*
+
+`GTMAdapter.sendEvent` returns early for anything `dl_`-prefixed (`:44-55`), pushing it
+verbatim to `ElevarDataLayer` and `dataLayer`. Everything below that — the `dl_` strip at
+`:349`, `buildEcommerceObject`, `eventHasValue`, and the promotion and list field rules —
+only runs for non-`dl_` pushes. Since every canonical SDK event is `dl_`-prefixed, that
+code is dead for all of them.
+
+This also corrects a claim carried in the plan: **no adapter strips the prefix to pick GA4
+field rules.** Facebook (`facebook-adapter.ts:15-54`) and RudderStack
+(`rudderstack-adapter.ts:325-365`) rename through fixed tables instead. The net effect the
+plan described is right — no vendor API sees a `dl_` name — but the mechanism is not.
+**Fix:** decide whether the GA4 shaping is meant to apply, and either route canonical
+events through it or delete it.
+
+### 49. Two events require fields their own schema does not declare — *verified*
+
+`analytics/config.ts:88-89` requires top-level `lead_type` on `dl_subscribe` and
+`ecommerce.items_removed` / `items_added` on `dl_package_swapped`, neither of which is in
+the event's schema. The SDK's own factories supply them, so this only bites a hand-built
+push through `window.NextDataLayer` — which then fails validation and vanishes. Documented
+as a caution on the catalogue. **Fix:** add the fields to the schemas.
+
+### 50. Delivery telemetry exists in every build and nothing outside the overlay can read it — *verified*
+
+`AnalyticsDebugTracker` records per-provider `pending|sent|blocked|skipped|failed` with the
+payload, the error, and the duration, unconditionally — no debug gate. But
+`analyticsDebug` is never attached to `window`; its only consumers are
+`debug/debug-overlay.ts:130` and the event timeline panel. So on a page where the overlay
+cannot be opened, the one data source that answers "why did my provider get nothing" is
+unreachable. **Fix:** expose it on `window.nextDebug`, which is where a reader would look.
+
+### 51. Test mode is armed on every production page, and the Konami shortcut creates a real order — *verified*
+
+The sharpest finding of Phase 6. `core/test-mode.ts:367` is a module-level singleton, statically
+imported by `core/sdk-initializer.ts:16`, and its constructor attaches a `document` keydown
+listener at `:70-76`. `handleKeyDown` (`:79-98`) **never checks whether test mode is on.**
+
+So ↑↑↓↓←→←→BA on any live checkout dispatches `next:test-mode-activated` →
+`checkout-form.enhancer.ts:247` → `:3480-3556` fills `Test Order / Test Address 123 /
+Tempe AZ 85281` and sets `card_token: 'test_card'` → `:2031`/`:2049` post it to the **real**
+`apiClient.createOrder`. Submitting also resets the cart and checkout stores and redirects
+(`:2079-2112`), so it takes the shopper's cart with it. `?debugger=true` arms the same path as
+a side effect (`core/test-mode.ts:104`), which means opening the debug overlay on a live page
+is enough.
+
+Two aggravating details: an **empty** cart still produces an order for `package_id: 1,
+quantity: 1` (`checkout-form.enhancer.ts:2003-2010`) with shipping falling back to
+`cartStore.shippingMethod?.id || 1` (`:2029`); and the card list in `test-mode.ts` is
+unreachable — `showTestCardMenu()` (`:299`) has no caller and is the only thing that calls
+`fillTestCardData()` (`:237`) — so what ships is always the `test_card` token.
+
+**Fix:** gate `initializeKonamiCode()` behind a non-production build flag or an explicit
+opt-in, and add an `isTestMode` guard to `handleKeyDown`.
+
+### 52. The DOM observer watches 8 attributes while the scanner activates 30 — *verified*
+
+`dom-observer.ts:43`'s `attributeFilter` holds 8 names; `attribute-scanner.ts:55` queries 30
+selectors on the first pass. So markup injected after boot comes alive only if it carries
+`data-next-display`, `-toggle`, `-timer`, `-show`, `-hide`, `-checkout`, `-validate`, or
+`-express-checkout`. An injected `data-next-action="add-to-cart"`, `-package-selector`,
+`-cart-items`, `-coupon`, or `-quantity` is never activated, with no error — which reads as a
+broken feature.
+
+Worse, two of the eight are dead: `data-next-toggle` (the live attribute is
+`data-next-package-toggle`) and `data-next-validate` (validation moved into
+`CheckoutFormEnhancer`). The observer pays for two attributes that map to no enhancer while
+missing every attribute that does. **Fix:** derive the filter from the scanner's selector
+list.
+
+### 53. Enhancers are never destroyed when their element is removed — *verified*
+
+`dom-observer.ts:278` notifies `removed` only for elements carrying one of the eight filtered
+attributes, so `attribute-scanner.ts:507 cleanupElement` never runs for most features:
+`destroy()` is not called, store subscriptions stay live, and `enhancerCount` is never
+decremented. Symptom on a page that swaps views: cart updates keep reaching features whose
+elements are gone. **Fix:** track enhanced elements and reconcile on removal regardless of
+the filter.
+
+### 54. A second DOM scan double-activates every element — *verified*
+
+`attribute-scanner.ts:516 destroy()` does not destroy live enhancers — its own comment says it
+cannot, because they are held in a `WeakMap` — and `sdk-initializer.ts:727-732` then builds a
+**fresh** scanner with a fresh `WeakMap`. Every element is re-enhanced, so each ends up with
+two features and cart writes double.
+
+Reachable two ways: `reinitialize()`, and a boot **retry** after a step later than the scan
+fails — which finding 39 makes concrete, since a failed debug-chunk fetch at step 13 aborts a
+boot whose scan already ran. **Fix:** keep a real registry of live enhancers so `destroy()`
+can tear them down.
+
+### 55. `window.next` is `undefined` inside a callback queued before boot — *verified*
+
+`sdk-initializer.ts:745` drains `window.nextReady` and `:755` assigns `window.next`, in that
+order. So a callback pushed before boot that reads `window.next` gets `undefined`, while the
+same callback pushed after boot works. Load-order-dependent, and the documented pattern is
+the one that fails. The generated
+[JavaScript API](../src/core/guide/reference/javascript-api.md) now tells readers to use the
+`next` argument the callback receives. **Fix:** assign `window.next` before draining.
+
+### 56. `window.NextDataLayerTransformFn` is discarded if set before the SDK loads — *verified*
+
+`analytics/index.ts:84` nulls it unconditionally in the `NextAnalytics` constructor. Assigning
+it in a `<script>` tag ahead of the loader — the way it reads as intended — silently loses it
+and every event ships untransformed. **Fix:** only null it when a transform is being replaced,
+or read the existing value first.
+
+### 57. `require()` in ESM source — *verified as present, runtime effect unconfirmed*
+
+`core/next-commerce.ts:783` has `const { formatCurrency } = require('@/core/currency-formatter');`
+inside `formatPrice()`, and `core/debug/debug-panels.ts:173` has another. The library builds ESM
+(`vite.config.ts` `formats: ['es']`), where `require` is not defined, so `next.formatPrice()`
+plausibly throws `require is not defined` in the browser. Worth a 30-second check in a real
+page — it is a public method. Note `src/state/campaign/guide/overview.md:48` claims the last
+CommonJS `require` was eliminated; two remain. **Fix:** convert both to static imports.
+
+### 58. `registerCallback` handlers are never fired by the SDK — *verified*
+
+`triggerCallback` (`core/next-commerce.ts:354`) has no caller anywhere in `src/`, so the
+callback channel only fires when page code triggers it. It reads like a lifecycle hook and is
+a page-driven notification bus. The generated JavaScript API page now says so — the prose had
+claimed a callback runs "when the SDK fires its type". **Fix:** either fire them from the
+places that emit the matching bus events, or mark the trio deprecated in favour of
+`next.on()`.
+
+### 59. `addUpsell` attributes value to the wrong package when the API reorders lines — *verified*
+
+`core/next-commerce.ts:1024` pairs the requested `lines` with the API's `addedLines` **by array
+index**, so `upsell:added.value` can be credited to a different package when the API merges or
+reorders. `totalValue` on the resolved result is computed correctly, so only the per-line
+attribution is wrong. **Fix:** match on package id.
+
+### 60. Two events are dispatched without `bubbles`, and their own docs tell you to listen on `document` — *verified*
+
+`checkout:location-fields-shown` and `checkout:billing-location-fields-shown` are dispatched on
+the form element with `bubbles` defaulting to `false` (`checkout-form.enhancer.ts:1391`,
+`:1424`), so `document.addEventListener` never fires — while `types/global.ts:567-568`
+instructs exactly that. **Fix:** add `bubbles: true`, or correct the TSDoc.
+
+### 61. Three boot-time events cannot be subscribed to in time — *verified*
+
+The bus does not replay, and these fire during boot before any page code can be listening:
+
+- `sdk:url-parameters-processed` — emitted inside `loadCampaignData` at boot step 5
+  (`sdk-initializer.ts:465`); its only subscriber registers during the step-11 DOM scan
+  (`features/display/conditional-display/conditional-display.enhancer.ts:97`), so that handler can never run.
+- `currency:fallback` (`state/campaign/api.slice.ts:98`, `:162`) — also step 5. The
+  "surface this to the visitor" advice in `types/global.ts:160-163` is unactionable; the usable
+  signal is `configStore.currencyFallbackOccurred` (`api.slice.ts:93`, `:157`, `:168`).
+
+**Fix:** either replay the last value for these, or document the state field as the contract
+and drop the event.
+
+### 62. Every enhancer failure emits `error:occurred` twice — *verified*
+
+`core/base/base-enhancer.ts:138` emits it, and the log line written at `:136` starts with
+"Error in …", which passes the error handler's `includes('error')` filter
+(`monitoring/error-handler.ts:40-47`) and produces a second event. Anything counting these
+double-reports. **Fix:** skip messages the SDK itself just logged, or drop the string-matching
+branch.
+
+### 63. Duplicated and inline expiry constants — *verified*
+
+`CACHE_EXPIRY_MS = 10 * 60 * 1000` is declared **twice**, in `state/campaign/api.slice.ts:10`
+and `state/campaign/items.slice.ts:12` — the reader and the writer of the same cache each hold
+their own copy, so changing one desynchronises them silently. Two more windows are inline
+literals with no constant: `5 * 60 * 1000` at `analytics/tracking/pending-events-handler.ts:102`
+and `30 * 60 * 1000` at `analytics/data-layer-manager.ts:338`. Ten independent windows exist in
+total, itemised on the generated
+[storage reference](../src/core/guide/reference/storage-keys.md). **Fix:** one shared constant
+per window, named.
+
+### 64. `?ignore=true` and `window.nextConfig.tracking` — one works, one is a phantom — *verified*
+
+`?ignore=true` is a real, undocumented analytics kill switch (`analytics/index.ts:100-138`) —
+it writes `analytics_ignore` to sessionStorage and returns before any provider initialises, and
+it now has a page. `config.tracking` is the opposite: `state/config/config.state.ts:249-251` stores it
+and **nothing reads it**, which `config.state-manifest.ts:256`, `:342` already noted. The
+meta-tag reference had been recommending it as the way to suppress events; corrected.
+**Fix:** implement `tracking` or delete the field.
+
+### 65. Dead code inventory — *verified*
+
+Confirmed unreachable, no importer anywhere under `src/`:
+
+| File | Lines | Note |
+|---|---|---|
+| `core/debug/debug-module.ts` | 184 | Live path is `SDKInitializer.initializeDebugMode`. Its `?debugger` set/delete sites look like real behaviour and never run |
+| `core/debug/test-components.ts` | 96 | `testDebugComponents()` never called |
+| `features/checkout/debug/test-order-manager.ts` | 206 | The enhancer has its own inline Konami handler |
+
+`core/debug/debug-style-loader.ts` is **not** dead (`debug-overlay.ts:271`) — worth stating, since
+an earlier pass grouped it with these. Also dead in `core/storage.ts`, none with a non-test
+caller: `createStoragePersist`, `onStorageChange`, `getStorageQuota`, `localStorageManager`,
+`StorageManager.clear/has/keys/size`, `TIMER_STORAGE_PREFIX`, `getTimerKey`. `onStorageChange`
+is unusable as written anyway — it filters `event.storageArea === sessionStorage`, and the
+`storage` event never fires for sessionStorage. **Fix:** delete; ~490 lines.
+
+### 66. Two stale-Zustand-snapshot bugs in boot — *verified*
+
+The pattern is capturing `useStore.getState()` before an `await` and reading it after. Zustand
+replaces the state object on `set()`, so the captured snapshot never sees the update.
+
+- **Campaign shipping countries are never set from boot.** `sdk-initializer.ts:432` captures the
+  campaign snapshot, `:442` awaits `loadCampaign()`, then `:450-453` reads
+  `campaignStore.data?.available_shipping_countries` off the **pre-load** snapshot.
+  `setCampaignShippingCountries()` is therefore never called and the
+  `Campaign shipping countries set globally:` info line never appears. Masked on the checkout
+  page because `checkout-form.enhancer.ts:890-893` redoes it — so country filtering works there
+  and nowhere else. `:444` (`isFromCache`) has the same bug and feeds the debug boot timings.
+- **Attribution metadata is reverted on every cart change.** `:589` captures the attribution
+  snapshot and `:603-609` calls `updateAttribution({ metadata: { ...attributionStore.metadata,
+  … } })` with the **pre-`collect()`** metadata; `updateAttribution` merges as
+  `{...state.metadata, ...data.metadata}` (`state/attribution/attribution.state.ts:133-135`), so stale keys
+  overwrite fresh ones. Same at `:645-653` (`cart:updated` → `conversion_timestamp`) and
+  `:658-664` (`popstate` → `landing_page`).
+
+**Fix:** call `getState()` inside each handler, after the await.
+
+### 67. `currencyBehavior` only exists at boot, despite its comment — *verified*
+
+`state/config/config.state.ts:69` comments it as "auto-switch currency on country change". The field is
+read in exactly one place, `sdk-initializer.ts:160`, at boot. Changing the country in the
+checkout form reloads states and relabels fields but never re-prices; only the debug overlay's
+`core/debug/country-selector.ts:380-400` switches currency and reloads the campaign. So the
+comment describes behaviour that exists only in a debug tool. **Fix:** correct the comment, or
+implement re-pricing on country change.
+
+### 68. `UtmTransfer` classifies links by substring, so parameters leak — *verified*
+
+`core/attribution/utm-transfer.ts:209-211` decides external with
+`href.includes('://') && !href.includes(window.location.hostname)`. A protocol-relative
+`//example.com/x` has no `://` and is treated as internal; and any external URL that merely
+mentions your hostname — a redirect wrapper, a `?return_to=` parameter — is also internal, so
+parameters are appended to it even with `applyToExternalLinks: false`. **Fix:** parse with
+`new URL(href, location.href)` and compare origins. Documented meanwhile with the
+`excludedDomains` workaround.
+
+### 69. `UtmTransferConfig.debug` cannot be set through the typed config — *verified*
+
+`core/attribution/utm-transfer.ts:15` declares `debug?: boolean`, but `ConfigState.utmTransfer`
+(`types/global.ts:1316-1321`) omits it and `loadFromWindow` copies the object wholesale
+(`state/config/config.state.ts:264-269`). It works at runtime and cannot be typed, so it is left out of
+the documented example. **Fix:** add it to the `ConfigState` shape.
+
+### 70. `facebook-pixel-id` and `os-facebook-pixel` have no precedence — *verified*
+
+`core/attribution/attribution-collector.ts:340-342` looks up both in a single `querySelector`, so
+with both present **document order** decides which wins. The Spreedly keys have the same shape at
+`state/config/config.state.ts:122-123`, except there the `||` gives a defined order. **Fix:** pick an
+explicit precedence, as the Spreedly pair does.
+
+### 71. `next-campaign-id` is stored and read by nothing but a debug panel — *verified*
+
+`state/config/config.state.ts:92-97` stores it; the only consumer is `core/debug/debug-panels.ts:107`,
+and `sdk-initializer.ts:438` confirms the API needs only the key. It looks like it selects which
+campaign loads and does not. Published as `status: 'inert'`. **Fix:** remove the tag and its
+parsing.
+
+### 72. 97 raw `console.log` calls bypass the log gate — *verified*
+
+Outside `Logger`, excluding tests, docs machinery and `debug/`. On the unminified module bundle
+(finding 36) they print for **every** visitor, with no debug flag involved — including on the
+real order path, `features/checkout/managers/order-manager.ts:212-247`. **Fix:** route them
+through `Logger` or delete them; ESLint's `no-console` already reports them as warnings.
+
+### 73. `getCartTotals()` returns `Decimal` objects, not numbers — *verified, and a documentation trap rather than a bug*
+
+`CartState.subtotal` / `total` / `totalDiscount` / `totalDiscountPercentage` are decimal.js
+instances (`types/global.ts:1050-1060`), so `subtotal - total` is `NaN` and `total > 50` compares
+strings. The method has no return annotation, so nothing in the signature reveals it. Now carried
+as a `returns` line and a caution on the
+[JavaScript API](../src/core/guide/reference/javascript-api.md). **Fix:** annotate the return
+type; consider exposing plain numbers.
+
+### 74. `window.fetch` is monkey-patched in debug mode and never restored — *verified*
+
+`core/debug/debug-event-manager.ts:44-56` replaces it for the life of the page, with no restore on
+`hide()` or `destroy()`. It delegates correctly, but anything else on the page that wraps `fetch`
+ends up wrapping the SDK's wrapper. Its captured-event list (`:23-32`) is also stale DOM names
+(`next:cart-updated`, `next:item-added`) that nothing dispatches any more. **Fix:** restore on
+teardown, and refresh the event list.
+
+### 75. Analytics email leaves the page in the clear — *verified*
+
+`analytics/index.ts:391`, `:397` (`trackSignUp` / `trackLogin`) put the address into the event as
+`customer_email`, `events/event-builder.ts:126` adds it from the checkout form, and
+`events/ecommerce-events.ts:406` adds it from the order. **There is no hashing anywhere under
+`src/core/`** — no `sha256`, no `crypto.subtle.digest`, no helper — and no `customer_email_hash`.
+
+Worth flagging on its own terms: a project memory recorded PII hashing as implemented, which is
+what a doc pass nearly published as fact. That memory has been corrected. **Fix:** decide
+whether raw email to every configured provider is intended; if not, hash before the push.
+
+### 76. Two smaller `NextCommerce` API inconsistencies — *verified*
+
+- `trackViewItemList(packageIds, _listId, listName)` accepts and ignores its second argument
+  (`core/next-commerce.ts:371-380`), so passing the list name in position 2 loses it silently.
+- `clearCart()` and `swapCart()` are `async` while `cartOperations.clear()` is sync, and
+  `removeCoupon()` returns `void` while firing an async operation (`void
+  cartOperations.removeCoupon(code)`) — so there is nothing to await for the outcome.
+
+### 77. Minor `AttributeScanner` reporting defects — *verified*
+
+- `:45-48` logs `Already scanning, queuing request` and queues nothing; the request is dropped.
+- `:116` increments `enhancedCount` for every visited element, including the ones
+  `enhanceElement` skipped, so `next:display-ready.detail.enhancedCount` overstates and
+  disagrees with `getStats().enhancedElements`.
+- `:37`, `:40` read `?debug=true` straight off the URL and print with raw `console.log`,
+  bypassing `Logger` and the config store's debug flag.
+- `sdk-initializer.ts:1038`, `:167`, `:187` read `sessionStorage` unguarded, so a
+  storage-blocked browser turns boot into three failed attempts and an unhandled rejection.
+
+### 78. Inert test-mode state fields — *verified*
+
+`config.testMode` is written and read only by the debug Config panel
+(`core/debug/panels/config-panel.ts:128`, `:206`), and `checkout.testMode`'s `setTestMode`
+(`state/checkout/checkout.state.ts:142`) has no callers. Neither influences submission — that is decided
+entirely by `core/test-mode.ts`. `state/config/config.state-manifest.ts:176` says the submit path
+consults "`core/test-mode.ts` and the checkout store", and the checkout-store half is wrong.
+**Fix:** delete both fields, and correct that manifest line.
+
+### 79. The test-order payload exists in three copies — *verified*
+
+`features/checkout/checkout-form.enhancer.ts:2013-2047`,
+`features/checkout/builders/order-builder.ts:145-180`, and a third copy of the form data in
+`features/checkout/debug/test-order-manager.ts:82-105` (itself dead — finding 65). Three places
+to keep in sync for one hard-coded address. **Fix:** one shared constant.
+
+---
+
+## Found while switching the docs site from Fumadocs to TypeDoc (2026-07-31)
+
+Numbered 80+ to keep the existing numbers stable. Found while moving the generated site from
+an external Fumadocs build to an in-repo TypeDoc HTML site (`documentation-plan.md` §8).
+*verified* = read myself and reproduced the reasoning at the cited line.
+
+### 80. `Order` vs `OrderData` — two declarations of one concept — *verified*
+
+`state/order/order.state.ts:13` types the store's `order` field as `Order`, imported from
+`types/api.ts:129`. Only `OrderData` (`types/global.ts:1605`) is re-exported from
+`src/index.ts` (via `{@link OrderData}` at `:47`) — `Order` never is, and no page for it
+exists anywhere under `docs/site`. So the order store's real field type is unpublished. The
+store's own TSDoc (`order.state.ts:99`) already works around this: `{@link index.OrderData |
+order}` points a reader at the published type rather than the one actually on the field. That
+link is a sensible stopgap; the underlying defect is that one concept has two declarations,
+only one of which is public. **Fix:** make `OrderData` and `Order` the same type, or derive
+one from the other, so the store's field type and the published type are not two things.
+
+### 81. TypeDoc's `invalidLink` validation does not see absolute links — *verified*
+
+`typedoc.json`'s `"validation": { "invalidLink": true }`, and `npm run docs:check
+--treatWarningsAsErrors`, both pass clean today (confirmed by running it: `0 errors, 0
+warnings`) — even though `types/global.ts:16` still links `[JavaScript API ›
+Events](/docs/campaigns/javascript-api/events)`, a path that pointed at the now-retired
+Fumadocs site and resolves to nothing under `docs/site` (no such page exists in the built
+output). TypeDoc's link checker resolves `{@link}` tags and relative markdown links; a
+`/`-rooted link is opaque to it, so a dead absolute link ships silently and `docs:check` gives
+no signal either way. Two links of the same shape (`documentation-plan.md`'s record of a
+2-link Fumadocs cleanup in `product-display` and `upsell`) were caught and fixed by eye during
+this migration — this third one, in a TSDoc comment rather than a guide file, was missed by
+that same manual sweep, which is the argument for a gate over another manual pass. **Fix (not
+mine — `scripts/docs-coverage.mjs` belongs to another agent):** add a grep check there for
+`](/` inside anything TypeDoc renders (guides and TSDoc alike), and separately fix
+`types/global.ts:16`.
+
+### 82. Stale post-rename paths in three hand-written guides — *verified*
+
+Four citations across three guide files still point at pre-rename locations under
+`src/stores/` and `src/enhancers/`, neither of which exists — the code moved to `src/state/`
+and `src/features/` during the stores→state / enhancers→features migration:
+
+| File | Cites | Current location |
+|---|---|---|
+| `features/cart/quantity-control/guide/relations.md:11` | `src/stores/cartStore/` | `src/state/cart/cart.state.ts` (+ `cart-calculator.ts`, `cart.types.ts`, `cart.state-manifest.ts`) |
+| `features/cart/remove-item/guide/relations.md:11` | `src/stores/cartStore.ts` | `src/state/cart/cart.state.ts` |
+| `features/cart/remove-item/guide/relations.md:12` | `src/enhancers/base/BaseCartEnhancer.ts` | `src/core/base/base-cart-enhancer.ts` |
+| `features/cart/bundle-selector/guide/testing.md:9` | `src/enhancers/cart/BundleSelector/tests/applyBundle.test.ts` | `src/features/cart/bundle-selector/tests/applyBundle.test.ts` (same filename, moved directory) |
+
+A dev following any of these four paths finds nothing there. **Fix:** update the four
+citations to their current paths.
+
+### 83. State manifests are published, feature manifests are not — one entry-point choice, two outcomes — *verified*
+
+`typedoc.json`'s `entryPoints` lists `src/state` (`entryPointStrategy: "expand"`) but not
+`src/features`. That reaches the generated site: every `*.state-manifest.ts` gets a real
+module page — e.g. `state/checkout/checkout.state-manifest.ts` produces
+`docs/site/modules/state_checkout.state-manifest.html` and
+`docs/site/variables/state_checkout.state-manifest.default.html` — while the 29
+`*.manifest.ts` files under `src/features` (e.g.
+`features/display/shipping-display.manifest.ts`) have no equivalent page; only their
+hand-written `guide/*.md` documents are published, not the manifest source itself. Both file
+families hold the same kind of thing — structured prose data read by the doc generators — so
+the state manifests' prose is incidentally public, versioned API surface while the feature
+manifests' identical role is not. **Fix:** decide whether `src/features` should also be an
+entry point, or exclude `*.state-manifest.ts` from `src/state`'s expansion, so the two file
+families are treated the same way.
+
+### 84. `docs/site/latest` is a symlink whose fallback almost never triggers — *verified*
+
+`scripts/docs-build-version.mjs`'s `linkLatest()` (`:252-261`) calls `symlinkSync(folder, link,
+'junction')` and only falls back to `cpSync` inside the `catch` — i.e. only on filesystems
+where the symlink call itself throws (Windows without developer mode). On Linux/macOS,
+including any Linux CI runner, the call succeeds, so `docs/site/latest` is a real symlink
+there. `rsync` and `tar -h` follow it and work; `git archive`, some zip tooling, and some
+static hosts do not dereference symlinks and would publish or archive a broken `latest` entry
+instead of the folder it points to. `docs/site/` is gitignored today, so the gap is latent
+rather than active — but it surfaces the moment the site is archived or hosted by anything
+that does not dereference symlinks. **Fix:** make the fallback a policy choice (always copy,
+or detect the target tool) instead of something that only activates when the symlink call
+happens to fail.
+
+### 85. Stale references to the deleted `scripts/typedoc-fumadocs.mjs` — *verified*
+
+Grepped the repo for other Fumadocs-era markers after finding and removing the
+`<!-- typedoc-index-end -->` comment in `src/index.ts` — the marker the now-deleted
+`scripts/typedoc-fumadocs.mjs` used to locate where to splice its class-page listing. Four more
+references to that same deleted file survive as prose, all asserting a publishing mechanism
+that no longer exists:
+
+- `scripts/docs-coverage.mjs:289` and (as of this writing) `:778` — a comment and a generated
+  `fix:` suggestion string both say `scripts/typedoc-fumadocs.mjs` "deletes the class pages."
+  That file is being actively edited by another agent in parallel, so the second line number
+  may have moved by the time this is read — grep the string to relocate it.
+- `src/core/docs/core-subsystems.ts:10` and `src/core/docs/next-methods.ts:11` — file-header
+  TSDoc making the same claim, given as the reason a hand-written manifest file has to carry
+  reader-facing prose instead of relying on TSDoc.
+
+None of these four blocks is attached to an exported declaration TypeDoc renders — checked
+against the built site, where both modules' pages come up empty of this text — so, unlike the
+`src/index.ts` marker, none is live dead code. But the claim itself is false either way now:
+`scripts/typedoc-fumadocs.mjs` does not exist, `src/core` is a TypeDoc entry point
+(`typedoc.json:3-7`), and `docs/site/classes/` does contain class pages today (e.g.
+`core_sdk-initializer.SDKInitializer.html`) — `src/core/README.md` already carries the
+corrected story (see the note added to finding 35). These four are the copies that were missed.
+**Fix:** update or delete the four citations; `scripts/docs-coverage.mjs` and
+`src/core/docs/*.ts` are not mine to edit, but belong to whoever owns those files next.
+
+---
+
+## Found during a further TypeDoc/reference-docs verification pass (2026-07-31)
+
+Numbered 86+ to keep the existing numbers stable. *verified* = read myself and reproduced
+the reasoning at the cited line, including checking the generated `docs/site` output where
+relevant.
+
+### 86. ~~The events-guide generator ate `{@link}` tags~~ — **FIXED, in progress in parallel**
+
+`src/tests/docs/extract-event-docs.ts`'s `summaryOf()` used to read only the plain-text
+parts of a JSDoc comment, so an `EventMap` summary written as `{@link Foo}` rendered as
+nothing in the generated `guide/reference/events.md`, and `{@link Foo | label}` left a
+stray `|` behind — a silent hole every time `UPDATE_DOCS=1 npm run docs:reference` ran.
+
+Checked against the file as it stands right now (another job is editing it in parallel,
+so this reflects its current state, not necessarily its state when read next): `summaryOf`
+now calls a `commentTextOf` helper that special-cases `ts.isJSDocLink` /
+`JSDocLinkCode` / `JSDocLinkPlain` nodes through a new `linkTextOf()` (`:35-48`), which
+picks the label when one is given (`{@link Foo | label}` → `label`) and falls back to the
+symbol name otherwise (`{@link Foo}` → `Foo`). The fix's own doc comment (`:18-34`)
+narrates the exact bug being fixed. A grep of every generated `guide/reference/events.md`
+for `{@link` or a trailing `| ` found none, consistent with the fix already taking effect.
+No code fix needed from this pass — recorded so it is not re-reported.
+
+### 87. `Discount` is declared twice, and the API-reference site links the wrong one — *verified*
+
+`src/types/api.ts:50` declares `Discount` with `offer_id: number` (required).
+`src/types/global.ts:998` declares a second `Discount` with `offer_id?: number` (optional)
+and is otherwise the same shape. Only the `global.ts` one is reachable from
+`src/index.ts` (`export type * from './types/global'`); `api.ts`'s copy is never exported,
+yet it is the one actually used on `Order.discounts` (`api.ts:205`, `Discount[]`) because
+`Order` itself is imported from `api.ts`.
+
+Confirmed in the built site (`docs/site/interfaces/index.Order.html`): the `discounts`
+field renders as plain text, `<span class="tsd-signature-type">Discount</span>`, with no
+`href` — while `docs/site/interfaces/index.Discount.html` exists as its own page, generated
+from the *other*, differently-shaped declaration. A reader clicking `Discount` on the
+`Order` page gets nothing; a reader who finds the `Discount` page separately gets a shape
+that does not match what `Order.discounts` actually returns (`offer_id` looks always-present
+there when the field actually seen on `Order` can omit it).
+
+**Fix:** make `api.ts`'s `Discount` and `global.ts`'s `Discount` the same declaration (one
+importing the other, or one deleted in favour of the other) — the same shape of fix as
+finding 80's `Order`/`OrderData` split.
+
+### 88. Type duplication across `api.ts` / `global.ts` / `campaign.ts` / `cart.ts` is real but uneven — *verified, correcting an overstated draft*
+
+A draft version of this finding claimed a uniform pattern — `User`/`OrderUser` plus eight
+named types each declared in two or three files. Checked field-by-field; the actual picture
+splits into three different situations, only some of which are the `Discount`-shaped bug
+(same name, incompatible shapes, one of them unreachable from the public API):
+
+**Same name, live in two files, shapes diverge:**
+
+- `Package` — `types/campaign.ts:63` vs `types/global.ts:1158`. `campaign.ts`'s version has
+  two fields `global.ts`'s does not: `product?: Product` and
+  `product_variant_attribute_values?: VariantAttribute[]`. Both files are actively imported
+  (8+ files import `types/campaign`), so this is two live, drifting shapes for one concept,
+  not a dead copy.
+
+**Same name, live in three files, one diverges structurally and two are near-identical:**
+
+- `Campaign` — `types/api.ts:6`, `types/campaign.ts:5`, `types/global.ts:1126`. The `api.ts`
+  copy types `packages` as `PackageSerializer[]` and the payment-method fields as
+  `PaymentMethodOption[]` — different named types, though `PaymentMethodOption` is
+  structurally identical to the inline `Array<{ code, label }>` the other two use, which is
+  why `state/campaign/api.slice.ts:143-198` can assign an `api.ts`-typed API response into a
+  `global.ts`-typed store field without `tsc` complaining. `campaign.ts` and `global.ts` are
+  near-identical to each other, except `global.ts` adds one field neither of the other two
+  has: `id?: number`.
+
+**Same name, live in three files, byte-identical (comments aside):**
+
+- `ShippingOption` — `types/api.ts:317`, `types/campaign.ts:112`, `types/global.ts:1208`.
+  All three are exactly `{ ref_id: number; code: string; price: string }`. This is the
+  closest live analogue to finding 87's `Discount` bug — three declarations of one concept,
+  two of them unreachable from `src/index.ts` — except today all three happen to agree, so
+  there is no visible symptom yet. `api.ts`'s copy is not dead: it types
+  `features/display/shipping-display/shipping-display.enhancer.ts`'s import directly.
+
+**Same name, but both sides of the pair are the already-known-dead `types/cart.ts`:**
+
+`CartItem` (`cart.ts:5` vs `global.ts:915`), `CartState` (`cart.ts:16` vs `global.ts:1042`),
+`ShippingMethod` (`cart.ts:69` vs `global.ts:1569`), `Coupon` (`cart.ts:63` vs
+`global.ts:1558`), and `EnrichedCartLine` (`cart.ts:41` vs `global.ts:1084`) are indeed all
+duplicated by name — but `types/cart.ts` has **zero importers under `src/`** (confirmed by
+grep), so all five are restating finding 21 ("`src/types/cart.ts` holds a second, dead
+`CartState`… candidate for deletion"), not five new defects. Field-by-field, for the record:
+`Coupon` and `EnrichedCartLine` are byte-identical to their `global.ts` counterparts;
+`CartItem`, `CartState`, and `ShippingMethod` are substantially divergent (the `cart.ts`
+versions are the old plain-number shape; `global.ts`'s are the current `Decimal`-based,
+`vouchers`/discount-aware shape) — consistent with what finding 21 already says. **No new
+fix beyond finding 21's: delete `types/cart.ts`.**
+
+**Not a same-name duplicate at all, despite looking like one:** `User` (`api.ts:328`) and
+`OrderUser` (`api.ts:345`) are two *different* exported names whose fields are byte-identical
+(the `OrderUser` declaration even says so in its own comment: "Same fields as the customer on
+a cart; it is a separate name because the two come from different endpoints and may
+diverge."). `User` is internal (only used by `CartBase.user`, never exported from
+`src/index.ts`); `OrderUser` is the public one. This is real duplication-to-watch but a
+different shape of problem from the rest of this finding — one concept, two intentionally
+separate names, not one name pointing at two declarations — so it does not belong in the
+same fix as `Package`/`Campaign`/`ShippingOption`.
+
+**Net correction:** the real, newly-reported duplication is `Package` (2-way, divergent),
+`Campaign` (3-way, one structurally different), and `ShippingOption` (3-way, currently
+identical). The `cart.ts`-side pairs are finding 21 restated, not new. `User`/`OrderUser` is
+a related but distinct pattern. **Fix:** for `Package` and `Campaign`, pick one file as the
+source of truth and have the others import it (or accept the divergence is intentional and
+document why); for `ShippingOption`, collapse to one declaration before the three drift the
+way `Package` already has.
+
+### 89. `Order.display_taxes` and `Order.shipping_code` are read nowhere in `src/` — *verified*
+
+Grepped both field names (`types/api.ts:192`, `:198`) across `src/` outside the type
+declaration itself — no reader. `display_taxes`'s own comment already concedes this: "Tax
+presentation hint the orders endpoint returns... The SDK does not read it; it is here
+because the API sends it" — so its backend meaning is documented as opaque even to the
+person who typed it, not just unverified by this pass. `shipping_code`'s comment claims it
+"match[es] the campaign's `shipping_methods[].code`", which is a plausible enough use, but
+nothing in `src/` actually performs that match today. Both are published, dead surface on a
+type customers integrate against. **Fix:** either wire a consumer (matching shipping code
+back to the campaign's shipping methods is the obvious one for `shipping_code`) or mark them
+as present-for-completeness-only in the TSDoc so a reader does not go looking for the
+behaviour.
+
+### 90. ~~`upsell`'s object-attributes guide documents a field `OrderData` does not have~~ — **FIXED 2026-07-31, in parallel**
+
+`src/features/order/upsell/guide/reference/object-attributes.md:31` used to list
+`supports_post_purchase_upsells` under "`OrderData` (result)". `OrderData`
+(`types/global.ts:1637-1670`) is a `Pick<Order, 'ref_id' | 'number' | 'currency' |
+'total_incl_tax' | 'order_status_url' | 'is_test'>` plus loosely-typed `lines`/`user` — it
+never picked `supports_post_purchase_upsells`, and the field does not appear anywhere else
+on the interface. The field is real, but it lives on `Order` (`types/api.ts`), not on the
+narrower `OrderData` this guide page was documenting.
+
+Fixed by another job while this pass was running, confirmed against the working tree: the
+section is now titled "`Order` (result)", links `{@link index.Order | Order}` instead of
+`OrderData`, adds a note distinguishing the two ("Not to be confused with `OrderData`: that
+type declares only the six fields the `order:completed` event guarantees, and it does not
+carry `supports_post_purchase_upsells` or typed lines"), and adds a new `OrderLine` object
+section for the line fields the feature reads. No further action needed.
+
+### 91. ~~`order` state-reference example JSON is cart-shaped, not `Order`-shaped~~ — **FIXED 2026-07-31, in parallel**
+
+`src/state/order/guide/reference/state-reference.md:81-86`'s example used to have
+`"order": { "ref_id": ..., "number": ..., "total": "59.98", "lines": [{ "package_id": 2,
+"quantity": 1, "price": "29.99" }] }`. Neither `"total"` nor a line's `"package_id"` /
+`"price"` exist on the real shape: `Order` (`types/api.ts:158`) has `total_incl_tax` /
+`total_excl_tax` / `total_tax` / `total_discounts`, none named `total`, and `OrderLine`
+(`api.ts:244-269`) has `id`, `product_sku`, `product_title`, `price_incl_tax` /
+`price_excl_tax` (+ `_excl_discounts` variants) and `quantity` — no `package_id`, no bare
+`price`. It read as a cart line (`CartItem` uses `packageId`/`price`) pasted into an order
+example.
+
+Fixed by another job while this pass was running, confirmed against the working tree: the
+example now uses `total_incl_tax`, `total_tax`, `supports_post_purchase_upsells`, `is_test`,
+and two `lines` entries each shaped as a real `OrderLine` (`id`, `product_title`,
+`quantity`, `price_incl_tax`, `is_upsell`). No further action needed.
+
+### 92. `ConditionalDisplayEnhancer.detectSelectorContext`'s condition branch is unreachable — *verified*
+
+`initialize` calls `detectSelectorContext()` **before** it parses `data-next-show` /
+`data-next-hide` into `this.condition`. So that method's opening `if (this.condition)`
+is always false, and the whole "read the selector id out of the condition itself" path
+never runs — only the DOM-ancestor fallback does. Two consequences:
+
+- A condition written as `selection.<selectorId>.<property>` does not use the selector id
+  it names. It silently falls back to the nearest ancestor `data-next-selector-id`, which
+  on a page with several selectors is a different selector.
+- `conditional-display/guide/reference/logs.md` publishes `Found selector ID in property:`
+  and `Found selector ID in comparison:` as debug output, generated from those two
+  unreachable `logger.debug` calls. Someone debugging a mis-resolved selector will search
+  for them and find nothing.
+
+**Fix:** move the `detectSelectorContext()` call below the condition parse. That is a
+behaviour change — it changes which selector wins for a `selection.<id>.<prop>` condition,
+which is the point — so it needs a test for both the named-id and ancestor cases first.
+Found while splitting the enhancer (2026-07-31); deliberately left alone there because that
+work was a pure move.
+
+### 93. `evaluateParamsCondition` is a second copy of `evaluateParamsConditionRecursive` — *verified*
+
+The `property` / `comparison` / `function` arms exist twice, differing only in whether the
+condition comes from the enhancer's own field or from a parameter. The other five condition
+families (cart, package, order, selection, shipping) all have the top-level function
+delegate to the recursive one; params is the only one that duplicates it.
+
+The visible symptom is divergent logging: the top-level copy carries a `logger` call the
+recursive copy lacks, so **the same condition logs differently depending on whether it is
+nested inside an `and` / `or`**. The evaluation result agrees today, which is what makes
+this a latent bug rather than a live one — the next edit to one arm silently misses the other.
+
+**Fix:** have `evaluateParamsCondition` delegate to `evaluateParamsConditionRecursive`, as
+the other five do. Now cheap: both live in `conditional-display.param-conditions.ts`.
+
+### 94. The only `logger.info` in `conditional-display` is on a hot path — *verified*
+
+`evaluateParamsCondition`'s comparison arm logs a nine-field object at **`info`**, on every
+parameter-store update. Every other diagnostic in this feature is `debug`, i.e. gated behind
+`?debug=true`. So a page using a `param.*` condition prints to the console on ordinary
+navigation for every visitor, not just for a developer debugging.
+
+**Fix:** downgrade it to `debug` to match the rest of the feature. One-line change, but it
+alters what a live page prints, so it is not part of a pure move.
+
+### 95. ~~Four DOM-activated features are invisible to the docs-coverage feature scan~~ — **FIXED 2026-08-02** (the naming collision is a separate, declined decision — see 113)
+
+`scanFeatures` in `scripts/docs-coverage.mjs` finds features by walking for `*.enhancer.ts`
+and keeping the ones that extend a base enhancer. These four extend `BaseDisplayEnhancer`
+and are registered in `attribute-scanner.ts`, but live in `.display.ts` files, so the walk
+never reaches them:
+
+| Class | File | Activated by |
+|---|---|---|
+| `PackageSelectorDisplayEnhancer` | `cart/package-selector/package-selector.display.ts` | `data-next-display="selector.…"` |
+| `BundleDisplayEnhancer` | `cart/bundle-selector/bundle-selector.display.ts` | `data-next-display="bundle.…"` |
+| `PackageToggleDisplayEnhancer` | `cart/package-toggle/package-toggle.display.ts` | `data-next-display="toggle.…"` |
+| `CartDisplayEnhancer` | `cart/cart-summary/cart-summary.display.ts` | `data-next-display="cart.…"` |
+
+They are in neither the numerator nor the denominator of "28/28 features with a
+guide/overview.md", and — unlike the two files the script *does* exclude — they are not
+named in the "excluded from the counts above" list either. The script's own standard is to
+declare exclusions out loud; these are silent.
+
+**It has already cost documentation.** `display-paths.md` — the page enumerating which
+properties a display namespace supports — exists for `cart-summary` and for the four
+`features/display/` features, but **not** for `package-selector`, `bundle-selector`, or
+`package-toggle`. So `data-next-display="selector.{selectorId}.{packageId}.{property}"` is
+routed correctly by the namespace table in `display-core.manifest.ts` and then lands on an
+`attributes.md` that never lists the properties: `isSelected`, `isInCart`, `price`,
+`compare`, `savings`, `savingsPercentage`, `hasSavings` (read off the class's own TSDoc).
+No gate flagged it because no gate can see the feature.
+
+**Fix, in order:** teach `scanFeatures` to find DOM-activated classes in any feature file,
+not only `*.enhancer.ts` — then either write the three missing `display-paths.md` pages or
+declare the four as covered-by-parent in the exclusion list, so the choice is recorded
+rather than accidental. The deeper cleanup is that `.display.ts` means two different things
+in `features/cart/` (a registered enhancer) and in `features/display/` (a state→DOM layer);
+splitting these four into their own feature folders would end the collision, but that moves
+published guide URLs, so it needs its own decision. Found 2026-07-31 while splitting the
+cart enhancers by layer — the collision bit that work, which is how it surfaced.
+
+### 96. ~~A double-tap kills a tooltip permanently~~ — **FIXED 2026-07-31**
+
+Fixed test-first, in the same pass that gave `features/ui/tooltip/` its first tests (9 of
+them, in `tests/tooltip.enhancer.test.ts`). Three failed before the fix, including
+`expected null not to be null` on the stranded-state assertion. The dismissal timeout is now
+tracked in `timers` so `show()`, `cleanupTimeouts` and `destroy()` all cancel it, and the
+callback removes the element it was scheduled for instead of re-reading the live field. A new
+`finalizeStaleDismissal()` runs at the top of `show()` and from `destroy()`, so at most one
+dismissal is ever in flight and a second `hide()` inside the window cannot double-remove.
+
+Left open, deliberately, for want of a failing test to justify it: because `scheduleShow` /
+`scheduleHide` share `cleanupTimeouts`, a hover arriving during a pending dismissal defers
+that node's removal to the next `show()` or `destroy()` rather than the original 200 ms mark.
+The node is invisible while it waits and no tested path leaks it permanently.
+
+The original diagnosis follows.
+
+
+
+`hide()` hands the teardown to `dismissTooltip`, which schedules an **untracked** 200 ms
+`setTimeout` (untracked = not in the enhancer's `timers`, so nothing cancels it). That
+callback reads the *live* `tooltip` field rather than the one it was scheduled for, removes
+whatever it finds from the DOM, and unconditionally nulls `tooltip` and `arrow`.
+`handleTouchStart` toggles with **no delay**. So on a touch device:
+
+1. Tap → `show()` → `isVisible = true`, tooltip mounted.
+2. Tap → `hide()` → `isVisible = false`, removal scheduled for +200 ms.
+3. Tap again inside that 200 ms → `show()` proceeds (`isVisible` is false) → mounts a
+   **new** tooltip, `isVisible = true`.
+4. The timer from step 2 fires → reads the *new* tooltip → removes it from the DOM →
+   `tooltip = null`, `arrow = null`.
+
+Final state is `isVisible === true` with `tooltip === null`, and that is unrecoverable:
+`show()` early-returns on `if (this.isVisible) return`, and `hide()` early-returns on
+`if (!this.isVisible || !this.tooltip) return` **without clearing `isVisible`**. Escape does
+nothing for the same reason. The tooltip is dead for that element until the enhancer is
+destroyed and re-created, and `aria-describedby` is left pointing at a removed node — so a
+screen reader announces a description that is no longer in the document.
+
+The hover path hides this: the show delay defaults to 500 ms (`data-next-tooltip-delay`)
+and `scheduleHide` waits 150 ms, so a re-hover lands after the 200 ms removal has finished.
+Only the immediate toggle in `handleTouchStart` — i.e. mobile — collides.
+
+**Fix:** hold the dismissal timeout in `timers` alongside `showTimeout` / `hideTimeout` so
+`show()` and `cleanupTimeouts` cancel it, and have the callback remove only the element it
+was scheduled for (capture it, do not re-read the field). Both changes alter timing
+behaviour, so they belong with a test — `src/features/ui/tooltip/` has no tests at all
+today, which is why nothing caught this. Found 2026-07-31 while splitting the enhancer by
+layer; the split preserved the behaviour exactly, including this.
+
+### 97. ~~A selector-mode upsell submits quantity 1 no matter what `data-next-quantity` says~~ — **FIXED 2026-07-31**
+
+Fixed test-first. `tests/enhancer.test.ts` (new) failed 8 assertions against the unfixed code,
+including `expected 1 to be 3` on what `addUpsellToOrder` actually submits.
+
+**The fix removed the second source of truth rather than syncing it.** `quantityBySelectorId`
+is gone from `UpsellState`; `state.quantity` is now the only stored quantity, and the
+selector-keyed map that `renderQuantityDisplay` requires is *projected on read* by
+`quantitySnapshot(state)` and discarded. That signature is pinned by the unmodifiable
+`tests/renderer.test.ts`, so the map had to exist somewhere — as a derived view there is
+nothing left to keep in sync. `setQuantity()` is now the single writer, `data-next-quantity`
+is parsed before selector wiring, and `initializeSelectorMode` seeds nothing.
+
+**One claim below was wrong and is corrected here.** Bullet 2 said the quantity-toggle path
+submitted a stale number. It does not, and the test written to prove it *passed* before the
+fix: the enhancer subscribes to its own `upsell:quantity-changed`, and the synchronous bus
+echo repaired the map in the same tick. The defect was a transient wrong *render*, never a
+wrong submit — latent, not live. The regression tests stay.
+
+The original diagnosis follows, bullet 2 included as written.
+
+
+
+Ordering bug in `UpsellEnhancer.initialize`:
+
+- `:122` calls `initializeSelectorMode`, which seeds the per-selector quantity map:
+  `state.quantityBySelectorId.set(state.selectorId, state.quantity)`
+  (`upsell.interaction-handlers.ts:37-38`).
+- `:138-139` *then* reads the attribute: `data-next-quantity` → `state.quantity`.
+
+So the map is seeded with the field's initial value, **1**, and the attribute lands in
+`state.quantity` afterwards where the map never sees it. `addUpsellToOrder` prefers the map
+over the scalar (`upsell.handlers.ts:152-153`, `if (ctx.selectorId &&
+ctx.quantityBySelectorId.has(ctx.selectorId)) quantityToUse = map.get(...)`), so a
+selector-mode offer marked `data-next-quantity="3"` is **submitted to the order API as
+quantity 1**. The customer is charged for one unit of a three-unit offer.
+
+Two related defects in the same map, same root cause — the map and the scalar are two
+sources of truth for one number:
+
+- The `[data-next-upsell-quantity-toggle]` handler writes `state.quantity` and emits, but
+  never writes `quantityBySelectorId`. `renderQuantityDisplay` prefers the map, so the
+  displayed quantity does not follow the toggle — and neither does the submitted one.
+- `adjustQuantity` (the +/- buttons) *does* write the map, which is why that path works and
+  hides the other two.
+
+**Fix:** parse `data-next-quantity` before `initializeSelectorMode`, and make one of the two
+the single source of truth rather than syncing them at each write site. Money path, so it
+needs tests first — `src/features/order/upsell/tests/` currently covers `addUpsellToOrder`
+only, which is precisely the function that reads the map and cannot see how it was seeded.
+
+### 98. ~~`UpsellEnhancer.destroy` clears the array `cleanupEventListeners` needs, before calling it~~ — **FIXED 2026-07-31**
+
+Fixed test-first: `expected "spy" to not be called at all, but actually been called 1 times`
+— the spy being the order API, reached by clicking an action button *after* `destroy()`.
+`super.destroy()` is now the first statement, the array clear is gone, and a comment records
+why the order matters. The `trackUpsellPageView` timer is now cleared in `destroy()` too; it
+had been firing after teardown and throwing `ReferenceError: document is not defined`.
+
+**This finding is why `src/tests/contract/destroy-contract.test.ts` exists**, and that gate
+immediately found a second instance of the same bug in the checkout form — finding 101.
+`UpsellEnhancer` has been removed from its allowlist, so the fix cannot regress.
+
+The original diagnosis follows.
+
+
+
+```ts
+public override destroy(): void {
+  if (this.pageShowHandler) window.removeEventListener('pageshow', this.pageShowHandler);
+  this.state.actionButtons = [];   // ← cleared here
+  super.destroy();                 // ← which calls cleanupEventListeners() (base-enhancer.ts:33)
+}
+```
+
+`cleanupEventListeners` removes the click handler by iterating `state.actionButtons`
+(`:244-246`). By the time it runs, that array is empty, so **no click listener is ever
+removed** — every accept/decline button keeps a live handler after teardown. On a page that
+re-inits (or on `update()`, see below) the handlers accumulate.
+
+This is the exact failure mode the project rule "**call `super.destroy()` first** when
+overriding `destroy()`" exists to prevent (`CLAUDE.md`, and the `sdk-structure` skill's
+behavior contracts). One file violates it and the rule caught nothing, because nothing
+checks it.
+
+**Fix:** move `super.destroy()` above the array clear — or drop the clear entirely, since
+the instance is being discarded. Then consider a contract test asserting that every
+`destroy()` override calls `super.destroy()` first; it is a mechanical check and this is the
+second time the ordering has mattered.
+
+### 99. ~~`UpsellEnhancer.update()` double-wires every listener~~ — **FIXED 2026-07-31, and it was worse than described**
+
+Reproduced and fixed test-first. `expected '4' to be '2'` — after two `update()` calls a
+single `+` press stepped the quantity by **three**, not two. A second test caught the
+mirror-image defect the write-up missed: a button added to the DOM *after* `initialize` was
+never wired at all (`expected "spy" to be called 1 times, but got 0 times`), so `update()` both
+double-wired what existed and ignored what was new.
+
+`scanUpsellElements` now resets `actionButtons` and runs a `state.scanTeardowns` registry
+before re-binding, recording an undo per listener; `cleanupEventListeners` runs those
+teardowns, which only works because finding 98 was fixed first.
+
+The original diagnosis follows.
+
+
+
+`update()` re-runs `scanUpsellElements`, which **pushes** into the existing
+`state.actionButtons` rather than replacing it, and re-runs the quantity-control wiring. So
+after one `update()` the same button is in the array twice and carries two click listeners:
+one press steps the quantity by two, and an accept can fire twice. Reported by the agent
+that split this feature; I confirmed the `push`-into-existing-array shape but did not drive
+an `update()` cycle to observe the double-step.
+
+**Fix:** have `scanUpsellElements` reset `actionButtons` and remove previously-attached
+listeners before re-scanning — which requires finding 98's cleanup to work first.
+
+### 100. Two smaller upsell defects, and one duplicated helper — *verified*
+
+- **`currentPagePath` is never assigned.** It is declared, threaded through
+  `UpsellHandlerContext`, and read by `skipUpsell` → `markUpsellSkipped(id, undefined)`. The
+  skip journey therefore never records which page the shopper skipped from.
+- **`collectDefaultProperties` exists twice**, byte-identical, in
+  `features/order/upsell/upsell.properties.ts` and `features/cart/shared/properties.ts`.
+  The copy was kept deliberately during the split: importing `cart/shared` from the
+  dynamically-imported upsell chunk would pull cart code into that chunk, and
+  `src/tests/contract/` gates production-bundle contents. So this is a real decision
+  (share it via `core/` or `utils/`, or keep two copies knowingly) rather than an oversight
+  — but it should be made rather than inherited.
+
+### 101. ~~`CheckoutFormEnhancer.destroy` leaks a listener on every checkout field~~ — **FIXED 2026-08-02**
+
+The same defect as finding 98, in the checkout form, and worth more because of where it sits:
+
+```ts
+this.fields.clear();          // :2957
+this.billingFields.clear();   // :2958
+…
+super.destroy();              // :2961  → calls cleanupEventListeners()
+```
+
+`cleanupEventListeners` removes `change`, `blur` and `input` handlers by iterating
+`[...this.fields.values(), ...this.billingFields.values()]`. Both maps are empty by the time
+it runs, so **every shipping and billing field keeps all three listeners** after teardown. On
+a page that re-initialises the form, the handlers accumulate: each surviving copy re-runs
+validation and the prospect-cart update on every keystroke of a field the shopper is typing
+into.
+
+Found by `src/tests/contract/destroy-contract.test.ts`, the gate written for finding 98.
+Not fixed here: `checkout-form.enhancer.ts` was being actively rewritten by a parallel
+session when this was found, and a blind edit would have collided. **It is in the gate's
+allowlist — remove the entry when fixing, and the gate will then hold the line.**
+
+### 102. The "`super.destroy()` first" rule is violated by 18 of 22 classes — *verified*
+
+`src/tests/contract/destroy-contract.test.ts` was written to enforce the rule stated in
+`CLAUDE.md` and the `sdk-structure` skill. It found that **18 of the 22** classes overriding
+`destroy()` do their own cleanup first and call `super.destroy()` afterwards. Only four
+comply: `QuantityTextEnhancer`, `BundleDisplayEnhancer`, `PackageSelectorDisplayEnhancer`,
+`PackageToggleDisplayEnhancer`.
+
+So the documented rule is the outlier, not the practice — which is a decision to make rather
+than 18 edits to schedule. The mechanical facts that inform it:
+
+- Base `destroy()` (`core/base/base-enhancer.ts`) does exactly two things: unsubscribe the
+  stores, then call `cleanupEventListeners()`.
+- Therefore calling it late is only *harmful* when the subclass's own pre-super cleanup
+  destroys state that its `cleanupEventListeners()` override reads. I checked all 18
+  mechanically: **exactly two do that** — findings 98 (upsell) and 101 (checkout-form). The
+  other 16 are merely late, with no reachable consequence.
+- Two of the 16 are near-misses worth knowing: `BundleSelectorEnhancer` and
+  `PackageToggleEnhancer` call `super.destroy()` as the *second* statement, after
+  `_instances.delete(this)`.
+
+**The choice:** either narrow the documented rule to what actually matters ("your `destroy()`
+must not clear state that your `cleanupEventListeners()` reads" — which is what the two real
+bugs violate), or keep the blanket rule and work the allowlist down to zero. The blanket rule
+is the one that is mechanically checkable, which is an argument for keeping it; the counter-
+argument is that 16 of its 18 violations are noise, and a gate that mostly reports noise gets
+ignored. Recorded 2026-07-31.
+
+### 103. ~~`this.subscribe()` auto-cleans and `this.on()` silently does not~~ — **FIXED 2026-07-31**
+
+`EventBus.on()` now returns `() => this.off(event, handler)`, and `BaseEnhancer.on()` pushes
+that onto the same `subscriptions` array `subscribe()` uses, so base `destroy()` runs both.
+Headline failing assertion beforehand: `expected "spy" to be called 1 times, but got 2 times`
+— a handler still firing after `destroy()`. 18 new tests across `core/tests/events.test.ts`
+and `core/tests/base-enhancer.test.ts`, including a `HandRolledEnhancer` that reproduces the
+six features' stored-reference-plus-`off()` pattern and proves a double unsubscribe in either
+order is harmless.
+
+**The public surface did not change.** Only the type of `EventBus.prototype.on` widened,
+`void` → `() => void`, which is additive; `src/index.ts` is untouched and the contract gates
+stay green. `NextCommerce.on()` — i.e. `window.next.on` — deliberately still returns `void`,
+since widening the facade is a public-API decision.
+
+**Nothing relied on a handler surviving `destroy()`**, verified three ways rather than assumed:
+no `destroy()` or `cleanupEventListeners()` body in `src/` contains an `emit(` (AST-walked, 0
+hits), so teardown cannot drop an event it needed; `this.destroy()` appears nowhere and
+`AttributeScanner`'s three `destroy()` call sites all construct a fresh instance on
+re-enhancement, so the old behaviour was strictly worse — an attribute change or DOM move left
+double-firing zombie handlers; and only `UpsellEnhancer` used `this.on()`, so the live delta is
+confined to its two handlers, whose `cleanupEventListeners` only removes DOM listeners.
+
+**One caveat, pinned by a test:** subscribers live in a `Set`, so the same function *reference*
+registered twice is a single entry and the first unsubscribe removes it for both registrants.
+Harmless today because every `this.on()` caller passes a per-instance closure, but a
+module-level handler shared by two instances would now die on the first `destroy()`.
+
+**Still open, and now cheap** — five hand-rolled `on`/`off` pairs that can collapse to
+`this.on(...)` (`add-to-cart`, `accept-upsell`, `selection-display`, `conditional-display`, and
+`checkout-form/autofill-detection.ts`), plus four handlers that are still never removed because
+they are inline arrows nothing can reference: `product-display.enhancer.ts:112`,
+`quantity-text.enhancer.ts:63`, `conditional-display.enhancer.ts:118` (its third handler — only
+two of three are cleaned), and `checkout-form.enhancer.ts:317, :715`. Switching each to
+`this.on()` fixes them for free. Outside `features/`, `core/debug/upsell-selector.ts` and
+`core/sdk-initializer.ts` register inline arrows that are never removed either.
+
+The original diagnosis follows.
+
+
+
+`BaseEnhancer` offers two ways to react to something, and only one of them cleans up:
+
+| | Returns | Cleaned up by `destroy()`? |
+|---|---|---|
+| `this.subscribe(store, fn)` | stores the unsubscribe in `this.subscriptions` | **yes** — base `destroy()` runs them all |
+| `this.on(event, fn)` | `void`, stores nothing | **no** — the handler stays on the bus forever |
+
+`EventBus.on()` itself returns `void` (`core/events.ts`), so there is nothing for
+`BaseEnhancer.on()` to keep; `EventBus.off()` exists, but calling it requires having held the
+exact handler reference. `CLAUDE.md` warns about precisely this hazard for the store case
+("direct `store.subscribe()` bypasses auto-cleanup on `destroy()`") and says nothing about the
+event case, where the trap is worse because there is no correct alternative to reach for.
+
+Narrower than it looks, and worth fixing while it is: **one** enhancer uses `this.on(` today —
+`UpsellEnhancer`, at `:165` and `:168` — and both handlers are inline arrows, so no reference
+is retained and they cannot be `off()`'d even by hand. They keep running after `destroy()`.
+Six other features already hand-roll the pattern with a stored bound handler plus an explicit
+`eventBus.off(...)`, which is the workaround this asymmetry forces.
+
+**Fix:** have `EventBus.on()` return an unsubscribe function and `BaseEnhancer.on()` push it
+onto the same `this.subscriptions` array `subscribe()` uses — then both paths clean up by
+construction and the six hand-rolled call sites can collapse. `core/events.ts` and
+`core/base/base-enhancer.ts` are the only files that change; the six existing `off()` calls
+keep working either way. Found 2026-07-31 while fixing findings 97–99.
+
+Two smaller leaks in the same family, left alone: the option-card and `<select>` listeners
+that `initializeSelectorMode` attaches are never removed by `destroy()` (they are attached
+once so they cannot double-fire, but they survive a re-init — the new `scanTeardowns` registry
+could absorb them), and `addUpsellToOrder`'s three-branch quantity resolution is now dead
+weight, kept only because `UpsellHandlerContext.quantityBySelectorId` and
+`currentQuantitySelectorId` are pinned by literal keys in the unmodifiable
+`tests/handlers.test.ts`.
+
+---
+
+## Fixed during the documentation work
+
+Listed so they are not re-reported. All were one-line or docs-only.
+
+| Finding | Where | What changed |
+|---|---|---|
+| `data-next-show-if-profile` activated the conditional enhancer, which then **threw** `Either data-next-show or data-next-hide is required` on every such element | `core/base/attribute-parser.ts` | removed the dead activation. ⚠️ Content those attributes used to hide is now **visible** |
+| A leftover debug statement logged at **warn** level on every read of `unitSavingsPercentage`, a common display path | `features/display/product-display/product-display.enhancer.ts:385` | dropped to `debug` |
+| `npm run lint` could not run at all — `"@typescript-eslint/recommended"` needs the `plugin:` prefix, twice | `.eslintrc.json` | fixed. It now reports **12,365 errors**; see the open decision below |
+| The type-aware linter could not parse any test file, so all 51 colocated feature tests were silently unlinted | `tsconfig.json` excluded `**/*.test.ts` | added `tsconfig.eslint.json` |
+| Dead profile system: `ProfileManager` docs, a 703-line guide, a 451-line recipe, and 4 `profile:*` events that are not in `EventMap` | across docs | removed |
+| A leftover `console.log` on every modal button click, printing the action name to the visitor's console. Forbidden by CLAUDE.md (`this.logger` instead), and now inside `core/` where the log-reference gate applies | `core/ui/general-modal.ts:260` | reported |
+| `TemplateRenderer` reports a failed placeholder with `console.warn` rather than a logger, so a blank field on a live page is invisible to the SDK's own log level. Documented in the core log reference as part of the `shared/` → `core/rendering/` move; the call itself still bypasses the logger | `core/rendering/template-renderer.ts:54` | reported |
+| The docs tooling hardcodes `src/features/display/display-types.ts` in two places — `featureReference.test.ts:51` and `extract-display-paths.ts` (which reads `PROPERTY_MAPPINGS` out of it). Moving that file breaks doc generation with an `ENOENT`, not a readable error. Same fragility class as the line-number coupling in the open decisions below | `src/tests/docs/` | reported — blocks moving display base classes into `core/base/` |
+| **Generated pages cited `file:line`**, so any reformat rewrote hundreds of doc lines describing unchanged behaviour and failed the drift tests. One blank line in `sdk-initializer.ts` was enough. This blocked `npm run format`, the lint cleanup, and task C1 | seven extractors under `src/docs/extract/` | **fixed** — anchors are now `file › EnclosingSymbol` via `source-anchor.ts`. See [documentation-plan.md §0a](./documentation-plan.md) |
+| **`FieldManager` (364 lines) was dead code** — nothing imported it, nothing constructed it, no method had a caller in `src/` or `e2e/`. It was not stray scaffolding but a *fork*: an earlier extraction of the field-management cluster that was never wired in, while the enhancer kept and maintained its own copies. The two had diverged in both directions — the enhancer tracks a submit button that `FieldManager` has no concept of, and `FieldManager.getFieldNameFromElement` had grown an 83-line heuristic (inferring `country`/`province`/`postal` from substrings in `id`/`name`) that the live 13-line version does not have. Adopting it would therefore have been a **behaviour change on the money path** — field→order mapping decides what data lands on a real order. The damage while it existed was documentary: the manifest claims `managers/` via `extraSource`, so the checkout guide published **13 log messages from a class that never ran**, and anyone debugging a missing field would search `Found billing field: {fieldName}`, find nothing, and wrongly conclude the scan had failed | `features/checkout/managers/field-manager.ts` | **deleted 2026-07-31** (was at `76403a1` if the heuristic is ever wanted). The 13 phantom log entries left the guide with it. Extracting the field cluster from the *live* code is step 4 of the `checkout-form` split, which preserves behaviour by construction |
+| Tolerating checkout fields that carry **no SDK attribute at all** — inferring `country`/`province`/`postal` from `id`/`name` substrings — is a plausible feature, and the deleted `FieldManager` contained a working implementation of it. Worth deciding on its own merits rather than inheriting by wiring up an old class: a wrong guess on the money path (an element named `billing_country_note` classified as `country`) is more expensive than not guessing | `features/checkout/` | open — not scheduled. Retrieve the prior art from `76403a1` if picked up |
+| `state/attribution/attribution.state.ts` had **49 bare `console` calls**, the most of any file outside the debug tooling — and they were two different things wearing one costume. Ten were real `error`/`warn`/`info` paths, each hand-prefixing `[AttributionStore]`, i.e. reimplementing what the logger does. The other 39 sit inside an action literally named `debug()` that a developer invokes as `window.next.attribution.debug()`, where the grouped, aligned console output **is** the product | `state/attribution/attribution.state.ts` | **fixed** — the ten now go through `createLogger('AttributionStore')` (same shape as `parameter.state.ts`), which supplies the prefix, so the hand-written duplicates are gone. The `debug()` action keeps its `console` calls behind a scoped `eslint-disable no-console` that states why: routing them through the logger would level-gate them and lose `console.group`, which is the formatting that makes the report readable. `no-console` in this file is now 0 |
+| A field that passed validation could **keep showing its error message.** `input` removed the error label from all three places it can live (the immediate wrapper, a `.form-group` wrapping a `.form-input`, and a `.form-group` ancestor) — and its comment says exactly why. But the two *valid* paths, `blur` with a good value and `change` from autofill or autocomplete, cleared only the immediate wrapper. So on markup where the message sits in a `.form-group` ancestor, correcting the field cleared its red outline and the store error while leaving the message on screen. **Predates the extraction** — the original had 1 clearing site on blur-valid against 3 on input | `features/checkout/checkout-form/field-validation-display.ts` | **fixed** — `markValid` now goes through the same `clearErrorLabels` helper `input` uses, so all three paths agree. Found by the unit tests written for the module, and pinned by two tests that fail if the narrow clearing returns |
+| 🔴 **Two live implementations of the order payload, and they disagree about the shipping method.** `OrderBuilder.buildOrder` (via `OrderManager`) and `CheckoutFormEnhancer.buildOrderData` (via its own `createOrder`) both assemble `CreateOrder`, and the addresses, lines, user and attribution blocks are identical — but the shipping-method fallback is not: the enhancer tries **checkout store → cart store → hardcoded `1`**, while `OrderBuilder.getDefaultShippingMethodId()` tries **cart store → checkout store → the campaign's first `shipping_methods` entry → `1`**. So the same cart state can produce a different `shipping_method` on the order depending on which path the shopper took, and the enhancer's path can ship by method `1` on a campaign where the campaign's own first method would have been correct. `payment_detail` mapping turned out **not** to diverge — both resolve through `API_PAYMENT_METHOD_MAP`, one inline and one via a wrapper | `features/checkout/builders/order-builder.ts` + `features/checkout/checkout-form/checkout-form.enhancer.ts` | reported — **not merged.** Reconciling them means deciding which fallback order is correct for money, which is a product call, not a refactor. Whichever wins, the loser should be deleted rather than left as a second copy |
+| `OrderBuilder` has **4 bare `console.log`/`console.warn` calls on the order path**, including `[OrderBuilder] No shipping method found, using fallback ID 1` — the one line that tells you an order is about to ship by a guessed method. Being bare console, it is ungated and unprefixed by the SDK's logger, and it is invisible to the log reference | `features/checkout/builders/order-builder.ts` | reported — same fix as `template-renderer.ts` (route through `Logger`), but it belongs with the reconciliation above rather than on its own |
+| **"Keep a valid autofilled province" was unreachable code.** `updateStateOptions` read `provinceField.value` to decide whether to preserve a province the browser had autofilled — but by then the field had been overwritten twice, first with `<option>Loading...` near the top of the function and again by the state render. The read always saw `''`, so a shopper whose province was autofilled always had to re-pick it, and the `Kept autofilled state:` debug log could never print. **Predates the extraction** — the original had the same ordering — and the surrounding validation was already correct, so only the read position was wrong | `features/checkout/checkout-form/state-fields.ts` | **fixed** — the value is captured beside `originalHTML`, before the first overwrite. Found by the unit tests written after extraction; guarded by a test that fails if the capture moves back down |
+| `loadCountryStates` evicted its cache entry with `void request.finally(…)`, which derives a **second** promise that rejects whenever the request does — a different promise from the one the caller awaits and catches, with no handler of its own. One failing states fetch therefore produced a genuine unhandled rejection, outside the function's own error handling, which is fatal in a process configured to treat those as such | `features/checkout/checkout-form/state-fields.ts` | **fixed** — `.then(cleanup, cleanup)` instead of `.finally`, so the derived promise always settles. The failure test deliberately installs no `unhandledRejection` listener, so a regression surfaces as a failing run |
+| `CheckoutFormEnhancer` carried a **verbatim copy of `core/url-utils.ts › preserveQueryParams`** — 50 lines, functionally identical, differing only in two log lines. Two implementations of "carry the tracking parameters to the next page" is exactly the drift risk that matters here: a fix to one would silently not reach the other, and the parameters decide whether an order is attributed | `features/checkout/checkout-form/checkout-form.enhancer.ts` | **fixed** — the copy is deleted and the enhancer imports the core function. Its two duplicate log strings (`Preserved parameters from store:`, `Error preserving query params:`) left the checkout guide with it; core's own `[URL Utils] Error preserving query parameters:` remains documented |
+| `setupAutofillDetection` subscribed to `address:autocomplete-filled` and **never unsubscribed**, while returning only the poll's interval handle — so the caller could stop the poll but not the subscription. `EventBus` is a singleton, so a second setup on the same page (a re-init) left the first handler attached: it would still fire on the next autocomplete, schedule its own resume timer, and re-snapshot a field map that no longer matched any live field. **Third instance of this exact shape** after the billing `transitionend` listener and the expiry-month `change` listener | `features/checkout/checkout-form/autofill-detection.ts` | **fixed** — it returns a teardown that clears the interval *and* calls the unsubscribe `EventBus.on` hands back. First written with a stashed handler plus `EventBus.off`, then corrected: `on` now returns an unsubscribe and its TSDoc says to prefer it, because `off` needs the exact reference and an inline arrow would be unremovable. A module function cannot use `this.on(...)` for automatic cleanup, so the explicit teardown stays — the enhancer calls it from `destroy()` |
+| The autofill poll handle was stashed with `(this as any).autofillInterval = …` and cleared with `clearInterval((this as any).autofillInterval)` — untyped at **both** ends, so neither the set nor the clear was checked and a typo in either would have leaked a 30-second interval silently | `features/checkout/checkout-form/checkout-form.enhancer.ts` | **fixed** — `setupAutofillDetection` now returns the handle and the enhancer holds it in a typed `autofillInterval` field |
+| ~~`populateCountryDropdown` silently drops an author's placeholder that carries a value.~~ **Downgraded on review — not a defect.** The guard re-appends the first option only when `!firstOption.value`, so a first option *with* a value is dropped. But a valued option is a real country entry, and the loop immediately regenerates every country from the API list, so nothing is lost except the author's own wording for that one country — and "keep it" would append it *alongside* the generated copy, producing a duplicate marked disabled and hidden. The current behaviour is correct. Worth keeping the HTML-spec wrinkle on record though, because it makes this easy to misread: `HTMLOptionElement.value` falls back to `textContent` when there is no `value` attribute, so an option with only text is **not** empty-valued | `features/checkout/checkout-form/country-fields.ts` | no change needed. A fix was written and reverted before commit once the regeneration was traced |
+| `updateFormLabels` / `updateBillingFormLabels` assign `label.textContent`, which **destroys any child markup inside the label** — a styled required-marker `<abbr>`, a tooltip `<span>` — replacing it with plain text. An author who marks up their labels loses that on the first country change | `features/checkout/checkout-form/country-fields.ts` | reported, **deliberately not fixed.** Pinned by a test so the behaviour is at least known. Weighed and declined: the label still *reads* correctly (only the markup around it goes), so the loss is cosmetic, while the fix means finding and rewriting the right text node among possibly several plus whitespace nodes — fiddly surgery on the checkout form for no functional gain. Worth doing only alongside a decision to support marked-up labels properly |
+| The expiry-month `change` listener **stacked one per call**. `populateExpirationFields` clears the `<select>`'s options with `innerHTML = ''`, which does not remove listeners from the element itself, then unconditionally added another — so a re-render left N live handlers, each closing over the element references captured at *its* call. Same leak as the billing animation, found the same way (writing tests for the extracted module) | `features/checkout/checkout-form/expiration-fields.ts` | **fixed** — the listener is registered with an `AbortSignal` and the previous one aborted first. Guarded by a test that asserts exactly one of three registered signals stays live |
+| `populateYearOptions` matched the shopper's saved year by interpolating it into a CSS selector — `` querySelector(`option[value="${savedValue}"]`) ``. A value containing a quote builds malformed CSS, and a real browser throws `SyntaxError` from `querySelector` where **happy-dom is lenient and returns `null`** — so no unit test could ever have caught it. Not reachable today (the value only ever comes from `<select>.value`, which browsers constrain to a rendered option) but a latent crash for zero benefit | `features/checkout/checkout-form/expiration-fields.ts` | **fixed** — compares `option.value` while scanning `yearField.options` instead of building a selector |
+| The billing expand/collapse animation **never removed its `transitionend` listener** except when the listener fired naturally and removed itself. Two paths left one attached: the 350 ms fallback force-completing an animation, and a shopper re-toggling before the transition finished. Stale handlers then all ran on the next real `transitionend` — each re-settling its own animation and logging a "complete" for a direction the section was no longer going — and accumulated without bound across repeated toggles | `features/checkout/checkout-form/billing-animation.ts` | **fixed** — listeners now registered with an `AbortSignal`; `cancelPending` and the fallback both abort. Found by the unit tests written for the extraction, reproduced as two failing tests first, and those tests now guard it |
+| `ApiClient.request()` computes `duration`, `statusCode`, `errorType` and `retryAfter` on every call and **never reads any of them** — telemetry scaffolding that was wired up to nothing. Harmless but misleading: it reads as if API latency and error classification are being reported somewhere, and `getErrorType()` exists only to feed a dead variable | `api/client.ts` (`request`) | reported — either report them or delete them; 3 of the 4 are already `no-unused-vars` errors |
+| ~154 line refs in **hand-written** prose (`core-subsystems.ts`, `storage-keys.ts`, `meta-tags.ts`, the `source:` fields in `analytics-events.ts`) are literal strings no extractor regenerates, so **no gate can catch them going stale**. A reformat makes them quietly wrong rather than loudly wrong — the opposite of the generated case, which now fails loudly or not at all | `src/docs/content/`, `src/docs/render/` | reported — not fixed; needs either symbol refs by hand or a check that each cited line still contains what the prose claims |
+
+---
+
+## Found during the wave-1 restructure (2026-08-02)
+
+Four parallel agents did the composition root (`src/client.ts`), the `core/analytics/`
+kebab rename, finding 95, and finding 105. These came out of that work. Everything below
+was verified against the source; where an agent's claim was checked by hand that is said
+explicitly.
+
+### 106. ~~`useOrderStore.loadOrder` types the API client `any`, erasing the `IApiClient` seam~~ — **FIXED 2026-08-02, and it was two operations, not one**
+
+`state/order/order.state.ts › OrderState.loadOrder` is `(refId: string, apiClient: any)`.
+Every gain from typing the holders at the interface is thrown away at that boundary — which
+is also why `order-display`, `order-item-list` and `sdk-initializer` type-checked identically
+whether their field was `ApiClient` or `IApiClient`, and why the "no type changes needed"
+estimate for the composition root was wrong (five declarations across four files did need
+widening).
+
+**Fix:** type the parameter `IApiClient`. One line, no runtime change.
+
+### 107. ~~`setApiKey`/`getApiKey` are dead, and the shared client makes them hazardous~~ — **FIXED 2026-08-02. Half the title was wrong: `getApiKey` was never dead**
+
+Nothing in `src/` calls `setApiKey`. Before `src/client.ts` existed it was inert; now it
+mutates the *shared* instance while `client.ts`'s memo key goes stale, so a later
+`getApiClient(oldKey)` returns a client that has been silently re-keyed underneath it. Not
+reachable today.
+
+**Fix:** drop them from `IApiClient`, or make `getApiClient` the only re-keying path.
+
+### 108. `state/` and `core/` now import the composition root, which sits above them — *known, documented*
+
+`state/cart/cart-calculator.ts`, `state/campaign/api.slice.ts`, `core/sdk-initializer.ts`
+and `core/next-commerce.ts` import `@/client`. The `sdk-structure` skill §2 says neither
+layer may import upward. This is the shape of "fetch your dependency" rather than "receive
+it", and it is recorded in [`src/api/README.md`](../src/api/README.md) rather than hidden.
+
+**Fix:** the next §6 phase — features and stores receive an injected client instead of
+asking for one. That means changing enhancer constructor signatures and how
+`AttributeScanner` instantiates features, so it is its own phase.
+
+### 109. ~~`bundle-selector`'s attributes reference documented four properties the enhancer does not implement~~ — **FIXED 2026-08-02**
+
+`guide/reference/attributes.md` listed `compare`, `savings`, `savingsPercentage` and
+`hasSavings` as "deprecated properties (still supported for backwards compatibility)" of the
+`bundle.` display namespace, and its own example used
+`data-next-display="bundle.upsellBundleMV.savings"`. `bundle-selector.display.ts ›
+BundleDisplayEnhancer.getPropertyValue` has no case for any of them — verified by hand: its
+cases are `isSelected`, `name`, `price`, `originalPrice`, `discountAmount`,
+`discountPercentage`, `hasDiscount`, `unitPrice`, `originalUnitPrice`, `currency`, then
+`default:`, which logs `Unknown bundle display property`. So the doc taught markup that
+silently renders nothing. The four names do exist in `bundle-selector.renderer.ts`'s
+`FORMAT_MAP`, which serves the in-card `data-next-bundle-display` — presumably what the doc
+was read off. Example corrected, table replaced with a link plus an explicit
+"not part of this namespace" note.
+
+### 110. ~~`vite.config.legacy.ts` had no `define`, so `build:cf` overwrote the good UMD with one that throws~~ — **FIXED 2026-08-02**
+
+Verified against `git show HEAD:vite.config.legacy.ts`: no `define` block at all, so
+`__VERSION__` — declared in `vite-env.d.ts` and read by `core/analytics/events/event-builder.ts`
+— survived into the legacy output as a bare identifier (2 occurrences in the built UMD).
+`npm run build:cf` runs the legacy config *after* the main one with `emptyOutDir: false`, so
+it replaced the working UMD with one that raises `ReferenceError: __VERSION__ is not defined`
+on the first analytics event. The committed `dist/index.umd.js` has 0 occurrences, so this
+never shipped — but `build:cf` is a live script.
+
+### 111. The bundle gate can never see the code under review, because CI builds after it tests — *verified*
+
+Finding 105's fix widens `src/tests/contract/bundle-contents.test.ts` to every
+`dist/chunks/*.js`. It does not fix the deeper problem: `.github/workflows/build.yml` runs
+`bun run test:coverage` at step `:27` and `bun run build` at step `:41`, and `dist/` is
+committed rather than gitignored. So in CI this gate always reads the `dist/` that arrived
+with the checkout, never one built from the PR. A change that pulls the docs machinery into
+a customer chunk goes green, and only fails once someone rebuilds and commits `dist/` — after
+it has shipped.
+
+**Fix:** build before testing in the workflow, or have the test build to a temp dir itself.
+Not applied — reordering CI is a human's call.
+
+### 112. The `state`-chunk co-location rule in `manualChunks` is stale, and repairing it measurably helps — *verified, deliberately not applied*
+
+The rule keys on `/utils/(logger|storage|events).ts`; those files are `core/*` now, so it
+matches nothing. Repairing it is one token (`/utils/` → `/core/`) and was measured: chunk-level
+cycles drop **9 → 4**, `state` sheds its edges to `analytics` (today `state` cannot initialise
+without pulling the 119 kB `analytics` chunk, and through it `debug`), and ES output shrinks
+243 B.
+
+**Not applied** because it rewrites two chunks customers download (`analytics` −1,578 B,
+`state` +1,485 B, both re-hashed), and a chunk reassignment is exactly what caused the TDZ
+crash the surrounding comment records. Needs an e2e run behind it.
+
+### 113. Splitting the four `.display.ts` enhancers into their own feature folders — *declined 2026-08-02*
+
+Finding 95 named this as the deeper fix for `.display.ts` meaning two different things in
+`features/cart/` and `features/display/`. Declined: each split adds a feature id, hence a new
+sidebar branch and new URLs, and the natural follow-through moves already-published pages —
+which the documentation rules treat as a breaking change to customer links. The benefit was
+naming hygiene for contributors, and the gate change bought that more cheaply:
+**registration in `attribute-scanner.ts`, not the file name, now decides whether a class is a
+feature**, so the suffix no longer hides anything from the count. If it is worth ending later,
+do it as a rename wave with redirects, together with the `features/display/*.display.ts` layer
+files that share the suffix.
+
+### 114. ~~Content drift on the three hand-written `display-paths.md` pages is ungated~~ — **FIXED 2026-08-02**
+
+The new coverage metric checks the page **exists**, not that it matches the code. The three
+cart namespaces (`selector.`, `bundle.`, `toggle.`) cannot use the generator, because
+`PROPERTY_MAPPINGS` in `core/base/display-types.ts` covers only `cart`, `package`, `selection`,
+`shipping` and `order` — setting `displayNamespace` on their manifests would make the drift
+test overwrite each page with "No paths are declared". So they are hand-written, and finding
+109 is what an ungated hand-written property table costs.
+
+**Fix:** a generator that reads each enhancer's `getPropertyValue` cases. It cannot read
+`FORMAT_MAP`, which is a superset — that superset is what made bundle's doc wrong.
+
+### 115. `features/checkout/debug/test-order-manager.ts` has no importers — *verified*
+
+Nothing in `src/` or `e2e/` imports it, so it never enters the module graph in any build. It
+was named in `manualChunks`' debug rule, which made it look live; the clause was redundant
+anyway since the file already sits under `/debug/`.
+
+**Fix:** delete it, or wire it up if the test-order flow is still wanted.
+
+---
+
+## Found during the wave-2 restructure (2026-08-02)
+
+Five parallel agents did the `core/debug/` kebab rename, the `CheckoutFormEnhancer.initialize`
+re-sequence, the `display-paths` generator (finding 114), the API-seam hardening (findings
+106–107), and the `services/ui-service.ts` split. Everything below came out of that work.
+Nothing here was fixed unless it says so — each is a behaviour change, and the agents were
+told to report rather than force one.
+
+### 116. ~~Four test files mock `@/api/client` with a fake that implements nothing~~ — **FIXED 2026-08-02.** All four threw, not three; each double is now `Pick<IApiClient, …>` (not `Partial`, which `{}` satisfies) and `getApiClient` calls `getApiKey()` plainly. But see finding 129: the project's type gate does not read test files, so these annotations are not yet enforced
+
+`vi.mock('@/api/client', () => ({ ApiClient: class {} }))` and variants, in
+`features/order/upsell/tests/enhancer.test.ts`,
+`features/cart/accept-upsell/tests/accept-upsell.enhancer.test.ts`,
+`features/cart/package-toggle/tests/handlers.test.ts` and
+`features/checkout/prospect-cart/tests/prospect-cart.enhancer.test.ts`. This is the failure
+mode `api/client.types.ts` documents: the fake is keyed on a path string and checked by
+nobody, so it satisfies no interface and drifts silently.
+
+**It has already cost something concrete.** `src/client.ts` cannot call a method on the client
+it memoizes without an optional call — `instance?.getApiKey?.()` — because three of these
+fakes throw on a plain `instance.getApiKey()`, and doing so failed **79 tests**.
+
+**Fix:** type each fake `Partial<IApiClient>` (or `Pick<IApiClient, …>`) so the compiler checks
+it; then the optional call in `getApiClient` can become a plain one.
+
+### 117. ~~`CheckoutFormEnhancer`'s boot sequence leaks five listeners past `destroy()`~~ — **FIXED 2026-08-02. There were thirteen, not five** — see 134
+
+`cleanupEventListeners()` removes the submit / change / payment / shipping / billing-toggle /
+test-data / Konami listeners. It does not remove these, all registered during boot:
+
+| Registration | Why it survives |
+|---|---|
+| `this.eventBus.on('payment:error', …)` | bypasses `this.on()`, the wrapper that records an unsubscribe. `EventBus` is a page-lifetime singleton, so it keeps firing on a destroyed enhancer — the exact case CLAUDE.md names |
+| `this.eventBus.on('address:autocomplete-filled', …)` | same, outside `initialize` |
+| `document.addEventListener('next:country-changed', …)` | inline arrow — no reference is kept, so it cannot be removed at all |
+| `window.addEventListener('pageshow', …)` | inline arrow, **and it writes `checkoutStore`** |
+| `window.addEventListener('focus', …)` | inline arrow, **and it writes `checkoutStore`** |
+
+The last two are the expensive ones: after a re-enhance, every stale instance also resets
+processing state and the payment method. The pattern for doing this right already exists two
+steps earlier in the same method — `boundHandleTestDataFilled` is stored and removed.
+
+**Fix:** `this.on(...)` for the two bus handlers; a stored bound reference (or an
+`AbortSignal`, as `expiration-fields.ts` and `billing-animation.ts` now use) for the three DOM
+ones. It changes destroy behaviour, which is the point, so it needs its own step.
+
+### 118. ~~The `begin_checkout` timer is never cleared, so a destroyed form still reports~~ — **FIXED 2026-08-02**
+
+`scheduleBeginCheckoutTracking` waits 500 ms for analytics providers to register. `destroy()`
+clears the billing-animation timers but not this one, so an enhancer destroyed inside that
+window still fires `begin_checkout`.
+
+**Fix:** hold the handle and clear it in `destroy()`.
+
+### 119. ~~A stale `config` snapshot means bfcache never re-initialises Spreedly~~ — **FIXED 2026-08-02** (the handler reads the store live; it was four awaits, not three)
+
+`initialize` captures `const config` before three awaits, and `setupBfcacheRestoreHandler`
+closes over that snapshot. `handleConfigUpdate` exists precisely because
+`spreedlyEnvironmentKey` can arrive *after* boot and creates the credit-card service then — in
+which case `this.creditCardService` is truthy while the captured
+`config.spreedlyEnvironmentKey` is still undefined, so a back/forward restore silently skips
+re-initializing the hosted fields. Pre-existing; the re-sequence neither caused nor fixed it.
+
+**Fix:** read `useConfigStore.getState()` inside the handler rather than closing over a boot
+snapshot.
+
+### 120. ~~`payment:error` has two incompatible payloads~~ — **FIXED 2026-08-02. The obvious fix was an infinite loop — see 151**
+
+`EventMap['payment:error']` declares `{ errors: string[] }`. The handler reads
+`event.message`. So the enhancer's own two emits (`initializeCreditCard`,
+`displayPaymentError`), which send `{ errors }`, never reach the display path; the only
+emitter that does is `managers/order-manager.ts`, which sends the off-contract
+`{ message, code, details }`.
+
+**Fix:** decide which shape is the contract, change `EventMap` and both emitters to match, and
+keep the handler reading that one field. Two tests currently pin the *present* behaviour, so
+they will need updating with it.
+
+### 121. ~~Nothing calls `UIService.destroy()`~~ — **FIXED 2026-08-02**
+
+`CheckoutFormEnhancer.destroy()` tears down the validator, the card service, the prospect
+cart, the phone inputs and the autocomplete. It does not touch `this.ui`, so the 500 ms
+autofill poll and every floating-label listener outlive the form.
+
+**Fix:** `this.ui?.destroy();` — one line, but it is a real teardown change, so it belongs with
+finding 117 rather than on its own.
+
+### 122. Switching payment method twice inside 300 ms leaves the deselected form open — *verified*
+
+Each reveal/collapse schedules an untracked 300 ms `setTimeout`. Switch twice inside that
+window and two timers point at one form; the *expand* timer — registered first, so it fires
+first — wipes the `height: 0px` the collapse just pinned. Final state carries both
+`--expanded` and `--collapsed` with no height, so the deselected method's fields stay visible
+**and in the tab order**. Pinned by a passing test in
+`services/ui-service/tests/payment-form-display.test.ts`.
+
+**Fix:** track the handle per form and clear the pending one before scheduling.
+
+### 123. Eleven of `UIService`'s nineteen public methods have no caller, and four of them are broken — *verified*
+
+`displayErrors`, `focusFirstError`, `updateFieldState`, `handleCheckoutUpdate`,
+`handleCartUpdate`, `updateProgress`, `handleResponsiveUI`, `enhanceAccessibility` and
+`destroy` are never called from the enhancer. That is why the following have never been seen
+in production:
+
+- **`updateFieldState(name, 'valid')` leaves the error on screen** — it clears
+  `next-error-field` only, while `displayErrors` also set `has-error`, an error icon on the
+  wrapper, and the message element. Same shape as the bug fixed in `field-validation-display.ts`.
+- **`enhanceAccessibility` never finds the message it describes** — it looks for
+  `.next-error-label` in `field.parentElement`, but `ErrorDisplayManager` appends it to the
+  enclosing `.form-group`, which is the **grand**parent (input → `.form-input` → `.form-group`).
+  A screen reader is told the field is valid while a message is visible.
+- **A second `initialize()` orphans the autofill poll** — `startPeriodicCheck` overwrites the
+  interval id without clearing, so `destroy()` can only ever stop the last one.
+- **`handleResponsiveUI` leaks focus listeners** — attached straight to the element instead of
+  through `EventHandlerManager`, so `destroy()` cannot remove them and a second call stacks
+  them. Not a one-line fix: routing them through the manager would *replace* the `focus`
+  handler `setupFloatingLabel` already registered on the same element.
+
+**Fix:** decide per method whether it is wanted. Dead-but-broken public API is worse than
+either dead or broken alone — it reads as available.
+
+### 124. ~~`bundle-selector.display.ts`'s `FORMAT_MAP` still declares four properties the resolver rejects~~ — **FIXED 2026-08-02**, gate added. The stated reason it was safe to delete was wrong — see 128
+
+Finding 109 fixed the doc. The source still carries `compare`, `savings`,
+`savingsPercentage` and `hasSavings` in `FORMAT_MAP`, twenty lines above the
+`getPropertyValue` that has no case for them. That table is what the wrong doc was read off,
+and the new generator is deliberately built not to trust it — but the trap is still in the
+file for the next reader.
+
+**Fix:** delete the four keys (behaviourally a no-op: `getDefaultFormatType` is only ever
+called with a property the resolver answered), and add the gate that closes the root cause —
+"the format table declares no format for a property the resolver cannot answer".
+
+### 125. ~~Two debug classes hide a thousand-line method each~~ — **FIXED 2026-08-02** (84% of `getContent` was a static CSS literal). The folder split is deferred — see 137
+
+Renaming `core/debug/` surfaced where the real problem is. It is not the file sizes:
+
+- `panels/event-timeline-panel.ts` (2,685 lines) has five clean seams — persistence, capture,
+  validation rendering, flow diagram — **but `getContent()` alone spans ~1,075 lines.**
+  Splitting the file around it would move the blob, not break it up.
+- `debug-overlay.ts` (1,129 lines): the mini-cart is ~40% of the file and
+  `updateMiniCart()` alone is ~310 lines; `addEventListeners` is ~155.
+
+Both classes' methods are cited by symbol in generated pages (`storage-keys.md`,
+`window-surface.md`, `url-parameters.md`, `logs.md`), so any split regenerates those in the
+same step. `STORAGE_EXPIRY_HOURS` in particular is cited and must stay resolvable.
+
+**Fix:** break the two methods up first, in place; split the files only afterwards.
+
+### 126. A rename sweep anchored on `\.ts` misses import paths — *verified, process note*
+
+The `core/debug/` rename found `docs/code-findings.md` citing
+`await import('@/core/debug/DebugOverlay')` — an import path with **no** `.ts` suffix, which a
+`Name.ts` sweep does not match. It also found a filename cited *inside* the directory being
+renamed (`debug-panels.ts`: `// EventsPanel moved to panels/EventTimelinePanel.ts`).
+
+**Fix, for the next rename:** sweep both `Name.ts` and `dir/Name'`, and sweep inside the target
+directory as well as outside it.
+
+---
+
+## Found during the wave-3 restructure (2026-08-02)
+
+Five parallel agents did the checkout-form teardown fixes (117–121), the API-client test
+doubles (116), the format-table gate (124), the `core/debug` method breakup (125), and the
+`checkout-validator.ts` split. The split is where most of this came from: the file had **777
+lines and zero tests**, and writing 89 of them turned up seventeen defects, several of which
+stop a real shopper from paying.
+
+### 127. ~~The **generated** cart display-paths page documents ten paths that render nothing~~ — **FIXED 2026-08-02. Four of the five routed namespaces were wrong, not one — see 143**
+
+This is finding 109 again at ten times the size, and this time on a page nobody hand-wrote.
+
+`features/cart/cart-summary/guide/reference/display-paths.md` is generated from
+`PROPERTY_MAPPINGS.cart`. What answers `cart.*` at runtime is
+`cart-summary.display.ts › CartDisplayEnhancer.resolveValue`, and the two disagree in both
+directions:
+
+| Documented, but the resolver has no case | Answered, but never documented |
+|---|---|
+| `hasItems`, `quantity`, `discounts`, `hasCoupons`, `hasCoupon`, `couponCount`, `coupons[0].code`, `coupons[1].code`, `discountCode`, `discountCodes` | `isFreeShipping`, `isCalculating`, `shippingName`, `shippingCode`, `currency`, `totalQuantity` |
+
+A page author following the published page gets `undefined` and a
+`Unknown cart display property` debug log; `discountCode` renders `''` through its config
+fallback, which is worse because it looks deliberate.
+
+**The new gate cannot see this.** It reads the enhancer only for namespaces that have no
+routing-table entry; `cart` has one, so that branch never opens the source. And the method is
+called `resolveValue`, not `getPropertyValue`, so the extractor's walk would miss it even if
+it looked. Same shape as finding 95: what the gate cannot see is what rots.
+
+**Fix:** teach the extractor the `resolveValue` shape, then run the both-ways comparison for
+routed namespaces too — `PROPERTY_MAPPINGS` becomes a claim to check rather than the source of
+truth. Ten wrong rows on a published page is the bill for treating it as the latter.
+
+### 128. All three selector-style `FORMAT_MAP`s are dead at runtime — *verified*
+
+`bundle-selector.display.ts`, `package-selector.display.ts` and `package-toggle.display.ts`
+each override `parseDisplayAttributes` to narrow `this.property` — but they call
+`super.parseDisplayAttributes()` **first**, and it is the super call that computes the format.
+At that moment the key is still the full path (`upsellMV.savings`, selector id included), so
+every lookup misses, including the ones for properties that do exist. `formatType` is never
+recomputed after narrowing.
+
+Measured effect: `data-next-display="bundle.{id}.price"` on a whole-dollar price renders
+`100`, not `$100.00` — `formatAuto` only currency-formats numbers with exactly two decimals.
+`cart-summary` is unaffected: it does not override `parseDisplayAttributes`, so its lookups
+hit.
+
+**Not fixed** — recomputing the format after narrowing changes what renders on live pages, so
+it needs an e2e run behind it. It also means the generated `display-paths.md` pages publish a
+`format` column that does not describe what a shopper sees.
+
+**The deeper fix, and its cost:** fold the format in beside each resolved property
+(`name → { format, resolve }`) so the two lists cannot disagree by construction —
+`package-toggle`'s resolver is already an object literal and is 90% of the way there. That is
+three enhancers and ~250 lines on the live render path, and it only *works* if the ordering
+above is fixed in the same change. Do them together, or not at all.
+
+### 129. ~~`npm run type-check` has never checked a single test file~~ — **FIXED 2026-08-02**: `npm run type-check:tests` runs the wider program, ratcheted against `scripts/type-check-tests.baseline.json`. Four of the 31 were a missing `vitest/globals` reference, not debt; 27 are frozen. It caught eight new errors within the same wave
+
+`tsconfig.json` excludes `**/*.test.ts` and `**/*.spec.ts`. So the command this repo treats as
+its type gate — and which every agent and every commit message in this restructure cited as
+proof — covers no test code at all. `tsconfig.eslint.json` exists for the wider program and
+currently reports **31 errors** (bundle-selector fixtures, a `this` typing in `cart-summary`,
+two `Cannot find name 'vi'`, `vite.config.ts`), which is presumably why it was never wired to a
+script.
+
+This is why finding 116's `Pick<IApiClient, …>` annotations are documentation rather than a
+gate today.
+
+**Fix:** a `type-check:tests` script over `tsconfig.eslint.json`, ratcheted from 31 the way
+`docs-coverage.baseline.json` ratchets. See the open decision on lint — same shape, same
+argument.
+
+### 130. Shoppers whose name is not written in Latin script cannot check out — *verified*
+
+```
+NAME: /^[A-Za-zÀ-ÿ]+(?:[' -][A-Za-zÀ-ÿ]+)*$/     ← no u flag, Latin-1 only
+CITY: /^[\p{L}\s.''-]+$/u                          ← every script
+```
+
+田中, Владимир and Γεώργιος are rejected with *"Name can only contain letters…"* — about a
+name made entirely of letters. The same shopper's **city** in the same script passes, on the
+same form, because `isValidCity` uses `\p{L}` and `isValidName` does not.
+
+Compounding it: neither class contains the curly apostrophe U+2019, and `CITY`'s comment
+claims it handles *"both straight and curly"* while the class holds U+0027 twice. An iPhone
+autocorrects `'` to `’`, so "St. John's" and "O'Brien" are rejected with no visible cause.
+
+**Fix:** `\p{L}` with the `u` flag in `NAME`, and U+2019 in both classes. Small, and it is the
+difference between a market being able to buy and not.
+
+### 131. A multi-step checkout never validates a separate billing address — *verified*
+
+`step-validation.ts`, step 3 — the only gate a step-navigating shopper passes through:
+
+```ts
+return validateForm(ctx, formData, countryConfigs, currentCountryConfig,
+                    true, undefined, true);
+//                        ^^^^^^^^^  ^^^^  billingAddress = undefined, sameAsShipping = true
+```
+
+Both are hard-coded, and `validateStep` has no parameter for either. Downstream,
+`validateForm` guards the billing block with `!sameAsShipping && billingAddress`, so it is
+skipped twice over. A shopper who ticks "use a different billing address" is told everything is
+fine and finds out at the gateway, as an AVS decline.
+
+**Fix:** thread the billing address and the `sameAsShipping` flag through `validateStep`. It is
+a signature change, and it will start rejecting orders that are currently accepted — which is
+the point, but it needs to be a decision rather than a side effect.
+
+### 132. Card fields go unchecked when the card service is absent, and nothing can tell — *verified*
+
+Every card check in `form-validation.ts` sits inside `if (ctx.creditCardService) { … }` with no
+`else`. A form whose Spreedly key arrived late — or never — passes `includePayment: true` with
+empty card fields. The verdict object cannot distinguish *"the card is fine"* from *"nobody
+looked"*, so neither can any caller.
+
+**Fix:** treat a missing card service as "cannot validate" rather than "valid" when
+`includePayment` is on. Related: finding 119's stale-config path is one way the service ends up
+missing.
+
+### 133. Fourteen further validation defects, all pre-existing — *verified, pinned by tests*
+
+Found writing the first tests this file has ever had. Each is pinned by a test that documents
+*current* behaviour, so fixing one starts as a failing test.
+
+| # | Defect | What a shopper sees |
+|---|---|---|
+| 1 | `isValidPhone`'s ten-digit floor is a US assumption | a complete Norwegian/Danish/Icelandic number is rejected on any page without `intl-tel-input` |
+| 2 | Billing phone has no `phoneInputManager` fallback, only `isValidPhone` | billing phone judged more crudely than shipping phone on the same form |
+| 3 | Billing city is never format-checked | `12345` accepted as a billing city, rejected as a shipping city |
+| 4 | `province` is only checked for emptiness, never against the country's state list | a nonexistent province passes |
+| 5 | Required-phone detection reads `document.querySelector('[name="phone"]')`, not `FieldFinder` | a required phone marked only with `data-next-checkout-field` is never enforced; with two forms on a page, the *other* form decides the rule |
+| 6 | `applyRule`'s `postal`, `custom` and `default` arms are unreachable — `createValidationRules` emits neither type and nothing can register a rule | blur a US ZIP containing `ABCDE` → green; submit → rejected. Blur and pay disagree |
+| 7 | `focusFirstErrorField`'s card list has `number` but not `cc-number`, the only key the validator emits | the error renders below the fold and the page never scrolls to it |
+| 8 | `applyRule`'s phone rule ignores `phoneValidator` and, with `phoneInputManager` present, hard-selects the **shipping** widget while ignoring the value it was handed | billing phone validated against the shipping field |
+| 9 | `validateField` returns valid for any field with no rule | `province`, `address2` and every `billing-*` field report correct on blur whatever is typed |
+| 10 | `clearAllErrors` clears the map unconditionally but only clears the display for elements carrying the SDK attribute, while `setError` reaches fields by `name`/`id`/`data-field` too | a red message stays on screen while `isValid()` says the form is clean |
+| 11 | `step-validation` picks `firstErrorField` by source order; `form-validation` picks by page position | the two paths send the shopper to different fields on identical markup |
+| 12 | The two paths also differ in shape — step always emits `firstErrorField` (as `undefined`), form omits it | a caller reading the key gets `undefined` vs missing depending on the flow |
+| 13 | `formData[field].trim()` throws on a non-string (a numeric postal from rehydrated session data) in both `validateForm` and `validateBillingAddress` | pay throws out of validation with no message; the form stays stuck in processing |
+| 14 | `!sameAsShipping && billingAddress` — ticking "different billing address" with nothing captured skips the whole billing block | same class as 131, on the single-page path |
+
+### 134. Two teardown gaps remain in `CheckoutFormEnhancer` — *verified*
+
+Findings 117/118/119/121 are fixed and the class now routes every DOM listener through one
+`listen()` helper backed by an `AbortController`. Two things were left because both need code
+that is gated behind other decisions:
+
+- **`cleanupEventListeners()` removes the payment radios, shipping radios and billing toggle by
+  re-querying the DOM at destroy time** instead of remembering the nodes it bound. If the
+  billing form was cloned or the DOM changed since `setupEventHandlers`, the removal misses.
+  Fixing it means touching `setupEventHandlers`, which sits beside the gated
+  `handleFieldChange`.
+- **`displayPaymentError` schedules an untracked 100 ms + 10 s pair**, so a form destroyed in
+  between still writes to the error container. One-shot and cosmetic.
+
+Also recorded, because it cost real time: **findings 101 and 117 contradicted each other and
+neither noticed.** 117 asserted that `cleanupEventListeners()` already removed the
+change/blur/input group; 101 said `destroy()` cleared the maps that method iterates *before*
+calling it. Both were right about their own half, so the field listeners 117 treated as safe
+were leaking too. Two findings written from separate reviews, never cross-read. 101 is now
+fixed (the `clear()` calls run after `super.destroy()`), which is exactly the narrow rule
+finding 102 argues is the one that matters.
+
+### 135. ~~Four `console.log`s in the debug overlay, one on a one-second repaint loop~~ — **FIXED 2026-08-02** (the three in the click router became `logger.debug`, which added three genuinely new lines to the published log reference — as `console.log` they were invisible to it)
+
+`updateMiniCart` carries a bare `console.log(cartLevelDiscountList)` — no guard, no semicolon —
+and the overlay repaints on a 1 s interval, so an open overlay spams the console continuously.
+Three more sit in the click router. `no-console` flags all four; CLAUDE.md forbids them.
+
+Dead code found alongside, all in the mini-cart:
+
+- `pricingHtml` — 16 lines building two markup variants, assigned in both branches, never read.
+- `discountList` — built from `item.discounts`, never read. Its line reads
+  `d.description || d.description || \`Offer #${d.offer_id}\`` — the same operand twice, so the
+  `Offer #` fallback is the only branch that can fire.
+- `collectCartLevelDiscounts` builds `itemLevelOfferIds` and never uses it; the "avoid showing
+  them twice" filter its comment promises was never written.
+- **`hasCartLevelDiscounts` is set for vouchers and for the no-detail fallback but never for
+  offers**, so a cart whose only discount is a cart-wide offer fills `cartLevelDiscountList`
+  and then never renders the popup. The new test pins current behaviour, not the intent.
+
+### 136. ~~`src/core/debug/styles/event-timeline.css` is an orphan duplicate~~ — **FIXED 2026-08-02** (deleted after `diff` confirmed it byte-identical and unimported)
+
+Byte-identical to `src/styles/debug/event-timeline.css`, and nothing imports it —
+`debug-style-loader.ts` loads the `src/styles/` copy. 9.2 kB left behind by the `core/debug/`
+rename; another instance of finding 126.
+
+**Fix:** delete it.
+
+### 137. ~~The `core/debug` files still want a folder split~~ — **DONE 2026-08-02.** The `+N more` trap it predicted did fire on exactly one row — see 147
+
+The method breakup is done — `getContent()` 1,074 → 20 lines, `updateMiniCart()` 312 → 73,
+`handleContainerClick` 102 → 15, and 905 lines of static CSS lifted into
+`event-timeline-panel.styles.ts`. The files are still 1,818 and 1,249 lines.
+
+The folder split was **not** done because of a mechanism worth knowing:
+`extract-storage-keys.ts` sorts sources lexicographically and prints only the first plus
+`+N more`, so a new sibling named `debug-overlay.handlers.ts` sorts *before* `debug-overlay.ts`
+and rewrites the visible text of rows whose subject did not change. The high-value seams
+(`*.mini-cart.ts` at ~480 lines, `*.persistence.ts`, `*.capture.ts`) each move a cited symbol —
+`closeMiniCart`, `bindResizeHandle`, `loadSavedState`, `watchDataLayer` — so the split has to be
+one deliberate step with a single regeneration, not five.
+
+Two seams move nothing and are safe today: the flow diagram (~340 lines) and the validation
+rendering (~100).
+
+Also learned here: **finding 125's "`addEventListeners` is ~155 lines" was wrong.** It is 11.
+The long code was two *class-field arrow functions* beside it — `handleContainerClick` (102)
+and `handleContainerHover` (39) — which a symbol-based method scan folds into the neighbouring
+method. A tool that measures methods will keep missing fields; measure both.
+
+---
+
+## Found during the wave-4 restructure (2026-08-02)
+
+Six agents: the order-payload reconciliation, the routed-display-namespace gate (127), the
+`core/debug` folder split (135–137), the `prospect-cart` split, the test type gate (129), and
+a follow-up that fixed the fixtures the new gate immediately caught. Bond decided findings
+130, 131, 132, 120 and the order-payload question during this wave; the fixes for the first
+three shipped in it.
+
+### 138. ~~Two live order payloads~~ — **FIXED 2026-08-02, and there were three divergences, not one**
+
+Bond's call: `OrderBuilder` wins, `CheckoutFormEnhancer.buildOrderData` is deleted. Measuring
+the two builders field by field before merging turned up two differences the original entry
+never mentioned, and disproved its claim that `payment_detail` did not diverge:
+
+1. **`payment_detail` did diverge, and it was the Klarna trap from finding 1.** Two constants
+   named `API_PAYMENT_METHOD_MAP` exist; the one `order-builder.ts` imports had no `klarna`
+   key. Merging naively would have turned every Klarna order on the main submit path into
+   `card_token` — a silent money regression, caught by the failing-first test
+   (`expected 'card_token' to be 'klarna'`). The key was added to the shared map first.
+2. **The store precedence was reversed**, independently of the campaign fallback: the enhancer
+   read checkout → cart, `OrderBuilder` reads cart → checkout. When both stores hold a
+   different method, the order now carries the cart store's.
+3. **`success_url` / `payment_failed_url`** differed: the enhancer sent a meta-tag value
+   verbatim unless it began with `/`, while `OrderBuilder` makes it absolute. `content="thanks"`
+   used to be sent as the bare string; it is now `origin + '/thanks'`, matching what express
+   orders already sent.
+
+Also fixed with it: `OrderBuilder`'s four bare `console.log`/`console.warn` calls — including
+`[OrderBuilder] No shipping method found, using fallback ID 1`, the one line that says an order
+is about to ship by a guessed method — now route through `createLogger('OrderBuilder')`, which
+supplies the same prefix so the strings are byte-identical. Without that, the merge would have
+shipped four ungated console calls to every live checkout.
+
+**Worth knowing:** `OrderManager.createOrder` has **no live caller** (only `createExpressOrder`
+and `handleOrderRedirect` are used), so the Klarna defect was latent — it would have gone live
+the moment this merge landed.
+
+### 139. ~~`ProspectCartEnhancer` never tears down its listeners~~ — **FIXED 2026-08-02**, and the widened gate immediately found two more — see 149
+
+The class has **no `destroy()` override at all** — confirmed by grep. `CheckoutFormEnhancer.destroy()`
+calls `this.prospectCartEnhancer.destroy()` believing it tears the feature down, but base
+`destroy()` only unsubscribes the cart-store subscription. Every listener `triggers.ts` registers
+outlives the enhancer: email/phone/name `blur`+`change`, and in `formStart` mode a `focus` and
+an `input` handler on **every field in the form**.
+
+**`src/tests/contract/destroy-contract.test.ts` cannot catch this**, because it only inspects
+classes that *do* override `destroy()`. A class that overrides nothing is invisible to it —
+which is the same blind spot as finding 95 (a gate that scans by shape misses what does not
+have the shape).
+
+**Fix:** override `destroy()`/`cleanupEventListeners()` here, and widen the contract test to
+assert that every enhancer registering listeners also removes them, rather than only checking
+the ordering inside those that override.
+
+### 140. `formStart` mode creates a prospect cart with no validation at all — *verified*
+
+The `formStart` trigger's handler calls `createProspectCart()` directly and sets
+`hasTriggered = true` on the first `focus` or `input` in *any* form field, never routing through
+`checkAndCreateCart`'s email/phone/name checks. A shopper who tabs into a field and leaves gets
+a prospect cart created from whatever is on the form at that instant. Pinned by a `DEFECT:` test
+in `prospect-cart/tests/triggers.test.ts`.
+
+### 141. ~~Three of the four prospect-cart timeout fields are never assigned~~ — **FIXED 2026-08-02** (re-verified before deleting; the claim held)
+
+`updateEmailTimeout`, `emailBlurTimeout` and `emailInputTimeout` are declared and cleared in two
+places each, and **written nowhere** — verified by reading every occurrence. Only
+`phoneBlurTimeout` is real. Harmless today only because the `hasTriggered` gate independently
+blocks a second creation; it is the residue of an incomplete earlier refactor.
+
+### 142. Two triggers in one tick can create two prospect carts — *verified*
+
+`createProspectCart`'s guard (`prospectCartRef.value` set) only flips *after* the awaited API
+call resolves, so two triggers firing in the same tick — a debounced blur landing as a manual
+check also passes — can both pass the guard and race two `createCart` calls. No existing test
+exercises it. Not fixed: it touches the money-adjacent create path.
+
+### 143. Four of the five routed display namespaces were wrong, not one — *verified, docs fixed*
+
+Finding 127 measured `cart`. Extending the gate to read what each resolver answers — and to
+treat `PROPERTY_MAPPINGS` as a claim rather than the source of truth — found the same hole in
+three more:
+
+| Namespace | Documented but unanswered | Answered but undocumented |
+|---|---|---|
+| `cart` | 10 | 6 |
+| `package` | 0 | 9 (`hasRetailPrice` + eight `.raw` variants) |
+| `selection` | 4 | 6 |
+| `shipping` | 0 | 2 (`cost.raw`, `price.raw`) |
+| `order` | **9** | **37** — the whole `user.*` alias tree, both address aliases, five `items.*` aliases, and all fourteen `attribution.*` paths |
+
+Five other guides were teaching dead paths and are corrected (`order.total_incl_tax`,
+`order.supports_upsells`, `cart.quantity`, `cart.savingsAmount`, and a
+`data-next-display="cart.item.quantity"` that was never a display path at all).
+
+The 23 dead routing entries are now **published as broken** rather than as working; deleting
+them from `PROPERTY_MAPPINGS` is a live-code change and was deliberately not done here.
+
+Two further defects surfaced and were left alone, both code rather than docs:
+
+- **`ProductDisplayEnhancer` answers a `campaign.` namespace** (`name`, `currency`, `language`,
+  routed in `attribute-scanner.ts`) that **no page documents and `PROPERTY_MAPPINGS` does not
+  contain.** `docs:coverage` scores it as covered because it counts by owning feature.
+- **`shipping.name` renders the code** — `ShippingDisplayEnhancer.getPropertyValue` returns
+  `shippingMethod.code` for both `name` and `code`.
+
+### 144. ~~`order.status` renders "Completed" for every order~~ — **WRONG AS WRITTEN. Corrected and closed 2026-08-02**
+
+The finding claimed the two routed fallbacks (`order.status` → `Completed`,
+`order.paymentMethod` → `Credit Card`) were what a shopper sees. **They were never
+reachable.** `BaseDisplayEnhancer` applies a `fallback` only when the resolver returns
+`null`/`undefined`, and `order-display.properties.ts › getDisplayValue` returns `''` on every
+miss. Measured before any change: `order.status` rendered **empty**, and `order.paymentMethod`
+rendered **"PayPal"** for a PayPal order — correctly, because the API does send that field.
+
+I wrote the finding from the routing table alone without tracing what the resolver returns.
+The lesson is the same one finding 143 catalogues: a table that *looks* like the answer is not
+the answer.
+
+**What was actually wrong** — and it is a documentation-integrity defect, not a shopper-facing
+one: the generated page asserted the "Completed" behaviour as fact, so the docs taught
+something the code never did. Both dead fallbacks are now deleted, and the page says plainly
+that the orders API sends no status and points at `order.statusUrl` instead.
+
+**What the investigation established, from the backend serializer rather than from the SDK's
+own types** (`campaigns-app/campaigns/api/orders/serializers.py › OrderSerializer`):
+
+- **`payment_method` is returned** — a `ChoiceField`, set explicitly on all three endpoints the
+  SDK calls. It is now declared on `Order`, so the resolver answers a field that exists.
+- **`status` is not returned under any name.** `OrderSerializer` is a plain `Serializer`, so
+  only declared fields are emitted; there is no order-state field to rename to.
+- The SDK's `PaymentMethod` union was missing `twint`, `link` and `affirm` — typing a response
+  field with 11 of the backend's 14 codes would have been a fresh instance of the same defect.
+- Undeclared on the SDK types but returned by the API, for a later pass: `statement_descriptor`
+  on the order, and `product_id`, `variant_id`, `metadata`, `properties` on each line.
+
+**Still open, related:** `render-feature-reference.ts` prints "where the routing entry declares
+a fallback value, renders that fallback, which reads as though it worked" on every routed
+namespace's page. That sentence is now suspect for the same reason and should be checked
+against the resolver rather than the table.
+
+### 145. `DisplayPath` was declared twice and the copies had already drifted — *fixed 2026-08-02*
+
+`src/docs/extract/extract-display-paths.ts` and `src/docs/render/render-feature-reference.ts`
+each declared an interface of that name; the renderer's copy lacked the `path` field, so a
+caller importing the type from the renderer could not read where a routing entry sends a name.
+The renderer now imports and re-exports the extractor's type. Caught by the new
+`type-check:tests` gate, not by `npm run type-check` — the only consumer of the difference was
+a test file.
+
+### 146. Running prettier on a guide `.md` breaks `npm run docs:coverage` — *verified, process trap*
+
+An agent ran `npx prettier --write` on `checkout-form/guide/use-cases.md`. Prettier rewrote the
+frontmatter's `"` quotes to `'`, and the coverage script's frontmatter reader strips only double
+quotes — so the title became `'Features/Checkout/Checkout Form/Use Cases` (leading quote
+included) and the gate failed with *"pages disagree on their sidebar path"*.
+
+**Rule:** never run prettier on a file under a `guide/` folder. The formatting decision on
+markdown is not free — it changes a value the nav gate parses. Repaired by restoring double
+quotes.
+
+### 147. A file move can rewrite a citation whose subject did not change — *verified*
+
+`extract-storage-keys.ts` sorts citing sites lexicographically and prints the first plus
+`+N more`. Splitting `event-timeline-panel.ts` changed which site sorts first for
+`debug-events-history`, and the new first site is a `localStorage.setItem` inside an anonymous
+`setTimeout` callback, which the anchor logic cannot attribute to a named symbol. The row went
+from `… › EventTimelinePanel.checkAndCleanExpiredStorage +3 more` to a bare
+`… persistence.ts +4 more` — same key, same behaviour, strictly less useful page.
+
+**Fix:** prefer a citation that resolves to a named symbol over the lexicographically first one.
+
+### 148. Two hand-written `file:` registries regeneration does not touch — *verified*
+
+`src/docs/content/storage-keys.ts` (`EXPIRY_MECHANISMS`) and `src/docs/content/core-logs.ts`
+(`CORE_LOG_SOURCES`) carry `file:` fields maintained by hand. `UPDATE_DOCS=1` does not update
+them, so a file move leaves them stale and only `sourceReferences.test.ts`'s file-exists
+assertion catches it — after the fact. Both were repaired by hand during the `core/debug` split.
+
+---
+
+## Found during the wave-5 restructure (2026-08-02)
+
+Four agents: the `order.status` investigation (144), the `payment:error` contract (120), the
+prospect-cart teardown plus a widened destroy gate (139/141), and the `next-commerce.ts` split.
+Bond decided 144 and 120 during this wave.
+
+### 149. ~~Every display enhancer leaks an unremovable `document` listener~~ — **FIXED 2026-08-02.** `BaseDisplayEnhancer` now carries one `AbortController` and a `listen()` helper; the destroy-contract allowlist is empty
+
+The destroy gate widened for finding 139 — "a class registering a raw `addEventListener` must
+have a teardown path" — immediately flagged two classes beyond the one it was written for:
+
+| File | Line | Registration |
+|---|---|---|
+| `core/base/base-display-enhancer.ts` | 247 | `document.addEventListener('next:currency-changed', () => { … })` |
+| `features/display/product-display/product-display.enhancer.ts` | 93 | `document.addEventListener('next:currency-changed', async () => { … })` |
+
+Neither file overrides `destroy()` or `cleanupEventListeners()` at all, and both register an
+**inline arrow**, so there is no reference to remove even if something tried.
+
+`BaseDisplayEnhancer` is the base class of every display enhancer, so **each element carrying a
+`data-next-display` attribute attaches one permanent `document` listener**, and they accumulate
+on every re-enhance. This is the same shape as finding 117, one layer down and far wider.
+
+Both are allowlisted in `destroy-contract.test.ts` with their names spelled out, so the gate
+stays green while the debt stays visible.
+
+**Fix:** the `AbortController` pattern the checkout form and prospect cart now use — one
+controller per instance, aborted from `cleanupEventListeners()`.
+
+### 150. The `payment:error` fix that "obviously" follows from the finding is an infinite loop — *verified*
+
+Finding 120 said to change `EventMap` and both emitters to match. Done literally, that hangs the
+page: `displayPaymentError` **emits** `payment:error`, and `listenForPaymentErrors` **calls**
+`displayPaymentError`. While the payloads disagreed, the handler's read of `event.message` came
+back `undefined` and the loop stopped. Align them and the handler re-enters the display forever —
+`EventBus.emit` runs handlers inline, so it is unbounded synchronous recursion.
+
+**The live express-decline path was one emit away from it**: `order-manager.ts` already sends
+`{ message, code, details }`. The contract mismatch this finding set out to remove was the only
+thing holding that loop shut.
+
+Fixed with a re-entrancy flag (`announcingPaymentError`) set for the duration of the synchronous
+emit, which is also what distinguishes the form's own echo from an error raised elsewhere.
+
+Three further corrections to finding 120: there were **three** emit sites, not two; the card
+path **emitted twice for one error**, so the two collapse to one rather than both being
+rewritten; and nothing was ever invisible to a shopper — both enhancer sites call
+`displayPaymentError` directly, so the damage was confined to the type surface, where a third
+party reading the declared `errors` field got `undefined` from the one emitter that mattered.
+
+### 151. A sanctioned regeneration deleted 33 documented log entries — *verified, fixed*
+
+`CORE_LOG_SOURCES` models one console prefix as belonging to one file. Splitting
+`next-commerce.ts` into eleven modules moved every `logger.*` call out of the file the registry
+named, so the **normal, permitted** `UPDATE_DOCS=1` run credited that file with zero log lines
+and removed the whole "Logged from next-commerce.ts" section — 33 entries — from the published
+`logs.md`. Two more hand-maintained registries had the same shape of staleness
+(`CORE_ERRORS`' per-message `file`, and `core-subsystems.ts`' `public-facade.sources`).
+
+**What made it dangerous is that no gate objected.** The generator did what it was told; the
+drift tests compared the new page against the new source and agreed. Only reading the diff
+caught it.
+
+Fixed by declaring the eleven modules, reattributing the four upsell throws that moved, and
+extending `CoreLogSource` with **`prefixFrom`** — the file that owns the `Logger('…')` literal
+when the file that logs does not. `coreLogs.test.ts` now checks the literal there, so a facade
+split across modules is expressible instead of unrepresentable.
+
+**Rule for the next split:** after moving code that logs, diff the regenerated page, do not just
+run the gate. A generator cannot tell "this file stopped logging because the code moved" from
+"this file never logged".
+
+### 152. Three agents ran `git stash` despite an explicit prohibition — *process*
+
+Three separate agents this session ran `git stash` while siblings were editing the same tree,
+each after being told not to in their own briefing, and each disclosed it unprompted. No work
+was lost — I verified the stash list, conflict markers and file contents after each — but a
+scoped `git stash` during concurrent edits can silently take another agent's uncommitted work.
+
+`.claude/settings.json`'s `permissions.deny` already enforces the push/deploy ban at the tool
+layer. **Adding `git stash` there is the fix**: a rule that has to be read to be followed will
+eventually not be. Not applied — it would also block Bond's own use, so it is Bond's call.
+
+### 153. Two more `next-commerce` defects, carried through the split verbatim — *verified*
+
+- `removeCoupon` is `(code: string): void` wrapping `void cartOperations.removeCoupon(code)`, so
+  a caller cannot learn the removal failed — while `applyCoupon` returns `{ success, message }`.
+  Same finding as the earlier `removeCoupon` entry, now isolated in `next-commerce.coupons.ts`.
+- `formatPrice` uses a CommonJS `require('@/core/currency-formatter')` inside an ESM module.
+  Pre-existing, moved verbatim into `next-commerce.utility.ts`.
+
+---
+
+## Found during the wave-6 restructure (2026-08-02)
+
+Four agents: the display teardown (149), the `handleFieldChange` remainder, the
+`sdk-initializer.ts` split, and the `campaign.` namespace. **Findings 156 and 157 are the two
+worth acting on soonest** — both put wrong data on a real order.
+
+### 154. ~~`AttributeScanner.destroy()` destroys no live enhancer~~ — **FIXED 2026-08-02.** The proposed fix was insufficient — see 162
+
+Found while fixing 149. The scanner tracks instances in a `WeakMap`, which cannot be iterated,
+so a full SDK teardown leaves every enhancer — and everything it registered — attached. The
+per-instance leak in 149 is fixed; this is the layer above it, and it means "tear the SDK down"
+has never actually done so.
+
+**Fix:** keep an iterable registry alongside the `WeakMap`, or hold instances in a `Set` and let
+the `WeakMap` stay the element→instance index.
+
+### 155. The healthy-boot gate silently narrowed itself when a prefix spanned two files — *fixed 2026-08-02*
+
+`coreLogs.test.ts` built its lookup as `new Map(CORE_LOG_SOURCES.map(s => [s.prefix, …]))`.
+A `Map` built that way keeps the **last** entry per key, so once one console prefix covered
+several files — which is exactly what splitting a facade produces — every message from the
+earlier files read as "invented" and the check quietly stopped covering them.
+
+It never failed, so nothing announced it. What it did instead was **block two clean splits**:
+`initializeLocationAndCurrency` (244 lines, one dependency) and `initializeAttribution` were
+left in `sdk-initializer.ts` solely to keep all five `CORE_HEALTHY_BOOT` lines in the
+last-declared file, and a comment was added to `core-logs.ts` instructing future editors to
+preserve the declaration order. The lookup now accumulates across every file sharing a prefix,
+the comment is corrected, and **both clusters are now splittable.**
+
+**The general lesson:** a gate that reads from a keyed collection built off a list is only as
+strong as the key's uniqueness. Two entries with one key is silent data loss inside a test.
+
+### 156. A separate billing address survives `checkoutStore.reset()` — and so do the payment token and shipping method — *verified*
+
+`reset: () => set(initialState)`. Zustand's `set` **merges**, and `initialState` declares no
+`billingAddress`, `paymentToken` or `shippingMethod` — I compared the interface against the
+literal field by field. All three are in `partialize`, so they persist to sessionStorage.
+
+`handleOrderRedirect()` calls this reset, and `features/checkout/README.md` states in as many
+words that it clears the billing address. It does not. Finish an order that used a separate
+billing address, start another in the same session — on a shared or kiosk browser, that is the
+previous shopper's address and card token carried into someone else's checkout.
+
+**Fix:** list all three in `initialState` (or `set(initialState, true)` to replace rather than
+merge — but that drops any field a future edit forgets to add, so the explicit list is safer).
+Then correct the README.
+
+### 157. A billing phone never reaches the order in E.164 — *verified*
+
+`readFieldValue`'s `|| fieldName === 'billing-phone'` arm is unreachable: `handleFieldChange`
+routes every `billing-*` name down the billing branch first, and that branch writes the raw
+typed text into `billingAddress.phone`. `phone-input.ts` writes the correct E.164 value on the
+same `input` event, but its listener registers at boot step 13 against the enhancer's step 15,
+so the raw write lands second and wins — and on `blur`/`change` it is the only write at all.
+
+**Shopper:** a separate billing address with a non-US number reaches the order as
+`07700 900123` rather than `+447700900123`. AVS checks and any SMS to that number fail.
+
+### 158. Four more defects in the field-routing half — *verified, each pinned by a `DEFECT:` test*
+
+- **`change` errors four fields that `field-validation-display.ts` documents it never errors.**
+  The leftover `fieldsToValidate` block calls `setError` on `change` as well as `blur`, so a
+  Google Places suggestion whose city the pattern rejects turns red the instant it lands.
+- **Values are stored untrimmed while validation trims them.** `readFieldValue` returns
+  `target.value`; the validation one line later uses `.trim()`. `"  ada@example.com  "` gets a
+  green tick and goes into `formData`, into user-data storage, and onto the order.
+- **Two unguarded `sessionStorage.setItem` calls** (`next_selected_country`), where
+  `simple-exit-intent.handlers.ts` wraps the same operation in try/catch. In Safari private mode
+  the throw escapes an async listener and skips the validation-display update that follows.
+- **`BILLING_ADDRESS_FIELD_MAP` was duplicated** — the enhancer carried a private copy of the
+  constant exported from `constants/field-mappings.ts`. Editing the shared one would have had no
+  effect. The copy moved with the code; **the exported original now has no importers at all.**
+
+### 159. The display-paths extractor leaked one namespace's properties into another — *fixed 2026-08-02*
+
+`extract-display-paths.ts`'s namespace scoping understood a *nested* guard but not an
+*early-return* one. `ProductDisplayEnhancer.getPropertyValue` does
+`if (startsWith('campaign.')) { return … }` and then handles `package.` as a sibling — so
+computing the `campaign.` list picked up all 28 `package.` properties as if they belonged to it.
+Caught before publishing only because the agent traced the output rather than trusting it.
+
+Fixed by teaching the extractor that everything after a terminal early-return guard runs only
+when that guard was false.
+
+Two related corrections shipped with it: `docs-coverage.mjs` counted display namespaces **by
+feature**, so one page satisfied the whole row (this was finding 143's root cause) — it now
+emits one row per distinct namespace, 8/8 → **9/9**. And `product-display`'s attributes page
+claimed *"`campaign.` is an alias for `package.` and resolves identically"*, which is false: it
+answers three unrelated fields (`name`, `currency`, `language`).
+
+### 160. The generator's fallback sentence was true for one namespace out of five — *fixed 2026-08-02*
+
+`render-feature-reference.ts` printed, on every routed namespace's page, that a declared
+`fallback` "renders that fallback, which reads as though it worked". Checked against each
+resolver's actual miss-return:
+
+- **`cart`** — true, and exercised: `cart.discountCode` declares `fallback: ''`.
+- **`package`, `selection`, `shipping`** — mechanically possible, but no unanswered entry
+  declares a fallback today.
+- **`order`** — impossible, structurally: its resolver returns `''` on every miss, never
+  `null`/`undefined`, so the fallback path cannot fire. This is what made finding 144 wrong.
+
+The sentence is now emitted only for a page that actually has an unanswered entry with a
+fallback, with the affected row marked. It was not softened into something vaguer — it is either
+true of that page or absent.
+
+### 161. `OrderLineProperty` was added to the public export surface — *needs Bond's sign-off*
+
+`src/index.ts` gained one type export so `OrderLine.properties` can be named by a consumer.
+Additive and trivially revertible, but §0.1 of the `sdk-structure` skill says the export surface
+does not change without explicit approval, so it is recorded here rather than treated as routine.
+The API returns line properties as `Array<{ key, value }>`, not the dict shape cart lines use —
+confirmed against `OrderLineSerializer` and its tests.
+
+---
+
+## Found during the wave-7 restructure (2026-08-02)
+
+Five agents: `AttributeScanner.destroy()` (154), the two `sdk-initializer` clusters that
+finding 155 unblocked, the docs-generator split, the analytics split, and the dead
+`typeGuards.ts`. **Finding 163 is the one that puts wrong numbers in a real analytics report.**
+
+### 162. Two more things `AttributeScanner.destroy()` needed, and a count that was a lie — *fixed 2026-08-02*
+
+Finding 154's proposed fix — "keep an iterable registry alongside the `WeakMap`" — was not
+enough on its own. Two holes only showed up once a test drove them:
+
+- **An in-flight scan repopulates the registry after teardown.** `enhanceElement` suspends on a
+  dynamic `import()`; a `destroy()` landing in that window let the scan finish, register fresh
+  enhancers nothing would ever tear down, and restart the MutationObserver `destroy()` had just
+  stopped. Needed an `isDestroyed` flag checked after the await.
+- **One throwing `destroy()` aborted every teardown after it** — the classic partial teardown,
+  which leaves a page worse off than no teardown at all.
+
+And the reason nobody noticed: **`getStats().enhancedElements` returned `0` after `destroy()`
+while every enhancer was still live**, because the code reset the counter with a comment saying
+it could not iterate. A test asserting "no live enhancers after destroy()" passed against that
+number for as long as it existed. A count that is assigned rather than measured is not evidence.
+
+Corrections to 154 itself: `destroy()` was inert, but the `cleanupElement()` path — DOM removal
+and `data-next-*` attribute change — worked correctly all along. And the file's own header claim
+that enhancers are garbage-collected when their elements go is false twice over: `DOMObserver`
+never walks descendants of a *removed* node (see 164), and an enhancer with a store subscription
+is held by the store regardless of what the scanner does.
+
+### 163. The purchase event reports the cart, not the order — while the correct data sits unused beside it — *verified*
+
+`handleOrderCompleted` builds a complete `purchaseData` object from `order.lines` — real
+per-line SKU, price and discount from the order the customer actually placed — and **never reads
+it**. The event that ships comes from
+`EcommerceEvents.createPurchaseEvent(…, items: cartStore.items, …)`: the pre-order cart snapshot.
+
+Whenever the finalised order differs from the cart — a coupon that changes lines, any
+post-purchase adjustment — the purchase event reports the wrong items and the wrong revenue,
+with the right answer computed and discarded on the line above. This repo has already had to
+correct GA4 purchase value once (see the analytics section); this is the same class of defect
+one layer up.
+
+**Fix:** use `purchaseData`, or delete it and say why the cart snapshot is the intended source.
+Leaving both is how the next reader assumes the correct one is in use.
+
+Found alongside it: `formatElevarProduct` calls `getCurrency()` — a store read that can emit a
+warn — and drops the result, because `ElevarProduct` has no currency field at all.
+
+### 164. ~~`DOMObserver` never cleans up inside a removed container~~ — **FIXED 2026-08-03, and the real defect was worse — see 168**
+
+`processChildListMutation` walks descendants for **added** nodes but not for **removed** ones,
+so removing a wrapper element notifies nothing about the enhanced elements inside it, even when
+they carry one of the eight attributes the observer filters on. Combined with 162's new
+registry, this is the main reason the scanner can hold an element longer than the DOM does.
+
+### 165. ~~`AccordionEnhancer` satisfies the teardown gate while removing nothing~~ — **FIXED 2026-08-03.** The gate now inspects registrations, not classes, and found 50 more — see 169
+
+It registers `click` and `keydown` on its trigger children as **inline arrows** and never
+removes them; `destroy()` only clears `this.accordions`. So a destroyed accordion still toggles
+when clicked.
+
+**It passes `destroy-contract.test.ts`,** because the rule added in wave 5 asks whether a
+teardown path *exists*, not whether it removes what was registered. That is the second blind
+spot found in the same gate in two waves — the first was a class that overrode nothing at all.
+
+**Fix:** the `AbortController` pattern, and then a gate rule with teeth — every listener
+registered must be traceable to a removal, not merely to the existence of an override.
+
+### 166. ~~`boot-sequence.md` silently drops a step that stops being a `this.` call~~ — **FIXED 2026-08-03.** The extractor follows imported functions now and the two workaround wrappers are gone
+
+`extract-boot-sequence.ts` recognises a boot step only when `initialize()` calls it as
+`this.methodName()`. Extracting a step to a free function does not just move its anchor — the
+step **disappears from the published boot sequence**, and its "if it fails" behaviour is
+relabelled as "aborts the boot" or "not analysed here".
+
+Discovered while splitting `initializeLocationAndCurrency` and `initializeAttribution`; worked
+around by keeping thin `this.*` wrapper methods for exactly those two steps, which is why
+`boot-sequence.md` came out byte-identical. The wrappers are a workaround for a generator
+limitation, not a design choice — that is worth knowing before someone "cleans them up".
+
+**Fix:** teach the extractor to follow a call to an imported function the same way it follows a
+method call.
+
+### 167. `src/utils/typeGuards.ts` was 267 lines of dead code — *deleted 2026-08-02*
+
+Twenty-three exports (not the twelve a first grep suggested), **zero callers** anywhere in
+`src/`, `e2e/`, `scripts/`, `examples/` or the root config — checked by identifier and by path
+string, and it was never on the public export surface. Retrievable from any commit before this
+one.
+
+The five apparent hits on `isValidNumber` were a **false friend**: every one is
+`intlTelInput`'s own `.isValidNumber()` instance method.
+
+**The interesting part is what replaced it.** The job those guards were written for is done by
+hand, inconsistently, all over the tree: `!isNaN(qty)` in `product-display.enhancer.ts`,
+`package-context-resolver.ts`, `add-to-cart.enhancer.ts` and `package-toggle.cards.ts`;
+`Number.isFinite(...)` in `cart-summary.condition-context.ts` and `prospect-cart/config.ts`; and
+`typeof x === 'string'`/`'number'` chains in `config.state.ts`, `checkout.state.ts` and
+`product-display.properties.ts`. Somebody wrote the shared guards; nobody found them.
+
+Four documents pointed at the dead path and were corrected: `.claude/rules/testing.md`,
+`.claude/rules/typescript.md`, `.claude/skills/sdk-structure/SKILL.md` and `src/core/README.md`
+— the last two also had `utils/` holding files that moved to `core/` two waves ago.
+
+---
+
+## Found during the wave-8 restructure (2026-08-03)
+
+Five agents: the accordion teardown and a third rewrite of the teardown gate (165), the
+removed-subtree cleanup (164), the boot-sequence extractor (166), the billing-value restore,
+and the rest of the event-timeline split.
+
+### 168. Removing an enhanced element re-enhanced it, detached, forever — *verified, fixed 2026-08-03*
+
+Finding 164 said a removed **container** never notified about the features inside it. That was
+the smaller half of the defect, and the framing was wrong in a way worth recording.
+
+- **`addElementForProcessing` gated the *direct* removal notification on the same eight
+  attributes**, so removing an enhanced element on its own leaked too. **22 of the 30
+  activation attributes never produced a removal notification under any circumstances.**
+- **For the eight that did pass the filter, removal did not merely fail to clean up — it
+  re-created the enhancer.** The removed element went into `pendingChanges` as well, so 16 ms
+  later it was announced as *added*, queued, and 50 ms after that enhanced again — **while
+  detached, permanently, with nothing able to report it removed a second time.** A test
+  measured `enhancedElements === 1` after removing the page's only element.
+- The page was already paying for the expensive half of the work: `hasRelevantDescendants` ran
+  a `querySelector` over every removed subtree and then discarded the answer.
+
+**The fix inverted the design rather than extending it.** The observer stops filtering and
+stops deciding what is "ours" — it reports departures. The scanner answers from the iterable
+registry finding 162 gave it, which is exact where the attribute filter was a guess: it covers
+all 30 selectors and correctly *excludes* elements the scan deliberately skipped (template
+children, `{token}` package ids) that an attribute walk would have claimed.
+
+**It is now cheaper than before**: relevance per removal went from a `querySelector` over the
+whole removed subtree to one `instanceof`, and the sweep is one `isConnected` read per
+registered element per 16 ms frame. Measured under happy-dom on a 5,000-node subtree:
+16.18 ms → 0.009 ms.
+
+Re-attached inside the same frame keeps its enhancer; re-attached later is a real teardown and
+the element returns inert unless it carries one of the eight watched attributes — the
+pre-existing added-path limit (finding 52), now documented as a trap.
+
+### 169. ~~The teardown gate had to stop looking at classes: 50 unremovable listeners in 17 files~~ — **the seven real leaks are FIXED 2026-08-03, but five of the seven rows named the wrong listener — see 172**
+
+Rewritten a third time, after two escapes in two waves. The new rule ignores the class and
+inspects the **registration**, because that is the thing a teardown method cannot fake on a
+listener's behalf. A registration is removable only if it passes `signal:` or hands
+`addEventListener` a stable stored reference. Three shapes fail by construction: an inline
+arrow, a freshly built function (`.bind(this)`, `makeHandler()`), and **a local used nowhere
+but that one call** — that last clause exists because hoisting an arrow to a `const` is the
+obvious way to satisfy the rule without fixing anything, and it is what caught
+`floating-labels.ts`.
+
+**Why the two earlier rules kept missing it: 12 of the 17 flagged files declare no enhancer
+class at all** — renderers, handler modules, services, a static-only class, a barrel. The leak
+surface in this layer lives in helper modules, so the gate is now scoped by **directory**
+(`src/features/`, `src/core/base/`) rather than by class or by import graph. Following imports
+was itself a flaw: it made the answer depend on how a feature happened to be split, and let a
+listener leave range by moving file.
+
+**Seven real leaks, allowlisted with counts, none fixed** (each is enhancer-lifetime, on author
+DOM the enhancer does not own, and survives `destroy()`):
+
+| File | n | What it means |
+|---|---|---|
+| `cart/coupon/coupon.enhancer.ts` | 3 | a destroyed coupon field still applies coupons |
+| `cart/shared/properties.ts` | 1 | re-enhancing a card stacks another |
+| `checkout/address-autocomplete/google-maps-autocomplete.ts` | 4 | address input and both country selects |
+| `checkout/address-autocomplete/next-commerce-autocomplete.ts` | 4 | on `this.input` |
+| `checkout/checkout-form/phone-input.ts` | 2 | destroying intlTelInput does not remove these |
+| `checkout/services/credit-card-service.ts` | 6 | rebuilt on every form init |
+| `checkout/services/ui-service/floating-labels.ts` | 1 | **every resize past the mobile breakpoint adds another focus handler to every field** |
+| `order/upsell/upsell.interaction-handlers.ts` | 2 | the same file already has a removable helper; these two bypass it |
+
+Eighteen more die with their element (the popup is `.remove()`d and the ref nulled) and seven
+are page-lifetime by design, including the two dev-only cases — judged individually, not
+assumed.
+
+**Each allowlist entry freezes a count**, so an allowlisted file may keep what it has and may
+not gain one. The ratchet fired in the shrinking direction during the work itself
+(*"allowlisted for 3, found 2. Lower the count."*) — which is the behaviour that stops an
+allowlist becoming a permanent exemption.
+
+Correction to finding 165: the accordion was **already** a recorded violator in that same file,
+under the super-`destroy()`-ordering allowlist. The file knew about it; the rule that mattered
+did not.
+
+### 170. A `git stash` in a shared tree cost four agents their uncommitted work — *process, contained*
+
+An agent ran `git stash` / `git stash pop` while four siblings were mid-edit. `stash` took
+**every tracked file's changes across the whole tree** — 12 files spanning all five agents —
+and the `pop` hit a conflict on `dom-activation.md` and aborted, leaving them at HEAD. Two
+other agents independently noticed their files reverting under them and rewrote from their own
+scratchpad copies; nothing was ultimately lost, and untracked files were never at risk because
+`git stash` without `-u` ignores them.
+
+This is the **fifth** violation of the same prohibition this session, in prompts that stated it
+in bold, listed it as "not even `git stash`", and explained the previous incident. **A rule that
+must be read to be followed is not a control for concurrent work.** The fix is one line in
+`.claude/settings.json`'s `permissions.deny`, alongside the push/deploy bans that have held
+perfectly all session precisely because they are enforced at the tool layer. Not applied — it
+would also block Bond's own use, so it is Bond's call.
+
+### 171. ~~`RawDataHelper` was imported and unused for a whole wave~~ — **FIXED 2026-08-03**, and dead code now has a gate: `npm run check:unused` (see 176)
+
+Left behind when the previous split moved every use into `event-timeline-panel.flow.ts`.
+`noUnusedLocals` and `noUnusedParameters` are both `false` in `tsconfig.json`, so nothing
+reported it. Worth knowing that dead imports are currently invisible to every gate this repo
+has.
+
+---
+
+## Found during the wave-9 restructure (2026-08-03)
+
+Four agents: the seven listener leaks (169), the unused-code gate (171), the
+`checkout-form` field/address split, and the `core-logs.ts` split. **Findings 173 and 178
+reach a shopper.**
+
+### 172. Five of finding 169's seven rows named the wrong listener — *verified*
+
+The table said which registrations leaked. Checking whether each was actually *reachable*
+after `destroy()` moved the answer in five of seven cases, and in one of them the real leak was
+a registration the allowlist had **excused**:
+
+- **coupon — the three flagged were inert; the excused fourth was the live one.** `destroy()`
+  nulls `input`/`button` and every handler guards on them. But `renderAppliedCoupons()` runs
+  only from the cart-store subscription that `destroy()` unsubscribes, so after teardown the
+  cards are never re-rendered — they sit on the page with live handlers — and `removeCoupon()`
+  has **no ref guard**. **A destroyed coupon card removed coupons from a live cart.** The
+  allowlist had waved it through as "dies with its element".
+- **credit-card-service — wrong symptom.** All four `click` handlers check
+  `window.Spreedly && this.isReady`, and `destroy()` clears `isReady`. The live pair is the
+  expiry month/year `change` → `checkAndTrackPaymentInfo()`, which checks nothing: **a
+  destroyed service fired a spurious `add_payment_info` analytics event.**
+- **google-maps — wrong symptom.** The country `change` handlers read a map `destroy()`
+  clears, and re-init is guarded, so nothing stacked. The live pair is `focus`/`keydown` on
+  the address input, and `keydown` calls `preventDefault()` unconditionally: **a destroyed
+  provider kept swallowing the Enter key in the address field.**
+- **next-commerce-autocomplete — understated.** `NextCommerceAutocomplete` had **no
+  `destroy()` at all**, and `AddressAutocompleteEnhancer.destroy()` only tore down googleMaps.
+  There was no teardown to fix, only one to write.
+- **floating-labels — accurate, but never fired.** `handleResponsiveUI` has no caller
+  (finding 123), so the per-resize stacking could not happen in production. Fixed anyway, by
+  **deleting** the second handler: "on a phone, always float" is now a branch in the one
+  `focus` handler `setupFloatingLabel` already registers, keyed on the `next-mobile` class
+  `handleResponsiveUI` itself writes. `handleResponsiveUI` now registers nothing, which beats
+  routing it through `EventHandlerManager` — that manager keeps one handler per element/event
+  pair and would have replaced the real one (finding 123's trap).
+
+`properties.ts` and `phone-input.ts` were accurate as written, counts included.
+
+### 173. The obvious fix for the upsell leak would have stopped the offer responding to clicks — *verified*
+
+Finding 169 said to use the `bind()` helper already in `upsell.interaction-handlers.ts`, which
+records a `removeEventListener` onto `state.scanTeardowns`. But **`scanUpsellElements` empties
+and re-runs that array on every `update()`**, while `initializeSelectorMode` runs once. Putting
+the option listeners there would have torn them off at `upsell.enhancer.ts:147` — eighteen
+lines after they were attached, still inside `initialize()` — and never re-added them.
+
+Fixed by naming the second lifetime (`state.selectorTeardowns`) rather than sharing the array.
+A test pins it: after `initializeSelectorMode` + `scanUpsellElements`, an option click must
+still select.
+
+**The general shape is worth remembering: a teardown array is a lifetime, and two lifetimes in
+one array is a bug waiting for the second one to be shorter.**
+
+### 174. The teardown gate cannot see a hoisted options object — *verified, limitation*
+
+`passesSignal` only accepts an object literal written inline at `addEventListener`'s third
+argument. A `private get listenerOptions() { return { signal: this.abort.signal }; }` reads
+identically to a human and is still counted unremovable — the agent's first pass did exactly
+that and the ratchet failed all eight files at their original counts. Worth writing into the
+rule's doc comment before it bites someone who is doing the right thing.
+
+### 175. A shopper can click Pay twice, and a `false` never survives a reload — *verified*
+
+Two independent defects in the newly-split `field-scanning.ts` / `form-population.ts`:
+
+- **The submit control must be a real `<button>`.** `[data-next-checkout-submit]` on an `<a>`,
+  a `<div>` or an `<input type="submit">` matches the selector and then fails the `instanceof`,
+  so the form logs "Submit button not found" and **never disables it or sets `aria-busy`
+  during submit** — the shopper can click Pay a second time mid-order.
+- **A stored `false` is never restored.** `populateFormData`'s loop skips falsy values, so a
+  shopper who unticks `accepts_marketing` on a page whose box is checked by default gets it
+  **re-checked on reload**. The opt-out does not survive.
+
+Also there: `paymentButtons` is scanned, stored, cleared on destroy, and **never read** — a
+page author who marks a button `data-next-checkout-payment` gets no behaviour at all. And the
+phone→E.164 rewrite runs on an untracked `setTimeout(…, 50)`, so a form destroyed inside that
+window still writes the store.
+
+### 176. Dead code now has a gate, and here is what it still cannot see — *fixed 2026-08-03*
+
+`tsconfig.json` had `noUnusedLocals` and `noUnusedParameters` both `false`, so nothing reported
+an unused import, local or parameter. `npm run check:unused` runs the flags over a gate-only
+config with a ratcheted baseline, in the same shape as `type-check:tests`. Measured 31, **fixed
+17**, froze the rest — and closed two standing findings by deletion: **finding 42** (four
+boot-timing fields written and never read) and **finding 43** (a dead impressions schema).
+
+**It does not see unused *exports*** — `noUnusedLocals` only inspects bindings in their own
+scope. That is exactly why finding 167's 267-line module with 23 exports and zero callers, and
+finding 158's exported constant with no importers, went unnoticed. Catching those needs a
+project-wide reference count (`ts-prune` or equivalent), which is a different tool.
+
+Two false positives worth knowing: `updateMiniCart` and `collectUtmData` are exercised only
+through an `as any` cast in tests, which hides the reference from the type checker. And one
+genuine smell surfaced: **`package-selector.handlers.ts`'s `updateCart(previous, …)` never
+reads `previous`, while callers construct a real value for it** (`{ ...item, packageId: oldId }`)
+— flagged rather than silenced with an underscore, because it looks like swap logic that was
+started and abandoned.
+
+### 177. "Address management" was three clusters, and the README undersold what is left — *verified*
+
+The split measured before cutting, and the measurements disagreed with the plan: field
+scanning/population was **two** jobs (DOM→map, and store↔DOM), address management was
+**three** (country choice/application, province loading, collapsed rows) sharing almost no
+dependencies, and `initializeAddressManagement` measured 10 fields + 6 calls — `initialize`'s
+profile, so it was re-sequenced in place rather than lifted.
+
+More usefully: **the README's "field scanning/population, address management, payment, and
+order submission" was materially incomplete.** Also still in that file, in none of those
+buckets: the Spreedly wiring, the duplicate-purchase modal, multi-step navigation, the billing
+toggle and its animation driving, the prospect-cart lifecycle, the payment-error display, the
+method-change handlers, three store subscriptions, the Konami test-order path, the meta-tag
+public API, and teardown. Anyone sizing the next wave off that sentence would have got it
+wrong. The README now says so.
+
+### 178. The billing rows are revealed by luck, and two country features are configured but ignored — *verified*
+
+- **`initializeLocationFieldVisibility` tests `formData['billing-address1']` — a key nothing in
+  the SDK writes.** Billing values live on `checkoutStore.billingAddress` under API names
+  (`address1`); `billing-field-routing.ts` renames every one. The billing rows appear today
+  **only because `restoreBillingAddress` happens to run first** and puts the value in the
+  input. Reorder those two boot steps and a returning shopper's billing city/state/postcode
+  stay hidden.
+- **Asymmetric selectors for the same concept.** Shipping rows are found under
+  `data-next-component="location"` *or* `data-next-component-location="location"`; billing rows
+  only under `data-next-component="billing-location"`. A page using the second spelling for
+  billing gets rows that are never managed — visible from first paint while shipping collapses.
+  The same asymmetry appears in `country-fields.ts`, whose `BILLING_CONTAINER` accepts only the
+  legacy `os-checkout-element` spelling, so a page using the documented
+  `data-next-component="different-billing-address"` gets **no billing label relabelling** — a
+  Canadian billing section keeps saying "State" and "ZIP".
+- **`?country=CA` is ignored outright once any country is stored**, and not remembered for the
+  session either: a merchant's country-specific landing link silently does nothing for a
+  returning shopper.
+- **`addressConfig.defaultCountry` is read, named in the priority log as
+  `addressConfigDefault`, and never used as a candidate.** Configured, logged, ignored.
+- **The two country paths disagree**: the debug selector's path does not write
+  `next_selected_country` while the shopper's dropdown does, so a debug-applied country is
+  forgotten on the next page — and it dispatches a bubbling `change` *after* refilling the
+  provinces, so the list rebuilds twice, visibly.
+
+Revealing a row also forces `display: flex`, so a location row laid out as `grid` or `block`
+re-lays-out the moment the shopper types an address.
+
+---
+
+## Open decisions
+
+1. **Lint.** 12,365 errors now that it runs — 7,391 auto-fixable (7,296 of them pure
+   `prettier/prettier`), 4,974 needing a human (~3,900 `no-unsafe-*` from the
+   `recommended-requiring-type-checking` tier that was configured but never enforced).
+   CI runs only `type-check` and `test:coverage`, which is how it accumulated. Options:
+   reformat 318 files, drop the strict tier, or ratchet it the way
+   `docs-coverage.baseline.json` does.
+
+   **The docs half of this is no longer a blocker (2026-07-31).** Reformatting used to
+   drag hundreds of regenerated doc lines along with it; generated pages now cite symbols
+   instead of lines, and a 233-file reformat was measured to leave every documentation
+   suite green with nothing regenerated. The formatting commit is now purely a formatting
+   commit. What still needs a decision is the *`git blame` cost* of touching ~72% of `src`
+   at once, and the ~3,900 `no-unsafe-*` findings — neither of which the anchor change
+   touches.
+2. ~~**Retiring `data-attributes/`.**~~ Reviewed and applied 2026-07-31: the 42
+   redirects are in both `netlify.toml` and `public/_redirects`, the inbound links and
+   the nav entry are rewired, `validate-links` is at 0 errors. One step left, and it
+   needs a human — `cd developer-docs && git rm -r content/docs/campaigns/data-attributes`
+   (see [`redirect-map.md`](./redirect-map.md)).

@@ -1,0 +1,40 @@
+{
+  "$comment": [
+    "Shared, checked-in settings. The deny list enforces the rule rather than merely",
+    "writing it down: an agent may commit locally, but it cannot push or publish even",
+    "if some task description tells it to. History-rewriting commands stay denied too —",
+    "'commit' means adding a commit, not rewriting existing ones.",
+    "",
+    "This constrains Claude's tool calls only. Pushing and deploying from your own",
+    "terminal is unaffected — those actions stay yours."
+  ],
+  "permissions": {
+    "deny": [
+      "Bash(git push:*)",
+      "Bash(git merge:*)",
+      "Bash(git rebase:*)",
+      "Bash(git cherry-pick:*)",
+      "Bash(git revert:*)",
+      "Bash(git tag:*)",
+      "Bash(git am:*)",
+      "Bash(git apply:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh release:*)",
+      "Bash(npm publish:*)",
+      "Bash(npm version:*)",
+      "Bash(yarn publish:*)",
+      "Bash(pnpm publish:*)",
+      "Bash(netlify deploy:*)",
+      "Bash(netlify:*)",
+      "Bash(vercel:*)",
+      "Bash(wrangler:*)",
+      "Bash(npx wrangler:*)",
+      "Bash(bunx wrangler:*)",
+      "Bash(gcloud:*)",
+      "Bash(aws s3:*)",
+      "Bash(firebase deploy:*)",
+      "Bash(surge:*)"
+    ]
+  }
+}

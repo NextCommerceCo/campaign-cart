@@ -1,6 +1,6 @@
 # Guide Writing Rules
 
-> Applies to: `src/enhancers/{category}/{FeatureName}/guide/**.md`
+> Applies to: `src/features/{category}/<feature>/guide/**.md`
 
 ---
 
@@ -547,7 +547,7 @@ Before merging any change to an enhancer, confirm:
 
 | Rule | Detail |
 |------|--------|
-| File names | lowercase, no spaces, use hyphens if needed |
+| File names | kebab-case with a dotted role suffix — see `.claude/rules/typescript.md` |
 | Folder names | lowercase — `guide/` and `reference/` |
-| Feature folder | `PascalCase` matching the exported name |
+| Feature folder | `kebab-case` matching the feature (e.g. `add-to-cart/`) |
 | Category folder | `kebab-case` — default; match existing convention if one already exists |

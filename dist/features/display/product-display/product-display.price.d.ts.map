@@ -1,0 +1,1 @@
+{"version":3,"file":"product-display.price.d.ts","sourceRoot":"","sources":["../../../../src/features/display/product-display/product-display.price.ts"],"names":[],"mappings":"AASA,OAAO,KAAK,EAAE,MAAM,EAAE,MAAM,eAAe,CAAC;AAC5C,OAAO,KAAK,EAAE,OAAO,EAAE,MAAM,gBAAgB,CAAC;AAG9C,wBAAgB,qBAAqB,CACnC,WAAW,EAAE,OAAO,GAAG,SAAS,EAChC,QAAQ,EAAE,MAAM,EAChB,MAAM,EAAE,MAAM,GACb,GAAG,CAoKL"}

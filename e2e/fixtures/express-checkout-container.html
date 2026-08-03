@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Express checkout container</title>
+  </head>
+  <body>
+    <h1>Express checkout container fixture</h1>
+
+    <!-- docs:example A container the SDK fills with express-payment buttons -->
+    <!-- The container injects express-payment buttons into the [buttons] child
+         based on the campaign's available_express_payment_methods. -->
+    <div data-next-express-checkout="container">
+      <div data-next-express-checkout="buttons"></div>
+    </div>
+    <!-- /docs:example -->
+
+    <!-- express-checkout:initialized fires per button during the DOM scan,
+         before window.next exists. Buffer it from the shared EventBus. -->
+    <script type="module">
+      import { EventBus } from '/src/core/events.ts';
+      const bus = EventBus.getInstance();
+      window.__capturedEvents = window.__capturedEvents || {};
+      window.__capturedEvents['express-checkout:initialized'] = [];
+      bus.on('express-checkout:initialized', d =>
+        window.__capturedEvents['express-checkout:initialized'].push({
+          method: d.method,
+          hasElement: d.element instanceof HTMLElement,
+        })
+      );
+    </script>
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

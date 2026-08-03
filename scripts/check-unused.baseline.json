@@ -1,0 +1,34 @@
+{
+  "$comment": "Frozen unused-local/parameter/import occurrences (tsconfig.unused-check.json), each one a place noUnusedLocals/noUnusedParameters would otherwise fail the build on. A ratchet: new occurrences fail `npm run check:unused`; entries here are tolerated until fixed. Regenerate: npm run check:unused:update. Fingerprint is (file, TS code, normalized message) — no line numbers, see the header comment in scripts/check-unused.mjs for why. `notes` records *why* each frozen file is frozen rather than fixed — keep it in sync by hand when the set of frozen files changes.",
+  "count": 20,
+  "errors": [
+    "src/core/analytics/events/elevar-legacy-formatter.ts :: TS6133 :: 'currency' is declared but its value is never read.",
+    "src/core/analytics/tracking/auto-event-checkout-handlers.ts :: TS6133 :: 'purchaseData' is declared but its value is never read.",
+    "src/core/debug/debug-overlay/debug-overlay.ts :: TS6133 :: 'updateMiniCart' is declared but its value is never read.",
+    "src/features/cart/package-selector/package-selector.handlers.ts :: TS6133 :: 'previous' is declared but its value is never read.",
+    "src/features/checkout/checkout-form/checkout-form.enhancer.ts :: TS6133 :: 'BILLING_FORM_CONTAINER_SELECTOR' is declared but its value is never read.",
+    "src/features/checkout/checkout-form/checkout-form.enhancer.ts :: TS6133 :: 'FormPopulationContext' is declared but its value is never read.",
+    "src/features/checkout/checkout-form/checkout-form.enhancer.ts :: TS6133 :: 'SHIPPING_FORM_SELECTOR' is declared but its value is never read.",
+    "src/features/checkout/checkout-form/checkout-form.enhancer.ts :: TS6133 :: 'availableOptions' is declared but its value is never read.",
+    "src/features/checkout/checkout-form/checkout-form.enhancer.ts :: TS6133 :: 'cartStore' is declared but its value is never read.",
+    "src/features/checkout/checkout-form/checkout-form.enhancer.ts :: TS6133 :: 'fieldLookupContext' is declared but its value is never read.",
+    "src/features/checkout/checkout-form/checkout-form.enhancer.ts :: TS6133 :: 'getFieldByName' is declared but its value is never read.",
+    "src/features/checkout/checkout-form/checkout-form.enhancer.ts :: TS6133 :: 'getFieldNameFromElement' is declared but its value is never read.",
+    "src/features/checkout/checkout-form/checkout-form.enhancer.ts :: TS6133 :: 'scanExpirationFields' is declared but its value is never read.",
+    "src/features/checkout/checkout-form/checkout-form.enhancer.ts :: TS6133 :: 'timeOnModal' is declared but its value is never read.",
+    "src/features/checkout/checkout-form/checkout-form.enhancer.ts :: TS6133 :: 'updateBillingFormLabels' is declared but its value is never read.",
+    "src/features/checkout/checkout-form/checkout-form.enhancer.ts :: TS6133 :: 'updateBillingStateOptions' is declared but its value is never read.",
+    "src/features/checkout/checkout-form/checkout-form.enhancer.ts :: TS6133 :: 'updateFormLabels' is declared but its value is never read.",
+    "src/features/checkout/checkout-form/checkout-form.enhancer.ts :: TS6133 :: 'useParameterStore' is declared but its value is never read.",
+    "src/features/checkout/prospect-cart/prospect-cart.enhancer.ts :: TS6133 :: 'collectUtmData' is declared but its value is never read.",
+    "src/features/checkout/prospect-cart/prospect-cart.enhancer.ts :: TS6133 :: 'getCurrency' is declared but its value is never read."
+  ],
+  "notes": {
+    "src/core/analytics/events/elevar-legacy-formatter.ts": "`formatElevarProduct` computes `const currency = getCurrency()` and drops the result (`ElevarProduct` has no currency field) — but `getCurrency()` reads the campaign store and can `logger.warn` on failure, and `formatElevarProduct` itself is still called on every legacy-format event. Deleting the local would delete that warn path too, which is a behavior change, not a dead-code fix. Reported as finding 163's 'found alongside' note in docs/code-findings.md.",
+    "src/core/analytics/tracking/auto-event-checkout-handlers.ts": "`handleOrderCompleted` builds a complete, correct `purchaseData` from `order.lines` and never reads it — the event that actually ships is built from the pre-order cart snapshot instead. This is finding 163 in docs/code-findings.md: the discarded value is the *correct* one, so deleting it would remove the fix rather than dead code. Which source should back the purchase event is a product decision, not this gate's call.",
+    "src/core/debug/debug-overlay/debug-overlay.ts": "`updateMiniCart` is a real, live method — `src/core/debug/tests/debug-overlay.test.ts` calls it via `(overlay.updateMiniCart as () => void).call(overlay)` on an instance typed as `Record<string, unknown>`. That cast means the checker never sees the call as a reference to the class member, so `noUnusedLocals` reports a private method that a test genuinely exercises. Gate blind spot, not dead code.",
+    "src/features/cart/package-selector/package-selector.handlers.ts": "`updateCart(previous, selected, items)`'s `previous` parameter is never read in the body, yet every call site constructs a real, non-null value for it when a swap is happening (`package-selector.cards.ts` builds `{ ...item, packageId: oldId }` specifically to pass as `previous`) and the colocated tests pass real values without ever asserting on them. That shape — callers going out of their way to supply a value the callee ignores — reads as a possible latent bug in the swap logic, not a parameter that only exists for an interface. Left alone and reported rather than silently prefixed with `_`.",
+    "src/features/checkout/checkout-form/checkout-form.enhancer.ts": "Out of scope for this change — `features/checkout/checkout-form/**` is owned by another agent working in parallel (per this task's file ownership split), and was mid-refactor (splitting into country-selection.ts/field-scanning.ts/form-population.ts/location-field-visibility.ts) at the moment this baseline was captured, which is why the count here (16 at last capture) will not match a fresh `check:unused` run once that work lands — re-ratchet with `npm run check:unused:update` once the split is done rather than treating a mismatch here as this gate misbehaving.",
+    "src/features/checkout/prospect-cart/prospect-cart.enhancer.ts": "`collectUtmData()` and `getCurrency()` are private wrapper methods around the same-named functions imported from `./cart-creation` — never called from the enhancer's own source, but both are called directly in tests via `(enhancer as any).collectUtmData()` / `(enhancer as any).getCurrency()` (see `tests/prospect-cart.enhancer.test.ts`). Same `as any`-cast blind spot as the debug-overlay entry above: live per the tests, invisible to the checker."
+  }
+}

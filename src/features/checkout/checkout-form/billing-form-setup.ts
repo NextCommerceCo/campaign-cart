@@ -1,0 +1,468 @@
+/**
+ * Builds the billing address form by cloning the shipping one.
+ *
+ * A page author writes their address fields **once**, for shipping. When the shopper
+ * unticks "billing same as shipping", a second full address form has to exist — so the
+ * SDK clones the shipping rows, rewrites every field's identity to its `billing-`
+ * equivalent, clears the values, and drops the result into the billing container. That
+ * rewrite is what {@link convertShippingFieldsToBilling} does, and it is the reason a page
+ * needs no billing markup at all.
+ *
+ * Extracted from `checkout-form.enhancer.ts` as the third cut out of that file. The whole
+ * cluster needs only three things from the form ({@link BillingFormSetupContext}) despite
+ * being ~170 lines, because it works on the document rather than on the enhancer's state.
+ *
+ * The **initial** open/closed state is set here too, deliberately without animation — see
+ * {@link setInitialBillingFormState}. Animating between states afterwards is
+ * `billing-animation.ts`.
+ *
+ * Everything the billing section looks like on first paint is decided in this file: the
+ * fields ({@link setupBillingForm}), whether the section is open ({@link
+ * reconcileBillingToggle}), and what is typed into it ({@link
+ * restoreBillingAddressFields}).
+ */
+
+import type { Logger } from '@/core/logger';
+import type { CheckoutState } from '@/state/checkout';
+
+import {
+  BILLING_CONTAINER_SELECTOR,
+  BILLING_FORM_CONTAINER_SELECTOR,
+  BILLING_TOGGLE_SELECTOR,
+  SHIPPING_FORM_SELECTOR,
+} from '../constants/selectors';
+
+import {
+  updateBillingStateOptions,
+  type StateFieldsContext,
+} from './state-fields';
+
+/** Marks a cloned row so the shipping scan does not pick it up again. */
+const LOCATION_COMPONENT = '[data-next-component="location"]';
+const SHIPPING_FIELD_ROW = '[data-next-component="shipping-field-row"]';
+
+/**
+ * What this module needs from the checkout form.
+ *
+ * Three things for ~170 lines of work, because everything else it touches is the DOM.
+ * Mirrors the context pattern used by `phone-input.ts` and `billing-animation.ts`.
+ */
+export interface BillingFormSetupContext {
+  /** The `<form>` itself — only used to find the "same as shipping" toggle within it. */
+  form: HTMLElement;
+  /**
+   * Billing fields by name, filled in by {@link scanBillingFields}. The form owns the map
+   * because the rest of the checkout reads from it.
+   */
+  billingFields: Map<string, HTMLElement>;
+  logger: Logger;
+}
+
+/**
+ * Finds every `billing-` prefixed field in the document and records it by name.
+ *
+ * Both the current `data-next-checkout-field` and the legacy `os-checkout-field` spellings
+ * are scanned, because pages built against the older attribute are still live.
+ *
+ * Queries `document`, not the form: the billing container is often a sibling of the form
+ * rather than inside it.
+ */
+export function scanBillingFields(ctx: BillingFormSetupContext): void {
+  const billingSelectors = [
+    '[os-checkout-field^="billing-"]',
+    '[data-next-checkout-field^="billing-"]',
+  ];
+  billingSelectors.forEach(selector => {
+    document.querySelectorAll(selector).forEach(element => {
+      // Spelled out rather than `legacy || current`, because the fallthrough condition
+      // is the whole point and `??` would get it wrong: `getAttribute` returns `''`
+      // for a present-but-empty attribute, so an element carrying
+      // `os-checkout-field=""` alongside a real `data-next-checkout-field` has to fall
+      // through to the second. `??` only falls through on `null` and would read the
+      // empty string, dropping that field from the map.
+      const legacyName = element.getAttribute('os-checkout-field');
+      const fieldName =
+        legacyName !== null && legacyName !== ''
+          ? legacyName
+          : element.getAttribute('data-next-checkout-field');
+      if (fieldName && element instanceof HTMLElement) {
+        ctx.billingFields.set(fieldName, element);
+      }
+    });
+  });
+}
+
+/**
+ * Rewrites a cloned shipping row into a billing one, in place.
+ *
+ * Four separate identities have to change, and missing any one of them produces a form
+ * that looks right and misbehaves:
+ *
+ * - `data-next-checkout-field` and the legacy `os-checkout-field` — how the SDK finds the
+ *   field at all.
+ * - `name` and `id` — how the browser groups inputs and how `<label for>` resolves. Left
+ *   alone, a cloned radio would share a group with its shipping original and unticking one
+ *   would untick the other.
+ *
+ * Values are cleared because a clone otherwise arrives pre-filled with the shipping
+ * address, which is exactly the address the shopper has just said is *not* the billing one.
+ * Headings are removed because the shipping section's "Shipping address" title would
+ * otherwise be duplicated above the billing fields.
+ *
+ * Prefixing is idempotent — anything already `billing-`/`billing_` is left as is, so
+ * running over an already-converted subtree is safe.
+ */
+export function convertShippingFieldsToBilling(billingForm: HTMLElement): void {
+  billingForm.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach(heading => {
+    heading.remove();
+  });
+
+  billingForm.querySelectorAll('[data-next-checkout-field]').forEach(field => {
+    const currentValue = field.getAttribute('data-next-checkout-field');
+    if (currentValue && !currentValue.startsWith('billing-')) {
+      field.setAttribute('data-next-checkout-field', `billing-${currentValue}`);
+    }
+  });
+
+  billingForm.querySelectorAll('[os-checkout-field]').forEach(field => {
+    const currentValue = field.getAttribute('os-checkout-field');
+    if (currentValue && !currentValue.startsWith('billing-')) {
+      field.setAttribute('os-checkout-field', `billing-${currentValue}`);
+    }
+  });
+
+  billingForm.querySelectorAll('input, select, textarea').forEach(field => {
+    const element = field as
+      | HTMLInputElement
+      | HTMLSelectElement
+      | HTMLTextAreaElement;
+
+    if (element.name && !element.name.startsWith('billing_')) {
+      element.name = element.name.startsWith('shipping_')
+        ? element.name.replace('shipping_', 'billing_')
+        : `billing_${element.name}`;
+    }
+
+    if (element.id && !element.id.startsWith('billing_')) {
+      element.id = element.id.startsWith('shipping_')
+        ? element.id.replace('shipping_', 'billing_')
+        : `billing_${element.id}`;
+    }
+
+    if (element.type === 'checkbox' || element.type === 'radio') {
+      (element as HTMLInputElement).checked = false;
+    } else {
+      element.value = '';
+    }
+  });
+}
+
+/**
+ * Applies the billing section's opening state, **without animating**.
+ *
+ * On first paint the section has to already be right — animating from a wrong state is
+ * visible as a flash of the billing form on a page where billing matches shipping. So this
+ * writes the same end states `billing-animation.ts` settles on, and skips the transition
+ * entirely by clearing any inline `transition` first.
+ *
+ * The toggle's meaning is worth stating because it inverts: **checked means "same as
+ * shipping"**, so checked collapses the form and unchecked expands it.
+ */
+export function setInitialBillingFormState(ctx: BillingFormSetupContext): void {
+  const billingToggle = ctx.form.querySelector(
+    'input[name="use_shipping_address"]'
+  ) as HTMLInputElement;
+  const billingSection = document.querySelector(
+    BILLING_CONTAINER_SELECTOR
+  ) as HTMLElement;
+
+  ctx.logger.info('[Billing] Setting initial state', {
+    toggleFound: !!billingToggle,
+    sectionFound: !!billingSection,
+    toggleChecked: billingToggle?.checked,
+    currentHeight: billingSection?.style.height,
+    currentOverflow: billingSection?.style.overflow,
+    currentClasses: billingSection?.className,
+  });
+
+  if (billingToggle && billingSection) {
+    // Cleared first so no leftover transition animates this initial write.
+    billingSection.style.removeProperty('height');
+    billingSection.style.removeProperty('overflow');
+    billingSection.style.removeProperty('transition');
+
+    if (billingToggle.checked) {
+      billingSection.style.height = '0px';
+      billingSection.style.overflow = 'hidden';
+      billingSection.classList.add('billing-form-collapsed');
+      billingSection.classList.remove('billing-form-expanded');
+      ctx.logger.info('[Billing] Initial state: COLLAPSED (checkbox checked)');
+    } else {
+      billingSection.style.height = 'auto';
+      billingSection.style.overflow = 'visible';
+      billingSection.classList.add('billing-form-expanded');
+      billingSection.classList.remove('billing-form-collapsed');
+      ctx.logger.info('[Billing] Initial state: EXPANDED (checkbox unchecked)');
+    }
+  } else {
+    ctx.logger.warn('[Billing] Could not set initial state - missing elements');
+  }
+}
+
+/**
+ * Puts the toggle, the billing section and the shopper's stored choice into agreement.
+ *
+ * Three places hold one fact — the checkbox, the section's open/closed state, and
+ * `checkoutStore.sameAsShipping` — and only the store survives a page load. So a shopper
+ * who unticked the toggle on step 1 reaches step 3 with the checkbox back at its markup
+ * default and the section collapsed, while the store still says the billing address is
+ * separate. Step 3 validates from the store, so "next" then fails with `billing-` messages
+ * for fields that are not on screen: a checkout that looks like a dead button.
+ *
+ * Who wins is decided by which side can hold a shopper's *decision*:
+ *
+ * - **The store wins when it says `false`.** Only the toggle handler ever writes that, so
+ *   `false` is always a decision the shopper made — it is restored onto the checkbox.
+ * - **The markup wins when the store says `true`.** `true` is also the store's untouched
+ *   default, so it cannot be told apart from "never chosen", and a page whose author
+ *   renders the toggle unticked would otherwise be silently ticked on first paint. The
+ *   caller writes that answer back to the store.
+ *
+ * A page with no toggle can express neither, so the stored choice is left alone: the
+ * payment step of a multi-step checkout has no toggle, and the choice — with the address
+ * that goes with it — belongs to the step that did.
+ *
+ * @param storedSameAsShipping What `checkoutStore.sameAsShipping` currently holds.
+ * @returns The answer now in force on the page. The caller writes it back to the store when
+ *   it differs from what it passed in.
+ */
+export function reconcileBillingToggle(
+  ctx: BillingFormSetupContext,
+  storedSameAsShipping: boolean
+): boolean {
+  const billingToggle = ctx.form.querySelector(BILLING_TOGGLE_SELECTOR);
+
+  if (!(billingToggle instanceof HTMLInputElement)) {
+    ctx.logger.debug(
+      '[Billing] No toggle on this page - keeping the stored choice'
+    );
+    return storedSameAsShipping;
+  }
+
+  if (!storedSameAsShipping && billingToggle.checked) {
+    billingToggle.checked = false;
+    ctx.logger.info('[Billing] Restored the stored choice: separate billing');
+  }
+
+  setInitialBillingFormState(ctx);
+  return billingToggle.checked;
+}
+
+/**
+ * Clones the shipping form into the billing container and sets its opening state.
+ *
+ * @returns `false` when the page has no billing container, no shipping form, or no inner
+ *   form container to fill — meaning this page simply does not offer a separate billing
+ *   address. That is a normal configuration, not an error, which is why nothing is logged.
+ *
+ * Rows are cloned in two passes because the *location* fields (state, city, postcode) are
+ * handled differently from the basic ones: they live inside a `location` container that is
+ * cloned whole and starts hidden, since they are only revealed once an address line is
+ * filled in. The `else` branch covers pages whose location fields have no container — the
+ * rows are cloned individually there instead of being dropped.
+ */
+export function setupBillingForm(ctx: BillingFormSetupContext): boolean {
+  const billingContainer = document.querySelector(BILLING_CONTAINER_SELECTOR);
+  if (!billingContainer) return false;
+
+  const shippingForm = document.querySelector(SHIPPING_FORM_SELECTOR);
+  if (!shippingForm) return false;
+
+  const billingFormContainer = billingContainer.querySelector(
+    BILLING_FORM_CONTAINER_SELECTOR
+  );
+  if (!billingFormContainer) return false;
+
+  billingFormContainer.innerHTML = '';
+
+  const allShippingFieldRows =
+    shippingForm.querySelectorAll(SHIPPING_FIELD_ROW);
+
+  // Pass 1: the basic rows (name, country, address1) — everything not in a location box.
+  allShippingFieldRows.forEach(row => {
+    const isInsideLocation = row.closest(LOCATION_COMPONENT);
+
+    if (!isInsideLocation) {
+      const clonedRow = row.cloneNode(true) as HTMLElement;
+      convertShippingFieldsToBilling(clonedRow);
+      billingFormContainer.appendChild(clonedRow);
+    }
+  });
+
+  // Pass 2: the location fields, cloned as a whole box so they can be hidden together.
+  const locationContainer = shippingForm.querySelector(LOCATION_COMPONENT);
+
+  if (locationContainer) {
+    const clonedLocation = locationContainer.cloneNode(true) as HTMLElement;
+
+    clonedLocation.setAttribute('data-next-component', 'billing-location');
+    convertShippingFieldsToBilling(clonedLocation);
+
+    // Hidden until a billing address line is entered.
+    clonedLocation.classList.add('next-hidden', 'next-location-hidden');
+    clonedLocation.style.display = 'none';
+
+    billingFormContainer.appendChild(clonedLocation);
+  } else {
+    // No location box on this page: clone those rows individually so they are not lost.
+    allShippingFieldRows.forEach(row => {
+      const isInsideLocation = row.closest(LOCATION_COMPONENT);
+
+      if (isInsideLocation) {
+        const clonedRow = row.cloneNode(true) as HTMLElement;
+        convertShippingFieldsToBilling(clonedRow);
+        billingFormContainer.appendChild(clonedRow);
+      }
+    });
+  }
+
+  setInitialBillingFormState(ctx);
+  return true;
+}
+
+/**
+ * Stored billing-address key → the billing field name that holds it, minus the
+ * `billing-` prefix.
+ *
+ * This is the inverse of `BILLING_ADDRESS_FIELD_MAP` in
+ * [`billing-field-routing.ts`](./billing-field-routing.ts), which renames each field on its
+ * way *into* the store. Only two names actually differ; every other key is already its own
+ * field name, and a key with no entry here is read back as `billing-{key}` — the same
+ * pass-through the forward map applies, so a page that invents `billing-company` gets its
+ * value back too. `tests/billing-address-restore.test.ts` pushes a value through both
+ * directions for every field to prove the two stay inverses.
+ */
+const BILLING_FIELD_SUFFIX_BY_ADDRESS_KEY: Record<string, string> = {
+  first_name: 'fname',
+  last_name: 'lname',
+};
+
+/** What {@link restoreBillingAddressFields} needs on top of the setup context. */
+export interface BillingAddressRestoreContext extends BillingFormSetupContext {
+  /**
+   * Passed through to {@link updateBillingStateOptions}. The billing province `<select>`
+   * is empty until some country fills it, and nothing at boot does — so the stored
+   * province has nowhere to land unless this step loads the list first.
+   */
+  stateFields: StateFieldsContext;
+}
+
+/**
+ * Whether a value can be written into this element. The billing map is typed
+ * `HTMLElement`, so a page that puts a field attribute on a `<div>` lands here.
+ */
+function isWritableField(
+  element: HTMLElement | undefined
+): element is HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement {
+  return (
+    element instanceof HTMLInputElement ||
+    element instanceof HTMLSelectElement ||
+    element instanceof HTMLTextAreaElement
+  );
+}
+
+/**
+ * Types the shopper's stored billing address back into the cloned billing fields.
+ *
+ * {@link convertShippingFieldsToBilling} clears every input it clones, and it has to — a
+ * clone otherwise arrives holding the shipping address. So a returning shopper whose
+ * section {@link reconcileBillingToggle} has just re-opened is looking at empty fields
+ * while the store still holds their address, and step 3 validates from that store: the
+ * form can report itself complete on values nobody can see. This is the step that closes
+ * that gap.
+ *
+ * The country and province are restored first and differently. The province list is built
+ * per country, so its `<select>` is refilled from the *stored billing* country before the
+ * value is written — passing the shipping province here instead would preselect the wrong
+ * region on an address the shopper entered precisely because it differs.
+ *
+ * Values are written exactly as stored, including a phone number kept as raw text rather
+ * than E.164 (finding 157): restoring is not the place to change what the order will
+ * carry.
+ *
+ * @param billingAddress What `checkoutStore.billingAddress` holds. `undefined` is the
+ *   normal "chose a separate billing address, has not filled it in yet" state — the store
+ *   drops an all-empty address on persist while keeping the choice — and returns without
+ *   touching the form.
+ *
+ * @example
+ * ```ts
+ * await restoreBillingAddressFields(
+ *   { ...billingFormSetupContext, stateFields },
+ *   { first_name: 'Grace', last_name: 'Hopper', address1: '2 Side St',
+ *     city: 'Arlington', province: 'VA', postal: '22201', country: 'US', phone: '' }
+ * );
+ * // → <input data-next-checkout-field="billing-fname"> now reads "Grace"
+ * ```
+ */
+export async function restoreBillingAddressFields(
+  ctx: BillingAddressRestoreContext,
+  billingAddress: CheckoutState['billingAddress']
+): Promise<void> {
+  if (!billingAddress) return;
+
+  const country = billingAddress.country ?? '';
+  const province = billingAddress.province ?? '';
+
+  const countryField = ctx.billingFields.get('billing-country');
+  if (country && isWritableField(countryField)) {
+    countryField.value = country;
+  }
+
+  const provinceField = ctx.billingFields.get('billing-province');
+  if (country && provinceField instanceof HTMLSelectElement) {
+    await updateBillingStateOptions(
+      ctx.stateFields,
+      country,
+      provinceField,
+      province
+    );
+  }
+
+  const restored: string[] = [];
+  const unrestored: string[] = [];
+
+  Object.entries(billingAddress).forEach(([key, value]) => {
+    if (typeof value !== 'string' || value === '') return;
+
+    const suffix = BILLING_FIELD_SUFFIX_BY_ADDRESS_KEY[key] ?? key;
+    const fieldName = `billing-${suffix}`;
+    const field = ctx.billingFields.get(fieldName);
+
+    if (!isWritableField(field)) {
+      unrestored.push(fieldName);
+      return;
+    }
+
+    field.value = value;
+    // A `<select>` silently keeps its old value when the option does not exist, so the
+    // write is read back rather than assumed — that read is the only thing that tells a
+    // stored province the country no longer offers apart from one that took.
+    if (field.value === value) {
+      restored.push(fieldName);
+    } else {
+      unrestored.push(fieldName);
+    }
+  });
+
+  ctx.logger.info('[Billing] Restored the stored billing address', {
+    restored,
+    unrestored,
+  });
+
+  if (unrestored.length > 0) {
+    ctx.logger.warn('[Billing] Some stored billing values have no field', {
+      fields: unrestored,
+    });
+  }
+}

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Selection display</title>
+  </head>
+  <body>
+    <h1>Selection display fixture</h1>
+
+    <!-- docs:example Showing whichever package is currently selected -->
+    <!-- Package selector with two cards; no card pre-selected. -->
+    <div data-next-package-selector data-next-selector-id="sel1">
+      <div data-next-selector-card data-next-package-id="1">Single</div>
+      <div data-next-selector-card data-next-package-id="2">Triple</div>
+    </div>
+
+    <!-- Reflects the currently selected package in the sel1 selector. -->
+    <span id="sel-name" data-next-display="selection.sel1.name">?</span>
+    <span id="sel-price" data-next-display="selection.sel1.price">?</span>
+    <!-- /docs:example -->
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

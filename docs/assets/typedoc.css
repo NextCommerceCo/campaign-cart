@@ -1,0 +1,89 @@
+/*
+ * Readability pass over TypeDoc's default theme.
+ * Not a redesign — every rule below has a reason, scoped to the pain points
+ * this site actually has: long guide pages, table-heavy reference docs
+ * (attributes/events/object-fields), and code-block contrast. Works in both
+ * light and dark by riding TypeDoc's existing `--color-*` custom properties
+ * (set on `:root` and overridden under `:root[data-theme="dark"]` /
+ * `:root[data-theme="light"]` by TypeDoc's own theme toggle) instead of
+ * hard-coding colors.
+ */
+
+/* Guide pages are prose-heavy; TypeDoc's default container is full-width,
+   which makes long paragraphs hard to track line-to-line. Cap measure on the
+   text column only — tables and code blocks opt back out below because they
+   need the extra width. */
+.tsd-panel.tsd-typography {
+  max-width: 82ch;
+}
+
+/* Reference pages (attributes.md, events.md, object-attributes.md) are
+   mostly tables. Give them back the full width the prose rule above took
+   away, and make long cell text wrap instead of overflowing the column. */
+.tsd-typography table {
+  max-width: none;
+  width: 100%;
+  table-layout: auto;
+}
+
+.tsd-typography td,
+.tsd-typography th {
+  word-break: normal;
+  overflow-wrap: break-word;
+  vertical-align: top;
+}
+
+/* Default theme's table borders are the same low-contrast line color used
+   everywhere else, so dense reference tables (10+ rows of attributes) turn
+   into a gray blur. Raise contrast on the separators only. */
+.tsd-typography table th,
+.tsd-typography table td {
+  border: 1px solid var(--color-accent);
+}
+
+.tsd-typography table thead th {
+  background-color: var(--color-background-secondary);
+}
+
+/* Zebra striping so a reader's eye doesn't lose the row when a table is wide
+   enough to need horizontal scroll (common on object-attributes.md). */
+.tsd-typography table tbody tr:nth-child(even) {
+  background-color: var(--color-background-secondary);
+}
+
+/* Inline code and fenced blocks: the default theme's code color is close
+   enough to body text at a glance to be missed inline, and fenced blocks
+   have low border contrast against the page background in dark mode. */
+.tsd-typography code {
+  color: var(--color-text);
+  background-color: var(--color-background-secondary);
+  border-radius: 3px;
+  padding: 0.1em 0.35em;
+}
+
+.tsd-typography pre {
+  border: 1px solid var(--color-accent);
+  border-radius: 4px;
+}
+
+/* Wide code samples and wide tables must scroll inside their own box, never
+   force the page to scroll horizontally. */
+.tsd-typography pre,
+.tsd-typography .tsd-full-hierarchy,
+div.tsd-typography table {
+  overflow-x: auto;
+}
+
+/* Mermaid diagrams. `@boneskull/typedoc-plugin-mermaid` wraps each fenced block in
+   `.mermaid-block` (a dark and a light copy, plus the source as a no-JS fallback) and
+   ships its own sizing rules. It toggles the two copies with an inline `display`, so
+   styling `.mermaid` itself would either lose to that or fight it — space the block and
+   center the SVG instead. */
+.tsd-typography .mermaid-block {
+  margin: 1.5em 0;
+}
+
+.tsd-typography .mermaid svg {
+  display: block;
+  margin-inline: auto;
+}

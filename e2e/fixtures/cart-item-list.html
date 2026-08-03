@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Cart item list</title>
+  </head>
+  <body>
+    <h1>Cart item list fixture</h1>
+
+    <!-- docs:example A cart line list using the built-in row template -->
+    <button id="add-1" data-next-action="add-to-cart" data-next-package-id="1">
+      Add Single Widget
+    </button>
+    <button id="add-2" data-next-action="add-to-cart" data-next-package-id="2">
+      Add Triple Pack
+    </button>
+
+    <!-- No template child → the enhancer uses its built-in default item
+         template, which itself carries data-next-quantity / data-next-remove-item
+         buttons that the list self-enhances. -->
+    <div data-next-cart-items></div>
+    <!-- /docs:example -->
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

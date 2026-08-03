@@ -12,6 +12,20 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The versioned docs site is one folder per released tag, and
+          # src/tests/docs/docsVersions.test.ts asserts that index is well-formed.
+          # A default checkout has no tags, so the test read an empty list and failed
+          # on every run.
+          #
+          # `fetch-tags: true` alone does NOT fix it, which is the non-obvious part:
+          # it only removes `--no-tags` from the fetch. The command still runs
+          # `--depth=1` against a single-SHA refspec, and git's tag auto-follow only
+          # brings tags that point at commits it downloaded — none, at depth 1.
+          # Verified against the real CI log: with `fetch-tags: true` the runner still
+          # had 0 tags. `fetch-depth: 0` switches the refspec to all heads *and* all
+          # tags, which is what actually populates them.
+          fetch-depth: 0
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -25,6 +39,17 @@ jobs:
 
       - name: Test
         run: bun run test:coverage
+
+      # Fails only on NEW documentation gaps; known gaps are frozen in
+      # scripts/docs-coverage.baseline.json. See docs/documentation-plan.md.
+      - name: Docs coverage
+        run: bun run docs:coverage
+
+      # Builds the docs site with every TypeDoc warning promoted to an error, so a
+      # broken cross-link between guides cannot merge. Note it catches *relative*
+      # links only — site-absolute ones are checked by docs:coverage above.
+      - name: Docs link check
+        run: bun run docs:check
 
       - name: Build
         run: bun run build

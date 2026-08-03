@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Quantity text</title>
+  </head>
+  <body>
+    <h1>Quantity text fixture</h1>
+
+    <!-- docs:example Text that reflows with the quantity -->
+    <!--
+      Template combines all three substitution forms:
+      {qty} -> quantity, {qty*3} -> quantity x3, {item|items} -> singular/plural.
+      Default quantity is 1 with no upsell control, so this renders statically.
+    -->
+    <div data-next-package-id="2">
+      <span id="qty-text" data-next-quantity-text="{qty} {item|items}, get {qty*3}"
+        >placeholder</span
+      >
+    </div>
+    <!-- /docs:example -->
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

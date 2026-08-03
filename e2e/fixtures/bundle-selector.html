@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Bundle selector</title>
+  </head>
+  <body>
+    <h1>Bundle selector fixture</h1>
+
+    <!-- docs:example Two bundles, one pre-selected -->
+    <!-- Two bundles referencing RICH_CAMPAIGN package ref_ids. Bundle A is the
+         pre-selected default (swap mode auto-applies it on load). -->
+    <div data-next-bundle-selector data-next-selector-id="bundles">
+      <div
+        data-next-bundle-card
+        data-next-bundle-id="bundle-a"
+        data-next-selected="true"
+        data-next-bundle-items='[{"packageId":1,"quantity":1}]'
+      >
+        Bundle A — single widget
+      </div>
+      <div
+        data-next-bundle-card
+        data-next-bundle-id="bundle-b"
+        data-next-bundle-items='[{"packageId":1,"quantity":1},{"packageId":3,"quantity":1}]'
+      >
+        Bundle B — widget + subscription
+      </div>
+    </div>
+
+    <span data-next-display="cart.itemCount">0</span>
+    <!-- /docs:example -->
+
+    <!-- Cart line rows render from the live cart items (state.items), letting
+         the spec assert exactly which packages the selected bundle put in the
+         cart. -->
+    <div data-next-cart-items></div>
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

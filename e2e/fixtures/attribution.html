@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — attribution</title>
+    <!-- Enable UTM-transfer so link hrefs get the current URL params on click.
+         Must run before the module script auto-inits. -->
+    <script>
+      window.nextConfig = { utmTransfer: { enabled: true } };
+    </script>
+  </head>
+  <body>
+    <h1>Attribution fixture</h1>
+
+    <!-- A "checkout" link UTM-transfer should decorate on click. -->
+    <a id="checkout-link" href="/e2e/fixtures/attribution.html">Checkout</a>
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

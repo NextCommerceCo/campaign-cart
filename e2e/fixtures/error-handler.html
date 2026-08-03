@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — monitoring / error handler</title>
+  </head>
+  <body>
+    <h1>Error handler fixture</h1>
+
+    <!-- Malformed enhancer: data-next-quantity requires data-package-id, so its
+         initialize() throws. The scanner must catch it and keep going. -->
+    <button data-next-quantity="increase">Broken quantity control</button>
+
+    <!-- Healthy enhancers that must still work despite the throw above. -->
+    <button data-next-action="add-to-cart" data-next-package-id="1">
+      Add to cart
+    </button>
+    <span data-next-display="cart.totalQuantity">0</span>
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

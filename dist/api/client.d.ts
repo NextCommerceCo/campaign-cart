@@ -1,5 +1,6 @@
 import { Campaign, Cart, Order, CartBase, CreateOrder, AddUpsellLine, CartCalculateSummary, CartSummary } from '../types/api';
-export declare class ApiClient {
+import { IApiClient } from './client.types';
+export declare class ApiClient implements IApiClient {
     private baseURL;
     private apiKey;
     private logger;
@@ -22,8 +23,6 @@ export declare class ApiClient {
     abandonProspectCart(cartId: string): Promise<any>;
     convertProspectCart(cartId: string): Promise<any>;
     getAddressesAutocomplete(query_text: string, country?: string, language?: string, signal?: AbortSignal): Promise<any>;
-    private getRequestType;
-    private getErrorType;
     private request;
     setApiKey(apiKey: string): void;
     getApiKey(): string;

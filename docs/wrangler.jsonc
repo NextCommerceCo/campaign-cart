@@ -1,0 +1,44 @@
+/**
+ * Cloudflare Workers static-assets config for the documentation site.
+ *
+ * The site is a plain static folder — `docs/site`, built by
+ * `npm run docs:publish` (scripts/docs-publish.mjs). There is no `main`, so this
+ * is an **assets-only Worker**: every request is answered straight from the
+ * asset store, no Worker code runs, and no Worker requests are billed.
+ *
+ * Why Workers static assets and not Cloudflare Pages: the site is one folder per
+ * released tag, ~904 files each. At 28 versions that is ~25,300 files, and Pages
+ * caps a deployment at 20,000 files on every plan. Workers static assets allows
+ * 100,000 on a paid plan (needs Wrangler >= 4.34.0). It is also what
+ * `developer-docs` already deploys with, so there is one mechanism to learn.
+ *
+ * Why this file is under `docs/` and not at the repo root: a root Wrangler config
+ * is picked up by every Cloudflare project built from this repo — including the
+ * one behind `npm run build:cf`, which publishes `dist/`, not the docs — and a
+ * Pages build aborts on a root config that has no `pages_build_output_dir`.
+ * Scoping it to `docs/` keeps the two deploy targets from colliding.
+ *
+ * Deploy (a human runs this, never an agent):
+ *
+ *   npm run docs:publish
+ *   npx wrangler deploy -c docs/wrangler.jsonc
+ */
+{
+  "name": "campaign-cart-docs",
+  "compatibility_date": "2026-07-20",
+  "assets": {
+    // Relative to this file, i.e. `docs/site`. Gitignored — built, never committed.
+    "directory": "./site",
+
+    // `/latest/` and `/v0.4.30/` serve that folder's `index.html`; `/latest`
+    // without the slash redirects to `/latest/`. TypeDoc emits directory-style
+    // pages, so this is the mode that matches the output.
+    "html_handling": "auto-trailing-slash",
+
+    // A missing page serves the site's own `404.html` (written by
+    // docs-publish.mjs). Never "single-page-application": this is a multi-page
+    // static site, and serving the index for a mistyped URL would return 200 for
+    // a broken link and hide it from every link checker.
+    "not_found_handling": "404-page"
+  }
+}

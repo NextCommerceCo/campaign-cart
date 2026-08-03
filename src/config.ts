@@ -3,8 +3,23 @@
 // This config is ONLY loaded in debug mode (?debug=true) via loader.js
 // In production, merchants provide their own window.nextConfig
 
+// ── Credentials come from the environment, never from this file ──────────────
+// This file is tracked in git, so a key written here is a key published to
+// everyone with repo access. Vite replaces `import.meta.env.VITE_*` when it serves
+// this file to the dev server, and the production build marks this module
+// `external` (vite.config.ts), so nothing here ever reaches dist/.
+//
+// To run debug mode locally, create `.env.local` (already gitignored):
+//
+//   VITE_API_KEY=your-campaign-api-key
+//   VITE_GOOGLE_MAPS_API_KEY=your-google-maps-key   # optional, see googleMaps below
+//
+// Leaving VITE_API_KEY unset is not fatal to the dev server, but the SDK will abort
+// boot with `API key not found` — that missing key is the cause.
+const env = import.meta.env;
+
 const config = {
-    apiKey: "kLGpgEfCX3iUZG16hpI5zrCH9qxcOdahDY1im6ud",
+    apiKey: env.VITE_API_KEY ?? "",
     debug: true, // Always true since this file only loads in debug mode
     paymentConfig: {
       expressCheckout: {
@@ -38,7 +53,10 @@ const config = {
 
     },
     googleMaps: {
-      apiKey: "AIzaSyBmrv1QRE41P9FhFOTwUhRMGg6LcFH1ehs",
+      // Empty means Google Maps autocomplete stays off and the SDK's own
+      // autocomplete is used instead — see addressConfig above. A Google Maps key is
+      // billable, so do not commit one here even for a demo.
+      apiKey: env.VITE_GOOGLE_MAPS_API_KEY ?? "",
       region: "US",
       enableAutocomplete: true
     },

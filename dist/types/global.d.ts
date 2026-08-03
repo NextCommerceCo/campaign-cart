@@ -1,5 +1,6 @@
 import { Decimal } from 'decimal.js';
 import { Offer } from './campaign';
+import { Order } from './api';
 export interface EventMap {
     'cart:updated': CartState;
     'cart:item-added': {
@@ -285,6 +286,12 @@ export interface EventMap {
     };
     'toggle:selection-changed': {
         selected: number[];
+    };
+    'scroll-hint:updated': {
+        isVisible: boolean;
+        scrollTop: number;
+        scrollHeight: number;
+        clientHeight: number;
     };
 }
 export interface CartItem {
@@ -646,7 +653,7 @@ export interface CheckoutData {
     isProcessing?: boolean;
     step?: number;
 }
-export interface OrderData {
+export interface OrderData extends Pick<Order, 'ref_id' | 'number' | 'currency' | 'total_incl_tax' | 'order_status_url' | 'is_test'> {
     ref_id: string;
     number: string;
     currency: string;

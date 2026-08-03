@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Checkout form</title>
+  </head>
+  <body>
+    <h1>Checkout form fixture</h1>
+
+    <!-- docs:example A minimal checkout form -->
+    <!-- A minimal checkout form. Wrap each field in a .form-group: validation
+         errors are styled on that wrapper, so a field without one cannot show
+         its error state. -->
+    <form data-next-checkout>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input
+          type="text"
+          id="email"
+          data-next-checkout-field="email"
+          name="email"
+        />
+      </div>
+      <div class="form-group">
+        <label for="fname">First name</label>
+        <input
+          type="text"
+          id="fname"
+          data-next-checkout-field="fname"
+          name="fname"
+        />
+      </div>
+      <div class="form-group">
+        <label for="lname">Last name</label>
+        <input
+          type="text"
+          id="lname"
+          data-next-checkout-field="lname"
+          name="lname"
+        />
+      </div>
+      <button type="submit">Complete order</button>
+    </form>
+    <!-- /docs:example -->
+
+    <!-- checkout:form-initialized fires during the DOM scan, before
+         window.next exists. Buffer it from the shared EventBus singleton. -->
+    <script type="module">
+      import { EventBus } from '/src/core/events.ts';
+      const bus = EventBus.getInstance();
+      window.__capturedEvents = window.__capturedEvents || {};
+      window.__capturedEvents['checkout:form-initialized'] = [];
+      bus.on('checkout:form-initialized', d =>
+        window.__capturedEvents['checkout:form-initialized'].push({
+          hasForm: d.form instanceof HTMLFormElement,
+        })
+      );
+    </script>
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

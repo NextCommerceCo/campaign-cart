@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Conflict guard (swap selector + add-to-cart)</title>
+  </head>
+  <body>
+    <h1>Conflict guard fixture</h1>
+
+    <!-- Swap-mode selector (default) with a single card. -->
+    <div data-next-package-selector data-next-selector-id="guarded">
+      <div data-next-selector-card data-next-package-id="1" data-next-selected="true">
+        Single Widget
+      </div>
+    </div>
+
+    <!-- Add-to-cart button bound to the SAME selector. -->
+    <button data-next-action="add-to-cart" data-next-selector-id="guarded">
+      Add to cart
+    </button>
+
+    <span data-next-display="cart.totalQuantity">0</span>
+    <span data-next-display="cart.itemCount">0</span>
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,709 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+  makePackageState,
+  getEffectiveItems,
+  parseVouchers,
+  extractNestedSlotTemplate,
+  extractNestedVariantTemplates,
+  parseForceBundleId,
+  resolveForcedBundleId,
+  pickDefaultCard,
+} from '../bundle-selector.state';
+import type { Package } from '@/types/campaign';
+import type { BundleCard, BundleSlot } from '../bundle-selector.types';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function makePkg(overrides: Partial<Package> = {}): Package {
+  return {
+    ref_id: 1,
+    external_id: 1,
+    name: 'Widget',
+    price: '10.00',
+    price_total: '10.00',
+    qty: 1,
+    image: 'img.jpg',
+    is_recurring: false,
+    ...overrides,
+  };
+}
+
+function makeSlot(overrides: Partial<BundleSlot> = {}): BundleSlot {
+  return {
+    slotIndex: 0,
+    unitIndex: 0,
+    originalPackageId: 1,
+    activePackageId: 1,
+    quantity: 1,
+    configurable: false,
+    variantSelected: false,
+    ...overrides,
+  };
+}
+
+function makeCard(slots: BundleSlot[]): BundleCard {
+  return {
+    element: document.createElement('div'),
+    bundleId: 'bundle-a',
+    name: 'Bundle A',
+    items: [],
+    slots,
+    isPreSelected: false,
+    vouchers: [],
+    packageStates: new Map(),
+    bundlePrice: null,
+    slotVarsCache: new Map(),
+  };
+}
+
+const mockLogger = { debug: vi.fn(), warn: vi.fn(), error: vi.fn() };
+
+// ─── makePackageState ─────────────────────────────────────────────────────────
+
+describe('makePackageState', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('maps packageId, name, image, productName, variantName', () => {
+    const state = makePackageState(
+      makePkg({
+        ref_id: 42,
+        name: 'Gadget',
+        image: 'gadget.png',
+        product_name: 'Gadget Pro',
+        product_variant_name: 'Red',
+      }),
+    );
+
+    expect(state.packageId).toBe(42);
+    expect(state.name).toBe('Gadget');
+    expect(state.image).toBe('gadget.png');
+    expect(state.productName).toBe('Gadget Pro');
+    expect(state.variantName).toBe('Red');
+  });
+
+  it('maps recurring fields', () => {
+    const state = makePackageState(
+      makePkg({
+        is_recurring: true,
+        interval: 'month',
+        interval_count: 3,
+        price_recurring_total: '9.99',
+      }),
+    );
+
+    expect(state.isRecurring).toBe(true);
+    expect(state.interval).toBe('month');
+    expect(state.intervalCount).toBe(3);
+    expect(state.recurringPrice.toNumber()).toBe(9.99);
+    expect(state.originalRecurringPrice.toNumber()).toBe(9.99);
+  });
+
+  it('sets unitPrice, originalUnitPrice, price, originalPrice all equal to price_total', () => {
+    const state = makePackageState(makePkg({ price_total: '19.99' }));
+
+    expect(state.unitPrice.toNumber()).toBe(19.99);
+    expect(state.originalUnitPrice.toNumber()).toBe(19.99);
+    expect(state.price.toNumber()).toBe(19.99);
+    expect(state.originalPrice.toNumber()).toBe(19.99);
+  });
+
+  it('starts with zero discount — hasDiscount false, amounts zero', () => {
+    const state = makePackageState(makePkg());
+
+    expect(state.hasDiscount).toBe(false);
+    expect(state.discountAmount.toNumber()).toBe(0);
+    expect(state.discountPercentage.toNumber()).toBe(0);
+  });
+
+  it('uses empty strings for missing optional string fields', () => {
+    const state = makePackageState(
+      makePkg({ name: undefined as unknown as string, image: undefined as unknown as string }),
+    );
+
+    expect(state.name).toBe('');
+    expect(state.image).toBe('');
+  });
+
+  it('defaults optional nullable fields to null', () => {
+    const state = makePackageState(
+      makePkg({ product_sku: undefined, interval: undefined, interval_count: undefined }),
+    );
+
+    expect(state.sku).toBeNull();
+    expect(state.interval).toBeNull();
+    expect(state.intervalCount).toBeNull();
+  });
+
+  it('defaults to 0 when price_total is falsy', () => {
+    const state = makePackageState(makePkg({ price_total: '' }));
+
+    expect(state.unitPrice.toNumber()).toBe(0);
+    expect(state.originalUnitPrice.toNumber()).toBe(0);
+  });
+
+  it('defaults recurring price to 0 when price_recurring_total is absent', () => {
+    const state = makePackageState(makePkg({ price_recurring_total: undefined }));
+
+    expect(state.recurringPrice.toNumber()).toBe(0);
+    expect(state.originalRecurringPrice.toNumber()).toBe(0);
+  });
+
+  it('maps sku correctly when present', () => {
+    const state = makePackageState(makePkg({ product_sku: 'SKU-99' }));
+    expect(state.sku).toBe('SKU-99');
+  });
+});
+
+// ─── getEffectiveItems ────────────────────────────────────────────────────────
+
+describe('getEffectiveItems', () => {
+  it('single slot → single item with matching packageId and quantity', () => {
+    const card = makeCard([makeSlot({ activePackageId: 5, quantity: 1 })]);
+
+    const items = getEffectiveItems(card);
+
+    expect(items).toHaveLength(1);
+    expect(items[0]).toEqual({ packageId: 5, quantity: 1 });
+  });
+
+  it('two slots with the same packageId → one item with summed quantity', () => {
+    const card = makeCard([
+      makeSlot({ slotIndex: 0, activePackageId: 3, quantity: 1 }),
+      makeSlot({ slotIndex: 1, activePackageId: 3, quantity: 1 }),
+    ]);
+
+    const items = getEffectiveItems(card);
+
+    expect(items).toHaveLength(1);
+    expect(items[0]).toEqual({ packageId: 3, quantity: 2 });
+  });
+
+  it('two slots with different packageIds → two separate items', () => {
+    const card = makeCard([
+      makeSlot({ slotIndex: 0, activePackageId: 1, quantity: 1 }),
+      makeSlot({ slotIndex: 1, activePackageId: 2, quantity: 1 }),
+    ]);
+
+    const items = getEffectiveItems(card);
+
+    expect(items).toHaveLength(2);
+    expect(items).toEqual(
+      expect.arrayContaining([
+        { packageId: 1, quantity: 1 },
+        { packageId: 2, quantity: 1 },
+      ]),
+    );
+  });
+
+  it('configurable slots expanded into 3 units → quantity 3 for same packageId', () => {
+    const card = makeCard([
+      makeSlot({ slotIndex: 0, unitIndex: 0, activePackageId: 10, quantity: 1, configurable: true }),
+      makeSlot({ slotIndex: 1, unitIndex: 1, activePackageId: 10, quantity: 1, configurable: true }),
+      makeSlot({ slotIndex: 2, unitIndex: 2, activePackageId: 10, quantity: 1, configurable: true }),
+    ]);
+
+    const items = getEffectiveItems(card);
+
+    expect(items).toHaveLength(1);
+    expect(items[0]).toEqual({ packageId: 10, quantity: 3 });
+  });
+
+  it('configurable slots with variant changes → correct grouping after activePackageId update', () => {
+    // Slot 0 changed to package 11 via variant selection
+    const card = makeCard([
+      makeSlot({ slotIndex: 0, activePackageId: 11, quantity: 1, configurable: true }),
+      makeSlot({ slotIndex: 1, activePackageId: 10, quantity: 1, configurable: true }),
+      makeSlot({ slotIndex: 2, activePackageId: 10, quantity: 1, configurable: true }),
+    ]);
+
+    const items = getEffectiveItems(card);
+
+    expect(items).toHaveLength(2);
+    expect(items).toEqual(
+      expect.arrayContaining([
+        { packageId: 11, quantity: 1 },
+        { packageId: 10, quantity: 2 },
+      ]),
+    );
+  });
+
+  it('returns empty array for a card with no slots', () => {
+    const card = makeCard([]);
+    expect(getEffectiveItems(card)).toEqual([]);
+  });
+
+  it('non-configurable slot with quantity > 1 → item with that quantity', () => {
+    const card = makeCard([makeSlot({ activePackageId: 7, quantity: 3 })]);
+
+    const items = getEffectiveItems(card);
+
+    expect(items).toHaveLength(1);
+    expect(items[0]).toEqual({ packageId: 7, quantity: 3 });
+  });
+
+  // ─── Bundle-level quantity multiplier ───────────────────────────────────────
+
+  it('applies bundleQuantity multiplier to a single slot', () => {
+    const card = makeCard([makeSlot({ activePackageId: 5, quantity: 1 })]);
+    (card as any).bundleQuantity = 4;
+
+    const items = getEffectiveItems(card);
+
+    expect(items).toEqual([{ packageId: 5, quantity: 4 }]);
+  });
+
+  it('multiplies bundleQuantity after slot aggregation (configurable slots share packageId)', () => {
+    const card = makeCard([
+      makeSlot({ slotIndex: 0, activePackageId: 9, quantity: 1, configurable: true }),
+      makeSlot({ slotIndex: 1, activePackageId: 9, quantity: 1, configurable: true }),
+    ]);
+    (card as any).bundleQuantity = 3;
+
+    const items = getEffectiveItems(card);
+
+    // Per-slot aggregation collapses to {9,2}; multiplier then gives {9,6}.
+    expect(items).toEqual([{ packageId: 9, quantity: 6 }]);
+  });
+
+  it('multiplies bundleQuantity across a mixed bundle', () => {
+    const card = makeCard([
+      makeSlot({ slotIndex: 0, activePackageId: 1, quantity: 1 }),
+      makeSlot({ slotIndex: 1, activePackageId: 2, quantity: 2 }),
+    ]);
+    (card as any).bundleQuantity = 5;
+
+    const items = getEffectiveItems(card);
+
+    expect(items).toEqual([
+      { packageId: 1, quantity: 5 },
+      { packageId: 2, quantity: 10 },
+    ]);
+  });
+
+  it('is an identity when bundleQuantity is 1 (regression)', () => {
+    const card = makeCard([
+      makeSlot({ slotIndex: 0, activePackageId: 1, quantity: 2 }),
+      makeSlot({ slotIndex: 1, activePackageId: 2, quantity: 1 }),
+    ]);
+    (card as any).bundleQuantity = 1;
+
+    const items = getEffectiveItems(card);
+
+    expect(items).toEqual([
+      { packageId: 1, quantity: 2 },
+      { packageId: 2, quantity: 1 },
+    ]);
+  });
+
+  it('falls back to multiplier=1 when bundleQuantity is undefined/0 (safety net)', () => {
+    const card = makeCard([makeSlot({ activePackageId: 4, quantity: 2 })]);
+    // Not setting bundleQuantity at all — simulates older code paths.
+
+    const items = getEffectiveItems(card);
+
+    expect(items).toEqual([{ packageId: 4, quantity: 2 }]);
+  });
+});
+
+// ─── parseVouchers ────────────────────────────────────────────────────────────
+
+describe('parseVouchers', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('returns empty array for null input', () => {
+    expect(parseVouchers(null, mockLogger as any)).toEqual([]);
+  });
+
+  it('returns empty array for empty string', () => {
+    expect(parseVouchers('', mockLogger as any)).toEqual([]);
+  });
+
+  it('parses comma-separated string into trimmed codes', () => {
+    expect(parseVouchers('CODE1,CODE2,CODE3', mockLogger as any)).toEqual([
+      'CODE1',
+      'CODE2',
+      'CODE3',
+    ]);
+  });
+
+  it('trims whitespace around comma-separated codes', () => {
+    expect(parseVouchers(' CODE1 , CODE2 ', mockLogger as any)).toEqual(['CODE1', 'CODE2']);
+  });
+
+  it('filters out empty strings from comma-separated input', () => {
+    expect(parseVouchers('CODE1,,CODE2', mockLogger as any)).toEqual(['CODE1', 'CODE2']);
+  });
+
+  it('parses JSON array of strings', () => {
+    expect(parseVouchers('["SUMMER","FALL"]', mockLogger as any)).toEqual(['SUMMER', 'FALL']);
+  });
+
+  it('filters non-string values from JSON array', () => {
+    expect(parseVouchers('["CODE1", 42, null, "CODE2"]', mockLogger as any)).toEqual([
+      'CODE1',
+      'CODE2',
+    ]);
+  });
+
+  it('logs warn and returns empty array for invalid JSON', () => {
+    const result = parseVouchers('[invalid json', mockLogger as any);
+
+    expect(result).toEqual([]);
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'Invalid JSON in data-next-bundle-vouchers',
+      '[invalid json',
+    );
+  });
+
+  it('returns empty array when JSON array is empty', () => {
+    expect(parseVouchers('[]', mockLogger as any)).toEqual([]);
+  });
+
+  it('single code without comma → single-element array', () => {
+    expect(parseVouchers('SINGLE', mockLogger as any)).toEqual(['SINGLE']);
+  });
+});
+
+// ─── extractNestedSlotTemplate ────────────────────────────────────────────────
+
+describe('extractNestedSlotTemplate', () => {
+  it('pulls the slot template out of [data-next-bundle-slots] > template', () => {
+    const cardTemplate = `
+      <div class="card">
+        <h3>{bundle.name}</h3>
+        <div class="items" data-next-bundle-slots>
+          <template>
+            <div class="item">
+              <img src="{item.image}">
+              <span>{item.name}</span>
+            </div>
+          </template>
+        </div>
+      </div>
+    `;
+
+    const { card, slot } = extractNestedSlotTemplate(cardTemplate);
+
+    expect(slot).toContain('<div class="item">');
+    expect(slot).toContain('{item.image}');
+    expect(slot).toContain('{item.name}');
+    // The inner <template> is stripped from the card so the live render
+    // target stays empty for slot rows.
+    expect(card).toContain('data-next-bundle-slots');
+    expect(card).not.toContain('<template>');
+    expect(card).not.toContain('{item.image}');
+  });
+
+  it('returns the original card template and empty slot when no nested template exists', () => {
+    const cardTemplate =
+      '<div class="card"><div data-next-bundle-slots></div></div>';
+
+    const { card, slot } = extractNestedSlotTemplate(cardTemplate);
+
+    expect(slot).toBe('');
+    expect(card).toBe(cardTemplate);
+  });
+
+  it('returns empty slot when the card template has no [data-next-bundle-slots] placeholder', () => {
+    const cardTemplate = '<div class="card"><span>plain</span></div>';
+
+    const { card, slot } = extractNestedSlotTemplate(cardTemplate);
+
+    expect(slot).toBe('');
+    expect(card).toBe(cardTemplate);
+  });
+
+  it('only extracts a direct child <template>, not deeply nested ones', () => {
+    const cardTemplate = `
+      <div class="card">
+        <div data-next-bundle-slots>
+          <div class="wrap">
+            <template><div>nested deeper</div></template>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const { card, slot } = extractNestedSlotTemplate(cardTemplate);
+
+    expect(slot).toBe('');
+    // The unrelated nested <template> remains untouched in the card.
+    expect(card).toContain('<template>');
+    expect(card).toContain('nested deeper');
+  });
+
+  it('trims whitespace around the extracted slot HTML', () => {
+    const cardTemplate = `
+      <div data-next-bundle-slots>
+        <template>
+          <div class="item">{item.name}</div>
+        </template>
+      </div>
+    `;
+
+    const { slot } = extractNestedSlotTemplate(cardTemplate);
+
+    expect(slot.startsWith('<div')).toBe(true);
+    expect(slot.endsWith('</div>')).toBe(true);
+  });
+});
+
+// ─── extractNestedVariantTemplates ────────────────────────────────────────────
+
+describe('extractNestedVariantTemplates', () => {
+  it('pulls variant-selector and variant-option templates out of a slot template', () => {
+    const slotTemplate = `
+      <div class="slot">
+        <div data-next-variant-selectors>
+          <template>
+            <div class="group">
+              <span>{attr.name}</span>
+              <div data-next-variant-options>
+                <template>
+                  <button>{option.value}</button>
+                </template>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    `;
+
+    const { slot, variantSelector, variantOption } = extractNestedVariantTemplates(slotTemplate);
+
+    expect(variantOption).toContain('<button>{option.value}</button>');
+    expect(variantSelector).toContain('{attr.name}');
+    expect(variantSelector).toContain('data-next-variant-options');
+    expect(variantSelector).not.toContain('<template>');
+    expect(slot).toContain('data-next-variant-selectors');
+    expect(slot).not.toContain('<template>');
+  });
+
+  it('returns empty variant strings when slot template has no nested templates', () => {
+    const slotTemplate = '<div class="slot">plain</div>';
+    const { slot, variantSelector, variantOption } = extractNestedVariantTemplates(slotTemplate);
+
+    expect(variantSelector).toBe('');
+    expect(variantOption).toBe('');
+    expect(slot.trim()).toBe('<div class="slot">plain</div>');
+  });
+
+  it('extracts only variant-selector when no option template is nested', () => {
+    const slotTemplate = `
+      <div data-next-variant-selectors>
+        <template><div>{attr.name}</div></template>
+      </div>
+    `;
+
+    const { variantSelector, variantOption } = extractNestedVariantTemplates(slotTemplate);
+
+    expect(variantSelector).toContain('{attr.name}');
+    expect(variantOption).toBe('');
+  });
+});
+
+describe('parseForceBundleId', () => {
+  it('returns [] for null/empty/undefined', () => {
+    expect(parseForceBundleId(null)).toEqual([]);
+    expect(parseForceBundleId(undefined)).toEqual([]);
+    expect(parseForceBundleId('')).toEqual([]);
+  });
+
+  it('parses a single unscoped bundleId', () => {
+    expect(parseForceBundleId('premium')).toEqual([
+      { selectorId: null, bundleId: 'premium' },
+    ]);
+  });
+
+  it('parses a scoped selectorId:bundleId pair', () => {
+    expect(parseForceBundleId('tier:premium')).toEqual([
+      { selectorId: 'tier', bundleId: 'premium' },
+    ]);
+  });
+
+  it('parses comma-separated scoped specs', () => {
+    expect(parseForceBundleId('tier:premium,gift:luxury')).toEqual([
+      { selectorId: 'tier', bundleId: 'premium' },
+      { selectorId: 'gift', bundleId: 'luxury' },
+    ]);
+  });
+
+  it('tolerates whitespace around tokens', () => {
+    expect(parseForceBundleId(' tier : premium , gift : luxury ')).toEqual([
+      { selectorId: 'tier', bundleId: 'premium' },
+      { selectorId: 'gift', bundleId: 'luxury' },
+    ]);
+  });
+
+  it('drops entries with empty bundleId', () => {
+    expect(parseForceBundleId('tier:,valid')).toEqual([
+      { selectorId: null, bundleId: 'valid' },
+    ]);
+  });
+
+  it('drops empty comma-separated segments', () => {
+    expect(parseForceBundleId('a,,b')).toEqual([
+      { selectorId: null, bundleId: 'a' },
+      { selectorId: null, bundleId: 'b' },
+    ]);
+  });
+});
+
+describe('pickDefaultCard', () => {
+  function card(bundleId: string, isPreSelected = false): BundleCard {
+    return {
+      element: document.createElement('div'),
+      bundleId,
+      name: bundleId,
+      items: [],
+      slots: [],
+      isPreSelected,
+      vouchers: [],
+      packageStates: new Map(),
+      bundlePrice: null,
+      slotVarsCache: new Map(),
+    };
+  }
+
+  it('returns null card when cards array is empty', () => {
+    const result = pickDefaultCard([], null, null);
+    expect(result.card).toBeNull();
+    expect(result.fromForce).toBe(false);
+    expect(result.forcedMiss).toBeNull();
+    expect(result.usedFirstCardFallback).toBe(false);
+  });
+
+  it('falls back to first card when no force param and no preselected exists', () => {
+    const cards = [card('a'), card('b')];
+    const result = pickDefaultCard(cards, null, null);
+    expect(result.card).toBe(cards[0]);
+    expect(result.fromForce).toBe(false);
+    expect(result.forcedMiss).toBeNull();
+    expect(result.usedFirstCardFallback).toBe(true);
+  });
+
+  it('picks the preselected card over the first card when no force param', () => {
+    const cards = [card('a'), card('b', true), card('c')];
+    const result = pickDefaultCard(cards, null, null);
+    expect(result.card).toBe(cards[1]);
+    expect(result.fromForce).toBe(false);
+    expect(result.usedFirstCardFallback).toBe(false);
+  });
+
+  it('forceBundleId wins over the preselected card (unscoped)', () => {
+    const cards = [card('a', true), card('b'), card('c')];
+    const result = pickDefaultCard(cards, 'c', null);
+    expect(result.card).toBe(cards[2]);
+    expect(result.fromForce).toBe(true);
+    expect(result.forcedMiss).toBeNull();
+    expect(result.usedFirstCardFallback).toBe(false);
+  });
+
+  it('honors a scoped forceBundleId that targets this selector', () => {
+    const cards = [card('a', true), card('premium'), card('basic')];
+    const result = pickDefaultCard(cards, 'tier:premium', 'tier');
+    expect(result.card).toBe(cards[1]);
+    expect(result.fromForce).toBe(true);
+  });
+
+  it('ignores a scoped forceBundleId aimed at a different selector', () => {
+    const cards = [card('a'), card('b', true)];
+    const result = pickDefaultCard(cards, 'gift:luxury', 'tier');
+    // No spec applies → falls through to preselected
+    expect(result.card).toBe(cards[1]);
+    expect(result.fromForce).toBe(false);
+    expect(result.forcedMiss).toBeNull();
+  });
+
+  it('scoped match beats unscoped match for the same selector', () => {
+    const cards = [card('fallback'), card('premium')];
+    const result = pickDefaultCard(cards, 'fallback,tier:premium', 'tier');
+    expect(result.card).toBe(cards[1]);
+    expect(result.fromForce).toBe(true);
+  });
+
+  it('reports forcedMiss when force resolves but no card matches — falls back to preselected', () => {
+    const cards = [card('a'), card('b', true)];
+    const result = pickDefaultCard(cards, 'nonexistent', null);
+    expect(result.card).toBe(cards[1]);
+    expect(result.fromForce).toBe(false);
+    expect(result.forcedMiss).toBe('nonexistent');
+    expect(result.usedFirstCardFallback).toBe(false);
+  });
+
+  it('reports forcedMiss when force resolves but no card matches — falls back to first card', () => {
+    const cards = [card('a'), card('b')];
+    const result = pickDefaultCard(cards, 'nonexistent', null);
+    expect(result.card).toBe(cards[0]);
+    expect(result.fromForce).toBe(false);
+    expect(result.forcedMiss).toBe('nonexistent');
+    expect(result.usedFirstCardFallback).toBe(true);
+  });
+
+  it('does not set usedFirstCardFallback when the force match itself is the first card', () => {
+    const cards = [card('a'), card('b')];
+    const result = pickDefaultCard(cards, 'a', null);
+    expect(result.card).toBe(cards[0]);
+    expect(result.fromForce).toBe(true);
+    expect(result.usedFirstCardFallback).toBe(false);
+  });
+
+  it('treats null/undefined/empty raw force values as no force', () => {
+    const cards = [card('a'), card('b', true)];
+    for (const raw of [null, undefined, '']) {
+      const result = pickDefaultCard(cards, raw, null);
+      expect(result.card).toBe(cards[1]);
+      expect(result.fromForce).toBe(false);
+      expect(result.forcedMiss).toBeNull();
+    }
+  });
+
+  it('multi-selector raw spec applies the right card per selector', () => {
+    const tierCards = [card('basic'), card('premium')];
+    const giftCards = [card('standard'), card('luxury')];
+    const raw = 'tier:premium,gift:luxury';
+
+    expect(pickDefaultCard(tierCards, raw, 'tier').card).toBe(tierCards[1]);
+    expect(pickDefaultCard(giftCards, raw, 'gift').card).toBe(giftCards[1]);
+
+    // A third selector with no matching spec falls through to first card
+    const otherCards = [card('x'), card('y')];
+    const otherResult = pickDefaultCard(otherCards, raw, 'other');
+    expect(otherResult.card).toBe(otherCards[0]);
+    expect(otherResult.fromForce).toBe(false);
+    expect(otherResult.forcedMiss).toBeNull();
+  });
+});
+
+describe('resolveForcedBundleId', () => {
+  it('returns null when no specs are given', () => {
+    expect(resolveForcedBundleId([], 'tier')).toBeNull();
+    expect(resolveForcedBundleId([], null)).toBeNull();
+  });
+
+  it('prefers a scoped match over an unscoped one', () => {
+    const specs = [
+      { selectorId: null, bundleId: 'fallback' },
+      { selectorId: 'tier', bundleId: 'premium' },
+    ];
+    expect(resolveForcedBundleId(specs, 'tier')).toBe('premium');
+  });
+
+  it('falls back to an unscoped spec when no scoped match exists', () => {
+    const specs = [
+      { selectorId: null, bundleId: 'fallback' },
+      { selectorId: 'gift', bundleId: 'luxury' },
+    ];
+    expect(resolveForcedBundleId(specs, 'tier')).toBe('fallback');
+  });
+
+  it('returns null when only mismatched scoped specs are present', () => {
+    const specs = [{ selectorId: 'gift', bundleId: 'luxury' }];
+    expect(resolveForcedBundleId(specs, 'tier')).toBeNull();
+  });
+
+  it('matches an unscoped spec when the selector has no id', () => {
+    const specs = [{ selectorId: null, bundleId: 'premium' }];
+    expect(resolveForcedBundleId(specs, null)).toBe('premium');
+  });
+});

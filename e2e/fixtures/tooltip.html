@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Tooltip</title>
+  </head>
+  <body>
+    <h1>Tooltip fixture</h1>
+
+    <!-- docs:example A tooltip on a button -->
+    <!-- delay=0 so the tooltip shows immediately on hover/focus. -->
+    <button
+      id="target"
+      data-next-tooltip="Helpful text"
+      data-next-tooltip-placement="top"
+      data-next-tooltip-delay="0"
+    >
+      Hover me
+    </button>
+    <!-- /docs:example -->
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>
