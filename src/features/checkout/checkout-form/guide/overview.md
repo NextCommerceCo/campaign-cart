@@ -47,11 +47,30 @@ the two can never drift apart.
 - Payment methods are declared in markup with short names (`credit`, `paypal`,
   `apple-pay`, …). The SDK translates them to the API's names, so the two
   vocabularies never have to be reconciled by hand.
+- **Shipping choices come from the campaign, not from the SDK.** A
+  `input[name="shipping_method"]` radio carries a shipping method's `ref_id`, and
+  choosing it stores that campaign entry's code and price — so a total on screen
+  is a total the order will charge. A value the campaign does not list selects
+  nothing and logs `Shipping method … is not one this campaign offers`, because
+  the campaign cannot price it.
+- **A multi-step form is gated by its step number.** Steps 1, 2 and 3 have their
+  own rules; any other number is checked against step 2 (contact details and the
+  shipping address) rather than waved through, and a step number that is not a
+  whole number above zero is read as step 1.
 - The order is created **once**, after tokenization succeeds. A declined payment
   produces `payment:error` and no order.
 - After the order is created the visitor is redirected using the URL the API
   returns. When that URL is missing, `order:redirect-missing` fires — otherwise
   they would sit on a checkout page for an order that already succeeded.
+- **The pay button is borrowed, not owned.** It is disabled while the order is
+  being placed and put back exactly as it was when the attempt ends — so a button
+  your page holds shut until terms are accepted stays shut, and a button that was
+  clickable is clickable again after a decline. Give the control a `<button>` or
+  an `<input type="submit">`; an `<a>` or a `<div>` cannot be disabled, so it is
+  ignored rather than pretended to be held.
+- **A "no" is remembered too.** An unticked marketing checkbox comes back
+  unticked on reload, not reset to whatever the markup ships. A box the visitor
+  never touched is left as the page wrote it.
 - The separate billing address survives a reload **as a whole** — the answer goes
   back on the checkbox and the stored address goes back into the fields, so what
   the order will carry is what the visitor can read. Nothing is put back while

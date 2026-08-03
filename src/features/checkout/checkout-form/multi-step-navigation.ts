@@ -15,9 +15,10 @@
  * - {@link detectMultiStepCheckout} runs once at boot and reads the two attributes;
  * - {@link handleStepNavigation} runs on every submit, in place of order creation.
  *
- * Extracted from `checkout-form.enhancer.ts`. Detection needs two things from the form
+ * Extracted from `checkout-form.enhancer.ts`. Detection needs three things from the form
  * ({@link MultiStepDetectionContext}); navigation needs eight
- * ({@link StepNavigationContext}), and both were lifted verbatim.
+ * ({@link StepNavigationContext}). Both were lifted verbatim, and both have since had the
+ * unreadable-step-number half of finding 181 fixed in them.
  */
 
 import type { CountryConfig } from '@/core/country-service';
@@ -33,6 +34,38 @@ const NAVIGATION_DELAY_MS = 1000;
 /** Gives the error labels a frame to render before the first one is focused. */
 const FOCUS_DELAY_MS = 100;
 
+/**
+ * The steps `validateStep` has rules for. Every other number validates nothing there and
+ * comes back valid, which is why one is substituted before the check rather than after.
+ */
+const STEPS_WITH_RULES = new Set([1, 2, 3]);
+/**
+ * The gate an unrecognised step is checked against: contact details and the shipping
+ * address. Step 3's rules would demand card fields the page may not have; step 2's are the
+ * fields every checkout needs whichever page they were typed on.
+ */
+const FALLBACK_VALIDATION_STEP = 2;
+
+/**
+ * Reads `data-next-step-number`, which is a whole number above zero or a mistake.
+ *
+ * A missing attribute is the ordinary first step. Anything else unreadable — `two`, `0`,
+ * `2.5` — is warned about and treated as step 1, because the first step's rules are the
+ * strictest gate available and a step nobody can name must not be the loosest.
+ */
+function readStepNumber(rawStep: string | null, logger: Logger): number {
+  if (rawStep === null) return 1;
+
+  if (!/^\d+$/.test(rawStep.trim()) || parseInt(rawStep, 10) < 1) {
+    logger.warn(
+      `Step number "${rawStep}" is not a whole number above zero, treating this form as step 1`
+    );
+    return 1;
+  }
+
+  return parseInt(rawStep, 10);
+}
+
 /** What {@link detectMultiStepCheckout} needs from the checkout form. */
 export interface MultiStepDetectionContext {
   form: HTMLFormElement;
@@ -45,7 +78,10 @@ export interface MultiStepDetectionContext {
 export interface MultiStepState {
   /** True only when the form declared a next-step URL. */
   isMultiStep: boolean;
-  /** The step this page is, from `data-next-step-number`. Defaults to 1. */
+  /**
+   * The step this page is, from `data-next-step-number`. Defaults to 1, and falls back to
+   * 1 with a warning when the attribute is not a whole number above zero.
+   */
   currentStep: number;
   /** The URL the next step lives at — the value of the activating attribute. */
   nextStepUrl: string;
@@ -91,7 +127,8 @@ export interface StepNavigationContext {
  *
  * Returns `null` for an ordinary single-page checkout — the common case — so the caller
  * leaves its defaults alone. Both attribute spellings are accepted;
- * `data-next-checkout-step` is the current one and `os-checkout-step` the legacy.
+ * `data-next-checkout-step` is the current one and `os-checkout-step` the legacy. A step
+ * number that is not a whole number above zero is warned about and read as step 1.
  *
  * @example
  * ```ts
@@ -116,9 +153,9 @@ export function detectMultiStepCheckout(
 
   const state: MultiStepState = {
     isMultiStep: true,
-    currentStep: parseInt(
-      ctx.form.getAttribute('data-next-step-number') || '1',
-      10
+    currentStep: readStepNumber(
+      ctx.form.getAttribute('data-next-step-number'),
+      ctx.logger
     ),
     nextStepUrl: stepAttr,
   };
@@ -136,6 +173,11 @@ export function detectMultiStepCheckout(
 
 /**
  * Validates the current step and, if it passes, sends the shopper to the next page.
+ *
+ * Only steps 1, 2 and 3 have rules; a form declaring any other number is checked against
+ * step 2's — contact details and the shipping address — so an unrecognised step is still a
+ * gate rather than a wave-through. The store is still advanced to the step the shopper
+ * actually reached.
  *
  * Replaces order creation on a multi-step form: nothing is submitted to the API here. On
  * failure every message is written to the store *and* to the page, the first problem is
@@ -167,11 +209,21 @@ export async function handleStepNavigation(
 
     ctx.logger.info(`Validating step ${ctx.currentStep} before navigation`);
 
+    // A step outside 1–3 has no rules of its own, and asking for them returns "valid" —
+    // a gate that checks nothing. Check it against the address step instead.
+    let validationStep = ctx.currentStep;
+    if (!STEPS_WITH_RULES.has(validationStep)) {
+      ctx.logger.warn(
+        `Step ${ctx.currentStep} has no rules of its own, validating it as the address step`
+      );
+      validationStep = FALLBACK_VALIDATION_STEP;
+    }
+
     // Validate only current step fields. Step 3 is the last gate before payment, so it
     // needs the billing pair too — see getBillingValidationInput().
     const billing = ctx.getBillingValidationInput();
     const validation = await ctx.validator.validateStep(
-      ctx.currentStep,
+      validationStep,
       checkoutStore.formData,
       ctx.countryConfigs,
       ctx.currentCountryConfig.value,

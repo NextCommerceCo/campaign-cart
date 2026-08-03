@@ -15,8 +15,6 @@ import {
  * written when an order completes and read by the receipt and upsell pages, so coming back
  * to the checkout in the same tab always looks like "a fresh checkout with a completed
  * order to hand".
- *
- * Two tests are marked `DEFECT:` and pin behaviour left exactly as found.
  */
 
 function createMockLogger() {
@@ -136,7 +134,6 @@ describe('handlePurchaseEvent — the two answers', () => {
 
     await handlePurchaseEvent(ctx);
 
-    expect(ctx.populateFormData).toHaveBeenCalledTimes(1);
     expect(ctx.ui.hideLoading).toHaveBeenCalledWith('checkout');
     expect(ctx.clearAllCheckoutFields).toHaveBeenCalledTimes(1);
     expect(
@@ -161,54 +158,62 @@ describe('handlePurchaseEvent — the two answers', () => {
   });
 
   /**
-   * DEFECT (left as found): the "already warned" mark is written **after** the shopper
-   * answers, and nothing guards a second entry while the modal is open.
+   * Finding 181, fixed: the "already warned" mark is written **before** the modal opens.
    *
    * `handlePurchaseEvent` runs at boot *and* on every bfcache restore, so a shopper who
-   * comes back to a checkout that is still showing the warning gets a second modal stacked
-   * on the first: two backdrops, and the page still dimmed after they dismiss one.
+   * comes back to a checkout that is still showing the warning used to get a second modal
+   * stacked on the first: two backdrops, and the page still dimmed after they dismissed
+   * one. The second entry now finds the mark already there and returns.
    */
-  it('DEFECT: two calls while the modal is open show two modals', async () => {
+  it('shows one modal however many times it is called for the same order', async () => {
     sessionStorage.setItem('next-order', storedOrder('abc'));
     let openModals = 0;
-    vi.spyOn(GeneralModal, 'show').mockImplementation(async () => {
+    vi.spyOn(GeneralModal, 'show').mockImplementation(() => {
       openModals += 1;
-      return 'cancel';
+      return Promise.resolve('cancel');
     });
     const ctx = context();
 
     await Promise.all([handlePurchaseEvent(ctx), handlePurchaseEvent(ctx)]);
 
-    expect(openModals).toBe(2);
-    // …and the order is recorded twice, because both calls read the list before either
-    // wrote it.
+    expect(openModals).toBe(1);
     expect(
       JSON.parse(sessionStorage.getItem('next-shown-order-warnings') ?? '[]')
     ).toEqual(['abc']);
   });
 
+  it('records the order as warned before the shopper has answered', async () => {
+    sessionStorage.setItem('next-order', storedOrder('abc'));
+    let markWhileOpen: string | null = null;
+    vi.spyOn(GeneralModal, 'show').mockImplementation(() => {
+      markWhileOpen = sessionStorage.getItem('next-shown-order-warnings');
+      return Promise.resolve('cancel');
+    });
+
+    await handlePurchaseEvent(context());
+
+    expect(JSON.parse(markWhileOpen ?? '[]')).toEqual(['abc']);
+  });
+
   /**
-   * DEFECT (left as found): the "Close" branch refills the form and then empties it.
+   * Finding 181, fixed: the "Close" branch used to refill the form and then empty it.
    *
-   * `populateFormData` is async and is not awaited, so its second half runs *after*
-   * `clearAllCheckoutFields` has emptied every box and reset the store — and it writes
-   * back the values it captured before the reset. On a form whose stored country differs
-   * from the detected one (the path that awaits the province list) the shopper watches the
-   * previous order's address reappear in a form that was just cleared.
+   * `populateFormData` is async and was not awaited, so its second half ran *after*
+   * `clearAllCheckoutFields` had emptied every box and reset the store — and it wrote back
+   * the values it captured before the reset. The previous order's address reappeared in a
+   * form that was just cleared.
    *
-   * The call order below is what the test can observe; the race itself is in
-   * `form-population.ts`, which captures `formData` on entry.
+   * Close means "stay here and start again", so the form is only cleared. Nothing refills
+   * it, which is what makes the clearing final.
    */
-  it('DEFECT: the close path populates the form and then clears it', async () => {
+  it('clears the form on close without refilling it first', async () => {
     sessionStorage.setItem('next-order', storedOrder('abc'));
     modalAnswers('cancel');
-    const calls: string[] = [];
     const ctx = context();
-    ctx.populateFormData = vi.fn(() => calls.push('populate')) as never;
-    ctx.clearAllCheckoutFields = vi.fn(() => calls.push('clear')) as never;
 
     await handlePurchaseEvent(ctx);
 
-    expect(calls).toEqual(['populate', 'clear']);
+    expect(ctx.populateFormData).not.toHaveBeenCalled();
+    expect(ctx.clearAllCheckoutFields).toHaveBeenCalledTimes(1);
   });
 });

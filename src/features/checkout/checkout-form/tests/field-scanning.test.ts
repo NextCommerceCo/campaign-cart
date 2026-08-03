@@ -121,12 +121,31 @@ describe('scanAllFields: the submit button', () => {
     );
   });
 
-  // DEFECT (left as found): the submit control has to be a real `<button>`. A page that
-  // marks an `<a>` or a `<div>` with `data-next-checkout-submit` — which the selector
-  // itself accepts — is told the button is missing, and the form then never disables it
-  // or sets `aria-busy` while the order is being placed. A shopper can click it a second
-  // time mid-submit.
-  it('DEFECT: rejects a non-<button> carrying the submit attribute', () => {
+  // Finding 175a. `<input type="submit">` is a submit control the browser itself honours
+  // and whose `disabled` it enforces, so the form can hold it shut mid-order exactly as it
+  // holds a `<button>` shut.
+  it('recognizes <input type="submit"> as the submit control', () => {
+    const { ctx, logger } = createCtx('<input type="submit" value="Pay" />');
+
+    expect(scanAllFields(ctx)).toBeInstanceOf(HTMLInputElement);
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it('recognizes an <input> carrying the submit attribute', () => {
+    const { ctx } = createCtx(
+      '<input type="button" data-next-checkout-submit value="Pay" />'
+    );
+
+    expect(scanAllFields(ctx)).toBeInstanceOf(HTMLInputElement);
+  });
+
+  /**
+   * Rejected on purpose: an `<a>` (or a `<div>`, or a text input) has no `disabled` the
+   * browser honours, so accepting one would report a button held shut while the shopper
+   * could go on clicking it. The warning stays, and it is the signal to use a `<button>`
+   * or an `<input type="submit">`.
+   */
+  it('rejects an <a> carrying the submit attribute, which cannot be disabled', () => {
     const { ctx, logger } = createCtx('<a data-next-checkout-submit>Pay</a>');
 
     expect(scanAllFields(ctx)).toBeUndefined();
@@ -135,13 +154,23 @@ describe('scanAllFields: the submit button', () => {
     );
   });
 
-  // DEFECT (left as found): `<input type="submit">` is a submit control the browser
-  // itself honours, but `button[type="submit"]` cannot match it and it is not an
-  // `HTMLButtonElement`, so it is reported missing too.
-  it('DEFECT: does not recognize <input type="submit">', () => {
-    const { ctx } = createCtx('<input type="submit" value="Pay" />');
+  it('rejects a text input carrying the submit attribute', () => {
+    const { ctx } = createCtx(
+      '<input type="text" data-next-checkout-submit value="Pay" />'
+    );
 
     expect(scanAllFields(ctx)).toBeUndefined();
+  });
+
+  // The old `??` chain stopped at the first element a selector *matched*, so an unusable
+  // `<a>` hid a perfectly good button written with the other spelling.
+  it('keeps looking past an unusable match and finds the real button', () => {
+    const { ctx, logger } = createCtx(
+      '<a data-next-checkout-submit>Pay</a><button os-checkout-submit>Pay</button>'
+    );
+
+    expect(scanAllFields(ctx)).toBeInstanceOf(HTMLButtonElement);
+    expect(logger.warn).not.toHaveBeenCalled();
   });
 });
 

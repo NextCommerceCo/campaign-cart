@@ -18,7 +18,9 @@ function createMockLogger() {
   return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 }
 
-function createCheckoutCtx(options: { withSubmitButton?: boolean } = {}): {
+function createCheckoutCtx(
+  options: { withSubmitButton?: boolean; disabledByPage?: boolean } = {}
+): {
   ctx: CheckoutUpdateContext;
   setError: ReturnType<typeof vi.fn>;
   showLocationFields: ReturnType<typeof vi.fn>;
@@ -30,6 +32,8 @@ function createCheckoutCtx(options: { withSubmitButton?: boolean } = {}): {
     options.withSubmitButton === false
       ? undefined
       : document.createElement('button');
+  // The page's own gate: a pay button held shut until terms are accepted.
+  if (submitButton && options.disabledByPage) submitButton.disabled = true;
 
   return {
     ctx: {
@@ -115,23 +119,80 @@ describe('handleCheckoutUpdate', () => {
   it('survives a form whose submit button has not been scanned yet', () => {
     const { ctx } = createCheckoutCtx({ withSubmitButton: false });
 
-    expect(() => handleCheckoutUpdate(ctx, { isProcessing: true })).not.toThrow();
+    expect(() =>
+      handleCheckoutUpdate(ctx, { isProcessing: true })
+    ).not.toThrow();
   });
 
   /**
-   * DEFECT (left as found): the "not processing" arm *enables* the submit button
-   * rather than leaving it as it found it, so any `disabled` the page author set —
-   * a pay button held shut until terms are accepted, for instance — is undone by the
-   * first checkout-store change, which on a normal page is the shopper typing their
-   * first character. The shopper can then submit a checkout the author meant to block.
+   * Finding 185. This handler runs on *every* checkout-store change — the shopper's
+   * first keystroke included — so the "not processing" arm must not enable a button it
+   * never disabled. A pay button held shut until terms are accepted is the ordinary way
+   * an author gates a checkout, and opening it would let the order through the gate.
    */
-  it('DEFECT: re-enables a submit button the page deliberately disabled', () => {
-    const { ctx, submitButton } = createCheckoutCtx();
-    submitButton!.disabled = true;
+  it('leaves a submit button the page deliberately disabled shut', () => {
+    const { ctx, submitButton } = createCheckoutCtx({ disabledByPage: true });
 
     handleCheckoutUpdate(ctx, { isProcessing: false });
 
+    expect(submitButton?.disabled).toBe(true);
+  });
+
+  it('does not mark a button it never disabled as busy', () => {
+    const { ctx, submitButton } = createCheckoutCtx();
+
+    handleCheckoutUpdate(ctx, { formData: { address1: '12 Cedar Road' } });
+
+    expect(submitButton?.hasAttribute('aria-busy')).toBe(false);
+  });
+
+  /**
+   * The gate survives the order attempt: a button that was already shut is shut again
+   * when processing ends, not opened by it.
+   */
+  it('puts a gated button back the way it found it after an order attempt', () => {
+    const { ctx, submitButton } = createCheckoutCtx({ disabledByPage: true });
+
+    handleCheckoutUpdate(ctx, { isProcessing: true });
+    expect(submitButton?.disabled).toBe(true);
+
+    handleCheckoutUpdate(ctx, { isProcessing: false });
+
+    expect(submitButton?.disabled).toBe(true);
+    expect(submitButton?.getAttribute('aria-busy')).toBe('false');
+  });
+
+  /**
+   * A second `isProcessing: true` must not overwrite the remembered answer with the
+   * `true` this handler itself wrote — otherwise one stray update turns "the page had it
+   * enabled" into "the page had it disabled", and the shopper cannot retry a failed order.
+   */
+  it('records the original state once, however many processing updates arrive', () => {
+    const { ctx, submitButton } = createCheckoutCtx();
+
+    handleCheckoutUpdate(ctx, { isProcessing: true });
+    handleCheckoutUpdate(ctx, { isProcessing: true });
+    handleCheckoutUpdate(ctx, { isProcessing: false });
+
     expect(submitButton?.disabled).toBe(false);
+  });
+
+  it('gates each button separately, so a rescanned form starts fresh', () => {
+    const { ctx, submitButton } = createCheckoutCtx();
+    handleCheckoutUpdate(ctx, { isProcessing: true });
+    handleCheckoutUpdate(ctx, { isProcessing: false });
+
+    const replacement = document.createElement('button');
+    replacement.disabled = true;
+    handleCheckoutUpdate(
+      { ...ctx, submitButton: replacement },
+      {
+        isProcessing: false,
+      }
+    );
+
+    expect(submitButton?.disabled).toBe(false);
+    expect(replacement.disabled).toBe(true);
   });
 });
 

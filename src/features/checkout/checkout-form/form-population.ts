@@ -31,6 +31,29 @@ import {
 /** How long `intl-tel-input` is given to digest a value written straight into its input. */
 const PHONE_REFORMAT_DELAY_MS = 50;
 
+/**
+ * What one checkout field is worth in the store: text for most, a boolean for a checkbox
+ * or radio (`readFieldValue` converts those), a number for anything numeric a caller
+ * writes. `undefined` means the shopper has not given an answer.
+ */
+type StoredFieldValue = string | number | boolean;
+
+/**
+ * Whether a stored value is an answer the shopper gave, and so worth putting back.
+ *
+ * `false` and `0` are answers — an unticked marketing box is an opt-out that has to
+ * survive a reload, and both are kept by the store's `partialize`, so both really do come
+ * back from sessionStorage. `''` is not: the store strips empty strings before persisting,
+ * so an empty string can only ever be an in-session blank, and writing it back would wipe
+ * whatever boot or the page's own markup had just put in the box — the country dropdown
+ * being the live example.
+ */
+function isStoredAnswer(
+  value: StoredFieldValue | null | undefined
+): value is StoredFieldValue {
+  return value !== undefined && value !== null && value !== '';
+}
+
 /** What repopulating the form needs from it. */
 export interface FormPopulationContext {
   /** Shipping fields by name. */
@@ -72,8 +95,11 @@ export interface FormClearingContext {
  * text until `intl-tel-input` reformats it, which is why the store is corrected on a short
  * delay rather than immediately.
  *
- * Falsy values are skipped, so a stored `false` or empty string leaves whatever the markup
- * had rather than blanking it.
+ * A checkbox or radio is put back through `checked`, never `value` — the store holds a
+ * boolean for it, and writing that into `value` would leave the tick exactly as the markup
+ * shipped it. That is what made an unticked marketing box come back ticked. Only a value
+ * the shopper never gave is skipped; see {@link isStoredAnswer} for why an empty string
+ * counts as "never gave".
  *
  * @example
  * ```ts
@@ -89,13 +115,20 @@ export async function populateFormData(
   const checkoutStore = useCheckoutStore.getState();
   // `formData` is `Record<string, any>` on the store; narrowing it here keeps the reads
   // below typed without changing a single value.
-  const formData = checkoutStore.formData as Record<string, string | undefined>;
+  const formData = checkoutStore.formData as Record<
+    string,
+    StoredFieldValue | undefined
+  >;
 
   // Check if country is stored and different from current
   const storedCountry = formData.country;
   const countryField = ctx.fields.get('country');
 
-  if (storedCountry && countryField instanceof HTMLSelectElement) {
+  if (
+    typeof storedCountry === 'string' &&
+    storedCountry &&
+    countryField instanceof HTMLSelectElement
+  ) {
     // Set country first
     countryField.value = storedCountry;
 
@@ -121,15 +154,27 @@ export async function populateFormData(
 
   // Now populate all fields including province
   ctx.fields.forEach((field, name) => {
+    const stored = formData[name];
     if (
-      formData[name] &&
-      (field instanceof HTMLInputElement || field instanceof HTMLSelectElement)
+      !isStoredAnswer(stored) ||
+      !(field instanceof HTMLInputElement || field instanceof HTMLSelectElement)
     ) {
-      // Skip province if we just loaded states - it will be set below
-      if (name !== 'province' || !(field instanceof HTMLSelectElement)) {
-        field.value = formData[name];
-      }
+      return;
     }
+
+    // Skip province if we just loaded states - it will be set below
+    if (name === 'province' && field instanceof HTMLSelectElement) return;
+
+    if (
+      field instanceof HTMLInputElement &&
+      (field.type === 'checkbox' || field.type === 'radio')
+    ) {
+      // Mirror of `readFieldValue`, which stores a tick as a boolean.
+      field.checked = Boolean(stored);
+      return;
+    }
+
+    field.value = String(stored);
   });
 
   // After populating phone field, ensure it's stored in international format
@@ -152,7 +197,11 @@ export async function populateFormData(
   const storedProvince = formData.province;
   const provinceField = ctx.fields.get('province');
 
-  if (storedProvince && provinceField instanceof HTMLSelectElement) {
+  if (
+    typeof storedProvince === 'string' &&
+    storedProvince &&
+    provinceField instanceof HTMLSelectElement
+  ) {
     // Check if the option exists
     const optionExists = Array.from(provinceField.options).some(
       opt => opt.value === storedProvince

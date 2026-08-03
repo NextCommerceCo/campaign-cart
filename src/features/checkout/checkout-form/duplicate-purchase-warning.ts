@@ -14,16 +14,21 @@
  *   order's `ref_id` on it), because that is the page they were trying to reach.
  * - **Close** keeps them on the checkout, and the form is emptied — the boxes are still
  *   holding the details of the order that already went through, and leaving them filled
- *   is what makes a duplicate purchase one click away.
+ *   is what makes a duplicate purchase one click away. Nothing refills them afterwards,
+ *   which is what makes the emptying stick.
  *
  * Each order is warned about **once per tab**: its `ref_id` is added to
- * `next-shown-order-warnings` after the shopper answers, so re-entering the checkout does
- * not nag about an order they have already acknowledged.
+ * `next-shown-order-warnings` **as the modal opens**, so re-entering the checkout does not
+ * nag about an order the shopper has already been told about. The mark goes down before
+ * the answer, not after, because this runs at boot *and* on every bfcache restore — a
+ * shopper returning to a page that is still showing the warning would otherwise get a
+ * second modal stacked on the first, with a backdrop left behind when they dismiss one.
  *
- * Extracted from `checkout-form.enhancer.ts` verbatim, bar one deletion: a
+ * Extracted from `checkout-form.enhancer.ts` verbatim, bar two deletions: a
  * `modalShownTime` / `timeOnModal` pair that measured how long the modal was up for an
- * analytics call that no longer exists. Both were `Date.now()` reads nothing consumed. It
- * needs four things from the form ({@link DuplicatePurchaseWarningContext}).
+ * analytics call that no longer exists (both were `Date.now()` reads nothing consumed),
+ * and the Close path's `populateFormData()` call. It needs three things from the form
+ * ({@link DuplicatePurchaseWarningContext}).
  *
  * Both `sessionStorage` keys stay **literals at the call site** rather than becoming named
  * constants: `src/docs/extract` reads the key out of the `sessionStorage.*` call to build
@@ -48,8 +53,6 @@ export interface DuplicatePurchaseWarningContext {
    * check rather than plainly.
    */
   ui: UIService | undefined;
-  /** Puts the stored checkout data back into the boxes — `populateFormData`. */
-  populateFormData: () => void;
   /** Empties every box and resets the checkout store — `clearAllCheckoutFields`. */
   clearAllCheckoutFields: () => void;
 }
@@ -67,7 +70,6 @@ export interface DuplicatePurchaseWarningContext {
  * handlePurchaseEvent({
  *   logger,
  *   ui: this.ui,
- *   populateFormData: () => this.populateFormData(),
  *   clearAllCheckoutFields: () => this.clearAllCheckoutFields(),
  * });
  * ```
@@ -104,6 +106,14 @@ export async function handlePurchaseEvent(
     const checkoutStore = useCheckoutStore.getState();
     checkoutStore.setProcessing(false);
 
+    // Mark this order as shown *before* the modal opens: this runs again on every bfcache
+    // restore, and a mark written after the answer lets a second modal stack on the first.
+    shownOrders.push(order.ref_id);
+    sessionStorage.setItem(
+      'next-shown-order-warnings',
+      JSON.stringify(shownOrders)
+    );
+
     const action = await GeneralModal.show({
       title: 'Attention',
       content:
@@ -114,13 +124,6 @@ export async function handlePurchaseEvent(
       ],
       className: 'purchase-warning-modal',
     });
-
-    // Mark this order as shown
-    shownOrders.push(order.ref_id);
-    sessionStorage.setItem(
-      'next-shown-order-warnings',
-      JSON.stringify(shownOrders)
-    );
 
     if (action === 'confirm') {
       // Handle back button - navigate to the success URL
@@ -136,9 +139,8 @@ export async function handlePurchaseEvent(
         window.location.href = finalUrl;
       }
     } else {
-      // User clicked 'Close' - ensure form is properly initialized
-      // Re-populate form data if it exists in the store
-      ctx.populateFormData();
+      // User clicked 'Close' — they stay on the checkout and start again, so the form is
+      // emptied and nothing puts the finished order's details back into it.
 
       // Ensure UI is in correct state
       if (ctx.ui) {

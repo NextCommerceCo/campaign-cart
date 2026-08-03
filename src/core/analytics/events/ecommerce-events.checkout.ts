@@ -6,6 +6,13 @@
  * builds its own `ecommerce` block from the order payload instead, since a
  * completed order carries its own totals and tax basis rather than the live
  * cart's.
+ *
+ * **Every number in `dl_purchase` comes from the order** — items, quantities,
+ * per-unit prices, per-line discounts, tax, shipping and currency all read
+ * `order.lines` and the order totals. `useCartStore` is the PRE-order snapshot
+ * and disagrees with the order as soon as a coupon reshapes a line or a
+ * post-purchase adjustment lands, so the only thing still read from it is the
+ * voucher *code*, which the order payload has no field for.
  */
 
 import type { DataLayerEvent, EcommerceData, EcommerceItem } from '../types';
@@ -46,13 +53,11 @@ export function createPurchaseEvent(orderData: any): DataLayerEvent {
     orderData.transactionId ||
     `order_${Date.now()}`;
 
-  // Parse order totals
+  // Parse order totals. Every figure below comes off the order — the live cart
+  // is the PRE-order snapshot and disagrees with the order the moment a coupon,
+  // a shipping choice or a post-purchase adjustment changes a line.
   const orderTotal = parseFloat(
-    order.total_incl_tax ||
-      order.total ||
-      orderData.total ||
-      cartState.total.toNumber() ||
-      0
+    order.total_incl_tax || order.total || orderData.total || 0
   );
   // Does this store display tax-inclusive prices? Drives whether item price,
   // value and shipping use the incl- or excl-tax basis so they match what the
@@ -68,7 +73,6 @@ export function createPurchaseEvent(orderData: any): DataLayerEvent {
     (taxInclusive ? order.shipping_incl_tax : order.shipping_excl_tax) ||
       order.shipping_incl_tax ||
       orderData.shipping ||
-      cartState.shippingMethod?.price.toNumber() ||
       0
   );
 
@@ -93,6 +97,17 @@ export function createPurchaseEvent(orderData: any): DataLayerEvent {
       const perUnitPrice =
         lineQuantity > 0 ? linePrice / lineQuantity : linePrice;
 
+      // GA4 `discount` is per unit, on the same basis as `price`, so it stays
+      // consistent with price × quantity = line revenue. The order line already
+      // carries what it saved: `*_excl_discounts` is the pre-discount total.
+      const lineTotalBeforeDiscount = taxInclusive
+        ? line.price_incl_tax_excl_discounts
+        : line.price_excl_tax_excl_discounts;
+      const perUnitBeforeDiscount =
+        lineQuantity > 0
+          ? parseFloat(lineTotalBeforeDiscount || 0) / lineQuantity
+          : parseFloat(lineTotalBeforeDiscount || 0);
+
       const item: EcommerceItem = {
         item_id:
           line.product_sku ||
@@ -107,7 +122,10 @@ export function createPurchaseEvent(orderData: any): DataLayerEvent {
         item_brand: packageData?.product_name || campaignStore.data?.name || '',
         item_category:
           line.campaign_name || campaignStore.data?.name || 'Campaign',
+        // `variant_title` is the field an order line actually declares; the
+        // others are older payload shapes kept as fallbacks.
         item_variant:
+          line.variant_title ||
           line.package_profile ||
           packageData?.product_variant_name ||
           line.variant ||
@@ -124,12 +142,30 @@ export function createPurchaseEvent(orderData: any): DataLayerEvent {
       if (productId != null) item.item_product_id = String(productId);
       if (variantId != null) item.item_variant_id = String(variantId);
 
+      // SKU and image, the two fields formatEcommerceItem sets for cart lines —
+      // the order carries both per line, so a purchase reports them too.
+      const sku = line.product_sku || packageData?.product_sku;
+      if (sku) item.item_sku = String(sku);
+      const image = line.image || packageData?.image;
+      if (image) item.item_image = String(image);
+
+      // Omitted when the line was sold at full price, so GA4 doesn't record a
+      // spurious 0 — same rule formatEcommerceItem follows for cart lines.
+      if (perUnitBeforeDiscount > perUnitPrice) {
+        item.discount =
+          Math.round((perUnitBeforeDiscount - perUnitPrice) * 100) / 100;
+      }
+
       return item;
     });
-  } else if (orderData.items || cartState.items.length > 0) {
-    // Fallback to provided items or cart items (enrichedItems is never populated)
-    items = (orderData.items || cartState.items).map(
-      (item: any, index: number) => EventBuilder.formatEcommerceItem(item, index)
+  } else if (Array.isArray(orderData.items) && orderData.items.length > 0) {
+    // A caller — `next.trackPurchase({ items })` — described the purchase itself.
+    // There is deliberately no fall-through to `useCartStore` here: the cart is
+    // the pre-order snapshot, and reporting it as the purchase is how a
+    // coupon-reshaped order came out with the wrong SKUs and the wrong revenue.
+    // A line-less order reports no items and takes `value` from its own totals.
+    items = orderData.items.map((item: any, index: number) =>
+      EventBuilder.formatEcommerceItem(item, index)
     );
   }
 
@@ -157,15 +193,22 @@ export function createPurchaseEvent(orderData: any): DataLayerEvent {
     items,
   };
 
-  // Add coupon if present
+  // The one field the order does NOT carry: its `discounts` entries are amounts
+  // (`offer_id`, `amount`, `name`), never the code the shopper typed. So the
+  // applied code can only come from the cart's voucher mirror — a label, not a
+  // number, and it does not move `value` or any item.
   const coupon =
     order.vouchers?.[0]?.code || orderData.coupon || cartState.vouchers?.[0];
   if (coupon) {
     ecommerce.coupon = coupon;
   }
 
-  // Add discount amount if present
-  const discountAmount = order.discount || orderData.discountAmount || 0;
+  // What the order says came off it, across offers and vouchers together.
+  const discountAmount =
+    parseFloat(order.total_discounts || 0) ||
+    order.discount ||
+    orderData.discountAmount ||
+    0;
   if (discountAmount) {
     ecommerce.discount = discountAmount;
   }

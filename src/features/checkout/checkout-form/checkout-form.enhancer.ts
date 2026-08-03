@@ -79,6 +79,7 @@ import {
   scanAllFields,
   type FieldLookupContext,
   type FieldScanContext,
+  type SubmitControl,
 } from './field-scanning';
 import {
   clearAllCheckoutFields,
@@ -189,7 +190,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private fields: Map<string, HTMLElement> = new Map();
   private billingFields: Map<string, HTMLElement> = new Map();
   private paymentButtons: Map<string, HTMLElement> = new Map();
-  private submitButton?: HTMLButtonElement;
+  private submitButton?: SubmitControl;
 
   // Country/State management
   private countries: Country[] = [];
@@ -1101,14 +1102,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // PURCHASE EVENT HANDLING
   // ============================================================================
 
-  /** The four things `duplicate-purchase-warning.ts` needs from this form. */
+  /** The three things `duplicate-purchase-warning.ts` needs from this form. */
   private duplicatePurchaseWarningContext(): DuplicatePurchaseWarningContext {
     return {
       logger: this.logger,
       ui: this.ui,
-      populateFormData: () => {
-        void this.populateFormData();
-      },
       clearAllCheckoutFields: () => this.clearAllCheckoutFields(),
     };
   }

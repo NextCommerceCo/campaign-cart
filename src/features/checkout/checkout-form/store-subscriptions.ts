@@ -13,6 +13,13 @@
  * - **config** — the Spreedly key can arrive *after* boot (the config is fetched), in which
  *   case the card fields have to be built late. This is the only path that does that.
  *
+ * **The submit button is only ever put back the way this code found it.** Disabling a pay
+ * button until a condition is met — terms accepted, an age confirmed — is the ordinary way
+ * a page author gates a checkout, and it is markup this module did not write. So the
+ * button's `disabled` is remembered at the moment processing starts and restored when
+ * processing ends; a button nothing here disabled is never touched. See
+ * {@link handleCheckoutUpdate}.
+ *
  * **Errors are never cleared wholesale here.** A checkout state with no errors is not the
  * same as every field being correct — it is usually a field the shopper has not reached
  * yet. Clearing on an empty error map would tick every box on the form. Errors are cleared
@@ -28,16 +35,26 @@ import type { Logger } from '@/core/logger';
 import type { CartState } from '@/types/global';
 import type { CheckoutValidator } from '../validation/checkout-validator';
 import type { CreditCardService } from '../services/credit-card-service';
+import type { SubmitControl } from './field-scanning';
+
+/**
+ * What the submit button's `disabled` was before an order started being placed.
+ *
+ * Keyed by the element, so a re-scan that hands back the same button keeps the same
+ * memory, and a button removed from the page is collected with it. An element **absent**
+ * from this map is one this module has not disabled — and so one it must not enable.
+ */
+const disabledBeforeProcessing = new WeakMap<SubmitControl, boolean>();
 
 /** What reacting to a checkout-store change needs from the form. */
 export interface CheckoutUpdateContext {
   /** Owns showing a field's message — errors from the store are pushed into it. */
   validator: CheckoutValidator;
   /**
-   * The button the shopper presses to pay, once it has been scanned. Read per call rather
+   * The control the shopper presses to pay, once it has been scanned. Read per call rather
    * than captured, because `update()` can rescan the form and replace it.
    */
-  submitButton: HTMLButtonElement | undefined;
+  submitButton: SubmitControl | undefined;
   /** Reveals the address rows that stay collapsed until a street address exists. */
   showLocationFields: () => void;
 }
@@ -61,7 +78,13 @@ export interface ConfigUpdateContext {
 
 /**
  * Applies a checkout-store change to the form: errors onto fields, address rows open,
- * submit button enabled or not.
+ * submit button held shut while the order is placed.
+ *
+ * This runs on **every** checkout-store change — the shopper's first keystroke included —
+ * so it treats `disabled` as borrowed, not owned: the value is remembered when processing
+ * starts and put back when processing ends. A pay button the page disabled itself is
+ * therefore still disabled afterwards, and a failed order still leaves a re-clickable
+ * button, because that button was enabled when the attempt began.
  *
  * @example
  * ```ts
@@ -99,18 +122,24 @@ export function handleCheckoutUpdate(
   }
 
   // Handle processing state
+  const submitControl = ctx.submitButton;
+  if (!submitControl) return;
+
   if (state.isProcessing) {
-    // Disable submit button when processing
-    if (ctx.submitButton) {
-      ctx.submitButton.disabled = true;
-      ctx.submitButton.setAttribute('aria-busy', 'true');
+    // Remember the page's own answer once — a second `isProcessing: true` update must not
+    // record the `true` this branch just wrote.
+    if (!disabledBeforeProcessing.has(submitControl)) {
+      disabledBeforeProcessing.set(submitControl, submitControl.disabled);
     }
-  } else {
-    // Enable submit button when not processing
-    if (ctx.submitButton) {
-      ctx.submitButton.disabled = false;
-      ctx.submitButton.setAttribute('aria-busy', 'false');
-    }
+    submitControl.disabled = true;
+    submitControl.setAttribute('aria-busy', 'true');
+  } else if (disabledBeforeProcessing.has(submitControl)) {
+    // Only an order this module disabled the button for is undone here. Anything else —
+    // the shopper typing, a shipping method arriving — leaves the button as the page left it.
+    submitControl.disabled =
+      disabledBeforeProcessing.get(submitControl) ?? false;
+    disabledBeforeProcessing.delete(submitControl);
+    submitControl.setAttribute('aria-busy', 'false');
   }
 }
 
@@ -154,7 +183,10 @@ export async function handleConfigUpdate(
 ): Promise<void> {
   try {
     if (configState.spreedlyEnvironmentKey && !ctx.creditCardService) {
-      await ctx.initializeCreditCard(configState.spreedlyEnvironmentKey, configState.debug || false);
+      await ctx.initializeCreditCard(
+        configState.spreedlyEnvironmentKey,
+        configState.debug || false
+      );
     }
   } catch (error) {
     ctx.logger.error('Error handling config update:', error);

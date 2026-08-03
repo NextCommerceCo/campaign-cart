@@ -74,6 +74,9 @@ The feature carried on, but something in the markup or the data was not what it 
 | `Saved country {savedCountryOverride} not in available countries` | `country-selection.ts › resolveShippingCountry` | — |
 | `Submit button not found in checkout form` | `field-scanning.ts › scanAllFields` | — |
 | `Province {storedProvince} not found in options for country {storedCountry}` | `form-population.ts › populateFormData` | — |
+| `Shipping method {methodId} is not one this campaign offers` | `method-selection.ts › handleShippingMethodChange` | yes |
+| `Step number "{rawStep}" is not a whole number above zero, treating this form as step 1` | `multi-step-navigation.ts › readStepNumber` | — |
+| `Step {currentStep} has no rules of its own, validating it as the address step` | `multi-step-navigation.ts › handleStepNavigation` | — |
 | `Step {currentStep} validation failed` | `multi-step-navigation.ts › handleStepNavigation` | yes |
 | `Failed to initialize ProspectCartEnhancer:` | `prospect-cart-lifecycle.ts › initializeProspectCart` | yes |
 | `Cart is empty` | `store-subscriptions.ts › handleCartUpdate` | — |

@@ -49,7 +49,7 @@ Makes this form one step of a multi-step checkout: validation and submission app
 | Required | no |
 | Default | `1` |
 
-Which step this form is, when `data-next-checkout-step` is set. The number decides what pressing "next" checks: step 1 the contact details and the shipping address, step 2 that same address again in case it was cleared behind them, step 3 everything — the full form check, the card fields, and the separate billing address when the visitor asked for one. Any other number checks nothing.
+Which step this form is, when `data-next-checkout-step` is set. The number decides what pressing "next" checks: step 1 the contact details and the shipping address, step 2 that same address again in case it was cleared behind them, step 3 everything — the full form check, the card fields, and the separate billing address when the visitor asked for one. Any other number is checked against step 2, so a fourth step is still a gate; anything that is not a whole number above zero is read as step 1 and logged as `Step number "…" is not a whole number above zero`.
 
 > **Watch out:** On step 3, choosing "use a different billing address" and leaving it blank fails validation with `Billing first name is required` and one message per missing billing field. It used to be skipped on this path, and the order reached the gateway to be declined by Address Verification instead. Keep the billing reveal container on the step-3 page, or those messages have nowhere to render.
 
@@ -89,7 +89,7 @@ Forces validation on a field that is optional by default. Phone is the usual cas
 | Required | no |
 | Default | — |
 
-Marks the submit control. Without it the form falls back to its own submit event, so a `<button type="submit">` still works.
+Marks the submit control. Without it the form falls back to its own submit event, so a `<button type="submit">` still works. Put it on a `<button>` or an `<input type="submit">` — those are the two the browser lets the form disable while the order is being placed. On an `<a>` or a `<div>` it is ignored, with `Submit button not found in checkout form` in the console, because nothing can stop a second click on those.
 
 ## Payment
 

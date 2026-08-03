@@ -13,16 +13,23 @@
  * the card form instead of leaving the shopper with no payment fields. Any payment error
  * still on the page is hidden — it belonged to the method they just moved away from.
  *
- * **Shipping method.** The choice goes to the checkout store *and* to the cart, because
- * the cart is what recalculates the totals. `add_shipping_info` is reported the first time
- * a method is chosen and never again.
+ * **Shipping method.** The radio's value is a shipping method's `ref_id`, and **the
+ * campaign says which ids exist, what each is called and what it costs** — the SDK holds
+ * no shipping table of its own. The choice goes to the checkout store *and* to the cart,
+ * because the cart is what recalculates the totals, and both are written from the same
+ * campaign entry so a summary can never quote a price the order will not charge. An id
+ * the campaign does not list is refused with a warning rather than written.
+ * `add_shipping_info` is reported the first time a method is chosen and never again.
  *
- * Extracted from `checkout-form.enhancer.ts` verbatim. Payment needs one thing from the
- * form ({@link PaymentMethodContext}), shipping two ({@link ShippingMethodContext}).
+ * Extracted from `checkout-form.enhancer.ts` verbatim; the shipping half has since had
+ * finding 180 fixed in it — it read a hard-coded table of three ids and two invented
+ * prices. Payment needs one thing from the form ({@link PaymentMethodContext}), shipping
+ * two ({@link ShippingMethodContext}).
  */
 
 import { nextAnalytics, EcommerceEvents } from '@/core/analytics/index';
 import type { Logger } from '@/core/logger';
+import { useCampaignStore } from '@/state/campaign';
 import { cartOperations } from '@/state/cart';
 import { useCheckoutStore } from '@/state/checkout';
 
@@ -44,18 +51,6 @@ const PAYMENT_METHOD_MAP: Record<
   'google-pay': 'google_pay',
   klarna: 'klarna',
 };
-
-/** The shipping methods this handler recognises, by the radio's numeric value. */
-const SHIPPING_METHODS = [
-  { id: 1, name: 'Standard Shipping', price: 0, code: 'standard' },
-  { id: 2, name: 'Subscription Shipping', price: 5, code: 'subscription' },
-  {
-    id: 3,
-    name: 'Expedited: Standard Overnight',
-    price: 28,
-    code: 'overnight',
-  },
-];
 
 /** GA4's `shipping_tier` for each method code. */
 const SHIPPING_TIER_MAP: Record<string, string> = {
@@ -128,14 +123,19 @@ export function handlePaymentMethodChange(
 /**
  * Handles a `change` on `input[name="shipping_method"]`.
  *
- * A radio whose value is not `1`, `2` or `3` is ignored — nothing is written and nothing
- * is reported.
+ * The radio's value is a `ref_id` from the campaign's `shipping_methods`, and the method
+ * written to the store is that campaign entry: its `code` is both the name and the code,
+ * its `price` is the price. A value that is not a number, or a `ref_id` this campaign does
+ * not offer, selects nothing and is warned about — the campaign cannot price it, so
+ * putting it on the order would be a charge nobody agreed to.
  *
  * @example
  * ```ts
+ * // campaign: shipping_methods: [{ ref_id: 12, code: 'overnight', price: '12.50' }]
  * radio.addEventListener('change', event =>
  *   handleShippingMethodChange({ hasTrackedShippingInfo, logger }, event)
  * );
+ * // radio value "12" → checkout store { id: 12, name: 'overnight', price: 12.5, … }
  * ```
  */
 export function handleShippingMethodChange(
@@ -145,29 +145,49 @@ export function handleShippingMethodChange(
   const target = event.target as HTMLInputElement;
   const checkoutStore = useCheckoutStore.getState();
 
-  const parsedValue = parseInt(target.value);
-  if (isNaN(parsedValue)) return;
+  const methodId = parseInt(target.value, 10);
+  if (isNaN(methodId)) return;
 
-  const selectedMethod = SHIPPING_METHODS.find(m => m.id === parsedValue);
-  if (selectedMethod) {
-    checkoutStore.setShippingMethod(selectedMethod);
+  const campaignMethods =
+    useCampaignStore.getState().data?.shipping_methods ?? [];
+  const campaignMethod = campaignMethods.find(m => m.ref_id === methodId);
 
-    void cartOperations.setShippingMethod(selectedMethod.id);
+  if (!campaignMethod) {
+    ctx.logger.warn(
+      `Shipping method ${methodId} is not one this campaign offers`,
+      { availableIds: campaignMethods.map(m => m.ref_id) }
+    );
+    return;
+  }
 
-    // Track add_shipping_info event when shipping method is selected
-    if (!ctx.hasTrackedShippingInfo.value) {
-      try {
-        // Map shipping codes to tier names for GA4
-        const shippingTier =
-          SHIPPING_TIER_MAP[selectedMethod.code] || selectedMethod.name;
-        nextAnalytics.track(
-          EcommerceEvents.createAddShippingInfoEvent(shippingTier)
-        );
-        ctx.hasTrackedShippingInfo.value = true;
-        ctx.logger.info('Tracked add_shipping_info event', { shippingTier });
-      } catch (error) {
-        ctx.logger.warn('Failed to track add_shipping_info event:', error);
-      }
+  const price = parseFloat(campaignMethod.price ?? '0');
+  const selectedMethod = {
+    id: campaignMethod.ref_id,
+    // The campaign carries no display name for a shipping method, so the code is the
+    // name everywhere — `cartOperations.setShippingMethod` and the order builder do the
+    // same, and the cart is what the totals come from.
+    name: campaignMethod.code,
+    price: isNaN(price) ? 0 : price,
+    code: campaignMethod.code,
+  };
+
+  checkoutStore.setShippingMethod(selectedMethod);
+
+  void cartOperations.setShippingMethod(selectedMethod.id);
+
+  // Track add_shipping_info event when shipping method is selected
+  if (!ctx.hasTrackedShippingInfo.value) {
+    try {
+      // Map shipping codes to tier names for GA4
+      const shippingTier =
+        SHIPPING_TIER_MAP[selectedMethod.code] ?? selectedMethod.code;
+      nextAnalytics.track(
+        EcommerceEvents.createAddShippingInfoEvent(shippingTier)
+      );
+      ctx.hasTrackedShippingInfo.value = true;
+      ctx.logger.info('Tracked add_shipping_info event', { shippingTier });
+    } catch (error) {
+      ctx.logger.warn('Failed to track add_shipping_info event:', error);
     }
   }
 }

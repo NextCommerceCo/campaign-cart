@@ -23,14 +23,15 @@ function createMockLogger() {
   return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 }
 
-function detectionContext(
-  form: HTMLFormElement
-): MultiStepDetectionContext & { setStep: ReturnType<typeof vi.fn> } {
+function detectionContext(form: HTMLFormElement): MultiStepDetectionContext & {
+  setStep: ReturnType<typeof vi.fn>;
+  logger: ReturnType<typeof createMockLogger>;
+} {
   return {
     form,
-    logger: createMockLogger() as never,
+    logger: createMockLogger(),
     setStep: vi.fn(),
-  };
+  } as never;
 }
 
 function formWith(attributes: Record<string, string>): HTMLFormElement {
@@ -52,6 +53,7 @@ function navigationContext(
   overrides: Partial<StepNavigationContext> & { validator?: ValidatorStub } = {}
 ): StepNavigationContext & {
   validator: ValidatorStub;
+  logger: ReturnType<typeof createMockLogger>;
   loadingOverlay: {
     show: ReturnType<typeof vi.fn>;
     hide: ReturnType<typeof vi.fn>;
@@ -149,25 +151,39 @@ describe('detectMultiStepCheckout', () => {
   });
 
   /**
-   * DEFECT (left as found): a non-numeric step number becomes `NaN`, and `validateStep`
-   * checks nothing for any number that is not 1, 2 or 3 — so it returns valid.
+   * Finding 181, fixed: `parseInt('two')` is `NaN`, and `NaN` used to be carried into the
+   * store as the step and into `validateStep`, which checks nothing for a step it does not
+   * know — so an empty form reached payment.
    *
-   * A shopper on `data-next-step-number="two"` presses next with every field empty and is
-   * sent to the payment step anyway. `NaN` is also written into the checkout store as the
-   * step, and `NaN + 1` on the way out.
+   * A step number that is not a whole number above zero is now a markup mistake with an
+   * obvious reading: this is the first step. The strictest gate is the safe fallback,
+   * never the loosest.
    */
-  it('DEFECT: a non-numeric step number becomes NaN rather than falling back to 1', () => {
+  it.each(['two', '', '0', '-1', '2.5'])(
+    'falls back to step 1, with a warning, when the step number is %j',
+    raw => {
+      const ctx = detectionContext(
+        formWith({
+          'data-next-checkout-step': '/checkout/payment',
+          'data-next-step-number': raw,
+        })
+      );
+
+      expect(detectMultiStepCheckout(ctx)?.currentStep).toBe(1);
+      expect(ctx.setStep).toHaveBeenCalledWith(1);
+      expect(ctx.logger.warn).toHaveBeenCalledWith(
+        `Step number "${raw}" is not a whole number above zero, treating this form as step 1`
+      );
+    }
+  );
+
+  it('does not warn about the form that simply omits the step number', () => {
     const ctx = detectionContext(
-      formWith({
-        'data-next-checkout-step': '/checkout/payment',
-        'data-next-step-number': 'two',
-      })
+      formWith({ 'data-next-checkout-step': '/checkout/payment' })
     );
 
-    const state = detectMultiStepCheckout(ctx);
-
-    expect(Number.isNaN(state?.currentStep)).toBe(true);
-    expect(ctx.setStep).toHaveBeenCalledWith(NaN);
+    expect(detectMultiStepCheckout(ctx)?.currentStep).toBe(1);
+    expect(ctx.logger.warn).not.toHaveBeenCalled();
   });
 });
 
@@ -288,39 +304,58 @@ describe('handleStepNavigation — the passing step', () => {
   });
 
   /**
-   * DEFECT (left as found): step 4 (or any number that is not 1, 2 or 3) validates
-   * nothing and reports valid, so a four-step checkout's last gate lets everything past.
+   * Finding 181, fixed: only steps 1, 2 and 3 have rules. `validateStep` returns valid for
+   * every other number, so a four-step checkout's gate used to let an empty form past.
+   *
+   * An unrecognised step is now checked against **step 2's** rules — contact details and
+   * the shipping address, the fields every checkout needs whatever page they were typed
+   * on. Step 3's rules would demand card fields the page may not have; nothing at all is
+   * what the defect was.
    */
-  it('DEFECT: an unrecognised step number is a gate that checks nothing', async () => {
+  it('checks an unrecognised step against the address gate rather than waving it through', async () => {
     vi.useFakeTimers();
-    const validator: ValidatorStub = {
-      // The real `validateStep` returns `{ isValid: true }` for any step but 1, 2 and 3.
-      validateStep: vi
-        .fn()
-        .mockResolvedValue({
-          isValid: true,
-          errors: {},
-          firstErrorField: undefined,
-        }),
-      showError: vi.fn(),
-      focusFirstErrorField: vi.fn(),
-    };
-    const ctx = navigationContext({ currentStep: 4, validator });
+    const ctx = navigationContext({ currentStep: 4 });
     const store = storeDouble();
 
     const navigation = handleStepNavigation(ctx, store);
     await vi.advanceTimersByTimeAsync(1000);
     await navigation;
 
-    expect(validator.validateStep).toHaveBeenCalledWith(
-      4,
+    expect(ctx.validator.validateStep).toHaveBeenCalledWith(
+      2,
       expect.anything(),
       expect.anything(),
       undefined,
       undefined,
       true
     );
+    expect(ctx.logger.warn).toHaveBeenCalledWith(
+      'Step 4 has no rules of its own, validating it as the address step'
+    );
+    // The shopper still moves on when those fields are filled, and the store still
+    // records the step they actually reached.
     expect(store.setStep).toHaveBeenCalledWith(5);
     expect(window.location.href).toContain('/checkout/payment');
+  });
+
+  it('stops the shopper on an unrecognised step whose address fields are empty', async () => {
+    const ctx = navigationContext({
+      currentStep: 4,
+      validator: {
+        validateStep: vi.fn().mockResolvedValue({
+          isValid: false,
+          errors: { email: 'Email is required' },
+          firstErrorField: 'email',
+        }),
+        showError: vi.fn(),
+        focusFirstErrorField: vi.fn(),
+      },
+    });
+    const store = storeDouble();
+
+    await handleStepNavigation(ctx, store);
+
+    expect(store.setStep).not.toHaveBeenCalled();
+    expect(window.location.href).toBe('https://shop.example/checkout/');
   });
 });

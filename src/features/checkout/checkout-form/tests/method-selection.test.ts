@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { EcommerceEvents, nextAnalytics } from '@/core/analytics/index';
+import { useCampaignStore } from '@/state/campaign';
 import { cartOperations } from '@/state/cart';
 import { useCheckoutStore } from '@/state/checkout';
 
@@ -14,8 +15,10 @@ import {
 /**
  * The two radio groups: how the shopper pays, and how the order ships.
  *
- * Two tests are marked `DEFECT:` and pin behaviour left exactly as found — both are about
- * the shipping table being hard-coded in the SDK rather than read from the campaign.
+ * The shipping half is answered entirely by the campaign: which ids exist, what each one
+ * is called, and what it costs. Every test here therefore starts by saying what the
+ * campaign offers, and the ids deliberately are not 1, 2 and 3 — the three the SDK used
+ * to hard-code (finding 180).
  */
 
 function createMockLogger() {
@@ -56,9 +59,28 @@ function errorBanner(component: string): HTMLElement {
   return el;
 }
 
+/** The shipping methods this campaign offers, as the API returns them. */
+function campaignOffers(
+  methods: Array<{ ref_id: number; code: string; price: string }>
+): void {
+  useCampaignStore.setState({ data: { shipping_methods: methods } } as never);
+}
+
+beforeEach(() => {
+  campaignOffers([
+    { ref_id: 7, code: 'standard', price: '0.00' },
+    { ref_id: 12, code: 'overnight', price: '12.50' },
+    { ref_id: 19, code: 'pickup', price: '3.00' },
+  ]);
+  // Every test starts with no method chosen, so "the store still holds nothing" is a
+  // statement about the handler rather than about what ran before it.
+  useCheckoutStore.setState({ shippingMethod: undefined });
+});
+
 afterEach(() => {
   document.body.innerHTML = '';
   useCheckoutStore.getState().reset();
+  useCampaignStore.setState({ data: null } as never);
   vi.restoreAllMocks();
   vi.clearAllMocks();
 });
@@ -93,21 +115,31 @@ describe('handlePaymentMethodChange', () => {
 });
 
 describe('handleShippingMethodChange', () => {
-  it('writes the choice to the checkout store and to the cart', () => {
+  it('writes the campaign’s method to the checkout store and to the cart', () => {
     const setShipping = vi
       .spyOn(cartOperations, 'setShippingMethod')
       .mockResolvedValue(undefined);
     vi.spyOn(nextAnalytics, 'track').mockImplementation(() => {});
 
-    handleShippingMethodChange(shippingContext(), radioEvent('2'));
+    handleShippingMethodChange(shippingContext(), radioEvent('12'));
 
     expect(useCheckoutStore.getState().shippingMethod).toEqual({
-      id: 2,
-      name: 'Subscription Shipping',
-      price: 5,
-      code: 'subscription',
+      id: 12,
+      name: 'overnight',
+      price: 12.5,
+      code: 'overnight',
     });
-    expect(setShipping).toHaveBeenCalledWith(2);
+    expect(setShipping).toHaveBeenCalledWith(12);
+  });
+
+  it('stores the campaign’s price, so a summary shows what the order will charge', () => {
+    vi.spyOn(cartOperations, 'setShippingMethod').mockResolvedValue(undefined);
+    vi.spyOn(nextAnalytics, 'track').mockImplementation(() => {});
+    campaignOffers([{ ref_id: 12, code: 'overnight', price: '28.00' }]);
+
+    handleShippingMethodChange(shippingContext(), radioEvent('12'));
+
+    expect(useCheckoutStore.getState().shippingMethod?.price).toBe(28);
   });
 
   it('reports add_shipping_info once, with the GA4 tier name', () => {
@@ -116,12 +148,22 @@ describe('handleShippingMethodChange', () => {
     const tier = vi.spyOn(EcommerceEvents, 'createAddShippingInfoEvent');
     const ctx = shippingContext();
 
-    handleShippingMethodChange(ctx, radioEvent('3'));
-    handleShippingMethodChange(ctx, radioEvent('1'));
+    handleShippingMethodChange(ctx, radioEvent('12'));
+    handleShippingMethodChange(ctx, radioEvent('7'));
 
     expect(tier).toHaveBeenCalledExactlyOnceWith('Express');
     expect(track).toHaveBeenCalledTimes(1);
     expect(ctx.hasTrackedShippingInfo.value).toBe(true);
+  });
+
+  it('reports a code GA4 has no tier name for as itself', () => {
+    vi.spyOn(cartOperations, 'setShippingMethod').mockResolvedValue(undefined);
+    vi.spyOn(nextAnalytics, 'track').mockImplementation(() => {});
+    const tier = vi.spyOn(EcommerceEvents, 'createAddShippingInfoEvent');
+
+    handleShippingMethodChange(shippingContext(), radioEvent('19'));
+
+    expect(tier).toHaveBeenCalledExactlyOnceWith('pickup');
   });
 
   it('ignores a radio whose value is not a number', () => {
@@ -132,47 +174,46 @@ describe('handleShippingMethodChange', () => {
     handleShippingMethodChange(shippingContext(), radioEvent('free'));
 
     expect(setShipping).not.toHaveBeenCalled();
-    // The store keeps whatever it already held — its default first method.
-    expect(useCheckoutStore.getState().shippingMethod?.id).toBe(1);
+    expect(useCheckoutStore.getState().shippingMethod).toBeUndefined();
   });
 
   /**
-   * DEFECT (left as found): the three shipping methods are hard-coded here, keyed by
-   * `ref_id` 1, 2 and 3.
+   * Finding 180, fixed: the methods come from the campaign, so an id the campaign does
+   * not list is a markup or configuration mistake — not a method to select.
    *
-   * A campaign whose shipping methods have any other `ref_id` — which is every campaign
-   * beyond the first few — gets a radio group where clicking a method does nothing at all:
-   * no store write, no cart recalculation, no log. The shopper picks "Express", the total
-   * does not move, and the order is placed on whatever method was already set.
+   * It is refused rather than written, because writing it would put a `ref_id` on the
+   * order that the campaign cannot price, and the warning names the ids that do exist so
+   * the mistake is one console line to diagnose.
    */
-  it('DEFECT: a shipping method whose id is not 1, 2 or 3 is silently ignored', () => {
+  it('refuses an id the campaign does not list, and says which ids it has', () => {
     const setShipping = vi
       .spyOn(cartOperations, 'setShippingMethod')
       .mockResolvedValue(undefined);
     const ctx = shippingContext();
 
-    handleShippingMethodChange(ctx, radioEvent('7'));
+    handleShippingMethodChange(ctx, radioEvent('3'));
 
     expect(setShipping).not.toHaveBeenCalled();
-    // Still on whatever was already selected, with nothing said about it.
-    expect(useCheckoutStore.getState().shippingMethod?.id).toBe(1);
-    expect(ctx.logger.warn).not.toHaveBeenCalled();
+    expect(useCheckoutStore.getState().shippingMethod).toBeUndefined();
+    expect(ctx.logger.warn).toHaveBeenCalledWith(
+      'Shipping method 3 is not one this campaign offers',
+      { availableIds: [7, 12, 19] }
+    );
   });
 
-  /**
-   * DEFECT (left as found): the prices in that table are hard-coded too.
-   *
-   * Method 2 is stored at $5 and method 3 at $28 whatever the campaign charges, so a
-   * checkout summary reading `checkoutStore.shippingMethod.price` can show a shipping cost
-   * the order will not be charged. The cart is corrected — `cartOperations.setShippingMethod`
-   * looks the real one up — but the checkout store keeps the invented figure.
-   */
-  it('DEFECT: the stored price is the SDK’s constant, not the campaign’s', () => {
-    vi.spyOn(cartOperations, 'setShippingMethod').mockResolvedValue(undefined);
-    vi.spyOn(nextAnalytics, 'track').mockImplementation(() => {});
+  it('refuses every id while the campaign has not loaded', () => {
+    const setShipping = vi
+      .spyOn(cartOperations, 'setShippingMethod')
+      .mockResolvedValue(undefined);
+    useCampaignStore.setState({ data: null } as never);
+    const ctx = shippingContext();
 
-    handleShippingMethodChange(shippingContext(), radioEvent('3'));
+    handleShippingMethodChange(ctx, radioEvent('12'));
 
-    expect(useCheckoutStore.getState().shippingMethod?.price).toBe(28);
+    expect(setShipping).not.toHaveBeenCalled();
+    expect(ctx.logger.warn).toHaveBeenCalledWith(
+      'Shipping method 12 is not one this campaign offers',
+      { availableIds: [] }
+    );
   });
 });

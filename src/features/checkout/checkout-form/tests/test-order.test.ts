@@ -156,15 +156,14 @@ describe('handleKonamiActivation', () => {
   });
 
   /**
-   * DEFECT (left as found): the campaign lookup is all but unreachable, because a checkout
-   * store that has ever held a shipping method keeps it.
+   * The campaign lookup used to be all but unreachable: `checkoutStore.reset()` merged an
+   * initial state with no `shippingMethod` key, so the previously chosen method survived
+   * the reset and whatever was set first won for the rest of the tab.
    *
-   * `checkoutStore.reset()` merges the initial state rather than replacing it, and the
-   * initial state has no `shippingMethod` key at all — so the previous value survives a
-   * reset. Whatever method was set first therefore wins for the rest of the tab, and a
-   * test order placed after it ships on that method rather than on the campaign's.
+   * `initialState` now names every field, so a reset really does clear the method and the
+   * campaign's own first method is what a test order after it ships on.
    */
-  it('DEFECT: an already-set shipping method wins over the campaign’s, even after a reset', async () => {
+  it('takes the campaign’s method after a reset has cleared the stale one', async () => {
     useCampaignStore.setState({
       data: {
         shipping_methods: [
@@ -179,7 +178,7 @@ describe('handleKonamiActivation', () => {
 
     await handleKonamiActivation(konamiContext(), activation('konami'));
 
-    expect(useCheckoutStore.getState().shippingMethod?.id).toBe(3);
+    expect(useCheckoutStore.getState().shippingMethod?.id).toBe(42);
   });
 
   it('reports a failed test order rather than throwing into the timer', async () => {

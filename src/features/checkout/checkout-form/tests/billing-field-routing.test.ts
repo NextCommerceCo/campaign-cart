@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import intlTelInput from 'intl-tel-input';
+import type { Iti } from 'intl-tel-input';
 import {
   routeBillingField,
   routeBillingFieldValue,
@@ -17,6 +19,18 @@ vi.mock('../state-fields', () => ({
 vi.mock('../postal-code-format', () => ({
   formatPostalCodeInPlace: vi.fn(),
 }));
+
+/**
+ * The billing phone's E.164 number comes from the live `intl-tel-input` instance on the
+ * field, which the library hands back through `getInstance`. Mocked here so a test can say
+ * "the library is on the page and knows this number" (an instance) or "it is not"
+ * (`null`) without standing up the real widget.
+ */
+vi.mock('intl-tel-input', () => ({
+  default: { getInstance: vi.fn(() => null) },
+}));
+
+const getInstance = vi.mocked(intlTelInput.getInstance);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -49,17 +63,19 @@ function store() {
   return useCheckoutStore.getState();
 }
 
-/**
- * `reset()` shallow-merges `initialState`, which declares no `billingAddress` — so the key
- * survives a reset and has to be cleared by hand here. See the note on the last test in
- * this file.
- */
-function resetCheckout(): void {
-  useCheckoutStore.getState().reset();
-  useCheckoutStore.setState({ billingAddress: undefined });
+/** The number `intl-tel-input` would assemble from what the shopper typed. */
+function phoneInstance(number: string | null): Iti {
+  return { getNumber: vi.fn(() => number) } as unknown as Iti;
 }
 
-beforeEach(resetCheckout);
+function resetCheckout(): void {
+  useCheckoutStore.getState().reset();
+}
+
+beforeEach(() => {
+  resetCheckout();
+  getInstance.mockReturnValue(null);
+});
 
 afterEach(() => {
   vi.clearAllMocks();
@@ -174,26 +190,27 @@ describe('routeBillingField', () => {
   });
 
   /**
-   * DEFECT (left as found): a billing phone is stored as the national text the shopper
-   * typed, never the E.164 number.
-   *
-   * `phone-input.ts` writes the E.164 number to `billingAddress.phone` on the same `input`
-   * event, and its listener is registered first — so this write lands second and wins. The
-   * shipping phone is unaffected because its branch asks `intl-tel-input` for the number
-   * explicitly. A non-US billing number therefore reaches the order as `07700 900123`.
+   * The billing phone is the one billing field whose stored value is not what the shopper
+   * typed: the orders API needs E.164, so a UK number has to reach the order as
+   * `+447700900123` rather than `07700 900123`, or AVS and any SMS to it fail.
    */
-  it('DEFECT: stores the typed billing phone, overwriting the E.164 number', async () => {
-    // What phone-input.ts wrote a moment earlier on this same event.
-    useCheckoutStore.getState().setBillingAddress({
-      first_name: '',
-      last_name: '',
-      address1: '',
-      city: '',
-      province: '',
-      postal: '',
-      country: '',
-      phone: '+447700900123',
-    });
+  it('stores the E.164 number for the billing phone, not the typed text', async () => {
+    const target = input('07700 900123');
+    getInstance.mockReturnValue(phoneInstance('+447700900123'));
+
+    await routeBillingField(createCtx(), 'billing-phone', target, store());
+
+    expect(useCheckoutStore.getState().billingAddress?.phone).toBe(
+      '+447700900123'
+    );
+  });
+
+  /**
+   * A form without `intl-tel-input` is supported, and the shopper's number is still worth
+   * more on the order than nothing at all.
+   */
+  it('stores the typed billing phone when intl-tel-input is not on the page', async () => {
+    getInstance.mockReturnValue(null);
 
     await routeBillingField(
       createCtx(),
@@ -207,20 +224,32 @@ describe('routeBillingField', () => {
     );
   });
 
-  /**
-   * DEFECT (left as found, and outside this folder): `useCheckoutStore.reset()` never
-   * clears the billing address.
-   *
-   * `reset()` calls `set(initialState)`, and Zustand's `set` merges — but `initialState`
-   * declares no `billingAddress` key, so there is nothing to overwrite it with. The
-   * address is persisted to sessionStorage, so the billing address of a completed order
-   * is still in the store on the next one. Fixing it belongs in `src/state/checkout`.
-   */
-  it('DEFECT: a billing address survives a checkout-store reset', () => {
+  /** `getNumber()` returns null for a number the library cannot parse. Same reasoning. */
+  it('stores the typed billing phone when the number cannot be parsed', async () => {
+    getInstance.mockReturnValue(phoneInstance(null));
+
+    await routeBillingField(createCtx(), 'billing-phone', input('123'), store());
+
+    expect(useCheckoutStore.getState().billingAddress?.phone).toBe('123');
+  });
+
+  it('does not ask intl-tel-input about any other billing field', async () => {
+    await routeBillingField(
+      createCtx(),
+      'billing-city',
+      input('Hanoi'),
+      store()
+    );
+
+    expect(getInstance).not.toHaveBeenCalled();
+  });
+
+  /** Regression coverage for code-findings.md #156 — see `src/state/checkout`. */
+  it('clears the billing address on a checkout-store reset', () => {
     routeBillingFieldValue('billing-fname', 'Ada', store());
 
     useCheckoutStore.getState().reset();
 
-    expect(useCheckoutStore.getState().billingAddress?.first_name).toBe('Ada');
+    expect(useCheckoutStore.getState().billingAddress).toBeUndefined();
   });
 });

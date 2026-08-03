@@ -15,7 +15,8 @@ findings 116–126 from wave 2 on the same day (the `core/debug/` kebab rename, 
 hardening, and the `ui-service` split), and findings 127-137 from wave 3 (the teardown fixes,
 the format-table gate, the `core/debug` method breakup and the `checkout-validator` split);
 and findings 138-148 from wave 4 (the order-payload reconciliation, the routed-display gate,
-the `core/debug` split, the `prospect-cart` split and the test type gate); findings 149-153 from wave 5, findings 154-161 from wave 6, findings 162-167 from wave 7, findings 168-171 from wave 8, findings 172-178 from wave 9, findings 179-184 from wave 10, and findings 185-190 from wave 11; each wave has its own
+the `core/debug` split, the `prospect-cart` split and the test type gate); findings 149-153 from wave 5, findings 154-161 from wave 6, findings 162-167 from wave 7, findings 168-171 from wave 8, findings 172-178 from wave 9, findings 179-184 from wave 10, findings 185-190 from wave 11, and findings 191-194 from wave 12 (the first wave that fixed
+shopper-facing defects rather than moving code); each wave has its own
 section near the end. **Finding 144 was wrong as written and is corrected in place.** **Findings 127 and 130-133 are the most serious
 things this restructure has turned up** - a published page teaching ten paths that render
 nothing, and a validation layer that blocks non-Latin names while letting unvalidated billing
@@ -2566,7 +2567,7 @@ the comment is corrected, and **both clusters are now splittable.**
 **The general lesson:** a gate that reads from a keyed collection built off a list is only as
 strong as the key's uniqueness. Two entries with one key is silent data loss inside a test.
 
-### 156. A separate billing address survives `checkoutStore.reset()` — and so do the payment token and shipping method — *verified*
+### 156. ~~A separate billing address survives `checkoutStore.reset()`~~ — **FIXED 2026-08-03** and guarded at the compiler — see 191
 
 `reset: () => set(initialState)`. Zustand's `set` **merges**, and `initialState` declares no
 `billingAddress`, `paymentToken` or `shippingMethod` — I compared the interface against the
@@ -2581,7 +2582,7 @@ previous shopper's address and card token carried into someone else's checkout.
 merge — but that drops any field a future edit forgets to add, so the explicit list is safer).
 Then correct the README.
 
-### 157. A billing phone never reaches the order in E.164 — *verified*
+### 157. ~~A billing phone never reaches the order in E.164~~ — **FIXED 2026-08-03**
 
 `readFieldValue`'s `|| fieldName === 'billing-phone'` arm is unreachable: `handleFieldChange`
 routes every `billing-*` name down the billing branch first, and that branch writes the raw
@@ -2679,7 +2680,7 @@ that enhancers are garbage-collected when their elements go is false twice over:
 never walks descendants of a *removed* node (see 164), and an enhancer with a store subscription
 is held by the store regardless of what the scanner does.
 
-### 163. The purchase event reports the cart, not the order — while the correct data sits unused beside it — *verified*
+### 163. ~~The purchase event reports the cart, not the order~~ — **WRONG AS WRITTEN, and its recommended fix was a revenue regression. Corrected and closed 2026-08-03 — see 192**
 
 `handleOrderCompleted` builds a complete `purchaseData` object from `order.lines` — real
 per-line SKU, price and discount from the order the customer actually placed — and **never reads
@@ -2925,7 +2926,7 @@ identically to a human and is still counted unremovable — the agent's first pa
 that and the ratchet failed all eight files at their original counts. Worth writing into the
 rule's doc comment before it bites someone who is doing the right thing.
 
-### 175. A shopper can click Pay twice, and a `false` never survives a reload — *verified*
+### 175. ~~A shopper can click Pay twice, and a `false` never survives a reload~~ — **FIXED 2026-08-03**, and the checkbox half was worse than written — see 193
 
 Two independent defects in the newly-split `field-scanning.ts` / `form-population.ts`:
 
@@ -3038,7 +3039,7 @@ mechanically checkable invariant to avoid work that took one pass. Two of the si
 also carried a stale reason (*"out of scope — `src/features/checkout` is being edited"*) for
 classes that were never under `checkout-form/`.
 
-### 180. Clicking a shipping method does nothing on any campaign whose method ids are not 1, 2, 3 — *verified*
+### 180. ~~Clicking a shipping method does nothing on any campaign whose method ids are not 1, 2, 3~~ — **FIXED 2026-08-03**
 
 `handleShippingMethodChange` maps the radio's value through a **hard-coded** table of ref_id
 1/2/3, with hard-coded prices ($5 / $28). On a campaign whose shipping methods carry any other
@@ -3050,7 +3051,7 @@ The prices are the second half of it — anything reading `checkoutStore.shippin
 can show a shipping cost the order will not charge, because the cart is corrected from the
 campaign and the checkout store is not.
 
-### 181. Three more ways the checkout misleads a shopper — *verified, each pinned by a test*
+### 181. ~~Three more ways the checkout misleads a shopper~~ — **FIXED 2026-08-03**
 
 - **A non-numeric step number disables validation entirely.** `parseInt('two')` is `NaN`, and
   `validateStep` returns valid for any step that is not 1, 2 or 3. On a form with
@@ -3135,7 +3136,7 @@ Four agents: the last liftable `checkout-form` clusters, the unused-export backl
 `next-commerce` / `ecommerce-events` splits, and the debug overlay. **Finding 185 is a gate a
 page author sets that the SDK opens by itself.**
 
-### 185. The submit button re-enables itself, defeating an author's own gate — *verified*
+### 185. ~~The submit button re-enables itself~~ — **FIXED 2026-08-03. One of the two fixes the finding suggested was a regression — see 193**
 
 `handleCheckoutUpdate` runs on **every** checkout-store change, and its `isProcessing === false`
 arm writes `submitButton.disabled = false` rather than leaving the button as it found it. On a
@@ -3228,6 +3229,109 @@ link relative to the file it sits in. `tsc` is silent; `docs:check` fails with
 
 This is the same family as finding 183 — a generator reading something the type checker does
 not — one layer up: not the code's location, but the comment's.
+
+---
+
+## Found during the wave-12 fixes (2026-08-03)
+
+The first wave of the session that fixed shopper-facing defects rather than moving code. Bond
+approved findings 156, 157, 163, 175, 180, 181 and 185 as one batch. **Finding 192 is the one
+to read: my own finding 163 was wrong, and following it would have broken purchase revenue.**
+
+### 191. `initialState` is now checked by the compiler, not by memory — *fixed 2026-08-03*
+
+Finding 156 offered two fixes: list the three missing keys in `initialState`, or
+`set(initialState, true)` to replace rather than merge. Both were worse than what shipped.
+Replacing silently drops any key a future edit forgets — the exact failure mode that created
+the defect. Listing them fixes today and protects nothing tomorrow.
+
+What shipped instead: `initialState` is typed `AllFieldsOf<CheckoutState>`, so **omitting any
+field is a type error**. `paymentToken`, `shippingMethod` and `billingAddress` are now declared
+`undefined` explicitly, `reset()` clears all three, and the next person to add an optional
+field cannot reintroduce this without `npm run type-check` telling them.
+
+The same shape — `reset: () => set(initialState)` over an `initialState` that omits an optional
+key — is worth checking in the other stores; it is a pattern, not a one-off.
+
+### 192. Finding 163 was wrong, its recommended fix was a revenue regression, and the real defect was express checkout — *verified*
+
+Three claims in 163 were false:
+
+- **"The event ships `cartStore.items`."** `createPurchaseEvent` has always preferred
+  `order.lines`; `items` is read only in the `else`. A test written to prove the finding —
+  *"takes items and value from order.lines while the cart says otherwise"* — **passed before any
+  fix**.
+- **"A coupon that changes lines reports the wrong items and revenue."** False for standard
+  checkout.
+- **"Use `purchaseData`" — this was the dangerous part.** `purchaseData.value` was
+  `total_incl_tax`, the **grand total**. Adopting it would have re-broken the
+  purchase-value-equals-item-revenue rule this repo already corrected once, and failed two
+  assertions in `GA4EcommerceCompliance.test.ts`. Its item `price` was a line total never
+  divided by quantity, and its `discount` was per line, not per unit. **Deleting it was the only
+  safe half of the finding's own advice.**
+
+**The real defect, which 163 never identified: every express-checkout order reported garbage.**
+`ExpressCheckoutProcessor` emits `{ method, order }`, not the order. Read as an order, that
+wrapper has no `number`, `ref_id`, `lines`, `currency` or totals — so `dl_purchase` shipped a
+timestamp as `transaction_id`, the **cart's** items, `currency: 'USD'` for every store, and
+`tax: 0, shipping: 0`.
+
+**Meta's `eventID` and RudderStack's `Order Completed` both key on that transaction id**, so no
+express order could ever deduplicate against its server-side copy — every one was counted
+twice — and RudderStack's `total` was short by the full tax and shipping. 100% of PayPal, Apple
+Pay and Google Pay orders, every field. Fixed in the handler by unwrapping, not at the emit,
+because `{ method, order }` is the declared `EventMap` payload page authors subscribe to.
+
+**Why it hid:** `EventMap` marks `express-checkout:completed` and `:started`
+`@deprecated Declared but never emitted by this build`. **They are emitted**, from two files. A
+false TSDoc is what kept anyone from looking.
+
+Fixed alongside: `item_sku`, `item_image` and per-unit `discount` are now mapped from the order
+line, `item_variant` reads `variant_title` (the code read `package_profile`/`variant`, neither
+of which exists on `OrderLine`, so it was always `''`), and `ecommerce.discount` comes from
+`total_discounts` — it read `order.discount`, a field no order has, so it was **never once
+populated**.
+
+**Still open, deliberately:** `resolveOrderTaxBasis` matches `line.package` against `p.ref_id`,
+and **`OrderLine` declares no `package` field**, so it falls through to `'excl'` for every
+store. A VAT store therefore reports purchase prices excl-tax while its `add_to_cart` and
+`view_cart` report the incl-VAT price — the funnel is inconsistent by exactly the VAT amount.
+Changing it silently flips a store's revenue basis, so it needs a decision.
+
+### 193. What the submit-button findings got wrong — *verified*
+
+- **185 suggested two fixes; one is a regression.** "Stop touching `disabled` on the
+  not-processing path" leaves the button dead after a declined payment — `isProcessing` goes
+  true→false with nothing to re-enable it, and the shopper cannot retry. An existing test pins
+  that, correctly. Only "remember the state on the way in" works, and the shipped fix keys a
+  `WeakMap` on the element so a re-scan and garbage collection both behave.
+- **175's mechanism was wrong for the case that actually mattered.** A bare
+  `<input type="submit">` did not "match the selector then fail the `instanceof`" — it matched
+  **none** of the three selectors, because `button[type="submit"]` cannot match an `<input>`.
+  It was never looked for. And `<a>`/`<div>` cannot double-submit at all, because submission is
+  bound to the form's `submit` event, which their clicks never fire. The real exposure was
+  `<input type="submit">`, which submits natively.
+- **175's checkbox half was worse than written.** No checkbox state was ever restored, in
+  either direction: a stored `true` took the truthy branch and ran `field.value = true`, which
+  leaves `checked` untouched **and** rewrites the input's submitted value from `"on"` to
+  `"true"`.
+- A second bug in the same selector chain, unmentioned: `??` stopped at the first element a
+  selector *matched*, so an `<a data-next-checkout-submit>` hid a usable
+  `<button os-checkout-submit>` further down the same form.
+
+### 194. Finding 180's blast radius was narrower than written, and its narrow case is worse — *verified*
+
+180 said the checkout store keeps an invented price because "the cart is corrected from the
+campaign and the checkout store is not". False: `set-shipping-method.ts` already calls
+`checkoutStore.setShippingMethod(...)` with the campaign's code and price, so an invented price
+was overwritten a tick later — **whenever the id existed in the campaign**.
+
+The real exposure was two narrower cases, one of them permanent: the synchronous window before
+that async write, and **an id of 1, 2 or 3 that the campaign does not offer** — there the cart
+operation throws and the checkout store keeps `$5`/`$28` forever.
+
+Also still open: `void cartOperations.setShippingMethod(id)` has no `.catch()` and that
+operation throws, so a campaign-reload race produces an unhandled rejection.
 
 ---
 

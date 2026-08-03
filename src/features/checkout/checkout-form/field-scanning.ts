@@ -34,6 +34,53 @@ const FIELD_SELECTORS = [
   '[os-checkout-field]',
 ] as const;
 
+/**
+ * A control the form can hold shut while an order is being placed.
+ *
+ * Both members have a `disabled` the browser itself honours — a disabled one cannot be
+ * clicked, cannot be reached by keyboard, and cannot submit the form. That is the whole
+ * requirement: the form's job during a submit is to make a second click impossible, not to
+ * make one look impossible.
+ */
+export type SubmitControl = HTMLButtonElement | HTMLInputElement;
+
+/** Where the submit control is looked for, in the order the first match wins. */
+const SUBMIT_SELECTORS = [
+  'button[type="submit"]',
+  'input[type="submit"]',
+  '[data-next-checkout-submit]',
+  '[os-checkout-submit]',
+] as const;
+
+/**
+ * The `<input>` types that submit a form, plus `button` — the three a page author writes
+ * when they use an `<input>` as the pay control. A `text` or `checkbox` input carrying the
+ * submit attribute is markup gone wrong, not a submit control.
+ */
+const SUBMIT_INPUT_TYPES = new Set(['submit', 'image', 'button']);
+
+/**
+ * The first element matching any submit selector that the form can actually disable.
+ *
+ * Each selector is exhausted before the next is tried, so a page whose
+ * `data-next-checkout-submit` sits on an `<a>` still gets its `os-checkout-submit`
+ * `<button>` found — the old `??` chain stopped at the first *match*, usable or not.
+ */
+function findSubmitControl(form: HTMLFormElement): SubmitControl | undefined {
+  for (const selector of SUBMIT_SELECTORS) {
+    for (const candidate of Array.from(form.querySelectorAll(selector))) {
+      if (candidate instanceof HTMLButtonElement) return candidate;
+      if (
+        candidate instanceof HTMLInputElement &&
+        SUBMIT_INPUT_TYPES.has(candidate.type)
+      ) {
+        return candidate;
+      }
+    }
+  }
+  return undefined;
+}
+
 /** What the scan needs from the checkout form. */
 export interface FieldScanContext {
   /** The `<form>`. Checkout fields are only looked for inside it. */
@@ -61,10 +108,15 @@ export interface FieldLookupContext {
  * it already had when nothing is found — a re-scan of a form whose markup changed must not
  * blank a button that is still there.
  *
- * Recognized in order: `button[type="submit"]`, `[data-next-checkout-submit]`,
- * `[os-checkout-submit]`. Only a real `<button>` counts; an `<a>` or `<div>` carrying the
- * attribute is found by the selector and then rejected, which is what the warning below
- * reports.
+ * Recognized in order: `button[type="submit"]`, `input[type="submit"]`,
+ * `[data-next-checkout-submit]`, `[os-checkout-submit]` — and from each of those, the
+ * first `<button>` or submit-ish `<input>` ({@link SubmitControl}).
+ *
+ * An `<a>`, a `<div>` or a `<span>` carrying the attribute is still **rejected**, and the
+ * warning below is what reports it. Those elements have no `disabled` the browser honours,
+ * so accepting one would mean reporting a button held shut while the shopper could go on
+ * clicking it — a silent failure in place of a loud one. Give the pay control a `<button>`
+ * or an `<input type="submit">`.
  *
  * @example
  * ```ts
@@ -76,8 +128,8 @@ export interface FieldLookupContext {
  */
 export function scanAllFields(
   ctx: FieldScanContext
-): HTMLButtonElement | undefined {
-  let submitButtonFound: HTMLButtonElement | undefined;
+): SubmitControl | undefined {
+  let submitButtonFound: SubmitControl | undefined;
 
   // Scan checkout fields
   FIELD_SELECTORS.forEach(selector => {
@@ -94,11 +146,8 @@ export function scanAllFields(
   });
 
   // Find submit button
-  const submitButton =
-    ctx.form.querySelector('button[type="submit"]') ??
-    ctx.form.querySelector('[data-next-checkout-submit]') ??
-    ctx.form.querySelector('[os-checkout-submit]');
-  if (submitButton instanceof HTMLButtonElement) {
+  const submitButton = findSubmitControl(ctx.form);
+  if (submitButton) {
     submitButtonFound = submitButton;
     ctx.logger.debug('Found submit button:', submitButton);
   } else {

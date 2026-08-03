@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { Iti } from 'intl-tel-input';
-import { readFieldValue } from '../field-value';
+import { readFieldValue, readPhoneValue } from '../field-value';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -91,15 +91,13 @@ describe('readFieldValue', () => {
   });
 
   /**
-   * DEFECT (left as found): the `billing-phone` arm is unreachable in production.
-   *
-   * `handleFieldChange` sends every name starting with `billing-` down the billing branch
-   * before this function is reached, so a billing phone is never read through here — it is
-   * written to `billingAddress` as the national text the shopper typed, while
-   * `phone-input.ts` had already written the E.164 number and gets overwritten. The arm
-   * still behaves correctly if it is ever called, which is what this pins.
+   * `handleFieldChange` sends every `billing-*` name down the billing branch before this
+   * function is reached, so `billing-phone` has no arm here — it is read by
+   * `billing-field-routing.ts` through {@link readPhoneValue} instead. Pinned so that a
+   * later caller who does route a billing name through here notices the gap rather than
+   * silently storing the national text on the order.
    */
-  it('DEFECT: handles billing-phone correctly but is never reached with it', () => {
+  it('has no billing-phone arm — the billing branch reads it', () => {
     const phoneInputs = new Map([['billing', phoneInstance('+447700900999')]]);
 
     expect(
@@ -108,6 +106,37 @@ describe('readFieldValue', () => {
         input({ value: '07700 900999' }),
         phoneInputs
       )
-    ).toBe('+447700900999');
+    ).toBe('07700 900999');
+  });
+});
+
+describe('readPhoneValue', () => {
+  it('prefers the instance it is handed', () => {
+    expect(
+      readPhoneValue(input({ value: '07700 900123' }), phoneInstance('+44770'))
+    ).toBe('+44770');
+  });
+
+  it('falls back to the typed text when there is no instance anywhere', () => {
+    expect(readPhoneValue(input({ value: '07700 900123' }))).toBe(
+      '07700 900123'
+    );
+  });
+
+  it('falls back to the typed text when the number cannot be parsed', () => {
+    expect(readPhoneValue(input({ value: '123' }), phoneInstance(null))).toBe(
+      '123'
+    );
+  });
+
+  /** A `<select>` can never carry a phone widget, so it is never asked for one. */
+  it('reads a select as its value', () => {
+    const select = document.createElement('select');
+    const option = document.createElement('option');
+    option.value = 'CA';
+    select.appendChild(option);
+    select.value = 'CA';
+
+    expect(readPhoneValue(select)).toBe('CA');
   });
 });
