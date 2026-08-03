@@ -53,6 +53,9 @@ field list and nothing more.
 | `method-selection.ts` | The two radio groups — which payment method's fields are shown, and which shipping method the cart recalculates on | 1 (payment) / 2 (shipping) |
 | `test-order.ts` | The debug panel's "fill test data", and the Konami code that fills the form and places a **real** test order | 3 (fill) / 6 (Konami) |
 | `meta-tags.ts` | Where the checkout sends the visitor next, written as `<meta>` tags — the door `setSuccessUrl` / `setFailureUrl` open | 0 |
+| `prospect-cart-lifecycle.ts` | Bringing the prospect cart to life on a checkout form — constructing it against the form, starting it, and logging the two events it reports back. Failure is warned and swallowed: a prospect cart is a marketing convenience, never a condition of buying | 3 |
+| `payment-error-display.ts` | The banner a shopper sees when a payment is declined, and the re-entrancy guard that keeps it from announcing itself into an infinite loop — the display emits the event the listener handles | 3 (display) / 3 (listen) |
+| `store-subscriptions.ts` | What the form does when state changes underneath it rather than because the shopper touched something: store errors onto fields, address rows opened, submit button disabled while processing, cart emptiness noted, and the card fields built if the Spreedly key arrives after boot | 3 (checkout) / 1 (cart) / 3 (config) |
 | `postal-code-format.ts` | Rewriting a postcode into its country's shape as it is typed, and putting the caret back where the shopper left it | 2 fields |
 | `field-value.ts` | What a field is *worth* to the order — a phone as E.164, a checkbox as a boolean, everything else as typed | 1 field |
 | `billing-field-routing.ts` | Where a `billing-*` value goes: renamed to the orders API's spelling (`fname` → `first_name`) on its way into `billingAddress`, plus the billing postcode and province dropdown | 3 fields |
@@ -158,11 +161,11 @@ that are never managed at all, and `initializeLocationFieldVisibility`'s billing
 today only because `restoreBillingAddress` runs first. Reorder those two boot steps and a
 returning shopper's billing address rows stay hidden.
 
-Also still in the enhancer, and none of it is payment or order submission: the credit-card /
-Spreedly wiring, the prospect-cart lifecycle, the payment-error display, the three store
-subscriptions, `createTestOrder`, `getNextPageUrlFromMeta`, and teardown. `createTestOrder`
-stayed with `createOrder` on purpose — it assembles a payload through `OrderBuilder`, and
-`core/guide/subsystems/test-mode.md` cites it by symbol.
+Also still in the enhancer: the credit-card / Spreedly wiring, `handleFormSubmit` and its three
+routes, `createTestOrder`, `getNextPageUrlFromMeta`, and **teardown — measured at 109 lines and
+23 fields and deliberately left in place.** It fails the 1-8 threshold worse than `initialize`
+(18) or `initializeAddressManagement` (10) did, and it is already the flat ordered named-step
+shape that re-sequencing produces, so re-sequencing would add methods without removing a line.
 
 **The six clusters above came out verbatim, and every one measured 1-8 dependencies** - the
 threshold `initialize` (18) and `initializeAddressManagement` (10) failed. Fifteen defects

@@ -124,6 +124,23 @@ import {
   type TestDataFillContext,
 } from './test-order';
 import { applyFailureUrlMetaTags, applySuccessUrlMetaTags } from './meta-tags';
+import {
+  initializeProspectCart,
+  type ProspectCartLifecycleContext,
+} from './prospect-cart-lifecycle';
+import {
+  displayPaymentError,
+  listenForPaymentErrors,
+  type PaymentErrorDisplayContext,
+} from './payment-error-display';
+import {
+  handleCartUpdate,
+  handleCheckoutUpdate,
+  handleConfigUpdate,
+  type CartUpdateContext,
+  type CheckoutUpdateContext,
+  type ConfigUpdateContext,
+} from './store-subscriptions';
 import 'intl-tel-input/build/css/intlTelInput.css';
 
 // Consolidated constants
@@ -156,8 +173,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private loadingOverlay: LoadingOverlay;
   private expressProcessor?: ExpressCheckoutProcessor;
   private orderManager?: OrderManager;
-  /** True only while {@link displayPaymentError} is emitting — see {@link listenForPaymentErrors}. */
-  private announcingPaymentError = false;
+  /**
+   * True only while the payment-error display is emitting its own echo. A ref, because
+   * `payment-error-display.ts`'s two halves must read one flag rather than two copies —
+   * see [`payment-error-display.ts`](./payment-error-display.ts).
+   */
+  private announcingPaymentError = { value: false };
 
   constructor(element: HTMLElement) {
     super(element);
@@ -430,6 +451,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     });
   }
 
+  /**
+   * The three stores this form reacts to. What each reaction *is* lives in
+   * [`store-subscriptions.ts`](./store-subscriptions.ts); the subscribing stays here
+   * because `this.subscribe` is what records the unsubscribe `destroy()` runs.
+   */
   private subscribeToStores(): void {
     this.subscribe(useCheckoutStore, this.handleCheckoutUpdate.bind(this));
     this.subscribe(useCartStore, this.handleCartUpdate.bind(this));
@@ -445,23 +471,14 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
   /**
    * Payment errors raised by other components (express checkout, Spreedly) surface in
-   * this form.
-   *
-   * Registered through `this.on`, not `this.eventBus.on`: the bus is a page-lifetime
-   * singleton, so a handler it does not record an unsubscribe for keeps firing on a
-   * destroyed enhancer.
-   *
-   * {@link displayPaymentError} emits `payment:error` itself, so its own echo comes
-   * straight back here and would re-enter the display forever. `announcingPaymentError`
-   * is set only for the duration of that synchronous emit, which is what tells the echo
-   * apart from an error raised elsewhere.
+   * this form. The handling — and the guard that keeps the display from re-entering
+   * itself — is [`payment-error-display.ts`](./payment-error-display.ts).
    */
   private listenForPaymentErrors(): void {
-    this.on('payment:error', event => {
-      if (this.announcingPaymentError) return;
-      if (event.message) {
-        this.displayPaymentError(event.message);
-      }
+    listenForPaymentErrors({
+      announcingPaymentError: this.announcingPaymentError,
+      on: handler => this.on('payment:error', handler),
+      displayPaymentError: message => this.displayPaymentError(message),
     });
   }
 
@@ -851,30 +868,19 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // PROSPECT CART MANAGEMENT
   // ============================================================================
 
+  /** The three things `prospect-cart-lifecycle.ts` needs from this form. */
+  private prospectCartContext(): ProspectCartLifecycleContext {
+    return {
+      form: this.form,
+      logger: this.logger,
+      listen: (target, type, handler) => this.listen(target, type, handler),
+    };
+  }
+
   private async initializeProspectCart(): Promise<void> {
-    try {
-      // Initialize ProspectCartEnhancer with email entry trigger
-      this.prospectCartEnhancer = new ProspectCartEnhancer(this.form);
-
-      // Configure it to trigger on email entry
-      await this.prospectCartEnhancer.initialize();
-
-      // Listen for prospect cart events
-      this.listen(this.form, 'next:prospect-cart-created', (event: Event) => {
-        const customEvent = event as CustomEvent;
-        this.logger.info('Prospect cart created', customEvent.detail);
-      });
-
-      this.listen(this.form, 'next:prospect-cart-abandoned', (event: Event) => {
-        const customEvent = event as CustomEvent;
-        this.logger.info('Prospect cart abandoned', customEvent.detail);
-      });
-
-      this.logger.debug('ProspectCartEnhancer initialized');
-    } catch (error) {
-      this.logger.warn('Failed to initialize ProspectCartEnhancer:', error);
-      // Don't throw - prospect cart is not critical for checkout
-    }
+    this.prospectCartEnhancer = await initializeProspectCart(
+      this.prospectCartContext()
+    );
   }
 
   // ============================================================================
@@ -2136,54 +2142,39 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     await handleKonamiActivation(this.konamiTestOrderContext(), event);
   }
 
+  /** The three things `store-subscriptions.ts` needs to react to a checkout change. */
+  private checkoutUpdateContext(): CheckoutUpdateContext {
+    return {
+      validator: this.validator,
+      submitButton: this.submitButton,
+      showLocationFields: () => this.showLocationFields(),
+    };
+  }
+
+  private cartUpdateContext(): CartUpdateContext {
+    return { logger: this.logger };
+  }
+
+  /** Rebuilt per call: `creditCardService` is what makes the card wiring a one-shot. */
+  private configUpdateContext(): ConfigUpdateContext {
+    return {
+      logger: this.logger,
+      creditCardService: this.creditCardService,
+      initializeCreditCard: (environmentKey, debug) =>
+        this.initializeCreditCard(environmentKey, debug),
+    };
+  }
+
   private handleCheckoutUpdate(state: any): void {
-    // Handle errors - let the validator handle the display
-    if (state.errors && Object.keys(state.errors).length > 0) {
-      // The validator will handle error display through its ErrorDisplayManager
-      // We just need to make sure the validator knows about the errors
-      Object.entries(state.errors).forEach(([fieldName, message]) => {
-        this.validator.setError(fieldName, message as string);
-      });
-    }
-    // Note: We do NOT call clearAllErrors when state has no errors
-    // because that would mark all fields as valid prematurely.
-    // Errors should only be cleared field-by-field as they're fixed.
-
-    // Check if address1 was updated and show location fields if needed
-    if (state.formData?.address1 && state.formData.address1.trim().length > 0) {
-      this.showLocationFields();
-    }
-
-    // Handle processing state
-    if (state.isProcessing) {
-      // Disable submit button when processing
-      if (this.submitButton) {
-        this.submitButton.disabled = true;
-        this.submitButton.setAttribute('aria-busy', 'true');
-      }
-    } else {
-      // Enable submit button when not processing
-      if (this.submitButton) {
-        this.submitButton.disabled = false;
-        this.submitButton.setAttribute('aria-busy', 'false');
-      }
-    }
+    handleCheckoutUpdate(this.checkoutUpdateContext(), state);
   }
 
   private handleCartUpdate(cartState: CartState): void {
-    if (cartState.isEmpty) {
-      this.logger.warn('Cart is empty');
-    }
+    handleCartUpdate(this.cartUpdateContext(), cartState);
   }
 
   private async handleConfigUpdate(configState: any): Promise<void> {
-    try {
-      if (configState.spreedlyEnvironmentKey && !this.creditCardService) {
-        await this.initializeCreditCard(configState.spreedlyEnvironmentKey, configState.debug || false);
-      }
-    } catch (error) {
-      this.logger.error('Error handling config update:', error);
-    }
+    await handleConfigUpdate(this.configUpdateContext(), configState);
   }
 
   // ============================================================================
@@ -2292,53 +2283,17 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     this.domListenerAbort.abort();
   }
 
+  /** The three things `payment-error-display.ts` needs to show a decline. */
+  private paymentErrorDisplayContext(): PaymentErrorDisplayContext {
+    return {
+      logger: this.logger,
+      announcingPaymentError: this.announcingPaymentError,
+      emit: detail => this.emit('payment:error', detail),
+    };
+  }
+
   private displayPaymentError(message: string): void {
-    this.logger.info('[Payment Error] Displaying error:', message);
-
-    // Use a slight delay to ensure DOM is ready
-    setTimeout(() => {
-      // Find the credit error container
-      const errorContainer = document.querySelector('[data-next-component="credit-error"]');
-      if (errorContainer instanceof HTMLElement) {
-        // Find the message element
-        const messageElement = errorContainer.querySelector('[data-next-component="credit-error-text"]');
-        if (messageElement) {
-          messageElement.textContent = message;
-        }
-
-        // Force show the error container
-        errorContainer.style.display = 'flex';
-        errorContainer.style.visibility = 'visible';
-        errorContainer.style.opacity = '1';
-        errorContainer.classList.add('visible');
-        errorContainer.classList.remove('hidden');
-
-        // Remove any inline styles that might be hiding it
-        if (errorContainer.style.display === 'none') {
-          errorContainer.style.removeProperty('display');
-          errorContainer.style.display = 'flex';
-        }
-
-        this.logger.info('[Payment Error] Error container shown with message:', message);
-
-        // Auto-hide after 10 seconds
-        setTimeout(() => {
-          errorContainer.style.display = 'none';
-          errorContainer.classList.remove('visible');
-        }, 10000);
-      } else {
-        this.logger.error('[Payment Error] Could not find error container element');
-      }
-    }, 100); // Small delay to ensure DOM is ready
-
-    // Also emit an event for other components to handle. The flag marks this as
-    // our own echo, so `listenForPaymentErrors` does not display it a second time.
-    this.announcingPaymentError = true;
-    try {
-      this.emit('payment:error', { message });
-    } finally {
-      this.announcingPaymentError = false;
-    }
+    displayPaymentError(this.paymentErrorDisplayContext(), message);
   }
 
   /**
