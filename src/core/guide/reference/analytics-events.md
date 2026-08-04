@@ -138,7 +138,7 @@ One entry per event: when it fires, where the SDK builds it, which destinations 
 
 **Reaches:** GTM (verbatim), RudderStack `Product List Viewed`
 
-**Built at:** `core/analytics/events/ecommerce-events.ts › EcommerceEvents.createViewItemListEvent`
+**Built at:** `core/analytics/events/ecommerce-events.browse.ts › createViewItemListEvent`
 
 RudderStack sends the whole list as a `products[]` array. Meta has no name for a list impression, so it skips this event.
 
@@ -163,7 +163,7 @@ RudderStack sends the whole list as a `products[]` array. Meta has no name for a
 
 **Reaches:** GTM (verbatim), Meta `ViewContent`, RudderStack `Product Viewed`
 
-**Built at:** `core/analytics/events/ecommerce-events.ts › EcommerceEvents.createViewItemEvent`
+**Built at:** `core/analytics/events/ecommerce-events.browse.ts › createViewItemEvent`
 
 | Field | Type | Required | Meaning |
 |---|---|---|---|
@@ -181,7 +181,7 @@ RudderStack sends the whole list as a `products[]` array. Meta has no name for a
 
 **Reaches:** GTM (verbatim), RudderStack `Product Clicked`
 
-**Built at:** `core/analytics/events/ecommerce-events.ts › EcommerceEvents.createSelectItemEvent`
+**Built at:** `core/analytics/events/ecommerce-events.browse.ts › createSelectItemEvent`
 
 Meta has no name for a list click, so it skips this event. The list the offer was chosen from travels with it.
 
@@ -203,7 +203,7 @@ Meta has no name for a list click, so it skips this event. The list the offer wa
 
 **Reaches:** GTM (verbatim)
 
-**Built at:** `core/analytics/events/ecommerce-events.ts › EcommerceEvents.createViewSearchResultsEvent`
+**Built at:** `core/analytics/events/ecommerce-events.browse.ts › createViewSearchResultsEvent`
 
 Meta's search event is `dl_search`, which the SDK never fires — so search results reach your GTM container and nowhere else.
 
@@ -238,7 +238,7 @@ No field schema is declared for this event, so validation only checks that it ha
 
 **Reaches:** GTM (verbatim), Meta `AddToCart`, RudderStack `Product Added`
 
-**Built at:** `core/analytics/events/ecommerce-events.ts › EcommerceEvents.createAddToCartEvent`
+**Built at:** `core/analytics/events/ecommerce-events.cart.ts › createAddToCartEvent`
 
 Becomes Meta `AddToCart` and RudderStack `Product Added`. RudderStack reports only the **first** line of `items`, per its spec, so a multi-line add is under-reported there while GTM sees every line.
 
@@ -260,7 +260,7 @@ Becomes Meta `AddToCart` and RudderStack `Product Added`. RudderStack reports on
 
 **Reaches:** GTM (verbatim), Meta `RemoveFromCart` (custom), RudderStack `Product Removed`
 
-**Built at:** `core/analytics/events/ecommerce-events.ts › EcommerceEvents.createRemoveFromCartEvent`
+**Built at:** `core/analytics/events/ecommerce-events.cart.ts › createRemoveFromCartEvent`
 
 `RemoveFromCart` is a Meta *custom* event rather than a standard one, so it will not appear in Meta's standard-event reporting until you define it there.
 
@@ -292,7 +292,7 @@ No field schema is declared for this event, so validation only checks that it ha
 
 **Reaches:** GTM (verbatim), Meta `ViewCart` (custom), RudderStack `Cart Viewed`
 
-**Built at:** `core/analytics/events/ecommerce-events.ts › EcommerceEvents.createViewCartEvent`
+**Built at:** `core/analytics/events/ecommerce-events.cart.ts › createViewCartEvent`
 
 `ViewCart` is a Meta custom event. RudderStack correlates cart and checkout events by the analytics session id, which it sends as `cart_id`.
 
@@ -312,7 +312,7 @@ No field schema is declared for this event, so validation only checks that it ha
 
 **Reaches:** GTM (verbatim), Meta `InitiateCheckout`, RudderStack `Checkout Started`
 
-**Built at:** `core/analytics/events/ecommerce-events.ts › EcommerceEvents.createBeginCheckoutEvent`
+**Built at:** `core/analytics/events/ecommerce-events.checkout.ts › createBeginCheckoutEvent`
 
 | Field | Type | Required | Meaning |
 |---|---|---|---|
@@ -332,7 +332,7 @@ No field schema is declared for this event, so validation only checks that it ha
 
 **Reaches:** GTM (verbatim), Meta `AddShippingInfo` (custom), RudderStack `Checkout Step Completed`
 
-**Built at:** `core/analytics/events/ecommerce-events.ts › EcommerceEvents.createAddShippingInfoEvent`
+**Built at:** `core/analytics/events/ecommerce-events.cart.ts › createAddShippingInfoEvent`
 
 RudderStack reports it as checkout `step: 2` — its spec has no shipping event, so shipping is modelled as a numbered step. `AddShippingInfo` is a Meta custom event.
 
@@ -354,7 +354,7 @@ RudderStack reports it as checkout `step: 2` — its spec has no shipping event,
 
 **Reaches:** GTM (verbatim), Meta `AddPaymentInfo`, RudderStack `Payment Info Entered`
 
-**Built at:** `core/analytics/events/ecommerce-events.ts › EcommerceEvents.createAddPaymentInfoEvent`
+**Built at:** `core/analytics/events/ecommerce-events.cart.ts › createAddPaymentInfoEvent`
 
 RudderStack reports it as checkout `step: 3`.
 
@@ -376,7 +376,7 @@ RudderStack reports it as checkout `step: 3`.
 
 **Reaches:** GTM (verbatim), Meta `Purchase`, RudderStack `Order Completed`
 
-**Built at:** `core/analytics/events/ecommerce-events.ts › EcommerceEvents.createPurchaseEvent`
+**Built at:** `core/analytics/events/ecommerce-events.checkout.ts › createPurchaseEvent`
 
 Becomes Meta `Purchase` and RudderStack `Order Completed`. Meta gets an `eventID` of `{storeName}-{orderNumber}` when a store name is configured, which is what lets Meta deduplicate this browser event against a server-side copy of the same order. RudderStack recomputes `total` as value + tax + shipping and also calls `identify()` from the event's user properties.
 
@@ -595,7 +595,7 @@ Both vendor names are custom events, outside either vendor's standard set.
 
 **Reaches:** GTM (verbatim), RudderStack `Order Completed`
 
-**Built at:** `core/analytics/events/ecommerce-events.ts › EcommerceEvents.createAcceptedUpsellEvent`
+**Built at:** `core/analytics/events/ecommerce-events.upsell.ts › createAcceptedUpsellEvent`
 
 RudderStack sends it as a second `Order Completed`. Meta has no mapping for it, so accepted upsells do **not** reach the Meta Pixel as purchases — a real gap if you optimise Meta campaigns on total revenue.
 
@@ -628,7 +628,7 @@ RudderStack sends it as a second `Order Completed`. Meta has no mapping for it, 
 
 **Reaches:** GTM (verbatim), RudderStack `Cart Viewed`
 
-**Built at:** `core/analytics/events/ecommerce-events.ts › EcommerceEvents.createCartUpdatedEvent`
+**Built at:** `core/analytics/events/ecommerce-events.cart.ts › createCartUpdatedEvent`
 
 RudderStack maps it to `Cart Viewed`, the same name it uses for `dl_view_cart`, so the two are indistinguishable downstream unless you block one. Meta has no mapping.
 
@@ -640,7 +640,7 @@ No field schema is declared for this event, so validation only checks that it ha
 
 **Reaches:** GTM (verbatim)
 
-**Built at:** `core/analytics/events/ecommerce-events.ts › EcommerceEvents.createPackageSwappedEvent`, `core/analytics/tracking/auto-event-cart-handlers.ts › handlePackageSwapped`
+**Built at:** `core/analytics/events/ecommerce-events.cart.ts › createPackageSwappedEvent`, `core/analytics/tracking/auto-event-cart-handlers.ts › handlePackageSwapped`
 
 No vendor models a swap as one action, so neither Meta nor RudderStack maps it — a swap is visible to your GTM container only.
 

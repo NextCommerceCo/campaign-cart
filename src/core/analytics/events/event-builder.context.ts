@@ -174,7 +174,7 @@ export function getSessionId(): string {
 /**
  * Get next sequence number for event ordering
  */
-export function getNextSequenceNumber(): number {
+function getNextSequenceNumber(): number {
   if (typeof window !== 'undefined') {
     const current = parseInt(
       sessionStorage.getItem('analytics_sequence') || '0',

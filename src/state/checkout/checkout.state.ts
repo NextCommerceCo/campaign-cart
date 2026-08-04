@@ -63,12 +63,36 @@ interface CheckoutActions {
   reset: () => void;
 }
 
-const initialState: CheckoutState = {
+/**
+ * Every field of `T` spelled out — an optional key becomes a **required** key whose type
+ * still allows `undefined`. Annotating {@link initialState} with it is what makes a
+ * forgotten field a compile error; see the note there for why that matters.
+ */
+type AllFieldsOf<T> = { [K in Extract<keyof T, string>]: T[K] };
+
+/**
+ * The state a fresh checkout starts from, and the only thing `reset()` writes.
+ *
+ * Every field is listed, including the three that are optional, because `reset()` calls
+ * `set(initialState)` and Zustand's `set` **merges**: a field missing here is a field a
+ * reset cannot clear. That is not hypothetical — `billingAddress`, `paymentToken` and
+ * `shippingMethod` were once absent, and two of them persist, so finishing an order and
+ * starting another in the same tab carried the previous shopper's billing address and card
+ * token into the next checkout on a shared or kiosk browser.
+ *
+ * The {@link AllFieldsOf} annotation is the guard against that happening again: add an
+ * optional field to {@link CheckoutState} and forget it here, and this literal stops
+ * compiling.
+ */
+const initialState: AllFieldsOf<CheckoutState> = {
   step: 1,
   isProcessing: false,
   errors: {},
   formData: {},
+  paymentToken: undefined,
   paymentMethod: 'credit-card',
+  shippingMethod: undefined,
+  billingAddress: undefined,
   sameAsShipping: true,
   testMode: false,
   vouchers: [],
@@ -159,6 +183,15 @@ export const useCheckoutStore = create<CheckoutState & CheckoutActions>()(
         }));
       },
 
+      /**
+       * Returns every field to its initial value — step 1, empty form, no coupons,
+       * `credit-card`, and no billing address, card token or shipping method.
+       *
+       * Deliberately a **merge** rather than a replace (`set(initialState, true)`): the
+       * setters above sit on the same object as the state, so replacing would take them
+       * with it and leave a store with no methods. What a merge needs instead is an
+       * {@link initialState} that names every field — which its annotation enforces.
+       */
       reset: () => {
         set(initialState);
       },

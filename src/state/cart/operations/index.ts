@@ -29,17 +29,3 @@ export const cartOperations: CartOperations = {
   applyCoupon,
   removeCoupon,
 };
-
-export {
-  addItem,
-  removeItem,
-  updateQuantity,
-  swapPackage,
-  swapCart,
-  clear,
-  calculateTotals,
-  refreshItemPrices,
-  setShippingMethod,
-  applyCoupon,
-  removeCoupon,
-};

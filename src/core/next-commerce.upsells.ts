@@ -11,13 +11,23 @@ import { getApiClient } from '@/client';
 import type { EventBus } from '@/core/events';
 import type { Logger } from '@/core/logger';
 
+/** Options accepted by {@link addUpsell}. */
+export interface AddUpsellOptions {
+  packageId?: number;
+  quantity?: number;
+  items?: Array<{ packageId: number; quantity?: number }>;
+}
+
+/**
+ * Adds packages to the already-paid order, charging the saved payment
+ * method. Throws when there is no order in session, when the order cannot
+ * take upsells or is mid-processing, and when neither `packageId` nor
+ * `items` is given.
+ * @category Upsells
+ */
 export async function addUpsell(
   ctx: { logger: Logger; eventBus: EventBus },
-  options: {
-    packageId?: number;
-    quantity?: number;
-    items?: Array<{ packageId: number; quantity?: number }>;
-  }
+  options: AddUpsellOptions
 ): Promise<any> {
   const orderStore = useOrderStore.getState();
   const configStore = useConfigStore.getState();
@@ -113,16 +123,32 @@ export async function addUpsell(
   }
 }
 
+/**
+ * Whether the order in session can take a post-purchase upsell right now.
+ * Also `false` while one is processing, so it guards a double submit.
+ * @category Upsells
+ */
 export function canAddUpsells(): boolean {
   const orderStore = useOrderStore.getState();
   return orderStore.canAddUpsells();
 }
 
+/**
+ * Package ids already accepted on this order, as strings rather than
+ * numbers.
+ * @category Upsells
+ */
 export function getCompletedUpsells(): string[] {
   const orderStore = useOrderStore.getState();
   return orderStore.completedUpsells;
 }
 
+/**
+ * Whether a package was already accepted on this order — checks the
+ * completed list and the accepted entries of the upsell journey, so it
+ * survives a reload.
+ * @category Upsells
+ */
 export function isUpsellAlreadyAdded(packageId: number): boolean {
   const orderStore = useOrderStore.getState();
 

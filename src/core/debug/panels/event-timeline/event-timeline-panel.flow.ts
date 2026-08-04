@@ -42,7 +42,7 @@ export interface FlowRenderDeps {
  * per-status delivery summary (e.g. "3 sent · 1 skipped") so you can gauge the
  * fan-out without clicking each provider.
  */
-export function renderFlowSourceNode(
+function renderFlowSourceNode(
   event: TimelineEvent,
   deliveries: DeliveryRecord[],
   active: boolean,
@@ -88,7 +88,7 @@ export function renderFlowSourceNode(
  * One provider node as a single table-like row: brand + name on the left,
  * status + duration right-aligned. Tinted by status, clickable for its payload.
  */
-export function renderFlowProviderNode(
+function renderFlowProviderNode(
   record: DeliveryRecord,
   active: boolean,
   deps: FlowRenderDeps
@@ -116,7 +116,7 @@ export function renderFlowProviderNode(
  * drawn thicker and in its status colour; branches that never carried the
  * event (blocked/failed) are dashed so it's clear it did not flow there.
  */
-export function renderFlowWire(
+function renderFlowWire(
   deliveries: DeliveryRecord[],
   selectedId: string | null
 ): string {
@@ -144,7 +144,7 @@ export function renderFlowWire(
 }
 
 /** Detail panel for the source node: the original event payload. */
-export function renderFlowSourcePanel(
+function renderFlowSourcePanel(
   event: TimelineEvent,
   providerCount: number,
   deps: FlowRenderDeps
@@ -164,7 +164,7 @@ export function renderFlowSourcePanel(
  *   show only the reason (the original event lives on the source node).
  * - `failed` → the error plus whatever it attempted.
  */
-export function renderFlowProviderPanel(
+function renderFlowProviderPanel(
   record: DeliveryRecord,
   deps: FlowRenderDeps
 ): string {

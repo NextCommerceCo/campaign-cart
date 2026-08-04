@@ -224,7 +224,7 @@ Every parameter above, with the code that reads or writes it. Generated from the
 | `collection` | `ListAttributionTracker.detectListFromUrl` *(has)* — `core/analytics/tracking/list-attribution-tracker.ts` |
 | `country` | `initializeLocationAndCurrency` *(get)* — `core/sdk-initializer.location-currency.ts`<br>`resolveShippingCountry` *(get)* — `features/checkout/checkout-form/country-selection.ts` |
 | `currency` | `initializeLocationAndCurrency` *(get)* — `core/sdk-initializer.location-currency.ts`<br>`loadCampaign` *(get)* — `state/campaign/api.slice.ts` |
-| `debug` | `AttributeScanner.constructor` *(get)* — `core/attribute-scanner.ts`<br>`DebugOverlay.constructor` *(get)* — `core/debug/debug-overlay/debug-overlay.ts`<br>`EventTimelinePanel.constructor` *(get)* — `core/debug/panels/event-timeline/event-timeline-panel.ts`<br>…and 3 more |
+| `debug` | `detectDebugMode` *(get)* — `core/attribute-scanner.performance.ts`<br>`DebugOverlay.constructor` *(get)* — `core/debug/debug-overlay/debug-overlay.ts`<br>`EventTimelinePanel.constructor` *(get)* — `core/debug/panels/event-timeline/event-timeline-panel.ts`<br>…and 3 more |
 | `debugger` | `DebugModule.initializeIfEnabled` *(get)* — `core/debug/debug-module.ts`<br>`DebugModule.enableDebugMode` *(set)* — `core/debug/debug-module.ts`<br>`DebugModule.disableDebugMode` *(delete)* — `core/debug/debug-module.ts`<br>…and 9 more |
 | `evclid` | `AttributionCollector.handleEverflowClickId` *(has)* — `core/attribution/attribution-collector.ts` |
 | `fbclid` | `AttributionCollector.collectMetadata` *(get)* — `core/attribution/attribution-collector.ts` |
@@ -238,7 +238,7 @@ Every parameter above, with the code that reads or writes it. Generated from the
 | `payment_failed` | `getFailureUrl` *(set)* — `features/checkout/utils/url-utils.ts` |
 | `q` | `ListAttributionTracker.detectListFromUrl` *(has)* — `core/analytics/tracking/list-attribution-tracker.ts` |
 | `query` | `ListAttributionTracker.detectListFromUrl` *(has)* — `core/analytics/tracking/list-attribution-tracker.ts` |
-| `ref_id` | `SDKInitializer.checkAndLoadOrder` *(get)* — `core/sdk-initializer.ts`<br>`navigatePreservingParams` *(has)* — `features/cart/package-toggle/package-toggle.handlers.ts`<br>`CheckoutFormEnhancer.handlePurchaseEvent` *(has)* — `features/checkout/checkout-form/checkout-form.enhancer.ts`<br>…and 5 more |
+| `ref_id` | `SDKInitializer.checkAndLoadOrder` *(get)* — `core/sdk-initializer.ts`<br>`navigatePreservingParams` *(has)* — `features/cart/package-toggle/package-toggle.handlers.ts`<br>`CheckoutFormEnhancer.getNextPageUrlFromMeta` *(append)* — `features/checkout/checkout-form/checkout-form.enhancer.ts`<br>…and 5 more |
 | `reset` | `SDKInitializer.loadConfiguration` *(get)* — `core/sdk-initializer.ts` |
 | `search` | `ListAttributionTracker.detectListFromUrl` *(has)* — `core/analytics/tracking/list-attribution-tracker.ts` |
 | `sub1` | `AttributionCollector.collect` *(get)* — `core/attribution/attribution-collector.ts` |

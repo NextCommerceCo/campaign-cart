@@ -160,5 +160,3 @@ export class AutoEventListener implements AutoEventListenerContext {
   }
 }
 
-// Export singleton instance
-export const autoEventListener = AutoEventListener.getInstance();

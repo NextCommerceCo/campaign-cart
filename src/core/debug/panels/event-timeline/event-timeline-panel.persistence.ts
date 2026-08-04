@@ -14,9 +14,9 @@ import type { TimelineEvent } from './event-timeline-panel.types';
 export const EVENTS_STORAGE_KEY = 'debug-events-history';
 export const SHOW_INTERNAL_KEY = 'debug-events-show-internal';
 export const VIEW_KEY = 'debug-events-view';
-export const MAX_STORED_EVENTS = 100; // Reduced from 500 to keep localStorage smaller
-export const STORAGE_EXPIRY_KEY = 'debug-events-expiry';
-export const STORAGE_EXPIRY_HOURS = 2; // Clear after 2 hours
+const MAX_STORED_EVENTS = 100; // Reduced from 500 to keep localStorage smaller
+const STORAGE_EXPIRY_KEY = 'debug-events-expiry';
+const STORAGE_EXPIRY_HOURS = 2; // Clear after 2 hours
 
 /** What `saveEvents` needs live (read at fire time, not at call time). */
 export interface PersistenceHost {
@@ -24,7 +24,7 @@ export interface PersistenceHost {
   saveTimeout: ReturnType<typeof setTimeout> | null;
 }
 
-export function checkAndCleanExpiredStorage(): void {
+function checkAndCleanExpiredStorage(): void {
   try {
     const expiryTime = localStorage.getItem(STORAGE_EXPIRY_KEY);
     const now = Date.now();

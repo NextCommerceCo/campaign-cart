@@ -12,6 +12,10 @@ declare global {
   }
 }
 
+/**
+ * The resolved SDK version (runtime loader value if present, else build-time).
+ * @category Utility
+ */
 export function getVersion(): string {
   // Return the runtime detected version from loader, or fallback to build version
   if (typeof window !== 'undefined' && window.__NEXT_SDK_VERSION__) {
@@ -20,6 +24,10 @@ export function getVersion(): string {
   return __VERSION__; // Replaced at build time with the package.json version
 }
 
+/**
+ * Formats an amount using the campaign currency (or an override), e.g. `$19.99`.
+ * @category Utility
+ */
 export function formatPrice(amount: number, currency?: string): string {
   const { formatCurrency } = require('@/core/currency-formatter');
   const campaignStore = useCampaignStore.getState();
@@ -28,6 +36,10 @@ export function formatPrice(amount: number, currency?: string): string {
   return formatCurrency(amount, useCurrency);
 }
 
+/**
+ * Lightweight pre-checkout validation (currently: cart must not be empty).
+ * @category Utility
+ */
 export function validateCheckout(): { valid: boolean; errors: string[] } {
   const cartStore = useCartStore.getState();
   const errors: string[] = [];

@@ -202,9 +202,27 @@ export const CORE_LOG_SOURCES: CoreLogSource[] = [
   // ── Location and currency ──────────────────────────────────────────────────
   {
     prefix: 'CountryService',
+    file: 'country-service.postal-code.ts',
+    area: 'Location and currency',
+    what: 'Validates and formats a postal code against a country’s rules, and holds the built-in per-country defaults used when the CDN has none for a country.',
+    dynamicPrefix: true,
+    prefixFrom: 'country-service.ts',
+    prefixNote: 'A free function, not a class with its own logger. `CountryService` builds one `Logger(\'CountryService\')` in `country-service.ts` and passes it in as a parameter, so every line here prints under `[CountryService]`.',
+  },
+  {
+    prefix: 'CountryService',
+    file: 'country-service.filtering.ts',
+    area: 'Location and currency',
+    what: 'Filters the country and state lists to what the campaign actually ships to, and picks a fallback country when the visitor’s detected one is not on that list.',
+    dynamicPrefix: true,
+    prefixFrom: 'country-service.ts',
+    prefixNote: 'A free function, not a class with its own logger. `CountryService` builds one `Logger(\'CountryService\')` in `country-service.ts` and passes it in through a `{ campaignShippingCountries, config, logger }` context, so every line here prints under `[CountryService]`.',
+  },
+  {
+    prefix: 'CountryService',
     file: 'country-service.ts',
     area: 'Location and currency',
-    what: 'Detects the visitor’s country, fetches the country and state lists for the address form, filters them to the campaign’s shipping countries, and caches the results.',
+    what: 'Detects the visitor’s country, fetches and caches the country and state lists for the address form, and delegates postal-code rules and shipping-country filtering to its sibling modules.',
   },
 
   // ── Attribution ────────────────────────────────────────────────────────────
@@ -296,9 +314,9 @@ export const CORE_LOG_SOURCES: CoreLogSource[] = [
   },
   {
     prefix: 'EcommerceEvents',
-    file: 'analytics/events/ecommerce-events.ts',
+    file: 'analytics/events/ecommerce-events.upsell.ts',
     area: 'Analytics core',
-    what: 'Builds the purchase-funnel events — view item, add to cart, begin checkout, purchase, upsell.',
+    what: 'Builds the purchase-funnel events — view item, add to cart, begin checkout, purchase, upsell. Split across `ecommerce-events.browse.ts` / `.cart.ts` / `.checkout.ts` / `.upsell.ts`, this is the only one of the four that logs (a warn when the campaign store cannot be read for an accepted-upsell item).',
   },
   {
     prefix: 'UserEvents',

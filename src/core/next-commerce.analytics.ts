@@ -7,6 +7,12 @@
 
 import type { Logger } from '@/core/logger';
 
+/**
+ * Reports a list of packages as viewed — a product grid or recommendation
+ * rail. `_listId` is accepted and ignored; the list name is the third
+ * argument.
+ * @category Analytics
+ */
 export async function trackViewItemList(
   logger: Logger,
   packageIds: (string | number)[],
@@ -23,6 +29,11 @@ export async function trackViewItemList(
   });
 }
 
+/**
+ * Reports one package as viewed. Warns and sends nothing when the package is
+ * not in the loaded campaign, so an early call is silently dropped.
+ * @category Analytics
+ */
 export async function trackViewItem(
   logger: Logger,
   packageId: string | number
@@ -56,6 +67,11 @@ export async function trackViewItem(
   });
 }
 
+/**
+ * Reports an add-to-cart that happened outside the SDK's own cart calls.
+ * Pairing it with {@link core/next-commerce!NextCommerce.addItem} reports the add twice.
+ * @category Analytics
+ */
 export async function trackAddToCart(
   logger: Logger,
   packageId: string | number,
@@ -77,6 +93,11 @@ export async function trackAddToCart(
   });
 }
 
+/**
+ * Reports a removal that happened outside the SDK's own cart calls. Pairing
+ * it with {@link core/next-commerce!NextCommerce.removeItem} reports the removal twice.
+ * @category Analytics
+ */
 export async function trackRemoveFromCart(
   logger: Logger,
   packageId: string | number,
@@ -99,6 +120,11 @@ export async function trackRemoveFromCart(
   });
 }
 
+/**
+ * Reports checkout starting, from the current cart. The built-in checkout
+ * form already fires this — call it only for a hand-built flow.
+ * @category Analytics
+ */
 export async function trackBeginCheckout(logger: Logger): Promise<void> {
   queueMicrotask(async () => {
     try {
@@ -110,6 +136,11 @@ export async function trackBeginCheckout(logger: Logger): Promise<void> {
   });
 }
 
+/**
+ * Reports a completed order from an order payload. The receipt page already
+ * fires this; a second call doubles reported revenue.
+ * @category Analytics
+ */
 export async function trackPurchase(
   logger: Logger,
   orderData: any
@@ -124,6 +155,11 @@ export async function trackPurchase(
   });
 }
 
+/**
+ * Sends an event of the caller's own naming. Nothing validates the name or
+ * the payload, so a typo becomes a new event name.
+ * @category Analytics
+ */
 export async function trackCustomEvent(
   logger: Logger,
   eventName: string,
@@ -139,6 +175,12 @@ export async function trackCustomEvent(
   });
 }
 
+/**
+ * Reports a newsletter or account sign-up. The address goes into the event
+ * payload as `customer_email` in the clear — nothing hashes it — so it reaches
+ * every configured provider and the browser data layer as plain text.
+ * @category Analytics
+ */
 export async function trackSignUp(
   logger: Logger,
   email: string
@@ -153,6 +195,11 @@ export async function trackSignUp(
   });
 }
 
+/**
+ * Reports a returning visitor signing in. Carries the address in the clear,
+ * exactly as {@link core/next-commerce!NextCommerce.trackSignUp} does.
+ * @category Analytics
+ */
 export async function trackLogin(logger: Logger, email: string): Promise<void> {
   queueMicrotask(async () => {
     try {
@@ -164,6 +211,11 @@ export async function trackLogin(logger: Logger, email: string): Promise<void> {
   });
 }
 
+/**
+ * Turns verbose analytics logging on or off at runtime. Unrelated to the
+ * debug overlay, which is `?debugger=true` or `window.nextConfig.debugger`.
+ * @category Analytics
+ */
 export async function setDebugMode(
   logger: Logger,
   enabled: boolean
@@ -178,6 +230,11 @@ export async function setDebugMode(
   });
 }
 
+/**
+ * Discards the cached page context so the next event is built from the
+ * current route. Needed in a single-page app, where no page load resets it.
+ * @category Analytics
+ */
 export async function invalidateAnalyticsContext(
   logger: Logger
 ): Promise<void> {

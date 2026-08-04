@@ -50,7 +50,7 @@ export function formatDeliveryDuration(ms?: number): string {
  * Short provider label for compact row chips (Facebook → FB, RudderStack → RS).
  * Falls back to the capital-letter acronym, then the first 3 characters.
  */
-export function providerAbbrev(name: string): string {
+function providerAbbrev(name: string): string {
   const known: Record<string, string> = {
     NextCampaign: 'NEXT',
     GTM: 'GTM',

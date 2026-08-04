@@ -10,6 +10,13 @@ import { useCartStore, cartOperations } from '@/state/cart';
 import { useCampaignStore } from '@/state/campaign';
 import type { Logger } from '@/core/logger';
 
+/**
+ * Whether a package is currently in the cart.
+ *
+ * @param options.packageId - The package `ref_id` to look for.
+ * @returns `true` if an item with that package id is in the cart.
+ * @category Cart
+ */
 export function hasItemInCart(options: { packageId?: number }): boolean {
   const cartStore = useCartStore.getState();
 
@@ -20,6 +27,16 @@ export function hasItemInCart(options: { packageId?: number }): boolean {
   return false;
 }
 
+/**
+ * Adds a package to the cart (quantity defaults to 1). No-op if `packageId`
+ * is omitted. For upsell adds use {@link core/next-commerce!NextCommerce.cart}.
+ *
+ * @example
+ * ```ts
+ * await sdk.addItem({ packageId: 2, quantity: 2 });
+ * ```
+ * @category Cart
+ */
 export async function addItem(options: {
   packageId?: number;
   quantity?: number;
@@ -35,6 +52,10 @@ export async function addItem(options: {
   }
 }
 
+/**
+ * Removes a package from the cart entirely. No-op if `packageId` is omitted.
+ * @category Cart
+ */
 export async function removeItem(options: {
   packageId?: number;
 }): Promise<void> {
@@ -43,6 +64,10 @@ export async function removeItem(options: {
   }
 }
 
+/**
+ * Sets the exact quantity for a package (a quantity of 0 removes it).
+ * @category Cart
+ */
 export async function updateQuantity(options: {
   packageId?: number;
   quantity: number;
@@ -52,10 +77,19 @@ export async function updateQuantity(options: {
   }
 }
 
+/**
+ * Empties the cart.
+ * @category Cart
+ */
 export async function clearCart(): Promise<void> {
   cartOperations.clear();
 }
 
+/**
+ * Replaces the entire cart contents with the given items in one atomic swap
+ * (used by bundle/package selectors). Existing items not listed are removed.
+ * @category Cart
+ */
 export async function swapCart(
   ctx: { logger: Logger },
   items: Array<{ packageId: number; quantity: number }>
@@ -64,6 +98,11 @@ export async function swapCart(
   ctx.logger.debug(`Cart swapped with ${items.length} items`);
 }
 
+/**
+ * A snapshot of the full cart for callbacks — enriched line items, totals,
+ * campaign data, and applied vouchers.
+ * @category Cart
+ */
 export function getCartData(): CallbackData {
   const cartStore = useCartStore.getState();
   const campaignStore = useCampaignStore.getState();
@@ -83,6 +122,10 @@ export function getCartData(): CallbackData {
   };
 }
 
+/**
+ * The current cart totals (subtotal, total, discounts, shipping) as `Decimal`s.
+ * @category Cart
+ */
 export function getCartTotals() {
   const cartStore = useCartStore.getState();
   return {
@@ -95,6 +138,10 @@ export function getCartTotals() {
   };
 }
 
+/**
+ * Total number of units in the cart (sum of item quantities).
+ * @category Cart
+ */
 export function getCartCount(): number {
   const cartStore = useCartStore.getState();
   return cartStore.totalQuantity;

@@ -19,22 +19,22 @@ Something did not work. Each of these means a visitor saw the wrong thing, or no
 
 | Message | Source | Extra context |
 |---|---|---|
+| `[Billing] CRITICAL: Billing section not found!` | `billing-toggle.ts › handleBillingAddressToggle` | — |
 | `Failed to re-initialize credit card service:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupBfcacheRestoreHandler` | yes |
 | `Failed to load country data:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | yes |
 | `Failed to initialize credit card service:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeCreditCard` | yes |
-| `Failed to parse order data from sessionStorage:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handlePurchaseEvent` | yes |
 | `Failed to create order:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.createOrder` | yes |
 | `Failed to create test order:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.createTestOrder` | yes |
-| `Step navigation error:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleStepNavigation` | yes |
 | `Failed to process tokenized payment:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleTokenizedPayment` | yes |
-| `[Billing] CRITICAL: Billing section not found!` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleBillingAddressToggle` | — |
-| `Error filling test data for Konami order:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleKonamiActivation` | yes |
-| `Error handling config update:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleConfigUpdate` | yes |
-| `[Payment Error] Could not find error container element` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.displayPaymentError` | — |
+| `Failed to parse order data from sessionStorage:` | `duplicate-purchase-warning.ts › handlePurchaseEvent` | yes |
 | `Error clearing checkout fields:` | `form-population.ts › clearAllCheckoutFields` | yes |
+| `Step navigation error:` | `multi-step-navigation.ts › handleStepNavigation` | yes |
+| `[Payment Error] Could not find error container element` | `payment-error-display.ts › displayPaymentError` | — |
 | `Failed to initialize {type} phone field:` | `phone-input.ts › initializePhoneInput` | yes |
 | `Failed to load states:` | `state-fields.ts › updateStateOptions` | yes |
 | `Failed to load billing states:` | `state-fields.ts › updateBillingStateOptions` | yes |
+| `Error handling config update:` | `store-subscriptions.ts › handleConfigUpdate` | yes |
+| `Error filling test data for Konami order:` | `test-order.ts › handleKonamiActivation` | yes |
 | `Failed to create express order:` | `order-manager.ts › OrderManager.createExpressOrder` | yes |
 | `Cannot redirect: order missing ref_id` | `order-manager.ts › OrderManager.handleOrderRedirect` | — |
 | `Error handling order redirect:` | `order-manager.ts › OrderManager.handleOrderRedirect` | yes |
@@ -61,22 +61,25 @@ The feature carried on, but something in the markup or the data was not what it 
 | `[Billing] Collapse fallback triggered - forcing completion` | `billing-animation.ts › collapseBillingForm` | — |
 | `[Billing] Could not set initial state - missing elements` | `billing-form-setup.ts › setInitialBillingFormState` | — |
 | `[Billing] Some stored billing values have no field` | `billing-form-setup.ts › restoreBillingAddressFields` | yes |
-| `Failed to initialize ProspectCartEnhancer:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeProspectCart` | yes |
+| `[Billing] Click blocked - animation in progress` | `billing-toggle.ts › handleBillingAddressToggle` | — |
 | `[Spreedly] Credit card validation errors:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeCreditCard` | yes |
 | `API 400 error response:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.createOrder` | yes |
 | `Payment error detected:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.createOrder` | yes |
-| `Step {currentStep} validation failed` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleStepNavigation` | yes |
 | `Validation failed` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFormSubmit` | yes |
 | `Invalid {fieldName} detected on blur:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.validateContactFieldOnCommit` | yes |
 | `Failed to track add_shipping_info event:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.trackAddShippingInfoOnAddress` | yes |
-| `[Billing] Click blocked - animation in progress` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleBillingAddressToggle` | — |
-| `Cart is empty` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleCartUpdate` | — |
 | `Failed to track begin_checkout event:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.trackBeginCheckout` | yes |
 | `Stored country {storedCountry} not in available countries` | `country-selection.ts › resolveShippingCountry` | — |
 | `Country {countryCode} from URL not in available countries` | `country-selection.ts › resolveShippingCountry` | — |
 | `Saved country {savedCountryOverride} not in available countries` | `country-selection.ts › resolveShippingCountry` | — |
 | `Submit button not found in checkout form` | `field-scanning.ts › scanAllFields` | — |
 | `Province {storedProvince} not found in options for country {storedCountry}` | `form-population.ts › populateFormData` | — |
+| `Shipping method {methodId} is not one this campaign offers` | `method-selection.ts › handleShippingMethodChange` | yes |
+| `Step number "{rawStep}" is not a whole number above zero, treating this form as step 1` | `multi-step-navigation.ts › readStepNumber` | — |
+| `Step {currentStep} has no rules of its own, validating it as the address step` | `multi-step-navigation.ts › handleStepNavigation` | — |
+| `Step {currentStep} validation failed` | `multi-step-navigation.ts › handleStepNavigation` | yes |
+| `Failed to initialize ProspectCartEnhancer:` | `prospect-cart-lifecycle.ts › initializeProspectCart` | yes |
+| `Cart is empty` | `store-subscriptions.ts › handleCartUpdate` | — |
 | `Cannot checkout with empty cart` | `express-checkout-processor.ts › ExpressCheckoutProcessor.handleExpressCheckout` | — |
 | `Failed to track add_payment_info event:` | `express-checkout-processor.ts › ExpressCheckoutProcessor.handleExpressCheckout` | yes |
 | `Failed to reload Spreedly fields:` | `credit-card-service.ts › CreditCardService.clearFields` | yes |
@@ -104,6 +107,10 @@ Normal progress, useful for confirming the feature ran at all.
 | `[Billing] Initial state: EXPANDED (checkbox unchecked)` | `billing-form-setup.ts › setInitialBillingFormState` | — |
 | `[Billing] Restored the stored choice: separate billing` | `billing-form-setup.ts › reconcileBillingToggle` | — |
 | `[Billing] Restored the stored billing address` | `billing-form-setup.ts › restoreBillingAddressFields` | yes |
+| `[Billing] Toggle clicked` | `billing-toggle.ts › handleBillingAddressToggle` | yes |
+| `[Billing] Processing toggle` | `billing-toggle.ts › handleBillingAddressToggle` | yes |
+| `[Billing] Collapsing form...` | `billing-toggle.ts › handleBillingAddressToggle` | — |
+| `[Billing] Expanding form...` | `billing-toggle.ts › handleBillingAddressToggle` | — |
 | `[Billing] Adopted the markup choice into the store` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.restoreBillingChoice` | yes |
 | `Page restored from bfcache, resetting express checkout state` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupBfcacheRestoreHandler` | — |
 | `Resetting processing state after bfcache restore` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupBfcacheRestoreHandler` | — |
@@ -111,25 +118,12 @@ Normal progress, useful for confirming the feature ran at all.
 | `Re-initializing credit card service after bfcache restore` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupBfcacheRestoreHandler` | — |
 | `Window focused with processing=true, resetting express checkout state` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupWindowFocusHandler` | — |
 | `Setting campaign shipping countries:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.configureCountryService` | yes |
-| `Prospect cart created` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeProspectCart` | yes |
-| `Prospect cart abandoned` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeProspectCart` | yes |
 | `[Spreedly] Payment token received:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeCreditCard` | yes |
-| `Fresh purchase detected, showing attention modal` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handlePurchaseEvent` | yes |
 | `Order created successfully` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.createOrder` | yes |
-| `Multi-step checkout detected` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.detectMultiStepCheckout` | yes |
-| `Validating step {currentStep} before navigation` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleStepNavigation` | — |
-| `Step {currentStep} validated successfully, navigating to: {nextStepUrl}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleStepNavigation` | — |
 | `Processing express checkout for {paymentMethod} (skipping validation)` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFormSubmit` | — |
 | `Express payment {paymentMethod} requires validation (requireValidation: true)` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFormSubmit` | — |
 | `Processing express checkout for {paymentMethod} (after validation)` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFormSubmit` | — |
 | `Tracked add_shipping_info event (address complete)` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.trackAddShippingInfoOnAddress` | yes |
-| `Tracked add_shipping_info event` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleShippingMethodChange` | yes |
-| `[Billing] Toggle clicked` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleBillingAddressToggle` | yes |
-| `[Billing] Processing toggle` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleBillingAddressToggle` | yes |
-| `[Billing] Collapsing form...` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleBillingAddressToggle` | — |
-| `[Billing] Expanding form...` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleBillingAddressToggle` | — |
-| `[Payment Error] Displaying error:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.displayPaymentError` | yes |
-| `[Payment Error] Error container shown with message:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.displayPaymentError` | yes |
 | `Tracked begin_checkout event on checkout form initialization` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.trackBeginCheckout` | — |
 | `Shipping country selection priority check (does not affect currency):` | `country-selection.ts › resolveShippingCountry` | yes |
 | `✅ Using stored country from previous step: {storedCountry}` | `country-selection.ts › resolveShippingCountry` | — |
@@ -138,8 +132,17 @@ Normal progress, useful for confirming the feature ran at all.
 | `✅ Using detected/default shipping country: {selectedCountryCode} (currency unaffected)` | `country-selection.ts › resolveShippingCountry` | — |
 | `Handling country change to: {newCountry}` | `country-selection.ts › applyCountryToAddressForms` | — |
 | `Country field updated to: {newCountry}` | `country-selection.ts › applyCountryToAddressForms` | — |
+| `Fresh purchase detected, showing attention modal` | `duplicate-purchase-warning.ts › handlePurchaseEvent` | yes |
 | `Restoring saved country: {currentCountryValue}` | `form-population.ts › populateFormData` | — |
 | `All checkout fields cleared` | `form-population.ts › clearAllCheckoutFields` | — |
+| `Tracked add_shipping_info event` | `method-selection.ts › handleShippingMethodChange` | yes |
+| `Multi-step checkout detected` | `multi-step-navigation.ts › detectMultiStepCheckout` | yes |
+| `Validating step {currentStep} before navigation` | `multi-step-navigation.ts › handleStepNavigation` | — |
+| `Step {currentStep} validated successfully, navigating to: {nextStepUrl}` | `multi-step-navigation.ts › handleStepNavigation` | — |
+| `[Payment Error] Displaying error:` | `payment-error-display.ts › displayPaymentError` | yes |
+| `[Payment Error] Error container shown with message:` | `payment-error-display.ts › displayPaymentError` | yes |
+| `Prospect cart created` | `prospect-cart-lifecycle.ts › initializeProspectCart` | yes |
+| `Prospect cart abandoned` | `prospect-cart-lifecycle.ts › initializeProspectCart` | yes |
 | `createExpressOrder called with:` | `order-manager.ts › OrderManager.createExpressOrder` | yes |
 | `Express order data built` | `order-manager.ts › OrderManager.createExpressOrder` | — |
 | `Express order created:` | `order-manager.ts › OrderManager.createExpressOrder` | yes |
@@ -168,18 +171,16 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 | `[Billing] Starting collapse animation` | `billing-animation.ts › collapseBillingForm` | yes |
 | `[Billing] Collapse animation started` | `billing-animation.ts › collapseBillingForm` | yes |
 | `[Billing] No toggle on this page - keeping the stored choice` | `billing-form-setup.ts › reconcileBillingToggle` | — |
+| `[Billing] Set country to:` | `billing-toggle.ts › handleBillingAddressToggle` | yes |
 | `CheckoutFormEnhancer initialized` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initialize` | — |
 | `No campaign shipping countries available, using config` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.configureCountryService` | — |
-| `ProspectCartEnhancer initialized` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeProspectCart` | — |
 | `[Spreedly] Credit card service ready` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeCreditCard` | — |
 | `[Spreedly] Connected floating label callbacks` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeCreditCard` | — |
-| `Already shown warning for order` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handlePurchaseEvent` | yes |
-| `Preserving all session parameters in next step URL` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleStepNavigation` | — |
 | `Express payment config:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFormSubmit` | yes |
 | `Saved user's country selection to session: {value}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.applyCountrySelection` | — |
-| `[Billing] Set country to:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleBillingAddressToggle` | yes |
 | `begin_checkout already tracked, skipping duplicate` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.trackBeginCheckout` | — |
 | `Updated user data storage:` | `contact-persistence.ts › persistContactField` | yes |
+| `Already shown warning for order` | `duplicate-purchase-warning.ts › handlePurchaseEvent` | yes |
 | `Found submit button:` | `field-scanning.ts › scanAllFields` | yes |
 | `Converting phone to international format: {phone} -> {internationalNumber}` | `form-population.ts › populateFormData` | — |
 | `Restored province: {storedProvince}` | `form-population.ts › populateFormData` | — |
@@ -190,6 +191,8 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 | `No shipping location elements found` | `location-field-visibility.ts › initialize` | — |
 | `No billing location elements found` | `location-field-visibility.ts › initialize` | — |
 | `Location field visibility initialized` | `location-field-visibility.ts › initialize` | yes |
+| `Preserving all session parameters in next step URL` | `multi-step-navigation.ts › handleStepNavigation` | — |
+| `ProspectCartEnhancer initialized` | `prospect-cart-lifecycle.ts › initializeProspectCart` | — |
 | `Reusing existing state loading promise for {country}` | `state-fields.ts › updateStateOptions` | — |
 | `Kept autofilled state: {currentProvinceValue}` | `state-fields.ts › updateStateOptions` | — |
 | `No valid state found, showing placeholder: Select {stateLabel}` | `state-fields.ts › updateStateOptions` | — |

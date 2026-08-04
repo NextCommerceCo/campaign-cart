@@ -327,5 +327,3 @@ export class UserDataTracker {
   }
 }
 
-// Export singleton instance
-export const userDataTracker = UserDataTracker.getInstance();

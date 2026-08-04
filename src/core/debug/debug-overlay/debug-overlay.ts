@@ -7,7 +7,6 @@
 
 import { Logger } from '../../logger';
 import { DebugEventManager } from '../debug-event-manager';
-import { EnhancedDebugUI } from '../enhanced-debug-ui';
 import { useCartStore, cartOperations } from '@/state/cart';
 import { useConfigStore } from '@/state/config';
 import { XrayManager } from '../xray-styles';
@@ -25,14 +24,30 @@ import {
   OffersPanel,
   EnhancedCampaignPanel,
   DebugPanel,
-  RawDataHelper
 } from '../panels';
-import type { MiniCartHost } from './debug-overlay.types';
+import type {
+  MiniCartHost,
+  OverlayRenderDeps,
+  AutoUpdateDeps,
+  ContainerClickDeps,
+} from './debug-overlay.types';
 import {
   closeMiniCart as closeMiniCartImpl,
   toggleMiniCart as toggleMiniCartImpl,
   updateMiniCart as updateMiniCartImpl,
 } from './debug-overlay.mini-cart';
+import {
+  createOverlay as createOverlayImpl,
+  updateOverlay as updateOverlayImpl,
+  updateContent as updateContentImpl,
+  startAutoUpdate as startAutoUpdateImpl,
+  stopAutoUpdate as stopAutoUpdateImpl,
+} from './debug-overlay.chrome';
+import {
+  addEventListeners as addEventListenersImpl,
+  handleContainerClick as handleContainerClickImpl,
+  handleContainerHover as handleContainerHoverImpl,
+} from './debug-overlay.handlers';
 
 export class DebugOverlay {
   private static instance: DebugOverlay;
@@ -234,177 +249,72 @@ export class DebugOverlay {
     return this.visible;
   }
 
-  private async createOverlay(): Promise<void> {
-    // Create host container
-    this.container = document.createElement('div');
-    this.container.id = 'next-debug-overlay-host';
-    this.container.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 2147483647;
-      pointer-events: none;
-    `;
-
-    // Create Shadow DOM
-    this.shadowRoot = this.container.attachShadow({ mode: 'open' });
-
-    // Load and inject styles into Shadow DOM
-    await this.injectShadowStyles();
-
-    // Create overlay container inside shadow DOM
-    const overlayContainer = document.createElement('div');
-    overlayContainer.className = 'debug-overlay';
-    overlayContainer.style.pointerEvents = 'auto';
-
-    this.shadowRoot.appendChild(overlayContainer);
-
-    // Render initial content
-    this.updateOverlay();
-
-    // Add event listeners
-    this.addEventListeners();
-
-    document.body.appendChild(this.container);
+  /** What `debug-overlay.chrome.ts` needs to render the panel chrome. */
+  private renderDeps(): OverlayRenderDeps {
+    return {
+      panels: this.panels,
+      activePanel: this.activePanel,
+      activePanelTab: this.activePanelTab,
+      isExpanded: this.isExpanded,
+      addEventListeners: () => this.addEventListeners(),
+      updateButtonStates: () => this.updateButtonStates(),
+    };
   }
 
-  private async injectShadowStyles(): Promise<void> {
-    if (!this.shadowRoot) return;
-
-    // Load debug styles
-    const { DebugStyleLoader } = await import('../debug-style-loader');
-    const styles = await DebugStyleLoader.getDebugStyles();
-
-    // Create style element in shadow DOM
-    const styleElement = document.createElement('style');
-    styleElement.textContent = styles;
-    this.shadowRoot.appendChild(styleElement);
-
-    // Add reset styles to prevent inheritance
-    const resetStyles = document.createElement('style');
-    resetStyles.textContent = `
-      :host {
-        all: initial;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-        font-size: 14px;
-        line-height: 1.5;
-        color: #e0e0e0;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-      }
-
-      * {
-        box-sizing: border-box;
-      }
-
-      /* Ensure debug overlay is always on top */
-      .debug-overlay {
-        position: fixed;
-        z-index: 2147483647;
-      }
-    `;
-    this.shadowRoot.appendChild(resetStyles);
+  private async createOverlay(): Promise<void> {
+    const { container, shadowRoot } = await createOverlayImpl(
+      this.renderDeps()
+    );
+    this.container = container;
+    this.shadowRoot = shadowRoot;
   }
 
   private updateOverlay(): void {
-    if (!this.shadowRoot) return;
-
-    const overlayContainer = this.shadowRoot.querySelector('.debug-overlay');
-    if (!overlayContainer) return;
-
-    overlayContainer.innerHTML = EnhancedDebugUI.createOverlayHTML(
-      this.panels,
-      this.activePanel,
-      this.isExpanded,
-      this.activePanelTab
-    );
-
-    RawDataHelper.bindCopyHandlers(overlayContainer);
-    this.addEventListeners();
-
-    // Restore button states
-    this.updateButtonStates();
+    updateOverlayImpl(this.shadowRoot, this.renderDeps());
   }
 
   private updateContent(): void {
-    if (!this.shadowRoot) return;
-
-    const panelContent = this.shadowRoot.querySelector('.panel-content');
-    if (!panelContent) return;
-    const activePanel = this.panels.find(p => p.id === this.activePanel);
-    if (!activePanel) return;
-
-    // A panel that re-renders on every keystroke (e.g. the Analytics search
-    // box) would otherwise lose focus and caret position. Capture them before
-    // swapping innerHTML and restore afterwards.
-    const focused = this.shadowRoot.activeElement as HTMLInputElement | null;
-    const search =
-      focused && focused.matches?.('[data-debug-search]')
-        ? { start: focused.selectionStart, end: focused.selectionEnd }
-        : null;
-
-    const tabs = activePanel.getTabs?.() || [];
-    if (tabs.length > 0) {
-      // Panel has horizontal tabs - get content from active tab
-      const activeTabId = this.activePanelTab || tabs[0]?.id;
-      const activeTab = tabs.find(tab => tab.id === activeTabId) || tabs[0];
-      if (activeTab) {
-        panelContent.innerHTML = activeTab.getContent();
-        RawDataHelper.bindCopyHandlers(panelContent);
-      }
-    } else {
-      // Panel doesn't have horizontal tabs - use regular content
-      panelContent.innerHTML = activePanel.getContent();
-      RawDataHelper.bindCopyHandlers(panelContent);
-    }
-
-    if (search) {
-      const input = panelContent.querySelector<HTMLInputElement>(
-        '[data-debug-search]'
-      );
-      if (input) {
-        input.focus();
-        const end = input.value.length;
-        try {
-          input.setSelectionRange(search.start ?? end, search.end ?? end);
-        } catch {
-          // Some input types don't support selection ranges; focus is enough.
-        }
-      }
-    }
+    updateContentImpl(
+      this.shadowRoot,
+      this.panels,
+      this.activePanel,
+      this.activePanelTab
+    );
   }
 
   private addEventListeners(): void {
-    if (!this.shadowRoot) return;
-
-    // Remove any existing listeners to prevent duplicates
-    this.shadowRoot.removeEventListener('click', this.handleContainerClick);
-    this.shadowRoot.removeEventListener('mouseover', this.handleContainerHover);
-
-    // Use event delegation for all debug actions
-    this.shadowRoot.addEventListener('click', this.handleContainerClick);
-    this.shadowRoot.addEventListener('mouseover', this.handleContainerHover);
+    addEventListenersImpl(
+      this.shadowRoot,
+      this.handleContainerClick,
+      this.handleContainerHover
+    );
   }
 
-  private handleContainerClick = (event: Event) => {
-    const target = event.target as HTMLElement;
-    const action = target.getAttribute('data-action') || target.closest('[data-action]')?.getAttribute('data-action');
+  /** What `debug-overlay.handlers.ts` needs to route a click on the overlay. */
+  private containerClickDeps(): ContainerClickDeps {
+    return {
+      panels: this.panels,
+      activePanel: this.activePanel,
+      handleDebugAction: action => this.handleDebugAction(action),
+      handleTabSwitch: target => this.handleTabSwitch(target),
+      updateOverlay: () => this.updateOverlay(),
+    };
+  }
 
-    // Handle main debug actions
-    if (action) {
-      this.handleDebugAction(action);
-      return;
-    }
-
-    // Handle panel and horizontal tab switching
-    if (this.handleTabSwitch(target)) return;
-
-    this.runPanelAction(target);
+  private handleContainerClick = (event: Event): void => {
+    handleContainerClickImpl(event, this.containerClickDeps());
   };
 
-  /** One of the `data-action` buttons in the overlay chrome was clicked. */
+  /**
+   * One of the `data-action` buttons in the overlay chrome was clicked.
+   *
+   * Stays on this class rather than moving to `debug-overlay.handlers.ts`:
+   * `extract-storage-keys.ts` only resolves `DebugOverlay.EXPANDED_STORAGE_KEY`
+   * as a static class field when the reference lives in the same file as the
+   * class declaration — moving this would have turned the
+   * `debug-overlay-expanded` documentation row into an unresolvable `{token}`
+   * (docs/code-findings.md #183).
+   */
   private handleDebugAction(action: string): void {
     this.logger.debug('[Debug] Action clicked:', action);
     switch (action) {
@@ -451,6 +361,10 @@ export class DebugOverlay {
   /**
    * Switches the vertical panel or the horizontal tab inside it.
    * Returns true when the click was one of those, so the caller stops.
+   *
+   * Stays on this class for the same reason as `handleDebugAction` above: it
+   * writes `DebugOverlay.ACTIVE_PANEL_KEY` / `ACTIVE_TAB_KEY`, which only
+   * resolve as documented storage keys from inside this file.
    */
   private handleTabSwitch(target: HTMLElement): boolean {
     // Handle panel tab switching
@@ -490,66 +404,8 @@ export class DebugOverlay {
     return false;
   }
 
-  /** Runs the active panel's own action button, matched by its label. */
-  private runPanelAction(target: HTMLElement): void {
-    // Handle panel action buttons
-    const panelActionBtn = target.closest('.panel-action-btn') as HTMLElement;
-    if (panelActionBtn) {
-      const actionLabel = panelActionBtn.getAttribute('data-panel-action');
-      const activePanel = this.panels.find(p => p.id === this.activePanel);
-      const panelAction = activePanel?.getActions?.()?.find(a => a.label === actionLabel);
-
-      if (panelAction) {
-        panelAction.action();
-        // Re-render the whole overlay (not just content): actions whose label
-        // toggles with state — e.g. Pause/Resume — live in the chrome, and the
-        // click handler matches by label, so the buttons must be re-rendered to
-        // stay in sync. updateContent() alone leaves a stale "Pause" button that
-        // no longer matches the now-"Resume" action.
-        setTimeout(() => this.updateOverlay(), 100);
-      }
-      return;
-    }
-  }
-
-  private handleContainerHover = (event: Event) => {
-    const target = event.target as HTMLElement;
-    const miniCartItem = target.closest('.debug-mini-cart-item');
-
-    if (miniCartItem) {
-      const detailsCard = miniCartItem.querySelector('.mini-cart-discount-details-card') as HTMLElement;
-      if (detailsCard) {
-        const itemRect = miniCartItem.getBoundingClientRect();
-
-        // Exact width from CSS: 240px width + 32px padding (16*2) + 2px border = 274px
-        const cardWidth = 250;
-        const gap = 8;
-
-        const left = itemRect.left - cardWidth - gap;
-        const top = itemRect.top;
-
-        detailsCard.style.left = `${left}px`;
-        detailsCard.style.top = `${top}px`;
-      }
-    }
-
-    // Handle cart-level discount popup hover
-    const miniCartTotals = target.closest('.debug-mini-cart-totals.has-cart-discounts');
-    if (miniCartTotals) {
-      const cartDiscountPopup = miniCartTotals.querySelector('.mini-cart-cart-discount-popup .mini-cart-discount-details-card') as HTMLElement;
-      if (cartDiscountPopup) {
-        const totalsRect = miniCartTotals.getBoundingClientRect();
-
-        const cardWidth = 250;
-        const gap = 8;
-
-        const left = totalsRect.left - cardWidth - gap;
-        const top = totalsRect.top;
-
-        cartDiscountPopup.style.left = `${left}px`;
-        cartDiscountPopup.style.top = `${top}px`;
-      }
-    }
+  private handleContainerHover = (event: Event): void => {
+    handleContainerHoverImpl(event);
   };
 
   private updateBodyHeight(): void {
@@ -563,29 +419,22 @@ export class DebugOverlay {
   }
 
   private startAutoUpdate(): void {
-    this.updateInterval = window.setInterval(() => {
-      // Only update quick stats, not the full content to avoid losing focus
-      this.updateQuickStats();
-
-      // Only update content for specific panels that need real-time updates
-      // Skip updates if viewing raw data tab to prevent constant re-renders.
-      // Provider panels are intentionally excluded — they refresh on tracker
-      // changes via scheduleProviderPanelRefresh(), not on this poll.
-      if ((this.activePanel === 'cart' || this.activePanel === 'config' || this.activePanel === 'campaign') && this.activePanelTab !== 'raw') {
-        this.updateContent();
-      }
-    }, 1000);
+    const deps: AutoUpdateDeps = {
+      getActivePanel: () => this.activePanel,
+      getActivePanelTab: () => this.activePanelTab,
+      updateQuickStats: () => this.updateQuickStats(),
+      updateContent: () => this.updateContent(),
+    };
+    this.updateInterval = startAutoUpdateImpl(deps);
   }
 
   private stopAutoUpdate(): void {
-    if (this.updateInterval) {
-      clearInterval(this.updateInterval);
-      this.updateInterval = null;
-    }
-    if (this.providerRefreshTimer !== null) {
-      clearTimeout(this.providerRefreshTimer);
-      this.providerRefreshTimer = null;
-    }
+    const cleared = stopAutoUpdateImpl(
+      this.updateInterval,
+      this.providerRefreshTimer
+    );
+    this.updateInterval = cleared.updateInterval;
+    this.providerRefreshTimer = cleared.providerRefreshTimer;
   }
 
   // Public API for external access

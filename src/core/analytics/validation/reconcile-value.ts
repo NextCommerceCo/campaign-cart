@@ -19,9 +19,9 @@
  */
 
 /** Absolute floor for the tolerance, in currency units. */
-export const RECONCILE_TOLERANCE_ABS = 0.01;
+const RECONCILE_TOLERANCE_ABS = 0.01;
 /** Relative tolerance, so large orders aren't flagged for sub-cent rounding. */
-export const RECONCILE_TOLERANCE_REL = 0.005; // 0.5%
+const RECONCILE_TOLERANCE_REL = 0.005; // 0.5%
 
 export interface ReconcileResult {
   /** True when Σ(price × quantity) equals `value` within tolerance. */

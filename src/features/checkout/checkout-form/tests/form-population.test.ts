@@ -182,11 +182,9 @@ describe('populateFormData', () => {
     expect(updateLabels).toHaveBeenCalledTimes(1);
   });
 
-  // DEFECT (left as found): the loop skips any falsy stored value, so a checkbox the
-  // shopper deliberately unticked (`accepts_marketing: false`) is not put back as
-  // unticked — whatever the markup ships with wins. On a page whose marketing box is
-  // checked by default, an opt-out does not survive a reload.
-  it('DEFECT: a stored false is skipped rather than applied', async () => {
+  // Finding 175b. The shopper unticked the marketing box on a page whose markup ships it
+  // checked; the store kept that `false`, and the reload has to honour it.
+  it('unticks a checkbox the shopper opted out of, so the opt-out survives', async () => {
     useCheckoutStore.getState().updateFormData({ accepts_marketing: false });
     const { ctx, fields } = createPopulationCtx(
       '<input type="checkbox" data-field="accepts_marketing" checked />'
@@ -195,8 +193,50 @@ describe('populateFormData', () => {
     await populateFormData(ctx);
 
     expect((fields.get('accepts_marketing') as HTMLInputElement).checked).toBe(
-      true
+      false
     );
+  });
+
+  // The same defect in the other direction: a stored `true` used to be written into the
+  // checkbox's `value`, which leaves the tick exactly as the markup shipped it.
+  it('ticks a checkbox the shopper opted in to', async () => {
+    useCheckoutStore.getState().updateFormData({ accepts_marketing: true });
+    const { ctx, fields } = createPopulationCtx(
+      '<input type="checkbox" data-field="accepts_marketing" />'
+    );
+
+    await populateFormData(ctx);
+
+    const box = fields.get('accepts_marketing') as HTMLInputElement;
+    expect(box.checked).toBe(true);
+    expect(box.value).toBe('on');
+  });
+
+  it('restores a stored zero rather than reading it as no answer', async () => {
+    useCheckoutStore.getState().updateFormData({ gift_count: 0 });
+    const { ctx, fields } = createPopulationCtx(
+      '<input data-field="gift_count" value="5" />'
+    );
+
+    await populateFormData(ctx);
+
+    expect((fields.get('gift_count') as HTMLInputElement).value).toBe('0');
+  });
+
+  /**
+   * An empty string is the one falsy value that is *not* an answer: the store strips
+   * empty strings before persisting, so one can only ever be an in-session blank, and
+   * writing it back would wipe what boot or the page's own markup just put in the box.
+   */
+  it('leaves a box alone when the store holds only an empty string for it', async () => {
+    useCheckoutStore.getState().updateFormData({ city: '' });
+    const { ctx, fields } = createPopulationCtx(
+      '<input data-field="city" value="London" />'
+    );
+
+    await populateFormData(ctx);
+
+    expect((fields.get('city') as HTMLInputElement).value).toBe('London');
   });
 
   // DEFECT (left as found): the phone rewrite runs on a bare `setTimeout` nobody holds a

@@ -47,6 +47,15 @@ field list and nothing more.
 | `form-population.ts` | Putting the stored checkout data back into the boxes after a reload or a step back, and the reverse: emptying every box and resetting the store after a duplicate-purchase warning | 7 (populate) / 5 (clear) |
 | `location-field-visibility.ts` | The city/state/postcode rows that stay collapsed until a street address exists — shipping and billing each with their own element list and their own one-way latch | 6 |
 | `country-selection.ts` | Which country the shipping form opens on (stored → URL → session → detected), and pointing both address forms at a country chosen outside the form | 3 (resolve) / 6 (apply) |
+| `multi-step-navigation.ts` | Recognising that this form is one step of several, and the validate-then-navigate that replaces order creation on it | 3 (detect) / 8 (navigate) |
+| `duplicate-purchase-warning.ts` | The "you have already paid" modal a shopper meets on a checkout that still holds a completed order, and the two answers to it | 4 |
+| `billing-toggle.ts` | The "different billing address" checkbox: the mid-animation guard, the 10 ms debounce, the store write, and seeding the billing country on open | 5 |
+| `method-selection.ts` | The two radio groups — which payment method's fields are shown, and which shipping method the cart recalculates on | 1 (payment) / 2 (shipping) |
+| `test-order.ts` | The debug panel's "fill test data", and the Konami code that fills the form and places a **real** test order | 3 (fill) / 6 (Konami) |
+| `meta-tags.ts` | Where the checkout sends the visitor next, written as `<meta>` tags — the door `setSuccessUrl` / `setFailureUrl` open | 0 |
+| `prospect-cart-lifecycle.ts` | Bringing the prospect cart to life on a checkout form — constructing it against the form, starting it, and logging the two events it reports back. Failure is warned and swallowed: a prospect cart is a marketing convenience, never a condition of buying | 3 |
+| `payment-error-display.ts` | The banner a shopper sees when a payment is declined, and the re-entrancy guard that keeps it from announcing itself into an infinite loop — the display emits the event the listener handles | 3 (display) / 3 (listen) |
+| `store-subscriptions.ts` | What the form does when state changes underneath it rather than because the shopper touched something: store errors onto fields, address rows opened, submit button disabled while processing, cart emptiness noted, and the card fields built if the Spreedly key arrives after boot | 3 (checkout) / 1 (cart) / 3 (config) |
 | `postal-code-format.ts` | Rewriting a postcode into its country's shape as it is typed, and putting the caret back where the shopper left it | 2 fields |
 | `field-value.ts` | What a field is *worth* to the order — a phone as E.164, a checkbox as a boolean, everything else as typed | 1 field |
 | `billing-field-routing.ts` | Where a `billing-*` value goes: renamed to the orders API's spelling (`fname` → `first_name`) on its way into `billingAddress`, plus the billing postcode and province dropdown | 3 fields |
@@ -152,11 +161,23 @@ that are never managed at all, and `initializeLocationFieldVisibility`'s billing
 today only because `restoreBillingAddress` runs first. Reorder those two boot steps and a
 returning shopper's billing address rows stay hidden.
 
-Also still in the enhancer, and none of it is payment or order submission: the credit-card /
-Spreedly wiring, the duplicate-purchase warning modal, multi-step navigation, the billing
-toggle and its animation driving, the prospect-cart lifecycle, the payment-error display,
-the payment/shipping method change handlers, the three store subscriptions, the Konami
-test-order path, the meta-tag public API, and teardown.
+Also still in the enhancer: the credit-card / Spreedly wiring, `handleFormSubmit` and its three
+routes, `createTestOrder`, `getNextPageUrlFromMeta`, and **teardown — measured at 109 lines and
+23 fields and deliberately left in place.** It fails the 1-8 threshold worse than `initialize`
+(18) or `initializeAddressManagement` (10) did, and it is already the flat ordered named-step
+shape that re-sequencing produces, so re-sequencing would add methods without removing a line.
+
+**The six clusters above came out verbatim, and every one measured 1-8 dependencies** - the
+threshold `initialize` (18) and `initializeAddressManagement` (10) failed. Fifteen defects
+those modules' tests pin down are left as found. The four that reach a shopper: a
+non-numeric `data-next-step-number` becomes `NaN`, and `validateStep` passes any step that
+is not 1, 2 or 3 - so that gate checks nothing and an empty form reaches payment; the
+duplicate-purchase modal can open twice (boot *and* bfcache restore) because the "already
+warned" mark is written only after the shopper answers; its "Close" path calls
+`populateFormData()` without awaiting it and then clears the form, so the previous order's
+address can reappear in a form that was just emptied; and the shipping-method table is
+hard-coded to ref_id 1/2/3 with hard-coded prices, so on any other campaign clicking a
+shipping method does nothing at all - no store write, no recalculation, no log.
 
 **One order payload, one builder.** The enhancer used to hand-assemble its own `CreateOrder`
 alongside `OrderBuilder`, and the two disagreed about the shipping-method fallback. Every
@@ -330,7 +351,7 @@ Container for express payment buttons. Manages visibility of PayPal/Apple Pay/Go
 
 ## Validation
 
-`CheckoutValidator` validates fields on submit and optionally on blur. Validation rules are defined in `constants/validation-config.ts`.
+`CheckoutValidator` validates fields on submit and optionally on blur. The rules live in `validation/`: `validation/field-rules.ts` builds the per-field rule set, `validation/validation-patterns.ts` holds the email/phone/name checks, and `validation/field-labels.ts` turns a field name into the wording an error message uses.
 
 Error display is handled by `UIService` which looks for `[data-next-error="<fieldName>"]` or `[os-checkout-error="<fieldName>"]` elements adjacent to or within each field.
 

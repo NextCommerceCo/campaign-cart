@@ -1,0 +1,78 @@
+name: Deploy docs
+
+# Publishes the versioned documentation site to Cloudflare.
+#
+# Target is a **Workers static-assets** Worker, not Cloudflare Pages — see the
+# reasoning in docs/wrangler.jsonc. The short version: the site is one folder per
+# released tag (~1,250 files each). At 31 eligible tags that is ~40,000 files, and
+# Pages caps a deployment at 20,000 on every plan. Workers static assets allows
+# 100,000 on a paid plan.
+#
+# Trigger is **manual on purpose.** Deploying is an outward-facing action, so this
+# does not fire on a push or a tag until someone decides it should. To publish on
+# every release instead, add:
+#
+#   push:
+#     tags: ["v*.*.*"]
+#
+# alongside `workflow_dispatch` below — and know that tagging then publishes.
+on:
+  workflow_dispatch:
+    inputs:
+      versions:
+        description: "How many of the newest tags to publish (blank = all eligible)"
+        required: false
+        type: string
+      dry-run:
+        description: "Assemble and check the site, but do not deploy"
+        required: false
+        default: false
+        type: boolean
+
+# One deploy at a time; a second run waits rather than racing the asset upload.
+concurrency:
+  group: docs-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The site is built one folder per release tag, so the tags have to be
+          # here. `fetch-tags: true` is NOT enough — it only drops `--no-tags`
+          # from a depth-1 fetch, and tag auto-follow brings nothing at that
+          # depth. See the same note in build.yml.
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      # Assembles docs/site: one folder per tag, plus `latest/`, `_headers`,
+      # robots.txt and 404.html — then counts the files and fails if the result
+      # would not fit Cloudflare's limits. It never deploys.
+      - name: Build the versioned site
+        env:
+          DOCS_BASE_URL: ${{ vars.DOCS_BASE_URL }}
+        run: |
+          bun run docs:publish ${{ inputs.versions && format('--versions {0}', inputs.versions) || '' }}
+
+      - name: Report what would be uploaded
+        run: |
+          echo "files: $(find docs/site -type f | wc -l)"
+          echo "bytes: $(du -sb docs/site | cut -f1)"
+
+      - name: Deploy to Cloudflare
+        if: ${{ !inputs.dry-run }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        # Pinned rather than @latest: the 100,000-file asset ceiling needs
+        # Wrangler >= 4.34.0, and a silent major bump should not change how a
+        # release publishes.
+        run: bunx wrangler@4 deploy -c docs/wrangler.jsonc

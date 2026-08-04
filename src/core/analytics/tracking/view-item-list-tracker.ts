@@ -481,5 +481,3 @@ export class ViewItemListTracker {
   }
 }
 
-// Export singleton instance
-export const viewItemListTracker = ViewItemListTracker.getInstance();

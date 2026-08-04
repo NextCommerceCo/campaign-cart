@@ -469,7 +469,9 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
   }
   
   public override destroy(): void {
-    this.clearButtons();
+    // Unsubscribing first means no store update can rebuild the buttons that
+    // clearButtons() is about to remove.
     super.destroy();
+    this.clearButtons();
   }
 }

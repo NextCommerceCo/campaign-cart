@@ -10,6 +10,10 @@
  * Two side effects ride along: the postcode is reformatted for the billing country, and
  * changing the billing country rebuilds the billing province dropdown.
  *
+ * One field is not stored as typed. The billing phone goes on the address as the E.164
+ * number `intl-tel-input` assembled, the same rule the shipping phone follows — see
+ * {@link readPhoneValue}.
+ *
  * Extracted from the field-name routing half of `handleFieldChange`. Three dependencies
  * ({@link BillingFieldRoutingContext}) — the billing field map and the two contexts it
  * passes straight through.
@@ -17,6 +21,7 @@
 
 import type { CheckoutState } from '@/state/checkout';
 
+import { readPhoneValue } from './field-value';
 import {
   formatPostalCodeInPlace,
   type PostalCodeFormatContext,
@@ -131,8 +136,11 @@ export async function routeBillingField(
     );
   }
 
-  // Billing fields are always strings (no checkboxes in billing)
-  routeBillingFieldValue(fieldName, target.value, checkoutStore);
+  // Billing fields are always strings (no checkboxes in billing), and only the phone is
+  // worth something other than what is in the box.
+  const value =
+    fieldName === 'billing-phone' ? readPhoneValue(target) : target.value;
+  routeBillingFieldValue(fieldName, value, checkoutStore);
 
   if (fieldName === 'billing-country') {
     const billingProvinceField = ctx.billingFields.get('billing-province');

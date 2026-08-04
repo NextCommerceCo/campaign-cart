@@ -344,16 +344,16 @@ export class FomoPopupEnhancer extends BaseEnhancer {
     document.head.appendChild(style);
   }
 
+  /**
+   * Base `destroy()` calls this after unsubscribing, so there is no `destroy()`
+   * override here — one that called `this.cleanupEventListeners()` before
+   * `super.destroy()` would only run this twice.
+   */
   protected override cleanupEventListeners(): void {
     this.stop();
     if (this.popupElement) {
       this.popupElement.remove();
       this.popupElement = null;
     }
-  }
-
-  public override destroy(): void {
-    this.cleanupEventListeners();
-    super.destroy();
   }
 }

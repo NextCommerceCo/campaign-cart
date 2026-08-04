@@ -384,7 +384,9 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
   }
 
   public override destroy(): void {
-    this.cleanupEventListeners();
+    // `super.destroy()` runs cleanupEventListeners() itself — calling it first here
+    // as well only ran an idempotent teardown twice.
+    super.destroy();
     this.items.forEach(i =>
       i.element.classList.remove(
         'next-selector-card',
@@ -393,6 +395,5 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
       )
     );
     this.items = [];
-    super.destroy();
   }
 }

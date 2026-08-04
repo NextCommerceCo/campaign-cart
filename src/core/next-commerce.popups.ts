@@ -17,22 +17,30 @@ export interface PopupsState {
   fomoEnhancer: any;
 }
 
+/** Options accepted by {@link exitIntent}. */
+export interface ExitIntentOptions {
+  image?: string;
+  template?: string;
+  action?: () => void | Promise<void>;
+  disableOnMobile?: boolean;
+  mobileScrollTrigger?: boolean;
+  maxTriggers?: number;
+  useSessionStorage?: boolean;
+  sessionStorageKey?: string;
+  overlayClosable?: boolean;
+  showCloseButton?: boolean;
+  imageClickable?: boolean;
+  actionButtonText?: string;
+}
+
+/**
+ * Arms the exit-intent popup, lazy-loading its enhancer on the first call.
+ * Rethrows when that import fails.
+ * @category Popups
+ */
 export async function exitIntent(
   ctx: { state: PopupsState; logger: Logger },
-  options: {
-    image?: string;
-    template?: string;
-    action?: () => void | Promise<void>;
-    disableOnMobile?: boolean;
-    mobileScrollTrigger?: boolean;
-    maxTriggers?: number;
-    useSessionStorage?: boolean;
-    sessionStorageKey?: string;
-    overlayClosable?: boolean;
-    showCloseButton?: boolean;
-    imageClickable?: boolean;
-    actionButtonText?: string;
-  }
+  options: ExitIntentOptions
 ): Promise<void> {
   try {
     // Lazy load the enhancer
@@ -53,22 +61,35 @@ export async function exitIntent(
   }
 }
 
+/**
+ * Stops the exit-intent popup from appearing again. No-op when {@link
+ * core/next-commerce!NextCommerce.exitIntent} was never called.
+ * @category Popups
+ */
 export function disableExitIntent(ctx: { state: PopupsState }): void {
   if (ctx.state.exitIntentEnhancer) {
     ctx.state.exitIntentEnhancer.disable();
   }
 }
 
+/** Config accepted by {@link fomo}. */
+export interface FomoConfig {
+  items?: Array<{ text: string; image: string }>;
+  customers?: { [country: string]: string[] };
+  maxMobileShows?: number;
+  displayDuration?: number;
+  delayBetween?: number;
+  initialDelay?: number;
+}
+
+/**
+ * Starts the rotating social-proof popup, lazy-loading its enhancer on the
+ * first call. With no config it uses the enhancer's own defaults.
+ * @category Popups
+ */
 export async function fomo(
   ctx: { state: PopupsState; logger: Logger },
-  config?: {
-    items?: Array<{ text: string; image: string }>;
-    customers?: { [country: string]: string[] };
-    maxMobileShows?: number;
-    displayDuration?: number;
-    delayBetween?: number;
-    initialDelay?: number;
-  }
+  config?: FomoConfig
 ): Promise<void> {
   try {
     // Lazy load the enhancer
@@ -90,6 +111,11 @@ export async function fomo(
   }
 }
 
+/**
+ * Stops the social-proof popup rotation. No-op when {@link
+ * core/next-commerce!NextCommerce.fomo} was never called.
+ * @category Popups
+ */
 export function stopFomo(ctx: { state: PopupsState }): void {
   if (ctx.state.fomoEnhancer) {
     ctx.state.fomoEnhancer.stop();

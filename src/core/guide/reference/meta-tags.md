@@ -174,7 +174,7 @@ Every tag above, with the code that reads it. This table is generated from the s
 | `next-campaign-id` | `loadFromMeta` — `state/config/config.state.ts` |
 | `next-clear-cart` | `loadFromMeta` — `state/config/config.state.ts` |
 | `next-debug` | `loadFromMeta` — `state/config/config.state.ts` |
-| `next-failure-url` | *top level of the file* — `features/checkout/constants/selectors.ts`<br>`getFailureUrl` — `features/checkout/utils/url-utils.ts`<br>`CheckoutFormEnhancer.setFailureUrl` — `features/checkout/checkout-form/checkout-form.enhancer.ts` |
+| `next-failure-url` | *top level of the file* — `features/checkout/constants/selectors.ts`<br>`getFailureUrl` — `features/checkout/utils/url-utils.ts`<br>`applyFailureUrlMetaTags` — `features/checkout/checkout-form/meta-tags.ts` |
 | `next-funnel` | `AttributionCollector.getFunnelName` — `core/attribution/attribution-collector.ts` |
 | `next-next-url` | `CheckoutFormEnhancer.getNextPageUrlFromMeta` — `features/checkout/checkout-form/checkout-form.enhancer.ts`<br>*top level of the file* — `features/checkout/constants/selectors.ts`<br>`getNextPageUrlFromMeta` — `features/checkout/utils/meta-tag-utils.ts`<br>…and 2 more |
 | `next-page-name` | `getPageMetadata` — `core/analytics/providers/rudderstack-context.ts` |
@@ -185,6 +185,6 @@ Every tag above, with the code that reads it. This table is generated from the s
 | `next-upsell-accept-url` | `resolveNextUrl` — `features/cart/package-toggle/package-toggle.handlers.ts`<br>`handleActionClick` — `features/order/upsell/upsell.handlers.ts`<br>`acceptBundleUpsell` — `features/cart/accept-upsell/accept-upsell.handlers.ts`<br>…and 1 more |
 | `next-upsell-decline-url` | `handleActionClick` — `features/order/upsell/upsell.handlers.ts`<br>`acceptUpsell` — `features/cart/accept-upsell/accept-upsell.handlers.ts` |
 | `os-facebook-pixel` | `AttributionCollector.getFacebookPixelId` — `core/attribution/attribution-collector.ts` |
-| `os-failure-url` | *top level of the file* — `features/checkout/constants/selectors.ts`<br>`getFailureUrl` — `features/checkout/utils/url-utils.ts`<br>`CheckoutFormEnhancer.setFailureUrl` — `features/checkout/checkout-form/checkout-form.enhancer.ts` |
+| `os-failure-url` | *top level of the file* — `features/checkout/constants/selectors.ts`<br>`getFailureUrl` — `features/checkout/utils/url-utils.ts`<br>`applyFailureUrlMetaTags` — `features/checkout/checkout-form/meta-tags.ts` |
 | `os-next-page` | `CheckoutFormEnhancer.getNextPageUrlFromMeta` — `features/checkout/checkout-form/checkout-form.enhancer.ts`<br>*top level of the file* — `features/checkout/constants/selectors.ts`<br>`getNextPageUrlFromMeta` — `features/checkout/utils/meta-tag-utils.ts`<br>…and 2 more |
 | `os-tracking-tag` | `AttributionCollector.getFunnelName` — `core/attribution/attribution-collector.ts`<br>`AttributionCollector.collectTrackingTags` — `core/attribution/attribution-collector.ts` |
