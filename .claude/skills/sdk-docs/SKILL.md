@@ -10,8 +10,10 @@ description: >-
   what the data looks like, (4) what do I need to watch out for. Carries the
   reader-question → doc-layer map, the feature-catalog and state-reference
   templates, the "cautions" standard, and the cross-link / no-duplicate rules.
-  Pairs with the sdk-structure skill (where code lives) and .claude/rules/guide.md
-  (per-feature guide format).
+  Also owns the TypeDoc authoring reference — entry points and who reads each,
+  the tag inventory and house style, @category ordering, which TypeDoc warnings
+  are build failures and which gaps nothing catches. Pairs with the sdk-structure
+  skill (where code lives) and .claude/rules/guide.md (per-feature guide format).
 ---
 
 # SDK Docs
@@ -33,7 +35,7 @@ mix of these. Each has a home; know which doc answers which.
 | **1. What can this SDK do?** (what features exist, which are core) | **Feature catalog** (`docs`/README index) | §1 + `references/feature-catalog.md` |
 | **2. How does *this* feature work?** | Per-feature **`guide/`** | `.claude/rules/guide.md` |
 | **3. What is the state?** schema, fields, operations, example data | **State reference** (per store) | §3 + `references/state-reference.md` |
-| **4. What do I import / call exactly?** | **TypeDoc** (public API) | sdk-structure §8 |
+| **4. What do I import / call exactly?** | **TypeDoc** (TSDoc → API pages) | §5c + `references/typedoc.md` |
 | **5. What do I watch out for?** | a **Cautions** block in *every* doc above | §4 |
 
 Do not answer a question in the wrong layer (e.g. don't bury "what features
@@ -112,18 +114,19 @@ block. Vague warnings are useless; be specific and name the failure.
 - One fact lives in one place; everywhere else links to it. The feature catalog
   links to guides; guides link to the state reference and TypeDoc; the state
   reference links to `sdk.cart.*` in TypeDoc.
-- **TypeDoc = the exact public API lookup** (`src/index.ts` surface only, grouped
-  by task via `@category`). It is *not* where you explain concepts or list
-  features — that's the catalog/guides. See sdk-structure §8.
-- Internals (`core/`, `state/`, `features/` implementation) are documented via
-  guides + folder READMEs, **not** added as TypeDoc entry points. Keeping the
-  public reference small is what keeps it readable.
+- **TypeDoc = the exact API lookup**, grouped by task via `@category`. It is *not*
+  where you explain concepts or list features — that's the catalog/guides. Full
+  authoring rules in [`references/typedoc.md`](./references/typedoc.md).
+- **Three entry points, not one:** `src/index.ts`, `src/core`, `src/state`, with
+  `entryPointStrategy: "expand"`. Every file under `core/` and `state/` publishes
+  its own module page, so their TSDoc reaches a reader. `src/features/**` is
+  *not* an entry point — features publish through their `guide/` folders.
 - **`src/core` has its own guide** — [`src/core/guide/`](../../../src/core/guide/):
   a landing page, 11 subsystem overviews under `subsystems/`, and 10 generated
   reference pages under `reference/` (boot order, meta tags, URL parameters,
   storage keys and TTLs, the `window.next` API, the `window` surface, logs,
   errors, the analytics catalogue and the provider matrix). The inventory that
-  drives it is [`core/docs/core-subsystems.ts`](../../../src/core/docs/core-subsystems.ts).
+  drives it is [`docs/content/core-subsystems.ts`](../../../src/docs/content/core-subsystems.ts).
   Its unit of documentation is the **contract a page depends on**, not the class —
   see `docs/documentation-plan.md` §5r for why by-file and by-symbol both fail.
 - **Core TSDoc now reaches a reader.** `src/core` (and `src/state`) is a TypeDoc
@@ -176,6 +179,35 @@ the same page; put the simple usage first and the depth below it.
   is tagged. It also publishes `main/` from the `main` branch tip
   (`npm run docs:main`) — merged-but-untagged docs, noindex, not a version entry,
   and never `latest/`. `dev/` (`--dev`) stays local and is pruned at publish.
+
+## 5c. TSDoc that publishes well
+
+Full reference — every tag, the config, the gates:
+[`references/typedoc.md`](./references/typedoc.md). The five that matter most:
+
+- **Lead with a sentence. A tags-only block documents nothing.**
+  `/** @category Cart */` files a symbol under a heading and tells the reader
+  nothing — which is precisely what `extract-next-methods.ts`'s `hasSummary` flag
+  exists to detect. Tags are metadata, not content.
+- **Nothing fails when you forget.** `validation.notDocumented` is `false`, so no
+  gate asks whether a public export has a comment. A green build says nothing
+  about whether you documented what you just exported — that judgement is yours.
+- **A broken `{@link}` *is* a build failure.** `validation.invalidLink` plus
+  `docs:check --treatWarningsAsErrors` turns it into an error. Use `{@link Name}`
+  for symbols, a relative `.md` path for documents, and never a site-absolute
+  `](/…)` path.
+- **`@category` must exist in `categoryOrder`** (`typedoc.json`), or the symbol
+  lands in the unordered `*` bucket. 42% of tagged symbols are there today and
+  nothing detects it — add the category to the config in the same change.
+- **Match the house style, which is narrow**: `{@link}`, `@example`, `@category`,
+  `@param`, `@inheritDoc`, `@deprecated`, `@returns`, and `@internal`. `@throws`,
+  `@defaultValue` and `@group` have **zero** uses — `@group` in particular would
+  fight `@category`, since `categorizeByGroup` is `false`.
+
+Write for the audience the entry point implies: `src/index.ts` TSDoc is read by
+integrators, `core/`/`state/` symbol pages by contributors, and page authors read
+`src/core/guide/` markdown instead of either. Author-facing behaviour in a class
+comment is hidden from the person who needs it.
 
 ## 6. Writing style (applies everywhere)
 

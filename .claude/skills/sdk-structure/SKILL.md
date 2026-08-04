@@ -300,24 +300,31 @@ Migrate it as its own phase, behind green tests, after the folder moves.
 
 ## 8. Documentation (TypeDoc)
 
-**Scope (decided):** TypeDoc's only entry point is `src/index.ts` — it documents
-the **public/consumer surface, not internals**. Do NOT add `features/`, `core/`,
-or `state/` as entry points: internals are `@internal`/free-to-move (§0.1, §7),
-and documenting them would couple the reference to internal churn. Those folders
-are documented instead through the narrative **`guide/` docs** (per feature) and
-short **folder `README.md`s** (`features/`, `state/`, `core/`, and subsystems
-like `core/analytics/`). TypeDoc = consumer reference; guide/ + READMEs =
-contributor/architecture reference.
+> **TypeDoc authoring now lives in the `sdk-docs` skill** —
+> [`references/typedoc.md`](../sdk-docs/references/typedoc.md). Load that when
+> writing TSDoc. This section keeps only the *structural* half: which folders
+> publish, and why.
 
-- Every **exported (public)** symbol gets a TSDoc comment.
-- `@example` on public methods — the single biggest readability win.
-- `@category` to group related classes in the sidebar.
-- `@internal` on internals; keep `excludeInternal: true` in `typedoc.json`.
-- `{@inheritDoc}` so a thin orchestrator reuses a handler/renderer file's docs —
-  write each explanation once.
-- `src/index.ts` carries the `@packageDocumentation` comment (docs homepage).
-- A short `README.md` in `state/` and `core/` explaining what the folder is and
-  why it exists.
+**Scope (as configured today):** [`typedoc.json`](../../../typedoc.json) has
+**three** entry points — `src/index.ts`, `src/core`, `src/state` — with
+`entryPointStrategy: "expand"`, so every file under `core/` and `state/` publishes
+its own module page.
+
+This section used to say the opposite ("`src/index.ts` only — do NOT add `core/`
+or `state/`", "internals are `@internal`"), and both halves were wrong: the config
+has carried all three since the docs-site work, and `core/` has **no** `@internal`
+on any exported declaration. Trust the config over any prose, including this.
+
+What the split means structurally:
+
+- **`src/features/**` is still not an entry point.** Features publish through
+  their `guide/` folders, which TypeDoc pulls in via `projectDocuments`. Adding
+  them as entry points would couple the reference to feature churn.
+- **`core/` and `state/` symbol pages serve contributors**, not page authors. An
+  author reads `src/core/guide/`. Author-facing behaviour written into a class
+  comment is hidden from the person who needs it.
+- **A short `README.md`** in `state/`, `core/` and subsystems like
+  `core/analytics/` still explains what the folder is and why it exists.
 - Narrative `guide/` docs (`.claude/rules/guide.md`) are the product layer;
   TypeDoc is the reference layer. Cross-link — never duplicate.
 
