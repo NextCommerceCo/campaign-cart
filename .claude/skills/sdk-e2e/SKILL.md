@@ -140,6 +140,42 @@ and it is not theoretical — it has caught, in this repo:
 Add at least one **negative control** to any spec whose assertions are all
 "something good appears" — a case where the feature must *not* fire.
 
+## 4b. Nobody is watching the console
+
+**No spec in this suite asserts on `console.error`.** That is how a malformed
+shared stub went unnoticed while 446 tests stayed green: `stubCart` returns
+`{ lines: [], totals: {} }`, which is not a `CartSummary` — it has no `subtotal` —
+so `buildCartFields()` throws `[DecimalError] Invalid argument: undefined` on
+**every cart sync**, the SDK catches it, logs it, and every spec that thinks it is
+exercising API-calculated totals is exercising the error path instead.
+
+So when a spec's subject touches the cart, the order, or anything that catches its
+own failures, assert the absence of errors explicitly:
+
+```ts
+const errors: string[] = [];
+page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+page.on('pageerror', e => errors.push(String(e)));
+// … drive the feature …
+expect(errors).toEqual([]);
+```
+
+A caught-and-logged error is invisible to every other kind of assertion. If the
+feature legitimately logs an error, assert the *expected* one rather than silence.
+
+A cheap way to find these in bulk is a **seeded monkey**: drive random clicks and
+inputs across every fixture with a fixed seed, collecting `pageerror` and
+`console.error`. Reproducibility is the whole point — a finding you cannot replay
+is not actionable. Two traps make a monkey lie, and both produced phantom findings
+before they were spotted:
+
+- **`page.route('**/api/**')` also matches Vite serving `/src/api/client.ts`**,
+  which then arrives as JSON and kills the module graph. Scope route globs to the
+  real API prefix (`**/api/v1/**`).
+- **Playwright checks routes in reverse registration order** — the last one added
+  wins. A catch-all registered last silently swallows every specific stub before
+  it. Register the catch-all *first*.
+
 ## 5. Traps specific to this SDK
 
 - **`?debugger=true` mounts the debug overlay; `?debug=true` does not.** The latter

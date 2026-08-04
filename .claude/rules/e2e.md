@@ -42,6 +42,12 @@ three worked examples.
 Any spec whose assertions are all "something good appears" needs at least one
 **negative control** — a case where the behaviour must *not* fire.
 
+**A caught error is invisible to every other assertion.** No spec here watches the
+console today, which is how a malformed shared stub kept 446 tests green while
+every cart sync threw (`sdk-e2e` §4b has the case). If your spec's subject touches
+the cart, the order, or anything that swallows its own failures, collect
+`console.error` and `pageerror` and assert on them.
+
 ## 3. A fixture is a published document
 
 `e2e/fixtures/<feature>.html` is not private scaffolding. Markup wrapped in
