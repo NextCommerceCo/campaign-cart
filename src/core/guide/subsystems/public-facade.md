@@ -1,5 +1,5 @@
 ---
-title: "Core/Subsystems/Public Facade"
+title: "Core/Public Facade"
 group: "Core"
 category: "Core Subsystems"
 ---

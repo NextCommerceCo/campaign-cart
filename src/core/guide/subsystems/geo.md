@@ -1,5 +1,5 @@
 ---
-title: "Core/Subsystems/Geo"
+title: "Core/Geo"
 group: "Core"
 category: "Core Subsystems"
 ---

@@ -1,5 +1,5 @@
 ---
-title: "Core/Subsystems/Event Bus"
+title: "Core/Event Bus"
 group: "Core"
 category: "Core Subsystems"
 ---

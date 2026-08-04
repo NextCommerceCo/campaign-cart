@@ -1,5 +1,5 @@
 ---
-title: "Core/Subsystems/Money Formatting"
+title: "Core/Money Formatting"
 group: "Core"
 category: "Core Subsystems"
 ---

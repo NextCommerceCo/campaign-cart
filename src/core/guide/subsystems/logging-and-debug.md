@@ -1,5 +1,5 @@
 ---
-title: "Core/Subsystems/Logging and Debug"
+title: "Core/Logging and Debug"
 group: "Core"
 category: "Core Subsystems"
 ---
