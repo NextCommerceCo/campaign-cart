@@ -1,15 +1,21 @@
 # Changelog
 
-## [0.4.31] — 2026-08-04 — European Prices, Checkout Corrections & the Documentation Site
+## [0.4.31] — 2026-08-04 — Prices for Standard European Markets
 
-Prices can now be written the way a European market expects. A run of checkout and
-analytics defects is fixed — including one that made **every** express-checkout order
-report garbage to your analytics. And the SDK's documentation is now a site built from
-the source it describes, versioned the same way the SDK itself is.
+**A campaign can now display prices the way a European market expects** — `69,99 €`
+rather than `€69.99`. That is what this release is for; everything else came along with
+it.
 
-If you take one thing from this release: if you sell through PayPal, Apple Pay or Google
-Pay, your express orders were being counted twice and under-reported. See the first entry
-under Fixed.
+Two larger bodies of work landed alongside: the SDK's **documentation is now a site**
+built from the source it describes and versioned the same way the SDK is, and the
+**source tree has been reorganised** into one folder per feature. Neither changes how you
+integrate — the public API, the storage keys and the `data-next-*` attributes are all
+unchanged, and each is held that way by a contract test.
+
+Working through both surfaced a run of checkout and analytics defects, which are fixed
+here too. One is worth reading even if nothing else in this release applies to you: if
+you sell through PayPal, Apple Pay or Google Pay, **every express order was being counted
+twice and under-reported** — see the first entry under Fixed.
 
 ### New
 
@@ -149,6 +155,17 @@ under Fixed.
 
 - **A smaller download** — the ESM chunks are now minified, so a campaign page ships less
   JavaScript for the same behaviour.
+
+- **The source tree is now one folder per feature** — each feature owns its code, its
+  tests and its guide in a single place (`features/<category>/<feature>/`), stores live
+  under `state/`, and the enhancers that had grown too large are split by layer. This is
+  an internal change and there is nothing to do on your side: your integration is
+  attributes and `window.next`, and neither moved.
+
+  What makes that safe to say is that the guarantees are tested rather than asserted —
+  the public export surface, the sessionStorage keys your carts and orders persist under,
+  the dynamic imports each feature is loaded through, and the contents of the production
+  bundle each have a contract test that fails if the reorganisation changes them.
 
 - **Features clean up after themselves** — a long series of listener leaks is closed, and
   teardown is now enforced by a contract test rather than by memory. This matters most on
