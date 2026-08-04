@@ -17,17 +17,14 @@
   "files": [
     "dist",
     "README.md",
-    "LICENSE",
-    "docs/html-custom-data.json"
+    "LICENSE"
   ],
   "scripts": {
     "dev": "vite",
     "dev:serve": "vite serve dev.html",
     "dev:watch": "vite build --watch --mode development",
-    "build": "tsc && vite build && cp public/loader.js dist/ && cp docs/html-custom-data.json dist/",
-    "build:cf": "vite build && vite build -c vite.config.legacy.ts && npm run build:config && cp public/loader.js dist/ && cp docs/html-custom-data.json dist/",
-    "build:window": "tsc && vite build && copy public\\loader.js dist\\ && copy docs\\html-custom-data.json dist\\",
-    "build:cf:window": "vite build && vite build -c vite.config.legacy.ts && npm run build:config && copy public\\loader.js dist\\ && copy docs\\html-custom-data.json dist\\",
+    "build": "tsc && vite build",
+    "build:cf": "vite build && vite build -c vite.config.legacy.ts && npm run build:config",
     "build:config": "node scripts/build-config.js",
     "analytics:manifest": "UPDATE_ANALYTICS_MANIFEST=1 vitest run src/tests/utils/analyticsVocabulary.test.ts; vitest run src/tests/utils/analyticsVocabulary.test.ts",
     "build:dev": "vite build --mode development --watch",

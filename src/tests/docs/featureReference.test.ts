@@ -394,7 +394,10 @@ describe('feature reference docs', () => {
    * docs, so IntelliSense and the reference cannot disagree.
    */
   it('html-custom-data.json matches the manifests', () => {
-    const file = join(SRC, '../docs/html-custom-data.json');
+    // Lives in `public/` so Vite's publicDir copy puts it at `dist/` on build —
+    // which is the path `docs/attribute-index.md` tells editors to point at. It
+    // used to sit in `docs/` and be `cp`-ed across by the build script.
+    const file = join(SRC, '../public/html-custom-data.json');
     const expected = renderHtmlCustomData(manifests.map(m => m.manifest));
     if (UPDATE) writeFileSync(file, expected);
     expect(existsSync(file), `${file} is missing`).toBe(true);

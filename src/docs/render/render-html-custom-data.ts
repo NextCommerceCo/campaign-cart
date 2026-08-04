@@ -32,8 +32,25 @@ interface CustomDataAttribute {
   references?: Array<{ name: string; url: string }>;
 }
 
-const DOCS_BASE =
-  'https://developers.nextcommerce.com/docs/campaigns/feature-guides';
+/**
+ * No `references` are emitted, so a hover shows the description and the valid
+ * values but no "docs" link.
+ *
+ * This used to point every attribute at
+ * `developers.nextcommerce.com/docs/campaigns/feature-guides/{category}/{id}/reference/attributes`,
+ * and all 217 of those links **404**. The host is fine —
+ * `/docs/campaigns` still serves the public documentation — it is the
+ * `feature-guides` subtree underneath it that no longer exists, so swapping the
+ * host would not have helped. Nor would rewriting the path: the generated docs
+ * site addresses the same page as `documents/Features_Cart_Add_To_Cart_Attributes.html`,
+ * an entirely different shape, and it has no public host yet.
+ *
+ * A hover with no link beats one that lands on a 404, so the links stay out until
+ * there is somewhere real to send a reader. To restore them, build the URL from
+ * the page's nav title (`src/docs/content/nav.ts` — `title` *is* the path) rather
+ * than reinventing a scheme, and take the host from `DOCS_BASE_URL`, the variable
+ * `scripts/docs-publish.mjs` already reads.
+ */
 
 /** The hover card an editor shows: what it does, plus the facts worth knowing. */
 function hoverMarkdown(
@@ -76,36 +93,29 @@ export function renderHtmlCustomData(manifests: FeatureManifest[]): string {
    */
   const byName = new Map<
     string,
-    Array<{ owner: string; label: string; url: string; attr: AttributeDoc }>
+    Array<{ owner: string; label: string; attr: AttributeDoc }>
   >();
 
-  const add = (
-    attr: AttributeDoc,
-    owner: string,
-    label: string,
-    url: string
-  ): void => {
+  const add = (attr: AttributeDoc, owner: string, label: string): void => {
     const list = byName.get(attr.name) ?? [];
-    if (!list.some(e => e.owner === owner)) list.push({ owner, label, url, attr });
+    if (!list.some(e => e.owner === owner)) list.push({ owner, label, attr });
     byName.set(attr.name, list);
   };
 
   for (const manifest of [...manifests].sort((a, b) => a.id.localeCompare(b.id))) {
-    const url = `${DOCS_BASE}/${manifest.category}/${manifest.id}/reference/attributes`;
-    for (const attr of manifest.attributes) add(attr, manifest.id, manifest.id, url);
+    for (const attr of manifest.attributes) add(attr, manifest.id, manifest.id);
     for (const attr of manifest.readsElsewhere ?? []) {
       if (attr.name.includes(' / ')) continue; // multi-name rows are prose, not attributes
       add(
         { name: attr.name, type: 'string', description: attr.description, notes: attr.notes },
         manifest.id,
-        manifest.id,
-        url
+        manifest.id
       );
     }
   }
 
   for (const attr of SDK_ATTRIBUTES) {
-    add(attr, 'sdk', `SDK (${attr.owner})`, `${DOCS_BASE}/sdk-attributes`);
+    add(attr, 'sdk', `SDK (${attr.owner})`);
   }
 
   const globalAttributes: CustomDataAttribute[] = [...byName.entries()]
@@ -148,9 +158,6 @@ export function renderHtmlCustomData(manifests: FeatureManifest[]): string {
         name,
         description: { kind: 'markdown' as const, value },
         ...(values.length ? { values } : {}),
-        references: owners
-          .slice(0, 3)
-          .map(({ owner, url }) => ({ name: `${owner} docs`, url })),
       };
     });
 
