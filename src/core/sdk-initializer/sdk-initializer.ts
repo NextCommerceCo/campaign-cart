@@ -8,19 +8,19 @@ import { useConfigStore } from '@/state/config';
 import { useCampaignStore } from '@/state/campaign';
 import { useCartStore, cartOperations } from '@/state/cart';
 import { useOrderStore } from '@/state/order';
-import { AttributeScanner } from './attribute-scanner';
+import { AttributeScanner } from '../attribute-scanner';
 import { NextCommerce } from '@/core/next-commerce';
 // Debug overlay imported dynamically when needed
 import { EventBus } from '@/core/events';
 import { getApiClient } from '@/client';
 import { CART_STORAGE_KEY } from '@/core/storage';
 import { CountryService } from '@/core/country-service';
-import * as urlParamMethods from '@/core/sdk-initializer.url-params';
-import * as storageResetMethods from '@/core/sdk-initializer.storage-reset';
-import * as debugUtilsMethods from '@/core/sdk-initializer.debug-utils';
-import * as locationCurrencyMethods from '@/core/sdk-initializer.location-currency';
-import * as attributionMethods from '@/core/sdk-initializer.attribution';
-import type { AttributionCtx } from '@/core/sdk-initializer.attribution';
+import * as urlParamMethods from '@/core/sdk-initializer/sdk-initializer.url-params';
+import * as storageResetMethods from '@/core/sdk-initializer/sdk-initializer.storage-reset';
+import * as debugUtilsMethods from '@/core/sdk-initializer/sdk-initializer.debug-utils';
+import * as locationCurrencyMethods from '@/core/sdk-initializer/sdk-initializer.location-currency';
+import * as attributionMethods from '@/core/sdk-initializer/sdk-initializer.attribution';
+import type { AttributionCtx } from '@/core/sdk-initializer/sdk-initializer.attribution';
 
 export class SDKInitializer {
   private static logger = createLogger('SDKInitializer');

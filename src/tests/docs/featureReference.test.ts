@@ -346,7 +346,7 @@ describe('feature reference docs', () => {
    * selector with no manifest.
    */
   it('every AttributeScanner selector is owned by a manifest', () => {
-    const scanner = readFileSync(join(SRC, 'core/attribute-scanner.ts'), 'utf8');
+    const scanner = readFileSync(join(SRC, 'core/attribute-scanner/attribute-scanner.ts'), 'utf8');
 
     // The scanner's own query list, not every selector mentioned in the file.
     // Split on commas so a line holding a combined selector — the registry, or a
@@ -1205,7 +1205,7 @@ describe('feature reference docs', () => {
     });
 
     it.runIf(!!manifest.activates)('is registered in AttributeScanner under every activating selector', () => {
-      const scanner = readFileSync(join(SRC, 'core/attribute-scanner.ts'), 'utf8');
+      const scanner = readFileSync(join(SRC, 'core/attribute-scanner/attribute-scanner.ts'), 'utf8');
       const selectors = [manifest.activates ?? '', ...(manifest.alsoActivates ?? [])];
       const unqueried = selectors.filter(
         s => !scanner.includes(s) && !scanner.includes(bareSelector(s))

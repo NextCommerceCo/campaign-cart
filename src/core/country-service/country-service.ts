@@ -5,8 +5,8 @@
 
 import { Logger } from '@/core/logger';
 import type { AddressConfig } from '@/types/global';
-import * as postalCodeMethods from '@/core/country-service.postal-code';
-import * as filteringMethods from '@/core/country-service.filtering';
+import * as postalCodeMethods from '@/core/country-service/country-service.postal-code';
+import * as filteringMethods from '@/core/country-service/country-service.filtering';
 
 export interface CountryConfig {
   stateLabel: string;

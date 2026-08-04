@@ -22,20 +22,20 @@ Fatal first, since those recur for every visitor until something changes.
 
 | Error | Type | Thrown by |
 |---|---|---|
-| `API key not found. Please set next-api-key meta tag or window.nextConfig.apiKey` | Fatal | `sdk-initializer.ts` |
-| `Invalid package ID: {idStr}` | Fatal | `sdk-initializer.url-params.ts` |
-| `Invalid quantity: {quantityStr}` | Fatal | `sdk-initializer.url-params.ts` |
-| `Invalid shipping ID: {forceShippingId}` | Fatal | `sdk-initializer.url-params.ts` |
+| `API key not found. Please set next-api-key meta tag or window.nextConfig.apiKey` | Fatal | `sdk-initializer/sdk-initializer.ts` |
+| `Invalid package ID: {idStr}` | Fatal | `sdk-initializer/sdk-initializer.url-params.ts` |
+| `Invalid quantity: {quantityStr}` | Fatal | `sdk-initializer/sdk-initializer.url-params.ts` |
+| `Invalid shipping ID: {forceShippingId}` | Fatal | `sdk-initializer/sdk-initializer.url-params.ts` |
 | `Required attribute {name} not found on element` | Fatal | `base/base-enhancer.ts` |
 | `Element is required` | Fatal | `base/base-enhancer.ts` |
-| `No order found. Upsells can only be added after order completion.` | Fatal | `next-commerce.upsells.ts` |
-| `Either packageId or items array must be provided` | Fatal | `next-commerce.upsells.ts` |
+| `No order found. Upsells can only be added after order completion.` | Fatal | `next-commerce/next-commerce.upsells.ts` |
+| `Either packageId or items array must be provided` | Fatal | `next-commerce/next-commerce.upsells.ts` |
 | `No test cards available` | Fatal | `test-mode.ts` |
 | `{name}: data-next-display attribute is required` | Fatal | `base/base-display-enhancer.ts` |
-| `Failed to fetch location data: {statusText}` | Recoverable | `country-service.ts` |
-| `Failed to fetch states for {countryCode}: {statusText}` | Recoverable | `country-service.ts` |
-| `Order does not support post-purchase upsells or is currently processing.` | Recoverable | `next-commerce.upsells.ts` |
-| `Failed to add upsell - no updated order returned` | Recoverable | `next-commerce.upsells.ts` |
+| `Failed to fetch location data: {statusText}` | Recoverable | `country-service/country-service.ts` |
+| `Failed to fetch states for {countryCode}: {statusText}` | Recoverable | `country-service/country-service.ts` |
+| `Order does not support post-purchase upsells or is currently processing.` | Recoverable | `next-commerce/next-commerce.upsells.ts` |
+| `Failed to add upsell - no updated order returned` | Recoverable | `next-commerce/next-commerce.upsells.ts` |
 | `HTTP {status}: {statusText}` | Recoverable | `analytics/providers/custom-adapter.ts` |
 | `Facebook Pixel load timeout` | Recoverable | `analytics/providers/facebook-adapter.ts` |
 | `Facebook dispatch failed: {message}` | Recoverable | `analytics/providers/facebook-adapter.ts` |
@@ -75,7 +75,7 @@ Every part of `src/core`, and whether it raises anything of its own. "Nothing" i
 | `analytics/tracking/view-item-list-tracker.ts` | `[ViewItemListTracker]` | nothing |
 | `analytics/user-data-storage.ts` | `[UserDataStorage]` | nothing |
 | `analytics/validation/event-validator.ts` | `[EventValidator]` | nothing |
-| `attribute-scanner.ts` | `[AttributeScanner]` | nothing |
+| `attribute-scanner/attribute-scanner.ts` | `[AttributeScanner]` | nothing |
 | `attribution/attribution-collector.ts` | `[AttributionCollector]` | nothing |
 | `attribution/utm-transfer.ts` | `[UtmTransfer]` | nothing |
 | `base/attribute-parser.ts` | `[AttributeParser]` | nothing |
@@ -84,9 +84,9 @@ Every part of `src/core`, and whether it raises anything of its own. "Nothing" i
 | `base/display-error-boundary.ts` | `[DisplayErrorBoundary]` | nothing |
 | `base/display-value-validator.ts` | `[DisplayValueValidator]` | nothing |
 | `base/dom-observer.ts` | `[DOMObserver]` | nothing |
-| `country-service.filtering.ts` | `[CountryService]` | nothing |
-| `country-service.postal-code.ts` | `[CountryService]` | nothing |
-| `country-service.ts` | `[CountryService]` | 2 — `Failed to fetch location data: {statusText}`, `Failed to fetch states for {countryCode}: {statusText}` |
+| `country-service/country-service.filtering.ts` | `[CountryService]` | nothing |
+| `country-service/country-service.postal-code.ts` | `[CountryService]` | nothing |
+| `country-service/country-service.ts` | `[CountryService]` | 2 — `Failed to fetch location data: {statusText}`, `Failed to fetch states for {countryCode}: {statusText}` |
 | `debug/country-selector.ts` | `[CountrySelector]` | nothing |
 | `debug/currency-selector.ts` | `[CurrencySelector]` | nothing |
 | `debug/debug-module.ts` | `[DebugModule]` | nothing |
@@ -94,20 +94,20 @@ Every part of `src/core`, and whether it raises anything of its own. "Nothing" i
 | `debug/locale-selector.ts` | `[LocaleSelector]` | nothing |
 | `debug/upsell-selector.ts` | `[UpsellSelector]` | nothing |
 | `monitoring/error-handler.ts` | `[ErrorHandler]` | nothing |
-| `next-commerce.analytics.ts` | `[NextCommerce]` | nothing |
-| `next-commerce.attribution.ts` | `[NextCommerce]` | nothing |
-| `next-commerce.cart.ts` | `[NextCommerce]` | nothing |
-| `next-commerce.events.ts` | `[NextCommerce]` | nothing |
-| `next-commerce.popups.ts` | `[NextCommerce]` | nothing |
-| `next-commerce.upsells.ts` | `[NextCommerce]` | 4 — `No order found. Upsells can only be added after order completion.`, `Order does not support post-purchase upsells or is currently processing.`, `Either packageId or items array must be provided`, `Failed to add upsell - no updated order returned` |
-| `next-commerce.url-params.ts` | `[NextCommerce]` | nothing |
+| `next-commerce/next-commerce.analytics.ts` | `[NextCommerce]` | nothing |
+| `next-commerce/next-commerce.attribution.ts` | `[NextCommerce]` | nothing |
+| `next-commerce/next-commerce.cart.ts` | `[NextCommerce]` | nothing |
+| `next-commerce/next-commerce.events.ts` | `[NextCommerce]` | nothing |
+| `next-commerce/next-commerce.popups.ts` | `[NextCommerce]` | nothing |
+| `next-commerce/next-commerce.upsells.ts` | `[NextCommerce]` | 4 — `No order found. Upsells can only be added after order completion.`, `Order does not support post-purchase upsells or is currently processing.`, `Either packageId or items array must be provided`, `Failed to add upsell - no updated order returned` |
+| `next-commerce/next-commerce.url-params.ts` | `[NextCommerce]` | nothing |
 | `rendering/template-renderer.ts` | `[TemplateRenderer]` | nothing |
-| `sdk-initializer.attribution.ts` | `[SDKInitializer]` | nothing |
-| `sdk-initializer.debug-utils.ts` | `[SDKInitializer]` | nothing |
-| `sdk-initializer.location-currency.ts` | `[SDKInitializer]` | nothing |
-| `sdk-initializer.storage-reset.ts` | `[SDKInitializer]` | nothing |
-| `sdk-initializer.ts` | `[SDKInitializer]` | 1 — `API key not found. Please set next-api-key meta tag or window.nextConfig.apiKey` |
-| `sdk-initializer.url-params.ts` | `[SDKInitializer]` | 3 — `Invalid package ID: {idStr}`, `Invalid quantity: {quantityStr}`, `Invalid shipping ID: {forceShippingId}` |
+| `sdk-initializer/sdk-initializer.attribution.ts` | `[SDKInitializer]` | nothing |
+| `sdk-initializer/sdk-initializer.debug-utils.ts` | `[SDKInitializer]` | nothing |
+| `sdk-initializer/sdk-initializer.location-currency.ts` | `[SDKInitializer]` | nothing |
+| `sdk-initializer/sdk-initializer.storage-reset.ts` | `[SDKInitializer]` | nothing |
+| `sdk-initializer/sdk-initializer.ts` | `[SDKInitializer]` | 1 — `API key not found. Please set next-api-key meta tag or window.nextConfig.apiKey` |
+| `sdk-initializer/sdk-initializer.url-params.ts` | `[SDKInitializer]` | 3 — `Invalid package ID: {idStr}`, `Invalid quantity: {quantityStr}`, `Invalid shipping ID: {forceShippingId}` |
 | `storage.ts` | `[StorageManager]` | nothing |
 | `test-mode.ts` | — logs nothing | 1 — `No test cards available` |
 
@@ -116,7 +116,7 @@ Every part of `src/core`, and whether it raises anything of its own. "Nothing" i
 | | |
 |---|---|
 | Type | Fatal |
-| Thrown by | `sdk-initializer.ts` — logs under `[SDKInitializer]` |
+| Thrown by | `sdk-initializer/sdk-initializer.ts` — logs under `[SDKInitializer]` |
 | Cause | Boot reached the campaign load with no API key in the config store — neither the `next-api-key` meta tag nor `window.nextConfig.apiKey` was set before the loader ran. |
 | Caught | `SDKInitializer.initialize()` catches it, logs `SDK initialization failed:`, retries up to three times, then gives up. Every price, product name, and cart total stays at its placeholder, because none of them exist without campaign data. |
 
@@ -144,7 +144,7 @@ Setting it *after* the loader is too late — the campaign request has already b
 | | |
 |---|---|
 | Type | Fatal |
-| Thrown by | `sdk-initializer.url-params.ts` — logs under `[SDKInitializer]` |
+| Thrown by | `sdk-initializer/sdk-initializer.url-params.ts` — logs under `[SDKInitializer]` |
 | Cause | The `forcePackageId` URL parameter contains something that is not a positive whole number — a typo, a template token that was never substituted (`forcePackageId={{package}}`), or a stray separator such as `forcePackageId=12,,13`. |
 | Caught | The `forcePackageId` handler catches it and logs `Error processing forcePackageId parameter:`. Boot continues, and **no** package from that parameter is added — including the ones that parsed correctly, because the whole list is parsed before anything is added. |
 
@@ -164,7 +164,7 @@ If the link is generated by an ad platform or an email tool, check that the toke
 | | |
 |---|---|
 | Type | Fatal |
-| Thrown by | `sdk-initializer.url-params.ts` — logs under `[SDKInitializer]` |
+| Thrown by | `sdk-initializer/sdk-initializer.url-params.ts` — logs under `[SDKInitializer]` |
 | Cause | The quantity half of a `forcePackageId` entry is not a positive whole number — `?forcePackageId=42:0` or `?forcePackageId=42:two`. |
 | Caught | Same as `Invalid package ID` — caught by the `forcePackageId` handler, logged as `Error processing forcePackageId parameter:`, and no package from the parameter reaches the cart. |
 
@@ -177,7 +177,7 @@ If the link is generated by an ad platform or an email tool, check that the toke
 | | |
 |---|---|
 | Type | Fatal |
-| Thrown by | `sdk-initializer.url-params.ts` — logs under `[SDKInitializer]` |
+| Thrown by | `sdk-initializer/sdk-initializer.url-params.ts` — logs under `[SDKInitializer]` |
 | Cause | The `forceShippingId` URL parameter is not a positive whole number. |
 | Caught | The `forceShippingId` handler catches it and logs `Error processing forceShippingId parameter:`. Boot continues with whatever shipping method the cart already had, which on a fresh session is none. |
 
@@ -224,7 +224,7 @@ In almost every case the better answer is to add the feature's `data-next-*` att
 | | |
 |---|---|
 | Type | Fatal |
-| Thrown by | `next-commerce.upsells.ts` — logs under `[NextCommerce]` |
+| Thrown by | `next-commerce/next-commerce.upsells.ts` — logs under `[NextCommerce]` |
 | Cause | `next.addUpsell()` was called with no order in the order store. Either the page is not a post-purchase page, or it is one but the order has not finished loading yet. |
 | Caught | Nothing catches it — it rejects the promise `next.addUpsell()` returned, so your own `catch` sees it. |
 
@@ -246,7 +246,7 @@ If the page has no `?ref_id=`, there is no order to add to and no amount of wait
 | | |
 |---|---|
 | Type | Fatal |
-| Thrown by | `next-commerce.upsells.ts` — logs under `[NextCommerce]` |
+| Thrown by | `next-commerce/next-commerce.upsells.ts` — logs under `[NextCommerce]` |
 | Cause | `next.addUpsell()` was called with neither `packageId` nor a non-empty `items` array — often an options object built from a variable that turned out to be `undefined`. |
 | Caught | Nothing catches it — the promise rejects. |
 
@@ -299,7 +299,7 @@ The namespace before the dot decides which part of the SDK answers — see the d
 | | |
 |---|---|
 | Type | Recoverable |
-| Thrown by | `country-service.ts` — logs under `[CountryService]` |
+| Thrown by | `country-service/country-service.ts` — logs under `[CountryService]` |
 | Cause | The `/location` endpoint answered with a non-OK status. The visitor’s network, an ad blocker, or the service being briefly unavailable all produce this. |
 | Caught | Caught in the same method: it logs `Failed to fetch location data:` and continues with the built-in fallback — country list from configuration, United States as the country. Checkout still works; the country dropdown is shorter than it should be and the detected country may be wrong. |
 
@@ -312,7 +312,7 @@ The namespace before the dot decides which part of the SDK answers — see the d
 | | |
 |---|---|
 | Type | Recoverable |
-| Thrown by | `country-service.ts` — logs under `[CountryService]` |
+| Thrown by | `country-service/country-service.ts` — logs under `[CountryService]` |
 | Cause | The `/countries/{code}/states` endpoint answered with a non-OK status while the visitor was picking a country. |
 | Caught | Caught in the same method: it logs `Failed to fetch states for {countryCode}:` and returns an empty state list with default labels. The state field renders with no options, so a visitor in a country that requires a state cannot complete the address. |
 
@@ -325,7 +325,7 @@ The namespace before the dot decides which part of the SDK answers — see the d
 | | |
 |---|---|
 | Type | Recoverable |
-| Thrown by | `next-commerce.upsells.ts` — logs under `[NextCommerce]` |
+| Thrown by | `next-commerce/next-commerce.upsells.ts` — logs under `[NextCommerce]` |
 | Cause | Two different situations share this message. Either the order came back with `supports_post_purchase_upsells: false` — the payment method or the campaign does not allow adding to a completed order — or another upsell request is still in flight. |
 | Caught | Nothing catches it — the promise from `next.addUpsell()` rejects. |
 
@@ -338,7 +338,7 @@ The namespace before the dot decides which part of the SDK answers — see the d
 | | |
 |---|---|
 | Type | Recoverable |
-| Thrown by | `next-commerce.upsells.ts` — logs under `[NextCommerce]` |
+| Thrown by | `next-commerce/next-commerce.upsells.ts` — logs under `[NextCommerce]` |
 | Cause | The upsell request completed but the order store had no updated order to return. |
 | Caught | Nothing catches it — the promise rejects. |
 

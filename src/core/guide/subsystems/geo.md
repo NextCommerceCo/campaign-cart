@@ -131,7 +131,7 @@ works but is deprecated and logs a warning.
 `PR`, `VI` and the `UM-…` codes — before any configuration is consulted, and
 `addressConfig.dontShowStates` removes more on top. There is no option that puts one back.
 Symptom: a Puerto Rico order that cannot be entered through the form. Fix: none within
-this subsystem; the list is hard-coded in `core/country-service.ts`.
+this subsystem; the list is hard-coded in `core/country-service/country-service.ts`.
 
 **A country with no states and no state requirement hides the field.** When the service
 reports `stateRequired: false` and returns an empty state list, the checkout form removes

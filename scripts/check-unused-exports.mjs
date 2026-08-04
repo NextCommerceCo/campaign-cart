@@ -68,7 +68,7 @@
  * cannot see by design — same limitation as ts-prune/knip, and the reason the
  * task that created this gate calls it out explicitly. This repo's own
  * `AttributeScanner` was checked and does not have that shape: every feature
- * `import()` in `src/core/attribute-scanner.ts` uses a literal path
+ * `import()` in `src/core/attribute-scanner/attribute-scanner.ts` uses a literal path
  * (`await import('@/features/cart/add-to-cart')`), so it resolves like any
  * other import. The one place a *path string* is genuinely built at runtime —
  * `src/docs/extract/extract-analytics-events-providers.ts`'s

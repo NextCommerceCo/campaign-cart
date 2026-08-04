@@ -47,7 +47,7 @@ import {
 const UPDATE = process.env.UPDATE_DOCS === '1';
 const SRC = join(dirname(fileURLToPath(import.meta.url)), '../..');
 
-const FACADE = join(SRC, 'core/next-commerce.ts');
+const FACADE = join(SRC, 'core/next-commerce/next-commerce.ts');
 const CART_TYPES = join(SRC, 'state/cart/cart.types.ts');
 const REF_DIR = join(SRC, 'core/guide/reference');
 

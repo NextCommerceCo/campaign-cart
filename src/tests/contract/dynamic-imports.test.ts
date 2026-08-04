@@ -21,9 +21,9 @@ const SRC = resolve(__dirname, '../..');
 
 /** The only three files that dynamically import features. Keep this list exact. */
 const IMPORT_SITES = [
-  'core/attribute-scanner.ts', // activation — a broken path kills the feature
+  'core/attribute-scanner/attribute-scanner.ts', // activation — a broken path kills the feature
   'index.ts', // idle-time preload hints
-  'core/next-commerce.ts', // FomoPopupEnhancer, loaded on demand
+  'core/next-commerce/next-commerce.ts', // FomoPopupEnhancer, loaded on demand
 ] as const;
 
 /** `const { Name } = await import('spec')` — activation sites we can name-check. */
@@ -75,7 +75,7 @@ describe('dynamic-import contract', () => {
   );
 
   it('attribute-scanner still carries the full activation table', () => {
-    const { source } = readSite('core/attribute-scanner.ts');
+    const { source } = readSite('core/attribute-scanner/attribute-scanner.ts');
     const found = [...source.matchAll(DESTRUCTURED)];
 
     // Guards the regex itself: if the call style changes, this drops to 0 and
@@ -87,7 +87,7 @@ describe('dynamic-import contract', () => {
   // case its own budget — sequential awaits landed at ~4.8s against the 5s
   // default and failed about one run in three.
   it('every enhancer the scanner activates really exports that binding', async () => {
-    const { abs, source } = readSite('core/attribute-scanner.ts');
+    const { abs, source } = readSite('core/attribute-scanner/attribute-scanner.ts');
 
     const checks = [...source.matchAll(DESTRUCTURED)].map(
       async ([, name, spec]) => {

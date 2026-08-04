@@ -20,7 +20,7 @@ import { EventBus } from '@/core/events';
 import {
   setupAttributionListeners,
   type AttributionCtx,
-} from '@/core/sdk-initializer.attribution';
+} from '@/core/sdk-initializer/sdk-initializer.attribution';
 import type { CartState, ErrorData } from '@/types/global';
 
 // SDKInitializer keeps all boot state on private static fields with no public

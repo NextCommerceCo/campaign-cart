@@ -3,7 +3,7 @@
  * a runnable example of it, and what a reader plants on `window` by loading the SDK.
  *
  * The names, signatures and source lines are **not** here — they are read out of
- * `src/core/next-commerce.ts` by `src/docs/extract/extract-next-methods.ts`, and a
+ * `src/core/next-commerce/next-commerce.ts` by `src/docs/extract/extract-next-methods.ts`, and a
  * drift test compares the two in both directions. So a method added to the facade
  * cannot stay undocumented, and a row for a deleted method cannot survive.
  *
@@ -542,7 +542,7 @@ next.off('cart:item-added', onAdd);`,
 next.triggerCallback('cartUpdated', next.getCartData());`,
     caution:
       '**The SDK never fires these.** `triggerCallback` has no caller anywhere in the SDK ' +
-      '(`core/next-commerce.ts › NextCommerce.triggerCallback` is its only definition and nothing invokes it), so a ' +
+      '(`core/next-commerce/next-commerce.ts › NextCommerce.triggerCallback` is its only definition and nothing invokes it), so a ' +
       'handler registered here stays silent until your own code triggers it. It is a ' +
       'page-driven notification channel, not a lifecycle hook. For events the SDK really ' +
       'does emit, use `next.on()`.',

@@ -27,7 +27,7 @@ export function extractAnalytics(srcRoot: string): AnalyticsExtract {
     join(analyticsDir, 'schemas', 'index.ts')
   );
   const emitSites = extractEmitSites(analyticsDir, srcRoot, [
-    join(srcRoot, 'core', 'sdk-initializer.ts'),
+    join(srcRoot, 'core', 'sdk-initializer', 'sdk-initializer.ts'),
   ]);
 
   return {

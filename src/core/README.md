@@ -21,9 +21,9 @@ never imports `SDKInitializer` and depends entirely on what it does.
 
 | Path | What it is |
 |------|------------|
-| `attribute-scanner.ts` | Discovers `data-next-*` elements and instantiates the bound feature (dynamic `import()` per feature) |
-| `sdk-initializer.ts` | Boot sequence — config, location/currency, campaign load, analytics, DOM scan |
-| `next-commerce.ts` | The programmatic SDK facade (`NextCommerce` / `sdk.*`, incl. `sdk.cart.*`). The class — constructor, singleton, and every method's signature/TSDoc — stays here; each method's body delegates to a same-named function in a sibling module grouped by `@category`: `next-commerce.cart.ts`, `next-commerce.campaign.ts`, `next-commerce.events.ts`, `next-commerce.analytics.ts`, `next-commerce.attribution.ts` (Metadata + Attribution), `next-commerce.shipping.ts`, `next-commerce.utility.ts`, `next-commerce.coupons.ts`, `next-commerce.popups.ts`, `next-commerce.upsells.ts`, `next-commerce.url-params.ts` |
+| `attribute-scanner/` | Discovers `data-next-*` elements and instantiates the bound feature (dynamic `import()` per feature) |
+| `sdk-initializer/` | Boot sequence — config, location/currency, campaign load, analytics, DOM scan |
+| `next-commerce/` | The programmatic SDK facade (`NextCommerce` / `sdk.*`, incl. `sdk.cart.*`). The class — constructor, singleton, and every method's signature/TSDoc — stays here; each method's body delegates to a same-named function in a sibling module in the same folder, grouped by `@category`: `next-commerce.cart.ts`, `next-commerce.campaign.ts`, `next-commerce.events.ts`, `next-commerce.analytics.ts`, `next-commerce.attribution.ts` (Metadata + Attribution), `next-commerce.shipping.ts`, `next-commerce.utility.ts`, `next-commerce.coupons.ts`, `next-commerce.popups.ts`, `next-commerce.upsells.ts`, `next-commerce.url-params.ts` |
 | `base/` | Base feature classes (`base-enhancer`, `base-cart-enhancer`, `base-action-enhancer`, `base-display-enhancer` + the display routing table, validator and error boundary it needs) + `attribute-parser`, `dom-observer`. See [`base/README.md`](./base/README.md) for why the display base is here rather than in `features/display/` |
 | `analytics/` | Analytics subsystem (providers, events, tracking) — a lazy `analytics` chunk, not a feature |
 | `debug/` | Dev-only debug overlay/panels — loaded via dynamic `import()` so it never ships in the production bundle |
@@ -34,7 +34,7 @@ never imports `SDKInitializer` and depends entirely on what it does.
 | `logger.ts` | `Logger` / `createLogger` — leveled logging used across every layer |
 | `events.ts` | `EventBus` — the type-safe SDK event bus (`EventMap`) |
 | `storage.ts` | `StorageManager` / `sessionStorageManager` — persistence helper backing the stores' `persist` |
-| `country-service.ts` | Loads and caches country/state geographic data for checkout, debug, and init |
+| `country-service/` | Loads and caches country/state geographic data for checkout, debug, and init |
 | `url-utils.ts` | `preserveQueryParams` / `navigateWithParams` — carries tracking parameters across navigations, and `isDebugMode` / `isDebuggerMode`. Reads **and writes** `parameter.state`, which is why it is not a `utils/` helper |
 | `currency-formatter.ts` | `CurrencyFormatter` + the `formatCurrency` / `formatNumber` / `formatPercentage` / `getCurrencySymbol` helpers. Falls back to the campaign's currency and the visitor's locale when a caller does not name one, so it reads `campaign.state` and `config.state` |
 | `test-mode.ts` | Detects and manages SDK test mode |

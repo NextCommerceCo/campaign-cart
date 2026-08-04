@@ -83,7 +83,7 @@ function findSrcRoot(fromPath: string): string | undefined {
 }
 
 /**
- * `@/core/sdk-initializer.location-currency` (as written at the import site) resolved
+ * `@/core/sdk-initializer/sdk-initializer.location-currency` (as written at the import site) resolved
  * to an absolute path on disk, or `undefined` when it cannot be — a bare package name,
  * or a path that does not exist. Either way the caller falls back to the pre-fix
  * behaviour: the call is left unanalysed rather than guessed at.

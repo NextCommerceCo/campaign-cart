@@ -29,7 +29,7 @@ import {
   showEnhancerPerformanceReport,
   enhancerPerformanceSnapshot,
   type EnhancerStats,
-} from '@/core/attribute-scanner.performance';
+} from '@/core/attribute-scanner/attribute-scanner.performance';
 
 export class AttributeScanner {
   private logger: Logger;

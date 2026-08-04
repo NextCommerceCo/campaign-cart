@@ -174,7 +174,7 @@ Console lines are prefixed with the part of the SDK that produced them. Find the
 
 Detects the visitor's country and picks the display currency, before campaign prices are fetched so they arrive in the right currency. Runs as its own boot step, right after configuration loads.
 
-Logged from `sdk-initializer.location-currency.ts`. A free function, not a class with its own logger. `SDKInitializer` builds one `Logger('SDKInitializer')` in `sdk-initializer.ts` and passes it in through a `{ logger }` context, so every line here prints under `[SDKInitializer]`.
+Logged from `sdk-initializer/sdk-initializer.location-currency.ts`. A free function, not a class with its own logger. `SDKInitializer` builds one `Logger('SDKInitializer')` in `sdk-initializer.ts` and passes it in through a `{ logger }` context, so every line here prints under `[SDKInitializer]`.
 
 ### Error
 
@@ -182,7 +182,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Error fetching country config:`
 
-`sdk-initializer.location-currency.ts › initializeLocationAndCurrency` · extra context attached
+`sdk-initializer/sdk-initializer.location-currency.ts › initializeLocationAndCurrency` · extra context attached
 
 **Meaning:** The request for the forced country’s configuration threw rather than returning a bad answer. Detection is used instead, so the address form and currency may not match the forced country.
 
@@ -194,7 +194,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Failed to fetch country config for {forcedCountry}, falling back to detection`
 
-`sdk-initializer.location-currency.ts › initializeLocationAndCurrency`
+`sdk-initializer/sdk-initializer.location-currency.ts › initializeLocationAndCurrency`
 
 **Meaning:** A country was forced — by `?country=` or a previous choice saved in the session — but the API returned no configuration for it, so normal detection is used instead. The visitor may see a different country than the one that was forced.
 
@@ -202,7 +202,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Location detection failed or timed out, using defaults:`
 
-`sdk-initializer.location-currency.ts › initializeLocationAndCurrency` · extra context attached
+`sdk-initializer/sdk-initializer.location-currency.ts › initializeLocationAndCurrency` · extra context attached
 
 **Meaning:** Location detection did not answer within three seconds, so boot continued with the built-in defaults — the United States and the campaign’s default currency. Prices are still correct for that default, not for the visitor’s real country.
 
@@ -210,7 +210,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Failed to fetch countries list:`
 
-`sdk-initializer.location-currency.ts › initializeLocationAndCurrency` · extra context attached
+`sdk-initializer/sdk-initializer.location-currency.ts › initializeLocationAndCurrency` · extra context attached
 
 **Meaning:** The country a visitor is in was resolved, but the list of *all* countries was not, so the country dropdown in the address form has nothing to offer.
 
@@ -218,7 +218,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Failed to initialize location/currency, using defaults:`
 
-`sdk-initializer.location-currency.ts › initializeLocationAndCurrency` · extra context attached
+`sdk-initializer/sdk-initializer.location-currency.ts › initializeLocationAndCurrency` · extra context attached
 
 **Meaning:** The whole location-and-currency step threw. Boot continues with defaults and with any currency the visitor had already chosen this session.
 
@@ -230,14 +230,14 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Skipping location/currency detection (currencyBehavior is not set to auto)` | `sdk-initializer.location-currency.ts › initializeLocationAndCurrency` | — |
-| `Initializing location and currency detection...` | `sdk-initializer.location-currency.ts › initializeLocationAndCurrency` | — |
-| `Using forced country: {forcedCountry} (source: {countryOverride ? 'URL' : 'session'})` | `sdk-initializer.location-currency.ts › initializeLocationAndCurrency` | — |
-| `Country config loaded:` | `sdk-initializer.location-currency.ts › initializeLocationAndCurrency` | yes |
-| `User location detected:` | `sdk-initializer.location-currency.ts › initializeLocationAndCurrency` | yes |
-| `Currency override from URL:` | `sdk-initializer.location-currency.ts › initializeLocationAndCurrency` | yes |
-| `Using saved currency preference:` | `sdk-initializer.location-currency.ts › initializeLocationAndCurrency` | yes |
-| `Using detected currency:` | `sdk-initializer.location-currency.ts › initializeLocationAndCurrency` | yes |
+| `Skipping location/currency detection (currencyBehavior is not set to auto)` | `sdk-initializer/sdk-initializer.location-currency.ts › initializeLocationAndCurrency` | — |
+| `Initializing location and currency detection...` | `sdk-initializer/sdk-initializer.location-currency.ts › initializeLocationAndCurrency` | — |
+| `Using forced country: {forcedCountry} (source: {countryOverride ? 'URL' : 'session'})` | `sdk-initializer/sdk-initializer.location-currency.ts › initializeLocationAndCurrency` | — |
+| `Country config loaded:` | `sdk-initializer/sdk-initializer.location-currency.ts › initializeLocationAndCurrency` | yes |
+| `User location detected:` | `sdk-initializer/sdk-initializer.location-currency.ts › initializeLocationAndCurrency` | yes |
+| `Currency override from URL:` | `sdk-initializer/sdk-initializer.location-currency.ts › initializeLocationAndCurrency` | yes |
+| `Using saved currency preference:` | `sdk-initializer/sdk-initializer.location-currency.ts › initializeLocationAndCurrency` | yes |
+| `Using detected currency:` | `sdk-initializer/sdk-initializer.location-currency.ts › initializeLocationAndCurrency` | yes |
 
 ### Debug
 
@@ -245,13 +245,13 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Location and currency initialized:` | `sdk-initializer.location-currency.ts › initializeLocationAndCurrency` | yes |
+| `Location and currency initialized:` | `sdk-initializer/sdk-initializer.location-currency.ts › initializeLocationAndCurrency` | yes |
 
 ## `[SDKInitializer]`
 
 Captures where the visitor came from — funnel name, UTM transfer, conversion timestamp, landing page — and keeps the attribution event listeners idempotent across a boot retry or `reinitialize()`. Runs as its own boot step, right after location/currency detection.
 
-Logged from `sdk-initializer.attribution.ts`. A free function, not a class with its own logger. `SDKInitializer` builds one `Logger('SDKInitializer')` in `sdk-initializer.ts` and passes it in through a `{ logger }` context, so every line here prints under `[SDKInitializer]`.
+Logged from `sdk-initializer/sdk-initializer.attribution.ts`. A free function, not a class with its own logger. `SDKInitializer` builds one `Logger('SDKInitializer')` in `sdk-initializer.ts` and passes it in through a `{ logger }` context, so every line here prints under `[SDKInitializer]`.
 
 ### Error
 
@@ -259,7 +259,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Attribution initialization failed:`
 
-`sdk-initializer.attribution.ts › initializeAttribution` · extra context attached
+`sdk-initializer/sdk-initializer.attribution.ts › initializeAttribution` · extra context attached
 
 **Meaning:** Attribution did not start, so the order will be missing UTM tags, funnel name, and click ids. The page and checkout still work — this is a reporting problem, not a buying one.
 
@@ -271,7 +271,7 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Initializing attribution...` | `sdk-initializer.attribution.ts › initializeAttribution` | — |
+| `Initializing attribution...` | `sdk-initializer/sdk-initializer.attribution.ts › initializeAttribution` | — |
 
 ### Debug
 
@@ -279,18 +279,18 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Added SDK version to attribution metadata: {sdkVersion}` | `sdk-initializer.attribution.ts › initializeAttribution` | — |
-| `Added user IP to attribution metadata: {userIp}` | `sdk-initializer.attribution.ts › initializeAttribution` | — |
-| `UTM transfer initialized` | `sdk-initializer.attribution.ts › initializeAttribution` | — |
-| `Attribution initialized` | `sdk-initializer.attribution.ts › initializeAttribution` | — |
-| `Set funnel name from campaign:` | `sdk-initializer.attribution.ts › setupAttributionListeners` | yes |
-| `Updated attribution with conversion timestamp` | `sdk-initializer.attribution.ts › setupAttributionListeners` | — |
+| `Added SDK version to attribution metadata: {sdkVersion}` | `sdk-initializer/sdk-initializer.attribution.ts › initializeAttribution` | — |
+| `Added user IP to attribution metadata: {userIp}` | `sdk-initializer/sdk-initializer.attribution.ts › initializeAttribution` | — |
+| `UTM transfer initialized` | `sdk-initializer/sdk-initializer.attribution.ts › initializeAttribution` | — |
+| `Attribution initialized` | `sdk-initializer/sdk-initializer.attribution.ts › initializeAttribution` | — |
+| `Set funnel name from campaign:` | `sdk-initializer/sdk-initializer.attribution.ts › setupAttributionListeners` | yes |
+| `Updated attribution with conversion timestamp` | `sdk-initializer/sdk-initializer.attribution.ts › setupAttributionListeners` | — |
 
 ## `[SDKInitializer]`
 
 The `forcePackageId` / `forceShippingId` URL overrides and the session's captured URL parameters, applied once configuration and campaign data are loaded.
 
-Logged from `sdk-initializer.url-params.ts`. A free function, not a class with its own logger. `SDKInitializer` builds one `Logger('SDKInitializer')` in `sdk-initializer.ts` and passes it in through a `{ logger }` context, so every line here prints under `[SDKInitializer]`.
+Logged from `sdk-initializer/sdk-initializer.url-params.ts`. A free function, not a class with its own logger. `SDKInitializer` builds one `Logger('SDKInitializer')` in `sdk-initializer.ts` and passes it in through a `{ logger }` context, so every line here prints under `[SDKInitializer]`.
 
 ### Error
 
@@ -298,7 +298,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Error processing forcePackageId parameter:`
 
-`sdk-initializer.url-params.ts › processForcePackageId` · extra context attached
+`sdk-initializer/sdk-initializer.url-params.ts › processForcePackageId` · extra context attached
 
 **Meaning:** The `forcePackageId` parameter could not be applied, so the cart is not pre-filled. Boot deliberately continues — a bad link should not take the page down.
 
@@ -306,7 +306,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Error processing forceShippingId parameter:`
 
-`sdk-initializer.url-params.ts › processForceShippingId` · extra context attached
+`sdk-initializer/sdk-initializer.url-params.ts › processForceShippingId` · extra context attached
 
 **Meaning:** Applying `forceShippingId` threw, so shipping is unchanged. Boot continues.
 
@@ -318,7 +318,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Failed to capture URL parameters:`
 
-`sdk-initializer.url-params.ts › captureUrlParameters` · extra context attached
+`sdk-initializer/sdk-initializer.url-params.ts › captureUrlParameters` · extra context attached
 
 **Meaning:** Reading the current URL’s parameters threw, so `forcePackageId`, currency overrides, and visibility parameters are not applied on this page. Boot continues.
 
@@ -326,7 +326,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Package {packageId} not found in campaign data, skipping`
 
-`sdk-initializer.url-params.ts › processForcePackageId`
+`sdk-initializer/sdk-initializer.url-params.ts › processForcePackageId`
 
 **Meaning:** A `forcePackageId` entry names a package the campaign does not contain, so that entry is skipped. Other valid entries in the same parameter are still added.
 
@@ -334,7 +334,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `No shipping methods available in campaign data`
 
-`sdk-initializer.url-params.ts › processForceShippingId`
+`sdk-initializer/sdk-initializer.url-params.ts › processForceShippingId`
 
 **Meaning:** `forceShippingId` was asked for, but the campaign came back with no shipping methods at all, so nothing could be selected.
 
@@ -342,7 +342,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Shipping method {shippingId} not found in campaign data`
 
-`sdk-initializer.url-params.ts › processForceShippingId`
+`sdk-initializer/sdk-initializer.url-params.ts › processForceShippingId`
 
 **Meaning:** The id in `forceShippingId` does not match any shipping method in this campaign, so the cart keeps whatever method it had.
 
@@ -354,11 +354,11 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Visibility control parameters detected:` | `sdk-initializer.url-params.ts › captureUrlParameters` | yes |
-| `Processing forcePackageId parameter:` | `sdk-initializer.url-params.ts › processForcePackageId` | yes |
-| `Successfully processed forcePackageId: added {length} package(s) to cart` | `sdk-initializer.url-params.ts › processForcePackageId` | — |
-| `Processing forceShippingId parameter:` | `sdk-initializer.url-params.ts › processForceShippingId` | yes |
-| `Successfully set shipping method: {code} (ID: {shippingId}, Price: ${price})` | `sdk-initializer.url-params.ts › processForceShippingId` | — |
+| `Visibility control parameters detected:` | `sdk-initializer/sdk-initializer.url-params.ts › captureUrlParameters` | yes |
+| `Processing forcePackageId parameter:` | `sdk-initializer/sdk-initializer.url-params.ts › processForcePackageId` | yes |
+| `Successfully processed forcePackageId: added {length} package(s) to cart` | `sdk-initializer/sdk-initializer.url-params.ts › processForcePackageId` | — |
+| `Processing forceShippingId parameter:` | `sdk-initializer/sdk-initializer.url-params.ts › processForceShippingId` | yes |
+| `Successfully set shipping method: {code} (ID: {shippingId}, Price: ${price})` | `sdk-initializer/sdk-initializer.url-params.ts › processForceShippingId` | — |
 
 ### Debug
 
@@ -366,17 +366,17 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Captured {length} URL parameters, total stored: {length}` | `sdk-initializer.url-params.ts › captureUrlParameters` | — |
-| `Cart cleared for forcePackageId` | `sdk-initializer.url-params.ts › processForcePackageId` | — |
-| `Parsed package specifications:` | `sdk-initializer.url-params.ts › processForcePackageId` | yes |
-| `Added package {packageId} with quantity {quantity} to cart` | `sdk-initializer.url-params.ts › processForcePackageId` | — |
-| `Available shipping methods:` | `sdk-initializer.url-params.ts › processForceShippingId` | yes |
+| `Captured {length} URL parameters, total stored: {length}` | `sdk-initializer/sdk-initializer.url-params.ts › captureUrlParameters` | — |
+| `Cart cleared for forcePackageId` | `sdk-initializer/sdk-initializer.url-params.ts › processForcePackageId` | — |
+| `Parsed package specifications:` | `sdk-initializer/sdk-initializer.url-params.ts › processForcePackageId` | yes |
+| `Added package {packageId} with quantity {quantity} to cart` | `sdk-initializer/sdk-initializer.url-params.ts › processForcePackageId` | — |
+| `Available shipping methods:` | `sdk-initializer/sdk-initializer.url-params.ts › processForceShippingId` | yes |
 
 ## `[SDKInitializer]`
 
 Clears the SDK's own sessionStorage, localStorage, and cookies when the page carries `?reset=true`, for a clean-slate reload.
 
-Logged from `sdk-initializer.storage-reset.ts`. A free function, not a class with its own logger. `SDKInitializer` builds one `Logger('SDKInitializer')` in `sdk-initializer.ts` and passes it in through a `{ logger }` context, so every line here prints under `[SDKInitializer]`.
+Logged from `sdk-initializer/sdk-initializer.storage-reset.ts`. A free function, not a class with its own logger. `SDKInitializer` builds one `Logger('SDKInitializer')` in `sdk-initializer.ts` and passes it in through a `{ logger }` context, so every line here prints under `[SDKInitializer]`.
 
 ### Info
 
@@ -384,14 +384,14 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Clearing all Next Campaign Cart storage...` | `sdk-initializer.storage-reset.ts › clearAllStorage` | — |
-| `Cleared {length} sessionStorage items, {length} localStorage items` | `sdk-initializer.storage-reset.ts › clearAllStorage` | — |
+| `Clearing all Next Campaign Cart storage...` | `sdk-initializer/sdk-initializer.storage-reset.ts › clearAllStorage` | — |
+| `Cleared {length} sessionStorage items, {length} localStorage items` | `sdk-initializer/sdk-initializer.storage-reset.ts › clearAllStorage` | — |
 
 ## `[SDKInitializer]`
 
 Builds `window.nextDebug` — the console surface for inspecting and driving the stores, the cart, campaign, attribution, and analytics from devtools.
 
-Logged from `sdk-initializer.debug-utils.ts`. A free function, not a class with its own logger. `SDKInitializer` builds one `Logger('SDKInitializer')` in `sdk-initializer.ts` and passes it in through a `{ logger }` context, so every line here prints under `[SDKInitializer]`.
+Logged from `sdk-initializer/sdk-initializer.debug-utils.ts`. A free function, not a class with its own logger. `SDKInitializer` builds one `Logger('SDKInitializer')` in `sdk-initializer.ts` and passes it in through a `{ logger }` context, so every line here prints under `[SDKInitializer]`.
 
 ### Debug
 
@@ -399,13 +399,13 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `🎯 Highlighting element: {selector}` | `sdk-initializer.debug-utils.ts › highlightElement` | — |
+| `🎯 Highlighting element: {selector}` | `sdk-initializer/sdk-initializer.debug-utils.ts › highlightElement` | — |
 
 ## `[SDKInitializer]`
 
 Starts the SDK: reads configuration, delegates to location/currency detection and attribution capture, loads the campaign, applies URL parameters such as `forcePackageId`, then hands over to the DOM scan. Most "the page did nothing" investigations start here.
 
-Logged from `sdk-initializer.ts`.
+Logged from `sdk-initializer/sdk-initializer.ts`.
 
 ### Error
 
@@ -413,7 +413,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `SDK initialization failed:`
 
-`sdk-initializer.ts › SDKInitializer.initialize` · extra context attached
+`sdk-initializer/sdk-initializer.ts › SDKInitializer.initialize` · extra context attached
 
 **Meaning:** Boot threw before it finished. Nothing on the page is enhanced yet: prices show their placeholders and buttons do nothing. The attached error says which step failed.
 
@@ -421,7 +421,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to auto-load order:`
 
-`sdk-initializer.ts › SDKInitializer.checkAndLoadOrder` · extra context attached
+`sdk-initializer/sdk-initializer.ts › SDKInitializer.checkAndLoadOrder` · extra context attached
 
 **Meaning:** A `ref_id` in the URL was found but the order behind it could not be loaded, so a receipt or upsell page has nothing to show and `next.addUpsell()` will reject.
 
@@ -429,7 +429,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Ready callback error:`
 
-`sdk-initializer.ts › SDKInitializer.setupReadyCallbacks` · extra context attached
+`sdk-initializer/sdk-initializer.ts › SDKInitializer.setupReadyCallbacks` · extra context attached
 
 **Meaning:** One of your own `window.nextReady` callbacks threw. The SDK caught it and ran the remaining callbacks, so this is your page code failing, not the SDK.
 
@@ -441,7 +441,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `SDK already initialized`
 
-`sdk-initializer.ts › SDKInitializer.initialize`
+`sdk-initializer/sdk-initializer.ts › SDKInitializer.initialize`
 
 **Meaning:** Something called `initialize()` a second time and the call was ignored. Usually the loader script is on the page twice, or a page builder duplicated it into a template.
 
@@ -449,7 +449,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Retrying initialization (attempt {retryAttempts}/{maxRetries})...`
 
-`sdk-initializer.ts › SDKInitializer.initialize`
+`sdk-initializer/sdk-initializer.ts › SDKInitializer.initialize`
 
 **Meaning:** Boot failed and is trying again after a pause. Expected to be followed either by `SDK initialization complete ✅` or by another `SDK initialization failed:`.
 
@@ -457,7 +457,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Analytics v2 initialization failed (non-critical):`
 
-`sdk-initializer.ts › SDKInitializer.initializeAnalytics` · extra context attached
+`sdk-initializer/sdk-initializer.ts › SDKInitializer.initializeAnalytics` · extra context attached
 
 **Meaning:** The analytics module failed to load or initialize. No analytics events will be sent from this page load; everything else works.
 
@@ -465,7 +465,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Error handler initialization failed:`
 
-`sdk-initializer.ts › SDKInitializer.initializeErrorHandler` · extra context attached
+`sdk-initializer/sdk-initializer.ts › SDKInitializer.initializeErrorHandler` · extra context attached
 
 **Meaning:** The global error handler did not start, so uncaught page errors are no longer re-published as `error:occurred` events. Nothing else changes.
 
@@ -477,21 +477,21 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Initializing NextCommerce Campaign Cart SDK v2...` | `sdk-initializer.ts › SDKInitializer.initialize` | — |
-| `SDK initialization complete ✅` | `sdk-initializer.ts › SDKInitializer.initialize` | — |
-| `forcePackageId parameter detected:` | `sdk-initializer.ts › SDKInitializer.loadConfiguration` | yes |
-| `forceShippingId parameter detected:` | `sdk-initializer.ts › SDKInitializer.loadConfiguration` | yes |
-| `forceBundleId parameter detected:` | `sdk-initializer.ts › SDKInitializer.loadConfiguration` | yes |
-| `Campaign shipping countries set globally:` | `sdk-initializer.ts › SDKInitializer.loadCampaignData` | yes |
-| `Initializing analytics v2...` | `sdk-initializer.ts › SDKInitializer.initializeAnalytics` | — |
-| `Page loaded with {paramName} parameter, auto-loading order:` | `sdk-initializer.ts › SDKInitializer.checkAndLoadOrder` | yes |
-| `Order loaded successfully:` | `sdk-initializer.ts › SDKInitializer.checkAndLoadOrder` | yes |
-| `Order supports upsells:` | `sdk-initializer.ts › SDKInitializer.checkAndLoadOrder` | yes |
-| `DOM scanning and enhancement complete` | `sdk-initializer.ts › SDKInitializer.scanAndEnhanceDOM` | yes |
-| `Debug mode enabled - initializing debug utilities` | `sdk-initializer.ts › SDKInitializer.initializeDebugMode` | — |
-| `Logger level set to DEBUG` | `sdk-initializer.ts › SDKInitializer.initializeDebugMode` | — |
-| `Debug utilities initialized ✅` | `sdk-initializer.ts › SDKInitializer.initializeDebugMode` | — |
-| `Reinitializing SDK...` | `sdk-initializer.ts › SDKInitializer.reinitialize` | — |
+| `Initializing NextCommerce Campaign Cart SDK v2...` | `sdk-initializer/sdk-initializer.ts › SDKInitializer.initialize` | — |
+| `SDK initialization complete ✅` | `sdk-initializer/sdk-initializer.ts › SDKInitializer.initialize` | — |
+| `forcePackageId parameter detected:` | `sdk-initializer/sdk-initializer.ts › SDKInitializer.loadConfiguration` | yes |
+| `forceShippingId parameter detected:` | `sdk-initializer/sdk-initializer.ts › SDKInitializer.loadConfiguration` | yes |
+| `forceBundleId parameter detected:` | `sdk-initializer/sdk-initializer.ts › SDKInitializer.loadConfiguration` | yes |
+| `Campaign shipping countries set globally:` | `sdk-initializer/sdk-initializer.ts › SDKInitializer.loadCampaignData` | yes |
+| `Initializing analytics v2...` | `sdk-initializer/sdk-initializer.ts › SDKInitializer.initializeAnalytics` | — |
+| `Page loaded with {paramName} parameter, auto-loading order:` | `sdk-initializer/sdk-initializer.ts › SDKInitializer.checkAndLoadOrder` | yes |
+| `Order loaded successfully:` | `sdk-initializer/sdk-initializer.ts › SDKInitializer.checkAndLoadOrder` | yes |
+| `Order supports upsells:` | `sdk-initializer/sdk-initializer.ts › SDKInitializer.checkAndLoadOrder` | yes |
+| `DOM scanning and enhancement complete` | `sdk-initializer/sdk-initializer.ts › SDKInitializer.scanAndEnhanceDOM` | yes |
+| `Debug mode enabled - initializing debug utilities` | `sdk-initializer/sdk-initializer.ts › SDKInitializer.initializeDebugMode` | — |
+| `Logger level set to DEBUG` | `sdk-initializer/sdk-initializer.ts › SDKInitializer.initializeDebugMode` | — |
+| `Debug utilities initialized ✅` | `sdk-initializer/sdk-initializer.ts › SDKInitializer.initializeDebugMode` | — |
+| `Reinitializing SDK...` | `sdk-initializer/sdk-initializer.ts › SDKInitializer.reinitialize` | — |
 
 ### Debug
 
@@ -499,22 +499,22 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Cart cleared on init (next-clear-cart)` | `sdk-initializer.ts › SDKInitializer.initialize` | — |
-| `Configuration loaded (metatags have priority):` | `sdk-initializer.ts › SDKInitializer.loadConfiguration` | yes |
-| `Campaign data loaded` | `sdk-initializer.ts › SDKInitializer.loadCampaignData` | — |
-| `Emitted sdk:url-parameters-processed event` | `sdk-initializer.ts › SDKInitializer.loadCampaignData` | — |
-| `Analytics v2 initialized successfully` | `sdk-initializer.ts › SDKInitializer.initializeAnalytics` | — |
-| `Error handler initialized` | `sdk-initializer.ts › SDKInitializer.initializeErrorHandler` | — |
-| `nextReady callback system and window.next API initialized` | `sdk-initializer.ts › SDKInitializer.setupReadyCallbacks` | — |
-| `Waiting for cart store rehydration...` | `sdk-initializer.ts › SDKInitializer.waitForStoreRehydration` | — |
-| `Cart store rehydration complete` | `sdk-initializer.ts › SDKInitializer.waitForStoreRehydration` | yes |
-| `No cart data to rehydrate` | `sdk-initializer.ts › SDKInitializer.waitForStoreRehydration` | — |
+| `Cart cleared on init (next-clear-cart)` | `sdk-initializer/sdk-initializer.ts › SDKInitializer.initialize` | — |
+| `Configuration loaded (metatags have priority):` | `sdk-initializer/sdk-initializer.ts › SDKInitializer.loadConfiguration` | yes |
+| `Campaign data loaded` | `sdk-initializer/sdk-initializer.ts › SDKInitializer.loadCampaignData` | — |
+| `Emitted sdk:url-parameters-processed event` | `sdk-initializer/sdk-initializer.ts › SDKInitializer.loadCampaignData` | — |
+| `Analytics v2 initialized successfully` | `sdk-initializer/sdk-initializer.ts › SDKInitializer.initializeAnalytics` | — |
+| `Error handler initialized` | `sdk-initializer/sdk-initializer.ts › SDKInitializer.initializeErrorHandler` | — |
+| `nextReady callback system and window.next API initialized` | `sdk-initializer/sdk-initializer.ts › SDKInitializer.setupReadyCallbacks` | — |
+| `Waiting for cart store rehydration...` | `sdk-initializer/sdk-initializer.ts › SDKInitializer.waitForStoreRehydration` | — |
+| `Cart store rehydration complete` | `sdk-initializer/sdk-initializer.ts › SDKInitializer.waitForStoreRehydration` | yes |
+| `No cart data to rehydrate` | `sdk-initializer/sdk-initializer.ts › SDKInitializer.waitForStoreRehydration` | — |
 
 ## `[AttributeScanner]`
 
 Finds every `data-next-*` element on the page and starts the feature bound to it. If a feature never runs, this is where its element was either skipped or failed to initialize.
 
-Logged from `attribute-scanner.ts`.
+Logged from `attribute-scanner/attribute-scanner.ts`.
 
 ### Error
 
@@ -522,7 +522,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Error during scan and enhance:`
 
-`attribute-scanner.ts › AttributeScanner.scanAndEnhance` · extra context attached
+`attribute-scanner/attribute-scanner.ts › AttributeScanner.scanAndEnhance` · extra context attached
 
 **Meaning:** The DOM scan threw part-way, so some elements were enhanced and others were not. The page is in a mixed state: some prices update, some do not.
 
@@ -530,7 +530,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to initialize {type} enhancer:`
 
-`attribute-scanner.ts › AttributeScanner.enhanceElement` · extra context attached
+`attribute-scanner/attribute-scanner.ts › AttributeScanner.enhanceElement` · extra context attached
 
 **Meaning:** One feature threw while starting up. It is destroyed and that element is left as plain markup — its button does nothing, its display keeps its placeholder. Everything else on the page is unaffected. A missing required attribute is the usual cause.
 
@@ -538,7 +538,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to enhance element:`
 
-`attribute-scanner.ts › AttributeScanner.enhanceElement` · extra context attached
+`attribute-scanner/attribute-scanner.ts › AttributeScanner.enhanceElement` · extra context attached
 
 **Meaning:** Enhancing one element failed outside any single feature’s own start-up — while resolving which features it needs, for example. That element stays plain markup.
 
@@ -546,7 +546,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to create enhancer of type {type}:`
 
-`attribute-scanner.ts › AttributeScanner.createEnhancer` · extra context attached
+`attribute-scanner/attribute-scanner.ts › AttributeScanner.createEnhancer` · extra context attached
 
 **Meaning:** Loading the code for a feature failed, so no element using it is enhanced. Features are imported on demand, so a network problem or a broken deployment produces this rather than a markup mistake.
 
@@ -554,7 +554,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to enhance queued element:`
 
-`attribute-scanner.ts › AttributeScanner.processQueue` · extra context attached
+`attribute-scanner/attribute-scanner.ts › AttributeScanner.processQueue` · extra context attached
 
 **Meaning:** An element that arrived after boot — injected by a page builder or an A/B tool — could not be enhanced. The rest of the queue is still processed.
 
@@ -562,7 +562,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to destroy enhancer:`
 
-`attribute-scanner.ts › AttributeScanner.destroyEnhancers` · extra context attached
+`attribute-scanner/attribute-scanner.ts › AttributeScanner.destroyEnhancers` · extra context attached
 
 **Meaning:** One feature's own `destroy()` threw while the scanner was tearing the page down. The scanner carries on with the rest, so the other features are still torn down — but this one may have left a listener, a timer or a subscription behind.
 
@@ -574,7 +574,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Scanner destroyed, ignoring scan request`
 
-`attribute-scanner.ts › AttributeScanner.scanAndEnhance`
+`attribute-scanner/attribute-scanner.ts › AttributeScanner.scanAndEnhance`
 
 **Meaning:** Something asked the scanner to scan after `destroy()` had already run. Expected during teardown — a queued or in-flight scan finishing after the SDK was torn down — and the scan is correctly refused rather than enhancing elements nothing would ever clean up.
 
@@ -582,7 +582,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Already scanning, queuing request`
 
-`attribute-scanner.ts › AttributeScanner.scanAndEnhance`
+`attribute-scanner/attribute-scanner.ts › AttributeScanner.scanAndEnhance`
 
 **Meaning:** A second DOM scan was asked for while one was running; the request is queued rather than run in parallel. Expected on a page that injects markup while booting.
 
@@ -590,7 +590,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Unknown action type: {action}`
 
-`attribute-scanner.ts › AttributeScanner.createEnhancer`
+`attribute-scanner/attribute-scanner.ts › AttributeScanner.createEnhancer`
 
 **Meaning:** `data-next-action` has a value the SDK does not recognise, so the element does nothing when clicked. A typo in the value is almost always the reason.
 
@@ -598,7 +598,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Unknown enhancer type: {type}`
 
-`attribute-scanner.ts › AttributeScanner.createEnhancer`
+`attribute-scanner/attribute-scanner.ts › AttributeScanner.createEnhancer`
 
 **Meaning:** The scanner matched an element to a feature name it has no constructor for, so nothing is attached to that element. This means an attribute is spelled in a way that resolves to an unknown feature.
 
@@ -610,9 +610,9 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 
 | Message | Source | Extra context |
 |---|---|---|
-| `🔍 Starting DOM scan for data attributes...` | `attribute-scanner.ts › AttributeScanner.scanAndEnhance` | yes |
-| `Found {length} conditional display elements:` | `attribute-scanner.ts › AttributeScanner.scanAndEnhance` | yes |
-| `Creating CheckoutReviewEnhancer for element:` | `attribute-scanner.ts › AttributeScanner.createEnhancer` | yes |
+| `🔍 Starting DOM scan for data attributes...` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.scanAndEnhance` | yes |
+| `Found {length} conditional display elements:` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.scanAndEnhance` | yes |
+| `Creating CheckoutReviewEnhancer for element:` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.createEnhancer` | yes |
 
 ### Debug
 
@@ -620,40 +620,40 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Found {length} elements with data attributes` | `attribute-scanner.ts › AttributeScanner.scanAndEnhance` | — |
-| `Enhanced {enhancedCount} elements successfully` | `attribute-scanner.ts › AttributeScanner.scanAndEnhance` | — |
-| `Added next-display-ready class to HTML element` | `attribute-scanner.ts › AttributeScanner.scanAndEnhance` | — |
-| `Element already enhanced, skipping` | `attribute-scanner.ts › AttributeScanner.enhanceElement` | yes |
-| `Skipping element inside cart items template` | `attribute-scanner.ts › AttributeScanner.enhanceElement` | yes |
-| `Skipping element with template variable` | `attribute-scanner.ts › AttributeScanner.enhanceElement` | yes |
-| `No enhancer types found for element` | `attribute-scanner.ts › AttributeScanner.enhanceElement` | yes |
-| `Initialized {type} enhancer for element` | `attribute-scanner.ts › AttributeScanner.enhanceElement` | yes |
-| `Enhanced element with {length} enhancer(s)` | `attribute-scanner.ts › AttributeScanner.enhanceElement` | yes |
-| `Creating display enhancer for path: "{displayPath}"` | `attribute-scanner.ts › AttributeScanner.createEnhancer` | yes |
-| `Using CartDisplayEnhancer` | `attribute-scanner.ts › AttributeScanner.createEnhancer` | — |
-| `Using SelectionDisplayEnhancer` | `attribute-scanner.ts › AttributeScanner.createEnhancer` | — |
-| `Using ProductDisplayEnhancer` | `attribute-scanner.ts › AttributeScanner.createEnhancer` | — |
-| `Using OrderDisplayEnhancer` | `attribute-scanner.ts › AttributeScanner.createEnhancer` | — |
-| `Using ShippingDisplayEnhancer` | `attribute-scanner.ts › AttributeScanner.createEnhancer` | — |
-| `Using BundleDisplayEnhancer` | `attribute-scanner.ts › AttributeScanner.createEnhancer` | — |
-| `Using PackageSelectorDisplayEnhancer` | `attribute-scanner.ts › AttributeScanner.createEnhancer` | — |
-| `Using PackageToggleDisplayEnhancer` | `attribute-scanner.ts › AttributeScanner.createEnhancer` | — |
-| `Using ProductDisplayEnhancer (fallback with package context)` | `attribute-scanner.ts › AttributeScanner.createEnhancer` | — |
-| `Using CartDisplayEnhancer (fallback without package context)` | `attribute-scanner.ts › AttributeScanner.createEnhancer` | — |
-| `Creating ConditionalDisplayEnhancer for element:` | `attribute-scanner.ts › AttributeScanner.createEnhancer` | yes |
-| `Skipping individual express checkout button - managed by container` | `attribute-scanner.ts › AttributeScanner.createEnhancer` | — |
-| `Started DOM observation` | `attribute-scanner.ts › AttributeScanner.startObserving` | — |
-| `Data attribute changed, re-enhancing element` | `attribute-scanner.ts › AttributeScanner.handleDOMChange` | yes |
-| `Processing {length} queued elements` | `attribute-scanner.ts › AttributeScanner.processQueue` | — |
-| `AttributeScanner destroyed` | `attribute-scanner.ts › AttributeScanner.destroy` | — |
-| `AttributeScanner paused` | `attribute-scanner.ts › AttributeScanner.pause` | — |
-| `AttributeScanner resumed` | `attribute-scanner.ts › AttributeScanner.resume` | — |
+| `Found {length} elements with data attributes` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.scanAndEnhance` | — |
+| `Enhanced {enhancedCount} elements successfully` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.scanAndEnhance` | — |
+| `Added next-display-ready class to HTML element` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.scanAndEnhance` | — |
+| `Element already enhanced, skipping` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.enhanceElement` | yes |
+| `Skipping element inside cart items template` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.enhanceElement` | yes |
+| `Skipping element with template variable` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.enhanceElement` | yes |
+| `No enhancer types found for element` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.enhanceElement` | yes |
+| `Initialized {type} enhancer for element` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.enhanceElement` | yes |
+| `Enhanced element with {length} enhancer(s)` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.enhanceElement` | yes |
+| `Creating display enhancer for path: "{displayPath}"` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.createEnhancer` | yes |
+| `Using CartDisplayEnhancer` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.createEnhancer` | — |
+| `Using SelectionDisplayEnhancer` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.createEnhancer` | — |
+| `Using ProductDisplayEnhancer` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.createEnhancer` | — |
+| `Using OrderDisplayEnhancer` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.createEnhancer` | — |
+| `Using ShippingDisplayEnhancer` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.createEnhancer` | — |
+| `Using BundleDisplayEnhancer` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.createEnhancer` | — |
+| `Using PackageSelectorDisplayEnhancer` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.createEnhancer` | — |
+| `Using PackageToggleDisplayEnhancer` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.createEnhancer` | — |
+| `Using ProductDisplayEnhancer (fallback with package context)` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.createEnhancer` | — |
+| `Using CartDisplayEnhancer (fallback without package context)` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.createEnhancer` | — |
+| `Creating ConditionalDisplayEnhancer for element:` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.createEnhancer` | yes |
+| `Skipping individual express checkout button - managed by container` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.createEnhancer` | — |
+| `Started DOM observation` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.startObserving` | — |
+| `Data attribute changed, re-enhancing element` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.handleDOMChange` | yes |
+| `Processing {length} queued elements` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.processQueue` | — |
+| `AttributeScanner destroyed` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.destroy` | — |
+| `AttributeScanner paused` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.pause` | — |
+| `AttributeScanner resumed` | `attribute-scanner/attribute-scanner.ts › AttributeScanner.resume` | — |
 
 ## `[NextCommerce]`
 
 Part of the `window.next` API — the analytics calls a page makes by hand — tracking a view, a sign-up, or a custom event through the SDK rather than the provider.
 
-Logged from `next-commerce.analytics.ts`. A free function, not a class with its own logger. `NextCommerce` builds one `Logger('NextCommerce')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.
+Logged from `next-commerce/next-commerce.analytics.ts`. A free function, not a class with its own logger. `NextCommerce` builds one `Logger('NextCommerce')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.
 
 ### Warn
 
@@ -661,7 +661,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Package not found in store:`
 
-`next-commerce.analytics.ts › trackViewItem` · extra context attached
+`next-commerce/next-commerce.analytics.ts › trackViewItem` · extra context attached
 
 **Meaning:** A product element on the page names a package that is not in the campaign data, so it is left out of automatic `view_item` / `view_item_list` tracking.
 
@@ -673,15 +673,15 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Analytics tracking failed (non-critical):` | `next-commerce.analytics.ts › trackViewItemList` | yes |
-| `Analytics debug mode failed (non-critical):` | `next-commerce.analytics.ts › setDebugMode` | yes |
-| `Analytics context invalidation failed (non-critical):` | `next-commerce.analytics.ts › invalidateAnalyticsContext` | yes |
+| `Analytics tracking failed (non-critical):` | `next-commerce/next-commerce.analytics.ts › trackViewItemList` | yes |
+| `Analytics debug mode failed (non-critical):` | `next-commerce/next-commerce.analytics.ts › setDebugMode` | yes |
+| `Analytics context invalidation failed (non-critical):` | `next-commerce/next-commerce.analytics.ts › invalidateAnalyticsContext` | yes |
 
 ## `[NextCommerce]`
 
 Part of the `window.next` API — metadata and attribution a page sets on itself, which every later order carries.
 
-Logged from `next-commerce.attribution.ts`. A free function, not a class with its own logger. `NextCommerce` builds one `Logger('NextCommerce')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.
+Logged from `next-commerce/next-commerce.attribution.ts`. A free function, not a class with its own logger. `NextCommerce` builds one `Logger('NextCommerce')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.
 
 ### Error
 
@@ -689,7 +689,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to add attribution metadata:`
 
-`next-commerce.attribution.ts › addMetadata` · extra context attached
+`next-commerce/next-commerce.attribution.ts › addMetadata` · extra context attached
 
 **Meaning:** A single metadata value could not be added, so it will be missing from the order. Nothing else is affected.
 
@@ -697,7 +697,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to set attribution metadata:`
 
-`next-commerce.attribution.ts › setMetadata` · extra context attached
+`next-commerce/next-commerce.attribution.ts › setMetadata` · extra context attached
 
 **Meaning:** A whole metadata object could not be merged in, so none of those values reach the order.
 
@@ -705,7 +705,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to clear attribution metadata:`
 
-`next-commerce.attribution.ts › clearMetadata` · extra context attached
+`next-commerce/next-commerce.attribution.ts › clearMetadata` · extra context attached
 
 **Meaning:** Resetting metadata failed, so previously set values may still be attached to the next order.
 
@@ -713,7 +713,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to get attribution metadata:`
 
-`next-commerce.attribution.ts › getMetadata` · extra context attached
+`next-commerce/next-commerce.attribution.ts › getMetadata` · extra context attached
 
 **Meaning:** Reading metadata threw, and `next.getMetadata()` returned `undefined` — which is indistinguishable from "no metadata set" to the caller.
 
@@ -721,7 +721,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to set attribution:`
 
-`next-commerce.attribution.ts › setAttribution` · extra context attached
+`next-commerce/next-commerce.attribution.ts › setAttribution` · extra context attached
 
 **Meaning:** Updating attribution threw, so the values you passed are not recorded and the order will carry whatever was there before.
 
@@ -729,7 +729,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to get attribution:`
 
-`next-commerce.attribution.ts › getAttribution` · extra context attached
+`next-commerce/next-commerce.attribution.ts › getAttribution` · extra context attached
 
 **Meaning:** Reading attribution threw and `next.getAttribution()` returned `undefined`.
 
@@ -737,7 +737,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to debug attribution:`
 
-`next-commerce.attribution.ts › debugAttribution` · extra context attached
+`next-commerce/next-commerce.attribution.ts › debugAttribution` · extra context attached
 
 **Meaning:** The `next.debugAttribution()` helper threw. It only prints attribution state, so nothing about the page or the order changed.
 
@@ -749,16 +749,16 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Attribution metadata added: {key}` | `next-commerce.attribution.ts › addMetadata` | yes |
-| `Attribution metadata set:` | `next-commerce.attribution.ts › setMetadata` | yes |
-| `Attribution metadata cleared` | `next-commerce.attribution.ts › clearMetadata` | — |
-| `Attribution set:` | `next-commerce.attribution.ts › setAttribution` | yes |
+| `Attribution metadata added: {key}` | `next-commerce/next-commerce.attribution.ts › addMetadata` | yes |
+| `Attribution metadata set:` | `next-commerce/next-commerce.attribution.ts › setMetadata` | yes |
+| `Attribution metadata cleared` | `next-commerce/next-commerce.attribution.ts › clearMetadata` | — |
+| `Attribution set:` | `next-commerce/next-commerce.attribution.ts › setAttribution` | yes |
 
 ## `[NextCommerce]`
 
 Part of the `window.next` API — the cart operations a page drives directly — adding, swapping, clearing.
 
-Logged from `next-commerce.cart.ts`. A free function, not a class with its own logger. `NextCommerce` builds one `Logger('NextCommerce')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.
+Logged from `next-commerce/next-commerce.cart.ts`. A free function, not a class with its own logger. `NextCommerce` builds one `Logger('NextCommerce')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.
 
 ### Debug
 
@@ -766,13 +766,13 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Cart swapped with {length} items` | `next-commerce.cart.ts › swapCart` | — |
+| `Cart swapped with {length} items` | `next-commerce/next-commerce.cart.ts › swapCart` | — |
 
 ## `[NextCommerce]`
 
 Part of the `window.next` API — the callbacks a page registers through `next.on…`, and the SDK calling them back.
 
-Logged from `next-commerce.events.ts`. A free function, not a class with its own logger. `NextCommerce` builds one `Logger('NextCommerce')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.
+Logged from `next-commerce/next-commerce.events.ts`. A free function, not a class with its own logger. `NextCommerce` builds one `Logger('NextCommerce')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.
 
 ### Error
 
@@ -780,7 +780,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Callback error for {type}:`
 
-`next-commerce.events.ts › triggerCallback` · extra context attached
+`next-commerce/next-commerce.events.ts › triggerCallback` · extra context attached
 
 **Meaning:** One of your own callbacks registered through `next.on…` threw. The SDK caught it and carried on with the other callbacks for that type.
 
@@ -790,7 +790,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 Part of the `window.next` API — exit-intent and FOMO popups a page turns on or off from JavaScript.
 
-Logged from `next-commerce.popups.ts`. A free function, not a class with its own logger. `NextCommerce` builds one `Logger('NextCommerce')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.
+Logged from `next-commerce/next-commerce.popups.ts`. A free function, not a class with its own logger. `NextCommerce` builds one `Logger('NextCommerce')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.
 
 ### Error
 
@@ -798,7 +798,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to setup exit intent:`
 
-`next-commerce.popups.ts › exitIntent` · extra context attached
+`next-commerce/next-commerce.popups.ts › exitIntent` · extra context attached
 
 **Meaning:** The exit-intent popup could not be configured, so it will never show. The error is also re-thrown, so your own `await next.exitIntent(...)` rejects.
 
@@ -806,7 +806,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to start FOMO popup:`
 
-`next-commerce.popups.ts › fomo` · extra context attached
+`next-commerce/next-commerce.popups.ts › fomo` · extra context attached
 
 **Meaning:** The FOMO popup did not start, so no social-proof messages appear. The error is re-thrown to your caller.
 
@@ -818,14 +818,14 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Exit intent configured with image:` | `next-commerce.popups.ts › exitIntent` | yes |
-| `FOMO popup started` | `next-commerce.popups.ts › fomo` | — |
+| `Exit intent configured with image:` | `next-commerce/next-commerce.popups.ts › exitIntent` | yes |
+| `FOMO popup started` | `next-commerce/next-commerce.popups.ts › fomo` | — |
 
 ## `[NextCommerce]`
 
 Part of the `window.next` API — post-purchase upsells accepted from JavaScript rather than from markup.
 
-Logged from `next-commerce.upsells.ts`. A free function, not a class with its own logger. `NextCommerce` builds one `Logger('NextCommerce')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.
+Logged from `next-commerce/next-commerce.upsells.ts`. A free function, not a class with its own logger. `NextCommerce` builds one `Logger('NextCommerce')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.
 
 ### Error
 
@@ -833,7 +833,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to add upsell(s) via SDK:`
 
-`next-commerce.upsells.ts › addUpsell` · extra context attached
+`next-commerce/next-commerce.upsells.ts › addUpsell` · extra context attached
 
 **Meaning:** A post-purchase upsell could not be added. The error is re-thrown, so the promise from `next.addUpsell()` rejects.
 
@@ -845,13 +845,13 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Adding upsell(s) via SDK:` | `next-commerce.upsells.ts › addUpsell` | yes |
+| `Adding upsell(s) via SDK:` | `next-commerce/next-commerce.upsells.ts › addUpsell` | yes |
 
 ## `[NextCommerce]`
 
 Part of the `window.next` API — the URL parameters a page reads or applies through the API.
 
-Logged from `next-commerce.url-params.ts`. A free function, not a class with its own logger. `NextCommerce` builds one `Logger('NextCommerce')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.
+Logged from `next-commerce/next-commerce.url-params.ts`. A free function, not a class with its own logger. `NextCommerce` builds one `Logger('NextCommerce')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.
 
 ### Debug
 
@@ -859,11 +859,11 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `URL parameter set: {key}={value}` | `next-commerce.url-params.ts › setParam` | — |
-| `URL parameters set:` | `next-commerce.url-params.ts › setParams` | yes |
-| `URL parameter cleared: {key}` | `next-commerce.url-params.ts › clearParam` | — |
-| `All URL parameters cleared` | `next-commerce.url-params.ts › clearAllParams` | — |
-| `URL parameters merged:` | `next-commerce.url-params.ts › mergeParams` | yes |
+| `URL parameter set: {key}={value}` | `next-commerce/next-commerce.url-params.ts › setParam` | — |
+| `URL parameters set:` | `next-commerce/next-commerce.url-params.ts › setParams` | yes |
+| `URL parameter cleared: {key}` | `next-commerce/next-commerce.url-params.ts › clearParam` | — |
+| `All URL parameters cleared` | `next-commerce/next-commerce.url-params.ts › clearAllParams` | — |
+| `URL parameters merged:` | `next-commerce/next-commerce.url-params.ts › mergeParams` | yes |
 
 ## `[ErrorHandler]`
 
@@ -1170,7 +1170,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 Validates and formats a postal code against a country’s rules, and holds the built-in per-country defaults used when the CDN has none for a country.
 
-Logged from `country-service.postal-code.ts`. A free function, not a class with its own logger. `CountryService` builds one `Logger('CountryService')` in `country-service.ts` and passes it in as a parameter, so every line here prints under `[CountryService]`.
+Logged from `country-service/country-service.postal-code.ts`. A free function, not a class with its own logger. `CountryService` builds one `Logger('CountryService')` in `country-service.ts` and passes it in as a parameter, so every line here prints under `[CountryService]`.
 
 ### Error
 
@@ -1178,7 +1178,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Invalid postal code regex:`
 
-`country-service.postal-code.ts › validatePostalCode` · extra context attached
+`country-service/country-service.postal-code.ts › validatePostalCode` · extra context attached
 
 **Meaning:** The postal-code pattern configured for a country is not a valid regular expression, so validation was skipped and any postal code is accepted. Orders can be placed with an address the carrier will reject.
 
@@ -1188,7 +1188,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 Filters the country and state lists to what the campaign actually ships to, and picks a fallback country when the visitor’s detected one is not on that list.
 
-Logged from `country-service.filtering.ts`. A free function, not a class with its own logger. `CountryService` builds one `Logger('CountryService')` in `country-service.ts` and passes it in through a `{ campaignShippingCountries, config, logger }` context, so every line here prints under `[CountryService]`.
+Logged from `country-service/country-service.filtering.ts`. A free function, not a class with its own logger. `CountryService` builds one `Logger('CountryService')` in `country-service.ts` and passes it in through a `{ campaignShippingCountries, config, logger }` context, so every line here prints under `[CountryService]`.
 
 ### Warn
 
@@ -1196,7 +1196,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `⚠️ Using deprecated showCountries config. Please use campaign API instead.`
 
-`country-service.filtering.ts › applyCountryFiltering`
+`country-service/country-service.filtering.ts › applyCountryFiltering`
 
 **Meaning:** The country list is being filtered by the `showCountries` setting in configuration. That setting is deprecated: the campaign’s `available_shipping_countries` is the intended source, and it is ignored while `showCountries` is set.
 
@@ -1204,7 +1204,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `⚠️ No countries available in filtered list. Using config defaultCountry: {defaultCountry}`
 
-`country-service.filtering.ts › applyCountryFiltering`
+`country-service/country-service.filtering.ts › applyCountryFiltering`
 
 **Meaning:** Filtering left no countries at all, so the configured default is used on its own. The visitor sees a country dropdown with one entry, whatever their real location.
 
@@ -1216,19 +1216,19 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 
 | Message | Source | Extra context |
 |---|---|---|
-| `✅ Filtering countries based on campaign API (available_shipping_countries):` | `country-service.filtering.ts › applyCountryFiltering` | yes |
-| `Using custom countries list from addressConfig.countries` | `country-service.filtering.ts › applyCountryFiltering` | — |
-| `Filtering countries based on addressConfig.showCountries (legacy):` | `country-service.filtering.ts › applyCountryFiltering` | yes |
-| `✅ Detected country ({detectedCountryCode}) not available for shipping. Using fallback: United States (US)` | `country-service.filtering.ts › applyCountryFiltering` | — |
-| `✅ Detected country ({detectedCountryCode}) not available and US not in list. Using first available country: {fallbackCountryCode}` | `country-service.filtering.ts › applyCountryFiltering` | — |
-| `Preserving detected currency: {currencyCode} from detected location: {detectedCountryCode}` | `country-service.filtering.ts › applyCountryFiltering` | — |
-| `✅ Using detected country: {detectedCountryCode} (available for shipping)` | `country-service.filtering.ts › applyCountryFiltering` | — |
+| `✅ Filtering countries based on campaign API (available_shipping_countries):` | `country-service/country-service.filtering.ts › applyCountryFiltering` | yes |
+| `Using custom countries list from addressConfig.countries` | `country-service/country-service.filtering.ts › applyCountryFiltering` | — |
+| `Filtering countries based on addressConfig.showCountries (legacy):` | `country-service/country-service.filtering.ts › applyCountryFiltering` | yes |
+| `✅ Detected country ({detectedCountryCode}) not available for shipping. Using fallback: United States (US)` | `country-service/country-service.filtering.ts › applyCountryFiltering` | — |
+| `✅ Detected country ({detectedCountryCode}) not available and US not in list. Using first available country: {fallbackCountryCode}` | `country-service/country-service.filtering.ts › applyCountryFiltering` | — |
+| `Preserving detected currency: {currencyCode} from detected location: {detectedCountryCode}` | `country-service/country-service.filtering.ts › applyCountryFiltering` | — |
+| `✅ Using detected country: {detectedCountryCode} (available for shipping)` | `country-service/country-service.filtering.ts › applyCountryFiltering` | — |
 
 ## `[CountryService]`
 
 Detects the visitor’s country, fetches and caches the country and state lists for the address form, and delegates postal-code rules and shipping-country filtering to its sibling modules.
 
-Logged from `country-service.ts`.
+Logged from `country-service/country-service.ts`.
 
 ### Error
 
@@ -1236,7 +1236,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to fetch location data:`
 
-`country-service.ts › CountryService.getLocationData` · extra context attached
+`country-service/country-service.ts › CountryService.getLocationData` · extra context attached
 
 **Meaning:** The location request failed and the built-in fallback is in use: the configured country list and the United States as the detected country. Prices and shipping options are for that fallback, not for the visitor.
 
@@ -1244,7 +1244,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to fetch states for {countryCode}:`
 
-`country-service.ts › CountryService.getCountryStates` · extra context attached
+`country-service/country-service.ts › CountryService.getCountryStates` · extra context attached
 
 **Meaning:** The state list for that country could not be loaded, so the state field renders with no options. In countries where a state is required, the visitor cannot complete the address.
 
@@ -1256,7 +1256,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Failed to clear cache:`
 
-`country-service.ts › CountryService.clearCache` · extra context attached
+`country-service/country-service.ts › CountryService.clearCache` · extra context attached
 
 **Meaning:** Clearing the cached country and state data failed, so stale lists may still be served this session.
 
@@ -1264,7 +1264,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Failed to clear cache for country {countryCode}:`
 
-`country-service.ts › CountryService.clearCountryCache` · extra context attached
+`country-service/country-service.ts › CountryService.clearCountryCache` · extra context attached
 
 **Meaning:** The cached states for one country could not be removed, so the old list may still be shown.
 
@@ -1272,7 +1272,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Failed to read from cache:`
 
-`country-service.ts › CountryService.getFromCache` · extra context attached
+`country-service/country-service.ts › CountryService.getFromCache` · extra context attached
 
 **Meaning:** A cached entry could not be read, so the data is fetched from the API instead. Correct behaviour, one request slower.
 
@@ -1280,7 +1280,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Failed to write to cache:`
 
-`country-service.ts › CountryService.setCache` · extra context attached
+`country-service/country-service.ts › CountryService.setCache` · extra context attached
 
 **Meaning:** A response could not be cached, so the next page will fetch it again. Nothing is wrong with the data.
 
@@ -1292,12 +1292,12 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Address configuration updated:` | `country-service.ts › CountryService.setConfig` | yes |
-| `Campaign shipping countries updated:` | `country-service.ts › CountryService.setCampaignShippingCountries` | yes |
-| `Location data fetched` | `country-service.ts › CountryService.getLocationData` | yes |
-| `States data fetched for {countryCode}` | `country-service.ts › CountryService.getCountryStates` | yes |
-| `Country service cache cleared ({length} session + {length} local entries)` | `country-service.ts › CountryService.clearCache` | — |
-| `Cache cleared for country: {countryCode}` | `country-service.ts › CountryService.clearCountryCache` | — |
+| `Address configuration updated:` | `country-service/country-service.ts › CountryService.setConfig` | yes |
+| `Campaign shipping countries updated:` | `country-service/country-service.ts › CountryService.setCampaignShippingCountries` | yes |
+| `Location data fetched` | `country-service/country-service.ts › CountryService.getLocationData` | yes |
+| `States data fetched for {countryCode}` | `country-service/country-service.ts › CountryService.getCountryStates` | yes |
+| `Country service cache cleared ({length} session + {length} local entries)` | `country-service/country-service.ts › CountryService.clearCache` | — |
+| `Cache cleared for country: {countryCode}` | `country-service/country-service.ts › CountryService.clearCountryCache` | — |
 
 ## `[AttributionCollector]`
 
@@ -2802,7 +2802,7 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 - **Not gated by debug mode or the log level.** On the module bundle they print for every visitor. On the UMD bundle they are stripped like everything else.
 - **`Logger.setLogLevel()` cannot silence them.**
 
-They come from `attribution/attribution-collector.ts`, `events.ts`, `storage.ts`, `sdk-initializer.debug-utils.ts`, `url-utils.ts`. The debug tooling under `core/debug/` also writes to the console directly; that output is the tool talking to whoever opened it, so it is not listed here.
+They come from `attribution/attribution-collector.ts`, `events.ts`, `storage.ts`, `sdk-initializer/sdk-initializer.debug-utils.ts`, `url-utils.ts`. The debug tooling under `core/debug/` also writes to the console directly; that output is the tool talking to whoever opened it, so it is not listed here.
 
 ### `[AttributionCollector] Error storing {key} in sessionStorage:`
 
@@ -2894,7 +2894,7 @@ They come from `attribution/attribution-collector.ts`, `events.ts`, `storage.ts`
 
 ### `❌ Failed to set shipping method {methodId}:`
 
-`sdk-initializer.debug-utils.ts › testShippingMethod` · `console.error` · extra context attached
+`sdk-initializer/sdk-initializer.debug-utils.ts › testShippingMethod` · `console.error` · extra context attached
 
 **Meaning:** The `testShippingMethod()` debug helper could not apply a shipping method. It only appears when someone calls that helper from the console, never on its own.
 

@@ -622,7 +622,7 @@ describe('core logs and errors reference', () => {
       'Logger now reads something other than the URL and window.nextConfig — the debug-mode table needs a new row'
     ).not.toMatch(/useConfigStore|querySelector/);
 
-    const boot = readFileSync(join(CORE, 'sdk-initializer.ts'), 'utf8');
+    const boot = readFileSync(join(CORE, 'sdk-initializer/sdk-initializer.ts'), 'utf8');
     const raise = boot.indexOf('Logger.setLogLevel(LogLevel.DEBUG)');
     expect(raise, 'nothing raises the level to DEBUG any more').toBeGreaterThan(
       -1

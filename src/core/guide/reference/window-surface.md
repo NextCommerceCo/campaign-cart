@@ -23,8 +23,8 @@ Every entry below is read out of the source, so the list cannot fall behind the 
 
 | Global | Direction | In the code |
 |---|---|---|
-| [`window.next`](#windownext) | install | `core/sdk-initializer.ts › SDKInitializer.setupReadyCallbacks` |
-| [`window.nextReady`](#windownextready) | install | `core/sdk-initializer.ts › SDKInitializer.setupReadyCallbacks` |
+| [`window.next`](#windownext) | install | `core/sdk-initializer/sdk-initializer.ts › SDKInitializer.setupReadyCallbacks` |
+| [`window.nextReady`](#windownextready) | install | `core/sdk-initializer/sdk-initializer.ts › SDKInitializer.setupReadyCallbacks` |
 | [`window.nextConfig`](#windownextconfig) | read | `core/debug/debug-module.ts › DebugModule.initializeIfEnabled` and 10 more |
 | [`window.__NEXT_SDK_VERSION__`](#window__next_sdk_version__) | read | `core/debug/panels/config-panel.ts › ConfigPanel.getOverviewContent` and 3 more |
 | [`window.NextDataLayer`](#windownextdatalayer) | install | `core/analytics/data-layer-manager.ts › DataLayerManager.initializeDataLayer`, `core/analytics/data-layer-manager.ts › DataLayerManager.clear` |
@@ -37,10 +37,10 @@ Every entry below is read out of the source, so the list cannot fall behind the 
 | [`window.nextCampaign`](#windownextcampaign) | read | `core/analytics/providers/next-campaign-adapter.ts › NextCampaignAdapter.sendEvent` and 3 more |
 | [`window.dataLayer`](#windowdatalayer) | install | `core/analytics/providers/gtm-adapter.ts › GTMAdapter.sendEvent`, `core/debug/panels/event-timeline/event-timeline-panel.capture.ts › watchDataLayer` |
 | [`window.ElevarDataLayer`](#windowelevardatalayer) | install | `core/analytics/providers/gtm-adapter.ts › GTMAdapter.sendEvent` |
-| [`window._nextForcePackageId`](#window_nextforcepackageid) | install | `core/sdk-initializer.ts › SDKInitializer.loadConfiguration` |
-| [`window._nextForceShippingId`](#window_nextforceshippingid) | install | `core/sdk-initializer.ts › SDKInitializer.loadConfiguration` |
-| [`window._nextForceBundleId`](#window_nextforcebundleid) | install | `core/sdk-initializer.ts › SDKInitializer.loadConfiguration` |
-| [`window.nextDebug`](#windownextdebug) | install | `core/debug/debug-module.ts › DebugModule.setupGlobalDebugAccess`, `core/sdk-initializer.debug-utils.ts › setupGlobalDebugUtils` |
+| [`window._nextForcePackageId`](#window_nextforcepackageid) | install | `core/sdk-initializer/sdk-initializer.ts › SDKInitializer.loadConfiguration` |
+| [`window._nextForceShippingId`](#window_nextforceshippingid) | install | `core/sdk-initializer/sdk-initializer.ts › SDKInitializer.loadConfiguration` |
+| [`window._nextForceBundleId`](#window_nextforcebundleid) | install | `core/sdk-initializer/sdk-initializer.ts › SDKInitializer.loadConfiguration` |
+| [`window.nextDebug`](#windownextdebug) | install | `core/debug/debug-module.ts › DebugModule.setupGlobalDebugAccess`, `core/sdk-initializer/sdk-initializer.debug-utils.ts › setupGlobalDebugUtils` |
 | [`window.validateFormats`](#windowvalidateformats) | install | `features/display/display-core/format-validator.ts` |
 | [`window.eventTimelinePanel_*`](#windoweventtimelinepanel_) | install | 11 names, see below |
 | [`window.fetch`](#windowfetch) | install | `core/debug/debug-event-manager.ts › DebugEventManager.interceptFetch` |
@@ -59,7 +59,7 @@ await window.next.addItem({ packageId: 2 });
 
 > ⚠️ Assigned late in boot, so it is `undefined` for any script that runs before the SDK is ready. Reading `next.getCartCount()` at the top of a page script throws — use `nextReady.push()`.
 
-<sub>Assigned in `core/sdk-initializer.ts › SDKInitializer.setupReadyCallbacks`</sub>
+<sub>Assigned in `core/sdk-initializer/sdk-initializer.ts › SDKInitializer.setupReadyCallbacks`</sub>
 
 ### `window.nextReady`
 
@@ -79,7 +79,7 @@ window.nextReady.push(sdk => {
 
 > ⚠️ It changes shape during boot: an array you create, replaced by an object with a `push` method that runs callbacks immediately. Only ever call `push` on it — treating it as an array afterwards (`nextReady.length`, `nextReady.map`) fails.
 
-<sub>Assigned in `core/sdk-initializer.ts › SDKInitializer.setupReadyCallbacks`</sub>
+<sub>Assigned in `core/sdk-initializer/sdk-initializer.ts › SDKInitializer.setupReadyCallbacks`</sub>
 
 ### `window.nextConfig`
 
@@ -98,7 +98,7 @@ The configuration object your page sets before the SDK loads — API key, debug 
 
 > ⚠️ Read during boot, so it has to be set before the SDK script runs; assigning it afterwards changes nothing. Meta tags override it where both are present.
 
-<sub>Read in `core/debug/debug-module.ts › DebugModule.initializeIfEnabled`, `core/debug/debug-module.ts › DebugModule.isDebugMode`, `core/debug/debug-overlay/debug-overlay.ts › DebugOverlay.constructor`, `core/debug/debug-overlay/debug-overlay.ts › DebugOverlay.initialize`, `core/debug/panels/event-timeline/event-timeline-panel.ts › EventTimelinePanel.constructor`, `core/logger.ts › isDebugModeEnabled`, `core/sdk-initializer.ts › SDKInitializer.loadConfiguration`, `core/test-mode.ts › TestModeManager.checkUrlTestMode`, `core/url-utils.ts › isDebugMode`, `core/url-utils.ts › isDebuggerMode`, `features/cart/cart-item-list/cart-item-list.renderer.ts › prepareCartItemData`</sub>
+<sub>Read in `core/debug/debug-module.ts › DebugModule.initializeIfEnabled`, `core/debug/debug-module.ts › DebugModule.isDebugMode`, `core/debug/debug-overlay/debug-overlay.ts › DebugOverlay.constructor`, `core/debug/debug-overlay/debug-overlay.ts › DebugOverlay.initialize`, `core/debug/panels/event-timeline/event-timeline-panel.ts › EventTimelinePanel.constructor`, `core/logger.ts › isDebugModeEnabled`, `core/sdk-initializer/sdk-initializer.ts › SDKInitializer.loadConfiguration`, `core/test-mode.ts › TestModeManager.checkUrlTestMode`, `core/url-utils.ts › isDebugMode`, `core/url-utils.ts › isDebuggerMode`, `features/cart/cart-item-list/cart-item-list.renderer.ts › prepareCartItemData`</sub>
 
 ### `window.__NEXT_SDK_VERSION__`
 
@@ -110,7 +110,7 @@ console.log(window.__NEXT_SDK_VERSION__ ?? 'set by the loader only');
 
 > ⚠️ Only the loader sets it. On a page that imports the bundle directly it is `undefined`, and `next.getVersion()` falls back to the build-time version — which is the accurate one in that case.
 
-<sub>Read in `core/debug/panels/config-panel.ts › ConfigPanel.getOverviewContent`, `core/debug/panels/config-panel.ts › ConfigPanel.getSettingsContent`, `core/next-commerce.utility.ts › getVersion`, `core/sdk-initializer.attribution.ts › initializeAttribution`</sub>
+<sub>Read in `core/debug/panels/config-panel.ts › ConfigPanel.getOverviewContent`, `core/debug/panels/config-panel.ts › ConfigPanel.getSettingsContent`, `core/next-commerce/next-commerce.utility.ts › getVersion`, `core/sdk-initializer/sdk-initializer.attribution.ts › initializeAttribution`</sub>
 
 ## Analytics and tag-manager hooks
 
@@ -256,7 +256,7 @@ Pre-loads the cart with a package for preview, taken from the `?forcePackageId=`
 
 > ⚠️ Consumed and deleted once the campaign has loaded, so reading it later gives `undefined` even though it worked. Drive it from the URL, not from script.
 
-<sub>Assigned in `core/sdk-initializer.ts › SDKInitializer.loadConfiguration`</sub>
+<sub>Assigned in `core/sdk-initializer/sdk-initializer.ts › SDKInitializer.loadConfiguration`</sub>
 
 ### `window._nextForceShippingId`
 
@@ -268,7 +268,7 @@ Pre-selects a shipping method for preview, from the `?forceShippingId=` URL para
 
 > ⚠️ Consumed and deleted after the campaign loads, same as `_nextForcePackageId`.
 
-<sub>Assigned in `core/sdk-initializer.ts › SDKInitializer.loadConfiguration`</sub>
+<sub>Assigned in `core/sdk-initializer/sdk-initializer.ts › SDKInitializer.loadConfiguration`</sub>
 
 ### `window._nextForceBundleId`
 
@@ -283,7 +283,7 @@ Forces which bundle card starts selected, from the `?forceBundleId=` URL paramet
 
 > ⚠️ Unlike the other two this one is not deleted after use, because the bundle selector reads it when it initialises, which can be after the campaign has loaded.
 
-<sub>Assigned in `core/sdk-initializer.ts › SDKInitializer.loadConfiguration`</sub>
+<sub>Assigned in `core/sdk-initializer/sdk-initializer.ts › SDKInitializer.loadConfiguration`</sub>
 
 ## Debug-only globals
 
@@ -331,7 +331,7 @@ nextDebug.attribution.debug();
 
 > ⚠️ It hands out the six Zustand stores directly, and a `setState` on one of those skips every operation that carries the pricing and event logic — the cart will disagree with its totals and with analytics. Read through it; write through `next.*`. Absent entirely when debug mode is off, and assembled in two passes (boot, then the debug overlay), so a key can appear a moment after the object does.
 
-<sub>Assigned in `core/debug/debug-module.ts › DebugModule.setupGlobalDebugAccess`, `core/sdk-initializer.debug-utils.ts › setupGlobalDebugUtils`</sub>
+<sub>Assigned in `core/debug/debug-module.ts › DebugModule.setupGlobalDebugAccess`, `core/sdk-initializer/sdk-initializer.debug-utils.ts › setupGlobalDebugUtils`</sub>
 
 ### `window.validateFormats`
 

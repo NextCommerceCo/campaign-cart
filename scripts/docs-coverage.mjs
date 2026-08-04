@@ -203,7 +203,7 @@ function enhancerClassesIn(file) {
  * subclass nobody registers is a helper, a subclass named here is a feature.
  */
 function registeredEnhancers() {
-  const file = join(SRC, 'core/attribute-scanner.ts');
+  const file = join(SRC, 'core/attribute-scanner/attribute-scanner.ts');
   const names = new Set(
     [...readFileSync(file, 'utf8').matchAll(/new\s+(\w+Enhancer)\s*\(/g)].map(m => m[1])
   );
@@ -344,7 +344,7 @@ function scanFeatures() {
  * a page quietly reverting to prose or being credited to the wrong namespace.
  */
 function scanDisplayNamespaces() {
-  const file = join(SRC, 'core/attribute-scanner.ts');
+  const file = join(SRC, 'core/attribute-scanner/attribute-scanner.ts');
   const src = readFileSync(file, 'utf8');
 
   const owner = new Map();
@@ -586,7 +586,7 @@ function scanAnalyticsEvents() {
  * documented and nothing reported a gap.
  */
 function scanNextMethods() {
-  const file = join(CORE, 'next-commerce.ts');
+  const file = join(CORE, 'next-commerce/next-commerce.ts');
   if (!existsSync(file)) return [];
   const source = ts.createSourceFile(
     file,

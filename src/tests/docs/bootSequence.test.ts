@@ -12,7 +12,7 @@ import { extractBootSequence } from '@/docs/extract/extract-boot-sequence';
 import { fileOf } from '@/docs/extract/source-anchor';
 
 /**
- * Generates `src/core/guide/reference/boot-sequence.md` from `core/sdk-initializer.ts`,
+ * Generates `src/core/guide/reference/boot-sequence.md` from `core/sdk-initializer/sdk-initializer.ts`,
  * and fails when the committed markdown drifts.
  *
  * Regenerate:
@@ -31,13 +31,13 @@ const ROOT = join(SRC, '..');
 
 const sequence = extractBootSequence(
   {
-    path: join(SRC, 'core/sdk-initializer.ts'),
-    name: 'core/sdk-initializer.ts',
+    path: join(SRC, 'core/sdk-initializer/sdk-initializer.ts'),
+    name: 'core/sdk-initializer/sdk-initializer.ts',
   },
   [
     {
-      path: join(SRC, 'core/attribute-scanner.ts'),
-      name: 'core/attribute-scanner.ts',
+      path: join(SRC, 'core/attribute-scanner/attribute-scanner.ts'),
+      name: 'core/attribute-scanner/attribute-scanner.ts',
     },
     { path: join(ROOT, 'public/loader.js'), name: 'public/loader.js' },
   ]
@@ -142,7 +142,7 @@ describe('boot sequence docs', () => {
     expect(
       initialized && fileOf(initialized.where),
       'next:initialized is no longer dispatched from the initializer'
-    ).toBe('core/sdk-initializer.ts');
+    ).toBe('core/sdk-initializer/sdk-initializer.ts');
     expect(
       stepNames.at(-1),
       'boot no longer ends by emitting next:initialized'

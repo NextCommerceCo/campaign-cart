@@ -12,27 +12,27 @@ import type {
 import { cartOperations } from '@/state/cart';
 import { EventBus } from '@/core/events';
 import { Logger } from '@/core/logger';
-import * as cartMethods from '@/core/next-commerce.cart';
-import * as campaignMethods from '@/core/next-commerce.campaign';
-import * as eventMethods from '@/core/next-commerce.events';
-import * as analyticsMethods from '@/core/next-commerce.analytics';
-import * as attributionMethods from '@/core/next-commerce.attribution';
-import * as shippingMethods from '@/core/next-commerce.shipping';
+import * as cartMethods from '@/core/next-commerce/next-commerce.cart';
+import * as campaignMethods from '@/core/next-commerce/next-commerce.campaign';
+import * as eventMethods from '@/core/next-commerce/next-commerce.events';
+import * as analyticsMethods from '@/core/next-commerce/next-commerce.analytics';
+import * as attributionMethods from '@/core/next-commerce/next-commerce.attribution';
+import * as shippingMethods from '@/core/next-commerce/next-commerce.shipping';
 import type {
   ShippingMethodInfo,
   SelectedShippingMethod,
-} from '@/core/next-commerce.shipping';
-import * as utilityMethods from '@/core/next-commerce.utility';
-import * as couponMethods from '@/core/next-commerce.coupons';
-import * as popupMethods from '@/core/next-commerce.popups';
+} from '@/core/next-commerce/next-commerce.shipping';
+import * as utilityMethods from '@/core/next-commerce/next-commerce.utility';
+import * as couponMethods from '@/core/next-commerce/next-commerce.coupons';
+import * as popupMethods from '@/core/next-commerce/next-commerce.popups';
 import type {
   PopupsState,
   ExitIntentOptions,
   FomoConfig,
-} from '@/core/next-commerce.popups';
-import * as upsellMethods from '@/core/next-commerce.upsells';
-import type { AddUpsellOptions } from '@/core/next-commerce.upsells';
-import * as urlParamMethods from '@/core/next-commerce.url-params';
+} from '@/core/next-commerce/next-commerce.popups';
+import * as upsellMethods from '@/core/next-commerce/next-commerce.upsells';
+import type { AddUpsellOptions } from '@/core/next-commerce/next-commerce.upsells';
+import * as urlParamMethods from '@/core/next-commerce/next-commerce.url-params';
 
 /**
  * The programmatic SDK facade — the scriptable counterpart to the `data-next-*`
@@ -112,7 +112,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.cart!hasItemInCart}
+   * {@inheritDoc core/next-commerce/next-commerce.cart!hasItemInCart}
    * @category Cart
    */
   public hasItemInCart(options: { packageId?: number }): boolean {
@@ -120,7 +120,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.cart!addItem}
+   * {@inheritDoc core/next-commerce/next-commerce.cart!addItem}
    * @category Cart
    */
   public async addItem(options: {
@@ -131,7 +131,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.cart!removeItem}
+   * {@inheritDoc core/next-commerce/next-commerce.cart!removeItem}
    * @category Cart
    */
   public async removeItem(options: { packageId?: number }): Promise<void> {
@@ -139,7 +139,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.cart!updateQuantity}
+   * {@inheritDoc core/next-commerce/next-commerce.cart!updateQuantity}
    * @category Cart
    */
   public async updateQuantity(options: {
@@ -150,7 +150,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.cart!clearCart}
+   * {@inheritDoc core/next-commerce/next-commerce.cart!clearCart}
    * @category Cart
    */
   public async clearCart(): Promise<void> {
@@ -158,7 +158,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.cart!swapCart}
+   * {@inheritDoc core/next-commerce/next-commerce.cart!swapCart}
    * @category Cart
    */
   public async swapCart(
@@ -168,7 +168,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.cart!getCartData}
+   * {@inheritDoc core/next-commerce/next-commerce.cart!getCartData}
    * @category Cart
    */
   public getCartData(): CallbackData {
@@ -176,7 +176,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.cart!getCartTotals}
+   * {@inheritDoc core/next-commerce/next-commerce.cart!getCartTotals}
    * @category Cart
    */
   public getCartTotals() {
@@ -184,7 +184,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.cart!getCartCount}
+   * {@inheritDoc core/next-commerce/next-commerce.cart!getCartCount}
    * @category Cart
    */
   public getCartCount(): number {
@@ -192,7 +192,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.campaign!getCampaignData}
+   * {@inheritDoc core/next-commerce/next-commerce.campaign!getCampaignData}
    * @category Campaign
    */
   public getCampaignData(): Campaign | null {
@@ -200,7 +200,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.campaign!getPackage}
+   * {@inheritDoc core/next-commerce/next-commerce.campaign!getPackage}
    * @category Campaign
    */
   public getPackage(id: number): any | null {
@@ -208,7 +208,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.campaign!getVariantsByProductId}
+   * {@inheritDoc core/next-commerce/next-commerce.campaign!getVariantsByProductId}
    * @category Campaign
    */
   public getVariantsByProductId(productId: number): any | null {
@@ -216,7 +216,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.campaign!getAvailableVariantAttributes}
+   * {@inheritDoc core/next-commerce/next-commerce.campaign!getAvailableVariantAttributes}
    * @category Campaign
    */
   public getAvailableVariantAttributes(
@@ -230,7 +230,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.campaign!getPackageByVariantSelection}
+   * {@inheritDoc core/next-commerce/next-commerce.campaign!getPackageByVariantSelection}
    * @category Campaign
    */
   public getPackageByVariantSelection(
@@ -244,7 +244,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.campaign!createVariantKey}
+   * {@inheritDoc core/next-commerce/next-commerce.campaign!createVariantKey}
    * @category Campaign
    */
   public createVariantKey(attributes: Record<string, string>): string {
@@ -252,7 +252,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.events!on}
+   * {@inheritDoc core/next-commerce/next-commerce.events!on}
    * @category Events
    */
   public on<K extends keyof EventMap>(
@@ -263,7 +263,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.events!off}
+   * {@inheritDoc core/next-commerce/next-commerce.events!off}
    * @category Events
    */
   public off<K extends keyof EventMap>(event: K, handler: Function): void {
@@ -271,7 +271,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.events!registerCallback}
+   * {@inheritDoc core/next-commerce/next-commerce.events!registerCallback}
    * @category Events
    */
   public registerCallback(
@@ -282,7 +282,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.events!unregisterCallback}
+   * {@inheritDoc core/next-commerce/next-commerce.events!unregisterCallback}
    * @category Events
    */
   public unregisterCallback(type: CallbackType, callback: Function): void {
@@ -290,7 +290,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.events!triggerCallback}
+   * {@inheritDoc core/next-commerce/next-commerce.events!triggerCallback}
    * @category Events
    */
   public triggerCallback(type: CallbackType, data: CallbackData): void {
@@ -307,7 +307,7 @@ export class NextCommerce {
 
   // Analytics methods (v2 system)
   /**
-   * {@inheritDoc core/next-commerce.analytics!trackViewItemList}
+   * {@inheritDoc core/next-commerce/next-commerce.analytics!trackViewItemList}
    * @category Analytics
    */
   public async trackViewItemList(
@@ -324,7 +324,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.analytics!trackViewItem}
+   * {@inheritDoc core/next-commerce/next-commerce.analytics!trackViewItem}
    * @category Analytics
    */
   public async trackViewItem(packageId: string | number): Promise<void> {
@@ -332,7 +332,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.analytics!trackAddToCart}
+   * {@inheritDoc core/next-commerce/next-commerce.analytics!trackAddToCart}
    * @category Analytics
    */
   public async trackAddToCart(
@@ -343,7 +343,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.analytics!trackRemoveFromCart}
+   * {@inheritDoc core/next-commerce/next-commerce.analytics!trackRemoveFromCart}
    * @category Analytics
    */
   public async trackRemoveFromCart(
@@ -358,7 +358,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.analytics!trackBeginCheckout}
+   * {@inheritDoc core/next-commerce/next-commerce.analytics!trackBeginCheckout}
    * @category Analytics
    */
   public async trackBeginCheckout(): Promise<void> {
@@ -366,7 +366,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.analytics!trackPurchase}
+   * {@inheritDoc core/next-commerce/next-commerce.analytics!trackPurchase}
    * @category Analytics
    */
   public async trackPurchase(orderData: any): Promise<void> {
@@ -374,7 +374,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.analytics!trackCustomEvent}
+   * {@inheritDoc core/next-commerce/next-commerce.analytics!trackCustomEvent}
    * @category Analytics
    */
   public async trackCustomEvent(
@@ -386,7 +386,7 @@ export class NextCommerce {
 
   // User tracking methods
   /**
-   * {@inheritDoc core/next-commerce.analytics!trackSignUp}
+   * {@inheritDoc core/next-commerce/next-commerce.analytics!trackSignUp}
    * @category Analytics
    */
   public async trackSignUp(email: string): Promise<void> {
@@ -394,7 +394,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.analytics!trackLogin}
+   * {@inheritDoc core/next-commerce/next-commerce.analytics!trackLogin}
    * @category Analytics
    */
   public async trackLogin(email: string): Promise<void> {
@@ -403,7 +403,7 @@ export class NextCommerce {
 
   // Advanced analytics methods
   /**
-   * {@inheritDoc core/next-commerce.analytics!setDebugMode}
+   * {@inheritDoc core/next-commerce/next-commerce.analytics!setDebugMode}
    * @category Analytics
    */
   public async setDebugMode(enabled: boolean): Promise<void> {
@@ -411,7 +411,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.analytics!invalidateAnalyticsContext}
+   * {@inheritDoc core/next-commerce/next-commerce.analytics!invalidateAnalyticsContext}
    * @category Analytics
    */
   public async invalidateAnalyticsContext(): Promise<void> {
@@ -420,7 +420,7 @@ export class NextCommerce {
 
   // Attribution metadata methods
   /**
-   * {@inheritDoc core/next-commerce.attribution!addMetadata}
+   * {@inheritDoc core/next-commerce/next-commerce.attribution!addMetadata}
    * @category Metadata
    */
   public addMetadata(key: string, value: any): void {
@@ -428,7 +428,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.attribution!setMetadata}
+   * {@inheritDoc core/next-commerce/next-commerce.attribution!setMetadata}
    * @category Metadata
    */
   public setMetadata(metadata: Record<string, any>): void {
@@ -436,7 +436,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.attribution!clearMetadata}
+   * {@inheritDoc core/next-commerce/next-commerce.attribution!clearMetadata}
    * @category Metadata
    */
   public clearMetadata(): void {
@@ -444,7 +444,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.attribution!getMetadata}
+   * {@inheritDoc core/next-commerce/next-commerce.attribution!getMetadata}
    * @category Metadata
    */
   public getMetadata(): Record<string, any> | undefined {
@@ -452,7 +452,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.attribution!setAttribution}
+   * {@inheritDoc core/next-commerce/next-commerce.attribution!setAttribution}
    * @category Attribution
    */
   public setAttribution(attribution: Record<string, any>): void {
@@ -460,7 +460,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.attribution!getAttribution}
+   * {@inheritDoc core/next-commerce/next-commerce.attribution!getAttribution}
    * @category Attribution
    */
   public getAttribution(): Record<string, any> | undefined {
@@ -468,7 +468,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.attribution!debugAttribution}
+   * {@inheritDoc core/next-commerce/next-commerce.attribution!debugAttribution}
    * @category Attribution
    */
   public debugAttribution(): void {
@@ -476,7 +476,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.shipping!getShippingMethods}
+   * {@inheritDoc core/next-commerce/next-commerce.shipping!getShippingMethods}
    * @category Shipping
    */
   public getShippingMethods(): ShippingMethodInfo[] {
@@ -484,7 +484,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.shipping!getSelectedShippingMethod}
+   * {@inheritDoc core/next-commerce/next-commerce.shipping!getSelectedShippingMethod}
    * @category Shipping
    */
   public getSelectedShippingMethod(): SelectedShippingMethod | null {
@@ -492,7 +492,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.shipping!setShippingMethod}
+   * {@inheritDoc core/next-commerce/next-commerce.shipping!setShippingMethod}
    * @category Shipping
    */
   public async setShippingMethod(methodId: number): Promise<void> {
@@ -500,7 +500,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.utility!getVersion}
+   * {@inheritDoc core/next-commerce/next-commerce.utility!getVersion}
    * @category Utility
    */
   public getVersion(): string {
@@ -508,7 +508,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.utility!formatPrice}
+   * {@inheritDoc core/next-commerce/next-commerce.utility!formatPrice}
    * @category Utility
    */
   public formatPrice(amount: number, currency?: string): string {
@@ -516,7 +516,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.utility!validateCheckout}
+   * {@inheritDoc core/next-commerce/next-commerce.utility!validateCheckout}
    * @category Utility
    */
   public validateCheckout(): { valid: boolean; errors: string[] } {
@@ -524,7 +524,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.coupons!applyCoupon}
+   * {@inheritDoc core/next-commerce/next-commerce.coupons!applyCoupon}
    * @category Coupons
    */
   public async applyCoupon(
@@ -534,7 +534,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.coupons!removeCoupon}
+   * {@inheritDoc core/next-commerce/next-commerce.coupons!removeCoupon}
    * @category Coupons
    */
   public removeCoupon(code: string): void {
@@ -542,7 +542,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.coupons!getCoupons}
+   * {@inheritDoc core/next-commerce/next-commerce.coupons!getCoupons}
    * @category Coupons
    */
   public getCoupons(): string[] {
@@ -551,7 +551,7 @@ export class NextCommerce {
 
   // Exit Intent - Simple approach
   /**
-   * {@inheritDoc core/next-commerce.popups!exitIntent}
+   * {@inheritDoc core/next-commerce/next-commerce.popups!exitIntent}
    * @category Popups
    */
   public async exitIntent(options: ExitIntentOptions): Promise<void> {
@@ -562,7 +562,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.popups!disableExitIntent}
+   * {@inheritDoc core/next-commerce/next-commerce.popups!disableExitIntent}
    * @category Popups
    */
   public disableExitIntent(): void {
@@ -571,7 +571,7 @@ export class NextCommerce {
 
   // FOMO Popup - Simple social proof
   /**
-   * {@inheritDoc core/next-commerce.popups!fomo}
+   * {@inheritDoc core/next-commerce/next-commerce.popups!fomo}
    * @category Popups
    */
   public async fomo(config?: FomoConfig): Promise<void> {
@@ -582,7 +582,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.popups!stopFomo}
+   * {@inheritDoc core/next-commerce/next-commerce.popups!stopFomo}
    * @category Popups
    */
   public stopFomo(): void {
@@ -591,7 +591,7 @@ export class NextCommerce {
 
   // Upsell methods
   /**
-   * {@inheritDoc core/next-commerce.upsells!addUpsell}
+   * {@inheritDoc core/next-commerce/next-commerce.upsells!addUpsell}
    * @category Upsells
    */
   public async addUpsell(options: AddUpsellOptions): Promise<any> {
@@ -602,7 +602,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.upsells!canAddUpsells}
+   * {@inheritDoc core/next-commerce/next-commerce.upsells!canAddUpsells}
    * @category Upsells
    */
   public canAddUpsells(): boolean {
@@ -610,7 +610,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.upsells!getCompletedUpsells}
+   * {@inheritDoc core/next-commerce/next-commerce.upsells!getCompletedUpsells}
    * @category Upsells
    */
   public getCompletedUpsells(): string[] {
@@ -618,7 +618,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.upsells!isUpsellAlreadyAdded}
+   * {@inheritDoc core/next-commerce/next-commerce.upsells!isUpsellAlreadyAdded}
    * @category Upsells
    */
   public isUpsellAlreadyAdded(packageId: number): boolean {
@@ -627,7 +627,7 @@ export class NextCommerce {
 
   // URL Parameter Methods
   /**
-   * {@inheritDoc core/next-commerce.url-params!setParam}
+   * {@inheritDoc core/next-commerce/next-commerce.url-params!setParam}
    * @category URL Parameters
    */
   public setParam(key: string, value: string): void {
@@ -635,7 +635,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.url-params!setParams}
+   * {@inheritDoc core/next-commerce/next-commerce.url-params!setParams}
    * @category URL Parameters
    */
   public setParams(params: Record<string, string>): void {
@@ -643,7 +643,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.url-params!getParam}
+   * {@inheritDoc core/next-commerce/next-commerce.url-params!getParam}
    * @category URL Parameters
    */
   public getParam(key: string): string | null {
@@ -651,7 +651,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.url-params!getAllParams}
+   * {@inheritDoc core/next-commerce/next-commerce.url-params!getAllParams}
    * @category URL Parameters
    */
   public getAllParams(): Record<string, string> {
@@ -659,7 +659,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.url-params!hasParam}
+   * {@inheritDoc core/next-commerce/next-commerce.url-params!hasParam}
    * @category URL Parameters
    */
   public hasParam(key: string): boolean {
@@ -667,7 +667,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.url-params!clearParam}
+   * {@inheritDoc core/next-commerce/next-commerce.url-params!clearParam}
    * @category URL Parameters
    */
   public clearParam(key: string): void {
@@ -675,7 +675,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.url-params!clearAllParams}
+   * {@inheritDoc core/next-commerce/next-commerce.url-params!clearAllParams}
    * @category URL Parameters
    */
   public clearAllParams(): void {
@@ -683,7 +683,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce.url-params!mergeParams}
+   * {@inheritDoc core/next-commerce/next-commerce.url-params!mergeParams}
    * @category URL Parameters
    */
   public mergeParams(params: Record<string, string>): void {

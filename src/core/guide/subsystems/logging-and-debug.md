@@ -38,7 +38,7 @@ reach the console:
    the SDK writes, with no reload.
 2. **The level ladder.** A global level, `INFO` by default (`core/logger.ts › Logger`), then
    drops anything below it. Only one thing in the SDK ever raises it to `DEBUG`
-   (`core/sdk-initializer.ts › SDKInitializer.initializeDebugMode`), and it does so from the
+   (`core/sdk-initializer/sdk-initializer.ts › SDKInitializer.initializeDebugMode`), and it does so from the
    config store — which is why `?debug=true` produces `info` and `warn` lines but no `debug`
    lines at all.
 
@@ -76,7 +76,7 @@ Read the surprises in that table rather than the pattern:
 - **The `next-debug` meta tag prints nothing in a built bundle.** It sets
   `config.debug` (`state/config/config.state.ts › loadFromMeta`), which raises the level
   and installs `window.nextDebug`
-  (`core/sdk-initializer.ts › SDKInitializer.initializeDebugMode`) — but `Logger` does not
+  (`core/sdk-initializer/sdk-initializer.ts › SDKInitializer.initializeDebugMode`) — but `Logger` does not
   read the config store or the document, only the URL and `window.nextConfig`
   (`core/logger.ts › isDebugModeEnabled`), so the production gate still discards every
   line the raised level was meant to reveal. **Symptom:** the tag is in the page,
@@ -163,10 +163,10 @@ listing is in [storage keys](../reference/storage-keys.md).
   arrives as an `error:occurred` event. That is [error capture](./error-handling.md)'s
   behaviour, not the logger's.
 - **The overlay is *evaluated* on demand, but its chunk is downloaded either way.** The
-  import is dynamic (`core/sdk-initializer.ts › SDKInitializer.initializeDebugMode`), so no
+  import is dynamic (`core/sdk-initializer/sdk-initializer.ts › SDKInitializer.initializeDebugMode`), so no
   overlay code runs and no panel is built without debug mode. The bytes still arrive: the
   `debug` chunk (`vite.config.ts › manualChunks`) also holds shared runtime modules —
-  `core/currency-formatter.ts` and `core/country-service.ts` among them — so other chunks
+  `core/currency-formatter.ts` and `core/country-service/country-service.ts` among them — so other chunks
   import it *statically*, and it is reachable from `/index.js` without any dynamic import.
   A shopper on the module bundle fetches it: 281 kB, 56 kB gzipped.
   **Trap:** reading "dynamic import" as "not shipped" when budgeting a page's weight.
@@ -199,7 +199,7 @@ listing is in [storage keys](../reference/storage-keys.md).
   before using either on a live campaign.
 - **`window.nextDebug` is installed whenever `config.debug` is true**, with the stores, the
   cart helpers, the analytics status, the attribution dump, and the campaign cache tools
-  (`core/sdk-initializer.ts › SDKInitializer.setupGlobalDebugUtils`). Its full surface is in
+  (`core/sdk-initializer/sdk-initializer.ts › SDKInitializer.setupGlobalDebugUtils`). Its full surface is in
   [window surface](../reference/window-surface.md).
 
 ## Decisions

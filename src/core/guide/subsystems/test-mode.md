@@ -36,7 +36,7 @@ the SDK calls either of them; they are reachable only by hand through
 changes nothing a visitor or a report would see.
 
 **A keyboard sequence that places a real order.** The manager is a module-level singleton
-(`core/test-mode.ts`), imported by the boot file (`core/sdk-initializer.ts`), and its
+(`core/test-mode.ts`), imported by the boot file (`core/sdk-initializer/sdk-initializer.ts`), and its
 constructor calls the method that attaches a `keydown` listener to `document`
 (`core/test-mode.ts › TestModeManager.initializeKonamiCode`). That happens at *import*, in
 every build, on every page — a shopper's included. `handleKeyDown`

@@ -20,7 +20,7 @@ import type {
 } from '../extract/extract-boot-sequence';
 
 const GENERATED =
-  '<!-- Generated from src/core/sdk-initializer.ts. Do not edit by hand:\n' +
+  '<!-- Generated from src/core/sdk-initializer/sdk-initializer.ts. Do not edit by hand:\n' +
   '     edit the source or STEP_NOTES in src/docs/render/render-boot-sequence.ts,\n' +
   '     then run `npm run docs:reference`. -->';
 

@@ -25,12 +25,12 @@ export const CORE_SUBSYSTEMS: CoreSubsystem[] = [
     summary:
       'Starts the SDK: reads your configuration, works out the currency, loads the campaign, then scans the page and wires up every feature. Nothing else on this list works until it has finished.',
     sources: [
-      'core/sdk-initializer.ts',
-      'core/sdk-initializer.location-currency.ts',
-      'core/sdk-initializer.attribution.ts',
-      'core/sdk-initializer.url-params.ts',
-      'core/sdk-initializer.storage-reset.ts',
-      'core/sdk-initializer.debug-utils.ts',
+      'core/sdk-initializer/sdk-initializer.ts',
+      'core/sdk-initializer/sdk-initializer.location-currency.ts',
+      'core/sdk-initializer/sdk-initializer.attribution.ts',
+      'core/sdk-initializer/sdk-initializer.url-params.ts',
+      'core/sdk-initializer/sdk-initializer.storage-reset.ts',
+      'core/sdk-initializer/sdk-initializer.debug-utils.ts',
     ],
     howAuthorsReachIt: ['observed', 'configured'],
     // `storage-keys` is here because boot owns `?reset=true`, and what that does and does
@@ -49,18 +49,18 @@ export const CORE_SUBSYSTEMS: CoreSubsystem[] = [
     summary:
       'The object your own scripts talk to — adding items, swapping packages, applying coupons, reading the cart. Everything the SDK lets you drive from JavaScript arrives through here.',
     sources: [
-      'core/next-commerce.ts',
-      'core/next-commerce.cart.ts',
-      'core/next-commerce.campaign.ts',
-      'core/next-commerce.events.ts',
-      'core/next-commerce.analytics.ts',
-      'core/next-commerce.attribution.ts',
-      'core/next-commerce.shipping.ts',
-      'core/next-commerce.utility.ts',
-      'core/next-commerce.coupons.ts',
-      'core/next-commerce.popups.ts',
-      'core/next-commerce.upsells.ts',
-      'core/next-commerce.url-params.ts',
+      'core/next-commerce/next-commerce.ts',
+      'core/next-commerce/next-commerce.cart.ts',
+      'core/next-commerce/next-commerce.campaign.ts',
+      'core/next-commerce/next-commerce.events.ts',
+      'core/next-commerce/next-commerce.analytics.ts',
+      'core/next-commerce/next-commerce.attribution.ts',
+      'core/next-commerce/next-commerce.shipping.ts',
+      'core/next-commerce/next-commerce.utility.ts',
+      'core/next-commerce/next-commerce.coupons.ts',
+      'core/next-commerce/next-commerce.popups.ts',
+      'core/next-commerce/next-commerce.upsells.ts',
+      'core/next-commerce/next-commerce.url-params.ts',
     ],
     howAuthorsReachIt: ['called'],
     reference: ['javascript-api', 'window-surface'],
@@ -77,7 +77,7 @@ export const CORE_SUBSYSTEMS: CoreSubsystem[] = [
     summary:
       'Finds the `data-next-*` elements on your page and turns each one into a working feature. It watches for markup added later too, but only for a short list of attributes — not for everything it activates on the first pass.',
     sources: [
-      'core/attribute-scanner.ts',
+      'core/attribute-scanner/attribute-scanner.ts',
       'core/base/dom-observer.ts',
       'core/base/attribute-parser.ts',
     ],
@@ -94,7 +94,7 @@ export const CORE_SUBSYSTEMS: CoreSubsystem[] = [
     title: 'Country, state, and currency',
     summary:
       'Works out which country the visitor is in, which currency to price in, and which state or province list the checkout should offer.',
-    sources: ['core/country-service.ts'],
+    sources: ['core/country-service/country-service.ts'],
     howAuthorsReachIt: ['configured', 'observed'],
     reference: ['storage-keys', 'url-parameters'],
     cautions: [
@@ -126,7 +126,7 @@ export const CORE_SUBSYSTEMS: CoreSubsystem[] = [
     reference: ['url-parameters'],
     cautions: [
       "Test mode posts to the **real** order API — it is not a sandbox. Orders it creates are real orders on the campaign, and submitting also resets the cart and checkout stores and redirects, so a demo on a live page can take a shopper's cart with it. Clear the orders up rather than assuming they were discarded.",
-      'The risk is not the `?test=true` flag, it is the keyboard shortcut: the Konami listener is attached when the module is imported (`core/test-mode.ts › TestModeManager.initializeKonamiCode`, instantiated at module scope in `core/test-mode.ts`, imported by `core/sdk-initializer.ts`) and `handleKeyDown` never checks whether test mode is on. So ↑↑↓↓←→←→BA creates a real order on any production checkout. `?debugger=true` also arms test mode as a side effect (`core/test-mode.ts › TestModeManager.checkUrlTestMode`) — opening the overlay on a live page is enough.',
+      'The risk is not the `?test=true` flag, it is the keyboard shortcut: the Konami listener is attached when the module is imported (`core/test-mode.ts › TestModeManager.initializeKonamiCode`, instantiated at module scope in `core/test-mode.ts`, imported by `core/sdk-initializer/sdk-initializer.ts`) and `handleKeyDown` never checks whether test mode is on. So ↑↑↓↓←→←→BA creates a real order on any production checkout. `?debugger=true` also arms test mode as a side effect (`core/test-mode.ts › TestModeManager.checkUrlTestMode`) — opening the overlay on a live page is enough.',
       'What reaches the API is the token string `test_card`, not one of the card numbers in `core/test-mode.ts`. Those are unreachable: `showTestCardMenu()` (`core/test-mode.ts › TestModeManager.showTestCardMenu`) has no caller, and it is the only thing that calls `fillTestCardData()` (`core/test-mode.ts › TestModeManager.fillTestCardData`). Do not expect to pick a card brand.',
     ],
   }),
@@ -204,7 +204,7 @@ export const CORE_SUBSYSTEMS: CoreSubsystem[] = [
     cautions: [
       "It observes and reports; it does not contain failures. Keeping one broken feature from taking the page down is each feature's own `try/catch` (`core/base/base-enhancer.ts › BaseEnhancer.handleError`), not this. So silence here is not evidence that nothing broke.",
       'It replaces `console.error` to observe errors, and its filter accepts any string containing "error". So anything your own code logs through `console.error` also arrives as `error:occurred`, and an enhancer failure arrives **twice** — once from the feature and once from the console line it wrote. Deduplicate before alerting on the count.',
-      'Capture is installed at boot step 9 through an import that is **not awaited** (`core/sdk-initializer.ts › SDKInitializer.initializeErrorHandler`), so nothing earlier in boot produces `error:occurred` — config, geo, campaign load, analytics, and a first failed boot attempt are all outside its window. If a failure disappears without an event, check whether it happened before this installed.',
+      'Capture is installed at boot step 9 through an import that is **not awaited** (`core/sdk-initializer/sdk-initializer.ts › SDKInitializer.initializeErrorHandler`), so nothing earlier in boot produces `error:occurred` — config, geo, campaign load, analytics, and a first failed boot attempt are all outside its window. If a failure disappears without an event, check whether it happened before this installed.',
     ],
   }),
 

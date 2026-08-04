@@ -54,7 +54,7 @@ const GENERATED = (readFrom: string): string =>
   `     for the prose, or ${readFrom} for what is inventoried, then run\n` +
   '     `UPDATE_DOCS=1 npx vitest run src/tests/docs/nextMethods.test.ts`. -->';
 
-const SOURCE_FILE = 'src/core/next-commerce.ts';
+const SOURCE_FILE = 'src/core/next-commerce/next-commerce.ts';
 
 function blocks(...parts: Array<string | undefined>): string {
   return parts.filter((p): p is string => !!p && p.trim() !== '').join('\n\n');

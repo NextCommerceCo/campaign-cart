@@ -138,7 +138,7 @@ export const CORE_CONSOLE_LOGS: CoreConsoleLog[] = [
 
   // ── sdk-initializer.debug-utils.ts ────────────────────────────────────────
   {
-    file: 'sdk-initializer.debug-utils.ts',
+    file: 'sdk-initializer/sdk-initializer.debug-utils.ts',
     level: 'error',
     anchor: 'Failed to set shipping method ${methodId}:',
     message: '❌ Failed to set shipping method {methodId}:',
