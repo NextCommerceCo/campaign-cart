@@ -361,22 +361,31 @@ export class LocaleSelector {
       
       // Emit locale change event for other components to react
       document.dispatchEvent(new CustomEvent('next:locale-changed', {
-        detail: { 
+        detail: {
           from: oldLocale,
           to: newLocale,
           source: 'locale-selector'
         }
       }));
-      
+
+      // Re-render everything that shows money.
+      //
+      // `next:currency-changed` is the channel — every money renderer already listens on
+      // it: `BaseDisplayEnhancer` (so all `data-next-display`), plus the package selector,
+      // package toggle and bundle selector. A locale change needs exactly what a currency
+      // change needs, which is a re-format from a cleared cache.
+      //
+      // This used to dispatch `next:locale-changed`, `next:display-refresh` and a
+      // per-element `next:refresh-display` walk instead, and **none of those three has a
+      // listener anywhere in src/** — so the picker cleared the formatter cache and then
+      // told nobody, and the new locale only appeared on a manual reload.
+      document.dispatchEvent(new CustomEvent('next:currency-changed', {
+        detail: { locale: newLocale, source: 'locale-selector' }
+      }));
+
       // Trigger display updates
       document.dispatchEvent(new CustomEvent('debug:update-content'));
-      
-      // Force update all display enhancers
-      document.dispatchEvent(new CustomEvent('next:display-refresh'));
-      
-      // Find and update all elements with currency displays
-      this.refreshAllCurrencyDisplays();
-      
+
       // Show success feedback
       this.showSuccessFeedback(newLocale);
       
@@ -401,42 +410,11 @@ export class LocaleSelector {
     }
   }
 
-  private refreshAllCurrencyDisplays(): void {
-    // Find all elements with data-next-display attribute
-    const displayElements = document.querySelectorAll('[data-next-display]');
-    
-    displayElements.forEach(element => {
-      const displayType = element.getAttribute('data-next-display');
-      
-      // Check if it's a price/currency related display
-      if (displayType?.includes('price') || 
-          displayType?.includes('total') || 
-          displayType?.includes('subtotal') ||
-          displayType?.includes('cost') ||
-          displayType?.includes('amount')) {
-        
-        // Trigger a custom event on the element to force refresh
-        element.dispatchEvent(new CustomEvent('next:refresh-display', { bubbles: true }));
-      }
-    });
-    
-    // Also find all elements with Next commerce classes that might contain prices
-    const priceElements = document.querySelectorAll(
-      '.next-price, .next-total, .next-subtotal, .next-amount, ' +
-      '[class*="price"], [class*="total"], [class*="amount"]'
-    );
-    
-    priceElements.forEach(element => {
-      // Check if element contains currency-like content
-      const text = element.textContent || '';
-      if (/[$£€¥₹₽¢]/u.test(text) || /\d+[.,]\d{2}/.test(text)) {
-        // Trigger refresh
-        element.dispatchEvent(new CustomEvent('next:refresh-display', { bubbles: true }));
-      }
-    });
-    
-    this.logger.debug(`Refreshed ${displayElements.length + priceElements.length} potential currency displays`);
-  }
+  // `refreshAllCurrencyDisplays()` was removed here. It walked the DOM guessing at price
+  // elements by attribute substring and by `[class*="price"]`, then dispatched
+  // `next:refresh-display` at each one — an event with no listener anywhere in `src/`. It
+  // could never have refreshed anything. The `next:currency-changed` dispatch in
+  // `handleLocaleChange()` does the job through the listeners that actually exist.
 
   private logFormatExamples(locale: string): void {
     const formatter = new Intl.NumberFormat(locale, {

@@ -10,7 +10,7 @@ category: "Core Reference"
      src/docs/content/core-logs.ts. Do not edit by hand: change the log line in the
      code or the note in core-logs.ts, then run `npm run docs:reference`. -->
 
-Every message the SDK's own machinery can print — 500 of them, across 60 console prefixes plus 13 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
+Every message the SDK's own machinery can print — 499 of them, across 60 console prefixes plus 13 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
 
 Messages are listed at the wording the code uses. A `{name}` inside one is a value filled in at runtime, so search for the text on either side of it. **Extra context** means the call passes a second argument — an object or an error logged beside the message; expand that entry in the console, because the message alone will not tell you which element, package, or event was involved.
 
@@ -167,7 +167,7 @@ Console lines are prefixed with the part of the SDK that produced them. Find the
 | `[DebugOverlay]` | The on-page debug panel itself — state inspectors, the event pipeline, and the country / currency / locale switchers. | — | — | 3 | 3 |
 | `[CountrySelector]` | The debug overlay’s country switcher, for checking an address form and shipping options as a visitor in another country. | 2 | 1 | 6 | 6 |
 | `[CurrencySelector]` | The debug overlay’s currency switcher, for checking prices in every currency the campaign offers. | 1 | 1 | 4 | 6 |
-| `[LocaleSelector]` | The debug overlay’s locale switcher, for checking how prices and dates are formatted. | 1 | 1 | 4 | 5 |
+| `[LocaleSelector]` | The debug overlay’s locale switcher, for checking how prices and dates are formatted. | 1 | 1 | 4 | 4 |
 | `[UpsellSelector]` | The debug overlay’s post-purchase upsell inspector: what the page offers and what is currently selected. | — | — | 1 | 12 |
 
 ## `[SDKInitializer]`
@@ -2760,7 +2760,6 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 | `Resetting to browser locale:` | `debug/locale-selector.ts › LocaleSelector.setupEventListeners` | yes |
 | `External locale change detected, re-rendering selector` | `debug/locale-selector.ts › LocaleSelector.setupEventListeners` | — |
 | `Event listeners attached to locale selector` | `debug/locale-selector.ts › LocaleSelector.setupEventListeners` | — |
-| `Refreshed {length} potential currency displays` | `debug/locale-selector.ts › LocaleSelector.refreshAllCurrencyDisplays` | — |
 
 ## `[UpsellSelector]`
 
