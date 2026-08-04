@@ -15,30 +15,10 @@ import type { FeatureManifest } from '../schema/feature-manifest';
 import { referenceNav } from '../content/nav';
 import { SDK_ATTRIBUTES, SDK_CLASSES } from '../content/sdk-attributes';
 
-/**
- * Pointer to the editor integration, shown at the top of the index — the same
- * manifests that generate this page also generate the autocomplete data, so anyone
- * reading a list of attributes is exactly who wants their editor to offer them.
- */
-const EDITOR_SETUP = [
-  '## Autocomplete in your editor',
-  '',
-  'These attributes are also published as VS Code HTML custom data, so your editor',
-  'can complete them and show the same descriptions on hover. Point at the copy',
-  'shipped in the package:',
-  '',
-  '```json',
-  '// .vscode/settings.json',
-  '{',
-  '  "html.customData": [',
-  '    "./node_modules/@NextCommerce/campaign-cart/dist/html-custom-data.json"',
-  '  ]',
-  '}',
-  '```',
-  '',
-  'Reload the window and typing `data-next-` in any `.html` file will suggest the',
-  'full list, with defaults, valid values, and a link to the feature.',
-].join('\n');
+// An "Autocomplete in your editor" section used to sit here, pointing readers at a
+// generated VS Code custom-data file. Both are gone: the file was barely used and
+// not worth the upkeep of a generator, a drift test and a shipped asset. This page
+// is now the one place attributes are listed.
 
 const GENERATED =
   '<!-- Generated from the feature manifests. Do not edit by hand:\n' +
@@ -98,7 +78,6 @@ export function renderAttributeIndex(manifests: FeatureManifest[]): string {
       'feature link for what its attributes mean, their defaults, and their traps.',
     'Attributes marked **sets** are written *by* the SDK for you to read from CSS or ' +
       'tests; you do not set them yourself.',
-    EDITOR_SETUP,
   ];
 
   parts.push(

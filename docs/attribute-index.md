@@ -13,24 +13,6 @@ Every attribute the SDK reads or writes — 268 of them across 29 features — w
 
 Attributes marked **sets** are written *by* the SDK for you to read from CSS or tests; you do not set them yourself.
 
-## Autocomplete in your editor
-
-These attributes are also published as VS Code HTML custom data, so your editor
-can complete them and show the same descriptions on hover. Point at the copy
-shipped in the package:
-
-```json
-// .vscode/settings.json
-{
-  "html.customData": [
-    "./node_modules/@NextCommerce/campaign-cart/dist/html-custom-data.json"
-  ]
-}
-```
-
-Reload the window and typing `data-next-` in any `.html` file will suggest the
-full list, with defaults, valid values, and a link to the feature.
-
 ## SDK-level
 
 These belong to the SDK itself rather than to a feature — the boot sequence, the shared action base, attribution, and the DOM observer. They are the ones you will not find by looking up a feature.

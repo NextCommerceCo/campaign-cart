@@ -4,7 +4,6 @@ node_modules
 test-results
 playwright-report
 public/loader.js
-public/html-custom-data.json
 CHANGELOG.md
 package-lock.json
 bun.lock

@@ -28,7 +28,6 @@ import { declaresPath, readDeclaredShapes } from '@/docs/extract/type-shape';
 import { extractFixtureExample } from '@/docs/extract/extract-fixture-example';
 import { extractLogs, extractThrows } from '@/docs/extract/extract-logs';
 import { SDK_ATTRIBUTES } from '@/docs/content/sdk-attributes';
-import { renderHtmlCustomData } from '@/docs/render/render-html-custom-data';
 import {
   renderAttributeIndex,
   renderSdkAttributes,
@@ -389,30 +388,11 @@ describe('feature reference docs', () => {
     expect(readFileSync(file, 'utf8')).toBe(expected);
   });
 
-  /**
-   * The editor's attribute autocomplete is generated from the same manifests as the
-   * docs, so IntelliSense and the reference cannot disagree.
-   */
-  it('html-custom-data.json matches the manifests', () => {
-    // Lives in `public/` so Vite's publicDir copy puts it at `dist/` on build —
-    // which is the path `docs/attribute-index.md` tells editors to point at. It
-    // used to sit in `docs/` and be `cp`-ed across by the build script.
-    const file = join(SRC, '../public/html-custom-data.json');
-    const expected = renderHtmlCustomData(manifests.map(m => m.manifest));
-    if (UPDATE) writeFileSync(file, expected);
-    expect(existsSync(file), `${file} is missing`).toBe(true);
-    expect(readFileSync(file, 'utf8')).toBe(expected);
-
-    // Guard the shape the editor actually needs, not just that a file exists.
-    const data = JSON.parse(expected);
-    expect(data.version).toBe(1.1);
-    expect(data.globalAttributes.length).toBeGreaterThan(100);
-    for (const attr of data.globalAttributes) {
-      expect(attr.name, 'every entry needs a name').toBeTruthy();
-      expect(attr.description.kind).toBe('markdown');
-      expect(attr.description.value.trim(), `${attr.name} has an empty hover`).not.toBe('');
-    }
-  });
+  // A test guarding `html-custom-data.json` — the VS Code attribute autocomplete
+  // generated from these same manifests — used to sit here. The file, its
+  // generator and the editor-setup section of the attribute index were all removed:
+  // it was barely used, and a generator plus a drift test plus a shipped asset is a
+  // lot of upkeep for that. `docs/attribute-index.md` now lists every attribute.
 
   /**
    * The SDK-level attributes are declared by hand — no feature owns them — so the
