@@ -2,185 +2,75 @@
 
 ## [0.4.31] — 2026-08-04 — Prices for Standard European Markets
 
-**A campaign can now display prices the way a European market expects** — `69,99 €`
-rather than `€69.99`. That is what this release is for; everything else came along with
-it.
-
-Two larger bodies of work landed alongside: the SDK's **documentation is now a site**
-built from the source it describes and versioned the same way the SDK is, and the
-**source tree has been reorganised** into one folder per feature. Neither changes how you
-integrate — the public API, the storage keys and the `data-next-*` attributes are all
-unchanged, and each is held that way by a contract test.
-
-Working through both surfaced a run of checkout and analytics defects, which are fixed
-here too. One is worth reading even if nothing else in this release applies to you: if
-you sell through PayPal, Apple Pay or Google Pay, **every express order was being counted
-twice and under-reported** — see the first entry under Fixed.
+Campaigns can display prices the way European markets expect — `69,99 €` rather than
+`€69.99`. Alongside it, two larger pieces of work: the documentation is now a generated,
+versioned site, and the source tree is reorganised into one folder per feature. Neither
+changes how you integrate.
 
 ### New
 
-- **Prices can be written for the market you sell to** — set
-  `window.nextConfig.locale = 'de-DE'` and a euro price renders `69,99 €` instead of
-  `€69.99`. This is the setting to reach for when a store must read the same way for every
-  visitor, whatever browser they arrive with.
+- **`window.nextConfig.locale`** — pins how prices are written: `'de-DE'` renders
+  `69,99 €`. The **locale** decides the decimal separator and which side the symbol sits
+  on, not the currency code — so switching a campaign to `EUR` on its own still gives
+  `€69.99`. Leave it unset and the visitor's browser decides, which is usually right. An
+  unparseable tag (`de_DE`) is ignored with a warning rather than breaking prices. Detail
+  in **Core → Money Formatting**.
 
-  The thing that surprises people: the **locale** decides the decimal separator and which
-  side the symbol sits on — the currency code does not. Switching a campaign to `EUR` on
-  its own still produces `€69.99`, and that is a locale setting rather than a currency
-  bug.
+- **A documentation site**, generated from the source and built one folder per released
+  version, so a page pinned to an older SDK reads that version's docs.
+  `npm run docs:serve` to read it locally.
 
-  Leave it unset and each visitor's own browser decides, which is usually what you want —
-  a German shopper's browser already asks for `69,99 €`. An unusable tag (`de_DE` with an
-  underscore is the common typo) is rejected with a warning and the browser locale is used,
-  so a mistake costs the pinned format and never the prices. The full picture, including
-  why the locale is deliberately *not* guessed from the detected country, is in
-  **Core → Money Formatting** in the docs.
-
-- **A documentation site that ships with the SDK** — every feature guide, the state
-  reference, the engine's behaviour (boot order, meta tags, URL parameters, storage keys
-  and their TTLs, analytics events), and the full type reference are now one searchable
-  site generated from the source. Run `npm run docs:serve` to read it locally on
-  `:3500`. Because it is generated, a guide cannot quietly fall out of step with the code
-  that it documents.
-
-- **Documentation per released version** — the site builds one folder per release, so a
-  page pinned to `v0.4.28` reads that version's documentation rather than the newest. A
-  version selector moves between them, and landing on a page that a version does not have
-  takes you to that version's index instead of a dead end.
-
-- **The order types are now importable** — `Order`, `OrderLine`, `OrderUser`,
-  `OrderAddress` and `MarketingAttribution` are exported with a description on every
-  field, so the object you get from `order:completed`, `useOrderStore`, and the order API
-  can be typed properly. Previously only `OrderData` was exported, which described six of
-  the order's fields and typed its line items as `any[]`.
-
-  `OrderData` keeps exactly the same fields and types it had — nothing you compile against
-  changes — but it is now derived from `Order`, so the two can no longer drift apart. When
-  you need totals, tax, shipping, addresses or typed line items, read the order from
-  `useOrderStore`, where it is a full `Order`.
+- **Order types are importable** — `Order`, `OrderLine`, `OrderUser`, `OrderAddress`,
+  `MarketingAttribution`. `OrderData` keeps its fields but is now derived from `Order`, so
+  the two cannot drift.
 
 ### Fixed
 
 - **Every express-checkout order reported garbage to analytics** — PayPal, Apple Pay and
-  Google Pay orders sent a timestamp as the transaction id, the **cart's** items rather
-  than the order's lines, `currency: 'USD'` for every store regardless of what the shopper
-  paid in, and `tax: 0, shipping: 0`.
+  Google Pay sent a timestamp as the transaction id, the cart's items instead of the
+  order's, `USD` for every store, and zero tax and shipping. Meta and RudderStack key on
+  that id, so **every express order was counted twice** and its total under-reported.
 
-  Because Meta's `eventID` and RudderStack's `Order Completed` both key on the transaction
-  id, no express order could deduplicate against its server-side copy — **every one was
-  counted twice** — and RudderStack's `total` was short by the full tax and shipping. This
-  affected 100% of express orders, in every field. The handler was reading
-  `{ method, order }` as if it were the order itself.
+- **Zero-value orders were never reported** — a 100% discount or free trial was dropped
+  before reaching the data layer. Conversion counts from before this release under-report
+  them.
 
-  Line detail is corrected alongside it: `item_sku`, `item_image`, per-unit `discount`,
-  and `item_variant` (which read fields that do not exist on an order line).
+- **The billing form cloned no fields** on any page marked
+  `data-next-component="shipping-form"` — the section opened as an empty box.
 
-- **Zero-value orders were never reported at all** — a 100% discount or a free trial was
-  dropped before it reached the data layer, because validation required the order's value
-  to be non-zero. Those orders now report normally, carrying `value: 0` with their real
-  transaction id, currency and items. Conversion counts from before this release
-  under-report free orders.
+- **Ten checkout corrections** — a separate billing address survived `reset()`; the billing
+  phone was not sent in international format; shipping-method radios did nothing unless the
+  campaign's ids were 1, 2 or 3; Pay could be clicked twice; the submit button re-enabled
+  itself even when your page held it shut; an unticked marketing box came back ticked; a
+  non-numeric step number skipped validation entirely; the duplicate-purchase modal could
+  open twice and then wipe the form; removing a coupon missed on letter case; error labels
+  lingered after a field became valid.
 
 - **A failed boot no longer reveals a half-rendered page** — `data-next-sdk-loading` stays
-  `"true"` when boot fails instead of flipping to `"false"`, so CSS that hides the page
-  until the SDK is ready keeps it hidden rather than showing raw `{price}` placeholders and
-  an empty cart. The attribute alone cannot distinguish a failed boot from one still
-  running — both read `"true"` — so to detect the failure itself, subscribe to
-  `error:occurred` with `code: "SDK_INIT_FAILED"` through
-  `EventBus.getInstance().on(…)`; `window.next` is never published on a boot that fails
-  this early.
+  `"true"` instead of flipping to `"false"`. To detect the failure, subscribe to
+  `error:occurred` with `code: "SDK_INIT_FAILED"`.
 
-- **The billing address form was empty on pages using the current attribute spelling** —
-  ticking "use a different billing address" opened the section but cloned no fields into
-  it, on any page whose shipping form is marked `data-next-component="shipping-form"`. The
-  SDK was looking only for the legacy `os-checkout-component` spelling, even though both
-  are supported and documented. Symptom: a section that opens to an empty box.
-
-- **A separate billing address survived a checkout reset** — the address stayed in the
-  store after `reset()`, so a shopper who cleared the form could still have the previous
-  billing address submitted with their order.
-
-- **The billing phone reached the order in whatever was typed** — it now goes through as
-  the international `+44…` number, the same rule the shipping phone already followed.
-
-- **Choosing a shipping method did nothing on most campaigns** — selecting a radio only
-  worked when the campaign's method ids happened to be 1, 2 or 3. Any other id left the
-  method unset while the page showed a total the order would not charge. A value the
-  campaign does not offer now logs rather than silently selecting nothing.
-
-- **A shopper could click Pay twice** — and the submit button re-enabled itself even when
-  the page had deliberately held it shut. The button is now put back exactly as it was
-  found, so a control your page keeps disabled until terms are accepted stays disabled.
-
-- **An unticked marketing checkbox came back ticked** — a "no" was not remembered across a
-  reload; the box reset to whatever the markup shipped. A box the visitor never touched is
-  still left as the page wrote it.
-
-- **A multi-step checkout could skip validation entirely** — a step number that was not 1,
-  2 or 3 (including a non-numeric one such as `data-next-step-number="two"`, and any
-  4-step form) was treated as valid, so pressing *next* with every field empty reached
-  payment. Unknown steps are now checked against the contact-and-shipping rules.
-
-- **The duplicate-purchase warning could open twice and then wipe the form** — the modal
-  stacked two copies with two backdrops, and its Close path filled the form and then
-  emptied it, leaving the previous order's address in a form that had been cleared a
-  moment earlier.
-
-- **Removing a coupon did not always match the one applied** — voucher codes are now
-  compared normalised, so a code removed in different casing from how it was entered is
-  actually removed.
-
-- **Field error labels lingered after the field became valid** — they cleared on typing but
-  not on the other paths that make a field valid.
-
-- **Reference tables were missing their last column** — on 9 guide pages, 15 rows lost
-  their description because a `|` inside a type such as `number | undefined` ended the
-  table cell early. Affected the attribute and event references for package-selector,
-  package-toggle, cart-item-list, prospect-cart, accordion, quantity-text,
-  express-checkout-container and upsell.
-
-- **Documentation links that went nowhere** — links pointing at pages on the retired docs
-  site, including from the attribute index, whose entries were all dead.
-
-- **The upsell and order-store references described the wrong shape** — the upsell result
-  was documented as `OrderData` including a field that type does not have, and the order
-  store's example order used a `total` field that does not exist with cart-shaped line
-  items. Both now match `Order`.
+- **Documentation corrections** — 15 reference rows lost their last column to a `|` inside
+  a type, dead links to the retired docs site, and two references describing the wrong
+  shape.
 
 ### Improved
 
-- **Upsell quantity, a tooltip that needed two taps, and several smaller corrections** —
-  including an accept-upsell button that failed to find its selector, and an
-  autofilled-province branch that could never run.
+- **A smaller download** — the ESM chunks are minified.
 
-- **A smaller download** — the ESM chunks are now minified, so a campaign page ships less
-  JavaScript for the same behaviour.
+- **One folder per feature** — code, tests and guide together, stores under `state/`, and
+  the oversized enhancers split by layer. Public exports, persist keys, dynamic imports and
+  production-bundle contents each have a contract test, so the move is checked rather than
+  asserted.
 
-- **The source tree is now one folder per feature** — each feature owns its code, its
-  tests and its guide in a single place (`features/<category>/<feature>/`), stores live
-  under `state/`, and the enhancers that had grown too large are split by layer. This is
-  an internal change and there is nothing to do on your side: your integration is
-  attributes and `window.next`, and neither moved.
+- **Features clean up after themselves** — a long run of listener leaks closed, with
+  teardown now enforced by a contract test.
 
-  What makes that safe to say is that the guarantees are tested rather than asserted —
-  the public export surface, the sessionStorage keys your carts and orders persist under,
-  the dynamic imports each feature is loaded through, and the contents of the production
-  bundle each have a contract test that fails if the reorganisation changes them.
+- **The debug overlay works again** — none of its buttons responded to a click, and its
+  currency, country and locale pickers now apply without a reload.
 
-- **Features clean up after themselves** — a long series of listener leaks is closed, and
-  teardown is now enforced by a contract test rather than by memory. This matters most on
-  pages that swap content in and out: a removed feature no longer keeps reacting to store
-  and event-bus updates it should have stopped hearing.
-
-- **The debug overlay works again** — none of its buttons responded to a click, because the
-  panel bound its click handler before the panel existed. The currency, country and locale
-  pickers also apply to the page immediately now, instead of needing a reload.
-
-- **Quieter console on live pages** — the order manager was printing 24 raw console
-  messages, including a set of emoji-prefixed step-by-step breadcrumbs, on every checkout.
-  These now go through the SDK's logger, so they appear when debugging is on and stay
-  silent in production. Errors are still always reported, and payment tokens are still
-  truncated in every log that mentions one.
+- **Quieter console on live pages** — the order manager's 24 raw console messages go
+  through the logger, so they appear when debugging is on and stay silent in production.
 
 ---
 
