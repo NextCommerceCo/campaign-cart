@@ -1,12 +1,34 @@
 # Changelog
 
-## [0.4.31] — 2026-07-31 — Versioned Documentation Site & Public Order Types
+## [0.4.31] — 2026-08-04 — European Prices, Checkout Corrections & the Documentation Site
 
-The SDK's documentation is now a site built from the source it describes, versioned the
-same way the SDK itself is. The order types you receive after a purchase are part of the
-public API for the first time.
+Prices can now be written the way a European market expects. A run of checkout and
+analytics defects is fixed — including one that made **every** express-checkout order
+report garbage to your analytics. And the SDK's documentation is now a site built from
+the source it describes, versioned the same way the SDK itself is.
+
+If you take one thing from this release: if you sell through PayPal, Apple Pay or Google
+Pay, your express orders were being counted twice and under-reported. See the first entry
+under Fixed.
 
 ### New
+
+- **Prices can be written for the market you sell to** — set
+  `window.nextConfig.locale = 'de-DE'` and a euro price renders `69,99 €` instead of
+  `€69.99`. This is the setting to reach for when a store must read the same way for every
+  visitor, whatever browser they arrive with.
+
+  The thing that surprises people: the **locale** decides the decimal separator and which
+  side the symbol sits on — the currency code does not. Switching a campaign to `EUR` on
+  its own still produces `€69.99`, and that is a locale setting rather than a currency
+  bug.
+
+  Leave it unset and each visitor's own browser decides, which is usually what you want —
+  a German shopper's browser already asks for `69,99 €`. An unusable tag (`de_DE` with an
+  underscore is the common typo) is rejected with a warning and the browser locale is used,
+  so a mistake costs the pinned format and never the prices. The full picture, including
+  why the locale is deliberately *not* guessed from the detected country, is in
+  **Core → Money Formatting** in the docs.
 
 - **A documentation site that ships with the SDK** — every feature guide, the state
   reference, the engine's behaviour (boot order, meta tags, URL parameters, storage keys
@@ -33,6 +55,78 @@ public API for the first time.
 
 ### Fixed
 
+- **Every express-checkout order reported garbage to analytics** — PayPal, Apple Pay and
+  Google Pay orders sent a timestamp as the transaction id, the **cart's** items rather
+  than the order's lines, `currency: 'USD'` for every store regardless of what the shopper
+  paid in, and `tax: 0, shipping: 0`.
+
+  Because Meta's `eventID` and RudderStack's `Order Completed` both key on the transaction
+  id, no express order could deduplicate against its server-side copy — **every one was
+  counted twice** — and RudderStack's `total` was short by the full tax and shipping. This
+  affected 100% of express orders, in every field. The handler was reading
+  `{ method, order }` as if it were the order itself.
+
+  Line detail is corrected alongside it: `item_sku`, `item_image`, per-unit `discount`,
+  and `item_variant` (which read fields that do not exist on an order line).
+
+- **Zero-value orders were never reported at all** — a 100% discount or a free trial was
+  dropped before it reached the data layer, because validation required the order's value
+  to be non-zero. Those orders now report normally, carrying `value: 0` with their real
+  transaction id, currency and items. Conversion counts from before this release
+  under-report free orders.
+
+- **A failed boot no longer reveals a half-rendered page** — `data-next-sdk-loading` stays
+  `"true"` when boot fails instead of flipping to `"false"`, so CSS that hides the page
+  until the SDK is ready keeps it hidden rather than showing raw `{price}` placeholders and
+  an empty cart. The attribute alone cannot distinguish a failed boot from one still
+  running — both read `"true"` — so to detect the failure itself, subscribe to
+  `error:occurred` with `code: "SDK_INIT_FAILED"` through
+  `EventBus.getInstance().on(…)`; `window.next` is never published on a boot that fails
+  this early.
+
+- **The billing address form was empty on pages using the current attribute spelling** —
+  ticking "use a different billing address" opened the section but cloned no fields into
+  it, on any page whose shipping form is marked `data-next-component="shipping-form"`. The
+  SDK was looking only for the legacy `os-checkout-component` spelling, even though both
+  are supported and documented. Symptom: a section that opens to an empty box.
+
+- **A separate billing address survived a checkout reset** — the address stayed in the
+  store after `reset()`, so a shopper who cleared the form could still have the previous
+  billing address submitted with their order.
+
+- **The billing phone reached the order in whatever was typed** — it now goes through as
+  the international `+44…` number, the same rule the shipping phone already followed.
+
+- **Choosing a shipping method did nothing on most campaigns** — selecting a radio only
+  worked when the campaign's method ids happened to be 1, 2 or 3. Any other id left the
+  method unset while the page showed a total the order would not charge. A value the
+  campaign does not offer now logs rather than silently selecting nothing.
+
+- **A shopper could click Pay twice** — and the submit button re-enabled itself even when
+  the page had deliberately held it shut. The button is now put back exactly as it was
+  found, so a control your page keeps disabled until terms are accepted stays disabled.
+
+- **An unticked marketing checkbox came back ticked** — a "no" was not remembered across a
+  reload; the box reset to whatever the markup shipped. A box the visitor never touched is
+  still left as the page wrote it.
+
+- **A multi-step checkout could skip validation entirely** — a step number that was not 1,
+  2 or 3 (including a non-numeric one such as `data-next-step-number="two"`, and any
+  4-step form) was treated as valid, so pressing *next* with every field empty reached
+  payment. Unknown steps are now checked against the contact-and-shipping rules.
+
+- **The duplicate-purchase warning could open twice and then wipe the form** — the modal
+  stacked two copies with two backdrops, and its Close path filled the form and then
+  emptied it, leaving the previous order's address in a form that had been cleared a
+  moment earlier.
+
+- **Removing a coupon did not always match the one applied** — voucher codes are now
+  compared normalised, so a code removed in different casing from how it was entered is
+  actually removed.
+
+- **Field error labels lingered after the field became valid** — they cleared on typing but
+  not on the other paths that make a field valid.
+
 - **Reference tables were missing their last column** — on 9 guide pages, 15 rows lost
   their description because a `|` inside a type such as `number | undefined` ended the
   table cell early. Affected the attribute and event references for package-selector,
@@ -48,6 +142,22 @@ public API for the first time.
   items. Both now match `Order`.
 
 ### Improved
+
+- **Upsell quantity, a tooltip that needed two taps, and several smaller corrections** —
+  including an accept-upsell button that failed to find its selector, and an
+  autofilled-province branch that could never run.
+
+- **A smaller download** — the ESM chunks are now minified, so a campaign page ships less
+  JavaScript for the same behaviour.
+
+- **Features clean up after themselves** — a long series of listener leaks is closed, and
+  teardown is now enforced by a contract test rather than by memory. This matters most on
+  pages that swap content in and out: a removed feature no longer keeps reacting to store
+  and event-bus updates it should have stopped hearing.
+
+- **The debug overlay works again** — none of its buttons responded to a click, because the
+  panel bound its click handler before the panel existed. The currency, country and locale
+  pickers also apply to the page immediately now, instead of needing a reload.
 
 - **Quieter console on live pages** — the order manager was printing 24 raw console
   messages, including a set of emoji-prefixed step-by-step breadcrumbs, on every checkout.
