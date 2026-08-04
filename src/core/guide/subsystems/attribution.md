@@ -1,5 +1,5 @@
 ---
-title: "Core/Subsystems/Attribution"
+title: "Core/Attribution"
 group: "Core"
 category: "Core Subsystems"
 ---

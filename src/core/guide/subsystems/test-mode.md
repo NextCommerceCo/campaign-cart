@@ -1,5 +1,5 @@
 ---
-title: "Core/Subsystems/Test Mode"
+title: "Core/Test Mode"
 group: "Core"
 category: "Core Subsystems"
 ---

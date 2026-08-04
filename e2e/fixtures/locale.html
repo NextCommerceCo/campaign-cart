@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Price formatting locale</title>
+  </head>
+  <body>
+    <h1>Locale fixture</h1>
+
+    <!--
+      No `docs:example` region here on purpose: that marker publishes a fixture's
+      markup as a *feature's* example, and locale is a config setting rather than a
+      feature with its own guide/ folder. The markup below exists to be measured,
+      not to be published.
+
+      `data-format="number"` is the spelling issue #46 was reported with, so it is
+      here alongside the currency one — the two are formatted by different cached
+      formatters inside CurrencyFormatter and have drifted apart before.
+    -->
+    <span id="price" data-next-display="package.1.price">?</span>
+    <span id="price-number" data-next-display="package.1.price" data-format="number"
+      >?</span
+    >
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

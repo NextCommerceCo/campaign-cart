@@ -1,5 +1,5 @@
 ---
-title: "Core/Subsystems/Error Handling"
+title: "Core/Error Handling"
 group: "Core"
 category: "Core Subsystems"
 ---

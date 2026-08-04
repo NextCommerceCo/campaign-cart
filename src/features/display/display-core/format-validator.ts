@@ -4,6 +4,27 @@
  */
 
 import { FormatType } from '@/core/base/display-types';
+import { getCurrencySymbol } from '@/core/currency-formatter';
+
+/** Escapes a currency symbol so it can sit inside a `RegExp` — `$` above all. */
+function escapeForRegExp(literal: string): string {
+  return literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * The requested format on an element, in either attribute spelling.
+ *
+ * `BaseDisplayEnhancer` reads `data-next-format` first and falls back to the legacy
+ * `data-format`, so the validator has to look at both — reading only the legacy one, as it
+ * did, left it silently inert on every page written with the current spelling: no
+ * mismatch was ever reported because `explicitFormat` was always `null`.
+ */
+function requestedFormat(element: HTMLElement): string | null {
+  return (
+    element.getAttribute('data-next-format') ??
+    element.getAttribute('data-format')
+  );
+}
 
 export interface ValidationIssue {
   element: HTMLElement;
@@ -44,7 +65,7 @@ export class FormatValidator {
       issues.push(...elementIssues);
       
       // Track format distribution
-      const format = element.getAttribute('data-format') || 'auto';
+      const format = requestedFormat(element) || 'auto';
       formatDistribution[format] = (formatDistribution[format] || 0) + 1;
     });
     
@@ -66,7 +87,7 @@ export class FormatValidator {
     const issues: ValidationIssue[] = [];
     const path = element.getAttribute('data-next-display') || '';
     const value = element.textContent || '';
-    const explicitFormat = element.getAttribute('data-format');
+    const explicitFormat = requestedFormat(element);
     
     // Check for format mismatches
     const formatIssue = this.checkFormatMismatch(element, path, value, explicitFormat);
@@ -118,23 +139,53 @@ export class FormatValidator {
   }
   
   /**
-   * Detect the likely format of a value
+   * A currency pattern for the locale and currency currently in force.
+   *
+   * The active symbol comes from {@link getCurrencySymbol}, so a EUR store matches `€`; the
+   * four common symbols stay in the set as well, because a page can legitimately show a
+   * price in a currency other than the active one (a struck-through retail price carried
+   * over from the campaign, for instance).
+   */
+  private static currencyPattern(): RegExp {
+    const symbols = new Set(['$', '€', '£', '¥']);
+    try {
+      const active = getCurrencySymbol();
+      if (active) symbols.add(active);
+    } catch {
+      // No campaign loaded yet — the four defaults are enough to detect a price.
+    }
+
+    const symbol = [...symbols].map(escapeForRegExp).join('|');
+    const amount = String.raw`\d{1,3}(?:[.,\s]\d{3})*(?:[.,]\d{1,2})?`;
+
+    return new RegExp(
+      `^(?:-?(?:${symbol})\\s?-?${amount}|-?${amount}\\s?(?:${symbol}))$`
+    );
+  }
+
+  /**
+   * Detect the likely format of a value.
+   *
+   * Everything here has to hold in **any** locale, not just `en-US`. The symbol can lead
+   * (`€69.99`) or trail (`69,99 €`), the decimal separator can be a dot or a comma, and the
+   * gap before a trailing symbol is usually a narrow no-break space (U+202F) rather than an
+   * ASCII one — `\s` covers it. Hardcoding `$` and comma-thousands, as this did, made every
+   * correctly-formatted European price look like a mismatch.
    */
   private static detectFormat(value: string): FormatType {
     if (!value || value === '') return 'text';
-    
-    // Currency patterns
-    if (/^\$[\d,]+(\.\d{2})?$/.test(value)) return 'currency';
-    if (/^-?\$[\d,]+(\.\d{2})?$/.test(value)) return 'currency';
-    
+
+    // Currency patterns — symbol on either side, either separator.
+    if (this.currencyPattern().test(value)) return 'currency';
+
     // Percentage patterns
     if (/^\d+%$/.test(value)) return 'percentage';
     if (/^\d+\.\d+%$/.test(value)) return 'percentage';
-    
+
     // Number patterns
     if (/^-?\d+$/.test(value)) return 'number';
-    if (/^-?\d{1,3}(,\d{3})*(\.\d+)?$/.test(value)) return 'number';
-    
+    if (/^-?\d{1,3}([.,\s]\d{3})*([.,]\d+)?$/.test(value)) return 'number';
+
     // Boolean patterns
     if (/^(Yes|No|True|False)$/i.test(value)) return 'boolean';
     

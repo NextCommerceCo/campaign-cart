@@ -364,9 +364,9 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
     group: 'preferences',
     ttl: null,
     holds:
-      'The locale used to format prices and numbers, so `1.234,56 €` stays `1.234,56 €` across pages.',
+      "The locale used to format prices and numbers, so `1.234,56 €` stays `1.234,56 €` across pages. Written only by the debug overlay's locale picker, and it outranks a campaign's `window.nextConfig.locale` — that is what lets a pinned store be previewed in another locale.",
     clearing:
-      "Prices format with the browser's own locale instead. Amounts stay correct; separators and symbol placement can change mid-funnel.",
+      "Formatting falls back to the campaign's pinned `locale` when it sets one, and to the browser's own locale otherwise. Amounts stay correct; separators and symbol placement can change mid-funnel.",
   },
 
   // ── Analytics ─────────────────────────────────────────────────────────────

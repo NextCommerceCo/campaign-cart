@@ -153,14 +153,22 @@ export function stateNav(manifest: StateManifest, leaf: string): string {
  * Which folder of `src/core/guide/` a page belongs to. `null` is the guide root —
  * `overview.md` alone.
  */
-export type CoreSection = 'Reference' | 'Subsystems' | null;
+export type CoreSection = 'Reference' | null;
 
 /**
- * Where a core guide page sits: `Core/Reference/<Page>`,
- * `Core/Subsystems/<Page>`, or `Core/<Page>` for the guide root.
+ * Where a core guide page sits: `Core/Reference/<Page>` for the generated
+ * reference, or `Core/<Page>` for everything else.
+ *
+ * There is no `Subsystems` level. The twelve subsystem overviews sit **flat**
+ * under `Core`, because a reader looking for "how does the cart boot" should not
+ * have to open a folder named after an engineering word first. They live in
+ * `src/core/guide/subsystems/` and carry a `Core Subsystems` category — the folder
+ * and the category still group them, the sidebar no longer makes you click
+ * through. Their frontmatter is hand-written, so this helper is not involved.
  *
  * @example
  * coreNavTitle('Reference', 'URL Parameters'); // → 'Core/Reference/URL Parameters'
+ * coreNavTitle(null, 'Overview');              // → 'Core/Overview'
  */
 export function coreNavTitle(section: CoreSection, leaf: string): string {
   return ['Core', ...(section ? [section] : []), leaf].join('/');

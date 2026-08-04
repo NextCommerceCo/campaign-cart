@@ -1,5 +1,5 @@
 ---
-title: "Core/Subsystems/Storage"
+title: "Core/Storage"
 group: "Core"
 category: "Core Subsystems"
 ---

@@ -1,5 +1,5 @@
 ---
-title: "Core/Subsystems/Logging and Debug"
+title: "Core/Logging and Debug"
 group: "Core"
 category: "Core Subsystems"
 ---
@@ -119,7 +119,9 @@ delivery — sent, blocked, skipped, or failed — and an ecommerce payload vali
 **Storage** (every key the SDK wrote, with its expiry). Alongside them are pickers that
 change the visitor's currency, country, and locale, an overlay for choosing which upsell a
 post-purchase page shows, and an "x-ray" mode that outlines every enhanced element on the
-page. Which events reach which provider is explained in
+page. A picker applies to the page immediately — no reload — and the locale picker
+outranks a campaign's own `window.nextConfig.locale`, so a store that pins its price
+formatting can still be previewed in another locale. Which events reach which provider is explained in
 [analytics providers](../reference/analytics-providers.md); what the storage panel is
 listing is in [storage keys](../reference/storage-keys.md).
 

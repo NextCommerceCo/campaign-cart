@@ -1,8 +1,13 @@
 # Testing Conventions
 
+> This file owns the **unit** side. Everything under `e2e/` — when a Playwright
+> spec is required, and what makes one count — is [e2e.md](./e2e.md), with the
+> how-to in the **`sdk-e2e` skill** (`.claude/skills/sdk-e2e/`). Invoke that skill
+> whenever you touch `e2e/`.
+
 ## Stack
 - **Unit tests**: Vitest + happy-dom (`npm run test`)
-- **E2E tests**: Playwright (`npm run test:e2e`) — Chromium, Firefox, WebKit, Pixel 5
+- **E2E tests**: Playwright (`npm run test:e2e`) — Chromium, Firefox, WebKit, Pixel 5, iPhone 12. **Not run by CI** — see [e2e.md](./e2e.md) §5.
 - **Coverage target**: 80% branches / functions / lines / statements
 
 ## Unit Tests
@@ -59,7 +64,7 @@ fixes the underlying code or fixture on purpose. See the header comment in
 - Display formatting / currency formatting — unit test edge cases
 
 ## What NOT to Unit Test
-- Enhancer DOM wiring — covered by E2E
+- Enhancer DOM wiring — covered by E2E ([e2e.md](./e2e.md) §1 makes that a requirement, not just a preference)
 - API client (`src/api/client.ts`) — mock at the fetch level, not the class level
 - EventBus emit/on round-trips — integration-test territory
 

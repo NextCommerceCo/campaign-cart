@@ -132,6 +132,14 @@ export default defineStore({
         'True when the API could not serve the currency that was asked for and returned a different one — the signal that displayed prices are not in the currency the shopper picked. Reset to false on the next campaign load that honours the request.',
     },
     {
+      name: 'locale',
+      kind: 'transient',
+      description:
+        'BCP 47 tag pinning how prices are written — `de-DE` renders `69,99 €` where `en-US` renders `€69.99`. Empty means follow the visitor\'s browser, which is the default.',
+      notes:
+        "The **locale** decides the decimal separator and which side the currency symbol sits on; the currency code does not. So a EUR campaign still shows `€69.99` to an `en-US` browser, and that is a locale setting, not a currency bug. Set this only when a store must render identically for every visitor — a German shopper's browser already asks for `69,99 €`. An unparseable tag (`de_DE` with an underscore) is rejected at load with a warning and the browser locale is used, so a typo costs formatting, not the page. The debug overlay's locale picker still wins over this, so a pinned campaign can be previewed in other locales.",
+    },
+    {
       name: 'autoInit',
       kind: 'transient',
       description:
@@ -317,6 +325,7 @@ export default defineStore({
   "googleMapsConfig": { "apiKey": "{GOOGLE_MAPS_API_KEY}", "enableAutocomplete": true },
   "addressConfig": { "dontShowStates": ["AS", "GU", "PR", "VI"] },
   "currencyBehavior": "auto",
+  "locale": "de-DE",
   "detectedCountry": "CA",
   "detectedCurrency": "CAD",
   "detectedIp": "203.0.113.42",
@@ -341,6 +350,7 @@ export default defineStore({
     "**Geo detection runs only when `currencyBehavior` is exactly `'auto'`.** Leave it unset and `detectedCountry`, `detectedCurrency`, `detectedIp`, and `locationData` stay empty while country pickers quietly fall back to `US`. Set it to `'auto'` if you want detection.",
     '**Several fields are declared but never read** — `autoInit`, `rateLimit`, `cacheTtl`, `retryAttempts`, `timeout`, `maxRetries`, `requestTimeout`, `enableAnalytics`, `enableDebugMode`, `environment`, `version`, `buildTimestamp`, `discounts`, and `tracking`. Setting them changes nothing while looking like it should, which is the most expensive kind of misconfiguration here. For analytics use the `analytics` block; for caching and retries change the code that owns them.',
     "**`getCurrency()` is the only safe way to read the currency.** Reading `selectedCurrency` directly returns an empty string before detection settles, and an empty currency sent to the totals API prices the cart in the campaign default rather than the shopper's currency.",
+    "**A price in the right currency can still be written the wrong way.** `€69.99` versus `69,99 €` is decided by `locale`, not by the currency code, so switching a campaign to EUR does not by itself produce European formatting. Leave `locale` unset and each visitor's browser decides — usually correct. Set it only to force one format for everyone.",
     '**`reset()` clears the API key too.** Calling it mid-session leaves the page unable to load prices or place an order until the config is loaded again. It exists for tests, not for switching campaigns at runtime.',
   ],
 });

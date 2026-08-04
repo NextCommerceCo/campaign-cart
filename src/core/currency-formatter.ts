@@ -10,7 +10,13 @@ export class CurrencyFormatter {
   private static formatters: Map<string, Intl.NumberFormat> = new Map();
   private static formattersNoZeroCents: Map<string, Intl.NumberFormat> =
     new Map();
-  private static numberFormatter: Intl.NumberFormat | null = null;
+  /**
+   * Keyed by locale, for the same reason {@link formatters} is: a single cached instance
+   * would keep `formatNumber` on whichever locale happened to be live at the first call
+   * while `formatCurrency` moved on, so `data-format="number"` and `data-format="currency"`
+   * on one page could disagree about the decimal separator.
+   */
+  private static numberFormatters: Map<string, Intl.NumberFormat> = new Map();
 
   /**
    * Get the current currency from stores
@@ -23,16 +29,33 @@ export class CurrencyFormatter {
   }
 
   /**
-   * Get the user's locale (checking for override first)
+   * The locale that decides how money is written.
+   *
+   * This — not the currency code — picks the decimal separator and the side the symbol
+   * sits on: one `EUR` amount is `€69.99` under `en-US` and `69,99 €` under `de-DE`.
+   *
+   * Four tiers, most specific first:
+   *
+   * 1. `sessionStorage['next_selected_locale']` — the debug overlay's locale picker. Highest
+   *    so a developer can still preview other locales on a campaign that pins one.
+   * 2. `window.nextConfig.locale` — the campaign's pin, for a store that must render the
+   *    same way for every visitor. Already validated by the config store, so anything here
+   *    is a usable tag.
+   * 3. The visitor's browser locale, which is the right answer most of the time — a German
+   *    shopper's browser already asks for `69,99 €`.
+   * 4. `'en-US'`, for a browser that reports nothing.
    */
   private static getUserLocale(): string {
-    // Check for user-selected locale in session storage
     const selectedLocale = sessionStorage.getItem('next_selected_locale');
     if (selectedLocale) {
       return selectedLocale;
     }
 
-    // Fallback to browser locale
+    const configuredLocale = useConfigStore.getState().locale;
+    if (configuredLocale) {
+      return configuredLocale;
+    }
+
     return navigator.language || 'en-US';
   }
 
@@ -42,7 +65,7 @@ export class CurrencyFormatter {
   public static clearCache(): void {
     this.formatters.clear();
     this.formattersNoZeroCents.clear();
-    this.numberFormatter = null;
+    this.numberFormatters.clear();
   }
 
   /**
@@ -81,14 +104,15 @@ export class CurrencyFormatter {
   private static getNumberFormatter(): Intl.NumberFormat {
     const locale = this.getUserLocale();
 
-    if (!this.numberFormatter) {
-      this.numberFormatter = new Intl.NumberFormat(locale, {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 2,
-      });
-    }
+    const cached = this.numberFormatters.get(locale);
+    if (cached) return cached;
 
-    return this.numberFormatter;
+    const formatter = new Intl.NumberFormat(locale, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
+    this.numberFormatters.set(locale, formatter);
+    return formatter;
   }
 
   /**

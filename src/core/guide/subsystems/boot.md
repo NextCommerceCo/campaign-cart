@@ -1,5 +1,5 @@
 ---
-title: "Core/Subsystems/Boot"
+title: "Core/Boot"
 group: "Core"
 category: "Core Subsystems"
 ---

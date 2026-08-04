@@ -1,5 +1,5 @@
 ---
-title: "Core/Subsystems/DOM Activation"
+title: "Core/DOM Activation"
 group: "Core"
 category: "Core Subsystems"
 ---

@@ -103,6 +103,20 @@ export const CORE_SUBSYSTEMS: CoreSubsystem[] = [
   }),
 
   defineCoreSubsystem({
+    id: 'money-formatting',
+    title: 'How prices are written',
+    summary:
+      'Turns an amount and a currency into the text a shopper reads — which side the symbol sits on, and whether the decimal separator is a dot or a comma.',
+    sources: ['core/currency-formatter.ts'],
+    howAuthorsReachIt: ['configured', 'debug-only'],
+    reference: ['storage-keys'],
+    cautions: [
+      'The currency code does not decide the format; the locale does. The same `EUR` amount is `€69.99` under `en-US` and `69,99 €` under `de-DE`, so switching a campaign to euros does not by itself produce European formatting — set `locale` if the store must read the same way for every visitor.',
+      'A locale is not derived from the detected country, deliberately. Geo detection falls back to US after three seconds, so deriving would force `en-US` onto exactly the European visitors this exists to serve, overriding a browser that already asked for their own format.',
+    ],
+  }),
+
+  defineCoreSubsystem({
     id: 'test-mode',
     title: 'Test mode',
     summary:

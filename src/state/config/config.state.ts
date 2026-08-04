@@ -3,6 +3,7 @@
  */
 
 import { create } from 'zustand';
+import { createLogger } from '@/core/logger';
 import type {
   ConfigState,
   PageType,
@@ -11,6 +12,25 @@ import type {
   AddressConfig,
   DiscountDefinition,
 } from '@/types/global';
+
+const logger = createLogger('ConfigStore');
+
+/**
+ * The canonical form of `tag` if it is a usable BCP 47 locale, otherwise `null`.
+ *
+ * Guards the one config value that would otherwise throw on *every price on the page*:
+ * `new Intl.NumberFormat('de_DE')` raises a `RangeError`, and an underscore instead of a
+ * hyphen is the obvious way to mistype a locale. Rejecting it here means a bad tag costs a
+ * warning and the browser's own locale, not a blank storefront.
+ */
+function canonicalLocale(tag: unknown): string | null {
+  if (typeof tag !== 'string' || tag.trim() === '') return null;
+  try {
+    return Intl.getCanonicalLocales(tag.trim())[0] ?? null;
+  } catch {
+    return null;
+  }
+}
 
 interface ConfigActions {
   loadFromMeta: () => void;
@@ -68,6 +88,8 @@ const initialState: ConfigState = {
   locationData: null as any, // Cache the entire location response
   currencyBehavior: 'auto' as 'auto' | 'manual', // Default to auto-switch currency on country change
   currencyFallbackOccurred: false, // Track if currency fallback happened
+  // locale: undefined, - omitted deliberately: unset means "follow the browser", which is
+  // not the same as pinning 'en-US'. See CurrencyFormatter.getUserLocale().
 
   clearCartOnInit: false,
 
@@ -235,6 +257,20 @@ export const configStore = create<ConfigState & ConfigActions>((set, get) => ({
         windowConfig.currencyBehavior === 'manual')
     ) {
       updates.currencyBehavior = windowConfig.currencyBehavior;
+    }
+
+    // Load the price-formatting locale. Left unset on a bad tag so the browser locale
+    // still applies — see canonicalLocale().
+    if (windowConfig.locale !== undefined) {
+      const locale = canonicalLocale(windowConfig.locale);
+      if (locale) {
+        updates.locale = locale;
+      } else {
+        logger.warn(
+          '[Config] Ignoring invalid locale, using the browser locale instead:',
+          windowConfig.locale
+        );
+      }
     }
 
     // Load discount definitions from window config

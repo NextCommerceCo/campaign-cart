@@ -23,7 +23,11 @@ afterEach(() => {
   CurrencyFormatter.clearCache();
   // Reset store currency between tests
   useCampaignStore.setState({ currency: null });
-  useConfigStore.setState({ selectedCurrency: '', detectedCurrency: '' });
+  useConfigStore.setState({
+    selectedCurrency: '',
+    detectedCurrency: '',
+    locale: undefined,
+  });
 });
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -223,6 +227,82 @@ describe('formatCurrency', () => {
       sessionStorage.setItem('next_selected_locale', LOCALE);
       CurrencyFormatter.clearCache();
     });
+  });
+});
+
+// ─── European price format (issue #46) ───────────────────────────────────────
+//
+// These assert the two things a European shopper actually sees — which side the symbol
+// sits on and which character separates the decimals — rather than rebuilding the
+// expectation through the same `Intl` call the formatter uses. A tautological assertion
+// would have passed throughout the bug this covers.
+
+/** Pins the locale the way production does, through config rather than the debug override. */
+function pinConfigLocale(locale: string | undefined): void {
+  sessionStorage.removeItem('next_selected_locale');
+  useConfigStore.setState({ locale });
+  CurrencyFormatter.clearCache();
+}
+
+describe('European price format', () => {
+  it('writes EUR the German way when the campaign pins de-DE', () => {
+    pinConfigLocale('de-DE');
+
+    const result = formatCurrency(69.99, 'EUR');
+
+    expect(result).toContain('69,99');
+    expect(result.trim().endsWith('€')).toBe(true);
+  });
+
+  it('writes the same EUR amount the American way under en-US', () => {
+    pinConfigLocale('en-US');
+
+    const result = formatCurrency(69.99, 'EUR');
+
+    expect(result).toContain('69.99');
+    expect(result.trim().startsWith('€')).toBe(true);
+  });
+
+  it('applies the pinned locale to plain numbers too', () => {
+    // Regression: the number formatter was cached without keying on locale, so
+    // `data-format="number"` kept the first locale it ever saw while
+    // `data-format="currency"` moved on.
+    pinConfigLocale('en-US');
+    expect(formatNumber(1234.5)).toBe('1,234.5');
+
+    pinConfigLocale('de-DE');
+    expect(formatNumber(1234.5)).toBe('1.234,5');
+  });
+
+  it('does not strand plain numbers on a stale locale when the cache is not cleared', () => {
+    // The regression this guards: `formatCurrency` keys its cache by locale and so always
+    // follows a change, while `formatNumber` held a single un-keyed instance and kept
+    // whichever locale it saw first. One page could then render `1.234,5` next to
+    // `€1,234.50`. Deliberately no `clearCache()` between the two halves — that is what
+    // makes it a real test rather than a restatement of `clearCache`.
+    pinConfigLocale('en-US');
+    expect(formatNumber(1234.5)).toBe('1,234.5');
+
+    useConfigStore.setState({ locale: 'de-DE' });
+
+    expect(formatCurrency(69.99, 'EUR')).toContain('69,99');
+    expect(formatNumber(1234.5)).toBe('1.234,5');
+  });
+
+  it('lets the debug override win over a pinned campaign locale', () => {
+    // A developer previewing another locale must not be blocked by the campaign's pin.
+    useConfigStore.setState({ locale: 'de-DE' });
+    sessionStorage.setItem('next_selected_locale', 'en-US');
+    CurrencyFormatter.clearCache();
+
+    expect(formatCurrency(69.99, 'EUR').trim().startsWith('€')).toBe(true);
+  });
+
+  it('falls back to the browser locale when nothing is pinned', () => {
+    pinConfigLocale(undefined);
+
+    // happy-dom reports en-US, so this is the unchanged default path.
+    expect(formatCurrency(69.99, 'EUR').trim().startsWith('€')).toBe(true);
   });
 });
 

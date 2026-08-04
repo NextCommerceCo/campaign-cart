@@ -45,6 +45,31 @@ test('?debug=true alone does NOT mount the debug overlay', async ({ page }) => {
   await expect(page.locator('#next-debug-overlay-host')).toHaveCount(0);
 });
 
+test('the overlay control buttons actually respond to a click', async ({
+  page,
+}) => {
+  // Regression: `createOverlay()` called `deps.addEventListeners()` while
+  // `this.shadowRoot` was still null, and that impl opens with
+  // `if (!shadowRoot) return`. So the delegated click listener was never bound and
+  // **every button in the debug panel was dead** — silently, because the guard
+  // turned an ordering bug into a no-op. Mounting is not the same as working, which
+  // is why the two tests above passed throughout.
+  await bootSdk(page, `${FIXTURE}?debugger=true`);
+  await expect(page.locator('#next-debug-overlay-host')).toHaveCount(1, {
+    timeout: 5000,
+  });
+
+  // Locators pierce the open shadow root.
+  const expand = page.locator('[data-action="toggle-expand"]');
+  await expect(expand).toHaveAttribute('title', 'Expand');
+
+  await expand.click();
+
+  // The button relabels and the panel body appears — proof the handler ran.
+  await expect(expand).toHaveAttribute('title', 'Collapse');
+  await expect(page.locator('.panel-content')).toHaveCount(1);
+});
+
 test('the overlay can be unmounted', async ({ page }) => {
   await bootSdk(page, `${FIXTURE}?debugger=true`);
   await expect(page.locator('#next-debug-overlay-host')).toHaveCount(1, {

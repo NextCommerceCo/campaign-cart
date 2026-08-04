@@ -1,5 +1,5 @@
 ---
-title: "Core/Subsystems/Analytics"
+title: "Core/Analytics"
 group: "Core"
 category: "Core Subsystems"
 ---

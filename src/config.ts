@@ -21,6 +21,14 @@ const env = import.meta.env;
 const config = {
     apiKey: env.VITE_API_KEY ?? "",
     debug: true, // Always true since this file only loads in debug mode
+
+    // ⚠️ OPTIONAL: pins how prices are written, as a BCP 47 tag.
+    // The locale — not the currency code — decides the decimal separator and which
+    // side the symbol sits on: the same EUR amount is €69.99 under "en-US" and
+    // 69,99 € under "de-DE". Leave it out and each visitor's browser decides, which
+    // is usually right. Set it only when the store must look the same for everyone.
+    // locale: "de-DE",
+
     paymentConfig: {
       expressCheckout: {
         requireValidation: true,

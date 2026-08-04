@@ -267,6 +267,19 @@ export class DebugOverlay {
     );
     this.container = container;
     this.shadowRoot = shadowRoot;
+
+    // Bind the delegated listeners **here**, not inside `createOverlayImpl`.
+    //
+    // That function calls `deps.addEventListeners()` twice while it renders, but
+    // both land on `this.addEventListeners()`, which reads `this.shadowRoot` — and
+    // the line above is the first moment that is non-null. `addEventListeners()`
+    // starts with `if (!shadowRoot) return`, so both early-returned and the overlay
+    // shipped with **no click handler at all**: every button in the debug panel was
+    // dead, silently, because the guard turned an ordering bug into a no-op.
+    //
+    // Re-binding is safe — the impl removes before it adds, and both handlers are
+    // arrow properties, so the references stay stable across calls.
+    this.addEventListeners();
   }
 
   private updateOverlay(): void {
@@ -556,6 +569,37 @@ export class DebugOverlay {
     }
   }
 
+  /**
+   * How many elements the SDK actually enhanced.
+   *
+   * `AttributeScanner.getStats().enhancedElements` is the real number, reached
+   * through the `window.nextDebug` surface the initializer publishes in the same
+   * debug mode that mounts this overlay. It is read defensively rather than
+   * imported, because `sdk-initializer` imports *this* module — a static import
+   * back would close the cycle.
+   *
+   * The DOM fallback counts elements carrying any `data-next-*` attribute, which
+   * is what the counter was reaching for before: it queried `[data-next-]`, an
+   * attribute name that does not exist, so the panel showed **0 on every page**.
+   * An attribute-prefix match is not expressible as a CSS selector, which is
+   * presumably how the placeholder survived.
+   */
+  private countEnhanced(): number {
+    const stats = (
+      window as unknown as {
+        nextDebug?: { getStats?: () => { scannerStats?: { enhancedElements?: number } } };
+      }
+    ).nextDebug?.getStats?.();
+    const enhanced = stats?.scannerStats?.enhancedElements;
+    if (typeof enhanced === 'number') return enhanced;
+
+    let count = 0;
+    for (const el of document.querySelectorAll('*')) {
+      if (el.getAttributeNames().some(a => a.startsWith('data-next-'))) count++;
+    }
+    return count;
+  }
+
   public updateQuickStats(): void {
     if (!this.shadowRoot) return;
 
@@ -568,7 +612,7 @@ export class DebugOverlay {
 
     if (cartItemsEl) cartItemsEl.textContent = cartState.totalQuantity.toString();
     if (cartTotalEl) cartTotalEl.textContent = formatCurrency(cartState.total.toNumber());
-    if (enhancedElementsEl) enhancedElementsEl.textContent = document.querySelectorAll('[data-next-]').length.toString();
+    if (enhancedElementsEl) enhancedElementsEl.textContent = this.countEnhanced().toString();
   }
 }
 
