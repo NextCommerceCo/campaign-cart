@@ -128,7 +128,8 @@ block. Vague warnings are useless; be specific and name the failure.
   errors, the analytics catalogue and the provider matrix). The inventory that
   drives it is [`docs/content/core-subsystems.ts`](../../../src/docs/content/core-subsystems.ts).
   Its unit of documentation is the **contract a page depends on**, not the class —
-  see `docs/documentation-plan.md` §5r for why by-file and by-symbol both fail.
+  a contract, because by-file and by-symbol both cut across the thing a page
+  actually depends on.
 - **Core TSDoc now reaches a reader.** `src/core` (and `src/state`) is a TypeDoc
   entry point, so its exported symbols render as real pages on the docs site —
   for **contributors** browsing classes/interfaces. That does not change where
@@ -197,8 +198,9 @@ Full reference — every tag, the config, the gates:
   for symbols, a relative `.md` path for documents, and never a site-absolute
   `](/…)` path.
 - **`@category` must exist in `categoryOrder`** (`typedoc.json`), or the symbol
-  lands in the unordered `*` bucket. 42% of tagged symbols are there today and
-  nothing detects it — add the category to the config in the same change.
+  lands in the unordered `*` bucket. Add it to the config in the same change —
+  `src/tests/docs/categoryOrder.test.ts` fails both ways (unordered category, and
+  a listed category nothing tags).
 - **Match the house style, which is narrow**: `{@link}`, `@example`, `@category`,
   `@param`, `@inheritDoc`, `@deprecated`, `@returns`, and `@internal`. `@throws`,
   `@defaultValue` and `@group` have **zero** uses — `@group` in particular would

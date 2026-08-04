@@ -88,27 +88,26 @@ comment. Coverage is enforced only by `npm run docs:coverage` (attributes,
 tests in `src/tests/docs/`. So "the build is green" says nothing about whether you
 documented the thing you just exported.
 
-## `@category` — the live drift
+## `@category` — and the gate that keeps it honest
 
 `categorizeByGroup: false`, so categories are the sidebar's top-level axis and
 `categoryOrder` in `typedoc.json` fixes their order. Anything not listed falls
 into the trailing `*` bucket in arbitrary order.
 
-Today they disagree, and **nothing checks it**:
+The 13 in use, in sidebar order — commerce flow, then observability, then config:
 
-| | Categories |
-|---|---|
-| Ordered **and** used | `Cart` `Campaign` `Events` `Shipping` `Coupons` `Analytics` |
-| Used but **unordered** → `*` | `URL Parameters` (16) `Upsells` (8) `Popups` (8) `Metadata` (8) `Utility` (6) `Attribution` (6) `Core` (2) |
-| Ordered but **never used** | `SDK` `Stores` `Advanced` |
+`Cart` · `Campaign` · `Shipping` · `Coupons` · `Upsells` · `Events` · `Analytics` ·
+`Attribution` · `Metadata` · `URL Parameters` · `Popups` · `Utility` · `Core`
 
-That is **54 of 129** tagged symbols — 42% — landing in the catch-all. When you add
-a `@category`, either use one already in `categoryOrder` or add it there in the
-same change. Check with:
+**Adding a `@category` means adding it to `categoryOrder` in the same change.**
+[`src/tests/docs/categoryOrder.test.ts`](../../../../src/tests/docs/categoryOrder.test.ts)
+fails otherwise, and equally on a listed category nothing tags.
 
-```bash
-grep -rhE "^\s*\*?\s*@category\s+\S" src | sed -E 's/^\s*\*?\s*@category\s+//' | sort | uniq -c | sort -rn
-```
+That gate was written because the two had silently diverged to 7 unordered
+categories covering 54 of 129 tagged symbols — 42% in the catch-all — plus three
+dead entries (`SDK`, `Stores`, `Advanced`) advertising sections of the API that did
+not exist. TypeDoc never warns about either, and `docs:coverage` measures
+documentation gaps rather than sidebar config, so nothing else would tell you.
 
 ## Diagrams
 

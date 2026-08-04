@@ -12,7 +12,7 @@
 
 import type { Page } from '@playwright/test';
 import type { Campaign } from '../../src/types/campaign';
-import type { Order } from '../../src/types/api';
+import type { CartSummary, Order } from '../../src/types/api';
 import { RICH_CAMPAIGN } from './campaign';
 import { TEST_ORDER } from './order';
 
@@ -27,13 +27,51 @@ export async function stubCampaign(
 }
 
 /**
- * Stub `POST /api/v1/carts/calculate/`. Cart totals are computed client-side by
- * the SDK's cart-calculator, so this only needs to resolve the debounced
- * recalculation call with a well-formed empty summary.
+ * An empty but **complete** `CartSummary` — every field `buildCartFields()` reads.
+ *
+ * `subtotal`, `total` and `total_discount` are not optional: the calculator does
+ * `new Decimal(response.subtotal)` on each, and `new Decimal(undefined)` throws
+ * `[DecimalError] Invalid argument: undefined`. This stub used to return
+ * `{ lines: [], totals: {} }` — which is not a `CartSummary` at all — so **every
+ * spec that touched the cart ran the caught-error path** while the suite stayed
+ * green, because nothing here asserts on `console.error`. See the `sdk-e2e` skill
+ * §4b.
  */
-export async function stubCart(page: Page): Promise<void> {
+const EMPTY_CART_SUMMARY: CartSummary = {
+  lines: [],
+  // A complete method, not `{}`. The calculator guards with
+  // `if (response.shipping_method)`, and an empty object passes that guard and
+  // then throws on `new Decimal(sm.price)` — truthy is not the same as usable.
+  shipping_method: {
+    id: 0,
+    name: 'Standard',
+    code: 'standard',
+    original_price: '0.00',
+    price: '0.00',
+    discounts: [],
+  },
+  offer_discounts: [],
+  voucher_discounts: [],
+  subtotal: '0.00',
+  total_discount: '0.00',
+  total: '0.00',
+  currency: 'USD',
+};
+
+/**
+ * Stub `POST /api/v1/carts/calculate/`. Cart totals are computed client-side by
+ * the SDK's cart-calculator, so this only has to resolve the debounced
+ * recalculation call with a well-formed empty summary — see
+ * {@link EMPTY_CART_SUMMARY} for what "well-formed" has to mean.
+ *
+ * Pass `summary` when a spec needs real totals back from the API.
+ */
+export async function stubCart(
+  page: Page,
+  summary: CartSummary = EMPTY_CART_SUMMARY
+): Promise<void> {
   await page.route('**/api/v1/carts/calculate/**', route =>
-    route.fulfill({ json: { lines: [], totals: {} } })
+    route.fulfill({ json: summary })
   );
 }
 

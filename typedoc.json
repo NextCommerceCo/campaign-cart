@@ -44,15 +44,19 @@
   "gitRevision": "main",
   "categorizeByGroup": false,
   "categoryOrder": [
-    "SDK",
     "Cart",
     "Campaign",
-    "Events",
     "Shipping",
     "Coupons",
+    "Upsells",
+    "Events",
     "Analytics",
-    "Stores",
-    "Advanced",
+    "Attribution",
+    "Metadata",
+    "URL Parameters",
+    "Popups",
+    "Utility",
+    "Core",
     "*"
   ],
   "validation": {

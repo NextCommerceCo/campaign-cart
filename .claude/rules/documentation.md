@@ -42,7 +42,8 @@ carries it is tagged — not when it lands on a branch. The one exception is `ma
 the unreleased folder built from the `main` branch tip (`npm run docs:main`): it
 carries merged-but-untagged docs, is not a version entry, and is never indexed. It
 does not make a doc fix "published" — a reader on a pinned SDK still reads the tag
-they load. See [documentation-plan.md §8c](../../docs/documentation-plan.md).
+they load. `npm run docs:main` builds that one folder; `scripts/docs-publish.mjs`
+decides what is a version and what is not.
 
 **Guide markdown must stay plain markdown.** The TypeDoc theme has no MDX
 components — `<Callout>`, `<Tabs>`, `<Cards>`, `<Steps>` render as literal text,
