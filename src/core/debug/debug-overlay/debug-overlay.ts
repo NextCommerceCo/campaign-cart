@@ -267,6 +267,19 @@ export class DebugOverlay {
     );
     this.container = container;
     this.shadowRoot = shadowRoot;
+
+    // Bind the delegated listeners **here**, not inside `createOverlayImpl`.
+    //
+    // That function calls `deps.addEventListeners()` twice while it renders, but
+    // both land on `this.addEventListeners()`, which reads `this.shadowRoot` — and
+    // the line above is the first moment that is non-null. `addEventListeners()`
+    // starts with `if (!shadowRoot) return`, so both early-returned and the overlay
+    // shipped with **no click handler at all**: every button in the debug panel was
+    // dead, silently, because the guard turned an ordering bug into a no-op.
+    //
+    // Re-binding is safe — the impl removes before it adds, and both handlers are
+    // arrow properties, so the references stay stable across calls.
+    this.addEventListeners();
   }
 
   private updateOverlay(): void {
