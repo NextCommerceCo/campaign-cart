@@ -31,7 +31,8 @@ initial defaults           (in config.state.ts)
       │
       ▼
 loadFromWindow()           window.nextConfig — credentials, page type, payment,
-      │                    maps, address, currency behaviour, analytics, UTM
+      │                    maps, address, currency behaviour, price locale,
+      │                    analytics, UTM
       ▼
 loadFromMeta()             <meta name="next-*"> — API key, campaign id, debug,
       │                    clear-cart, page type, card-field key   ← meta WINS

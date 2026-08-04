@@ -1311,6 +1311,25 @@ export interface ConfigState {
   currencyBehavior?: 'auto' | 'manual'; // auto: change currency when country changes, manual: never auto-change
   currencyFallbackOccurred?: boolean; // Track if currency fallback happened
 
+  /**
+   * BCP 47 tag that pins how prices are written — `"de-DE"`, `"fr-FR"`, `"en-US"`.
+   *
+   * The locale, not the currency code, decides the decimal separator and which side the
+   * symbol sits on: the same `EUR` amount is `€69.99` under `en-US` and `69,99 €` under
+   * `de-DE`. Set this when a store must render the same way for every visitor.
+   *
+   * Leave it unset and the visitor's own browser locale is used, which is usually what you
+   * want — a German shopper already sees `69,99 €`. Pin it only when the store's format
+   * must not follow the browser.
+   *
+   * An unparseable tag (`"de_DE"` with an underscore is the common typo) is rejected with a
+   * warning and the browser locale is used instead, so a bad value never breaks prices.
+   *
+   * @example "de-DE"
+   * @default undefined (use the browser's locale)
+   */
+  locale?: string;
+
   // Additional configuration properties for complete type coverage
   autoInit: boolean | undefined;
   rateLimit: number | undefined;
