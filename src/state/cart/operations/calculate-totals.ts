@@ -1,4 +1,6 @@
 import Decimal from 'decimal.js';
+import { useCheckoutStore } from '@/state/checkout';
+import { calculateCart } from '@/state/cart/cart-calculator';
 import { EventBus } from '@/core/events';
 import { useCartStore } from '@/state/cart';
 import { logger, scheduleCalculate } from './shared';
@@ -7,11 +9,14 @@ export function calculateTotals(): void {
   useCartStore.setState({ isCalculating: true });
   scheduleCalculate(async signal => {
     try {
+      // Stays dynamic: `state/cart` and `state/campaign` genuinely import each
+      // other (`campaign/api.slice.ts` reaches back into `state/cart`), so a
+      // static import here closes the cycle at module-init time. Rollup warns
+      // that this `import()` cannot split the module into its own chunk — that
+      // is expected and correct, since both stores belong in the main bundle.
+      // The warning is the price of breaking the cycle, not a defect to fix by
+      // making this static.
       const { useCampaignStore } = await import('@/state/campaign');
-      const { useCheckoutStore } = await import('@/state/checkout');
-      const { calculateCart } = await import(
-        '@/state/cart/cart-calculator'
-      );
 
       const campaignState = useCampaignStore.getState();
       const checkoutState = useCheckoutStore.getState();

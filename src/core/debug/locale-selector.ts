@@ -4,6 +4,7 @@
  */
 
 import { Logger } from '@/core/logger';
+import { CurrencyFormatter } from '@/core/currency-formatter';
 
 export class LocaleSelector {
   private static instance: LocaleSelector;
@@ -350,7 +351,6 @@ export class LocaleSelector {
       }
       
       // Clear currency formatter cache when locale changes
-      const { CurrencyFormatter } = await import('@/core/currency-formatter');
       CurrencyFormatter.clearCache();
       
       // Import and refresh display enhancers

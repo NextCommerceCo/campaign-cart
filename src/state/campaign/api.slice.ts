@@ -1,4 +1,5 @@
 import type { StateCreator } from 'zustand';
+import { useConfigStore } from '@/state/config';
 import { sessionStorageManager, CAMPAIGN_STORAGE_KEY } from '@/core/storage';
 import { createLogger } from '@/core/logger';
 import type {
@@ -24,8 +25,7 @@ export const createCampaignApiSlice: StateCreator<
     set({ isLoading: true, error: null });
 
     try {
-      const { useConfigStore } = await import('@/state/config');
-      const configStore = useConfigStore.getState();
+          const configStore = useConfigStore.getState();
       const requestedCurrency = configStore.getCurrency();
 
       const now = Date.now();

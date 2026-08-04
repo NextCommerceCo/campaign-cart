@@ -9,6 +9,7 @@
  */
 
 import Decimal from 'decimal.js';
+import { useConfigStore } from '@/state/config';
 import type { CartCalculateSummary, CartSummary, Discount, LineWithUpsell } from '@/types/api';
 import type { ShippingMethod } from '@/types/global';
 import { sessionStorageManager } from '@/core/storage';
@@ -139,7 +140,6 @@ export async function calculateCart(
   params: CalculateCartParams
 ): Promise<CalculateCartResult> {
   const { getApiClient } = await import('@/client');
-  const { useConfigStore } = await import('@/state/config');
 
   const apiKey = useConfigStore.getState().apiKey;
   const key = await calcCacheKey(params, apiKey);
@@ -215,7 +215,6 @@ export async function calculateBundlePrice(
   items: BundlePriceItem[],
   options: BundlePriceOptions = {}
 ): Promise<CalculateCartResult> {
-  const { useConfigStore } = await import('@/state/config');
   const apiKey = useConfigStore.getState().apiKey;
   const ttl = options.ttl ?? BUNDLE_PRICE_CACHE_TTL_MS;
 

@@ -1,4 +1,5 @@
 import { useCheckoutStore } from '@/state/checkout';
+import { useConfigStore } from '@/state/config';
 import { nextAnalytics, EcommerceEvents } from '@/core/analytics/index';
 import type { AutocompleteContext } from '../checkout.types';
 import { createCloseButton } from '../utils/create-close-button';
@@ -75,8 +76,7 @@ export class GoogleMapsAutocomplete {
       return this.googleMapsLoadPromise!;
     }
 
-    const { useConfigStore } = await import('@/state/config');
-    const googleMapsConfig = useConfigStore.getState().googleMapsConfig;
+      const googleMapsConfig = useConfigStore.getState().googleMapsConfig;
 
     if (googleMapsConfig.enableAutocomplete === false) {
       this.ctx.logger.debug('Google Maps Autocomplete is disabled in configuration');

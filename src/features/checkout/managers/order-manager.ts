@@ -3,6 +3,7 @@
  */
 
 import { OrderBuilder } from '../builders/order-builder';
+import { useCheckoutStore } from '@/state/checkout';
 import { handleOrderRedirect } from '../utils/redirect-handler';
 import type { IApiClient } from '@/api/client.types';
 import type { Logger } from '@/core/logger';
@@ -178,7 +179,6 @@ export class OrderManager {
         throw new Error('Cannot create express order with empty cart');
       }
       
-      const { useCheckoutStore } = await import('@/state/checkout');
       const vouchers = useCheckoutStore.getState().vouchers;
 
       // Build minimal order data for express checkout
@@ -222,7 +222,6 @@ export class OrderManager {
     });
     
     try {
-      const { useCheckoutStore } = await import('@/state/checkout');
       const vouchers = useCheckoutStore.getState().vouchers;
       
       // Build test order data

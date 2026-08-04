@@ -1,4 +1,5 @@
 import Decimal from 'decimal.js';
+import { useCheckoutStore } from '@/state/checkout';
 import { EventBus } from '@/core/events';
 import { useCartStore } from '@/state/cart';
 import { logger } from './shared';
@@ -7,7 +8,6 @@ import { calculateTotals } from './calculate-totals';
 export async function setShippingMethod(methodId: number): Promise<void> {
   try {
     const { useCampaignStore } = await import('@/state/campaign');
-    const { useCheckoutStore } = await import('@/state/checkout');
 
     const campaignStore = useCampaignStore.getState();
     const checkoutStore = useCheckoutStore.getState();

@@ -3,6 +3,7 @@
  */
 
 import type { Logger } from '@/core/logger';
+import { useCheckoutStore } from '@/state/checkout';
 
 export class TestOrderManager {
   constructor(
@@ -108,7 +109,6 @@ export class TestOrderManager {
       // Use existing shipping method from cart/checkout store if available
       // Otherwise, try to find the first available shipping method from campaign
       const { useCartStore } = await import('@/state/cart');
-      const { useCheckoutStore } = await import('@/state/checkout');
       const { useCampaignStore } = await import('@/state/campaign');
       
       const cartStore = useCartStore.getState();
