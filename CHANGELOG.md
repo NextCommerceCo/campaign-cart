@@ -16,43 +16,6 @@ changes how you integrate.
   unparseable tag (`de_DE`) is ignored with a warning rather than breaking prices. Detail
   in **Core → Money Formatting**.
 
-- **A documentation site**, generated from the source and built one folder per released
-  version, so a page pinned to an older SDK reads that version's docs.
-  `npm run docs:serve` to read it locally.
-
-- **Order types are importable** — `Order`, `OrderLine`, `OrderUser`, `OrderAddress`,
-  `MarketingAttribution`. `OrderData` keeps its fields but is now derived from `Order`, so
-  the two cannot drift.
-
-### Fixed
-
-- **Every express-checkout order reported garbage to analytics** — PayPal, Apple Pay and
-  Google Pay sent a timestamp as the transaction id, the cart's items instead of the
-  order's, `USD` for every store, and zero tax and shipping. Meta and RudderStack key on
-  that id, so **every express order was counted twice** and its total under-reported.
-
-- **Zero-value orders were never reported** — a 100% discount or free trial was dropped
-  before reaching the data layer, because validation required a non-zero value.
-  Conversion counts from before this release under-report them.
-
-- **Choosing a shipping method did nothing on most campaigns** — the radio handler matched
-  against a hard-coded list of ids 1, 2 and 3 with invented prices, so any campaign whose
-  method ids differ left the method unset while the page showed a total the order would
-  not charge.
-
-- **A multi-step checkout could skip validation entirely** — any step number other than 1,
-  2 or 3, including a non-numeric one, was treated as valid, so pressing *next* with every
-  field empty reached payment.
-
-- **A separate billing address survived `reset()`** — the store merges on reset and the
-  initial state had no billing key, so a cleared form could still submit the previous
-  billing address.
-
-- **A failed boot revealed a half-rendered page** — `data-next-sdk-loading` flipped to
-  `"false"` even when boot failed, so CSS that hides the page until the SDK is ready
-  showed raw `{price}` placeholders and an empty cart. It now stays `"true"`; subscribe to
-  `error:occurred` with `code: "SDK_INIT_FAILED"` to detect the failure itself.
-
 ### Improved
 
 - **A smaller download** — the ESM chunks are minified.
