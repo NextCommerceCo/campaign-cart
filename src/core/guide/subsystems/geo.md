@@ -188,8 +188,8 @@ see [logging and the debug overlay](./logging-and-debug.md).
   the locale, and the locale is the visitor's browser unless a campaign pins
   `window.nextConfig.locale`. The country is deliberately *not* mapped to a locale — the
   3-second fallback above resolves to `US`, so a derived locale would force `en-US` onto a
-  German visitor whose browser already asked for German formatting. See the `locale` field
-  in the [config store reference](../../../state/config/guide/reference/state-reference.md).
+  German visitor whose browser already asked for German formatting. That decision, and how
+  to pin a format instead, is [How prices are written](./money-formatting.md).
 - **Does not change the currency when the visitor changes the shipping country at
   checkout.** Editing the country dropdown reloads the states and relabels the state and
   postcode fields; prices stay in the currency resolved at boot. Only the debug overlay's
