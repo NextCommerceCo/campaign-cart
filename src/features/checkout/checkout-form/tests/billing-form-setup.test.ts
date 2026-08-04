@@ -303,4 +303,43 @@ describe('setupBillingForm', () => {
     ) as HTMLInputElement;
     expect(originalInput.value).toBe('123 Main St');
   });
+
+  // Regression: every other fixture in this file is written in the legacy
+  // `os-checkout-*` spelling, so a legacy-only `SHIPPING_FORM_SELECTOR` passed the
+  // whole suite while shipping a checkout whose billing section opened as an empty
+  // box on every `data-next-component` page. The spellings are interchangeable per
+  // element and pages mix them, so each one is asserted on its own.
+  it.each([
+    ['data-next-component', 'data-next-component', 'data-next-component'],
+    ['os-checkout-element', 'os-checkout-component', 'os-checkout-component'],
+    ['data-next-component', 'os-checkout-component', 'os-checkout-component'],
+    ['os-checkout-element', 'data-next-component', 'data-next-component'],
+  ])(
+    'clones the shipping rows with container=%s, billing-form=%s, shipping-form=%s',
+    (containerAttr, billingFormAttr, shippingFormAttr) => {
+      document.body.innerHTML = `
+      <div ${containerAttr}="different-billing-address">
+        <div ${billingFormAttr}="billing-form"></div>
+      </div>
+      <form ${shippingFormAttr}="shipping-form">
+        <div data-next-component="shipping-field-row">
+          <input data-next-checkout-field="address1" name="shipping_address1" value="123 Main St" />
+        </div>
+      </form>
+    `;
+      const form = document.querySelector(
+        `[${shippingFormAttr}="shipping-form"]`
+      ) as HTMLElement;
+
+      expect(setupBillingForm(createCtx({ form }))).toBe(true);
+
+      const clonedInput = document.querySelector(
+        `[${billingFormAttr}="billing-form"] input`
+      ) as HTMLInputElement;
+      expect(clonedInput.getAttribute('data-next-checkout-field')).toBe(
+        'billing-address1'
+      );
+      expect(clonedInput.value).toBe('');
+    }
+  );
 });

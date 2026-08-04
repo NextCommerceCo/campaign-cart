@@ -3333,6 +3333,52 @@ operation throws and the checkout store keeps `$5`/`$28` forever.
 Also still open: `void cartOperations.setShippingMethod(id)` has no `.catch()` and that
 operation throws, so a campaign-reload race produces an unhandled rejection.
 
+### 195. The billing form stopped cloning on every `data-next-component` page — *verified in a browser, fixed*
+
+Reported against the unreleased tree: on a real campaign checkout, ticking "use a different
+billing address" opened an **empty 46px box** instead of the billing address form. v0.4.30
+was fine. Reproduced by A/B-ing the same live page against both builds — v0.4.30 cloned 10
+billing inputs (286px expanded), the main tip cloned 0.
+
+Cause is a selector narrowed during the wave 4–10 extraction, not the animation the symptom
+points at. `CheckoutFormEnhancer.ts` held its own module-level constants listing **both**
+attribute spellings:
+
+```ts
+const SHIPPING_FORM_SELECTOR = '[os-checkout-component="shipping-form"], [data-next-component="shipping-form"]';
+```
+
+When `setupBillingForm` moved to `billing-form-setup.ts` it was wired to the
+**legacy-only** copies in `checkout/constants/selectors.ts` instead, and the originals were
+left behind in the enhancer as dead constants — so both spellings were still visible in the
+file that no longer used them. A page marked up `data-next-component="shipping-form"` then
+failed `document.querySelector(SHIPPING_FORM_SELECTOR)`, `setupBillingForm` returned `false`
+at its second guard, and nothing was cloned. The early return is a documented *normal*
+outcome ("this page does not offer a separate billing address"), which is why it logs
+nothing — the failure is completely silent.
+
+Three things made this survivable for four waves, and each is worth keeping in mind:
+
+- **The guide already documented the spelling the code had dropped.** `reference/attributes.md`
+  lists `shipping-form` / `billing-form` / `different-billing-address` under
+  `data-next-component`, and `use-cases.md` tells authors to write
+  `data-next-component="different-billing-address"`. The docs were right; the code regressed
+  away from them.
+- **Every fixture in `billing-form-setup.test.ts` is written in the legacy spelling**, so all
+  380 checkout-form tests passed against a checkout that was broken on the current spelling.
+  A gate that only ever sees one of two supported spellings tests neither.
+- **`billing-toggle.ts` had already hit this**, kept a local dual-spelling copy, and left a
+  comment saying the shared constant was "deliberately not" used because it was legacy-only.
+  That comment documented the bug instead of fixing it — the next reader of
+  `constants/selectors.ts` had no way to know its exports were half-selectors.
+
+Fixed by restoring both spellings on all three element selectors in
+`checkout/constants/selectors.ts` (the single source of truth), then deleting the three
+divergent copies that had grown around it — `billing-toggle.ts`'s local constant,
+`country-fields.ts`'s legacy-only `BILLING_CONTAINER`, and the enhancer's two dead ones.
+`billing-form-setup.test.ts` gains an `it.each` over the four container/billing-form/
+shipping-form spelling combinations; it fails on 3 of 4 without the fix.
+
 ---
 
 ## Open decisions

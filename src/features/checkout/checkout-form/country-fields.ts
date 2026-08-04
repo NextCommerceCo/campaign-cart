@@ -17,8 +17,7 @@
 
 import type { Country, CountryConfig } from '@/core/country-service';
 
-/** The billing section, which is a sibling of the form rather than inside it. */
-const BILLING_CONTAINER = '[os-checkout-element="different-billing-address"]';
+import { BILLING_CONTAINER_SELECTOR as BILLING_CONTAINER } from '../constants/selectors';
 
 /**
  * What this module needs from the checkout form.

@@ -27,22 +27,13 @@
 import type { Logger } from '@/core/logger';
 import { useCheckoutStore } from '@/state/checkout';
 
+import { BILLING_CONTAINER_SELECTOR } from '../constants/selectors';
+
 import {
   collapseBillingForm,
   expandBillingForm,
   type BillingAnimationContext,
 } from './billing-animation';
-
-/**
- * The billing section, in both attribute spellings.
- *
- * Deliberately **not** the `BILLING_CONTAINER_SELECTOR` exported by
- * `checkout/constants/selectors.ts`: that one is the legacy `os-checkout-element` half
- * only, so using it here would stop this toggle finding a section written with
- * `data-next-component`.
- */
-const BILLING_CONTAINER_SELECTOR =
-  '[os-checkout-element="different-billing-address"], [data-next-component="different-billing-address"]';
 
 /** Just enough delay to swallow a double-click, not enough to feel laggy. */
 const DEBOUNCE_MS = 10;

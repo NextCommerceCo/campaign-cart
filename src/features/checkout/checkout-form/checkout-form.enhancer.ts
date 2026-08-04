@@ -144,10 +144,6 @@ import {
 } from './store-subscriptions';
 import 'intl-tel-input/build/css/intlTelInput.css';
 
-// Consolidated constants
-const SHIPPING_FORM_SELECTOR = '[os-checkout-component="shipping-form"], [data-next-component="shipping-form"]';
-const BILLING_FORM_CONTAINER_SELECTOR = '[os-checkout-component="billing-form"], [data-next-component="billing-form"]';
-
 /**
  * The one builder that assembles the `CreateOrder` payload. Stateless — it reads
  * the cart, checkout, campaign and attribution stores on each call — so the same
