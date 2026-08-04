@@ -44,6 +44,13 @@ and — in its reference files — the durable **behavior contracts** (`.data`,
 `persist`, `super.destroy`, AttributeScanner, cart selector↔AddToCart, template
 re-render safety, …) and the per-feature / per-store authoring rules.
 
+**End-to-end tests** live in the **`sdk-e2e` skill** (`.claude/skills/sdk-e2e/`) —
+invoke it when adding or changing anything under `e2e/`, when a change touches what
+renders in the browser, or when deciding whether a behaviour belongs in Vitest or
+Playwright. It carries the fixture/stub harness API, the fixture→published-example
+contract, and the "prove it can fail" discipline. Its policy half — when a spec is
+*required* — is [.claude/rules/e2e.md](.claude/rules/e2e.md).
+
 **Documentation** lives in the **`sdk-docs` skill** (`.claude/skills/sdk-docs/`)
 — invoke it when writing/updating any docs: the feature catalog, per-feature
 `guide/` docs, state/store reference docs, folder READMEs, TSDoc/TypeDoc
@@ -63,7 +70,8 @@ Cross-cutting rules stay under [.claude/rules/](.claude/rules/):
 
 - [.claude/rules/documentation.md](.claude/rules/documentation.md) — **docs ship with the code** (update in the same change) + the readability bar. Read before finishing any change.
 - [.claude/rules/typescript.md](.claude/rules/typescript.md) — path aliases (`@/` → `src/`), strict-mode rules, style
-- [.claude/rules/testing.md](.claude/rules/testing.md) — Vitest/Playwright conventions, what to unit-test vs E2E
+- [.claude/rules/testing.md](.claude/rules/testing.md) — Vitest conventions, what to unit-test vs E2E
+- [.claude/rules/e2e.md](.claude/rules/e2e.md) — **when a Playwright spec is required**, the fixture→docs contract, and the fact that CI does not run E2E
 - [.claude/rules/guide.md](.claude/rules/guide.md) — format for per-feature `guide/` docs (`overview`, `get-started`, `use-cases`, `relations`, `glossary`, `reference/*`)
 
 ## Conventions that bite if ignored
@@ -82,6 +90,6 @@ Cross-cutting rules stay under [.claude/rules/](.claude/rules/):
 
 1. Identify the area (feature/enhancer / store / util / api). For structure, file layout, behavior contracts, or authoring rules, invoke the **`sdk-structure` skill**; for TypeScript / testing / guide-doc conventions, read the matching file in [.claude/rules/](.claude/rules/).
 2. Edit existing files in place; avoid new files unless a rule file says otherwise.
-3. Run `npm run type-check` and `npm run lint` before considering work done. Format with `npm run format` after significant changes.
+3. Run `npm run type-check` and `npm run lint` before considering work done. Format with `npm run format` after significant changes. If the change is browser-facing, run `npm run test:e2e` too — **CI does not run Playwright**, so nothing else will catch it ([.claude/rules/e2e.md](.claude/rules/e2e.md) §5).
 4. **Docs ship with the code.** Any change that touches a public export, a data shape/event, or an enhancer's attributes/events/errors/logs/rules must update its docs in the **same change** — TSDoc on the public API, the feature's `guide/`, affected folder `README.md`s. Build and check the docs site with `npm run docs` (→ `docs/site`), `npm run docs:serve` (preview on :3500), or `npm run docs:check` (link gate). `npm run docs:publish` assembles the versioned site for [Cloudflare](docs/wrangler.jsonc) and checks it against the asset limits — it never deploys; that command is Bond's to run. It publishes one folder per released tag, `latest/` for the newest, and `main/` for the unreleased branch tip (`npm run docs:main` builds that folder alone; it is not a version and is never indexed — see [documentation-plan.md §8c](docs/documentation-plan.md)). A change without its doc update is incomplete. See [.claude/rules/documentation.md](.claude/rules/documentation.md) (policy + readability bar) and [.claude/rules/guide.md](.claude/rules/guide.md) (per-feature format). Invoke the `sdk-docs` skill when writing any docs.
 5. **Never push, never deploy.** Committing locally is fine — a short commit message naming the work. But no `git push`, no PR, no `wrangler`/`npm publish`/CI trigger, not even a "preview" deploy, and not when a plan file says to. Stop at "committed locally, tests green". The `permissions.deny` list in [.claude/settings.json](.claude/settings.json) enforces it at the tool layer; if you add a deploy target, add it there too.
