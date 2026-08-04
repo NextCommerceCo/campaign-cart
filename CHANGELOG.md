@@ -32,27 +32,26 @@ changes how you integrate.
   that id, so **every express order was counted twice** and its total under-reported.
 
 - **Zero-value orders were never reported** — a 100% discount or free trial was dropped
-  before reaching the data layer. Conversion counts from before this release under-report
-  them.
+  before reaching the data layer, because validation required a non-zero value.
+  Conversion counts from before this release under-report them.
 
-- **The billing form cloned no fields** on any page marked
-  `data-next-component="shipping-form"` — the section opened as an empty box.
+- **Choosing a shipping method did nothing on most campaigns** — the radio handler matched
+  against a hard-coded list of ids 1, 2 and 3 with invented prices, so any campaign whose
+  method ids differ left the method unset while the page showed a total the order would
+  not charge.
 
-- **Ten checkout corrections** — a separate billing address survived `reset()`; the billing
-  phone was not sent in international format; shipping-method radios did nothing unless the
-  campaign's ids were 1, 2 or 3; Pay could be clicked twice; the submit button re-enabled
-  itself even when your page held it shut; an unticked marketing box came back ticked; a
-  non-numeric step number skipped validation entirely; the duplicate-purchase modal could
-  open twice and then wipe the form; removing a coupon missed on letter case; error labels
-  lingered after a field became valid.
+- **A multi-step checkout could skip validation entirely** — any step number other than 1,
+  2 or 3, including a non-numeric one, was treated as valid, so pressing *next* with every
+  field empty reached payment.
 
-- **A failed boot no longer reveals a half-rendered page** — `data-next-sdk-loading` stays
-  `"true"` instead of flipping to `"false"`. To detect the failure, subscribe to
-  `error:occurred` with `code: "SDK_INIT_FAILED"`.
+- **A separate billing address survived `reset()`** — the store merges on reset and the
+  initial state had no billing key, so a cleared form could still submit the previous
+  billing address.
 
-- **Documentation corrections** — 15 reference rows lost their last column to a `|` inside
-  a type, dead links to the retired docs site, and two references describing the wrong
-  shape.
+- **A failed boot revealed a half-rendered page** — `data-next-sdk-loading` flipped to
+  `"false"` even when boot failed, so CSS that hides the page until the SDK is ready
+  showed raw `{price}` placeholders and an empty cart. It now stays `"true"`; subscribe to
+  `error:occurred` with `code: "SDK_INIT_FAILED"` to detect the failure itself.
 
 ### Improved
 
@@ -63,11 +62,11 @@ changes how you integrate.
   production-bundle contents each have a contract test, so the move is checked rather than
   asserted.
 
-- **Features clean up after themselves** — a long run of listener leaks closed, with
-  teardown now enforced by a contract test.
+- **Features clean up after themselves** — a run of listener leaks closed, with teardown
+  now enforced by a contract test.
 
-- **The debug overlay works again** — none of its buttons responded to a click, and its
-  currency, country and locale pickers now apply without a reload.
+- **The debug overlay's pickers apply without a reload** — changing currency, country or
+  locale used to need one.
 
 - **Quieter console on live pages** — the order manager's 24 raw console messages go
   through the logger, so they appear when debugging is on and stay silent in production.
