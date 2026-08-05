@@ -75,6 +75,17 @@ const COUPON_CHANGED_ORDER = {
   ],
 };
 
+/**
+ * `createPurchaseEvent` returns `null` for a payload with no order identifier
+ * (issue #71). Every order here has one, so a null is a test failure, not a case
+ * to handle.
+ */
+function purchaseEvent(orderData: any): DataLayerEvent {
+  const event = EcommerceEvents.createPurchaseEvent(orderData);
+  if (!event) throw new Error('expected createPurchaseEvent to build an event');
+  return event;
+}
+
 describe('dl_purchase reports the order, not the cart (finding 163)', () => {
   beforeEach(() => {
     seedCampaign();
@@ -89,7 +100,7 @@ describe('dl_purchase reports the order, not the cart (finding 163)', () => {
 
   describe('createPurchaseEvent', () => {
     it('takes items and value from order.lines while the cart says otherwise', () => {
-      const event = EcommerceEvents.createPurchaseEvent({
+      const event = purchaseEvent({
         order: COUPON_CHANGED_ORDER,
       });
       const ecommerce = event.ecommerce;
@@ -103,7 +114,7 @@ describe('dl_purchase reports the order, not the cart (finding 163)', () => {
     });
 
     it('carries the per-unit discount the order line records', () => {
-      const event = EcommerceEvents.createPurchaseEvent({
+      const event = purchaseEvent({
         order: COUPON_CHANGED_ORDER,
       });
       // 40.00 before discounts − 30.00 charged = 10.00 over 2 units = 5.00/unit.
@@ -111,14 +122,14 @@ describe('dl_purchase reports the order, not the cart (finding 163)', () => {
     });
 
     it('reports the order-wide discount total', () => {
-      const event = EcommerceEvents.createPurchaseEvent({
+      const event = purchaseEvent({
         order: COUPON_CHANGED_ORDER,
       });
       expect(event.ecommerce?.discount).toBeCloseTo(10, 2);
     });
 
     it('maps the line variant, SKU and image off the order line', () => {
-      const event = EcommerceEvents.createPurchaseEvent({
+      const event = purchaseEvent({
         order: COUPON_CHANGED_ORDER,
       });
       const item = event.ecommerce?.items?.[0];
@@ -128,7 +139,7 @@ describe('dl_purchase reports the order, not the cart (finding 163)', () => {
     });
 
     it('reports no items rather than the cart when the order carries no lines', () => {
-      const event = EcommerceEvents.createPurchaseEvent({
+      const event = purchaseEvent({
         order: {
           number: 'NX-EMPTY',
           currency: 'USD',
@@ -145,7 +156,7 @@ describe('dl_purchase reports the order, not the cart (finding 163)', () => {
     });
 
     it('still honours items handed in explicitly by next.trackPurchase()', () => {
-      const event = EcommerceEvents.createPurchaseEvent({
+      const event = purchaseEvent({
         order: { number: 'NX-MANUAL', currency: 'USD', lines: [] },
         items: [{ packageId: 3, quantity: 1, unit_price: '11.00' }],
       });

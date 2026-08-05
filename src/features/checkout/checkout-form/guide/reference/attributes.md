@@ -235,15 +235,20 @@ The order of events is the fastest way to see where a checkout stopped:
 3. `checkout:location-fields-shown` — the country group was revealed (also a DOM `CustomEvent`)
 4. `checkout:started` — the visitor submitted; **the order does not exist yet**
 5. `payment:tokenized` — the card became a token
-6. `order:completed` — the order exists. This is where purchase tracking belongs
+6. `order:completed` — the order exists. **Existing is not paid:** a card payment
+   that needs 3-D Secure, and every express method, get here with the money still
+   unmoved and a `payment_complete_url` to send the shopper to
 7. `order:redirect-missing` — the order succeeded but carried no redirect URL, so
    the visitor is stranded on the checkout page unless you handle it
 
 `payment:error` can fire instead of 5 or 6, for card-field problems and for a
 declined order alike.
 
-**Do not track purchases on `checkout:started`** — it fires before the payment
-call, so failed attempts would count as revenue.
+**Track purchases on `order:loaded`, not on `order:completed` or
+`checkout:started`.** `checkout:started` fires before the payment call, so failed
+attempts would count as revenue; `order:completed` fires before a gateway has
+taken the money. `order:loaded` fires on the success page, for an order fetched
+back from the API — which is where the SDK's own `dl_purchase` comes from.
 
 ## Cautions
 

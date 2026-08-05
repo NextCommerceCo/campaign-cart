@@ -316,7 +316,13 @@ export const CORE_LOG_SOURCES: CoreLogSource[] = [
     prefix: 'EcommerceEvents',
     file: 'analytics/events/ecommerce-events.upsell.ts',
     area: 'Analytics core',
-    what: 'Builds the purchase-funnel events — view item, add to cart, begin checkout, purchase, upsell. Split across `ecommerce-events.browse.ts` / `.cart.ts` / `.checkout.ts` / `.upsell.ts`, this is the only one of the four that logs (a warn when the campaign store cannot be read for an accepted-upsell item).',
+    what: 'Builds the purchase-funnel events — view item, add to cart, begin checkout, purchase, upsell. Split across `ecommerce-events.browse.ts` / `.cart.ts` / `.checkout.ts` / `.upsell.ts`; this one logs a warn when the campaign store cannot be read for an accepted-upsell item.',
+  },
+  {
+    prefix: 'EcommerceEvents',
+    file: 'analytics/events/ecommerce-events.checkout.ts',
+    area: 'Analytics core',
+    what: 'Builds `dl_begin_checkout` and `dl_purchase` from the order the API returned. Logs an error when an order payload carries no identifier to report as `transaction_id`, because that purchase is dropped rather than sent with a made-up id.',
   },
   {
     prefix: 'UserEvents',
@@ -349,6 +355,12 @@ export const CORE_LOG_SOURCES: CoreLogSource[] = [
     file: 'analytics/tracking/pending-events-handler.ts',
     area: 'Analytics tracking',
     what: 'Holds events that were raised as the page was navigating away, and replays them on the next page so a redirect does not lose a purchase.',
+  },
+  {
+    prefix: 'PurchaseTracking',
+    file: 'analytics/tracking/purchase-tracking.ts',
+    area: 'Analytics tracking',
+    what: 'Decides whether an order may be reported as a purchase yet — an order still awaiting payment at a gateway may not — and remembers the orders already reported so one order produces one `dl_purchase`.',
   },
   {
     prefix: 'UserDataTracker',

@@ -433,6 +433,16 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
       'The queued purchase event is never sent, so an order that really happened is missing from reporting. Nothing on the page indicates it.',
   },
   {
+    key: 'nextDataLayer_reportedPurchases',
+    group: 'analytics',
+    ttl: 'never — the last 20 order ids are kept and the oldest falls off',
+    ttlMechanism: '`REPORTED_LIMIT`',
+    holds:
+      'The order ids `dl_purchase` has already been sent for, so one order produces exactly one purchase event however many pages of the journey see it — the checkout page, the receipt page, and a queued event replayed after the redirect all consult this list. In `localStorage`, not `sessionStorage`, so re-opening the receipt link in a new tab does not re-report the order.',
+    clearing:
+      'The next page that sees one of those orders reports it again, double-counting the purchase in GA4 and in every affiliate tag. Only clear it when you are deliberately re-testing a purchase event.',
+  },
+  {
     key: 'user_data',
     group: 'analytics',
     ttl: null,
@@ -729,6 +739,14 @@ export const EXPIRY_MECHANISMS: ExpiryMechanism[] = [
     window: '5 minutes, per event',
     governs:
       '`next_v2_pending_events`. An inline literal, not a named constant. The key itself never expires — individual events older than 5 minutes are discarded when the queue is processed.',
+  },
+  {
+    name: '`REPORTED_LIMIT`',
+    file: 'core/analytics/tracking/purchase-tracking.ts',
+    evidence: 'const REPORTED_LIMIT = 20',
+    window: 'no window — the newest 20 ids are kept',
+    governs:
+      '`nextDataLayer_reportedPurchases`. Bounded by count rather than by age on purpose: an order reported an hour ago must still be suppressed, so expiring the entry would re-open the double-count it exists to prevent.',
   },
   {
     name: 'dataLayer `sessionTimeout`',

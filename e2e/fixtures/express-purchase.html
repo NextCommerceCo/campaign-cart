@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — express purchase tracking</title>
+    <!-- Analytics is off by default. Auto mode is what registers the purchase
+         handlers, so it has to be on before /src/index.ts boots. -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      window.nextConfig = {
+        analytics: {
+          enabled: true,
+          mode: 'auto',
+          providers: { gtm: { enabled: true } },
+        },
+      };
+    </script>
+  </head>
+  <body>
+    <h1>Express purchase fixture</h1>
+
+    <!-- No docs:example marker: this fixture exists to drive the *analytics*
+         journey around express checkout (create → gateway → back or success),
+         not to demonstrate markup. The express container's published example
+         lives in express-checkout-container.html, and the analytics reference is
+         prose, not markup. -->
+    <div data-next-express-checkout="container">
+      <div data-next-express-checkout="buttons"></div>
+    </div>
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

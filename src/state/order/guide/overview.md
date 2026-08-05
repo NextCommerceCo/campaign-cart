@@ -26,7 +26,11 @@ Two ideas carry the whole store.
 a fresh page load; the cart that produced the purchase may be gone. What ties the
 page to the purchase is the `?ref_id` (or `?order_ref_id`) the checkout redirect
 put in the address bar. The SDK reads it during boot and fetches the order, so a
-page normally finds `order` already populated by the time enhancers run.
+page normally finds `order` already populated by the time enhancers run. That
+fetch announces itself as
+[`order:loaded`](./reference/events.md) — the event conversion tracking belongs
+on, because it is the first point at which a gateway payment is known to have
+gone through.
 
 **Writes go one way.** Accepting an upsell charges the customer's stored payment
 method through the order API. There is no local undo and no "remove upsell" —
@@ -154,11 +158,16 @@ this one.
   digit-run match means a SKU like `PKG-2024-BUNDLE` contributes `2024`, which
   matches no package. This is another reason the page-path fields are the ones to
   read.
-- **It does not know whether the order was paid or is still pending.** The store
-  keeps whatever the API returned; payment state lives on the `order` object
-  itself. Read the order's own status fields — see
+- **It does not track payment state itself.** The store keeps whatever the API
+  returned; whether the money moved is a property of the `order` object. The
+  signal is `payment_complete_url`: while it is present the order exists but is
+  unpaid, and the shopper still owes the gateway a step. Read that, or the order's
+  own status fields — see
   [order-display](../../../features/display/order-display/guide/overview.md) —
-  rather than inferring success from the order being present.
+  rather than inferring success from the order being present. An order loaded
+  through `?ref_id` after the gateway returned the shopper is paid, which is why
+  [`order:loaded`](./reference/events.md) is a safe conversion signal and
+  `order:completed` on the checkout page is not.
 - **It has no connection to the cart.** Completing an order does not clear the
   cart, and clearing the cart does not clear the order. See
   [the cart store](../../cart/guide/overview.md) for how to start the next

@@ -19,8 +19,12 @@ import type { DataLayerEvent, EcommerceData, EcommerceItem } from '../types';
 import { EventBuilder } from './event-builder';
 import { useCartStore } from '@/state/cart';
 import { useCampaignStore } from '@/state/campaign';
+import { createLogger } from '@/core/logger';
 import { resolveOrderTaxBasis } from '../tax-basis';
 import { buildCartEcommerce } from './ecommerce-events.cart';
+import { purchaseTransactionId } from '../tracking/purchase-tracking';
+
+const logger = createLogger('EcommerceEvents');
 
 /**
  * Create begin_checkout event (GA4 format)
@@ -37,21 +41,33 @@ export function createBeginCheckoutEvent(): DataLayerEvent {
 }
 
 /**
- * Create purchase event (GA4 format)
+ * Create purchase event (GA4 format).
+ *
+ * Returns `null` when the payload carries no order identifier. There used to be
+ * an `order_${Date.now()}` fallback here, which meant a payload the reader could
+ * not resolve — the `{ method, order }` wrapper every express checkout emitted —
+ * still produced a `dl_purchase`, with a made-up transaction id no downstream tag
+ * could match to an order. A purchase nobody can identify is worse than no event
+ * at all, so it is dropped instead (issue #71).
  */
-export function createPurchaseEvent(orderData: any): DataLayerEvent {
+export function createPurchaseEvent(orderData: any): DataLayerEvent | null {
   const cartState = useCartStore.getState();
   const currency = EventBuilder.getCurrency();
   const campaignStore = useCampaignStore.getState();
 
   // Handle order object structure from API
   const order = orderData.order || orderData;
-  const orderId =
-    order.number ||
-    order.ref_id ||
-    orderData.orderId ||
-    orderData.transactionId ||
-    `order_${Date.now()}`;
+  const orderId = purchaseTransactionId({
+    ...order,
+    orderId: orderData.orderId,
+    transactionId: orderData.transactionId,
+  });
+  if (!orderId) {
+    logger.error(
+      'Cannot build dl_purchase: order payload has no number, ref_id, orderId or transactionId'
+    );
+    return null;
+  }
 
   // Parse order totals. Every figure below comes off the order — the live cart
   // is the PRE-order snapshot and disagrees with the order the moment a coupon,

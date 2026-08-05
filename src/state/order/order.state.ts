@@ -8,6 +8,7 @@ import { persist } from 'zustand/middleware';
 import type { Order, AddUpsellLine } from '@/types/api';
 import type { IApiClient } from '@/api/client.types';
 import { createLogger } from '@/core/logger';
+import { EventBus } from '@/core/events';
 
 export interface OrderState {
   /**
@@ -208,6 +209,13 @@ export const useOrderStore = create<OrderState & OrderActions>()(
             'Populated completed upsells from order:',
             upsellPackageIds
           );
+
+          // The page now has an order to work with. Emitted after `set`, so a
+          // listener reading the store sees the loaded order. Analytics hangs
+          // `dl_purchase` on this: for express checkout and 3-D Secure it is the
+          // first moment the SDK sees a *paid* order, since the order created on
+          // the checkout page was still awaiting the gateway (issue #71).
+          EventBus.getInstance().emit('order:loaded', order);
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : 'Failed to load order';

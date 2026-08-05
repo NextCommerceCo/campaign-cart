@@ -3381,6 +3381,68 @@ shipping-form spelling combinations; it fails on 3 of 4 without the fix.
 
 ---
 
+## Found while fixing issue #71 (2026-08-05)
+
+### 196. `dl_purchase` was hung on order *creation*, so express checkout reported purchases nobody made — *reproduced in a browser, fixed*
+
+Reported from live traffic: 8 `dl_purchase` firings in a week at one merchant, **all 8** with
+a fabricated `order_<timestamp>` transaction id. 4 came from sessions that never placed an
+order, 2 fired ~8 hours before the same visitor's real purchase, one session fired twice a
+minute apart. An affiliate network approved six payouts against them.
+
+Three defects compounded, and only the third was known (finding 192 fixed a fourth):
+
+1. **`express-checkout:completed` does not mean paid.** `ExpressCheckoutProcessor` emits it
+   the moment `POST /orders` succeeds — which for PayPal is one redirect *before* any money
+   moves: the order comes back with a `payment_complete_url` and `handleOrderRedirect` sends
+   the shopper there. Analytics subscribed to it as if it were a conversion. A card order
+   needing 3-D Secure reaches `order:completed` in the same unpaid state.
+2. **The `_willRedirect` queue turned that into a delayed landmine.** The event was parked in
+   `sessionStorage` and replayed ~200ms after the *next* SDK page booted, whatever page that
+   was — so the conversion fired when the shopper pressed **back** from PayPal, or landed on
+   `payment_failed_url` (whose SDK default is the checkout page itself). That is the "fires
+   after I press back" the report describes, and it also explains the 8-hour skew: the event
+   is dated by the page that replayed it, not by the click.
+3. **`createPurchaseEvent` fabricated an id.** `order.number || order.ref_id || … ||
+   `` `order_${Date.now()}` `` meant an unreadable payload still produced an event. Combined
+   with the `{ method, order }` wrapper of finding 192, that is why all 8 carried a timestamp.
+4. **Nothing deduped.** Two express clicks, or a queued event replaying on a page that also
+   reported the order, each produced their own event.
+
+**The receipt page — the one place that holds a paid order — was the only page not reporting
+anything.** `SDKInitializer.checkAndLoadOrder` has always fetched the order from `?ref_id=`
+and put it in the store, silently.
+
+Fixed by making "paid" the precondition rather than "created":
+`isAwaitingGatewayPayment(order)` (a `payment_complete_url` means the money has not moved)
+gates both checkout-page paths; the order store now emits `order:loaded` on a successful
+fetch and analytics reports the purchase from there; `DataLayerManager.push` allows one
+`dl_purchase` per `transaction_id`, remembered in `localStorage`, which is where a replayed
+queue event is caught; and the timestamp fallback is gone — no id, no event.
+
+**Where the dedupe check sits is load-bearing.** It is *after* the `_willRedirect` branch, so
+a queued event is marked only when it really reaches the data layer. Marking at queue time
+would suppress the receipt page's own emission and lose the purchase entirely whenever the
+queue drops the event as stale (5 minutes — a slow 3-D Secure step is enough).
+
+Two smaller things found on the way:
+
+- **`SDKInitializer.checkAndLoadOrder` logged `Order loaded successfully: null` on every
+  successful load.** It read `orderStore.order` from the `getState()` snapshot taken *before*
+  the await; Zustand's `set` builds a new state object, so the snapshot never updates.
+- **Finding 192's false-TSDoc note was still half true.** `express-checkout:completed` and
+  `:started` were corrected then, but `:failed` still claimed to be never emitted, and the
+  express container's guide still told authors that none of the three exist. Also
+  `express-checkout:started` **declares a `cartTotal` it does not send** — the emit passes
+  `method` and `itemCount` only. Documented rather than changed: adding the field is a payload
+  change, and no page can be relying on a value that was never there.
+
+Proven falsifiable: `e2e/express-purchase.spec.ts` asserts the queue holds no `dl_purchase`
+while the shopper sits on the stand-in gateway page, and that assertion fails deterministically
+with the gate removed — the "nothing in the data layer after back" assertion alone passed once
+against the broken build, because it depends on the returned page booting in time.
+
+
 ## Open decisions
 
 1. **Lint.** 12,365 errors now that it runs — 7,391 auto-fixable (7,296 of them pure

@@ -604,7 +604,11 @@ export const ANALYTICS_EVENT_DOCS: AnalyticsEventDoc[] = [
   },
   {
     name: 'dl_purchase',
-    firesWhen: 'An order is created successfully — the main conversion.',
+    firesWhen:
+      'A **paid** order is in hand — the main conversion. Either the order was ' +
+      'charged on the checkout page (card), or the shopper came back from a ' +
+      'payment gateway to `success_url?ref_id=…` and the SDK loaded the finished ' +
+      'order. Once per order, whichever of those happens first.',
     providerNotes:
       'Becomes Meta `Purchase` and RudderStack `Order Completed`. Meta gets an ' +
       '`eventID` of `{storeName}-{orderNumber}` when a store name is ' +
@@ -613,6 +617,8 @@ export const ANALYTICS_EVENT_DOCS: AnalyticsEventDoc[] = [
       '`total` as value + tax + shipping and also calls `identify()` from the ' +
       "event's user properties.",
     cautions: [
+      'An order created but not yet paid does **not** produce this event. Express checkout (PayPal, Apple Pay, Google Pay) and a card payment needing 3-D Secure both create the order before the money moves; the SDK reports them only when the shopper returns to the success page. Until 2026-08-05 the event fired at creation time and was then replayed on the next page in the session, so pressing back from PayPal — or landing on `payment_failed_url` — reported a purchase for an order that never existed, with a fabricated `order_<timestamp>` transaction id ([issue #71](https://github.com/NextCommerceCo/campaign-cart/issues/71)). A conversion count from before that date over-reports express checkout.',
+      'The event is emitted at most once per `transaction_id`, remembered in `localStorage` (`nextDataLayer_reportedPurchases`). A payload with no order number and no `ref_id` is dropped with an error rather than sent under a made-up id — there is no `order_<timestamp>` fallback any more.',
       'A zero-value order — a 100% discount, a free trial — now reports normally, carrying `value: 0` with its real `transaction_id`, currency and items. Until 2026-07-31 validation required `ecommerce.value` to be *truthy*, so those orders were dropped before reaching the data layer and no provider ever saw them; a conversion count from before that date under-reports free orders.',
       "Reporting `value` as item revenue means it excludes tax and shipping by design. A GA4 revenue figure that looks low against the store's own total is usually this, not a lost event.",
     ],

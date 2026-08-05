@@ -1,5 +1,41 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- **`dl_purchase` only reports orders that were paid for.** Express checkout (PayPal,
+  Apple Pay, Google Pay) creates the order *before* the shopper pays and then sends them
+  to the gateway; the purchase event was raised at that point and parked for the next
+  page, so pressing **back** from PayPal — or landing on `payment_failed_url` — reported a
+  conversion for an order that never happened, with a made-up `order_<timestamp>`
+  transaction id. One merchant's affiliate network approved six payouts against it
+  ([#71](https://github.com/NextCommerceCo/campaign-cart/issues/71)).
+
+  An order still carrying a `payment_complete_url` is no longer reported at all. The
+  purchase is reported when the shopper comes back to `success_url?ref_id=…` and the SDK
+  loads the finished order — **once per order**, remembered across pages, so the checkout
+  page, the receipt page and a queued event replayed after the redirect can no longer
+  produce three. A payload with no order number and no `ref_id` is dropped with an error
+  instead of being sent under a fabricated id.
+
+  A card payment needing 3-D Secure was affected the same way and is fixed by the same
+  gate. Card orders charged on the checkout page are unaffected.
+
+### New
+
+- **`order:loaded`** — fires when a page opened with `?ref_id=` has fetched its order.
+  This is the event to hang conversion tracking on, and where the SDK's own `dl_purchase`
+  now comes from. `order:completed` means *created*, not *paid*.
+
+### Corrected docs
+
+- `express-checkout:started`, `:completed` and `:failed` were documented as
+  "never emitted by this build". All three are emitted — the second one is what caused
+  #71. `express-checkout:started` does not send the `cartTotal` it declares.
+
+---
+
 ## [0.4.31] — 2026-08-04 — Prices for Standard European Markets
 
 Campaigns can display prices the way European markets expect — `69,99 €` rather than

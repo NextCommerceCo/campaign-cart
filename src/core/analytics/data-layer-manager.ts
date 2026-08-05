@@ -14,6 +14,11 @@ import type {
 } from './types';
 import { DEFAULT_CONFIG, STORAGE_KEYS, EVENT_VALIDATION_RULES } from './config';
 import { pendingEventsHandler } from './tracking/pending-events-handler';
+import {
+  hasPurchaseBeenReported,
+  markPurchaseReported,
+  reportedPurchaseId,
+} from './tracking/purchase-tracking';
 import { createLogger } from '@/core/logger';
 import { EventBuilder } from './events/event-builder';
 
@@ -121,6 +126,24 @@ export class DataLayerManager {
         // Don't push to current page's data layer since we're redirecting
         // This prevents duplicate events
         return;
+      }
+
+      // One `dl_purchase` per order, whichever path reaches here first — the
+      // checkout page's own event, the same event replayed from the queue after
+      // the redirect, or the receipt page reporting the order it loaded. The
+      // check sits after the queue branch on purpose: a queued event has not
+      // shipped yet, and marking it here would suppress the receipt page's
+      // emission and lose the purchase if the queue later drops it as stale
+      // (issue #71).
+      if (finalEvent.event === 'dl_purchase') {
+        const transactionId = reportedPurchaseId(finalEvent);
+        if (transactionId && hasPurchaseBeenReported(transactionId)) {
+          logger.info(
+            `Purchase already reported for ${transactionId} — dropping duplicate dl_purchase`
+          );
+          return;
+        }
+        if (transactionId) markPurchaseReported(transactionId);
       }
 
       // Push to data layer

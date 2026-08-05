@@ -133,6 +133,7 @@ export const STORAGE_KEYS = {
   SESSION_ID: 'nextDataLayer_sessionId',
   SESSION_START: 'nextDataLayer_sessionStart',
   USER_PROPERTIES: 'nextDataLayer_userProperties',
+  REPORTED_PURCHASES: 'nextDataLayer_reportedPurchases',
 } as const;
 
 /**

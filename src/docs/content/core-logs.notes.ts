@@ -749,6 +749,15 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
     action:
       'Read the attached error. Upsell revenue is still counted; the product name attached to it may be missing.',
   },
+  {
+    level: 'error',
+    message:
+      'Cannot build dl_purchase: order payload has no number, ref_id, orderId or transactionId',
+    meaning:
+      'A purchase was reported for a payload with nothing to use as `transaction_id`, so no event was sent. The order (if there is one) is missing from every purchase report. This used to be sent as `order_<timestamp>` instead, which no tag could match to an order.',
+    action:
+      'Look at what called it. `next.trackPurchase()` must be handed the order the API returned — `{ number, ref_id, lines, … }` — not a summary of it. From the SDK’s own paths this line means the orders API returned an order with neither a number nor a ref_id, which is worth raising with support.',
+  },
 
   // ── analytics/events/user-events.ts ─────────────────────────────────────────
   {
@@ -927,6 +936,32 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
       'The queue could not be emptied, so events already replayed may be replayed again — duplicate events in the destination.',
     action:
       'Read the attached error. If purchase events are duplicated in reports, this line is the reason to look at first.',
+  },
+
+  // ── analytics/tracking/purchase-tracking.ts ──────────────────────────────────
+  {
+    level: 'warn',
+    message: 'Failed to read reported purchases:',
+    meaning:
+      'The list of orders already reported as a purchase could not be read, so this page cannot tell whether an order has been reported before. It behaves as if none had been, which risks a second `dl_purchase` for an order that already produced one.',
+    action:
+      'Read the attached error — a blocked or corrupt localStorage is the cause. If purchases look over-counted for one visitor, this line is why.',
+  },
+  {
+    level: 'warn',
+    message: 'Failed to record reported purchase:',
+    meaning:
+      'A purchase was reported but could not be written to the already-reported list, so a later page in the same journey may report the same order again.',
+    action:
+      'Read the attached error. Blocked or full localStorage is the usual cause; the event itself was sent, only the record of it was lost.',
+  },
+  {
+    level: 'warn',
+    message: 'Failed to clear reported purchases:',
+    meaning:
+      'The already-reported list could not be emptied. Only tests clear it, so on a real page this line should never appear.',
+    action:
+      'Read the attached error. In production, treat it as a sign that something outside the SDK is calling into its test helpers.',
   },
 
   // ── analytics/tracking/view-item-list-tracker.ts ──────────────────────────────

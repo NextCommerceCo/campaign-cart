@@ -297,13 +297,18 @@ export class SDKInitializer {
         const apiClient = getApiClient(configStore.apiKey);
 
         await orderStore.loadOrder(refId, apiClient);
-        this.logger.info('Order loaded successfully:', orderStore.order);
+
+        // Read the store again: `orderStore` is the pre-load snapshot, and
+        // Zustand's `set` builds a new state object rather than mutating it, so
+        // this used to log `null` on every successful load.
+        const order = useOrderStore.getState().order;
+        this.logger.info('Order loaded successfully:', order);
 
         // Log whether the order supports upsells
-        if (orderStore.order) {
+        if (order) {
           this.logger.info(
             'Order supports upsells:',
-            orderStore.order.supports_post_purchase_upsells
+            order.supports_post_purchase_upsells
           );
         }
       } catch (error) {

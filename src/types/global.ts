@@ -140,8 +140,14 @@ export interface EventMap {
    */
   'checkout:express-started': { method: 'paypal' | 'apple_pay' | 'google_pay' };
   /**
-   * The order was created successfully. This is the event to hang purchase
-   * tracking and thank-you page logic on.
+   * The order was created successfully — the orders API accepted it.
+   *
+   * **Created is not paid.** An express checkout (PayPal, Apple Pay, Google Pay)
+   * and a card payment that needs 3-D Secure both reach this point with the money
+   * still unmoved: the order carries a `payment_complete_url` and the SDK
+   * redirects the shopper there to finish paying. Hang purchase tracking on
+   * {@link EventMap."order:loaded" | order:loaded} instead, which only fires for
+   * an order the API has handed back complete.
    *
    * @remarks
    * The payload is typed as {@link OrderData} — the six fields guaranteed to be
@@ -151,6 +157,28 @@ export interface EventMap {
    * `Order`.
    */
   'order:completed': OrderData;
+  /**
+   * An order was loaded from the API into the order store, because the page was
+   * opened with `?ref_id=` — a success, receipt or upsell page.
+   *
+   * This is the event to hang purchase tracking on: the order it carries has been
+   * fetched back from the orders API, so it is a real order with a real order
+   * number, and for every payment method that finishes at a gateway it is the
+   * first point at which the SDK knows the shopper actually paid. The SDK's own
+   * `dl_purchase` fires here, once per order — see the
+   * [analytics events reference](../core/guide/reference/analytics-events.md).
+   *
+   * Fires on a fresh fetch only. A reload inside the order store's 15-minute
+   * window is served from its cache and emits nothing.
+   *
+   * @example
+   * ```ts
+   * window.next.on('order:loaded', order => {
+   *   console.log('Thank you for order', order.number);
+   * });
+   * ```
+   */
+  'order:loaded': Order;
   /**
    * The order succeeded but carried no redirect URL, so the SDK could not send
    * the visitor onward. Handle this to avoid stranding them on the checkout page.
@@ -521,9 +549,12 @@ export interface EventMap {
     error: string;
   };
   /**
-   * The visitor started an express checkout.
+   * The visitor started an express checkout — the button was clicked and the SDK
+   * is about to ask the orders API for the order.
    *
-   * @deprecated Declared but never emitted by this build.
+   * @remarks
+   * `cartTotal` is declared but not sent: the emitting call passes `method` and
+   * `itemCount` only. Read the cart store for the total.
    */
   'express-checkout:started': {
     method: 'paypal' | 'apple_pay' | 'google_pay';
@@ -531,20 +562,28 @@ export interface EventMap {
     itemCount: number;
   };
   /**
-   * An express checkout failed.
-   *
-   * @deprecated Declared but never emitted by this build. Listen for
-   * `payment:error`.
+   * An express checkout failed — the order was refused, or the gateway's own
+   * fields rejected it. `payment:error` fires alongside it for the errors that
+   * carry payment details.
    */
   'express-checkout:failed': {
     method: 'paypal' | 'apple_pay' | 'google_pay';
     error: string;
   };
   /**
-   * An express checkout produced an order.
+   * An express checkout produced an order — the orders API accepted it and the
+   * SDK is about to redirect the shopper to the payment gateway.
    *
-   * @deprecated Declared but never emitted by this build. Listen for
-   * `order:completed`, which covers express and standard checkout alike.
+   * **This is not a purchase.** The order it carries has a `payment_complete_url`
+   * and no money has moved: the shopper may still cancel at PayPal, or press
+   * back. Reporting a conversion here is
+   * [issue #71](https://github.com/NextCommerceCo/campaign-cart/issues/71) —
+   * hang purchase tracking on
+   * {@link EventMap."order:loaded" | order:loaded} instead, which fires on the
+   * success page for the finished order.
+   *
+   * @remarks
+   * The payload wraps the order: `{ method, order }`, not the order itself.
    */
   'express-checkout:completed': {
     method: 'paypal' | 'apple_pay' | 'google_pay';
