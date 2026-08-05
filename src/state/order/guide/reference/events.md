@@ -39,6 +39,16 @@ press back. `order:loaded` fires on the page the gateway returns them to, for an
 order fetched back from the API, so it is the first point at which the money is
 known to have moved.
 
+**It fires on both return legs, so check which one you are on.** A redirect
+payment comes back to either `success_url` or `payment_failed_url`, and the
+platform puts `?ref_id=` on both — so a declined payment also loads its order and
+also emits this event. The SDK's own `dl_purchase` recognises the failure page two
+ways (the `?payment_failed=true` its default failure URL carries, and the
+`payment_failed_url` path the checkout page recorded), but a listener of your own
+sees every `order:loaded`. If what you do in it counts as a conversion, read the
+order's own payment state — a `payment_complete_url` still on it means the money
+never moved — or check the URL.
+
 The SDK's own `dl_purchase` is emitted from here, once per order — see the
 [analytics events reference](../../../../core/guide/reference/analytics-events.md)
 and [issue #71](https://github.com/NextCommerceCo/campaign-cart/issues/71), the

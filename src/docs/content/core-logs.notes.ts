@@ -957,6 +957,22 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
   },
   {
     level: 'warn',
+    message: 'Failed to record the checkout return paths:',
+    meaning:
+      'The checkout page could not store where the orders API will send the shopper back to. A redirect payment that then fails, and lands on a merchant-configured failure page, cannot be recognised as a failure by its path — so if the API no longer reports that order as awaiting payment, the visit could be counted as a purchase.',
+    action:
+      'Read the attached error — blocked or full sessionStorage. The `?payment_failed=true` check is unaffected, so stores on the default failure URL are still covered.',
+  },
+  {
+    level: 'warn',
+    message: 'Failed to read the checkout return paths:',
+    meaning:
+      'The landing page could not read which of the two return legs it is, so it falls back to the `?payment_failed=true` parameter alone. Same consequence as failing to write them.',
+    action:
+      'Read the attached error. A corrupt stored value keeps failing until it is overwritten by the next order; clearing the SDK’s sessionStorage keys resets it.',
+  },
+  {
+    level: 'warn',
     message: 'Failed to clear reported purchases:',
     meaning:
       'The already-reported list could not be emptied. Only tests clear it, so on a real page this line should never appear.',

@@ -3437,10 +3437,29 @@ Two smaller things found on the way:
   `method` and `itemCount` only. Documented rather than changed: adding the field is a payload
   change, and no page can be relying on a value that was never there.
 
+**A redirect payment has two return legs, and the second one needed its own answer.** A
+gateway comes back to either `success_url` or `payment_failed_url`, and the platform puts
+`?ref_id=` on both — so the order loads on the failure page and `order:loaded` fires there
+too. Whether a *declined* order still carries `payment_complete_url` when fetched is the
+platform's behaviour, not the SDK's, so resting the whole fix on that field would have left a
+narrower version of the same bug for any store with a `next-failure-url` set. Closed with two
+signals that do not depend on the API: `?payment_failed=true` (what `getFailureUrl` appends
+when no failure URL is configured), and the `payment_failed_url` **path**, which the checkout
+page now records alongside `success_url` when it creates the order
+(`nextDataLayer_checkoutReturnPaths`).
+
+**Both are vetoes, never requirements** — no stored record means the ordinary rules apply. The
+inverse design (report *only* on a recognised success path) would turn every lost
+sessionStorage entry into a lost conversion, which is the failure mode nobody notices. A store
+pointing both legs at one page makes the path meaningless, so that case falls back to the
+parameter alone rather than vetoing every real purchase it makes.
+
 Proven falsifiable: `e2e/express-purchase.spec.ts` asserts the queue holds no `dl_purchase`
 while the shopper sits on the stand-in gateway page, and that assertion fails deterministically
 with the gate removed — the "nothing in the data layer after back" assertion alone passed once
-against the broken build, because it depends on the returned page booting in time.
+against the broken build, because it depends on the returned page booting in time. The
+failure-leg spec stubs `POST` with an unpaid order and `GET` with one that looks entirely paid,
+so it fails unless the return-path veto is doing the work.
 
 
 ## Open decisions

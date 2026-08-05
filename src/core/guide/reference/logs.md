@@ -10,7 +10,7 @@ category: "Core Reference"
      src/docs/content/core-logs.ts. Do not edit by hand: change the log line in the
      code or the note in core-logs.ts, then run `npm run docs:reference`. -->
 
-Every message the SDK's own machinery can print — 504 of them, across 62 console prefixes plus 13 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
+Every message the SDK's own machinery can print — 506 of them, across 62 console prefixes plus 13 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
 
 Messages are listed at the wording the code uses. A `{name}` inside one is a value filled in at runtime, so search for the text on either side of it. **Extra context** means the call passes a second argument — an object or an error logged beside the message; expand that entry in the console, because the message alone will not tell you which element, package, or event was involved.
 
@@ -146,7 +146,7 @@ Console lines are prefixed with the part of the SDK that produced them. Find the
 | `[AutoEventListener]` | Turns the SDK’s own cart, upsell, and exit-intent events into analytics events, so a page gets tracking without writing any. | — | — | 1 | 4 |
 | `[MetaTagController]` | Fires `view_item` / `view_item_list` and scroll-depth events from `<meta>` tags, including reading the package id out of a URL parameter and waiting for a time, an element, or a scroll threshold. | — | 8 | 10 | 13 |
 | `[PendingEventsHandler]` | Holds events that were raised as the page was navigating away, and replays them on the next page so a redirect does not lose a purchase. | 4 | 2 | 2 | 6 |
-| `[PurchaseTracking]` | Decides whether an order may be reported as a purchase yet — an order still awaiting payment at a gateway may not — and remembers the orders already reported so one order produces one `dl_purchase`. | — | 3 | — | — |
+| `[PurchaseTracking]` | Decides whether an order may be reported as a purchase yet — an order still awaiting payment at a gateway may not — and remembers the orders already reported so one order produces one `dl_purchase`. | — | 5 | — | — |
 | `[UserDataTracker]` | Fires `dl_user_data` first on every page and again when the visitor is identified or the route changes. | — | — | 1 | 17 |
 | `[ViewItemListTracker]` | Detects the products present on a page and fires `view_item` / `view_item_list` for them without any meta tags. | — | 1 | 1 | 18 |
 | `[ListAttributionTracker]` | Remembers which list a product was clicked from so the next page’s events can say where the visitor came from within the site. | 3 | — | — | 7 |
@@ -2248,6 +2248,22 @@ Logged from `analytics/tracking/purchase-tracking.ts`.
 ### Warn
 
 The SDK carried on, but something in the markup, the configuration, or the campaign data was not what it expected. Worth fixing even when the page looks right — several of these are how tracking goes quietly wrong.
+
+#### `Failed to record the checkout return paths:`
+
+`analytics/tracking/purchase-tracking.ts › rememberCheckoutReturnPaths` · extra context attached
+
+**Meaning:** The checkout page could not store where the orders API will send the shopper back to. A redirect payment that then fails, and lands on a merchant-configured failure page, cannot be recognised as a failure by its path — so if the API no longer reports that order as awaiting payment, the visit could be counted as a purchase.
+
+**Action:** Read the attached error — blocked or full sessionStorage. The `?payment_failed=true` check is unaffected, so stores on the default failure URL are still covered.
+
+#### `Failed to read the checkout return paths:`
+
+`analytics/tracking/purchase-tracking.ts › readReturnPaths` · extra context attached
+
+**Meaning:** The landing page could not read which of the two return legs it is, so it falls back to the `?payment_failed=true` parameter alone. Same consequence as failing to write them.
+
+**Action:** Read the attached error. A corrupt stored value keeps failing until it is overwritten by the next order; clearing the SDK’s sessionStorage keys resets it.
 
 #### `Failed to read reported purchases:`
 

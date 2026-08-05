@@ -33,6 +33,8 @@ const CAMPAIGN_WITH_PAYPAL: Campaign = {
 
 const CHECKOUT = '/e2e/fixtures/express-purchase.html';
 const GATEWAY = '/e2e/fixtures/express-gateway.html';
+/** What the checkout fixture names in its `next-failure-url` meta tag. */
+const FAILED = '/e2e/fixtures/express-purchase-failed.html';
 
 /**
  * What `POST /api/v1/orders/` returns for an express order: a real order record
@@ -105,14 +107,56 @@ test('pressing back from the gateway reports no purchase', async ({ page }) => {
   const queued = await page.evaluate(() =>
     JSON.parse(sessionStorage.getItem('next_v2_pending_events') ?? '[]')
   );
-  expect(
-    queued.filter((q: any) => q.event?.event === 'dl_purchase')
-  ).toEqual([]);
+  expect(queued.filter((q: any) => q.event?.event === 'dl_purchase')).toEqual(
+    []
+  );
 
   // The shopper changes their mind and presses back.
   await page.goBack();
   await page.waitForFunction(() => Boolean((window as any).next?.on));
   await afterQueueReplay(page);
+
+  expect(await purchases(page)).toEqual([]);
+});
+
+test('landing on the failure page reports no purchase, even for an order that looks paid', async ({
+  page,
+}) => {
+  // The worst case on the other leg of the same redirect: `POST` creates the
+  // unpaid order, but the `GET` on the landing page answers with an order that
+  // carries no `payment_complete_url` at all — so the paid-or-not gate cannot see
+  // anything wrong with it. What saves it is knowing that *this page* is the
+  // `payment_failed_url` the checkout page sent with the order.
+  await page.route('**/api/v1/orders/**', route =>
+    route.fulfill({
+      json: route.request().method() === 'POST' ? PENDING_ORDER : PAID_ORDER,
+    })
+  );
+
+  await bootSdk(page, CHECKOUT);
+  await page.evaluate(() => (window as any).next.addItem({ packageId: 1 }));
+  await page.click('[data-next-express-checkout="paypal"]');
+  await page.waitForURL(`**${GATEWAY}`);
+
+  // The gateway declines and sends the shopper to payment_failed_url, with the
+  // ref_id on it exactly as the success leg would have.
+  await page.goto(`${FAILED}?ref_id=${PAID_ORDER.ref_id}`);
+  await page.waitForFunction(() => Boolean((window as any).next?.on));
+  await expect(page.locator('#failed')).toBeVisible();
+  await afterQueueReplay(page);
+
+  // The order really did load on this page — so "no purchase" is the gate's
+  // decision, not a page that never got as far as having an order. Without this,
+  // the test would pass just as well against a failure page where `?ref_id=` was
+  // ignored.
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          sessionStorage.getItem('next-order')?.includes('E2E-1001') ?? false
+      )
+    )
+    .toBe(true);
 
   expect(await purchases(page)).toEqual([]);
 });

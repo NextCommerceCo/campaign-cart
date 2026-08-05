@@ -5,6 +5,7 @@
 import { OrderBuilder } from '../builders/order-builder';
 import { useCheckoutStore } from '@/state/checkout';
 import { handleOrderRedirect } from '../utils/redirect-handler';
+import { rememberCheckoutReturnPaths } from '@/core/analytics/tracking/purchase-tracking';
 import type { IApiClient } from '@/api/client.types';
 import type { Logger } from '@/core/logger';
 
@@ -77,6 +78,14 @@ export class OrderManager {
       this.logger.debug('Order data built successfully');
       this.logger.debug('Payment method:', orderData.payment_detail.payment_method);
       this.logger.debug('Has payment token:', !!orderData.payment_detail.card_token);
+
+      // A redirect payment comes back to one of these two, both carrying
+      // `?ref_id=`. Only the landing page can tell them apart, and only if this
+      // page tells it what they were — see rememberCheckoutReturnPaths.
+      rememberCheckoutReturnPaths(
+        orderData.success_url,
+        orderData.payment_failed_url
+      );
 
       // Create the order via API
       this.logger.debug('Calling API to create order...');
@@ -186,7 +195,14 @@ export class OrderManager {
       
       this.logger.debug('Creating express order with minimal data:', orderData);
       this.logger.info('Express order data built');
-      
+
+      // Express always redirects to a gateway, so this is the path that matters
+      // most — see the same call in createOrder.
+      rememberCheckoutReturnPaths(
+        orderData.success_url,
+        orderData.payment_failed_url
+      );
+
       // Create the order
       const order = await this.apiClient.createOrder(orderData);
       

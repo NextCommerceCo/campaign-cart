@@ -22,6 +22,13 @@
   A card payment needing 3-D Secure was affected the same way and is fixed by the same
   gate. Card orders charged on the checkout page are unaffected.
 
+  **The failed leg of a redirect payment is covered too.** A gateway returns to one of two
+  URLs — `success_url` or `payment_failed_url` — and the platform puts `?ref_id=` on both,
+  so the order loads on the failure page as well. Nothing is reported there: the checkout
+  page now records both return paths, and `?payment_failed=true` (the SDK's own default
+  failure URL) is treated as a failure on its own. This holds even if the orders API
+  reports a declined order as no longer awaiting payment.
+
 ### New
 
 - **`order:loaded`** — fires when a page opened with `?ref_id=` has fetched its order.

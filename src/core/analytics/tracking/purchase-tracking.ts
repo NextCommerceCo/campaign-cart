@@ -70,6 +70,97 @@ export function isAwaitingGatewayPayment(order: any): boolean {
   return Boolean(order?.payment_complete_url);
 }
 
+/**
+ * Where the SDK told the orders API to send the shopper afterwards, remembered on
+ * the checkout page so the *landing* page can tell which of the two it is.
+ *
+ * A redirect payment has two return legs, `success_url` and `payment_failed_url`,
+ * and both come back to the merchant's own site with `?ref_id=` — so the order
+ * loads either way and `order:loaded` fires either way.
+ * {@link isAwaitingGatewayPayment} is the first line of defence, but it rests on
+ * the API still returning `payment_complete_url` for an order whose payment
+ * failed, which is the platform's behaviour to decide, not the SDK's. This record
+ * does not depend on it.
+ *
+ * Paths only — the two URLs can carry different query strings per attempt — and
+ * only ever used to **veto** a purchase, never to require one: no record means the
+ * ordinary rules apply, so losing sessionStorage can never lose a conversion.
+ */
+interface CheckoutReturnPaths {
+  success: string;
+  failure: string;
+}
+
+/** `'/thanks'` from `https://shop.test/thanks?x=1`, or `null` if unparseable. */
+function pathOf(url: string | undefined): string | null {
+  if (!url) return null;
+  try {
+    return new URL(url, window.location.origin).pathname;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Record the two return legs of this order, from the payload the SDK is about to
+ * send. Called on the checkout page, for every order that is created.
+ */
+export function rememberCheckoutReturnPaths(
+  successUrl: string | undefined,
+  failureUrl: string | undefined
+): void {
+  const success = pathOf(successUrl);
+  const failure = pathOf(failureUrl);
+  // Both, or neither: one path alone cannot tell the legs apart.
+  if (!success || !failure) return;
+
+  try {
+    sessionStorage.setItem(
+      STORAGE_KEYS.CHECKOUT_RETURN_PATHS,
+      JSON.stringify({ success, failure } satisfies CheckoutReturnPaths)
+    );
+  } catch (error) {
+    logger.warn('Failed to record the checkout return paths:', error);
+  }
+}
+
+function readReturnPaths(): CheckoutReturnPaths | null {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEYS.CHECKOUT_RETURN_PATHS);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return typeof parsed?.success === 'string' &&
+      typeof parsed?.failure === 'string'
+      ? (parsed as CheckoutReturnPaths)
+      : null;
+  } catch (error) {
+    logger.warn('Failed to read the checkout return paths:', error);
+    return null;
+  }
+}
+
+/**
+ * Whether the page being looked at is where a *failed* payment lands, which is
+ * never a purchase however complete the order it loaded looks.
+ *
+ * Two independent signals, either of which is enough:
+ *
+ * - `?payment_failed=true` — the SDK's own default failure URL is the checkout
+ *   page with that parameter appended (`getFailureUrl`), so this covers every
+ *   store that has not set `next-failure-url`.
+ * - the path matches the `payment_failed_url` this session sent with its order —
+ *   which covers the stores that have. A store pointing **both** legs at one page
+ *   makes the path meaningless, so that case falls back to the parameter alone.
+ */
+export function isPaymentFailureLanding(): boolean {
+  const { search, pathname } = window.location;
+  if (new URLSearchParams(search).get('payment_failed') === 'true') return true;
+
+  const paths = readReturnPaths();
+  if (!paths || paths.failure === paths.success) return false;
+  return pathname === paths.failure;
+}
+
 /** The transaction id of an already-built event, for the dedupe check. */
 export function reportedPurchaseId(event: {
   ecommerce?: { transaction_id?: string } | undefined;

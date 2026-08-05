@@ -4,6 +4,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="next-api-key" content="test-e2e-key" />
+    <!-- The two legs a redirect payment can come back on. Both are sent to the
+         orders API with the order, and both arrive with ?ref_id= — which is why
+         the SDK has to remember which is which. -->
+    <meta name="next-success-url" content="/e2e/fixtures/express-purchase.html" />
+    <meta
+      name="next-failure-url"
+      content="/e2e/fixtures/express-purchase-failed.html"
+    />
     <title>E2E — express purchase tracking</title>
     <!-- Analytics is off by default. Auto mode is what registers the purchase
          handlers, so it has to be on before /src/index.ts boots. -->

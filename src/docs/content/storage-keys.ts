@@ -443,6 +443,15 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
       'The next page that sees one of those orders reports it again, double-counting the purchase in GA4 and in every affiliate tag. Only clear it when you are deliberately re-testing a purchase event.',
   },
   {
+    key: 'nextDataLayer_checkoutReturnPaths',
+    group: 'analytics',
+    ttl: null,
+    holds:
+      'The two paths the checkout page told the orders API to send the shopper back to — `success_url` and `payment_failed_url`, as paths. A redirect payment (PayPal, Klarna, 3-D Secure) returns on one of them and both carry `?ref_id=`, so the landing page loads the order either way; this is how it tells a completed purchase from a declined one. Used only to **suppress** `dl_purchase` on the failure page, never to allow it, so a missing entry cannot cost a conversion.',
+    clearing:
+      'A shopper who lands on a merchant-configured failure page could have that visit counted as a purchase, if the orders API no longer reports the payment as outstanding. The `?payment_failed=true` check still applies, which covers stores using the default failure URL.',
+  },
+  {
     key: 'user_data',
     group: 'analytics',
     ttl: null,

@@ -171,6 +171,12 @@ export interface EventMap {
    * Fires on a fresh fetch only. A reload inside the order store's 15-minute
    * window is served from its cache and emits nothing.
    *
+   * **It fires on a failed payment's landing page too.** A redirect payment comes
+   * back to either `success_url` or `payment_failed_url` and the platform puts
+   * `?ref_id=` on both, so the order loads either way. The SDK's own
+   * `dl_purchase` tells the two apart; a listener of your own must check for
+   * itself — an order still carrying `payment_complete_url` was never paid.
+   *
    * @example
    * ```ts
    * window.next.on('order:loaded', order => {

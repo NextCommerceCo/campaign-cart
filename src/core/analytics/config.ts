@@ -134,6 +134,7 @@ export const STORAGE_KEYS = {
   SESSION_START: 'nextDataLayer_sessionStart',
   USER_PROPERTIES: 'nextDataLayer_userProperties',
   REPORTED_PURCHASES: 'nextDataLayer_reportedPurchases',
+  CHECKOUT_RETURN_PATHS: 'nextDataLayer_checkoutReturnPaths',
 } as const;
 
 /**

@@ -4,7 +4,10 @@ import { dataLayer } from '@/core/analytics/data-layer-manager';
 import { EcommerceEvents } from '@/core/analytics/events/ecommerce-events';
 import { setupCheckoutEventListeners } from '@/core/analytics/tracking/auto-event-checkout-handlers';
 import { pendingEventsHandler } from '@/core/analytics/tracking/pending-events-handler';
-import { resetReportedPurchases } from '@/core/analytics/tracking/purchase-tracking';
+import {
+  rememberCheckoutReturnPaths,
+  resetReportedPurchases,
+} from '@/core/analytics/tracking/purchase-tracking';
 import type { AutoEventListenerContext } from '@/core/analytics/tracking/auto-event-listener.types';
 import type { DataLayerEvent } from '@/core/analytics/types';
 
@@ -140,6 +143,71 @@ describe('dl_purchase requires a paid order (issue #71)', () => {
     // the shopper lands on after the bank, whichever page that is.
     pendingEventsHandler.processPendingEvents();
     expect(purchases()).toHaveLength(0);
+  });
+
+  describe('the failed-payment leg of a redirect flow', () => {
+    // Both legs of a gateway payment come back with `?ref_id=`, so the order
+    // loads on the failure page too. The `payment_complete_url` gate is the first
+    // defence, but whether the API still sends that field for an order whose
+    // payment failed is the platform's call — these two signals do not depend on
+    // it. Worst case is modelled here: an order that looks entirely paid.
+    afterEach(() => {
+      sessionStorage.removeItem('nextDataLayer_checkoutReturnPaths');
+      window.history.replaceState({}, '', '/checkout');
+    });
+
+    it('reports nothing on the SDK default failure URL', () => {
+      // getFailureUrl() with no next-failure-url meta tag: this page, plus the
+      // parameter.
+      window.history.replaceState({}, '', '/checkout?payment_failed=true');
+
+      EventBus.getInstance().emit('order:loaded', PAID as never);
+
+      expect(purchases()).toHaveLength(0);
+    });
+
+    it('reports nothing on a merchant-configured failure page', () => {
+      rememberCheckoutReturnPaths(
+        'https://shop.test/thanks',
+        'https://shop.test/payment-problem'
+      );
+      window.history.replaceState(
+        {},
+        '',
+        '/payment-problem?ref_id=ord_pending'
+      );
+
+      EventBus.getInstance().emit('order:loaded', PAID as never);
+
+      expect(purchases()).toHaveLength(0);
+    });
+
+    it('still reports on the success page of the same journey', () => {
+      rememberCheckoutReturnPaths(
+        'https://shop.test/thanks',
+        'https://shop.test/payment-problem'
+      );
+      window.history.replaceState({}, '', '/thanks?ref_id=ord_pending');
+
+      EventBus.getInstance().emit('order:loaded', PAID as never);
+
+      expect(purchases()).toHaveLength(1);
+    });
+
+    it('reports when both legs point at one page, since the path proves nothing', () => {
+      // A store that sends success and failure to the same page leaves only the
+      // `payment_failed` parameter to go on. Vetoing on the path here would drop
+      // every real purchase that store makes.
+      rememberCheckoutReturnPaths(
+        'https://shop.test/done',
+        'https://shop.test/done'
+      );
+      window.history.replaceState({}, '', '/done?ref_id=ord_pending');
+
+      EventBus.getInstance().emit('order:loaded', PAID as never);
+
+      expect(purchases()).toHaveLength(1);
+    });
   });
 
   it('emits no event at all for a payload with no order identifier', () => {

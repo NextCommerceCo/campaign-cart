@@ -14,6 +14,7 @@ import { EcommerceEvents } from '../events/ecommerce-events';
 import type { AutoEventListenerContext } from './auto-event-listener.types';
 import {
   isAwaitingGatewayPayment,
+  isPaymentFailureLanding,
   purchaseTransactionId,
 } from './purchase-tracking';
 
@@ -41,6 +42,14 @@ function reportPurchase(order: any, redirecting: boolean): void {
       `Not tracking purchase for ${transactionId ?? 'unidentified order'}: ` +
         'the order is still awaiting payment at the gateway. It will be tracked ' +
         'when the shopper returns to the success page.'
+    );
+    return;
+  }
+
+  if (!redirecting && isPaymentFailureLanding()) {
+    logger.info(
+      `Not tracking purchase for ${transactionId ?? 'unidentified order'}: ` +
+        'this page is where a failed payment lands, not the success page.'
     );
     return;
   }
