@@ -32,6 +32,7 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:e2e": "playwright test",
+    "test:monkey": "node scripts/monkey.mjs",
     "test:coverage": "vitest --coverage",
     "analyze": "cross-env ANALYZE=true npm run build",
     "lint": "eslint src --ext .ts",

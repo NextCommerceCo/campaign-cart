@@ -3462,6 +3462,36 @@ failure-leg spec stubs `POST` with an unpaid order and `GET` with one that looks
 so it fails unless the return-path veto is doing the work.
 
 
+### 197. A malformed 200 from the countries CDN leaves the province dropdown stuck on "Loading..." — *verified, not fixed*
+
+Found by the seeded monkey (`npm run test:monkey`) while its own stub was wrong, which is
+how the SDK path got exercised at all.
+
+`CountryService.getCountryStates` guards a *failed* fetch — network error or non-OK status
+returns `{ countryConfig: getDefaultCountryConfig(code), states: [] }`. It does not guard a
+**200 with an unexpected body**: `data.countryConfig` is passed through as `undefined`, and
+`state-fields.ts › setupStateFields` hands it straight to
+`updateFormLabels(ctx.countryFields, countryData.countryConfig)`, which reads
+`countryConfig.stateLabel`. TypeError, caught by the enclosing `try`, logged as
+`[CheckoutFormEnhancer] Failed to load states:` — a message that names the fetch, not the
+shape, so it points at the wrong thing.
+
+Shopper-visible effect: the throw happens *after* `provinceField.innerHTML` was replaced
+with `<option value="">Loading...</option>` and *before* anything repopulates it, so the
+province select is stuck on "Loading..." with the country's labels never updated. The
+checkout cannot be completed for that country.
+
+Only a contract violation by the CDN triggers it, which is why it has never been seen in
+production — but the same code path also runs against a cached body
+(`getFromCache(cacheKey, true)`, localStorage), so one bad response is remembered for as
+long as that cache lives.
+
+Not fixed here: the change belongs with someone deciding whether a malformed body should
+fall back to the default config (a one-line `?? this.getDefaultCountryConfig(countryCode)`
+on the parsed body, matching the error path) or fail loudly. Either way `updateFormLabels`
+should not be reachable with an undefined config.
+
+
 ## Open decisions
 
 1. **Lint.** 12,365 errors now that it runs — 7,391 auto-fixable (7,296 of them pure
