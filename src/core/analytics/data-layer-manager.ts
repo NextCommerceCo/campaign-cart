@@ -135,19 +135,25 @@ export class DataLayerManager {
       // shipped yet, and marking it here would suppress the receipt page's
       // emission and lose the purchase if the queue later drops it as stale
       // (issue #71).
-      if (finalEvent.event === 'dl_purchase') {
-        const transactionId = reportedPurchaseId(finalEvent);
-        if (transactionId && hasPurchaseBeenReported(transactionId)) {
-          logger.info(
-            `Purchase already reported for ${transactionId} — dropping duplicate dl_purchase`
-          );
-          return;
-        }
-        if (transactionId) markPurchaseReported(transactionId);
+      const transactionId =
+        finalEvent.event === 'dl_purchase'
+          ? reportedPurchaseId(finalEvent)
+          : null;
+      if (transactionId && hasPurchaseBeenReported(transactionId)) {
+        logger.info(
+          `Purchase already reported for ${transactionId} — dropping duplicate dl_purchase`
+        );
+        return;
       }
 
       // Push to data layer
       window.NextDataLayer.push(finalEvent);
+
+      // Marked only once the event has actually reached the data layer — marking
+      // before this line and having the push itself throw (e.g. a conflicting
+      // script reassigned `window.NextDataLayer`) would record the purchase as
+      // reported when it never actually shipped, losing it permanently.
+      if (transactionId) markPurchaseReported(transactionId);
 
       // Log in debug mode
       this.debug('Event pushed to data layer', finalEvent);

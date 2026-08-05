@@ -91,11 +91,23 @@ interface CheckoutReturnPaths {
   failure: string;
 }
 
-/** `'/thanks'` from `https://shop.test/thanks?x=1`, or `null` if unparseable. */
+/**
+ * Case-insensitive, trailing-slash-insensitive: `/Thanks/` and `/thanks` are the
+ * same path to most web servers, and a merchant's own redirect can legitimately
+ * differ from the recorded one by exactly that. Comparing them raw turned a real
+ * declined payment into a reported purchase whenever the two didn't match
+ * byte-for-byte.
+ */
+function normalizePath(path: string): string {
+  const lower = path.toLowerCase();
+  return lower.length > 1 ? lower.replace(/\/+$/, '') : lower;
+}
+
+/** `'/thanks'` from `https://shop.test/Thanks/?x=1`, or `null` if unparseable. */
 function pathOf(url: string | undefined): string | null {
   if (!url) return null;
   try {
-    return new URL(url, window.location.origin).pathname;
+    return normalizePath(new URL(url, window.location.origin).pathname);
   } catch {
     return null;
   }
@@ -153,12 +165,14 @@ function readReturnPaths(): CheckoutReturnPaths | null {
  *   makes the path meaningless, so that case falls back to the parameter alone.
  */
 export function isPaymentFailureLanding(): boolean {
+  if (typeof window === 'undefined') return false;
+
   const { search, pathname } = window.location;
   if (new URLSearchParams(search).get('payment_failed') === 'true') return true;
 
   const paths = readReturnPaths();
   if (!paths || paths.failure === paths.success) return false;
-  return pathname === paths.failure;
+  return normalizePath(pathname) === paths.failure;
 }
 
 /** The transaction id of an already-built event, for the dedupe check. */

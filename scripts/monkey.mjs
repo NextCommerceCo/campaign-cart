@@ -169,8 +169,20 @@ async function stub(page, campaign, order) {
         detectedCountryConfig: COUNTRY_CONFIG,
         detectedStates: [],
         countries: [
-          { code: 'US', name: 'United States', phonecode: '+1', currencyCode: 'USD', currencySymbol: '$' },
-          { code: 'CA', name: 'Canada', phonecode: '+1', currencyCode: 'CAD', currencySymbol: '$' },
+          {
+            code: 'US',
+            name: 'United States',
+            phonecode: '+1',
+            currencyCode: 'USD',
+            currencySymbol: '$',
+          },
+          {
+            code: 'CA',
+            name: 'Canada',
+            phonecode: '+1',
+            currencyCode: 'CAD',
+            currencySymbol: '$',
+          },
         ],
       },
     });
@@ -274,7 +286,14 @@ const EXPECTED = [
 const expectedFor = (fixture, message) =>
   EXPECTED.find(e => e.fixture === fixture && message.includes(e.match));
 
-const TEXT_SAMPLES = ['ada@example.test', 'Ada', '10001', '1 Test St', '42', ''];
+const TEXT_SAMPLES = [
+  'ada@example.test',
+  'Ada',
+  '10001',
+  '1 Test St',
+  '42',
+  '',
+];
 
 /** 1×1 transparent PNG, for off-origin product images. */
 const TRANSPARENT_PNG = Buffer.from(
@@ -311,7 +330,8 @@ async function walk(page, random, log) {
         if (type === 'checkbox' || type === 'radio') {
           await target.click({ timeout: 1000, force: true });
         } else {
-          const value = TEXT_SAMPLES[Math.floor(random() * TEXT_SAMPLES.length)];
+          const value =
+            TEXT_SAMPLES[Math.floor(random() * TEXT_SAMPLES.length)];
           await target.fill(value, { timeout: 1000 });
           await target.blur({ timeout: 1000 }).catch(() => {});
         }
@@ -350,21 +370,53 @@ const portOpen = () =>
       .on('error', () => resolve(false));
   });
 
+/**
+ * `npm run dev` is a wrapper around Vite: killing that PID alone leaves the Vite
+ * child running and the port held, so a re-run of this script fails with
+ * EADDRINUSE against its own orphan. Spawned `detached`, the npm process is its
+ * own process group leader, so signalling `-pid` (not `pid`) reaches the whole
+ * tree. SIGKILL follows a second later in case SIGTERM didn't land.
+ */
+function killDevServer(child) {
+  if (!child?.pid) return;
+  try {
+    process.kill(-child.pid, 'SIGTERM');
+  } catch {
+    // Already gone.
+  }
+  setTimeout(() => {
+    try {
+      process.kill(-child.pid, 'SIGKILL');
+    } catch {
+      // Already gone.
+    }
+  }, 1000).unref();
+}
+
 async function ensureDevServer() {
   if (await portOpen()) return null;
-  const child = spawn('npm', ['run', 'dev'], { cwd: ROOT, stdio: 'ignore' });
+  const child = spawn('npm', ['run', 'dev'], {
+    cwd: ROOT,
+    stdio: 'ignore',
+    detached: true,
+  });
   const deadline = Date.now() + 60_000;
   while (Date.now() < deadline) {
     await new Promise(r => setTimeout(r, 500));
     if (await portOpen()) return child;
   }
-  child.kill();
+  killDevServer(child);
   throw new Error('dev server did not come up on :3000');
 }
 
 // ── run ──────────────────────────────────────────────────────────────────────
 
 const server = await ensureDevServer();
+// Ctrl-C mid-run otherwise leaves the dev server it started behind.
+process.on('SIGINT', () => {
+  if (server) killDevServer(server);
+  process.exit(130);
+});
 const browser = await chromium.launch({ headless: !HEADED });
 const findings = [];
 
@@ -417,7 +469,16 @@ for (const fixture of fixtures) {
             await window.next.addItem({ packageId: 1 });
           }
         })
-        .catch(() => log('could not seed the cart'));
+        .catch(error => {
+          // A real addItem failure, not logged verbatim, used to read as "clean":
+          // the cart stays empty, express checkout never renders a clickable
+          // button, and the purchase invariant below passes having tested
+          // nothing — the exact "silently test nothing" trap this file exists to
+          // catch. Surfaced as a message so it counts as a finding instead.
+          const text = `could not seed the cart: ${error}`;
+          log(text);
+          messages.push(`harness: ${text}`);
+        });
       await page.waitForTimeout(200);
     }
 
@@ -434,12 +495,16 @@ for (const fixture of fixtures) {
     // how the bug hid. So: if anything was parked, walk back in and look there,
     // which is the shopper pressing back from PayPal.
     const parked = await page
-      .evaluate(() =>
-        JSON.parse(sessionStorage.getItem('next_v2_pending_events') ?? '[]').length
+      .evaluate(
+        () =>
+          JSON.parse(sessionStorage.getItem('next_v2_pending_events') ?? '[]')
+            .length
       )
       .catch(() => 0);
     if (parked > 0) {
-      log(`${parked} analytics event(s) parked for the next page — going back in`);
+      log(
+        `${parked} analytics event(s) parked for the next page — going back in`
+      );
       await page.goto(`${ORIGIN}/e2e/fixtures/${fixture}${query}`);
       await page
         .waitForFunction(() => Boolean(window.next?.on), { timeout: 8000 })
@@ -488,7 +553,7 @@ for (const fixture of fixtures) {
 }
 
 await browser.close();
-if (server) server.kill();
+if (server) killDevServer(server);
 
 process.stdout.write(
   `\nseed ${SEED}, ${ACTIONS} actions per fixture, ${fixtures.length} fixtures — ` +
