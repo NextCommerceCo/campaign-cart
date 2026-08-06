@@ -1719,7 +1719,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         await this.prospectCartEnhancer.convertCart();
       }
 
-      this.emit('order:completed', order);
+      // No event here: creating an order is not completing one. `order:completed`
+      // is emitted by the order store on the page the shopper lands on next, once
+      // the order has been fetched back paid (issue #71).
       this.handleOrderRedirect(order);
       // Note: LoadingOverlay will hide after 3 seconds on success
     } catch (error) {
@@ -2134,7 +2136,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     handleTestDataFilled(this.testDataFillContext());
   }
 
-  /** The six things `test-order.ts` needs to place a Konami test order. */
+  /** The five things `test-order.ts` needs to place a Konami test order. */
   private konamiTestOrderContext(): KonamiTestOrderContext {
     return {
       validator: this.validator,
@@ -2143,7 +2145,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         void this.populateFormData();
       },
       createTestOrder: () => this.createTestOrder(),
-      emit: (event, order) => this.emit(event, order),
       handleOrderRedirect: order => this.handleOrderRedirect(order),
     };
   }

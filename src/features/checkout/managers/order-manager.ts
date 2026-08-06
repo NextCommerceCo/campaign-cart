@@ -329,9 +329,9 @@ export class OrderManager {
         number: order.number
       });
 
-      // Emit order completed event
-      this.logger.debug('Emitting order:completed event');
-      this.emitCallback('order:completed', order);
+      // No event for a *created* order: `order:completed` belongs to the page the
+      // shopper lands on next, where the order is fetched back paid. A card payment
+      // needing 3-D Secure gets here unpaid, which is issue #71.
 
       // Handle redirect based on response format
       this.logger.debug('Handling order redirect...');

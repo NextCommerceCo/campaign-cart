@@ -43,7 +43,6 @@ function konamiContext(
 ): KonamiTestOrderContext & {
   logger: ReturnType<typeof createMockLogger>;
   createTestOrder: ReturnType<typeof vi.fn>;
-  emit: ReturnType<typeof vi.fn>;
   handleOrderRedirect: ReturnType<typeof vi.fn>;
   populateFormData: ReturnType<typeof vi.fn>;
 } {
@@ -52,7 +51,6 @@ function konamiContext(
     logger: createMockLogger(),
     populateFormData: vi.fn(),
     createTestOrder: vi.fn().mockResolvedValue({ ref_id: 'test-1' }),
-    emit: vi.fn(),
     handleOrderRedirect: vi.fn(),
     ...overrides,
   } as never;
@@ -127,10 +125,11 @@ describe('handleKonamiActivation', () => {
     await vi.advanceTimersByTimeAsync(1000);
 
     expect(ctx.createTestOrder).toHaveBeenCalledTimes(1);
-    expect(ctx.emit).toHaveBeenCalledWith('order:completed', {
-      ref_id: 'test-1',
-    });
+    // Redirect only. A test order goes through the same door as a real one, and
+    // that door emits nothing: `order:completed` comes from the order store on the
+    // page the redirect lands on (issue #71). The context has no `emit` to call.
     expect(ctx.handleOrderRedirect).toHaveBeenCalledWith({ ref_id: 'test-1' });
+    expect('emit' in ctx).toBe(false);
   });
 
   it('falls back to the campaign’s first shipping method when nothing is chosen yet', async () => {

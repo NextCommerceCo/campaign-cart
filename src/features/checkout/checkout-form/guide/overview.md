@@ -101,8 +101,10 @@ the two can never drift apart.
   campaign and the visitor's device, not from your markup.
 - Does not retry a declined payment. It reports the failure and leaves the form
   ready for another attempt.
-- Does not have express-specific completion events. Express and standard checkout
-  both finish through `order:completed`.
+- Does not announce that an order was created. Express and standard checkout both
+  finish through `order:completed`, which the order store emits on the page the
+  shopper lands on next — see
+  [the order store's events](../../../../state/order/guide/reference/events.md).
 
 ## Reference
 

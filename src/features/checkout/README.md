@@ -366,13 +366,21 @@ User submits form
   → CreditCardService.tokenize()   (if credit card payment)
   → OrderBuilder.build()           (assemble CreateOrder payload)
   → ApiClient.createOrder()
-  → emit('order:completed', order)
   → handleOrderRedirect(order):
       • resolve redirect URL (payment_complete_url > meta > order_status_url > fallback)
       • cartStore.reset() + checkoutStore.reset()  ← clears items, vouchers, form state
       • window.location.href = finalUrl
-  → Analytics: nextAnalytics + EcommerceEvents.purchase()
+
+…then, on the page that redirect lands on:
+
+  → useOrderStore.loadOrder(ref_id)   (?ref_id= in the URL, read during boot)
+  → emit('order:completed', order)    ← the only producer; the order is paid by now
+  → Analytics: dl_purchase, once per order
 ```
+
+No event is emitted for the *created* order. Express checkout and a card needing
+3-D Secure both leave the checkout page unpaid, so reporting there counted orders
+nobody paid for — [issue #71](https://github.com/NextCommerceCo/campaign-cart/issues/71).
 
 ### Post-success state reset
 

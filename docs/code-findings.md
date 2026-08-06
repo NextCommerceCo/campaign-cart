@@ -3479,6 +3479,14 @@ when no failure URL is configured), and the `payment_failed_url` **path**, which
 page now records alongside `success_url` when it creates the order
 (`nextDataLayer_checkoutReturnPaths`).
 
+**Renamed 2026-08-06, and the checkout page's emit went with it.** The single producer this
+finding created was called `order:loaded`; it is now `order:completed`, and the old
+`order:completed` — raised when the orders API *accepted* an order — is not emitted by
+anything. Two events for one concept, one of which was a trap, was the confusing half of this
+fix; `src/tests/contract/purchase-producer.test.ts` now holds the single-producer property in
+CI rather than leaving it to a comment. Every mention of `order:loaded` above is the name as
+it was on this date.
+
 **Both are vetoes, never requirements** — no stored record means the ordinary rules apply. The
 inverse design (report *only* on a recognised success path) would turn every lost
 sessionStorage entry into a lost conversion, which is the failure mode nobody notices. A store
@@ -3574,7 +3582,7 @@ commits do not touch `dist/` (`891b694 Release the purchase-tracking fix as 0.4.
 
 Measured on the committed `dist/index.umd.js` at `HEAD` versus a rebuild of the same source:
 `order:loaded` appears **0 times in the shipped file and 3 in the rebuild**, `dl_purchase` 12
-versus 15. So the artifact tagged `v0.4.32` does not contain the purchase-tracking fix that
+versus 15 (that event was renamed to `order:completed` the same day — see finding 196). So the artifact tagged `v0.4.32` does not contain the purchase-tracking fix that
 release is named for (finding 196) — the source landed, the bundle did not. The same gap
 carried the TDZ of finding 198 into two tags.
 

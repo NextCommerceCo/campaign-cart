@@ -210,12 +210,14 @@ export const useOrderStore = create<OrderState & OrderActions>()(
             upsellPackageIds
           );
 
-          // The page now has an order to work with. Emitted after `set`, so a
-          // listener reading the store sees the loaded order. Analytics hangs
-          // `dl_purchase` on this: for express checkout and 3-D Secure it is the
-          // first moment the SDK sees a *paid* order, since the order created on
-          // the checkout page was still awaiting the gateway (issue #71).
-          EventBus.getInstance().emit('order:loaded', order);
+          // The page now has an order to work with, and this is the SDK's only
+          // producer of `order:completed` — the checkout page deliberately emits
+          // nothing when it *creates* an order. Emitted after `set`, so a listener
+          // reading the store sees the loaded order. Analytics hangs `dl_purchase`
+          // on it: for express checkout and 3-D Secure this is the first moment the
+          // SDK sees a *paid* order, since the order created on the checkout page
+          // was still awaiting the gateway (issue #71).
+          EventBus.getInstance().emit('order:completed', order);
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : 'Failed to load order';

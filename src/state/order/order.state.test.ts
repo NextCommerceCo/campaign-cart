@@ -5,10 +5,12 @@ import type { IApiClient } from '@/api/client.types';
 import type { Order } from '@/types/api';
 
 /**
- * `order:loaded` is what `dl_purchase` hangs on (issue #71): for express checkout
- * and 3-D Secure, the order created on the checkout page was still unpaid, and
- * the receipt page loading it back from the API is the first point the SDK knows
- * the shopper paid. So the store emitting it is load-bearing, not incidental.
+ * `order:completed` is what `dl_purchase` hangs on (issue #71), and this store is
+ * its only producer: for express checkout and 3-D Secure, the order created on the
+ * checkout page was still unpaid, and the receipt page loading it back from the API
+ * is the first point the SDK knows the shopper paid. So the store emitting it is
+ * load-bearing, not incidental — the checkout page emits nothing at all, which
+ * `src/tests/contract/purchase-producer.test.ts` holds in place.
  */
 
 const ORDER = {
@@ -30,7 +32,7 @@ describe('order store loadOrder', () => {
   beforeEach(() => {
     useOrderStore.getState().reset();
     loaded = [];
-    unsubscribe = EventBus.getInstance().on('order:loaded', order => {
+    unsubscribe = EventBus.getInstance().on('order:completed', order => {
       loaded.push(order);
     });
   });
@@ -40,7 +42,7 @@ describe('order store loadOrder', () => {
     useOrderStore.getState().reset();
   });
 
-  it('emits order:loaded with the fetched order', async () => {
+  it('emits order:completed with the fetched order', async () => {
     await useOrderStore.getState().loadOrder('ord_abc', apiReturning(ORDER));
 
     expect(loaded).toHaveLength(1);

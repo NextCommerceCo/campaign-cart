@@ -20,7 +20,7 @@
  *   orders are reported later, when the gateway returns the shopper to
  *   `success_url?ref_id=…` and the order store loads the paid order.
  * - {@link hasPurchaseBeenReported} — identity is the transaction id. There is one
- *   producer now (`order:loaded`), but it can fire for the same order more than
+ *   producer now (`order:completed`), and it can fire for the same order more than
  *   once: a receipt link reopened in a new tab, or a reload after the order
  *   store's 15-minute cache has expired, both fetch the order again.
  *
@@ -85,7 +85,7 @@ export function isAwaitingGatewayPayment(order: any): boolean {
  *
  * A redirect payment has two return legs, `success_url` and `payment_failed_url`,
  * and both come back to the merchant's own site with `?ref_id=` — so the order
- * loads either way and `order:loaded` fires either way.
+ * loads either way and `order:completed` fires either way.
  * {@link isAwaitingGatewayPayment} is the first line of defence, but it rests on
  * the API still returning `payment_complete_url` for an order whose payment
  * failed, which is the platform's behaviour to decide, not the SDK's. This record
@@ -194,11 +194,11 @@ export function isPaymentFailureLanding(): boolean {
  * (`offer_id`, `amount`, `name`), never the text the shopper typed, and there is
  * no `vouchers` field on {@link index.Order} at all. The live cart does carry it,
  * but the checkout page resets the cart *before* it navigates away, so by the time
- * `order:loaded` builds the purchase on the success page there is nothing left to
+ * `order:completed` builds the purchase on the success page there is nothing left to
  * read. Without this record `ecommerce.coupon` would be set only when the event
  * happened to be built on the checkout page: absent from every express and 3-D
  * Secure purchase, and decided by a race for card ones — the queued event carries
- * it, the `order:loaded` event does not, and whichever wins is whichever the
+ * it, the `order:completed` event did not, and whichever won was whichever the
  * network was faster than.
  */
 export function rememberCheckoutCoupon(code: string | undefined): void {

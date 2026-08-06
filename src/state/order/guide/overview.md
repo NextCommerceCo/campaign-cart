@@ -28,9 +28,9 @@ page to the purchase is the `?ref_id` (or `?order_ref_id`) the checkout redirect
 put in the address bar. The SDK reads it during boot and fetches the order, so a
 page normally finds `order` already populated by the time enhancers run. That
 fetch announces itself as
-[`order:loaded`](./reference/events.md) — the event conversion tracking belongs
+[`order:completed`](./reference/events.md) — the event conversion tracking belongs
 on, because it is the first point at which a gateway payment is known to have
-gone through.
+gone through, and the only place the SDK emits it.
 
 **Writes go one way.** Accepting an upsell charges the customer's stored payment
 method through the order API. There is no local undo and no "remove upsell" —
@@ -166,8 +166,8 @@ this one.
   [order-display](../../../features/display/order-display/guide/overview.md) —
   rather than inferring success from the order being present. An order loaded
   through `?ref_id` after the gateway returned the shopper is paid, which is why
-  [`order:loaded`](./reference/events.md) is a safe conversion signal and
-  `order:completed` on the checkout page is not.
+  [`order:completed`](./reference/events.md) is emitted from this store and from
+  nowhere else — the checkout page announces nothing when it creates an order.
 - **It has no connection to the cart.** Completing an order does not clear the
   cart, and clearing the cart does not clear the order. See
   [the cart store](../../cart/guide/overview.md) for how to start the next

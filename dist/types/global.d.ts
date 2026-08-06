@@ -33,8 +33,7 @@ export interface EventMap {
     'checkout:express-started': {
         method: 'paypal' | 'apple_pay' | 'google_pay';
     };
-    'order:completed': OrderData;
-    'order:loaded': Order;
+    'order:completed': Order;
     'order:redirect-missing': {
         order: any;
     };

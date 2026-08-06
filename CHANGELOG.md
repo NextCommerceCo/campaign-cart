@@ -33,11 +33,22 @@ platform's own order-status page, for instance — that store will record no con
 where it previously recorded one. Confirm `dl_purchase` fires there once, with the real
 order number, before rolling this out.
 
-### New
+### Changed
 
-- **`order:loaded`** — fires when a page opened with `?ref_id=` has fetched its order.
-  This is the event to hang conversion tracking on. `order:completed` means *created*,
-  not *paid*.
+- **`order:completed` now means the order is finished, not created.** It fires on the
+  page the shopper lands on after checkout — the one opened with `?ref_id=`, once the
+  order has been fetched back from the API — and that is the only place the SDK emits
+  it. This is the event to hang conversion tracking on, and where `dl_purchase` comes
+  from.
+
+  The checkout page no longer emits anything when it creates an order, because a
+  created order is not a paid one: express checkout and a card needing 3-D Secure both
+  leave that page with the money still unmoved. **If you were listening for
+  `order:completed` on the checkout page, that listener will no longer fire** — move
+  the work to the landing page, or do it in your own submit handler.
+
+  The payload is now the full order (totals, tax, shipping, addresses, typed lines)
+  instead of the six-field subset.
 
 - **Debug mode survives a payment gateway** — `?debug=true` and `?debugger=true` are
   copied onto the checkout's success and failure URLs, so the page a shopper returns to

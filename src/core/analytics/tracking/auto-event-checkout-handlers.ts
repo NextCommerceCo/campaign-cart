@@ -1,7 +1,7 @@
 /**
  * AutoEventListener — checkout domain handlers
  *
- * One subscription, `order:loaded`, which is what raises `dl_purchase`. The
+ * One subscription, `order:completed`, which is what raises `dl_purchase`. The
  * reasoning for why the checkout page's own events are not wired here is on
  * {@link setupCheckoutEventListeners}.
  *
@@ -71,22 +71,23 @@ function reportPurchase(order: any): void {
 export function setupCheckoutEventListeners(
   ctx: AutoEventListenerContext
 ): void {
-  // `order:loaded` is the ONLY producer of an automatic `dl_purchase`. It fires
-  // when a page opened with `?ref_id=` has fetched its order back from the orders
-  // API — the first moment the SDK holds an order the API calls finished.
+  // `order:completed` is the ONLY producer of an automatic `dl_purchase`, and the
+  // order store is the only thing that emits it: when a page opened with `?ref_id=`
+  // has fetched its order back from the orders API — the first moment the SDK holds
+  // an order the API calls finished.
   //
-  // `order:completed` and `express-checkout:completed` are deliberately not wired
-  // here, though both used to be. Neither means the customer paid: the orders API
-  // fires them when it *accepts* the order, which for PayPal is one redirect
-  // before any money moves, and a card order needing 3-D Secure gets there unpaid
-  // too. That is issue #71. Gating them on "is it paid" would have been enough to
-  // stop the phantom purchases, but keeping them bought nothing:
+  // The checkout page emits nothing when it *creates* an order, and
+  // `express-checkout:completed` is deliberately not wired here. Neither moment
+  // means the customer paid: the orders API accepts the order, which for PayPal is
+  // one redirect before any money moves, and a card order needing 3-D Secure gets
+  // there unpaid too. That is issue #71. Gating on "is it paid" would have been
+  // enough to stop the phantom purchases, but a second producer bought nothing:
   //
-  // - **They are redundant when they work.** The SDK builds its own success URL
-  //   and appends `ref_id` to it (`getNextPageUrlFromMeta`), as do both fallbacks
+  // - **It is redundant when it works.** The SDK builds its own success URL and
+  //   appends `ref_id` to it (`getNextPageUrlFromMeta`), as do both fallbacks
   //   (`order_status_url`, `/checkout/confirmation/?ref_id=`). So the page the
-  //   shopper lands on fetches the order and `order:loaded` reports it anyway.
-  // - **They do not help when they fail.** An event raised as the page navigates
+  //   shopper lands on fetches the order and reports it anyway.
+  // - **It does not help when it fails.** An event raised as the page navigates
   //   away is parked in `sessionStorage` and replayed on the *next SDK page*,
   //   whatever page that is — the arbitrary-page replay that produced #71 — and
   //   dropped entirely after five minutes.
@@ -100,10 +101,10 @@ export function setupCheckoutEventListeners(
   // nothing, where before it reported late, on a page that was not the success
   // page. A conversion missing is easier to notice, and to trust, than one dated
   // wrong.
-  const handleOrderLoaded = (order: any): void => {
+  const handleOrderCompleted = (order: any): void => {
     reportPurchase(order);
   };
 
-  ctx.eventBus.on('order:loaded', handleOrderLoaded);
-  ctx.eventHandlers.set('order:loaded', handleOrderLoaded);
+  ctx.eventBus.on('order:completed', handleOrderCompleted);
+  ctx.eventHandlers.set('order:completed', handleOrderCompleted);
 }

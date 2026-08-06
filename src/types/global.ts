@@ -140,34 +140,24 @@ export interface EventMap {
    */
   'checkout:express-started': { method: 'paypal' | 'apple_pay' | 'google_pay' };
   /**
-   * The order was created successfully — the orders API accepted it.
+   * The page is holding a finished order: it was opened with `?ref_id=` — a
+   * success, receipt or upsell page — and the order came back from the orders API.
    *
-   * **Created is not paid.** An express checkout (PayPal, Apple Pay, Google Pay)
-   * and a card payment that needs 3-D Secure both reach this point with the money
-   * still unmoved: the order carries a `payment_complete_url` and the SDK
-   * redirects the shopper there to finish paying. Hang purchase tracking on
-   * {@link EventMap."order:loaded" | order:loaded} instead, which only fires for
-   * an order the API has handed back complete — that is where the SDK's own
-   * `dl_purchase` comes from, and nothing analytics-related listens here.
-   *
-   * @remarks
-   * The payload is typed as {@link OrderData} — the six fields guaranteed to be
-   * there — but the object handed to your listener is the full {@link Order} the
-   * API returned. For totals, tax, shipping, addresses or typed lines, read the
-   * order store ({@link useOrderStore}), which holds that same order typed as
-   * `Order`.
-   */
-  'order:completed': OrderData;
-  /**
-   * An order was loaded from the API into the order store, because the page was
-   * opened with `?ref_id=` — a success, receipt or upsell page.
-   *
-   * This is the event to hang purchase tracking on: the order it carries has been
-   * fetched back from the orders API, so it is a real order with a real order
-   * number, and for every payment method that finishes at a gateway it is the
-   * first point at which the SDK knows the shopper actually paid. The SDK's own
-   * `dl_purchase` fires here, once per order — see the
+   * This is the event to hang purchase tracking on, and the only one the SDK's own
+   * `dl_purchase` comes from — once per order, see the
    * [analytics events reference](../core/guide/reference/analytics-events.md).
+   * The order it carries was fetched back from the API, so it is a real order with
+   * a real order number, and for every payment method that finishes at a gateway
+   * it is the first point at which the SDK knows the shopper actually paid.
+   *
+   * **The checkout page does not fire this.** Creating an order is not completing
+   * one: an express checkout (PayPal, Apple Pay, Google Pay) and a card payment
+   * needing 3-D Secure both leave the checkout page with the money still unmoved,
+   * the order carrying a `payment_complete_url` and the shopper redirected to the
+   * gateway to finish paying. Reporting a purchase there is issue #71, so nothing
+   * is emitted until the shopper lands back on a page that fetches the order. If
+   * you need to act the moment an order is *created*, do it in your own submit
+   * handler — the SDK has no event for it.
    *
    * Fires on a fresh fetch only. A reload inside the order store's 15-minute
    * window is served from its cache and emits nothing.
@@ -180,12 +170,12 @@ export interface EventMap {
    *
    * @example
    * ```ts
-   * window.next.on('order:loaded', order => {
+   * window.next.on('order:completed', order => {
    *   console.log('Thank you for order', order.number);
    * });
    * ```
    */
-  'order:loaded': Order;
+  'order:completed': Order;
   /**
    * The order succeeded but carried no redirect URL, so the SDK could not send
    * the visitor onward. Handle this to avoid stranding them on the checkout page.
@@ -522,7 +512,8 @@ export interface EventMap {
    * An express checkout attempt finished.
    *
    * @deprecated Declared but never emitted by this build. Listen for
-   * `order:completed`, which fires for express and standard checkout alike.
+   * `order:completed`, which fires on the page the shopper lands on afterwards,
+   * for express and standard checkout alike.
    */
   'checkout:express-completed': { method: string; success: boolean };
   /**
@@ -586,8 +577,8 @@ export interface EventMap {
    * back. Reporting a conversion here is
    * [issue #71](https://github.com/NextCommerceCo/campaign-cart/issues/71) —
    * hang purchase tracking on
-   * {@link EventMap."order:loaded" | order:loaded} instead, which fires on the
-   * success page for the finished order.
+   * {@link EventMap."order:completed" | order:completed} instead, which fires on
+   * the success page for the finished order.
    *
    * @remarks
    * The payload wraps the order: `{ method, order }`, not the order itself.
@@ -1697,29 +1688,23 @@ export interface CheckoutData {
  * The six fields you can always count on being present on a completed order —
  * enough to identify it, show its total, and link to its receipt.
  *
- * This is the declared payload type of the `order:completed` event. **The object
- * you actually receive is a full {@link Order}** (totals excluding tax, tax,
- * shipping, discounts, addresses, attribution, and typed lines): the payload
- * comes straight from the orders API, and the order store keeps that same object
- * on `useOrderStore().order`. Use `Order` whenever you need more than the fields
- * below — on a receipt or upsell page, read
- * {@link useOrderStore | the order store} rather than casting this payload.
+ * A narrow, older view of {@link Order}, kept exported because integrations import
+ * it. **No event declares this payload any more:** `order:completed` carries the
+ * full `Order`, so a listener gets totals excluding tax, tax, shipping, discounts,
+ * addresses, attribution and typed lines without reaching for anything else. Use
+ * `Order` in new code; the same object is on `useOrderStore().order`.
  *
  * The field list is pinned to `Order` by the compiler (`extends Pick<Order, …>`),
  * so the two declarations cannot drift apart.
  *
  * @example
  * ```ts
- * import { useOrderStore } from '@next-commerce/campaign-cart';
+ * // `Order` is a superset, so an OrderData-typed helper still accepts the payload.
+ * function receiptLine(order: OrderData): string {
+ *   return `${order.number} — ${order.total_incl_tax} ${order.currency}`;
+ * }
  *
- * window.next.on('order:completed', order => {
- *   // Always present, straight off the event payload:
- *   console.log(order.number, order.total_incl_tax, order.order_status_url);
- *
- *   // Everything else: read the stored order, which is typed as `Order`.
- *   const full = useOrderStore.getState().order;
- *   console.log(full?.total_tax, full?.shipping_incl_tax);
- * });
+ * window.next.on('order:completed', order => console.log(receiptLine(order)));
  * ```
  */
 export interface OrderData

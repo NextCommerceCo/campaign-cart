@@ -25,6 +25,12 @@ import type { DataLayerEvent } from '@/core/analytics/types';
  * These tests read `window.NextDataLayer` rather than a mocked `dataLayer.push`,
  * because the once-per-order rule lives inside `push` — it has to, so that an
  * event replayed from the queue after the redirect is deduped too.
+ *
+ * They cover one half of the guarantee: what the analytics wiring does with the
+ * events it is given. The other half — that the checkout page emits no
+ * `order:completed` when it *creates* an order, so the order store is the only
+ * producer — is `src/tests/contract/purchase-producer.test.ts`. Both are needed:
+ * gating alone let #71 through once already.
  */
 
 /** A PayPal order as the API returns it: created, unpaid, gateway URL attached. */
@@ -102,14 +108,12 @@ describe('dl_purchase requires a paid order (issue #71)', () => {
     expect(purchases()).toHaveLength(0);
   });
 
-  it('reports nothing from the checkout page even for an order that is paid', () => {
-    // `order:completed` and `express-checkout:completed` are no longer wired to
-    // purchase reporting at all — not merely gated on "is it paid". The success
-    // page the SDK redirects to always carries `?ref_id=`, so `order:loaded`
-    // reports the order there; a second producer only bought a race and a
-    // purchase that could replay on an arbitrary later page. This fails the
-    // moment either subscription is restored.
-    EventBus.getInstance().emit('order:completed', PAID as never);
+  it('reports nothing from an express-checkout event, even for a paid order', () => {
+    // `express-checkout:completed` is not wired to purchase reporting at all —
+    // not merely gated on "is it paid". The success page the SDK redirects to
+    // always carries `?ref_id=`, so the order store reports the order there; a
+    // second producer only bought a race and a purchase that could replay on an
+    // arbitrary later page. This fails the moment the subscription is restored.
     EventBus.getInstance().emit('express-checkout:completed', {
       method: 'paypal',
       order: PAID,
@@ -121,7 +125,7 @@ describe('dl_purchase requires a paid order (issue #71)', () => {
   });
 
   it('reports the purchase once the gateway returns and the order loads', () => {
-    EventBus.getInstance().emit('order:loaded', PAID as never);
+    EventBus.getInstance().emit('order:completed', PAID as never);
 
     expect(purchases()).toHaveLength(1);
     expect(purchases()[0]?.ecommerce?.transaction_id).toBe('NX-PENDING');
@@ -130,10 +134,10 @@ describe('dl_purchase requires a paid order (issue #71)', () => {
   it('reports the same order only once however often its page is opened', () => {
     // One producer, but it can fire repeatedly for one order: a reload past the
     // order store's 15-minute cache, and a receipt link reopened in another tab,
-    // each fetch the order again and emit `order:loaded` again.
-    EventBus.getInstance().emit('order:loaded', PAID as never);
-    EventBus.getInstance().emit('order:loaded', PAID as never);
-    EventBus.getInstance().emit('order:loaded', PAID as never);
+    // each fetch the order again and emit `order:completed` again.
+    EventBus.getInstance().emit('order:completed', PAID as never);
+    EventBus.getInstance().emit('order:completed', PAID as never);
+    EventBus.getInstance().emit('order:completed', PAID as never);
 
     expect(purchases()).toHaveLength(1);
   });
@@ -153,8 +157,8 @@ describe('dl_purchase requires a paid order (issue #71)', () => {
   it('does not report a card order still waiting on 3-D Secure', () => {
     // The paid-or-not gate still earns its place after the second producer went:
     // the failure leg of a redirect payment also carries `?ref_id=`, so the order
-    // loads — and is reported to `order:loaded` — while it is still unpaid.
-    EventBus.getInstance().emit('order:loaded', {
+    // loads — and is reported to `order:completed` — while it is still unpaid.
+    EventBus.getInstance().emit('order:completed', {
       ...PAID,
       number: 'NX-3DS',
       payment_complete_url: 'https://acs.bank.test/3ds?tx=1',
@@ -182,7 +186,7 @@ describe('dl_purchase requires a paid order (issue #71)', () => {
       // parameter.
       window.history.replaceState({}, '', '/checkout?payment_failed=true');
 
-      EventBus.getInstance().emit('order:loaded', PAID as never);
+      EventBus.getInstance().emit('order:completed', PAID as never);
 
       expect(purchases()).toHaveLength(0);
     });
@@ -198,7 +202,7 @@ describe('dl_purchase requires a paid order (issue #71)', () => {
         '/payment-problem?ref_id=ord_pending'
       );
 
-      EventBus.getInstance().emit('order:loaded', PAID as never);
+      EventBus.getInstance().emit('order:completed', PAID as never);
 
       expect(purchases()).toHaveLength(0);
     });
@@ -210,7 +214,7 @@ describe('dl_purchase requires a paid order (issue #71)', () => {
       );
       window.history.replaceState({}, '', '/thanks?ref_id=ord_pending');
 
-      EventBus.getInstance().emit('order:loaded', PAID as never);
+      EventBus.getInstance().emit('order:completed', PAID as never);
 
       expect(purchases()).toHaveLength(1);
     });
@@ -225,7 +229,7 @@ describe('dl_purchase requires a paid order (issue #71)', () => {
       );
       window.history.replaceState({}, '', '/done?ref_id=ord_pending');
 
-      EventBus.getInstance().emit('order:loaded', PAID as never);
+      EventBus.getInstance().emit('order:completed', PAID as never);
 
       expect(purchases()).toHaveLength(1);
     });
@@ -239,7 +243,7 @@ describe('dl_purchase requires a paid order (issue #71)', () => {
     // event goes out with no `coupon` at all.
     rememberCheckoutCoupon('SAVE20');
 
-    EventBus.getInstance().emit('order:loaded', PAID as never);
+    EventBus.getInstance().emit('order:completed', PAID as never);
 
     expect(purchases()[0]?.ecommerce?.coupon).toBe('SAVE20');
   });
@@ -248,7 +252,7 @@ describe('dl_purchase requires a paid order (issue #71)', () => {
     rememberCheckoutCoupon('SAVE20');
     rememberCheckoutCoupon(undefined);
 
-    EventBus.getInstance().emit('order:loaded', PAID as never);
+    EventBus.getInstance().emit('order:completed', PAID as never);
 
     expect(purchases()[0]?.ecommerce?.coupon).toBeUndefined();
   });
@@ -258,7 +262,7 @@ describe('dl_purchase requires a paid order (issue #71)', () => {
       EcommerceEvents.createPurchaseEvent({ order: { currency: 'USD' } })
     ).toBeNull();
 
-    EventBus.getInstance().emit('order:loaded', { currency: 'USD' } as never);
+    EventBus.getInstance().emit('order:completed', { currency: 'USD' } as never);
     expect(purchases()).toHaveLength(0);
   });
 });

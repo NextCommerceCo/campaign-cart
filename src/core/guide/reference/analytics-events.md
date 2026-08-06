@@ -372,7 +372,7 @@ RudderStack reports it as checkout `step: 3`.
 
 ### `dl_purchase`
 
-**Fires when:** A page opened with `?ref_id=` has fetched a **paid** order — the main conversion, and the one event the SDK raises from `order:loaded` alone. Every payment method reports from the page the shopper lands on after checkout, never from the checkout page itself. Once per order.
+**Fires when:** A page opened with `?ref_id=` has fetched a **paid** order — the main conversion, and the one event the SDK raises from `order:completed` alone, which the order store is the only thing that emits. Every payment method reports from the page the shopper lands on after checkout, never from the checkout page itself. Once per order.
 
 **Reaches:** GTM (verbatim), Meta `Purchase`, RudderStack `Order Completed`
 
@@ -401,7 +401,7 @@ Becomes Meta `Purchase` and RudderStack `Order Completed`. Meta gets an `eventID
 >
 > ⚠️ The event is emitted at most once per `transaction_id`, remembered in `localStorage` (`nextDataLayer_reportedPurchases`). A payload with no order number and no `ref_id` is dropped with an error rather than sent under a made-up id — there is no `order_<timestamp>` fallback any more.
 >
-> ⚠️ A redirect payment returns on one of **two** legs, `success_url` or `payment_failed_url`, and both come back with `?ref_id=` — so the order loads on the failure page too. Nothing is reported there: the checkout page records both paths (`nextDataLayer_checkoutReturnPaths`) so the landing page can tell them apart, and `?payment_failed=true` — the SDK’s default failure URL — is treated as a failure on its own. If your failure page needs to report anything of its own, hang it on `order:loaded` and check the URL yourself.
+> ⚠️ A redirect payment returns on one of **two** legs, `success_url` or `payment_failed_url`, and both come back with `?ref_id=` — so the order loads on the failure page too. Nothing is reported there: the checkout page records both paths (`nextDataLayer_checkoutReturnPaths`) so the landing page can tell them apart, and `?payment_failed=true` — the SDK’s default failure URL — is treated as a failure on its own. If your failure page needs to report anything of its own, hang it on `order:completed` and check the URL yourself.
 >
 > ⚠️ A zero-value order — a 100% discount, a free trial — now reports normally, carrying `value: 0` with its real `transaction_id`, currency and items. Until 2026-07-31 validation required `ecommerce.value` to be *truthy*, so those orders were dropped before reaching the data layer and no provider ever saw them; a conversion count from before that date under-reports free orders.
 >

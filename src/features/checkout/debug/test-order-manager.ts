@@ -6,10 +6,7 @@ import type { Logger } from '@/core/logger';
 import { useCheckoutStore } from '@/state/checkout';
 
 export class TestOrderManager {
-  constructor(
-    private logger: Logger,
-    private emitCallback: (event: string, data: any) => void
-  ) {}
+  constructor(private logger: Logger) {}
 
   public handleTestDataFilled(
     fields: Map<string, HTMLElement>
@@ -153,10 +150,10 @@ export class TestOrderManager {
         try {
           // Create the test order
           const order = await createTestOrderCallback();
-          
-          // Emit order completed event
-          this.emitCallback('order:completed', order);
-          
+
+          // No event for a created order — `order:completed` is emitted by the
+          // order store on the landing page, once the order is fetched back paid.
+
           // Handle redirect
           handleOrderRedirectCallback(order);
           

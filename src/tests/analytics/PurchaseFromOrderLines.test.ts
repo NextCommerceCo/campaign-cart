@@ -191,9 +191,9 @@ describe('dl_purchase reports the order, not the cart (finding 163)', () => {
       }
     });
 
-    it('reports the order on order:loaded', () => {
+    it('reports the order on order:completed', () => {
       EventBus.getInstance().emit(
-        'order:loaded',
+        'order:completed',
         COUPON_CHANGED_ORDER as never
       );
 
@@ -227,13 +227,10 @@ describe('dl_purchase reports the order, not the cart (finding 163)', () => {
       expect(ecommerce?.value).toBeCloseTo(30, 2);
     });
 
-    it('reports nothing from the checkout page events any more', () => {
-      // Both used to produce a purchase. `order:loaded` on the landing page is
-      // the only producer now — see auto-event-checkout-handlers.ts.
-      EventBus.getInstance().emit(
-        'order:completed',
-        COUPON_CHANGED_ORDER as never
-      );
+    it('reports nothing from the express-checkout event any more', () => {
+      // It used to produce a purchase, before the money had moved. The order
+      // store's `order:completed` on the landing page is the only producer now —
+      // see auto-event-checkout-handlers.ts.
       EventBus.getInstance().emit('express-checkout:completed', {
         method: 'paypal',
         order: COUPON_CHANGED_ORDER,

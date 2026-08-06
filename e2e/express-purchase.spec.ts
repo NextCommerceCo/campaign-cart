@@ -222,7 +222,7 @@ test('reloading the success page does not report the purchase twice', async ({
 
   // Drop the order store's cached copy first. Without this the reload proves
   // nothing: `loadOrder` short-circuits on a cached order with the same ref_id
-  // and never emits `order:loaded`, so the second purchase is missing because
+  // and never emits `order:completed`, so the second purchase is missing because
   // nothing tried to send it — the once-per-order list is never consulted.
   // Clearing it forces a real re-fetch, which leaves the dedupe in
   // `DataLayerManager.push` as the only thing that can hold the count at one.

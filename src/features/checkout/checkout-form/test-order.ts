@@ -80,8 +80,6 @@ export interface KonamiTestOrderContext {
   populateFormData: () => void;
   /** Builds and submits the test order — `CheckoutFormEnhancer.createTestOrder`. */
   createTestOrder: () => Promise<any>;
-  /** The form's `emit`, for `order:completed`. */
-  emit: (event: 'order:completed', order: any) => void;
   /** Sends the browser onward exactly as a real order does. */
   handleOrderRedirect: (order: any) => void;
 }
@@ -184,7 +182,8 @@ export async function handleKonamiActivation(
     setTimeout(async () => {
       try {
         const order = await ctx.createTestOrder();
-        ctx.emit('order:completed', order);
+        // Same as a real order: nothing is emitted here. The landing page fetches
+        // the order back and the order store emits `order:completed` there.
         ctx.handleOrderRedirect(order);
       } catch (error) {
         ctx.logger.error('Failed to create test order:', error);

@@ -81,12 +81,6 @@ Subscribe with `next.on('<event>', handler)`. Payloads are the exact shapes decl
 
 ---
 
-## `order:completed`
-
-**When:** The order was created successfully — the orders API accepted it. **Created is not paid.** An express checkout (PayPal, Apple Pay, Google Pay) and a card payment that needs 3-D Secure both reach this point with the money still unmoved: the order carries a `payment_complete_url` and the SDK redirects the shopper there to finish paying. Hang purchase tracking on order:loaded instead, which only fires for an order the API has handed back complete — that is where the SDK's own `dl_purchase` comes from, and nothing analytics-related listens here.
-
----
-
 ## `order:redirect-missing`
 
 **When:** The order succeeded but carried no redirect URL, so the SDK could not send the visitor onward. Handle this to avoid stranding them on the checkout page.

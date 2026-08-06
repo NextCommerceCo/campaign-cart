@@ -214,7 +214,6 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 | `Handling tokenized payment` | `order-manager.ts › OrderManager.handleTokenizedPayment` | yes |
 | `Calling createOrderCallback...` | `order-manager.ts › OrderManager.handleTokenizedPayment` | — |
 | `Order created via callback:` | `order-manager.ts › OrderManager.handleTokenizedPayment` | yes |
-| `Emitting order:completed event` | `order-manager.ts › OrderManager.handleTokenizedPayment` | — |
 | `Handling order redirect...` | `order-manager.ts › OrderManager.handleTokenizedPayment` | — |
 | `Getting order status for:` | `order-manager.ts › OrderManager.getOrderStatus` | yes |
 | `Order status retrieved:` | `order-manager.ts › OrderManager.getOrderStatus` | yes |

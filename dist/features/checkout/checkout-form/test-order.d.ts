@@ -11,7 +11,6 @@ export interface KonamiTestOrderContext {
     logger: Logger;
     populateFormData: () => void;
     createTestOrder: () => Promise<any>;
-    emit: (event: 'order:completed', order: any) => void;
     handleOrderRedirect: (order: any) => void;
 }
 export declare function handleTestDataFilled(ctx: TestDataFillContext): void;
