@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — payment failed landing</title>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      window.nextConfig = {
+        analytics: {
+          enabled: true,
+          mode: 'auto',
+          providers: { gtm: { enabled: true } },
+        },
+      };
+    </script>
+  </head>
+  <body>
+    <!-- The page a declined redirect payment lands on — what express-purchase.html
+         names in its next-failure-url meta tag. It boots the SDK and analytics on
+         purpose: a failure page with no SDK could not report a phantom purchase
+         even if the gate were broken, which would make the spec vacuous. No
+         docs:example marker — there is no SDK markup here to publish. -->
+    <h1>Payment problem</h1>
+    <p id="failed">Your payment did not go through.</p>
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

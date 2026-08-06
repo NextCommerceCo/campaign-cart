@@ -1,5 +1,62 @@
 # Changelog
 
+## [0.4.32] — 2026-08-06 — Purchases Are Counted Only When Paid
+
+### Fixed
+
+- **`dl_purchase` only reports orders that were paid for.** Express checkout (PayPal,
+  Apple Pay, Google Pay) creates the order *before* the shopper pays and then sends them
+  to the gateway; the purchase event was raised at that point and parked for the next
+  page, so pressing **back** from PayPal — or landing on `payment_failed_url` — reported a
+  conversion for an order that never happened, with a made-up `order_<timestamp>`
+  transaction id. One merchant's affiliate network approved six payouts against it
+  ([#71](https://github.com/NextCommerceCo/campaign-cart/issues/71)).
+
+  The checkout page no longer reports a purchase for **any** payment method. The one
+  thing that does is the page the shopper lands on afterwards: it opens with
+  `?ref_id=`, the SDK fetches the finished order, and reports it — **once per order**,
+  remembered across pages and tabs, so a reload or a receipt link opened again cannot
+  produce a second. A payload with no order number and no `ref_id` is dropped with an
+  error instead of being sent under a fabricated id.
+
+  A card payment needing 3-D Secure was affected the same way and is fixed by the same
+  gate. Card orders charged on the checkout page are unaffected.
+
+  **Check your success page before you upgrade.** Every purchase is now reported *only*
+  from the page the shopper lands on after checkout, so that page has to load the SDK and
+  has to keep the `?ref_id=` the redirect puts on it. The SDK appends `ref_id` itself, so
+  this holds unless the page strips it or the redirect goes somewhere the SDK is not
+  installed — the platform's own order-status page, for instance. Such a store will now
+  record no conversion where it previously recorded one: an inflated number replaced by a
+  missing one. Confirm `dl_purchase` fires there once, with the real order number, before
+  rolling this out.
+
+  **The failed leg of a redirect payment is covered too.** A gateway returns to one of two
+  URLs — `success_url` or `payment_failed_url` — and the platform puts `?ref_id=` on both,
+  so the order loads on the failure page as well. Nothing is reported there: the checkout
+  page now records both return paths, and `?payment_failed=true` (the SDK's own default
+  failure URL) is treated as a failure on its own. This holds even if the orders API
+  reports a declined order as no longer awaiting payment.
+
+### New
+
+- **`order:loaded`** — fires when a page opened with `?ref_id=` has fetched its order.
+  This is the event to hang conversion tracking on, and where the SDK's own `dl_purchase`
+  now comes from. `order:completed` means *created*, not *paid*.
+
+- **`?debug=true` and `?debugger=true` survive a payment gateway.** The checkout copies
+  them onto the `success_url` and `payment_failed_url` it sends the orders API, so the
+  page a shopper returns to from PayPal or a 3-D Secure step still has the logs and the
+  overlay. Only those two are copied, not the rest of the query string.
+
+### Corrected docs
+
+- `express-checkout:started`, `:completed` and `:failed` were documented as
+  "never emitted by this build". All three are emitted — the second one is what caused
+  #71. `express-checkout:started` does not send the `cartTotal` it declares.
+
+---
+
 ## [0.4.31] — 2026-08-04 — Prices for Standard European Markets
 
 Campaigns can display prices the way European markets expect — `69,99 €` rather than

@@ -409,7 +409,10 @@ export class NextAnalytics {
   }
 
   public trackPurchase(orderData: any): void {
-    this.track(EcommerceEvents.createPurchaseEvent(orderData));
+    // Skipped, with an error already logged, when the payload has no order
+    // identifier — a purchase no tag can match to an order is not worth sending.
+    const event = EcommerceEvents.createPurchaseEvent(orderData);
+    if (event) this.track(event);
   }
 
   public trackSignUp(email?: string): void {

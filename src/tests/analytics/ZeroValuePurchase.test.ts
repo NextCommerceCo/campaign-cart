@@ -50,6 +50,7 @@ describe('a 100%-discount order still produces a dl_purchase event (finding 46)'
     };
 
     const event = EcommerceEvents.createPurchaseEvent({ order });
+    if (!event) throw new Error('expected a dl_purchase event for this order');
     // Sanity check: the event itself is correctly zero (not the bug).
     expect(event.ecommerce?.value).toBe(0);
 

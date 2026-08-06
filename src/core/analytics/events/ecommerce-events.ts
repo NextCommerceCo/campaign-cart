@@ -94,9 +94,10 @@ export class EcommerceEvents {
   }
 
   /**
-   * Create purchase event (GA4 format)
+   * Create purchase event (GA4 format). `null` when the payload carries no order
+   * identifier — see `checkoutEvents.createPurchaseEvent`.
    */
-  static createPurchaseEvent(orderData: any): DataLayerEvent {
+  static createPurchaseEvent(orderData: any): DataLayerEvent | null {
     return checkoutEvents.createPurchaseEvent(orderData);
   }
 

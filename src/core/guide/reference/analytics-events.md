@@ -372,7 +372,7 @@ RudderStack reports it as checkout `step: 3`.
 
 ### `dl_purchase`
 
-**Fires when:** An order is created successfully — the main conversion.
+**Fires when:** A page opened with `?ref_id=` has fetched a **paid** order — the main conversion, and the one event the SDK raises from `order:loaded` alone. Every payment method reports from the page the shopper lands on after checkout, never from the checkout page itself. Once per order.
 
 **Reaches:** GTM (verbatim), Meta `Purchase`, RudderStack `Order Completed`
 
@@ -395,6 +395,14 @@ Becomes Meta `Purchase` and RudderStack `Order Completed`. Meta gets an `eventID
 | `ecommerce.discount` | `number` | no | Total taken off the order across all lines, as a positive amount. |
 | `user_properties` | `UserProperties` | no | Who the shopper is. See [User properties](#user-properties) — mostly empty before checkout. |
 
+> ⚠️ An order created but not yet paid does **not** produce this event. Express checkout (PayPal, Apple Pay, Google Pay) and a card payment needing 3-D Secure both create the order before the money moves; the SDK reports them only when the shopper returns to the success page. Until 2026-08-05 the event fired at creation time and was then replayed on the next page in the session, so pressing back from PayPal — or landing on `payment_failed_url` — reported a purchase for an order that never existed, with a fabricated `order_<timestamp>` transaction id ([issue #71](https://github.com/NextCommerceCo/campaign-cart/issues/71)). A conversion count from before that date over-reports express checkout.
+>
+> ⚠️ **Your success page must load the SDK, and must keep the `?ref_id=` on its URL.** That is now the only thing that reports a purchase — the checkout page no longer raises one for any payment method. The SDK appends `ref_id` to the success URL itself, so this holds unless the page strips it or the redirect goes somewhere the SDK is not installed (the platform’s own `order_status_url`, for instance). Confirm `dl_purchase` fires there once, with the real order number, before trusting the numbers.
+>
+> ⚠️ The event is emitted at most once per `transaction_id`, remembered in `localStorage` (`nextDataLayer_reportedPurchases`). A payload with no order number and no `ref_id` is dropped with an error rather than sent under a made-up id — there is no `order_<timestamp>` fallback any more.
+>
+> ⚠️ A redirect payment returns on one of **two** legs, `success_url` or `payment_failed_url`, and both come back with `?ref_id=` — so the order loads on the failure page too. Nothing is reported there: the checkout page records both paths (`nextDataLayer_checkoutReturnPaths`) so the landing page can tell them apart, and `?payment_failed=true` — the SDK’s default failure URL — is treated as a failure on its own. If your failure page needs to report anything of its own, hang it on `order:loaded` and check the URL yourself.
+>
 > ⚠️ A zero-value order — a 100% discount, a free trial — now reports normally, carrying `value: 0` with its real `transaction_id`, currency and items. Until 2026-07-31 validation required `ecommerce.value` to be *truthy*, so those orders were dropped before reaching the data layer and no provider ever saw them; a conversion count from before that date under-reports free orders.
 >
 > ⚠️ Reporting `value` as item revenue means it excludes tax and shipping by design. A GA4 revenue figure that looks low against the store's own total is usually this, not a lost event.

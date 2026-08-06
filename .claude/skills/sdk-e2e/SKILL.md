@@ -165,9 +165,15 @@ feature legitimately logs an error, assert the *expected* one rather than silenc
 
 A cheap way to find these in bulk is a **seeded monkey**: drive random clicks and
 inputs across every fixture with a fixed seed, collecting `pageerror` and
-`console.error`. Reproducibility is the whole point — a finding you cannot replay
-is not actionable. Two traps make a monkey lie, and both produced phantom findings
-before they were spotted:
+`console.error`. One was written and thrown away once it had found what it was
+built to find (finding 197) — the traps below are what it cost to get there, and
+they are the reason a throwaway one is worth writing again rather than kept
+running.
+
+Reproducibility is the whole point — a finding you cannot replay is not
+actionable. Four traps make a monkey lie. The first two produced phantom findings
+before they were spotted; the last two made it *silently test nothing*, which is
+worse, and both were found by neutering the fix and checking the monkey noticed:
 
 - **`page.route('**/api/**')` also matches Vite serving `/src/api/client.ts`**,
   which then arrives as JSON and kills the module graph. Scope route globs to the
@@ -175,6 +181,17 @@ before they were spotted:
 - **Playwright checks routes in reverse registration order** — the last one added
   wins. A catch-all registered last silently swallows every specific stub before
   it. Register the catch-all *first*.
+- **A stub answering two endpoints with one shape invents bugs.** The countries CDN
+  has `/location` *and* `/countries/{CODE}/states`, and only the second carries
+  `countryConfig`; answering both with the location shape made `updateFormLabels`
+  throw a TypeError that read exactly like an SDK defect.
+- **An empty cart makes half the SDK unreachable.** Express checkout returns at its
+  `isCartEmpty` guard and its buttons render `disabled`, so a monkey that cannot
+  fill a cart never reaches any order-creating path — and every invariant about
+  them passes vacuously. Seed the cart after boot (`next.getCartCount()` then
+  `next.addItem`, **not** `getCartData().totalQuantity`, which does not exist), and
+  give the campaign stub `available_express_payment_methods` or no express button
+  is rendered to click.
 
 ## 5. Traps specific to this SDK
 

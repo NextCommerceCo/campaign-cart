@@ -428,9 +428,37 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
     ttl: 'the key never expires; individual queued events older than 5 minutes are dropped when the queue is processed',
     ttlMechanism: 'pending-event staleness check (inline literal)',
     holds:
-      'Analytics events parked because a redirect was about to happen — a purchase event queued on the checkout page and fired on the receipt page.',
+      'Analytics events parked because a redirect was about to happen — an accepted post-purchase upsell, raised as the shopper is sent to the next offer page. `dl_purchase` is **not** among them any more: it is raised on the page the shopper lands on, which is where they stay.',
     clearing:
-      'The queued purchase event is never sent, so an order that really happened is missing from reporting. Nothing on the page indicates it.',
+      'A queued upsell event is never sent, so revenue that really happened is missing from reporting. Nothing on the page indicates it.',
+  },
+  {
+    key: 'nextDataLayer_reportedPurchases',
+    group: 'analytics',
+    ttl: 'never — the last 20 order ids are kept and the oldest falls off',
+    ttlMechanism: '`REPORTED_LIMIT`',
+    holds:
+      'The order ids `dl_purchase` has already been sent for, so one order produces exactly one purchase event however many pages of the journey see it — the checkout page, the receipt page, and a queued event replayed after the redirect all consult this list. In `localStorage`, not `sessionStorage`, so re-opening the receipt link in a new tab does not re-report the order.',
+    clearing:
+      'The next page that sees one of those orders reports it again, double-counting the purchase in GA4 and in every affiliate tag. Only clear it when you are deliberately re-testing a purchase event.',
+  },
+  {
+    key: 'nextDataLayer_checkoutReturnPaths',
+    group: 'analytics',
+    ttl: null,
+    holds:
+      'The two paths the checkout page told the orders API to send the shopper back to — `success_url` and `payment_failed_url`, as paths. A redirect payment (PayPal, Klarna, 3-D Secure) returns on one of them and both carry `?ref_id=`, so the landing page loads the order either way; this is how it tells a completed purchase from a declined one. Used only to **suppress** `dl_purchase` on the failure page, never to allow it, so a missing entry cannot cost a conversion.',
+    clearing:
+      'A shopper who lands on a merchant-configured failure page could have that visit counted as a purchase, if the orders API no longer reports the payment as outstanding. The `?payment_failed=true` check still applies, which covers stores using the default failure URL.',
+  },
+  {
+    key: 'nextDataLayer_checkoutCoupon',
+    group: 'analytics',
+    ttl: null,
+    holds:
+      'The voucher code applied to the order the checkout page has created. An order does not carry the code back — its `discounts` are amounts, never the text the shopper typed — and the cart that does hold it is reset before the page navigates away, so this is the only copy left by the time the success page builds `dl_purchase`. It is what puts `ecommerce.coupon` on a PayPal or 3-D Secure purchase, which is reported entirely on the page the gateway returns to.',
+    clearing:
+      'Purchases still report, without `ecommerce.coupon`. Discount attribution in GA4 loses the code for that order; nothing else changes, and no value or item total moves.',
   },
   {
     key: 'user_data',
@@ -729,6 +757,14 @@ export const EXPIRY_MECHANISMS: ExpiryMechanism[] = [
     window: '5 minutes, per event',
     governs:
       '`next_v2_pending_events`. An inline literal, not a named constant. The key itself never expires — individual events older than 5 minutes are discarded when the queue is processed.',
+  },
+  {
+    name: '`REPORTED_LIMIT`',
+    file: 'core/analytics/tracking/purchase-tracking.ts',
+    evidence: 'const REPORTED_LIMIT = 20',
+    window: 'no window — the newest 20 ids are kept',
+    governs:
+      '`nextDataLayer_reportedPurchases`. Bounded by count rather than by age on purpose: an order reported an hour ago must still be suppressed, so expiring the entry would re-open the double-count it exists to prevent.',
   },
   {
     name: 'dataLayer `sessionTimeout`',

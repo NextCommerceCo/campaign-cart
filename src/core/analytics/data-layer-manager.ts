@@ -14,6 +14,11 @@ import type {
 } from './types';
 import { DEFAULT_CONFIG, STORAGE_KEYS, EVENT_VALIDATION_RULES } from './config';
 import { pendingEventsHandler } from './tracking/pending-events-handler';
+import {
+  hasPurchaseBeenReported,
+  markPurchaseReported,
+  reportedPurchaseId,
+} from './tracking/purchase-tracking';
 import { createLogger } from '@/core/logger';
 import { EventBuilder } from './events/event-builder';
 
@@ -123,8 +128,33 @@ export class DataLayerManager {
         return;
       }
 
+      // One `dl_purchase` per order, however many times the page that reports it
+      // is opened — a receipt link in a new tab, or a reload after the order
+      // store's cache expired, each fetch the order again and report it again
+      // (issue #71). It sits here rather than in the handler so that a purchase
+      // pushed by hand through `next.trackPurchase()` is deduped on the same
+      // terms. The check is after the queue branch on purpose: a queued event has
+      // not shipped yet, and marking it here would suppress a later, real
+      // emission if the queue then dropped it as stale.
+      const transactionId =
+        finalEvent.event === 'dl_purchase'
+          ? reportedPurchaseId(finalEvent)
+          : null;
+      if (transactionId && hasPurchaseBeenReported(transactionId)) {
+        logger.info(
+          `Purchase already reported for ${transactionId} — dropping duplicate dl_purchase`
+        );
+        return;
+      }
+
       // Push to data layer
       window.NextDataLayer.push(finalEvent);
+
+      // Marked only once the event has actually reached the data layer — marking
+      // before this line and having the push itself throw (e.g. a conflicting
+      // script reassigned `window.NextDataLayer`) would record the purchase as
+      // reported when it never actually shipped, losing it permanently.
+      if (transactionId) markPurchaseReported(transactionId);
 
       // Log in debug mode
       this.debug('Event pushed to data layer', finalEvent);

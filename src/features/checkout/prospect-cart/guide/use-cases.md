@@ -146,7 +146,10 @@ contact fields are valid — so it undercounts arrivals by design.
 
 **Use instead:** the checkout form's own events —
 [`checkout-form` events](../../../checkout/checkout-form/guide/reference/events.md)
-has `checkout:started` for a submit attempt and `order:completed` for a purchase.
+has `checkout:started` for a submit attempt and `order:completed` for an order the
+API accepted. For a *paid* order, count
+[`order:loaded`](../../../../state/order/guide/reference/events.md) instead —
+`order:completed` fires before a gateway has taken any money.
 
 ### Capturing an email outside a checkout
 

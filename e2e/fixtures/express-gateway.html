@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E2E — stand-in payment gateway</title>
+  </head>
+  <body>
+    <!-- Stands in for PayPal. It deliberately does NOT load the SDK: the real
+         gateway is another origin, and what matters to express-purchase.spec.ts
+         is only that the shopper left the site and can come back — by pressing
+         back (paid nothing) or by being redirected to success_url?ref_id=…
+         (paid). No docs:example marker: nothing here is SDK markup. -->
+    <h1>Pay at the gateway</h1>
+    <p id="gateway">Approve or cancel this payment.</p>
+  </body>
+</html>

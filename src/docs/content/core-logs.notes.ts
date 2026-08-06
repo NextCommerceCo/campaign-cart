@@ -749,6 +749,15 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
     action:
       'Read the attached error. Upsell revenue is still counted; the product name attached to it may be missing.',
   },
+  {
+    level: 'error',
+    message:
+      'Cannot build dl_purchase: order payload has no number, ref_id, orderId or transactionId',
+    meaning:
+      'A purchase was reported for a payload with nothing to use as `transaction_id`, so no event was sent. The order (if there is one) is missing from every purchase report. This used to be sent as `order_<timestamp>` instead, which no tag could match to an order.',
+    action:
+      'Look at what called it. `next.trackPurchase()` must be handed the order the API returned — `{ number, ref_id, lines, … }` — not a summary of it. From the SDK’s own paths this line means the orders API returned an order with neither a number nor a ref_id, which is worth raising with support.',
+  },
 
   // ── analytics/events/user-events.ts ─────────────────────────────────────────
   {
@@ -927,6 +936,64 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
       'The queue could not be emptied, so events already replayed may be replayed again — duplicate events in the destination.',
     action:
       'Read the attached error. If purchase events are duplicated in reports, this line is the reason to look at first.',
+  },
+
+  // ── analytics/tracking/purchase-tracking.ts ──────────────────────────────────
+  {
+    level: 'warn',
+    message: 'Failed to read reported purchases:',
+    meaning:
+      'The list of orders already reported as a purchase could not be read, so this page cannot tell whether an order has been reported before. It behaves as if none had been, which risks a second `dl_purchase` for an order that already produced one.',
+    action:
+      'Read the attached error — a blocked or corrupt localStorage is the cause. If purchases look over-counted for one visitor, this line is why.',
+  },
+  {
+    level: 'warn',
+    message: 'Failed to record reported purchase:',
+    meaning:
+      'A purchase was reported but could not be written to the already-reported list, so a later page in the same journey may report the same order again.',
+    action:
+      'Read the attached error. Blocked or full localStorage is the usual cause; the event itself was sent, only the record of it was lost.',
+  },
+  {
+    level: 'warn',
+    message: 'Failed to record the checkout return paths:',
+    meaning:
+      'The checkout page could not store where the orders API will send the shopper back to. A redirect payment that then fails, and lands on a merchant-configured failure page, cannot be recognised as a failure by its path — so if the API no longer reports that order as awaiting payment, the visit could be counted as a purchase.',
+    action:
+      'Read the attached error — blocked or full sessionStorage. The `?payment_failed=true` check is unaffected, so stores on the default failure URL are still covered.',
+  },
+  {
+    level: 'warn',
+    message: 'Failed to read the checkout return paths:',
+    meaning:
+      'The landing page could not read which of the two return legs it is, so it falls back to the `?payment_failed=true` parameter alone. Same consequence as failing to write them.',
+    action:
+      'Read the attached error. A corrupt stored value keeps failing until it is overwritten by the next order; clearing the SDK’s sessionStorage keys resets it.',
+  },
+  {
+    level: 'warn',
+    message: 'Failed to record the checkout coupon:',
+    meaning:
+      'The checkout page could not store the voucher code applied to this order. The order does not carry the code back and the cart holding it is reset before the page navigates away, so the purchase this order eventually produces will go out without `ecommerce.coupon`.',
+    action:
+      'Read the attached error — blocked or full sessionStorage. Only discount attribution is affected; the purchase itself is still reported, with its value and items intact.',
+  },
+  {
+    level: 'warn',
+    message: 'Failed to read the checkout coupon:',
+    meaning:
+      'The page building `dl_purchase` could not read the voucher code the checkout page recorded, so the event goes out without `ecommerce.coupon`. Same consequence as failing to write it.',
+    action:
+      'Read the attached error. A blocked sessionStorage is the usual cause; the purchase is still reported in full apart from the code.',
+  },
+  {
+    level: 'warn',
+    message: 'Failed to clear reported purchases:',
+    meaning:
+      'The already-reported list could not be emptied. Only tests clear it, so on a real page this line should never appear.',
+    action:
+      'Read the attached error. In production, treat it as a sign that something outside the SDK is calling into its test helpers.',
   },
 
   // ── analytics/tracking/view-item-list-tracker.ts ──────────────────────────────

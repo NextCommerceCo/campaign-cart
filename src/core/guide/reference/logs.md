@@ -10,7 +10,7 @@ category: "Core Reference"
      src/docs/content/core-logs.ts. Do not edit by hand: change the log line in the
      code or the note in core-logs.ts, then run `npm run docs:reference`. -->
 
-Every message the SDK's own machinery can print — 499 of them, across 60 console prefixes plus 13 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
+Every message the SDK's own machinery can print — 507 of them, across 62 console prefixes plus 13 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
 
 Messages are listed at the wording the code uses. A `{name}` inside one is a value filled in at runtime, so search for the text on either side of it. **Extra context** means the call passes a second argument — an object or an error logged beside the message; expand that entry in the console, because the message alone will not tell you which element, package, or event was involved.
 
@@ -118,10 +118,11 @@ Console lines are prefixed with the part of the SDK that produced them. Find the
 | Prefix | What it does | Error | Warn | Info | Debug |
 |---|---|---|---|---|---|
 | `[NextAnalytics]` | The analytics entry point: reads configuration, builds the enabled providers, and accepts every event the rest of the SDK tracks. | 5 | 5 | 9 | 3 |
-| `[NextDataLayer]` | Pushes finished events onto `window.dataLayer` and fans them out to the providers, adding attribution and validating required fields on the way. | 8 | — | — | — |
+| `[NextDataLayer]` | Pushes finished events onto `window.dataLayer` and fans them out to the providers, adding attribution and validating required fields on the way. | 8 | — | 1 | — |
 | `[AnalyticsConfig]` | Holds the per-provider settings — which fields each provider needs before it can be switched on. | 2 | — | — | — |
 | `[UserDataStorage]` | Remembers who the visitor is across pages — email, name, ids — in a cookie plus sessionStorage, so events after a redirect still identify them. | 2 | 2 | 2 | 4 |
-| `[EcommerceEvents]` | Builds the purchase-funnel events — view item, add to cart, begin checkout, purchase, upsell. Split across `ecommerce-events.browse.ts` / `.cart.ts` / `.checkout.ts` / `.upsell.ts`, this is the only one of the four that logs (a warn when the campaign store cannot be read for an accepted-upsell item). | — | 1 | — | — |
+| `[EcommerceEvents]` | Builds the purchase-funnel events — view item, add to cart, begin checkout, purchase, upsell. Split across `ecommerce-events.browse.ts` / `.cart.ts` / `.checkout.ts` / `.upsell.ts`; this one logs a warn when the campaign store cannot be read for an accepted-upsell item. | — | 1 | — | — |
+| `[EcommerceEvents]` | Builds `dl_begin_checkout` and `dl_purchase` from the order the API returned. Logs an error when an order payload carries no identifier to report as `transaction_id`, because that purchase is dropped rather than sent with a made-up id. | 1 | — | — | — |
 | `[UserEvents]` | Builds the `dl_user_data` event that identifies the visitor and carries the current cart contents. | — | 1 | — | — |
 | `[EventValidator]` | Checks an event against its schema in debug mode, so a missing or mistyped field is caught while you are looking rather than in a report a week later. | 1 | — | — | — |
 
@@ -134,7 +135,7 @@ Console lines are prefixed with the part of the SDK that produced them. Find the
 | `[EventBuilder]` | The deprecated Elevar payload shape, kept for pages still reading it. | — | 1 | — | — |
 | `[RudderStack]` | The per-event property builders the RudderStack adapter sends. | — | — | — | 1 |
 | `[AutoEventListener]` | Cart events picked up from the event bus and pushed to the data layer. | 1 | 3 | — | 3 |
-| `[AutoEventListener]` | Checkout and order-completed events picked up from the event bus. | — | — | 1 | 1 |
+| `[AutoEventListener]` | Checkout and order-completed events picked up from the event bus. | — | — | 1 | — |
 | `[AutoEventListener]` | Post-purchase upsell events picked up from the event bus. | — | 1 | 4 | 1 |
 | `[AutoEventListener]` | Exit-intent popup events picked up from the event bus. | — | — | — | 5 |
 
@@ -145,6 +146,7 @@ Console lines are prefixed with the part of the SDK that produced them. Find the
 | `[AutoEventListener]` | Turns the SDK’s own cart, upsell, and exit-intent events into analytics events, so a page gets tracking without writing any. | — | — | 1 | 4 |
 | `[MetaTagController]` | Fires `view_item` / `view_item_list` and scroll-depth events from `<meta>` tags, including reading the package id out of a URL parameter and waiting for a time, an element, or a scroll threshold. | — | 8 | 10 | 13 |
 | `[PendingEventsHandler]` | Holds events that were raised as the page was navigating away, and replays them on the next page so a redirect does not lose a purchase. | 4 | 2 | 2 | 6 |
+| `[PurchaseTracking]` | Decides whether an order may be reported as a purchase yet — an order still awaiting payment at a gateway may not — and remembers the orders already reported so one order produces one `dl_purchase`. | — | 7 | — | — |
 | `[UserDataTracker]` | Fires `dl_user_data` first on every page and again when the visitor is identified or the route changes. | — | — | 1 | 17 |
 | `[ViewItemListTracker]` | Detects the products present on a page and fires `view_item` / `view_item_list` for them without any meta tags. | — | 1 | 1 | 18 |
 | `[ListAttributionTracker]` | Remembers which list a product was clicked from so the next page’s events can say where the visitor came from within the site. | 3 | — | — | 7 |
@@ -1588,6 +1590,14 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 **Action:** Read the attached error and the provider named in the message; that adapter’s own errors are in [errors.md](./errors.md).
 
+### Info
+
+Normal progress. Read these as the play-by-play of what the SDK decided: which country it detected, which currency it chose, what it loaded.
+
+| Message | Source | Extra context |
+|---|---|---|
+| `Purchase already reported for {transactionId} — dropping duplicate dl_purchase` | `analytics/data-layer-manager.ts › DataLayerManager.push` | — |
+
 ## `[AnalyticsConfig]`
 
 Holds the per-provider settings — which fields each provider needs before it can be switched on.
@@ -1872,15 +1882,7 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Tracked purchase:` | `analytics/tracking/auto-event-checkout-handlers.ts › handleOrderCompleted` | yes |
-
-### Debug
-
-The detail behind the info lines. Expected in bulk, and only visible with debug mode on — a long list here is health, not trouble.
-
-| Message | Source | Extra context |
-|---|---|---|
-| `Marked purchase event for queueing with _willRedirect = true` | `analytics/tracking/auto-event-checkout-handlers.ts › handleOrderCompleted` | — |
+| `Tracked purchase:` | `analytics/tracking/auto-event-checkout-handlers.ts › reportPurchase` | yes |
 
 ## `[AutoEventListener]`
 
@@ -1939,7 +1941,7 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 ## `[EcommerceEvents]`
 
-Builds the purchase-funnel events — view item, add to cart, begin checkout, purchase, upsell. Split across `ecommerce-events.browse.ts` / `.cart.ts` / `.checkout.ts` / `.upsell.ts`, this is the only one of the four that logs (a warn when the campaign store cannot be read for an accepted-upsell item).
+Builds the purchase-funnel events — view item, add to cart, begin checkout, purchase, upsell. Split across `ecommerce-events.browse.ts` / `.cart.ts` / `.checkout.ts` / `.upsell.ts`; this one logs a warn when the campaign store cannot be read for an accepted-upsell item.
 
 Logged from `analytics/events/ecommerce-events.upsell.ts`.
 
@@ -1954,6 +1956,24 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 **Meaning:** An upsell event was built without campaign name or package details because the campaign store could not be read. The event is still sent.
 
 **Action:** Read the attached error. Upsell revenue is still counted; the product name attached to it may be missing.
+
+## `[EcommerceEvents]`
+
+Builds `dl_begin_checkout` and `dl_purchase` from the order the API returned. Logs an error when an order payload carries no identifier to report as `transaction_id`, because that purchase is dropped rather than sent with a made-up id.
+
+Logged from `analytics/events/ecommerce-events.checkout.ts`.
+
+### Error
+
+Something did not work. Each of these means a visitor saw the wrong thing, or a piece of data went missing. Every one carries what it means and what to do.
+
+#### `Cannot build dl_purchase: order payload has no number, ref_id, orderId or transactionId`
+
+`analytics/events/ecommerce-events.checkout.ts › createPurchaseEvent`
+
+**Meaning:** A purchase was reported for a payload with nothing to use as `transaction_id`, so no event was sent. The order (if there is one) is missing from every purchase report. This used to be sent as `order_<timestamp>` instead, which no tag could match to an order.
+
+**Action:** Look at what called it. `next.trackPurchase()` must be handed the order the API returned — `{ number, ref_id, lines, … }` — not a summary of it. From the SDK’s own paths this line means the orders API returned an order with neither a number nor a ref_id, which is worth raising with support.
 
 ## `[UserEvents]`
 
@@ -2210,6 +2230,72 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 | `Cleared all pending events` | `analytics/tracking/pending-events-handler.ts › PendingEventsHandler.clearPendingEvents` | — |
 | `PendingEventsHandler reset` | `analytics/tracking/pending-events-handler.ts › PendingEventsHandler.reset` | — |
 | `PendingEventsHandler initialized` | `analytics/tracking/pending-events-handler.ts › PendingEventsHandler.initialize` | — |
+
+## `[PurchaseTracking]`
+
+Decides whether an order may be reported as a purchase yet — an order still awaiting payment at a gateway may not — and remembers the orders already reported so one order produces one `dl_purchase`.
+
+Logged from `analytics/tracking/purchase-tracking.ts`.
+
+### Warn
+
+The SDK carried on, but something in the markup, the configuration, or the campaign data was not what it expected. Worth fixing even when the page looks right — several of these are how tracking goes quietly wrong.
+
+#### `Failed to record the checkout return paths:`
+
+`analytics/tracking/purchase-tracking.ts › rememberCheckoutReturnPaths` · extra context attached
+
+**Meaning:** The checkout page could not store where the orders API will send the shopper back to. A redirect payment that then fails, and lands on a merchant-configured failure page, cannot be recognised as a failure by its path — so if the API no longer reports that order as awaiting payment, the visit could be counted as a purchase.
+
+**Action:** Read the attached error — blocked or full sessionStorage. The `?payment_failed=true` check is unaffected, so stores on the default failure URL are still covered.
+
+#### `Failed to read the checkout return paths:`
+
+`analytics/tracking/purchase-tracking.ts › readReturnPaths` · extra context attached
+
+**Meaning:** The landing page could not read which of the two return legs it is, so it falls back to the `?payment_failed=true` parameter alone. Same consequence as failing to write them.
+
+**Action:** Read the attached error. A corrupt stored value keeps failing until it is overwritten by the next order; clearing the SDK’s sessionStorage keys resets it.
+
+#### `Failed to record the checkout coupon:`
+
+`analytics/tracking/purchase-tracking.ts › rememberCheckoutCoupon` · extra context attached
+
+**Meaning:** The checkout page could not store the voucher code applied to this order. The order does not carry the code back and the cart holding it is reset before the page navigates away, so the purchase this order eventually produces will go out without `ecommerce.coupon`.
+
+**Action:** Read the attached error — blocked or full sessionStorage. Only discount attribution is affected; the purchase itself is still reported, with its value and items intact.
+
+#### `Failed to read the checkout coupon:`
+
+`analytics/tracking/purchase-tracking.ts › recallCheckoutCoupon` · extra context attached
+
+**Meaning:** The page building `dl_purchase` could not read the voucher code the checkout page recorded, so the event goes out without `ecommerce.coupon`. Same consequence as failing to write it.
+
+**Action:** Read the attached error. A blocked sessionStorage is the usual cause; the purchase is still reported in full apart from the code.
+
+#### `Failed to read reported purchases:`
+
+`analytics/tracking/purchase-tracking.ts › readReported` · extra context attached
+
+**Meaning:** The list of orders already reported as a purchase could not be read, so this page cannot tell whether an order has been reported before. It behaves as if none had been, which risks a second `dl_purchase` for an order that already produced one.
+
+**Action:** Read the attached error — a blocked or corrupt localStorage is the cause. If purchases look over-counted for one visitor, this line is why.
+
+#### `Failed to record reported purchase:`
+
+`analytics/tracking/purchase-tracking.ts › markPurchaseReported` · extra context attached
+
+**Meaning:** A purchase was reported but could not be written to the already-reported list, so a later page in the same journey may report the same order again.
+
+**Action:** Read the attached error. Blocked or full localStorage is the usual cause; the event itself was sent, only the record of it was lost.
+
+#### `Failed to clear reported purchases:`
+
+`analytics/tracking/purchase-tracking.ts › resetReportedPurchases` · extra context attached
+
+**Meaning:** The already-reported list could not be emptied. Only tests clear it, so on a real page this line should never appear.
+
+**Action:** Read the attached error. In production, treat it as a sign that something outside the SDK is calling into its test helpers.
 
 ## `[UserDataTracker]`
 

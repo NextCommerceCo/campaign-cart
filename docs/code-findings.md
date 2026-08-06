@@ -3381,6 +3381,135 @@ shipping-form spelling combinations; it fails on 3 of 4 without the fix.
 
 ---
 
+## Found while fixing issue #71 (2026-08-05)
+
+### 196. `dl_purchase` was hung on order *creation*, so express checkout reported purchases nobody made — *reproduced in a browser, fixed*
+
+Reported from live traffic: 8 `dl_purchase` firings in a week at one merchant, **all 8** with
+a fabricated `order_<timestamp>` transaction id. 4 came from sessions that never placed an
+order, 2 fired ~8 hours before the same visitor's real purchase, one session fired twice a
+minute apart. An affiliate network approved six payouts against them.
+
+Three defects compounded, and only the third was known (finding 192 fixed a fourth):
+
+1. **`express-checkout:completed` does not mean paid.** `ExpressCheckoutProcessor` emits it
+   the moment `POST /orders` succeeds — which for PayPal is one redirect *before* any money
+   moves: the order comes back with a `payment_complete_url` and `handleOrderRedirect` sends
+   the shopper there. Analytics subscribed to it as if it were a conversion. A card order
+   needing 3-D Secure reaches `order:completed` in the same unpaid state.
+2. **The `_willRedirect` queue turned that into a delayed landmine.** The event was parked in
+   `sessionStorage` and replayed ~200ms after the *next* SDK page booted, whatever page that
+   was — so the conversion fired when the shopper pressed **back** from PayPal, or landed on
+   `payment_failed_url` (whose SDK default is the checkout page itself). That is the "fires
+   after I press back" the report describes. It does **not** explain the 8-hour skew, as an
+   earlier draft of this finding claimed: the queue discards events older than 5 minutes
+   (`analytics/tracking/pending-events-handler.ts › PendingEventsHandler.processPendingEvents`),
+   so nothing can replay hours later. The plainer reading fits — the phantom fired when the
+   shopper abandoned PayPal in the morning, and the same visitor came back and really bought
+   that evening.
+3. **`createPurchaseEvent` fabricated an id.** `order.number || order.ref_id || … ||
+   `` `order_${Date.now()}` `` meant an unreadable payload still produced an event. Combined
+   with the `{ method, order }` wrapper of finding 192, that is why all 8 carried a timestamp.
+4. **Nothing deduped.** Two express clicks, or a queued event replaying on a page that also
+   reported the order, each produced their own event.
+
+**The receipt page — the one place that holds a paid order — was the only page not reporting
+anything.** `SDKInitializer.checkAndLoadOrder` has always fetched the order from `?ref_id=`
+and put it in the store, silently.
+
+Fixed by making "paid" the precondition rather than "created":
+`isAwaitingGatewayPayment(order)` (a `payment_complete_url` means the money has not moved)
+gates both checkout-page paths; the order store now emits `order:loaded` on a successful
+fetch and analytics reports the purchase from there; `DataLayerManager.push` allows one
+`dl_purchase` per `transaction_id`, remembered in `localStorage`, which is where a replayed
+queue event is caught; and the timestamp fallback is gone — no id, no event.
+
+**Where the dedupe check sits is load-bearing.** It is *after* the `_willRedirect` branch, so
+a queued event is marked only when it really reaches the data layer. Marking at queue time
+would suppress a later real emission whenever the queue drops the event as stale (5 minutes).
+
+**Then the second producer went entirely.** Gating `order:completed` / `express-checkout:completed`
+on "is it paid" stopped the phantom purchases, but keeping those subscriptions bought nothing:
+the SDK appends `ref_id` to the success URL it builds
+(`features/checkout/checkout-form/checkout-form.enhancer.ts › CheckoutFormEnhancer.getNextPageUrlFromMeta`),
+and so do both fallbacks, so the landing page fetches the order and reports it anyway. When
+that *doesn't* happen the queue does not save it either — it replays on the next SDK page,
+whatever page that is, and drops the event after five minutes. What two producers did cost was
+a race: both reached the success page, the dedupe kept whichever arrived first, and the two
+payloads differ (the checkout-page copy can read the cart's voucher code, the success-page copy
+cannot — that is what `nextDataLayer_checkoutCoupon` now carries across). `order:loaded` is the
+only producer as of this change. The case given up: a store whose success page never boots the
+SDK now reports nothing, where it used to report late on a page that was not the success page.
+
+Two smaller things found on the way:
+
+- **`SDKInitializer.checkAndLoadOrder` logged `Order loaded successfully: null` on every
+  successful load.** It read `orderStore.order` from the `getState()` snapshot taken *before*
+  the await; Zustand's `set` builds a new state object, so the snapshot never updates.
+- **Finding 192's false-TSDoc note was still half true.** `express-checkout:completed` and
+  `:started` were corrected then, but `:failed` still claimed to be never emitted, and the
+  express container's guide still told authors that none of the three exist. Also
+  `express-checkout:started` **declares a `cartTotal` it does not send** — the emit passes
+  `method` and `itemCount` only. Documented rather than changed: adding the field is a payload
+  change, and no page can be relying on a value that was never there.
+
+**A redirect payment has two return legs, and the second one needed its own answer.** A
+gateway comes back to either `success_url` or `payment_failed_url`, and the platform puts
+`?ref_id=` on both — so the order loads on the failure page and `order:loaded` fires there
+too. Whether a *declined* order still carries `payment_complete_url` when fetched is the
+platform's behaviour, not the SDK's, so resting the whole fix on that field would have left a
+narrower version of the same bug for any store with a `next-failure-url` set. Closed with two
+signals that do not depend on the API: `?payment_failed=true` (what `getFailureUrl` appends
+when no failure URL is configured), and the `payment_failed_url` **path**, which the checkout
+page now records alongside `success_url` when it creates the order
+(`nextDataLayer_checkoutReturnPaths`).
+
+**Both are vetoes, never requirements** — no stored record means the ordinary rules apply. The
+inverse design (report *only* on a recognised success path) would turn every lost
+sessionStorage entry into a lost conversion, which is the failure mode nobody notices. A store
+pointing both legs at one page makes the path meaningless, so that case falls back to the
+parameter alone rather than vetoing every real purchase it makes.
+
+Proven falsifiable: `e2e/express-purchase.spec.ts` asserts the queue holds no `dl_purchase`
+while the shopper sits on the stand-in gateway page, and that assertion fails deterministically
+with the gate removed — the "nothing in the data layer after back" assertion alone passed once
+against the broken build, because it depends on the returned page booting in time. The
+failure-leg spec stubs `POST` with an unpaid order and `GET` with one that looks entirely paid,
+so it fails unless the return-path veto is doing the work.
+
+
+### 197. A malformed 200 from the countries CDN leaves the province dropdown stuck on "Loading..." — *verified, not fixed*
+
+Found by a throwaway seeded monkey — random clicks across every fixture, watching the
+console — while its own stub was wrong, which is how the SDK path got exercised at all.
+The script was removed once it had produced this finding; the traps that made it worth
+running are recorded in the `sdk-e2e` skill §4b.
+
+`CountryService.getCountryStates` guards a *failed* fetch — network error or non-OK status
+returns `{ countryConfig: getDefaultCountryConfig(code), states: [] }`. It does not guard a
+**200 with an unexpected body**: `data.countryConfig` is passed through as `undefined`, and
+`state-fields.ts › setupStateFields` hands it straight to
+`updateFormLabels(ctx.countryFields, countryData.countryConfig)`, which reads
+`countryConfig.stateLabel`. TypeError, caught by the enclosing `try`, logged as
+`[CheckoutFormEnhancer] Failed to load states:` — a message that names the fetch, not the
+shape, so it points at the wrong thing.
+
+Shopper-visible effect: the throw happens *after* `provinceField.innerHTML` was replaced
+with `<option value="">Loading...</option>` and *before* anything repopulates it, so the
+province select is stuck on "Loading..." with the country's labels never updated. The
+checkout cannot be completed for that country.
+
+Only a contract violation by the CDN triggers it, which is why it has never been seen in
+production — but the same code path also runs against a cached body
+(`getFromCache(cacheKey, true)`, localStorage), so one bad response is remembered for as
+long as that cache lives.
+
+Not fixed here: the change belongs with someone deciding whether a malformed body should
+fall back to the default config (a one-line `?? this.getDefaultCountryConfig(countryCode)`
+on the parsed body, matching the error path) or fail loudly. Either way `updateFormLabels`
+should not be reachable with an undefined config.
+
+
 ## Open decisions
 
 1. **Lint.** 12,365 errors now that it runs — 7,391 auto-fixable (7,296 of them pure

@@ -53,7 +53,13 @@ offering all three sees it three times. Use it to reveal the section only when a
 least one button actually rendered — Apple Pay is absent on non-Apple devices, and
 an empty "Express checkout" heading looks broken.
 
-Completion and failure do **not** have express-specific events in this build:
-listen for `order:completed` and `payment:error`, which cover express and
-standard checkout alike. The `express-checkout:completed` / `:failed` names
-exist on `EventMap` but are never emitted — they are marked deprecated there.
+`express-checkout:started`, `:completed` and `:failed` all fire from the click,
+and `order:completed` / `payment:error` fire alongside them, covering express and
+standard checkout alike.
+
+**None of them means the shopper paid.** An express order is created *before* the
+payment: it comes back with a `payment_complete_url`, the SDK sends the shopper
+to PayPal with it, and they can still cancel or press back. Hang conversion
+tracking on `order:loaded`, which fires on the success page for the order fetched
+back from the API — that is where the SDK's own `dl_purchase` comes from
+([issue #71](https://github.com/NextCommerceCo/campaign-cart/issues/71)).

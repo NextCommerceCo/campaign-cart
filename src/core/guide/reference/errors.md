@@ -51,6 +51,7 @@ Every part of `src/core`, and whether it raises anything of its own. "Nothing" i
 |---|---|---|
 | `analytics/config.ts` | `[AnalyticsConfig]` | nothing |
 | `analytics/data-layer-manager.ts` | `[NextDataLayer]` | nothing |
+| `analytics/events/ecommerce-events.checkout.ts` | `[EcommerceEvents]` | nothing |
 | `analytics/events/ecommerce-events.upsell.ts` | `[EcommerceEvents]` | nothing |
 | `analytics/events/ecommerce-item-formatter.ts` | `[EventBuilder]` | nothing |
 | `analytics/events/elevar-legacy-formatter.ts` | `[EventBuilder]` | nothing |
@@ -71,6 +72,7 @@ Every part of `src/core`, and whether it raises anything of its own. "Nothing" i
 | `analytics/tracking/list-attribution-tracker.ts` | `[ListAttributionTracker]` | nothing |
 | `analytics/tracking/meta-tag-controller.ts` | `[MetaTagController]` | nothing |
 | `analytics/tracking/pending-events-handler.ts` | `[PendingEventsHandler]` | nothing |
+| `analytics/tracking/purchase-tracking.ts` | `[PurchaseTracking]` | nothing |
 | `analytics/tracking/user-data-tracker.ts` | `[UserDataTracker]` | nothing |
 | `analytics/tracking/view-item-list-tracker.ts` | `[ViewItemListTracker]` | nothing |
 | `analytics/user-data-storage.ts` | `[UserDataStorage]` | nothing |
