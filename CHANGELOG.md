@@ -1,6 +1,12 @@
 # Changelog
 
-## [Unreleased]
+## [0.4.31] — 2026-08-04 — Prices for Standard European Markets
+
+Campaigns can display prices the way European markets expect — `69,99 €` rather than
+`€69.99`. Alongside it, a conversion-tracking fix that matters to anyone using express
+checkout, and two larger pieces of work: the documentation is now a generated, versioned
+site, and the source tree is reorganised into one folder per feature. Neither of those
+changes how you integrate.
 
 ### Fixed
 
@@ -22,6 +28,14 @@
   A card payment needing 3-D Secure was affected the same way and is fixed by the same
   gate. Card orders charged on the checkout page are unaffected.
 
+  **Check your success page before you upgrade.** Express and 3-D Secure purchases are now
+  reported *only* from the page the gateway returns to, so that page has to load the SDK
+  and has to keep the `?ref_id=` the redirect puts on it. A success page that strips the
+  parameter, or that never loads the SDK at all, will now record no conversion for those
+  payment methods where it previously recorded one — an inflated number replaced by a
+  missing one. Confirm `dl_purchase` fires there once with the real order number before
+  rolling this out. Card orders charged on the checkout page do not depend on this.
+
   **The failed leg of a redirect payment is covered too.** A gateway returns to one of two
   URLs — `success_url` or `payment_failed_url` — and the platform puts `?ref_id=` on both,
   so the order loads on the failure page as well. Nothing is reported there: the checkout
@@ -34,23 +48,6 @@
 - **`order:loaded`** — fires when a page opened with `?ref_id=` has fetched its order.
   This is the event to hang conversion tracking on, and where the SDK's own `dl_purchase`
   now comes from. `order:completed` means *created*, not *paid*.
-
-### Corrected docs
-
-- `express-checkout:started`, `:completed` and `:failed` were documented as
-  "never emitted by this build". All three are emitted — the second one is what caused
-  #71. `express-checkout:started` does not send the `cartTotal` it declares.
-
----
-
-## [0.4.31] — 2026-08-04 — Prices for Standard European Markets
-
-Campaigns can display prices the way European markets expect — `69,99 €` rather than
-`€69.99`. Alongside it, two larger pieces of work: the documentation is now a generated,
-versioned site, and the source tree is reorganised into one folder per feature. Neither
-changes how you integrate.
-
-### New
 
 - **`window.nextConfig.locale`** — pins how prices are written: `'de-DE'` renders
   `69,99 €`. The **locale** decides the decimal separator and which side the symbol sits
@@ -76,6 +73,12 @@ changes how you integrate.
 
 - **Quieter console on live pages** — the order manager's 24 raw console messages go
   through the logger, so they appear when debugging is on and stay silent in production.
+
+### Corrected docs
+
+- `express-checkout:started`, `:completed` and `:failed` were documented as
+  "never emitted by this build". All three are emitted — the second one is what caused
+  #71. `express-checkout:started` does not send the `cartTotal` it declares.
 
 ---
 

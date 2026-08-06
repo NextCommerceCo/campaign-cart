@@ -5,7 +5,10 @@
 import { OrderBuilder } from '../builders/order-builder';
 import { useCheckoutStore } from '@/state/checkout';
 import { handleOrderRedirect } from '../utils/redirect-handler';
-import { rememberCheckoutReturnPaths } from '@/core/analytics/tracking/purchase-tracking';
+import {
+  rememberCheckoutCoupon,
+  rememberCheckoutReturnPaths,
+} from '@/core/analytics/tracking/purchase-tracking';
 import type { IApiClient } from '@/api/client.types';
 import type { Logger } from '@/core/logger';
 
@@ -86,6 +89,9 @@ export class OrderManager {
         orderData.success_url,
         orderData.payment_failed_url
       );
+      // The cart is reset before this page navigates away and the order does not
+      // carry the code back, so this is the last moment it can be captured.
+      rememberCheckoutCoupon(orderData.vouchers?.[0]);
 
       // Create the order via API
       this.logger.debug('Calling API to create order...');
@@ -197,11 +203,12 @@ export class OrderManager {
       this.logger.info('Express order data built');
 
       // Express always redirects to a gateway, so this is the path that matters
-      // most — see the same call in createOrder.
+      // most — see the same calls in createOrder.
       rememberCheckoutReturnPaths(
         orderData.success_url,
         orderData.payment_failed_url
       );
+      rememberCheckoutCoupon(orderData.vouchers?.[0]);
 
       // Create the order
       const order = await this.apiClient.createOrder(orderData);

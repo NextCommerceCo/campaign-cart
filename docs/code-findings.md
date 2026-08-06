@@ -3464,8 +3464,10 @@ so it fails unless the return-path veto is doing the work.
 
 ### 197. A malformed 200 from the countries CDN leaves the province dropdown stuck on "Loading..." — *verified, not fixed*
 
-Found by the seeded monkey (`npm run test:monkey`) while its own stub was wrong, which is
-how the SDK path got exercised at all.
+Found by a throwaway seeded monkey — random clicks across every fixture, watching the
+console — while its own stub was wrong, which is how the SDK path got exercised at all.
+The script was removed once it had produced this finding; the traps that made it worth
+running are recorded in the `sdk-e2e` skill §4b.
 
 `CountryService.getCountryStates` guards a *failed* fetch — network error or non-OK status
 returns `{ countryConfig: getDefaultCountryConfig(code), states: [] }`. It does not guard a

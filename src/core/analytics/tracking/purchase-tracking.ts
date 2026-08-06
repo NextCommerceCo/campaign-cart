@@ -175,6 +175,45 @@ export function isPaymentFailureLanding(): boolean {
   return normalizePath(pathname) === paths.failure;
 }
 
+/**
+ * Remember the voucher code applied to this order, from the payload the SDK is
+ * about to send. Called on the checkout page, for every order that is created;
+ * a code-less order clears the record rather than leaving the previous one to be
+ * read by the next purchase.
+ *
+ * An order does not carry the code back — `Order.discounts` entries are amounts
+ * (`offer_id`, `amount`, `name`), never the text the shopper typed, and there is
+ * no `vouchers` field on {@link index.Order} at all. The live cart does carry it,
+ * but the checkout page resets the cart *before* it navigates away, so by the time
+ * `order:loaded` builds the purchase on the success page there is nothing left to
+ * read. Without this record `ecommerce.coupon` would be set only when the event
+ * happened to be built on the checkout page: absent from every express and 3-D
+ * Secure purchase, and decided by a race for card ones — the queued event carries
+ * it, the `order:loaded` event does not, and whichever wins is whichever the
+ * network was faster than.
+ */
+export function rememberCheckoutCoupon(code: string | undefined): void {
+  try {
+    if (code) {
+      sessionStorage.setItem(STORAGE_KEYS.CHECKOUT_COUPON, code);
+    } else {
+      sessionStorage.removeItem(STORAGE_KEYS.CHECKOUT_COUPON);
+    }
+  } catch (error) {
+    logger.warn('Failed to record the checkout coupon:', error);
+  }
+}
+
+/** The voucher code {@link rememberCheckoutCoupon} stored, or `null`. */
+export function recallCheckoutCoupon(): string | null {
+  try {
+    return sessionStorage.getItem(STORAGE_KEYS.CHECKOUT_COUPON) || null;
+  } catch (error) {
+    logger.warn('Failed to read the checkout coupon:', error);
+    return null;
+  }
+}
+
 /** The transaction id of an already-built event, for the dedupe check. */
 export function reportedPurchaseId(event: {
   ecommerce?: { transaction_id?: string } | undefined;

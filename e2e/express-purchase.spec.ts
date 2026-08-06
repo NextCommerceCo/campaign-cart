@@ -190,9 +190,28 @@ test('reloading the success page does not report the purchase twice', async ({
   await afterQueueReplay(page);
   expect(await purchases(page)).toHaveLength(1);
 
+  // Drop the order store's cached copy first. Without this the reload proves
+  // nothing: `loadOrder` short-circuits on a cached order with the same ref_id
+  // and never emits `order:loaded`, so the second purchase is missing because
+  // nothing tried to send it — the once-per-order list is never consulted.
+  // Clearing it forces a real re-fetch, which leaves the dedupe in
+  // `DataLayerManager.push` as the only thing that can hold the count at one.
+  await page.evaluate(() => sessionStorage.removeItem('next-order'));
+
   await page.reload();
   await page.waitForFunction(() => Boolean((window as any).next?.on));
   await afterQueueReplay(page);
+
+  // The order really was fetched again on this load, so "no second purchase" is
+  // the dedupe's decision rather than a page that never had an order to report.
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          sessionStorage.getItem('next-order')?.includes('E2E-1001') ?? false
+      )
+    )
+    .toBe(true);
 
   expect(await purchases(page)).toEqual([]);
 });

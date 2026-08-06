@@ -973,6 +973,22 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
   },
   {
     level: 'warn',
+    message: 'Failed to record the checkout coupon:',
+    meaning:
+      'The checkout page could not store the voucher code applied to this order. The order does not carry the code back and the cart holding it is reset before the page navigates away, so the purchase this order eventually produces will go out without `ecommerce.coupon`.',
+    action:
+      'Read the attached error — blocked or full sessionStorage. Only discount attribution is affected; the purchase itself is still reported, with its value and items intact.',
+  },
+  {
+    level: 'warn',
+    message: 'Failed to read the checkout coupon:',
+    meaning:
+      'The page building `dl_purchase` could not read the voucher code the checkout page recorded, so the event goes out without `ecommerce.coupon`. Same consequence as failing to write it.',
+    action:
+      'Read the attached error. A blocked sessionStorage is the usual cause; the purchase is still reported in full apart from the code.',
+  },
+  {
+    level: 'warn',
     message: 'Failed to clear reported purchases:',
     meaning:
       'The already-reported list could not be emptied. Only tests clear it, so on a real page this line should never appear.',

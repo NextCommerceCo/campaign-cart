@@ -452,6 +452,15 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
       'A shopper who lands on a merchant-configured failure page could have that visit counted as a purchase, if the orders API no longer reports the payment as outstanding. The `?payment_failed=true` check still applies, which covers stores using the default failure URL.',
   },
   {
+    key: 'nextDataLayer_checkoutCoupon',
+    group: 'analytics',
+    ttl: null,
+    holds:
+      'The voucher code applied to the order the checkout page has created. An order does not carry the code back — its `discounts` are amounts, never the text the shopper typed — and the cart that does hold it is reset before the page navigates away, so this is the only copy left by the time the success page builds `dl_purchase`. It is what puts `ecommerce.coupon` on a PayPal or 3-D Secure purchase, which is reported entirely on the page the gateway returns to.',
+    clearing:
+      'Purchases still report, without `ecommerce.coupon`. Discount attribution in GA4 loses the code for that order; nothing else changes, and no value or item total moves.',
+  },
+  {
     key: 'user_data',
     group: 'analytics',
     ttl: null,

@@ -5,6 +5,7 @@ import { EcommerceEvents } from '@/core/analytics/events/ecommerce-events';
 import { setupCheckoutEventListeners } from '@/core/analytics/tracking/auto-event-checkout-handlers';
 import { pendingEventsHandler } from '@/core/analytics/tracking/pending-events-handler';
 import {
+  rememberCheckoutCoupon,
   rememberCheckoutReturnPaths,
   resetReportedPurchases,
 } from '@/core/analytics/tracking/purchase-tracking';
@@ -63,6 +64,7 @@ describe('dl_purchase requires a paid order (issue #71)', () => {
   beforeEach(() => {
     window.NextDataLayer = [];
     resetReportedPurchases();
+    rememberCheckoutCoupon(undefined);
     pendingEventsHandler.clearPendingEvents();
 
     ctx = {
@@ -79,6 +81,7 @@ describe('dl_purchase requires a paid order (issue #71)', () => {
       EventBus.getInstance().off(name as never, handler);
     }
     resetReportedPurchases();
+    rememberCheckoutCoupon(undefined);
     pendingEventsHandler.clearPendingEvents();
   });
 
@@ -208,6 +211,28 @@ describe('dl_purchase requires a paid order (issue #71)', () => {
 
       expect(purchases()).toHaveLength(1);
     });
+  });
+
+  it('keeps the coupon on a purchase reported after the gateway redirect', () => {
+    // The checkout page is the only place the applied code exists: the order does
+    // not carry it back, and the cart — the other mirror of it — is reset before
+    // the page navigates to the gateway. An express purchase is built entirely on
+    // the success page, so without the record written at order creation this
+    // event goes out with no `coupon` at all.
+    rememberCheckoutCoupon('SAVE20');
+
+    EventBus.getInstance().emit('order:loaded', PAID as never);
+
+    expect(purchases()[0]?.ecommerce?.coupon).toBe('SAVE20');
+  });
+
+  it('does not carry a previous coupon onto a later code-less order', () => {
+    rememberCheckoutCoupon('SAVE20');
+    rememberCheckoutCoupon(undefined);
+
+    EventBus.getInstance().emit('order:loaded', PAID as never);
+
+    expect(purchases()[0]?.ecommerce?.coupon).toBeUndefined();
   });
 
   it('emits no event at all for a payload with no order identifier', () => {

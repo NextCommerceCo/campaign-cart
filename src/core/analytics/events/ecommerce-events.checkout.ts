@@ -22,7 +22,10 @@ import { useCampaignStore } from '@/state/campaign';
 import { createLogger } from '@/core/logger';
 import { resolveOrderTaxBasis } from '../tax-basis';
 import { buildCartEcommerce } from './ecommerce-events.cart';
-import { purchaseTransactionId } from '../tracking/purchase-tracking';
+import {
+  purchaseTransactionId,
+  recallCheckoutCoupon,
+} from '../tracking/purchase-tracking';
 
 const logger = createLogger('EcommerceEvents');
 
@@ -211,10 +214,18 @@ export function createPurchaseEvent(orderData: any): DataLayerEvent | null {
 
   // The one field the order does NOT carry: its `discounts` entries are amounts
   // (`offer_id`, `amount`, `name`), never the code the shopper typed. So the
-  // applied code can only come from the cart's voucher mirror — a label, not a
-  // number, and it does not move `value` or any item.
+  // applied code comes from what the checkout page recorded when it created the
+  // order — a label, not a number, and it does not move `value` or any item.
+  // Reading the live cart instead only works on the checkout page: the cart is
+  // reset before it navigates away, so an express or 3-D Secure purchase, which
+  // is only ever built on the success page, would lose the coupon entirely.
+  // The cart stays as the last resort for a hand-rolled `next.trackPurchase()`
+  // on a page that never created an order.
   const coupon =
-    order.vouchers?.[0]?.code || orderData.coupon || cartState.vouchers?.[0];
+    order.vouchers?.[0]?.code ||
+    orderData.coupon ||
+    recallCheckoutCoupon() ||
+    cartState.vouchers?.[0];
   if (coupon) {
     ecommerce.coupon = coupon;
   }
