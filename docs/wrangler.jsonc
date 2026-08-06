@@ -18,7 +18,10 @@
  * Pages build aborts on a root config that has no `pages_build_output_dir`.
  * Scoping it to `docs/` keeps the two deploy targets from colliding.
  *
- * Deploy (a human runs this, never an agent):
+ * Deploying is CI's, never an agent's and never a laptop's:
+ * `.github/workflows/docs-deploy.yml` runs the two commands below on a `v*.*.*` tag
+ * push, on a push to `main`, and on manual dispatch. Run only the first one locally
+ * — it assembles `docs/site` and checks the limits without uploading anything.
  *
  *   npm run docs:publish
  *   npx wrangler deploy -c docs/wrangler.jsonc

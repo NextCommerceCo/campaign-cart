@@ -8,19 +8,30 @@ name: Deploy docs
 # Pages caps a deployment at 20,000 on every plan. Workers static assets allows
 # 100,000 on a paid plan.
 #
-# Trigger is **manual on purpose.** Deploying is an outward-facing action, so this
-# does not fire on a push or a tag until someone decides it should. To publish on
-# every release instead, add:
+# Triggers, and what each one moves on the live site:
 #
-#   push:
-#     tags: ["v*.*.*"]
+#   push to main — rebuilds the `main/` folder (the unreleased branch tip). Every
+#     other folder belongs to a released tag and is frozen once built, so nothing
+#     else changes. Deliberately no `paths:` filter: nearly every page is generated
+#     out of `src/**`, and a filter that missed one source would leave a stale
+#     `main/` published with no signal that it was stale.
+#   push of a `v*.*.*` tag — the tag gets a folder of its own and becomes `latest/`.
+#     This is the event that makes a doc fix reach readers. Cutting a GitHub release
+#     that creates a new tag fires this same push, so there is no separate `release:`
+#     trigger to double-deploy the same commit.
+#   workflow_dispatch — a re-publish, or a `dry-run` that assembles and checks the
+#     site without deploying.
 #
-# alongside `workflow_dispatch` below — and know that tagging then publishes.
+# Note that a deploy uploads the *whole* site rather than a delta, so every trigger
+# has to assemble every folder — which is what the cache below is for.
 on:
+  push:
+    branches: ["main"]
+    tags: ["v*.*.*"]
   workflow_dispatch:
     inputs:
       versions:
-        description: "How many of the newest tags to publish (blank = all eligible)"
+        description: "How many of the newest tags to publish (blank = all eligible; a partial publish deploys a partial site — older folders are removed)"
         required: false
         type: string
       dry-run:
@@ -30,6 +41,9 @@ on:
         type: boolean
 
 # One deploy at a time; a second run waits rather than racing the asset upload.
+# `cancel-in-progress` stays false even though pushes now queue runs: the group is
+# shared by branch and tag runs, so cancelling would let a `main` push kill the
+# release deploy queued behind it. Redundant queued runs are the cheaper failure.
 concurrency:
   group: docs-deploy
   cancel-in-progress: false
@@ -46,12 +60,48 @@ jobs:
           # depth. See the same note in build.yml.
           fetch-depth: 0
 
+      # The `main/` folder is built from a **local** branch — `resolveBranch` in
+      # scripts/docs-build-version.mjs refuses `origin/main`. A tag-triggered run is
+      # checked out detached, so without this the publish fails when it reaches that
+      # folder. Passing `--no-branch` instead is not the fix: the assembler prunes
+      # every root entry it did not build, so a releases-only run would delete `main/`
+      # from the live site.
+      - name: Ensure the unreleased branch exists locally
+        run: git show-ref --verify --quiet refs/heads/main || git branch main origin/main
+
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
       - name: Install dependencies
         run: bun install
+
+      # A released tag's folder never changes once built, and `docs:publish` leaves an
+      # existing one alone (`--skip-existing`), so restoring the previous site turns a
+      # ~30-tag TypeDoc build into a single `main/` build. Two things make that safe:
+      # `main/` is rebuilt on every run regardless (docs-publish.mjs step 1b), so a
+      # stale cache cannot publish stale unreleased docs; and the key covers everything
+      # a tag folder is generated *from* — no tag carries its own typedoc config, it is
+      # regenerated per build from this checkout, and DOCS_BASE_URL is baked into every
+      # canonical link and sitemap entry.
+      - name: Cache key for the built version folders
+        id: docs-cache
+        env:
+          BUILDER: ${{ hashFiles('typedoc.json', 'scripts/docs-*.mjs', 'docs/assets/**', 'docs/site-home.md', 'bun.lock') }}
+          DOCS_BASE_URL: ${{ vars.DOCS_BASE_URL }}
+        run: |
+          prefix="docs-site-v1-$(printf '%s\n' "$BUILDER" "$DOCS_BASE_URL" | sha256sum | cut -c1-16)-"
+          # The tag list only grows, so a miss on the exact key falls back to the
+          # prefix and rebuilds just the tag that was added.
+          tags=$(git for-each-ref --format='%(refname:short)' refs/tags | sort | sha256sum | cut -c1-16)
+          echo "prefix=$prefix" >> "$GITHUB_OUTPUT"
+          echo "key=$prefix$tags" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v4
+        with:
+          path: docs/site
+          key: ${{ steps.docs-cache.outputs.key }}
+          restore-keys: ${{ steps.docs-cache.outputs.prefix }}
 
       # Assembles docs/site: one folder per tag, plus `latest/`, `_headers`,
       # robots.txt and 404.html — then counts the files and fails if the result
@@ -67,6 +117,7 @@ jobs:
           echo "files: $(find docs/site -type f | wc -l)"
           echo "bytes: $(du -sb docs/site | cut -f1)"
 
+      # `inputs` is empty on a push, so this is false only for a dry-run dispatch.
       - name: Deploy to Cloudflare
         if: ${{ !inputs.dry-run }}
         env:
