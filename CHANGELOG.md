@@ -1,91 +1,53 @@
 # Changelog
 
-## [0.4.32] — 2026-08-06 — Purchases Are Counted Only When Paid
+## [0.4.32] — 2026-08-06 — Purchases Counted Only When Paid & One Bundle, Not Two
 
 ### Fixed
 
-- **The module bundle loads again, so the rest of this release reaches your pages.** On
-  v0.4.31 every page load of the module bundle threw
-  `ReferenceError: Cannot access 'l' before initialization`, the loader caught it, and it
-  loaded `index.umd.js` instead
-  ([#77](https://github.com/NextCommerceCo/campaign-cart/issues/77)). Pages worked — the
-  fallback is a complete SDK — but every visitor downloaded two bundles instead of one,
-  saw a `Failed to load SDK:` error in the console, and got **no logs at all**, because
-  the fallback bundle is built with its `console` calls stripped: `?debug=true` and the
-  overlay had nothing to show.
+- **A purchase is only counted once the shopper has actually paid** — express checkout
+  (PayPal, Apple Pay, Google Pay) creates the order *before* payment, and `dl_purchase`
+  fired at that moment. So pressing **back** from PayPal, or a declined payment, reported
+  a conversion for an order that never happened, under a made-up transaction id. One
+  merchant's affiliate network paid out on six of them
+  ([#71](https://github.com/NextCommerceCo/campaign-cart/issues/71)). The purchase is now
+  reported from the page the shopper lands on *after* checkout, **once per order** —
+  a reload or a re-opened receipt cannot produce a second one. Card payments needing 3-D
+  Secure had the same problem and are fixed by the same change; card orders charged on the
+  checkout page are unaffected.
 
-  The cause was where the build put three files. `createLogger`, the session-storage
-  manager and the event bus moved from `src/utils/` to `src/core/` during a
-  reorganisation, and the chunk rule that kept them beside the stores still named the old
-  folder — so they were split across two chunks that import each other, and the one that
-  loads first called a class in the other before it existed. They now have a chunk of
-  their own that imports nothing, which is what makes it safe to call from anywhere.
+- **The SDK loads as one bundle again** — since v0.4.31 the main bundle failed to load on
+  every page view and the loader quietly fetched the backup bundle instead
+  ([#77](https://github.com/NextCommerceCo/campaign-cart/issues/77)). Pages kept working,
+  so nothing looked broken, but every visitor downloaded the SDK twice (about 343 kB of
+  wasted traffic per visit), every page logged an error to the console, and `?debug=true`
+  showed no logs at all, because the backup bundle has its logging stripped out. Nothing
+  about the SDK's behaviour or your markup changes — working pages keep working, they just
+  load less.
 
-  **Nothing about the SDK's behaviour or your markup changes.** If your pages have been
-  working, they were working on the fallback. They now stop downloading it on top of the
-  module chunks — 343 kB gzipped of duplicate SDK per visit — and `?debug=true` prints
-  its logs again.
+### Before you upgrade
 
-  Two tests now cover it, because neither the unit suite nor the browser suite could:
-  both run against the source, where the chunk split does not exist. One evaluates the
-  built bundle in CI; the other loads it through the real loader in five browsers and
-  fails if the fallback is ever requested.
-
-  **This is also what makes the purchase fix below live.** `dist/` is rebuilt by hand, and
-  the bundle carrying the v0.4.31 and v0.4.32 tags was built before that work landed — the
-  purchase-tracking change was in the source of the tag but not in the file customers
-  load. Both are in this build.
-
-- **`dl_purchase` only reports orders that were paid for.** Express checkout (PayPal,
-  Apple Pay, Google Pay) creates the order *before* the shopper pays and then sends them
-  to the gateway; the purchase event was raised at that point and parked for the next
-  page, so pressing **back** from PayPal — or landing on `payment_failed_url` — reported a
-  conversion for an order that never happened, with a made-up `order_<timestamp>`
-  transaction id. One merchant's affiliate network approved six payouts against it
-  ([#71](https://github.com/NextCommerceCo/campaign-cart/issues/71)).
-
-  The checkout page no longer reports a purchase for **any** payment method. The one
-  thing that does is the page the shopper lands on afterwards: it opens with
-  `?ref_id=`, the SDK fetches the finished order, and reports it — **once per order**,
-  remembered across pages and tabs, so a reload or a receipt link opened again cannot
-  produce a second. A payload with no order number and no `ref_id` is dropped with an
-  error instead of being sent under a fabricated id.
-
-  A card payment needing 3-D Secure was affected the same way and is fixed by the same
-  gate. Card orders charged on the checkout page are unaffected.
-
-  **Check your success page before you upgrade.** Every purchase is now reported *only*
-  from the page the shopper lands on after checkout, so that page has to load the SDK and
-  has to keep the `?ref_id=` the redirect puts on it. The SDK appends `ref_id` itself, so
-  this holds unless the page strips it or the redirect goes somewhere the SDK is not
-  installed — the platform's own order-status page, for instance. Such a store will now
-  record no conversion where it previously recorded one: an inflated number replaced by a
-  missing one. Confirm `dl_purchase` fires there once, with the real order number, before
-  rolling this out.
-
-  **The failed leg of a redirect payment is covered too.** A gateway returns to one of two
-  URLs — `success_url` or `payment_failed_url` — and the platform puts `?ref_id=` on both,
-  so the order loads on the failure page as well. Nothing is reported there: the checkout
-  page now records both return paths, and `?payment_failed=true` (the SDK's own default
-  failure URL) is treated as a failure on its own. This holds even if the orders API
-  reports a declined order as no longer awaiting payment.
+**Check your success page.** Purchases are now reported *only* from the page the shopper
+lands on after checkout, so that page has to load the SDK and has to keep the `?ref_id=`
+the redirect adds to it. If a shopper is sent somewhere the SDK is not installed — the
+platform's own order-status page, for instance — that store will record no conversion
+where it previously recorded one. Confirm `dl_purchase` fires there once, with the real
+order number, before rolling this out.
 
 ### New
 
 - **`order:loaded`** — fires when a page opened with `?ref_id=` has fetched its order.
-  This is the event to hang conversion tracking on, and where the SDK's own `dl_purchase`
-  now comes from. `order:completed` means *created*, not *paid*.
+  This is the event to hang conversion tracking on. `order:completed` means *created*,
+  not *paid*.
 
-- **`?debug=true` and `?debugger=true` survive a payment gateway.** The checkout copies
-  them onto the `success_url` and `payment_failed_url` it sends the orders API, so the
-  page a shopper returns to from PayPal or a 3-D Secure step still has the logs and the
-  overlay. Only those two are copied, not the rest of the query string.
+- **Debug mode survives a payment gateway** — `?debug=true` and `?debugger=true` are
+  copied onto the checkout's success and failure URLs, so the page a shopper returns to
+  from PayPal or a 3-D Secure step still has the logs and the overlay.
 
 ### Corrected docs
 
-- `express-checkout:started`, `:completed` and `:failed` were documented as
-  "never emitted by this build". All three are emitted — the second one is what caused
-  #71. `express-checkout:started` does not send the `cartTotal` it declares.
+- `express-checkout:started`, `:completed` and `:failed` were documented as never emitted
+  by this build. All three are emitted — the second one is what caused #71.
+  `express-checkout:started` does not send the `cartTotal` it declares.
 
 ---
 
