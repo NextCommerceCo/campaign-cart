@@ -10,7 +10,7 @@ category: "Core Reference"
      src/docs/content/core-logs.ts. Do not edit by hand: change the log line in the
      code or the note in core-logs.ts, then run `npm run docs:reference`. -->
 
-Every message the SDK's own machinery can print — 508 of them, across 62 console prefixes plus 13 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
+Every message the SDK's own machinery can print — 507 of them, across 62 console prefixes plus 13 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
 
 Messages are listed at the wording the code uses. A `{name}` inside one is a value filled in at runtime, so search for the text on either side of it. **Extra context** means the call passes a second argument — an object or an error logged beside the message; expand that entry in the console, because the message alone will not tell you which element, package, or event was involved.
 
@@ -135,7 +135,7 @@ Console lines are prefixed with the part of the SDK that produced them. Find the
 | `[EventBuilder]` | The deprecated Elevar payload shape, kept for pages still reading it. | — | 1 | — | — |
 | `[RudderStack]` | The per-event property builders the RudderStack adapter sends. | — | — | — | 1 |
 | `[AutoEventListener]` | Cart events picked up from the event bus and pushed to the data layer. | 1 | 3 | — | 3 |
-| `[AutoEventListener]` | Checkout and order-completed events picked up from the event bus. | — | — | 1 | 1 |
+| `[AutoEventListener]` | Checkout and order-completed events picked up from the event bus. | — | — | 1 | — |
 | `[AutoEventListener]` | Post-purchase upsell events picked up from the event bus. | — | 1 | 4 | 1 |
 | `[AutoEventListener]` | Exit-intent popup events picked up from the event bus. | — | — | — | 5 |
 
@@ -1883,14 +1883,6 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 | Message | Source | Extra context |
 |---|---|---|
 | `Tracked purchase:` | `analytics/tracking/auto-event-checkout-handlers.ts › reportPurchase` | yes |
-
-### Debug
-
-The detail behind the info lines. Expected in bulk, and only visible with debug mode on — a long list here is health, not trouble.
-
-| Message | Source | Extra context |
-|---|---|---|
-| `Marked purchase event for queueing with _willRedirect = true` | `analytics/tracking/auto-event-checkout-handlers.ts › reportPurchase` | — |
 
 ## `[AutoEventListener]`
 

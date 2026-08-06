@@ -3401,8 +3401,12 @@ Three defects compounded, and only the third was known (finding 192 fixed a four
    `sessionStorage` and replayed ~200ms after the *next* SDK page booted, whatever page that
    was — so the conversion fired when the shopper pressed **back** from PayPal, or landed on
    `payment_failed_url` (whose SDK default is the checkout page itself). That is the "fires
-   after I press back" the report describes, and it also explains the 8-hour skew: the event
-   is dated by the page that replayed it, not by the click.
+   after I press back" the report describes. It does **not** explain the 8-hour skew, as an
+   earlier draft of this finding claimed: the queue discards events older than 5 minutes
+   (`analytics/tracking/pending-events-handler.ts › PendingEventsHandler.processPendingEvents`),
+   so nothing can replay hours later. The plainer reading fits — the phantom fired when the
+   shopper abandoned PayPal in the morning, and the same visitor came back and really bought
+   that evening.
 3. **`createPurchaseEvent` fabricated an id.** `order.number || order.ref_id || … ||
    `` `order_${Date.now()}` `` meant an unreadable payload still produced an event. Combined
    with the `{ method, order }` wrapper of finding 192, that is why all 8 carried a timestamp.
@@ -3422,8 +3426,20 @@ queue event is caught; and the timestamp fallback is gone — no id, no event.
 
 **Where the dedupe check sits is load-bearing.** It is *after* the `_willRedirect` branch, so
 a queued event is marked only when it really reaches the data layer. Marking at queue time
-would suppress the receipt page's own emission and lose the purchase entirely whenever the
-queue drops the event as stale (5 minutes — a slow 3-D Secure step is enough).
+would suppress a later real emission whenever the queue drops the event as stale (5 minutes).
+
+**Then the second producer went entirely.** Gating `order:completed` / `express-checkout:completed`
+on "is it paid" stopped the phantom purchases, but keeping those subscriptions bought nothing:
+the SDK appends `ref_id` to the success URL it builds
+(`features/checkout/checkout-form/checkout-form.enhancer.ts › CheckoutFormEnhancer.getNextPageUrlFromMeta`),
+and so do both fallbacks, so the landing page fetches the order and reports it anyway. When
+that *doesn't* happen the queue does not save it either — it replays on the next SDK page,
+whatever page that is, and drops the event after five minutes. What two producers did cost was
+a race: both reached the success page, the dedupe kept whichever arrived first, and the two
+payloads differ (the checkout-page copy can read the cart's voucher code, the success-page copy
+cannot — that is what `nextDataLayer_checkoutCoupon` now carries across). `order:loaded` is the
+only producer as of this change. The case given up: a store whose success page never boots the
+SDK now reports nothing, where it used to report late on a page that was not the success page.
 
 Two smaller things found on the way:
 

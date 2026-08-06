@@ -179,6 +179,36 @@ test('returning to success_url reports exactly one purchase, with the order numb
   expect(events[0].ecommerce.transaction_id).not.toMatch(/^order_\d+$/);
 });
 
+test('opening the success page while the order is still unpaid reports no purchase', async ({
+  page,
+}) => {
+  // The success URL is an ordinary link: a shopper can reach it with the gateway
+  // still open in another tab, or from a bookmark, before any money has moved.
+  // The order loads fine — it exists — but it still carries the
+  // `payment_complete_url` the SDK was going to send them to, which is the one
+  // thing that says nobody has paid yet. This is the paid-or-not gate on its own,
+  // with no failure-page URL to help it.
+  await page.route('**/api/v1/orders/**', route =>
+    route.fulfill({ json: PENDING_ORDER })
+  );
+
+  await bootSdk(page, `${CHECKOUT}?ref_id=${PENDING_ORDER.ref_id}`);
+  await afterQueueReplay(page);
+
+  // The order really did load, so "no purchase" is the gate's decision rather
+  // than a page that never had an order.
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          sessionStorage.getItem('next-order')?.includes('E2E-PENDING') ?? false
+      )
+    )
+    .toBe(true);
+
+  expect(await purchases(page)).toEqual([]);
+});
+
 test('reloading the success page does not report the purchase twice', async ({
   page,
 }) => {

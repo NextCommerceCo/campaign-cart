@@ -147,7 +147,8 @@ export interface EventMap {
    * still unmoved: the order carries a `payment_complete_url` and the SDK
    * redirects the shopper there to finish paying. Hang purchase tracking on
    * {@link EventMap."order:loaded" | order:loaded} instead, which only fires for
-   * an order the API has handed back complete.
+   * an order the API has handed back complete — that is where the SDK's own
+   * `dl_purchase` comes from, and nothing analytics-related listens here.
    *
    * @remarks
    * The payload is typed as {@link OrderData} — the six fields guaranteed to be

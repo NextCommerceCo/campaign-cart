@@ -19,14 +19,23 @@
  *   Pay) at creation time, and for a card order that needs 3-D Secure. Those
  *   orders are reported later, when the gateway returns the shopper to
  *   `success_url?ref_id=…` and the order store loads the paid order.
- * - {@link hasPurchaseBeenReported} — identity is the transaction id, so the two
- *   emission paths (checkout page, receipt page) are interchangeable and whichever
- *   arrives first wins. `DataLayerManager.push` is where the check runs, because a
- *   queued event re-enters through it after the redirect.
+ * - {@link hasPurchaseBeenReported} — identity is the transaction id. There is one
+ *   producer now (`order:loaded`), but it can fire for the same order more than
+ *   once: a receipt link reopened in a new tab, or a reload after the order
+ *   store's 15-minute cache has expired, both fetch the order again.
  *
- * The dedupe list lives in **localStorage**, not sessionStorage: a shopper who
- * opens the receipt link again in a new tab is a new session, and re-reporting
- * their order there is exactly the double-count this prevents.
+ * The dedupe list lives in **localStorage**, not sessionStorage, for exactly that
+ * new-tab case: a new tab is a new session, and re-reporting the order there is
+ * the double-count this prevents.
+ *
+ * A caveat the failure-leg check cannot escape: it compares **paths**, not full
+ * URLs. A merchant whose `payment_failed_url` sits on a different host but the
+ * same path as their success page would have real purchases vetoed. Comparing
+ * origins too would fix that and break something worse — a `www` / non-`www`
+ * mismatch would stop vetoing the real failure page, which is a phantom purchase,
+ * and #71 is the reason phantom purchases outrank missing ones here. The veto logs
+ * an info line whenever it fires, so a merchant chasing missing conversions can
+ * find it.
  */
 
 import { createLogger } from '@/core/logger';

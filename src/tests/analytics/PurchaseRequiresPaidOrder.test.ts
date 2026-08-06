@@ -102,6 +102,24 @@ describe('dl_purchase requires a paid order (issue #71)', () => {
     expect(purchases()).toHaveLength(0);
   });
 
+  it('reports nothing from the checkout page even for an order that is paid', () => {
+    // `order:completed` and `express-checkout:completed` are no longer wired to
+    // purchase reporting at all — not merely gated on "is it paid". The success
+    // page the SDK redirects to always carries `?ref_id=`, so `order:loaded`
+    // reports the order there; a second producer only bought a race and a
+    // purchase that could replay on an arbitrary later page. This fails the
+    // moment either subscription is restored.
+    EventBus.getInstance().emit('order:completed', PAID as never);
+    EventBus.getInstance().emit('express-checkout:completed', {
+      method: 'paypal',
+      order: PAID,
+    } as never);
+
+    expect(purchases()).toHaveLength(0);
+    pendingEventsHandler.processPendingEvents();
+    expect(purchases()).toHaveLength(0);
+  });
+
   it('reports the purchase once the gateway returns and the order loads', () => {
     EventBus.getInstance().emit('order:loaded', PAID as never);
 
@@ -109,13 +127,12 @@ describe('dl_purchase requires a paid order (issue #71)', () => {
     expect(purchases()[0]?.ecommerce?.transaction_id).toBe('NX-PENDING');
   });
 
-  it('reports the same order only once across both emission paths', () => {
-    // The full card journey: the order is charged on the checkout page, so its
-    // event is queued for after the redirect; the receipt page then loads the
-    // same order and reports it; then the queue replays. One purchase.
-    EventBus.getInstance().emit('order:completed', PAID as never);
+  it('reports the same order only once however often its page is opened', () => {
+    // One producer, but it can fire repeatedly for one order: a reload past the
+    // order store's 15-minute cache, and a receipt link reopened in another tab,
+    // each fetch the order again and emit `order:loaded` again.
     EventBus.getInstance().emit('order:loaded', PAID as never);
-    pendingEventsHandler.processPendingEvents();
+    EventBus.getInstance().emit('order:loaded', PAID as never);
     EventBus.getInstance().emit('order:loaded', PAID as never);
 
     expect(purchases()).toHaveLength(1);
@@ -134,9 +151,10 @@ describe('dl_purchase requires a paid order (issue #71)', () => {
   });
 
   it('does not report a card order still waiting on 3-D Secure', () => {
-    // Same gate, different method: `order:completed` fires for a card order
-    // whose payment needs another step, and that order is not paid either.
-    EventBus.getInstance().emit('order:completed', {
+    // The paid-or-not gate still earns its place after the second producer went:
+    // the failure leg of a redirect payment also carries `?ref_id=`, so the order
+    // loads — and is reported to `order:loaded` — while it is still unpaid.
+    EventBus.getInstance().emit('order:loaded', {
       ...PAID,
       number: 'NX-3DS',
       payment_complete_url: 'https://acs.bank.test/3ds?tx=1',

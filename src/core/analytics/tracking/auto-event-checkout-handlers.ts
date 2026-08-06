@@ -1,9 +1,13 @@
 /**
  * AutoEventListener — checkout domain handlers
  *
- * Order completed (purchase). Checkout-started and express-checkout-started are
- * deliberately NOT wired here: both would fire a second `dl_begin_checkout` on
- * top of the one `CheckoutFormEnhancer` already tracks via
+ * One subscription, `order:loaded`, which is what raises `dl_purchase`. The
+ * reasoning for why the checkout page's own events are not wired here is on
+ * {@link setupCheckoutEventListeners}.
+ *
+ * Checkout-started and express-checkout-started are deliberately not wired
+ * either: both would fire a second `dl_begin_checkout` on top of the one
+ * `CheckoutFormEnhancer` already tracks via
  * `nextAnalytics.track(EcommerceEvents.createBeginCheckoutEvent())`, and a
  * duplicated begin_checkout doubles the top of the funnel in every report.
  */
@@ -24,17 +28,15 @@ const logger = createLogger('AutoEventListener');
  * Report a paid order as `dl_purchase`, or explain in the log why it was not
  * reported.
  *
- * `redirecting` is true for the checkout-page paths, where a redirect follows the
- * order within milliseconds: the event is parked in `sessionStorage` and replayed
- * on the next page, because a tag fired against a document that is already
- * navigating away often never gets its request out. It is false on the receipt
- * page, which is where the shopper stays.
+ * Called from one place only — the page the shopper lands on after checkout, once
+ * it has fetched its order. Nothing here is queued for a later page: this page is
+ * where the shopper stays, so the tag has time to get its request out.
  *
- * Unpaid orders are the whole of issue #71 — see `./purchase-tracking`. They are
- * not reported here at all; the receipt page reports them once the gateway has
- * taken the money and sent the shopper back to `success_url?ref_id=…`.
+ * Unpaid orders are the whole of issue #71 — see `./purchase-tracking`. An order
+ * still holding a `payment_complete_url` is not reported however it got here, and
+ * neither is one whose page is the failure leg of a redirect payment.
  */
-function reportPurchase(order: any, redirecting: boolean): void {
+function reportPurchase(order: any): void {
   const transactionId = purchaseTransactionId(order);
 
   if (isAwaitingGatewayPayment(order)) {
@@ -46,7 +48,7 @@ function reportPurchase(order: any, redirecting: boolean): void {
     return;
   }
 
-  if (!redirecting && isPaymentFailureLanding()) {
+  if (isPaymentFailureLanding()) {
     logger.info(
       `Not tracking purchase for ${transactionId ?? 'unidentified order'}: ` +
         'this page is where a failed payment lands, not the success page.'
@@ -56,13 +58,6 @@ function reportPurchase(order: any, redirecting: boolean): void {
 
   const event = EcommerceEvents.createPurchaseEvent({ order });
   if (!event) return;
-
-  if (redirecting) {
-    (event as any)._willRedirect = true;
-    logger.debug(
-      'Marked purchase event for queueing with _willRedirect = true'
-    );
-  }
 
   dataLayer.push(event);
   // Log the id that shipped, so a mismatch with the order number is visible
@@ -76,36 +71,39 @@ function reportPurchase(order: any, redirecting: boolean): void {
 export function setupCheckoutEventListeners(
   ctx: AutoEventListenerContext
 ): void {
-  // Order completed.
+  // `order:loaded` is the ONLY producer of an automatic `dl_purchase`. It fires
+  // when a page opened with `?ref_id=` has fetched its order back from the orders
+  // API — the first moment the SDK holds an order the API calls finished.
   //
-  // The two events this handles do not deliver the same shape: `order:completed`
-  // passes the order itself, while `express-checkout:completed` wraps it as
-  // `{ method, order }`. Read as an order, that wrapper has no `number`, no
-  // `lines` and no `currency` — so every PayPal / Apple Pay / Google Pay
-  // purchase reported a made-up `order_<timestamp>` transaction id in USD with
-  // the cart's items. Unwrap first, then hand the order over whole:
-  // `createPurchaseEvent` reads its lines, totals, tax basis and currency
-  // straight off it, and reads nothing from the cart.
+  // `order:completed` and `express-checkout:completed` are deliberately not wired
+  // here, though both used to be. Neither means the customer paid: the orders API
+  // fires them when it *accepts* the order, which for PayPal is one redirect
+  // before any money moves, and a card order needing 3-D Secure gets there unpaid
+  // too. That is issue #71. Gating them on "is it paid" would have been enough to
+  // stop the phantom purchases, but keeping them bought nothing:
   //
-  // Neither event means "the customer paid". `express-checkout:completed` fires
-  // when the orders API *accepts* the order, which for PayPal is one redirect
-  // before any money moves, and a card order needing 3-D Secure reaches
-  // `order:completed` unpaid too. `reportPurchase` is what tells them apart.
-  const handleOrderCompleted = (payload: any): void => {
-    reportPurchase(payload?.order ?? payload, true);
-  };
-
-  // The paid-order path, and the only one express checkout ever takes: the
-  // gateway returns the shopper to `success_url?ref_id=…`, the order store loads
-  // that order, and it is now a real, paid order with a real order number.
+  // - **They are redundant when they work.** The SDK builds its own success URL
+  //   and appends `ref_id` to it (`getNextPageUrlFromMeta`), as do both fallbacks
+  //   (`order_status_url`, `/checkout/confirmation/?ref_id=`). So the page the
+  //   shopper lands on fetches the order and `order:loaded` reports it anyway.
+  // - **They do not help when they fail.** An event raised as the page navigates
+  //   away is parked in `sessionStorage` and replayed on the *next SDK page*,
+  //   whatever page that is — the arbitrary-page replay that produced #71 — and
+  //   dropped entirely after five minutes.
+  // - **Two producers cost a race.** Both reached the success page and the dedupe
+  //   discarded whichever arrived second, so the payload that shipped depended on
+  //   which won: the checkout-page copy could read the cart, the success-page copy
+  //   could not.
+  //
+  // The one case this gives up: an order whose success page never boots the SDK
+  // (a merchant redirecting to the platform's own `order_status_url`) now reports
+  // nothing, where before it reported late, on a page that was not the success
+  // page. A conversion missing is easier to notice, and to trust, than one dated
+  // wrong.
   const handleOrderLoaded = (order: any): void => {
-    reportPurchase(order, false);
+    reportPurchase(order);
   };
 
-  ctx.eventBus.on('order:completed', handleOrderCompleted);
-  ctx.eventHandlers.set('order:completed', handleOrderCompleted);
-  ctx.eventBus.on('express-checkout:completed', handleOrderCompleted);
-  ctx.eventHandlers.set('express-checkout:completed', handleOrderCompleted);
   ctx.eventBus.on('order:loaded', handleOrderLoaded);
   ctx.eventHandlers.set('order:loaded', handleOrderLoaded);
 }

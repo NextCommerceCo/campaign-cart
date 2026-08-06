@@ -18,23 +18,24 @@ changes how you integrate.
   transaction id. One merchant's affiliate network approved six payouts against it
   ([#71](https://github.com/NextCommerceCo/campaign-cart/issues/71)).
 
-  An order still carrying a `payment_complete_url` is no longer reported at all. The
-  purchase is reported when the shopper comes back to `success_url?ref_id=…` and the SDK
-  loads the finished order — **once per order**, remembered across pages, so the checkout
-  page, the receipt page and a queued event replayed after the redirect can no longer
-  produce three. A payload with no order number and no `ref_id` is dropped with an error
-  instead of being sent under a fabricated id.
+  The checkout page no longer reports a purchase for **any** payment method. The one
+  thing that does is the page the shopper lands on afterwards: it opens with
+  `?ref_id=`, the SDK fetches the finished order, and reports it — **once per order**,
+  remembered across pages and tabs, so a reload or a receipt link opened again cannot
+  produce a second. A payload with no order number and no `ref_id` is dropped with an
+  error instead of being sent under a fabricated id.
 
   A card payment needing 3-D Secure was affected the same way and is fixed by the same
   gate. Card orders charged on the checkout page are unaffected.
 
-  **Check your success page before you upgrade.** Express and 3-D Secure purchases are now
-  reported *only* from the page the gateway returns to, so that page has to load the SDK
-  and has to keep the `?ref_id=` the redirect puts on it. A success page that strips the
-  parameter, or that never loads the SDK at all, will now record no conversion for those
-  payment methods where it previously recorded one — an inflated number replaced by a
-  missing one. Confirm `dl_purchase` fires there once with the real order number before
-  rolling this out. Card orders charged on the checkout page do not depend on this.
+  **Check your success page before you upgrade.** Every purchase is now reported *only*
+  from the page the shopper lands on after checkout, so that page has to load the SDK and
+  has to keep the `?ref_id=` the redirect puts on it. The SDK appends `ref_id` itself, so
+  this holds unless the page strips it or the redirect goes somewhere the SDK is not
+  installed — the platform's own order-status page, for instance. Such a store will now
+  record no conversion where it previously recorded one: an inflated number replaced by a
+  missing one. Confirm `dl_purchase` fires there once, with the real order number, before
+  rolling this out.
 
   **The failed leg of a redirect payment is covered too.** A gateway returns to one of two
   URLs — `success_url` or `payment_failed_url` — and the platform puts `?ref_id=` on both,

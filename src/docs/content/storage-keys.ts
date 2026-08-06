@@ -428,9 +428,9 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
     ttl: 'the key never expires; individual queued events older than 5 minutes are dropped when the queue is processed',
     ttlMechanism: 'pending-event staleness check (inline literal)',
     holds:
-      'Analytics events parked because a redirect was about to happen — a purchase event queued on the checkout page and fired on the receipt page.',
+      'Analytics events parked because a redirect was about to happen — an accepted post-purchase upsell, raised as the shopper is sent to the next offer page. `dl_purchase` is **not** among them any more: it is raised on the page the shopper lands on, which is where they stay.',
     clearing:
-      'The queued purchase event is never sent, so an order that really happened is missing from reporting. Nothing on the page indicates it.',
+      'A queued upsell event is never sent, so revenue that really happened is missing from reporting. Nothing on the page indicates it.',
   },
   {
     key: 'nextDataLayer_reportedPurchases',

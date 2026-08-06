@@ -166,7 +166,7 @@ describe('dl_purchase reports the order, not the cart (finding 163)', () => {
     });
   });
 
-  describe('handleOrderCompleted', () => {
+  describe('handleOrderLoaded', () => {
     let pushed: DataLayerEvent[];
     let ctx: AutoEventListenerContext;
 
@@ -191,9 +191,9 @@ describe('dl_purchase reports the order, not the cart (finding 163)', () => {
       }
     });
 
-    it('reports the order on order:completed', () => {
+    it('reports the order on order:loaded', () => {
       EventBus.getInstance().emit(
-        'order:completed',
+        'order:loaded',
         COUPON_CHANGED_ORDER as never
       );
 
@@ -207,22 +207,39 @@ describe('dl_purchase reports the order, not the cart (finding 163)', () => {
       expect(ecommerce?.shipping).toBeCloseTo(5, 2);
     });
 
-    it('unwraps the { method, order } payload express checkout emits', () => {
+    it('unwraps a { method, order } payload handed to createPurchaseEvent', () => {
       // ExpressCheckoutProcessor emits `{ method, order }`, not the order. Read
       // as an order the wrapper has no number, no lines and no currency, so the
-      // event fell back to a `order_<timestamp>` id, USD, and the cart's items.
-      EventBus.getInstance().emit('express-checkout:completed', {
+      // event fell back to a `order_<timestamp>` id, USD, and the cart's items
+      // (finding 192). That event is no longer wired to purchase reporting, but
+      // the unwrap still guards `next.trackPurchase()`, which is handed whatever
+      // the caller has — so the check moves to where the logic lives.
+      const event = EcommerceEvents.createPurchaseEvent({
         method: 'paypal',
         order: COUPON_CHANGED_ORDER,
-      } as never);
+      });
 
-      expect(pushed).toHaveLength(1);
-      const ecommerce = pushed[0]?.ecommerce;
+      const ecommerce = event?.ecommerce;
       expect(ecommerce?.transaction_id).toBe('NX-10428');
       expect(ecommerce?.transaction_id).not.toMatch(/^order_\d+$/);
       expect(ecommerce?.currency).toBe('EUR');
       expect(ecommerce?.items?.[0]?.item_id).toBe('ORDER-SKU-1');
       expect(ecommerce?.value).toBeCloseTo(30, 2);
+    });
+
+    it('reports nothing from the checkout page events any more', () => {
+      // Both used to produce a purchase. `order:loaded` on the landing page is
+      // the only producer now — see auto-event-checkout-handlers.ts.
+      EventBus.getInstance().emit(
+        'order:completed',
+        COUPON_CHANGED_ORDER as never
+      );
+      EventBus.getInstance().emit('express-checkout:completed', {
+        method: 'paypal',
+        order: COUPON_CHANGED_ORDER,
+      } as never);
+
+      expect(pushed).toEqual([]);
     });
   });
 });

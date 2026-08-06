@@ -128,13 +128,14 @@ export class DataLayerManager {
         return;
       }
 
-      // One `dl_purchase` per order, whichever path reaches here first — the
-      // checkout page's own event, the same event replayed from the queue after
-      // the redirect, or the receipt page reporting the order it loaded. The
-      // check sits after the queue branch on purpose: a queued event has not
-      // shipped yet, and marking it here would suppress the receipt page's
-      // emission and lose the purchase if the queue later drops it as stale
-      // (issue #71).
+      // One `dl_purchase` per order, however many times the page that reports it
+      // is opened — a receipt link in a new tab, or a reload after the order
+      // store's cache expired, each fetch the order again and report it again
+      // (issue #71). It sits here rather than in the handler so that a purchase
+      // pushed by hand through `next.trackPurchase()` is deduped on the same
+      // terms. The check is after the queue branch on purpose: a queued event has
+      // not shipped yet, and marking it here would suppress a later, real
+      // emission if the queue then dropped it as stale.
       const transactionId =
         finalEvent.event === 'dl_purchase'
           ? reportedPurchaseId(finalEvent)

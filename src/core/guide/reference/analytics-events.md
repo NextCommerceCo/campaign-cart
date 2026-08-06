@@ -372,7 +372,7 @@ RudderStack reports it as checkout `step: 3`.
 
 ### `dl_purchase`
 
-**Fires when:** A **paid** order is in hand — the main conversion. Either the order was charged on the checkout page (card), or the shopper came back from a payment gateway to `success_url?ref_id=…` and the SDK loaded the finished order. Once per order, whichever of those happens first.
+**Fires when:** A page opened with `?ref_id=` has fetched a **paid** order — the main conversion, and the one event the SDK raises from `order:loaded` alone. Every payment method reports from the page the shopper lands on after checkout, never from the checkout page itself. Once per order.
 
 **Reaches:** GTM (verbatim), Meta `Purchase`, RudderStack `Order Completed`
 
@@ -396,6 +396,8 @@ Becomes Meta `Purchase` and RudderStack `Order Completed`. Meta gets an `eventID
 | `user_properties` | `UserProperties` | no | Who the shopper is. See [User properties](#user-properties) — mostly empty before checkout. |
 
 > ⚠️ An order created but not yet paid does **not** produce this event. Express checkout (PayPal, Apple Pay, Google Pay) and a card payment needing 3-D Secure both create the order before the money moves; the SDK reports them only when the shopper returns to the success page. Until 2026-08-05 the event fired at creation time and was then replayed on the next page in the session, so pressing back from PayPal — or landing on `payment_failed_url` — reported a purchase for an order that never existed, with a fabricated `order_<timestamp>` transaction id ([issue #71](https://github.com/NextCommerceCo/campaign-cart/issues/71)). A conversion count from before that date over-reports express checkout.
+>
+> ⚠️ **Your success page must load the SDK, and must keep the `?ref_id=` on its URL.** That is now the only thing that reports a purchase — the checkout page no longer raises one for any payment method. The SDK appends `ref_id` to the success URL itself, so this holds unless the page strips it or the redirect goes somewhere the SDK is not installed (the platform’s own `order_status_url`, for instance). Confirm `dl_purchase` fires there once, with the real order number, before trusting the numbers.
 >
 > ⚠️ The event is emitted at most once per `transaction_id`, remembered in `localStorage` (`nextDataLayer_reportedPurchases`). A payload with no order number and no `ref_id` is dropped with an error rather than sent under a made-up id — there is no `order_<timestamp>` fallback any more.
 >
