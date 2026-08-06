@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.4.32] — 2026-08-06 — Purchases Are Counted Only When Paid
+## [0.4.32] — 2026-08-06 — Purchases Counted Only When Paid & One Bundle, Not Two
 
 ### Fixed
 
