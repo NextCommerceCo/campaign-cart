@@ -1,12 +1,6 @@
 # Changelog
 
-## [0.4.31] — 2026-08-04 — Prices for Standard European Markets
-
-Campaigns can display prices the way European markets expect — `69,99 €` rather than
-`€69.99`. Alongside it, a conversion-tracking fix that matters to anyone using express
-checkout, and two larger pieces of work: the documentation is now a generated, versioned
-site, and the source tree is reorganised into one folder per feature. Neither of those
-changes how you integrate.
+## [0.4.32] — 2026-08-06 — Purchases Are Counted Only When Paid
 
 ### Fixed
 
@@ -50,6 +44,28 @@ changes how you integrate.
   This is the event to hang conversion tracking on, and where the SDK's own `dl_purchase`
   now comes from. `order:completed` means *created*, not *paid*.
 
+- **`?debug=true` and `?debugger=true` survive a payment gateway.** The checkout copies
+  them onto the `success_url` and `payment_failed_url` it sends the orders API, so the
+  page a shopper returns to from PayPal or a 3-D Secure step still has the logs and the
+  overlay. Only those two are copied, not the rest of the query string.
+
+### Corrected docs
+
+- `express-checkout:started`, `:completed` and `:failed` were documented as
+  "never emitted by this build". All three are emitted — the second one is what caused
+  #71. `express-checkout:started` does not send the `cartTotal` it declares.
+
+---
+
+## [0.4.31] — 2026-08-04 — Prices for Standard European Markets
+
+Campaigns can display prices the way European markets expect — `69,99 €` rather than
+`€69.99`. Alongside it, two larger pieces of work: the documentation is now a generated,
+versioned site, and the source tree is reorganised into one folder per feature. Neither
+changes how you integrate.
+
+### New
+
 - **`window.nextConfig.locale`** — pins how prices are written: `'de-DE'` renders
   `69,99 €`. The **locale** decides the decimal separator and which side the symbol sits
   on, not the currency code — so switching a campaign to `EUR` on its own still gives
@@ -74,12 +90,6 @@ changes how you integrate.
 
 - **Quieter console on live pages** — the order manager's 24 raw console messages go
   through the logger, so they appear when debugging is on and stay silent in production.
-
-### Corrected docs
-
-- `express-checkout:started`, `:completed` and `:failed` were documented as
-  "never emitted by this build". All three are emitted — the second one is what caused
-  #71. `express-checkout:started` does not send the `cartTotal` it declares.
 
 ---
 
