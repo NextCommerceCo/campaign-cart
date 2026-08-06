@@ -2,63 +2,84 @@
 
 ## [0.4.32] — 2026-08-06 — Purchases Counted Only When Paid & One Bundle, Not Two
 
+Two fixes for things that were quietly wrong rather than visibly broken: conversions
+were counted for orders nobody had paid for, and the SDK was loading twice on every
+page. Neither one changes your markup.
+
 ### Fixed
 
-- **A purchase is only counted once the shopper has actually paid** — express checkout
-  (PayPal, Apple Pay, Google Pay) creates the order *before* payment, and `dl_purchase`
-  fired at that moment. So pressing **back** from PayPal, or a declined payment, reported
-  a conversion for an order that never happened, under a made-up transaction id. One
-  merchant's affiliate network paid out on six of them
-  ([#71](https://github.com/NextCommerceCo/campaign-cart/issues/71)). The purchase is now
-  reported from the page the shopper lands on *after* checkout, **once per order** —
-  a reload or a re-opened receipt cannot produce a second one. Card payments needing 3-D
-  Secure had the same problem and are fixed by the same change; card orders charged on the
-  checkout page are unaffected.
+- **A purchase is counted only once the shopper has paid.**
 
-- **The SDK loads as one bundle again** — since v0.4.31 the main bundle failed to load on
-  every page view and the loader quietly fetched the backup bundle instead
-  ([#77](https://github.com/NextCommerceCo/campaign-cart/issues/77)). Pages kept working,
-  so nothing looked broken, but every visitor downloaded the SDK twice (about 343 kB of
-  wasted traffic per visit), every page logged an error to the console, and `?debug=true`
-  showed no logs at all, because the backup bundle has its logging stripped out. Nothing
-  about the SDK's behaviour or your markup changes — working pages keep working, they just
-  load less.
+  Express checkout (PayPal, Apple Pay, Google Pay) creates the order *before* the
+  payment, and the purchase was reported at that moment.
+
+  So pressing **back** from PayPal, or a declined payment, counted a conversion for an
+  order that never happened, under a made-up transaction id. One merchant's affiliate
+  network paid out on six of them
+  ([#71](https://github.com/NextCommerceCo/campaign-cart/issues/71)).
+
+  The purchase is now reported from the page the shopper lands on *after* checkout, and
+  only once per order. A reload, or a receipt link opened again, cannot produce a second
+  one.
+
+  Card payments that need 3-D Secure had the same problem and are fixed by the same
+  change. Cards charged on the checkout page were never affected.
+
+- **The SDK loads as one bundle again.**
+
+  Since v0.4.31 the main bundle failed to load on every page view, and the loader
+  quietly fetched the backup bundle instead
+  ([#77](https://github.com/NextCommerceCo/campaign-cart/issues/77)).
+
+  Pages kept working, so nothing looked broken. What it cost: every visitor downloaded
+  the SDK twice, about 343 kB of wasted traffic per visit. Every page logged an error to
+  the console. And `?debug=true` printed no logs at all, because the backup bundle is
+  built with its logging stripped out.
+
+  Working pages keep working. They just load less, and debug mode works again.
 
 ### Before you upgrade
 
-**Check your success page.** Purchases are now reported *only* from the page the shopper
-lands on after checkout, so that page has to load the SDK and has to keep the `?ref_id=`
-the redirect adds to it. If a shopper is sent somewhere the SDK is not installed — the
-platform's own order-status page, for instance — that store will record no conversion
-where it previously recorded one. Confirm `dl_purchase` fires there once, with the real
+**Check your success page.**
+
+Purchases are now reported *only* from the page the shopper lands on after checkout.
+That page has to load the SDK, and it has to keep the `?ref_id=` the redirect adds to
+its URL.
+
+If a shopper is sent somewhere the SDK is not installed — the platform's own
+order-status page, for instance — that store will record no conversion where it
+previously recorded one. Confirm the purchase is reported there once, with the real
 order number, before rolling this out.
 
 ### Changed
 
-- **`order:completed` now means the order is finished, not created.** It fires on the
-  page the shopper lands on after checkout — the one opened with `?ref_id=`, once the
-  order has been fetched back from the API — and that is the only place the SDK emits
-  it. This is the event to hang conversion tracking on, and where `dl_purchase` comes
-  from.
+- **`order:completed` now means the order is finished, not created.**
 
-  The checkout page no longer emits anything when it creates an order, because a
-  created order is not a paid one: express checkout and a card needing 3-D Secure both
-  leave that page with the money still unmoved. **If you were listening for
-  `order:completed` on the checkout page, that listener will no longer fire** — move
-  the work to the landing page, or do it in your own submit handler.
+  It fires on the page the shopper lands on after checkout: the one opened with
+  `?ref_id=`, once the order has been fetched back from the API. That is the only place
+  the SDK emits it, and it is the event to hang conversion tracking on.
 
-  The payload is now the full order (totals, tax, shipping, addresses, typed lines)
-  instead of the six-field subset.
+  The checkout page now emits nothing when it creates an order, because a created order
+  is not a paid one. **A listener you had on `order:completed` on the checkout page will
+  no longer fire.** Move that work to the page after checkout, or into your own submit
+  handler.
 
-- **Debug mode survives a payment gateway** — `?debug=true` and `?debugger=true` are
-  copied onto the checkout's success and failure URLs, so the page a shopper returns to
-  from PayPal or a 3-D Secure step still has the logs and the overlay.
+  The payload is the full order now — totals, tax, shipping, addresses and line items —
+  instead of the six-field summary.
+
+- **Debug mode survives a payment gateway.**
+
+  `?debug=true` and `?debugger=true` are copied onto the checkout's success and failure
+  URLs. The page a shopper returns to from PayPal, or from a 3-D Secure step, still has
+  the logs and the overlay.
 
 ### Corrected docs
 
-- `express-checkout:started`, `:completed` and `:failed` were documented as never emitted
-  by this build. All three are emitted — the second one is what caused #71.
-  `express-checkout:started` does not send the `cartTotal` it declares.
+- **`express-checkout:started`, `:completed` and `:failed` are emitted after all.**
+
+  All three were documented as never emitted by this build. The second one is what
+  caused #71. One thing is still true: `express-checkout:started` does not send the
+  `cartTotal` it declares.
 
 ---
 
