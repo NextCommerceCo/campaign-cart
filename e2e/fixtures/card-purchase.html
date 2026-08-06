@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <!-- The success page is this same fixture opened with ?ref_id=, which is what
+         the SDK redirects to after a card order. The failure page is the shared
+         "payment failed" landing — it boots the SDK and analytics, which is what
+         makes a phantom purchase there detectable. -->
+    <meta name="next-success-url" content="/e2e/fixtures/card-purchase.html" />
+    <meta
+      name="next-failure-url"
+      content="/e2e/fixtures/express-purchase-failed.html"
+    />
+    <title>E2E — card purchase tracking</title>
+    <!-- Analytics is off by default; auto mode is what registers the purchase
+         handler, so it has to be on before /src/index.ts boots. -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      window.nextConfig = {
+        analytics: {
+          enabled: true,
+          mode: 'auto',
+          providers: { gtm: { enabled: true } },
+        },
+      };
+    </script>
+  </head>
+  <body>
+    <h1>Card purchase fixture</h1>
+
+    <!-- No docs:example marker: this drives the *analytics* journey around a card
+         checkout (submit → charge → thank-you page), not the checkout form's
+         markup. The published example for the form lives in checkout-form.html. -->
+    <form data-next-checkout>
+      <input data-next-checkout-field="email" name="email" type="email" />
+      <input data-next-checkout-field="fname" name="fname" />
+      <input data-next-checkout-field="lname" name="lname" />
+      <input data-next-checkout-field="address1" name="address1" />
+      <input data-next-checkout-field="city" name="city" />
+      <input data-next-checkout-field="postal" name="postal" />
+      <input data-next-checkout-field="phone" name="phone" type="tel" />
+      <select data-next-checkout-field="country" name="country">
+        <option value="US">United States</option>
+      </select>
+      <select data-next-checkout-field="province" name="province">
+        <option value="NY">New York</option>
+      </select>
+
+      <!-- CreditCardService turns the number and cvv inputs into Spreedly iframe
+           hosts. The spec injects a stand-in `window.Spreedly` before boot, so the
+           real script is never fetched. -->
+      <div data-next-checkout-field="cc-number" id="cc-number"></div>
+      <div data-next-checkout-field="cvv" id="cvv"></div>
+      <select data-next-checkout-field="cc-month" name="cc-month">
+        <option value="12">12</option>
+      </select>
+      <select data-next-checkout-field="cc-year" name="cc-year">
+        <option value="2030">2030</option>
+      </select>
+
+      <button type="submit" data-next-checkout-submit>Complete order</button>
+    </form>
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>
