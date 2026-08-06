@@ -22,6 +22,10 @@ import { ProspectCartEnhancer } from '../prospect-cart/prospect-cart.enhancer';
 import { LoadingOverlay } from '@/core/ui/loading-overlay';
 import { ExpressCheckoutProcessor } from '../processors/express-checkout-processor';
 import { OrderManager } from '../managers/order-manager';
+import {
+  rememberCheckoutCoupon,
+  rememberCheckoutReturnPaths,
+} from '@/core/analytics/tracking/purchase-tracking';
 import { OrderBuilder } from '../builders/order-builder';
 import { nextAnalytics, EcommerceEvents } from '@/core/analytics/index';
 import {
@@ -1142,6 +1146,18 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         undefined, // no explicit choice here — the builder resolves it from the stores
         checkoutStore.vouchers
       );
+
+      // The same two records `OrderManager` writes before it posts an order.
+      // This is the standard card path and it builds and posts its own order
+      // rather than going through `OrderManager` (finding 2 in
+      // docs/code-findings.md), so anything the landing page needs has to be
+      // recorded here as well or it is missing for every card order.
+      rememberCheckoutReturnPaths(
+        orderData.success_url,
+        orderData.payment_failed_url
+      );
+      rememberCheckoutCoupon(orderData.vouchers?.[0]);
+
       const order = await this.apiClient.createOrder(orderData);
 
       if (!order.ref_id) {

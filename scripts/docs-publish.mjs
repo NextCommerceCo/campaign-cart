@@ -7,8 +7,10 @@
  * Cloudflare reads (`_headers`, `robots.txt`, `404.html`), then counts what would be
  * uploaded and fails if it does not fit.
  *
- * It never deploys — deploying is a human's command, never an agent's. The last thing it
- * prints is the command a human runs; see `docs/wrangler.jsonc` for the target.
+ * It never deploys — that belongs to `.github/workflows/docs-deploy.yml`, which runs it
+ * on a `v*.*.*` tag push, on a push to `main`, and on manual dispatch. The last thing
+ * this prints is the command that workflow runs; see `docs/wrangler.jsonc` for the
+ * target. Never run the deploy from a laptop or an agent.
  *
  * Usage:
  *   node scripts/docs-publish.mjs                # every eligible tag + main, check
@@ -484,7 +486,8 @@ function main(argv) {
   }
 
   process.stdout.write(
-    `\nReady. Nothing was deployed — that step is yours:\n\n` +
+    `\nReady. Nothing was deployed — CI does that, on a v*.*.* tag push or a push\n` +
+      `to main (.github/workflows/docs-deploy.yml), by running:\n\n` +
       `  npx wrangler deploy -c docs/wrangler.jsonc\n\n` +
       `Preview it locally first:  npm run docs:serve\n`
   );
