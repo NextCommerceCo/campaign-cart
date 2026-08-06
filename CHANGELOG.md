@@ -2,84 +2,48 @@
 
 ## [0.4.32] — 2026-08-06 — Purchases Counted Only When Paid & One Bundle, Not Two
 
-Two fixes for things that were quietly wrong rather than visibly broken: conversions
-were counted for orders nobody had paid for, and the SDK was loading twice on every
-page. Neither one changes your markup.
-
 ### Fixed
 
 - **A purchase is counted only once the shopper has paid.**
 
-  Express checkout (PayPal, Apple Pay, Google Pay) creates the order *before* the
-  payment, and the purchase was reported at that moment.
+  Express checkout (PayPal, Apple Pay, Google Pay) creates the order before the payment,
+  and the purchase was reported at that moment. So pressing **back** from PayPal, or a
+  declined payment, counted a conversion for an order that never happened.
 
-  So pressing **back** from PayPal, or a declined payment, counted a conversion for an
-  order that never happened, under a made-up transaction id. One merchant's affiliate
-  network paid out on six of them
-  ([#71](https://github.com/NextCommerceCo/campaign-cart/issues/71)).
-
-  The purchase is now reported from the page the shopper lands on *after* checkout, and
-  only once per order. A reload, or a receipt link opened again, cannot produce a second
-  one.
-
-  Card payments that need 3-D Secure had the same problem and are fixed by the same
-  change. Cards charged on the checkout page were never affected.
+  It is now reported from the page the shopper lands on after checkout, once per order —
+  a reload, or a receipt link opened again, cannot produce a second one. Cards that need
+  3-D Secure are fixed the same way. Cards charged on the checkout page were never
+  affected.
+  ([#71](https://github.com/NextCommerceCo/campaign-cart/issues/71))
 
 - **The SDK loads as one bundle again.**
 
-  Since v0.4.31 the main bundle failed to load on every page view, and the loader
-  quietly fetched the backup bundle instead
-  ([#77](https://github.com/NextCommerceCo/campaign-cart/issues/77)).
-
-  Pages kept working, so nothing looked broken. What it cost: every visitor downloaded
-  the SDK twice, about 343 kB of wasted traffic per visit. Every page logged an error to
-  the console. And `?debug=true` printed no logs at all, because the backup bundle is
-  built with its logging stripped out.
-
-  Working pages keep working. They just load less, and debug mode works again.
+  Since v0.4.31 the main bundle failed to load and the loader fell back to the backup
+  copy. Pages kept working, but every visitor downloaded the SDK twice and `?debug=true`
+  printed no logs. Both are fixed, and nothing about your markup changes.
+  ([#77](https://github.com/NextCommerceCo/campaign-cart/issues/77))
 
 ### Before you upgrade
 
-**Check your success page.**
-
-Purchases are now reported *only* from the page the shopper lands on after checkout.
-That page has to load the SDK, and it has to keep the `?ref_id=` the redirect adds to
-its URL.
-
-If a shopper is sent somewhere the SDK is not installed — the platform's own
-order-status page, for instance — that store will record no conversion where it
-previously recorded one. Confirm the purchase is reported there once, with the real
-order number, before rolling this out.
+**Check your success page.** Purchases are now reported only from the page the shopper
+lands on after checkout, so that page has to load the SDK and has to keep the `?ref_id=`
+the redirect adds to its URL. A shopper sent somewhere the SDK is not installed records
+no conversion at all.
 
 ### Changed
 
 - **`order:completed` now means the order is finished, not created.**
 
-  It fires on the page the shopper lands on after checkout: the one opened with
-  `?ref_id=`, once the order has been fetched back from the API. That is the only place
-  the SDK emits it, and it is the event to hang conversion tracking on.
+  It fires on the page the shopper lands on after checkout, once the order has been
+  fetched back from the API. This is the event to hang conversion tracking on.
 
-  The checkout page now emits nothing when it creates an order, because a created order
-  is not a paid one. **A listener you had on `order:completed` on the checkout page will
-  no longer fire.** Move that work to the page after checkout, or into your own submit
-  handler.
-
-  The payload is the full order now — totals, tax, shipping, addresses and line items —
+  The checkout page emits nothing when it creates an order, so **a listener you had on
+  `order:completed` there will no longer fire.** The payload is the full order now,
   instead of the six-field summary.
 
-- **Debug mode survives a payment gateway.**
-
-  `?debug=true` and `?debugger=true` are copied onto the checkout's success and failure
-  URLs. The page a shopper returns to from PayPal, or from a 3-D Secure step, still has
-  the logs and the overlay.
-
-### Corrected docs
-
-- **`express-checkout:started`, `:completed` and `:failed` are emitted after all.**
-
-  All three were documented as never emitted by this build. The second one is what
-  caused #71. One thing is still true: `express-checkout:started` does not send the
-  `cartTotal` it declares.
+- **Debug mode survives a payment gateway.** `?debug=true` and `?debugger=true` are
+  copied onto the checkout's return URLs, so the page a shopper comes back to from
+  PayPal still has the logs and the overlay.
 
 ---
 
