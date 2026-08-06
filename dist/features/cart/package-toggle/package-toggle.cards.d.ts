@@ -4,6 +4,7 @@ import { ToggleHandlerContext } from './package-toggle.handlers';
 export interface CardRegistrationContext {
     cards: ToggleCard[];
     clickHandlers: Map<HTMLElement, (e: Event) => void>;
+    listenerSignal: AbortSignal;
     logger: Logger;
     makeHandlerContext: () => ToggleHandlerContext;
 }

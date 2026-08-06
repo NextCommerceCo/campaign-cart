@@ -4,6 +4,38 @@
 
 ### Fixed
 
+- **The module bundle loads again, so the rest of this release reaches your pages.** On
+  v0.4.31 every page load of the module bundle threw
+  `ReferenceError: Cannot access 'l' before initialization`, the loader caught it, and it
+  loaded `index.umd.js` instead
+  ([#77](https://github.com/NextCommerceCo/campaign-cart/issues/77)). Pages worked — the
+  fallback is a complete SDK — but every visitor downloaded two bundles instead of one,
+  saw a `Failed to load SDK:` error in the console, and got **no logs at all**, because
+  the fallback bundle is built with its `console` calls stripped: `?debug=true` and the
+  overlay had nothing to show.
+
+  The cause was where the build put three files. `createLogger`, the session-storage
+  manager and the event bus moved from `src/utils/` to `src/core/` during a
+  reorganisation, and the chunk rule that kept them beside the stores still named the old
+  folder — so they were split across two chunks that import each other, and the one that
+  loads first called a class in the other before it existed. They now have a chunk of
+  their own that imports nothing, which is what makes it safe to call from anywhere.
+
+  **Nothing about the SDK's behaviour or your markup changes.** If your pages have been
+  working, they were working on the fallback. They now stop downloading it on top of the
+  module chunks — 343 kB gzipped of duplicate SDK per visit — and `?debug=true` prints
+  its logs again.
+
+  Two tests now cover it, because neither the unit suite nor the browser suite could:
+  both run against the source, where the chunk split does not exist. One evaluates the
+  built bundle in CI; the other loads it through the real loader in five browsers and
+  fails if the fallback is ever requested.
+
+  **This is also what makes the purchase fix below live.** `dist/` is rebuilt by hand, and
+  the bundle carrying the v0.4.31 and v0.4.32 tags was built before that work landed — the
+  purchase-tracking change was in the source of the tag but not in the file customers
+  load. Both are in this build.
+
 - **`dl_purchase` only reports orders that were paid for.** Express checkout (PayPal,
   Apple Pay, Google Pay) creates the order *before* the shopper pays and then sends them
   to the gateway; the purchase event was raised at that point and parked for the next

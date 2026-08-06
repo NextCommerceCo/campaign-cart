@@ -34,6 +34,7 @@ export interface EventMap {
         method: 'paypal' | 'apple_pay' | 'google_pay';
     };
     'order:completed': OrderData;
+    'order:loaded': Order;
     'order:redirect-missing': {
         order: any;
     };
@@ -131,7 +132,9 @@ export interface EventMap {
         paymentMethod: string;
     };
     'payment:error': {
-        errors: string[];
+        message: string;
+        code?: string;
+        details?: unknown;
     };
     'checkout:express-completed': {
         method: string;
@@ -496,6 +499,7 @@ export interface ConfigState {
     locationData?: any;
     currencyBehavior?: 'auto' | 'manual';
     currencyFallbackOccurred?: boolean;
+    locale?: string;
     autoInit: boolean | undefined;
     rateLimit: number | undefined;
     cacheTtl: number | undefined;

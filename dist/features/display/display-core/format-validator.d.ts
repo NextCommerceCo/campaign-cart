@@ -22,6 +22,7 @@ export declare class FormatValidator {
     static validateAll(): ValidationReport;
     static validateElement(element: HTMLElement): ValidationIssue[];
     private static checkFormatMismatch;
+    private static currencyPattern;
     private static detectFormat;
     private static isRealMismatch;
     private static checkCommonMistakes;

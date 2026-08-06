@@ -1,5 +1,4 @@
-import { DataLayerConfig, DebugOptions, AnalyticsProvider } from './types';
-export declare const DEFAULT_DEBUG_CONFIG: DebugOptions;
+import { DataLayerConfig, AnalyticsProvider } from './types';
 export declare const DEFAULT_CONFIG: DataLayerConfig;
 export declare const PROVIDER_SETTINGS: {
     readonly GA4: {
@@ -80,26 +79,9 @@ export declare const STORAGE_KEYS: {
     readonly SESSION_ID: "nextDataLayer_sessionId";
     readonly SESSION_START: "nextDataLayer_sessionStart";
     readonly USER_PROPERTIES: "nextDataLayer_userProperties";
+    readonly REPORTED_PURCHASES: "nextDataLayer_reportedPurchases";
+    readonly CHECKOUT_RETURN_PATHS: "nextDataLayer_checkoutReturnPaths";
+    readonly CHECKOUT_COUPON: "nextDataLayer_checkoutCoupon";
 };
-export declare const ANALYTICS_EVENTS: {
-    readonly VIEW_ITEM: "view_item";
-    readonly VIEW_ITEM_LIST: "view_item_list";
-    readonly SELECT_ITEM: "select_item";
-    readonly ADD_TO_CART: "add_to_cart";
-    readonly REMOVE_FROM_CART: "remove_from_cart";
-    readonly VIEW_CART: "view_cart";
-    readonly BEGIN_CHECKOUT: "begin_checkout";
-    readonly ADD_SHIPPING_INFO: "add_shipping_info";
-    readonly ADD_PAYMENT_INFO: "add_payment_info";
-    readonly PURCHASE: "purchase";
-    readonly REFUND: "refund";
-    readonly LOGIN: "login";
-    readonly SIGN_UP: "sign_up";
-    readonly PAGE_VIEW: "page_view";
-    readonly SEARCH: "search";
-    readonly SHARE: "share";
-    readonly CUSTOM: "custom_event";
-};
-export declare function getProviderConfig(providerName: keyof typeof PROVIDER_SETTINGS): typeof PROVIDER_SETTINGS[keyof typeof PROVIDER_SETTINGS];
 export declare function validateProviderConfig(provider: AnalyticsProvider, settings: typeof PROVIDER_SETTINGS[keyof typeof PROVIDER_SETTINGS]): boolean;
 //# sourceMappingURL=config.d.ts.map

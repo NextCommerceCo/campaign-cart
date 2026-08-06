@@ -1,6 +1,6 @@
 import { Logger } from '../../../core/logger';
 import { LoadingOverlay } from '../../../core/ui/loading-overlay';
-import { ApiClient } from '../../../api/client';
+import { IApiClient } from '../../../api/client.types';
 import { EventMap } from '../../../types/global';
 export interface UpsellBundleItem {
     packageId: number;
@@ -16,6 +16,7 @@ export interface UpsellState {
     currentQuantitySelectorId: string | undefined;
     actionButtons: HTMLElement[];
     scanTeardowns: (() => void)[];
+    selectorTeardowns: (() => void)[];
 }
 export interface UpsellInteractionContext {
     element: HTMLElement;
@@ -37,7 +38,7 @@ export interface UpsellHandlerContext {
     currentQuantitySelectorId: string | undefined;
     actionButtons: HTMLElement[];
     loadingOverlay: LoadingOverlay;
-    apiClient: ApiClient;
+    apiClient: IApiClient;
     bundleItems?: UpsellBundleItem[] | null;
     bundleVouchers?: string[];
     defaultProperties?: Record<string, string>;

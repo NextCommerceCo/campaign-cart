@@ -513,6 +513,13 @@ crash, so this wants its own change with an e2e run behind it, not a size-driven
 likely shape is to give those shared formatters a chunk of their own so `debug` is left holding
 only debug code.
 
+**The precondition now exists** (2026-08-06). `src/tests/contract/es-bundle-init.test.ts`
+evaluates the built module graph and `e2e/es-bundle.spec.ts` loads `dist/` through the real
+loader in five browsers, so a reassignment that reopens a TDZ fails a test rather than a
+customer's page — that was the missing check this deferral was waiting on. Finding 198 is the
+worked example, including why a formatter chunk must not import back into `src/` if anything
+calls it at module-init time.
+
 ### 105. ~~The production-bundle gate only reads the UMD file, not the chunks customers load~~ — **FIXED 2026-08-02, and the worse half of it is finding 111**
 
 `src/tests/contract/bundle-contents.test.ts:25` resolves `dist/index.umd.js` and scans that.
@@ -1837,7 +1844,7 @@ it has shipped.
 **Fix:** build before testing in the workflow, or have the test build to a temp dir itself.
 Not applied — reordering CI is a human's call.
 
-### 112. The `state`-chunk co-location rule in `manualChunks` is stale, and repairing it measurably helps — *verified, deliberately not applied*
+### 112. ~~The `state`-chunk co-location rule in `manualChunks` is stale, and repairing it measurably helps~~ — **FIXED 2026-08-06, after it shipped as finding 198**
 
 The rule keys on `/utils/(logger|storage|events).ts`; those files are `core/*` now, so it
 matches nothing. Repairing it is one token (`/utils/` → `/core/`) and was measured: chunk-level
@@ -1848,6 +1855,14 @@ without pulling the 119 kB `analytics` chunk, and through it `debug`), and ES ou
 **Not applied** because it rewrites two chunks customers download (`analytics` −1,578 B,
 `state` +1,485 B, both re-hashed), and a chunk reassignment is exactly what caused the TDZ
 crash the surrounding comment records. Needs an e2e run behind it.
+
+**What the deferral cost, and what it got wrong.** The scattering this describes was not a
+latent inefficiency — it was already crashing every ESM page load in the shipped bundle
+(finding 198, [#77](https://github.com/NextCommerceCo/campaign-cart/issues/77)). The
+re-hashing that made it feel risky to apply was mandatory anyway. And the one-token repair
+would not have fixed it: moving `createLogger` into `state` only moves the crash to the
+`utils` ↔ `state` cycle. The applied fix gives those three files their own leaf chunk,
+`core-services`, and adds the two gates that were the actual precondition — see finding 198.
 
 ### 113. Splitting the four `.display.ts` enhancers into their own feature folders — *declined 2026-08-02*
 
@@ -3508,6 +3523,66 @@ Not fixed here: the change belongs with someone deciding whether a malformed bod
 fall back to the default config (a one-line `?? this.getDefaultCountryConfig(countryCode)`
 on the parsed body, matching the error path) or fail loudly. Either way `updateFormLabels`
 should not be reachable with an undefined config.
+
+### 198. ~~Every ESM page load threw and fell back to the UMD bundle~~ — **reproduced and FIXED 2026-08-06**
+
+[Issue #77](https://github.com/NextCommerceCo/campaign-cart/issues/77). `ReferenceError:
+Cannot access 'l' before initialization` on every load of v0.4.31 and v0.4.32, after which
+the loader's `catch` fetched `index.umd.js`. The page still worked, so the only symptoms
+were a console error and both bundles being downloaded.
+
+This is finding 112 arriving as a customer-facing bug rather than a measurement. The
+`state`-chunk rule keyed on `/utils/(logger|storage|events).ts`, the migration moved those
+three files to `src/core/`, and Rollup then scattered them: `logger.ts` and `events.ts` into
+`analytics`, `storage.ts` into `state`. `analytics` statically imports `state`, so `state`
+evaluated first, `storage.ts`'s module-scope `new StorageManager()` called `createLogger`
+across the chunk boundary, and the `Logger` subclass it constructs had not been evaluated
+yet. Confirmed by evaluating the committed bundle: the stack's offsets (`analytics:1102`,
+`state:192`, `state:1494`) land exactly on `function p(e){return new l(e)}`, the
+`StorageManager` constructor, and `const c=new s({storage:sessionStorage})`.
+
+Two things worth keeping from the diagnosis:
+
+- **Repairing the path was not enough.** With `/core/…` matching, `state` shed its edges to
+  `analytics` and cycles dropped 4 → 2, but the crash moved rather than went away:
+  `createLogger` then sat in `state`, and the `utils` ↔ `state` cycle broke it from the other
+  side (`payment-availability.ts`'s module-scope `createLogger('PaymentAvailability')`). Any
+  chunk holding `createLogger` while something imports it back is a loaded gun. The fix is a
+  `core-services` chunk holding those three files and **nothing that imports back into
+  `src/`** — a leaf cannot be the half-evaluated side of a cycle, which is the only property
+  that makes a module-init call into it safe from anywhere.
+- **Nothing in the suite could see it.** Every unit test imports `src/`, where chunk
+  boundaries do not exist, and every Playwright spec loads `/src/index.ts` through Vite for
+  the same reason. Now covered twice: `src/tests/contract/es-bundle-init.test.ts` evaluates
+  the built graph in a child Node process (CI runs it), and `e2e/es-bundle.spec.ts` loads
+  `public/loader.js` against `dist/` in all five browsers and fails if `index.umd.js` is ever
+  requested.
+
+The commit that shipped it was innocent: v0.4.31 is `Make the vestigial dynamic store imports
+static`, and the same broken chunks are already in its parent's `dist/`. The trigger was
+`6494652 Rebuild dist with minified ESM chunks` — the first rebuild after the `utils/` →
+`core/` reorganisation, which is when the stale pattern stopped matching. See finding 199 for
+why that gap is two releases wide.
+
+### 199. `dist/` is only rebuilt when a human remembers, so a tagged release can ship the previous build — *verified 2026-08-06*
+
+`dist/` is committed and served straight from the tag by jsDelivr, but nothing rebuilds it:
+`.github/workflows/build.yml` runs `bun run build` and discards the output, and the release
+commits do not touch `dist/` (`891b694 Release the purchase-tracking fix as 0.4.32` changes
+`CHANGELOG.md` and `package.json`, nothing else). The last rebuild before this finding was
+`6494652`, on 2026-07-31.
+
+Measured on the committed `dist/index.umd.js` at `HEAD` versus a rebuild of the same source:
+`order:loaded` appears **0 times in the shipped file and 3 in the rebuild**, `dl_purchase` 12
+versus 15. So the artifact tagged `v0.4.32` does not contain the purchase-tracking fix that
+release is named for (finding 196) — the source landed, the bundle did not. The same gap
+carried the TDZ of finding 198 into two tags.
+
+This is finding 111's problem one layer out: that one is "the gate cannot see the code under
+review", this one is "the artifact does not contain the code under review". Both end at the
+same place — whether `dist/` should be built by CI on a tag rather than committed by hand.
+Not fixed here: it is a release-process decision, and the fix (build in CI, or a release
+script that refuses to tag a stale `dist/`) is a human's call.
 
 
 ## Open decisions

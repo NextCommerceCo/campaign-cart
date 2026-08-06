@@ -19,10 +19,4 @@ export declare class EventHandlerManager {
     getActiveBindings(): EventBinding[];
     hasHandler(element: HTMLElement, event: string): boolean;
 }
-export declare function bindFieldHandlers(fields: Map<string, HTMLElement>, eventHandler: EventHandlerManager, handlers: {
-    change?: (field: HTMLElement, value: string, fieldName: string) => void;
-    blur?: (field: HTMLElement, value: string, fieldName: string) => void;
-    focus?: (field: HTMLElement, value: string, fieldName: string) => void;
-    input?: (field: HTMLElement, value: string, fieldName: string) => void;
-}): void;
 //# sourceMappingURL=event-handler-utils.d.ts.map

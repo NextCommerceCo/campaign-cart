@@ -6,7 +6,7 @@ export declare function featureNavTitle(manifest: FeatureManifest, leaf: string)
 export declare function featureNav(manifest: FeatureManifest, leaf: string): string;
 export declare function stateNavTitle(manifest: StateManifest, leaf: string): string;
 export declare function stateNav(manifest: StateManifest, leaf: string): string;
-export type CoreSection = 'Reference' | 'Subsystems' | null;
+export type CoreSection = 'Reference' | null;
 export declare function coreNavTitle(section: CoreSection, leaf: string): string;
 export declare function coreNav(section: CoreSection, leaf: string): string;
 export declare function referenceNavTitle(leaf: string): string;

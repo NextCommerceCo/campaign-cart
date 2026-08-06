@@ -36,9 +36,9 @@ export declare const nextAnalytics: NextAnalytics;
 export * from './types';
 export { DL_EVENTS, DL_EVENT_NAMES, DL_EVENT_NAME_SET, isKnownDlEvent, } from './schemas/events';
 export type { DlEventName, DlEventCategory, DlEventDefinition, } from './schemas/events';
-export { EventValidator } from './validation/EventValidator';
-export { EcommerceEvents } from './events/EcommerceEvents';
-export { UserEvents } from './events/UserEvents';
-export { dataLayer } from './DataLayerManager';
-export { MetaTagController, metaTagController, } from './tracking/MetaTagController';
+export { EventValidator } from './validation/event-validator';
+export { EcommerceEvents } from './events/ecommerce-events';
+export { UserEvents } from './events/user-events';
+export { dataLayer } from './data-layer-manager';
+export { MetaTagController, metaTagController, } from './tracking/meta-tag-controller';
 //# sourceMappingURL=index.d.ts.map

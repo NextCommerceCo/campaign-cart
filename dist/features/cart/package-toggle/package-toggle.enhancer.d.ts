@@ -6,6 +6,7 @@ export declare class PackageToggleEnhancer extends BaseEnhancer {
     private template;
     private cards;
     private clickHandlers;
+    private listenerAbort;
     private mutationObserver;
     private boundCurrencyChangeHandler;
     private currencyChangeTimeout;

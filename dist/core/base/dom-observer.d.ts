@@ -23,6 +23,7 @@ export declare class DOMObserver {
     private config;
     private throttleTimeout;
     private pendingChanges;
+    private pendingRemovals;
     constructor(config?: DOMObserverConfig);
     addHandler(handler: DOMChangeHandler): void;
     removeHandler(handler: DOMChangeHandler): void;
@@ -34,6 +35,7 @@ export declare class DOMObserver {
     private handleMutations;
     private isRelevantMutation;
     private hasRelevantNodes;
+    private hasRemovedElements;
     private hasRelevantAttributes;
     private hasRelevantDescendants;
     private processMutation;
@@ -42,6 +44,7 @@ export declare class DOMObserver {
     private addElementForProcessing;
     private throttleNotifications;
     private processePendingChanges;
+    private processPendingRemovals;
     private notifyHandlers;
     private clearThrottle;
     destroy(): void;
