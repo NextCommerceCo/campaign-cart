@@ -11,6 +11,7 @@ export declare class GoogleMapsAutocomplete {
     private googleMapsLoadPromise;
     private autocompleteInstances;
     private countryListenersAttached;
+    private listenerAbort;
     constructor(ctx: AutocompleteContext);
     setup(): Promise<void>;
     destroy(): void;

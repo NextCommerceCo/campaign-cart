@@ -157,8 +157,9 @@ listing is in [storage keys](../reference/storage-keys.md).
   file. **Symptom:** debug mode on, overlay open, console showing little or nothing.
   **Fix:** check which bundle loaded before concluding nothing ran — the loader announces
   the fallback itself with a `UMD fallback loaded` line, and `window.__NEXT_SDK_VERSION__`
-  is set either way. The per-bundle breakdown is in
-  [logs › what prints in production](../reference/logs.md).
+  is set either way. A browser that supports modules and is *still* on the fallback has
+  hit a broken build, not an old engine; the per-bundle breakdown and that diagnosis are
+  in [logs › what prints in production](../reference/logs.md).
 - **The error handler replaces `console.error`**, so a line your own code logs there also
   arrives as an `error:occurred` event. That is [error capture](./error-handling.md)'s
   behaviour, not the logger's.

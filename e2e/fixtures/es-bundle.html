@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — built ES bundle via the production loader</title>
+  </head>
+  <body>
+    <h1>Built-bundle fixture</h1>
+
+    <!--
+      No docs:example marker here, deliberately: this fixture belongs to no feature
+      folder. It exists to load the *built* SDK the way a campaign page does — the
+      real `public/loader.js`, which fetches `dist/index.js` and its chunks — rather
+      than the `/src/index.ts` every other fixture loads through Vite. Nothing here
+      is markup an integrator should copy; the copyable loader snippet lives in the
+      README and points at a jsDelivr tag.
+
+      One enhancer is present so the boot has something to scan and bind.
+    -->
+    <button data-next-action="add-to-cart" data-next-package-id="1">
+      Add to cart
+    </button>
+    <span id="qty" data-next-display="cart.totalQuantity">0</span>
+
+    <script src="/public/loader.js"></script>
+  </body>
+</html>

@@ -1,4 +1,5 @@
 import { Order, AddUpsellLine } from '../../types/api';
+import { IApiClient } from '../../api/client.types';
 export interface OrderState {
     order: Order | null;
     refId: string | null;
@@ -22,10 +23,10 @@ export interface OrderState {
 export interface OrderActions {
     setOrder: (order: Order) => void;
     setRefId: (refId: string) => void;
-    loadOrder: (refId: string, apiClient: any) => Promise<void>;
+    loadOrder: (refId: string, apiClient: IApiClient) => Promise<void>;
     clearOrder: () => void;
     isOrderExpired: () => boolean;
-    addUpsell: (upsellData: AddUpsellLine, apiClient: any) => Promise<Order | null>;
+    addUpsell: (upsellData: AddUpsellLine, apiClient: IApiClient) => Promise<Order | null>;
     addPendingUpsell: (upsellData: AddUpsellLine) => void;
     removePendingUpsell: (index: number) => void;
     clearPendingUpsells: () => void;

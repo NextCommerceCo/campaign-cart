@@ -1,50 +1,28 @@
 import { BaseEnhancer } from '../../../core/base/base-enhancer';
-export interface ProspectCartConfig {
-    autoCreate?: boolean;
-    triggerOn?: 'formStart' | 'emailEntry' | 'phoneEntry' | 'emailAndPhone' | 'manual';
-    emailField?: string;
-    phoneField?: string;
-    includeUtmData?: boolean;
-    sessionTimeout?: number;
-    minPhoneDigits?: number;
-}
-export interface ProspectCart {
-    id: string;
-    prospect_id: string;
-    email?: string;
-    created_at: string;
-    expires_at: string;
-    utm_data?: Record<string, string>;
-    cart_data?: any;
-}
+import { ProspectCartConfig, ProspectCart } from './prospect-cart.types';
+export type { ProspectCartConfig, ProspectCart };
 export declare class ProspectCartEnhancer extends BaseEnhancer {
     private config;
     private apiClient;
-    private prospectCart;
+    private prospectCartRef;
     private emailField?;
     private phoneField?;
-    private hasTriggered;
+    private hasTriggeredRef;
+    private domListenerAbort;
     initialize(): Promise<void>;
     update(data?: any): void;
-    private loadConfig;
-    private findEmailField;
-    private findPhoneField;
+    protected cleanupEventListeners(): void;
+    private makeTriggerContext;
+    private makeCartCreationContext;
     private getFormattedPhoneNumber;
-    private setupTriggers;
-    private setupFormStartTrigger;
-    private emailInputTimeout;
-    private emailBlurTimeout;
-    private setupEmailEntryTrigger;
-    private phoneBlurTimeout;
-    private setupPhoneEntryTrigger;
-    private checkExistingProspectCart;
+    private isValidEmail;
+    private isValidPhone;
+    private isValidName;
     private createProspectCart;
     private updateProspectCart;
     private collectUtmData;
     private getCurrency;
-    private isValidEmail;
-    private isValidPhone;
-    private isValidName;
+    private checkExistingProspectCart;
     private handleCartUpdate;
     private updateTimeout;
     private emitProspectEvent;
@@ -52,8 +30,8 @@ export declare class ProspectCartEnhancer extends BaseEnhancer {
     getCurrentProspectCart(): ProspectCart | null;
     abandonCart(): Promise<void>;
     convertCart(): Promise<void>;
-    private updateEmailTimeout;
     updateEmail(email: string): void;
+    private phoneBlurTimeoutRef;
     checkAndCreateCart(): void;
 }
 //# sourceMappingURL=prospect-cart.enhancer.d.ts.map

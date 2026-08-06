@@ -22,6 +22,5 @@ export declare class Logger implements ILogger {
     debug(message: string, ...args: any[]): void;
 }
 export declare function createLogger(context: string): Logger;
-export declare const logger: Logger;
 export {};
 //# sourceMappingURL=logger.d.ts.map

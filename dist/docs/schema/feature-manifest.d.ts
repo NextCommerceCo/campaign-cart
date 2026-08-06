@@ -62,6 +62,10 @@ export interface FeatureManifest {
     logPrefix: string;
     extraSource?: string[];
     displayNamespace?: string;
+    displayFallback?: DisplayFallback[];
+    displayUnanswered?: UnansweredPath[];
+    displayPaths?: DisplayPathsDoc;
+    additionalDisplayNamespaces?: AdditionalDisplayNamespace[];
     attributes: AttributeDoc[];
     readsElsewhere?: WrittenDoc[];
     sets?: WrittenDoc[];
@@ -79,6 +83,33 @@ export interface FeatureManifest {
 export interface FeatureSection {
     title: string;
     body: string;
+}
+export interface DisplayPathDoc {
+    name: string;
+    group?: string;
+    description: string;
+}
+export interface DisplayFallback {
+    mappedPrefix?: string;
+    shape: string;
+}
+export interface UnansweredPath {
+    name: string;
+    instead: string;
+}
+export interface DisplayPathsDoc {
+    prefix: string;
+    intro?: string;
+    example?: string;
+    paths: DisplayPathDoc[];
+    footer?: string;
+    cautions?: string[];
+}
+export interface AdditionalDisplayNamespace {
+    namespace: string;
+    displayFallback?: DisplayFallback[];
+    displayUnanswered?: UnansweredPath[];
+    displayPaths?: DisplayPathsDoc;
 }
 export declare function defineFeature(manifest: FeatureManifest): FeatureManifest;
 //# sourceMappingURL=feature-manifest.d.ts.map

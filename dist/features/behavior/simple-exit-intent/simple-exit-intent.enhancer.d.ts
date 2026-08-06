@@ -35,6 +35,5 @@ export declare class ExitIntentEnhancer extends BaseEnhancer {
     private getPopupContext;
     hidePopup(): void;
     protected cleanupEventListeners(): void;
-    destroy(): void;
 }
 //# sourceMappingURL=simple-exit-intent.enhancer.d.ts.map

@@ -39,7 +39,6 @@ export declare class FomoPopupEnhancer extends BaseEnhancer {
     private hidePopup;
     private injectStyles;
     protected cleanupEventListeners(): void;
-    destroy(): void;
 }
 export {};
 //# sourceMappingURL=fomo-popup.enhancer.d.ts.map

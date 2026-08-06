@@ -137,10 +137,12 @@ export interface Order {
     shipping_address?: OrderAddress;
     billing_address?: OrderAddress;
     attribution?: MarketingAttribution;
+    payment_method?: PaymentMethod | null;
     order_status_url: string;
     payment_complete_url?: string;
     supports_post_purchase_upsells: boolean;
     is_test: boolean;
+    statement_descriptor?: string | null;
 }
 export interface OrderLine {
     id: number;
@@ -155,6 +157,14 @@ export interface OrderLine {
     product_description?: string;
     variant_title?: string;
     quantity: number;
+    product_id?: number | null;
+    variant_id?: number | null;
+    metadata?: Record<string, unknown> | null;
+    properties?: OrderLineProperty[] | null;
+}
+export interface OrderLineProperty {
+    key: string;
+    value: string;
 }
 export interface MarketingAttribution {
     utm_source?: string;
@@ -219,7 +229,7 @@ export interface Voucher {
     description?: string;
     name?: string;
 }
-export type PaymentMethod = 'apple_pay' | 'card_token' | 'paypal' | 'klarna' | 'ideal' | 'bancontact' | 'giropay' | 'google_pay' | 'sofort' | 'sepa_debit' | 'external';
+export type PaymentMethod = 'apple_pay' | 'card_token' | 'paypal' | 'klarna' | 'ideal' | 'bancontact' | 'giropay' | 'google_pay' | 'sofort' | 'sepa_debit' | 'twint' | 'link' | 'affirm' | 'external';
 export interface CartBase {
     address?: AddressCart;
     attribution?: Attribution;

@@ -1,7 +1,7 @@
 export declare class CurrencyFormatter {
     private static formatters;
     private static formattersNoZeroCents;
-    private static numberFormatter;
+    private static numberFormatters;
     private static getCurrentCurrency;
     private static getUserLocale;
     static clearCache(): void;

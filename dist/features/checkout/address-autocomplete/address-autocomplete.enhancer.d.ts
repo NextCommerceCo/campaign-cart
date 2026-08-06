@@ -1,4 +1,4 @@
-import { ApiClient } from '../../../api/client';
+import { IApiClient } from '../../../api/client.types';
 export interface AddressAutocompleteOptions {
     enableGoogleMaps: boolean;
     enableNextCommerce: boolean;
@@ -11,7 +11,7 @@ export declare class AddressAutocompleteEnhancer {
     constructor(deps: {
         fields: Map<string, HTMLElement>;
         billingFields: Map<string, HTMLElement>;
-        apiClient: ApiClient;
+        apiClient: IApiClient;
         getDetectedCountryCode: () => string;
         getHasTrackedShippingInfo: () => boolean;
         setHasTrackedShippingInfo: (value: boolean) => void;

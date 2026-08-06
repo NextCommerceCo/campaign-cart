@@ -232,7 +232,14 @@ const PRODUCTION = blocks(
     'loaded before concluding nothing failed. `window.__NEXT_SDK_VERSION__` is set by ' +
     'the loader either way; the UMD fallback announces itself with a ' +
     '`UMD fallback loaded` line from the loader itself, which is not routed through ' +
-    '`Logger` and therefore survives.'
+    '`Logger` and therefore survives.',
+  '> A current browser on the UMD bundle is itself the finding, because that browser ' +
+    'supports modules: the fallback ran, so importing `dist/index.js` threw, and the ' +
+    'line immediately above it — `Failed to load SDK:` — carries the error. Treat it as ' +
+    'a defect in the build rather than a quirk of the visitor. v0.4.31 shipped exactly ' +
+    'that for a fortnight, silently, because the page still worked on the fallback; ' +
+    '`src/tests/contract/es-bundle-init.test.ts` now evaluates the built module graph ' +
+    'so a repeat fails a test instead of a customer console.'
 );
 
 /**

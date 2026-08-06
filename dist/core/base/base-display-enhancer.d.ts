@@ -30,7 +30,10 @@ export declare abstract class BaseDisplayEnhancer extends BaseEnhancer {
     protected multiplyBy?: number;
     protected lastValue?: any;
     private debugMode;
+    private displayListenerAbort;
     initialize(): Promise<void>;
+    protected listen<E extends Event>(target: Document | Window | HTMLElement, type: string, handler: (event: E) => void): void;
+    protected cleanupEventListeners(): void;
     protected setupCurrencyChangeListener(): void;
     protected parseDisplayAttributes(): void;
     protected getDefaultFormatType(property: string): FormatType;

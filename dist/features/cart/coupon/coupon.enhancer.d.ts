@@ -5,6 +5,8 @@ export declare class CouponEnhancer extends BaseActionEnhancer {
     private display;
     private template;
     private unsubscribe;
+    private listenerAbort;
+    private get listenerOptions();
     initialize(): Promise<void>;
     private setupInputListener;
     private setupButtonListener;
@@ -14,6 +16,7 @@ export declare class CouponEnhancer extends BaseActionEnhancer {
     private removeCoupon;
     private showMessage;
     update(): Promise<void>;
+    protected cleanupEventListeners(): void;
     destroy(): void;
 }
 //# sourceMappingURL=coupon.enhancer.d.ts.map

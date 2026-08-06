@@ -302,6 +302,38 @@ export default defineConfig({
             return 'vendor';
           }
 
+          // The three zero-dependency services every other chunk calls while its
+          // own module body is still running: `createLogger` (dozens of modules do
+          // `const logger = createLogger('X')` at module scope), the
+          // `sessionStorageManager` singleton, and `EventBus`. `logger.ts` and
+          // `events.ts` import nothing but a type and `storage.ts` imports only
+          // `logger.ts`, so this chunk has no outgoing edge into `src/` — it can
+          // never be the half-evaluated side of a cycle, which is what makes a
+          // module-init call into it safe from wherever it comes.
+          //
+          // That is the whole point, and it is the fix for issue #77. Anywhere
+          // else, these files sit inside a chunk cycle: they used to be
+          // `src/utils/{logger,storage,events}.ts`, the `state` rule below kept
+          // naming that path after the `utils/` → `core/` migration, and so
+          // Rollup scattered them — `logger.ts` and `events.ts` into `analytics`,
+          // `storage.ts` into `state`. `analytics` imports `state`, so `state`
+          // evaluated first, `storage.ts`'s module-scope `new StorageManager()`
+          // called `createLogger` across the boundary, and the `Logger` subclass
+          // it constructs had not been evaluated yet: `ReferenceError: Cannot
+          // access 'l' before initialization` on every ESM page load, with every
+          // visitor silently falling back to the UMD bundle. Repairing the path
+          // only moved the crash — `state` then held `createLogger` and the
+          // `utils` ↔ `state` cycle broke it from the other side.
+          //
+          // `src/tests/contract/es-bundle-init.test.ts` evaluates the built ES
+          // graph and fails on a throw, so a reassignment that reopens this
+          // cannot pass unnoticed. Adding an import from any of these three files
+          // into the rest of `src/` gives this chunk an outgoing edge and forfeits
+          // the guarantee.
+          if (/\/core\/(logger|storage|events)\.ts$/.test(id)) {
+            return 'core-services';
+          }
+
           // The debug overlay and its panels, from wherever they live:
           // `src/core/debug/`, `src/core/analytics/debug/`,
           // `src/features/checkout/debug/`, `src/styles/debug/`.
@@ -330,31 +362,12 @@ export default defineConfig({
             return 'analytics';
           }
 
-          // Co-locate state stores with the leaf modules they require at
-          // module-init time (logger/storage/events). Without this, a `utils` ↔
-          // `state` chunk cycle triggers a TDZ on Zustand's `create` import in
-          // production.
-          //
-          // STALE, DELIBERATELY LEFT AS-IS — the second test is dead. Those three
-          // files are `src/core/logger.ts`, `src/core/storage.ts` and
-          // `src/core/events.ts` since the `utils/` → `core/` migration, so
-          // `/utils/(…)` matches none of them and only `storage.ts` still lands
-          // in `state`, by Rollup's own placement. `logger.ts` and `events.ts`
-          // land in `analytics` instead, which is why `state` currently cannot
-          // initialise without pulling the 119 kB `analytics` chunk (and through
-          // it `debug`).
-          //
-          // Repairing it is one word — `/utils/` → `/core/` — and measurably
-          // better: chunk-level cycles drop from 9 to 4, `state` sheds its edges
-          // to `analytics`, and the ES output shrinks 243 B. It is not applied
-          // here because it rewrites two chunks every campaign page downloads
-          // (`analytics` −1,578 B, `state` +1,485 B, both re-hashed), and a
-          // chunk reassignment is what caused the TDZ crash this comment records.
-          // It wants its own change with an e2e run behind it.
-          if (
-            id.includes('/src/state/') ||
-            /\/utils\/(logger|storage|events)\.ts$/.test(id)
-          ) {
+          // Every Zustand store. It used to carry a second arm co-locating
+          // `logger`/`storage`/`events` with the stores; those three have their
+          // own leaf chunk above, which is the same idea done in a way that also
+          // holds for the chunks other than `state` that call them at
+          // module-init time.
+          if (id.includes('/src/state/')) {
             return 'state';
           }
 

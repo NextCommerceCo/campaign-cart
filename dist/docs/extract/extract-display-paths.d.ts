@@ -1,8 +1,5 @@
-export interface DisplayPath {
-    name: string;
-    format: string;
-    negated: boolean;
-}
-export declare function findPropertyMappings(candidates: string[]): string;
-export declare function extractDisplayPaths(displayTypesPath: string): Record<string, DisplayPath[]>;
+export type { DisplayPath } from './extract-display-paths-routing-table';
+export { extractDisplayPaths, findPropertyMappings, } from './extract-display-paths-routing-table';
+export type { ResolvedDisplayPaths } from './extract-display-paths-resolve';
+export { extractResolvedDisplayPaths } from './extract-display-paths-resolve';
 //# sourceMappingURL=extract-display-paths.d.ts.map

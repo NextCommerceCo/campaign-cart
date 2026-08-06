@@ -51,6 +51,7 @@ export declare class CreditCardService {
     private fieldHasValue;
     private originalPlaceholders;
     private labelBehavior;
+    private listenerAbort;
     constructor(environmentKey: string, config?: CardInputConfig);
     initialize(): Promise<void>;
     tokenizeCard(cardData: CreditCardData): Promise<string>;
