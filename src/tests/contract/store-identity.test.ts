@@ -54,6 +54,16 @@ const PERSIST_KEYS: Record<string, string | null> = {
   parameter: 'next-url-params',
 };
 
+/**
+ * Stores whose key carries a `__{scope}` suffix so two campaigns sharing one origin
+ * cannot read each other's copy. Membership is the contract in both directions: a
+ * store that leaves this set stops being isolated, and one that joins it breaks what
+ * the key exists for. `attribution` and `parameter` are origin-wide on purpose —
+ * scoping attribution would drop the affiliate credit for a shopper who landed on
+ * one funnel and bought on another, which is the case it is there to cover.
+ */
+const FUNNEL_SCOPED = new Set(['checkout', 'order']);
+
 describe('state — store identity', () => {
   it.each(stores)(
     '$id resolves to one instance through the barrel and the state file',
@@ -81,6 +91,15 @@ describe('state — persist keys are unchanged', () => {
       return;
     }
 
-    expect(persist?.getOptions().name).toBe(expected);
+    const name = persist?.getOptions().name;
+
+    if (FUNNEL_SCOPED.has(id)) {
+      expect(name, `${id} must stay funnel-scoped`).toMatch(
+        new RegExp(`^${expected}__[a-z0-9-]+$`)
+      );
+      return;
+    }
+
+    expect(name).toBe(expected);
   });
 });

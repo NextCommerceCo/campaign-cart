@@ -39,6 +39,7 @@
 import type { Logger } from '@/core/logger';
 import { GeneralModal } from '@/core/ui/general-modal';
 import { preserveQueryParams } from '@/core/url-utils';
+import { ORDER_STORAGE_KEY } from '@/core/storage';
 import { useCheckoutStore } from '@/state/checkout';
 
 import type { UIService } from '../services/ui-service';
@@ -78,7 +79,7 @@ export async function handlePurchaseEvent(
   ctx: DuplicatePurchaseWarningContext
 ): Promise<void> {
   // Check for existing order in sessionStorage
-  const orderDataStr = sessionStorage.getItem('next-order');
+  const orderDataStr = sessionStorage.getItem(ORDER_STORAGE_KEY);
   if (!orderDataStr) return;
 
   try {

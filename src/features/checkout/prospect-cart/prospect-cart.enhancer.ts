@@ -6,6 +6,7 @@
 import { BaseEnhancer } from '@/core/base/base-enhancer';
 import { useCartStore } from '@/state/cart';
 import { getApiClient } from '@/client';
+import { PROSPECT_CART_STORAGE_KEY } from '@/core/storage';
 import type { IApiClient } from '@/api/client.types';
 import { loadConfig } from './config';
 import {
@@ -206,7 +207,7 @@ export class ProspectCartEnhancer extends BaseEnhancer {
 
   private checkExistingProspectCart(): void {
     // Check for existing prospect cart in session storage
-    const stored = sessionStorage.getItem('next_prospect_cart');
+    const stored = sessionStorage.getItem(PROSPECT_CART_STORAGE_KEY);
     if (stored) {
       try {
         const prospectCart = JSON.parse(stored);
@@ -221,11 +222,11 @@ export class ProspectCartEnhancer extends BaseEnhancer {
           );
         } else {
           // Remove expired cart
-          sessionStorage.removeItem('next_prospect_cart');
+          sessionStorage.removeItem(PROSPECT_CART_STORAGE_KEY);
         }
       } catch (error) {
         this.logger.warn('Failed to parse stored prospect cart:', error);
-        sessionStorage.removeItem('next_prospect_cart');
+        sessionStorage.removeItem(PROSPECT_CART_STORAGE_KEY);
       }
     }
   }
@@ -273,7 +274,7 @@ export class ProspectCartEnhancer extends BaseEnhancer {
     });
 
     // Clear stored cart
-    sessionStorage.removeItem('next_prospect_cart');
+    sessionStorage.removeItem(PROSPECT_CART_STORAGE_KEY);
     this.prospectCartRef.value = undefined;
 
     this.logger.info('Prospect cart marked as abandoned');
@@ -287,7 +288,7 @@ export class ProspectCartEnhancer extends BaseEnhancer {
     });
 
     // Clear stored cart as it's now converted to a real order
-    sessionStorage.removeItem('next_prospect_cart');
+    sessionStorage.removeItem(PROSPECT_CART_STORAGE_KEY);
     this.prospectCartRef.value = undefined;
 
     this.logger.info('Prospect cart converted to order');

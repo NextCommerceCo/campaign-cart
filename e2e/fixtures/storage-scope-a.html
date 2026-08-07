@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- The SDK requires an API key at boot; the spec mocks the campaign API. -->
+    <meta name="next-api-key" content="test-e2e-key" />
+    <!-- Both fixtures are served from /e2e/fixtures/, so the derived scope would
+         be `e2e` for each. Declaring one is what makes them two campaigns sharing
+         an origin, which is the thing under test. It has to sit above the SDK
+         script: the scoped keys are `persist` names, fixed at module creation. -->
+    <meta name="next-storage-scope" content="funnel-a" />
+    <title>E2E — Storage scope A</title>
+  </head>
+  <body>
+    <h1>Storage scope fixture A</h1>
+    <p>Declared scope: <code>funnel-a</code></p>
+
+    <button data-next-action="add-to-cart" data-next-package-id="1">
+      Add to cart
+    </button>
+
+    <span data-next-display="cart.totalQuantity">0</span>
+
+    <!-- Vite dev server serves the SDK entry as an ES module. -->
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

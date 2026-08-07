@@ -4,6 +4,7 @@
  */
 
 import { BaseEnhancer } from '@/core/base/base-enhancer';
+import { EXIT_INTENT_STORAGE_KEY } from '@/core/storage';
 import {
   isMobileDevice,
   saveToSessionStorage,
@@ -36,7 +37,7 @@ export class ExitIntentEnhancer extends BaseEnhancer {
   private scrollHandler: ((e: Event) => void) | null = null;
   private disableOnMobile = true; // Default to desktop-only like the reference code
   private mobileScrollTrigger = false; // Explicitly enable mobile scroll trigger
-  private sessionStorageKey = 'next-exit-intent-dismissed';
+  private sessionStorageKey = EXIT_INTENT_STORAGE_KEY;
   private useSessionStorage = true; // Enable session storage by default
   private overlayClosable = true; // Allow overlay click to close
   private showCloseButton = false; // Show close button on modal

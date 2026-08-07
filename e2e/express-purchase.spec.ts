@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { ORDER_KEY } from './fixtures/storage-keys';
 import type { Campaign } from '../src/types/campaign';
 import type { Order } from '../src/types/api';
 import { MINIMAL_CAMPAIGN } from './fixtures/campaign';
@@ -152,8 +153,8 @@ test('landing on the failure page reports no purchase, even for an order that lo
   await expect
     .poll(() =>
       page.evaluate(
-        () =>
-          sessionStorage.getItem('next-order')?.includes('E2E-1001') ?? false
+        key => sessionStorage.getItem(key)?.includes('E2E-1001') ?? false,
+        ORDER_KEY
       )
     )
     .toBe(true);
@@ -200,8 +201,8 @@ test('opening the success page while the order is still unpaid reports no purcha
   await expect
     .poll(() =>
       page.evaluate(
-        () =>
-          sessionStorage.getItem('next-order')?.includes('E2E-PENDING') ?? false
+        key => sessionStorage.getItem(key)?.includes('E2E-PENDING') ?? false,
+        ORDER_KEY
       )
     )
     .toBe(true);
@@ -226,7 +227,7 @@ test('reloading the success page does not report the purchase twice', async ({
   // nothing tried to send it — the once-per-order list is never consulted.
   // Clearing it forces a real re-fetch, which leaves the dedupe in
   // `DataLayerManager.push` as the only thing that can hold the count at one.
-  await page.evaluate(() => sessionStorage.removeItem('next-order'));
+  await page.evaluate(key => sessionStorage.removeItem(key), ORDER_KEY);
 
   await page.reload();
   await page.waitForFunction(() => Boolean((window as any).next?.on));
@@ -237,8 +238,8 @@ test('reloading the success page does not report the purchase twice', async ({
   await expect
     .poll(() =>
       page.evaluate(
-        () =>
-          sessionStorage.getItem('next-order')?.includes('E2E-1001') ?? false
+        key => sessionStorage.getItem(key)?.includes('E2E-1001') ?? false,
+        ORDER_KEY
       )
     )
     .toBe(true);

@@ -4,6 +4,7 @@
  */
 
 import { BaseEnhancer } from '@/core/base/base-enhancer';
+import { getTimerKey } from '@/core/storage';
 
 export class TimerEnhancer extends BaseEnhancer {
   private duration: number = 0;
@@ -36,13 +37,13 @@ export class TimerEnhancer extends BaseEnhancer {
   }
 
   private loadStartTime(): void {
-    const stored = localStorage.getItem(`next-timer-${this.persistenceId}`);
+    const stored = localStorage.getItem(getTimerKey(this.persistenceId));
     
     if (stored) {
       this.startTime = parseInt(stored, 10);
     } else {
       this.startTime = Date.now();
-      localStorage.setItem(`next-timer-${this.persistenceId}`, this.startTime.toString());
+      localStorage.setItem(getTimerKey(this.persistenceId), this.startTime.toString());
     }
   }
 
@@ -97,7 +98,7 @@ export class TimerEnhancer extends BaseEnhancer {
     }
     
     // Remove from localStorage
-    localStorage.removeItem(`next-timer-${this.persistenceId}`);
+    localStorage.removeItem(getTimerKey(this.persistenceId));
     
     // Hide timer element
     this.element.style.display = 'none';

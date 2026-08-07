@@ -1,3 +1,4 @@
+import { ORDER_STORAGE_KEY } from '@/core/storage';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { GeneralModal } from '@/core/ui/general-modal';
@@ -82,7 +83,7 @@ describe('handlePurchaseEvent — when it stays out of the way', () => {
 
   it('does nothing when the stored order has no number yet', async () => {
     sessionStorage.setItem(
-      'next-order',
+      ORDER_STORAGE_KEY,
       JSON.stringify({ state: { order: { ref_id: 'abc' } } })
     );
     const show = vi.spyOn(GeneralModal, 'show');
@@ -94,7 +95,7 @@ describe('handlePurchaseEvent — when it stays out of the way', () => {
   });
 
   it('warns about an order once per tab', async () => {
-    sessionStorage.setItem('next-order', storedOrder('abc'));
+    sessionStorage.setItem(ORDER_STORAGE_KEY, storedOrder('abc'));
     sessionStorage.setItem(
       'next-shown-order-warnings',
       JSON.stringify(['abc'])
@@ -112,7 +113,7 @@ describe('handlePurchaseEvent — when it stays out of the way', () => {
   });
 
   it('logs and clears processing when the stored order is not JSON', async () => {
-    sessionStorage.setItem('next-order', '{not json');
+    sessionStorage.setItem(ORDER_STORAGE_KEY, '{not json');
     useCheckoutStore.setState({ isProcessing: true });
     const ctx = context();
 
@@ -128,7 +129,7 @@ describe('handlePurchaseEvent — when it stays out of the way', () => {
 
 describe('handlePurchaseEvent — the two answers', () => {
   it('empties the form when the shopper closes the warning', async () => {
-    sessionStorage.setItem('next-order', storedOrder('abc'));
+    sessionStorage.setItem(ORDER_STORAGE_KEY, storedOrder('abc'));
     modalAnswers('cancel');
     const ctx = context();
 
@@ -146,7 +147,7 @@ describe('handlePurchaseEvent — the two answers', () => {
     meta.name = 'next-success-url';
     meta.content = '/thank-you/';
     document.head.appendChild(meta);
-    sessionStorage.setItem('next-order', storedOrder('abc'));
+    sessionStorage.setItem(ORDER_STORAGE_KEY, storedOrder('abc'));
     modalAnswers('confirm');
     const ctx = context();
 
@@ -166,7 +167,7 @@ describe('handlePurchaseEvent — the two answers', () => {
    * one. The second entry now finds the mark already there and returns.
    */
   it('shows one modal however many times it is called for the same order', async () => {
-    sessionStorage.setItem('next-order', storedOrder('abc'));
+    sessionStorage.setItem(ORDER_STORAGE_KEY, storedOrder('abc'));
     let openModals = 0;
     vi.spyOn(GeneralModal, 'show').mockImplementation(() => {
       openModals += 1;
@@ -183,7 +184,7 @@ describe('handlePurchaseEvent — the two answers', () => {
   });
 
   it('records the order as warned before the shopper has answered', async () => {
-    sessionStorage.setItem('next-order', storedOrder('abc'));
+    sessionStorage.setItem(ORDER_STORAGE_KEY, storedOrder('abc'));
     let markWhileOpen: string | null = null;
     vi.spyOn(GeneralModal, 'show').mockImplementation(() => {
       markWhileOpen = sessionStorage.getItem('next-shown-order-warnings');
@@ -207,7 +208,7 @@ describe('handlePurchaseEvent — the two answers', () => {
    * it, which is what makes the clearing final.
    */
   it('clears the form on close without refilling it first', async () => {
-    sessionStorage.setItem('next-order', storedOrder('abc'));
+    sessionStorage.setItem(ORDER_STORAGE_KEY, storedOrder('abc'));
     modalAnswers('cancel');
     const ctx = context();
 

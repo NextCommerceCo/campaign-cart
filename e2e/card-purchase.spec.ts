@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { ORDER_KEY } from './fixtures/storage-keys';
 import type { Order } from '../src/types/api';
 import { MINIMAL_CAMPAIGN } from './fixtures/campaign';
 import { TEST_ORDER } from './fixtures/order';
@@ -262,8 +263,8 @@ test('a card declined at 3-D Secure reports no purchase', async ({ page }) => {
   await expect
     .poll(() =>
       page.evaluate(
-        () =>
-          sessionStorage.getItem('next-order')?.includes('E2E-CARD-1') ?? false
+        key => sessionStorage.getItem(key)?.includes('E2E-CARD-1') ?? false,
+        ORDER_KEY
       )
     )
     .toBe(true);
