@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Two campaigns, one origin, one directory, and no scope tag anywhere —
+         the production shape: the SDK cannot edit a customer's HTML, so the API
+         key is the only thing telling these two pages apart. -->
+    <meta name="next-api-key" content="test-e2e-key-xxxxx" />
+    <title>E2E — Storage scope, campaign key X</title>
+  </head>
+  <body>
+    <h1>Campaign key X</h1>
+    <p>API key: <code>test-e2e-key-xxxxx</code></p>
+
+    <button data-next-action="add-to-cart" data-next-package-id="1">
+      Add to cart
+    </button>
+
+    <span data-next-display="cart.totalQuantity">0</span>
+
+    <!-- Vite dev server serves the SDK entry as an ES module. -->
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

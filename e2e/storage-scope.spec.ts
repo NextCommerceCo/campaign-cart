@@ -21,6 +21,8 @@ import { scopedKey } from './fixtures/storage-keys';
 
 const FIXTURE_A = '/e2e/fixtures/storage-scope-a.html';
 const FIXTURE_B = '/e2e/fixtures/storage-scope-b.html';
+const FIXTURE_KEY_X = '/e2e/fixtures/storage-scope-key-x.html';
+const FIXTURE_KEY_Y = '/e2e/fixtures/storage-scope-key-y.html';
 
 const QUANTITY = '[data-next-display="cart.totalQuantity"]';
 const ADD = '[data-next-action="add-to-cart"]';
@@ -82,12 +84,13 @@ test('each funnel writes its own cart key, and both survive', async ({
   ]);
 });
 
-test('a page that declares no scope derives one from its path', async ({
+test('a page that declares no scope derives one without help', async ({
   page,
 }) => {
-  // Every other fixture relies on this: no meta tag, so the scope is the first
-  // path segment of `/e2e/fixtures/…`. If deriving broke, those specs would seed
-  // keys the SDK never reads and fail for a reason that looks unrelated.
+  // The case that matters in production, where the SDK cannot edit the customer's
+  // HTML: no scope tag, so it is derived from the API key and the serving
+  // directory. Every other fixture relies on this — if deriving broke, those specs
+  // would seed keys the SDK never reads and fail for a reason that looks unrelated.
   await bootSdk(page, '/e2e/fixtures/add-to-cart.html');
   await page.click(ADD);
   await expect(page.locator(QUANTITY)).toHaveText('1');
@@ -97,4 +100,21 @@ test('a page that declares no scope derives one from its path', async ({
   );
 
   expect(keys).toEqual([scopedKey('next-cart-state')]);
+});
+
+test('two campaign keys in one directory separate with no tag at all', async ({
+  page,
+}) => {
+  // Production: campaigns run on domains the SDK cannot edit, so declaring a scope
+  // is not available. These two fixtures sit in the same directory and differ only
+  // by `next-api-key` — which is what has to carry the separation.
+  await bootSdk(page, FIXTURE_KEY_X);
+  await page.click(ADD);
+  await expect(page.locator(QUANTITY)).toHaveText('1');
+
+  await bootSdk(page, FIXTURE_KEY_Y);
+  await expect(page.locator(QUANTITY)).toHaveText('0');
+
+  await bootSdk(page, FIXTURE_KEY_X);
+  await expect(page.locator(QUANTITY)).toHaveText('1');
 });
