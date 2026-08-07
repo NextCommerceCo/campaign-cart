@@ -12,11 +12,11 @@
  * left origin-wide; see `core/guide/reference/storage-keys.md`.
  *
  * **Nothing is asked of the page.** Campaigns run on customer domains the SDK cannot
- * edit, so the scope is derived from two things every working page already has: the
- * API key it boots with, and the directory it is served from. There is no
- * multi-campaign detection and there could not be one — a page cannot know what else
- * shares its origin. Scoping is unconditional instead, and on a single-campaign
- * origin the suffix is simply constant.
+ * edit, so the scope is derived from the one thing every working page already
+ * carries and every page of a funnel carries identically: the API key it boots with.
+ * There is no multi-campaign detection and there could not be one — a page cannot
+ * know what else shares its origin. Scoping is unconditional instead, and on a
+ * single-campaign origin the suffix is simply constant.
  */
 
 /** The meta tag that overrides the derived scope, for a page you control. */
@@ -44,7 +44,7 @@ function hashToken(value: string): string {
 /** Keeps a key readable in devtools while it cannot collide with the `__` join. */
 const MAX_SCOPE_LENGTH = 40;
 
-/** What a page with nothing to derive from is called. */
+/** What a page with no readable API key falls back to. See {@link storageScopeFellBack}. */
 const ROOT_SCOPE = 'root';
 
 function sanitize(raw: string): string {
@@ -96,31 +96,28 @@ function apiKeyToken(): string {
 }
 
 /**
- * The funnel half of the scope: the **directory**, not the first path segment.
- *
- * A funnel spans several pages and the cart has to survive the walk between them,
- * so the token has to be identical on every one. The directory is what satisfies
- * that for both layouts in use: `/funnel-a/` and `/funnel-a/checkout` share
- * `/funnel-a`, and a flat-file funnel — `/promo-b.html` and
- * `/promo-b-checkout.html` — shares the root. Taking the first segment instead
- * would give a flat-file funnel a different scope on every page and empty the cart
- * between the offer and the checkout.
- */
-function pathToken(): string {
-  const { pathname } = window.location;
-  const directory = pathname.slice(0, pathname.lastIndexOf('/'));
-  return sanitize(directory);
-}
-
-/**
  * The scope every funnel-scoped storage key is suffixed with.
  *
  * Resolution order, first match wins:
  *
  * 1. `window.nextConfig.storageScope`
  * 2. `<meta name="next-storage-scope">`
- * 3. the API key and the serving directory, joined — the automatic case
- * 4. `root`, when there is nothing to derive from
+ * 3. a hash of the API key — the automatic case
+ * 4. `root`, when no key is readable
+ *
+ * **The URL is not part of it, and must not become part of it.** A funnel is spread
+ * across sibling directories in production — `/apollo-presell/` and
+ * `/apollo-checkout/` are two pages of one campaign — so every path-derived token
+ * that has been tried here changed between the offer page and the checkout and
+ * emptied the cart on the way. First path segment, directory, both: all wrong for
+ * that layout, and none of them are wrong in a way a page can report. The API key
+ * is the only thing that is identical on every page of a funnel and different
+ * between campaigns.
+ *
+ * The cost is the converse case: two *different* funnels running the same campaign
+ * key at one origin share a cart. They also share a catalog and a discount table,
+ * so a carried cart still prices correctly — and where that is not wanted, the page
+ * is one you control and can declare a scope on.
  *
  * **Read once, at import.** The keys built from this are `persist` names captured
  * when their store module is created. `<script type="module">` is deferred, so the
@@ -130,29 +127,29 @@ function pathToken(): string {
  *
  * @example
  * ```ts
- * // /funnel-a/checkout, with an api key hashing to 'k3m9x2p'
- * storageScope(); // 'k3m9x2p-funnel-a'
+ * // Every page of one campaign, whatever its URL
+ * // /apollo-presell/, /apollo-checkout/, /apollo-upsell1/
+ * storageScope(); // 'kn3mmo' — the same on all three
  *
- * // /promo-b.html and /promo-b-checkout.html, same key — one funnel, one scope
- * storageScope(); // 'k3m9x2p'
+ * // A different campaign on the same origin
+ * storageScope(); // '1k56lj4'
  *
- * // <meta name="next-storage-scope" content="promo-b"> overrides both
+ * // <meta name="next-storage-scope" content="promo-b"> overrides the derivation
  * storageScope(); // 'promo-b'
  * ```
  */
 export function storageScope(): string {
-  const declared = declaredScope();
-  if (declared) return declared;
-
-  const derived = [apiKeyToken(), pathToken()].filter(Boolean).join('-');
-  return sanitize(derived) || ROOT_SCOPE;
+  return declaredScope() ?? (apiKeyToken() || ROOT_SCOPE);
 }
 
 /**
- * True when the scope had to fall back to the directory alone: an API key *was*
- * configured, but none was readable at import, so the stores captured their keys
- * without the campaign half. A page in that state still writes a consistent key —
- * the risk is two pages of one funnel disagreeing about it and not sharing a cart.
+ * True when no API key was readable at import even though one *was* configured, so
+ * every funnel-scoped key on this page fell back to {@link ROOT_SCOPE}.
+ *
+ * That fallback is deliberately the shared scope rather than anything derived from
+ * the URL: it degrades to the behaviour from before scoping existed — every campaign
+ * on the origin sharing one cart — which is a known state, rather than to a scope
+ * that differs per page and empties the cart mid-funnel.
  *
  * Takes the configured key rather than reading it, so the caller can ask this only
  * once `loadConfiguration` has established that a key exists at all. The message

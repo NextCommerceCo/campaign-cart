@@ -224,7 +224,7 @@ export class SDKInitializer {
       // One literal, not a concatenation: the generated log reference is built by
       // reading these strings out of the source, and it cannot follow a `+`.
       this.logger.warn(
-        'Storage scope fell back to the page directory: next-api-key was not readable when the stores were created. Move the SDK script below the meta tag, or load the module build.'
+        'Storage scope fell back to a shared one: next-api-key was not readable when the stores were created, so every campaign on this origin shares a cart. Move the SDK script below the meta tag, or load the module build.'
       );
     }
 

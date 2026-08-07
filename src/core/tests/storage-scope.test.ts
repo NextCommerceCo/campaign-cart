@@ -46,97 +46,107 @@ describe('storageScope', () => {
   });
 
   describe('derived with no help from the page', () => {
-    it('combines the API key with the serving directory', () => {
-      expect(bootedWith(API_KEY, '/funnel-a/checkout')).toMatch(
-        /^[a-z0-9]+-funnel-a$/
-      );
-    });
-
-    it('separates two keys that share a long prefix', () => {
-      // The API key is hashed rather than truncated for exactly this: keys issued
-      // to one account agree on their first several characters, and a prefix token
-      // filed both campaigns under one scope.
-      expect(bootedWith('test-e2e-key-xxxxx', '/checkout')).not.toBe(
-        bootedWith('test-e2e-key-yyyyy', '/checkout')
-      );
-    });
-
-    it('holds one scope across every page of a folder funnel', () => {
+    it('is the same on every page of a campaign, whatever the URL', () => {
+      // Production puts each page of a funnel in its own sibling directory, so a
+      // path-derived scope changes between the offer and the checkout and empties
+      // the cart on the way. That shipped twice — once keyed on the first path
+      // segment, once on the directory. The URL is not an input.
       const scopes = [
-        '/funnel-a/',
-        '/funnel-a/checkout',
-        '/funnel-a/upsell1',
-        '/funnel-a/receipt',
+        '/apollo-presell/',
+        '/apollo-checkout/',
+        '/apollo-upsell1/',
+        '/apollo-receipt/index.html',
+        '/',
+        '/deeply/nested/page.html',
       ].map(path => bootedWith(API_KEY, path));
 
       expect(new Set(scopes).size).toBe(1);
     });
 
-    it('holds one scope across a flat-file funnel too', () => {
-      // The directory rather than the first path segment, precisely for this:
-      // these are one funnel, and a scope that changed between them would empty
-      // the cart on the way to the checkout — worse than the bleed it prevents.
-      const scopes = ['/promo-b.html', '/promo-b-checkout.html'].map(path =>
-        bootedWith(API_KEY, path)
-      );
-
-      expect(new Set(scopes).size).toBe(1);
-    });
-
-    it('separates two folder funnels sharing one campaign key', () => {
-      expect(bootedWith(API_KEY, '/funnel-a/checkout')).not.toBe(
-        bootedWith(API_KEY, '/funnel-b/checkout')
+    it('separates two campaigns', () => {
+      expect(bootedWith('pk_campaign_alpha', '/')).not.toBe(
+        bootedWith('pk_campaign_beta', '/')
       );
     });
 
-    it('separates two campaigns served from the same directory', () => {
-      expect(bootedWith('pk_aaaaaaaaaa', '/checkout')).not.toBe(
-        bootedWith('pk_bbbbbbbbbb', '/checkout')
-      );
-    });
-
-    it('separates nested funnels below a shared prefix', () => {
-      expect(bootedWith(API_KEY, '/brand-x/funnel-a/checkout')).not.toBe(
-        bootedWith(API_KEY, '/brand-x/funnel-b/checkout')
+    it('separates two keys that share a long prefix', () => {
+      // Hashed rather than truncated: keys issued to one account agree on their
+      // first several characters, and a prefix token filed both under one scope.
+      expect(bootedWith('test-e2e-key-xxxxx', '/')).not.toBe(
+        bootedWith('test-e2e-key-yyyyy', '/')
       );
     });
 
     it('reads the API key from window.nextConfig when there is no tag', () => {
-      const viaTag = bootedWith(API_KEY, '/funnel-a/checkout');
+      const viaTag = bootedWith(API_KEY, '/apollo-checkout/');
 
       document.head.innerHTML = '';
       (window as unknown as { nextConfig: { apiKey: string } }).nextConfig = {
         apiKey: API_KEY,
       };
-      atPath('/funnel-a/checkout');
 
       expect(storageScope()).toBe(viaTag);
     });
 
-    it('falls back to the path alone when no API key is readable', () => {
-      atPath('/funnel-a/checkout');
-      expect(storageScope()).toBe('funnel-a');
+    it('is a token that cannot break the key it is joined to', () => {
+      expect(bootedWith(API_KEY, '/')).toMatch(/^[a-z0-9]{1,40}$/);
+    });
+  });
+
+  describe('when no API key is readable', () => {
+    it('falls back to one shared scope rather than anything per-page', () => {
+      // The fallback has to be identical on every page: degrading to the
+      // pre-scoping behaviour is recoverable, degrading to a per-page scope loses
+      // the shopper's cart.
+      atPath('/apollo-presell/');
+      const presell = storageScope();
+      atPath('/apollo-checkout/');
+
+      expect(storageScope()).toBe(presell);
+      expect(presell).toBe('root');
     });
 
-    it('calls a page with nothing to derive from `root`', () => {
-      atPath('/');
-      expect(storageScope()).toBe('root');
+    it('reports itself when a key really was configured', () => {
+      atPath('/apollo-checkout/');
+      expect(storageScopeFellBack(API_KEY)).toBe(true);
     });
 
-    it('truncates rather than growing the key', () => {
-      expect(
-        bootedWith(API_KEY, `/${'a'.repeat(80)}/checkout`).length
-      ).toBeLessThanOrEqual(40);
+    it('says nothing when the key was readable', () => {
+      declareMeta('next-api-key', API_KEY);
+      expect(storageScopeFellBack(API_KEY)).toBe(false);
+    });
+
+    it('says nothing when the scope was declared outright', () => {
+      declareMeta(STORAGE_SCOPE_META, 'promo-b');
+      expect(storageScopeFellBack(API_KEY)).toBe(false);
+    });
+
+    it('says nothing when no API key was configured at all', () => {
+      // That is a fatal boot error with its own message; this warning would only
+      // add noise to it.
+      expect(storageScopeFellBack('')).toBe(false);
     });
   });
 
   describe('declared explicitly', () => {
-    it('takes the meta tag over anything derived', () => {
+    it('takes the meta tag over the derived scope', () => {
       declareMeta('next-api-key', API_KEY);
       declareMeta(STORAGE_SCOPE_META, 'promo-b');
-      atPath('/funnel-a/checkout');
 
       expect(storageScope()).toBe('promo-b');
+    });
+
+    it('separates two funnels that share one campaign key', () => {
+      // The only case deriving cannot cover, and the reason the override exists.
+      declareMeta('next-api-key', API_KEY);
+      declareMeta(STORAGE_SCOPE_META, 'funnel-a');
+      const a = storageScope();
+
+      document.head.innerHTML = '';
+      declareMeta('next-api-key', API_KEY);
+      declareMeta(STORAGE_SCOPE_META, 'funnel-b');
+
+      expect(storageScope()).not.toBe(a);
     });
 
     it('takes window.nextConfig over the meta tag', () => {
@@ -149,7 +159,7 @@ describe('storageScope', () => {
     });
 
     it('falls back to deriving when the declared scope is unusable', () => {
-      const derived = bootedWith(API_KEY, '/funnel-a/checkout');
+      const derived = bootedWith(API_KEY, '/');
 
       declareMeta(STORAGE_SCOPE_META, '   ');
 
@@ -160,32 +170,10 @@ describe('storageScope', () => {
       declareMeta(STORAGE_SCOPE_META, 'Promo B / 2026');
       expect(storageScope()).toBe('promo-b-2026');
     });
-  });
 
-  describe('storageScopeFellBack', () => {
-    it('reports a key that was configured but unreadable at import', () => {
-      atPath('/funnel-a/checkout');
-      expect(storageScopeFellBack(API_KEY)).toBe(true);
-    });
-
-    it('says nothing when the key was readable', () => {
-      declareMeta('next-api-key', API_KEY);
-      atPath('/funnel-a/checkout');
-
-      expect(storageScopeFellBack(API_KEY)).toBe(false);
-    });
-
-    it('says nothing when the scope was declared outright', () => {
-      declareMeta(STORAGE_SCOPE_META, 'promo-b');
-      atPath('/funnel-a/checkout');
-
-      expect(storageScopeFellBack(API_KEY)).toBe(false);
-    });
-
-    it('says nothing when no API key was configured at all', () => {
-      // That is a fatal boot error with its own message; this warning would only
-      // add noise to it.
-      expect(storageScopeFellBack('')).toBe(false);
+    it('truncates a long declared scope rather than growing the key', () => {
+      declareMeta(STORAGE_SCOPE_META, 'a'.repeat(80));
+      expect(storageScope()).toHaveLength(40);
     });
   });
 });

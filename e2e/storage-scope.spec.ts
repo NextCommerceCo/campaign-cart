@@ -23,6 +23,8 @@ const FIXTURE_A = '/e2e/fixtures/storage-scope-a.html';
 const FIXTURE_B = '/e2e/fixtures/storage-scope-b.html';
 const FIXTURE_KEY_X = '/e2e/fixtures/storage-scope-key-x.html';
 const FIXTURE_KEY_Y = '/e2e/fixtures/storage-scope-key-y.html';
+const APOLLO_PRESELL = '/e2e/fixtures/apollo-presell/';
+const APOLLO_CHECKOUT = '/e2e/fixtures/apollo-checkout/';
 
 const QUANTITY = '[data-next-display="cart.totalQuantity"]';
 const ADD = '[data-next-action="add-to-cart"]';
@@ -88,9 +90,9 @@ test('a page that declares no scope derives one without help', async ({
   page,
 }) => {
   // The case that matters in production, where the SDK cannot edit the customer's
-  // HTML: no scope tag, so it is derived from the API key and the serving
-  // directory. Every other fixture relies on this — if deriving broke, those specs
-  // would seed keys the SDK never reads and fail for a reason that looks unrelated.
+  // HTML: no scope tag, so it is derived from the API key alone. Every other fixture
+  // relies on this — if deriving broke, those specs would seed keys the SDK never
+  // reads and fail for a reason that looks unrelated.
   await bootSdk(page, '/e2e/fixtures/add-to-cart.html');
   await page.click(ADD);
   await expect(page.locator(QUANTITY)).toHaveText('1');
@@ -117,4 +119,26 @@ test('two campaign keys in one directory separate with no tag at all', async ({
 
   await bootSdk(page, FIXTURE_KEY_X);
   await expect(page.locator(QUANTITY)).toHaveText('1');
+});
+
+test('one campaign keeps its cart across sibling directories', async ({
+  page,
+}) => {
+  // The regression. Production gives each page of a funnel its own directory —
+  // /apollo-presell/, /apollo-checkout/ — so any scope built from the URL changes
+  // between them and the shopper arrives at the checkout with an empty cart. Two
+  // path-derived scopes shipped and both failed here.
+  await bootSdk(page, APOLLO_PRESELL);
+  await page.click(ADD);
+  await expect(page.locator(QUANTITY)).toHaveText('1');
+
+  await bootSdk(page, APOLLO_CHECKOUT);
+  await expect(page.locator(QUANTITY)).toHaveText('1');
+
+  const keys = await page.evaluate(() =>
+    Object.keys(sessionStorage).filter(k => k.startsWith('next-cart-state'))
+  );
+
+  // One entry, not two — the two directories did not each mint their own.
+  expect(keys).toEqual([scopedKey('next-cart-state')]);
 });
