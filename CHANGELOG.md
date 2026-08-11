@@ -6,56 +6,34 @@
 
 - **Two campaigns on the same website no longer share a shopping bag.**
 
-  A browser files a saved cart against the website address, not against the campaign.
-  Every campaign we host sits on one address, so a shopper who looked at two of them
-  arrived at the second carrying the first one's items — and, more expensively, the first
-  one's discount. A saved cart stores the exact rule each code matched, so the second
-  campaign did not merely show the wrong products, it honoured pricing it never offered.
+  A browser files a saved cart against the website address, not against the campaign. Every campaign we host sits on one address, so a shopper who looked at two of them arrived at the second carrying the first one's items — and, more expensively, the first one's discount. A saved cart stores the exact rule each code matched, so the second campaign did not merely show the wrong products, it honoured pricing it never offered.
 
-  Six saved things are now filed per campaign: the shopping bag, the half-filled checkout
-  form, the completed order, the abandoned-cart record, countdown timers, and the
-  "don't show me that popup again" flag. Nothing is added to your pages — the name is
-  worked out from the API key the page already boots with and the folder it is served
-  from.
-  ([#69](https://github.com/NextCommerceCo/campaign-cart/issues/69))
+  Six saved things are now filed per campaign: the shopping bag, the half-filled checkout form, the completed order, the abandoned-cart record, countdown timers, and the "don't show me that popup again" flag. Nothing is added to your pages — the name is worked out from the API key the page already boots with and the folder it is served from. ([#69](https://github.com/NextCommerceCo/campaign-cart/issues/69))
 
 ### Before you upgrade
 
-**Carts open right now start empty, once.** The saved names have changed, so a shopper
-who was mid-funnel when this ships comes back to an empty bag and reselects. It happens
-one time per shopper, and only to bags that were already open.
+**There is nothing to add to your pages.** Every campaign is separated automatically, on markup you already have. The two notes below are things to be aware of, not steps to carry out.
 
-**Check any funnel whose pages sit at different depths.** A campaign whose first page is
-`/hu/` and whose checkout is `/hu/checkout` resolves to two different names, and the bag
-will not survive the step between them. Keep every page of one funnel at the same depth,
-or pin the name by hand with the tag below. Every other layout is handled — `/hu/earbuds`,
-`/hu/earbuds/checkout` and `/hu/earbuds/checkout/upsell1` all stay together, and so do
-`/promo-b.html` and `/promo-b-checkout.html`.
+**Carts open right now start empty, once.** The saved names have changed, so a shopper who was mid-funnel when this ships comes back to an empty bag and reselects. It happens one time per shopper, and only to bags that were already open.
 
-**Two funnels sharing one campaign API key** are kept apart when they sit in different top
-folders. In the same folder they share a bag, which is usually right: same campaign means
-same products and same prices, so a carried bag still charges correctly.
+**One layout is worth a look: a funnel whose pages sit at different depths.** A campaign whose first page is `/hu/` and whose checkout is `/hu/checkout` resolves to two different names, and the bag will not survive the step between them. Keep every page of one funnel at the same depth, or pin the name with the optional tag below. Every other layout is handled — `/hu/earbuds`, `/hu/earbuds/checkout` and `/hu/earbuds/checkout/upsell1` all stay together, and so do `/promo-b.html` and `/promo-b-checkout.html`.
+
+**Two funnels sharing one campaign API key** are kept apart when they sit in different top folders. In the same folder they share a bag, which is usually right: same campaign means same products and same prices, so a carried bag still charges correctly.
 
 ### New
 
-- **`<meta name="next-storage-scope">`** — pins the name by hand for the one layout that
-  needs it. Two pages that must share a cart declare the same value; two that must not
-  declare different ones. It has to be parsed before the SDK script runs, so put it in
-  `<head>` above the loader. `window.nextConfig.storageScope` sets the same thing and wins
-  over the tag.
+- **Two optional ways to set the name yourself, for the rare layout the derivation gets wrong.** Both are optional and both default to off: leave them alone and the name is derived for you, which is the case on every campaign we host today. Reach for one only when the derived name does not suit your layout, such as the mixed-depth funnel above.
+
+  - **`window.nextConfig.storageScope`** — set it on the config object your page already declares before the SDK loads. Use this one when a loader script computes the value.
+  - **`<meta name="next-storage-scope">`** — the same value as markup, for a page with no loader to edit.
+
+  Whichever you use, two pages that must share a cart declare the **same** value and two that must not declare **different** ones. Both are read while the storage modules are created, so they have to come before the SDK script — put the tag in `<head>` above the loader, and set `nextConfig` before it. If you set both, `window.nextConfig.storageScope` wins, which is the opposite of how `next-api-key` resolves.
 
 ### Changed
 
-- **Analytics, attribution and the shopper's currency stay shared on purpose.** Affiliate
-  credit follows the person rather than the campaign, one visit must not be reported as two
-  visitors, and a shopper paying in euros must not meet dollars on the next page. The list
-  that stops a sale being counted twice is shared for the same reason.
+- **Analytics, attribution and the shopper's currency stay shared on purpose.** Affiliate credit follows the person rather than the campaign, one visit must not be reported as two visitors, and a shopper paying in euros must not meet dollars on the next page. The list that stops a sale being counted twice is shared for the same reason.
 
-- **A new boot warning: _Storage scope fell back to a shared one_.** It means the SDK
-  script was placed above the `next-api-key` tag and could not read it in time, so the
-  saved names carry no campaign label and every campaign on the address shares one bag —
-  how the SDK behaved before this release. Move the script below the tag, or load the
-  module build.
+- **A new boot warning: _Storage scope fell back to a shared one_.** It means the SDK script was placed above the `next-api-key` tag and could not read it in time, so the saved names carry no campaign label and every campaign on the address shares one bag — how the SDK behaved before this release. Move the script below the tag, or load the module build.
 
 ---
 
@@ -71,80 +49,49 @@ No code changes. Released to correct the CDN copy; `0.4.32` and `0.4.33` are the
 
 - **A purchase is counted only once the shopper has paid.**
 
-  Express checkout (PayPal, Apple Pay, Google Pay) creates the order before the payment,
-  and the purchase was reported at that moment. So pressing **back** from PayPal, or a
-  declined payment, counted a conversion for an order that never happened.
+  Express checkout (PayPal, Apple Pay, Google Pay) creates the order before the payment, and the purchase was reported at that moment. So pressing **back** from PayPal, or a declined payment, counted a conversion for an order that never happened.
 
-  It is now reported from the page the shopper lands on after checkout, once per order —
-  a reload, or a receipt link opened again, cannot produce a second one. Cards that need
-  3-D Secure are fixed the same way. Cards charged on the checkout page were never
-  affected.
-  ([#71](https://github.com/NextCommerceCo/campaign-cart/issues/71))
+  It is now reported from the page the shopper lands on after checkout, once per order — a reload, or a receipt link opened again, cannot produce a second one. Cards that need 3-D Secure are fixed the same way. Cards charged on the checkout page were never affected. ([#71](https://github.com/NextCommerceCo/campaign-cart/issues/71))
 
 - **The SDK loads as one bundle again.**
 
-  Since v0.4.31 the main bundle failed to load and the loader fell back to the backup
-  copy. Pages kept working, but every visitor downloaded the SDK twice and `?debug=true`
-  printed no logs. Both are fixed, and nothing about your markup changes.
-  ([#77](https://github.com/NextCommerceCo/campaign-cart/issues/77))
+  Since v0.4.31 the main bundle failed to load and the loader fell back to the backup copy. Pages kept working, but every visitor downloaded the SDK twice and `?debug=true` printed no logs. Both are fixed, and nothing about your markup changes. ([#77](https://github.com/NextCommerceCo/campaign-cart/issues/77))
 
 ### Before you upgrade
 
-**Check your success page.** Purchases are now reported only from the page the shopper
-lands on after checkout, so that page has to load the SDK and has to keep the `?ref_id=`
-the redirect adds to its URL. A shopper sent somewhere the SDK is not installed records
-no conversion at all.
+**Check your success page.** Purchases are now reported only from the page the shopper lands on after checkout, so that page has to load the SDK and has to keep the `?ref_id=` the redirect adds to its URL. A shopper sent somewhere the SDK is not installed records no conversion at all.
 
 ### Changed
 
 - **`order:completed` now means the order is finished, not created.**
 
-  It fires on the page the shopper lands on after checkout, once the order has been
-  fetched back from the API. This is the event to hang conversion tracking on.
+  It fires on the page the shopper lands on after checkout, once the order has been fetched back from the API. This is the event to hang conversion tracking on.
 
-  The checkout page emits nothing when it creates an order, so **a listener you had on
-  `order:completed` there will no longer fire.** The payload is the full order now,
-  instead of the six-field summary.
+  The checkout page emits nothing when it creates an order, so **a listener you had on `order:completed` there will no longer fire.** The payload is the full order now, instead of the six-field summary.
 
-- **Debug mode survives a payment gateway.** `?debug=true` and `?debugger=true` are
-  copied onto the checkout's return URLs, so the page a shopper comes back to from
-  PayPal still has the logs and the overlay.
+- **Debug mode survives a payment gateway.** `?debug=true` and `?debugger=true` are copied onto the checkout's return URLs, so the page a shopper comes back to from PayPal still has the logs and the overlay.
 
 ---
 
 ## [0.4.31] — 2026-08-04 — Prices for Standard European Markets
 
-Campaigns can display prices the way European markets expect — `69,99 €` rather than
-`€69.99`. Alongside it, two larger pieces of work: the documentation is now a generated,
-versioned site, and the source tree is reorganised into one folder per feature. Neither
-changes how you integrate.
+Campaigns can display prices the way European markets expect — `69,99 €` rather than `€69.99`. Alongside it, two larger pieces of work: the documentation is now a generated, versioned site, and the source tree is reorganised into one folder per feature. Neither changes how you integrate.
 
 ### New
 
-- **`window.nextConfig.locale`** — pins how prices are written: `'de-DE'` renders
-  `69,99 €`. The **locale** decides the decimal separator and which side the symbol sits
-  on, not the currency code — so switching a campaign to `EUR` on its own still gives
-  `€69.99`. Leave it unset and the visitor's browser decides, which is usually right. An
-  unparseable tag (`de_DE`) is ignored with a warning rather than breaking prices. Detail
-  in **Core → Money Formatting**.
+- **`window.nextConfig.locale`** — pins how prices are written: `'de-DE'` renders `69,99 €`. The **locale** decides the decimal separator and which side the symbol sits on, not the currency code — so switching a campaign to `EUR` on its own still gives `€69.99`. Leave it unset and the visitor's browser decides, which is usually right. An unparseable tag (`de_DE`) is ignored with a warning rather than breaking prices. Detail in **Core → Money Formatting**.
 
 ### Improved
 
 - **A smaller download** — the ESM chunks are minified.
 
-- **One folder per feature** — code, tests and guide together, stores under `state/`, and
-  the oversized enhancers split by layer. Public exports, persist keys, dynamic imports and
-  production-bundle contents each have a contract test, so the move is checked rather than
-  asserted.
+- **One folder per feature** — code, tests and guide together, stores under `state/`, and the oversized enhancers split by layer. Public exports, persist keys, dynamic imports and production-bundle contents each have a contract test, so the move is checked rather than asserted.
 
-- **Features clean up after themselves** — a run of listener leaks closed, with teardown
-  now enforced by a contract test.
+- **Features clean up after themselves** — a run of listener leaks closed, with teardown now enforced by a contract test.
 
-- **The debug overlay's pickers apply without a reload** — changing currency, country or
-  locale used to need one.
+- **The debug overlay's pickers apply without a reload** — changing currency, country or locale used to need one.
 
-- **Quieter console on live pages** — the order manager's 24 raw console messages go
-  through the logger, so they appear when debugging is on and stay silent in production.
+- **Quieter console on live pages** — the order manager's 24 raw console messages go through the logger, so they appear when debugging is on and stay silent in production.
 
 ---
 
