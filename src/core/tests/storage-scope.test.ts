@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 
 import {
   storageScope,
+  storageScopeSuffix,
   storageScopeFellBack,
   STORAGE_SCOPE_META,
 } from '@/core/storage-scope';
@@ -126,33 +127,70 @@ describe('storageScope', () => {
     });
 
     it('is a token that cannot break the key it is joined to', () => {
-      expect(bootedWith(API_KEY, '/')).toMatch(/^[a-z0-9]{1,40}$/);
+      expect(bootedWith(API_KEY, '/')).toMatch(/^[a-z0-9]+$/);
     });
   });
 
-  describe('a token that cannot break the key it is joined to', () => {
-    it('sanitises a folder name with characters a key cannot carry', () => {
-      expect(bootedWith(API_KEY, '/Summer Skin 2026/offer')).toMatch(
-        /^[a-z0-9-]{1,40}$/
+  describe('what it contributes to a key name', () => {
+    it('joins with __ when there is a scope', () => {
+      const scope = bootedWith(API_KEY, '/hu/offer');
+
+      expect(storageScopeSuffix()).toBe(`__${scope}`);
+    });
+
+    it('contributes nothing when there is not', () => {
+      // The bare name is the point: it is exactly what the SDK wrote before scoping
+      // existed, so a page that cannot read its key degrades to a known state rather
+      // than to a new key called `__root`.
+      expect(storageScope()).toBe('');
+      expect(storageScopeSuffix()).toBe('');
+    });
+  });
+
+  describe('the folder cannot reach the key', () => {
+    it('is the same shape whatever the folder is called', () => {
+      // The two halves are hashed together rather than joined, so nothing about a
+      // folder name — its length, its punctuation, its case — reaches a key name.
+      const plain = bootedWith(API_KEY, '/hu/offer');
+      const awkward = bootedWith(API_KEY, '/Summer Skin // 2026!/offer');
+      const enormous = bootedWith(API_KEY, `/${'a'.repeat(400)}/offer`);
+
+      for (const scope of [plain, awkward, enormous]) {
+        expect(scope).toMatch(/^[a-z0-9]+$/);
+        expect(scope.length).toBeLessThanOrEqual(7);
+      }
+      expect(new Set([plain, awkward, enormous]).size).toBe(3);
+    });
+
+    it('reads one folder the same way however it is spelled in the URL', () => {
+      // Case and a trailing slash are not a different funnel.
+      expect(bootedWith(API_KEY, '/HU/offer')).toBe(
+        bootedWith(API_KEY, '/hu/offer')
       );
     });
 
-    it('truncates rather than growing the key on a very long folder', () => {
-      expect(bootedWith(API_KEY, `/${'a'.repeat(80)}/offer`)).toHaveLength(40);
+    it('cannot be made to collide by moving the boundary', () => {
+      // Concatenating the two halves without a separator would file the key `pk_x`
+      // on `/hu/…` and the key `pk_xhu` at the root under one scope.
+      expect(bootedWith('pk_x', '/hu/offer')).not.toBe(
+        bootedWith('pk_xhu', '/offer')
+      );
     });
   });
 
   describe('when no API key is readable', () => {
-    it('falls back to one shared scope rather than anything per-page', () => {
+    it('writes the bare key rather than anything per-page', () => {
       // The fallback has to be identical on every page: degrading to the
       // pre-scoping behaviour is recoverable, degrading to a per-page scope loses
-      // the shopper's cart.
+      // the shopper's cart. Empty, not a word — the key is then exactly the name
+      // the SDK wrote before scoping existed.
       atPath('/hu/earbuds');
       const presell = storageScope();
       atPath('/de/portable-ac/checkout');
 
       expect(storageScope()).toBe(presell);
-      expect(presell).toBe('root');
+      expect(presell).toBe('');
+      expect(storageScopeSuffix()).toBe('');
     });
 
     it('reports itself when a key really was configured', () => {

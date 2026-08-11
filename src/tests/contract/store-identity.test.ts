@@ -1,4 +1,21 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+/**
+ * The scoped `persist` names are captured when the store modules are created, and
+ * static imports are hoisted above everything in the test body — so the API key the
+ * scope is derived from has to be on the page before those imports run. `vi.hoisted`
+ * is the only hook that gets there first.
+ *
+ * Without it the stores load on a page with no `next-api-key`, resolve to the empty
+ * scope, and the assertions below would be checking the *fallback* key shape while
+ * reading as though they checked the real one.
+ */
+vi.hoisted(() => {
+  const meta = document.createElement('meta');
+  meta.setAttribute('name', 'next-api-key');
+  meta.setAttribute('content', 'pk_store_identity_contract');
+  document.head.appendChild(meta);
+});
 
 import { useAttributionStore } from '@/state/attribution';
 import { useCheckoutStore } from '@/state/checkout';
@@ -61,6 +78,10 @@ const PERSIST_KEYS: Record<string, string | null> = {
  * the key exists for. `attribution` and `parameter` are origin-wide on purpose —
  * scoping attribution would drop the affiliate credit for a shopper who landed on
  * one funnel and bought on another, which is the case it is there to cover.
+ *
+ * The suffix is present only because the `vi.hoisted` block above put a
+ * `next-api-key` on the page first. A page with no readable key writes the **bare**
+ * name instead — the pre-scoping behaviour, and deliberately not what this asserts.
  */
 const FUNNEL_SCOPED = new Set(['checkout', 'order']);
 

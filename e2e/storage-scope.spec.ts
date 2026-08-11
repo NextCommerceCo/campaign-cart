@@ -1,10 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { MINIMAL_CAMPAIGN } from './fixtures/campaign';
 import { stubCampaign, stubCart, bootSdk, bootSdkAt } from './fixtures/routes';
-import {
-  scopedKey,
-  FIXTURE_STORAGE_SCOPE as SCOPE,
-} from './fixtures/storage-keys';
+import { scopedKey, ROOT_LEVEL_SCOPE } from './fixtures/storage-keys';
 
 /**
  * Two campaigns on one origin must not share a cart.
@@ -30,12 +27,14 @@ const APOLLO_PRESELL = '/e2e/fixtures/apollo-presell/';
 const APOLLO_CHECKOUT = '/e2e/fixtures/apollo-checkout/';
 
 /**
- * The campaign half of the scope on its own — every fixture's `next-api-key` hashed,
- * with no base path after it. `FIXTURE_STORAGE_SCOPE` is this plus the `e2e` segment
- * the dev server puts every fixture under, so the specs that serve a fixture at a URL
- * of their own choosing have to rebuild it from this half.
+ * The scopes the fixtures' shared API key resolves to under each top folder the specs
+ * below serve it from. Written out rather than derived, for the reason
+ * `fixtures/storage-keys.ts` gives: an expectation computed by the algorithm under
+ * test cannot fail when the algorithm is wrong.
  */
-const KEY_HASH = SCOPE.replace(/-e2e$/, '');
+const SCOPE_CAMPAIGN_A = '3lul0u';
+const SCOPE_CAMPAIGN_B = '3buzbv';
+const SCOPE_HU = '1s8sfud';
 
 const QUANTITY = '[data-next-display="cart.totalQuantity"]';
 const ADD = '[data-next-action="add-to-cart"]';
@@ -165,7 +164,11 @@ test('two top folders on one campaign key keep separate carts', async ({
 
   await bootSdkAt(page, '/campaign-b/offer/presell', 'add-to-cart.html');
   await expect(page.locator(QUANTITY)).toHaveText('0');
+  await page.click(ADD);
+  await expect(page.locator(QUANTITY)).toHaveText('1');
 
+  // Not just "B was empty" — A still holds its own cart, so the two coexist rather
+  // than one clearing the other.
   await bootSdkAt(page, '/campaign-a/offer/presell', 'add-to-cart.html');
   await expect(page.locator(QUANTITY)).toHaveText('1');
 
@@ -175,9 +178,12 @@ test('two top folders on one campaign key keep separate carts', async ({
       .sort()
   );
 
-  expect(keys).toEqual([
-    scopedKey('next-cart-state', `${KEY_HASH}-campaign-a`),
-  ]);
+  expect(keys).toEqual(
+    [
+      scopedKey('next-cart-state', SCOPE_CAMPAIGN_A),
+      scopedKey('next-cart-state', SCOPE_CAMPAIGN_B),
+    ].sort()
+  );
 });
 
 test('one top folder holds the cart however deep the page is', async ({
@@ -203,7 +209,7 @@ test('one top folder holds the cart however deep the page is', async ({
   );
 
   // One entry, not three.
-  expect(keys).toEqual([scopedKey('next-cart-state', `${KEY_HASH}-hu`)]);
+  expect(keys).toEqual([scopedKey('next-cart-state', SCOPE_HU)]);
 });
 
 test('a page at the top level does not take its own segment as a folder', async ({
@@ -225,5 +231,5 @@ test('a page at the top level does not take its own segment as a folder', async 
       .sort()
   );
 
-  expect(keys).toEqual([scopedKey('next-cart-state', KEY_HASH)]);
+  expect(keys).toEqual([scopedKey('next-cart-state', ROOT_LEVEL_SCOPE)]);
 });

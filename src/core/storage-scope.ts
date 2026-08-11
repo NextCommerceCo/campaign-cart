@@ -41,11 +41,17 @@ function hashToken(value: string): string {
   return (hash >>> 0).toString(36);
 }
 
-/** Keeps a key readable in devtools while it cannot collide with the `__` join. */
+/** Keeps a declared scope readable in devtools while it cannot break the `__` join. */
 const MAX_SCOPE_LENGTH = 40;
 
-/** What a page with no readable API key falls back to. See {@link storageScopeFellBack}. */
-const ROOT_SCOPE = 'root';
+/**
+ * Separates the API key from the base path before they are hashed together, so that
+ * one pair cannot produce another's scope. Without it, the key `pk_x` on `/hu/…` and
+ * the key `pk_xhu` at the root both hash `pk_xhu` and share a cart. A newline cannot
+ * occur in either half — a base path is sanitised to `[a-z0-9-]`, and an API key
+ * carrying one would not survive the meta tag it is read from.
+ */
+const TOKEN_SEPARATOR = '\n';
 
 function sanitize(raw: string): string {
   return raw
@@ -81,18 +87,16 @@ function declaredScope(): string | undefined {
 }
 
 /**
- * The campaign half of the scope. Read straight from the DOM rather than from the
+ * The API key this page boots with. Read straight from the DOM rather than from the
  * config store, because the store is populated in `loadConfiguration` — long after
  * the persisted stores captured their key names.
  */
-function apiKeyToken(): string {
+function apiKey(): string {
   const fromWindow = windowConfig()?.apiKey;
-  const apiKey =
-    typeof fromWindow === 'string' && fromWindow
-      ? fromWindow
-      : metaContent(API_KEY_META);
 
-  return apiKey ? hashToken(apiKey) : '';
+  return typeof fromWindow === 'string' && fromWindow
+    ? fromWindow
+    : metaContent(API_KEY_META);
 }
 
 /**
@@ -118,30 +122,35 @@ function basePathToken(): string {
 }
 
 /**
- * The scope every funnel-scoped storage key is suffixed with.
+ * The scope a funnel-scoped storage key is filed under, or `''` when there is none.
  *
  * Resolution order, first match wins:
  *
  * 1. `window.nextConfig.storageScope`
  * 2. `<meta name="next-storage-scope">`
- * 3. the API key and the first path segment, joined — the automatic case
- * 4. the API key alone, on a page at the top level with no folder above it
- * 5. `root`, when no key is readable
+ * 3. one hash of the API key and the first path segment — the automatic case
+ * 4. `''`, when no API key is readable
  *
- * Steps 3 and 4 are one campaign token with an optional base-path token after it.
- * The campaign token is what separates two campaigns and requires nothing of the
- * page, which matters because campaigns run on customer domains the SDK cannot edit.
- * The base-path token separates two funnels running the *same* campaign key from
- * different top folders — the one case a campaign token cannot see, because to it
- * those pages are identical.
+ * Step 3 hashes the two together rather than joining two tokens, so the scope is one
+ * opaque word of the same length whatever the folder is called. What it costs is
+ * readability: `next-cart-state__1q9gah0` no longer says *which* folder it came from,
+ * and telling two of them apart in devtools means resolving them rather than reading
+ * them. What it buys is that a folder name can never reach a key — no length to cap,
+ * no characters to escape, and no way for a long name to push the key past what the
+ * join can carry.
+ *
+ * Step 4 is the fallback, and it is `''` so that the key is written **bare** —
+ * `next-cart-state`, exactly what the SDK wrote before scoping existed. A page in that
+ * state shares one cart with every other campaign on the origin, which is a known
+ * state rather than a new one, and {@link storageScopeFellBack} reports it.
  *
  * **Only the first segment, and only above the root.** A funnel spans several pages
  * and the token has to be identical on all of them. Two narrower path tokens shipped
  * here and were pulled: the *directory*, which differs between `/apollo-presell/` and
  * `/apollo-checkout/`, and the *first segment counted at any depth*, which does the
  * same for those two. Taking the first segment only when there is a folder above the
- * page keeps `/hu/earbuds` and `/hu/earbuds/checkout` together on `hu` and leaves
- * root-level siblings sharing the campaign token, which is what those two got wrong.
+ * page keeps `/hu/earbuds` and `/hu/earbuds/checkout` together and leaves root-level
+ * siblings sharing the key hash, which is what those two got wrong.
  *
  * What it cannot cover is a funnel that **mixes depths** — a landing page at `/hu/`
  * and a checkout at `/hu/checkout` are one segment and two, so they resolve to
@@ -151,22 +160,21 @@ function basePathToken(): string {
  * **Read once, at import.** The keys built from this are `persist` names captured
  * when their store module is created. `<script type="module">` is deferred, so the
  * whole `<head>` is parsed first and both meta tags are readable; a UMD bundle placed
- * *above* the API-key tag is the one case that misses it, and
- * {@link storageScopeFellBack} reports it.
+ * *above* the API-key tag is the one case that misses it.
  *
  * @example
  * ```ts
  * // Every page under one top folder, at any depth below it
  * // /hu/earbuds, /hu/earbuds/checkout, /hu/earbuds/upsell1
- * storageScope(); // 'kn3mmo-hu' — the same on all three
+ * storageScope(); // '1q9gah0' — the same on all three
  *
  * // The same campaign key served from a different top folder
  * // /de/earbuds
- * storageScope(); // 'kn3mmo-de'
+ * storageScope(); // 'p8k2rf1' — unrelated to the one above, not a variant of it
  *
- * // Root-level siblings: no folder above them, so the campaign token alone
+ * // Root-level siblings: no folder above them, so the key hashes on its own
  * // /apollo-presell/, /apollo-checkout/
- * storageScope(); // 'kn3mmo' — the same on both
+ * storageScope(); // '5gdkqm' — the same on both
  *
  * // <meta name="next-storage-scope" content="promo-b"> overrides the derivation
  * storageScope(); // 'promo-b'
@@ -176,22 +184,31 @@ export function storageScope(): string {
   const declared = declaredScope();
   if (declared) return declared;
 
-  const campaign = apiKeyToken();
-  if (!campaign) return ROOT_SCOPE;
+  const key = apiKey();
+  if (!key) return '';
 
-  const base = basePathToken();
+  return hashToken(`${key}${TOKEN_SEPARATOR}${basePathToken()}`);
+}
 
-  return base ? sanitize(`${campaign}-${base}`) : campaign;
+/**
+ * What {@link storageScope} contributes to a key name: `__{scope}`, or nothing at all
+ * when there is no scope. Keeping the join here rather than at each key means the
+ * fallback writes the pre-scoping name instead of a `__` with nothing after it.
+ */
+export function storageScopeSuffix(): string {
+  const scope = storageScope();
+
+  return scope ? `__${scope}` : '';
 }
 
 /**
  * True when no API key was readable at import even though one *was* configured, so
- * every funnel-scoped key on this page fell back to {@link ROOT_SCOPE}.
+ * every funnel-scoped key on this page was written with no scope at all.
  *
- * That fallback is deliberately the shared scope rather than anything derived from
- * the URL: it degrades to the behaviour from before scoping existed — every campaign
- * on the origin sharing one cart — which is a known state, rather than to a scope
- * that differs per page and empties the cart mid-funnel.
+ * That fallback is deliberately the bare key rather than anything derived from the
+ * URL: it degrades to the behaviour from before scoping existed — every campaign on
+ * the origin sharing one cart — which is a known state, rather than to a scope that
+ * differs per page and empties the cart mid-funnel.
  *
  * Takes the configured key rather than reading it, so the caller can ask this only
  * once `loadConfiguration` has established that a key exists at all. The message
@@ -199,5 +216,5 @@ export function storageScope(): string {
  * string returned from here would be invisible to it.
  */
 export function storageScopeFellBack(configuredApiKey: string): boolean {
-  return Boolean(configuredApiKey) && !declaredScope() && !apiKeyToken();
+  return Boolean(configuredApiKey) && !declaredScope() && !apiKey();
 }
