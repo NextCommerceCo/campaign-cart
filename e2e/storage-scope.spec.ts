@@ -1,7 +1,10 @@
 import { test, expect } from '@playwright/test';
 import { MINIMAL_CAMPAIGN } from './fixtures/campaign';
 import { stubCampaign, stubCart, bootSdk } from './fixtures/routes';
-import { scopedKey } from './fixtures/storage-keys';
+import {
+  scopedKey,
+  FIXTURE_STORAGE_SCOPE as SCOPE,
+} from './fixtures/storage-keys';
 
 /**
  * Two campaigns on one origin must not share a cart.
@@ -25,6 +28,8 @@ const FIXTURE_KEY_X = '/e2e/fixtures/storage-scope-key-x.html';
 const FIXTURE_KEY_Y = '/e2e/fixtures/storage-scope-key-y.html';
 const APOLLO_PRESELL = '/e2e/fixtures/apollo-presell/';
 const APOLLO_CHECKOUT = '/e2e/fixtures/apollo-checkout/';
+const FUNNEL_APOLLO = '/e2e/fixtures/funnel-apollo.html';
+const FUNNEL_ZEUS = '/e2e/fixtures/funnel-zeus.html';
 
 const QUANTITY = '[data-next-display="cart.totalQuantity"]';
 const ADD = '[data-next-action="add-to-cart"]';
@@ -141,4 +146,84 @@ test('one campaign keeps its cart across sibling directories', async ({
 
   // One entry, not two — the two directories did not each mint their own.
   expect(keys).toEqual([scopedKey('next-cart-state')]);
+});
+
+test('two funnels on one campaign key keep separate carts', async ({
+  page,
+}) => {
+  // The case the campaign token cannot see. Both fixtures declare the same
+  // `next-api-key`; only `next-funnel` tells them apart, and it is a tag the page
+  // already carries for attribution rather than anything new to add.
+  await bootSdk(page, FUNNEL_APOLLO);
+  await page.click(ADD);
+  await expect(page.locator(QUANTITY)).toHaveText('1');
+
+  await bootSdk(page, FUNNEL_ZEUS);
+  await expect(page.locator(QUANTITY)).toHaveText('0');
+
+  await bootSdk(page, FUNNEL_APOLLO);
+  await expect(page.locator(QUANTITY)).toHaveText('1');
+
+  const keys = await page.evaluate(() =>
+    Object.keys(sessionStorage)
+      .filter(k => k.startsWith('next-cart-state'))
+      .sort()
+  );
+
+  expect(keys).toEqual([scopedKey('next-cart-state', `${SCOPE}-apollo`)]);
+});
+
+test('a page of a tagged funnel that omits the tag inherits its scope', async ({
+  page,
+}) => {
+  // The failure the pointer exists to stop: one page of a tagged funnel loses its
+  // `next-funnel` tag in an edit, resolves to the campaign token alone, and the
+  // shopper reaches it with an empty cart. The untagged fixture is a different
+  // directory as well, so nothing about the URL is carrying this.
+  await bootSdk(page, FUNNEL_APOLLO);
+  await page.click(ADD);
+  await expect(page.locator(QUANTITY)).toHaveText('1');
+
+  await bootSdk(page, APOLLO_PRESELL);
+  await expect(page.locator(QUANTITY)).toHaveText('1');
+
+  const keys = await page.evaluate(() =>
+    Object.keys(sessionStorage)
+      .filter(k => k.startsWith('next-cart-state'))
+      .sort()
+  );
+
+  // One entry under the funnel's scope — the untagged page did not mint a second
+  // one under the bare campaign token.
+  expect(keys).toEqual([scopedKey('next-cart-state', `${SCOPE}-apollo`)]);
+});
+
+test('an untagged page seen first is not adopted by a funnel later', async ({
+  page,
+}) => {
+  // The negative control on the pointer: inheriting only ever runs downhill, from a
+  // page that named a funnel to one that did not. A cart built before any funnel was
+  // named stays where it was, so the pointer cannot be a way for one funnel to pick
+  // up another page's cart.
+  await bootSdk(page, APOLLO_PRESELL);
+  await page.click(ADD);
+  await expect(page.locator(QUANTITY)).toHaveText('1');
+
+  await bootSdk(page, FUNNEL_APOLLO);
+  await expect(page.locator(QUANTITY)).toHaveText('0');
+
+  // Build a cart here too, so both scopes are on disk and can be told apart.
+  await page.click(ADD);
+  await expect(page.locator(QUANTITY)).toHaveText('1');
+
+  const keys = await page.evaluate(() =>
+    Object.keys(sessionStorage)
+      .filter(k => k.startsWith('next-cart-state'))
+      .sort()
+  );
+
+  expect(keys).toEqual([
+    scopedKey('next-cart-state'),
+    scopedKey('next-cart-state', `${SCOPE}-apollo`),
+  ]);
 });

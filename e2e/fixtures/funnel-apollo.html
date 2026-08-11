@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Two funnels running one campaign. They share next-api-key, so the campaign
+         token cannot tell them apart — the funnel tag is what does, and it is the
+         same tag the page already declares for attribution. -->
+    <meta name="next-api-key" content="test-e2e-key" />
+    <meta name="next-funnel" content="apollo" />
+    <title>E2E — Apollo funnel</title>
+  </head>
+  <body>
+    <h1>Apollo funnel</h1>
+
+    <button data-next-action="add-to-cart" data-next-package-id="1">
+      Add to cart
+    </button>
+
+    <span data-next-display="cart.totalQuantity">0</span>
+
+    <!-- Vite dev server serves the SDK entry as an ES module. -->
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>
