@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { MINIMAL_CAMPAIGN } from './fixtures/campaign';
-import { stubCampaign, stubCart, bootSdk } from './fixtures/routes';
+import { stubCampaign, stubCart, bootSdk, bootSdkAt } from './fixtures/routes';
 import {
   scopedKey,
   FIXTURE_STORAGE_SCOPE as SCOPE,
@@ -28,8 +28,14 @@ const FIXTURE_KEY_X = '/e2e/fixtures/storage-scope-key-x.html';
 const FIXTURE_KEY_Y = '/e2e/fixtures/storage-scope-key-y.html';
 const APOLLO_PRESELL = '/e2e/fixtures/apollo-presell/';
 const APOLLO_CHECKOUT = '/e2e/fixtures/apollo-checkout/';
-const FUNNEL_APOLLO = '/e2e/fixtures/funnel-apollo.html';
-const FUNNEL_ZEUS = '/e2e/fixtures/funnel-zeus.html';
+
+/**
+ * The campaign half of the scope on its own — every fixture's `next-api-key` hashed,
+ * with no base path after it. `FIXTURE_STORAGE_SCOPE` is this plus the `e2e` segment
+ * the dev server puts every fixture under, so the specs that serve a fixture at a URL
+ * of their own choosing have to rebuild it from this half.
+ */
+const KEY_HASH = SCOPE.replace(/-e2e$/, '');
 
 const QUANTITY = '[data-next-display="cart.totalQuantity"]';
 const ADD = '[data-next-action="add-to-cart"]';
@@ -148,72 +154,19 @@ test('one campaign keeps its cart across sibling directories', async ({
   expect(keys).toEqual([scopedKey('next-cart-state')]);
 });
 
-test('two funnels on one campaign key keep separate carts', async ({
+test('two top folders on one campaign key keep separate carts', async ({
   page,
 }) => {
-  // The case the campaign token cannot see. Both fixtures declare the same
-  // `next-api-key`; only `next-funnel` tells them apart, and it is a tag the page
-  // already carries for attribution rather than anything new to add.
-  await bootSdk(page, FUNNEL_APOLLO);
+  // The case the campaign token cannot see. One fixture, one API key, served at two
+  // URLs that differ only in their first path segment — which is the whole input.
+  await bootSdkAt(page, '/campaign-a/offer/presell', 'add-to-cart.html');
   await page.click(ADD);
   await expect(page.locator(QUANTITY)).toHaveText('1');
 
-  await bootSdk(page, FUNNEL_ZEUS);
+  await bootSdkAt(page, '/campaign-b/offer/presell', 'add-to-cart.html');
   await expect(page.locator(QUANTITY)).toHaveText('0');
 
-  await bootSdk(page, FUNNEL_APOLLO);
-  await expect(page.locator(QUANTITY)).toHaveText('1');
-
-  const keys = await page.evaluate(() =>
-    Object.keys(sessionStorage)
-      .filter(k => k.startsWith('next-cart-state'))
-      .sort()
-  );
-
-  expect(keys).toEqual([scopedKey('next-cart-state', `${SCOPE}-apollo`)]);
-});
-
-test('a page of a tagged funnel that omits the tag inherits its scope', async ({
-  page,
-}) => {
-  // The failure the pointer exists to stop: one page of a tagged funnel loses its
-  // `next-funnel` tag in an edit, resolves to the campaign token alone, and the
-  // shopper reaches it with an empty cart. The untagged fixture is a different
-  // directory as well, so nothing about the URL is carrying this.
-  await bootSdk(page, FUNNEL_APOLLO);
-  await page.click(ADD);
-  await expect(page.locator(QUANTITY)).toHaveText('1');
-
-  await bootSdk(page, APOLLO_PRESELL);
-  await expect(page.locator(QUANTITY)).toHaveText('1');
-
-  const keys = await page.evaluate(() =>
-    Object.keys(sessionStorage)
-      .filter(k => k.startsWith('next-cart-state'))
-      .sort()
-  );
-
-  // One entry under the funnel's scope — the untagged page did not mint a second
-  // one under the bare campaign token.
-  expect(keys).toEqual([scopedKey('next-cart-state', `${SCOPE}-apollo`)]);
-});
-
-test('an untagged page seen first is not adopted by a funnel later', async ({
-  page,
-}) => {
-  // The negative control on the pointer: inheriting only ever runs downhill, from a
-  // page that named a funnel to one that did not. A cart built before any funnel was
-  // named stays where it was, so the pointer cannot be a way for one funnel to pick
-  // up another page's cart.
-  await bootSdk(page, APOLLO_PRESELL);
-  await page.click(ADD);
-  await expect(page.locator(QUANTITY)).toHaveText('1');
-
-  await bootSdk(page, FUNNEL_APOLLO);
-  await expect(page.locator(QUANTITY)).toHaveText('0');
-
-  // Build a cart here too, so both scopes are on disk and can be told apart.
-  await page.click(ADD);
+  await bootSdkAt(page, '/campaign-a/offer/presell', 'add-to-cart.html');
   await expect(page.locator(QUANTITY)).toHaveText('1');
 
   const keys = await page.evaluate(() =>
@@ -223,7 +176,54 @@ test('an untagged page seen first is not adopted by a funnel later', async ({
   );
 
   expect(keys).toEqual([
-    scopedKey('next-cart-state'),
-    scopedKey('next-cart-state', `${SCOPE}-apollo`),
+    scopedKey('next-cart-state', `${KEY_HASH}-campaign-a`),
   ]);
+});
+
+test('one top folder holds the cart however deep the page is', async ({
+  page,
+}) => {
+  // The production layout: a locale folder with the whole campaign under it. Only
+  // the first segment counts, so walking from the offer to the checkout to an upsell
+  // must not move the scope even though every one of those URLs is different.
+  await bootSdkAt(page, '/hu/earbuds', 'add-to-cart.html');
+  await page.click(ADD);
+  await expect(page.locator(QUANTITY)).toHaveText('1');
+
+  await bootSdkAt(page, '/hu/earbuds/checkout', 'add-to-cart.html');
+  await expect(page.locator(QUANTITY)).toHaveText('1');
+
+  await bootSdkAt(page, '/hu/earbuds/checkout/upsell1', 'add-to-cart.html');
+  await expect(page.locator(QUANTITY)).toHaveText('1');
+
+  const keys = await page.evaluate(() =>
+    Object.keys(sessionStorage)
+      .filter(k => k.startsWith('next-cart-state'))
+      .sort()
+  );
+
+  // One entry, not three.
+  expect(keys).toEqual([scopedKey('next-cart-state', `${KEY_HASH}-hu`)]);
+});
+
+test('a page at the top level does not take its own segment as a folder', async ({
+  page,
+}) => {
+  // The regression, in the shape the URL actually takes. `/apollo-presell/` and
+  // `/apollo-checkout/` have no folder above them, so neither may contribute a
+  // token — counting their one segment is what emptied the cart twice before.
+  await bootSdkAt(page, '/apollo-presell/', 'add-to-cart.html');
+  await page.click(ADD);
+  await expect(page.locator(QUANTITY)).toHaveText('1');
+
+  await bootSdkAt(page, '/apollo-checkout/', 'add-to-cart.html');
+  await expect(page.locator(QUANTITY)).toHaveText('1');
+
+  const keys = await page.evaluate(() =>
+    Object.keys(sessionStorage)
+      .filter(k => k.startsWith('next-cart-state'))
+      .sort()
+  );
+
+  expect(keys).toEqual([scopedKey('next-cart-state', KEY_HASH)]);
 });

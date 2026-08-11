@@ -9,12 +9,14 @@
  * (`src/core/storage-scope.ts`). A spec that seeds or reads one of those entries has
  * to spell the suffix, and this is the single place that knows what it is.
  *
- * Every fixture declares the same `next-api-key`, so the derived scope is identical
- * for all of them whatever directory they sit in. `storage-scope.spec.ts` holds the
- * exceptions: two fixtures that declare a scope outright, and two that carry
- * different API keys, so that there is more than one scope to test against.
+ * Every fixture declares the same `next-api-key` and is served from
+ * `/e2e/fixtures/…`, so both halves of the derived scope — the key hash and the
+ * first path segment, `e2e` — are identical for all of them however deeply they
+ * nest. `storage-scope.spec.ts` holds the exceptions: two fixtures that declare a
+ * scope outright, two that carry different API keys, and two served at a URL of the
+ * spec's choosing so there is more than one base path to test against.
  */
-export const FIXTURE_STORAGE_SCOPE = '1k56lj4';
+export const FIXTURE_STORAGE_SCOPE = '1k56lj4-e2e';
 
 /** The key the SDK actually writes on a fixture page, for a given base name. */
 export function scopedKey(

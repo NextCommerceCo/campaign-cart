@@ -32,21 +32,10 @@ function bootedWith(apiKey: string, pathname: string): string {
   return storageScope();
 }
 
-/** A page of a funnel: the campaign's key, and the funnel's name when it declares one. */
-function bootedOn(apiKey: string, funnel: string | null): string {
-  document.head.innerHTML = '';
-  declareMeta('next-api-key', apiKey);
-  if (funnel !== null) declareMeta('next-funnel', funnel);
-  return storageScope();
-}
-
 describe('storageScope', () => {
   beforeEach(() => {
     document.head.innerHTML = '';
     delete (window as unknown as { nextConfig?: unknown }).nextConfig;
-    // The resolved scope is remembered here, so a leaked pointer would let one test
-    // decide the next one's answer.
-    sessionStorage.clear();
     atPath('/');
   });
 
@@ -57,21 +46,58 @@ describe('storageScope', () => {
   });
 
   describe('derived with no help from the page', () => {
-    it('is the same on every page of a campaign, whatever the URL', () => {
-      // Production puts each page of a funnel in its own sibling directory, so a
-      // path-derived scope changes between the offer and the checkout and empties
-      // the cart on the way. That shipped twice — once keyed on the first path
-      // segment, once on the directory. The URL is not an input.
+    it('is the same on every page under one top folder, at any depth', () => {
+      // The layout in production: a locale folder with every page of the campaign
+      // under it. The token is the top folder, so walking deeper into the funnel
+      // does not move it.
+      const scopes = [
+        '/hu/earbuds',
+        '/hu/earbuds/',
+        '/hu/earbuds/checkout',
+        '/hu/earbuds/upsell1',
+        '/hu/portable-ac/receipt/index.html',
+      ].map(path => bootedWith(API_KEY, path));
+
+      expect(new Set(scopes).size).toBe(1);
+    });
+
+    it('keeps root-level siblings together', () => {
+      // The regression that pulled two earlier designs. `/apollo-presell/` and
+      // `/apollo-checkout/` are two pages of one funnel with no folder above
+      // either, so neither may contribute a token — a scope built from their one
+      // segment changes on the way to the checkout and empties the cart.
       const scopes = [
         '/apollo-presell/',
         '/apollo-checkout/',
         '/apollo-upsell1/',
-        '/apollo-receipt/index.html',
+        '/promo-b.html',
         '/',
-        '/deeply/nested/page.html',
       ].map(path => bootedWith(API_KEY, path));
 
       expect(new Set(scopes).size).toBe(1);
+    });
+
+    it('separates two top folders running one campaign key', () => {
+      // The case the campaign token cannot see, and the only thing the base path
+      // buys: same key, two funnels, different folders.
+      expect(bootedWith(API_KEY, '/a/presell')).not.toBe(
+        bootedWith(API_KEY, '/b/presell')
+      );
+    });
+
+    it('separates a page in a folder from one at the root', () => {
+      // The cost of the depth rule, asserted rather than left to be discovered: a
+      // funnel that mixes `/hu/` with `/hu/checkout` gets two scopes and has to
+      // declare one outright.
+      expect(bootedWith(API_KEY, '/hu/')).not.toBe(
+        bootedWith(API_KEY, '/hu/checkout')
+      );
+    });
+
+    it('ignores everything below the first segment', () => {
+      expect(bootedWith(API_KEY, '/hu/a/b/c/d')).toBe(
+        bootedWith(API_KEY, '/hu/z')
+      );
     });
 
     it('separates two campaigns', () => {
@@ -104,109 +130,15 @@ describe('storageScope', () => {
     });
   });
 
-  describe('when the page names its funnel', () => {
-    it('separates two funnels running one campaign key', () => {
-      // The case the campaign token cannot see: same key, same catalog, two funnels
-      // that must not hand each other a cart.
-      expect(bootedOn(API_KEY, 'apollo')).not.toBe(bootedOn(API_KEY, 'zeus'));
-    });
-
-    it('is the same on every page of the funnel, whatever the URL', () => {
-      const scopes = [
-        '/apollo-presell/',
-        '/apollo-checkout/',
-        '/apollo-checkout/upsell1',
-        '/',
-      ].map(path => {
-        atPath(path);
-        return bootedOn(API_KEY, 'apollo');
-      });
-
-      expect(new Set(scopes).size).toBe(1);
-    });
-
-    it('still separates two campaigns that use the same funnel name', () => {
-      expect(bootedOn('pk_campaign_alpha', 'checkout')).not.toBe(
-        bootedOn('pk_campaign_beta', 'checkout')
-      );
-    });
-
-    it('reads the funnel off a tracking tag as well as next-funnel', () => {
-      const campaignOnly = bootedWith(API_KEY, '/');
-      const viaFunnelTag = bootedOn(API_KEY, 'apollo');
-      sessionStorage.clear();
-
-      document.head.innerHTML = '';
-      declareMeta('next-api-key', API_KEY);
-      const tag = document.createElement('meta');
-      tag.setAttribute('name', 'data-next-tracking-tag');
-      tag.setAttribute('data-tag-name', 'funnel_name');
-      tag.setAttribute('data-tag-value', 'apollo');
-      document.head.appendChild(tag);
-
-      expect(storageScope()).toBe(viaFunnelTag);
-      expect(viaFunnelTag).not.toBe(campaignOnly);
-    });
-
-    it('ignores a funnel remembered from another campaign', () => {
-      // `next_funnel_name` is written by the attribution collector to localStorage and
-      // is never scoped, so a name left behind by the campaign before this one would
-      // otherwise decide this one's cart key.
-      const untagged = bootedWith(API_KEY, '/');
-      const tagged = bootedOn(API_KEY, 'apollo');
-      sessionStorage.clear();
-
-      expect(tagged).not.toBe(untagged);
-
-      localStorage.setItem('next_funnel_name', 'zeus');
-      try {
-        expect(bootedOn(API_KEY, 'apollo')).toBe(tagged);
-        sessionStorage.clear();
-        expect(bootedOn(API_KEY, null)).toBe(untagged);
-      } finally {
-        localStorage.removeItem('next_funnel_name');
-      }
-    });
-
-    it('is a token that cannot break the key it is joined to', () => {
-      expect(bootedOn(API_KEY, 'Summer Skin / 2026')).toMatch(
+  describe('a token that cannot break the key it is joined to', () => {
+    it('sanitises a folder name with characters a key cannot carry', () => {
+      expect(bootedWith(API_KEY, '/Summer Skin 2026/offer')).toMatch(
         /^[a-z0-9-]{1,40}$/
       );
     });
-  });
 
-  describe('when a page of a tagged funnel omits the tag', () => {
-    it('inherits the funnel scope instead of minting a second one', () => {
-      // The failure this exists to stop: the checkout page of a tagged funnel loses
-      // the tag in an edit, resolves to the campaign token alone, and the shopper
-      // arrives with an empty cart.
-      const campaignOnly = bootedWith(API_KEY, '/');
-      const presell = bootedOn(API_KEY, 'apollo');
-
-      expect(bootedOn(API_KEY, null)).toBe(presell);
-      // The negative control: inheriting is only worth anything if the two scopes
-      // were going to differ.
-      expect(presell).not.toBe(campaignOnly);
-    });
-
-    it('does not inherit across campaigns', () => {
-      const alpha = bootedOn('pk_campaign_alpha', 'apollo');
-
-      expect(bootedOn('pk_campaign_beta', null)).not.toBe(alpha);
-      expect(bootedOn('pk_campaign_beta', null)).toBe(
-        bootedWith('pk_campaign_beta', '/')
-      );
-    });
-
-    it('starts from the campaign token when no tagged page has been seen', () => {
-      expect(bootedOn(API_KEY, null)).toBe(bootedWith(API_KEY, '/'));
-    });
-
-    it('follows the funnel a later tagged page declares', () => {
-      bootedOn(API_KEY, 'apollo');
-      const zeus = bootedOn(API_KEY, 'zeus');
-
-      expect(bootedOn(API_KEY, null)).toBe(zeus);
+    it('truncates rather than growing the key on a very long folder', () => {
+      expect(bootedWith(API_KEY, `/${'a'.repeat(80)}/offer`)).toHaveLength(40);
     });
   });
 
@@ -215,9 +147,9 @@ describe('storageScope', () => {
       // The fallback has to be identical on every page: degrading to the
       // pre-scoping behaviour is recoverable, degrading to a per-page scope loses
       // the shopper's cart.
-      atPath('/apollo-presell/');
+      atPath('/hu/earbuds');
       const presell = storageScope();
-      atPath('/apollo-checkout/');
+      atPath('/de/portable-ac/checkout');
 
       expect(storageScope()).toBe(presell);
       expect(presell).toBe('root');

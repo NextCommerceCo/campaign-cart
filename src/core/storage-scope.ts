@@ -12,13 +12,11 @@
  * left origin-wide; see `core/guide/reference/storage-keys.md`.
  *
  * **Nothing is required of the page.** Campaigns run on customer domains the SDK
- * cannot edit, so the scope falls back to the one thing every working page already
- * carries and every page of a funnel carries identically: the API key it boots with.
- * A page that *does* name its funnel gets that in the scope too, which is what
- * separates two funnels running one campaign. There is no multi-campaign detection
- * and there could not be one — a page cannot know what else shares its origin.
- * Scoping is unconditional instead, and on a single-campaign origin the suffix is
- * simply constant.
+ * cannot edit, so both halves of the scope are read from what a working page already
+ * has: the API key it boots with, and the folder it is served from. There is no
+ * multi-campaign detection and there could not be one — a page cannot know what else
+ * shares its origin. Scoping is unconditional instead, and on a single-campaign
+ * origin the suffix is simply constant.
  */
 
 /** The meta tag that overrides the derived scope, for a page you control. */
@@ -26,20 +24,6 @@ export const STORAGE_SCOPE_META = 'next-storage-scope';
 
 /** The meta tag the API key is read from, the same one the config store uses. */
 const API_KEY_META = 'next-api-key';
-
-/**
- * The tags a funnel name can arrive on, matching what `AttributionCollector` accepts:
- * the plain `next-funnel`, and the two tracking-tag forms that carry it as
- * `data-tag-value` on a `funnel_name` tag. `querySelector` returns whichever comes
- * first in the document, which is the collector's behaviour too.
- */
-const FUNNEL_META_SELECTOR =
-  'meta[name="next-funnel"],' +
-  'meta[name="os-tracking-tag"][data-tag-name="funnel_name"],' +
-  'meta[name="data-next-tracking-tag"][data-tag-name="funnel_name"]';
-
-/** Prefix of the key a resolved scope is remembered under. See {@link rememberScope}. */
-const SCOPE_POINTER_PREFIX = 'next-storage-scope_';
 
 /**
  * FNV-1a, 32-bit. The API key is hashed rather than truncated because keys issued
@@ -112,59 +96,25 @@ function apiKeyToken(): string {
 }
 
 /**
- * The funnel half of the scope, read from the page's own tag and from nothing else.
+ * The base-path half of the scope: the **first path segment**, and only on a page
+ * that sits inside one.
  *
- * `AttributionCollector.getFunnelName` resolves the *reported* funnel through a
- * longer chain — `?funnel=` first, then a name remembered from an earlier campaign in
- * `next_funnel_name`, and only then this tag. Neither of those two may reach a storage
- * key. `next_funnel_name` lives in localStorage and is never scoped, so a name left
- * behind by another campaign would decide this one's cart key; and `?funnel=` is on
- * the landing URL but not on the link to the checkout, so the scope would change on
- * the way and empty the cart. Both are reporting inputs, not identity.
+ * `/hu/earbuds`, `/hu/earbuds/checkout` and `/hu/earbuds/upsell1` all yield `hu` —
+ * the token is the top folder, so it does not move as a shopper walks deeper into a
+ * funnel. A page at the top level yields nothing: `/presell` and `/checkout` are
+ * siblings at the root with no folder between them, and taking `presell` there would
+ * change the scope on the way to the checkout. That is the shape of the two designs
+ * that shipped and were pulled — see {@link storageScope}.
  *
- * The consequence to hold on to: the funnel a page *reports* and the funnel its
- * storage is *scoped by* can differ, and the scope is the tag every time.
+ * The rule is therefore about **depth, not spelling**: one segment means no base, two
+ * or more means the first one. The trap that leaves is a funnel that mixes the two —
+ * a landing page at `/hu/` and a checkout at `/hu/checkout` resolve differently, and
+ * nothing on either page can report that.
  */
-function funnelToken(): string {
-  const tag = document.querySelector(FUNNEL_META_SELECTOR);
-  // A tracking tag carries the value in `data-tag-value`, `next-funnel` in `content`.
-  // An empty one of either has to fall through to the other, so `||`, not `??`.
-  const tagged = tag?.getAttribute('data-tag-value') ?? '';
-  const content = tag?.getAttribute('content') ?? '';
+function basePathToken(): string {
+  const segments = window.location.pathname.split('/').filter(Boolean);
 
-  return sanitize(tagged || content);
-}
-
-function pointerKey(campaign: string): string {
-  return `${SCOPE_POINTER_PREFIX}${campaign}`;
-}
-
-/**
- * Remembers the scope a tagged page resolved to, so a page of the same funnel that
- * omits the funnel tag inherits it instead of minting a second scope and stranding
- * the cart. Keyed by the campaign token, so it can only ever be read back by a page
- * booting with the same API key.
- *
- * In sessionStorage, matching the lifetime of the cart, checkout and order it exists
- * to protect: a new tab derives from the tag again rather than from a decision made
- * in a tab that is gone.
- */
-function rememberScope(campaign: string, scope: string): void {
-  try {
-    if (sessionStorage.getItem(pointerKey(campaign)) !== scope) {
-      sessionStorage.setItem(pointerKey(campaign), scope);
-    }
-  } catch {
-    // Storage blocked. Costs the inherit-on-missing-tag path, nothing else.
-  }
-}
-
-function rememberedScope(campaign: string): string {
-  try {
-    return sanitize(sessionStorage.getItem(pointerKey(campaign)) ?? '');
-  } catch {
-    return '';
-  }
+  return segments.length >= 2 ? sanitize(segments[0] ?? '') : '';
 }
 
 /**
@@ -174,50 +124,49 @@ function rememberedScope(campaign: string): string {
  *
  * 1. `window.nextConfig.storageScope`
  * 2. `<meta name="next-storage-scope">`
- * 3. the API key and the page's funnel tag, joined — the automatic case
- * 4. the API key alone, when the page names no funnel
+ * 3. the API key and the first path segment, joined — the automatic case
+ * 4. the API key alone, on a page at the top level with no folder above it
  * 5. `root`, when no key is readable
  *
- * Steps 3 and 4 are one campaign token with an optional funnel token after it. The
- * campaign token is what separates two campaigns, and it carries the whole job on a
- * page that names no funnel — which is every page the SDK does not own, since
- * campaigns run on customer domains. The funnel token is what separates two funnels
- * running the *same* campaign key, the one case a campaign token cannot see.
+ * Steps 3 and 4 are one campaign token with an optional base-path token after it.
+ * The campaign token is what separates two campaigns and requires nothing of the
+ * page, which matters because campaigns run on customer domains the SDK cannot edit.
+ * The base-path token separates two funnels running the *same* campaign key from
+ * different top folders — the one case a campaign token cannot see, because to it
+ * those pages are identical.
  *
- * A page inside a tagged funnel that omits the tag inherits the funnel's scope
- * rather than minting a second one; see {@link rememberScope}.
+ * **Only the first segment, and only above the root.** A funnel spans several pages
+ * and the token has to be identical on all of them. Two narrower path tokens shipped
+ * here and were pulled: the *directory*, which differs between `/apollo-presell/` and
+ * `/apollo-checkout/`, and the *first segment counted at any depth*, which does the
+ * same for those two. Taking the first segment only when there is a folder above the
+ * page keeps `/hu/earbuds` and `/hu/earbuds/checkout` together on `hu` and leaves
+ * root-level siblings sharing the campaign token, which is what those two got wrong.
  *
- * **The URL is not part of it, and must not become part of it.** A funnel is spread
- * across sibling directories in production — `/apollo-presell/` and
- * `/apollo-checkout/` are two pages of one campaign — so every path-derived token
- * that has been tried here changed between the offer page and the checkout and
- * emptied the cart on the way. First path segment, directory, both: all wrong for
- * that layout, and none of them are wrong in a way a page can report. What the
- * funnel tag has and a path token never did is that an author states it, once, with
- * the same value on every page of the funnel whatever its URL.
+ * What it cannot cover is a funnel that **mixes depths** — a landing page at `/hu/`
+ * and a checkout at `/hu/checkout` are one segment and two, so they resolve to
+ * different scopes and the cart does not survive the walk. Nothing on either page can
+ * report that, so a funnel laid out that way has to declare a scope outright.
  *
  * **Read once, at import.** The keys built from this are `persist` names captured
  * when their store module is created. `<script type="module">` is deferred, so the
- * whole `<head>` is parsed first and every meta tag is readable; a UMD bundle placed
+ * whole `<head>` is parsed first and both meta tags are readable; a UMD bundle placed
  * *above* the API-key tag is the one case that misses it, and
- * {@link storageScopeFellBack} reports it. A funnel tag below the bundle is missed
- * the same way and reported the same way, because the pointer this writes is what
- * the later pages read.
+ * {@link storageScopeFellBack} reports it.
  *
  * @example
  * ```ts
- * // Every page of one campaign that names no funnel, whatever its URL
- * // /apollo-presell/, /apollo-checkout/, /apollo-upsell1/
- * storageScope(); // 'kn3mmo' — the same on all three
+ * // Every page under one top folder, at any depth below it
+ * // /hu/earbuds, /hu/earbuds/checkout, /hu/earbuds/upsell1
+ * storageScope(); // 'kn3mmo-hu' — the same on all three
  *
- * // A different campaign on the same origin
- * storageScope(); // '1k56lj4'
+ * // The same campaign key served from a different top folder
+ * // /de/earbuds
+ * storageScope(); // 'kn3mmo-de'
  *
- * // <meta name="next-funnel" content="apollo"> on every page of that funnel
- * storageScope(); // 'kn3mmo-apollo'
- *
- * // A second funnel on the same campaign key, tagged 'zeus'
- * storageScope(); // 'kn3mmo-zeus'
+ * // Root-level siblings: no folder above them, so the campaign token alone
+ * // /apollo-presell/, /apollo-checkout/
+ * storageScope(); // 'kn3mmo' — the same on both
  *
  * // <meta name="next-storage-scope" content="promo-b"> overrides the derivation
  * storageScope(); // 'promo-b'
@@ -230,12 +179,9 @@ export function storageScope(): string {
   const campaign = apiKeyToken();
   if (!campaign) return ROOT_SCOPE;
 
-  const funnel = funnelToken();
-  if (!funnel) return rememberedScope(campaign) || campaign;
+  const base = basePathToken();
 
-  const scope = sanitize(`${campaign}-${funnel}`);
-  rememberScope(campaign, scope);
-  return scope;
+  return base ? sanitize(`${campaign}-${base}`) : campaign;
 }
 
 /**
