@@ -25,7 +25,7 @@ Every entry below is read out of the source, so the list cannot fall behind the 
 |---|---|---|
 | [`window.next`](#windownext) | install | `core/sdk-initializer/sdk-initializer.ts › SDKInitializer.setupReadyCallbacks` |
 | [`window.nextReady`](#windownextready) | install | `core/sdk-initializer/sdk-initializer.ts › SDKInitializer.setupReadyCallbacks` |
-| [`window.nextConfig`](#windownextconfig) | read | `core/debug/debug-module.ts › DebugModule.initializeIfEnabled` and 10 more |
+| [`window.nextConfig`](#windownextconfig) | read | `core/debug/debug-module.ts › DebugModule.initializeIfEnabled` and 11 more |
 | [`window.__NEXT_SDK_VERSION__`](#window__next_sdk_version__) | read | `core/debug/panels/config-panel.ts › ConfigPanel.getOverviewContent` and 3 more |
 | [`window.NextDataLayer`](#windownextdatalayer) | install | `core/analytics/data-layer-manager.ts › DataLayerManager.initializeDataLayer`, `core/analytics/data-layer-manager.ts › DataLayerManager.clear` |
 | [`window.NextDataLayerTransformFn`](#windownextdatalayertransformfn) | install | `core/analytics/data-layer-manager.ts › DataLayerManager.initializeDataLayer` and 2 more |
@@ -98,7 +98,7 @@ The configuration object your page sets before the SDK loads — API key, debug 
 
 > ⚠️ Read during boot, so it has to be set before the SDK script runs; assigning it afterwards changes nothing. Meta tags override it where both are present.
 
-<sub>Read in `core/debug/debug-module.ts › DebugModule.initializeIfEnabled`, `core/debug/debug-module.ts › DebugModule.isDebugMode`, `core/debug/debug-overlay/debug-overlay.ts › DebugOverlay.constructor`, `core/debug/debug-overlay/debug-overlay.ts › DebugOverlay.initialize`, `core/debug/panels/event-timeline/event-timeline-panel.ts › EventTimelinePanel.constructor`, `core/logger.ts › isDebugModeEnabled`, `core/sdk-initializer/sdk-initializer.ts › SDKInitializer.loadConfiguration`, `core/test-mode.ts › TestModeManager.checkUrlTestMode`, `core/url-utils.ts › isDebugMode`, `core/url-utils.ts › isDebuggerMode`, `features/cart/cart-item-list/cart-item-list.renderer.ts › prepareCartItemData`</sub>
+<sub>Read in `core/debug/debug-module.ts › DebugModule.initializeIfEnabled`, `core/debug/debug-module.ts › DebugModule.isDebugMode`, `core/debug/debug-overlay/debug-overlay.ts › DebugOverlay.constructor`, `core/debug/debug-overlay/debug-overlay.ts › DebugOverlay.initialize`, `core/debug/panels/event-timeline/event-timeline-panel.ts › EventTimelinePanel.constructor`, `core/logger.ts › isDebugModeEnabled`, `core/sdk-initializer/sdk-initializer.ts › SDKInitializer.loadConfiguration`, `core/storage-scope.ts › windowConfig`, `core/test-mode.ts › TestModeManager.checkUrlTestMode`, `core/url-utils.ts › isDebugMode`, `core/url-utils.ts › isDebuggerMode`, `features/cart/cart-item-list/cart-item-list.renderer.ts › prepareCartItemData`</sub>
 
 ### `window.__NEXT_SDK_VERSION__`
 

@@ -157,7 +157,8 @@ export interface StorageKeyDoc {
 export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   // ── Cart and pricing ──────────────────────────────────────────────────────
   {
-    key: 'next-cart-state',
+    key: 'next-cart-state{__scope}',
+    examples: ['next-cart-state__1y693dl', 'next-cart-state'],
     group: 'cart',
     store: 'cart',
     storeRelation: 'persist-key',
@@ -167,7 +168,7 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
     clearing:
       'The cart reads as empty on the next page and the visitor has to reselect everything. This is the one key whose loss a visitor definitely notices.',
     notes:
-      "Only the six fields in the store's `partialize` list are written. A field you added and expected back after a refresh is not here — check the cart state reference before assuming storage lost it.",
+      "Only the six fields in the store's `partialize` list are written. A field you added and expected back after a refresh is not here — check the cart state reference before assuming storage lost it.\n\nThe `__{scope}` suffix is one hash of the page's `next-api-key` and the first segment of its path, so two campaigns sharing a hostname — and two funnels of one campaign served from different top folders — cannot read each other's copy. Only the first segment counts, and only when a folder sits above the page, so walking from `/hu/earbuds` to `/hu/earbuds/checkout` keeps one key. A page whose API key was not readable when the store modules were created writes the **bare** name instead — what the SDK wrote before scoping existed — and boot logs a warning.",
   },
   {
     key: 'next-price-{hash}',
@@ -222,7 +223,8 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
 
   // ── Order and post-purchase ───────────────────────────────────────────────
   {
-    key: 'next-order',
+    key: 'next-order{__scope}',
+    examples: ['next-order__1y693dl', 'next-order'],
     group: 'order',
     store: 'order',
     storeRelation: 'persist-key',
@@ -231,9 +233,9 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
     holds:
       'The completed order — its number, ref id, lines and totals — so upsell and receipt pages can render it without refetching.',
     clearing:
-      'Upsell and receipt pages have no order to show and fall back to fetching by `ref_id` from the URL. Without that parameter they render empty.',
+      'Upsell and receipt pages have no order to show and fall back to fetching by `ref_id` from the URL. Without that parameter they render empty.\n\nThe window is checked on rehydrate, not on a timer. A tab left open for an hour still holds the entry in storage; the store discards it the next time the page loads.',
     notes:
-      'The window is checked on rehydrate, not on a timer. A tab left open for an hour still holds the entry in storage; the store discards it the next time the page loads.',
+      "The `__{scope}` suffix is one hash of the page's `next-api-key` and the first segment of its path, so two campaigns sharing a hostname — and two funnels of one campaign served from different top folders — cannot read each other's copy. Only the first segment counts, and only when a folder sits above the page, so walking from `/hu/earbuds` to `/hu/earbuds/checkout` keeps one key. A page whose API key was not readable when the store modules were created writes the **bare** name instead — what the SDK wrote before scoping existed — and boot logs a warning.",
   },
   {
     key: 'upsells_{orderId}',
@@ -248,7 +250,8 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
 
   // ── Checkout and abandoned cart ───────────────────────────────────────────
   {
-    key: 'next-checkout-store',
+    key: 'next-checkout-store{__scope}',
+    examples: ['next-checkout-store__1y693dl'],
     group: 'checkout',
     store: 'checkout',
     storeRelation: 'persist-key',
@@ -258,17 +261,18 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
     clearing:
       'The form comes back blank and the visitor retypes their address.',
     notes:
-      "Card data is excluded by the store's `partialize`, and that is the point of the filter. Never add a field carrying payment details to it.",
+      "Card data is excluded by the store's `partialize`, and that is the point of the filter. Never add a field carrying payment details to it.\n\nThe `__{scope}` suffix is one hash of the page's `next-api-key` and the first segment of its path, so two campaigns sharing a hostname — and two funnels of one campaign served from different top folders — cannot read each other's copy. Only the first segment counts, and only when a folder sits above the page, so walking from `/hu/earbuds` to `/hu/earbuds/checkout` keeps one key. A page whose API key was not readable when the store modules were created writes the **bare** name instead — what the SDK wrote before scoping existed — and boot logs a warning.",
   },
   {
-    key: 'next_prospect_cart',
+    key: 'next_prospect_cart{__scope}',
+    examples: ['next_prospect_cart__1y693dl'],
     group: 'checkout',
     ttl: 'whatever `expires_at` the API returned with the cart',
     ttlMechanism: 'prospect cart `expires_at`',
     holds:
       'The abandoned-cart record created once a visitor typed an email, including the checkout URL that can be emailed back to them.',
     clearing:
-      'A fresh prospect cart is created the next time they type an email, and the earlier abandoned-cart link stops matching this visitor.',
+      "A fresh prospect cart is created the next time they type an email, and the earlier abandoned-cart link stops matching this visitor.\n\nThe `__{scope}` suffix is one hash of the page's `next-api-key` and the first segment of its path, so two campaigns sharing a hostname — and two funnels of one campaign served from different top folders — cannot read each other's copy. Only the first segment counts, and only when a folder sits above the page, so walking from `/hu/earbuds` to `/hu/earbuds/checkout` keeps one key. A page whose API key was not readable when the store modules were created writes the **bare** name instead — what the SDK wrote before scoping existed — and boot logs a warning.",
   },
   {
     key: 'next-shown-order-warnings',
@@ -323,9 +327,7 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
     holds:
       'The Everflow click id, taken from the URL and echoed into storage so it survives navigation to checkout.',
     clearing:
-      'The order goes out without the click id and Everflow cannot match the conversion. Nothing is visibly wrong on the page.',
-    notes:
-      'Written to both stores, and read back from either. Clearing one copy is not clearing it.',
+      'The order goes out without the click id and Everflow cannot match the conversion. Nothing is visibly wrong on the page.\n\nWritten to both stores, and read back from either. Clearing one copy is not clearing it.',
   },
   {
     key: 'tn_tag_{tagName}',
@@ -531,9 +533,7 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
     holds:
       'Responses from the countries service: the full country list with the detected country (`location_data`), and per country its states plus its address rules — state label, postcode label and length limits.',
     clearing:
-      "The next page refetches. The address form's state dropdown is briefly empty and postcode validation falls back to defaults until the response lands.",
-    notes:
-      'Written to localStorage, because a country list does not change between sessions. The service also sweeps the same prefix out of sessionStorage, which only ever holds legacy entries from an older version.',
+      "The next page refetches. The address form's state dropdown is briefly empty and postcode validation falls back to defaults until the response lands.\n\nWritten to localStorage, because a country list does not change between sessions. The service also sweeps the same prefix out of sessionStorage, which only ever holds legacy entries from an older version.",
   },
   {
     key: 'next_country_states_{countryCode}',
@@ -548,8 +548,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
 
   // ── Page behaviour ────────────────────────────────────────────────────────
   {
-    key: 'next-timer-{persistenceId}',
-    examples: ['next-timer-default-timer', 'next-timer-flash-sale'],
+    key: 'next-timer-{persistenceId}{__scope}',
+    examples: [
+      'next-timer-flash-sale__1y693dl',
+      'next-timer-default-timer__1y693dl',
+    ],
     group: 'page-behaviour',
     ttl: null,
     holds:
@@ -557,7 +560,7 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
     clearing:
       'The countdown restarts from its full duration — a visitor who watched it reach two minutes sees fifteen again, which undoes the urgency the timer exists for.',
     notes:
-      'The timer feature writes this to **localStorage**, so a countdown survives closing the tab. `saveTimerState()` in `core/storage.ts` writes the same prefix to **sessionStorage** and is called from nowhere; do not reach for those helpers expecting them to read what the timer wrote.',
+      "The timer feature writes this to **localStorage**, so a countdown survives closing the tab. `saveTimerState()` in `core/storage.ts` writes the same prefix to **sessionStorage** and is called from nowhere; do not reach for those helpers expecting them to read what the timer wrote.\n\nThe `__{scope}` suffix is one hash of the page's `next-api-key` and the first segment of its path, so two campaigns sharing a hostname — and two funnels of one campaign served from different top folders — cannot read each other's copy. Only the first segment counts, and only when a folder sits above the page, so walking from `/hu/earbuds` to `/hu/earbuds/checkout` keeps one key. A page whose API key was not readable when the store modules were created writes the **bare** name instead — what the SDK wrote before scoping existed — and boot logs a warning.",
   },
   {
     key: 'next-url-params',
@@ -571,7 +574,8 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
       'Pages further down the funnel stop seeing the parameters the visitor landed with, so a variant that was meant to follow them — a hidden banner, a skipped timer — reverts to its default.',
   },
   {
-    key: 'next-exit-intent-dismissed',
+    key: 'next-exit-intent-dismissed{__scope}',
+    examples: ['next-exit-intent-dismissed__1y693dl'],
     group: 'page-behaviour',
     ttl: null,
     holds:
@@ -579,7 +583,7 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
     clearing:
       'The popup can fire again in the same session. Annoying rather than broken.',
     notes:
-      'The name is overridable via the `sessionStorageKey` option passed to `next.exitIntent({ … })`, so a page running two exit-intent popups can keep them apart. The default is the one listed here.',
+      "The name is overridable via the `sessionStorageKey` option passed to `next.exitIntent({ … })`, so a page running two exit-intent popups can keep them apart. The default is the one listed here.\n\nThe `__{scope}` suffix is one hash of the page's `next-api-key` and the first segment of its path, so two campaigns sharing a hostname — and two funnels of one campaign served from different top folders — cannot read each other's copy. Only the first segment counts, and only when a folder sits above the page, so walking from `/hu/earbuds` to `/hu/earbuds/checkout` keeps one key. A page whose API key was not readable when the store modules were created writes the **bare** name instead — what the SDK wrote before scoping existed — and boot logs a warning.",
   },
 
   // ── Debug overlay ─────────────────────────────────────────────────────────

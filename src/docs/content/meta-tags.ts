@@ -83,6 +83,19 @@ export const META_TAGS: MetaTagDoc[] = [
       'Missing or empty, initialization throws `API key not found. Please set next-api-key meta tag or window.nextConfig.apiKey` and every price stays as its `{token}` placeholder. If you set both this tag and `window.nextConfig.apiKey`, **the tag wins** — configuration is loaded from `window` first and meta tags second, so a stale tag silently overrides the value your loader script computed.',
   },
   {
+    name: 'next-storage-scope',
+    group: 'Booting the SDK',
+    owner: 'Funnel-scoped storage keys',
+    status: 'active',
+    type: 'string',
+    required: false,
+    example: '<meta name="next-storage-scope" content="promo-b">',
+    description:
+      "Overrides which other pages share this page's cart, checkout, order and prospect cart. You rarely need it: left unset, the scope is one hash of the API key and the first path segment, which already separates two campaigns sharing a hostname and two funnels of one campaign served from different top folders.",
+    notes:
+      'Two pages that must share a cart must declare the **same** value; two that must not must differ. The one layout that needs it is a funnel whose pages sit at **different depths** — a landing page at `/hu/` and a checkout at `/hu/checkout` derive different scopes, because one has a folder above it and the other does not, and no page can detect that. Like the derived scope, it is read when the store modules are created, so it has to be parsed before the SDK script runs — place it in `<head>` above the loader. `window.nextConfig.storageScope` sets the same value and **wins over this tag**, which is the opposite of how `next-api-key` resolves.',
+  },
+  {
     name: 'next-campaign-id',
     group: 'Booting the SDK',
     owner: 'Config store (stored, never used)',

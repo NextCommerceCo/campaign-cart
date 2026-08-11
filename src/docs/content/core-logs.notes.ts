@@ -18,6 +18,15 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
       'Harmless in itself — the second call does nothing. Remove the duplicate loader anyway: two loaders can disagree about which SDK version to fetch, and that difference is much harder to diagnose than this line.',
   },
   {
+    level: 'warn',
+    message:
+      'Storage scope fell back to a shared one: next-api-key was not readable when the stores were created, so every campaign on this origin shares a cart. Move the SDK script below the meta tag, or load the module build.',
+    meaning:
+      "The cart, checkout and order keys are normally suffixed with one hash of the campaign's API key and the folder the page is served from, so two campaigns on one hostname cannot read each other's cart. That scope is fixed when the store modules are created, and at that moment the API key was not in the DOM. The page still works: it writes the keys under their bare names — exactly what the SDK wrote before scoping existed — so every campaign on the origin shares one cart.",
+    action:
+      'Move the SDK script below the `next-api-key` meta tag, or load the module build, which is deferred and always sees the whole `<head>`. Until then, two campaigns on this origin share a cart, and a shopper who was mid-funnel when the fix ships starts that funnel over — their old cart is filed under the bare name, not the scoped one.',
+  },
+  {
     level: 'error',
     message: 'SDK initialization failed:',
     meaning:
