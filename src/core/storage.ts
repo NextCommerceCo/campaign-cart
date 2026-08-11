@@ -153,6 +153,25 @@ export const ORDER_STORAGE_KEY = `next-order${storageScopeSuffix()}`;
 export const PROSPECT_CART_STORAGE_KEY = `next_prospect_cart${storageScopeSuffix()}`;
 export const EXIT_INTENT_STORAGE_KEY = `next-exit-intent-dismissed${storageScopeSuffix()}`;
 
+/**
+ * The two analytics keys that describe **one campaign's checkout** rather than the
+ * visitor. They live here rather than beside the other `nextDataLayer_*` names in
+ * `core/analytics/config.ts` for a build reason, not a tidiness one: importing
+ * `storage-scope` into that module pulls it into the analytics chunk, and the ES build
+ * then evaluates the `state` chunk — which resolves its own scoped keys at module
+ * scope — before it, throwing `Cannot access 'n' before initialization` and dropping
+ * every page onto the UMD fallback. `e2e/es-bundle.spec.ts` is what catches it.
+ */
+export const CHECKOUT_RETURN_PATHS_KEY = `nextDataLayer_checkoutReturnPaths${storageScopeSuffix()}`;
+export const CHECKOUT_COUPON_KEY = `nextDataLayer_checkoutCoupon${storageScopeSuffix()}`;
+
+/**
+ * Which orders have already had the duplicate-purchase warning shown. Scoped because
+ * the orders it names are: it holds `ref_id`s read out of {@link ORDER_STORAGE_KEY},
+ * so an unscoped copy would suppress the warning for an order this funnel cannot see.
+ */
+export const SHOWN_ORDER_WARNINGS_KEY = `next-shown-order-warnings${storageScopeSuffix()}`;
+
 export const CONFIG_STORAGE_KEY = 'next-config-state';
 export const CAMPAIGN_STORAGE_KEY = 'next-campaign-cache';
 

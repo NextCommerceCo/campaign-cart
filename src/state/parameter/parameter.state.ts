@@ -8,6 +8,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { createLogger } from '@/core/logger';
+import { storageScopeSuffix } from '@/core/storage-scope';
 
 const logger = createLogger('ParameterStore');
 
@@ -147,7 +148,7 @@ export const useParameterStore = create<ParameterState>()(
       },
     }),
     {
-      name: 'next-url-params',
+      name: `next-url-params${storageScopeSuffix()}`,
       storage: {
         getItem: name => {
           try {

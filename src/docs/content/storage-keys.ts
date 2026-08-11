@@ -275,13 +275,16 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
       "A fresh prospect cart is created the next time they type an email, and the earlier abandoned-cart link stops matching this visitor.\n\nThe `__{scope}` suffix is one hash of the page's `next-api-key` and the first segment of its path, so two campaigns sharing a hostname — and two funnels of one campaign served from different top folders — cannot read each other's copy. Only the first segment counts, and only when a folder sits above the page, so walking from `/hu/earbuds` to `/hu/earbuds/checkout` keeps one key. A page whose API key was not readable when the store modules were created writes the **bare** name instead — what the SDK wrote before scoping existed — and boot logs a warning.",
   },
   {
-    key: 'next-shown-order-warnings',
+    key: 'next-shown-order-warnings{__scope}',
+    examples: ['next-shown-order-warnings__1y693dl'],
     group: 'checkout',
     ttl: null,
     holds:
       'The `ref_id`s of orders whose "you have already paid" modal has been shown, so returning to the checkout does not warn twice.',
     clearing:
       'The duplicate-purchase warning shows again for an order the visitor already acknowledged. Harmless, mildly confusing.',
+    notes:
+      "Scoped since 0.4.34, because the orders it names are: it holds `ref_id`s read out of `next-order`, so an unscoped copy suppressed the warning for an order this funnel cannot see.\n\nThe `__{scope}` suffix is one hash of the page's `next-api-key` and the first segment of its path, so two campaigns sharing a hostname — and two funnels of one campaign served from different top folders — cannot read each other's copy. A page whose API key was not readable when the store modules were created writes the **bare** name instead.",
   },
   {
     key: 'next_utm_data',
@@ -445,22 +448,28 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
       'The next page that sees one of those orders reports it again, double-counting the purchase in GA4 and in every affiliate tag. Only clear it when you are deliberately re-testing a purchase event.',
   },
   {
-    key: 'nextDataLayer_checkoutReturnPaths',
+    key: 'nextDataLayer_checkoutReturnPaths{__scope}',
+    examples: ['nextDataLayer_checkoutReturnPaths__1y693dl'],
     group: 'analytics',
     ttl: null,
     holds:
       'The two paths the checkout page told the orders API to send the shopper back to — `success_url` and `payment_failed_url`, as paths. A redirect payment (PayPal, Klarna, 3-D Secure) returns on one of them and both carry `?ref_id=`, so the landing page loads the order either way; this is how it tells a completed purchase from a declined one. Used only to **suppress** `dl_purchase` on the failure page, never to allow it, so a missing entry cannot cost a conversion.',
     clearing:
       'A shopper who lands on a merchant-configured failure page could have that visit counted as a purchase, if the orders API no longer reports the payment as outstanding. The `?payment_failed=true` check still applies, which covers stores using the default failure URL.',
+    notes:
+      "Scoped since 0.4.34. These decide where a shopper lands after a payment gateway, so another campaign's copy would judge a return against paths belonging to a funnel they never entered.\n\nThe `__{scope}` suffix is one hash of the page's `next-api-key` and the first segment of its path, so two campaigns sharing a hostname — and two funnels of one campaign served from different top folders — cannot read each other's copy. A page whose API key was not readable when the store modules were created writes the **bare** name instead.",
   },
   {
-    key: 'nextDataLayer_checkoutCoupon',
+    key: 'nextDataLayer_checkoutCoupon{__scope}',
+    examples: ['nextDataLayer_checkoutCoupon__1y693dl'],
     group: 'analytics',
     ttl: null,
     holds:
       'The voucher code applied to the order the checkout page has created. An order does not carry the code back — its `discounts` are amounts, never the text the shopper typed — and the cart that does hold it is reset before the page navigates away, so this is the only copy left by the time the success page builds `dl_purchase`. It is what puts `ecommerce.coupon` on a PayPal or 3-D Secure purchase, which is reported entirely on the page the gateway returns to.',
     clearing:
       'Purchases still report, without `ecommerce.coupon`. Discount attribution in GA4 loses the code for that order; nothing else changes, and no value or item total moves.',
+    notes:
+      "Scoped since 0.4.34. The code that priced one campaign's order is the same class of value as the vouchers held in that campaign's cart, which have been scoped since the suffix existed.\n\nThe `__{scope}` suffix is one hash of the page's `next-api-key` and the first segment of its path, so two campaigns sharing a hostname — and two funnels of one campaign served from different top folders — cannot read each other's copy. A page whose API key was not readable when the store modules were created writes the **bare** name instead.",
   },
   {
     key: 'user_data',
@@ -563,7 +572,8 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
       "The timer feature writes this to **localStorage**, so a countdown survives closing the tab. `saveTimerState()` in `core/storage.ts` writes the same prefix to **sessionStorage** and is called from nowhere; do not reach for those helpers expecting them to read what the timer wrote.\n\nThe `__{scope}` suffix is one hash of the page's `next-api-key` and the first segment of its path, so two campaigns sharing a hostname — and two funnels of one campaign served from different top folders — cannot read each other's copy. Only the first segment counts, and only when a folder sits above the page, so walking from `/hu/earbuds` to `/hu/earbuds/checkout` keeps one key. A page whose API key was not readable when the store modules were created writes the **bare** name instead — what the SDK wrote before scoping existed — and boot logs a warning.",
   },
   {
-    key: 'next-url-params',
+    key: 'next-url-params{__scope}',
+    examples: ['next-url-params__1y693dl'],
     group: 'page-behaviour',
     store: 'parameter',
     storeRelation: 'persist-key',
@@ -572,6 +582,8 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
       'The query-string parameters the visitor arrived with, kept for the whole session so a later page can still react to them after they have gone from the address bar.',
     clearing:
       'Pages further down the funnel stop seeing the parameters the visitor landed with, so a variant that was meant to follow them — a hidden banner, a skipped timer — reverts to its default.',
+    notes:
+      "Scoped since 0.4.34. The query string a visitor arrived with drives what *this* campaign's pages do — a variant flag, a forced package — so another campaign reading it changes behaviour it was never meant to reach.\n\nThe `__{scope}` suffix is one hash of the page's `next-api-key` and the first segment of its path, so two campaigns sharing a hostname — and two funnels of one campaign served from different top folders — cannot read each other's copy. A page whose API key was not readable when the store modules were created writes the **bare** name instead.",
   },
   {
     key: 'next-exit-intent-dismissed{__scope}',

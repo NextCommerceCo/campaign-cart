@@ -39,7 +39,7 @@
 import type { Logger } from '@/core/logger';
 import { GeneralModal } from '@/core/ui/general-modal';
 import { preserveQueryParams } from '@/core/url-utils';
-import { ORDER_STORAGE_KEY } from '@/core/storage';
+import { ORDER_STORAGE_KEY, SHOWN_ORDER_WARNINGS_KEY } from '@/core/storage';
 import { useCheckoutStore } from '@/state/checkout';
 
 import type { UIService } from '../services/ui-service';
@@ -90,7 +90,7 @@ export async function handlePurchaseEvent(
     if (!order?.ref_id || !order?.number) return;
 
     // Check if we've already shown the modal for this order
-    const shownOrdersStr = sessionStorage.getItem('next-shown-order-warnings');
+    const shownOrdersStr = sessionStorage.getItem(SHOWN_ORDER_WARNINGS_KEY);
     const shownOrders = shownOrdersStr ? JSON.parse(shownOrdersStr) : [];
 
     if (shownOrders.includes(order.ref_id)) {
@@ -111,7 +111,7 @@ export async function handlePurchaseEvent(
     // restore, and a mark written after the answer lets a second modal stack on the first.
     shownOrders.push(order.ref_id);
     sessionStorage.setItem(
-      'next-shown-order-warnings',
+      SHOWN_ORDER_WARNINGS_KEY,
       JSON.stringify(shownOrders)
     );
 
