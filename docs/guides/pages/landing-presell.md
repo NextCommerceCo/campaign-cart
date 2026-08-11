@@ -15,7 +15,7 @@ The head is three lines shorter than checkout's — no success or upsell URLs, b
   <script src="/assets/config.js"></script>
   <meta name="next-funnel" content="Olympus">
   <meta name="next-page-type" content="product">
-  <script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.4.18/dist/loader.js" type="module"></script>
+  <script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.4.34/dist/loader.js" type="module"></script>
 </head>
 ```
 

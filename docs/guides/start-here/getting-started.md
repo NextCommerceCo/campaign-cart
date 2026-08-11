@@ -18,9 +18,11 @@ Every page in a live funnel carries the same four things in its `<head>`, in thi
   <meta name="next-funnel" content="Olympus">
   <meta name="next-page-type" content="checkout">
   <meta name="next-success-url" content="/upsell-1/">
-  <script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.4.18/dist/loader.js" type="module"></script>
+  <script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.4.34/dist/loader.js" type="module"></script>
 </head>
 ```
+
+Pin the loader to a real released tag, as above. Check [releases](https://github.com/NextCommerceCo/campaign-cart/releases) for the current one before you copy this into a live funnel.
 
 And the smallest `config.js` that works:
 
@@ -38,7 +40,7 @@ A page can also run without a config script at all: `next-api-key` as a meta tag
 <head>
   <meta name="next-api-key" content="{YOUR_CAMPAIGN_API_KEY}">
   <meta name="next-page-type" content="product">
-  <script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.4.18/dist/loader.js" type="module"></script>
+  <script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.4.34/dist/loader.js" type="module"></script>
 </head>
 ```
 
