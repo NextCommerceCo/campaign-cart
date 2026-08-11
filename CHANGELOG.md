@@ -1,5 +1,70 @@
 # Changelog
 
+## [0.4.34] — 2026-08-11 — One Website, Many Campaigns, Separate Carts
+
+### Fixed
+
+- **Two campaigns on the same website no longer share a shopping bag.**
+
+  A browser files a saved cart against the website address, not against the campaign.
+  Every campaign we host sits on one address, so a shopper who looked at two of them
+  arrived at the second carrying the first one's items — and, more expensively, the first
+  one's discount. A saved cart stores the exact rule each code matched, so the second
+  campaign did not merely show the wrong products, it honoured pricing it never offered.
+
+  Six saved things are now filed per campaign: the shopping bag, the half-filled checkout
+  form, the completed order, the abandoned-cart record, countdown timers, and the
+  "don't show me that popup again" flag. Nothing is added to your pages — the name is
+  worked out from the API key the page already boots with and the folder it is served
+  from.
+  ([#69](https://github.com/NextCommerceCo/campaign-cart/issues/69))
+
+### Before you upgrade
+
+**Carts open right now start empty, once.** The saved names have changed, so a shopper
+who was mid-funnel when this ships comes back to an empty bag and reselects. It happens
+one time per shopper, and only to bags that were already open.
+
+**Check any funnel whose pages sit at different depths.** A campaign whose first page is
+`/hu/` and whose checkout is `/hu/checkout` resolves to two different names, and the bag
+will not survive the step between them. Keep every page of one funnel at the same depth,
+or pin the name by hand with the tag below. Every other layout is handled — `/hu/earbuds`,
+`/hu/earbuds/checkout` and `/hu/earbuds/checkout/upsell1` all stay together, and so do
+`/promo-b.html` and `/promo-b-checkout.html`.
+
+**Two funnels sharing one campaign API key** are kept apart when they sit in different top
+folders. In the same folder they share a bag, which is usually right: same campaign means
+same products and same prices, so a carried bag still charges correctly.
+
+### New
+
+- **`<meta name="next-storage-scope">`** — pins the name by hand for the one layout that
+  needs it. Two pages that must share a cart declare the same value; two that must not
+  declare different ones. It has to be parsed before the SDK script runs, so put it in
+  `<head>` above the loader. `window.nextConfig.storageScope` sets the same thing and wins
+  over the tag.
+
+### Changed
+
+- **Analytics, attribution and the shopper's currency stay shared on purpose.** Affiliate
+  credit follows the person rather than the campaign, one visit must not be reported as two
+  visitors, and a shopper paying in euros must not meet dollars on the next page. The list
+  that stops a sale being counted twice is shared for the same reason.
+
+- **A new boot warning: _Storage scope fell back to a shared one_.** It means the SDK
+  script was placed above the `next-api-key` tag and could not read it in time, so the
+  saved names carry no campaign label and every campaign on the address shares one bag —
+  how the SDK behaved before this release. Move the script below the tag, or load the
+  module build.
+
+---
+
+## [0.4.33] — 2026-08-06 — CDN Re-publish
+
+No code changes. Released to correct the CDN copy; `0.4.32` and `0.4.33` are the same SDK.
+
+---
+
 ## [0.4.32] — 2026-08-06 — Purchases Counted Only When Paid & One Bundle, Not Two
 
 ### Fixed
