@@ -112,7 +112,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.cart!hasItemInCart}
+   * Whether a package is currently in the cart.
    * @category Cart
    */
   public hasItemInCart(options: { packageId?: number }): boolean {
@@ -120,7 +120,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.cart!addItem}
+   * Adds a package to the cart (quantity defaults to 1). No-op if `packageId`
+   * is omitted. For upsell adds use {@link NextCommerce.cart}.
    * @category Cart
    */
   public async addItem(options: {
@@ -131,7 +132,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.cart!removeItem}
+   * Removes a package from the cart entirely. No-op if `packageId` is
+   * omitted.
    * @category Cart
    */
   public async removeItem(options: { packageId?: number }): Promise<void> {
@@ -139,7 +141,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.cart!updateQuantity}
+   * Sets the exact quantity for a package (a quantity of 0 removes it).
    * @category Cart
    */
   public async updateQuantity(options: {
@@ -150,7 +152,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.cart!clearCart}
+   * Empties the cart.
    * @category Cart
    */
   public async clearCart(): Promise<void> {
@@ -158,7 +160,9 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.cart!swapCart}
+   * Replaces the entire cart contents with the given items in one atomic swap
+   * (used by bundle/package selectors). Existing items not listed are
+   * removed.
    * @category Cart
    */
   public async swapCart(
@@ -168,7 +172,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.cart!getCartData}
+   * A snapshot of the full cart for callbacks — enriched line items, totals,
+   * campaign data, and applied vouchers.
    * @category Cart
    */
   public getCartData(): CallbackData {
@@ -176,7 +181,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.cart!getCartTotals}
+   * The current cart totals (subtotal, total, discounts, shipping) as
+   * `Decimal`s.
    * @category Cart
    */
   public getCartTotals() {
@@ -184,7 +190,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.cart!getCartCount}
+   * Total number of units in the cart (sum of item quantities).
    * @category Cart
    */
   public getCartCount(): number {
@@ -192,7 +198,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.campaign!getCampaignData}
+   * The loaded campaign (packages, currency, shipping methods), or `null` if
+   * it hasn't loaded yet.
    * @category Campaign
    */
   public getCampaignData(): Campaign | null {
@@ -200,7 +207,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.campaign!getPackage}
+   * Looks up a package by its `ref_id` in the loaded campaign.
    * @category Campaign
    */
   public getPackage(id: number): any | null {
@@ -208,7 +215,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.campaign!getVariantsByProductId}
+   * All variant packages for a product id (variant selection support).
    * @category Campaign
    */
   public getVariantsByProductId(productId: number): any | null {
@@ -216,7 +223,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.campaign!getAvailableVariantAttributes}
+   * The distinct values available for one variant attribute (e.g. all sizes)
+   * of a product — used to build variant pickers.
    * @category Campaign
    */
   public getAvailableVariantAttributes(
@@ -230,7 +238,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.campaign!getPackageByVariantSelection}
+   * Resolves the concrete package for a product given a full set of selected
+   * variant attributes (e.g. `{ color: 'red', size: 'L' }`).
    * @category Campaign
    */
   public getPackageByVariantSelection(
@@ -244,7 +253,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.campaign!createVariantKey}
+   * Builds a stable, order-independent key from a set of variant attributes
+   * (e.g. `color:red|size:L`) for use as a lookup/map key.
    * @category Campaign
    */
   public createVariantKey(attributes: Record<string, string>): string {
@@ -252,7 +262,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.events!on}
+   * Subscribes to an SDK event. Names and payloads are typed via `EventMap`.
    * @category Events
    */
   public on<K extends keyof EventMap>(
@@ -263,7 +273,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.events!off}
+   * Unsubscribes a handler previously registered with {@link NextCommerce.on}.
    * @category Events
    */
   public off<K extends keyof EventMap>(event: K, handler: Function): void {
@@ -271,7 +281,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.events!registerCallback}
+   * Registers a callback for a lifecycle callback type (e.g. cart/order
+   * hooks). Prefer {@link NextCommerce.on} for event-style subscriptions.
    * @category Events
    */
   public registerCallback(
@@ -282,7 +293,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.events!unregisterCallback}
+   * Removes a callback registered with {@link NextCommerce.registerCallback}.
    * @category Events
    */
   public unregisterCallback(type: CallbackType, callback: Function): void {
@@ -290,7 +301,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.events!triggerCallback}
+   * Invokes all callbacks registered for a type (errors are caught and
+   * logged).
    * @category Events
    */
   public triggerCallback(type: CallbackType, data: CallbackData): void {
@@ -307,7 +319,9 @@ export class NextCommerce {
 
   // Analytics methods (v2 system)
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.analytics!trackViewItemList}
+   * Reports a list of packages as viewed — a product grid or recommendation
+   * rail. `_listId` is accepted and ignored; the list name is the third
+   * argument.
    * @category Analytics
    */
   public async trackViewItemList(
@@ -324,7 +338,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.analytics!trackViewItem}
+   * Reports one package as viewed. Warns and sends nothing when the package
+   * is not in the loaded campaign, so an early call is silently dropped.
    * @category Analytics
    */
   public async trackViewItem(packageId: string | number): Promise<void> {
@@ -332,7 +347,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.analytics!trackAddToCart}
+   * Reports an add-to-cart that happened outside the SDK's own cart calls.
+   * Pairing it with {@link NextCommerce.addItem} reports the add twice.
    * @category Analytics
    */
   public async trackAddToCart(
@@ -343,7 +359,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.analytics!trackRemoveFromCart}
+   * Reports a removal that happened outside the SDK's own cart calls. Pairing
+   * it with {@link NextCommerce.removeItem} reports the removal twice.
    * @category Analytics
    */
   public async trackRemoveFromCart(
@@ -358,7 +375,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.analytics!trackBeginCheckout}
+   * Reports checkout starting, from the current cart. The built-in checkout
+   * form already fires this — call it only for a hand-built flow.
    * @category Analytics
    */
   public async trackBeginCheckout(): Promise<void> {
@@ -366,7 +384,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.analytics!trackPurchase}
+   * Reports a completed order from an order payload. The receipt page already
+   * fires this; a second call doubles reported revenue.
    * @category Analytics
    */
   public async trackPurchase(orderData: any): Promise<void> {
@@ -374,7 +393,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.analytics!trackCustomEvent}
+   * Sends an event of the caller's own naming. Nothing validates the name or
+   * the payload, so a typo becomes a new event name.
    * @category Analytics
    */
   public async trackCustomEvent(
@@ -386,7 +406,10 @@ export class NextCommerce {
 
   // User tracking methods
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.analytics!trackSignUp}
+   * Reports a newsletter or account sign-up. The address goes into the event
+   * payload as `customer_email` in the clear — nothing hashes it — so it
+   * reaches every configured provider and the browser data layer as plain
+   * text.
    * @category Analytics
    */
   public async trackSignUp(email: string): Promise<void> {
@@ -394,7 +417,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.analytics!trackLogin}
+   * Reports a returning visitor signing in. Carries the address in the clear,
+   * exactly as {@link NextCommerce.trackSignUp} does.
    * @category Analytics
    */
   public async trackLogin(email: string): Promise<void> {
@@ -403,7 +427,8 @@ export class NextCommerce {
 
   // Advanced analytics methods
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.analytics!setDebugMode}
+   * Turns verbose analytics logging on or off at runtime. Unrelated to the
+   * debug overlay, which is `?debugger=true` or `window.nextConfig.debugger`.
    * @category Analytics
    */
   public async setDebugMode(enabled: boolean): Promise<void> {
@@ -411,7 +436,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.analytics!invalidateAnalyticsContext}
+   * Discards the cached page context so the next event is built from the
+   * current route. Needed in a single-page app, where no page load resets it.
    * @category Analytics
    */
   public async invalidateAnalyticsContext(): Promise<void> {
@@ -420,7 +446,8 @@ export class NextCommerce {
 
   // Attribution metadata methods
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.attribution!addMetadata}
+   * Adds one key to the attribution metadata sent with the order, merging so
+   * the automatically collected fields survive.
    * @category Metadata
    */
   public addMetadata(key: string, value: any): void {
@@ -428,7 +455,9 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.attribution!setMetadata}
+   * Adds several keys to the attribution metadata. Merges rather than
+   * replaces, despite the name — a true replace would wipe the automatic
+   * fields.
    * @category Metadata
    */
   public setMetadata(metadata: Record<string, any>): void {
@@ -436,7 +465,9 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.attribution!clearMetadata}
+   * Drops caller-supplied metadata while preserving the automatic fields
+   * (`landing_page`, `referrer`, `device`, `device_type`, `domain`,
+   * `timestamp`).
    * @category Metadata
    */
   public clearMetadata(): void {
@@ -444,7 +475,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.attribution!getMetadata}
+   * The attribution metadata as stored. `undefined` means the read failed; an
+   * empty bag is `{}`.
    * @category Metadata
    */
   public getMetadata(): Record<string, any> | undefined {
@@ -452,7 +484,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.attribution!setAttribution}
+   * Overwrites the collected attribution — funnel, affiliate, `utm_*`. This
+   * decides who is credited for the sale, so it is a reporting change.
    * @category Attribution
    */
   public setAttribution(attribution: Record<string, any>): void {
@@ -460,7 +493,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.attribution!getAttribution}
+   * Attribution in the shape sent to the order API, not the raw store — the
+   * right thing to log when an order is attributed wrongly.
    * @category Attribution
    */
   public getAttribution(): Record<string, any> | undefined {
@@ -468,7 +502,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.attribution!debugAttribution}
+   * Prints the whole attribution state to the console. Returns nothing; use
+   * {@link NextCommerce.getAttribution} when you need a value.
    * @category Attribution
    */
   public debugAttribution(): void {
@@ -476,7 +511,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.shipping!getShippingMethods}
+   * All shipping methods available in the loaded campaign.
    * @category Shipping
    */
   public getShippingMethods(): ShippingMethodInfo[] {
@@ -484,7 +519,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.shipping!getSelectedShippingMethod}
+   * The currently selected shipping method, or `null` if none chosen yet.
    * @category Shipping
    */
   public getSelectedShippingMethod(): SelectedShippingMethod | null {
@@ -492,7 +527,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.shipping!setShippingMethod}
+   * Selects a shipping method by id and recalculates cart totals. Throws if
+   * the id isn't in the campaign's shipping methods.
    * @category Shipping
    */
   public async setShippingMethod(methodId: number): Promise<void> {
@@ -500,7 +536,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.utility!getVersion}
+   * The resolved SDK version (runtime loader value if present, else build-
+   * time).
    * @category Utility
    */
   public getVersion(): string {
@@ -508,7 +545,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.utility!formatPrice}
+   * Formats an amount using the campaign currency (or an override), e.g.
+   * `$19.99`.
    * @category Utility
    */
   public formatPrice(amount: number, currency?: string): string {
@@ -516,7 +554,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.utility!validateCheckout}
+   * Lightweight pre-checkout validation (currently: cart must not be empty).
    * @category Utility
    */
   public validateCheckout(): { valid: boolean; errors: string[] } {
@@ -524,7 +562,9 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.coupons!applyCoupon}
+   * Applies a coupon code and recalculates totals. Returns `{ success,
+   * message }` — `success: false` when the code is already applied or
+   * invalid.
    * @category Coupons
    */
   public async applyCoupon(
@@ -534,7 +574,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.coupons!removeCoupon}
+   * Removes a previously applied coupon and recalculates totals.
    * @category Coupons
    */
   public removeCoupon(code: string): void {
@@ -542,7 +582,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.coupons!getCoupons}
+   * The coupon codes currently applied to the cart.
    * @category Coupons
    */
   public getCoupons(): string[] {
@@ -551,7 +591,8 @@ export class NextCommerce {
 
   // Exit Intent - Simple approach
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.popups!exitIntent}
+   * Arms the exit-intent popup, lazy-loading its enhancer on the first call.
+   * Rethrows when that import fails.
    * @category Popups
    */
   public async exitIntent(options: ExitIntentOptions): Promise<void> {
@@ -562,7 +603,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.popups!disableExitIntent}
+   * Stops the exit-intent popup from appearing again. No-op when {@link NextCommerce.exitIntent} was never called.
    * @category Popups
    */
   public disableExitIntent(): void {
@@ -571,7 +612,8 @@ export class NextCommerce {
 
   // FOMO Popup - Simple social proof
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.popups!fomo}
+   * Starts the rotating social-proof popup, lazy-loading its enhancer on the
+   * first call. With no config it uses the enhancer's own defaults.
    * @category Popups
    */
   public async fomo(config?: FomoConfig): Promise<void> {
@@ -582,7 +624,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.popups!stopFomo}
+   * Stops the social-proof popup rotation. No-op when {@link NextCommerce.fomo} was never called.
    * @category Popups
    */
   public stopFomo(): void {
@@ -591,7 +633,10 @@ export class NextCommerce {
 
   // Upsell methods
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.upsells!addUpsell}
+   * Adds packages to the already-paid order, charging the saved payment
+   * method. Throws when there is no order in session, when the order cannot
+   * take upsells or is mid-processing, and when neither `packageId` nor
+   * `items` is given.
    * @category Upsells
    */
   public async addUpsell(options: AddUpsellOptions): Promise<any> {
@@ -602,7 +647,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.upsells!canAddUpsells}
+   * Whether the order in session can take a post-purchase upsell right now.
+   * Also `false` while one is processing, so it guards a double submit.
    * @category Upsells
    */
   public canAddUpsells(): boolean {
@@ -610,7 +656,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.upsells!getCompletedUpsells}
+   * Package ids already accepted on this order, as strings rather than
+   * numbers.
    * @category Upsells
    */
   public getCompletedUpsells(): string[] {
@@ -618,7 +665,9 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.upsells!isUpsellAlreadyAdded}
+   * Whether a package was already accepted on this order — checks the
+   * completed list and the accepted entries of the upsell journey, so it
+   * survives a reload.
    * @category Upsells
    */
   public isUpsellAlreadyAdded(packageId: number): boolean {
@@ -627,7 +676,8 @@ export class NextCommerce {
 
   // URL Parameter Methods
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.url-params!setParam}
+   * Sets one captured URL parameter for the rest of the session. Does not
+   * touch the address bar.
    * @category URL Parameters
    */
   public setParam(key: string, value: string): void {
@@ -635,7 +685,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.url-params!setParams}
+   * Sets several captured URL parameters, replacing the keys named and
+   * leaving the rest alone.
    * @category URL Parameters
    */
   public setParams(params: Record<string, string>): void {
@@ -643,7 +694,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.url-params!getParam}
+   * Reads one captured URL parameter. `null` when it was never captured.
    * @category URL Parameters
    */
   public getParam(key: string): string | null {
@@ -651,7 +702,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.url-params!getAllParams}
+   * Every URL parameter captured for this session.
    * @category URL Parameters
    */
   public getAllParams(): Record<string, string> {
@@ -659,7 +710,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.url-params!hasParam}
+   * Whether a parameter was captured, including one present with an empty
+   * value.
    * @category URL Parameters
    */
   public hasParam(key: string): boolean {
@@ -667,7 +719,7 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.url-params!clearParam}
+   * Forgets one captured URL parameter.
    * @category URL Parameters
    */
   public clearParam(key: string): void {
@@ -675,7 +727,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.url-params!clearAllParams}
+   * Forgets every captured URL parameter — `utm_*` values included, which
+   * attribution reads.
    * @category URL Parameters
    */
   public clearAllParams(): void {
@@ -683,7 +736,8 @@ export class NextCommerce {
   }
 
   /**
-   * {@inheritDoc core/next-commerce/next-commerce.url-params!mergeParams}
+   * Adds parameters to the captured set without disturbing keys it does not
+   * name.
    * @category URL Parameters
    */
   public mergeParams(params: Record<string, string>): void {

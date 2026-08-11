@@ -26,16 +26,14 @@
  *
  * | You want to… | Start at |
  * |---|---|
- * | Put a cart on a page for the first time | [Package Selector › Get Started](./features/cart/package-selector/guide/get-started.md), then [Add to Cart › Get Started](./features/cart/add-to-cart/guide/get-started.md) |
- * | See every feature and the attribute that turns it on | **Features** in the sidebar — each feature has an Overview, a Get Started, Use Cases, and a reference for its attributes, events, logs and errors |
- * | Call the SDK from your own JavaScript | [JavaScript API — `window.next`](./core/guide/reference/javascript-api.md) |
- * | Understand what happens on page load | [Boot sequence](./core/guide/reference/boot-sequence.md) and [Core › Overview](./core/guide/overview.md) |
- * | Configure the SDK from the page | [Meta tags](./core/guide/reference/meta-tags.md) and [URL parameters](./core/guide/reference/url-parameters.md) |
- * | Read live cart, campaign, or order state | **State** in the sidebar — one guide per store, each with its full field schema |
- * | Subscribe to an event | {@link EventMap} for every event name and its payload, and [Analytics events](./core/guide/reference/analytics-events.md) for what is sent to GA4 and friends |
- * | Work out why nothing rendered | the feature's `Logs` and `Errors` pages, and [Logging and debug](./core/guide/subsystems/logging-and-debug.md) |
+ * | Boot the SDK on your first page | [Getting Started](../docs/guides/start-here/getting-started.md), then [How It Works](../docs/guides/start-here/how-it-works.md) |
+ * | Build a funnel page end to end | [Checkout](../docs/guides/pages/checkout-page.md), [Upsell](../docs/guides/pages/upsell-page.md), [Receipt](../docs/guides/pages/receipt-page.md), or [Landing & Presell](../docs/guides/pages/landing-presell.md) |
+ * | Look up a `data-next-*` attribute | [Data Attributes](../docs/guides/reference/data-attributes.md) |
+ * | Call the SDK from your own JavaScript | [JavaScript API — `window.next`](../docs/guides/reference/javascript-api.md) |
+ * | Understand or fix tracking | [Analytics Events](../docs/guides/reference/analytics-events.md) |
+ * | Subscribe to an event | {@link EventMap} for every event name and its payload |
  *
- * ## The data shapes on this page
+ * ## The data types on this page
  *
  * Everything below is the SDK's **public type surface** — the objects you receive
  * in events, read from a store, or pass into a method. It is generated from the
@@ -47,11 +45,11 @@
  * - **Checkout & order** — {@link CheckoutData}, {@link Order} (the placed order,
  *   with {@link OrderLine}, {@link OrderUser}, {@link OrderAddress}),
  *   {@link OrderData} (the guaranteed subset in the `order:completed` payload)
- * - **Events** — {@link EventMap}: every event name mapped to its payload shape
+ * - **Events** — {@link EventMap}: every event name mapped to its payload type
  * - **Stores** — read live values through {@link useCartStore},
  *   {@link useCampaignStore}, {@link useCheckoutStore}, {@link useOrderStore},
  *   {@link useConfigStore}. The campaign store keeps its data on **`.data`**, not
- *   `.campaign` — see [State › Campaign](./state/campaign/guide/overview.md).
+ *   `.campaign`.
  * - **Version** — {@link VERSION}, the SDK build the page is running
  *
  * @packageDocumentation
@@ -71,7 +69,7 @@ export { useCheckoutStore } from '@/state/checkout';
 export { useOrderStore } from '@/state/order';
 // Type exports
 export type * from './types/global';
-// The order shapes the API returns and the order store holds. `OrderData` (above)
+// The order types the API returns and the order store holds. `OrderData` (above)
 // is only the guaranteed subset used to type the `order:completed` payload.
 export type {
   Order,

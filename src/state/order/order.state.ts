@@ -13,7 +13,7 @@ import { EventBus } from '@/core/events';
 export interface OrderState {
   /**
    * The completed order as the API returned it — lines, totals, addresses, and
-   * the status URL. See {@link index.Order} for every field. `null` before an
+   * the status URL. See {@link Order} for every field. `null` before an
    * order has been loaded, which is the normal state of a page opened without a
    * `?ref_id`.
    */
@@ -115,7 +115,7 @@ const initialState: OrderState = {
 };
 
 /**
- * The order store — the completed {@link index.Order | order} plus post-purchase upsell
+ * The order store — the completed {@link Order | order} plus post-purchase upsell
  * tracking (which upsells were viewed, accepted, or skipped). Populated after
  * checkout and used to drive the receipt and upsell pages.
  *
