@@ -6,6 +6,7 @@
  */
 
 import { Logger } from '../../logger';
+import { scopedKey } from '@/core/storage';
 import { DebugEventManager } from '../debug-event-manager';
 import { useCartStore, cartOperations } from '@/state/cart';
 import { useConfigStore } from '@/state/config';
@@ -83,7 +84,11 @@ export class DebugOverlay {
     // Only initialize if debug mode is enabled
     const urlParams = new URLSearchParams(window.location.search);
     const windowConfig = (window as any).nextConfig;
-    const isDebugMode = urlParams.get('debugger') === 'true' || urlParams.get('debug') === 'true' || windowConfig?.debugger === true || windowConfig?.debug === true;
+    const isDebugMode =
+      urlParams.get('debugger') === 'true' ||
+      urlParams.get('debug') === 'true' ||
+      windowConfig?.debugger === true ||
+      windowConfig?.debug === true;
 
     if (isDebugMode) {
       this.eventManager = new DebugEventManager();
@@ -91,7 +96,9 @@ export class DebugOverlay {
       this.setupEventListeners();
 
       // Restore saved state from localStorage
-      const savedExpandedState = localStorage.getItem(DebugOverlay.EXPANDED_STORAGE_KEY);
+      const savedExpandedState = localStorage.getItem(
+        DebugOverlay.EXPANDED_STORAGE_KEY
+      );
       if (savedExpandedState === 'true') {
         this.isExpanded = true;
       }
@@ -119,7 +126,7 @@ export class DebugOverlay {
       new EnhancedCampaignPanel(),
       new CheckoutPanel(),
       new EventTimelinePanel(),
-      new StoragePanel()
+      new StoragePanel(),
     ];
   }
 
@@ -172,7 +179,8 @@ export class DebugOverlay {
   public initialize(): void {
     const urlParams = new URLSearchParams(window.location.search);
     const windowConfig = (window as any).nextConfig;
-    const isDebugMode = urlParams.get('debugger') === 'true' || windowConfig?.debugger === true;
+    const isDebugMode =
+      urlParams.get('debugger') === 'true' || windowConfig?.debugger === true;
 
     if (isDebugMode) {
       this.show();
@@ -188,7 +196,6 @@ export class DebugOverlay {
 
       // Test components in development
       if (import.meta.env && import.meta.env.DEV) {
-
       }
     }
   }
@@ -204,7 +211,9 @@ export class DebugOverlay {
     XrayManager.initialize();
 
     // Auto-restore mini cart if it was previously visible
-    const savedMiniCartState = localStorage.getItem('debug-mini-cart-visible');
+    const savedMiniCartState = localStorage.getItem(
+      scopedKey('debug-mini-cart-visible')
+    );
     if (savedMiniCartState === 'true') {
       // Create mini cart and show it based on saved state
       this.toggleMiniCart(true);
@@ -334,13 +343,18 @@ export class DebugOverlay {
       case 'toggle-expand':
         this.isExpanded = !this.isExpanded;
         // Save expanded state to localStorage
-        localStorage.setItem(DebugOverlay.EXPANDED_STORAGE_KEY, this.isExpanded.toString());
+        localStorage.setItem(
+          DebugOverlay.EXPANDED_STORAGE_KEY,
+          this.isExpanded.toString()
+        );
         this.updateBodyHeight();
         this.updateOverlay();
         // Emit event for selector container
-        document.dispatchEvent(new CustomEvent('debug:panel-toggled', {
-          detail: { isExpanded: this.isExpanded }
-        }));
+        document.dispatchEvent(
+          new CustomEvent('debug:panel-toggled', {
+            detail: { isExpanded: this.isExpanded },
+          })
+        );
         break;
       case 'close':
         this.hide();
@@ -362,7 +376,9 @@ export class DebugOverlay {
         break;
       case 'toggle-internal-events':
         // Toggle internal events for the Events panel
-        const eventPanel = this.panels.find(p => p.id === 'event-timeline') as any;
+        const eventPanel = this.panels.find(
+          p => p.id === 'event-timeline'
+        ) as any;
         if (eventPanel && eventPanel.toggleInternalEvents) {
           eventPanel.toggleInternalEvents();
           this.updateContent();
@@ -384,7 +400,12 @@ export class DebugOverlay {
     const panelTab = target.closest('.debug-panel-tab') as HTMLElement;
     if (panelTab) {
       const panelId = panelTab.getAttribute('data-panel');
-      this.logger.debug('[Debug] Panel switch:', this.activePanel, '->', panelId);
+      this.logger.debug(
+        '[Debug] Panel switch:',
+        this.activePanel,
+        '->',
+        panelId
+      );
       if (panelId && panelId !== this.activePanel) {
         this.activePanel = panelId;
         this.activePanelTab = undefined; // Reset horizontal tab when switching panels
@@ -402,7 +423,14 @@ export class DebugOverlay {
     const horizontalTab = target.closest('.horizontal-tab') as HTMLElement;
     if (horizontalTab) {
       const tabId = horizontalTab.getAttribute('data-panel-tab');
-      this.logger.debug('[Debug] Horizontal tab switch:', this.activePanelTab, '->', tabId, 'in panel:', this.activePanel);
+      this.logger.debug(
+        '[Debug] Horizontal tab switch:',
+        this.activePanelTab,
+        '->',
+        tabId,
+        'in panel:',
+        this.activePanel
+      );
       if (tabId && tabId !== this.activePanelTab) {
         this.activePanelTab = tabId;
 
@@ -489,7 +517,7 @@ export class DebugOverlay {
       config: useConfigStore.getState(),
       events: this.eventManager ? this.eventManager.getEvents() : [],
       url: window.location.href,
-      userAgent: navigator.userAgent
+      userAgent: navigator.userAgent,
     };
 
     const data = JSON.stringify(debugData, null, 2);
@@ -523,7 +551,9 @@ export class DebugOverlay {
     const isActive = XrayManager.toggle();
 
     // Update button state - use shadowRoot not container!
-    const xrayButton = this.shadowRoot?.querySelector('[data-action="toggle-xray"]');
+    const xrayButton = this.shadowRoot?.querySelector(
+      '[data-action="toggle-xray"]'
+    );
     if (xrayButton) {
       if (isActive) {
         xrayButton.classList.add('active');
@@ -536,7 +566,11 @@ export class DebugOverlay {
 
     // Log event
     if (this.eventManager) {
-      this.eventManager.logEvent('debug:xray-toggled', { active: isActive }, 'Debug');
+      this.eventManager.logEvent(
+        'debug:xray-toggled',
+        { active: isActive },
+        'Debug'
+      );
     }
   }
 
@@ -544,7 +578,9 @@ export class DebugOverlay {
     if (!this.shadowRoot) return;
 
     // Update X-ray button state
-    const xrayButton = this.shadowRoot.querySelector('[data-action="toggle-xray"]');
+    const xrayButton = this.shadowRoot.querySelector(
+      '[data-action="toggle-xray"]'
+    );
     if (xrayButton) {
       if (XrayManager.isXrayActive()) {
         xrayButton.classList.add('active');
@@ -557,7 +593,9 @@ export class DebugOverlay {
 
     // Update mini cart button state
     const miniCart = this.shadowRoot.querySelector('#debug-mini-cart-display');
-    const cartButton = this.shadowRoot.querySelector('[data-action="toggle-mini-cart"]');
+    const cartButton = this.shadowRoot.querySelector(
+      '[data-action="toggle-mini-cart"]'
+    );
     if (cartButton) {
       if (miniCart && miniCart.classList.contains('show')) {
         cartButton.classList.add('active');
@@ -587,7 +625,9 @@ export class DebugOverlay {
   private countEnhanced(): number {
     const stats = (
       window as unknown as {
-        nextDebug?: { getStats?: () => { scannerStats?: { enhancedElements?: number } } };
+        nextDebug?: {
+          getStats?: () => { scannerStats?: { enhancedElements?: number } };
+        };
       }
     ).nextDebug?.getStats?.();
     const enhanced = stats?.scannerStats?.enhancedElements;
@@ -606,13 +646,22 @@ export class DebugOverlay {
     const cartState = useCartStore.getState();
 
     // Update cart stats
-    const cartItemsEl = this.shadowRoot.querySelector('[data-debug-stat="cart-items"]');
-    const cartTotalEl = this.shadowRoot.querySelector('[data-debug-stat="cart-total"]');
-    const enhancedElementsEl = this.shadowRoot.querySelector('[data-debug-stat="enhanced-elements"]');
+    const cartItemsEl = this.shadowRoot.querySelector(
+      '[data-debug-stat="cart-items"]'
+    );
+    const cartTotalEl = this.shadowRoot.querySelector(
+      '[data-debug-stat="cart-total"]'
+    );
+    const enhancedElementsEl = this.shadowRoot.querySelector(
+      '[data-debug-stat="enhanced-elements"]'
+    );
 
-    if (cartItemsEl) cartItemsEl.textContent = cartState.totalQuantity.toString();
-    if (cartTotalEl) cartTotalEl.textContent = formatCurrency(cartState.total.toNumber());
-    if (enhancedElementsEl) enhancedElementsEl.textContent = this.countEnhanced().toString();
+    if (cartItemsEl)
+      cartItemsEl.textContent = cartState.totalQuantity.toString();
+    if (cartTotalEl)
+      cartTotalEl.textContent = formatCurrency(cartState.total.toNumber());
+    if (enhancedElementsEl)
+      enhancedElementsEl.textContent = this.countEnhanced().toString();
   }
 }
 

@@ -4,6 +4,7 @@
  */
 
 import { useConfigStore } from '@/state/config';
+import { scopedKey } from '@/core/storage';
 import { useCampaignStore } from '@/state/campaign';
 import { cartOperations } from '@/state/cart';
 import { Logger } from '@/core/logger';
@@ -48,17 +49,19 @@ export class CurrencySelector {
       if (this.isChanging) {
         return;
       }
-      
+
       // Only re-render if the currency actually changed or data was loaded for the first time
       const currencyChanged = state.currency !== prevState?.currency;
       const dataLoaded = !prevState?.data && state.data;
-      
+
       if (currencyChanged || dataLoaded) {
-        this.logger.debug('Campaign currency changed or data loaded, re-rendering currency selector');
+        this.logger.debug(
+          'Campaign currency changed or data loaded, re-rendering currency selector'
+        );
         this.render();
       }
     });
-    
+
     // Store unsubscribe function for cleanup
     (this as any)._unsubscribeCampaign = unsubscribe;
   }
@@ -86,17 +89,20 @@ export class CurrencySelector {
 
   private getAvailableCurrencies(): Array<{ code: string; label: string }> {
     const campaignStore = useCampaignStore.getState();
-    
+
     // Get currencies from campaign data if available
-    if (campaignStore.data?.available_currencies && campaignStore.data.available_currencies.length > 0) {
+    if (
+      campaignStore.data?.available_currencies &&
+      campaignStore.data.available_currencies.length > 0
+    ) {
       return campaignStore.data.available_currencies;
     }
-    
+
     // Fallback to a default set if campaign doesn't have available_currencies
     return [
       { code: 'USD', label: '$ USD' },
       { code: 'EUR', label: '€ EUR' },
-      { code: 'GBP', label: '£ GBP' }
+      { code: 'GBP', label: '£ GBP' },
     ];
   }
 
@@ -105,12 +111,12 @@ export class CurrencySelector {
     if (this.renderDebounceTimer) {
       clearTimeout(this.renderDebounceTimer);
     }
-    
+
     this.renderDebounceTimer = setTimeout(() => {
       this.doRender();
     }, 50);
   }
-  
+
   private doRender(): void {
     if (!this.shadowRoot) return;
 
@@ -118,24 +124,28 @@ export class CurrencySelector {
     const campaignStore = useCampaignStore.getState();
     const currentCurrency = configStore.getCurrency();
     const availableCurrencies = this.getAvailableCurrencies();
-    
+
     // Don't render if no campaign data yet
     if (!campaignStore.data) {
-      this.logger.debug('No campaign data available yet, skipping currency selector render');
+      this.logger.debug(
+        'No campaign data available yet, skipping currency selector render'
+      );
       // Retry render after a delay
       setTimeout(() => this.doRender(), 1000);
       return;
     }
-    
+
     // Don't show selector if only one currency is available
     if (availableCurrencies.length <= 1) {
-      this.logger.debug('Only one currency available, hiding currency selector');
+      this.logger.debug(
+        'Only one currency available, hiding currency selector'
+      );
       if (this.container) {
         this.container.style.display = 'none';
       }
       return;
     }
-    
+
     // Make sure container is visible if we have multiple currencies
     if (this.container) {
       this.container.style.display = 'block';
@@ -143,7 +153,7 @@ export class CurrencySelector {
 
     // Get the actual detected currency from geo-location (not overridden)
     const detectedCurrency = configStore.detectedCurrency; // Raw geo-detection result
-    
+
     this.shadowRoot.innerHTML = `
       <style>
         :host {
@@ -267,11 +277,15 @@ export class CurrencySelector {
         
         <div class="select-wrapper">
           <select class="currency-select" id="currency-select">
-            ${availableCurrencies.map(currency => `
+            ${availableCurrencies
+              .map(
+                currency => `
               <option value="${currency.code}" ${currency.code === currentCurrency ? 'selected' : ''}>
                 ${currency.code}
               </option>
-            `).join('')}
+            `
+              )
+              .join('')}
           </select>
           <svg class="select-arrow" viewBox="0 0 24 24" fill="currentColor">
             <path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"/>
@@ -280,14 +294,18 @@ export class CurrencySelector {
 
         <div class="loading-indicator" id="loading-indicator"></div>
 
-        ${detectedCurrency ? `
+        ${
+          detectedCurrency
+            ? `
           <div class="detected-info">
             Detected: <span class="detected-value">${detectedCurrency}</span>
           </div>
-        ` : ''}
+        `
+            : ''
+        }
       </div>
     `;
-    
+
     // Mark as initially rendered to prevent animation on subsequent renders
     if (!this.hasInitiallyRendered) {
       this.hasInitiallyRendered = true;
@@ -299,14 +317,14 @@ export class CurrencySelector {
 
     // Use event delegation on shadowRoot to handle select changes
     // This ensures the event listener persists even after re-renders
-    this.shadowRoot.addEventListener('change', async (e) => {
+    this.shadowRoot.addEventListener('change', async e => {
       const target = e.target as HTMLElement;
-      
+
       // Check if the change event is from the currency select
       if (target && target.id === 'currency-select') {
         const selectElement = target as HTMLSelectElement;
         const newCurrency = selectElement.value;
-        
+
         if (this.isChanging) {
           this.logger.warn('Currency change already in progress');
           return;
@@ -318,91 +336,98 @@ export class CurrencySelector {
     });
 
     // Listen for currency changes from other sources
-    document.addEventListener('next:currency-changed', (e) => {
+    document.addEventListener('next:currency-changed', e => {
       const customEvent = e as CustomEvent;
       // Skip if this change was initiated by this selector (to avoid self-triggering)
       if ((customEvent.detail as any)?.source === 'currency-selector') {
         return;
       }
-      
+
       // Debounce re-renders to avoid loops
       clearTimeout((this as any)._rerenderTimeout);
       (this as any)._rerenderTimeout = setTimeout(() => {
-        this.logger.debug('External currency change detected, re-rendering selector');
+        this.logger.debug(
+          'External currency change detected, re-rendering selector'
+        );
         this.render();
       }, 100);
     });
-    
+
     this.listenersAttached = true;
     this.logger.debug('Event listeners attached to currency selector');
   }
 
   private async handleCurrencyChange(newCurrency: string): Promise<void> {
     this.isChanging = true;
-    
-    const select = this.shadowRoot?.getElementById('currency-select') as HTMLSelectElement;
-    const loadingIndicator = this.shadowRoot?.getElementById('loading-indicator');
-    
+
+    const select = this.shadowRoot?.getElementById(
+      'currency-select'
+    ) as HTMLSelectElement;
+    const loadingIndicator =
+      this.shadowRoot?.getElementById('loading-indicator');
+
     if (select) select.disabled = true;
     if (loadingIndicator) loadingIndicator.classList.add('active');
 
     try {
       this.logger.info(`Changing currency to ${newCurrency}`);
-      
+
       const configStore = useConfigStore.getState();
       const campaignStore = useCampaignStore.getState();
 
       // Store the old currency for event
       const oldCurrency = configStore.getCurrency();
-      
+
       // Don't clear cache - the campaignStore already caches per currency
       // and will reuse cached data if available for each currency
-      
+
       // Now update the selected currency in config
       configStore.updateConfig({
-        selectedCurrency: newCurrency
+        selectedCurrency: newCurrency,
       });
-      
+
       // Save to sessionStorage for persistence across page refreshes
-      sessionStorage.setItem('next_selected_currency', newCurrency);
+      sessionStorage.setItem(scopedKey('next_selected_currency'), newCurrency);
       this.logger.info(`Saved currency preference to session: ${newCurrency}`);
-      
+
       // Reload campaign data with new currency
       // IMPORTANT: Pass forceFresh: true to skip cache fallback and always fetch from API
       // This ensures we get EUR data instead of falling back to cached USD
-      await campaignStore.loadCampaign(configStore.apiKey, { forceFresh: true });
+      await campaignStore.loadCampaign(configStore.apiKey, {
+        forceFresh: true,
+      });
 
       // Refresh cart item prices with new campaign data
       await cartOperations.refreshItemPrices();
-      
+
       // Note: refreshItemPrices already calls calculateTotals internally
-      
+
       this.logger.info(`Currency changed successfully to ${newCurrency}`);
-      
+
       // Emit event for other components (mark as from selector to avoid self-triggering)
-      document.dispatchEvent(new CustomEvent('next:currency-changed', {
-        detail: { 
-          from: oldCurrency,
-          to: newCurrency,
-          source: 'currency-selector'
-        }
-      }));
-      
+      document.dispatchEvent(
+        new CustomEvent('next:currency-changed', {
+          detail: {
+            from: oldCurrency,
+            to: newCurrency,
+            source: 'currency-selector',
+          },
+        })
+      );
+
       // Trigger display updates
       document.dispatchEvent(new CustomEvent('debug:update-content'));
-      
+
       // Show success feedback
       this.showSuccessFeedback(newCurrency);
-      
     } catch (error) {
       this.logger.error('Failed to change currency:', error);
       this.showErrorFeedback();
-      
+
       // Revert selection
       const configStore = useConfigStore.getState();
       const currentCurrency = configStore.selectedCurrency || 'USD';
       if (select) select.value = currentCurrency;
-      
     } finally {
       this.isChanging = false;
       if (select) select.disabled = false;
@@ -411,26 +436,34 @@ export class CurrencySelector {
   }
 
   private showSuccessFeedback(_currency: string): void {
-    const selector = this.shadowRoot?.querySelector('.currency-selector') as HTMLElement;
+    const selector = this.shadowRoot?.querySelector(
+      '.currency-selector'
+    ) as HTMLElement;
     if (!selector) return;
 
     // Add success animation
-    selector.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
-    
+    selector.style.background =
+      'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+
     setTimeout(() => {
-      selector.style.background = 'linear-gradient(135deg, #222 0%, #1a1a1a 100%)';
+      selector.style.background =
+        'linear-gradient(135deg, #222 0%, #1a1a1a 100%)';
     }, 1000);
   }
 
   private showErrorFeedback(): void {
-    const selector = this.shadowRoot?.querySelector('.currency-selector') as HTMLElement;
+    const selector = this.shadowRoot?.querySelector(
+      '.currency-selector'
+    ) as HTMLElement;
     if (!selector) return;
 
     // Add error animation
-    selector.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
-    
+    selector.style.background =
+      'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+
     setTimeout(() => {
-      selector.style.background = 'linear-gradient(135deg, #222 0%, #1a1a1a 100%)';
+      selector.style.background =
+        'linear-gradient(135deg, #222 0%, #1a1a1a 100%)';
     }, 1000);
   }
 
@@ -446,7 +479,7 @@ export class CurrencySelector {
     if ((this as any)._rerenderTimeout) {
       clearTimeout((this as any)._rerenderTimeout);
     }
-    
+
     if (this.container) {
       this.container.remove();
       this.container = null;

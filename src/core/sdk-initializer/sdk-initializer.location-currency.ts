@@ -12,6 +12,7 @@
  */
 
 import type { Logger } from '@/core/logger';
+import { scopedKey } from '@/core/storage';
 import { useConfigStore } from '@/state/config';
 import { CountryService, Country, LocationData } from '@/core/country-service';
 
@@ -38,12 +39,14 @@ export async function initializeLocationAndCurrency(ctx: {
       // upsells, etc.) keep the same currency the user paid in.
       const urlParams = new URLSearchParams(window.location.search);
       const urlCurrency = urlParams.get('currency');
-      const savedCurrency = sessionStorage.getItem('next_selected_currency');
+      const savedCurrency = sessionStorage.getItem(
+        scopedKey('next_selected_currency')
+      );
       const restored =
         (urlCurrency && urlCurrency.toUpperCase()) || savedCurrency || '';
       if (restored) {
         if (urlCurrency) {
-          sessionStorage.setItem('next_selected_currency', restored);
+          sessionStorage.setItem(scopedKey('next_selected_currency'), restored);
         }
         configStore.updateConfig({ selectedCurrency: restored });
       }
@@ -58,7 +61,9 @@ export async function initializeLocationAndCurrency(ctx: {
     // Check for country override in URL or session
     const urlParams = new URLSearchParams(window.location.search);
     const countryOverride = urlParams.get('country');
-    const savedCountry = sessionStorage.getItem('next_selected_country');
+    const savedCountry = sessionStorage.getItem(
+      scopedKey('next_selected_country')
+    );
 
     // Priority: URL param > saved preference > auto-detection
     const forcedCountry = countryOverride || savedCountry;
@@ -98,7 +103,7 @@ export async function initializeLocationAndCurrency(ctx: {
           // Save to session if from URL
           if (countryOverride) {
             sessionStorage.setItem(
-              'next_selected_country',
+              scopedKey('next_selected_country'),
               countryOverride.toUpperCase()
             );
           }
@@ -192,7 +197,9 @@ export async function initializeLocationAndCurrency(ctx: {
 
       const urlParams = new URLSearchParams(window.location.search);
       const urlCurrency = urlParams.get('currency');
-      const savedCurrency = sessionStorage.getItem('next_selected_currency');
+      const savedCurrency = sessionStorage.getItem(
+        scopedKey('next_selected_currency')
+      );
       const detectedCurrency = locationData.detectedCountryConfig.currencyCode;
 
       let selectedCurrency: string;
@@ -202,7 +209,10 @@ export async function initializeLocationAndCurrency(ctx: {
         selectedCurrency = urlCurrency.toUpperCase();
         ctx.logger.info('Currency override from URL:', selectedCurrency);
         // Save to session for persistence
-        sessionStorage.setItem('next_selected_currency', selectedCurrency);
+        sessionStorage.setItem(
+          scopedKey('next_selected_currency'),
+          selectedCurrency
+        );
       } else if (savedCurrency) {
         // Use previously saved selection
         selectedCurrency = savedCurrency;
@@ -217,7 +227,10 @@ export async function initializeLocationAndCurrency(ctx: {
       // (success page, upsells) cannot drift to a different currency if
       // geo-detection returns a different result or is skipped.
       if (selectedCurrency) {
-        sessionStorage.setItem('next_selected_currency', selectedCurrency);
+        sessionStorage.setItem(
+          scopedKey('next_selected_currency'),
+          selectedCurrency
+        );
       }
 
       configStore.updateConfig({
@@ -237,7 +250,9 @@ export async function initializeLocationAndCurrency(ctx: {
     );
 
     // Check for saved currency even in fallback case
-    const savedCurrency = sessionStorage.getItem('next_selected_currency');
+    const savedCurrency = sessionStorage.getItem(
+      scopedKey('next_selected_currency')
+    );
     const urlParams = new URLSearchParams(window.location.search);
     const urlCurrency = urlParams.get('currency');
 
@@ -245,7 +260,10 @@ export async function initializeLocationAndCurrency(ctx: {
     let fallbackCurrency = 'USD';
     if (urlCurrency) {
       fallbackCurrency = urlCurrency.toUpperCase();
-      sessionStorage.setItem('next_selected_currency', fallbackCurrency);
+      sessionStorage.setItem(
+        scopedKey('next_selected_currency'),
+        fallbackCurrency
+      );
     } else if (savedCurrency) {
       fallbackCurrency = savedCurrency;
     }

@@ -5,6 +5,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { normalizeVoucherCode } from '@/utils/voucher';
+import { CHECKOUT_STORAGE_KEY } from '@/core/storage';
 
 export interface CheckoutState {
   step: number;
@@ -197,7 +198,7 @@ export const useCheckoutStore = create<CheckoutState & CheckoutActions>()(
       },
     }),
     {
-      name: 'next-checkout-store', // Key in sessionStorage
+      name: CHECKOUT_STORAGE_KEY,
       storage: {
         getItem: name => {
           const str = sessionStorage.getItem(name);

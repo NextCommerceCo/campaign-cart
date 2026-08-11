@@ -2,7 +2,11 @@
  * Attribution Collector - Collects attribution data from various sources
  */
 
-import type { AttributionState, AttributionMetadata } from '@/state/attribution';
+import type {
+  AttributionState,
+  AttributionMetadata,
+} from '@/state/attribution';
+import { scopedKey } from '@/core/storage';
 import { createLogger } from '@/core/logger';
 
 const logger = createLogger('AttributionCollector');
@@ -13,36 +17,47 @@ export class AttributionCollector {
    */
   async collect(): Promise<AttributionState> {
     const metadata = this.collectMetadata();
-    
+
     return {
       // Core attribution fields
-      affiliate: this.getStoredValue('affid') || this.getStoredValue('aff') || '',
+      affiliate:
+        this.getStoredValue('affid') || this.getStoredValue('aff') || '',
       funnel: this.getFunnelName(),
       gclid: this.getStoredValue('gclid') || '',
-      
+
       // UTM parameters
       utm_source: this.getStoredValue('utm_source') || '',
       utm_medium: this.getStoredValue('utm_medium') || '',
       utm_campaign: this.getStoredValue('utm_campaign') || '',
       utm_content: this.getStoredValue('utm_content') || '',
       utm_term: this.getStoredValue('utm_term') || '',
-      
+
       // Subaffiliates - limited to 225 characters to prevent API errors
-      subaffiliate1: this.limitSubaffiliateLength(this.getStoredValue('subaffiliate1') || this.getStoredValue('sub1')),
-      subaffiliate2: this.limitSubaffiliateLength(this.getStoredValue('subaffiliate2') || this.getStoredValue('sub2')),
-      subaffiliate3: this.limitSubaffiliateLength(this.getStoredValue('subaffiliate3') || this.getStoredValue('sub3')),
-      subaffiliate4: this.limitSubaffiliateLength(this.getStoredValue('subaffiliate4') || this.getStoredValue('sub4')),
-      subaffiliate5: this.limitSubaffiliateLength(this.getStoredValue('subaffiliate5') || this.getStoredValue('sub5')),
-      
+      subaffiliate1: this.limitSubaffiliateLength(
+        this.getStoredValue('subaffiliate1') || this.getStoredValue('sub1')
+      ),
+      subaffiliate2: this.limitSubaffiliateLength(
+        this.getStoredValue('subaffiliate2') || this.getStoredValue('sub2')
+      ),
+      subaffiliate3: this.limitSubaffiliateLength(
+        this.getStoredValue('subaffiliate3') || this.getStoredValue('sub3')
+      ),
+      subaffiliate4: this.limitSubaffiliateLength(
+        this.getStoredValue('subaffiliate4') || this.getStoredValue('sub4')
+      ),
+      subaffiliate5: this.limitSubaffiliateLength(
+        this.getStoredValue('subaffiliate5') || this.getStoredValue('sub5')
+      ),
+
       // Metadata
       metadata,
-      
+
       // Timestamps
       first_visit_timestamp: this.getFirstVisitTimestamp(),
-      current_visit_timestamp: Date.now()
+      current_visit_timestamp: Date.now(),
     };
   }
-  
+
   /**
    * Collect metadata including device info, referrer, and tracking data
    */
@@ -58,30 +73,30 @@ export class AttributionCollector {
       // Facebook tracking
       fb_fbp: this.getCookie('_fbp') || '',
       fb_fbc: this.getCookie('_fbc') || '',
-      fb_pixel_id: this.getFacebookPixelId()
+      fb_pixel_id: this.getFacebookPixelId(),
     };
-    
+
     // Add fbclid if exists
     const fbclid = this.getStoredValue('fbclid');
     if (fbclid) {
       metadata.fbclid = fbclid;
     }
-    
+
     // Add generic clickid if exists (for various tracking platforms)
     const clickid = this.getStoredValue('clickid');
     if (clickid) {
       metadata.clickid = clickid;
     }
-    
+
     // Handle Everflow tracking
     this.handleEverflowClickId(metadata);
-    
+
     // Collect custom tracking tags
     this.collectTrackingTags(metadata);
-    
+
     return metadata;
   }
-  
+
   /**
    * Limit subaffiliate value to 225 characters to prevent API errors
    */
@@ -89,15 +104,17 @@ export class AttributionCollector {
     if (!value) {
       return '';
     }
-    
+
     if (value.length > 225) {
-      logger.warn(`Subaffiliate value truncated from ${value.length} to 225 characters`);
+      logger.warn(
+        `Subaffiliate value truncated from ${value.length} to 225 characters`
+      );
       return value.substring(0, 225);
     }
-    
+
     return value;
   }
-  
+
   /**
    * Get value from URL parameters, sessionStorage, or localStorage
    * Priority: URL > sessionStorage > localStorage
@@ -107,17 +124,20 @@ export class AttributionCollector {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has(key)) {
       const value = urlParams.get(key) || '';
-      
+
       // Store in sessionStorage for persistence during session
       try {
         sessionStorage.setItem(key, value);
       } catch (error) {
-        console.error(`[AttributionCollector] Error storing ${key} in sessionStorage:`, error);
+        console.error(
+          `[AttributionCollector] Error storing ${key} in sessionStorage:`,
+          error
+        );
       }
-      
+
       return value;
     }
-    
+
     // Try sessionStorage
     try {
       const sessionValue = sessionStorage.getItem(key);
@@ -125,9 +145,12 @@ export class AttributionCollector {
         return sessionValue;
       }
     } catch (error) {
-      console.error(`[AttributionCollector] Error reading ${key} from sessionStorage:`, error);
+      console.error(
+        `[AttributionCollector] Error reading ${key} from sessionStorage:`,
+        error
+      );
     }
-    
+
     // Try localStorage
     try {
       const localValue = localStorage.getItem(key);
@@ -135,12 +158,15 @@ export class AttributionCollector {
         return localValue;
       }
     } catch (error) {
-      console.error(`[AttributionCollector] Error reading ${key} from localStorage:`, error);
+      console.error(
+        `[AttributionCollector] Error reading ${key} from localStorage:`,
+        error
+      );
     }
-    
+
     // Try persisted attribution data
     try {
-      const persistedData = localStorage.getItem('next-attribution');
+      const persistedData = localStorage.getItem(scopedKey('next-attribution'));
       if (persistedData) {
         const parsed = JSON.parse(persistedData);
         if (parsed.state && parsed.state[key]) {
@@ -148,12 +174,15 @@ export class AttributionCollector {
         }
       }
     } catch (error) {
-      console.error('[AttributionCollector] Error reading persisted attribution:', error);
+      console.error(
+        '[AttributionCollector] Error reading persisted attribution:',
+        error
+      );
     }
-    
+
     return '';
   }
-  
+
   /**
    * Get cookie value by name
    */
@@ -165,16 +194,17 @@ export class AttributionCollector {
     }
     return '';
   }
-  
+
   /**
    * Detect device type based on user agent
    */
   private getDeviceType(): 'mobile' | 'desktop' {
     const userAgent = navigator.userAgent;
-    const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+    const mobileRegex =
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
     return mobileRegex.test(userAgent) ? 'mobile' : 'desktop';
   }
-  
+
   /**
    * Get funnel name from URL parameters, persisted storage, or meta tags
    * Priority: URL params ALWAYS override > persisted storage > meta tags
@@ -187,22 +217,28 @@ export class AttributionCollector {
       const urlFunnel = urlParams.get('funnel') || '';
       if (urlFunnel) {
         // Check if we're overriding an existing funnel
-        const existingFunnel = sessionStorage.getItem('next_funnel_name') ||
-                              localStorage.getItem('next_funnel_name');
+        const existingFunnel =
+          sessionStorage.getItem(scopedKey('next_funnel_name')) ||
+          localStorage.getItem(scopedKey('next_funnel_name'));
 
         if (existingFunnel && existingFunnel !== urlFunnel) {
-          logger.info(`🔄 Funnel override: "${existingFunnel}" -> "${urlFunnel}" (from URL parameter)`);
+          logger.info(
+            `🔄 Funnel override: "${existingFunnel}" -> "${urlFunnel}" (from URL parameter)`
+          );
         } else {
           logger.debug(`Funnel found in URL parameter: ${urlFunnel}`);
         }
 
         // Persist the funnel name immediately (this will override any existing value)
         try {
-          sessionStorage.setItem('next_funnel_name', urlFunnel);
-          localStorage.setItem('next_funnel_name', urlFunnel);
+          sessionStorage.setItem(scopedKey('next_funnel_name'), urlFunnel);
+          localStorage.setItem(scopedKey('next_funnel_name'), urlFunnel);
           logger.info(`Persisted funnel name from URL: ${urlFunnel}`);
         } catch (error) {
-          console.error('[AttributionCollector] Error persisting funnel from URL:', error);
+          console.error(
+            '[AttributionCollector] Error persisting funnel from URL:',
+            error
+          );
         }
         return urlFunnel;
       }
@@ -211,56 +247,75 @@ export class AttributionCollector {
     // Check if we already have a persisted funnel name
     try {
       // Check sessionStorage first (current session)
-      const sessionFunnel = sessionStorage.getItem('next_funnel_name');
+      const sessionFunnel = sessionStorage.getItem(
+        scopedKey('next_funnel_name')
+      );
       if (sessionFunnel) {
         logger.debug(`Using persisted funnel from session: ${sessionFunnel}`);
         return sessionFunnel;
       }
 
       // Check localStorage (cross-session)
-      const localFunnel = localStorage.getItem('next_funnel_name');
+      const localFunnel = localStorage.getItem(scopedKey('next_funnel_name'));
       if (localFunnel) {
-        logger.debug(`Using persisted funnel from localStorage: ${localFunnel}`);
+        logger.debug(
+          `Using persisted funnel from localStorage: ${localFunnel}`
+        );
         // Also set in sessionStorage for consistency
-        sessionStorage.setItem('next_funnel_name', localFunnel);
+        sessionStorage.setItem(scopedKey('next_funnel_name'), localFunnel);
         return localFunnel;
       }
 
       // Check persisted attribution data
-      const persistedData = localStorage.getItem('next-attribution');
+      const persistedData = localStorage.getItem(scopedKey('next-attribution'));
       if (persistedData) {
         const parsed = JSON.parse(persistedData);
         if (parsed.state && parsed.state.funnel) {
-          logger.debug(`Using persisted funnel from attribution: ${parsed.state.funnel}`);
+          logger.debug(
+            `Using persisted funnel from attribution: ${parsed.state.funnel}`
+          );
           // Also set in session/localStorage for faster access
-          sessionStorage.setItem('next_funnel_name', parsed.state.funnel);
-          localStorage.setItem('next_funnel_name', parsed.state.funnel);
+          sessionStorage.setItem(
+            scopedKey('next_funnel_name'),
+            parsed.state.funnel
+          );
+          localStorage.setItem(
+            scopedKey('next_funnel_name'),
+            parsed.state.funnel
+          );
           return parsed.state.funnel;
         }
       }
     } catch (error) {
-      console.error('[AttributionCollector] Error reading persisted funnel:', error);
+      console.error(
+        '[AttributionCollector] Error reading persisted funnel:',
+        error
+      );
     }
 
     // No persisted funnel found, check for meta tag
     const funnelMetaTag = document.querySelector(
       'meta[name="os-tracking-tag"][data-tag-name="funnel_name"], ' +
-      'meta[name="data-next-tracking-tag"][data-tag-name="funnel_name"], ' +
-      'meta[name="next-funnel"]'
+        'meta[name="data-next-tracking-tag"][data-tag-name="funnel_name"], ' +
+        'meta[name="next-funnel"]'
     );
 
     if (funnelMetaTag) {
-      const value = funnelMetaTag.getAttribute('data-tag-value') ||
-                    funnelMetaTag.getAttribute('content');
+      const value =
+        funnelMetaTag.getAttribute('data-tag-value') ||
+        funnelMetaTag.getAttribute('content');
       if (value) {
         logger.debug(`New funnel found from meta tag: ${value}`);
         // Persist the funnel name
         try {
-          sessionStorage.setItem('next_funnel_name', value);
-          localStorage.setItem('next_funnel_name', value);
+          sessionStorage.setItem(scopedKey('next_funnel_name'), value);
+          localStorage.setItem(scopedKey('next_funnel_name'), value);
           logger.info(`Persisted funnel name: ${value}`);
         } catch (error) {
-          console.error('[AttributionCollector] Error persisting funnel name:', error);
+          console.error(
+            '[AttributionCollector] Error persisting funnel name:',
+            error
+          );
         }
         return value;
       }
@@ -269,21 +324,21 @@ export class AttributionCollector {
     // Return empty - will be set when campaign loads or from meta tag
     return '';
   }
-  
+
   /**
    * Handle Everflow click ID tracking
    */
   private handleEverflowClickId(metadata: AttributionMetadata): void {
     const urlParams = new URLSearchParams(window.location.search);
     let evclid = localStorage.getItem('evclid');
-    
+
     // Check URL parameters first
     if (urlParams.has('evclid')) {
       evclid = urlParams.get('evclid') || '';
       localStorage.setItem('evclid', evclid);
       sessionStorage.setItem('evclid', evclid);
       logger.debug(`Everflow click ID found in URL: ${evclid}`);
-    } 
+    }
     // Try sessionStorage as fallback
     else if (!evclid && sessionStorage.getItem('evclid')) {
       evclid = sessionStorage.getItem('evclid');
@@ -292,14 +347,14 @@ export class AttributionCollector {
         logger.debug(`Everflow click ID found in sessionStorage: ${evclid}`);
       }
     }
-    
+
     // Set the transaction ID in metadata if we have it
     if (evclid) {
       metadata.everflow_transaction_id = evclid;
       logger.debug(`Added Everflow transaction ID to metadata: ${evclid}`);
     }
   }
-  
+
   /**
    * Collect custom tracking tags from meta elements
    */
@@ -308,31 +363,34 @@ export class AttributionCollector {
     const trackingTags = document.querySelectorAll(
       'meta[name="os-tracking-tag"], meta[name="data-next-tracking-tag"]'
     );
-    
+
     logger.debug(`Found ${trackingTags.length} tracking tags`);
-    
+
     trackingTags.forEach(tag => {
       const tagName = tag.getAttribute('data-tag-name');
       const tagValue = tag.getAttribute('data-tag-value');
       const shouldPersist = tag.getAttribute('data-persist') === 'true';
-      
+
       if (tagName && tagValue) {
         metadata[tagName] = tagValue;
         logger.debug(`Added tracking tag: ${tagName} = ${tagValue}`);
-        
+
         // Store in sessionStorage if it should persist
         if (shouldPersist) {
           try {
             sessionStorage.setItem(`tn_tag_${tagName}`, tagValue);
             logger.debug(`Persisted tracking tag: ${tagName}`);
           } catch (error) {
-            console.error(`[AttributionCollector] Error persisting tag ${tagName}:`, error);
+            console.error(
+              `[AttributionCollector] Error persisting tag ${tagName}:`,
+              error
+            );
           }
         }
       }
     });
   }
-  
+
   /**
    * Try to detect Facebook Pixel ID from the page
    */
@@ -341,7 +399,7 @@ export class AttributionCollector {
     const pixelMeta = document.querySelector(
       'meta[name="os-facebook-pixel"], meta[name="facebook-pixel-id"]'
     );
-    
+
     if (pixelMeta) {
       const pixelId = pixelMeta.getAttribute('content');
       if (pixelId) {
@@ -349,7 +407,7 @@ export class AttributionCollector {
         return pixelId;
       }
     }
-    
+
     // Try to find FB Pixel ID from script tags
     const scripts = document.querySelectorAll('script');
     for (const script of scripts) {
@@ -362,17 +420,17 @@ export class AttributionCollector {
         }
       }
     }
-    
+
     return '';
   }
-  
+
   /**
    * Get the first visit timestamp
    */
   private getFirstVisitTimestamp(): number {
     // Try to get from persisted attribution data
     try {
-      const persistedData = localStorage.getItem('next-attribution');
+      const persistedData = localStorage.getItem(scopedKey('next-attribution'));
       if (persistedData) {
         const parsed = JSON.parse(persistedData);
         if (parsed.state && parsed.state.first_visit_timestamp) {
@@ -380,9 +438,12 @@ export class AttributionCollector {
         }
       }
     } catch (error) {
-      console.error('[AttributionCollector] Error reading first visit timestamp:', error);
+      console.error(
+        '[AttributionCollector] Error reading first visit timestamp:',
+        error
+      );
     }
-    
+
     // Otherwise use current timestamp
     return Date.now();
   }

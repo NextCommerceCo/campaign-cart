@@ -10,7 +10,7 @@ category: "Core Reference"
      src/docs/content/core-logs.ts. Do not edit by hand: change the log line in the
      code or the note in core-logs.ts, then run `npm run docs:reference`. -->
 
-Every message the SDK's own machinery can print — 507 of them, across 62 console prefixes plus 13 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
+Every message the SDK's own machinery can print — 508 of them, across 62 console prefixes plus 13 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
 
 Messages are listed at the wording the code uses. A `{name}` inside one is a value filled in at runtime, so search for the text on either side of it. **Extra context** means the call passes a second argument — an object or an error logged beside the message; expand that entry in the console, because the message alone will not tell you which element, package, or event was involved.
 
@@ -76,7 +76,7 @@ Console lines are prefixed with the part of the SDK that produced them. Find the
 | `[SDKInitializer]` | The `forcePackageId` / `forceShippingId` URL overrides and the session's captured URL parameters, applied once configuration and campaign data are loaded. | 2 | 4 | 5 | 5 |
 | `[SDKInitializer]` | Clears the SDK's own sessionStorage, localStorage, and cookies when the page carries `?reset=true`, for a clean-slate reload. | — | — | 2 | — |
 | `[SDKInitializer]` | Builds `window.nextDebug` — the console surface for inspecting and driving the stores, the cart, campaign, attribution, and analytics from devtools. | — | — | — | 1 |
-| `[SDKInitializer]` | Starts the SDK: reads configuration, delegates to location/currency detection and attribution capture, loads the campaign, applies URL parameters such as `forcePackageId`, then hands over to the DOM scan. Most "the page did nothing" investigations start here. | 3 | 4 | 15 | 10 |
+| `[SDKInitializer]` | Starts the SDK: reads configuration, delegates to location/currency detection and attribution capture, loads the campaign, applies URL parameters such as `forcePackageId`, then hands over to the DOM scan. Most "the page did nothing" investigations start here. | 3 | 5 | 15 | 10 |
 | `[AttributeScanner]` | Finds every `data-next-*` element on the page and starts the feature bound to it. If a feature never runs, this is where its element was either skipped or failed to initialize. | 6 | 4 | 3 | 28 |
 | `[NextCommerce]` | Part of the `window.next` API — the analytics calls a page makes by hand — tracking a view, a sign-up, or a custom event through the SDK rather than the provider. | — | 1 | — | 3 |
 | `[NextCommerce]` | Part of the `window.next` API — metadata and attribution a page sets on itself, which every later order carries. | 7 | — | — | 4 |
@@ -458,6 +458,14 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 **Meaning:** Boot failed and is trying again after a pause. Expected to be followed either by `SDK initialization complete ✅` or by another `SDK initialization failed:`.
 
 **Action:** Nothing while the retries are running. If you see the third attempt, treat the page as broken for that visitor and fix the error logged above it — retrying a missing API key never succeeds.
+
+#### `Storage scope fell back to a shared one: next-api-key was not readable when the stores were created, so every campaign on this origin shares a cart. Move the SDK script below the meta tag, or load the module build.`
+
+`sdk-initializer/sdk-initializer.ts › SDKInitializer.loadCampaignData`
+
+**Meaning:** The cart, checkout and order keys are normally suffixed with one hash of the campaign's API key and the folder the page is served from, so two campaigns on one hostname cannot read each other's cart. That scope is fixed when the store modules are created, and at that moment the API key was not in the DOM. The page still works: it writes the keys under their bare names — exactly what the SDK wrote before scoping existed — so every campaign on the origin shares one cart.
+
+**Action:** Move the SDK script below the `next-api-key` meta tag, or load the module build, which is deferred and always sees the whole `<head>`. Until then, two campaigns on this origin share a cart, and a shopper who was mid-funnel when the fix ships starts that funnel over — their old cart is filed under the bare name, not the scoped one.
 
 #### `Analytics v2 initialization failed (non-critical):`
 

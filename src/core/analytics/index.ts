@@ -6,6 +6,7 @@
  */
 
 import { dataLayer } from './data-layer-manager';
+import { scopedKey } from '@/core/storage';
 import { GTMAdapter } from './providers/gtm-adapter';
 import { FacebookAdapter } from './providers/facebook-adapter';
 import { RudderStackAdapter } from './providers/rudderstack-adapter';
@@ -111,7 +112,7 @@ export class NextAnalytics {
 
       if (ignoreParam === 'true') {
         // Set session storage flag
-        sessionStorage.setItem('analytics_ignore', 'true');
+        sessionStorage.setItem(scopedKey('analytics_ignore'), 'true');
         logger.info('Analytics ignore flag set from URL parameter');
       }
     } catch (error) {
@@ -127,7 +128,9 @@ export class NextAnalytics {
 
     try {
       // Check session storage first
-      const sessionIgnore = sessionStorage.getItem('analytics_ignore');
+      const sessionIgnore = sessionStorage.getItem(
+        scopedKey('analytics_ignore')
+      );
       if (sessionIgnore === 'true') {
         return true;
       }
@@ -371,7 +374,7 @@ export class NextAnalytics {
   public clearIgnoreFlag(): void {
     if (typeof window !== 'undefined') {
       try {
-        sessionStorage.removeItem('analytics_ignore');
+        sessionStorage.removeItem(scopedKey('analytics_ignore'));
         logger.info('Analytics ignore flag cleared');
       } catch (error) {
         logger.error('Error clearing ignore flag:', error);

@@ -3,16 +3,24 @@
  */
 
 import { BaseEnhancer } from '@/core/base/base-enhancer';
+import { scopedKey } from '@/core/storage';
 import { useCheckoutStore, type CheckoutState } from '@/state/checkout';
 import { useCartStore } from '@/state/cart';
 import { useConfigStore } from '@/state/config';
 import { useCampaignStore } from '@/state/campaign';
 import { getApiClient } from '@/client';
 import type { IApiClient } from '@/api/client.types';
-import { CountryService, type Country, type CountryConfig } from '@/core/country-service';
+import {
+  CountryService,
+  type Country,
+  type CountryConfig,
+} from '@/core/country-service';
 import { preserveQueryParams } from '@/core/url-utils';
 import type { CartState } from '@/types/global';
-import { CreditCardService, type CreditCardData } from '../services/credit-card-service';
+import {
+  CreditCardService,
+  type CreditCardData,
+} from '../services/credit-card-service';
 import { CheckoutValidator } from '../validation/checkout-validator';
 import { UIService } from '../services/ui-service';
 import { useAttributionStore } from '@/state/attribution';
@@ -312,7 +320,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     this.initializeUIService();
 
     if (config.spreedlyEnvironmentKey) {
-      await this.initializeCreditCard(config.spreedlyEnvironmentKey, config.debug);
+      await this.initializeCreditCard(
+        config.spreedlyEnvironmentKey,
+        config.debug
+      );
     }
 
     await this.initializeAddressManagement(config);
@@ -441,15 +452,17 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
   /** Runs after {@link initializePhoneInputs} so the validator can ask a live intl-tel-input instance. */
   private setupPhoneValidation(): void {
-    this.validator.setPhoneValidator((phoneNumber: string, type: 'shipping' | 'billing' = 'shipping') => {
-      const instance = this.phoneInputs.get(type);
-      if (instance) {
-        return instance.isValidNumber();
-      }
+    this.validator.setPhoneValidator(
+      (phoneNumber: string, type: 'shipping' | 'billing' = 'shipping') => {
+        const instance = this.phoneInputs.get(type);
+        if (instance) {
+          return instance.isValidNumber();
+        }
 
-      // Fallback to basic validation if instance not found
-      return /^[\d\s\-\+\(\)]+$/.test(phoneNumber);
-    });
+        // Fallback to basic validation if instance not found
+        return /^[\d\s\-\+\(\)]+$/.test(phoneNumber);
+      }
+    );
   }
 
   /**
@@ -466,8 +479,14 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private setupDebugEventListeners(): void {
     this.boundHandleTestDataFilled = this.handleTestDataFilled.bind(this);
     this.boundHandleKonamiActivation = this.handleKonamiActivation.bind(this);
-    document.addEventListener('checkout:test-data-filled', this.boundHandleTestDataFilled as EventListener);
-    document.addEventListener('next:test-mode-activated', this.boundHandleKonamiActivation as EventListener);
+    document.addEventListener(
+      'checkout:test-data-filled',
+      this.boundHandleTestDataFilled as EventListener
+    );
+    document.addEventListener(
+      'next:test-mode-activated',
+      this.boundHandleKonamiActivation as EventListener
+    );
   }
 
   /**
@@ -485,7 +504,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
   /** The debug country selector changes the country outside the form's own dropdown. */
   private listenForDebugCountryChanges(): void {
-    this.listen(document, 'next:country-changed', async (e) => {
+    this.listen(document, 'next:country-changed', async e => {
       const customEvent = e as CustomEvent;
       const { to: newCountry } = customEvent.detail;
       if (newCountry) {
@@ -504,11 +523,19 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
    * hosted fields it just checked for.
    */
   private setupBfcacheRestoreHandler(): void {
-    this.listen<PageTransitionEvent>(window, 'pageshow', (event) => {
-      if (event.persisted ||
-        (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming)?.type === 'back_forward') {
+    this.listen<PageTransitionEvent>(window, 'pageshow', event => {
+      if (
+        event.persisted ||
+        (
+          performance.getEntriesByType(
+            'navigation'
+          )[0] as PerformanceNavigationTiming
+        )?.type === 'back_forward'
+      ) {
         // Page was restored from bfcache
-        this.logger.info('Page restored from bfcache, resetting express checkout state');
+        this.logger.info(
+          'Page restored from bfcache, resetting express checkout state'
+        );
 
         // Hide loading overlay immediately when coming back
         this.loadingOverlay.hide(true);
@@ -523,19 +550,33 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
         // Always reset express payment methods when returning from bfcache
         // This handles cases where user pressed back from Apple Pay/Google Pay/PayPal
-        if (checkoutStore.paymentMethod === 'apple_pay' ||
+        if (
+          checkoutStore.paymentMethod === 'apple_pay' ||
           checkoutStore.paymentMethod === 'google_pay' ||
-          checkoutStore.paymentMethod === 'paypal') {
-          this.logger.info('Resetting payment method from', checkoutStore.paymentMethod, 'to credit-card after bfcache restore');
+          checkoutStore.paymentMethod === 'paypal'
+        ) {
+          this.logger.info(
+            'Resetting payment method from',
+            checkoutStore.paymentMethod,
+            'to credit-card after bfcache restore'
+          );
           checkoutStore.setPaymentMethod('credit-card');
           checkoutStore.setPaymentToken(''); // Clear any stale payment token
         }
 
         // Re-initialize credit card service if needed
-        if (this.creditCardService && useConfigStore.getState().spreedlyEnvironmentKey) {
-          this.logger.info('Re-initializing credit card service after bfcache restore');
+        if (
+          this.creditCardService &&
+          useConfigStore.getState().spreedlyEnvironmentKey
+        ) {
+          this.logger.info(
+            'Re-initializing credit card service after bfcache restore'
+          );
           this.creditCardService.initialize().catch(error => {
-            this.logger.error('Failed to re-initialize credit card service:', error);
+            this.logger.error(
+              'Failed to re-initialize credit card service:',
+              error
+            );
           });
         }
 
@@ -555,7 +596,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
       // Only reset if we're in processing state (likely from express checkout)
       if (checkoutStore.isProcessing) {
-        this.logger.info('Window focused with processing=true, resetting express checkout state');
+        this.logger.info(
+          'Window focused with processing=true, resetting express checkout state'
+        );
 
         // Hide loading overlay
         this.loadingOverlay.hide(true);
@@ -564,10 +607,16 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         checkoutStore.setProcessing(false);
 
         // Reset payment method back to credit-card if it's an express method
-        if (checkoutStore.paymentMethod === 'apple_pay' ||
+        if (
+          checkoutStore.paymentMethod === 'apple_pay' ||
           checkoutStore.paymentMethod === 'google_pay' ||
-          checkoutStore.paymentMethod === 'paypal') {
-          this.logger.info('Resetting payment method from', checkoutStore.paymentMethod, 'to credit-card');
+          checkoutStore.paymentMethod === 'paypal'
+        ) {
+          this.logger.info(
+            'Resetting payment method from',
+            checkoutStore.paymentMethod,
+            'to credit-card'
+          );
           checkoutStore.setPaymentMethod('credit-card');
           checkoutStore.setPaymentToken('');
         }
@@ -669,7 +718,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
       // Initialize address autocomplete
       await this.autocompleteEnhancer!.initialize(autocompleteOptions);
-
     } catch (error) {
       this.logger.error('Failed to load country data:', error);
     } finally {
@@ -692,10 +740,17 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     // This takes priority over showCountries in addressConfig
     const campaignState = useCampaignStore.getState();
     if (campaignState.data?.available_shipping_countries) {
-      this.logger.info('Setting campaign shipping countries:', campaignState.data.available_shipping_countries);
-      this.countryService.setCampaignShippingCountries(campaignState.data.available_shipping_countries);
+      this.logger.info(
+        'Setting campaign shipping countries:',
+        campaignState.data.available_shipping_countries
+      );
+      this.countryService.setCampaignShippingCountries(
+        campaignState.data.available_shipping_countries
+      );
     } else {
-      this.logger.debug('No campaign shipping countries available, using config');
+      this.logger.debug(
+        'No campaign shipping countries available, using config'
+      );
     }
   }
 
@@ -712,8 +767,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   } {
     // Check if autocomplete should be enabled
     const googleMapsConfig = config.googleMapsConfig || {};
-    const enableGoogleMaps = googleMapsConfig.enableAutocomplete !== false && !!googleMapsConfig.apiKey;
-    const enableNextCommerce = config.addressConfig?.enableAutocomplete === true && !!config.apiKey;
+    const enableGoogleMaps =
+      googleMapsConfig.enableAutocomplete !== false &&
+      !!googleMapsConfig.apiKey;
+    const enableNextCommerce =
+      config.addressConfig?.enableAutocomplete === true && !!config.apiKey;
 
     this.autocompleteEnhancer = new AddressAutocompleteEnhancer({
       fields: this.fields,
@@ -721,7 +779,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       apiClient: this.apiClient,
       getDetectedCountryCode: () => this.detectedCountryCode,
       getHasTrackedShippingInfo: () => this.hasTrackedShippingInfo.value,
-      setHasTrackedShippingInfo: (value) => { this.hasTrackedShippingInfo.value = value; },
+      setHasTrackedShippingInfo: value => {
+        this.hasTrackedShippingInfo.value = value;
+      },
     });
 
     return { enableGoogleMaps, enableNextCommerce };
@@ -771,12 +831,18 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const provinceField = this.fields.get('province');
     if (provinceField instanceof HTMLSelectElement) {
       // updateStateOptions fetches the correct country config and updates form labels
-      await updateStateOptions(this.shippingStateFieldsContext(), selectedCountryCode, provinceField);
+      await updateStateOptions(
+        this.shippingStateFieldsContext(),
+        selectedCountryCode,
+        provinceField
+      );
       // this.currentCountryConfig.value is already set by updateStateOptions
 
       // Restore stored province after states are loaded (if country matches)
       if (storedProvince && storedCountry === selectedCountryCode) {
-        const optionExists = Array.from(provinceField.options).some(opt => opt.value === storedProvince);
+        const optionExists = Array.from(provinceField.options).some(
+          opt => opt.value === storedProvince
+        );
         if (optionExists) {
           provinceField.value = storedProvince;
           this.updateFormData({ province: storedProvince });
@@ -887,7 +953,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // ============================================================================
   // PHONE INPUT MANAGEMENT
   // ============================================================================
-
 
   /** The two things `field-validation-display.ts` needs from this form. */
   private fieldValidationContext(): FieldValidationContext {
@@ -1000,22 +1065,27 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     initializePhoneInputs(this.phoneInputContext());
   }
 
-
   // ============================================================================
   // CREDIT CARD MANAGEMENT
   // ============================================================================
 
-  private async initializeCreditCard(environmentKey: string, _debug: boolean): Promise<void> {
+  private async initializeCreditCard(
+    environmentKey: string,
+    _debug: boolean
+  ): Promise<void> {
     try {
       this.addClass('next-loading-spreedly');
 
       // Get card input configuration from config store
       // Supports both new cardInputConfig and legacy spreedly naming
       const config = useConfigStore.getState();
-      const cardInputConfig = config.paymentConfig?.cardInputConfig || config.paymentConfig?.spreedly;
+      const cardInputConfig =
+        config.paymentConfig?.cardInputConfig || config.paymentConfig?.spreedly;
 
-      this.creditCardService = new CreditCardService(environmentKey, cardInputConfig);
-
+      this.creditCardService = new CreditCardService(
+        environmentKey,
+        cardInputConfig
+      );
 
       this.creditCardService.setOnReady(() => {
         this.removeClass('next-loading-spreedly');
@@ -1025,7 +1095,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         // Spreedly is now ready and will handle error clearing via field events
       });
 
-      this.creditCardService.setOnError((errors) => {
+      this.creditCardService.setOnError(errors => {
         this.logger.warn('[Spreedly] Credit card validation errors:', errors);
 
         // Display credit card validation errors. Every message the card fields
@@ -1033,13 +1103,18 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         // `displayPaymentError` is what puts that string on the bus as
         // `payment:error` — so this path emits once, not twice.
         if (errors && errors.length > 0) {
-          const errorMessage = errors.map((err: any) => err.message || err).join('. ');
+          const errorMessage = errors
+            .map((err: any) => err.message || err)
+            .join('. ');
           this.displayPaymentError(errorMessage);
         }
       });
 
       this.creditCardService.setOnToken((token, pmData) => {
-        this.logger.info('[Spreedly] Payment token received:', { token, pmData });
+        this.logger.info('[Spreedly] Payment token received:', {
+          token,
+          pmData,
+        });
         this.handleTokenizedPayment(token, pmData);
       });
 
@@ -1066,7 +1141,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
       // Connect credit card service to validator
       this.validator.setCreditCardService(this.creditCardService);
-
     } catch (error) {
       this.logger.error('Failed to initialize credit card service:', error);
       this.removeClass('next-loading-spreedly');
@@ -1124,7 +1198,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const cartStore = useCartStore.getState();
 
     try {
-      if (!checkoutStore.formData.email || !checkoutStore.formData.fname || !checkoutStore.formData.lname) {
+      if (
+        !checkoutStore.formData.email ||
+        !checkoutStore.formData.fname ||
+        !checkoutStore.formData.lname
+      ) {
         throw new Error('Missing required customer information');
       }
 
@@ -1132,7 +1210,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         throw new Error('Cannot create order with empty cart');
       }
 
-      if ((checkoutStore.paymentMethod === 'credit-card' || checkoutStore.paymentMethod === 'card_token') && !checkoutStore.paymentToken) {
+      if (
+        (checkoutStore.paymentMethod === 'credit-card' ||
+          checkoutStore.paymentMethod === 'card_token') &&
+        !checkoutStore.paymentToken
+      ) {
         throw new Error('Payment token is required for credit card payments');
       }
 
@@ -1170,11 +1252,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         ref_id: order.ref_id,
         number: order.number,
         total: order.total_incl_tax,
-        payment_method: checkoutStore.paymentMethod
+        payment_method: checkoutStore.paymentMethod,
       });
 
       return order;
-
     } catch (error: any) {
       this.logger.error('Failed to create order:', error);
 
@@ -1188,13 +1269,15 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         // Check for message array (common API error format)
         if (responseData.message && Array.isArray(responseData.message)) {
           // Extract the actual message from each array item
-          const errorMessages = responseData.message.map((msg: any) => {
-            if (typeof msg === 'object' && msg !== null) {
-              // If it's an object, try to extract a message property or stringify it
-              return msg.message || JSON.stringify(msg);
-            }
-            return String(msg);
-          }).join('. ');
+          const errorMessages = responseData.message
+            .map((msg: any) => {
+              if (typeof msg === 'object' && msg !== null) {
+                // If it's an object, try to extract a message property or stringify it
+                return msg.message || JSON.stringify(msg);
+              }
+              return String(msg);
+            })
+            .join('. ');
           this.displayPaymentError(errorMessages);
           throw new Error(errorMessages);
         }
@@ -1206,23 +1289,30 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         }
 
         // Check for payment-specific errors
-        if (responseData.payment_details || responseData.payment_response_code) {
+        if (
+          responseData.payment_details ||
+          responseData.payment_response_code
+        ) {
           this.logger.warn('Payment error detected:', {
             payment_details: responseData.payment_details,
-            payment_response_code: responseData.payment_response_code
+            payment_response_code: responseData.payment_response_code,
           });
 
           // Tracking removed - implement custom analytics in the future if needed
 
           // Display payment error in the UI
-          this.displayPaymentError(responseData.payment_details || 'Payment failed. Please check your payment information.');
+          this.displayPaymentError(
+            responseData.payment_details ||
+              'Payment failed. Please check your payment information.'
+          );
 
           // Create a user-friendly error message
           let errorMessage = 'Payment failed: ';
           if (responseData.payment_details) {
             errorMessage += responseData.payment_details;
           } else {
-            errorMessage += 'Please check your payment information and try again.';
+            errorMessage +=
+              'Please check your payment information and try again.';
           }
 
           throw new Error(errorMessage);
@@ -1249,11 +1339,20 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       // Enhance error message for better user experience
       if (error instanceof Error) {
         if (error.message.includes('Rate limited')) {
-          throw new Error('Too many requests. Please wait a moment and try again.');
-        } else if (error.message.includes('401') || error.message.includes('403')) {
-          throw new Error('Authentication error. Please refresh the page and try again.');
+          throw new Error(
+            'Too many requests. Please wait a moment and try again.'
+          );
+        } else if (
+          error.message.includes('401') ||
+          error.message.includes('403')
+        ) {
+          throw new Error(
+            'Authentication error. Please refresh the page and try again.'
+          );
         } else if (error.message.includes('400')) {
-          throw new Error('Invalid order data. Please check your information and try again.');
+          throw new Error(
+            'Invalid order data. Please check your information and try again.'
+          );
         } else if (error.message.includes('500')) {
           throw new Error('Server error. Please try again in a few moments.');
         }
@@ -1278,7 +1377,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       // cartStore.reset();
 
       return order;
-
     } catch (error) {
       this.logger.error('Failed to create test order:', error);
       throw error;
@@ -1322,16 +1420,21 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   }
 
   private getNextPageUrlFromMeta(refId?: string): string | null {
-    const metaTag = document.querySelector('meta[name="next-success-url"]') as HTMLMetaElement ||
-      document.querySelector('meta[name="next-next-url"]') as HTMLMetaElement ||
-      document.querySelector('meta[name="os-next-page"]') as HTMLMetaElement;
+    const metaTag =
+      (document.querySelector(
+        'meta[name="next-success-url"]'
+      ) as HTMLMetaElement) ||
+      (document.querySelector(
+        'meta[name="next-next-url"]'
+      ) as HTMLMetaElement) ||
+      (document.querySelector('meta[name="os-next-page"]') as HTMLMetaElement);
 
     if (!metaTag?.content) return null;
 
     const nextPagePath = metaTag.content;
-    const redirectUrl = nextPagePath.startsWith('http') ?
-      new URL(nextPagePath) :
-      new URL(nextPagePath, window.location.origin);
+    const redirectUrl = nextPagePath.startsWith('http')
+      ? new URL(nextPagePath)
+      : new URL(nextPagePath, window.location.origin);
 
     if (refId) {
       redirectUrl.searchParams.append('ref_id', refId);
@@ -1341,7 +1444,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     return preserveQueryParams(redirectUrl.href);
   }
 
-  private async validateExpressCheckoutFields(formData: any, requiredFields: string[]): Promise<any> {
+  private async validateExpressCheckoutFields(
+    formData: any,
+    requiredFields: string[]
+  ): Promise<any> {
     const errors: Record<string, string> = {};
     let firstErrorField: string | null = null;
 
@@ -1351,15 +1457,15 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
       if (!value || (typeof value === 'string' && !value.trim())) {
         const fieldNameMap: Record<string, string> = {
-          'email': 'Email',
-          'fname': 'First Name',
-          'lname': 'Last Name',
-          'phone': 'Phone',
-          'address1': 'Address',
-          'city': 'City',
-          'province': 'State/Province',
-          'postal': 'ZIP/Postal Code',
-          'country': 'Country'
+          email: 'Email',
+          fname: 'First Name',
+          lname: 'Last Name',
+          phone: 'Phone',
+          address1: 'Address',
+          city: 'City',
+          province: 'State/Province',
+          postal: 'ZIP/Postal Code',
+          country: 'Country',
         };
 
         const fieldLabel = fieldNameMap[field] || field;
@@ -1384,7 +1490,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     return {
       isValid: Object.keys(errors).length === 0,
       errors,
-      firstErrorField
+      firstErrorField,
     };
   }
 
@@ -1461,7 +1567,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
    * navigation creates no order. It is kept on the signature rather than dropped so the
    * submit path stays untouched by this move.
    */
-  private async handleStepNavigation(checkoutStore: any, cartStore: any): Promise<void> {
+  private async handleStepNavigation(
+    checkoutStore: any,
+    cartStore: any
+  ): Promise<void> {
     void cartStore;
     await handleStepNavigation(this.stepNavigationContext(), checkoutStore);
   }
@@ -1495,7 +1604,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         if (shippingPhoneInstance) {
           const isValidShipping = shippingPhoneInstance.isValidNumber();
           if (!isValidShipping && checkoutStore.formData.phone) {
-            checkoutStore.setError('phone', 'Please enter a valid phone number');
+            checkoutStore.setError(
+              'phone',
+              'Please enter a valid phone number'
+            );
           } else if (isValidShipping) {
             // Update with formatted number
             const formattedNumber = shippingPhoneInstance.getNumber();
@@ -1511,7 +1623,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           if (billingPhoneInstance) {
             const isValidBilling = billingPhoneInstance.isValidNumber();
             if (!isValidBilling && checkoutStore.billingAddress.phone) {
-              checkoutStore.setError('billing-phone', 'Please enter a valid phone number');
+              checkoutStore.setError(
+                'billing-phone',
+                'Please enter a valid phone number'
+              );
             }
           }
         }
@@ -1519,13 +1634,16 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
       // Check if this is an express payment method
       const expressPaymentMethods = ['paypal', 'apple_pay', 'google_pay'];
-      const isExpressPayment = expressPaymentMethods.includes(checkoutStore.paymentMethod);
+      const isExpressPayment = expressPaymentMethods.includes(
+        checkoutStore.paymentMethod
+      );
 
       // Tracking removed - implement custom analytics in the future if needed
 
       // Check if validation is required for express payments
       const config = useConfigStore.getState();
-      const requireExpressValidation = config.paymentConfig?.expressCheckout?.requireValidation;
+      const requireExpressValidation =
+        config.paymentConfig?.expressCheckout?.requireValidation;
 
       // Debug logging
       this.logger.debug('Express payment config:', {
@@ -1533,12 +1651,18 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         paymentMethod: checkoutStore.paymentMethod,
         requireExpressValidation,
         hasExpressProcessor: !!this.expressProcessor,
-        fullConfig: config.paymentConfig?.expressCheckout
+        fullConfig: config.paymentConfig?.expressCheckout,
       });
 
       // If it's an express payment method and validation is NOT required, use ExpressCheckoutProcessor
-      if (isExpressPayment && this.expressProcessor && !requireExpressValidation) {
-        this.logger.info(`Processing express checkout for ${checkoutStore.paymentMethod} (skipping validation)`);
+      if (
+        isExpressPayment &&
+        this.expressProcessor &&
+        !requireExpressValidation
+      ) {
+        this.logger.info(
+          `Processing express checkout for ${checkoutStore.paymentMethod} (skipping validation)`
+        );
 
         // Hide loading overlay first since ExpressCheckoutProcessor will show its own
         this.loadingOverlay.hide(true);
@@ -1557,20 +1681,31 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
       // Log if express payment requires validation
       if (isExpressPayment && requireExpressValidation) {
-        this.logger.info(`Express payment ${checkoutStore.paymentMethod} requires validation (requireValidation: true)`);
+        this.logger.info(
+          `Express payment ${checkoutStore.paymentMethod} requires validation (requireValidation: true)`
+        );
       }
 
       // For regular credit card payments OR express payments with validation required
-      const includePayment = checkoutStore.paymentMethod === 'credit-card' ||
+      const includePayment =
+        checkoutStore.paymentMethod === 'credit-card' ||
         checkoutStore.paymentMethod === 'card_token' ||
         (isExpressPayment && requireExpressValidation);
 
       let validation;
 
       // If express payment with custom required fields, validate only those fields
-      if (isExpressPayment && requireExpressValidation && config.paymentConfig?.expressCheckout?.requiredFields) {
-        const requiredFields = config.paymentConfig.expressCheckout.requiredFields;
-        validation = await this.validateExpressCheckoutFields(checkoutStore.formData, requiredFields);
+      if (
+        isExpressPayment &&
+        requireExpressValidation &&
+        config.paymentConfig?.expressCheckout?.requiredFields
+      ) {
+        const requiredFields =
+          config.paymentConfig.expressCheckout.requiredFields;
+        validation = await this.validateExpressCheckoutFields(
+          checkoutStore.formData,
+          requiredFields
+        );
       } else {
         // Otherwise use full validation
         validation = await this.validator.validateForm(
@@ -1584,14 +1719,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       }
 
       if (!validation.isValid) {
-
         // Log validation errors for debugging
         this.logger.warn('Validation failed', {
           paymentMethod: checkoutStore.paymentMethod,
           isExpressPayment,
           requireExpressValidation,
           errors: validation.errors,
-          firstErrorField: validation.firstErrorField
+          firstErrorField: validation.firstErrorField,
         });
 
         if (validation.errors) {
@@ -1609,15 +1743,15 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
           // Create a human-readable list of field names
           const fieldNameMap: Record<string, string> = {
-            'email': 'Email',
-            'fname': 'First Name',
-            'lname': 'Last Name',
-            'phone': 'Phone',
-            'address1': 'Address',
-            'city': 'City',
-            'province': 'State/Province',
-            'postal': 'ZIP/Postal Code',
-            'country': 'Country',
+            email: 'Email',
+            fname: 'First Name',
+            lname: 'Last Name',
+            phone: 'Phone',
+            address1: 'Address',
+            city: 'City',
+            province: 'State/Province',
+            postal: 'ZIP/Postal Code',
+            country: 'Country',
             'cc-month': 'Expiration Month',
             'cc-year': 'Expiration Year',
             'exp-month': 'Expiration Month',
@@ -1628,10 +1762,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
             'billing-city': 'Billing City',
             'billing-province': 'Billing State/Province',
             'billing-postal': 'Billing ZIP/Postal Code',
-            'billing-country': 'Billing Country'
+            'billing-country': 'Billing Country',
           };
 
-          const requiredFields = errorFields.map(field => fieldNameMap[field] || field).join(', ');
+          const requiredFields = errorFields
+            .map(field => fieldNameMap[field] || field)
+            .join(', ');
           const generalMessage = `Please fill in the following required fields: ${requiredFields}`;
           checkoutStore.setError('general', generalMessage);
 
@@ -1658,7 +1794,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
       // For express payment methods (PayPal, Apple Pay, Google Pay), always use ExpressCheckoutProcessor
       if (isExpressPayment && this.expressProcessor) {
-        this.logger.info(`Processing express checkout for ${checkoutStore.paymentMethod} (after validation)`);
+        this.logger.info(
+          `Processing express checkout for ${checkoutStore.paymentMethod} (after validation)`
+        );
 
         // Hide loading overlay first since ExpressCheckoutProcessor will show its own
         this.loadingOverlay.hide(true);
@@ -1676,34 +1814,48 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       }
 
       // Only credit card payments go through the regular flow
-      if (checkoutStore.paymentMethod === 'credit-card' || checkoutStore.paymentMethod === 'card_token') {
+      if (
+        checkoutStore.paymentMethod === 'credit-card' ||
+        checkoutStore.paymentMethod === 'card_token'
+      ) {
         // span?.setAttribute('payment.type', 'credit_card');
 
         if (this.creditCardService?.ready) {
           const cardData: CreditCardData = {
-            full_name: `${checkoutStore.formData.fname || ''} ${checkoutStore.formData.lname || ''}`.trim(),
-            month: checkoutStore.formData['cc-month'] || checkoutStore.formData['exp-month'] || '',
-            year: checkoutStore.formData['cc-year'] || checkoutStore.formData['exp-year'] || ''
+            full_name:
+              `${checkoutStore.formData.fname || ''} ${checkoutStore.formData.lname || ''}`.trim(),
+            month:
+              checkoutStore.formData['cc-month'] ||
+              checkoutStore.formData['exp-month'] ||
+              '',
+            year:
+              checkoutStore.formData['cc-year'] ||
+              checkoutStore.formData['exp-year'] ||
+              '',
           };
           await this.creditCardService.tokenizeCard(cardData);
           // span?.setAttribute('payment.tokenization_started', true);
           return;
         } else {
-          throw new Error('Credit card payment system is not ready. Please refresh the page and try again.');
+          throw new Error(
+            'Credit card payment system is not ready. Please refresh the page and try again.'
+          );
         }
       }
 
       // This should not be reached for express payments
       // span?.setAttribute('payment.type', checkoutStore.paymentMethod || 'unknown');
       await this.processOrder();
-
     } catch (error) {
       // span?.setAttribute('error', true);
       // span?.setAttribute('error.type', (error as Error).name);
       // span?.setAttribute('error.message', (error as Error).message);
 
       this.handleError(error, 'handleFormSubmit');
-      checkoutStore.setError('general', 'Failed to process order. Please try again.');
+      checkoutStore.setError(
+        'general',
+        'Failed to process order. Please try again.'
+      );
       // Only set processing to false on error
       checkoutStore.setProcessing(false);
       this.loadingOverlay.hide(true); // Hide immediately on error
@@ -1733,15 +1885,21 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     }
   }
 
-  private async handleTokenizedPayment(token: string, pmData: any): Promise<void> {
+  private async handleTokenizedPayment(
+    token: string,
+    pmData: any
+  ): Promise<void> {
     try {
       const checkoutStore = useCheckoutStore.getState();
       checkoutStore.setPaymentToken(token);
 
-      this.emit('payment:tokenized', { token, pmData, paymentMethod: checkoutStore.paymentMethod });
+      this.emit('payment:tokenized', {
+        token,
+        pmData,
+        paymentMethod: checkoutStore.paymentMethod,
+      });
 
       await this.processOrder();
-
     } catch (error: any) {
       this.logger.error('Failed to process tokenized payment:', error);
       const checkoutStore = useCheckoutStore.getState();
@@ -1751,7 +1909,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         // The error message already contains payment details from createOrder
         checkoutStore.setError('general', error.message);
       } else {
-        checkoutStore.setError('general', 'Payment processing failed. Please try again.');
+        checkoutStore.setError(
+          'general',
+          'Payment processing failed. Please try again.'
+        );
       }
 
       checkoutStore.setProcessing(false);
@@ -1884,13 +2045,22 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     // Validate fields on blur - simplified without redundant fallback messages
     const fieldsToValidate = ['email', 'city', 'fname', 'lname'];
 
-    if (fieldsToValidate.includes(fieldName) && (eventType === 'blur' || eventType === 'change')) {
+    if (
+      fieldsToValidate.includes(fieldName) &&
+      (eventType === 'blur' || eventType === 'change')
+    ) {
       const fieldValue = target.value.trim();
       if (fieldValue) {
-        const validationResult = this.validator.validateField(fieldName, fieldValue);
+        const validationResult = this.validator.validateField(
+          fieldName,
+          fieldValue
+        );
         if (!validationResult.isValid && validationResult.message) {
           this.validator.setError(fieldName, validationResult.message);
-          this.logger.warn(`Invalid ${fieldName} detected on blur:`, fieldValue);
+          this.logger.warn(
+            `Invalid ${fieldName} detected on blur:`,
+            fieldValue
+          );
         } else if (validationResult.isValid) {
           this.validator.clearError(fieldName);
         }
@@ -1907,12 +2077,18 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   ): Promise<void> {
     const provinceField = this.fields.get('province');
     if (provinceField instanceof HTMLSelectElement) {
-      await updateStateOptions(this.shippingStateFieldsContext(), target.value, provinceField);
+      await updateStateOptions(
+        this.shippingStateFieldsContext(),
+        target.value,
+        provinceField
+      );
     }
 
     // Save the user's country selection to sessionStorage
-    sessionStorage.setItem('next_selected_country', target.value);
-    this.logger.debug(`Saved user's country selection to session: ${target.value}`);
+    sessionStorage.setItem(scopedKey('next_selected_country'), target.value);
+    this.logger.debug(
+      `Saved user's country selection to session: ${target.value}`
+    );
 
     // Currency is now based on user's location, not shipping country
     // Currency can only be changed via URL parameter or manual selection
@@ -1945,20 +2121,27 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   ): void {
     // Track add_shipping_info when user has entered a shipping address
     // Check if we have enough address info to consider it "entered"
-    if (!this.hasTrackedShippingInfo.value && checkoutStore.formData.city && checkoutStore.formData.province) {
+    if (
+      !this.hasTrackedShippingInfo.value &&
+      checkoutStore.formData.city &&
+      checkoutStore.formData.province
+    ) {
       try {
         // Get current shipping method if selected
         const shippingMethod = checkoutStore.shippingMethod;
         const shippingTier = shippingMethod ? shippingMethod.name : 'Standard';
-        nextAnalytics.track(EcommerceEvents.createAddShippingInfoEvent(shippingTier));
+        nextAnalytics.track(
+          EcommerceEvents.createAddShippingInfoEvent(shippingTier)
+        );
         this.hasTrackedShippingInfo.value = true;
-        this.logger.info('Tracked add_shipping_info event (address complete)', { shippingTier });
+        this.logger.info('Tracked add_shipping_info event (address complete)', {
+          shippingTier,
+        });
       } catch (error) {
         this.logger.warn('Failed to track add_shipping_info event:', error);
       }
     }
   }
-
 
   private getFieldNameFromElement(element: HTMLElement): string | null {
     return getFieldNameFromElement(element);
@@ -2016,7 +2199,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     this.changeHandler = this.handleFieldChange.bind(this);
     [...this.fields.values(), ...this.billingFields.values()].forEach(field => {
-      if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement || field instanceof HTMLTextAreaElement) {
+      if (
+        field instanceof HTMLInputElement ||
+        field instanceof HTMLSelectElement ||
+        field instanceof HTMLTextAreaElement
+      ) {
         field.addEventListener('change', this.changeHandler!);
         field.addEventListener('blur', this.changeHandler!);
 
@@ -2031,25 +2218,36 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     );
 
     this.paymentMethodChangeHandler = this.handlePaymentMethodChange.bind(this);
-    const paymentRadios = this.form.querySelectorAll([
-      '[data-next-checkout-field="payment-method"]',
-      '[os-checkout-field="payment-method"]',
-      'input[name="payment_method"]'
-    ].join(', '));
+    const paymentRadios = this.form.querySelectorAll(
+      [
+        '[data-next-checkout-field="payment-method"]',
+        '[os-checkout-field="payment-method"]',
+        'input[name="payment_method"]',
+      ].join(', ')
+    );
     paymentRadios.forEach(radio => {
       radio.addEventListener('change', this.paymentMethodChangeHandler!);
     });
 
-    this.shippingMethodChangeHandler = this.handleShippingMethodChange.bind(this);
-    const shippingRadios = this.form.querySelectorAll('input[name="shipping_method"]');
+    this.shippingMethodChangeHandler =
+      this.handleShippingMethodChange.bind(this);
+    const shippingRadios = this.form.querySelectorAll(
+      'input[name="shipping_method"]'
+    );
     shippingRadios.forEach(radio => {
       radio.addEventListener('change', this.shippingMethodChangeHandler!);
     });
 
-    this.billingAddressToggleHandler = this.handleBillingAddressToggle.bind(this);
-    const billingToggle = this.form.querySelector('input[name="use_shipping_address"]');
+    this.billingAddressToggleHandler =
+      this.handleBillingAddressToggle.bind(this);
+    const billingToggle = this.form.querySelector(
+      'input[name="use_shipping_address"]'
+    );
     if (billingToggle) {
-      billingToggle.addEventListener('change', this.billingAddressToggleHandler);
+      billingToggle.addEventListener(
+        'change',
+        this.billingAddressToggleHandler
+      );
     }
 
     // Note: Credit card error clearing is handled by CreditCardService via Spreedly events
@@ -2086,7 +2284,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       phoneInputs: this.phoneInputs,
       shippingStateFields: this.shippingStateFieldsContext(),
       updateFormData: data => this.updateFormData(data),
-      updateLabelsForPopulatedData: () => this.ui.updateLabelsForPopulatedData(),
+      updateLabelsForPopulatedData: () =>
+        this.ui.updateLabelsForPopulatedData(),
     };
   }
 
@@ -2200,11 +2399,14 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     applyFailureUrlMetaTags(url);
   }
 
-  public validateField(fieldName: string, value: any): { isValid: boolean; errorMessage?: string } {
+  public validateField(
+    fieldName: string,
+    value: any
+  ): { isValid: boolean; errorMessage?: string } {
     const result = this.validator.validateField(fieldName, value);
     return {
       isValid: result.isValid,
-      ...(result.message && { errorMessage: result.message })
+      ...(result.message && { errorMessage: result.message }),
     };
   }
 
@@ -2243,11 +2445,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     }
 
     if (this.changeHandler) {
-      [...this.fields.values(), ...this.billingFields.values()].forEach(field => {
-        field.removeEventListener('change', this.changeHandler!);
-        field.removeEventListener('blur', this.changeHandler!);
-        field.removeEventListener('input', this.changeHandler!);
-      });
+      [...this.fields.values(), ...this.billingFields.values()].forEach(
+        field => {
+          field.removeEventListener('change', this.changeHandler!);
+          field.removeEventListener('blur', this.changeHandler!);
+          field.removeEventListener('input', this.changeHandler!);
+        }
+      );
     }
 
     // Stops the poll and unsubscribes from the event bus.
@@ -2256,36 +2460,51 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     }
 
     if (this.paymentMethodChangeHandler) {
-      const paymentRadios = this.form.querySelectorAll([
-        '[data-next-checkout-field="payment-method"]',
-        '[os-checkout-field="payment-method"]',
-        'input[name="payment_method"]'
-      ].join(', '));
+      const paymentRadios = this.form.querySelectorAll(
+        [
+          '[data-next-checkout-field="payment-method"]',
+          '[os-checkout-field="payment-method"]',
+          'input[name="payment_method"]',
+        ].join(', ')
+      );
       paymentRadios.forEach(radio => {
         radio.removeEventListener('change', this.paymentMethodChangeHandler!);
       });
     }
 
     if (this.shippingMethodChangeHandler) {
-      const shippingRadios = this.form.querySelectorAll('input[name="shipping_method"]');
+      const shippingRadios = this.form.querySelectorAll(
+        'input[name="shipping_method"]'
+      );
       shippingRadios.forEach(radio => {
         radio.removeEventListener('change', this.shippingMethodChangeHandler!);
       });
     }
 
     if (this.billingAddressToggleHandler) {
-      const billingToggle = this.form.querySelector('input[name="use_shipping_address"]');
+      const billingToggle = this.form.querySelector(
+        'input[name="use_shipping_address"]'
+      );
       if (billingToggle) {
-        billingToggle.removeEventListener('change', this.billingAddressToggleHandler!);
+        billingToggle.removeEventListener(
+          'change',
+          this.billingAddressToggleHandler!
+        );
       }
     }
 
     if (this.boundHandleTestDataFilled) {
-      document.removeEventListener('checkout:test-data-filled', this.boundHandleTestDataFilled);
+      document.removeEventListener(
+        'checkout:test-data-filled',
+        this.boundHandleTestDataFilled
+      );
     }
 
     if (this.boundHandleKonamiActivation) {
-      document.removeEventListener('next:test-mode-activated', this.boundHandleKonamiActivation);
+      document.removeEventListener(
+        'next:test-mode-activated',
+        this.boundHandleKonamiActivation
+      );
     }
 
     // Everything registered with an inline arrow or a fresh `.bind(this)`: the
@@ -2335,10 +2554,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           formData: checkoutStore.formData,
           paymentMethod: checkoutStore.paymentMethod,
           isProcessing: checkoutStore.isProcessing,
-          step: checkoutStore.step
+          step: checkoutStore.step,
         });
 
-        this.logger.info('Tracked begin_checkout event on checkout form initialization');
+        this.logger.info(
+          'Tracked begin_checkout event on checkout form initialization'
+        );
       }
     } catch (error) {
       this.logger.warn('Failed to track begin_checkout event:', error);
@@ -2375,7 +2596,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       this.prospectCartEnhancer.destroy();
     }
 
-    this.phoneInputs.forEach((instance) => {
+    this.phoneInputs.forEach(instance => {
       try {
         instance.destroy();
       } catch (error) {

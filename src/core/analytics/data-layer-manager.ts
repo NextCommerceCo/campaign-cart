@@ -4,6 +4,7 @@
  */
 
 import { useAttributionStore } from '@/state/attribution';
+import { scopedKey } from '@/core/storage';
 import type {
   DataLayerEvent,
   DataLayerConfig,
@@ -180,7 +181,7 @@ export class DataLayerManager {
     if (this.config.debug?.persistInLocalStorage) {
       try {
         localStorage.setItem(
-          STORAGE_KEYS.DEBUG_MODE,
+          scopedKey(STORAGE_KEYS.DEBUG_MODE),
           JSON.stringify({ enabled, options })
         );
       } catch (e) {
@@ -213,7 +214,7 @@ export class DataLayerManager {
   public setUserProperties(properties: Record<string, any>): void {
     try {
       localStorage.setItem(
-        STORAGE_KEYS.USER_PROPERTIES,
+        scopedKey(STORAGE_KEYS.USER_PROPERTIES),
         JSON.stringify(properties)
       );
       this.debug('User properties updated', properties);
@@ -227,7 +228,9 @@ export class DataLayerManager {
    */
   public getUserProperties(): Record<string, any> | null {
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.USER_PROPERTIES);
+      const stored = localStorage.getItem(
+        scopedKey(STORAGE_KEYS.USER_PROPERTIES)
+      );
       return stored ? JSON.parse(stored) : null;
     } catch (e) {
       this.error('Failed to load user properties', e);
@@ -388,8 +391,10 @@ export class DataLayerManager {
    */
   private getOrCreateSessionId(): string {
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.SESSION_ID);
-      const sessionStart = localStorage.getItem(STORAGE_KEYS.SESSION_START);
+      const stored = localStorage.getItem(scopedKey(STORAGE_KEYS.SESSION_ID));
+      const sessionStart = localStorage.getItem(
+        scopedKey(STORAGE_KEYS.SESSION_START)
+      );
 
       const now = Date.now();
       const sessionTimeout = this.config.sessionTimeout || 30 * 60 * 1000; // 30 minutes
@@ -400,14 +405,20 @@ export class DataLayerManager {
         now - parseInt(sessionStart) < sessionTimeout
       ) {
         // Update session start time
-        localStorage.setItem(STORAGE_KEYS.SESSION_START, now.toString());
+        localStorage.setItem(
+          scopedKey(STORAGE_KEYS.SESSION_START),
+          now.toString()
+        );
         return stored;
       }
 
       // Create new session
       const newSessionId = this.generateSessionId();
-      localStorage.setItem(STORAGE_KEYS.SESSION_ID, newSessionId);
-      localStorage.setItem(STORAGE_KEYS.SESSION_START, now.toString());
+      localStorage.setItem(scopedKey(STORAGE_KEYS.SESSION_ID), newSessionId);
+      localStorage.setItem(
+        scopedKey(STORAGE_KEYS.SESSION_START),
+        now.toString()
+      );
       return newSessionId;
     } catch (e) {
       // Fallback to memory-based session
@@ -422,7 +433,7 @@ export class DataLayerManager {
     if (!this.config.debug?.persistInLocalStorage) return;
 
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.DEBUG_MODE);
+      const stored = localStorage.getItem(scopedKey(STORAGE_KEYS.DEBUG_MODE));
       if (stored) {
         const { enabled, options } = JSON.parse(stored);
         this.debugMode = enabled;

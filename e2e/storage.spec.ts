@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { CART_KEY, ORDER_KEY } from './fixtures/storage-keys';
 import { MINIMAL_CAMPAIGN } from './fixtures/campaign';
 import { TEST_ORDER } from './fixtures/order';
 import { stubCampaign, stubCart, stubOrder, bootSdk } from './fixtures/routes';
@@ -11,7 +12,7 @@ import { stubCampaign, stubCart, stubOrder, bootSdk } from './fixtures/routes';
  * Discovered storage keys (all sessionStorage):
  *  - cart        → `next-cart-state`
  *  - campaign    → `next-campaign-cache_{CURRENCY}` (e.g. `next-campaign-cache_USD`)
- *  - order       → `next-order`
+ *  - order       → `next-order__{scope}`
  *  - attribution → `next-attribution`
  * (src/core/storage.ts; src/state/order/order.state.ts;
  *  src/state/attribution/attribution.state.ts)
@@ -24,7 +25,7 @@ test.beforeEach(async ({ page }) => {
   await stubCart(page);
 });
 
-test('cart persists to sessionStorage under next-cart-state', async ({
+test('cart persists to sessionStorage under its scoped next-cart-state key', async ({
   page,
 }) => {
   await bootSdk(page, FIXTURE);
@@ -35,8 +36,9 @@ test('cart persists to sessionStorage under next-cart-state', async ({
   ).toHaveText('1');
 
   // The persisted cart holds the added item.
-  const stored = await page.evaluate(() =>
-    sessionStorage.getItem('next-cart-state')
+  const stored = await page.evaluate(
+    key => sessionStorage.getItem(key),
+    CART_KEY
   );
   expect(stored).toBeTruthy();
   const parsed = JSON.parse(stored as string);
@@ -66,7 +68,7 @@ test('cart is restored after a same-session reload', async ({ page }) => {
   ).toHaveText('1');
 });
 
-test('order persists under next-order with a 15-minute TTL', async ({
+test('order persists under its scoped next-order key with a 15-minute TTL', async ({
   page,
 }) => {
   await stubOrder(page, TEST_ORDER);
@@ -75,8 +77,9 @@ test('order persists under next-order with a 15-minute TTL', async ({
   await bootSdk(page, `${FIXTURE}?ref_id=${TEST_ORDER.ref_id}`);
 
   // Persisted order carries the freshness stamp used for expiry.
-  const stored = await page.evaluate(() =>
-    sessionStorage.getItem('next-order')
+  const stored = await page.evaluate(
+    key => sessionStorage.getItem(key),
+    ORDER_KEY
   );
   expect(stored).toBeTruthy();
   const parsed = JSON.parse(stored as string);

@@ -14,6 +14,7 @@ import { NextCommerce } from '@/core/next-commerce';
 import { EventBus } from '@/core/events';
 import { getApiClient } from '@/client';
 import { CART_STORAGE_KEY } from '@/core/storage';
+import { storageScopeFellBack } from '@/core/storage-scope';
 import { CountryService } from '@/core/country-service';
 import * as urlParamMethods from '@/core/sdk-initializer/sdk-initializer.url-params';
 import * as storageResetMethods from '@/core/sdk-initializer/sdk-initializer.storage-reset';
@@ -155,7 +156,10 @@ export class SDKInitializer {
     }
 
     // NEW: Capture ALL URL parameters for session use
-    await urlParamMethods.captureUrlParameters({ logger: this.logger }, urlParams);
+    await urlParamMethods.captureUrlParameters(
+      { logger: this.logger },
+      urlParams
+    );
 
     // Check URL parameters for debug mode, forcePackageId, forceShippingId, and forceBundleId
     const windowConfig = (window as any).nextConfig;
@@ -211,6 +215,16 @@ export class SDKInitializer {
     if (!configStore.apiKey) {
       throw new Error(
         'API key not found. Please set next-api-key meta tag or window.nextConfig.apiKey'
+      );
+    }
+
+    // The key was configured, so if the scope could not see it the stores were
+    // created before the tag was parsed — the one way scoping goes wrong silently.
+    if (storageScopeFellBack(configStore.apiKey)) {
+      // One literal, not a concatenation: the generated log reference is built by
+      // reading these strings out of the source, and it cannot follow a `+`.
+      this.logger.warn(
+        'Storage scope fell back to a shared one: next-api-key was not readable when the stores were created, so every campaign on this origin shares a cart. Move the SDK script below the meta tag, or load the module build.'
       );
     }
 

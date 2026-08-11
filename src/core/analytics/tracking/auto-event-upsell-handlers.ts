@@ -5,6 +5,7 @@
  */
 
 import { createLogger } from '@/core/logger';
+import { scopedKey } from '@/core/storage';
 import { useCampaignStore } from '@/state/campaign';
 import { useCartStore } from '@/state/cart';
 import { dataLayer } from '../data-layer-manager';
@@ -16,9 +17,7 @@ const logger = createLogger('AutoEventListener');
 /**
  * Set up upsell event listeners
  */
-export function setupUpsellEventListeners(
-  ctx: AutoEventListenerContext
-): void {
+export function setupUpsellEventListeners(ctx: AutoEventListenerContext): void {
   // Upsell viewed
   const handleUpsellViewed = async (data: any) => {
     const orderId = data.orderId;
@@ -93,13 +92,18 @@ export function setupUpsellEventListeners(
     // Get or increment upsell number (track how many upsells have been accepted)
     const upsellNumber =
       data.upsellNumber ||
-      (sessionStorage.getItem(`upsells_${orderId}`)
-        ? parseInt(sessionStorage.getItem(`upsells_${orderId}`) || '0') + 1
+      (sessionStorage.getItem(scopedKey(`upsells_${orderId}`))
+        ? parseInt(
+            sessionStorage.getItem(scopedKey(`upsells_${orderId}`)) || '0'
+          ) + 1
         : 1);
 
     // Store the upsell count
     if (orderId) {
-      sessionStorage.setItem(`upsells_${orderId}`, String(upsellNumber));
+      sessionStorage.setItem(
+        scopedKey(`upsells_${orderId}`),
+        String(upsellNumber)
+      );
     }
 
     // Create cart item object with campaign package data for proper formatting
@@ -119,7 +123,8 @@ export function setupUpsellEventListeners(
     const acceptedUpsellEvent = EcommerceEvents.createAcceptedUpsellEvent({
       orderId,
       packageId,
-      packageName: data.packageName || packageData?.name || `Package ${packageId}`,
+      packageName:
+        data.packageName || packageData?.name || `Package ${packageId}`,
       quantity,
       value: value || 0,
       discount: data.discount,

@@ -8,7 +8,7 @@ import { stubAll, bootSdk, captureEvents } from './fixtures/routes';
  * child, then on expiry hides itself, reveals the matching
  * `[data-next-timer-expired]` element, and emits `timer:expired`.
  *
- * The timer persists its start time in `localStorage` under `next-timer-e2e`;
+ * The timer persists its start time in `localStorage` under `next-timer-e2e__{scope}`;
  * we clear localStorage before every navigation so each run starts fresh.
  */
 
