@@ -40,7 +40,11 @@
 
 import { createLogger } from '@/core/logger';
 import { STORAGE_KEYS } from '../config';
-import { CHECKOUT_COUPON_KEY, CHECKOUT_RETURN_PATHS_KEY } from '@/core/storage';
+import {
+  CHECKOUT_COUPON_KEY,
+  CHECKOUT_RETURN_PATHS_KEY,
+  scopedKey,
+} from '@/core/storage';
 
 const logger = createLogger('PurchaseTracking');
 
@@ -234,7 +238,9 @@ export function reportedPurchaseId(event: {
 
 function readReported(): string[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.REPORTED_PURCHASES);
+    const raw = localStorage.getItem(
+      scopedKey(STORAGE_KEYS.REPORTED_PURCHASES)
+    );
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed.map(String) : [];
@@ -260,7 +266,7 @@ export function markPurchaseReported(transactionId: string): void {
     const reported = readReported().filter(id => id !== transactionId);
     reported.push(transactionId);
     localStorage.setItem(
-      STORAGE_KEYS.REPORTED_PURCHASES,
+      scopedKey(STORAGE_KEYS.REPORTED_PURCHASES),
       JSON.stringify(reported.slice(-REPORTED_LIMIT))
     );
   } catch (error) {
@@ -275,7 +281,7 @@ export function markPurchaseReported(transactionId: string): void {
  */
 export function resetReportedPurchases(): void {
   try {
-    localStorage.removeItem(STORAGE_KEYS.REPORTED_PURCHASES);
+    localStorage.removeItem(scopedKey(STORAGE_KEYS.REPORTED_PURCHASES));
   } catch (error) {
     logger.warn('Failed to clear reported purchases:', error);
   }

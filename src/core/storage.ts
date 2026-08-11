@@ -154,6 +154,19 @@ export const PROSPECT_CART_STORAGE_KEY = `next_prospect_cart${storageScopeSuffix
 export const EXIT_INTENT_STORAGE_KEY = `next-exit-intent-dismissed${storageScopeSuffix()}`;
 
 /**
+ * Suffix a key name with the funnel scope, resolved **on use**.
+ *
+ * Prefer this to a module-scope constant outside this file. Resolving the scope while
+ * a module initialises pulls `storage-scope` into that module's chunk, and the ES
+ * build can then evaluate a chunk that reads it before it is ready — the failure is a
+ * bare `Cannot access 'n' before initialization` that drops every page onto the UMD
+ * fallback, and `e2e/es-bundle.spec.ts` is the only thing that catches it.
+ */
+export function scopedKey(base: string): string {
+  return `${base}${storageScopeSuffix()}`;
+}
+
+/**
  * The two analytics keys that describe **one campaign's checkout** rather than the
  * visitor. They live here rather than beside the other `nextDataLayer_*` names in
  * `core/analytics/config.ts` for a build reason, not a tidiness one: importing

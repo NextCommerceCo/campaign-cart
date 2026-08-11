@@ -5,6 +5,7 @@
  */
 
 import type { Logger } from '@/core/logger';
+import { scopedKey } from '@/core/storage';
 import type { AttributeScanner } from '@/core/attribute-scanner';
 import { testModeManager } from '@/core/test-mode';
 import { useCartStore, cartOperations } from '@/state/cart';
@@ -111,10 +112,7 @@ export function setupGlobalDebugUtils(ctx: {
           // Trigger UI update
           document.dispatchEvent(new CustomEvent('debug:update-content'));
         } catch (error) {
-          console.error(
-            `❌ Failed to set shipping method ${methodId}:`,
-            error
-          );
+          console.error(`❌ Failed to set shipping method ${methodId}:`, error);
         }
       },
 
@@ -161,8 +159,8 @@ export function setupGlobalDebugUtils(ctx: {
         getFunnel: () => {
           const state = useAttributionStore.getState();
           const persisted =
-            localStorage.getItem('next_funnel_name') ||
-            sessionStorage.getItem('next_funnel_name');
+            localStorage.getItem(scopedKey('next_funnel_name')) ||
+            sessionStorage.getItem(scopedKey('next_funnel_name'));
           console.log('Current funnel:', state.funnel);
           console.log('Persisted funnel:', persisted);
           return state.funnel || persisted || '(not set)';

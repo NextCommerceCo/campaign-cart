@@ -77,18 +77,23 @@ const PERSIST_KEYS: Record<string, string | null> = {
  * store that leaves this set stops being isolated, and one that joins it breaks what
  * the key exists for.
  *
- * `attribution` is the one that stays origin-wide, and deliberately: scoping it would
- * drop the affiliate credit for a shopper who landed on one funnel and bought on
- * another, which is the case it exists to cover. `parameter` used to sit beside it and
- * no longer does — the query string a visitor arrived with drives page behaviour for
- * *that* campaign (a variant flag, a forced package), so another campaign reading it
- * changes what its own pages do.
+ * Every persisted store is scoped as of 0.4.34. `attribution` was the last holdout —
+ * the argument for sharing it was that an affiliate who sends a shopper to one funnel
+ * should keep the credit when they buy on another. It is scoped now anyway, so that
+ * credit follows the funnel. The separate `evclid`, `next_utm_data` and `tn_tag_*`
+ * copies stay origin-wide, so a click id captured on one campaign is still readable
+ * from the next.
  *
  * The suffix is present only because the `vi.hoisted` block above put a
  * `next-api-key` on the page first. A page with no readable key writes the **bare**
  * name instead — the pre-scoping behaviour, and deliberately not what this asserts.
  */
-const FUNNEL_SCOPED = new Set(['checkout', 'order', 'parameter']);
+const FUNNEL_SCOPED = new Set([
+  'attribution',
+  'checkout',
+  'order',
+  'parameter',
+]);
 
 describe('state — store identity', () => {
   it.each(stores)(

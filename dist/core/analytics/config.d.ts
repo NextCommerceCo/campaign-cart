@@ -83,5 +83,5 @@ export declare const STORAGE_KEYS: {
     readonly CHECKOUT_RETURN_PATHS: "nextDataLayer_checkoutReturnPaths";
     readonly CHECKOUT_COUPON: "nextDataLayer_checkoutCoupon";
 };
-export declare function validateProviderConfig(provider: AnalyticsProvider, settings: typeof PROVIDER_SETTINGS[keyof typeof PROVIDER_SETTINGS]): boolean;
+export declare function validateProviderConfig(provider: AnalyticsProvider, settings: (typeof PROVIDER_SETTINGS)[keyof typeof PROVIDER_SETTINGS]): boolean;
 //# sourceMappingURL=config.d.ts.map

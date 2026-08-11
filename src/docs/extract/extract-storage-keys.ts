@@ -78,6 +78,17 @@ export interface ExtractedStorageKey {
   where: string[];
 }
 
+/**
+ * The helper in `core/storage.ts` that appends the funnel scope at call time. It has
+ * to be named here because it is imported, and `readKey` can only follow a function
+ * declared in the same file — without this the helper hides its own argument and every
+ * key behind it disappears from the reference.
+ */
+const SCOPED_KEY_HELPER = 'scopedKey';
+
+/** What a scoped key publishes as, matching the constants built in `core/storage.ts`. */
+const SCOPE_MARKER = '{__scope}';
+
 /** `getItem`/`setItem`/`removeItem` — the raw Storage API. */
 const RAW_METHODS = new Set(['getItem', 'setItem', 'removeItem']);
 /** `StorageManager` from `core/storage.ts` wraps the same three. */
@@ -340,6 +351,13 @@ function readKey(
   if (ts.isCallExpression(node)) {
     const callee = node.expression;
     if (!ts.isIdentifier(callee)) return undefined;
+
+    if (callee.text === SCOPED_KEY_HELPER) {
+      const arg = node.arguments[0];
+      const base = arg ? readKey(arg, ctx, true, depth + 1) : undefined;
+      return base === undefined ? undefined : `${base}${SCOPE_MARKER}`;
+    }
+
     const fn = findFunction(callee.text, ctx.sf);
     const returned = fn && returnedExpression(fn);
     return returned ? readKey(returned, ctx, true, depth + 1) : undefined;

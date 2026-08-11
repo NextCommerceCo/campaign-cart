@@ -3,6 +3,7 @@
  */
 
 import { create } from 'zustand';
+import { scopedKey } from '@/core/storage';
 import { persist } from 'zustand/middleware';
 import type { Attribution } from '@/types/api';
 import { createLogger } from '@/core/logger';
@@ -156,8 +157,8 @@ export const useAttributionStore = create<
 
         // Also check persisted funnel
         const persistedFunnel =
-          localStorage.getItem('next_funnel_name') ||
-          sessionStorage.getItem('next_funnel_name');
+          localStorage.getItem(scopedKey('next_funnel_name')) ||
+          sessionStorage.getItem(scopedKey('next_funnel_name'));
         if (persistedFunnel) {
           logger.info(
             `Funnel already persisted as: ${persistedFunnel}, ignoring new value: ${funnel}`
@@ -172,8 +173,8 @@ export const useAttributionStore = create<
 
         // Persist it
         try {
-          sessionStorage.setItem('next_funnel_name', funnel);
-          localStorage.setItem('next_funnel_name', funnel);
+          sessionStorage.setItem(scopedKey('next_funnel_name'), funnel);
+          localStorage.setItem(scopedKey('next_funnel_name'), funnel);
           logger.info(`Funnel name set and persisted: ${funnel}`);
         } catch (error) {
           logger.error('Error persisting funnel name:', error);
@@ -357,8 +358,8 @@ export const useAttributionStore = create<
 
       clearPersistedFunnel: () => {
         try {
-          localStorage.removeItem('next_funnel_name');
-          sessionStorage.removeItem('next_funnel_name');
+          localStorage.removeItem(scopedKey('next_funnel_name'));
+          sessionStorage.removeItem(scopedKey('next_funnel_name'));
           set({ funnel: '' });
           logger.info('Cleared persisted funnel name');
         } catch (error) {
@@ -367,7 +368,7 @@ export const useAttributionStore = create<
       },
     }),
     {
-      name: 'next-attribution',
+      name: scopedKey('next-attribution'),
       storage: {
         getItem: name => {
           const str = sessionStorage.getItem(name);

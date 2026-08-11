@@ -1,6 +1,10 @@
 import type { StateCreator } from 'zustand';
 import { useConfigStore } from '@/state/config';
-import { sessionStorageManager, CAMPAIGN_STORAGE_KEY } from '@/core/storage';
+import {
+  sessionStorageManager,
+  CAMPAIGN_STORAGE_KEY,
+  scopedKey,
+} from '@/core/storage';
 import { createLogger } from '@/core/logger';
 import type {
   CampaignApiSlice,
@@ -18,14 +22,11 @@ export const createCampaignApiSlice: StateCreator<
   [],
   CampaignApiSlice
 > = (set, get) => ({
-  loadCampaign: async (
-    apiKey: string,
-    options?: { forceFresh?: boolean }
-  ) => {
+  loadCampaign: async (apiKey: string, options?: { forceFresh?: boolean }) => {
     set({ isLoading: true, error: null });
 
     try {
-          const configStore = useConfigStore.getState();
+      const configStore = useConfigStore.getState();
       const requestedCurrency = configStore.getCurrency();
 
       const now = Date.now();
@@ -92,7 +93,10 @@ export const createCampaignApiSlice: StateCreator<
             selectedCurrency: cachedCurrency,
             currencyFallbackOccurred: true,
           });
-          sessionStorage.setItem('next_selected_currency', cachedCurrency);
+          sessionStorage.setItem(
+            scopedKey('next_selected_currency'),
+            cachedCurrency
+          );
 
           const { EventBus } = await import('@/core/events');
           EventBus.getInstance().emit('currency:fallback', {
@@ -156,7 +160,10 @@ export const createCampaignApiSlice: StateCreator<
           selectedCurrency: actualCurrency,
           currencyFallbackOccurred: true,
         });
-        sessionStorage.setItem('next_selected_currency', actualCurrency);
+        sessionStorage.setItem(
+          scopedKey('next_selected_currency'),
+          actualCurrency
+        );
 
         const { EventBus } = await import('@/core/events');
         EventBus.getInstance().emit('currency:fallback', {

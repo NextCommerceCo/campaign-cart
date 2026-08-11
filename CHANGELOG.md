@@ -8,13 +8,15 @@
 
   A browser files a saved cart against the website address, not against the campaign. Every campaign we host sits on one address, so a shopper who looked at two of them arrived at the second carrying the first one's items — and, more expensively, the first one's discount. A saved cart stores the exact rule each code matched, so the second campaign did not merely show the wrong products, it honoured pricing it never offered.
 
-  Six saved things are now filed per campaign: the shopping bag, the half-filled checkout form, the completed order, the abandoned-cart record, countdown timers, and the "don't show me that popup again" flag. Nothing is added to your pages — the name is worked out from the API key the page already boots with and the folder it is served from. ([#69](https://github.com/NextCommerceCo/campaign-cart/issues/69))
+  **32 of the 52 things the SDK stores are now filed per campaign** — everything that describes what a shopper is doing in one funnel. The shopping bag, the half-filled checkout form, the completed order, the abandoned-cart record, countdown timers, the "don't show me that popup again" flag, the discount code that priced the order, where to send a shopper back after a payment gateway, the link they arrived on, the currency and country they picked, the attribution record, and every analytics session and visitor id. Nothing is added to your pages — the name is worked out from the API key the page already boots with and the folder it is served from. ([#69](https://github.com/NextCommerceCo/campaign-cart/issues/69))
 
 ### Before you upgrade
 
-**There is nothing to add to your pages.** Every campaign is separated automatically, on markup you already have. The two notes below are things to be aware of, not steps to carry out.
+**There is nothing to add to your pages.** Every campaign is separated automatically, on markup you already have. The notes below are things to be aware of, not steps to carry out.
 
-**Carts open right now start empty, once.** The saved names have changed, so a shopper who was mid-funnel when this ships comes back to an empty bag and reselects. It happens one time per shopper, and only to bags that were already open.
+**Carts open right now start empty, once.** The saved names have changed, so a shopper who was mid-funnel when this ships comes back to an empty bag and reselects. It happens one time per shopper, and only to bags that were already open. The same applies to a remembered currency or country — the first page after the upgrade detects them again.
+
+**Analytics counts people per campaign from here on.** Session and visitor ids are filed per campaign too, so one person who looks at two of your campaigns is now reported as two visitors rather than one, and each campaign counts its own sessions. Reports that compare periods across this release will show that step. Click ids and UTM tags are the exception and stay shared, so a paid click captured on one campaign is still readable from the next.
 
 **One layout is worth a look: a funnel whose pages sit at different depths.** A campaign whose first page is `/hu/` and whose checkout is `/hu/checkout` resolves to two different names, and the bag will not survive the step between them. Keep every page of one funnel at the same depth, or pin the name with the optional tag below. Every other layout is handled — `/hu/earbuds`, `/hu/earbuds/checkout` and `/hu/earbuds/checkout/upsell1` all stay together, and so do `/promo-b.html` and `/promo-b-checkout.html`.
 
@@ -31,7 +33,9 @@
 
 ### Changed
 
-- **Analytics, attribution and the shopper's currency stay shared on purpose.** Affiliate credit follows the person rather than the campaign, one visit must not be reported as two visitors, and a shopper paying in euros must not meet dollars on the next page. The list that stops a sale being counted twice is shared for the same reason.
+- **What is still shared, and why.** Twenty keys stay origin-wide. The campaign catalogue and the priced-bundle cache, because both already record the campaign they were fetched for and separating them would only cost an extra API call. Click ids, UTM tags and custom tracking tags (`evclid`, `next_utm_data`, `tn_tag_*`), so a paid click captured on one campaign can still be credited from another. The country and state lists, which are identical for every campaign. And the debug overlay's own settings, which only we ever see.
+
+- **The duplicate-purchase list is now per campaign.** It is what stops one order reporting a sale twice, and it is filed with the order it guards — which is also per campaign, so the pair stays consistent. A receipt page reloaded, or opened again from a link, still reports once.
 
 - **A new boot warning: _Storage scope fell back to a shared one_.** It means the SDK script was placed above the `next-api-key` tag and could not read it in time, so the saved names carry no campaign label and every campaign on the address shares one bag — how the SDK behaved before this release. Move the script below the tag, or load the module build.
 

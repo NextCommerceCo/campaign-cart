@@ -4,6 +4,7 @@
  */
 
 import { useConfigStore } from '@/state/config';
+import { scopedKey } from '@/core/storage';
 import { useCampaignStore } from '@/state/campaign';
 import { cartOperations } from '@/state/cart';
 import { CountryService } from '@/core/country-service';
@@ -84,19 +85,21 @@ export class CountrySelector {
     if (this.renderDebounceTimer) {
       clearTimeout(this.renderDebounceTimer);
     }
-    
+
     this.renderDebounceTimer = setTimeout(() => {
       this.doRender();
     }, 50);
   }
-  
+
   private doRender(): void {
     if (!this.shadowRoot) return;
 
     const configStore = useConfigStore.getState();
     const detectedCountry = configStore.detectedCountry || 'US';
-    const currentCountry = sessionStorage.getItem('next_selected_country') || detectedCountry;
-    
+    const currentCountry =
+      sessionStorage.getItem(scopedKey('next_selected_country')) ||
+      detectedCountry;
+
     // Don't show selector if no countries loaded
     if (this.countries.length === 0) {
       this.logger.debug('No countries available, hiding country selector');
@@ -105,15 +108,15 @@ export class CountrySelector {
       }
       return;
     }
-    
+
     // Make sure container is visible
     if (this.container) {
       this.container.style.display = 'block';
     }
 
-    // Get the actual detected country from geo-location (not overridden)  
+    // Get the actual detected country from geo-location (not overridden)
     const rawDetectedCountry = configStore.detectedCountry; // Raw geo-detection result
-    
+
     this.shadowRoot.innerHTML = `
       <style>
         :host {
@@ -256,11 +259,15 @@ export class CountrySelector {
         
         <div class="select-wrapper">
           <select class="country-select" id="country-select">
-            ${this.countries.map(country => `
+            ${this.countries
+              .map(
+                country => `
               <option value="${country.code}" ${country.code === currentCountry ? 'selected' : ''}>
                 ${country.name.length > 15 ? country.name.substring(0, 15) + '...' : country.name}
               </option>
-            `).join('')}
+            `
+              )
+              .join('')}
           </select>
           <svg class="select-arrow" viewBox="0 0 24 24" fill="currentColor">
             <path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"/>
@@ -269,20 +276,28 @@ export class CountrySelector {
 
         <div class="loading-indicator" id="loading-indicator"></div>
 
-        ${rawDetectedCountry !== currentCountry ? `
+        ${
+          rawDetectedCountry !== currentCountry
+            ? `
           <button class="reset-button" id="reset-button" title="Reset to detected country: ${rawDetectedCountry}">
             Reset
           </button>
-        ` : ''}
+        `
+            : ''
+        }
 
-        ${rawDetectedCountry ? `
+        ${
+          rawDetectedCountry
+            ? `
           <div class="detected-info">
             Detected: <span class="detected-value">${rawDetectedCountry}</span>
           </div>
-        ` : ''}
+        `
+            : ''
+        }
       </div>
     `;
-    
+
     // Mark as initially rendered to prevent animation on subsequent renders
     if (!this.hasInitiallyRendered) {
       this.hasInitiallyRendered = true;
@@ -293,13 +308,13 @@ export class CountrySelector {
     if (!this.shadowRoot || this.listenersAttached) return;
 
     // Handle country selection changes
-    this.shadowRoot.addEventListener('change', async (e) => {
+    this.shadowRoot.addEventListener('change', async e => {
       const target = e.target as HTMLElement;
-      
+
       if (target && target.id === 'country-select') {
         const selectElement = target as HTMLSelectElement;
         const newCountry = selectElement.value;
-        
+
         if (this.isChanging) {
           this.logger.warn('Country change already in progress');
           return;
@@ -311,13 +326,13 @@ export class CountrySelector {
     });
 
     // Handle reset button clicks
-    this.shadowRoot.addEventListener('click', async (e) => {
+    this.shadowRoot.addEventListener('click', async e => {
       const target = e.target as HTMLElement;
-      
+
       if (target && target.id === 'reset-button') {
         const configStore = useConfigStore.getState();
         const detectedCountry = configStore.detectedCountry || 'US';
-        
+
         this.logger.debug('Resetting to detected country:', detectedCountry);
         await this.handleCountryChange(detectedCountry, true);
       }
@@ -325,47 +340,60 @@ export class CountrySelector {
 
     // Listen for country changes from other sources
     document.addEventListener('next:country-changed', () => {
-      this.logger.debug('External country change detected, re-rendering selector');
+      this.logger.debug(
+        'External country change detected, re-rendering selector'
+      );
       this.render();
     });
-    
+
     this.listenersAttached = true;
     this.logger.debug('Event listeners attached to country selector');
   }
 
-  private async handleCountryChange(newCountry: string, isReset: boolean = false): Promise<void> {
+  private async handleCountryChange(
+    newCountry: string,
+    isReset: boolean = false
+  ): Promise<void> {
     this.isChanging = true;
-    
-    const select = this.shadowRoot?.getElementById('country-select') as HTMLSelectElement;
-    const loadingIndicator = this.shadowRoot?.getElementById('loading-indicator');
-    
+
+    const select = this.shadowRoot?.getElementById(
+      'country-select'
+    ) as HTMLSelectElement;
+    const loadingIndicator =
+      this.shadowRoot?.getElementById('loading-indicator');
+
     if (select) select.disabled = true;
     if (loadingIndicator) loadingIndicator.classList.add('active');
 
     try {
       this.logger.info(`Changing country to ${newCountry}`);
-      
+
       const configStore = useConfigStore.getState();
       const campaignStore = useCampaignStore.getState();
       const countryService = CountryService.getInstance();
-      
+
       // Store the old country
-      const oldCountry = sessionStorage.getItem('next_selected_country') || configStore.detectedCountry || 'US';
-      
+      const oldCountry =
+        sessionStorage.getItem(scopedKey('next_selected_country')) ||
+        configStore.detectedCountry ||
+        'US';
+
       if (isReset) {
         // Clear forced country from session
-        sessionStorage.removeItem('next_selected_country');
-        this.logger.info('Cleared selected country override, using detected country');
+        sessionStorage.removeItem(scopedKey('next_selected_country'));
+        this.logger.info(
+          'Cleared selected country override, using detected country'
+        );
       } else {
         // Save forced country to session
-        sessionStorage.setItem('next_selected_country', newCountry);
+        sessionStorage.setItem(scopedKey('next_selected_country'), newCountry);
         this.logger.info(`Saved selected country to session: ${newCountry}`);
       }
-      
+
       // Fetch country configuration
       const countryConfig = await countryService.getCountryConfig(newCountry);
       const countryStates = await countryService.getCountryStates(newCountry);
-      
+
       // Update config store with new country data
       configStore.updateConfig({
         locationData: {
@@ -374,71 +402,85 @@ export class CountrySelector {
           detectedStates: countryStates.states,
           detectedStateCode: '',
           detectedCity: '',
-          countries: this.countries
-        }
+          countries: this.countries,
+        },
       });
-      
+
       // If country has a different currency, update it
-      if (countryConfig.currencyCode && countryConfig.currencyCode !== configStore.selectedCurrency) {
-        this.logger.info(`Country currency is ${countryConfig.currencyCode}, updating...`);
-        
+      if (
+        countryConfig.currencyCode &&
+        countryConfig.currencyCode !== configStore.selectedCurrency
+      ) {
+        this.logger.info(
+          `Country currency is ${countryConfig.currencyCode}, updating...`
+        );
+
         // Don't clear cache - the campaignStore already caches per currency
         // and will reuse cached data if available for each currency
-        
+
         // Update selected currency
         configStore.updateConfig({
-          selectedCurrency: countryConfig.currencyCode
+          selectedCurrency: countryConfig.currencyCode,
         });
-        
+
         // Save currency preference
-        sessionStorage.setItem('next_selected_currency', countryConfig.currencyCode);
+        sessionStorage.setItem(
+          scopedKey('next_selected_currency'),
+          countryConfig.currencyCode
+        );
 
         // Reload campaign with new currency
         // IMPORTANT: Pass forceFresh: true to skip cache fallback when changing country/currency
-        await campaignStore.loadCampaign(configStore.apiKey, { forceFresh: true });
+        await campaignStore.loadCampaign(configStore.apiKey, {
+          forceFresh: true,
+        });
 
         // Refresh cart prices
         await cartOperations.refreshItemPrices();
-        
+
         // Trigger currency selector update
-        document.dispatchEvent(new CustomEvent('next:currency-changed', {
-          detail: { 
-            from: configStore.selectedCurrency,
-            to: countryConfig.currencyCode,
-            source: 'country-selector'
-          }
-        }));
+        document.dispatchEvent(
+          new CustomEvent('next:currency-changed', {
+            detail: {
+              from: configStore.selectedCurrency,
+              to: countryConfig.currencyCode,
+              source: 'country-selector',
+            },
+          })
+        );
       }
-      
+
       this.logger.info(`Country changed successfully to ${newCountry}`);
-      
+
       // Emit country change event
-      document.dispatchEvent(new CustomEvent('next:country-changed', {
-        detail: { 
-          from: oldCountry,
-          to: newCountry,
-          currency: countryConfig.currencyCode
-        }
-      }));
-      
+      document.dispatchEvent(
+        new CustomEvent('next:country-changed', {
+          detail: {
+            from: oldCountry,
+            to: newCountry,
+            currency: countryConfig.currencyCode,
+          },
+        })
+      );
+
       // Trigger display updates
       document.dispatchEvent(new CustomEvent('debug:update-content'));
-      
+
       // Show success feedback
       this.showSuccessFeedback(newCountry);
-      
+
       // Re-render to update UI
       this.render();
-      
     } catch (error) {
       this.logger.error('Failed to change country:', error);
       this.showErrorFeedback();
-      
+
       // Revert selection
-      const currentCountry = sessionStorage.getItem('next_selected_country') || 
-                           useConfigStore.getState().detectedCountry || 'US';
+      const currentCountry =
+        sessionStorage.getItem(scopedKey('next_selected_country')) ||
+        useConfigStore.getState().detectedCountry ||
+        'US';
       if (select) select.value = currentCountry;
-      
     } finally {
       this.isChanging = false;
       if (select) select.disabled = false;
@@ -447,24 +489,32 @@ export class CountrySelector {
   }
 
   private showSuccessFeedback(_country: string): void {
-    const selector = this.shadowRoot?.querySelector('.country-selector') as HTMLElement;
+    const selector = this.shadowRoot?.querySelector(
+      '.country-selector'
+    ) as HTMLElement;
     if (!selector) return;
 
-    selector.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
-    
+    selector.style.background =
+      'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+
     setTimeout(() => {
-      selector.style.background = 'linear-gradient(135deg, #222 0%, #1a1a1a 100%)';
+      selector.style.background =
+        'linear-gradient(135deg, #222 0%, #1a1a1a 100%)';
     }, 1000);
   }
 
   private showErrorFeedback(): void {
-    const selector = this.shadowRoot?.querySelector('.country-selector') as HTMLElement;
+    const selector = this.shadowRoot?.querySelector(
+      '.country-selector'
+    ) as HTMLElement;
     if (!selector) return;
 
-    selector.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
-    
+    selector.style.background =
+      'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+
     setTimeout(() => {
-      selector.style.background = 'linear-gradient(135deg, #222 0%, #1a1a1a 100%)';
+      selector.style.background =
+        'linear-gradient(135deg, #222 0%, #1a1a1a 100%)';
     }, 1000);
   }
 
@@ -472,7 +522,7 @@ export class CountrySelector {
     if (this.renderDebounceTimer) {
       clearTimeout(this.renderDebounceTimer);
     }
-    
+
     if (this.container) {
       this.container.remove();
       this.container = null;

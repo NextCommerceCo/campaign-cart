@@ -1,16 +1,17 @@
 /**
  * Pending Events Handler for Analytics v2
- * 
+ *
  * Manages analytics events that need to be fired after page redirects.
  * This is crucial for purchase events that happen right before redirects.
  */
 
 import { createLogger } from '@/core/logger';
+import { scopedKey } from '@/core/storage';
 import { dataLayer } from '../data-layer-manager';
 import type { DataLayerEvent } from '../types';
 
 const logger = createLogger('PendingEventsHandler');
-const STORAGE_KEY = 'next_v2_pending_events';
+const storageKey = (): string => scopedKey('next_v2_pending_events');
 
 export interface PendingEventV2 {
   event: DataLayerEvent;
@@ -20,7 +21,7 @@ export interface PendingEventV2 {
 
 export class PendingEventsHandler {
   private static instance: PendingEventsHandler;
-  
+
   private constructor() {}
 
   public static getInstance(): PendingEventsHandler {
@@ -39,13 +40,15 @@ export class PendingEventsHandler {
       const pendingEvent: PendingEventV2 = {
         event,
         timestamp: Date.now(),
-        id: `${event.event}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        id: `${event.event}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       };
-      
+
       pending.push(pendingEvent);
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(pending));
-      
-      logger.info(`Event queued for after redirect: ${event.event} (${pending.length} total queued)`);
+      sessionStorage.setItem(storageKey(), JSON.stringify(pending));
+
+      logger.info(
+        `Event queued for after redirect: ${event.event} (${pending.length} total queued)`
+      );
     } catch (error) {
       logger.error('Failed to queue event:', error);
     }
@@ -56,9 +59,9 @@ export class PendingEventsHandler {
    */
   private getPendingEvents(): PendingEventV2[] {
     try {
-      const data = sessionStorage.getItem(STORAGE_KEY);
+      const data = sessionStorage.getItem(storageKey());
       if (!data) return [];
-      
+
       const events = JSON.parse(data);
       return Array.isArray(events) ? events : [];
     } catch (error) {
@@ -85,14 +88,18 @@ export class PendingEventsHandler {
     // The current page should fire its own dl_user_data
     const filteredEvents = events.filter(e => {
       if (e.event.event === 'dl_user_data') {
-        logger.warn('Skipping queued dl_user_data - current page should fire its own');
+        logger.warn(
+          'Skipping queued dl_user_data - current page should fire its own'
+        );
         return false;
       }
       return true;
     });
 
     // Sort remaining events by timestamp to maintain order
-    const sortedEvents = [...filteredEvents].sort((a, b) => a.timestamp - b.timestamp);
+    const sortedEvents = [...filteredEvents].sort(
+      (a, b) => a.timestamp - b.timestamp
+    );
 
     const processedIds: string[] = [];
 
@@ -111,24 +118,28 @@ export class PendingEventsHandler {
 
         logger.debug('Processed pending event:', pendingEvent.event.event);
       } catch (error) {
-        logger.error('Failed to process pending event:', pendingEvent.event.event, error);
+        logger.error(
+          'Failed to process pending event:',
+          pendingEvent.event.event,
+          error
+        );
       }
     }
 
     // Also mark filtered dl_user_data events as processed
     const userDataEvents = events.filter(e => e.event.event === 'dl_user_data');
     processedIds.push(...userDataEvents.map(e => e.id));
-    
+
     // Remove processed events
     if (processedIds.length > 0) {
       const remaining = events.filter(e => !processedIds.includes(e.id));
-      
+
       if (remaining.length === 0) {
-        sessionStorage.removeItem(STORAGE_KEY);
+        sessionStorage.removeItem(storageKey());
       } else {
-        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(remaining));
+        sessionStorage.setItem(storageKey(), JSON.stringify(remaining));
       }
-      
+
       logger.debug('Removed processed events:', processedIds.length);
     }
   }
@@ -138,7 +149,7 @@ export class PendingEventsHandler {
    */
   public clearPendingEvents(): void {
     try {
-      sessionStorage.removeItem(STORAGE_KEY);
+      sessionStorage.removeItem(storageKey());
       logger.debug('Cleared all pending events');
     } catch (error) {
       logger.error('Failed to clear pending events:', error);
@@ -160,7 +171,6 @@ export class PendingEventsHandler {
     // Nothing to initialize, but method is required for consistency
     logger.debug('PendingEventsHandler initialized');
   }
-
 }
 
 // Export singleton instance

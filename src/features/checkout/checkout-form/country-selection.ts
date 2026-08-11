@@ -21,6 +21,7 @@
  */
 
 import type { Country, CountryService } from '@/core/country-service';
+import { scopedKey } from '@/core/storage';
 import type { Logger } from '@/core/logger';
 import { useCheckoutStore } from '@/state/checkout';
 
@@ -94,7 +95,9 @@ export function resolveShippingCountry(
       addressConfigDefault: countryConfig?.defaultCountry,
       storedCountry: storedCountry,
       urlParam: new URLSearchParams(window.location.search).get('country'),
-      sessionOverride: sessionStorage.getItem('next_selected_country'),
+      sessionOverride: sessionStorage.getItem(
+        scopedKey('next_selected_country')
+      ),
     }
   );
 
@@ -123,7 +126,7 @@ export function resolveShippingCountry(
       if (countryExists) {
         selectedCountryCode = countryCode;
         // Save to sessionStorage for persistence
-        sessionStorage.setItem('next_selected_country', countryCode);
+        sessionStorage.setItem(scopedKey('next_selected_country'), countryCode);
         ctx.logger.info(
           `✅ Using shipping country from URL parameter: ${countryCode} (currency unaffected)`
         );
@@ -136,7 +139,7 @@ export function resolveShippingCountry(
     // Priority 3: sessionStorage override (from previous URL param or user selection)
     else {
       const savedCountryOverride = sessionStorage.getItem(
-        'next_selected_country'
+        scopedKey('next_selected_country')
       );
       if (savedCountryOverride) {
         const countryExists = ctx.countries.some(
