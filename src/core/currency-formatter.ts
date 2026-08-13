@@ -4,6 +4,7 @@
  */
 
 import { useCampaignStore } from '@/state/campaign';
+import { scopedKey } from '@/core/storage';
 import { useConfigStore } from '@/state/config';
 
 export class CurrencyFormatter {
@@ -46,7 +47,9 @@ export class CurrencyFormatter {
    * 4. `'en-US'`, for a browser that reports nothing.
    */
   private static getUserLocale(): string {
-    const selectedLocale = sessionStorage.getItem('next_selected_locale');
+    const selectedLocale = sessionStorage.getItem(
+      scopedKey('next_selected_locale')
+    );
     if (selectedLocale) {
       return selectedLocale;
     }

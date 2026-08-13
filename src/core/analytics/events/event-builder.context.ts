@@ -6,11 +6,8 @@
  * data is merged in.
  */
 
-import type {
-  UserProperties,
-  EventContext,
-  EventMetadata,
-} from '../types';
+import type { UserProperties, EventContext, EventMetadata } from '../types';
+import { scopedKey } from '@/core/storage';
 import { useCampaignStore } from '@/state/campaign';
 import { useCheckoutStore } from '@/state/checkout';
 import { useConfigStore } from '@/state/config';
@@ -161,10 +158,10 @@ export function getEventMetadata(): EventMetadata {
  */
 export function getSessionId(): string {
   if (typeof window !== 'undefined') {
-    let sessionId = sessionStorage.getItem('analytics_session_id');
+    let sessionId = sessionStorage.getItem(scopedKey('analytics_session_id'));
     if (!sessionId) {
       sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-      sessionStorage.setItem('analytics_session_id', sessionId);
+      sessionStorage.setItem(scopedKey('analytics_session_id'), sessionId);
     }
     return sessionId;
   }
@@ -177,11 +174,11 @@ export function getSessionId(): string {
 function getNextSequenceNumber(): number {
   if (typeof window !== 'undefined') {
     const current = parseInt(
-      sessionStorage.getItem('analytics_sequence') || '0',
+      sessionStorage.getItem(scopedKey('analytics_sequence')) || '0',
       10
     );
     const next = current + 1;
-    sessionStorage.setItem('analytics_sequence', String(next));
+    sessionStorage.setItem(scopedKey('analytics_sequence'), String(next));
     return next;
   }
   return 0;

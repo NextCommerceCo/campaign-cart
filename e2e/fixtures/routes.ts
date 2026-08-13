@@ -10,6 +10,8 @@
  *   test('...', async ({ page }) => { await bootSdk(page, '/e2e/fixtures/x.html'); });
  */
 
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import type { Page } from '@playwright/test';
 import type { Campaign } from '../../src/types/campaign';
 import type { CartSummary, Order } from '../../src/types/api';
@@ -130,6 +132,32 @@ export async function bootSdk(page: Page, fixture: string): Promise<void> {
 }
 
 /**
+ * Serve an existing fixture at a URL of your choosing.
+ *
+ * Vite maps a URL to a path on disk, so every fixture is served from
+ * `/e2e/fixtures/…` and they all share a first path segment. A spec about what the
+ * **URL** decides therefore cannot get two different ones out of the dev server —
+ * it has to fulfil the navigation itself. Only the navigation is faked: the
+ * fixture's `<script type="module" src="/src/index.ts">` is an absolute URL, so the
+ * SDK under test is still the real one Vite serves.
+ *
+ * `fixture` is a path relative to `e2e/fixtures/`; Playwright runs from the repo
+ * root, which is what `resolve` is relative to.
+ */
+export async function bootSdkAt(
+  page: Page,
+  url: string,
+  fixture: string
+): Promise<void> {
+  const body = readFileSync(resolve('e2e/fixtures', fixture), 'utf8');
+
+  await page.route(`**${url}`, route =>
+    route.fulfill({ contentType: 'text/html', body })
+  );
+  await bootSdk(page, url);
+}
+
+/**
  * Start collecting EventBus payloads for `eventName` into a window array.
  * Returns a getter for the captured payloads. Call BEFORE the action that fires
  * the event (after `bootSdk`).
@@ -156,9 +184,9 @@ export async function captureEvents(page: Page, eventName: string) {
     all: () => page.evaluate(k => (window as any)[k], key),
     /** The payload at `index` (default 0). */
     at: (index = 0) =>
-      page.evaluate(
-        ({ k, index }) => (window as any)[k][index],
-        { k: key, index }
-      ),
+      page.evaluate(({ k, index }) => (window as any)[k][index], {
+        k: key,
+        index,
+      }),
   };
 }

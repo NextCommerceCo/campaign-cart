@@ -40,6 +40,11 @@
 
 import { createLogger } from '@/core/logger';
 import { STORAGE_KEYS } from '../config';
+import {
+  CHECKOUT_COUPON_KEY,
+  CHECKOUT_RETURN_PATHS_KEY,
+  scopedKey,
+} from '@/core/storage';
 
 const logger = createLogger('PurchaseTracking');
 
@@ -137,7 +142,7 @@ export function rememberCheckoutReturnPaths(
 
   try {
     sessionStorage.setItem(
-      STORAGE_KEYS.CHECKOUT_RETURN_PATHS,
+      CHECKOUT_RETURN_PATHS_KEY,
       JSON.stringify({ success, failure } satisfies CheckoutReturnPaths)
     );
   } catch (error) {
@@ -147,7 +152,7 @@ export function rememberCheckoutReturnPaths(
 
 function readReturnPaths(): CheckoutReturnPaths | null {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEYS.CHECKOUT_RETURN_PATHS);
+    const raw = sessionStorage.getItem(CHECKOUT_RETURN_PATHS_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     return typeof parsed?.success === 'string' &&
@@ -204,9 +209,9 @@ export function isPaymentFailureLanding(): boolean {
 export function rememberCheckoutCoupon(code: string | undefined): void {
   try {
     if (code) {
-      sessionStorage.setItem(STORAGE_KEYS.CHECKOUT_COUPON, code);
+      sessionStorage.setItem(CHECKOUT_COUPON_KEY, code);
     } else {
-      sessionStorage.removeItem(STORAGE_KEYS.CHECKOUT_COUPON);
+      sessionStorage.removeItem(CHECKOUT_COUPON_KEY);
     }
   } catch (error) {
     logger.warn('Failed to record the checkout coupon:', error);
@@ -216,7 +221,7 @@ export function rememberCheckoutCoupon(code: string | undefined): void {
 /** The voucher code {@link rememberCheckoutCoupon} stored, or `null`. */
 export function recallCheckoutCoupon(): string | null {
   try {
-    return sessionStorage.getItem(STORAGE_KEYS.CHECKOUT_COUPON) || null;
+    return sessionStorage.getItem(CHECKOUT_COUPON_KEY) || null;
   } catch (error) {
     logger.warn('Failed to read the checkout coupon:', error);
     return null;
@@ -233,7 +238,9 @@ export function reportedPurchaseId(event: {
 
 function readReported(): string[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.REPORTED_PURCHASES);
+    const raw = localStorage.getItem(
+      scopedKey(STORAGE_KEYS.REPORTED_PURCHASES)
+    );
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed.map(String) : [];
@@ -259,7 +266,7 @@ export function markPurchaseReported(transactionId: string): void {
     const reported = readReported().filter(id => id !== transactionId);
     reported.push(transactionId);
     localStorage.setItem(
-      STORAGE_KEYS.REPORTED_PURCHASES,
+      scopedKey(STORAGE_KEYS.REPORTED_PURCHASES),
       JSON.stringify(reported.slice(-REPORTED_LIMIT))
     );
   } catch (error) {
@@ -274,7 +281,7 @@ export function markPurchaseReported(transactionId: string): void {
  */
 export function resetReportedPurchases(): void {
   try {
-    localStorage.removeItem(STORAGE_KEYS.REPORTED_PURCHASES);
+    localStorage.removeItem(scopedKey(STORAGE_KEYS.REPORTED_PURCHASES));
   } catch (error) {
     logger.warn('Failed to clear reported purchases:', error);
   }

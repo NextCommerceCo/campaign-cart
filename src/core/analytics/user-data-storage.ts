@@ -4,6 +4,7 @@
  */
 
 import { createLogger } from '@/core/logger';
+import { scopedKey } from '@/core/storage';
 
 const logger = createLogger('UserDataStorage');
 
@@ -41,9 +42,9 @@ class UserDataStorage {
     if (typeof document === 'undefined') return;
 
     const date = new Date();
-    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+    date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
     const expires = `expires=${date.toUTCString()}`;
-    
+
     // Use SameSite=Lax for better compatibility
     document.cookie = `${name}=${encodeURIComponent(value)};${expires};path=/;SameSite=Lax`;
   }
@@ -56,7 +57,7 @@ class UserDataStorage {
 
     const nameEQ = `${name}=`;
     const cookies = document.cookie.split(';');
-    
+
     for (let cookie of cookies) {
       cookie = cookie.trim();
       if (cookie.indexOf(nameEQ) === 0) {
@@ -88,7 +89,7 @@ class UserDataStorage {
           this.userData = JSON.parse(cookieData);
           logger.debug('Loaded user data from cookie:', {
             hasEmail: !!this.userData.email,
-            hasUserId: !!this.userData.userId
+            hasUserId: !!this.userData.userId,
           });
         } catch (error) {
           logger.warn('Failed to parse user data cookie:', error);
@@ -96,7 +97,7 @@ class UserDataStorage {
       }
 
       // Override with sessionStorage data (more recent)
-      const sessionData = sessionStorage.getItem('user_data');
+      const sessionData = sessionStorage.getItem(scopedKey('user_data'));
       if (sessionData) {
         try {
           const parsedSession = JSON.parse(sessionData);
@@ -109,20 +110,20 @@ class UserDataStorage {
 
       // Generate visitor ID if not exists
       if (!this.userData.visitorId) {
-        let visitorId = localStorage.getItem('visitor_id');
+        let visitorId = localStorage.getItem(scopedKey('visitor_id'));
         if (!visitorId) {
           visitorId = this.generateId('visitor');
-          localStorage.setItem('visitor_id', visitorId);
+          localStorage.setItem(scopedKey('visitor_id'), visitorId);
         }
         this.userData.visitorId = visitorId;
       }
 
       // Generate session ID if not exists
       if (!this.userData.sessionId) {
-        let sessionId = sessionStorage.getItem('session_id');
+        let sessionId = sessionStorage.getItem(scopedKey('session_id'));
         if (!sessionId) {
           sessionId = this.generateId('session');
-          sessionStorage.setItem('session_id', sessionId);
+          sessionStorage.setItem(scopedKey('session_id'), sessionId);
         }
         this.userData.sessionId = sessionId;
       }
@@ -139,16 +140,16 @@ class UserDataStorage {
 
     try {
       const dataToSave = JSON.stringify(this.userData);
-      
+
       // Save to cookie (persistent)
       this.setCookie('next_user_data', dataToSave, this.cookieExpiryDays);
-      
+
       // Save to sessionStorage (for quick access)
-      sessionStorage.setItem('user_data', dataToSave);
-      
+      sessionStorage.setItem(scopedKey('user_data'), dataToSave);
+
       logger.debug('Saved user data to storage:', {
         hasEmail: !!this.userData.email,
-        hasUserId: !!this.userData.userId
+        hasUserId: !!this.userData.userId,
       });
     } catch (error) {
       logger.error('Failed to save user data:', error);
@@ -169,20 +170,24 @@ class UserDataStorage {
    */
   public updateUserData(data: Partial<UserData>): void {
     const previousEmail = this.userData.email;
-    
+
     // Merge new data
     this.userData = { ...this.userData, ...data };
-    
+
     // Clean up undefined values
     Object.keys(this.userData).forEach(key => {
-      if (this.userData[key] === undefined || this.userData[key] === null || this.userData[key] === '') {
+      if (
+        this.userData[key] === undefined ||
+        this.userData[key] === null ||
+        this.userData[key] === ''
+      ) {
         delete this.userData[key];
       }
     });
-    
+
     // Save to storage
     this.saveUserData();
-    
+
     // Log significant changes
     if (data.email && data.email !== previousEmail) {
       logger.info('User email updated:', data.email);
@@ -209,7 +214,7 @@ class UserDataStorage {
   public clearUserData(): void {
     // Keep visitor ID and session ID
     const { visitorId, sessionId } = this.userData;
-    
+
     // Clear all data
     this.userData = {};
     if (visitorId !== undefined) {
@@ -218,11 +223,11 @@ class UserDataStorage {
     if (sessionId !== undefined) {
       this.userData.sessionId = sessionId;
     }
-    
+
     // Clear storage
     this.deleteCookie('next_user_data');
-    sessionStorage.removeItem('user_data');
-    
+    sessionStorage.removeItem(scopedKey('user_data'));
+
     logger.info('User data cleared');
   }
 
@@ -240,13 +245,29 @@ class UserDataStorage {
     if (typeof document === 'undefined') return;
 
     const updates: Partial<UserData> = {};
-    
+
     // Check common checkout field selectors
     const fieldMappings = [
-      { selector: '[name="email"], [data-next-checkout-field="email"], #email, [type="email"]', key: 'email' },
-      { selector: '[name="phone"], [data-next-checkout-field="phone"], #phone, [type="tel"]', key: 'phone' },
-      { selector: '[name="first_name"], [data-next-checkout-field="fname"], [name="firstName"], #first-name', key: 'firstName' },
-      { selector: '[name="last_name"], [data-next-checkout-field="lname"], [name="lastName"], #last-name', key: 'lastName' }
+      {
+        selector:
+          '[name="email"], [data-next-checkout-field="email"], #email, [type="email"]',
+        key: 'email',
+      },
+      {
+        selector:
+          '[name="phone"], [data-next-checkout-field="phone"], #phone, [type="tel"]',
+        key: 'phone',
+      },
+      {
+        selector:
+          '[name="first_name"], [data-next-checkout-field="fname"], [name="firstName"], #first-name',
+        key: 'firstName',
+      },
+      {
+        selector:
+          '[name="last_name"], [data-next-checkout-field="lname"], [name="lastName"], #last-name',
+        key: 'lastName',
+      },
     ];
 
     let hasUpdates = false;

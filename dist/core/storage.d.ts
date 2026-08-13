@@ -28,7 +28,15 @@ export declare const createStoragePersist: <T>(storageManager: StorageManager, k
         removeItem: (name: string) => void;
     };
 };
-export declare const CART_STORAGE_KEY = "next-cart-state";
+export declare const CART_STORAGE_KEY: string;
+export declare const CHECKOUT_STORAGE_KEY: string;
+export declare const ORDER_STORAGE_KEY: string;
+export declare const PROSPECT_CART_STORAGE_KEY: string;
+export declare const EXIT_INTENT_STORAGE_KEY: string;
+export declare function scopedKey(base: string): string;
+export declare const CHECKOUT_RETURN_PATHS_KEY: string;
+export declare const CHECKOUT_COUPON_KEY: string;
+export declare const SHOWN_ORDER_WARNINGS_KEY: string;
 export declare const CONFIG_STORAGE_KEY = "next-config-state";
 export declare const CAMPAIGN_STORAGE_KEY = "next-campaign-cache";
 export declare const TIMER_STORAGE_PREFIX = "next-timer-";

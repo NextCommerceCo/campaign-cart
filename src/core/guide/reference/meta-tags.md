@@ -9,7 +9,7 @@ category: "Core Reference"
 <!-- Generated from the core contract lists. Do not edit by hand:
      edit src/docs/content/meta-tags.ts, then run `npm run docs:reference`. -->
 
-The SDK reads **27 `<meta>` tags** from the page's `<head>`. Attributes configure one element; these configure the whole page — the API key it boots with, which funnel step the page is, where checkout sends the visitor, which analytics events fire. Add them to the `<head>`, above the SDK loader script.
+The SDK reads **28 `<meta>` tags** from the page's `<head>`. Attributes configure one element; these configure the whole page — the API key it boots with, which funnel step the page is, where checkout sends the visitor, which analytics events fire. Add them to the `<head>`, above the SDK loader script.
 
 The shortest page that works:
 
@@ -21,7 +21,7 @@ The shortest page that works:
 </head>
 ```
 
-Everything else on this page is optional. Two of the 27 are marked 🚫: the code parses them and then ignores them, so they are documented here to stop you relying on them.
+Everything else on this page is optional. Two of the 28 are marked 🚫: the code parses them and then ignores them, so they are documented here to stop you relying on them.
 
 ## How to read the tables
 
@@ -39,6 +39,7 @@ The code that reads each tag is listed at the end, under [where these are read](
 | Tag | Type | Default | What it does |
 |---|---|---|---|
 | `next-api-key` **required** | `string` | — | The campaign's public API key. It is the one tag a page cannot run without: the SDK uses it to fetch the campaign — its packages, prices, and shipping methods — and nothing on the page enhances until that call returns.<br>⚠️ Missing or empty, initialization throws `API key not found. Please set next-api-key meta tag or window.nextConfig.apiKey` and every price stays as its `{token}` placeholder. If you set both this tag and `window.nextConfig.apiKey`, **the tag wins** — configuration is loaded from `window` first and meta tags second, so a stale tag silently overrides the value your loader script computed. |
+| `next-storage-scope` | `string` | not set | Overrides which other pages share this page's cart, checkout, order and prospect cart. You rarely need it: left unset, the scope is one hash of the API key and the first path segment, which already separates two campaigns sharing a hostname and two funnels of one campaign served from different top folders.<br>⚠️ Two pages that must share a cart must declare the **same** value; two that must not must differ. The one layout that needs it is a funnel whose pages sit at **different depths** — a landing page at `/hu/` and a checkout at `/hu/checkout` derive different scopes, because one has a folder above it and the other does not, and no page can detect that. Like the derived scope, it is read when the store modules are created, so it has to be parsed before the SDK script runs — place it in `<head>` above the loader. `window.nextConfig.storageScope` sets the same value and **wins over this tag**, which is the opposite of how `next-api-key` resolves. |
 | `next-campaign-id` 🚫 | `string` | not set | **Does nothing today.** Kept for backwards compatibility. The campaign is identified by the API key alone, so this value is stored on the config store and read by nothing except the debug panel that displays it.<br>⚠️ It looks like it selects which campaign loads, and it does not — changing it has no effect on the data the page gets. Remove it rather than maintaining it; if a page loads the wrong campaign, the API key is what to check. |
 | `next-page-type` | `product` \| `cart` \| `checkout` \| `upsell` \| `receipt` | product | Declares which funnel step this page is, so analytics events land on the right step and the post-purchase upsell tracking knows it is on an upsell page.<br>⚠️ On an upsell page this is what triggers the upsell page-view event — leave it off and the funnel shows purchases with no upsell views before them. It can also come from `window.nextConfig.pageType`; the tag wins over it. Anything outside the five values is passed through unvalidated and shows up in reports verbatim. |
 | `next-page-name` | `string` | the document `<title>`, then the page type | A human-readable page name for RudderStack page and track calls, when the document title is not what you want reported.<br>⚠️ Only the RudderStack provider reads it. With GA4 or Facebook alone, setting it changes nothing. |
@@ -60,6 +61,7 @@ Copy-paste, then replace the `{TOKENS}`:
 
 ```html
 <meta name="next-api-key" content="{YOUR_CAMPAIGN_API_KEY}">
+<meta name="next-storage-scope" content="promo-b">
 <meta name="next-page-type" content="checkout">
 <meta name="next-page-name" content="Summer Bundle — Offer">
 <meta name="next-clear-cart" content="true">
@@ -170,7 +172,7 @@ Every tag above, with the code that reads it. This table is generated from the s
 | `next-analytics-scroll-tracking` | `MetaTagController.parseScrollThresholds` — `core/analytics/tracking/meta-tag-controller.ts` |
 | `next-analytics-view-item` | `MetaTagController.parseViewItemConfig` — `core/analytics/tracking/meta-tag-controller.ts` |
 | `next-analytics-view-item-list` | `MetaTagController.parseViewItemListConfig` — `core/analytics/tracking/meta-tag-controller.ts` |
-| `next-api-key` | `loadFromMeta` — `state/config/config.state.ts` |
+| `next-api-key` | `loadFromMeta` — `state/config/config.state.ts`<br>`apiKey` — `core/storage-scope.ts` |
 | `next-campaign-id` | `loadFromMeta` — `state/config/config.state.ts` |
 | `next-clear-cart` | `loadFromMeta` — `state/config/config.state.ts` |
 | `next-debug` | `loadFromMeta` — `state/config/config.state.ts` |
@@ -181,6 +183,7 @@ Every tag above, with the code that reads it. This table is generated from the s
 | `next-page-type` | `getPageMetadata` — `core/analytics/providers/rudderstack-context.ts`<br>`UpsellSelector.checkIfUpsellPage` — `core/debug/upsell-selector.ts`<br>`trackUpsellPageView` — `features/order/upsell/upsell.handlers.ts`<br>…and 1 more |
 | `next-payment-env-key` | `loadFromMeta` — `state/config/config.state.ts` |
 | `next-spreedly-key` | `loadFromMeta` — `state/config/config.state.ts` |
+| `next-storage-scope` | `declaredScope` — `core/storage-scope.ts` |
 | `next-success-url` | `CheckoutFormEnhancer.getNextPageUrlFromMeta` — `features/checkout/checkout-form/checkout-form.enhancer.ts`<br>*top level of the file* — `features/checkout/constants/selectors.ts`<br>`getNextPageUrlFromMeta` — `features/checkout/utils/meta-tag-utils.ts`<br>…and 2 more |
 | `next-upsell-accept-url` | `resolveNextUrl` — `features/cart/package-toggle/package-toggle.handlers.ts`<br>`handleActionClick` — `features/order/upsell/upsell.handlers.ts`<br>`acceptBundleUpsell` — `features/cart/accept-upsell/accept-upsell.handlers.ts`<br>…and 1 more |
 | `next-upsell-decline-url` | `handleActionClick` — `features/order/upsell/upsell.handlers.ts`<br>`acceptUpsell` — `features/cart/accept-upsell/accept-upsell.handlers.ts` |

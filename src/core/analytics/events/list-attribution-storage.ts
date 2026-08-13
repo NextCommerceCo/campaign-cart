@@ -6,6 +6,8 @@
  * (add_to_cart, view_item) can attach `item_list_id` / `item_list_name`.
  */
 
+import { scopedKey } from '@/core/storage';
+
 /**
  * Get list attribution from sessionStorage
  */
@@ -13,8 +15,8 @@ export function getListAttribution():
   | { id?: string; name?: string }
   | undefined {
   if (typeof window !== 'undefined') {
-    const listId = sessionStorage.getItem('analytics_list_id');
-    const listName = sessionStorage.getItem('analytics_list_name');
+    const listId = sessionStorage.getItem(scopedKey('analytics_list_id'));
+    const listName = sessionStorage.getItem(scopedKey('analytics_list_name'));
 
     if (listId || listName) {
       const result: { id?: string; name?: string } = {};
@@ -32,10 +34,10 @@ export function getListAttribution():
 export function setListAttribution(listId?: string, listName?: string): void {
   if (typeof window !== 'undefined') {
     if (listId) {
-      sessionStorage.setItem('analytics_list_id', listId);
+      sessionStorage.setItem(scopedKey('analytics_list_id'), listId);
     }
     if (listName) {
-      sessionStorage.setItem('analytics_list_name', listName);
+      sessionStorage.setItem(scopedKey('analytics_list_name'), listName);
     }
   }
 }
@@ -45,7 +47,7 @@ export function setListAttribution(listId?: string, listName?: string): void {
  */
 export function clearListAttribution(): void {
   if (typeof window !== 'undefined') {
-    sessionStorage.removeItem('analytics_list_id');
-    sessionStorage.removeItem('analytics_list_name');
+    sessionStorage.removeItem(scopedKey('analytics_list_id'));
+    sessionStorage.removeItem(scopedKey('analytics_list_name'));
   }
 }

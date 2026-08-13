@@ -7,6 +7,7 @@ import { useCartStore } from '@/state/cart';
 import { useConfigStore } from '@/state/config';
 import { useCampaignStore } from '@/state/campaign';
 import { useAttributionStore } from '@/state/attribution';
+import { PROSPECT_CART_STORAGE_KEY } from '@/core/storage';
 import type { CartBase, UserCreateCart } from '@/types/api';
 import type { CartCreationContext } from './prospect-cart.types';
 
@@ -218,7 +219,7 @@ export async function createProspectCart(
 
     // Store in session
     sessionStorage.setItem(
-      'next_prospect_cart',
+      PROSPECT_CART_STORAGE_KEY,
       JSON.stringify(context.prospectCartRef.value)
     );
 

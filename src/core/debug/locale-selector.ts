@@ -4,6 +4,7 @@
  */
 
 import { Logger } from '@/core/logger';
+import { scopedKey } from '@/core/storage';
 import { CurrencyFormatter } from '@/core/currency-formatter';
 
 export class LocaleSelector {
@@ -37,7 +38,7 @@ export class LocaleSelector {
     { code: 'nl-NL', name: 'Nederlands', flag: '🇳🇱' },
     { code: 'sv-SE', name: 'Svenska', flag: '🇸🇪' },
     { code: 'pl-PL', name: 'Polski', flag: '🇵🇱' },
-    { code: 'tr-TR', name: 'Türkçe', flag: '🇹🇷' }
+    { code: 'tr-TR', name: 'Türkçe', flag: '🇹🇷' },
   ];
 
   public static getInstance(): LocaleSelector {
@@ -79,11 +80,13 @@ export class LocaleSelector {
 
   private getCurrentLocale(): string {
     // Check for saved locale in session storage
-    const savedLocale = sessionStorage.getItem('next_selected_locale');
+    const savedLocale = sessionStorage.getItem(
+      scopedKey('next_selected_locale')
+    );
     if (savedLocale) {
       return savedLocale;
     }
-    
+
     // Fall back to browser locale
     return navigator.language || 'en-US';
   }
@@ -93,23 +96,23 @@ export class LocaleSelector {
     if (this.renderDebounceTimer) {
       clearTimeout(this.renderDebounceTimer);
     }
-    
+
     this.renderDebounceTimer = setTimeout(() => {
       this.doRender();
     }, 50);
   }
-  
+
   private doRender(): void {
     if (!this.shadowRoot) return;
 
     const currentLocale = this.getCurrentLocale();
     const detectedLocale = navigator.language || 'en-US';
-    
+
     // Make sure container is visible
     if (this.container) {
       this.container.style.display = 'block';
     }
-    
+
     this.shadowRoot.innerHTML = `
       <style>
         :host {
@@ -252,11 +255,15 @@ export class LocaleSelector {
         
         <div class="select-wrapper">
           <select class="locale-select" id="locale-select">
-            ${this.locales.map(locale => `
+            ${this.locales
+              .map(
+                locale => `
               <option value="${locale.code}" ${locale.code === currentLocale ? 'selected' : ''}>
                 ${locale.flag} ${locale.code}
               </option>
-            `).join('')}
+            `
+              )
+              .join('')}
           </select>
           <svg class="select-arrow" viewBox="0 0 24 24" fill="currentColor">
             <path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"/>
@@ -265,18 +272,22 @@ export class LocaleSelector {
 
         <div class="loading-indicator" id="loading-indicator"></div>
 
-        ${detectedLocale !== currentLocale ? `
+        ${
+          detectedLocale !== currentLocale
+            ? `
           <button class="reset-button" id="reset-button" title="Reset to browser locale: ${detectedLocale}">
             Reset
           </button>
-        ` : ''}
+        `
+            : ''
+        }
 
         <div class="detected-info">
           Browser: <span class="detected-value">${detectedLocale}</span>
         </div>
       </div>
     `;
-    
+
     // Mark as initially rendered
     if (!this.hasInitiallyRendered) {
       this.hasInitiallyRendered = true;
@@ -287,13 +298,13 @@ export class LocaleSelector {
     if (!this.shadowRoot || this.listenersAttached) return;
 
     // Handle locale selection changes
-    this.shadowRoot.addEventListener('change', async (e) => {
+    this.shadowRoot.addEventListener('change', async e => {
       const target = e.target as HTMLElement;
-      
+
       if (target && target.id === 'locale-select') {
         const selectElement = target as HTMLSelectElement;
         const newLocale = selectElement.value;
-        
+
         if (this.isChanging) {
           this.logger.warn('Locale change already in progress');
           return;
@@ -305,12 +316,12 @@ export class LocaleSelector {
     });
 
     // Handle reset button clicks
-    this.shadowRoot.addEventListener('click', async (e) => {
+    this.shadowRoot.addEventListener('click', async e => {
       const target = e.target as HTMLElement;
-      
+
       if (target && target.id === 'reset-button') {
         const detectedLocale = navigator.language || 'en-US';
-        
+
         this.logger.debug('Resetting to browser locale:', detectedLocale);
         await this.handleLocaleChange(detectedLocale, true);
       }
@@ -318,55 +329,67 @@ export class LocaleSelector {
 
     // Listen for locale changes from other sources
     document.addEventListener('next:locale-changed', () => {
-      this.logger.debug('External locale change detected, re-rendering selector');
+      this.logger.debug(
+        'External locale change detected, re-rendering selector'
+      );
       this.render();
     });
-    
+
     this.listenersAttached = true;
     this.logger.debug('Event listeners attached to locale selector');
   }
 
-  private async handleLocaleChange(newLocale: string, isReset: boolean = false): Promise<void> {
+  private async handleLocaleChange(
+    newLocale: string,
+    isReset: boolean = false
+  ): Promise<void> {
     this.isChanging = true;
-    
-    const select = this.shadowRoot?.getElementById('locale-select') as HTMLSelectElement;
-    const loadingIndicator = this.shadowRoot?.getElementById('loading-indicator');
-    
+
+    const select = this.shadowRoot?.getElementById(
+      'locale-select'
+    ) as HTMLSelectElement;
+    const loadingIndicator =
+      this.shadowRoot?.getElementById('loading-indicator');
+
     if (select) select.disabled = true;
     if (loadingIndicator) loadingIndicator.classList.add('active');
 
     try {
       this.logger.info(`Changing locale to ${newLocale}`);
-      
+
       const oldLocale = this.getCurrentLocale();
-      
+
       if (isReset) {
         // Clear forced locale from session
-        sessionStorage.removeItem('next_selected_locale');
-        this.logger.info('Cleared selected locale override, using browser locale');
+        sessionStorage.removeItem(scopedKey('next_selected_locale'));
+        this.logger.info(
+          'Cleared selected locale override, using browser locale'
+        );
       } else {
         // Save forced locale to session
-        sessionStorage.setItem('next_selected_locale', newLocale);
+        sessionStorage.setItem(scopedKey('next_selected_locale'), newLocale);
         this.logger.info(`Saved selected locale to session: ${newLocale}`);
       }
-      
+
       // Clear currency formatter cache when locale changes
       CurrencyFormatter.clearCache();
-      
+
       // Import and refresh display enhancers
       const { cartOperations } = await import('@/state/cart');
 
       // Trigger cart recalculation to update formatted values
       cartOperations.calculateTotals();
-      
+
       // Emit locale change event for other components to react
-      document.dispatchEvent(new CustomEvent('next:locale-changed', {
-        detail: {
-          from: oldLocale,
-          to: newLocale,
-          source: 'locale-selector'
-        }
-      }));
+      document.dispatchEvent(
+        new CustomEvent('next:locale-changed', {
+          detail: {
+            from: oldLocale,
+            to: newLocale,
+            source: 'locale-selector',
+          },
+        })
+      );
 
       // Re-render everything that shows money.
       //
@@ -379,30 +402,30 @@ export class LocaleSelector {
       // per-element `next:refresh-display` walk instead, and **none of those three has a
       // listener anywhere in src/** — so the picker cleared the formatter cache and then
       // told nobody, and the new locale only appeared on a manual reload.
-      document.dispatchEvent(new CustomEvent('next:currency-changed', {
-        detail: { locale: newLocale, source: 'locale-selector' }
-      }));
+      document.dispatchEvent(
+        new CustomEvent('next:currency-changed', {
+          detail: { locale: newLocale, source: 'locale-selector' },
+        })
+      );
 
       // Trigger display updates
       document.dispatchEvent(new CustomEvent('debug:update-content'));
 
       // Show success feedback
       this.showSuccessFeedback(newLocale);
-      
+
       // Re-render to update UI
       this.render();
-      
+
       // Log format examples for the new locale
       this.logFormatExamples(newLocale);
-      
     } catch (error) {
       this.logger.error('Failed to change locale:', error);
       this.showErrorFeedback();
-      
+
       // Revert selection
       const currentLocale = this.getCurrentLocale();
       if (select) select.value = currentLocale;
-      
     } finally {
       this.isChanging = false;
       if (select) select.disabled = false;
@@ -420,42 +443,53 @@ export class LocaleSelector {
     const formatter = new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: 'USD',
-      currencyDisplay: 'narrowSymbol'
+      currencyDisplay: 'narrowSymbol',
     });
-    
+
     const dateFormatter = new Intl.DateTimeFormat(locale, {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
     });
-    
+
     const numberFormatter = new Intl.NumberFormat(locale);
-    
-    console.log(`%c[LocaleSelector] Format examples for ${locale}:`, 'color: #4299e1; font-weight: bold');
+
+    console.log(
+      `%c[LocaleSelector] Format examples for ${locale}:`,
+      'color: #4299e1; font-weight: bold'
+    );
     console.log('Currency:', formatter.format(1234.56));
     console.log('Date:', dateFormatter.format(new Date()));
     console.log('Number:', numberFormatter.format(1234567.89));
   }
 
   private showSuccessFeedback(_locale: string): void {
-    const selector = this.shadowRoot?.querySelector('.locale-selector') as HTMLElement;
+    const selector = this.shadowRoot?.querySelector(
+      '.locale-selector'
+    ) as HTMLElement;
     if (!selector) return;
 
-    selector.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
-    
+    selector.style.background =
+      'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+
     setTimeout(() => {
-      selector.style.background = 'linear-gradient(135deg, #222 0%, #1a1a1a 100%)';
+      selector.style.background =
+        'linear-gradient(135deg, #222 0%, #1a1a1a 100%)';
     }, 1000);
   }
 
   private showErrorFeedback(): void {
-    const selector = this.shadowRoot?.querySelector('.locale-selector') as HTMLElement;
+    const selector = this.shadowRoot?.querySelector(
+      '.locale-selector'
+    ) as HTMLElement;
     if (!selector) return;
 
-    selector.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
-    
+    selector.style.background =
+      'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+
     setTimeout(() => {
-      selector.style.background = 'linear-gradient(135deg, #222 0%, #1a1a1a 100%)';
+      selector.style.background =
+        'linear-gradient(135deg, #222 0%, #1a1a1a 100%)';
     }, 1000);
   }
 
@@ -463,7 +497,7 @@ export class LocaleSelector {
     if (this.renderDebounceTimer) {
       clearTimeout(this.renderDebounceTimer);
     }
-    
+
     if (this.container) {
       this.container.remove();
       this.container = null;

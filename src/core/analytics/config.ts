@@ -71,7 +71,11 @@ export const EVENT_VALIDATION_RULES = {
   // Event-specific required fields (GA4 format)
   eventSpecific: {
     // GA4 dl_ events with flat structure
-    dl_purchase: ['ecommerce.transaction_id', 'ecommerce.value', 'ecommerce.items'],
+    dl_purchase: [
+      'ecommerce.transaction_id',
+      'ecommerce.value',
+      'ecommerce.items',
+    ],
     dl_add_to_cart: ['ecommerce.items', 'ecommerce.currency'],
     dl_remove_from_cart: ['ecommerce.items', 'ecommerce.currency'],
     dl_view_item: ['ecommerce.items', 'ecommerce.currency'],
@@ -87,7 +91,11 @@ export const EVENT_VALIDATION_RULES = {
     dl_login: ['user_properties'],
     dl_subscribe: ['user_properties', 'lead_type'],
     dl_package_swapped: ['ecommerce.items_removed', 'ecommerce.items_added'],
-    dl_upsell_purchase: ['ecommerce.transaction_id', 'ecommerce.value', 'ecommerce.items'],
+    dl_upsell_purchase: [
+      'ecommerce.transaction_id',
+      'ecommerce.value',
+      'ecommerce.items',
+    ],
 
     // Standard GA4 events (kept for compatibility)
     purchase: ['ecommerce.value', 'ecommerce.items'],
@@ -99,16 +107,16 @@ export const EVENT_VALIDATION_RULES = {
     add_payment_info: ['ecommerce.value'],
     add_shipping_info: ['ecommerce.value'],
   },
-  
+
   // Field type validations (Elevar format - most values are strings)
   fieldTypes: {
-    'event': 'string',
-    'event_id': 'string',
-    'event_category': 'string',
-    'event_label': 'string',
-    'cart_total': 'string', // Elevar uses strings for amounts
-    'lead_type': 'string',
-    'pageType': 'string',
+    event: 'string',
+    event_id: 'string',
+    event_category: 'string',
+    event_label: 'string',
+    cart_total: 'string', // Elevar uses strings for amounts
+    lead_type: 'string',
+    pageType: 'string',
     'ecommerce.currencyCode': 'string',
     'ecommerce.currency': 'string',
     'ecommerce.value': 'number', // GA4 format
@@ -126,7 +134,14 @@ export const EVENT_VALIDATION_RULES = {
 };
 
 /**
- * Local storage keys
+ * Base names of the storage keys the analytics layer owns.
+ *
+ * These are **unscoped base names**, not the keys written to storage — every use goes
+ * through `scopedKey()` from `core/storage`, which appends the funnel scope. Resolving
+ * it here instead would pull `storage-scope` into the analytics chunk, and the ES build
+ * then evaluates a chunk that reads it before it is ready: `Cannot access 'n' before
+ * initialization`, every page silently on the UMD fallback. `e2e/es-bundle.spec.ts` is
+ * what catches that.
  */
 export const STORAGE_KEYS = {
   DEBUG_MODE: 'nextDataLayer_debugMode',
@@ -141,19 +156,24 @@ export const STORAGE_KEYS = {
 /**
  * Validate provider configuration
  */
-export function validateProviderConfig(provider: AnalyticsProvider, settings: typeof PROVIDER_SETTINGS[keyof typeof PROVIDER_SETTINGS]): boolean {
+export function validateProviderConfig(
+  provider: AnalyticsProvider,
+  settings: (typeof PROVIDER_SETTINGS)[keyof typeof PROVIDER_SETTINGS]
+): boolean {
   if (!provider.config) {
     logger.error(`Missing config for provider "${provider.name}"`);
     return false;
   }
-  
+
   // Check required fields
   for (const field of settings.requiredConfig) {
     if (!provider.config[field]) {
-      logger.error(`Missing required field "${field}" for provider "${provider.name}"`);
+      logger.error(
+        `Missing required field "${field}" for provider "${provider.name}"`
+      );
       return false;
     }
   }
-  
+
   return true;
 }

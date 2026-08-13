@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- One campaign spread across sibling directories — the production layout.
+         Both pages carry the same next-api-key and neither declares a scope, so
+         they must resolve to the same one and share a cart. -->
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Apollo checkout</title>
+  </head>
+  <body>
+    <h1>Apollo checkout</h1>
+
+    <p>The cart the shopper built on the presell page:</p>
+
+    <span data-next-display="cart.totalQuantity">0</span>
+
+    <!-- Vite dev server serves the SDK entry as an ES module. -->
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

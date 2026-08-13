@@ -1,3 +1,4 @@
+import { PROSPECT_CART_STORAGE_KEY } from '@/core/storage';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { IApiClient } from '@/api/client.types';
 import type { Cart, CartBase } from '@/types/api';
@@ -168,7 +169,7 @@ describe('ProspectCartEnhancer', () => {
     it('restores existing prospect cart from sessionStorage when not expired', async () => {
       const future = new Date(Date.now() + 60_000).toISOString();
       sessionStorage.setItem(
-        'next_prospect_cart',
+        PROSPECT_CART_STORAGE_KEY,
         JSON.stringify({ id: 'prev', expires_at: future })
       );
 
@@ -182,7 +183,7 @@ describe('ProspectCartEnhancer', () => {
     it('removes expired prospect cart from sessionStorage on initialize', async () => {
       const past = new Date(Date.now() - 60_000).toISOString();
       sessionStorage.setItem(
-        'next_prospect_cart',
+        PROSPECT_CART_STORAGE_KEY,
         JSON.stringify({ id: 'old', expires_at: past })
       );
 
@@ -191,16 +192,16 @@ describe('ProspectCartEnhancer', () => {
       await enhancer.initialize();
 
       expect(enhancer.getCurrentProspectCart()).toBeNull();
-      expect(sessionStorage.getItem('next_prospect_cart')).toBeNull();
+      expect(sessionStorage.getItem(PROSPECT_CART_STORAGE_KEY)).toBeNull();
     });
 
     it('removes malformed prospect cart JSON from sessionStorage', async () => {
-      sessionStorage.setItem('next_prospect_cart', 'not json');
+      sessionStorage.setItem(PROSPECT_CART_STORAGE_KEY, 'not json');
       const container = buildContainer('<input type="email" />');
       const enhancer = new ProspectCartEnhancer(container);
       await enhancer.initialize();
 
-      expect(sessionStorage.getItem('next_prospect_cart')).toBeNull();
+      expect(sessionStorage.getItem(PROSPECT_CART_STORAGE_KEY)).toBeNull();
     });
   });
 
@@ -636,7 +637,7 @@ describe('ProspectCartEnhancer', () => {
         id: 'https://checkout.example/abc',
         email: 'user@example.com',
       });
-      const stored = JSON.parse(sessionStorage.getItem('next_prospect_cart')!);
+      const stored = JSON.parse(sessionStorage.getItem(PROSPECT_CART_STORAGE_KEY)!);
       expect(stored.id).toBe('https://checkout.example/abc');
     });
 
@@ -816,7 +817,7 @@ describe('ProspectCartEnhancer', () => {
       await enhancer.abandonCart();
 
       expect(handler).toHaveBeenCalledTimes(1);
-      expect(sessionStorage.getItem('next_prospect_cart')).toBeNull();
+      expect(sessionStorage.getItem(PROSPECT_CART_STORAGE_KEY)).toBeNull();
       expect(enhancer.getCurrentProspectCart()).toBeNull();
     });
 
@@ -837,7 +838,7 @@ describe('ProspectCartEnhancer', () => {
       await enhancer.convertCart();
 
       expect(handler).toHaveBeenCalledTimes(1);
-      expect(sessionStorage.getItem('next_prospect_cart')).toBeNull();
+      expect(sessionStorage.getItem(PROSPECT_CART_STORAGE_KEY)).toBeNull();
       expect(enhancer.getCurrentProspectCart()).toBeNull();
     });
 

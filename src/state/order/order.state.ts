@@ -9,6 +9,7 @@ import type { Order, AddUpsellLine } from '@/types/api';
 import type { IApiClient } from '@/api/client.types';
 import { createLogger } from '@/core/logger';
 import { EventBus } from '@/core/events';
+import { ORDER_STORAGE_KEY } from '@/core/storage';
 
 export interface OrderState {
   /**
@@ -474,7 +475,7 @@ export const useOrderStore = create<OrderState & OrderActions>()(
       },
     }),
     {
-      name: 'next-order',
+      name: ORDER_STORAGE_KEY,
       storage: {
         getItem: name => {
           const str = sessionStorage.getItem(name);
