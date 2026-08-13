@@ -91,6 +91,7 @@ Defects found while documenting go to [docs/code-findings.md](docs/code-findings
 Cross-cutting rules stay under [.claude/rules/](.claude/rules/):
 
 - [.claude/rules/documentation.md](.claude/rules/documentation.md) — **docs ship with the code** (update in the same change) + the readability bar. Read before finishing any change.
+- [.claude/rules/docs-fact-check.md](.claude/rules/docs-fact-check.md) — **mandatory re-checks before any docs change ships** (apollo-only examples, no `os-*`, behavior claims need SDK source citations, trace example property chains, check open bugs, analytics "auto" needs a traced caller). Born from the PR #82 review.
 - [.claude/rules/typescript.md](.claude/rules/typescript.md) — path aliases (`@/` → `src/`), strict-mode rules, style
 - [.claude/rules/testing.md](.claude/rules/testing.md) — Vitest conventions, what to unit-test vs E2E
 - [.claude/rules/e2e.md](.claude/rules/e2e.md) — **when a Playwright spec is required**, the fixture→docs contract, and the fact that CI does not run E2E

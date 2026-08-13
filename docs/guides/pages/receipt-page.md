@@ -6,7 +6,7 @@ category: "Building Pages"
 
 # Building a receipt page
 
-The receipt confirms the order. The visitor arrives with `?ref_id=` in the URL — boot loads the completed order from it — and the page reads everything it shows from the `order.*` display namespace. No form, no cart, no `next_url`: this is the end of the funnel. The examples below are condensed from `receipt.html` in the `olympus` starter template ([campaign-cart-starter-templates](https://github.com/NextCommerceCo/campaign-cart-starter-templates)).
+The receipt confirms the order. The visitor arrives with `?ref_id=` in the URL (boot loads the completed order from it) and the page reads everything it shows from the `order.*` display namespace. No form, no cart, no `next_url`: this is the end of the funnel. The examples below are condensed from `receipt.html` in the `apollo` starter template ([campaign-cart-starter-templates](https://github.com/NextCommerceCo/campaign-cart-starter-templates)).
 
 The head only needs the page type:
 
@@ -25,11 +25,11 @@ The order takes a moment to load, so hide order-bearing sections until the SDK h
 </div>
 ```
 
-The olympus template goes further and shows a full placeholder skeleton while the order loads, swapping it for the real content. That pattern lives in the template, not the SDK — its `data-next-skeleton` / `data-next-content` markers are the template's own, styled by its CSS (`_includes/receipt-skeleton.html`) — so copy the include if you want it, but don't expect those two attributes to do anything on their own.
+The apollo template goes further and shows a full placeholder skeleton while the order loads, swapping it for the real content. That pattern lives in the template, not the SDK: its `data-next-skeleton` / `data-next-content` markers are the template's own, styled by its CSS (`_includes/receipt-skeleton.html`), so copy the include if you want it, but don't expect those two attributes to do anything on their own.
 
 ## Order fields
 
-Every field on the confirmation is one `data-next-display` binding into the order. The paths the olympus receipt uses:
+Every field on the confirmation is one `data-next-display` binding into the order. The paths the apollo receipt uses:
 
 ```html
 <div data-next-display="order.customer.email">jordan.chen@domain.com</div>
@@ -41,7 +41,7 @@ Every field on the confirmation is one `data-next-display` binding into the orde
 <div data-next-display="order.paymentMethod">Credit Card</div>
 ```
 
-The same structure exists under `order.billingAddress.*`. The static text inside each element is a placeholder the SDK replaces — the templates use realistic values so the page previews sensibly before the SDK runs.
+The same structure exists under `order.billingAddress.*`. The static text inside each element is a placeholder the SDK replaces; the templates use realistic values so the page previews sensibly before the SDK runs.
 
 ## Line items and totals
 
@@ -71,5 +71,5 @@ Totals are plain bindings, with the tax row shown only when the order has tax:
 
 ## Cautions
 
-- **The order is kept for 15 minutes.** The order store expires after that, so a bookmarked or re-opened receipt link eventually renders the skeleton with nothing to fill it. That is by design — the receipt is a confirmation, not an order-history page.
-- **Cart attributes have no business on a receipt.** The cart is a different store from the order; `cart.*` bindings and quantity buttons on a receipt read whatever cart state is left over, not the completed order. (The olympus receipt itself still carries a leftover `data-next-quantity` pair inside its line template — treat that as legacy carryover, not a pattern to copy.) Read from `order.*` only.
+- **The order is kept for 15 minutes.** The order store expires after that, so a bookmarked or re-opened receipt link eventually renders the skeleton with nothing to fill it. That is by design: the receipt is a confirmation, not an order-history page.
+- **Do not use cart attributes on a receipt.** The cart is a different store from the order; `cart.*` bindings and quantity buttons on a receipt read whatever cart state is left over, not the completed order. (The apollo receipt itself still carries a leftover `data-next-quantity` pair inside its line template; treat that as legacy carryover, not a pattern to copy.) Read from `order.*` only.

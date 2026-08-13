@@ -4,7 +4,7 @@
  * The SDK that turns a plain HTML campaign page into a working cart and checkout.
  * You mark up your page with `data-next-*` attributes; the SDK finds them on load,
  * fetches the campaign, keeps the cart and its totals in sync, and runs the
- * checkout. There is no framework to adopt and no build step on your page — the
+ * checkout. There is no framework to adopt and no build step on your page: the
  * markup *is* the configuration.
  *
  * ```html
@@ -29,28 +29,28 @@
  * | Boot the SDK on your first page | [Getting Started](../docs/guides/start-here/getting-started.md), then [How It Works](../docs/guides/start-here/how-it-works.md) |
  * | Build a funnel page end to end | [Checkout](../docs/guides/pages/checkout-page.md), [Upsell](../docs/guides/pages/upsell-page.md), [Receipt](../docs/guides/pages/receipt-page.md), or [Landing & Presell](../docs/guides/pages/landing-presell.md) |
  * | Look up a `data-next-*` attribute | [Data Attributes](../docs/guides/reference/data-attributes.md) |
- * | Call the SDK from your own JavaScript | [JavaScript API — `window.next`](../docs/guides/reference/javascript-api.md) |
+ * | Call the SDK from your own JavaScript | [JavaScript API](../docs/guides/reference/javascript-api.md) |
  * | Understand or fix tracking | [Analytics Events](../docs/guides/reference/analytics-events.md) |
  * | Subscribe to an event | {@link EventMap} for every event name and its payload |
  *
  * ## The data types on this page
  *
- * Everything below is the SDK's **public type surface** — the objects you receive
+ * Everything below is the SDK's **public type surface**: the objects you receive
  * in events, read from a store, or pass into a method. It is generated from the
  * source, so it matches the shipped code rather than describing it.
  *
- * - **Cart** — {@link CartItem}, {@link CartState}, {@link EnrichedCartLine},
+ * - **Cart**: {@link CartItem}, {@link CartState}, {@link EnrichedCartLine},
  *   {@link ShippingMethod}, {@link Coupon}
- * - **Campaign** — {@link Campaign}, {@link Package}, {@link SelectorItem}
- * - **Checkout & order** — {@link CheckoutData}, {@link Order} (the placed order,
+ * - **Campaign**: {@link Campaign}, {@link Package}, {@link SelectorItem}
+ * - **Checkout & order**: {@link CheckoutData}, {@link Order} (the placed order,
  *   with {@link OrderLine}, {@link OrderUser}, {@link OrderAddress}),
  *   {@link OrderData} (the guaranteed subset in the `order:completed` payload)
- * - **Events** — {@link EventMap}: every event name mapped to its payload type
- * - **Stores** — read live values through {@link useCartStore},
+ * - **Events**: {@link EventMap}: every event name mapped to its payload type
+ * - **Stores**: read live values through {@link useCartStore},
  *   {@link useCampaignStore}, {@link useCheckoutStore}, {@link useOrderStore},
  *   {@link useConfigStore}. The campaign store keeps its data on **`.data`**, not
  *   `.campaign`.
- * - **Version** — {@link VERSION}, the SDK build the page is running
+ * - **Version**: {@link VERSION}, the SDK build the page is running
  *
  * @packageDocumentation
  */

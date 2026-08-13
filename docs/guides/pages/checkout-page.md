@@ -6,9 +6,9 @@ category: "Building Pages"
 
 # Building a checkout page
 
-A checkout page is one `<form>` that the SDK turns into a working checkout: package selection, customer fields, an order bump, hosted card fields, express payment buttons, and a live order summary. The SDK prices everything, validates the fields, creates the order, and sends the visitor to the next page. Every example below is condensed from `checkout.html` in the `olympus` starter template ([campaign-cart-starter-templates](https://github.com/NextCommerceCo/campaign-cart-starter-templates)).
+A checkout page is one `<form>` that the SDK turns into a working checkout: package selection, customer fields, an order bump, hosted card fields, express payment buttons, and a live order summary. The SDK prices everything, validates the fields, creates the order, and sends the visitor to the next page. Every example below is condensed from `checkout.html` in the `apollo` starter template ([campaign-cart-starter-templates](https://github.com/NextCommerceCo/campaign-cart-starter-templates)).
 
-The page declares itself in the head — see [Getting started](../start-here/getting-started.md) for the full boot setup:
+The page declares itself in the head. See [Getting started](../start-here/getting-started.md) for the full boot setup:
 
 ```html
 <meta name="next-page-type" content="checkout">
@@ -46,16 +46,16 @@ The bundle selector presents the offer tiers as clickable cards. Each card decla
 
 The pieces that matter:
 
-- `data-next-bundle-items` — the tier's cart lines, as JSON.
-- `data-next-selected="true"` — the pre-selected default tier.
-- `data-next-selection-mode="swap"` — picking a tier replaces the previous one.
-- `data-next-shipping-id` — a per-tier shipping method; with `data-next-include-shipping="true"` the card price includes it.
-- `data-next-bundle-display` — that card's calculated prices.
-- `data-next-await` — holds the section invisible until prices are real, so the visitor never sees `-` placeholders flash.
+- `data-next-bundle-items`: the tier's cart lines, as JSON.
+- `data-next-selected="true"`: the pre-selected default tier.
+- `data-next-selection-mode="swap"`: picking a tier replaces the previous one.
+- `data-next-shipping-id`: a per-tier shipping method; with `data-next-include-shipping="true"` the card price includes it.
+- `data-next-bundle-display`: that card's calculated prices.
+- `data-next-await`: the template's loading gate. The SDK adds the `next-display-ready` class to `<html>` when its DOM scan finishes, and the template's `next-core.css` keeps anything under `data-next-await` invisible until then, so the visitor never sees `-` placeholders flash. The SDK only sets the class; without that stylesheet the attribute does nothing.
 
 ## 2. Customer and shipping fields
 
-You write ordinary inputs and name each one with `data-next-checkout-field`. The SDK finds them by name — layout, order, and styling are yours.
+You write ordinary inputs and name each one with `data-next-checkout-field`. The SDK finds them by name; layout, order, and styling are yours.
 
 ```html
 <div data-next-component="shipping-form">
@@ -78,7 +78,7 @@ You write ordinary inputs and name each one with `data-next-checkout-field`. The
 </div>
 ```
 
-Two of these are SDK-managed containers, not fields. The country and state `<select>`s start with one empty option — the SDK fills them from the campaign's country list. And the city/state/postal group sits inside `data-next-component="location"` with `class="next-hidden"`: the SDK reveals it once a country is known, because the state list and postcode format depend on it (`location-field-visibility.ts`).
+Two of these are SDK-managed containers, not fields. The country and state `<select>`s start with one empty option, and the SDK fills them from the campaign's country list. The city/state/postal group sits inside `data-next-component="location"` with `class="next-hidden"`: the SDK reveals it the moment the street address (`address1`) has a value (typed, autofilled, or autocompleted) and never hides it again (`location-field-visibility.ts`). The trigger is not configurable; omit the `location` wrapper to keep the fields visible from the start.
 
 ## 3. Order bump
 
@@ -95,7 +95,7 @@ An order bump is a checkbox card that adds a second package to the order when to
 </div>
 ```
 
-`data-next-package-sync="1"` keeps the bump's quantity in step with the main package's quantity. `data-next-toggle-display` accepts per-unit tokens (`unitPrice`, stable across tiers) or line totals (`price`, which scales with the synced quantity) — pick one pricing style per card.
+`data-next-package-sync="1"` keeps the bump's quantity equal to the cart quantity of package 1. `data-next-toggle-display` accepts per-unit tokens (`unitPrice`, stable across tiers) or line totals (`price`, which scales with the synced quantity). Pick one pricing style per card.
 
 ## 4. Payment
 
@@ -116,7 +116,7 @@ Payment methods are declared as radio sections. The card fields are the delibera
 </div>
 ```
 
-The starter templates ship the same pair for `paypal`, `klarna`, `apple-pay`, and `google-pay` — each `data-next-payment-method` section with a matching `data-next-payment-form` and its own `*-error` / `*-error-text` slots.
+The starter templates ship the same pair for `paypal`, `klarna`, `apple-pay`, and `google-pay`: each `data-next-payment-method` section with a matching `data-next-payment-form` and its own `*-error` / `*-error-text` slots.
 
 Express checkout is two containers; the SDK injects the wallet buttons into the second, in the order configured by `paymentConfig.expressCheckout` in your `config.js`:
 
@@ -151,7 +151,6 @@ The live summary renders the cart from a `<template>` using `{item.*}` tokens, w
         <li>{discount.name} −{discount.amount}</li>
       </template>
     </ul>
-    <div>Tax {tax}</div>
     <div>Shipping {shipping}</div>
     <div>Grand Total: {currency}{total}</div>
   </template>
@@ -160,10 +159,10 @@ The live summary renders the cart from a `<template>` using `{item.*}` tokens, w
 
 ## 6. Submit
 
-The submit button is a plain `type="submit"` button inside the form — no `data-next-*` attribute needed. On submit the SDK validates, tokenizes payment, creates the order once, then sends the visitor to `next-success-url` with `?ref_id=` appended so the next page can load the order (`checkout-form.enhancer.ts › CheckoutFormEnhancer`).
+The submit button is a plain `type="submit"` button inside the form. No `data-next-*` attribute is needed. On submit the SDK validates, tokenizes payment, creates the order once, then sends the visitor to `next-success-url` with `?ref_id=` appended so the next page can load the order (`checkout-form.enhancer.ts › CheckoutFormEnhancer`).
 
 ## Cautions
 
 - **The card field `<div>`s must stay empty.** The SDK mounts hosted fields into them; putting an `<input>` there means two competing fields and a checkout that cannot tokenize. Leave them as empty elements with the `data-next-checkout-field` name.
 - **An unrecognised field name is silently not part of the order.** The names are fixed (`fname`, not `firstName`; `postal`, not `zip`). If a value the visitor typed never reaches the order, check the spelling against the field names in this guide's examples.
-- **Wrap price-bearing sections in `data-next-await`.** Without it the visitor sees placeholder dashes until campaign prices load. With it the section stays hidden until values are real.
+- **Wrap price-bearing sections in `data-next-await`.** Without it the visitor sees placeholder dashes until campaign prices load. The hiding is done by the template's `next-core.css`, keyed on the `next-display-ready` class the SDK adds to `<html>`. Keep that stylesheet on the page or the attribute does nothing.
