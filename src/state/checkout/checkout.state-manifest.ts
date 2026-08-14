@@ -12,7 +12,7 @@ export default defineStore({
     mechanism: 'zustand-persist',
     key: 'next-checkout-store',
     newFieldRule:
-      'a new field is **not** persisted until you add it to the `partialize` list in `checkout.state.ts`. This store writes a hand-picked subset, so a field you add reads back as its initial value after a reload and the bug looks like "the form forgot what I typed". Add it to `partialize` deliberately — and never add anything carrying card data, which is exactly what that filter exists to keep out of sessionStorage. Changing what a *stored* value means is the other half of this: the store is at `version: 1`, and a shopper part-way through a checkout rehydrates whatever the release before yours wrote, so a rename belongs in `migrate` rather than in a comparison downstream.',
+      'a new field is **not** persisted until you add it to the `partialize` list in `checkout.state.ts`. This store writes a hand-picked subset, so a field you add reads back as its initial value after a reload and the bug looks like "the form forgot what I typed". Add it to `partialize` deliberately — and never add anything carrying card data, which is exactly what that filter exists to keep out of sessionStorage.',
   },
 
   fields: [
@@ -58,9 +58,9 @@ export default defineStore({
       name: 'paymentMethod',
       kind: 'persisted',
       description:
-        'How the shopper is paying, in the same words the orders API uses — the store keeps no spelling of its own. `card_token` is the default and covers the hosted card fields; it is a *token* because the card itself is entered in the payment provider fields and never reaches the SDK. `paypal`, `apple_pay`, and `google_pay` are the express buttons. The rest — `klarna`, `affirm`, `bancontact`, `ideal`, `link`, `sepa_direct`, `swish`, `twint` — are redirect methods: the checkout collects no payment details for them, and the shopper finishes paying at the provider the created order points to. Any other string is allowed too and is sent to the orders API unchanged, so a page can offer a method this SDK release does not know by name.',
+        'How the shopper is paying. `credit-card` is the default and covers the hosted card fields; `paypal`, `apple_pay`, and `google_pay` are the express buttons; `card_token` is the API-side spelling of `credit-card` kept for callers that pass the API value straight through. The rest — `klarna`, `affirm`, `bancontact`, `ideal`, `link`, `sepa_direct`, `swish`, `twint` — are redirect methods: the checkout collects no payment details for them, and the shopper finishes paying at the provider the created order points to. Any other string is allowed too and is sent to the orders API unchanged, so a page can offer a method this SDK release does not know by name.',
       notes:
-        'Express methods are downgraded on the way to storage: if the shopper picked Apple Pay, Google Pay, or PayPal and then reloads, the store comes back as `card_token`, because an express session does not survive the page. The symptom is a shopper who "loses" their Apple Pay choice on refresh — expected, not a bug.',
+        'Express methods are downgraded on the way to storage: if the shopper picked Apple Pay, Google Pay, or PayPal and then reloads, the store comes back as `credit-card`, because an express session does not survive the page. The symptom is a shopper who "loses" their Apple Pay choice on refresh — expected, not a bug.',
     },
     {
       name: 'shippingMethod',
@@ -163,7 +163,7 @@ export default defineStore({
     {
       name: 'reset()',
       effect:
-        'Returns every field to its initial value — step 1, empty form, no coupons, `card_token`. Use it after an order completes so the next checkout in the same tab starts clean.',
+        'Returns every field to its initial value — step 1, empty form, no coupons, `credit-card`. Use it after an order completes so the next checkout in the same tab starts clean.',
     },
   ],
 
@@ -183,7 +183,7 @@ export default defineStore({
     "phone": "+15125550142",
     "accepts_marketing": true
   },
-  "paymentMethod": "card_token",
+  "paymentMethod": "credit-card",
   "shippingMethod": { "id": 2, "name": "Express (2 days)", "code": "express", "price": 9.99 },
   "sameAsShipping": true,
   "testMode": false,
@@ -193,7 +193,7 @@ export default defineStore({
   cautions: [
     "**Persistence is filtered, so \"I added a field and it resets\" is the expected outcome.** Only the fields listed in `partialize` (`step`, `formData`, `shippingMethod`, `billingAddress`, `sameAsShipping`, `paymentMethod`, `vouchers`) reach sessionStorage. Add your field to that list if it must survive a reload — and leave it out if it touches card data.",
     '**Coupons live here, not in the cart store.** `useCartStore.vouchers` is refreshed from this store every time totals are recalculated, so writing a coupon into the cart store is overwritten on the next recalculation and the API never sees it. Write here via `sdk.applyCoupon()`.',
-    '**Express payment choices do not survive a reload.** `apple_pay`, `google_pay`, and `paypal` are rewritten to `card_token` on the way to storage, so a refreshed page shows the card form. Re-offer the express buttons on load rather than trusting the stored method.',
+    '**Express payment choices do not survive a reload.** `apple_pay`, `google_pay`, and `paypal` are rewritten to `credit-card` on the way to storage, so a refreshed page shows the card form. Re-offer the express buttons on load rather than trusting the stored method.',
     '**Card data is never in this store after a reload.** `paymentToken` is not persisted and CVV, card number, and expiry are stripped from `formData`. A "resume checkout" flow has to send the shopper back through the hosted card fields.',
     "**`reset()` is not called for you when an order completes.** A tab that finishes one order and starts another keeps the previous shopper's form data and coupons in sessionStorage. Call `reset()` once the order is confirmed.",
   ],

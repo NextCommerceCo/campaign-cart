@@ -470,13 +470,14 @@ export interface Voucher {
 
 /**
  * How an order is paid for — the code the orders API accepts on
- * `payment_detail.payment_method`, and the one vocabulary the SDK uses for a
- * payment method from the radio to the order.
+ * `payment_detail.payment_method`.
  *
  * `card_token` is a card, and it is a **token** rather than a number: the card
  * itself is entered in the payment provider's own hosted fields and never
  * reaches this page, this SDK, or this request. There is no plain "credit card"
- * value, deliberately. The rest name the wallet or scheme the shopper used.
+ * code here, deliberately — a page still writes `data-next-payment-method="credit"`
+ * and the checkout store still calls it `credit-card`, but what goes on the order
+ * is only ever the token. The rest name the wallet or scheme the shopper used.
  *
  * Every one of them except a directly-charged card sends the shopper away to pay
  * and brings them back — a card only when the bank asks for 3-D Secure — so an

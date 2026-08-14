@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { useCheckoutStore } from './checkout.state';
 
 /**
@@ -112,55 +112,5 @@ describe('checkout store — removeVoucher normalisation', () => {
     useCheckoutStore.getState().removeVoucher('save10');
 
     expect(useCheckoutStore.getState().vouchers).toEqual(['WELCOME5']);
-  });
-});
-
-/**
- * A checkout saved before `credit-card` was retired.
- *
- * sessionStorage outlives an SDK upgrade, so a shopper part-way through a card
- * checkout rehydrates whatever the previous release wrote. `credit-card` was that
- * release's word for a card; nothing answers to it now, so without the migration
- * the form stops treating them as a card payer — no card fields are validated, no
- * token is collected, and the order the API is sent names a method it refuses.
- */
-describe('checkout store — a checkout saved by an older SDK', () => {
-  beforeEach(() => {
-    sessionStorage.clear();
-    vi.resetModules();
-  });
-
-  afterEach(() => {
-    sessionStorage.clear();
-    vi.resetModules();
-  });
-
-  /** Rehydrates the store from `stored` and hands back the fresh instance. */
-  async function bootWith(stored: unknown) {
-    const { CHECKOUT_STORAGE_KEY } = await import('@/core/storage');
-    sessionStorage.setItem(CHECKOUT_STORAGE_KEY, JSON.stringify(stored));
-    const { useCheckoutStore: store } = await import('./checkout.state');
-    return store;
-  }
-
-  it('reads a v0 card checkout as a card checkout', async () => {
-    const store = await bootWith({
-      state: { paymentMethod: 'credit-card', formData: { email: 'a@b.test' } },
-      version: 0,
-    });
-
-    expect(store.getState().paymentMethod).toBe('card_token');
-    // The rest of the saved checkout is untouched — this is one field's rename,
-    // not a reason to make the shopper type their details again.
-    expect(store.getState().formData).toEqual({ email: 'a@b.test' });
-  });
-
-  it('leaves every other method alone', async () => {
-    const store = await bootWith({
-      state: { paymentMethod: 'ideal' },
-      version: 0,
-    });
-
-    expect(store.getState().paymentMethod).toBe('ideal');
   });
 });

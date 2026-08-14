@@ -5,7 +5,7 @@
 import type { Decimal } from 'decimal.js';
 import type { Offer } from './campaign';
 
-import type { Order, PaymentMethod } from './api';
+import type { Order } from './api';
 
 /**
  * The complete catalog of events the SDK emits, mapped to their payload shape.
@@ -1663,27 +1663,44 @@ export interface ShippingMethod {
 }
 
 /**
- * The method the shopper chose: one of the {@link PaymentMethod | methods the
- * orders API takes}, or any other name the page offered.
+ * The ways of paying this SDK release knows by name, in its own spelling.
  *
- * **The checkout store and the API speak the same vocabulary** — a card is
- * `card_token` in both, and there is no second spelling of it anywhere in the
- * SDK. Only the markup differs, where `data-next-payment-method="credit"` is
- * still the friendlier word for the same thing; the radio handler translates
- * that one hop and nothing downstream has to know about it.
+ * Not the same vocabulary as the markup or the API, and all three differ on the
+ * card entry alone: a radio says `credit`, this type says `credit-card`, and the
+ * orders API is sent `card_token`. The SDK translates in both directions, so a
+ * page never spells an API value and a listener never sees a markup one.
+ *
+ * Everything after `klarna` is a **redirect method**: there is no form to fill in
+ * and no token to collect, so the order is created with the method on it and the
+ * API answers with a `payment_complete_url` for the shopper to finish paying at.
+ * See {@link Order.payment_complete_url}.
+ */
+export type KnownCheckoutPaymentMethod =
+  | 'card_token'
+  | 'paypal'
+  | 'apple_pay'
+  | 'google_pay'
+  | 'credit-card'
+  | 'klarna'
+  | 'affirm'
+  | 'bancontact'
+  | 'ideal'
+  | 'link'
+  | 'sepa_direct'
+  | 'swish'
+  | 'twint';
+
+/**
+ * The method the shopper chose: one the SDK knows by name, or any other name the
+ * page offered.
  *
  * The open end is deliberate. A store can be given a new way to pay before this
- * SDK release knows its name, so a method that is not in `PaymentMethod` is
- * **passed through to the orders API** rather than replaced with a card — the
- * API decides whether it can charge that way. The named methods are the ones an
- * editor will suggest.
- *
- * Everything except a directly-charged card is a **redirect method**: there is
- * no form to fill in and no token to collect, so the order is created with the
- * method on it and the API answers with a `payment_complete_url` for the shopper
- * to finish paying at. See {@link Order.payment_complete_url}.
+ * SDK release knows about it, so a name that is not on the list is **passed
+ * through to the orders API** rather than replaced with a card — the API decides
+ * whether it can charge that way. See {@link KnownCheckoutPaymentMethod} for the
+ * names the SDK does recognise, which are the ones an editor will suggest.
  */
-export type CheckoutPaymentMethod = PaymentMethod | (string & {});
+export type CheckoutPaymentMethod = KnownCheckoutPaymentMethod | (string & {});
 
 /**
  * The state of the checkout in progress — the collected form values, chosen
@@ -1693,14 +1710,7 @@ export type CheckoutPaymentMethod = PaymentMethod | (string & {});
 export interface CheckoutData {
   /** Collected checkout form field values, keyed by field name. */
   formData: Record<string, any>;
-  /**
-   * The payment method the shopper selected.
-   *
-   * **Changed since 0.4.34:** a card reports `card_token`, the name the orders
-   * API uses. Releases up to 0.4.34 reported `credit-card` here, a second
-   * spelling of the same thing; a handler testing for it must test for
-   * `card_token` instead.
-   */
+  /** The payment method the shopper selected. */
   paymentMethod: CheckoutPaymentMethod;
   /** `true` while the order is being submitted. */
   isProcessing?: boolean;

@@ -558,9 +558,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           this.logger.info(
             'Resetting payment method from',
             checkoutStore.paymentMethod,
-            'to the card form after bfcache restore'
+            'to credit-card after bfcache restore'
           );
-          checkoutStore.setPaymentMethod('card_token');
+          checkoutStore.setPaymentMethod('credit-card');
           checkoutStore.setPaymentToken(''); // Clear any stale payment token
         }
 
@@ -606,7 +606,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         // Reset processing state
         checkoutStore.setProcessing(false);
 
-        // Reset payment method back to the card form if it's an express method
+        // Reset payment method back to credit-card if it's an express method
         if (
           checkoutStore.paymentMethod === 'apple_pay' ||
           checkoutStore.paymentMethod === 'google_pay' ||
@@ -615,9 +615,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           this.logger.info(
             'Resetting payment method from',
             checkoutStore.paymentMethod,
-            'to the card form'
+            'to credit-card'
           );
-          checkoutStore.setPaymentMethod('card_token');
+          checkoutStore.setPaymentMethod('credit-card');
           checkoutStore.setPaymentToken('');
         }
       }
@@ -1211,7 +1211,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       }
 
       if (
-        checkoutStore.paymentMethod === 'card_token' &&
+        (checkoutStore.paymentMethod === 'credit-card' ||
+          checkoutStore.paymentMethod === 'card_token') &&
         !checkoutStore.paymentToken
       ) {
         throw new Error('Payment token is required for credit card payments');
@@ -1687,6 +1688,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
       // For regular credit card payments OR express payments with validation required
       const includePayment =
+        checkoutStore.paymentMethod === 'credit-card' ||
         checkoutStore.paymentMethod === 'card_token' ||
         (isExpressPayment && requireExpressValidation);
 
@@ -1812,7 +1814,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       }
 
       // Only credit card payments go through the regular flow
-      if (checkoutStore.paymentMethod === 'card_token') {
+      if (
+        checkoutStore.paymentMethod === 'credit-card' ||
+        checkoutStore.paymentMethod === 'card_token'
+      ) {
         // span?.setAttribute('payment.type', 'credit_card');
 
         if (this.creditCardService?.ready) {

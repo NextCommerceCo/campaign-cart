@@ -2,6 +2,7 @@
  * Order Builder - Builds order data for API submission
  */
 
+import { toApiPaymentMethod } from '../constants/field-mappings';
 import { getSuccessUrl, getFailureUrl } from '../utils/url-utils';
 import { useAttributionStore } from '@/state/attribution';
 import { useCampaignStore } from '@/state/campaign';
@@ -60,10 +61,9 @@ export class OrderBuilder {
       };
     }
     
-    // Build payment details. The chosen method is already the name the API
-    // takes — `toCheckoutPaymentMethod` did the only translation there is.
+    // Build payment details
     const payment: Payment = {
-      payment_method: paymentMethod,
+      payment_method: this.mapPaymentMethod(paymentMethod),
       ...(paymentToken && { card_token: paymentToken })
     };
     
@@ -182,6 +182,10 @@ export class OrderBuilder {
     };
     
     return testOrderData;
+  }
+
+  private mapPaymentMethod(method: string): Payment['payment_method'] {
+    return toApiPaymentMethod(method);
   }
 
   private getDefaultShippingMethodId(): number {

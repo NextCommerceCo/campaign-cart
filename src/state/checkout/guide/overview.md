@@ -42,7 +42,7 @@ step, formData, shippingMethod  ─► kept
 billingAddress                  ─► kept, empty fields dropped;
                                    all-empty → undefined
 sameAsShipping, vouchers        ─► kept
-paymentMethod: 'apple_pay'      ─► rewritten to 'card_token'
+paymentMethod: 'apple_pay'      ─► rewritten to 'credit-card'
 formData.card_number / cvv /
   expiry / any empty string     ─► stripped
 paymentToken                    ─► dropped (payment data)
@@ -57,7 +57,7 @@ checkout always sends the shopper back through the hosted card fields.
 
 ## Business logic
 
-- **A fresh checkout starts at step 1, `card_token`, `sameAsShipping: true`,
+- **A fresh checkout starts at step 1, `credit-card`, `sameAsShipping: true`,
   with no coupons, no errors, and an empty form.** `reset()` returns exactly
   there.
 - **Errors are keyed by form field**, with `general` reserved for a whole-order
@@ -78,12 +78,8 @@ checkout always sends the shopper back through the hosted card fields.
   it stands** rather than turned into a card, so the field can hold a name this
   SDK release predates and the API is what accepts or refuses it.
 - **Express choices do not outlive the page.** `apple_pay`, `google_pay`, and
-  `paypal` are written to storage as `card_token`, because the express session
+  `paypal` are written to storage as `credit-card`, because the express session
   they belong to is gone after a load.
-- **A checkout saved by an older SDK is migrated on read.** The store is at
-  `version: 1`; a v0 checkout holding `credit-card` — that release's second word
-  for a card — comes back as `card_token`, so a shopper part-way through when
-  the upgrade ships is still treated as paying by card.
 - **Coupons live here and nowhere else.** `sdk.applyCoupon(code)` upper-cases and
   trims the code, refuses it with `Coupon already applied` if it is already in
   `vouchers`, appends it, and then recalculates cart totals against the API. The
@@ -107,7 +103,7 @@ checkout always sends the shopper back through the hosted card fields.
   out of `formData`, because the checkout form writes every input it finds by
   field name — the only place a redaction cannot be forgotten is the storage
   boundary itself.
-- We downgrade express methods to `card_token` on write rather than restoring
+- We downgrade express methods to `credit-card` on write rather than restoring
   the shopper's choice, because a restored `apple_pay` would render an express
   button with no live session behind it — a shopper clicking it would get a
   failure instead of a payment sheet.

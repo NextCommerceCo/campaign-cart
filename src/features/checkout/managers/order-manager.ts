@@ -53,7 +53,7 @@ export class OrderManager {
         throw new Error('Cannot create order with empty cart');
       }
       
-      if (paymentMethod === 'card_token' && !paymentToken) {
+      if ((paymentMethod === 'credit-card' || paymentMethod === 'card_token') && !paymentToken) {
         throw new Error('Payment token is required for credit card payments');
       }
       

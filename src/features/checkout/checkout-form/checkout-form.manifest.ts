@@ -160,7 +160,7 @@ export default defineFeature({
       values:
         '`credit` / `paypal` / `apple-pay` / `google-pay` / `klarna` / `affirm` / `bancontact` / `ideal` / `link` / `sepa-direct` / `swish` / `twint`',
       notes:
-        'The markup is the only place with its own spellings — `credit` here is `card_token` in the store and on the order, and the SDK translates that one hop. Use the values above in HTML. Everything after `klarna` is a **redirect method**: it has no fields to reveal, so its `[data-next-payment-form]` can be empty — the shopper is sent to the payment provider to pay once the order exists.',
+        'These markup spellings differ from the names the store and the API use (`credit` maps to `credit-card` and `card_token`). Use the values above in HTML and let the SDK translate. Everything after `klarna` is a **redirect method**: it has no fields to reveal, so its `[data-next-payment-form]` can be empty — the shopper is sent to the payment provider to pay once the order exists.',
     },
     {
       name: 'data-next-payment-form',

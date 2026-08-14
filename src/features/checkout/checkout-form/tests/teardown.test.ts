@@ -161,7 +161,7 @@ describe('destroy: document and window handlers', () => {
 
     setCheckoutState({ isProcessing: true, paymentMethod: 'paypal' });
     window.dispatchEvent(new Event('pageshow'));
-    expect(useCheckoutStore.getState().paymentMethod).toBe('card_token');
+    expect(useCheckoutStore.getState().paymentMethod).toBe('credit-card');
 
     steps.destroy();
     setCheckoutState({ isProcessing: true, paymentMethod: 'paypal' });
@@ -178,7 +178,7 @@ describe('destroy: document and window handlers', () => {
 
     setCheckoutState({ isProcessing: true, paymentMethod: 'google_pay' });
     window.dispatchEvent(new Event('focus'));
-    expect(useCheckoutStore.getState().paymentMethod).toBe('card_token');
+    expect(useCheckoutStore.getState().paymentMethod).toBe('credit-card');
 
     steps.destroy();
     setCheckoutState({ isProcessing: true, paymentMethod: 'google_pay' });

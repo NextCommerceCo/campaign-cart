@@ -189,7 +189,7 @@ beforeEach(() => {
   useCheckoutStore.setState(state => ({
     ...state,
     formData,
-    paymentMethod: 'card_token',
+    paymentMethod: 'credit-card',
     paymentToken: 'tok_live_123',
     sameAsShipping: true,
     billingAddress: undefined,
@@ -252,6 +252,8 @@ describe('shipping_method — both paths resolve it the same way', () => {
 // ─── payment_detail parity ────────────────────────────────────────────────────
 
 const paymentCases: Array<[CheckoutState['paymentMethod'], string]> = [
+  // The store's word for a card and the API's are not the same word.
+  ['credit-card', 'card_token'],
   ['card_token', 'card_token'],
   ['ideal', 'ideal'],
   // Not a method this build knows: it still reaches the API untouched.

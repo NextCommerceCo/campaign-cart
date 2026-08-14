@@ -110,7 +110,7 @@ describe('handleKonamiActivation', () => {
     const checkout = useCheckoutStore.getState();
     expect(checkout.formData.email).toBe('test@test.com');
     expect(checkout.formData.postal).toBe('85281');
-    expect(checkout.paymentMethod).toBe('card_token');
+    expect(checkout.paymentMethod).toBe('credit-card');
     expect(checkout.paymentToken).toBe('test_card');
     expect(checkout.sameAsShipping).toBe(true);
     expect(ctx.populateFormData).toHaveBeenCalledTimes(1);

@@ -99,7 +99,7 @@ export class TestOrderManager {
       updateFormDataCallback(testFormData);
       
       // Set payment method to credit card with test token
-      setPaymentMethodCallback('card_token');
+      setPaymentMethodCallback('credit-card');
       setPaymentTokenCallback('test_card'); // Use test card token
       setSameAsShippingCallback(true);
       
