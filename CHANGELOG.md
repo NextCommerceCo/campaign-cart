@@ -4,37 +4,37 @@
 
 ### Fixed
 
-- **The platform's local payment methods work on the checkout form.** iDEAL, Bancontact, SEPA Direct Debit, TWINT, Swish, Affirm, Link, Giropay and Sofort can be offered as radio options. The form recognised five names (card, PayPal, Apple Pay, Google Pay, Klarna) and read every other one as a card, so the order went out as a card payment with no card on it, the orders API refused it, and the shopper never reached the payment page. ([#74](https://github.com/NextCommerceCo/campaign-cart/issues/74))
+- **Local payment methods work on the checkout form.** iDEAL, Bancontact, SEPA Direct Debit, TWINT, Swish, Affirm, Link, Giropay and Sofort can be offered as radio options. Choosing one used to be read as a card payment, so the order was refused and the shopper never reached the payment page. ([#74](https://github.com/NextCommerceCo/campaign-cart/issues/74))
 
-- **A receipt names the payment method instead of printing its API code.** `order.paymentMethod` had names for four methods, so a Klarna order printed `klarna`. Every code an order can carry now has a name. A code with no name yet is printed as it arrived rather than guessed at.
+- **Receipts name the payment method.** A Klarna order printed `klarna` and now prints `Klarna`. Every method an order can carry has a name.
 
-- **The payment step is reported for a method that collects nothing on the page.** `dl_add_payment_info` came from the card fields or from an express button, and a method chosen by radio reached neither. It is now reported when the form is submitted. Klarna is the one method this affected before this release.
+- **The payment step reaches your reports for these methods.** It is recorded when the form is submitted, for methods that collect no payment details on the page. Klarna was the only affected method before this release.
 
 ### New
 
-- **Link as an express button**, beside PayPal, Apple Pay and Google Pay, shown when the campaign lists Link. Link is the only method offered both ways: as a button it goes straight to Link, as a radio it validates the form and captures the shopper's details first. Offering both shows it twice.
+- **Link as an express button**, beside PayPal, Apple Pay and Google Pay. Link can also be a radio; a page carrying both shows it twice.
 
-- **A payment method the SDK does not recognise is sent to the orders API.** A method the platform adds can be offered before the SDK names it, and the API decides whether it can charge that way. The console carries `Payment method "…" is not one the SDK knows`.
+- **A method the SDK does not recognise is sent to the orders API.** A payment method the platform adds can be offered before an SDK release names it.
 
-- **`PaymentMethod` and `CheckoutPaymentMethod` are exported types**, for TypeScript integrations. `PaymentMethod` gained `swish`, `sepa_direct` and `saved_card`; nothing was removed from it.
+- **For TypeScript:** `PaymentMethod` and `CheckoutPaymentMethod` are now exported. `PaymentMethod` gained `swish`, `sepa_direct` and `saved_card`.
 
 ### Changed
 
-- **Payment method names in markup are written with underscores.** `data-next-payment-method="apple_pay"`, matching the checkout store and the orders API. `-` and any casing still work, so existing pages keep working.
+- **Method names in markup use underscores:** `apple_pay`, not `apple-pay`. The older spellings and any casing still work.
 
-- **Express methods can be configured under their underscored names.** `expressCheckout.methods` accepts `apple_pay`, `google_pay` and `link` alongside the older `applePay` and `googlePay`, which are still read.
+- **Express method config accepts the same spellings:** `apple_pay`, `google_pay` and `link`, alongside `applePay` and `googlePay`.
 
 ### Before you upgrade
 
-**There is nothing to add to your pages.** Every existing payment-method radio keeps working under the name it already carries.
+**Nothing to add to your pages.** Existing payment-method radios keep working.
 
-**A misspelled payment method now reaches the API.** It used to show the card form; it now produces a refused order. The console line `Payment method "…" is not one the SDK knows` names the value, so check for it once after adding a method to a template.
+**Check the spelling of any method you add.** A name the SDK does not know now goes to the API and comes back refused, where it used to fall back to the card form. The console names the value: `Payment method "…" is not one the SDK knows`.
 
-**Receipt text changes for the non-card methods.** A page showing `order.paymentMethod` printed `klarna` and now prints `Klarna`. Match on the order's `payment_method` code if your own code or a tag reads that text.
+**Receipt text changed.** `order.paymentMethod` prints `Klarna` where it printed `klarna`. If your own code or a tag reads that text, read the order's `payment_method` code instead.
 
-**One funnel step gains volume.** `dl_add_payment_info` is now reported for radio-chosen methods, so a campaign offering Klarna or one of the new methods records that step where it recorded nothing.
+**One funnel step gains volume.** Campaigns offering Klarna or one of the new methods now record the payment step where they recorded nothing.
 
-**Write `sepa_debit` for SEPA Direct Debit.** The platform's payment-methods guide calls it `sepa_direct` and the orders API field calls it `sepa_debit`. Markup accepts either, plus plain `sepa`, and the order carries `sepa_debit`.
+**Write `sepa_debit` for SEPA Direct Debit.** `sepa_direct` and `sepa` also work, and the order carries `sepa_debit`.
 
 ---
 
