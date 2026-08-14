@@ -230,7 +230,7 @@ export interface Order {
    *
    * Two of {@link PaymentMethod}'s values only ever arrive here and can never be
    * sent: `external`, a payment taken outside the platform, and `saved_card`, a
-   * card already on file — both are recorded in the admin dashboard.
+   * card already on file. Both are recorded in the admin dashboard.
    */
   payment_method?: PaymentMethod | null;
   /** URL of the hosted order-status/receipt page for this order. */
@@ -476,12 +476,12 @@ export interface Voucher {
  * `card_token` is a card, and it is a **token** rather than a number: the card
  * itself is entered in the payment provider's own hosted fields and never
  * reaches this page, this SDK, or this request. There is no plain "credit card"
- * code here — a page writes `data-next-payment-method="credit_card"` and the
+ * code here. A page writes `data-next-payment-method="credit_card"` and the
  * checkout store calls it `credit-card`, but what goes on the order is only ever
  * the token. The rest name the wallet or scheme the shopper used.
  *
  * Every one of them except a directly-charged card sends the shopper away to pay
- * and brings them back — a card only when the bank asks for 3-D Secure — so an
+ * and brings them back (a card only when the bank asks for 3-D Secure), so an
  * order created with any of these can come back carrying
  * {@link Order.payment_complete_url}.
  *
@@ -622,7 +622,7 @@ export interface Payment {
    * Wider than {@link PaymentMethod} on purpose: a page may offer a method this
    * SDK release has never heard of, and the SDK sends that name through rather
    * than substituting a card for it. The API is the authority on what it accepts
-   * — it either creates the order (and answers with a
+   * request. It either creates the order (and answers with a
    * {@link Order.payment_complete_url} to finish paying at) or rejects the
    * request. `Order.payment_method` on the way back stays the known list.
    */

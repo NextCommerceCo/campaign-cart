@@ -142,9 +142,8 @@ const API_PAYMENT_METHOD_MAP: Record<string, PaymentMethod> = {
  * The methods `ExpressCheckoutProcessor` can drive from a button of its own.
  *
  * Keyed by the checkout store's names, which is what it is handed. It used to be
- * keyed `apple-pay`/`google-pay` — spellings that never arrive, so both fell
- * through the `|| method` fallback to the right answer by luck rather than by the
- * table.
+ * keyed `apple-pay`/`google-pay`, spellings that never arrive, so both resolved
+ * through the `|| method` fallback rather than through the table.
  *
  * Link is here **and** offerable as a radio: it is the one method the platform
  * gives both ways. The two paths are separate — a button runs express checkout

@@ -701,7 +701,7 @@ Shipping info added.
 
 ### dl_add_payment_info
 
-Payment info added.
+Payment info added. Reported at whichever moment the shopper commits to the method they picked: for a card when the card fields are complete, for an express button when it is pressed, and for a method approved on the provider's own page (iDEAL, Klarna, SEPA Direct Debit and the rest) when the form is submitted, because nothing about paying was entered on your page. The card and form paths report once per page, so a second attempt after a refused order does not repeat it. An express button reports on every press.
 
 ```json
 {

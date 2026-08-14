@@ -158,7 +158,7 @@ The completed order, loaded from `?ref_id=`. Used on [Receipt](../pages/receipt-
 | `order.tax` | Tax charged |
 | `order.shipping` | Shipping charged |
 | `order.currency` | Currency code |
-| `order.paymentMethod` | How it was paid |
+| `order.paymentMethod` | How it was paid, as a name (`Credit Card`, `iDEAL`, `SEPA Direct Debit`) rather than the API's code |
 | `order.shippingMethod` | Chosen shipping method |
 | `order.customer.name` | Full name |
 | `order.customer.email` | Email address |
@@ -445,13 +445,28 @@ Values `data-next-component` accepts.
 
 Values `data-next-payment-method` and `data-next-payment-form` both accept. Pair a section with a form body of the same value.
 
-| Value | Description |
-|---|---|
-| `credit` | Card |
-| `paypal` | PayPal |
-| `klarna` | Klarna |
-| `apple-pay` | Apple Pay |
-| `google-pay` | Google Pay |
+| Value | Description | Shopper enters payment details on your page |
+|---|---|---|
+| `credit_card` | Card | yes, in the hosted card fields |
+| `paypal` | PayPal | no |
+| `apple_pay` | Apple Pay | no |
+| `google_pay` | Google Pay | no |
+| `klarna` | Klarna | no |
+| `affirm` | Affirm | no |
+| `bancontact` | Bancontact | no |
+| `giropay` | Giropay | no |
+| `ideal` | iDEAL | no |
+| `link` | Link | no |
+| `sepa_debit` | SEPA Direct Debit | no |
+| `sofort` | Sofort | no |
+| `swish` | Swish | no |
+| `twint` | TWINT | no |
+
+Names are written with underscores, and `-` and any casing are also accepted, so `apple_pay` and `apple-pay` select the same method. `credit`, `card` and `card_token` are accepted for the card. SEPA Direct Debit also answers to `sepa_direct` and `sepa`.
+
+Every method whose last column reads "no" has nothing to reveal, so its `data-next-payment-form` can be empty. The form still validates and captures the shopper's details, then the order is created and the shopper is sent to that provider to pay.
+
+A value that is not in this table is sent to the orders API under that name, lower-cased with `_` for `-`, rather than treated as a card, so a method the platform adds can be offered before the SDK names it. A misspelling therefore produces a refused order: the console line `Payment method "…" is not one the SDK knows` names the value, so check for it once after adding a method.
 
 Values `data-next-express-checkout` accepts.
 
@@ -460,7 +475,9 @@ Values `data-next-express-checkout` accepts.
 | `container` | The express checkout block |
 | `buttons` | Where the SDK injects the wallet buttons |
 
-The button order comes from `paymentConfig.expressCheckout.methodOrder`.
+The SDK injects one button per express method the campaign lists, for PayPal, Apple Pay, Google Pay and Link. Apple Pay is left out on Android. `paymentConfig.expressCheckout` sets the order through `methodOrder`, and its `methods` block is read only when the campaign lists no express methods at all.
+
+Link is the one method offered both ways. As an express button it goes straight to Link; as a radio it validates the form and captures the shopper's details first. A page carrying both shows Link twice.
 
 ### Multi-step checkout
 

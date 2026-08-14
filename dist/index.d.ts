@@ -7,6 +7,7 @@ export { useCheckoutStore } from './state/checkout';
 export { useOrderStore } from './state/order';
 export type * from './types/global';
 export type { Order, OrderLine, OrderLineProperty, OrderUser, OrderAddress, MarketingAttribution, PaymentMethod, } from './types/api';
+export type { ProductSchema, ImpressionSchema, UserPropertiesSchema, BaseEventSchema, } from './core/analytics/schemas/index';
 export { Logger } from './core/logger';
 export { EventBus } from './core/events';
 export { ApiClient } from './api/client';

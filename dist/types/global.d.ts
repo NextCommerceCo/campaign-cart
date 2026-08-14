@@ -498,6 +498,7 @@ export interface ConfigState {
     locationData?: any;
     currencyBehavior?: 'auto' | 'manual';
     currencyFallbackOccurred?: boolean;
+    storageScope?: string;
     locale?: string;
     autoInit: boolean | undefined;
     rateLimit: number | undefined;

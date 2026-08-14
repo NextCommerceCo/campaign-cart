@@ -526,7 +526,7 @@ export interface EventMap {
 
   // Express Checkout Events
   /**
-   * An express payment button — PayPal, Apple Pay, Google Pay or Link — rendered
+   * An express payment button (PayPal, Apple Pay, Google Pay or Link) rendered
    * and is ready to click. Fires once per available method, so a page offering
    * all four sees it four times.
    */
@@ -1719,7 +1719,7 @@ export interface PaymentConfig {
     /**
      * Which express buttons to offer, when the campaign does not say.
      *
-     * Write the method names with underscores — `apple_pay`, `google_pay` — the
+     * Write the method names with underscores (`apple_pay`, `google_pay`), the
      * same as `methodOrder` beside them and as every other place the SDK names a
      * payment method. `applePay`/`googlePay` are the older camelCase spellings and
      * still work; a method turned on under either key is turned on.
@@ -1889,7 +1889,7 @@ export type KnownCheckoutPaymentMethod =
  *
  * The open end is deliberate. A store can be given a new way to pay before this
  * SDK release knows about it, so a name that is not on the list is **passed
- * through to the orders API** rather than replaced with a card — the API decides
+ * through to the orders API** rather than replaced with a card. The API decides
  * whether it can charge that way. See {@link KnownCheckoutPaymentMethod} for the
  * names the SDK does recognise, which are the ones an editor will suggest.
  */
