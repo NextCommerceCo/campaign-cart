@@ -4,7 +4,23 @@
 
 ### Fixed
 
-- **Local payment methods work on the checkout form.** iDEAL, Bancontact, SEPA Direct Debit, TWINT, Swish, Affirm, Link, Giropay and Sofort can be offered as radio options. Choosing one used to be read as a card payment, so the order was refused and the shopper never reached the payment page. ([#74](https://github.com/NextCommerceCo/campaign-cart/issues/74))
+- **Local payment methods work on the checkout form.**
+
+  Choosing one of these used to be read as a card payment, so the order was refused and the shopper never reached the payment page. Each is a radio option now, with nothing to fill in on your page: the shopper is sent to the provider to pay once the order exists.
+
+  | Method | Write in your markup |
+  |---|---|
+  | iDEAL | `ideal` |
+  | Bancontact | `bancontact` |
+  | SEPA Direct Debit | `sepa_debit` |
+  | TWINT | `twint` |
+  | Swish | `swish` |
+  | Affirm | `affirm` |
+  | Link | `link` |
+  | Giropay | `giropay` |
+  | Sofort | `sofort` |
+
+  `sepa_direct` and `sepa` also select SEPA Direct Debit. Card, PayPal, Apple Pay, Google Pay and Klarna are unchanged, and [Payment methods](docs/guides/reference/data-attributes.md#payment-methods) lists all of them together. ([#74](https://github.com/NextCommerceCo/campaign-cart/issues/74))
 
 - **Receipts name the payment method.** A Klarna order printed `klarna` and now prints `Klarna`. Every method an order can carry has a name.
 
@@ -33,8 +49,6 @@
 **Receipt text changed.** `order.paymentMethod` prints `Klarna` where it printed `klarna`. If your own code or a tag reads that text, read the order's `payment_method` code instead.
 
 **One funnel step gains volume.** Campaigns offering Klarna or one of the new methods now record the payment step where they recorded nothing.
-
-**Write `sepa_debit` for SEPA Direct Debit.** `sepa_direct` and `sepa` also work, and the order carries `sepa_debit`.
 
 ---
 
