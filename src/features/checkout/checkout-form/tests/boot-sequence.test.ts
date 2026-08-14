@@ -3,6 +3,8 @@ import { CheckoutFormEnhancer } from '../checkout-form.enhancer';
 import { scanBillingFields, setupBillingForm } from '../billing-form-setup';
 import { useCheckoutStore, type CheckoutState } from '@/state/checkout';
 import { useConfigStore } from '@/state/config';
+import { useCartStore } from '@/state/cart';
+import { useCampaignStore } from '@/state/campaign';
 import { EventBus } from '@/core/events';
 
 // The clone step is the only boot step whose branch lives in another module, so
@@ -205,13 +207,21 @@ describe('setupPhoneValidation', () => {
 // ─── subscribeToStores / setupDebugEventListeners ─────────────────────────────
 
 describe('subscribeToStores', () => {
-  it('subscribes to the checkout, cart and config stores', () => {
+  it('subscribes to the checkout, cart, config and campaign stores', () => {
+    // The campaign store is the fourth: it decides which payment methods this
+    // store can charge, and it usually loads after the form is built.
     const { steps } = createEnhancer();
     const subscribe = vi.spyOn(steps, 'subscribe').mockImplementation(() => {});
 
     steps.subscribeToStores();
 
-    expect(subscribe).toHaveBeenCalledTimes(3);
+    const subscribed = subscribe.mock.calls.map(call => call[0]);
+    expect(subscribed).toEqual([
+      useCheckoutStore,
+      useCartStore,
+      useConfigStore,
+      useCampaignStore,
+    ]);
   });
 });
 

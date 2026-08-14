@@ -6,7 +6,7 @@
  * Only the chosen method's form is open; the rest are collapsed to zero height, which
  * keeps their inputs out of the tab order and their stale validation errors off screen.
  *
- * Two entry points, and the difference between them matters:
+ * Three entry points, and the differences matter:
  *
  * - {@link initializePaymentForms} runs once at startup and **snaps** each form to its
  *   state with no animation, matching whatever the checkout store already says. It reads
@@ -14,6 +14,8 @@
  *   still selected.
  * - {@link updatePaymentFormVisibility} runs when the shopper picks a different method and
  *   **animates** the swap. It reads the radio values, not the store.
+ * - {@link applyAvailablePaymentMethods} removes the methods this campaign cannot charge,
+ *   which is a different question from which one is open. It reads the campaign.
  *
  * The markup spellings (`credit`, `apple-pay`) are not the names the store and API use
  * (`credit-card`, `apple_pay`), so the startup pass translates both sides through
@@ -330,4 +332,127 @@ function clearPaymentFormErrors(
   });
 
   ctx.logger.debug('Cleared payment form errors');
+}
+
+/**
+ * The campaign's own name for a card in `available_payment_methods`.
+ *
+ * The list uses the same codes as the rest of the API for every method except
+ * this one, where it says `bankcard` and the order says `card_token`.
+ */
+const CAMPAIGN_CARD_CODE = 'bankcard';
+
+/**
+ * Hides the payment methods this campaign cannot charge.
+ *
+ * The campaign's `available_payment_methods` is the merchant's actual list. A
+ * radio for anything outside it produces an order the API refuses, so the shopper
+ * meets a dead end on a method the page offered them. Express **buttons** have
+ * always been filtered this way; the radios were not, which is the gap this
+ * closes.
+ *
+ * Three deliberate limits:
+ *
+ * - **A card is never hidden.** Every store takes one, so a list that omits
+ *   `bankcard` is treated as an incomplete list rather than as "no cards here".
+ * - **An empty or absent list hides nothing.** Not knowing what a campaign
+ *   supports is not the same as knowing it supports nothing, and hiding every way
+ *   to pay is worse than showing one that fails.
+ * - **Hiding is an inline `display: none`, not only a class.** `next-hidden` is
+ *   added too so a designer can style the state, but the templates carry no
+ *   generic `.next-hidden` rule, so the class alone would hide nothing and the
+ *   shopper would still be offered a method that cannot be charged.
+ *
+ * A shopper who had already picked a method that is then hidden is moved to the
+ * first one still standing, so the store cannot hold a method the page no longer
+ * shows.
+ *
+ * @param availableCodes `code` values from the campaign's `available_payment_methods`.
+ */
+export function applyAvailablePaymentMethods(
+  ctx: PaymentFormDisplayContext,
+  availableCodes: readonly string[] | undefined
+): void {
+  const wrappers = Array.from(
+    ctx.form.querySelectorAll<HTMLElement>('[data-next-payment-method]')
+  );
+  if (!wrappers.length) return;
+
+  if (!availableCodes?.length) {
+    ctx.logger.debug(
+      'Campaign lists no available payment methods; leaving every method visible'
+    );
+    return;
+  }
+
+  const available = new Set(
+    availableCodes
+      .map(code =>
+        code === CAMPAIGN_CARD_CODE
+          ? 'credit-card'
+          : toCheckoutPaymentMethod(code)
+      )
+      .filter((method): method is string => Boolean(method))
+  );
+
+  const hidden: string[] = [];
+  for (const wrapper of wrappers) {
+    const methodType = wrapper.getAttribute('data-next-payment-method');
+    const method = toCheckoutPaymentMethod(methodType);
+    // A card stays whatever the campaign says, and a wrapper naming nothing is
+    // left alone rather than guessed about.
+    const keep = !method || method === 'credit-card' || available.has(method);
+
+    if (keep) {
+      wrapper.classList.remove('next-hidden');
+      wrapper.style.removeProperty('display');
+      continue;
+    }
+
+    wrapper.classList.add('next-hidden');
+    wrapper.style.display = 'none';
+    hidden.push(methodType ?? '');
+  }
+
+  if (hidden.length) {
+    ctx.logger.info('Hid payment methods this campaign does not offer', {
+      hidden,
+      available: [...available],
+    });
+  }
+
+  selectAVisibleMethod(ctx, wrappers);
+}
+
+/**
+ * Moves the shopper off a method that has just been hidden.
+ *
+ * Dispatches a real `change` on the radio rather than writing the store, so the
+ * selection runs through the same handler a click does: one path decides what the
+ * store holds and which form is open.
+ */
+function selectAVisibleMethod(
+  ctx: PaymentFormDisplayContext,
+  wrappers: readonly HTMLElement[]
+): void {
+  const radioOf = (wrapper: HTMLElement): HTMLInputElement | null =>
+    wrapper.querySelector<HTMLInputElement>('input[type="radio"]');
+
+  const checkedIsHidden = wrappers.some(
+    w => w.style.display === 'none' && radioOf(w)?.checked
+  );
+  if (!checkedIsHidden) return;
+
+  const fallback = wrappers.find(w => w.style.display !== 'none' && radioOf(w));
+  const radio = fallback ? radioOf(fallback) : null;
+  if (!radio) {
+    ctx.logger.warn(
+      'The selected payment method was hidden and no other method is available'
+    );
+    return;
+  }
+
+  radio.checked = true;
+  radio.dispatchEvent(new Event('change', { bubbles: true }));
+  ctx.logger.info('Moved off a hidden payment method', { to: radio.value });
 }

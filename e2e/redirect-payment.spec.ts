@@ -205,6 +205,50 @@ test('reports add_payment_info once, named for the method', async ({
   expect(await paymentInfoEvents(page)).toHaveLength(1);
 });
 
+test('hides the methods the campaign cannot charge', async ({ page }) => {
+  // What a real campaign answers with: the card (as `bankcard`), Apple Pay,
+  // iDEAL and PayPal. Every other radio on the page is a dead end, because an
+  // order naming it would be refused.
+  await stubCampaign(page, {
+    ...MINIMAL_CAMPAIGN,
+    available_payment_methods: [
+      { code: 'apple_pay', label: 'Apple Pay' },
+      { code: 'bankcard', label: 'Bankcard' },
+      { code: 'ideal', label: 'iDEAL' },
+      { code: 'paypal', label: 'PayPal' },
+    ],
+  });
+
+  await bootSdk(page, CHECKOUT);
+
+  const wrapper = (method: string) =>
+    page.locator(`[data-next-payment-method="${method}"]`);
+
+  // Offered by this campaign, so still on the page.
+  await expect(wrapper('credit')).toBeVisible();
+  await expect(wrapper('ideal')).toBeVisible();
+
+  // Not offered, so gone. `toBeHidden` is the assertion that matters: the
+  // wrapper is still in the DOM, and what must be true is that nobody can see
+  // or press it.
+  await expect(wrapper('sepa_debit')).toBeHidden();
+  await expect(wrapper('pix')).toBeHidden();
+});
+
+test('leaves every method visible when the campaign lists none', async ({
+  page,
+}) => {
+  // The negative control for the test above, and the safe default: MINIMAL_CAMPAIGN
+  // carries no `available_payment_methods`, and not knowing what a campaign
+  // supports must not empty the page of ways to pay.
+  await bootSdk(page, CHECKOUT);
+
+  await expect(
+    page.locator('[data-next-payment-method="sepa_debit"]')
+  ).toBeVisible();
+  await expect(page.locator('[data-next-payment-method="pix"]')).toBeVisible();
+});
+
 test('an order that came back paid goes to the thank-you page, not to a gateway', async ({
   page,
 }) => {

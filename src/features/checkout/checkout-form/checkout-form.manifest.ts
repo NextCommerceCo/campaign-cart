@@ -167,7 +167,7 @@ export default defineFeature({
       values:
         '`credit` / `paypal` / `apple_pay` / `google_pay` / `klarna` / `affirm` / `bancontact` / `giropay` / `ideal` / `link` / `sepa_debit` / `sofort` / `swish` / `twint`',
       notes:
-        'Underscores, `-` accepted, case ignored — `apple_pay` and `apple-pay` are one value. The card is the only one whose name changes downstream: `credit` here is `credit-card` in the checkout store and `card_token` on the order, and the SDK translates both hops. Everything after `klarna` is a **redirect method**: it has no fields to reveal, so its `[data-next-payment-form]` can be empty — the shopper is sent to the payment provider to pay once the order exists.',
+        'Underscores, `-` accepted, case ignored — `apple_pay` and `apple-pay` are one value. The card is the only one whose name changes downstream: `credit` here is `credit-card` in the checkout store and `card_token` on the order, and the SDK translates both hops. **A section for a method the campaign does not offer is hidden**, since an order naming it would be refused: `available_payment_methods` on the campaign decides, the card is never hidden, and a campaign listing nothing hides nothing. Everything after `klarna` is a **redirect method**: it has no fields to reveal, so its `[data-next-payment-form]` can be empty — the shopper is sent to the payment provider to pay once the order exists.',
     },
     {
       name: 'data-next-payment-form',

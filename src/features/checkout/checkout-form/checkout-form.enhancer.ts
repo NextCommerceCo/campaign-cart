@@ -7,7 +7,7 @@ import { scopedKey } from '@/core/storage';
 import { useCheckoutStore, type CheckoutState } from '@/state/checkout';
 import { useCartStore } from '@/state/cart';
 import { useConfigStore } from '@/state/config';
-import { useCampaignStore } from '@/state/campaign';
+import { useCampaignStore, type CampaignState } from '@/state/campaign';
 import { getApiClient } from '@/client';
 import type { IApiClient } from '@/api/client.types';
 import {
@@ -267,6 +267,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   /** Ref, shared with `autofill-detection.ts` so the event cannot fire twice. */
   private hasTrackedShippingInfo = { value: false };
   /**
+   * The campaign's payment-method codes as last applied, so a campaign write that
+   * did not change them does not re-run the filter.
+   */
+  private availablePaymentMethods: string[] | undefined;
+  /**
    * Whether `add_payment_info` has been reported for a redirect method.
    *
    * The card path and the express path each own that event for their own methods
@@ -459,6 +464,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     // Initialize payment forms to sync with DOM state
     this.ui.initializePaymentForms();
+
+    // Then drop the methods this campaign cannot charge. Campaign data may not
+    // have arrived yet, in which case nothing is hidden until it does and
+    // `handleCampaignUpdate` runs.
+    this.applyAvailablePaymentMethods();
   }
 
   /** Runs after {@link initializePhoneInputs} so the validator can ask a live intl-tel-input instance. */
@@ -485,6 +495,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     this.subscribe(useCheckoutStore, this.handleCheckoutUpdate.bind(this));
     this.subscribe(useCartStore, this.handleCartUpdate.bind(this));
     this.subscribe(useConfigStore, this.handleConfigUpdate.bind(this));
+    // The campaign decides which payment methods this store can charge, and it
+    // usually loads after this form is built.
+    this.subscribe(useCampaignStore, this.handleCampaignUpdate.bind(this));
   }
 
   private setupDebugEventListeners(): void {
@@ -1895,6 +1908,35 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       checkoutStore.setProcessing(false);
       this.loadingOverlay.hide(true); // Hide immediately on error
     }
+  }
+
+  /**
+   * Re-runs the availability filter when the campaign changes.
+   *
+   * Compared by value rather than by reference: the campaign store is written on
+   * every currency change and cache rehydrate, and re-hiding an already-hidden
+   * method would log the same line again on each of them.
+   */
+  private handleCampaignUpdate(state: CampaignState): void {
+    const codes = this.availablePaymentCodes(state);
+    if (
+      JSON.stringify(codes) === JSON.stringify(this.availablePaymentMethods)
+    ) {
+      return;
+    }
+    this.availablePaymentMethods = codes;
+    this.applyAvailablePaymentMethods();
+  }
+
+  /** The campaign's payment-method codes, or `undefined` when it lists none. */
+  private availablePaymentCodes(
+    state: CampaignState = useCampaignStore.getState()
+  ): string[] | undefined {
+    return state.data?.available_payment_methods?.map(method => method.code);
+  }
+
+  private applyAvailablePaymentMethods(): void {
+    this.ui.applyAvailablePaymentMethods(this.availablePaymentCodes());
   }
 
   private async processOrder(): Promise<void> {

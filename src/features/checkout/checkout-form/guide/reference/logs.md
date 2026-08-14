@@ -91,6 +91,7 @@ The feature carried on, but something in the markup or the data was not what it 
 | `Field '{fieldName}' not found for state update` | `field-error-display.ts › updateFieldState` | — |
 | `Spreedly field not found: {fieldName}` | `floating-labels.ts › handleSpreedlyFieldFocus` | — |
 | `No label found for floating label setup` | `floating-labels.ts › setupFloatingLabel` | — |
+| `The selected payment method was hidden and no other method is available` | `payment-form-display.ts › selectAVisibleMethod` | — |
 | `Cart is empty, redirecting to cart page` | `ui-service.ts › UIService.handleCartUpdate` | — |
 | `Field not found for error display: {fieldName}` | `error-display.ts › showError` | — |
 
@@ -160,6 +161,8 @@ Normal progress, useful for confirming the feature ran at all.
 | `[Spreedly] CVV validation changed: {wasValid} -> {validCvv}` | `credit-card-service.ts › CreditCardService.handleSpreedlyFieldEvent` | — |
 | `Tracked add_payment_info event - credit card fields complete` | `credit-card-service.ts › CreditCardService.checkAndTrackPaymentInfo` | — |
 | `[Spreedly] Showing errors:` | `credit-card-service.ts › CreditCardService.showSpreedlyErrors` | yes |
+| `Hid payment methods this campaign does not offer` | `payment-form-display.ts › applyAvailablePaymentMethods` | yes |
+| `Moved off a hidden payment method` | `payment-form-display.ts › selectAVisibleMethod` | yes |
 
 ## Debug
 
@@ -275,6 +278,7 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 | `Expanded payment form` | `payment-form-display.ts › expandPaymentForm` | — |
 | `Collapsed payment form` | `payment-form-display.ts › collapsePaymentForm` | — |
 | `Cleared payment form errors` | `payment-form-display.ts › clearPaymentFormErrors` | — |
+| `Campaign lists no available payment methods; leaving every method visible` | `payment-form-display.ts › applyAvailablePaymentMethods` | — |
 | `UIService initialized` | `ui-service.ts › UIService.initialize` | — |
 | `UIService destroyed` | `ui-service.ts › UIService.destroy` | — |
 | `CheckoutValidator destroyed` | `checkout-validator.ts › CheckoutValidator.destroy` | — |

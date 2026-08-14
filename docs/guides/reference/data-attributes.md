@@ -468,6 +468,8 @@ Names are written with underscores, and `-` and any casing are also accepted, so
 
 The card is also the one method whose name changes on the way out, to `card_token`. Every other method goes on the order under the value in the table.
 
+**A method the campaign cannot charge is hidden for you.** The SDK reads the campaign's `available_payment_methods` and removes any radio outside that list, because an order naming a method the merchant has not enabled is refused and the shopper meets a dead end. Two exceptions keep that from going wrong: the card is never hidden, since every store takes one, and a campaign that lists no methods at all hides nothing. If a shopper had already picked a method that gets hidden, the first one still on the page is selected instead. The console names what went: `Hid payment methods this campaign does not offer`.
+
 A value that is not in this table is sent to the orders API under that name, lower-cased with `_` for `-`, rather than treated as a card, so a method the platform adds can be offered before the SDK names it. A misspelling therefore produces a refused order: the console line `Payment method "…" is not one the SDK knows` names the value, so check for it once after adding a method.
 
 Values `data-next-express-checkout` accepts.

@@ -5,6 +5,7 @@ import { useCheckoutStore } from '@/state/checkout';
 
 import { ErrorDisplayManager } from '../../../utils/error-display-utils';
 import {
+  applyAvailablePaymentMethods,
   initializePaymentForms,
   updatePaymentFormVisibility,
   type PaymentFormDisplayContext,
@@ -286,5 +287,114 @@ describe('updatePaymentFormVisibility', () => {
         'payment-method__form--expanding'
       )
     ).toBe(false);
+  });
+});
+
+/**
+ * Which methods the campaign can actually charge.
+ *
+ * A radio for a method the merchant has not enabled produces an order the API
+ * refuses, so the shopper meets a dead end on something the page offered. The
+ * express buttons were always filtered this way; the radios were not.
+ */
+describe('applyAvailablePaymentMethods', () => {
+  /** Whether a wrapper is hidden, by the only means that survives no template CSS. */
+  function isHidden(ctx: PaymentFormDisplayContext, method: string): boolean {
+    const wrapper = ctx.form.querySelector<HTMLElement>(
+      `[data-next-payment-method="${method}"]`
+    );
+    return wrapper?.style.display === 'none';
+  }
+
+  it('hides a method the campaign does not list', () => {
+    const ctx = createCtx(['credit', 'paypal', 'ideal']);
+
+    applyAvailablePaymentMethods(ctx, ['bankcard', 'paypal']);
+
+    expect(isHidden(ctx, 'ideal')).toBe(true);
+    expect(isHidden(ctx, 'paypal')).toBe(false);
+  });
+
+  it('keeps the card whatever the campaign lists', () => {
+    // Every store takes a card, so a list without `bankcard` is an incomplete
+    // list rather than a store that refuses cards.
+    const ctx = createCtx(['credit', 'ideal']);
+
+    applyAvailablePaymentMethods(ctx, ['ideal']);
+
+    expect(isHidden(ctx, 'credit')).toBe(false);
+  });
+
+  it('hides nothing when the campaign lists nothing', () => {
+    // The negative control. Not knowing what a campaign supports is not the same
+    // as knowing it supports nothing, and hiding every method is worse than
+    // offering one that fails.
+    const ctx = createCtx(['credit', 'paypal', 'ideal']);
+
+    applyAvailablePaymentMethods(ctx, undefined);
+    applyAvailablePaymentMethods(ctx, []);
+
+    expect(isHidden(ctx, 'paypal')).toBe(false);
+    expect(isHidden(ctx, 'ideal')).toBe(false);
+  });
+
+  it('adds next-hidden as well, so the state can be styled', () => {
+    const ctx = createCtx(['credit', 'ideal']);
+
+    applyAvailablePaymentMethods(ctx, ['bankcard']);
+
+    const wrapper = ctx.form.querySelector(
+      '[data-next-payment-method="ideal"]'
+    );
+    expect(wrapper?.classList.contains('next-hidden')).toBe(true);
+  });
+
+  it('shows a method again once the campaign offers it', () => {
+    const ctx = createCtx(['credit', 'ideal']);
+
+    applyAvailablePaymentMethods(ctx, ['bankcard']);
+    applyAvailablePaymentMethods(ctx, ['bankcard', 'ideal']);
+
+    expect(isHidden(ctx, 'ideal')).toBe(false);
+    const wrapper = ctx.form.querySelector(
+      '[data-next-payment-method="ideal"]'
+    );
+    expect(wrapper?.classList.contains('next-hidden')).toBe(false);
+  });
+
+  it('moves the shopper off a method it just hid', () => {
+    const ctx = createCtx(['credit', 'ideal']);
+    const ideal = ctx.form.querySelector<HTMLInputElement>(
+      '[data-next-payment-method="ideal"] input'
+    );
+    const credit = ctx.form.querySelector<HTMLInputElement>(
+      '[data-next-payment-method="credit"] input'
+    );
+    ideal!.checked = true;
+
+    applyAvailablePaymentMethods(ctx, ['bankcard']);
+
+    expect(ideal!.checked).toBe(false);
+    expect(credit!.checked).toBe(true);
+  });
+
+  it('leaves a selection alone when it is still available', () => {
+    const ctx = createCtx(['credit', 'ideal']);
+    const ideal = ctx.form.querySelector<HTMLInputElement>(
+      '[data-next-payment-method="ideal"] input'
+    );
+    ideal!.checked = true;
+
+    applyAvailablePaymentMethods(ctx, ['bankcard', 'ideal']);
+
+    expect(ideal!.checked).toBe(true);
+  });
+
+  it('leaves a wrapper naming no method alone', () => {
+    const ctx = createCtx(['credit', '']);
+
+    applyAvailablePaymentMethods(ctx, ['bankcard']);
+
+    expect(isHidden(ctx, '')).toBe(false);
   });
 });
