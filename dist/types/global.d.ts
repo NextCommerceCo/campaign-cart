@@ -1,6 +1,6 @@
 import { Decimal } from 'decimal.js';
 import { Offer } from './campaign';
-import { Order } from './api';
+import { Order, PaymentMethod } from './api';
 export interface EventMap {
     'cart:updated': CartState;
     'cart:item-added': {
@@ -650,8 +650,7 @@ export interface ShippingMethod {
     hasDiscounts: boolean;
     discounts?: Discount[];
 }
-export type KnownCheckoutPaymentMethod = 'card_token' | 'paypal' | 'apple_pay' | 'google_pay' | 'credit-card' | 'klarna' | 'affirm' | 'bancontact' | 'ideal' | 'link' | 'sepa_direct' | 'swish' | 'twint';
-export type CheckoutPaymentMethod = KnownCheckoutPaymentMethod | (string & {});
+export type CheckoutPaymentMethod = PaymentMethod | (string & {});
 export interface CheckoutData {
     formData: Record<string, any>;
     paymentMethod: CheckoutPaymentMethod;

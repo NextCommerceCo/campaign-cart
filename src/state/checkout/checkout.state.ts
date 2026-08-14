@@ -86,7 +86,7 @@ const initialState: AllFieldsOf<CheckoutState> = {
   errors: {},
   formData: {},
   paymentToken: undefined,
-  paymentMethod: 'credit-card',
+  paymentMethod: 'card_token',
   shippingMethod: undefined,
   billingAddress: undefined,
   sameAsShipping: true,
@@ -181,7 +181,7 @@ export const useCheckoutStore = create<CheckoutState & CheckoutActions>()(
 
       /**
        * Returns every field to its initial value — step 1, empty form, no coupons,
-       * `credit-card`, and no billing address, card token or shipping method.
+       * `card_token`, and no billing address, card token or shipping method.
        *
        * Deliberately a **merge** rather than a replace (`set(initialState, true)`): the
        * setters above sit on the same object as the state, so replacing would take them
@@ -206,14 +206,35 @@ export const useCheckoutStore = create<CheckoutState & CheckoutActions>()(
           sessionStorage.removeItem(name);
         },
       },
+      version: 1,
+      /**
+       * Rewrites a checkout saved by an older SDK.
+       *
+       * **v0 → v1:** `paymentMethod` held `credit-card` for a card, a second
+       * spelling of `card_token` that the orders API never accepted. A shopper
+       * mid-checkout when this ships rehydrates that value, and every "is this a
+       * card?" test now asks for `card_token` alone — without this they would be
+       * carried to submit with no card fields and an order the API refuses.
+       */
+      migrate: (persisted, version) => {
+        const state = persisted as Partial<CheckoutState> | undefined;
+        const migrated =
+          version === 0 && state?.paymentMethod === 'credit-card'
+            ? { ...state, paymentMethod: 'card_token' }
+            : state;
+        // Zustand types `migrate` as returning a whole store, but what it
+        // returns is merged over the live one exactly like the persisted slice
+        // it came from — a partial is what every caller here has.
+        return migrated as CheckoutState & CheckoutActions;
+      },
       // Exclude transient state from persistence
       partialize: state => {
-        // Don't persist express payment methods (they should reset to credit-card on page load/navigation)
+        // Don't persist express payment methods (they should reset to the card form on page load/navigation)
         const paymentMethod =
           state.paymentMethod === 'apple_pay' ||
           state.paymentMethod === 'google_pay' ||
           state.paymentMethod === 'paypal'
-            ? 'credit-card'
+            ? 'card_token'
             : state.paymentMethod;
 
         // Filter out sensitive payment fields from formData

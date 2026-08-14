@@ -7,36 +7,40 @@
  * copies here only invited them to drift (finding 158's shape). Removed; this
  * file's history has them.
  *
- * A payment method is spelled three ways — the page's word on the radio, the
- * SDK's word in the checkout store, the API's word on the order — and the two
- * translations between them live here so a method can be added in one place.
+ * A payment method is spelled two ways — the page's word on the radio, and the
+ * orders API's word, which the store and the order request both use as well.
+ * {@link toCheckoutPaymentMethod} is the single hop between them.
  *
- * **Neither translation substitutes anything.** A name that is not in the table
- * comes out unchanged and is sent to the API as the page wrote it, because the
- * API is the authority on what it can charge and this SDK release may simply be
- * older than the method. Substituting a card is what issue #74 was: an iDEAL
- * radio was read as a card, so the order went out as a card, was refused for
- * having no card token, and the shopper was never sent to iDEAL to pay.
+ * **It substitutes nothing.** A name that is not in the table comes out
+ * unchanged and is sent to the API as the page wrote it, because the API is the
+ * authority on what it can charge and this SDK release may simply be older than
+ * the method. Substituting a card is what issue #74 was: an iDEAL radio was read
+ * as a card, so the order went out as a card, was refused for having no card
+ * token, and the shopper was never sent to iDEAL to pay.
  */
 
-import type { Payment, PaymentMethod } from '@/types/api';
+import type { PaymentMethod } from '@/types/api';
 import type { CheckoutPaymentMethod } from '@/types/global';
 
 /**
- * The page's word for a payment method → the checkout store's.
+ * The page's word for a payment method → the one name the rest of the SDK uses.
+ *
+ * This is the **only** translation left. Past it, the store, the order request
+ * and the API all say `card_token`, so the four card spellings a page may carry
+ * (`card`, `credit`, `credit-card`, `card_token`) converge here and nothing
+ * downstream has a second word for a card.
  *
  * Keys are normalised (lower case, `_` for `-`) so `apple-pay` and `apple_pay`
  * are the same key — a template that picks the other spelling still selects the
- * method the shopper pressed instead of silently falling back to the card form.
- * `sepa` and `sepa_debit` are accepted alongside `sepa_direct`, which is the one
- * name the orders API takes; `sepa_debit` is what this SDK's own type called it
- * until 2026-08-14.
+ * method the shopper pressed. `sepa` and `sepa_debit` are accepted alongside
+ * `sepa_direct`, which is the one name the orders API takes; `sepa_debit` is
+ * what this SDK's own type called it until 2026-08-14.
  */
 const RADIO_PAYMENT_METHOD_MAP: Record<string, CheckoutPaymentMethod> = {
-  card: 'credit-card',
-  card_token: 'credit-card',
-  credit: 'credit-card',
-  credit_card: 'credit-card',
+  card: 'card_token',
+  card_token: 'card_token',
+  credit: 'card_token',
+  credit_card: 'card_token',
   paypal: 'paypal',
   apple_pay: 'apple_pay',
   google_pay: 'google_pay',
@@ -64,7 +68,7 @@ const RADIO_PAYMENT_METHOD_MAP: Record<string, CheckoutPaymentMethod> = {
  * @example
  * ```ts
  * toCheckoutPaymentMethod('apple-pay'); // 'apple_pay'
- * toCheckoutPaymentMethod('credit');    // 'credit-card'
+ * toCheckoutPaymentMethod('credit');    // 'card_token'
  * toCheckoutPaymentMethod('Pix');       // 'pix' — unknown here, the API decides
  * toCheckoutPaymentMethod('');          // undefined
  * ```
@@ -77,55 +81,46 @@ export function toCheckoutPaymentMethod(
   return RADIO_PAYMENT_METHOD_MAP[normalized] ?? normalized;
 }
 
-/** Whether {@link toCheckoutPaymentMethod} recognised this method by name. */
-export function isKnownPaymentMethod(method: string): boolean {
-  return method in API_PAYMENT_METHOD_MAP;
-}
+/**
+ * Every method this SDK release knows how to name.
+ *
+ * There is no map from these to what the API is sent, because there is nothing
+ * to map: a chosen method **is** the value that goes on the order. The set only
+ * answers "have I heard of this one", which decides whether to warn.
+ */
+const KNOWN_PAYMENT_METHODS: ReadonlySet<string> = new Set<PaymentMethod>([
+  'card_token',
+  'paypal',
+  'apple_pay',
+  'google_pay',
+  'klarna',
+  'affirm',
+  'bancontact',
+  'ideal',
+  'link',
+  'sepa_direct',
+  'swish',
+  'twint',
+]);
 
 /**
- * The checkout store's payment method -> the `payment_detail.payment_method` the
- * orders API is sent. The one translation for every order path.
+ * Whether the orders API is known to take this method.
  *
- * A method that is not in {@link API_PAYMENT_METHOD_MAP} is sent as it stands.
- * The API answers that with either an order — carrying a `payment_complete_url`
- * for the shopper to finish paying at — or a 400 naming the method, and both of
- * those are more useful than the SDK quietly charging a card instead.
+ * `false` is not a refusal — an unknown method is still sent, because the API
+ * may have gained it since this SDK release. It is what turns the console
+ * warning on, so a typo is visible before a shopper meets a refused order.
  *
  * @example
  * ```ts
- * toApiPaymentMethod('credit-card'); // 'card_token'
- * toApiPaymentMethod('ideal');       // 'ideal'
- * toApiPaymentMethod('pix');         // 'pix'
+ * isKnownPaymentMethod('ideal'); // true
+ * isKnownPaymentMethod('pix');   // false — sent anyway
  * ```
  */
-export function toApiPaymentMethod(method: string): Payment['payment_method'] {
-  return API_PAYMENT_METHOD_MAP[method] ?? method;
+export function isKnownPaymentMethod(
+  method: CheckoutPaymentMethod
+): method is PaymentMethod {
+  return KNOWN_PAYMENT_METHODS.has(method);
 }
-
-/**
- * Selected payment method -> the `payment_detail.payment_method` the orders API
- * expects. Not exported: {@link toApiPaymentMethod} owns what happens to a
- * method that is not listed, and reading the table directly is how a second
- * fallback rule gets invented.
- *
- * Only the card entry translates — every other method is already spelled the way
- * the API wants it.
- */
-const API_PAYMENT_METHOD_MAP: Record<string, PaymentMethod> = {
-  'credit-card': 'card_token',
-  card_token: 'card_token',
-  paypal: 'paypal',
-  apple_pay: 'apple_pay',
-  google_pay: 'google_pay',
-  klarna: 'klarna',
-  affirm: 'affirm',
-  bancontact: 'bancontact',
-  ideal: 'ideal',
-  link: 'link',
-  sepa_direct: 'sepa_direct',
-  swish: 'swish',
-  twint: 'twint',
-};
 
 export const EXPRESS_PAYMENT_METHOD_MAP: Record<
   string,

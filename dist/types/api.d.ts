@@ -137,7 +137,7 @@ export interface Order {
     shipping_address?: OrderAddress;
     billing_address?: OrderAddress;
     attribution?: MarketingAttribution;
-    payment_method?: PaymentMethod | null;
+    payment_method?: PaymentMethod | 'external' | null;
     order_status_url: string;
     payment_complete_url?: string;
     supports_post_purchase_upsells: boolean;
@@ -229,7 +229,7 @@ export interface Voucher {
     description?: string;
     name?: string;
 }
-export type PaymentMethod = 'apple_pay' | 'card_token' | 'paypal' | 'klarna' | 'ideal' | 'bancontact' | 'google_pay' | 'sepa_direct' | 'swish' | 'twint' | 'link' | 'affirm' | 'external';
+export type PaymentMethod = 'apple_pay' | 'card_token' | 'paypal' | 'klarna' | 'ideal' | 'bancontact' | 'google_pay' | 'sepa_direct' | 'swish' | 'twint' | 'link' | 'affirm';
 export interface CartBase {
     address?: AddressCart;
     attribution?: Attribution;

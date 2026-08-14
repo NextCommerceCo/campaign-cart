@@ -16,7 +16,7 @@
  *   **animates** the swap. It reads the radio values, not the store.
  *
  * The markup spellings (`credit`, `apple-pay`) are not the names the store and API use
- * (`credit-card`, `apple_pay`), so the startup pass translates both sides through
+ * (`card_token`, `apple_pay`), so the startup pass translates both sides through
  * `toCheckoutPaymentMethod` — the same table the radio handler reads — rather than
  * comparing the two vocabularies directly. The update pass needs no translation at all: it
  * is matching one radio value against another.

@@ -6,7 +6,7 @@ export { useConfigStore } from './state/config';
 export { useCheckoutStore } from './state/checkout';
 export { useOrderStore } from './state/order';
 export type * from './types/global';
-export type { Order, OrderLine, OrderLineProperty, OrderUser, OrderAddress, MarketingAttribution, } from './types/api';
+export type { Order, OrderLine, OrderLineProperty, OrderUser, OrderAddress, MarketingAttribution, PaymentMethod, } from './types/api';
 export { Logger } from './core/logger';
 export { EventBus } from './core/events';
 export { ApiClient } from './api/client';

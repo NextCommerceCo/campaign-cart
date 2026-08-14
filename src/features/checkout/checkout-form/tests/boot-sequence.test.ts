@@ -367,7 +367,7 @@ describe('setupBfcacheRestoreHandler', () => {
     const { steps } = createEnhancer();
     vi.spyOn(steps, 'handlePurchaseEvent').mockResolvedValue(undefined);
     navigationTypeIs('back_forward');
-    setCheckoutState({ isProcessing: true, paymentMethod: 'credit-card' });
+    setCheckoutState({ isProcessing: true, paymentMethod: 'card_token' });
 
     pageshow(steps)({ persisted: false });
 
@@ -385,7 +385,7 @@ describe('setupBfcacheRestoreHandler', () => {
 
     const state = useCheckoutStore.getState();
     expect(state.isProcessing).toBe(false);
-    expect(state.paymentMethod).toBe('credit-card');
+    expect(state.paymentMethod).toBe('card_token');
     expect(state.paymentToken).toBe('');
     expect(purchase).toHaveBeenCalledTimes(1);
     expect(logger.info).toHaveBeenCalledWith(
@@ -401,7 +401,7 @@ describe('setupBfcacheRestoreHandler', () => {
     vi.spyOn(steps, 'handlePurchaseEvent').mockResolvedValue(undefined);
     setCheckoutState({
       isProcessing: false,
-      paymentMethod: 'credit-card',
+      paymentMethod: 'card_token',
       paymentToken: 'tok_live',
     });
 
@@ -503,7 +503,7 @@ describe('setupWindowFocusHandler', () => {
 
     const state = useCheckoutStore.getState();
     expect(state.isProcessing).toBe(false);
-    expect(state.paymentMethod).toBe('credit-card');
+    expect(state.paymentMethod).toBe('card_token');
     expect(state.paymentToken).toBe('');
   });
 
@@ -511,7 +511,7 @@ describe('setupWindowFocusHandler', () => {
     const { steps } = createEnhancer();
     setCheckoutState({
       isProcessing: true,
-      paymentMethod: 'credit-card',
+      paymentMethod: 'card_token',
       paymentToken: 'tok_live',
     });
 

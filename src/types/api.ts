@@ -227,8 +227,12 @@ export interface Order {
    * `data-next-display="order.paymentMethod"` renders this through a friendlier
    * label for the common methods — see the order-display guide's
    * [display paths](../features/display/order-display/guide/reference/display-paths.md).
+   *
+   * `'external'` is wider than {@link PaymentMethod} on purpose: a payment taken
+   * outside the platform and recorded in the admin dashboard comes back on the
+   * order like any other, even though the SDK can never *send* it.
    */
-  payment_method?: PaymentMethod | null;
+  payment_method?: PaymentMethod | 'external' | null;
   /** URL of the hosted order-status/receipt page for this order. */
   order_status_url: string;
   /**
@@ -466,21 +470,24 @@ export interface Voucher {
 
 /**
  * How an order is paid for — the code the orders API accepts on
- * {@link Payment.payment_method | payment_detail.payment_method} and reports
- * back on {@link Order.payment_method | Order.payment_method}.
+ * `payment_detail.payment_method`, and the one vocabulary the SDK uses for a
+ * payment method from the radio to the order.
  *
- * `card_token` is a tokenised card (what most stores mean by "credit card");
- * `external` is a payment taken outside the platform and recorded on the order.
- * The rest name the wallet or scheme the shopper used.
+ * `card_token` is a card, and it is a **token** rather than a number: the card
+ * itself is entered in the payment provider's own hosted fields and never
+ * reaches this page, this SDK, or this request. There is no plain "credit card"
+ * value, deliberately. The rest name the wallet or scheme the shopper used.
  *
  * Every one of them except a directly-charged card sends the shopper away to pay
  * and brings them back — a card only when the bank asks for 3-D Secure — so an
  * order created with any of these can come back carrying
  * {@link Order.payment_complete_url}.
  *
- * `giropay` and `sofort` were removed on 2026-08-14: the platform no longer
- * offers them, and a value the orders API rejects is worse than a missing one.
- * `sepa_debit` went with them — SEPA Direct Debit is `sepa_direct`.
+ * Not here on purpose: `external`, a payment taken outside the platform, which
+ * an admin records in the dashboard and the SDK never sends —
+ * {@link Order.payment_method} accepts it on the way back. `giropay`, `sofort`
+ * and `sepa_debit` were removed on 2026-08-14; the platform no longer offers the
+ * first two, and SEPA Direct Debit is `sepa_direct`.
  */
 export type PaymentMethod =
   | 'apple_pay'
@@ -494,8 +501,7 @@ export type PaymentMethod =
   | 'swish'
   | 'twint'
   | 'link'
-  | 'affirm'
-  | 'external';
+  | 'affirm';
 
 // Request/Response types
 export interface CartBase {

@@ -346,7 +346,7 @@ export class CheckoutPanel implements DebugPanel {
     checkoutStore.updateFormData(testFormData);
     
     // Set other checkout options
-    checkoutStore.setPaymentMethod('credit-card');
+    checkoutStore.setPaymentMethod('card_token');
     checkoutStore.setSameAsShipping(true);
     
     // Set a default shipping method if available

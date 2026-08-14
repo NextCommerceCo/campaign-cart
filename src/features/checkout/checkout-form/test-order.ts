@@ -139,7 +139,7 @@ export async function handleKonamiActivation(
     checkoutStore.clearAllErrors();
     ctx.validator.clearAllErrors();
     checkoutStore.updateFormData(TEST_FORM_DATA);
-    checkoutStore.setPaymentMethod('credit-card');
+    checkoutStore.setPaymentMethod('card_token');
     checkoutStore.setPaymentToken('test_card');
     checkoutStore.setSameAsShipping(true);
     // Use existing shipping method from cart if available

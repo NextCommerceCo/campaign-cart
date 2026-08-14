@@ -8,7 +8,7 @@
  * service, the shipping side needs the analytics latch.
  *
  * **Payment method.** The radio's value is the page's word (`credit`, `paypal`,
- * `apple-pay`…); the store's is close to the API's (`credit-card`, `paypal`, `apple_pay`…),
+ * `apple-pay`…); the store's is the API's own (`card_token`, `paypal`, `apple_pay`…),
  * so every value goes through {@link toCheckoutPaymentMethod} — which is also what the
  * startup pass reads, so the two cannot disagree about what a radio means. A name the SDK
  * does not know is warned about and then kept, because the API, not this table, decides
@@ -76,7 +76,7 @@ export interface ShippingMethodContext {
  * A method the SDK does not know by name is **kept**, not replaced: it is stored as the
  * page wrote it and sent to the API, which is the only thing that can say whether it can
  * charge that way. Replacing it with a card is what issue #74 was — the store held
- * `credit-card` for a shopper who chose iDEAL, and the order was then refused for having
+ * a card for a shopper who chose iDEAL, and the order was then refused for having
  * no card token, so no order existed to redirect with. The warning is there because the
  * likelier cause is a typo in the markup, and a shopper meeting an API error is a slow way
  * to find that out.

@@ -68,7 +68,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
-  useCheckoutStore.setState({ paymentMethod: 'credit-card' });
+  useCheckoutStore.setState({ paymentMethod: 'card_token' });
 });
 
 describe('initializePaymentForms', () => {

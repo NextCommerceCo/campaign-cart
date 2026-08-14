@@ -183,9 +183,9 @@ export async function validateForm(
 
   // Credit card validation
   if (includePayment) {
-    const paymentMethod = formData.paymentMethod || 'credit-card';
+    const paymentMethod = formData.paymentMethod || 'card_token';
 
-    if (paymentMethod === 'credit-card' || paymentMethod === 'card_token') {
+    if (paymentMethod === 'card_token') {
       const cardData: CreditCardData = {
         full_name: `${formData.fname || ''} ${formData.lname || ''}`.trim(),
         month: formData['exp-month'] || formData['cc-month'] || '',
