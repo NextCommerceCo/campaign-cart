@@ -31,8 +31,9 @@ import type { CheckoutPaymentMethod } from '@/types/global';
  * the store and the API use too; a template carrying the kebab form keeps
  * working rather than falling back to the card form.
  *
- * A card answers to four names, because `credit` is what shipped templates carry
- * and dropping it would break them.
+ * A card answers to two names and no more: `credit`, which is what shipped
+ * templates carry, and `card_token`, the orders API's own name, for a caller that
+ * has the API value in hand. `card` and `credit-card` are not among them.
  *
  * SEPA Direct Debit answers to exactly one, `sepa_debit`, which is the name the
  * orders API field takes. The platform's payment-methods guide calls the same
@@ -42,10 +43,8 @@ import type { CheckoutPaymentMethod } from '@/types/global';
  * nothing to keep compatible (issue #74 asked for the one name).
  */
 const RADIO_PAYMENT_METHOD_MAP: Record<string, CheckoutPaymentMethod> = {
-  card: 'credit-card',
-  card_token: 'credit-card',
   credit: 'credit-card',
-  credit_card: 'credit-card',
+  card_token: 'credit-card',
   paypal: 'paypal',
   apple_pay: 'apple_pay',
   google_pay: 'google_pay',

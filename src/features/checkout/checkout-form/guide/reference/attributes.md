@@ -105,7 +105,7 @@ Marks a payment method choice — a radio or a button — and names the method i
 
 **Valid values:**
 
-- `credit` — Card, entered in the hosted card fields. `credit_card`, `card` and `card_token` select the same method; `credit` is what the starter templates carry.
+- `credit` — Card, entered in the hosted card fields. `card_token`, the orders API name, selects the same method; no other spelling of the card is accepted.
 - `paypal` — PayPal.
 - `apple_pay` — Apple Pay.
 - `google_pay` — Google Pay.

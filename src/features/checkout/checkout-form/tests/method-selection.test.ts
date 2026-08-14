@@ -129,12 +129,29 @@ describe('handlePaymentMethodChange', () => {
     }
   );
 
-  it.each(['credit_card', 'credit-card', 'credit', 'card', 'card_token'])(
-    'reads every spelling of a card as one method: "%s"',
+  it.each(['credit', 'card_token', 'CREDIT', ' Card_Token '])(
+    'reads a card under the two names it answers to: "%s"',
     value => {
       handlePaymentMethodChange(paymentContext(), radioEvent(value));
 
       expect(useCheckoutStore.getState().paymentMethod).toBe('credit-card');
+    }
+  );
+
+  it.each(['card', 'credit_card', 'credit-card'])(
+    'does not invent a third name for a card: "%s"',
+    value => {
+      // `credit` is the markup name and `card_token` is the API's. Anything else
+      // is passed through like any unknown method, so a page cannot reach the card
+      // form under a name nothing documents.
+      const ctx = paymentContext();
+
+      handlePaymentMethodChange(ctx, radioEvent(value));
+
+      expect(useCheckoutStore.getState().paymentMethod).not.toBe('credit-card');
+      expect(ctx.logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining(value)
+      );
     }
   );
 
