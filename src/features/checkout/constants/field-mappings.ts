@@ -9,13 +9,17 @@
  *
  * A payment method is spelled three ways — the page's word on the radio, the
  * SDK's word in the checkout store, the API's word on the order — and the two
- * translations between them live here so a method can be added in one place. A
- * method missing from either map is the shape of issue #74: an iDEAL radio was
- * read as a card, so the order went out as a card and the shopper was never sent
- * to iDEAL to pay.
+ * translations between them live here so a method can be added in one place.
+ *
+ * **Neither translation substitutes anything.** A name that is not in the table
+ * comes out unchanged and is sent to the API as the page wrote it, because the
+ * API is the authority on what it can charge and this SDK release may simply be
+ * older than the method. Substituting a card is what issue #74 was: an iDEAL
+ * radio was read as a card, so the order went out as a card, was refused for
+ * having no card token, and the shopper was never sent to iDEAL to pay.
  */
 
-import type { PaymentMethod } from '@/types/api';
+import type { Payment, PaymentMethod } from '@/types/api';
 import type { CheckoutPaymentMethod } from '@/types/global';
 
 /**
@@ -50,38 +54,64 @@ const RADIO_PAYMENT_METHOD_MAP: Record<string, CheckoutPaymentMethod> = {
 
 /**
  * Reads a `[data-next-payment-method]` value or a radio's `value` as a payment
- * method, or `undefined` when the page names one the SDK does not offer.
+ * method.
  *
- * Undefined rather than a default, because the two callers want different things
- * from an unknown value: the radio handler falls back to the card form so the
- * shopper is not left with no payment fields, while the startup pass leaves the
- * method unselected rather than opening a form the store never chose.
+ * A name the SDK knows comes back in the store's spelling. Any other name comes
+ * back **normalised but otherwise untouched**, so the page can offer a method
+ * this release predates and still have it reach the API. `undefined` means the
+ * page named nothing at all — an empty or missing value.
  *
  * @example
  * ```ts
  * toCheckoutPaymentMethod('apple-pay'); // 'apple_pay'
  * toCheckoutPaymentMethod('credit');    // 'credit-card'
- * toCheckoutPaymentMethod('bitcoin');   // undefined
+ * toCheckoutPaymentMethod('Pix');       // 'pix' — unknown here, the API decides
+ * toCheckoutPaymentMethod('');          // undefined
  * ```
  */
 export function toCheckoutPaymentMethod(
   value: string | null | undefined
 ): CheckoutPaymentMethod | undefined {
-  if (!value) return undefined;
-  return RADIO_PAYMENT_METHOD_MAP[
-    value.trim().toLowerCase().replace(/-/g, '_')
-  ];
+  const normalized = value?.trim().toLowerCase().replace(/-/g, '_');
+  if (!normalized) return undefined;
+  return RADIO_PAYMENT_METHOD_MAP[normalized] ?? normalized;
+}
+
+/** Whether {@link toCheckoutPaymentMethod} recognised this method by name. */
+export function isKnownPaymentMethod(method: string): boolean {
+  return method in API_PAYMENT_METHOD_MAP;
+}
+
+/**
+ * The checkout store's payment method -> the `payment_detail.payment_method` the
+ * orders API is sent. The one translation for every order path.
+ *
+ * A method that is not in {@link API_PAYMENT_METHOD_MAP} is sent as it stands.
+ * The API answers that with either an order — carrying a `payment_complete_url`
+ * for the shopper to finish paying at — or a 400 naming the method, and both of
+ * those are more useful than the SDK quietly charging a card instead.
+ *
+ * @example
+ * ```ts
+ * toApiPaymentMethod('credit-card'); // 'card_token'
+ * toApiPaymentMethod('ideal');       // 'ideal'
+ * toApiPaymentMethod('pix');         // 'pix'
+ * ```
+ */
+export function toApiPaymentMethod(method: string): Payment['payment_method'] {
+  return API_PAYMENT_METHOD_MAP[method] ?? method;
 }
 
 /**
  * Selected payment method -> the `payment_detail.payment_method` the orders API
- * expects. The single map for every order path; anything not listed here is
- * submitted as `card_token`.
+ * expects. Not exported: {@link toApiPaymentMethod} owns what happens to a
+ * method that is not listed, and reading the table directly is how a second
+ * fallback rule gets invented.
  *
  * Only the card entry translates — every other method is already spelled the way
  * the API wants it.
  */
-export const API_PAYMENT_METHOD_MAP: Record<string, PaymentMethod> = {
+const API_PAYMENT_METHOD_MAP: Record<string, PaymentMethod> = {
   'credit-card': 'card_token',
   card_token: 'card_token',
   paypal: 'paypal',

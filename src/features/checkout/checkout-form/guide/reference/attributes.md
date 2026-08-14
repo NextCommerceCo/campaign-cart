@@ -118,7 +118,7 @@ Marks a payment method choice — a radio or a button — and names the method i
 - `swish` — Swish.
 - `twint` — TWINT.
 
-> **Watch out:** These are the markup spellings; the API names differ (`credit` becomes `card_token`). Use the values above in HTML and let the SDK translate. `-` and `_` are interchangeable and case does not matter, so `apple-pay` and `APPLE_PAY` select the same method. A value that is not on this list is **not** an error: it falls back to the card form, with `Payment method "…" is not one the SDK offers` in the console — so a typo shows up as a shopper being asked for a card.
+> **Watch out:** These are the markup spellings; the API names differ (`credit` becomes `card_token`). Use the values above in HTML and let the SDK translate. `-` and `_` are interchangeable and case does not matter, so `apple-pay` and `APPLE_PAY` select the same method. **A value that is not on this list still works if the API accepts it** — it is sent to the orders API exactly as written, so a method added to the platform after this SDK release can be offered without waiting for an upgrade. `Payment method "…" is not one the SDK knows` in the console is a heads-up rather than a failure; if it was a typo, the API refuses the order and names the method.
 
 ## Structural components
 

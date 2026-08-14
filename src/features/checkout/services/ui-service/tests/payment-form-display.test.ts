@@ -124,15 +124,29 @@ describe('initializePaymentForms', () => {
     );
   });
 
-  it('opens nothing when neither the store nor the markup names a method it knows', () => {
-    // sessionStorage outlives an SDK upgrade, so the persisted method can be one
-    // this build has never heard of. Two unknowns are not a match.
-    const ctx = createCtx(['credit', 'bitcoin']);
-    useCheckoutStore.setState({ paymentMethod: 'bitcoin' as never });
+  it('reopens a method the SDK does not know by name', () => {
+    // The page may offer a method this release predates. It is stored under its
+    // own name, so it has to be found again under that name on the way back.
+    const ctx = createCtx(['credit', 'pix']);
+    useCheckoutStore.setState({ paymentMethod: 'pix' });
 
     initializePaymentForms(ctx);
 
-    expect(formOf(ctx, 'bitcoin').getAttribute('data-next-payment-state')).toBe(
+    expect(formOf(ctx, 'pix').getAttribute('data-next-payment-state')).toBe(
+      'expanded'
+    );
+    expect(formOf(ctx, 'credit').getAttribute('data-next-payment-state')).toBe(
+      'collapsed'
+    );
+  });
+
+  it('opens nothing for a wrapper that names no method at all', () => {
+    const ctx = createCtx(['credit', '']);
+    useCheckoutStore.setState({ paymentMethod: '' as never });
+
+    initializePaymentForms(ctx);
+
+    expect(formOf(ctx, '').getAttribute('data-next-payment-state')).toBe(
       'collapsed'
     );
   });

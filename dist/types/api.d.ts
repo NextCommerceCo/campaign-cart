@@ -324,7 +324,7 @@ export interface Payment {
     external_payment_method?: string;
     payment_gateway?: number;
     payment_gateway_group?: number;
-    payment_method: PaymentMethod;
+    payment_method: PaymentMethod | (string & {});
 }
 export interface AddUpsellLine {
     lines: UpsellLineItem[];

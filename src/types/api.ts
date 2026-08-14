@@ -600,7 +600,17 @@ export interface Payment {
   external_payment_method?: string;
   payment_gateway?: number;
   payment_gateway_group?: number;
-  payment_method: PaymentMethod;
+  /**
+   * How to charge for this order.
+   *
+   * Wider than {@link PaymentMethod} on purpose: a page may offer a method this
+   * SDK release has never heard of, and the SDK sends that name through rather
+   * than substituting a card for it. The API is the authority on what it accepts
+   * — it either creates the order (and answers with a
+   * {@link Order.payment_complete_url} to finish paying at) or rejects the
+   * request. `Order.payment_method` on the way back stays the known list.
+   */
+  payment_method: PaymentMethod | (string & {});
 }
 
 export interface AddUpsellLine {

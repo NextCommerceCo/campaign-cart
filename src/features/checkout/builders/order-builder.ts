@@ -2,7 +2,7 @@
  * Order Builder - Builds order data for API submission
  */
 
-import { API_PAYMENT_METHOD_MAP } from '../constants/field-mappings';
+import { toApiPaymentMethod } from '../constants/field-mappings';
 import { getSuccessUrl, getFailureUrl } from '../utils/url-utils';
 import { useAttributionStore } from '@/state/attribution';
 import { useCampaignStore } from '@/state/campaign';
@@ -10,13 +10,7 @@ import { useConfigStore } from '@/state/config';
 import { useCartStore } from '@/state/cart';
 import { useCheckoutStore } from '@/state/checkout';
 import { createLogger } from '@/core/logger';
-import type {
-  CreateOrder,
-  Address,
-  Payment,
-  Attribution,
-  PaymentMethod,
-} from '@/types/api';
+import type { CreateOrder, Address, Payment, Attribution } from '@/types/api';
 
 export class OrderBuilder {
   private logger = createLogger('OrderBuilder');
@@ -190,8 +184,8 @@ export class OrderBuilder {
     return testOrderData;
   }
 
-  private mapPaymentMethod(method: string): PaymentMethod {
-    return API_PAYMENT_METHOD_MAP[method] || 'card_token';
+  private mapPaymentMethod(method: string): Payment['payment_method'] {
+    return toApiPaymentMethod(method);
   }
 
   private getDefaultShippingMethodId(): number {

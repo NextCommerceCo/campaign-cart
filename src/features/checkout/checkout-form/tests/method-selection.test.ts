@@ -126,15 +126,26 @@ describe('handlePaymentMethodChange', () => {
     expect(useCheckoutStore.getState().paymentMethod).toBe('apple_pay');
   });
 
-  it('falls back to the card form for a value it does not recognise', () => {
+  it('keeps a method it does not know, so the API is the one that decides', () => {
+    // A store can be given a new way to pay before this SDK release knows its
+    // name. Substituting a card would end the checkout at "Payment token is
+    // required" without ever asking the API — issue #74's failure exactly.
     const ctx = paymentContext();
 
-    handlePaymentMethodChange(ctx, radioEvent('bitcoin'));
+    handlePaymentMethodChange(ctx, radioEvent('Pix'));
 
-    expect(useCheckoutStore.getState().paymentMethod).toBe('credit-card');
+    expect(useCheckoutStore.getState().paymentMethod).toBe('pix');
     expect(ctx.logger.warn).toHaveBeenCalledWith(
-      expect.stringContaining('bitcoin')
+      expect.stringContaining('Pix')
     );
+  });
+
+  it('selects nothing for a radio with no value', () => {
+    useCheckoutStore.setState({ paymentMethod: 'ideal' });
+
+    handlePaymentMethodChange(paymentContext(), radioEvent(''));
+
+    expect(useCheckoutStore.getState().paymentMethod).toBe('ideal');
   });
 
   it('does not warn about a method it does offer', () => {

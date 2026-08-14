@@ -46,9 +46,13 @@ the two can never drift apart.
   validation on one; phone is the usual case.
 - Payment methods are declared in markup with short names (`credit`, `paypal`,
   `apple-pay`, …). The SDK translates them to the API's names, so the two
-  vocabularies never have to be reconciled by hand. A name it does not know falls
-  back to the card form and logs
-  `Payment method "…" is not one the SDK offers`.
+  vocabularies never have to be reconciled by hand.
+- **A method the SDK does not recognise is passed through, not replaced.** It is
+  sent to the orders API as written and logged as
+  `Payment method "…" is not one the SDK knows`, because the API is what decides
+  whether it can charge that way — so a method the platform gains after this SDK
+  release still works, and a typo comes back as an API error naming it rather
+  than as a card form the shopper did not ask for.
 - **A redirect method skips tokenization and nothing else.** iDEAL, Bancontact,
   SEPA, TWINT, Swish, Affirm, Link and Klarna collect no payment details here, so
   the form validates, captures the shopper's details and creates the order as

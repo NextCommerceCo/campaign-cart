@@ -141,6 +141,25 @@ test('a SEPA radio is posted under the name the orders API uses', async ({
   );
 });
 
+test('a method this build has no name for still reaches the API and redirects', async ({
+  page,
+}) => {
+  // The store can be given a new way to pay before the SDK learns its name. As
+  // long as the API creates the order, the shopper must still be sent to pay —
+  // the SDK is not the authority on what can be charged.
+  const posted = await stubOrderCreate(page, AWAITING_PAYMENT);
+
+  await bootSdk(page, CHECKOUT);
+  await page.evaluate(() => (window as any).next.addItem({ packageId: 1 }));
+  await submitWith(page, 'pix');
+
+  await page.waitForURL(`**${GATEWAY}`);
+
+  expect(posted[0]?.postDataJSON().payment_detail).toEqual({
+    payment_method: 'pix',
+  });
+});
+
 test('an order that came back paid goes to the thank-you page, not to a gateway', async ({
   page,
 }) => {

@@ -143,12 +143,17 @@ The full list is `affirm`, `bancontact`, `ideal`, `klarna`, `link`, `sepa-direct
 `swish`, `twint`; see [reference/attributes.md](./reference/attributes.md) for all
 of them.
 
-**Watch out for:** A name the SDK does not know is not an error — it falls back to
-the card form, and the shopper is asked for a card instead of the method they
-pressed. The console line `Payment method "…" is not one the SDK offers` is the
-only signal, so check it after adding a method. SEPA Direct Debit is the one to
-watch: `sepa-direct` is the name the orders API takes, and `sepa-debit` and `sepa`
-are accepted as the same method because older SDK types called it `sepa_debit`.
+A name that is not on that list is sent to the API as written rather than
+replaced, so a method the platform gains after this SDK release can be offered
+straight away — as long as the API accepts it, the order is created and the
+shopper is redirected exactly as above.
+
+**Watch out for:** That pass-through means a typo is only caught by the API. The
+console line `Payment method "…" is not one the SDK knows` is the early warning,
+so check for it after adding a method — otherwise the first sign is a shopper
+meeting a refused order. SEPA Direct Debit is the one to watch: `sepa-direct` is
+the name the orders API takes, and `sepa-debit` and `sepa` are accepted as the
+same method because older SDK types called it `sepa_debit`.
 
 ---
 

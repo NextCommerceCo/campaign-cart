@@ -9,11 +9,11 @@
  *
  * **Payment method.** The radio's value is the page's word (`credit`, `paypal`,
  * `apple-pay`…); the store's is close to the API's (`credit-card`, `paypal`, `apple_pay`…),
- * so every value is mapped rather than passed through — through
- * {@link toCheckoutPaymentMethod}, which is also what the startup pass reads, so the two
- * cannot disagree about what a radio means. An unrecognised one is warned about and falls
- * back to the card form instead of leaving the shopper with no payment fields. Any payment
- * error still on the page is hidden — it belonged to the method they just moved away from.
+ * so every value goes through {@link toCheckoutPaymentMethod} — which is also what the
+ * startup pass reads, so the two cannot disagree about what a radio means. A name the SDK
+ * does not know is warned about and then kept, because the API, not this table, decides
+ * what can be charged. Any payment error still on the page is hidden — it belonged to the
+ * method they just moved away from.
  *
  * **Shipping method.** The radio's value is a shipping method's `ref_id`, and **the
  * campaign says which ids exist, what each is called and what it costs** — the SDK holds
@@ -35,7 +35,10 @@ import { useCampaignStore } from '@/state/campaign';
 import { cartOperations } from '@/state/cart';
 import { useCheckoutStore } from '@/state/checkout';
 
-import { toCheckoutPaymentMethod } from '../constants/field-mappings';
+import {
+  isKnownPaymentMethod,
+  toCheckoutPaymentMethod,
+} from '../constants/field-mappings';
 import type { UIService } from '../services/ui-service';
 
 /** GA4's `shipping_tier` for each method code. */
@@ -70,9 +73,15 @@ export interface ShippingMethodContext {
  * are complete (`CreditCardService`), and for an express method when the button is pressed
  * (`ExpressCheckoutProcessor`).
  *
- * A method the SDK does not know is warned about rather than accepted silently: the store
- * would otherwise hold `credit-card` for a shopper who chose iDEAL, and the order would go
- * to the API as a card — the whole of issue #74.
+ * A method the SDK does not know by name is **kept**, not replaced: it is stored as the
+ * page wrote it and sent to the API, which is the only thing that can say whether it can
+ * charge that way. Replacing it with a card is what issue #74 was — the store held
+ * `credit-card` for a shopper who chose iDEAL, and the order was then refused for having
+ * no card token, so no order existed to redirect with. The warning is there because the
+ * likelier cause is a typo in the markup, and a shopper meeting an API error is a slow way
+ * to find that out.
+ *
+ * A radio with no value at all selects nothing — there is no method to send.
  *
  * @example
  * ```ts
@@ -89,12 +98,12 @@ export function handlePaymentMethodChange(
   const checkoutStore = useCheckoutStore.getState();
 
   const mappedMethod = toCheckoutPaymentMethod(target.value);
-  if (!mappedMethod) {
+  if (mappedMethod && !isKnownPaymentMethod(mappedMethod)) {
     ctx.logger.warn(
-      `Payment method "${target.value}" is not one the SDK offers — using the card form`
+      `Payment method "${target.value}" is not one the SDK knows — sending it to the API as it stands`
     );
   }
-  checkoutStore.setPaymentMethod(mappedMethod ?? 'credit-card');
+  if (mappedMethod) checkoutStore.setPaymentMethod(mappedMethod);
 
   // Hide any payment-specific errors when switching methods
   const paypalError = document.querySelector(

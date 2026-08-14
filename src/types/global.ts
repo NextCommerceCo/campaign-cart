@@ -1663,7 +1663,7 @@ export interface ShippingMethod {
 }
 
 /**
- * How the shopper chose to pay, in the SDK's own spelling.
+ * The ways of paying this SDK release knows by name, in its own spelling.
  *
  * Not the same vocabulary as the markup or the API, and all three differ on the
  * card entry alone: a radio says `credit`, this type says `credit-card`, and the
@@ -1675,7 +1675,7 @@ export interface ShippingMethod {
  * API answers with a `payment_complete_url` for the shopper to finish paying at.
  * See {@link Order.payment_complete_url}.
  */
-export type CheckoutPaymentMethod =
+export type KnownCheckoutPaymentMethod =
   | 'card_token'
   | 'paypal'
   | 'apple_pay'
@@ -1689,6 +1689,18 @@ export type CheckoutPaymentMethod =
   | 'sepa_direct'
   | 'swish'
   | 'twint';
+
+/**
+ * The method the shopper chose: one the SDK knows by name, or any other name the
+ * page offered.
+ *
+ * The open end is deliberate. A store can be given a new way to pay before this
+ * SDK release knows about it, so a name that is not on the list is **passed
+ * through to the orders API** rather than replaced with a card — the API decides
+ * whether it can charge that way. See {@link KnownCheckoutPaymentMethod} for the
+ * names the SDK does recognise, which are the ones an editor will suggest.
+ */
+export type CheckoutPaymentMethod = KnownCheckoutPaymentMethod | (string & {});
 
 /**
  * The state of the checkout in progress — the collected form values, chosen

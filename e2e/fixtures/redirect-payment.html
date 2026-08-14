@@ -67,6 +67,14 @@
         <div data-next-payment-form></div>
       </div>
 
+      <!-- A method this SDK build has no name for. The store may still offer it,
+           so it has to reach the API rather than being read as a card. -->
+      <div data-next-payment-method="pix">
+        <input type="radio" name="payment_method" value="pix" id="pm-pix" />
+        <label for="pm-pix">Pix</label>
+        <div data-next-payment-form></div>
+      </div>
+
       <button type="submit" data-next-checkout-submit>Complete order</button>
     </form>
 
