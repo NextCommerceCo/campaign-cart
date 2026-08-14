@@ -22,7 +22,7 @@
 
   **SEPA Direct Debit is `sepa_debit`, and only that.** The platform's payment-methods guide calls the same method `sepa_direct`; the orders API does not take that name, so neither does the SDK. A page carrying it is refused rather than quietly working under a second identifier. No page could pay by SEPA before this release, so there is nothing to migrate: write `sepa_debit`.
 
-  Card, PayPal, Apple Pay, Google Pay and Klarna are unchanged, and [Payment methods](docs/guides/reference/data-attributes.md#payment-methods) lists all of them together. ([#74](https://github.com/NextCommerceCo/campaign-cart/issues/74))
+  PayPal, Apple Pay, Google Pay and Klarna are untouched, and the card answers to `credit` as it always has. [Payment methods](docs/guides/reference/data-attributes.md#payment-methods) lists all of them together. ([#74](https://github.com/NextCommerceCo/campaign-cart/issues/74))
 
 - **Receipts name the payment method.** A Klarna order printed `klarna` and now prints `Klarna`. Every method an order can carry has a name.
 
@@ -44,9 +44,11 @@
 
 ### Before you upgrade
 
-**Nothing to add to your pages.** Existing payment-method radios keep working.
+**Nothing to add to your pages.** Existing payment-method radios keep working: `credit`, `paypal`, `klarna`, `apple-pay` and `google-pay` all still select what they always did.
 
 **Check the spelling of any method you add.** A name the SDK does not know now goes to the API and comes back refused, where it used to fall back to the card form. The console names the value: `Payment method "…" is not one the SDK knows`.
+
+**The card answers to `credit` and `card_token`, and to nothing else.** `card` and `credit_card` reached the card form on earlier releases, but only through the fallback above, which is gone. Write `credit`, which is what the starter templates carry.
 
 **Receipt text changed.** `order.paymentMethod` prints `Klarna` where it printed `klarna`. If your own code or a tag reads that text, read the order's `payment_method` code instead.
 
