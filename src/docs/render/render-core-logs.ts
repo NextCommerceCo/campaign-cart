@@ -171,19 +171,22 @@ function index(groups: CoreLogGroup[]): string {
     ...areas.map(area =>
       blocks(
         `### ${area}`,
-        [
-          '| Prefix | What it does | Error | Warn | Info | Debug |',
-          '|---|---|---|---|---|---|',
-          ...groups
-            .filter(g => g.source.area === area)
-            .map(g => {
-              const n = (level: LogEntry['level']): string => {
-                const count = g.rows.filter(r => r.level === level).length;
-                return count === 0 ? '—' : String(count);
-              };
-              return `| \`[${g.source.prefix}]\` | ${cell(g.source.what)} | ${n('error')} | ${n('warn')} | ${n('info')} | ${n('debug')} |`;
-            }),
-        ].join('\n')
+        groups
+          .filter(g => g.source.area === area)
+          .map(g => {
+            // A count per level, as prose. The six-column matrix this replaced
+            // could not fit the site's content column once the "what it does"
+            // text ran past a few words.
+            const counts = LEVELS.map(({ level }) => {
+              const count = g.rows.filter(r => r.level === level).length;
+              return count === 0 ? undefined : `${count} ${level}`;
+            }).filter(Boolean);
+            const prints = counts.length
+              ? `Prints ${counts.join(', ')}.`
+              : 'Prints nothing on its own.';
+            return `- **\`[${g.source.prefix}]\`** ${cell(g.source.what)} ${prints}`;
+          })
+          .join('\n')
       )
     )
   );

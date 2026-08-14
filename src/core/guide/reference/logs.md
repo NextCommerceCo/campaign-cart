@@ -69,110 +69,92 @@ Console lines are prefixed with the part of the SDK that produced them. Find the
 
 ### Boot and wiring
 
-| Prefix | What it does | Error | Warn | Info | Debug |
-|---|---|---|---|---|---|
-| `[SDKInitializer]` | Detects the visitor's country and picks the display currency, before campaign prices are fetched so they arrive in the right currency. Runs as its own boot step, right after configuration loads. | 1 | 4 | 8 | 1 |
-| `[SDKInitializer]` | Captures where the visitor came from — funnel name, UTM transfer, conversion timestamp, landing page — and keeps the attribution event listeners idempotent across a boot retry or `reinitialize()`. Runs as its own boot step, right after location/currency detection. | 1 | — | 1 | 6 |
-| `[SDKInitializer]` | The `forcePackageId` / `forceShippingId` URL overrides and the session's captured URL parameters, applied once configuration and campaign data are loaded. | 2 | 4 | 5 | 5 |
-| `[SDKInitializer]` | Clears the SDK's own sessionStorage, localStorage, and cookies when the page carries `?reset=true`, for a clean-slate reload. | — | — | 2 | — |
-| `[SDKInitializer]` | Builds `window.nextDebug` — the console surface for inspecting and driving the stores, the cart, campaign, attribution, and analytics from devtools. | — | — | — | 1 |
-| `[SDKInitializer]` | Starts the SDK: reads configuration, delegates to location/currency detection and attribution capture, loads the campaign, applies URL parameters such as `forcePackageId`, then hands over to the DOM scan. Most "the page did nothing" investigations start here. | 3 | 5 | 15 | 10 |
-| `[AttributeScanner]` | Finds every `data-next-*` element on the page and starts the feature bound to it. If a feature never runs, this is where its element was either skipped or failed to initialize. | 6 | 4 | 3 | 28 |
-| `[NextCommerce]` | Part of the `window.next` API — the analytics calls a page makes by hand — tracking a view, a sign-up, or a custom event through the SDK rather than the provider. | — | 1 | — | 3 |
-| `[NextCommerce]` | Part of the `window.next` API — metadata and attribution a page sets on itself, which every later order carries. | 7 | — | — | 4 |
-| `[NextCommerce]` | Part of the `window.next` API — the cart operations a page drives directly — adding, swapping, clearing. | — | — | — | 1 |
-| `[NextCommerce]` | Part of the `window.next` API — the callbacks a page registers through `next.on…`, and the SDK calling them back. | 1 | — | — | — |
-| `[NextCommerce]` | Part of the `window.next` API — exit-intent and FOMO popups a page turns on or off from JavaScript. | 2 | — | — | 2 |
-| `[NextCommerce]` | Part of the `window.next` API — post-purchase upsells accepted from JavaScript rather than from markup. | 1 | — | 1 | — |
-| `[NextCommerce]` | Part of the `window.next` API — the URL parameters a page reads or applies through the API. | — | — | — | 5 |
-| `[ErrorHandler]` | Catches uncaught page errors and rejected promises, wraps them with SDK version and URL, and re-publishes them as the `error:occurred` event. | 1 | — | — | 1 |
-| `[StorageManager]` | The thin wrapper the SDK uses for its own sessionStorage and localStorage reads and writes. Its errors are storage being unavailable, not data being wrong. | 4 | — | — | 5 |
+- **`[SDKInitializer]`** Detects the visitor's country and picks the display currency, before campaign prices are fetched so they arrive in the right currency. Runs as its own boot step, right after configuration loads. Prints 1 error, 4 warn, 8 info, 1 debug.
+- **`[SDKInitializer]`** Captures where the visitor came from — funnel name, UTM transfer, conversion timestamp, landing page — and keeps the attribution event listeners idempotent across a boot retry or `reinitialize()`. Runs as its own boot step, right after location/currency detection. Prints 1 error, 1 info, 6 debug.
+- **`[SDKInitializer]`** The `forcePackageId` / `forceShippingId` URL overrides and the session's captured URL parameters, applied once configuration and campaign data are loaded. Prints 2 error, 4 warn, 5 info, 5 debug.
+- **`[SDKInitializer]`** Clears the SDK's own sessionStorage, localStorage, and cookies when the page carries `?reset=true`, for a clean-slate reload. Prints 2 info.
+- **`[SDKInitializer]`** Builds `window.nextDebug` — the console surface for inspecting and driving the stores, the cart, campaign, attribution, and analytics from devtools. Prints 1 debug.
+- **`[SDKInitializer]`** Starts the SDK: reads configuration, delegates to location/currency detection and attribution capture, loads the campaign, applies URL parameters such as `forcePackageId`, then hands over to the DOM scan. Most "the page did nothing" investigations start here. Prints 3 error, 5 warn, 15 info, 10 debug.
+- **`[AttributeScanner]`** Finds every `data-next-*` element on the page and starts the feature bound to it. If a feature never runs, this is where its element was either skipped or failed to initialize. Prints 6 error, 4 warn, 3 info, 28 debug.
+- **`[NextCommerce]`** Part of the `window.next` API — the analytics calls a page makes by hand — tracking a view, a sign-up, or a custom event through the SDK rather than the provider. Prints 1 warn, 3 debug.
+- **`[NextCommerce]`** Part of the `window.next` API — metadata and attribution a page sets on itself, which every later order carries. Prints 7 error, 4 debug.
+- **`[NextCommerce]`** Part of the `window.next` API — the cart operations a page drives directly — adding, swapping, clearing. Prints 1 debug.
+- **`[NextCommerce]`** Part of the `window.next` API — the callbacks a page registers through `next.on…`, and the SDK calling them back. Prints 1 error.
+- **`[NextCommerce]`** Part of the `window.next` API — exit-intent and FOMO popups a page turns on or off from JavaScript. Prints 2 error, 2 debug.
+- **`[NextCommerce]`** Part of the `window.next` API — post-purchase upsells accepted from JavaScript rather than from markup. Prints 1 error, 1 info.
+- **`[NextCommerce]`** Part of the `window.next` API — the URL parameters a page reads or applies through the API. Prints 5 debug.
+- **`[ErrorHandler]`** Catches uncaught page errors and rejected promises, wraps them with SDK version and URL, and re-publishes them as the `error:occurred` event. Prints 1 error, 1 debug.
+- **`[StorageManager]`** The thin wrapper the SDK uses for its own sessionStorage and localStorage reads and writes. Its errors are storage being unavailable, not data being wrong. Prints 4 error, 5 debug.
 
 ### Shared base
 
-| Prefix | What it does | Error | Warn | Info | Debug |
-|---|---|---|---|---|---|
-| `[{EnhancerClassName}]` | The behaviour every feature inherits: reading attributes, subscribing to stores, and the shared error path that turns a thrown error into a log line plus an `error:occurred` event. | 1 | — | — | — |
-| `[DOMObserver]` | Watches the page for elements added or attributes changed after boot, so markup injected by a page builder or an A/B tool still gets enhanced. | 2 | 1 | — | 10 |
-| `[AttributeParser]` | Turns attribute text into something the features can act on — including the comparison expressions behind `data-next-show` and `data-next-hide`. | 1 | — | — | 2 |
-| `[{DisplayEnhancerClassName}]` | Everything behind a `data-next-display` binding: resolving the namespaced path to a value, formatting it, and re-rendering when the value or the currency changes. Four `features/cart/**` display files extend it as well as the display features, which is why it is a base class here rather than a file in the display folder. | — | 1 | — | 2 |
-| `[DisplayErrorBoundary]` | Contains a failure inside one display binding so it cannot blank out the rest of the page. A line here means one element gave up, not that the SDK stopped — which is exactly the distinction to establish first when "some prices are missing". | 2 | — | — | — |
-| `[TemplateRenderer]` | Renders the `data-next-*` placeholder templates that cart, package, and order item rows are built from. A line here means one field in one row could not be formatted — the row still renders, with that field blank. | — | 1 | — | — |
-| `[DisplayValueValidator]` | Coerces a resolved value into the shape its format needs — a price to a 2-decimal number, a date string to a `Date`. Every line here means a value was replaced by a fallback, so the element rendered something plausible instead of the truth. These are the quietest wrong-number bugs in the SDK. | — | 5 | — | — |
+- **`[{EnhancerClassName}]`** The behaviour every feature inherits: reading attributes, subscribing to stores, and the shared error path that turns a thrown error into a log line plus an `error:occurred` event. Prints 1 error.
+- **`[DOMObserver]`** Watches the page for elements added or attributes changed after boot, so markup injected by a page builder or an A/B tool still gets enhanced. Prints 2 error, 1 warn, 10 debug.
+- **`[AttributeParser]`** Turns attribute text into something the features can act on — including the comparison expressions behind `data-next-show` and `data-next-hide`. Prints 1 error, 2 debug.
+- **`[{DisplayEnhancerClassName}]`** Everything behind a `data-next-display` binding: resolving the namespaced path to a value, formatting it, and re-rendering when the value or the currency changes. Four `features/cart/**` display files extend it as well as the display features, which is why it is a base class here rather than a file in the display folder. Prints 1 warn, 2 debug.
+- **`[DisplayErrorBoundary]`** Contains a failure inside one display binding so it cannot blank out the rest of the page. A line here means one element gave up, not that the SDK stopped — which is exactly the distinction to establish first when "some prices are missing". Prints 2 error.
+- **`[TemplateRenderer]`** Renders the `data-next-*` placeholder templates that cart, package, and order item rows are built from. A line here means one field in one row could not be formatted — the row still renders, with that field blank. Prints 1 warn.
+- **`[DisplayValueValidator]`** Coerces a resolved value into the shape its format needs — a price to a 2-decimal number, a date string to a `Date`. Every line here means a value was replaced by a fallback, so the element rendered something plausible instead of the truth. These are the quietest wrong-number bugs in the SDK. Prints 5 warn.
 
 ### Location and currency
 
-| Prefix | What it does | Error | Warn | Info | Debug |
-|---|---|---|---|---|---|
-| `[CountryService]` | Validates and formats a postal code against a country’s rules, and holds the built-in per-country defaults used when the CDN has none for a country. | 1 | — | — | — |
-| `[CountryService]` | Filters the country and state lists to what the campaign actually ships to, and picks a fallback country when the visitor’s detected one is not on that list. | — | 2 | 7 | — |
-| `[CountryService]` | Detects the visitor’s country, fetches and caches the country and state lists for the address form, and delegates postal-code rules and shipping-country filtering to its sibling modules. | 2 | 4 | — | 6 |
+- **`[CountryService]`** Validates and formats a postal code against a country’s rules, and holds the built-in per-country defaults used when the CDN has none for a country. Prints 1 error.
+- **`[CountryService]`** Filters the country and state lists to what the campaign actually ships to, and picks a fallback country when the visitor’s detected one is not on that list. Prints 2 warn, 7 info.
+- **`[CountryService]`** Detects the visitor’s country, fetches and caches the country and state lists for the address form, and delegates postal-code rules and shipping-country filtering to its sibling modules. Prints 2 error, 4 warn, 6 debug.
 
 ### Attribution
 
-| Prefix | What it does | Error | Warn | Info | Debug |
-|---|---|---|---|---|---|
-| `[AttributionCollector]` | Collects where the visitor came from — funnel name, UTM tags, Everflow click id, tracking-tag meta tags — and keeps it for the order. | — | 1 | 3 | 13 |
-| `[UtmTransfer]` | Copies the current page’s URL parameters onto the links leaving it, so attribution survives a click through to the next page. | 2 | — | — | 10 |
+- **`[AttributionCollector]`** Collects where the visitor came from — funnel name, UTM tags, Everflow click id, tracking-tag meta tags — and keeps it for the order. Prints 1 warn, 3 info, 13 debug.
+- **`[UtmTransfer]`** Copies the current page’s URL parameters onto the links leaving it, so attribution survives a click through to the next page. Prints 2 error, 10 debug.
 
 ### Analytics core
 
-| Prefix | What it does | Error | Warn | Info | Debug |
-|---|---|---|---|---|---|
-| `[NextAnalytics]` | The analytics entry point: reads configuration, builds the enabled providers, and accepts every event the rest of the SDK tracks. | 5 | 5 | 9 | 3 |
-| `[NextDataLayer]` | Pushes finished events onto `window.dataLayer` and fans them out to the providers, adding attribution and validating required fields on the way. | 8 | — | 1 | — |
-| `[AnalyticsConfig]` | Holds the per-provider settings — which fields each provider needs before it can be switched on. | 2 | — | — | — |
-| `[UserDataStorage]` | Remembers who the visitor is across pages — email, name, ids — in a cookie plus sessionStorage, so events after a redirect still identify them. | 2 | 2 | 2 | 4 |
-| `[EcommerceEvents]` | Builds the purchase-funnel events — view item, add to cart, begin checkout, purchase, upsell. Split across `ecommerce-events.browse.ts` / `.cart.ts` / `.checkout.ts` / `.upsell.ts`; this one logs a warn when the campaign store cannot be read for an accepted-upsell item. | — | 1 | — | — |
-| `[EcommerceEvents]` | Builds `dl_begin_checkout` and `dl_purchase` from the order the API returned. Logs an error when an order payload carries no identifier to report as `transaction_id`, because that purchase is dropped rather than sent with a made-up id. | 1 | — | — | — |
-| `[UserEvents]` | Builds the `dl_user_data` event that identifies the visitor and carries the current cart contents. | — | 1 | — | — |
-| `[EventValidator]` | Checks an event against its schema in debug mode, so a missing or mistyped field is caught while you are looking rather than in a report a week later. | 1 | — | — | — |
+- **`[NextAnalytics]`** The analytics entry point: reads configuration, builds the enabled providers, and accepts every event the rest of the SDK tracks. Prints 5 error, 5 warn, 9 info, 3 debug.
+- **`[NextDataLayer]`** Pushes finished events onto `window.dataLayer` and fans them out to the providers, adding attribution and validating required fields on the way. Prints 8 error, 1 info.
+- **`[AnalyticsConfig]`** Holds the per-provider settings — which fields each provider needs before it can be switched on. Prints 2 error.
+- **`[UserDataStorage]`** Remembers who the visitor is across pages — email, name, ids — in a cookie plus sessionStorage, so events after a redirect still identify them. Prints 2 error, 2 warn, 2 info, 4 debug.
+- **`[EcommerceEvents]`** Builds the purchase-funnel events — view item, add to cart, begin checkout, purchase, upsell. Split across `ecommerce-events.browse.ts` / `.cart.ts` / `.checkout.ts` / `.upsell.ts`; this one logs a warn when the campaign store cannot be read for an accepted-upsell item. Prints 1 warn.
+- **`[EcommerceEvents]`** Builds `dl_begin_checkout` and `dl_purchase` from the order the API returned. Logs an error when an order payload carries no identifier to report as `transaction_id`, because that purchase is dropped rather than sent with a made-up id. Prints 1 error.
+- **`[UserEvents]`** Builds the `dl_user_data` event that identifies the visitor and carries the current cart contents. Prints 1 warn.
+- **`[EventValidator]`** Checks an event against its schema in debug mode, so a missing or mistyped field is caught while you are looking rather than in a report a week later. Prints 1 error.
 
 ### Analytics
 
-| Prefix | What it does | Error | Warn | Info | Debug |
-|---|---|---|---|---|---|
-| `[EventBuilder]` | Session, page and campaign context attached to every analytics event. | — | 2 | — | — |
-| `[EventBuilder]` | Turning a cart or order line into the item shape every provider expects — price, discount and currency resolution live here. | — | 7 | — | — |
-| `[EventBuilder]` | The deprecated Elevar payload shape, kept for pages still reading it. | — | 1 | — | — |
-| `[RudderStack]` | The per-event property builders the RudderStack adapter sends. | — | — | — | 1 |
-| `[AutoEventListener]` | Cart events picked up from the event bus and pushed to the data layer. | 1 | 3 | — | 3 |
-| `[AutoEventListener]` | Checkout and order-completed events picked up from the event bus. | — | — | 1 | — |
-| `[AutoEventListener]` | Post-purchase upsell events picked up from the event bus. | — | 1 | 4 | 1 |
-| `[AutoEventListener]` | Exit-intent popup events picked up from the event bus. | — | — | — | 5 |
+- **`[EventBuilder]`** Session, page and campaign context attached to every analytics event. Prints 2 warn.
+- **`[EventBuilder]`** Turning a cart or order line into the item shape every provider expects — price, discount and currency resolution live here. Prints 7 warn.
+- **`[EventBuilder]`** The deprecated Elevar payload shape, kept for pages still reading it. Prints 1 warn.
+- **`[RudderStack]`** The per-event property builders the RudderStack adapter sends. Prints 1 debug.
+- **`[AutoEventListener]`** Cart events picked up from the event bus and pushed to the data layer. Prints 1 error, 3 warn, 3 debug.
+- **`[AutoEventListener]`** Checkout and order-completed events picked up from the event bus. Prints 1 info.
+- **`[AutoEventListener]`** Post-purchase upsell events picked up from the event bus. Prints 1 warn, 4 info, 1 debug.
+- **`[AutoEventListener]`** Exit-intent popup events picked up from the event bus. Prints 5 debug.
 
 ### Analytics tracking
 
-| Prefix | What it does | Error | Warn | Info | Debug |
-|---|---|---|---|---|---|
-| `[AutoEventListener]` | Turns the SDK’s own cart, upsell, and exit-intent events into analytics events, so a page gets tracking without writing any. | — | — | 1 | 4 |
-| `[MetaTagController]` | Fires `view_item` / `view_item_list` and scroll-depth events from `<meta>` tags, including reading the package id out of a URL parameter and waiting for a time, an element, or a scroll threshold. | — | 8 | 10 | 13 |
-| `[PendingEventsHandler]` | Holds events that were raised as the page was navigating away, and replays them on the next page so a redirect does not lose a purchase. | 4 | 2 | 2 | 6 |
-| `[PurchaseTracking]` | Decides whether an order may be reported as a purchase yet — an order still awaiting payment at a gateway may not — and remembers the orders already reported so one order produces one `dl_purchase`. | — | 7 | — | — |
-| `[UserDataTracker]` | Fires `dl_user_data` first on every page and again when the visitor is identified or the route changes. | — | — | 1 | 17 |
-| `[ViewItemListTracker]` | Detects the products present on a page and fires `view_item` / `view_item_list` for them without any meta tags. | — | 1 | 1 | 18 |
-| `[ListAttributionTracker]` | Remembers which list a product was clicked from so the next page’s events can say where the visitor came from within the site. | 3 | — | — | 7 |
+- **`[AutoEventListener]`** Turns the SDK’s own cart, upsell, and exit-intent events into analytics events, so a page gets tracking without writing any. Prints 1 info, 4 debug.
+- **`[MetaTagController]`** Fires `view_item` / `view_item_list` and scroll-depth events from `<meta>` tags, including reading the package id out of a URL parameter and waiting for a time, an element, or a scroll threshold. Prints 8 warn, 10 info, 13 debug.
+- **`[PendingEventsHandler]`** Holds events that were raised as the page was navigating away, and replays them on the next page so a redirect does not lose a purchase. Prints 4 error, 2 warn, 2 info, 6 debug.
+- **`[PurchaseTracking]`** Decides whether an order may be reported as a purchase yet — an order still awaiting payment at a gateway may not — and remembers the orders already reported so one order produces one `dl_purchase`. Prints 7 warn.
+- **`[UserDataTracker]`** Fires `dl_user_data` first on every page and again when the visitor is identified or the route changes. Prints 1 info, 17 debug.
+- **`[ViewItemListTracker]`** Detects the products present on a page and fires `view_item` / `view_item_list` for them without any meta tags. Prints 1 warn, 1 info, 18 debug.
+- **`[ListAttributionTracker]`** Remembers which list a product was clicked from so the next page’s events can say where the visitor came from within the site. Prints 3 error, 7 debug.
 
 ### Analytics providers
 
-| Prefix | What it does | Error | Warn | Info | Debug |
-|---|---|---|---|---|---|
-| `[{ProviderName}]` | The delivery contract every provider shares: the enabled and blocked-event gate, and reporting each event as sent, skipped, or failed. | 1 | 1 | — | 1 |
-| `[Facebook]` | Delivers events to the Meta Pixel (`fbq`). | — | 1 | — | — |
-| `[NextCampaign]` | Loads the NextCampaign script with the campaign API key and sends it the page view. | 2 | 2 | 6 | 2 |
-| `[RudderStack]` | Translates events into RudderStack’s track / page / identify calls. | — | 1 | 1 | — |
-| `[Custom]` | Posts batches of events to an endpoint you configure, with a retry queue for the ones that fail. | 2 | — | — | — |
+- **`[{ProviderName}]`** The delivery contract every provider shares: the enabled and blocked-event gate, and reporting each event as sent, skipped, or failed. Prints 1 error, 1 warn, 1 debug.
+- **`[Facebook]`** Delivers events to the Meta Pixel (`fbq`). Prints 1 warn.
+- **`[NextCampaign]`** Loads the NextCampaign script with the campaign API key and sends it the page view. Prints 2 error, 2 warn, 6 info, 2 debug.
+- **`[RudderStack]`** Translates events into RudderStack’s track / page / identify calls. Prints 1 warn, 1 info.
+- **`[Custom]`** Posts batches of events to an endpoint you configure, with a retry queue for the ones that fail. Prints 2 error.
 
 ### Debug tools
 
-| Prefix | What it does | Error | Warn | Info | Debug |
-|---|---|---|---|---|---|
-| `[DebugModule]` | Loads the debug overlay on demand when debug mode is on, so none of it is in the bundle a normal visitor downloads. | 2 | — | 2 | — |
-| `[DebugOverlay]` | The on-page debug panel itself — state inspectors, the event pipeline, and the country / currency / locale switchers. | — | — | 3 | 3 |
-| `[CountrySelector]` | The debug overlay’s country switcher, for checking an address form and shipping options as a visitor in another country. | 2 | 1 | 6 | 6 |
-| `[CurrencySelector]` | The debug overlay’s currency switcher, for checking prices in every currency the campaign offers. | 1 | 1 | 4 | 6 |
-| `[LocaleSelector]` | The debug overlay’s locale switcher, for checking how prices and dates are formatted. | 1 | 1 | 4 | 4 |
-| `[UpsellSelector]` | The debug overlay’s post-purchase upsell inspector: what the page offers and what is currently selected. | — | — | 1 | 12 |
+- **`[DebugModule]`** Loads the debug overlay on demand when debug mode is on, so none of it is in the bundle a normal visitor downloads. Prints 2 error, 2 info.
+- **`[DebugOverlay]`** The on-page debug panel itself — state inspectors, the event pipeline, and the country / currency / locale switchers. Prints 3 info, 3 debug.
+- **`[CountrySelector]`** The debug overlay’s country switcher, for checking an address form and shipping options as a visitor in another country. Prints 2 error, 1 warn, 6 info, 6 debug.
+- **`[CurrencySelector]`** The debug overlay’s currency switcher, for checking prices in every currency the campaign offers. Prints 1 error, 1 warn, 4 info, 6 debug.
+- **`[LocaleSelector]`** The debug overlay’s locale switcher, for checking how prices and dates are formatted. Prints 1 error, 1 warn, 4 info, 4 debug.
+- **`[UpsellSelector]`** The debug overlay’s post-purchase upsell inspector: what the page offers and what is currently selected. Prints 1 info, 12 debug.
 
 ## `[SDKInitializer]`
 

@@ -33,8 +33,17 @@ Real funnel pages mix three kinds of markup, and confusing them is the most comm
 **Activation attributes** turn an element into a feature and configure it in place:
 
 ```html
-<div data-next-bundle-selector data-next-selector-id="main" data-next-selection-mode="swap">
-  <div data-next-bundle-card data-next-bundle-id="qty-1" data-next-bundle-items='[{"packageId":1,"quantity":1}]' role="button"></div>
+<div
+  data-next-bundle-selector
+  data-next-selector-id="main"
+  data-next-selection-mode="swap"
+>
+  <div
+    data-next-bundle-card
+    data-next-bundle-id="qty-1"
+    data-next-bundle-items='[{"packageId":1,"quantity":1}]'
+    role="button"
+  ></div>
 </div>
 ```
 

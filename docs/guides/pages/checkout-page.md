@@ -18,8 +18,7 @@ The page declares itself in the head. See [Getting started](../start-here/gettin
 Everything else lives inside the form root:
 
 ```html
-<form data-next-checkout="form" method="post">
-</form>
+<form data-next-checkout="form" method="post"></form>
 ```
 
 ## 1. Package selection
@@ -27,17 +26,38 @@ Everything else lives inside the form root:
 The bundle selector presents the offer tiers as clickable cards. Each card declares its cart contents as JSON; clicking a card swaps the whole cart to that tier.
 
 ```html
-<div data-next-bundle-selector data-next-selector-id="drone-packages" data-next-selection-mode="swap" data-next-include-shipping="true" data-next-await="">
-  <div data-next-bundle-card data-next-bundle-id="drone-qty-1" data-next-shipping-id="2" data-next-bundle-items='[{"packageId":1,"quantity":1}]' data-next-selected="true" role="button">
+<div
+  data-next-bundle-selector
+  data-next-selector-id="drone-packages"
+  data-next-selection-mode="swap"
+  data-next-include-shipping="true"
+  data-next-await=""
+>
+  <div
+    data-next-bundle-card
+    data-next-bundle-id="drone-qty-1"
+    data-next-shipping-id="2"
+    data-next-bundle-items='[{"packageId":1,"quantity":1}]'
+    data-next-selected="true"
+    role="button"
+  >
     <img data-next-display="package.image" alt="">
     <div>1x <span data-next-display="package.name">Package Title</span></div>
-    <div data-next-bundle-display="hasDiscount">SAVE <span data-next-bundle-display="discountPercentage">-</span></div>
+    <div data-next-bundle-display="hasDiscount">
+      SAVE <span data-next-bundle-display="discountPercentage">-</span>
+    </div>
     <span data-next-bundle-display="originalUnitPrice">-</span>
     <span data-next-bundle-display="unitPrice">-</span>/ea
     <span data-next-bundle-display="originalPrice">-</span>
     <span data-next-bundle-display="price">-</span>
   </div>
-  <div data-next-bundle-card data-next-bundle-id="drone-qty-2" data-next-shipping-id="2" data-next-bundle-items='[{"packageId":1,"quantity":2}]' role="button">
+  <div
+    data-next-bundle-card
+    data-next-bundle-id="drone-qty-2"
+    data-next-shipping-id="2"
+    data-next-bundle-items='[{"packageId":1,"quantity":2}]'
+    role="button"
+  >
     <div>2x <span data-next-display="package.name">Package Title</span></div>
     <span data-next-bundle-display="price">-</span>
   </div>
@@ -59,21 +79,49 @@ You write ordinary inputs and name each one with `data-next-checkout-field`. The
 
 ```html
 <div data-next-component="shipping-form">
-  <input data-next-checkout-field="fname" autocomplete="given-name" placeholder="First Name*" type="text">
-  <input data-next-checkout-field="lname" autocomplete="family-name" placeholder="Last Name*" type="text">
-  <input data-next-checkout-field="email" autocomplete="email" placeholder="Email*" type="email">
-  <input data-next-checkout-field="phone" autocomplete="tel-full" placeholder="Phone" type="tel">
+  <input
+    data-next-checkout-field="fname"
+    autocomplete="given-name"
+    placeholder="First Name*"
+    type="text">
+  <input
+    data-next-checkout-field="lname"
+    autocomplete="family-name"
+    placeholder="Last Name*"
+    type="text">
+  <input
+    data-next-checkout-field="email"
+    autocomplete="email"
+    placeholder="Email*"
+    type="email">
+  <input
+    data-next-checkout-field="phone"
+    autocomplete="tel-full"
+    placeholder="Phone"
+    type="tel">
   <select data-next-checkout-field="country" autocomplete="country-name">
     <option value="">Select Country</option>
   </select>
-  <input data-next-checkout-field="address1" autocomplete="address-line1" placeholder="Address*">
-  <input data-next-checkout-field="address2" autocomplete="address-line2" placeholder="Apartment, suite, etc. (optional)">
+  <input
+    data-next-checkout-field="address1"
+    autocomplete="address-line1"
+    placeholder="Address*">
+  <input
+    data-next-checkout-field="address2"
+    autocomplete="address-line2"
+    placeholder="Apartment, suite, etc. (optional)">
   <div data-next-component="location" class="next-hidden">
-    <input data-next-checkout-field="city" autocomplete="address-level2" placeholder="City*">
+    <input
+      data-next-checkout-field="city"
+      autocomplete="address-level2"
+      placeholder="City*">
     <select data-next-checkout-field="province" autocomplete="address-level1">
       <option value="">Select State</option>
     </select>
-    <input data-next-checkout-field="postal" autocomplete="postal-code" placeholder="ZIP Code*">
+    <input
+      data-next-checkout-field="postal"
+      autocomplete="postal-code"
+      placeholder="ZIP Code*">
   </div>
 </div>
 ```
@@ -86,7 +134,12 @@ An order bump is a checkbox card that adds a second package to the order when to
 
 ```html
 <div data-next-package-toggle data-next-await="">
-  <div data-next-toggle-card data-next-is-upsell="true" data-next-package-sync="1" data-next-package-id="7">
+  <div
+    data-next-toggle-card
+    data-next-is-upsell="true"
+    data-next-package-sync="1"
+    data-next-package-id="7"
+  >
     <div>Get Extended Warranty</div>
     <span data-next-toggle-display="originalUnitPrice">--</span>
     <span data-next-toggle-display="unitPrice">--</span>/ea
@@ -109,8 +162,12 @@ Payment methods are declared as radio sections. The card fields are the delibera
       <div data-next-component="credit-error-text">Error message</div>
     </div>
     <div data-next-checkout-field="cc-number"></div>
-    <select data-next-checkout-field="exp-month"><option value="">Exp. Month</option></select>
-    <select data-next-checkout-field="exp-year"><option value="">Exp. Year</option></select>
+    <select data-next-checkout-field="exp-month">
+      <option value="">Exp. Month</option>
+    </select>
+    <select data-next-checkout-field="exp-year">
+      <option value="">Exp. Year</option>
+    </select>
     <div data-next-checkout-field="cvv"></div>
   </div>
 </div>

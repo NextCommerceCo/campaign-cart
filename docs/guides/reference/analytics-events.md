@@ -15,13 +15,13 @@ There is no default analytics setup and no meta tag creates one. Only `window.ne
 ```html
 <script>
   window.nextConfig = {
-    apiKey: "{YOUR_CAMPAIGN_API_KEY}",
+    apiKey: '{YOUR_CAMPAIGN_API_KEY}',
     analytics: {
       enabled: true,
-      mode: "auto",
+      mode: 'auto',
       debug: false,
-      providers: {}
-    }
+      providers: {},
+    },
   };
 </script>
 ```
@@ -102,13 +102,35 @@ What that means for your funnel:
 
 ## Providers
 
-| Provider | Config key | Needs | Gets |
-|---|---|---|---|
-| NextCampaign | `analytics.providers.nextCampaign` | the campaign `apiKey` | Page views only, reported to the campaign analytics platform. |
-| GTM | `analytics.providers.gtm` | nothing | Every event, pushed verbatim to `window.dataLayer` and `window.ElevarDataLayer`. |
-| Facebook | `analytics.providers.facebook` | `settings.pixelId` | 19 mapped events via `fbq`: `dl_purchase` becomes `Purchase`, and so on. `dl_upsell_purchase` has no mapping and is dropped, so upsell revenue never reaches Meta from the browser. |
-| RudderStack | `analytics.providers.rudderstack` | the page's `rudderanalytics` SDK | 18 events renamed to the RudderStack ecommerce spec: `dl_purchase` becomes `Order Completed`. |
-| Custom | `analytics.providers.custom` | `settings.endpoint` | Every event, POSTed to your endpoint in batches. A failed batch is dropped (the built-in retry never engages), so don't treat delivery as guaranteed. |
+### NextCampaign
+
+`analytics.providers.nextCampaign`, needs the campaign `apiKey`.
+
+Page views only, reported to the campaign analytics platform.
+
+### GTM
+
+`analytics.providers.gtm`, needs nothing.
+
+Every event, pushed verbatim to `window.dataLayer` and `window.ElevarDataLayer`.
+
+### Facebook
+
+`analytics.providers.facebook`, needs `settings.pixelId`.
+
+19 mapped events via `fbq`: `dl_purchase` becomes `Purchase`, and so on. `dl_upsell_purchase` has no mapping and is dropped, so upsell revenue never reaches Meta from the browser.
+
+### RudderStack
+
+`analytics.providers.rudderstack`, needs the page's `rudderanalytics` SDK.
+
+18 events renamed to the RudderStack ecommerce spec: `dl_purchase` becomes `Order Completed`.
+
+### Custom
+
+`analytics.providers.custom`, needs `settings.endpoint`.
+
+Every event, POSTed to your endpoint in batches. A failed batch is dropped (the built-in retry never engages), so don't treat delivery as guaranteed.
 
 Each provider accepts `blockedEvents: ["dl_page_view"]` to suppress names it would otherwise forward. Matching is verbatim against the canonical name: `"purchase"` blocks nothing, `"dl_purchase"` does.
 

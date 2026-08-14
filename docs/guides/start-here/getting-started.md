@@ -16,12 +16,15 @@ Every page in a live funnel carries the same three things in its `<head>`, in th
 <head>
   <script>
     window.nextConfig = {
-      apiKey: "{YOUR_CAMPAIGN_API_KEY}",
+      apiKey: '{YOUR_CAMPAIGN_API_KEY}',
     };
   </script>
   <meta name="next-page-type" content="checkout">
   <meta name="next-success-url" content="/upsell-1/">
-  <script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.4.34/dist/loader.js" type="module"></script>
+  <script
+    src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.4.34/dist/loader.js"
+    type="module"
+  ></script>
 </head>
 ```
 
@@ -35,7 +38,10 @@ The starter templates keep that same configuration in a shared file instead, so 
   <meta name="next-funnel" content="Apollo">
   <meta name="next-success-url" content="/upsell-1/">
   <meta name="next-page-type" content="checkout">
-  <script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.4.34/dist/loader.js" type="module"></script>
+  <script
+    src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.4.34/dist/loader.js"
+    type="module"
+  ></script>
 </head>
 ```
 
@@ -49,7 +55,10 @@ A page can also run without a config script at all: `next-api-key` as a meta tag
 <head>
   <meta name="next-api-key" content="{YOUR_CAMPAIGN_API_KEY}">
   <meta name="next-page-type" content="product">
-  <script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.4.34/dist/loader.js" type="module"></script>
+  <script
+    src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.4.34/dist/loader.js"
+    type="module"
+  ></script>
 </head>
 ```
 
@@ -67,13 +76,11 @@ flowchart LR
   D -- accept / decline URL --> E[Receipt]
 ```
 
-| Funnel step | `next-page-type` | What the page does | Build it with |
-|---|---|---|---|
-| Presell | `product` | Sells; links forward to the landing page | [Landing & Presell](../pages/landing-presell.md) |
-| Landing | `product` | Sells; links to checkout | [Landing & Presell](../pages/landing-presell.md) |
-| Checkout | `checkout` | Creates the order | [Checkout](../pages/checkout-page.md) |
-| Upsell | `upsell` | Adds to the already-paid order | [Upsell](../pages/upsell-page.md) |
-| Receipt | `receipt` | Confirms the order | [Receipt](../pages/receipt-page.md) |
+- **Presell** declares `product`. Sells, and links forward to the landing page. Build it with [Landing & Presell](../pages/landing-presell.md).
+- **Landing** declares `product`. Sells, and links to checkout. Build it with [Landing & Presell](../pages/landing-presell.md).
+- **Checkout** declares `checkout`. Creates the order. Build it with [Checkout](../pages/checkout-page.md).
+- **Upsell** declares `upsell`. Adds to the already-paid order. Build it with [Upsell](../pages/upsell-page.md).
+- **Receipt** declares `receipt`. Confirms the order. Build it with [Receipt](../pages/receipt-page.md).
 
 The links in the chain are meta tags:
 
