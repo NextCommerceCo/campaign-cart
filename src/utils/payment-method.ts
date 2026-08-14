@@ -17,21 +17,19 @@
 /**
  * The platform's own labels, keyed by the code the orders API uses.
  *
+ * One entry per {@link PaymentMethod} and no others, which
+ * `utils/tests/payment-method.test.ts` asserts: a method added to the API union
+ * without a label here, or a label for a code the API cannot send, both fail.
+ *
  * `card_token` is the one deliberate difference from the API's own wording: it
  * calls that "Card Token", which is a word about plumbing, and a shopper reading
  * their own receipt is being told how they paid.
  *
  * `iDEAL` and `PayPal` keep their house capitalisation, which is the reason this
  * is a table and not a title-case function over the code.
- *
- * `sepa_direct` is here for reading only. The SDK sends SEPA Direct Debit as
- * `sepa_debit` and accepts no other name for it, but the platform's own
- * payment-methods guide calls it `sepa_direct`, so an order recorded through
- * another integration can come back under that name and still has to print.
  */
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   card_token: 'Credit Card',
-  credit_card: 'Credit Card',
   saved_card: 'Saved Card',
   apple_pay: 'Apple Pay',
   google_pay: 'Google Pay',
@@ -44,7 +42,6 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   klarna: 'Klarna',
   link: 'Link',
   sepa_debit: 'SEPA Direct Debit',
-  sepa_direct: 'SEPA Direct Debit',
   sofort: 'Sofort',
   swish: 'Swish',
   twint: 'Twint',

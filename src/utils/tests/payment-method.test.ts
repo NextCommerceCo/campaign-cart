@@ -1,3 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { describe, it, expect } from 'vitest';
 
 import { paymentMethodLabel } from '../payment-method';
@@ -10,7 +14,6 @@ import { paymentMethodLabel } from '../payment-method';
 describe('paymentMethodLabel', () => {
   it.each([
     ['card_token', 'Credit Card'],
-    ['credit_card', 'Credit Card'],
     ['saved_card', 'Saved Card'],
     ['apple_pay', 'Apple Pay'],
     ['google_pay', 'Google Pay'],
@@ -23,9 +26,6 @@ describe('paymentMethodLabel', () => {
     ['klarna', 'Klarna'],
     ['link', 'Link'],
     ['sepa_debit', 'SEPA Direct Debit'],
-    // The platform's payment-methods guide calls SEPA this; an order may carry
-    // either name and a receipt has to read the same way.
-    ['sepa_direct', 'SEPA Direct Debit'],
     ['sofort', 'Sofort'],
     ['swish', 'Swish'],
     ['twint', 'Twint'],
@@ -44,5 +44,43 @@ describe('paymentMethodLabel', () => {
     // either: a raw code on a receipt gets reported, an invented label does not.
     expect(paymentMethodLabel('pix')).toBe('pix');
     expect(paymentMethodLabel('')).toBe('');
+  });
+});
+
+/**
+ * The table and the API's own union have to stay the same set.
+ *
+ * Read from the source rather than restated here, because a hand-kept copy is the
+ * thing that drifts: this is what fails when a method is added to `PaymentMethod`
+ * and nobody gives it a name, and when a label is left behind for a code the API
+ * can no longer send.
+ */
+describe('the label table covers PaymentMethod exactly', () => {
+  // `import.meta.url` is a Vite `/@fs/…` URL under Vitest, so it is converted
+  // rather than read as a path. Same shape as `src/tests/docs/*`.
+  const root = join(dirname(fileURLToPath(import.meta.url)), '../../..');
+
+  function unionValues(): string[] {
+    const src = readFileSync(join(root, 'src/types/api.ts'), 'utf8');
+    const union = src.split('export type PaymentMethod =')[1]?.split(';')[0];
+    return [...(union ?? '').matchAll(/'([a-z_]+)'/g)].map(m => m[1] as string);
+  }
+
+  function labelKeys(): string[] {
+    const src = readFileSync(join(root, 'src/utils/payment-method.ts'), 'utf8');
+    const table = src
+      .split('PAYMENT_METHOD_LABELS: Record<string, string> = {')[1]
+      ?.split('};')[0];
+    return [...(table ?? '').matchAll(/^\s+(\w+):/gm)].map(m => m[1] as string);
+  }
+
+  it('has one label per method the API can send', () => {
+    expect(labelKeys().sort()).toEqual(unionValues().sort());
+  });
+
+  it('labels every method the API can send', () => {
+    for (const code of unionValues()) {
+      expect(paymentMethodLabel(code)).not.toBe(code);
+    }
   });
 });
