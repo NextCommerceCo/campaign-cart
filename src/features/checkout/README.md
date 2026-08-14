@@ -303,7 +303,7 @@ Fields are found by either:
 Standard field names: `fname`, `lname`, `email`, `phone`, `address1`, `address2`, `city`, `province`, `postal`, `country`, `card-number`, `card-expiry`, `card-cvv`, `card-name`
 
 ### Payment method detection
-Reads `[data-next-payment-method]` or `[os-payment-method]` elements. Supported values: `credit`, `paypal`, `apple-pay`, `google-pay`, `klarna`.
+Reads `[data-next-payment-method]` or `[os-payment-method]` elements. Supported values: `credit`, `paypal`, `apple-pay`, `google-pay`, `klarna`, `affirm`, `bancontact`, `ideal`, `link`, `sepa-direct`, `swish`, `twint`. Separators and case are ignored (`apple-pay` = `apple_pay`), and `constants/field-mappings.ts` holds the one table that maps a value to the store's name and on to the API's.
 
 ### Shipping / billing form containers
 - `[data-next-component="shipping-form"]` or `[os-checkout-component="shipping-form"]`

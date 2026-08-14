@@ -8,10 +8,12 @@
  * service, the shipping side needs the analytics latch.
  *
  * **Payment method.** The radio's value is the page's word (`credit`, `paypal`,
- * `apple-pay`…); the store's is the API's (`credit-card`, `paypal`, `apple_pay`…), so
- * every value is mapped rather than passed through, and an unrecognised one falls back to
- * the card form instead of leaving the shopper with no payment fields. Any payment error
- * still on the page is hidden — it belonged to the method they just moved away from.
+ * `apple-pay`…); the store's is close to the API's (`credit-card`, `paypal`, `apple_pay`…),
+ * so every value is mapped rather than passed through — through
+ * {@link toCheckoutPaymentMethod}, which is also what the startup pass reads, so the two
+ * cannot disagree about what a radio means. An unrecognised one is warned about and falls
+ * back to the card form instead of leaving the shopper with no payment fields. Any payment
+ * error still on the page is hidden — it belonged to the method they just moved away from.
  *
  * **Shipping method.** The radio's value is a shipping method's `ref_id`, and **the
  * campaign says which ids exist, what each is called and what it costs** — the SDK holds
@@ -33,24 +35,8 @@ import { useCampaignStore } from '@/state/campaign';
 import { cartOperations } from '@/state/cart';
 import { useCheckoutStore } from '@/state/checkout';
 
+import { toCheckoutPaymentMethod } from '../constants/field-mappings';
 import type { UIService } from '../services/ui-service';
-
-/** The page's word for a payment method → the one the orders API uses. */
-const PAYMENT_METHOD_MAP: Record<
-  string,
-  | 'card_token'
-  | 'paypal'
-  | 'apple_pay'
-  | 'google_pay'
-  | 'klarna'
-  | 'credit-card'
-> = {
-  credit: 'credit-card',
-  paypal: 'paypal',
-  'apple-pay': 'apple_pay',
-  'google-pay': 'google_pay',
-  klarna: 'klarna',
-};
 
 /** GA4's `shipping_tier` for each method code. */
 const SHIPPING_TIER_MAP: Record<string, string> = {
@@ -63,6 +49,8 @@ const SHIPPING_TIER_MAP: Record<string, string> = {
 export interface PaymentMethodContext {
   /** Reveals the chosen method's fields and collapses the rest. */
   ui: UIService;
+  /** Reports a radio value the SDK has no payment method for. */
+  logger: Logger;
 }
 
 /** What {@link handleShippingMethodChange} needs from the checkout form. */
@@ -82,10 +70,14 @@ export interface ShippingMethodContext {
  * are complete (`CreditCardService`), and for an express method when the button is pressed
  * (`ExpressCheckoutProcessor`).
  *
+ * A method the SDK does not know is warned about rather than accepted silently: the store
+ * would otherwise hold `credit-card` for a shopper who chose iDEAL, and the order would go
+ * to the API as a card — the whole of issue #74.
+ *
  * @example
  * ```ts
  * radio.addEventListener('change', event =>
- *   handlePaymentMethodChange({ ui: this.ui }, event)
+ *   handlePaymentMethodChange({ ui: this.ui, logger: this.logger }, event)
  * );
  * ```
  */
@@ -96,8 +88,13 @@ export function handlePaymentMethodChange(
   const target = event.target as HTMLInputElement;
   const checkoutStore = useCheckoutStore.getState();
 
-  const mappedMethod = PAYMENT_METHOD_MAP[target.value] || 'credit-card';
-  checkoutStore.setPaymentMethod(mappedMethod as any);
+  const mappedMethod = toCheckoutPaymentMethod(target.value);
+  if (!mappedMethod) {
+    ctx.logger.warn(
+      `Payment method "${target.value}" is not one the SDK offers — using the card form`
+    );
+  }
+  checkoutStore.setPaymentMethod(mappedMethod ?? 'credit-card');
 
   // Hide any payment-specific errors when switching methods
   const paypalError = document.querySelector(

@@ -46,7 +46,15 @@ the two can never drift apart.
   validation on one; phone is the usual case.
 - Payment methods are declared in markup with short names (`credit`, `paypal`,
   `apple-pay`, …). The SDK translates them to the API's names, so the two
-  vocabularies never have to be reconciled by hand.
+  vocabularies never have to be reconciled by hand. A name it does not know falls
+  back to the card form and logs
+  `Payment method "…" is not one the SDK offers`.
+- **A redirect method skips tokenization and nothing else.** iDEAL, Bancontact,
+  SEPA, TWINT, Swish, Affirm, Link and Klarna collect no payment details here, so
+  the form validates, captures the shopper's details and creates the order as
+  usual — and then sends the shopper to the `payment_complete_url` the
+  API answered with. That URL always wins over a success URL of your own, because
+  the order it belongs to has not been paid for yet.
 - **Shipping choices come from the campaign, not from the SDK.** A
   `input[name="shipping_method"]` radio carries a shipping method's `ref_id`, and
   choosing it stores that campaign entry's code and price — so a total on screen

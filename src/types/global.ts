@@ -1663,6 +1663,34 @@ export interface ShippingMethod {
 }
 
 /**
+ * How the shopper chose to pay, in the SDK's own spelling.
+ *
+ * Not the same vocabulary as the markup or the API, and all three differ on the
+ * card entry alone: a radio says `credit`, this type says `credit-card`, and the
+ * orders API is sent `card_token`. The SDK translates in both directions, so a
+ * page never spells an API value and a listener never sees a markup one.
+ *
+ * Everything after `klarna` is a **redirect method**: there is no form to fill in
+ * and no token to collect, so the order is created with the method on it and the
+ * API answers with a `payment_complete_url` for the shopper to finish paying at.
+ * See {@link Order.payment_complete_url}.
+ */
+export type CheckoutPaymentMethod =
+  | 'card_token'
+  | 'paypal'
+  | 'apple_pay'
+  | 'google_pay'
+  | 'credit-card'
+  | 'klarna'
+  | 'affirm'
+  | 'bancontact'
+  | 'ideal'
+  | 'link'
+  | 'sepa_direct'
+  | 'swish'
+  | 'twint';
+
+/**
  * The state of the checkout in progress — the collected form values, chosen
  * payment method, and which step the shopper is on. Delivered with the
  * `checkout:started` event.
@@ -1671,13 +1699,7 @@ export interface CheckoutData {
   /** Collected checkout form field values, keyed by field name. */
   formData: Record<string, any>;
   /** The payment method the shopper selected. */
-  paymentMethod:
-    | 'card_token'
-    | 'paypal'
-    | 'apple_pay'
-    | 'google_pay'
-    | 'credit-card'
-    | 'klarna';
+  paymentMethod: CheckoutPaymentMethod;
   /** `true` while the order is being submitted. */
   isProcessing?: boolean;
   /** Current step index in a multi-step checkout. */

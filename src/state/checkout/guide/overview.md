@@ -73,7 +73,9 @@ checkout always sends the shopper back through the hosted card fields.
 - **`paymentMethod` is a UI-side vocabulary that is mapped at submit.** The order
   builder translates it through `API_PAYMENT_METHOD_MAP` and falls back to
   `card_token` for anything unmapped. Every method the store can hold is mapped,
-  `klarna` included.
+  the redirect ones (`ideal`, `bancontact`, `sepa_direct`, `twint`, `swish`,
+  `affirm`, `link`, `klarna`) included — only the card entry actually changes
+  name on the way.
 - **Express choices do not outlive the page.** `apple_pay`, `google_pay`, and
   `paypal` are written to storage as `credit-card`, because the express session
   they belong to is gone after a load.

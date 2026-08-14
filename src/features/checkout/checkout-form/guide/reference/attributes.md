@@ -110,8 +110,15 @@ Marks a payment method choice — a radio or a button — and names the method i
 - `apple-pay` — Apple Pay.
 - `google-pay` — Google Pay.
 - `klarna` — Klarna.
+- `affirm` — Affirm.
+- `bancontact` — Bancontact.
+- `ideal` — iDEAL.
+- `link` — Link.
+- `sepa-direct` — SEPA Direct Debit. `sepa-debit` and `sepa` select the same method.
+- `swish` — Swish.
+- `twint` — TWINT.
 
-> **Watch out:** These are the markup spellings; the API names differ (`credit` becomes `card_token`). Use the values above in HTML and let the SDK translate.
+> **Watch out:** These are the markup spellings; the API names differ (`credit` becomes `card_token`). Use the values above in HTML and let the SDK translate. `-` and `_` are interchangeable and case does not matter, so `apple-pay` and `APPLE_PAY` select the same method. A value that is not on this list is **not** an error: it falls back to the card form, with `Payment method "…" is not one the SDK offers` in the console — so a typo shows up as a shopper being asked for a card.
 
 ## Structural components
 
@@ -155,7 +162,7 @@ These are not placed on the element this feature is bound to — look for them o
 
 | Name | Values | Meaning |
 |---|---|---|
-| `data-next-payment-method` | `credit` / `paypal` / `apple-pay` / `google-pay` / `klarna` | Wraps one payment choice inside the form, and names the method it offers. The feature looks for a radio input and a `[data-next-payment-form]` **inside** this wrapper, so a payment form that is not nested in one is never revealed or collapsed. **Watch out:** These markup spellings differ from the names the store and the API use (`credit` maps to `credit-card` and `card_token`). Use the values above in HTML and let the SDK translate. |
+| `data-next-payment-method` | `credit` / `paypal` / `apple-pay` / `google-pay` / `klarna` / `affirm` / `bancontact` / `ideal` / `link` / `sepa-direct` / `swish` / `twint` | Wraps one payment choice inside the form, and names the method it offers. The feature looks for a radio input and a `[data-next-payment-form]` **inside** this wrapper, so a payment form that is not nested in one is never revealed or collapsed. **Watch out:** These markup spellings differ from the names the store and the API use (`credit` maps to `credit-card` and `card_token`). Use the values above in HTML and let the SDK translate. Everything after `klarna` is a **redirect method**: it has no fields to reveal, so its `[data-next-payment-form]` can be empty — the shopper is sent to the payment provider to pay once the order exists. |
 | `data-next-payment-form` | — | Marks the fields belonging to a payment method, inside that method's container. The form is revealed when the method is chosen and collapsed when another is — so card fields are not in the tab order while PayPal is selected. |
 
 ## Set by the feature
@@ -242,9 +249,11 @@ The order of events is the fastest way to see where a checkout stopped:
 declined order alike.
 
 **Nothing here announces that the order was created**, deliberately. Creating an
-order is not completing one: a card payment that needs 3-D Secure, and every express
-method, leave this page with the money still unmoved and a
-`payment_complete_url` to send the shopper to. So purchase tracking hangs on
+order is not completing one: a card payment that needs 3-D Secure, every express
+method, and every redirect method (iDEAL, Bancontact, SEPA, TWINT, Swish, Affirm,
+Link, Klarna) leave this page with the money still unmoved and a
+`payment_complete_url` to send the shopper to — which the SDK always follows in
+preference to any success URL of your own. So purchase tracking hangs on
 `order:completed`, which the order store emits on the page the shopper lands on
 next, for an order fetched back from the API — and which is where the SDK's own
 `dl_purchase` comes from. Do not use `checkout:started` either: it fires before

@@ -110,6 +110,33 @@ describe('initializePaymentForms', () => {
     );
   });
 
+  it('reopens a redirect method the shopper picked before reloading', () => {
+    const ctx = createCtx(['credit', 'ideal']);
+    useCheckoutStore.setState({ paymentMethod: 'ideal' });
+
+    initializePaymentForms(ctx);
+
+    expect(formOf(ctx, 'ideal').getAttribute('data-next-payment-state')).toBe(
+      'expanded'
+    );
+    expect(formOf(ctx, 'credit').getAttribute('data-next-payment-state')).toBe(
+      'collapsed'
+    );
+  });
+
+  it('opens nothing when neither the store nor the markup names a method it knows', () => {
+    // sessionStorage outlives an SDK upgrade, so the persisted method can be one
+    // this build has never heard of. Two unknowns are not a match.
+    const ctx = createCtx(['credit', 'bitcoin']);
+    useCheckoutStore.setState({ paymentMethod: 'bitcoin' as never });
+
+    initializePaymentForms(ctx);
+
+    expect(formOf(ctx, 'bitcoin').getAttribute('data-next-payment-state')).toBe(
+      'collapsed'
+    );
+  });
+
   it('checks the radio of the method it opened', () => {
     const ctx = createCtx(['credit', 'paypal']);
     useCheckoutStore.setState({ paymentMethod: 'paypal' });

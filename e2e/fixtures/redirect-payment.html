@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <!-- Where the SDK sends a shopper whose order came back already paid. This
+         fixture stands in for the thank-you page, so the negative control can
+         tell "went to the gateway" from "went to the success page". -->
+    <meta
+      name="next-success-url"
+      content="/e2e/fixtures/redirect-payment.html"
+    />
+    <title>E2E — redirect payment methods</title>
+  </head>
+  <body>
+    <h1>Redirect payment fixture</h1>
+
+    <!-- No docs:example marker: the checkout form's published example lives in
+         checkout-form.html. This fixture drives the *journey* a redirect method
+         takes — pick the radio, submit, get sent to the payment page — and
+         carries only the markup that journey needs. -->
+    <form data-next-checkout>
+      <input data-next-checkout-field="email" name="email" type="email" />
+      <input data-next-checkout-field="fname" name="fname" />
+      <input data-next-checkout-field="lname" name="lname" />
+      <input data-next-checkout-field="address1" name="address1" />
+      <input data-next-checkout-field="city" name="city" />
+      <input data-next-checkout-field="postal" name="postal" />
+      <input data-next-checkout-field="phone" name="phone" type="tel" />
+      <select data-next-checkout-field="country" name="country">
+        <option value="US">United States</option>
+      </select>
+      <select data-next-checkout-field="province" name="province">
+        <option value="NY">New York</option>
+      </select>
+
+      <!-- One wrapper per way to pay: the radio the shopper presses, and the
+           fields that method needs. A redirect method has none — everything is
+           collected on the payment page it sends the shopper to. -->
+      <div data-next-payment-method="credit">
+        <input
+          type="radio"
+          name="payment_method"
+          value="credit"
+          id="pm-credit"
+          checked
+        />
+        <label for="pm-credit">Card</label>
+        <div data-next-payment-form></div>
+      </div>
+      <div data-next-payment-method="ideal">
+        <input type="radio" name="payment_method" value="ideal" id="pm-ideal" />
+        <label for="pm-ideal">iDEAL</label>
+        <div data-next-payment-form></div>
+      </div>
+      <!-- Deliberately the *old* spelling: what an existing template may carry,
+           and what the SDK has to translate to `sepa_direct` on the order. -->
+      <div data-next-payment-method="sepa-debit">
+        <input
+          type="radio"
+          name="payment_method"
+          value="sepa-debit"
+          id="pm-sepa"
+        />
+        <label for="pm-sepa">SEPA Direct Debit</label>
+        <div data-next-payment-form></div>
+      </div>
+
+      <button type="submit" data-next-checkout-submit>Complete order</button>
+    </form>
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

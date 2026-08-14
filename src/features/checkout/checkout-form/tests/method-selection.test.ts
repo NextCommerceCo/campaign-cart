@@ -38,8 +38,12 @@ function radioEvent(value: string): Event {
 
 function paymentContext(): PaymentMethodContext & {
   ui: { updatePaymentFormVisibility: ReturnType<typeof vi.fn> };
+  logger: ReturnType<typeof createMockLogger>;
 } {
-  return { ui: { updatePaymentFormVisibility: vi.fn() } } as never;
+  return {
+    ui: { updatePaymentFormVisibility: vi.fn() },
+    logger: createMockLogger(),
+  } as never;
 }
 
 function shippingContext(): ShippingMethodContext & {
@@ -97,10 +101,48 @@ describe('handlePaymentMethodChange', () => {
     );
   });
 
+  it.each([
+    ['ideal', 'ideal'],
+    ['bancontact', 'bancontact'],
+    ['twint', 'twint'],
+    ['swish', 'swish'],
+    ['affirm', 'affirm'],
+    ['link', 'link'],
+    ['sepa-direct', 'sepa_direct'],
+    // What this SDK's own type called SEPA until 2026-08-14.
+    ['sepa-debit', 'sepa_direct'],
+  ])(
+    'keeps the redirect method the shopper picked: %s',
+    (radioValue, stored) => {
+      handlePaymentMethodChange(paymentContext(), radioEvent(radioValue));
+
+      expect(useCheckoutStore.getState().paymentMethod).toBe(stored);
+    }
+  );
+
+  it('reads a method the same whichever separator the markup uses', () => {
+    handlePaymentMethodChange(paymentContext(), radioEvent('APPLE_PAY'));
+
+    expect(useCheckoutStore.getState().paymentMethod).toBe('apple_pay');
+  });
+
   it('falls back to the card form for a value it does not recognise', () => {
-    handlePaymentMethodChange(paymentContext(), radioEvent('bitcoin'));
+    const ctx = paymentContext();
+
+    handlePaymentMethodChange(ctx, radioEvent('bitcoin'));
 
     expect(useCheckoutStore.getState().paymentMethod).toBe('credit-card');
+    expect(ctx.logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('bitcoin')
+    );
+  });
+
+  it('does not warn about a method it does offer', () => {
+    const ctx = paymentContext();
+
+    handlePaymentMethodChange(ctx, radioEvent('ideal'));
+
+    expect(ctx.logger.warn).not.toHaveBeenCalled();
   });
 
   it('hides the errors belonging to the method being left', () => {

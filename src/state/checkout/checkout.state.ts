@@ -6,6 +6,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { normalizeVoucherCode } from '@/utils/voucher';
 import { CHECKOUT_STORAGE_KEY } from '@/core/storage';
+import type { CheckoutPaymentMethod } from '@/types/global';
 
 export interface CheckoutState {
   step: number;
@@ -13,13 +14,7 @@ export interface CheckoutState {
   errors: Record<string, string>;
   formData: Record<string, any>;
   paymentToken?: string;
-  paymentMethod:
-    | 'card_token'
-    | 'paypal'
-    | 'apple_pay'
-    | 'google_pay'
-    | 'credit-card'
-    | 'klarna';
+  paymentMethod: CheckoutPaymentMethod;
   shippingMethod?:
     | {
         id: number;
@@ -268,7 +263,7 @@ export const useCheckoutStore = create<CheckoutState & CheckoutActions>()(
           shippingMethod: state.shippingMethod,
           billingAddress, // Only non-empty billing fields
           sameAsShipping: state.sameAsShipping,
-          paymentMethod, // Only persist credit-card/klarna, not express methods
+          paymentMethod, // Every method except the three express ones survives a reload
           vouchers: state.vouchers, // Persist so user-entered coupons survive refresh; bundle vouchers are deduped on re-apply
           // Explicitly exclude:
           // - errors (transient validation state)

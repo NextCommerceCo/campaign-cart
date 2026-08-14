@@ -71,6 +71,18 @@ created with — the card details themselves never reach the order call. Produce
 
 ---
 
+## Redirect method
+
+A way of paying that is approved on the provider's own page rather than on the
+checkout — iDEAL, Bancontact, SEPA Direct Debit, TWINT, Swish, Affirm, Link and
+Klarna. The form collects the shopper's details and creates the order
+as usual, and the API answers with the address to send them to; the order exists
+before any money moves. Unlike [express checkout](#express-checkout) there is no
+provider sheet and no button — the shopper picks a radio like any other method,
+which is why their contact and address details are captured first.
+
+---
+
 ## Prospect cart
 
 A record of an abandoning visitor as a lead, created from their email or phone

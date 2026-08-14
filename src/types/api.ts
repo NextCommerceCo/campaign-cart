@@ -472,6 +472,15 @@ export interface Voucher {
  * `card_token` is a tokenised card (what most stores mean by "credit card");
  * `external` is a payment taken outside the platform and recorded on the order.
  * The rest name the wallet or scheme the shopper used.
+ *
+ * Every one of them except a directly-charged card sends the shopper away to pay
+ * and brings them back — a card only when the bank asks for 3-D Secure — so an
+ * order created with any of these can come back carrying
+ * {@link Order.payment_complete_url}.
+ *
+ * `giropay` and `sofort` were removed on 2026-08-14: the platform no longer
+ * offers them, and a value the orders API rejects is worse than a missing one.
+ * `sepa_debit` went with them — SEPA Direct Debit is `sepa_direct`.
  */
 export type PaymentMethod =
   | 'apple_pay'
@@ -480,10 +489,9 @@ export type PaymentMethod =
   | 'klarna'
   | 'ideal'
   | 'bancontact'
-  | 'giropay'
   | 'google_pay'
-  | 'sofort'
-  | 'sepa_debit'
+  | 'sepa_direct'
+  | 'swish'
   | 'twint'
   | 'link'
   | 'affirm'

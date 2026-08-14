@@ -2151,9 +2151,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     return getFieldByName(this.fieldLookupContext(), fieldName);
   }
 
-  /** The one thing `method-selection.ts` needs to switch payment method. */
+  /** The two things `method-selection.ts` needs to switch payment method. */
   private paymentMethodContext(): PaymentMethodContext {
-    return { ui: this.ui };
+    return { ui: this.ui, logger: this.logger };
   }
 
   private handlePaymentMethodChange(event: Event): void {
