@@ -2,6 +2,7 @@ import { Logger } from '../../../core/logger';
 import { UIService } from '../services/ui-service';
 export interface PaymentMethodContext {
     ui: UIService;
+    logger: Logger;
 }
 export interface ShippingMethodContext {
     hasTrackedShippingInfo: {

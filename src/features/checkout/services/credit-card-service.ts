@@ -9,8 +9,8 @@ import { FieldFinder } from '../utils/field-finder-utils';
 import type { Logger } from '@/core/logger';
 import { useCheckoutStore } from '@/state/checkout';
 import { nextAnalytics, EcommerceEvents } from '@/core/analytics/index';
+import { paymentMethodLabel } from '@/utils/payment-method';
 import type { CardInputConfig } from '@/types/global';
-
 
 declare global {
   interface Window {
@@ -38,32 +38,47 @@ export class CreditCardService {
   private isReady: boolean = false;
   // errorManager removed - unused
   private validationState: CreditCardValidationState;
-  
+
   // Callbacks
   private onReadyCallback?: () => void;
   private onErrorCallback?: (errors: string[]) => void;
   private onTokenCallback?: (token: string, pmData: any) => void;
-  
+
   // Field references
   private numberField?: HTMLElement;
   private cvvField?: HTMLElement;
   private monthField?: HTMLElement;
   private yearField?: HTMLElement;
-  
+
   // Track if we've fired the add_payment_info event
   private hasTrackedPaymentInfo = false;
-  
+
   // Floating label callbacks
   private onFieldFocusCallback?: (fieldName: 'number' | 'cvv') => void;
-  private onFieldBlurCallback?: (fieldName: 'number' | 'cvv', hasValue: boolean) => void;
-  private onFieldInputCallback?: (fieldName: 'number' | 'cvv', hasValue: boolean) => void;
-  
+  private onFieldBlurCallback?: (
+    fieldName: 'number' | 'cvv',
+    hasValue: boolean
+  ) => void;
+  private onFieldInputCallback?: (
+    fieldName: 'number' | 'cvv',
+    hasValue: boolean
+  ) => void;
+
   // Track field value states for floating labels
-  private fieldHasValue: { number: boolean; cvv: boolean } = { number: false, cvv: false };
-  
+  private fieldHasValue: { number: boolean; cvv: boolean } = {
+    number: false,
+    cvv: false,
+  };
+
   // Store original placeholders for restoration
-  private originalPlaceholders: { number: string; cvv: string } = { number: 'Card Number', cvv: 'CVV *' };
-  private labelBehavior: { number: string | null; cvv: string | null } = { number: null, cvv: null };
+  private originalPlaceholders: { number: string; cvv: string } = {
+    number: 'Card Number',
+    cvv: 'CVV *',
+  };
+  private labelBehavior: { number: string | null; cvv: string | null } = {
+    number: null,
+    cvv: null,
+  };
 
   /**
    * Holds every listener this service puts on the checkout form's own markup — the
@@ -84,12 +99,12 @@ export class CreditCardService {
     this.logger = createLogger('CreditCardService');
     // errorManager initialization removed - no longer used
     this.validationState = this.initializeValidationState();
-    
+
     if (!environmentKey) {
       this.logger.error('No Spreedly environment key provided');
       return;
     }
-        
+
     this.logger.debug('CreditCardService created with config:', config);
   }
 
@@ -103,19 +118,21 @@ export class CreditCardService {
         this.logger.debug('CreditCardService already initialized, skipping');
         return;
       }
-      
+
       // Find credit card fields
       this.findCreditCardFields();
-      
+
       if (!this.numberField || !this.cvvField) {
-        this.logger.debug('Credit card fields not found, skipping Spreedly initialization');
+        this.logger.debug(
+          'Credit card fields not found, skipping Spreedly initialization'
+        );
         return;
       }
-      
+
       // Load and setup Spreedly
       await this.loadSpreedlyScript();
       this.setupSpreedly();
-      
+
       this.logger.debug('CreditCardService initialized successfully');
     } catch (error) {
       this.logger.error('Failed to initialize CreditCardService:', error);
@@ -137,12 +154,12 @@ export class CreditCardService {
     }
 
     this.logger.debug('Tokenizing credit card');
-    
+
     return new Promise((resolve, reject) => {
       // Set up one-time callbacks
       const originalTokenCallback = this.onTokenCallback;
       const originalErrorCallback = this.onErrorCallback;
-      
+
       this.onTokenCallback = (token: string, pmData: any) => {
         // Call the original callback first (to emit the event)
         if (originalTokenCallback) {
@@ -161,7 +178,7 @@ export class CreditCardService {
         }
         resolve(token);
       };
-      
+
       this.onErrorCallback = (errors: string[]) => {
         // Call the original callback first (to emit the error event)
         if (originalErrorCallback) {
@@ -180,7 +197,7 @@ export class CreditCardService {
         }
         reject(new Error(errors.join('. ')));
       };
-      
+
       // Set timeout
       const timeoutId = setTimeout(() => {
         if (originalTokenCallback) {
@@ -195,7 +212,7 @@ export class CreditCardService {
         }
         reject(new Error('Credit card tokenization timed out'));
       }, 30000);
-      
+
       // Clear timeout on resolution
       const originalResolve = resolve;
       const originalReject = reject;
@@ -209,9 +226,12 @@ export class CreditCardService {
         clearTimeout(timeoutId);
         originalReject(error);
       };
-      
+
       // Tokenize with Spreedly
-      console.log('🟢 [CreditCardService] Calling Spreedly.tokenizeCreditCard with:', cardData);
+      console.log(
+        '🟢 [CreditCardService] Calling Spreedly.tokenizeCreditCard with:',
+        cardData
+      );
       window.Spreedly.tokenizeCreditCard(cardData);
     });
   }
@@ -219,17 +239,22 @@ export class CreditCardService {
   /**
    * Validate credit card form data
    */
-  public validateCreditCard(cardData: CreditCardData): { isValid: boolean; errors?: Record<string, string> } {
+  public validateCreditCard(cardData: CreditCardData): {
+    isValid: boolean;
+    errors?: Record<string, string>;
+  } {
     const errors: Record<string, string> = {};
     let isValid = true;
 
     // Determine the actual field names used in the DOM
-    const monthFieldName = this.monthField?.getAttribute('data-next-checkout-field') || 
-                          this.monthField?.getAttribute('os-checkout-field') || 
-                          'cc-month';
-    const yearFieldName = this.yearField?.getAttribute('data-next-checkout-field') || 
-                         this.yearField?.getAttribute('os-checkout-field') || 
-                         'cc-year';
+    const monthFieldName =
+      this.monthField?.getAttribute('data-next-checkout-field') ||
+      this.monthField?.getAttribute('os-checkout-field') ||
+      'cc-month';
+    const yearFieldName =
+      this.yearField?.getAttribute('data-next-checkout-field') ||
+      this.yearField?.getAttribute('os-checkout-field') ||
+      'cc-year';
 
     // Validate month
     if (!cardData.month || cardData.month.trim() === '') {
@@ -258,7 +283,7 @@ export class CreditCardService {
       const currentMonth = currentDate.getMonth() + 1; // JavaScript months are 0-based
       const yearNum = parseInt(cardData.year, 10);
       const fullYear = yearNum < 100 ? 2000 + yearNum : yearNum;
-      
+
       if (fullYear < currentYear || fullYear > currentYear + 20) {
         errors[yearFieldName] = 'Please select a valid year';
         this.setCreditCardFieldError('year', 'Please select a valid year');
@@ -280,7 +305,9 @@ export class CreditCardService {
       }
     }
 
-    const result: { isValid: boolean; errors?: Record<string, string> } = { isValid };
+    const result: { isValid: boolean; errors?: Record<string, string> } = {
+      isValid,
+    };
     if (Object.keys(errors).length > 0) {
       result.errors = errors;
     }
@@ -290,21 +317,27 @@ export class CreditCardService {
   /**
    * Check if Spreedly fields are ready for validation
    */
-  public checkSpreedlyFieldsReady(): { hasEmptyFields: boolean; errors: Array<{field: string; message: string}> } {
-    const errors: Array<{field: string; message: string}> = [];
-    
+  public checkSpreedlyFieldsReady(): {
+    hasEmptyFields: boolean;
+    errors: Array<{ field: string; message: string }>;
+  } {
+    const errors: Array<{ field: string; message: string }> = [];
+
     // Check if Spreedly fields have been interacted with and are valid
     if (!this.validationState.number.isValid) {
-      errors.push({ field: 'number', message: 'Please enter a valid credit card number' });
+      errors.push({
+        field: 'number',
+        message: 'Please enter a valid credit card number',
+      });
     }
-    
+
     if (!this.validationState.cvv.isValid) {
       errors.push({ field: 'cvv', message: 'Please enter a valid CVV' });
     }
-    
+
     return {
       hasEmptyFields: errors.length > 0,
-      errors
+      errors,
     };
   }
 
@@ -317,7 +350,7 @@ export class CreditCardService {
     this.clearCreditCardFieldError('cvv');
     this.clearCreditCardFieldError('month');
     this.clearCreditCardFieldError('year');
-    
+
     // Hide error containers - this is called after successful tokenization
     // so it's safe to hide payment errors here
     this.hidePaymentErrorContainers();
@@ -348,14 +381,16 @@ export class CreditCardService {
 
     // Clear validation state
     this.validationState = this.initializeValidationState();
-    
+
     // Clear any visible errors
     this.clearAllErrors();
   }
-  
+
   private hidePaymentErrorContainers(): void {
     // Hide credit error container (used for all payment errors)
-    const creditErrorContainer = document.querySelector('[data-next-component="credit-error"]');
+    const creditErrorContainer = document.querySelector(
+      '[data-next-component="credit-error"]'
+    );
     if (creditErrorContainer instanceof HTMLElement) {
       creditErrorContainer.style.display = 'none';
       creditErrorContainer.classList.remove('visible');
@@ -415,48 +450,59 @@ export class CreditCardService {
       number: { isValid: false, hasError: false },
       cvv: { isValid: false, hasError: false },
       month: { isValid: false, hasError: false },
-      year: { isValid: false, hasError: false }
+      year: { isValid: false, hasError: false },
     };
   }
 
   private findCreditCardFields(): void {
     // Find credit card number field
-    const numberField = FieldFinder.findField('cc-number') || 
-                        document.getElementById('spreedly-number');
+    const numberField =
+      FieldFinder.findField('cc-number') ||
+      document.getElementById('spreedly-number');
     if (numberField) {
       this.numberField = numberField;
       // Check label behavior for floating label placeholder mode
-      this.labelBehavior.number = numberField.getAttribute('data-label-behavior');
+      this.labelBehavior.number = numberField.getAttribute(
+        'data-label-behavior'
+      );
     }
-    
+
     // Find CVV field
-    const cvvField = FieldFinder.findField('cvv') || 
-                     document.getElementById('spreedly-cvv');
+    const cvvField =
+      FieldFinder.findField('cvv') || document.getElementById('spreedly-cvv');
     if (cvvField) {
       this.cvvField = cvvField;
       // Check label behavior for floating label placeholder mode
       this.labelBehavior.cvv = cvvField.getAttribute('data-label-behavior');
     }
-    
+
     // Find month field
-    const monthField = FieldFinder.findField('cc-month') || 
-                       FieldFinder.findField('exp-month');
+    const monthField =
+      FieldFinder.findField('cc-month') || FieldFinder.findField('exp-month');
     if (monthField) {
       this.monthField = monthField;
       // Add event listener to check payment info when month changes
       if (monthField instanceof HTMLSelectElement) {
-        monthField.addEventListener('change', () => this.checkAndTrackPaymentInfo(), { signal: this.listenerAbort.signal });
+        monthField.addEventListener(
+          'change',
+          () => this.checkAndTrackPaymentInfo(),
+          { signal: this.listenerAbort.signal }
+        );
       }
     }
-    
+
     // Find year field
-    const yearField = FieldFinder.findField('cc-year') || 
-                      FieldFinder.findField('exp-year');
+    const yearField =
+      FieldFinder.findField('cc-year') || FieldFinder.findField('exp-year');
     if (yearField) {
       this.yearField = yearField;
       // Add event listener to check payment info when year changes
       if (yearField instanceof HTMLSelectElement) {
-        yearField.addEventListener('change', () => this.checkAndTrackPaymentInfo(), { signal: this.listenerAbort.signal });
+        yearField.addEventListener(
+          'change',
+          () => this.checkAndTrackPaymentInfo(),
+          { signal: this.listenerAbort.signal }
+        );
       }
     }
 
@@ -464,7 +510,7 @@ export class CreditCardService {
       number: !!this.numberField,
       cvv: !!this.cvvField,
       month: !!this.monthField,
-      year: !!this.yearField
+      year: !!this.yearField,
     });
   }
 
@@ -475,7 +521,7 @@ export class CreditCardService {
     }
 
     this.logger.debug('Loading Spreedly script...');
-    
+
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
       script.src = 'https://core.spreedly.com/iframe/iframe-v1.min.js';
@@ -501,20 +547,19 @@ export class CreditCardService {
         // Add class for transition effect instead of inline style
         this.numberField.classList.add('spreedly-field-transition');
       }
-      
+
       if (this.cvvField) {
         this.cvvField.id = 'spreedly-cvv';
         this.cvvField.setAttribute('data-spreedly', 'cvv');
         // Add class for transition effect instead of inline style
         this.cvvField.classList.add('spreedly-field-transition');
       }
-      
+
       // Initialize Spreedly
       const initOptions: any = {
-                "numberEl": "spreedly-number",
-        "cvvEl": "spreedly-cvv"
-
-              };
+        numberEl: 'spreedly-number',
+        cvvEl: 'spreedly-cvv',
+      };
 
       // Add security parameters if provided in config
       if (this.config?.nonce) {
@@ -535,16 +580,16 @@ export class CreditCardService {
 
       // Initialize Spreedly with options
       window.Spreedly.init(this.environmentKey, initOptions);
-      
+
       // Set up event listeners
       this.setupSpreedlyEventListeners();
-      
+
       // Set up click handlers for better UX
       this.setupFieldClickHandlers();
-      
+
       // Add focus styles
       this.addFocusStyles();
-      
+
       this.logger.debug('Spreedly setup complete');
     } catch (error) {
       this.logger.error('Error setting up Spreedly:', error);
@@ -561,56 +606,90 @@ export class CreditCardService {
     // Add click handler to credit card number field container
     if (this.numberField) {
       // Find the wrapper or use the field itself
-      const numberWrapper = this.numberField.closest('.frm-flds, .form-group, .form-field, .field-group') || this.numberField;
-      
-      numberWrapper.addEventListener('click', (event) => {
-        // Don't transfer focus if clicking on another input
-        const target = event.target as HTMLElement;
-        if (target.tagName !== 'INPUT' && target.tagName !== 'SELECT' && target.tagName !== 'TEXTAREA') {
+      const numberWrapper =
+        this.numberField.closest(
+          '.frm-flds, .form-group, .form-field, .field-group'
+        ) || this.numberField;
+
+      numberWrapper.addEventListener(
+        'click',
+        event => {
+          // Don't transfer focus if clicking on another input
+          const target = event.target as HTMLElement;
+          if (
+            target.tagName !== 'INPUT' &&
+            target.tagName !== 'SELECT' &&
+            target.tagName !== 'TEXTAREA'
+          ) {
+            if (window.Spreedly && this.isReady) {
+              window.Spreedly.transferFocus('number');
+              this.logger.debug(
+                'Transferring focus to credit card number field'
+              );
+            }
+          }
+        },
+        { signal: this.listenerAbort.signal }
+      );
+
+      // Also add to the field itself for direct clicks
+      this.numberField.addEventListener(
+        'click',
+        () => {
           if (window.Spreedly && this.isReady) {
             window.Spreedly.transferFocus('number');
-            this.logger.debug('Transferring focus to credit card number field');
           }
-        }
-      }, { signal: this.listenerAbort.signal });
-      
-      // Also add to the field itself for direct clicks
-      this.numberField.addEventListener('click', () => {
-        if (window.Spreedly && this.isReady) {
-          window.Spreedly.transferFocus('number');
-        }
-      }, { signal: this.listenerAbort.signal });
+        },
+        { signal: this.listenerAbort.signal }
+      );
     }
-    
+
     // Add click handler to CVV field container
     if (this.cvvField) {
       // Find the wrapper or use the field itself
-      const cvvWrapper = this.cvvField.closest('.frm-flds, .form-group, .form-field, .field-group') || this.cvvField;
-      
-      cvvWrapper.addEventListener('click', (event) => {
-        // Don't transfer focus if clicking on another input
-        const target = event.target as HTMLElement;
-        if (target.tagName !== 'INPUT' && target.tagName !== 'SELECT' && target.tagName !== 'TEXTAREA') {
+      const cvvWrapper =
+        this.cvvField.closest(
+          '.frm-flds, .form-group, .form-field, .field-group'
+        ) || this.cvvField;
+
+      cvvWrapper.addEventListener(
+        'click',
+        event => {
+          // Don't transfer focus if clicking on another input
+          const target = event.target as HTMLElement;
+          if (
+            target.tagName !== 'INPUT' &&
+            target.tagName !== 'SELECT' &&
+            target.tagName !== 'TEXTAREA'
+          ) {
+            if (window.Spreedly && this.isReady) {
+              window.Spreedly.transferFocus('cvv');
+              this.logger.debug('Transferring focus to CVV field');
+            }
+          }
+        },
+        { signal: this.listenerAbort.signal }
+      );
+
+      // Also add to the field itself for direct clicks
+      this.cvvField.addEventListener(
+        'click',
+        () => {
           if (window.Spreedly && this.isReady) {
             window.Spreedly.transferFocus('cvv');
-            this.logger.debug('Transferring focus to CVV field');
           }
-        }
-      }, { signal: this.listenerAbort.signal });
-      
-      // Also add to the field itself for direct clicks
-      this.cvvField.addEventListener('click', () => {
-        if (window.Spreedly && this.isReady) {
-          window.Spreedly.transferFocus('cvv');
-        }
-      }, { signal: this.listenerAbort.signal });
+        },
+        { signal: this.listenerAbort.signal }
+      );
     }
   }
 
   private setupSpreedlyEventListeners(): void {
     // Ready event
     window.Spreedly.on('ready', () => {
-      this.logger.info('[Spreedly Event: ready] iFrame initialized and ready for configuration');
+      this.logger.info(
+        '[Spreedly Event: ready] iFrame initialized and ready for configuration'
+      );
       this.applySpreedlyConfig();
       this.isReady = true;
       if (this.onReadyCallback) {
@@ -620,12 +699,15 @@ export class CreditCardService {
 
     // Error event - triggered when tokenization fails
     window.Spreedly.on('errors', (errors: any[]) => {
-      this.logger.error('[Spreedly Event: errors] Tokenization failed:', errors.map(e => ({
-        attribute: e.attribute,
-        key: e.key,
-        message: e.message
-      })));
-      
+      this.logger.error(
+        '[Spreedly Event: errors] Tokenization failed:',
+        errors.map(e => ({
+          attribute: e.attribute,
+          key: e.key,
+          message: e.message,
+        }))
+      );
+
       // Handle empty error messages with better user feedback
       const errorMessages = errors.map(error => {
         if (!error.message || error.message.trim() === '') {
@@ -637,26 +719,29 @@ export class CreditCardService {
         }
         return error.message;
       });
-      
+
       if (this.onErrorCallback) {
         this.onErrorCallback(errorMessages);
       }
-      
+
       this.showSpreedlyErrors(errors);
     });
-    
+
     // Payment method event - successful tokenization
     window.Spreedly.on('paymentMethod', (token: string, pmData: any) => {
-      this.logger.info('[Spreedly Event: paymentMethod] Successfully tokenized!', { 
-        token, 
-        last4: pmData.last_four_digits,
-        cardType: pmData.card_type,
-        fingerprint: pmData.fingerprint 
-      });
-      
+      this.logger.info(
+        '[Spreedly Event: paymentMethod] Successfully tokenized!',
+        {
+          token,
+          last4: pmData.last_four_digits,
+          cardType: pmData.card_type,
+          fingerprint: pmData.fingerprint,
+        }
+      );
+
       // Clear all errors on successful tokenization
       this.clearAllErrors();
-      
+
       if (this.onTokenCallback) {
         this.logger.debug('[Spreedly] Invoking token callback');
         this.onTokenCallback(token, pmData);
@@ -664,7 +749,7 @@ export class CreditCardService {
         this.logger.error('[Spreedly] No onTokenCallback registered!');
       }
     });
-    
+
     // Validation event - triggered when validate() is called
     // Note: This is separate from fieldEvent and only fires when explicitly calling Spreedly.validate()
     window.Spreedly.on('validation', (inputProperties: any) => {
@@ -674,53 +759,54 @@ export class CreditCardService {
         validCvv: inputProperties.validCvv,
         numberLength: inputProperties.numberLength,
         cvvLength: inputProperties.cvvLength,
-        iin: inputProperties.iin
+        iin: inputProperties.iin,
       });
-      
+
       // Update validation state based on the event
       // We keep this separate from fieldEvent in case validate() is called explicitly
       if (inputProperties.validNumber !== undefined) {
         this.validationState.number.isValid = inputProperties.validNumber;
         this.validationState.number.hasError = !inputProperties.validNumber;
       }
-      
+
       if (inputProperties.validCvv !== undefined) {
         this.validationState.cvv.isValid = inputProperties.validCvv;
         this.validationState.cvv.hasError = !inputProperties.validCvv;
       }
-      
+
       // Note: We don't clear errors here because this event is typically used
       // for checking validation state, not for real-time user input
     });
-    
+
     // Field events for real-time feedback
-    window.Spreedly.on('fieldEvent', (name: string, type: string, _activeEl: any, inputProperties: any) => {
-      
-      this.handleSpreedlyFieldEvent(name, type, inputProperties);
-          // Only log input events with properties, reduce noise from other events
-          // if (type === 'input' && inputProperties) {
-          //   this.logger.info(`[Spreedly Event: fieldEvent] ${name} - ${type}`, {
-          //     activeField: activeEl,
-          //     cardType: inputProperties.cardType,
-          //     validNumber: inputProperties.validNumber,
-          //     validCvv: inputProperties.validCvv,
-          //     numberLength: inputProperties.numberLength,
-          //     cvvLength: inputProperties.cvvLength,
-          //     iin: inputProperties.iin
-          //   });
-          // } else if (type === 'focus' || type === 'blur') {
-          //   this.logger.debug(`[Spreedly Event: fieldEvent] ${name} - ${type}`, { activeField: activeEl });
-          // }
-          
-    });
-    
+    window.Spreedly.on(
+      'fieldEvent',
+      (name: string, type: string, _activeEl: any, inputProperties: any) => {
+        this.handleSpreedlyFieldEvent(name, type, inputProperties);
+        // Only log input events with properties, reduce noise from other events
+        // if (type === 'input' && inputProperties) {
+        //   this.logger.info(`[Spreedly Event: fieldEvent] ${name} - ${type}`, {
+        //     activeField: activeEl,
+        //     cardType: inputProperties.cardType,
+        //     validNumber: inputProperties.validNumber,
+        //     validCvv: inputProperties.validCvv,
+        //     numberLength: inputProperties.numberLength,
+        //     cvvLength: inputProperties.cvvLength,
+        //     iin: inputProperties.iin
+        //   });
+        // } else if (type === 'focus' || type === 'blur') {
+        //   this.logger.debug(`[Spreedly Event: fieldEvent] ${name} - ${type}`, { activeField: activeEl });
+        // }
+      }
+    );
+
     // Console error event - useful for debugging
     window.Spreedly.on('consoleError', (error: any) => {
       this.logger.error('[Spreedly Event: consoleError] Error from iFrame:', {
         message: error.msg,
         url: error.url,
         line: error.line,
-        col: error.col
+        col: error.col,
       });
     });
   }
@@ -754,15 +840,19 @@ export class CreditCardService {
       }
 
       // Set placeholders (with defaults)
-      this.originalPlaceholders.number = this.config?.placeholders?.number || 'Card Number';
+      this.originalPlaceholders.number =
+        this.config?.placeholders?.number || 'Card Number';
       this.originalPlaceholders.cvv = this.config?.placeholders?.cvv || 'CVV *';
 
-
-      window.Spreedly.setPlaceholder('number', this.originalPlaceholders.number);
+      window.Spreedly.setPlaceholder(
+        'number',
+        this.originalPlaceholders.number
+      );
       window.Spreedly.setPlaceholder('cvv', this.originalPlaceholders.cvv);
-      
+
       // Set styling
-      const defaultFieldStyle = 'color: #212529; font-size: .925rem; font-weight: 400; width: 100%; height:100%; font-family: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue","Noto Sans","Liberation Sans",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";';
+      const defaultFieldStyle =
+        'color: #212529; font-size: .925rem; font-weight: 400; width: 100%; height:100%; font-family: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue","Noto Sans","Liberation Sans",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";';
       const numberStyle = this.config?.styles?.number || defaultFieldStyle;
       const cvvStyle = this.config?.styles?.cvv || defaultFieldStyle;
 
@@ -773,8 +863,8 @@ export class CreditCardService {
       if (this.config?.styles?.placeholder) {
         window.Spreedly.setStyle('placeholder', this.config.styles.placeholder);
       }
-      
-  const numberRequired = this.config?.requiredAttributes?.number !== false; // default true
+
+      const numberRequired = this.config?.requiredAttributes?.number !== false; // default true
       const cvvRequired = this.config?.requiredAttributes?.cvv !== false; // default true
 
       if (numberRequired) {
@@ -805,57 +895,79 @@ export class CreditCardService {
         autoComplete: this.config?.enableAutoComplete,
         validationParams: {
           allowBlankName: this.config?.allowBlankName,
-          allowExpiredDate: this.config?.allowExpiredDate
-        }
+          allowExpiredDate: this.config?.allowExpiredDate,
+        },
       });
-  
     } catch (error) {
       this.logger.error('Error applying Spreedly configuration:', error);
     }
   }
 
-  private handleSpreedlyFieldEvent(name: string, type: string, inputProperties: any): void {
+  private handleSpreedlyFieldEvent(
+    name: string,
+    type: string,
+    inputProperties: any
+  ): void {
     // Handle focus/blur events for visual feedback
     if (type === 'focus') {
       this.handleFieldFocus(name);
-      
+
       // Clear placeholder if using placeholder label behavior
-      if ((name === 'number' || name === 'cvv') && window.Spreedly && this.isReady) {
+      if (
+        (name === 'number' || name === 'cvv') &&
+        window.Spreedly &&
+        this.isReady
+      ) {
         const behavior = this.labelBehavior[name as 'number' | 'cvv'];
         if (behavior === 'placeholder') {
           // Clear the placeholder when field is focused and label floats up
           window.Spreedly.setPlaceholder(name, '');
-          this.logger.debug(`Cleared placeholder for ${name} field (label floating up)`);
+          this.logger.debug(
+            `Cleared placeholder for ${name} field (label floating up)`
+          );
         }
       }
-      
+
       // Trigger floating label focus callback
       if (this.onFieldFocusCallback && (name === 'number' || name === 'cvv')) {
         this.onFieldFocusCallback(name as 'number' | 'cvv');
       }
     } else if (type === 'blur') {
       this.handleFieldBlur(name);
-      
+
       // Restore placeholder if field is empty and using placeholder label behavior
-      if ((name === 'number' || name === 'cvv') && window.Spreedly && this.isReady) {
-        const hasValue = name === 'number' ? this.fieldHasValue.number : this.fieldHasValue.cvv;
+      if (
+        (name === 'number' || name === 'cvv') &&
+        window.Spreedly &&
+        this.isReady
+      ) {
+        const hasValue =
+          name === 'number'
+            ? this.fieldHasValue.number
+            : this.fieldHasValue.cvv;
         const behavior = this.labelBehavior[name as 'number' | 'cvv'];
-        
+
         if (behavior === 'placeholder' && !hasValue) {
           // Restore the placeholder when field is empty and label floats down
-          const originalPlaceholder = this.originalPlaceholders[name as 'number' | 'cvv'];
+          const originalPlaceholder =
+            this.originalPlaceholders[name as 'number' | 'cvv'];
           window.Spreedly.setPlaceholder(name, originalPlaceholder);
-          this.logger.debug(`Restored placeholder for ${name} field (label floating down)`);
+          this.logger.debug(
+            `Restored placeholder for ${name} field (label floating down)`
+          );
         }
       }
-      
+
       // Trigger floating label blur callback
       if (this.onFieldBlurCallback && (name === 'number' || name === 'cvv')) {
-        const hasValue = name === 'number' ? this.fieldHasValue.number : this.fieldHasValue.cvv;
+        const hasValue =
+          name === 'number'
+            ? this.fieldHasValue.number
+            : this.fieldHasValue.cvv;
         this.onFieldBlurCallback(name as 'number' | 'cvv', hasValue);
       }
     }
-    
+
     // Handle input events for validation
     if (type === 'input') {
       // Clear error display immediately when user starts typing in any field
@@ -865,48 +977,60 @@ export class CreditCardService {
         const checkoutStore = useCheckoutStore.getState();
         checkoutStore.clearError('cc-number');
         checkoutStore.clearError('card_number');
-        
+
         // Update validation state if we have input properties
         if (inputProperties) {
           // Track if field has value based on length
           const hasValue = inputProperties.numberLength > 0;
           this.fieldHasValue.number = hasValue;
-          
+
           // Handle placeholder visibility based on value
-          if (window.Spreedly && this.isReady && this.labelBehavior.number === 'placeholder') {
+          if (
+            window.Spreedly &&
+            this.isReady &&
+            this.labelBehavior.number === 'placeholder'
+          ) {
             if (hasValue) {
               // Clear placeholder when field has value
               window.Spreedly.setPlaceholder('number', '');
             } else {
               // Only restore if not focused
               if (!this.numberField?.classList.contains('next-focused')) {
-                window.Spreedly.setPlaceholder('number', this.originalPlaceholders.number);
+                window.Spreedly.setPlaceholder(
+                  'number',
+                  this.originalPlaceholders.number
+                );
               }
             }
           }
-          
+
           // Trigger floating label input callback
           if (this.onFieldInputCallback) {
             this.onFieldInputCallback('number', hasValue);
           }
-          
+
           if (inputProperties.validNumber !== undefined) {
             const wasValid = this.validationState.number.isValid;
             this.validationState.number.isValid = inputProperties.validNumber;
             this.validationState.number.hasError = !inputProperties.validNumber;
-            
+
             // Add/remove no-error class based on validation state
             if (this.numberField) {
               if (inputProperties.validNumber) {
                 this.numberField.classList.add('no-error');
-                this.numberField.classList.remove('has-error', 'next-error-field');
+                this.numberField.classList.remove(
+                  'has-error',
+                  'next-error-field'
+                );
               } else {
                 this.numberField.classList.remove('no-error');
               }
             }
-            
+
             if (wasValid !== inputProperties.validNumber) {
-              this.logger.info(`[Spreedly] Card number validation changed: ${wasValid} -> ${inputProperties.validNumber}`);
+              this.logger.info(
+                `[Spreedly] Card number validation changed: ${wasValid} -> ${inputProperties.validNumber}`
+              );
             }
           }
         }
@@ -916,36 +1040,43 @@ export class CreditCardService {
         const checkoutStore = useCheckoutStore.getState();
         checkoutStore.clearError('cvv');
         checkoutStore.clearError('card_cvv');
-        
+
         // Update validation state if we have input properties
         if (inputProperties) {
           // Track if field has value based on length
           const hasValue = inputProperties.cvvLength > 0;
           this.fieldHasValue.cvv = hasValue;
-          
+
           // Handle placeholder visibility based on value
-          if (window.Spreedly && this.isReady && this.labelBehavior.cvv === 'placeholder') {
+          if (
+            window.Spreedly &&
+            this.isReady &&
+            this.labelBehavior.cvv === 'placeholder'
+          ) {
             if (hasValue) {
               // Clear placeholder when field has value
               window.Spreedly.setPlaceholder('cvv', '');
             } else {
               // Only restore if not focused
               if (!this.cvvField?.classList.contains('next-focused')) {
-                window.Spreedly.setPlaceholder('cvv', this.originalPlaceholders.cvv);
+                window.Spreedly.setPlaceholder(
+                  'cvv',
+                  this.originalPlaceholders.cvv
+                );
               }
             }
           }
-          
+
           // Trigger floating label input callback
           if (this.onFieldInputCallback) {
             this.onFieldInputCallback('cvv', hasValue);
           }
-          
+
           if (inputProperties.validCvv !== undefined) {
             const wasValid = this.validationState.cvv.isValid;
             this.validationState.cvv.isValid = inputProperties.validCvv;
             this.validationState.cvv.hasError = !inputProperties.validCvv;
-            
+
             // Add/remove no-error class based on validation state
             if (this.cvvField) {
               if (inputProperties.validCvv) {
@@ -955,19 +1086,21 @@ export class CreditCardService {
                 this.cvvField.classList.remove('no-error');
               }
             }
-            
+
             if (wasValid !== inputProperties.validCvv) {
-              this.logger.info(`[Spreedly] CVV validation changed: ${wasValid} -> ${inputProperties.validCvv}`);
+              this.logger.info(
+                `[Spreedly] CVV validation changed: ${wasValid} -> ${inputProperties.validCvv}`
+              );
             }
           }
         }
       }
-      
+
       // Check if both credit card fields are valid and track add_payment_info event
       this.checkAndTrackPaymentInfo();
     }
   }
-  
+
   /**
    * Check if credit card fields are complete and track add_payment_info event
    */
@@ -976,22 +1109,31 @@ export class CreditCardService {
     if (this.hasTrackedPaymentInfo) {
       return;
     }
-    
+
     // Check if both Spreedly fields are valid
-    const spreedlyFieldsValid = this.validationState.number.isValid && 
-                                this.validationState.cvv.isValid;
-    
+    const spreedlyFieldsValid =
+      this.validationState.number.isValid && this.validationState.cvv.isValid;
+
     // Check if month and year are filled (basic check)
-    const monthValue = this.monthField instanceof HTMLSelectElement ? this.monthField.value : '';
-    const yearValue = this.yearField instanceof HTMLSelectElement ? this.yearField.value : '';
-    const expirationValid = monthValue && yearValue && monthValue !== '' && yearValue !== '';
-    
+    const monthValue =
+      this.monthField instanceof HTMLSelectElement ? this.monthField.value : '';
+    const yearValue =
+      this.yearField instanceof HTMLSelectElement ? this.yearField.value : '';
+    const expirationValid =
+      monthValue && yearValue && monthValue !== '' && yearValue !== '';
+
     // If all credit card fields are valid/complete, track the event
     if (spreedlyFieldsValid && expirationValid) {
       try {
-        nextAnalytics.track(EcommerceEvents.createAddPaymentInfoEvent('Credit Card'));
+        nextAnalytics.track(
+          EcommerceEvents.createAddPaymentInfoEvent(
+            paymentMethodLabel('card_token')
+          )
+        );
         this.hasTrackedPaymentInfo = true;
-        this.logger.info('Tracked add_payment_info event - credit card fields complete');
+        this.logger.info(
+          'Tracked add_payment_info event - credit card fields complete'
+        );
       } catch (error) {
         this.logger.warn('Failed to track add_payment_info event:', error);
       }
@@ -999,68 +1141,91 @@ export class CreditCardService {
   }
 
   private handleFieldFocus(fieldName: string): void {
-    const field = fieldName === 'number' ? this.numberField : 
-                  fieldName === 'cvv' ? this.cvvField : null;
-                  
+    const field =
+      fieldName === 'number'
+        ? this.numberField
+        : fieldName === 'cvv'
+          ? this.cvvField
+          : null;
+
     if (field) {
       // Add focus class to the field container
       field.classList.add('next-focused', 'has-focus');
-      
+
       // Find and focus the wrapper/container
-      const wrapper = field.closest('.frm-flds, .form-group, .form-field, .field-group');
+      const wrapper = field.closest(
+        '.frm-flds, .form-group, .form-field, .field-group'
+      );
       if (wrapper) {
         wrapper.classList.add('next-focused', 'has-focus');
       }
-      
+
       // Find and add focus to parent containers that might have borders
-      const parentContainer = field.closest('.credit-card-field, .form-input-wrapper');
+      const parentContainer = field.closest(
+        '.credit-card-field, .form-input-wrapper'
+      );
       if (parentContainer) {
         parentContainer.classList.add('next-focused', 'has-focus');
       }
-      
+
       this.logger.debug(`Field focused: ${fieldName}`);
     }
   }
 
   private handleFieldBlur(fieldName: string): void {
-    const field = fieldName === 'number' ? this.numberField : 
-                  fieldName === 'cvv' ? this.cvvField : null;
-                  
+    const field =
+      fieldName === 'number'
+        ? this.numberField
+        : fieldName === 'cvv'
+          ? this.cvvField
+          : null;
+
     if (field) {
       // Remove focus class from the field container
       field.classList.remove('next-focused', 'has-focus');
-      
+
       // Find and remove focus from the wrapper/container
-      const wrapper = field.closest('.frm-flds, .form-group, .form-field, .field-group');
+      const wrapper = field.closest(
+        '.frm-flds, .form-group, .form-field, .field-group'
+      );
       if (wrapper) {
         wrapper.classList.remove('next-focused', 'has-focus');
       }
-      
+
       // Find and remove focus from parent containers
-      const parentContainer = field.closest('.credit-card-field, .form-input-wrapper');
+      const parentContainer = field.closest(
+        '.credit-card-field, .form-input-wrapper'
+      );
       if (parentContainer) {
         parentContainer.classList.remove('next-focused', 'has-focus');
       }
-      
+
       this.logger.debug(`Field blurred: ${fieldName}`);
     }
   }
 
   private showSpreedlyErrors(errors: any[]): void {
     this.logger.info('[Spreedly] Showing errors:', errors);
-    
+
     // Use the credit error container for all payment errors
-    const errorContainer = document.querySelector('[data-next-component="credit-error"]');
+    const errorContainer = document.querySelector(
+      '[data-next-component="credit-error"]'
+    );
     if (errorContainer instanceof HTMLElement) {
-      const messageElement = errorContainer.querySelector('[data-next-component="credit-error-text"]');
+      const messageElement = errorContainer.querySelector(
+        '[data-next-component="credit-error-text"]'
+      );
       if (messageElement) {
         const errorMessages = errors.map(e => e.message).join('. ');
         messageElement.textContent = errorMessages;
         errorContainer.style.display = 'flex';
         errorContainer.classList.add('visible');
-        
-        this.logger.debug('[Spreedly] Error displayed with message:', errorMessages);
-        
+
+        this.logger.debug(
+          '[Spreedly] Error displayed with message:',
+          errorMessages
+        );
+
         // Auto-hide after 10 seconds
         setTimeout(() => {
           if (errorContainer.style.display === 'flex') {
@@ -1071,9 +1236,11 @@ export class CreditCardService {
         }, 10000);
       }
     } else {
-      this.logger.error('[Spreedly] Could not find error container to display errors');
+      this.logger.error(
+        '[Spreedly] Could not find error container to display errors'
+      );
     }
-    
+
     // Mark fields with errors
     errors.forEach(error => {
       const fieldType = error.attribute;
@@ -1085,16 +1252,18 @@ export class CreditCardService {
     });
   }
 
-  private setCreditCardFieldValid(fieldType: keyof CreditCardValidationState): void {
+  private setCreditCardFieldValid(
+    fieldType: keyof CreditCardValidationState
+  ): void {
     this.validationState[fieldType].isValid = true;
     this.validationState[fieldType].hasError = false;
     delete this.validationState[fieldType].errorMessage;
-    
+
     const field = this.getFieldElement(fieldType);
     if (field) {
       field.classList.remove('has-error', 'next-error-field');
       field.classList.add('no-error');
-      
+
       const wrapper = FieldFinder.findFieldWrapper(field);
       if (wrapper) {
         wrapper.classList.remove('has-error', 'addErrorIcon');
@@ -1103,13 +1272,18 @@ export class CreditCardService {
     }
   }
 
-  private setCreditCardFieldError(fieldType: keyof CreditCardValidationState, message: string): void {
+  private setCreditCardFieldError(
+    fieldType: keyof CreditCardValidationState,
+    message: string
+  ): void {
     this.validationState[fieldType].isValid = false;
     this.validationState[fieldType].hasError = true;
     this.validationState[fieldType].errorMessage = message;
-    
-    this.logger.debug(`[Spreedly] Setting error for field: ${fieldType} - ${message}`);
-    
+
+    this.logger.debug(
+      `[Spreedly] Setting error for field: ${fieldType} - ${message}`
+    );
+
     // Map field types to actual DOM selectors
     let selector: string | null = null;
     if (fieldType === 'number') {
@@ -1117,16 +1291,20 @@ export class CreditCardService {
     } else if (fieldType === 'cvv') {
       selector = '[data-next-checkout-field="cvv"], #spreedly-cvv';
     } else if (fieldType === 'month') {
-      selector = '[data-next-checkout-field="cc-month"], [data-next-checkout-field="exp-month"]';
+      selector =
+        '[data-next-checkout-field="cc-month"], [data-next-checkout-field="exp-month"]';
     } else if (fieldType === 'year') {
-      selector = '[data-next-checkout-field="cc-year"], [data-next-checkout-field="exp-year"]';
+      selector =
+        '[data-next-checkout-field="cc-year"], [data-next-checkout-field="exp-year"]';
     }
-    
+
     if (!selector) {
-      this.logger.warn(`[Spreedly] No selector found for field type: ${fieldType}`);
+      this.logger.warn(
+        `[Spreedly] No selector found for field type: ${fieldType}`
+      );
       return;
     }
-    
+
     // Find all matching fields
     const fields = document.querySelectorAll(selector);
     fields.forEach(field => {
@@ -1134,17 +1312,17 @@ export class CreditCardService {
         // Add error classes to the field itself
         field.classList.remove('no-error');
         field.classList.add('has-error', 'next-error-field');
-        
+
         // Find the parent wrapper (could be .form-group, .frm-flds, etc.)
         const wrapper = field.closest('.form-group, .frm-flds, .field-group');
         if (wrapper) {
           wrapper.classList.remove('addTick');
           wrapper.classList.add('has-error', 'addErrorIcon');
-          
+
           // Remove any existing error labels
           const existingErrors = wrapper.querySelectorAll('.next-error-label');
           existingErrors.forEach(error => error.remove());
-          
+
           // Add new error message
           const errorElement = document.createElement('div');
           errorElement.className = 'next-error-label';
@@ -1152,22 +1330,24 @@ export class CreditCardService {
           errorElement.setAttribute('aria-live', 'polite');
           errorElement.textContent = message;
           wrapper.appendChild(errorElement);
-          
+
           this.logger.debug(`[Spreedly] Added error label: ${message}`);
         }
       }
     });
-    
+
     // Note: We don't show the general payment error container here
     // That's only for submission failures, not real-time validation
   }
 
-  private clearCreditCardFieldError(fieldType: keyof CreditCardValidationState): void {
+  private clearCreditCardFieldError(
+    fieldType: keyof CreditCardValidationState
+  ): void {
     this.validationState[fieldType].hasError = false;
     delete this.validationState[fieldType].errorMessage;
-    
+
     this.logger.debug(`[Spreedly] Clearing error for field: ${fieldType}`);
-    
+
     // Map field types to actual DOM selectors
     let selector: string | null = null;
     if (fieldType === 'number') {
@@ -1175,49 +1355,64 @@ export class CreditCardService {
     } else if (fieldType === 'cvv') {
       selector = '[data-next-checkout-field="cvv"], #spreedly-cvv';
     } else if (fieldType === 'month') {
-      selector = '[data-next-checkout-field="cc-month"], [data-next-checkout-field="exp-month"]';
+      selector =
+        '[data-next-checkout-field="cc-month"], [data-next-checkout-field="exp-month"]';
     } else if (fieldType === 'year') {
-      selector = '[data-next-checkout-field="cc-year"], [data-next-checkout-field="exp-year"]';
+      selector =
+        '[data-next-checkout-field="cc-year"], [data-next-checkout-field="exp-year"]';
     }
-    
+
     if (!selector) {
-      this.logger.warn(`[Spreedly] No selector found for field type: ${fieldType}`);
+      this.logger.warn(
+        `[Spreedly] No selector found for field type: ${fieldType}`
+      );
       return;
     }
-    
+
     // Find all matching fields
     const fields = document.querySelectorAll(selector);
     fields.forEach(field => {
       if (field instanceof HTMLElement) {
         // Remove error classes from the field itself
         field.classList.remove('has-error', 'next-error-field');
-        
+
         // Find the parent wrapper (could be .form-group, .frm-flds, etc.)
         const wrapper = field.closest('.form-group, .frm-flds, .field-group');
         if (wrapper) {
           wrapper.classList.remove('has-error', 'addErrorIcon');
-          
+
           // Remove any error labels within the wrapper
-          const errorLabels = wrapper.querySelectorAll('.next-error-label, .error-message, [role="alert"]');
+          const errorLabels = wrapper.querySelectorAll(
+            '.next-error-label, .error-message, [role="alert"]'
+          );
           errorLabels.forEach(label => {
-            this.logger.debug(`[Spreedly] Removing error label: ${label.textContent}`);
+            this.logger.debug(
+              `[Spreedly] Removing error label: ${label.textContent}`
+            );
             label.remove();
           });
         }
       }
     });
-    
+
     // Note: We don't hide payment error containers here because those are for
     // backend payment failures, not field validation errors
   }
 
-  private getFieldElement(fieldType: keyof CreditCardValidationState): HTMLElement | undefined {
+  private getFieldElement(
+    fieldType: keyof CreditCardValidationState
+  ): HTMLElement | undefined {
     switch (fieldType) {
-      case 'number': return this.numberField;
-      case 'cvv': return this.cvvField;
-      case 'month': return this.monthField;
-      case 'year': return this.yearField;
-      default: return undefined;
+      case 'number':
+        return this.numberField;
+      case 'cvv':
+        return this.cvvField;
+      case 'month':
+        return this.monthField;
+      case 'year':
+        return this.yearField;
+      default:
+        return undefined;
     }
   }
 

@@ -5,7 +5,7 @@ export default defineFeature({
   category: 'checkout',
   status: 'optional',
   summary:
-    'Renders the express payment buttons — PayPal, Apple Pay, Google Pay — for whichever of them the campaign and device support.',
+    'Renders the express payment buttons — PayPal, Apple Pay, Google Pay, Link — for whichever of them the campaign and device support.',
   activates: '[data-next-express-checkout="container"]',
   logPrefix: 'ExpressCheckoutContainerEnhancer',
 
@@ -29,8 +29,8 @@ export default defineFeature({
     {
       name: 'data-next-express-checkout',
       description:
-        'On each generated button: which method it is (`paypal`, `apple_pay`, `google_pay`). Style individual methods from this.',
-      values: '`paypal`, `apple_pay`, `google_pay`',
+        'On each generated button: which method it is (`paypal`, `apple_pay`, `google_pay`, `link`). Style individual methods from this.',
+      values: '`paypal`, `apple_pay`, `google_pay`, `link`',
     },
     {
       name: 'data-action',
@@ -86,7 +86,7 @@ export default defineFeature({
 \`\`\`
 
 \`express-checkout:initialized\` fires **once per available method**, so a page
-offering all three sees it three times. Use it to reveal the section only when at
+offering all four sees it four times. Use it to reveal the section only when at
 least one button actually rendered — Apple Pay is absent on non-Apple devices, and
 an empty "Express checkout" heading looks broken.
 

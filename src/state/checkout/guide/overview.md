@@ -71,9 +71,12 @@ checkout always sends the shopper back through the hosted card fields.
   normal submit, express, and test order — walks that same ladder, because they
   all build through `OrderBuilder`.
 - **`paymentMethod` is a UI-side vocabulary that is mapped at submit.** The order
-  builder translates it through `API_PAYMENT_METHOD_MAP` and falls back to
-  `card_token` for anything unmapped. Every method the store can hold is mapped,
-  `klarna` included.
+  builder translates it through `API_PAYMENT_METHOD_MAP`, which lists every
+  method the SDK knows — the redirect ones (`ideal`, `bancontact`, `sepa_debit`,
+  `twint`, `swish`, `affirm`, `link`, `giropay`, `sofort`, `klarna`) included. Only the card entry
+  actually changes name on the way, and **a method that is not listed is sent as
+  it stands** rather than turned into a card, so the field can hold a name this
+  SDK release predates and the API is what accepts or refuses it.
 - **Express choices do not outlive the page.** `apple_pay`, `google_pay`, and
   `paypal` are written to storage as `credit-card`, because the express session
   they belong to is gone after a load.

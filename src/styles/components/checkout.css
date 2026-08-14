@@ -113,6 +113,13 @@
   border-top-color: #ffffff;
 }
 
+/* Link's wordmark is drawn in currentColor — only its mark carries brand green —
+   so the spinner follows the button's own text colour rather than a fixed hue. */
+.payment-btn.cc-link .spinner {
+  border-color: rgba(0, 0, 0, 0.1);
+  border-top-color: currentColor;
+}
+
 /* Form Input Validation Icons */
 .form-input {
   position: relative;

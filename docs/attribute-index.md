@@ -390,7 +390,7 @@ Turned on by `[data-next-enhancer]`.
 
 ### [express-checkout-container](../src/features/checkout/express-checkout-container/guide/overview.md) *(optional)*
 
-Renders the express payment buttons — PayPal, Apple Pay, Google Pay — for whichever of them the campaign and device support.
+Renders the express payment buttons — PayPal, Apple Pay, Google Pay, Link — for whichever of them the campaign and device support.
 
 Turned on by `[data-next-express-checkout="container"]`.
 

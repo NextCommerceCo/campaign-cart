@@ -227,6 +227,10 @@ export interface Order {
    * `data-next-display="order.paymentMethod"` renders this through a friendlier
    * label for the common methods — see the order-display guide's
    * [display paths](../features/display/order-display/guide/reference/display-paths.md).
+   *
+   * Two of {@link PaymentMethod}'s values only ever arrive here and can never be
+   * sent: `external`, a payment taken outside the platform, and `saved_card`, a
+   * card already on file. Both are recorded in the admin dashboard.
    */
   payment_method?: PaymentMethod | null;
   /** URL of the hosted order-status/receipt page for this order. */
@@ -466,16 +470,34 @@ export interface Voucher {
 
 /**
  * How an order is paid for — the code the orders API accepts on
- * {@link Payment.payment_method | payment_detail.payment_method} and reports
- * back on {@link Order.payment_method | Order.payment_method}.
+ * `payment_detail.payment_method` and reports back on
+ * {@link Order.payment_method | Order.payment_method}.
  *
- * `card_token` is a tokenised card (what most stores mean by "credit card");
- * `external` is a payment taken outside the platform and recorded on the order.
- * The rest name the wallet or scheme the shopper used.
+ * `card_token` is a card, and it is a **token** rather than a number: the card
+ * itself is entered in the payment provider's own hosted fields and never
+ * reaches this page, this SDK, or this request. There is no plain "credit card"
+ * code here. A page writes `data-next-payment-method="credit_card"` and the
+ * checkout store calls it `credit-card`, but what goes on the order is only ever
+ * the token. The rest name the wallet or scheme the shopper used.
+ *
+ * Every one of them except a directly-charged card sends the shopper away to pay
+ * and brings them back (a card only when the bank asks for 3-D Secure), so an
+ * order created with any of these can come back carrying
+ * {@link Order.payment_complete_url}.
+ *
+ * **Three of these are read-only.** `external` (a payment taken outside the
+ * platform), `saved_card` (a card already on file) and any method the merchant
+ * has not enabled arrive on a fetched order but are never something the SDK
+ * sends: it has no flow that produces them.
+ *
+ * SEPA Direct Debit is `sepa_debit`, the name the orders API field lists. The
+ * platform's payment-methods guide calls the same method `sepa_direct`, which is
+ * not a value here.
  */
 export type PaymentMethod =
   | 'apple_pay'
   | 'card_token'
+  | 'saved_card'
   | 'paypal'
   | 'klarna'
   | 'ideal'
@@ -484,6 +506,7 @@ export type PaymentMethod =
   | 'google_pay'
   | 'sofort'
   | 'sepa_debit'
+  | 'swish'
   | 'twint'
   | 'link'
   | 'affirm'
@@ -592,7 +615,17 @@ export interface Payment {
   external_payment_method?: string;
   payment_gateway?: number;
   payment_gateway_group?: number;
-  payment_method: PaymentMethod;
+  /**
+   * How to charge for this order.
+   *
+   * Wider than {@link PaymentMethod} on purpose: a page may offer a method this
+   * SDK release has never heard of, and the SDK sends that name through rather
+   * than substituting a card for it. The API is the authority on what it accepts
+   * request. It either creates the order (and answers with a
+   * {@link Order.payment_complete_url} to finish paying at) or rejects the
+   * request. `Order.payment_method` on the way back stays the known list.
+   */
+  payment_method: PaymentMethod | (string & {});
 }
 
 export interface AddUpsellLine {

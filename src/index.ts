@@ -78,6 +78,9 @@ export type {
   OrderUser,
   OrderAddress,
   MarketingAttribution,
+  // The ways an order can be paid for. Public because `Order.payment_method` and
+  // `CheckoutPaymentMethod` are both written in terms of it.
+  PaymentMethod,
 } from './types/api';
 
 // The analytics payload types. Exported so the Analytics Events reference can
