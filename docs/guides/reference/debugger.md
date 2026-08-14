@@ -6,9 +6,9 @@ category: "Reference"
 
 # Debugger
 
-The SDK ships an on-page debug overlay: eight panels showing the cart, the campaign, the checkout form, the completed order, every analytics event, and every storage key the SDK wrote. It is off on a normal shopper visit and costs nothing until you turn it on.
+When a price renders blank, an attribute does nothing, or an analytics event never arrives, the debugger tells you why without adding a single line to the page. It shows the cart the SDK is holding, the campaign it fetched, the fields it matched on your form, and every event it sent. It is off on a normal shopper visit.
 
-## Opening it
+## Enabling the debugger
 
 Add `?debugger=true` to any page the SDK runs on.
 
@@ -31,9 +31,9 @@ Both are read by `core/debug/debug-module.ts › DebugModule.isDebugMode`. Nothi
 
 Opening the debugger also puts the page into **test mode**, so use a test card rather than a real one while it is on.
 
-## Which switch does what
+## Debug switches
 
-Five switches look like they do the same thing. They do not. Every row below assumes a built bundle, which is what a live page loads.
+These look like they do the same thing. They do not, and picking the wrong one is why a panel never appears or a console stays silent. Every row assumes a built bundle, which is what a live page loads.
 
 | Switch | Opens the overlay |
 |---|---|
@@ -71,9 +71,9 @@ This one survives review because the dev server has no production gate, so the t
 
 `core/logger.ts › Logger.error` has no production gate. A live page reports its own failures whether or not you turned anything on. Every quieter level is opt-in.
 
-## The panels
+## Panels
 
-Eight, built in `core/debug/debug-overlay/debug-overlay.ts › DebugOverlay.initializePanels`.
+Built in `core/debug/debug-overlay/debug-overlay.ts › DebugOverlay.initializePanels`.
 
 | Panel | What it shows |
 |---|---|
@@ -88,7 +88,7 @@ Eight, built in `core/debug/debug-overlay/debug-overlay.ts › DebugOverlay.init
 
 The Analytics panel marks each event delivered, blocked, skipped, or failed for each provider, and runs an ecommerce payload validator over it. Which events reach which provider is in [Analytics Events](./analytics-events.md).
 
-## The pickers
+## Pickers
 
 Alongside the panels are controls that change what the visitor sees, applied immediately with no reload.
 
@@ -102,7 +102,7 @@ Alongside the panels are controls that change what the visitor sees, applied imm
 
 The locale picker outranks `window.nextConfig.locale`, so a campaign that pins its price formatting can still be previewed in another locale.
 
-## The console API
+## Console API
 
 Opening the debugger installs `window.nextDebug`. It is the scriptable half of the overlay, built in `core/sdk-initializer/sdk-initializer.debug-utils.ts`.
 

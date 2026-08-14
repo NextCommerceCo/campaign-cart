@@ -86,7 +86,16 @@ function blocks(...parts: Array<string | undefined>): string {
 
 /** A union type or a description containing `|` would end the table cell early. */
 function cell(text: string): string {
-  return text.replace(/\|/g, '\\|').replace(/\n+/g, ' ');
+  return flat(text).replace(/\|/g, '\\|');
+}
+
+/**
+ * The same newline collapse without the pipe escape, for prose and code spans.
+ * `cell()` there would render a literal backslash: a union type like
+ * `'a' | 'b'` has no cell to break out of in a bullet list.
+ */
+function flat(text: string): string {
+  return text.replace(/\n+/g, ' ');
 }
 
 function table(header: string[], rows: string[][]): string {
@@ -155,7 +164,7 @@ function payloadFields(
   return fields
     .map(f => {
       const meaning = cell(fieldMeaning(doc, f.path));
-      const facts = `\`${cell(f.type)}\`, ${f.required ? 'required' : 'optional'}`;
+      const facts = `\`${flat(f.type)}\`, ${f.required ? 'required' : 'optional'}`;
       return `- **\`${f.path}\`** ${facts}. ${meaning}`.trimEnd();
     })
     .join('\n');
@@ -173,7 +182,7 @@ function sharedShapeSection(
     shape.summary,
     fields
       .map(f =>
-        `- **\`${f.path}\`** \`${cell(f.type)}\`. ${cell(shape.fields[f.path] ?? '')}`.trimEnd()
+        `- **\`${f.path}\`** \`${flat(f.type)}\`. ${flat(shape.fields[f.path] ?? '')}`.trimEnd()
       )
       .join('\n')
   );

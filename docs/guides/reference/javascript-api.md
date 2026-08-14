@@ -6,9 +6,9 @@ category: "Reference"
 
 # JavaScript API
 
-Most pages never call the SDK from JavaScript: the attributes do the work. `window.next` exists for the rest, and this page is every public member of it, grouped by the job you came to do.
+Reach for `window.next` when the markup cannot express what you need: a coupon applied from your own code, a shipping picker you render yourself, a popup that reacts to the cart. The attributes cover everything else, so most pages never open this page at all.
 
-## Accessing the SDK
+## Initialization
 
 `window.next` does not exist until boot finishes. Two safe patterns, both usable before or after boot:
 
@@ -28,7 +28,7 @@ Most pages never call the SDK from JavaScript: the attributes do the work. `wind
 
 Do not use `next:ready`. It only means the SDK file arrived, and the cart still looks empty.
 
-## Getting hold of the SDK
+## The SDK instance
 
 The SDK creates one instance of itself during boot and assigns it to `window.next`. You do not construct it. Because boot is asynchronous, code that runs early has to wait — that is what `window.nextReady` is for (see the window surface).
 
@@ -80,7 +80,7 @@ The shipping methods the campaign offers, and which one the visitor has chosen. 
 | [`next.getSelectedShippingMethod`](#nextgetselectedshippingmethod) | The shipping method the visitor has chosen, or `null` when they have not chosen one yet. |
 | [`next.setShippingMethod`](#nextsetshippingmethod) | Chooses a shipping method by id and recalculates the cart total with its price. |
 
-## Products, packages, and variants
+## Catalog
 
 Read-only lookups into the loaded campaign. A *package* is the sellable unit — a quantity of a product at a price — and its `ref_id` is the number every cart call takes. The variant lookups exist so you can build your own size/colour picker instead of using the built-in one.
 
@@ -93,7 +93,7 @@ Read-only lookups into the loaded campaign. A *package* is the sellable unit —
 | [`next.getPackageByVariantSelection`](#nextgetpackagebyvariantselection) | Resolves the one package matching a complete set of chosen variant attributes, so you can add it to the cart. |
 | [`next.createVariantKey`](#nextcreatevariantkey) | Turns a set of chosen variant attributes into one stable string, for use as a lookup key in your own code. |
 
-## Reacting to what happens
+## Events
 
 Two mechanisms, and they are not interchangeable. `on`/`off` subscribe to the typed SDK event bus and are what you want. `registerCallback` is the older lifecycle-hook channel, kept for pages that already use it.
 
@@ -105,7 +105,7 @@ Two mechanisms, and they are not interchangeable. `on`/`off` subscribe to the ty
 | [`next.unregisterCallback`](#nextunregistercallback) | Removes a callback registered with `next. |
 | [`next.triggerCallback`](#nexttriggercallback) | Fires every callback registered for a type, with a snapshot you supply. |
 
-## Sending analytics events yourself
+## Analytics
 
 The SDK already tracks the standard ecommerce funnel on its own. Call these only for something it cannot see — a custom step, a view of a list you rendered yourself, a sign-up outside the checkout form. Every one of them is fire-and-forget: it queues the work and resolves immediately, and a failure is logged rather than thrown, so analytics can never break a page.
 
@@ -123,7 +123,7 @@ The SDK already tracks the standard ecommerce funnel on its own. Call these only
 | [`next.setDebugMode`](#nextsetdebugmode) | Turns verbose analytics logging on or off at runtime, so you can see every event as it is built and dispatched. |
 | [`next.invalidateAnalyticsContext`](#nextinvalidateanalyticscontext) | Tells analytics the page changed, so the next event is built with fresh page context instead of the previous route's. |
 
-## Attribution and order metadata
+## Attribution and metadata
 
 Attribution is the record of where the visitor came from; metadata is the free-form bag of extra values attached to the order. Both are collected automatically and sent with the order — these calls are for adding your own values on top.
 
@@ -174,7 +174,7 @@ Two behaviours with no `data-next-*` attribute of their own: you turn them on by
 | [`next.fomo`](#nextfomo) | Starts the rotating social-proof popup — "someone in Denver bought this a moment ago" — from a list you supply. |
 | [`next.stopFomo`](#nextstopfomo) | Stops the social-proof popup rotation. |
 
-## Formatting, version, and checks
+## Utilities
 
 Small helpers that do not belong to any one part of the flow.
 
@@ -184,7 +184,7 @@ Small helpers that do not belong to any one part of the flow.
 | [`next.formatPrice`](#nextformatprice) | Formats a number as money in the campaign's currency, so your own markup matches the SDK's. |
 | [`next.validateCheckout`](#nextvalidatecheckout) | A pre-flight check before sending the visitor to checkout, returning the reasons it would fail. |
 
-## The cart operations
+## Cart operations
 
 `next.cart` is the supported programmatic cart surface. Every operation is async and shared with everything the attributes do.
 
@@ -299,7 +299,7 @@ The full programmatic cart API — the supported way to drive the cart from code
 cart
 ```
 
-**Returns:** The cart operations object. Its members are listed under [What `next.cart` can do](#what-nextcart-can-do) below.
+**Returns:** The cart operations object. Its members are listed under [Cart operations](#cart-operations) below.
 
 ```ts
 await next.cart.addItem({ packageId: 2, quantity: 1, isUpsell: false });

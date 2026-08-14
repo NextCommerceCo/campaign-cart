@@ -8,7 +8,7 @@ category: "Start Here"
 
 This page takes you from an empty HTML file to a page the SDK boots on. You need two things before you start: a campaign set up in the Campaigns App, and that campaign's API key.
 
-## The head of every funnel page
+## Loading the SDK
 
 Every page in a live funnel carries the same three things in its `<head>`, in this order: the configuration, the `next-*` meta tags, and the SDK loader. The smallest complete head, with nothing to create but this one file:
 
@@ -62,7 +62,9 @@ A page can also run without a config script at all: `next-api-key` as a meta tag
 </head>
 ```
 
-## Page types and how a funnel chains
+To confirm it loaded, open the page with `?debugger=true`. The overlay reports the campaign it fetched and the prices it resolved, and installs `window.nextDebug` for checking state from the console. See [Debugger](../reference/debugger.md).
+
+## Page types
 
 `next-page-type` declares which funnel step a page is: `product`, `cart`, `checkout`, `upsell`, or `receipt`. Analytics and post-purchase tracking key off it, so every page should declare one.
 
@@ -87,9 +89,9 @@ The links in the chain are meta tags:
 - `next-success-url`: where checkout sends the visitor after the order is created. The SDK appends the order's `ref_id` to it, which is how the next page finds the order (`checkout-form.enhancer.ts › CheckoutFormEnhancer`).
 - `next-upsell-accept-url` / `next-upsell-decline-url`: where an upsell page sends the visitor after they accept or skip the offer.
 
-## Waiting for the SDK
+## Initialization
 
-`window.next` does not exist until boot finishes. Two safe ways to run code after it:
+The SDK creates `window.next` once it has loaded the campaign and restored the cart. Push a callback onto `window.nextReady` and it runs at that point, or immediately if the SDK is already up:
 
 ```html
 <script>
@@ -103,7 +105,7 @@ The links in the chain are meta tags:
 </script>
 ```
 
-## Where to go next
+## Next steps
 
 - [How it works](./how-it-works.md): the mental model behind the attributes.
 - [Building Pages](../pages/checkout-page.md): one guide per funnel page, copied from the production starter templates.

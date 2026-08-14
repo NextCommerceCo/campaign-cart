@@ -26,7 +26,7 @@ What each piece is:
 
 Boot happens once per page load, in 14 ordered steps: configuration, campaign fetch, cart restore, then the DOM scan, then `next:initialized`. Elements added to the page *after* boot are enhanced too: a DOM observer watches for new `data-next-*` matches.
 
-## The three kinds of markup
+## Markup types
 
 Real funnel pages mix three kinds of markup, and confusing them is the most common authoring mistake:
 
@@ -71,6 +71,10 @@ Real funnel pages mix three kinds of markup, and confusing them is the most comm
 ```
 
 Tokens only mean something inside a `<template>` owned by a list feature. A `{item.name}` outside one is plain text and stays on screen verbatim.
+
+## Debugging
+
+The x-ray mode in the debug overlay outlines every element the SDK enhanced, which is the quickest way to tell a matched attribute from a typo. Open it with `?debugger=true` and see [Debugger](../reference/debugger.md).
 
 ## Cautions
 

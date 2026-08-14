@@ -847,7 +847,47 @@ for (const folder of new Set(navPages.map(p => p.folder))) {
 
 const pct = (have, total) => (total === 0 ? 100 : Math.round((have / total) * 100));
 
+/**
+ * Headings must be noun phrases naming the thing. A verb-phrase heading
+ * ("Checking it booted", "Seeing it work") reads as a blog post, not a library
+ * reference, and it is the failure this gate exists to catch — the rule in
+ * `.claude/rules/documentation.md` §2 predates the gate and drifted anyway.
+ *
+ * Detected by the opening word: a gerund or an imperative verb, or any heading
+ * carrying a bare "it". Kept deliberately dumb so it cannot argue.
+ */
+// Gerunds are correct in library docs ("Loading the SDK", "Debugging", "Handling
+// errors"), so they are not the failure. These two are:
+//   a pronoun, which names nothing — "Checking it booted", "Seeing it work", "Opening it"
+//   a question, which is a blog voice — "Which switch does what", "What you can do with the link"
+const HEADING_PRONOUN = /\b(it|its|you|your|yours|we|our|us)\b/i;
+const HEADING_QUESTION = /^(what|which|which|how|why|when|where|should|can|do|does)\b|\?\s*$/i;
+
+function scanHeadingVoice() {
+  const files = walk(join(ROOT, 'docs', 'guides'), isMarkdown);
+  const offenders = [];
+  let total = 0;
+  for (const file of files) {
+    let fenced = false;
+    for (const line of readFileSync(file, 'utf8').split('\n')) {
+      if (line.startsWith('```')) { fenced = !fenced; continue; }
+      if (fenced) continue;
+      const m = /^#{2,6}\s+(.+?)\s*$/.exec(line);
+      if (!m) continue;
+      const text = m[1];
+      total += 1;
+      if (HEADING_PRONOUN.test(text) || HEADING_QUESTION.test(text)) {
+        offenders.push(`${relative(ROOT, file)} — ${text}`);
+      }
+    }
+  }
+  return { total, offenders };
+}
+
+const headingVoice = scanHeadingVoice();
+
 const current = {
+  headingsInLibraryVoice: headingVoice.offenders,
   undocumentedAttributes,
   undescribedEvents,
   featuresWithoutGuide,
@@ -906,6 +946,7 @@ if (UPDATE) {
 const baseline = existsSync(BASELINE_PATH)
   ? JSON.parse(readFileSync(BASELINE_PATH, 'utf8'))
   : { undocumentedAttributes: [], undescribedEvents: [], featuresWithoutGuide: [] };
+
 
 const KINDS = [
   {
@@ -1062,6 +1103,15 @@ const KINDS = [
     fix:
       'add title/group/category frontmatter — generated pages from the render-*.ts that ' +
       'owns them (see src/docs/content/nav.ts), hand-written pages in the file itself',
+  },
+  {
+    key: 'headingsInLibraryVoice',
+    label: 'published guide headings free of pronouns and questions',
+    have: headingVoice.total - headingVoice.offenders.length,
+    total: headingVoice.total,
+    fix:
+      'name the thing, not the reader — "Debugging" not "Seeing it work", ' +
+      '"Verifying the install" not "Checking it booted". See .claude/rules/docs-layout.md',
   },
 ];
 
