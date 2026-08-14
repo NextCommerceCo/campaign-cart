@@ -51,15 +51,11 @@
 
 ### Before you upgrade
 
-**Nothing to add to your pages.** Existing payment-method radios keep working: `credit`, `paypal`, `klarna`, `apple-pay` and `google-pay` all still select what they always did.
-
-**Check the spelling of any method you add.** A name the SDK does not know now goes to the API and comes back refused, where it used to fall back to the card form. The console names the value: `Payment method "…" is not one the SDK knows`.
-
-**The card answers to `credit` and `card_token`, and to nothing else.** `card` and `credit_card` reached the card form on earlier releases, but only through the fallback above, which is gone. Write `credit`, which is what the starter templates carry.
+**Write `credit` for the card, not `card` or `credit_card`.** Those two reached the card form on earlier releases, because any unrecognised name did. They now go to the orders API and come back refused, with `Payment method "…" is not one the SDK knows` in the console.
 
 **Receipt text changed.** `order.paymentMethod` prints `Klarna` where it printed `klarna`. If your own code or a tag reads that text, read the order's `payment_method` code instead.
 
-**One funnel step gains volume.** Campaigns offering Klarna or one of the new methods now record the payment step where they recorded nothing.
+**The payment step appears in reports where it did not before.** Campaigns offering Klarna or one of the new methods now record it, so that step's numbers are not comparable across this release.
 
 ---
 
