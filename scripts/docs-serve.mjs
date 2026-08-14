@@ -86,8 +86,15 @@ server.listen(PORT, () => {
 let watchProcess = null;
 if (process.argv.includes('--watch')) {
   watchProcess = spawn('npx', ['typedoc', '--watch'], {
-    stdio: 'inherit',
+    stdio: ['inherit', 'pipe', 'inherit'],
     shell: true,
+  });
+  // typedoc's build log scrolls the startup URL away; re-print it after each build.
+  watchProcess.stdout.on('data', chunk => {
+    process.stdout.write(chunk);
+    if (chunk.toString().includes('html generated')) {
+      console.log(`docs site: http://localhost:${PORT}`);
+    }
   });
 }
 

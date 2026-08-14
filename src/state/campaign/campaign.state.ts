@@ -16,7 +16,7 @@ const campaignStoreInstance = create<CampaignStore>()((set, get, store) => ({
 
 export const campaignStore = campaignStoreInstance;
 /**
- * The campaign store. The loaded {@link index.Campaign | Campaign} lives on its
+ * The campaign store. The loaded {@link Campaign} lives on its
  * **`.data`** field
  * (not `.campaign`) — `useCampaignStore.getState().data`. Read it for packages,
  * pricing currency, and shipping options.

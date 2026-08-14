@@ -17,8 +17,6 @@
  *
  *   npm run docs:coverage          # check (CI)
  *   npm run docs:coverage:update   # rewrite the baseline from current state
- *
- * See docs/documentation-plan.md §5 Phase 0.
  */
 
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
@@ -703,11 +701,15 @@ function scanNavFrontmatter() {
     ...['docs/attribute-index.md', 'docs/sdk-attributes.md']
       .map(f => join(ROOT, f))
       .filter(existsSync),
+    // The hand-written Start Here and Building Pages guides under docs/guides/ — published
+    // from `projectDocuments` and carrying the same frontmatter contract.
+    ...walk(join(ROOT, 'docs', 'guides'), isMarkdown),
   ].filter(
     f =>
       f.includes(`${sep}guide${sep}`) ||
       f.startsWith(CORE_GUIDE) ||
-      dirname(f) === join(ROOT, 'docs')
+      dirname(f) === join(ROOT, 'docs') ||
+      f.startsWith(join(ROOT, 'docs', 'guides'))
   );
 
   return files.sort().map(file => {
@@ -742,6 +744,7 @@ function scanAbsoluteLinks() {
     ...['docs/attribute-index.md', 'docs/sdk-attributes.md', 'docs/site-home.md']
       .map(f => join(ROOT, f))
       .filter(existsSync),
+    ...walk(join(ROOT, 'docs', 'guides'), isMarkdown),
   ];
 
   const hits = [];
