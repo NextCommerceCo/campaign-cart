@@ -34,7 +34,7 @@ const SPLIT_ON_OTHER = /\.split\(\s*(?!['"]\.['"])/;
  * Reading a path off runtime data yields a **value**, and a value is not a path.
  *
  * Without this the walk follows the value onwards: `order-display` hands the
- * resolved `payment_method` to `beautifyPaymentMethod`, whose lookup table is keyed
+ * resolved `payment_method` to `paymentMethodLabel`, whose lookup table is keyed
  * by payment method, and eight card brands are published as `order.` display paths.
  */
 const READS_A_VALUE = /\bgetNestedProperty\(/;

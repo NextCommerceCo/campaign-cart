@@ -16,10 +16,7 @@ import { describe, it, expect } from 'vitest';
 import { getPropertyConfig } from '@/core/base/display-types';
 import { createLogger } from '@/core/logger';
 import type { Order } from '@/types/api';
-import {
-  beautifyPaymentMethod,
-  getDisplayValue,
-} from '../order-display.properties';
+import { getDisplayValue } from '../order-display.properties';
 
 const logger = createLogger('OrderDisplayPropertiesTest');
 
@@ -78,6 +75,21 @@ describe('order.paymentMethod', () => {
     expect(rendered('order.payment_method', ORDER)).toBe('PayPal');
   });
 
+  it('relabels every method, not only the four it once knew', () => {
+    // The table itself is covered in utils/tests/payment-method.test.ts; what is
+    // asserted here is that this display path runs it at all. Before, anything
+    // outside card/PayPal/Apple/Google reached a receipt as its API code.
+    expect(
+      rendered('order.paymentMethod', { ...ORDER, payment_method: 'ideal' })
+    ).toBe('iDEAL');
+    expect(
+      rendered('order.payment_method', {
+        ...ORDER,
+        payment_method: 'sepa_debit',
+      })
+    ).toBe('SEPA Direct Debit');
+  });
+
   it('renders empty rather than "Credit Card" when the API sent none', () => {
     const noMethod = { ...ORDER, payment_method: null };
     expect(rendered('order.paymentMethod', noMethod)).toBe('');
@@ -94,41 +106,5 @@ describe('order.paymentMethod', () => {
   it('renders empty before an order has loaded', () => {
     expect(rendered('order.paymentMethod', null)).toBe('');
     expect(rendered('order.status', null)).toBe('');
-  });
-});
-
-describe('beautifyPaymentMethod', () => {
-  it.each([
-    ['card_token', 'Credit Card'],
-    ['saved_card', 'Saved Card'],
-    ['apple_pay', 'Apple Pay'],
-    ['google_pay', 'Google Pay'],
-    ['paypal', 'PayPal'],
-    ['affirm', 'Affirm'],
-    ['bancontact', 'Bancontact'],
-    ['external', 'External'],
-    ['giropay', 'Giropay'],
-    ['ideal', 'iDEAL'],
-    ['klarna', 'Klarna'],
-    ['link', 'Link'],
-    ['sepa_debit', 'SEPA Direct Debit'],
-    ['sofort', 'Sofort'],
-    ['swish', 'Swish'],
-    ['twint', 'Twint'],
-  ])('labels %s as "%s", the platform’s own name for it', (code, label) => {
-    expect(beautifyPaymentMethod(code)).toBe(label);
-  });
-
-  it('reads the same code however the order spelled it', () => {
-    expect(beautifyPaymentMethod('Apple Pay')).toBe('Apple Pay');
-    expect(beautifyPaymentMethod('apple-pay')).toBe('Apple Pay');
-    expect(beautifyPaymentMethod(' PAYPAL ')).toBe('PayPal');
-  });
-
-  it('shows a method it has no label for exactly as the API spelled it', () => {
-    // Never substituted for a friendlier but wrong name, and not title-cased
-    // either: a raw code on a receipt gets reported, an invented label does not.
-    expect(beautifyPaymentMethod('pix')).toBe('pix');
-    expect(beautifyPaymentMethod('')).toBe('');
   });
 });

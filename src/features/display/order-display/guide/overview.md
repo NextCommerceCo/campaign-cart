@@ -40,8 +40,9 @@ a receipt page needs no configuration beyond the bindings themselves.
 - **`order.paymentMethod` is the one value that is relabelled, not passed
   through.** The API's code becomes the platform's own name for the method, so a
   receipt reads `iDEAL`, `SEPA Direct Debit` or `Credit Card` rather than `ideal`,
-  `sepa_debit` or `card_token` — see `beautifyPaymentMethod` in
-  `order-display.properties.ts` for the table. A method with no label yet is shown
+  `sepa_debit` or `card_token` — see `paymentMethodLabel` in
+  `utils/payment-method.ts`, the one table the receipt, the
+  `add_payment_info` event and the express error message all read. A method with no label yet is shown
   as the API spelled it, on purpose: a raw code on a receipt gets reported, an
   invented label does not.
 - For a per-line breakdown of what was bought, this feature is the wrong tool —
