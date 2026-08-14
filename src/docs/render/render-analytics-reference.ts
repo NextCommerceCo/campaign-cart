@@ -134,8 +134,14 @@ function fieldMeaning(doc: AnalyticsEventDoc, path: string): string {
   return doc.fields?.[path] ?? ANALYTICS_FIELD_DOCS[path] ?? '';
 }
 
-/** The field table for one event, or a line saying why there is none. */
-function payloadTable(
+/**
+ * The fields of one event, or a line saying why there are none.
+ *
+ * One entry per field rather than a four-column table: the site's content column
+ * is about 630px at a 1200px viewport, which is too narrow for Field / Type /
+ * Required / Meaning to sit side by side once the meaning runs to a sentence.
+ */
+function payloadFields(
   doc: AnalyticsEventDoc,
   fields: SchemaFieldFact[] | undefined
 ): string {
@@ -146,15 +152,13 @@ function payloadTable(
       'it puts there.'
     );
   }
-  return table(
-    ['Field', 'Type', 'Required', 'Meaning'],
-    fields.map(f => [
-      `\`${f.path}\``,
-      `\`${cell(f.type)}\``,
-      f.required ? 'yes' : 'no',
-      cell(fieldMeaning(doc, f.path)),
-    ])
-  );
+  return fields
+    .map(f => {
+      const meaning = cell(fieldMeaning(doc, f.path));
+      const facts = `\`${cell(f.type)}\`, ${f.required ? 'required' : 'optional'}`;
+      return `- **\`${f.path}\`** ${facts}. ${meaning}`.trimEnd();
+    })
+    .join('\n');
 }
 
 function sharedShapeSection(
@@ -167,14 +171,11 @@ function sharedShapeSection(
   return blocks(
     `## ${title}`,
     shape.summary,
-    table(
-      ['Field', 'Type', 'Meaning'],
-      fields.map(f => [
-        `\`${f.path}\``,
-        `\`${cell(f.type)}\``,
-        cell(shape.fields[f.path] ?? ''),
-      ])
-    )
+    fields
+      .map(f =>
+        `- **\`${f.path}\`** \`${cell(f.type)}\`. ${cell(shape.fields[f.path] ?? '')}`.trimEnd()
+      )
+      .join('\n')
   );
 }
 
@@ -196,7 +197,7 @@ function eventSection(doc: AnalyticsEventDoc, facts: AnalyticsFacts): string {
       ? `**Built at:** ${sites.map(s => `\`${sourceAnchor(s.file, s.symbol)}\``).join(', ')}`
       : undefined,
     doc.providerNotes,
-    payloadTable(doc, facts.schemas[doc.name]),
+    payloadFields(doc, facts.schemas[doc.name]),
     doc.cautions?.length
       ? doc.cautions.map(c => `> ⚠️ ${c}`).join('\n>\n')
       : undefined
@@ -322,25 +323,21 @@ export function renderAnalyticsProviders(
     `${coreNav('Reference', 'Analytics Providers')}# Analytics providers\n\n${GENERATED}`,
     ANALYTICS_PROVIDERS_INTRO,
     '## The matrix',
-    table(
-      [
-        'Provider',
-        'Config key',
-        'Refuses to start without',
-        'Events it accepts',
-        'Where they go',
-      ],
-      facts.providers.map(p => {
+    facts.providers
+      .map(p => {
         const doc = byKey.get(p.key);
-        return [
-          doc ? `[${doc.adapter}](#${doc.adapter.toLowerCase()})` : p.key,
-          `\`analytics.providers.${p.key}\``,
-          p.requiredSetting ? `\`${p.requiredSetting}\`` : 'nothing',
-          accepted[p.key] ?? '—',
-          cell(doc?.summary ?? ''),
-        ];
+        const name = doc
+          ? `[${doc.adapter}](#${doc.adapter.toLowerCase()})`
+          : p.key;
+        const needs = p.requiredSetting
+          ? `Refuses to start without \`${p.requiredSetting}\`.`
+          : 'Needs no settings of its own.';
+        return blocks(
+          `**${name}** \`analytics.providers.${p.key}\``,
+          `${cell(doc?.summary ?? '')} Accepts ${accepted[p.key] ?? 'an unknown number of'} events. ${needs}`
+        );
       })
-    ),
+      .join('\n\n'),
     'Every provider is optional. With `analytics.enabled: true` and no provider ' +
       'configured, events are still built, validated and pushed to ' +
       '`window.NextDataLayer` — see [Analytics events](./analytics-events.md).',
@@ -411,15 +408,15 @@ export function renderAnalyticsProviders(
       'happen before any provider is asked, so a provider that "receives ' +
       'nothing" is often not the provider\'s fault at all. Walk the list from ' +
       'the top.',
-    table(
-      ['#', 'Stops here when', 'What you see', 'Fix'],
-      ANALYTICS_FAILURE_STEPS.map((step, i) => [
-        `${i + 1}. **${cell(step.stage)}**<br>\`${step.source}\``,
-        cell(step.condition),
-        cell(step.symptom),
-        cell(step.fix),
-      ])
-    ),
+    ANALYTICS_FAILURE_STEPS.map((step, i) =>
+      blocks(
+        `### ${i + 1}. ${cell(step.stage)}`,
+        `\`${step.source}\``,
+        `**Stops here when:** ${cell(step.condition)}`,
+        `**What you see:** ${cell(step.symptom)}`,
+        `**Fix:** ${cell(step.fix)}`
+      )
+    ).join('\n\n'),
     ANALYTICS_DEBUG_NOTES.join('\n\n'),
     '## See also',
     [

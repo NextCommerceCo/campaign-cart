@@ -15,13 +15,13 @@ There is no default analytics setup and no meta tag creates one. Only `window.ne
 ```html
 <script>
   window.nextConfig = {
-    apiKey: "{YOUR_CAMPAIGN_API_KEY}",
+    apiKey: '{YOUR_CAMPAIGN_API_KEY}',
     analytics: {
       enabled: true,
-      mode: "auto",
+      mode: 'auto',
       debug: false,
-      providers: {}
-    }
+      providers: {},
+    },
   };
 </script>
 ```
@@ -32,83 +32,120 @@ Verify in the console: `window.NextDataLayer` grows as you interact, and `window
 
 ## Event names
 
-Every name is exact. These are the strings that land in `window.NextDataLayer` and the strings `blockedEvents` must match. "Auto" means the SDK fires it itself in auto mode; "manual" means it fires only when your code calls the matching `next.track*` method; "**never fires**" means nothing in the SDK fires it.
+Every name is exact. These are the strings that land in `window.NextDataLayer`, and the strings `blockedEvents` must match verbatim: `"purchase"` blocks nothing, `"dl_purchase"` does.
 
-**Commerce**
+### Commerce events
 
-| Event | What it records | Auto |
-|---|---|---|
-| `dl_view_item_list` | Product list / collection impression | yes |
-| `dl_view_item` | Product detail view | yes |
-| `dl_select_item` | Product clicked from a list | **never fires** |
-| `dl_view_search_results` | Search results viewed | **never fires** |
-| `dl_search` | Search performed | **never fires** |
-| `dl_add_to_cart` | Item added to cart | yes |
-| `dl_remove_from_cart` | Item removed from cart | yes |
-| `dl_add_to_wishlist` | Item added to wishlist | **never fires** |
-| `dl_view_cart` | Cart viewed | yes |
-| `dl_begin_checkout` | Checkout started | yes |
-| `dl_add_shipping_info` | Shipping info added | yes |
-| `dl_add_payment_info` | Payment info added | yes |
-| `dl_purchase` | The main order purchase | yes |
-| `dl_refund` | Order refunded | **never fires** |
-| `dl_view_promotion` | Promotion impression | **never fires** |
-| `dl_select_promotion` | Promotion clicked | **never fires** |
+| Event | Description |
+|---|---|
+| [`dl_view_item_list`](#dl_view_item_list) | Product list / collection impression |
+| [`dl_view_item`](#dl_view_item) | Product detail view |
+| [`dl_select_item`](#dl_select_item) | Product clicked from a list |
+| [`dl_view_search_results`](#dl_view_search_results) | Search results viewed |
+| [`dl_add_to_cart`](#dl_add_to_cart) | Item added to cart |
+| [`dl_remove_from_cart`](#dl_remove_from_cart) | Item removed from cart |
+| [`dl_view_cart`](#dl_view_cart) | Cart viewed |
+| [`dl_begin_checkout`](#dl_begin_checkout) | Checkout started |
+| [`dl_add_shipping_info`](#dl_add_shipping_info) | Shipping info added |
+| [`dl_add_payment_info`](#dl_add_payment_info) | Payment info added |
+| [`dl_purchase`](#dl_purchase) | Main order purchase |
 
-**Identity**
+### Identity events
 
-| Event | What it records | Auto |
-|---|---|---|
-| `dl_user_data` | User + cart context, fired first on a page | yes |
-| `dl_sign_up` | Account sign-up | manual, via `trackSignUp` |
-| `dl_login` | Account login | manual, via `trackLogin` |
-| `dl_subscribe` | Subscription created | **never fires** |
-| `dl_start_trial` | Trial started | **never fires** |
+| Event | Description |
+|---|---|
+| [`dl_user_data`](#dl_user_data) | User + cart context (fired first) |
+| [`dl_subscribe`](#dl_subscribe) | Subscription created |
 
-**Post-purchase offers**
+### Post-purchase offer events
 
-| Event | What it records | Auto |
-|---|---|---|
-| `dl_viewed_upsell` | Upsell offer viewed | yes |
-| `dl_accepted_upsell` | Upsell accepted | **never fires**; superseded by `dl_upsell_purchase` |
-| `dl_skipped_upsell` | Upsell skipped | yes |
-| `dl_upsell_purchase` | Accepted upsell, in GA4 purchase format with `affiliation: "Upsell"` | yes |
+| Event | Description |
+|---|---|
+| [`dl_viewed_upsell`](#dl_viewed_upsell) | Upsell offer viewed |
+| [`dl_skipped_upsell`](#dl_skipped_upsell) | Upsell skipped |
+| [`dl_upsell_purchase`](#dl_upsell_purchase) | Accepted upsell in GA4 purchase format |
 
-**Cart lifecycle, navigation, engagement**
+### Cart, navigation, and engagement events
 
-| Event | What it records | Auto |
-|---|---|---|
-| `dl_cart_updated` | Cart contents changed | yes |
-| `dl_package_swapped` | Selected package swapped | yes |
-| `dl_page_view` | Page view, SPA-aware | yes |
-| `dl_route_changed` | Client-side route change | yes |
-| `dl_scroll_depth` | Scroll-depth milestone | yes |
-| `dl_exit_intent_shown` / `_accepted` / `_dismissed` / `_closed` / `_action` | Exit-intent popup lifecycle | yes |
+| Event | Description |
+|---|---|
+| [`dl_cart_updated`](#dl_cart_updated) | Cart contents changed |
+| [`dl_package_swapped`](#dl_package_swapped) | Selected package swapped |
+| [`dl_page_view`](#dl_page_view) | Page view (SPA-aware) |
+| [`dl_route_changed`](#dl_route_changed) | Client-side route change |
+| [`dl_scroll_depth`](#dl_scroll_depth) | Scroll-depth milestone |
+| [`dl_exit_intent_shown`](#dl_exit_intent_shown) | Exit-intent popup shown |
+| [`dl_exit_intent_accepted`](#dl_exit_intent_accepted) | Exit-intent offer accepted |
+| [`dl_exit_intent_dismissed`](#dl_exit_intent_dismissed) | Exit-intent popup dismissed |
+| [`dl_exit_intent_closed`](#dl_exit_intent_closed) | Exit-intent popup closed |
+| [`dl_exit_intent_action`](#dl_exit_intent_action) | Exit-intent custom action |
 
-**Ten names never fire.** `dl_search`, `dl_add_to_wishlist`, `dl_refund`, `dl_view_promotion`, `dl_select_promotion`, `dl_start_trial`, `dl_accepted_upsell`, `dl_select_item`, `dl_view_search_results`, and `dl_subscribe` are valid names (validated, provider-mapped, blockable), but nothing in the SDK fires them. They exist so a page or server-side tag can push them under the canonical name. A GTM tag waiting on one of them waits forever; for accepted upsells, track `dl_upsell_purchase`.
+### Fired only by your code
 
-## The purchase event
+These two have no automatic trigger. Call the method and the SDK builds the event.
 
-`dl_purchase` fires on the page opened with `?ref_id=` that fetched a **paid** order: the success page, never the checkout page. Once per order: the SDK remembers reported `transaction_id`s in `localStorage`, and every payment method (card, 3-D Secure, PayPal, Apple Pay, Google Pay) reports from the page the shopper lands on after payment completes.
+| Event | Method |
+|---|---|
+| [`dl_sign_up`](#dl_sign_up) | `next.trackSignUp()` |
+| [`dl_login`](#dl_login) | `next.trackLogin()` |
 
-What that means for your funnel:
+### Declared but never fired
 
-- **Your success page must load the SDK and keep `?ref_id=` on its URL.** The SDK appends `ref_id` to the success URL itself, so this holds unless the page strips it or redirects somewhere the SDK is not installed. Confirm `dl_purchase` fires there once, with the real order number, before trusting any conversion count.
-- **`ecommerce.value` is item revenue only.** Tax and shipping are separate fields by design. A GA4 revenue figure that looks low against the store's own totals is usually this, not a lost event.
-- **`ecommerce.transaction_id` is the order reference**, the key every ad platform deduplicates on.
-- **Zero-value orders report normally** (`value: 0` with a real transaction id). Full discounts and free trials count as conversions.
-- **A failed redirect payment does not report.** Both `success_url` and `payment_failed_url` come back carrying `?ref_id=`, but nothing reports on the failure leg.
-- **Meta deduplication needs `storeName`.** With `window.nextConfig.storeName` set, the Meta event carries `eventID: "{storeName}-{orderNumber}"`, which is what lets Meta deduplicate the browser event against a server-side copy of the same order.
+These names are validated, provider-mapped, and blockable, but nothing in the SDK builds them. They exist so a page or a server-side tag can push them under the canonical name. A tag waiting on one waits forever.
+
+| Event | Description |
+|---|---|
+| [`dl_search`](#dl_search) | Search performed (Meta Search) |
+| [`dl_add_to_wishlist`](#dl_add_to_wishlist) | Item added to wishlist |
+| [`dl_refund`](#dl_refund) | Order refunded (adapter-mapped) |
+| [`dl_view_promotion`](#dl_view_promotion) | Promotion impression |
+| [`dl_select_promotion`](#dl_select_promotion) | Promotion clicked |
+| [`dl_start_trial`](#dl_start_trial) | Trial started (Meta StartTrial) |
+| [`dl_accepted_upsell`](#dl_accepted_upsell) | Upsell accepted |
+
+For accepted upsells, track `dl_upsell_purchase` instead of `dl_accepted_upsell`.
 
 ## Providers
 
-| Provider | Config key | Needs | Gets |
-|---|---|---|---|
-| NextCampaign | `analytics.providers.nextCampaign` | the campaign `apiKey` | Page views only, reported to the campaign analytics platform. |
-| GTM | `analytics.providers.gtm` | nothing | Every event, pushed verbatim to `window.dataLayer` and `window.ElevarDataLayer`. |
-| Facebook | `analytics.providers.facebook` | `settings.pixelId` | 19 mapped events via `fbq`: `dl_purchase` becomes `Purchase`, and so on. `dl_upsell_purchase` has no mapping and is dropped, so upsell revenue never reaches Meta from the browser. |
-| RudderStack | `analytics.providers.rudderstack` | the page's `rudderanalytics` SDK | 18 events renamed to the RudderStack ecommerce spec: `dl_purchase` becomes `Order Completed`. |
-| Custom | `analytics.providers.custom` | `settings.endpoint` | Every event, POSTed to your endpoint in batches. A failed batch is dropped (the built-in retry never engages), so don't treat delivery as guaranteed. |
+Providers are forwarders on top of `window.NextDataLayer`. With `analytics.enabled: true` and none configured, every event is still built, validated, and pushed to that array, so your own script can read it and be the only consumer.
+
+| Provider | Description |
+|---|---|
+| `nextCampaign` | Page views only, to the campaign analytics platform |
+| `gtm` | Every event, verbatim to `window.dataLayer` |
+| `facebook` | 19 mapped events via `fbq` |
+| `rudderstack` | 18 events renamed to the RudderStack spec |
+| `custom` | Every event, POSTed to your endpoint in batches |
+
+Each is configured under `analytics.providers.<name>`.
+
+### What each provider needs
+
+| Provider | Required setting |
+|---|---|
+| `nextCampaign` | the campaign `apiKey` |
+| `gtm` | nothing |
+| `facebook` | `settings.pixelId` |
+| `rudderstack` | the page's `rudderanalytics` SDK |
+| `custom` | `settings.endpoint` |
+
+### Renamed events
+
+Two providers rename events on the way out. GTM and Custom send the canonical `dl_*` name.
+
+**Meta**
+
+| Canonical | Sent as |
+|---|---|
+| `dl_purchase` | `Purchase` |
+
+**RudderStack**
+
+| Canonical | Sent as |
+|---|---|
+| `dl_purchase` | `Order Completed` |
+
+`dl_upsell_purchase` has no Meta mapping and is dropped, so upsell revenue never reaches Meta from the browser.
 
 Each provider accepts `blockedEvents: ["dl_page_view"]` to suppress names it would otherwise forward. Matching is verbatim against the canonical name: `"purchase"` blocks nothing, `"dl_purchase"` does.
 
@@ -123,3 +160,1147 @@ Each provider accepts `blockedEvents: ["dl_page_view"]` to suppress names it wou
 - **NextCampaign fires its own extra page view** on window load, in addition to the mapped `dl_page_view`, so expect two per page on that platform. It is also the one provider that loads a remote script, authenticated by your `apiKey`.
 - **`next-page-type` decides which funnel step events land on.** A missing or mistyped page type files the page's events under the wrong step. Set it on every page ([Getting Started](../start-here/getting-started.md)).
 - **Do not hand-fire what auto mode already fires.** `trackPurchase` on the receipt or `trackBeginCheckout` next to the built-in form doubles the numbers.
+
+## Payload reference
+
+One section per event, with the payload it pushes to `window.NextDataLayer`.
+
+Every payload below shows the fields the SDK actually populates. Item objects are typed by {@link ProductSchema} and the `user_properties` block by {@link UserPropertiesSchema}; both pages list the full set of fields the validator accepts, including ones no builder fills in.
+
+Fields come from `core/analytics/schemas/index.ts › eventSchemas` for the 19 events that declare a schema. The rest are read from their builders, named in the section.
+
+### dl_view_item_list
+
+Product list / collection impression.
+
+```json
+{
+  "event": "dl_view_item_list",
+  "ecommerce": {
+    "currency": "USD",
+    "value": 59.98,
+    "coupon": "SAVE10",
+    "items": [
+      {
+        "item_id": "1",
+        "item_name": "Widget",
+        "currency": "USD",
+        "discount": 10,
+        "index": 0,
+        "item_brand": "Acme",
+        "item_category": "Widgets",
+        "item_list_id": "main",
+        "item_list_name": "Bundles",
+        "item_variant": "Blue",
+        "item_image": "https://cdn.example.com/widget.jpg",
+        "price": 29.99,
+        "quantity": 2,
+        "item_product_id": "101",
+        "item_sku": "WIDGET-BLU",
+        "item_variant_id": "2001"
+      }
+    ],
+    "item_list_id": "main",
+    "item_list_name": "Bundles",
+    "impressions": [
+      {
+        "item_id": "1",
+        "item_name": "Widget",
+        "currency": "USD",
+        "discount": 10,
+        "index": 0,
+        "item_brand": "Acme",
+        "item_category": "Widgets",
+        "item_list_id": "main",
+        "item_list_name": "Bundles",
+        "item_variant": "Blue",
+        "item_image": "https://cdn.example.com/widget.jpg",
+        "price": 29.99,
+        "quantity": 2,
+        "item_product_id": "101",
+        "item_sku": "WIDGET-BLU",
+        "item_variant_id": "2001"
+      }
+    ]
+  },
+  "user_properties": {
+    "visitor_type": "guest",
+    "customer_id": "1001",
+    "customer_email": "jordan@example.com",
+    "customer_phone": "+15555550123",
+    "customer_first_name": "Jordan",
+    "customer_last_name": "Chen",
+    "customer_address_city": "Ottawa",
+    "customer_address_province": "Ontario",
+    "customer_address_province_code": "ON",
+    "customer_address_country": "Canada",
+    "customer_address_country_code": "CA",
+    "customer_address_zip": "K2P 2L8",
+    "customer_order_count": 3,
+    "customer_total_spent": 189.94,
+    "customer_tags": "vip"
+  }
+}
+```
+
+### dl_view_item
+
+Product detail view.
+
+```json
+{
+  "event": "dl_view_item",
+  "ecommerce": {
+    "currency": "USD",
+    "value": 59.98,
+    "coupon": "SAVE10",
+    "items": [
+      {
+        "item_id": "1",
+        "item_name": "Widget",
+        "currency": "USD",
+        "discount": 10,
+        "index": 0,
+        "item_brand": "Acme",
+        "item_category": "Widgets",
+        "item_list_id": "main",
+        "item_list_name": "Bundles",
+        "item_variant": "Blue",
+        "item_image": "https://cdn.example.com/widget.jpg",
+        "price": 29.99,
+        "quantity": 2,
+        "item_product_id": "101",
+        "item_sku": "WIDGET-BLU",
+        "item_variant_id": "2001"
+      }
+    ]
+  },
+  "user_properties": {
+    "visitor_type": "guest",
+    "customer_id": "1001",
+    "customer_email": "jordan@example.com",
+    "customer_phone": "+15555550123",
+    "customer_first_name": "Jordan",
+    "customer_last_name": "Chen",
+    "customer_address_city": "Ottawa",
+    "customer_address_province": "Ontario",
+    "customer_address_province_code": "ON",
+    "customer_address_country": "Canada",
+    "customer_address_country_code": "CA",
+    "customer_address_zip": "K2P 2L8",
+    "customer_order_count": 3,
+    "customer_total_spent": 189.94,
+    "customer_tags": "vip"
+  }
+}
+```
+
+### dl_select_item
+
+Product clicked from a list.
+
+```json
+{
+  "event": "dl_select_item",
+  "ecommerce": {
+    "currency": "USD",
+    "value": 59.98,
+    "coupon": "SAVE10",
+    "items": [
+      {
+        "item_id": "1",
+        "item_name": "Widget",
+        "currency": "USD",
+        "discount": 10,
+        "index": 0,
+        "item_brand": "Acme",
+        "item_category": "Widgets",
+        "item_list_id": "main",
+        "item_list_name": "Bundles",
+        "item_variant": "Blue",
+        "item_image": "https://cdn.example.com/widget.jpg",
+        "price": 29.99,
+        "quantity": 2,
+        "item_product_id": "101",
+        "item_sku": "WIDGET-BLU",
+        "item_variant_id": "2001"
+      }
+    ],
+    "item_list_id": "main",
+    "item_list_name": "Bundles"
+  },
+  "user_properties": {
+    "visitor_type": "guest",
+    "customer_id": "1001",
+    "customer_email": "jordan@example.com",
+    "customer_phone": "+15555550123",
+    "customer_first_name": "Jordan",
+    "customer_last_name": "Chen",
+    "customer_address_city": "Ottawa",
+    "customer_address_province": "Ontario",
+    "customer_address_province_code": "ON",
+    "customer_address_country": "Canada",
+    "customer_address_country_code": "CA",
+    "customer_address_zip": "K2P 2L8",
+    "customer_order_count": 3,
+    "customer_total_spent": 189.94,
+    "customer_tags": "vip"
+  }
+}
+```
+
+### dl_view_search_results
+
+Search results viewed.
+
+```json
+{
+  "event": "dl_view_search_results",
+  "search_term": "widget",
+  "ecommerce": {
+    "currency": "USD",
+    "value": 59.98,
+    "coupon": "SAVE10",
+    "items": [
+      {
+        "item_id": "1",
+        "item_name": "Widget",
+        "currency": "USD",
+        "discount": 10,
+        "index": 0,
+        "item_brand": "Acme",
+        "item_category": "Widgets",
+        "item_list_id": "main",
+        "item_list_name": "Bundles",
+        "item_variant": "Blue",
+        "item_image": "https://cdn.example.com/widget.jpg",
+        "price": 29.99,
+        "quantity": 2,
+        "item_product_id": "101",
+        "item_sku": "WIDGET-BLU",
+        "item_variant_id": "2001"
+      }
+    ],
+    "item_list_name": "Bundles",
+    "impressions": [
+      {
+        "item_id": "1",
+        "item_name": "Widget",
+        "currency": "USD",
+        "discount": 10,
+        "index": 0,
+        "item_brand": "Acme",
+        "item_category": "Widgets",
+        "item_list_id": "main",
+        "item_list_name": "Bundles",
+        "item_variant": "Blue",
+        "item_image": "https://cdn.example.com/widget.jpg",
+        "price": 29.99,
+        "quantity": 2,
+        "item_product_id": "101",
+        "item_sku": "WIDGET-BLU",
+        "item_variant_id": "2001"
+      }
+    ]
+  },
+  "user_properties": {
+    "visitor_type": "guest",
+    "customer_id": "1001",
+    "customer_email": "jordan@example.com",
+    "customer_phone": "+15555550123",
+    "customer_first_name": "Jordan",
+    "customer_last_name": "Chen",
+    "customer_address_city": "Ottawa",
+    "customer_address_province": "Ontario",
+    "customer_address_province_code": "ON",
+    "customer_address_country": "Canada",
+    "customer_address_country_code": "CA",
+    "customer_address_zip": "K2P 2L8",
+    "customer_order_count": 3,
+    "customer_total_spent": 189.94,
+    "customer_tags": "vip"
+  }
+}
+```
+
+### dl_search
+
+Search performed (Meta Search).
+
+Nothing in the SDK builds this event, so it has no payload. Push it yourself under this exact name if your page needs it.
+
+### dl_add_to_cart
+
+Item added to cart.
+
+```json
+{
+  "event": "dl_add_to_cart",
+  "ecommerce": {
+    "currency": "USD",
+    "value": 59.98,
+    "coupon": "SAVE10",
+    "items": [
+      {
+        "item_id": "1",
+        "item_name": "Widget",
+        "currency": "USD",
+        "discount": 10,
+        "index": 0,
+        "item_brand": "Acme",
+        "item_category": "Widgets",
+        "item_list_id": "main",
+        "item_list_name": "Bundles",
+        "item_variant": "Blue",
+        "item_image": "https://cdn.example.com/widget.jpg",
+        "price": 29.99,
+        "quantity": 2,
+        "item_product_id": "101",
+        "item_sku": "WIDGET-BLU",
+        "item_variant_id": "2001"
+      }
+    ]
+  },
+  "user_properties": {
+    "visitor_type": "guest",
+    "customer_id": "1001",
+    "customer_email": "jordan@example.com",
+    "customer_phone": "+15555550123",
+    "customer_first_name": "Jordan",
+    "customer_last_name": "Chen",
+    "customer_address_city": "Ottawa",
+    "customer_address_province": "Ontario",
+    "customer_address_province_code": "ON",
+    "customer_address_country": "Canada",
+    "customer_address_country_code": "CA",
+    "customer_address_zip": "K2P 2L8",
+    "customer_order_count": 3,
+    "customer_total_spent": 189.94,
+    "customer_tags": "vip"
+  }
+}
+```
+
+### dl_remove_from_cart
+
+Item removed from cart.
+
+```json
+{
+  "event": "dl_remove_from_cart",
+  "ecommerce": {
+    "currency": "USD",
+    "value": 59.98,
+    "coupon": "SAVE10",
+    "items": [
+      {
+        "item_id": "1",
+        "item_name": "Widget",
+        "currency": "USD",
+        "discount": 10,
+        "index": 0,
+        "item_brand": "Acme",
+        "item_category": "Widgets",
+        "item_list_id": "main",
+        "item_list_name": "Bundles",
+        "item_variant": "Blue",
+        "item_image": "https://cdn.example.com/widget.jpg",
+        "price": 29.99,
+        "quantity": 2,
+        "item_product_id": "101",
+        "item_sku": "WIDGET-BLU",
+        "item_variant_id": "2001"
+      }
+    ]
+  },
+  "user_properties": {
+    "visitor_type": "guest",
+    "customer_id": "1001",
+    "customer_email": "jordan@example.com",
+    "customer_phone": "+15555550123",
+    "customer_first_name": "Jordan",
+    "customer_last_name": "Chen",
+    "customer_address_city": "Ottawa",
+    "customer_address_province": "Ontario",
+    "customer_address_province_code": "ON",
+    "customer_address_country": "Canada",
+    "customer_address_country_code": "CA",
+    "customer_address_zip": "K2P 2L8",
+    "customer_order_count": 3,
+    "customer_total_spent": 189.94,
+    "customer_tags": "vip"
+  }
+}
+```
+
+### dl_add_to_wishlist
+
+Item added to wishlist.
+
+Nothing in the SDK builds this event, so it has no payload. Push it yourself under this exact name if your page needs it.
+
+### dl_view_cart
+
+Cart viewed.
+
+```json
+{
+  "event": "dl_view_cart",
+  "ecommerce": {
+    "currency": "USD",
+    "value": 59.98,
+    "coupon": "SAVE10",
+    "items": [
+      {
+        "item_id": "1",
+        "item_name": "Widget",
+        "currency": "USD",
+        "discount": 10,
+        "index": 0,
+        "item_brand": "Acme",
+        "item_category": "Widgets",
+        "item_list_id": "main",
+        "item_list_name": "Bundles",
+        "item_variant": "Blue",
+        "item_image": "https://cdn.example.com/widget.jpg",
+        "price": 29.99,
+        "quantity": 2,
+        "item_product_id": "101",
+        "item_sku": "WIDGET-BLU",
+        "item_variant_id": "2001"
+      }
+    ]
+  },
+  "user_properties": {
+    "visitor_type": "guest",
+    "customer_id": "1001",
+    "customer_email": "jordan@example.com",
+    "customer_phone": "+15555550123",
+    "customer_first_name": "Jordan",
+    "customer_last_name": "Chen",
+    "customer_address_city": "Ottawa",
+    "customer_address_province": "Ontario",
+    "customer_address_province_code": "ON",
+    "customer_address_country": "Canada",
+    "customer_address_country_code": "CA",
+    "customer_address_zip": "K2P 2L8",
+    "customer_order_count": 3,
+    "customer_total_spent": 189.94,
+    "customer_tags": "vip"
+  }
+}
+```
+
+### dl_begin_checkout
+
+Checkout started.
+
+```json
+{
+  "event": "dl_begin_checkout",
+  "ecommerce": {
+    "currency": "USD",
+    "value": 59.98,
+    "coupon": "SAVE10",
+    "items": [
+      {
+        "item_id": "1",
+        "item_name": "Widget",
+        "currency": "USD",
+        "discount": 10,
+        "index": 0,
+        "item_brand": "Acme",
+        "item_category": "Widgets",
+        "item_list_id": "main",
+        "item_list_name": "Bundles",
+        "item_variant": "Blue",
+        "item_image": "https://cdn.example.com/widget.jpg",
+        "price": 29.99,
+        "quantity": 2,
+        "item_product_id": "101",
+        "item_sku": "WIDGET-BLU",
+        "item_variant_id": "2001"
+      }
+    ],
+    "checkout_id": "",
+    "checkout_step": 0
+  },
+  "user_properties": {
+    "visitor_type": "guest",
+    "customer_id": "1001",
+    "customer_email": "jordan@example.com",
+    "customer_phone": "+15555550123",
+    "customer_first_name": "Jordan",
+    "customer_last_name": "Chen",
+    "customer_address_city": "Ottawa",
+    "customer_address_province": "Ontario",
+    "customer_address_province_code": "ON",
+    "customer_address_country": "Canada",
+    "customer_address_country_code": "CA",
+    "customer_address_zip": "K2P 2L8",
+    "customer_order_count": 3,
+    "customer_total_spent": 189.94,
+    "customer_tags": "vip"
+  }
+}
+```
+
+### dl_add_shipping_info
+
+Shipping info added.
+
+```json
+{
+  "event": "dl_add_shipping_info",
+  "ecommerce": {
+    "currency": "USD",
+    "value": 59.98,
+    "coupon": "SAVE10",
+    "items": [
+      {
+        "item_id": "1",
+        "item_name": "Widget",
+        "currency": "USD",
+        "discount": 10,
+        "index": 0,
+        "item_brand": "Acme",
+        "item_category": "Widgets",
+        "item_list_id": "main",
+        "item_list_name": "Bundles",
+        "item_variant": "Blue",
+        "item_image": "https://cdn.example.com/widget.jpg",
+        "price": 29.99,
+        "quantity": 2,
+        "item_product_id": "101",
+        "item_sku": "WIDGET-BLU",
+        "item_variant_id": "2001"
+      }
+    ],
+    "shipping_tier": ""
+  },
+  "shipping_tier": "",
+  "user_properties": {
+    "visitor_type": "guest",
+    "customer_id": "1001",
+    "customer_email": "jordan@example.com",
+    "customer_phone": "+15555550123",
+    "customer_first_name": "Jordan",
+    "customer_last_name": "Chen",
+    "customer_address_city": "Ottawa",
+    "customer_address_province": "Ontario",
+    "customer_address_province_code": "ON",
+    "customer_address_country": "Canada",
+    "customer_address_country_code": "CA",
+    "customer_address_zip": "K2P 2L8",
+    "customer_order_count": 3,
+    "customer_total_spent": 189.94,
+    "customer_tags": "vip"
+  }
+}
+```
+
+### dl_add_payment_info
+
+Payment info added.
+
+```json
+{
+  "event": "dl_add_payment_info",
+  "ecommerce": {
+    "currency": "USD",
+    "value": 59.98,
+    "coupon": "SAVE10",
+    "items": [
+      {
+        "item_id": "1",
+        "item_name": "Widget",
+        "currency": "USD",
+        "discount": 10,
+        "index": 0,
+        "item_brand": "Acme",
+        "item_category": "Widgets",
+        "item_list_id": "main",
+        "item_list_name": "Bundles",
+        "item_variant": "Blue",
+        "item_image": "https://cdn.example.com/widget.jpg",
+        "price": 29.99,
+        "quantity": 2,
+        "item_product_id": "101",
+        "item_sku": "WIDGET-BLU",
+        "item_variant_id": "2001"
+      }
+    ],
+    "payment_type": ""
+  },
+  "payment_type": "",
+  "user_properties": {
+    "visitor_type": "guest",
+    "customer_id": "1001",
+    "customer_email": "jordan@example.com",
+    "customer_phone": "+15555550123",
+    "customer_first_name": "Jordan",
+    "customer_last_name": "Chen",
+    "customer_address_city": "Ottawa",
+    "customer_address_province": "Ontario",
+    "customer_address_province_code": "ON",
+    "customer_address_country": "Canada",
+    "customer_address_country_code": "CA",
+    "customer_address_zip": "K2P 2L8",
+    "customer_order_count": 3,
+    "customer_total_spent": 189.94,
+    "customer_tags": "vip"
+  }
+}
+```
+
+### dl_purchase
+
+Fires on the page opened with `?ref_id=` that fetched a **paid** order: the success page, never the checkout page. Once per order, because the SDK remembers reported `transaction_id`s in `localStorage`, and every payment method (card, 3-D Secure, PayPal, Apple Pay, Google Pay) reports from the page the shopper lands on after payment completes.
+
+- **Your success page must load the SDK and keep `?ref_id=` on its URL.** The SDK appends `ref_id` to the success URL itself, so this holds unless the page strips it or redirects somewhere the SDK is not installed. Confirm `dl_purchase` fires there once, with the real order number, before trusting any conversion count.
+- **`ecommerce.value` is item revenue only.** Tax and shipping are separate fields by design. A GA4 revenue figure that looks low against the store's own totals is usually this, not a lost event.
+- **`ecommerce.transaction_id` is the order reference**, the key every ad platform deduplicates on.
+- **Zero-value orders report normally** (`value: 0` with a real transaction id). Full discounts and free trials count as conversions.
+- **A failed redirect payment does not report.** Both `success_url` and `payment_failed_url` come back carrying `?ref_id=`, but nothing reports on the failure leg.
+- **Meta deduplication needs `storeName`.** With `window.nextConfig.storeName` set, the Meta event carries `eventID: "{storeName}-{orderNumber}"`, which is what lets Meta deduplicate the browser event against a server-side copy of the same order.
+
+```json
+{
+  "event": "dl_purchase",
+  "ecommerce": {
+    "currency": "USD",
+    "value": 59.98,
+    "coupon": "SAVE10",
+    "items": [
+      {
+        "item_id": "1",
+        "item_name": "Widget",
+        "currency": "USD",
+        "discount": 10,
+        "index": 0,
+        "item_brand": "Acme",
+        "item_category": "Widgets",
+        "item_list_id": "main",
+        "item_list_name": "Bundles",
+        "item_variant": "Blue",
+        "item_image": "https://cdn.example.com/widget.jpg",
+        "price": 29.99,
+        "quantity": 2,
+        "item_product_id": "101",
+        "item_sku": "WIDGET-BLU",
+        "item_variant_id": "2001"
+      }
+    ],
+    "transaction_id": "E2E-CARD-1",
+    "affiliation": "acme",
+    "tax": 4.95,
+    "shipping": 7.95,
+    "discount": 10
+  },
+  "user_properties": {
+    "visitor_type": "guest",
+    "customer_id": "1001",
+    "customer_email": "jordan@example.com",
+    "customer_phone": "+15555550123",
+    "customer_first_name": "Jordan",
+    "customer_last_name": "Chen",
+    "customer_address_city": "Ottawa",
+    "customer_address_province": "Ontario",
+    "customer_address_province_code": "ON",
+    "customer_address_country": "Canada",
+    "customer_address_country_code": "CA",
+    "customer_address_zip": "K2P 2L8",
+    "customer_order_count": 3,
+    "customer_total_spent": 189.94,
+    "customer_tags": "vip"
+  }
+}
+```
+
+### dl_refund
+
+Order refunded (adapter-mapped).
+
+Nothing in the SDK builds this event, so it has no payload. Push it yourself under this exact name if your page needs it.
+
+### dl_view_promotion
+
+Promotion impression.
+
+Nothing in the SDK builds this event, so it has no payload. Push it yourself under this exact name if your page needs it.
+
+### dl_select_promotion
+
+Promotion clicked.
+
+Nothing in the SDK builds this event, so it has no payload. Push it yourself under this exact name if your page needs it.
+
+### dl_user_data
+
+User + cart context (fired first).
+
+```json
+{
+  "event": "dl_user_data",
+  "user_properties": {
+    "visitor_type": "guest",
+    "customer_id": "1001",
+    "customer_email": "jordan@example.com",
+    "customer_phone": "+15555550123",
+    "customer_first_name": "Jordan",
+    "customer_last_name": "Chen",
+    "customer_address_city": "Ottawa",
+    "customer_address_province": "Ontario",
+    "customer_address_province_code": "ON",
+    "customer_address_country": "Canada",
+    "customer_address_country_code": "CA",
+    "customer_address_zip": "K2P 2L8",
+    "customer_order_count": 3,
+    "customer_total_spent": 189.94,
+    "customer_tags": "vip"
+  },
+  "ecommerce": {
+    "currency": "USD",
+    "value": 59.98,
+    "coupon": "SAVE10",
+    "items": [
+      {
+        "item_id": "1",
+        "item_name": "Widget",
+        "currency": "USD",
+        "discount": 10,
+        "index": 0,
+        "item_brand": "Acme",
+        "item_category": "Widgets",
+        "item_list_id": "main",
+        "item_list_name": "Bundles",
+        "item_variant": "Blue",
+        "item_image": "https://cdn.example.com/widget.jpg",
+        "price": 29.99,
+        "quantity": 2,
+        "item_product_id": "101",
+        "item_sku": "WIDGET-BLU",
+        "item_variant_id": "2001"
+      }
+    ],
+    "cart_contents": [
+      {
+        "item_id": "1",
+        "item_name": "Widget",
+        "currency": "USD",
+        "discount": 10,
+        "index": 0,
+        "item_brand": "Acme",
+        "item_category": "Widgets",
+        "item_list_id": "main",
+        "item_list_name": "Bundles",
+        "item_variant": "Blue",
+        "item_image": "https://cdn.example.com/widget.jpg",
+        "price": 29.99,
+        "quantity": 2,
+        "item_product_id": "101",
+        "item_sku": "WIDGET-BLU",
+        "item_variant_id": "2001"
+      }
+    ]
+  }
+}
+```
+
+### dl_sign_up
+
+Account sign-up.
+
+```json
+{
+  "event": "dl_sign_up",
+  "user_properties": {
+    "visitor_type": "guest",
+    "customer_id": "1001",
+    "customer_email": "jordan@example.com",
+    "customer_phone": "+15555550123",
+    "customer_first_name": "Jordan",
+    "customer_last_name": "Chen",
+    "customer_address_city": "Ottawa",
+    "customer_address_province": "Ontario",
+    "customer_address_province_code": "ON",
+    "customer_address_country": "Canada",
+    "customer_address_country_code": "CA",
+    "customer_address_zip": "K2P 2L8",
+    "customer_order_count": 3,
+    "customer_total_spent": 189.94,
+    "customer_tags": "vip"
+  },
+  "method": ""
+}
+```
+
+### dl_login
+
+Account login.
+
+```json
+{
+  "event": "dl_login",
+  "user_properties": {
+    "visitor_type": "guest",
+    "customer_id": "1001",
+    "customer_email": "jordan@example.com",
+    "customer_phone": "+15555550123",
+    "customer_first_name": "Jordan",
+    "customer_last_name": "Chen",
+    "customer_address_city": "Ottawa",
+    "customer_address_province": "Ontario",
+    "customer_address_province_code": "ON",
+    "customer_address_country": "Canada",
+    "customer_address_country_code": "CA",
+    "customer_address_zip": "K2P 2L8",
+    "customer_order_count": 3,
+    "customer_total_spent": 189.94,
+    "customer_tags": "vip"
+  },
+  "method": ""
+}
+```
+
+### dl_subscribe
+
+Subscription created.
+
+```json
+{
+  "event": "dl_subscribe",
+  "ecommerce": {
+    "currency": "USD",
+    "value": 59.98,
+    "coupon": "SAVE10",
+    "items": [
+      {
+        "item_id": "1",
+        "item_name": "Widget",
+        "currency": "USD",
+        "discount": 10,
+        "index": 0,
+        "item_brand": "Acme",
+        "item_category": "Widgets",
+        "item_list_id": "main",
+        "item_list_name": "Bundles",
+        "item_variant": "Blue",
+        "item_image": "https://cdn.example.com/widget.jpg",
+        "price": 29.99,
+        "quantity": 2,
+        "item_product_id": "101",
+        "item_sku": "WIDGET-BLU",
+        "item_variant_id": "2001"
+      }
+    ],
+    "subscription_id": "SUB-1",
+    "subscription_status": "active"
+  },
+  "user_properties": {
+    "visitor_type": "guest",
+    "customer_id": "1001",
+    "customer_email": "jordan@example.com",
+    "customer_phone": "+15555550123",
+    "customer_first_name": "Jordan",
+    "customer_last_name": "Chen",
+    "customer_address_city": "Ottawa",
+    "customer_address_province": "Ontario",
+    "customer_address_province_code": "ON",
+    "customer_address_country": "Canada",
+    "customer_address_country_code": "CA",
+    "customer_address_zip": "K2P 2L8",
+    "customer_order_count": 3,
+    "customer_total_spent": 189.94,
+    "customer_tags": "vip"
+  }
+}
+```
+
+### dl_start_trial
+
+Trial started (Meta StartTrial).
+
+Nothing in the SDK builds this event, so it has no payload. Push it yourself under this exact name if your page needs it.
+
+### dl_viewed_upsell
+
+Upsell offer viewed.
+
+```json
+{
+  "event": "dl_viewed_upsell",
+  "order_id": "",
+  "upsell": {
+    "package_id": "",
+    "package_name": "",
+    "price": 29.99,
+    "currency": "USD"
+  }
+}
+```
+
+### dl_accepted_upsell
+
+Upsell accepted.
+
+```json
+{
+  "event": "dl_accepted_upsell",
+  "order_id": "",
+  "upsell": {
+    "package_id": "",
+    "package_name": "",
+    "quantity": 2,
+    "value": 59.98,
+    "currency": "USD"
+  }
+}
+```
+
+### dl_skipped_upsell
+
+Upsell skipped.
+
+```json
+{
+  "event": "dl_skipped_upsell",
+  "order_id": "",
+  "upsell": {
+    "package_id": "",
+    "package_name": ""
+  }
+}
+```
+
+### dl_upsell_purchase
+
+Accepted upsell in GA4 purchase format.
+
+```json
+{
+  "event": "dl_upsell_purchase",
+  "ecommerce": {
+    "currency": "USD",
+    "value": 59.98,
+    "coupon": "SAVE10",
+    "items": [
+      {
+        "item_id": "1",
+        "item_name": "Widget",
+        "currency": "USD",
+        "discount": 10,
+        "index": 0,
+        "item_brand": "Acme",
+        "item_category": "Widgets",
+        "item_list_id": "main",
+        "item_list_name": "Bundles",
+        "item_variant": "Blue",
+        "item_image": "https://cdn.example.com/widget.jpg",
+        "price": 29.99,
+        "quantity": 2,
+        "item_product_id": "101",
+        "item_sku": "WIDGET-BLU",
+        "item_variant_id": "2001"
+      }
+    ],
+    "transaction_id": "E2E-CARD-1",
+    "affiliation": "acme",
+    "tax": 4.95,
+    "shipping": 7.95
+  },
+  "upsell_metadata": {
+    "original_order_id": "",
+    "upsell_number": 0,
+    "package_id": "",
+    "package_name": ""
+  },
+  "user_properties": {
+    "visitor_type": "guest",
+    "customer_id": "1001",
+    "customer_email": "jordan@example.com",
+    "customer_phone": "+15555550123",
+    "customer_first_name": "Jordan",
+    "customer_last_name": "Chen",
+    "customer_address_city": "Ottawa",
+    "customer_address_province": "Ontario",
+    "customer_address_province_code": "ON",
+    "customer_address_country": "Canada",
+    "customer_address_country_code": "CA",
+    "customer_address_zip": "K2P 2L8",
+    "customer_order_count": 3,
+    "customer_total_spent": 189.94,
+    "customer_tags": "vip"
+  }
+}
+```
+
+### dl_cart_updated
+
+Cart contents changed.
+
+```json
+{
+  "event": "dl_cart_updated",
+  "user_properties": {},
+  "cart_total": "59.98",
+  "ecommerce": {
+    "currency": "USD",
+    "value": 59.98,
+    "items": []
+  }
+}
+```
+
+### dl_package_swapped
+
+Selected package swapped.
+
+```json
+{
+  "event": "dl_package_swapped",
+  "ecommerce": {
+    "currency": "USD",
+    "items": []
+  },
+  "event_category": "ecommerce",
+  "event_action": "swap",
+  "event_label": "Widget \u2192 Widget 2-pack",
+  "swap_details": {
+    "previous_package_id": 1,
+    "new_package_id": 2,
+    "price_difference": 29.99
+  }
+}
+```
+
+### dl_page_view
+
+Page view (SPA-aware).
+
+```json
+{
+  "event": "dl_page_view",
+  "page": {
+    "title": "Checkout",
+    "url": "https://shop.example.com/checkout/",
+    "path": "/checkout/",
+    "referrer": "https://shop.example.com/"
+  }
+}
+```
+
+### dl_route_changed
+
+Client-side route change.
+
+```json
+{
+  "event": "dl_route_changed",
+  "route": {
+    "from": "/checkout/",
+    "to": "/upsell-1/",
+    "path": "/upsell-1/"
+  }
+}
+```
+
+### dl_scroll_depth
+
+Scroll-depth milestone.
+
+```json
+{
+  "event": "dl_scroll_depth",
+  "user_properties": {},
+  "scroll_depth": 52,
+  "scroll_threshold": 50,
+  "page_height": 4200,
+  "viewport_height": 900
+}
+```
+
+### dl_exit_intent_shown
+
+Exit-intent popup shown.
+
+```json
+{
+  "event": "dl_exit_intent_shown",
+  "event_category": "engagement",
+  "event_action": "exit_intent_shown",
+  "event_label": "exit-intent",
+  "exit_intent": {
+    "image_url": "https://cdn.example.com/offer.png",
+    "template": ""
+  }
+}
+```
+
+### dl_exit_intent_accepted
+
+Exit-intent offer accepted.
+
+```json
+{
+  "event": "dl_exit_intent_accepted",
+  "event_category": "engagement",
+  "event_action": "exit_intent_accepted",
+  "event_label": "exit-intent",
+  "exit_intent": {
+    "image_url": "https://cdn.example.com/offer.png",
+    "template": ""
+  }
+}
+```
+
+### dl_exit_intent_dismissed
+
+Exit-intent popup dismissed.
+
+```json
+{
+  "event": "dl_exit_intent_dismissed",
+  "event_category": "engagement",
+  "event_action": "exit_intent_dismissed",
+  "event_label": "exit-intent",
+  "exit_intent": {
+    "image_url": "https://cdn.example.com/offer.png",
+    "template": ""
+  }
+}
+```
+
+### dl_exit_intent_closed
+
+Exit-intent popup closed.
+
+```json
+{
+  "event": "dl_exit_intent_closed",
+  "event_category": "engagement",
+  "event_action": "exit_intent_closed",
+  "event_label": "exit-intent",
+  "exit_intent": {
+    "image_url": "https://cdn.example.com/offer.png",
+    "template": ""
+  }
+}
+```
+
+### dl_exit_intent_action
+
+Exit-intent custom action.
+
+```json
+{
+  "event": "dl_exit_intent_action",
+  "event_category": "engagement",
+  "event_action": "exit_intent_accept",
+  "event_label": "EXIT10",
+  "exit_intent": {
+    "action": "accept",
+    "coupon_code": "EXIT10"
+  }
+}
+```

@@ -83,6 +83,16 @@ export type {
   PaymentMethod,
 } from './types/api';
 
+// The analytics payload types. Exported so the Analytics Events reference can
+// link to a rendered page for the item and user blocks every `dl_*` event
+// carries, instead of citing a source path the reader cannot open.
+export type {
+  ProductSchema,
+  ImpressionSchema,
+  UserPropertiesSchema,
+  BaseEventSchema,
+} from './core/analytics/schemas/index';
+
 // Utility exports
 export { Logger } from './core/logger';
 export { EventBus } from './core/events';

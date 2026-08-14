@@ -12,54 +12,344 @@ How to read this page: sections run in funnel order, and each starts with a mini
 
 ## Displaying live values
 
-| Attribute | Value | What it does |
-|---|---|---|
-| `data-next-display` | a dotted path, e.g. `cart.total` | Binds the element's text to one live value. Namespaces: `cart.*`, `order.*`, `package.*`, `bundle.<selectorId>.*`, `shipping.*`, `param.*`. |
-| `data-next-format` | `currency` \| `percentage` \| `address` \| `phone` | Forces formatting on a display binding. Required on remote `bundle.<selectorId>.*` bindings, which otherwise render raw numbers. |
-| `data-next-show` | a condition, e.g. `cart.hasItems`, `order.hasTax`, `shipping.isFree` | Shows the element only while the condition is true. |
-| `data-next-hide` | a condition, e.g. `cart.isEmpty`, `param.banner=='n'` | Hides the element while the condition is true. The `param.*` form reads URL parameters captured at boot. |
-| `data-next-await` | none | Holds the element's children invisible until the SDK finishes its scan (`next-display-ready` on `<html>`), so visitors never see `-` placeholders. Needs `next-core.css`. |
+| Attribute | Description |
+|---|---|
+| `data-next-display` | Replaces the element's text whenever the value changes |
+| `data-next-format` | Overrides how that value is written |
+| `data-next-show` | Shows the element while a condition is true |
+| `data-next-hide` | Hides the element while a condition is true |
+| `data-next-await` | Holds children hidden until the SDK's scan finishes |
 
-What a display path can point at, by namespace. The same namespaces work in `data-next-show` / `data-next-hide` conditions:
+Reach for `data-next-display` whenever a number or label has to stay in step with the cart or the order. You write no JavaScript: the element's text is replaced every time the value changes.
 
-| Namespace | Paths the templates use | The value comes from | Where you use it |
-|---|---|---|---|
-| `cart.*` | `cart.total`, `cart.subtotal`, `cart.shipping`, `cart.totalQuantity`, `cart.totalDiscountPercentage` | the live cart | [Checkout](../pages/checkout-page.md) |
-| `package.*` | `package.name`, `package.image`, `package.<refId>.name` | the loaded campaign; the short forms are scoped by the surrounding card's `data-next-package-id` | selector and bump cards |
-| `bundle.<selectorId>.*` | `bundle.<selectorId>.price`, `.originalPrice`, `.discountPercentage` | that bundle selector's calculated pricing | headlines outside the cards, on [Checkout](../pages/checkout-page.md) and [Upsell](../pages/upsell-page.md) pages |
-| `shipping.*` | `shipping.isFree` (a condition) | the selected shipping method | [Checkout](../pages/checkout-page.md) |
-| `param.*` | `param.<name>` (conditions) | URL parameters captured at boot | any page |
-| `order.*` | `order.number`, `order.total`, `order.subtotal`, `order.tax`, `order.shipping`, `order.currency`, `order.paymentMethod`, `order.shippingMethod`, `order.customer.name` / `.email`, `order.shippingAddress.line1/.line2/.city/.state/.postcode/.country`, `order.billingAddress.*` (same fields plus `.name`) | the completed order, loaded from `?ref_id=` | [Receipt](../pages/receipt-page.md) and [Upsell](../pages/upsell-page.md) |
+Use whichever of `data-next-show` and `data-next-hide` reads more naturally. `data-next-hide="cart.isEmpty"` beats `data-next-show="!cart.isEmpty"`. Set one or the other on an element, not both. A condition that fails to parse is logged and the element is left visible, so a typo does not silently hide content.
+
+### Example
+
+Below is an example that binds the cart total to a span, shows one block only when the cart has items, hides another when it is empty, and holds a price block invisible until the SDK has finished its scan.
+
+```html
+<span data-next-display="cart.total" data-next-format="currency">$0.00</span>
+<div data-next-show="cart.hasItems">You have items in your cart</div>
+<div data-next-hide="cart.isEmpty">Ready to check out</div>
+<div data-next-await="">
+  <span data-next-display="bundle.main.price" data-next-format="currency"
+    >$0.00</span
+  >
+</div>
+```
+
+### Paths and conditions
+
+| Attribute | Description |
+|---|---|
+| `data-next-display` | A dotted path, e.g. `cart.total` |
+| `data-next-show` | A condition, e.g. `cart.hasItems` |
+| `data-next-hide` | A condition, e.g. `param.banner=='n'` |
+
+A path's first segment names the object it reads from, listed below. The `param` form reads URL parameters captured at boot.
+
+### Formatting
+
+`data-next-format` defaults to `auto`, which infers the format from the value and the path: money paths render as currency, booleans as yes/no. Set it only when that inference is wrong.
+
+| Value | Description |
+|---|---|
+| `auto` | Infer from the value and the path (the default) |
+| `currency` | Money, in the campaign's currency and locale |
+| `number` | A plain number with locale grouping |
+| `percentage` | A percentage |
+| `boolean` | A true or false value |
+| `date` | A date |
+| `text` | Verbatim, with no formatting |
+
+Inference does not reach `bundle.<selectorId>.*` bindings written outside a card, so set `data-next-format="currency"` on those or they render a raw number.
+
+### Modifiers
+
+These sit alongside `data-next-display` and change the value before it is written.
+
+| Attribute | Description |
+|---|---|
+| `data-hide-if-zero` | Hides a savings row rather than showing `$0.00` |
+| `data-hide-if-false` | Hides a badge rather than showing `No` |
+| `data-hide-zero-cents` | Writes `$49` instead of `$49.00`, keeping real cents |
+| `data-multiply-by` | Shows a per-unit price as a pack total |
+| `data-divide-by` | Shows a per-unit price from a pack total |
+
+A discount row that disappears at zero, and a pack price shown per unit.
+
+```html
+<span data-next-display="cart.totalDiscount" data-hide-if-zero="true"></span>
+<span
+  data-next-display="package.price"
+  data-divide-by="3"
+  data-hide-zero-cents="true"
+></span>
+```
+
+### Waiting for the scan
+
+`data-next-await` stops visitors seeing `-` placeholders flash before prices load.
+
+The SDK adds `next-display-ready` to `<html>` when its scan finishes. The hiding is done by `next-core.css`, so the attribute does nothing without that stylesheet on the page.
+
+## What a display path can read
+
+The first segment of a path names one of these objects. The same paths work in `data-next-show` and `data-next-hide` conditions.
+
+### The cart object
+
+The live cart. Used on [Checkout](../pages/checkout-page.md) pages.
+
+| Path | Description |
+|---|---|
+| `cart.total` | Grand total, after shipping and discounts |
+| `cart.subtotal` | Lines before shipping and discounts |
+| `cart.shipping` | Shipping charge |
+| `cart.totalQuantity` | Units in the cart |
+| `cart.totalDiscountPercentage` | Discount as a share of subtotal |
+
+### The package object
+
+The loaded campaign. Used on selector and bump cards. The short forms are scoped by the surrounding card's `data-next-package-id`.
+
+| Path | Description |
+|---|---|
+| `package.name` | Product title |
+| `package.image` | Product image URL |
+| `package.<refId>.name` | Title of a named package |
+
+### The bundle object
+
+One bundle selector's calculated pricing. Used for headlines outside the cards, on [Checkout](../pages/checkout-page.md) and [Upsell](../pages/upsell-page.md) pages.
+
+| Path | Description |
+|---|---|
+| `bundle.<selectorId>.price` | Selected tier's price |
+| `bundle.<selectorId>.originalPrice` | Price before discount |
+| `bundle.<selectorId>.discountPercentage` | Discount as a percentage |
+
+### The shipping object
+
+The selected shipping method. Used on [Checkout](../pages/checkout-page.md) pages.
+
+| Path | Description |
+|---|---|
+| `shipping.isFree` | True when shipping costs nothing |
+
+### The param object
+
+URL parameters captured at boot. Used on any page, in conditions.
+
+| Path | Description |
+|---|---|
+| `param.<name>` | One URL parameter's value |
+
+### The order object
+
+The completed order, loaded from `?ref_id=`. Used on [Receipt](../pages/receipt-page.md) and [Upsell](../pages/upsell-page.md) pages.
+
+| Path | Description |
+|---|---|
+| `order.number` | Confirmation number |
+| `order.total` | Amount the customer paid |
+| `order.subtotal` | Lines before tax and shipping |
+| `order.tax` | Tax charged |
+| `order.shipping` | Shipping charged |
+| `order.currency` | Currency code |
+| `order.paymentMethod` | How it was paid |
+| `order.shippingMethod` | Chosen shipping method |
+| `order.customer.name` | Full name |
+| `order.customer.email` | Email address |
+| `order.shippingAddress.line1` | Street address |
+| `order.shippingAddress.line2` | Apartment or suite |
+| `order.shippingAddress.city` | City |
+| `order.shippingAddress.state` | State or province |
+| `order.shippingAddress.postcode` | Postal code |
+| `order.shippingAddress.country` | Country |
+
+`order.billingAddress.*` carries the same fields as `order.shippingAddress.*`, plus `.name`.
 
 ## The bundle selector
 
 One container, one card per tier; clicking a card writes that tier's lines to the cart. Used on checkout pages and, in select mode, on [upsell pages](../pages/upsell-page.md). Assembled in full in the [Checkout guide](../pages/checkout-page.md):
 
 ```html
-<div data-next-bundle-selector data-next-selector-id="main" data-next-selection-mode="swap" data-next-include-shipping="true" data-next-await="">
-  <div data-next-bundle-card data-next-bundle-id="qty-1" data-next-bundle-items='[{"packageId":1,"quantity":1}]' data-next-selected="true" role="button">
+<div
+  data-next-bundle-selector
+  data-next-selector-id="main"
+  data-next-selection-mode="swap"
+  data-next-include-shipping="true"
+  data-next-await=""
+>
+  <div
+    data-next-bundle-card
+    data-next-bundle-id="qty-1"
+    data-next-bundle-items='[{"packageId":1,"quantity":1}]'
+    data-next-selected="true"
+    role="button"
+  >
     <span data-next-bundle-display="price">-</span>
   </div>
 </div>
 ```
 
-| Attribute | Value | What it does |
-|---|---|---|
-| `data-next-bundle-selector` | none | The container. One selected card at a time; the cart follows the selection. |
-| `data-next-selector-id` | a name, e.g. `main` | The selector's identity. Tags its cart lines and names its `bundle.<id>.*` display namespace. |
-| `data-next-selection-mode` | `swap` \| `select` | `swap` (the default): picking a card replaces the previous card's cart lines. `select`: picking only updates visual state, and an external add-to-cart button performs the cart write. Forced to `select` under `data-next-upsell-context`. |
-| `data-next-include-shipping` | `true` | Card prices include the card's shipping method. |
-| `data-next-bundle-card` | none | One selectable tier. |
-| `data-next-bundle-id` | a name, e.g. `qty-2` | The card's identity. |
-| `data-next-bundle-items` | JSON, e.g. `'[{"packageId":1,"quantity":2}]'` | The cart lines this card stands for. Multi-variant items add `"configurable":true`; a hidden free gift adds `"noSlot":true`. |
-| `data-next-bundle-vouchers` | JSON, e.g. `'["UP50"]'` | Coupon codes that ride with the card: priced into it and applied when it is chosen. |
-| `data-next-selected` | `true` | The default card. |
-| `data-next-shipping-id` | a shipping `ref_id` | Per-card shipping method, applied when the card is chosen. |
-| `data-next-package-id` | a package `ref_id` | Scopes short `package.*` display paths inside the card (and marks bump/upsell targets elsewhere). |
-| `data-next-bundle-display` | `price` \| `originalPrice` \| `unitPrice` \| `originalUnitPrice` \| `discountAmount` \| `discountPercentage` \| `hasDiscount` | That card's calculated pricing, written by the SDK. `hasDiscount` toggles the element's visibility. |
-| `data-next-bundles` | JSON array of `{id,title,imageSrc,items,…}` | Auto-renders cards from a single `<template>` using `{bundle.*}` tokens instead of hand-writing each card. |
+**On the container**
 
-Native quantity stepper (SDK 0.4.18+): `data-next-bundle-qty-for="<selectorId>"` on an external block, with `data-next-quantity-increase`, `data-next-quantity-decrease`, and `data-next-quantity-display` on its buttons and readout; the card carries `data-next-quantity="1"` as its seed plus `data-next-min-quantity` / `data-next-max-quantity`. Multi-variant selectors add `data-next-bundle-slots-for`, `data-next-bundle-slot-template-id`, and `data-next-variant-selectors`, into which the SDK injects native `<select data-next-variant-code>` pickers.
+| Attribute | Description |
+|---|---|
+| `data-next-bundle-selector` | Marks the container |
+| `data-next-selector-id` | Names the selector, e.g. `main` |
+| `data-next-selection-mode` | `swap` (default) or `select` |
+| `data-next-include-shipping` | Card prices include shipping |
+| `data-next-bundles` | Auto-renders cards from a template |
+
+`data-next-bundles` takes a JSON array of `{id,title,imageSrc,items,…}` and stamps one card per entry from a single `<template>`, using `{bundle.*}` tokens.
+
+```html
+<div
+  data-next-bundle-selector
+  data-next-selector-id="main"
+  data-next-bundles='[{"id":"qty-1","title":"Buy 1","items":[{"packageId":1,"quantity":1}]}]'
+>
+  <template>
+    <div data-next-bundle-card data-next-bundle-id="{bundle.id}">
+      {bundle.title}
+    </div>
+  </template>
+</div>
+```
+
+**On a card**
+
+| Attribute | Description |
+|---|---|
+| `data-next-bundle-card` | Marks one selectable tier |
+| `data-next-bundle-id` | Names the card, e.g. `qty-2` |
+| `data-next-bundle-items` | The card's cart lines, as JSON |
+| `data-next-bundle-vouchers` | Coupon codes, as JSON |
+| `data-next-selected` | The card selected on load |
+| `data-next-shipping-id` | Per-card shipping method |
+| `data-next-package-id` | Scopes `package.*` paths in the card |
+| `data-next-bundle-display` | The card's calculated pricing |
+
+### Example
+
+Below is an example that builds a two-for tier: it swaps the cart to that tier on click, prices the card with its own shipping method and a voucher, pre-selects it on load, and renders its discounted price.
+
+```html
+<div
+  data-next-bundle-selector
+  data-next-selector-id="main"
+  data-next-selection-mode="swap"
+  data-next-include-shipping="true"
+  data-next-await=""
+>
+  <div
+    data-next-bundle-card
+    data-next-bundle-id="qty-2"
+    data-next-bundle-items='[{"packageId":1,"quantity":2}]'
+    data-next-bundle-vouchers='["UP50"]'
+    data-next-shipping-id="2"
+    data-next-package-id="1"
+    data-next-selected="true"
+    role="button"
+  >
+    <span data-next-bundle-display="price">-</span>
+  </div>
+</div>
+```
+
+### Selection mode
+
+Values `data-next-selection-mode` accepts.
+
+| Value | Description |
+|---|---|
+| `swap` | Replaces the previous card's cart lines |
+| `select` | Updates the visual state only |
+
+`swap` is the default. Under `select`, a separate add-to-cart button performs the cart write. A selector inside `data-next-upsell-context` is forced to `select`.
+
+### Item flags
+
+Set these inside `data-next-bundle-items`, alongside `packageId` and `quantity`.
+
+| Flag | Description |
+|---|---|
+| `"configurable":true` | The shopper picks variants for this item |
+| `"noSlot":true` | Hidden free gift, kept out of the slot list |
+
+### Voucher codes
+
+A code in `data-next-bundle-vouchers` is priced into the card and applied when the card is chosen, so the discount shown is the discount charged.
+
+The codes must already exist in the Campaigns App.
+
+### Display values
+
+Values `data-next-bundle-display` accepts. All but `hasDiscount` write a number into the element.
+
+| Value | Description |
+|---|---|
+| `price` | Total after every discount |
+| `originalPrice` | Compare-at total, before discounts |
+| `unitPrice` | Per-unit price at the card's quantity |
+| `originalUnitPrice` | Per-unit compare-at price |
+| `discountAmount` | Discount the pricing API applied |
+| `discountPercentage` | Discount as a share of `originalPrice` |
+| `hasDiscount` | Toggles visibility when a discount exists |
+
+### Quantity stepper
+
+Available from SDK 0.4.18. Put `data-next-bundle-qty-for="<selectorId>"` on a block outside the cards.
+
+| Attribute | Description |
+|---|---|
+| `data-next-quantity-increase` | the plus button |
+| `data-next-quantity-decrease` | the minus button |
+| `data-next-quantity-display` | the readout |
+| `data-next-quantity` | a card, as its starting quantity |
+| `data-next-min-quantity` | a card, as its floor |
+| `data-next-max-quantity` | a card, as its ceiling |
+
+The stepper block sits outside the cards and drives the selector named in `data-next-bundle-qty-for`.
+
+```html
+<div data-next-bundle-qty-for="main">
+  <button data-next-quantity-decrease>-</button>
+  <span data-next-quantity-display>1</span>
+  <button data-next-quantity-increase>+</button>
+</div>
+<div
+  data-next-bundle-card
+  data-next-quantity="1"
+  data-next-min-quantity="1"
+  data-next-max-quantity="5"
+></div>
+```
+
+### Multi-variant selectors
+
+| Attribute | Description |
+|---|---|
+| `data-next-bundle-slots-for` | Names the selector the slots belong to |
+| `data-next-bundle-slot-template-id` | The template stamped per slot |
+| `data-next-variant-selectors` | Where the SDK injects the pickers |
+
+The slots block names its selector and the template each slot stamps.
+
+```html
+<div
+  data-next-bundle-slots-for="main"
+  data-next-bundle-slot-template-id="slot-tpl"
+>
+  <div data-next-variant-selectors></div>
+</div>
+```
+
+The SDK injects a native `<select data-next-variant-code>` into the variant-selectors element.
 
 ## Checkout form
 
@@ -78,18 +368,151 @@ One `<form>` owns everything: fields bind to the order by name, payment methods 
 </form>
 ```
 
-| Attribute | Value | What it does |
-|---|---|---|
-| `data-next-checkout` | `form` | The checkout root, on a real `<form>`. |
-| `data-next-checkout-field` | a field name | Binds one input to the order. Names: `fname`, `lname`, `email`, `phone`, `country`, `address1`, `address2`, `city`, `province`, `postal`, `accepts_marketing`, and for payment `cc-number`, `cvv`, `exp-month`, `exp-year`. The two card fields are empty `<div>`s the SDK mounts hosted inputs into. |
-| `data-next-component` | `shipping-form` \| `shipping-field-row` \| `location` \| `<method>-error` \| `<method>-error-text` \| `express-error` \| `express-error-text` \| `scroll-hint` | Named containers the SDK manages. `location` (with `class="next-hidden"`) wraps city/state/postal and is revealed the moment the street address (`address1`) has a value, then never hidden again. The `*-error` pairs are where payment errors render. |
-| `data-next-payment-method` | `credit` \| `paypal` \| `klarna` \| `apple-pay` \| `google-pay` | One payment method section, with its radio input. |
-| `data-next-payment-form` | same values | The method's expandable form body, paired with the section. |
-| `data-next-express-checkout` | `container` \| `buttons` | Express checkout: the SDK injects wallet buttons into the `buttons` element. |
-| `data-next-checkout-step` | the next step's URL | Multi-step checkout: where this step's form submits to. |
-| `data-next-step-number` | `1`, `2`, … | Which step of a multi-step form this is. |
-| `data-next-checkout-review` | `email` \| `phone` \| `address` \| `shippingMethod.name` | Read-back panel on a later step showing what an earlier step collected (with `data-next-enhancer="checkout-review"`). |
-| `data-next-coupon` | `input` | A coupon entry field; `data-auto-apply="true"`, `data-placeholder`, and `data-button-text` configure it. |
+| Attribute | Description |
+|---|---|
+| `data-next-checkout` | Marks the checkout root, on a real `<form>` |
+| `data-next-checkout-field` | Binds one input to the order |
+| `data-next-component` | Names a container the SDK manages |
+| `data-next-payment-method` | One payment method section |
+| `data-next-payment-form` | That method's expandable form body |
+| `data-next-express-checkout` | Where wallet buttons are injected |
+| `data-next-checkout-step` | Where a multi-step form submits next |
+| `data-next-step-number` | Which step of a multi-step form this is |
+| `data-next-checkout-review` | Reads back what an earlier step collected |
+| `data-next-coupon` | A coupon entry field |
+
+### Example
+
+Below is an example that collects a name and a city, reveals the city group once the address is filled, mounts a hosted card field, injects the wallet buttons, takes a coupon, and submits step one of a multi-step flow.
+
+```html
+<form data-next-checkout="form">
+  <input data-next-checkout-field="fname">
+  <div data-next-component="location" class="next-hidden">
+    <input data-next-checkout-field="city">
+  </div>
+  <div data-next-payment-method="credit">
+    <div data-next-payment-form="credit">
+      <div data-next-checkout-field="cc-number"></div>
+    </div>
+  </div>
+  <div data-next-express-checkout="container">
+    <div data-next-express-checkout="buttons"></div>
+  </div>
+  <div data-next-coupon="input"></div>
+  <form
+    data-next-checkout-step="/checkout/payment/"
+    data-next-step-number="1"
+  ></form>
+  <span
+    data-next-checkout-review="email"
+    data-next-enhancer="checkout-review"
+  ></span>
+</form>
+```
+
+### Field names
+
+The SDK finds inputs by `data-next-checkout-field`, not by their `name` attribute, so your markup structure is up to you. The names are fixed.
+
+| Group | Names |
+|---|---|
+| Contact | `fname`, `lname`, `email`, `phone` |
+| Address | `country`, `address1`, `address2`, `city`, `province`, `postal` |
+| Card | `cc-number`, `cvv`, `exp-month`, `exp-year` |
+| Consent | `accepts_marketing` |
+
+`cc-number` and `cvv` are the exception to writing your own inputs. Leave them as empty `<div>`s and the SDK mounts hosted card fields into them, so no card number passes through your page.
+
+### Managed containers
+
+Values `data-next-component` accepts.
+
+| Value | Description |
+|---|---|
+| `shipping-form` | The shipping field group |
+| `shipping-field-row` | One row inside that group |
+| `location` | The city, state, and postal group |
+| `<method>-error` | Where one method's errors render |
+| `<method>-error-text` | The error message inside it |
+| `express-error` | Where express errors render |
+| `express-error-text` | The error message inside it |
+| `scroll-hint` | The scroll affordance |
+
+`location` carries `class="next-hidden"`. The SDK reveals it the moment the street address has a value, and never hides it again.
+
+### Payment methods
+
+Values `data-next-payment-method` and `data-next-payment-form` both accept. Pair a section with a form body of the same value.
+
+| Value | Description |
+|---|---|
+| `credit` | Card |
+| `paypal` | PayPal |
+| `klarna` | Klarna |
+| `apple-pay` | Apple Pay |
+| `google-pay` | Google Pay |
+
+Values `data-next-express-checkout` accepts.
+
+| Value | Description |
+|---|---|
+| `container` | The express checkout block |
+| `buttons` | Where the SDK injects the wallet buttons |
+
+The button order comes from `paymentConfig.expressCheckout.methodOrder`.
+
+### Multi-step checkout
+
+| Attribute | Description |
+|---|---|
+| `data-next-checkout-step` | The next step's URL |
+| `data-next-step-number` | `1`, `2`, and so on |
+
+Values `data-next-checkout-review` accepts.
+
+| Value | Description |
+|---|---|
+| `email` | The email collected earlier |
+| `phone` | The phone number collected earlier |
+| `address` | The shipping address collected earlier |
+| `shippingMethod.name` | The chosen shipping method |
+
+It needs `data-next-enhancer="checkout-review"` on the same element.
+
+### Coupon field
+
+Values `data-next-coupon` accepts.
+
+| Value | Description |
+|---|---|
+| (empty) | The container wrapping the whole coupon area |
+| `input` | The text input the visitor types into |
+| `apply` | The apply button |
+| `display` | The element listing applied codes |
+| `messages` | The element showing success and error text |
+
+`apply` is optional: the first `<button>` in the container is used when it is absent. These configure the field.
+
+| Attribute | Description |
+|---|---|
+| `data-auto-apply` | Applies a code as soon as it is entered |
+| `data-placeholder` | The field's placeholder text |
+| `data-button-text` | The apply button's label |
+
+The container wraps the input, the apply button, and both output areas.
+
+```html
+<div data-next-coupon>
+  <input
+    data-next-coupon="input"
+    data-placeholder="Discount code"
+    data-auto-apply="true">
+  <button data-next-coupon="apply" data-button-text="Apply">Apply</button>
+  <div data-next-coupon="display"></div>
+  <div data-next-coupon="messages"></div>
+</div>
+```
 
 ## Order bumps
 
@@ -97,21 +520,81 @@ A checkbox-style add-on inside the checkout form: the whole card toggles its pac
 
 ```html
 <div data-next-package-toggle data-next-await="">
-  <div data-next-toggle-card data-next-package-id="5" data-next-is-upsell="true" data-next-package-sync="1">
+  <div
+    data-next-toggle-card
+    data-next-package-id="5"
+    data-next-is-upsell="true"
+    data-next-package-sync="1"
+  >
     <span data-next-toggle-display="price">-</span>
   </div>
 </div>
 ```
 
-| Attribute | Value | What it does |
-|---|---|---|
-| `data-next-package-toggle` | none | The bump container. |
-| `data-next-toggle-card` | none | One toggleable card. Clicking anywhere on it adds or removes its package. |
-| `data-next-is-upsell` | `true` | Marks the bump's cart line as an upsell for reporting. |
-| `data-next-package-sync` | package id(s), e.g. `1` or `101,102` | Keeps the bump's quantity equal to the combined quantity of the listed packages' cart lines. When every synced package leaves the cart, the bump is removed too. |
-| `data-next-toggle-display` | `price` \| `originalPrice` \| `unitPrice` \| `originalUnitPrice` | The bump's pricing. Per-unit tokens stay stable across tiers; line totals scale with the synced quantity. |
-| `data-next-toggle-image` | none (on an `<img>`) | The SDK swaps in the package image. |
-| `data-next-toggle-container` | none (on an ancestor) | Puts the card's state classes on this wrapper instead of the card. Use it when the element you style is not the element you click; the clickable area is always the whole `data-next-toggle-card`. |
+**On the container**
+
+| Attribute | Description |
+|---|---|
+| `data-next-package-toggle` | Marks the bump container |
+
+**On a card**
+
+| Attribute | Description |
+|---|---|
+| `data-next-toggle-card` | One toggleable card |
+| `data-next-package-id` | The package the card adds |
+| `data-next-is-upsell` | Reports the line as an upsell |
+| `data-next-package-sync` | Matches quantity to another package |
+| `data-next-toggle-display` | The bump's pricing |
+| `data-next-toggle-image` | Swaps in the package image |
+| `data-next-toggle-container` | Moves state classes to a wrapper |
+
+Clicking anywhere on the card adds or removes its package.
+
+### Example
+
+Below is an example that offers a warranty as an order bump: it reports the line as an upsell, keeps its quantity matched to package 1, shows a per-unit price, and puts the selected styling on a wrapper rather than the card.
+
+```html
+<div data-next-package-toggle data-next-await="">
+  <div data-next-toggle-container>
+    <div
+      data-next-toggle-card
+      data-next-package-id="7"
+      data-next-is-upsell="true"
+      data-next-package-sync="1"
+    >
+      <span data-next-toggle-display="unitPrice">-</span>
+      <img data-next-toggle-image alt="">
+    </div>
+  </div>
+</div>
+```
+
+### Quantity sync
+
+`data-next-package-sync` takes one or more package ids, e.g. `1` or `101,102`.
+
+It keeps the bump's quantity equal to the combined quantity of those packages' cart lines, so one warranty per bottle stays one warranty per bottle. When every synced package leaves the cart, the bump goes with it.
+
+### Display values
+
+Values `data-next-toggle-display` accepts.
+
+| Value | Description |
+|---|---|
+| `price` | Line total after discounts |
+| `originalPrice` | Line total before discounts |
+| `unitPrice` | Per-unit price |
+| `originalUnitPrice` | Per-unit price before discounts |
+
+The per-unit values stay stable across tiers; the line totals scale with the synced quantity. Pick one style per card rather than mixing them.
+
+### State container
+
+`data-next-toggle-container` goes on an ancestor of the card. It puts the card's state classes on that wrapper instead of the card itself.
+
+Use it when the element you style is not the element you click. The clickable area is always the whole `data-next-toggle-card`.
 
 ## Post-purchase upsells
 
@@ -119,23 +602,70 @@ Everything the visitor acts on sits inside the offer wrapper, and the first bund
 
 ```html
 <div data-next-upsell="offer" data-next-await="">
-  <div data-next-bundle-selector data-next-upsell-context data-next-selector-id="upsell-bundle">
-    <div data-next-bundle-card data-next-bundle-id="1x" data-next-bundle-items='[{"packageId":3,"quantity":1}]' data-next-selected="true" role="button"></div>
+  <div
+    data-next-bundle-selector
+    data-next-upsell-context
+    data-next-selector-id="upsell-bundle"
+  >
+    <div
+      data-next-bundle-card
+      data-next-bundle-id="1x"
+      data-next-bundle-items='[{"packageId":3,"quantity":1}]'
+      data-next-selected="true"
+      role="button"
+    ></div>
   </div>
   <a data-next-upsell-action="add" href="#">Add To My Order</a>
   <a data-next-upsell-action="skip" href="#">No Thanks</a>
 </div>
 ```
 
-| Attribute | Value | What it does |
-|---|---|---|
-| `data-next-upsell` | `offer` | The offer wrapper. Everything the visitor acts on sits inside it. |
-| `data-next-upsell-action` | `add` \| `skip` | Accept or decline. `add` submits the first bundle selector inside the wrapper, then forwards to the accept URL; `skip` forwards to the decline URL. |
-| `data-next-upsell-context` | none | On a bundle selector shown after checkout: forces select mode so tier clicks stop writing to the cart. |
+| Attribute | Description |
+|---|---|
+| `data-next-upsell` | The offer wrapper, taking `offer` |
+| `data-next-upsell-action` | Accepts or declines the offer |
+| `data-next-upsell-context` | Puts a bundle selector in select mode |
+
+### Example
+
+Below is an example that presents one post-purchase offer: a bundle selector in select mode so clicks do not touch the cart, with a link that adds the tier to the paid order and a link that skips it.
+
+```html
+<div data-next-upsell="offer" data-next-await="">
+  <div
+    data-next-bundle-selector
+    data-next-upsell-context
+    data-next-selector-id="upsell"
+  >
+    <div
+      data-next-bundle-card
+      data-next-bundle-id="1x"
+      data-next-selected="true"
+    ></div>
+  </div>
+  <a data-next-upsell-action="add" href="#">Add To My Order</a>
+  <a data-next-upsell-action="skip" href="#">No Thanks</a>
+</div>
+```
+
+### Accepting and declining
+
+Values `data-next-upsell-action` accepts.
+
+| Value | Description |
+|---|---|
+| `add` | Submits the offer, then goes to the accept URL |
+| `skip` | Goes to the decline URL, order untouched |
+
+`add` submits the first bundle selector inside the wrapper.
+
+### Upsell context
+
+`data-next-upsell-context` goes on a bundle selector shown after checkout. It forces select mode, so clicking a tier stops writing to the cart.
 
 ## Receipt
 
-The order's lines render from a named `<template>`; everything else on a receipt is an `order.*` display binding from the namespace table above. Assembled in the [Receipt guide](../pages/receipt-page.md):
+The order's lines render from a named `<template>`; everything else on a receipt is an `order.*` display binding from [the order object](#the-order-object) above. Assembled in the [Receipt guide](../pages/receipt-page.md):
 
 ```html
 <template id="order-item-template">
@@ -144,40 +674,181 @@ The order's lines render from a named `<template>`; everything else on a receipt
 <div data-item-template-id="order-item-template" data-next-order-items=""></div>
 ```
 
-| Attribute | Value | What it does |
-|---|---|---|
-| `data-next-order-items` | none | Renders the order's lines, one per `<template>` stamp. |
-| `data-item-template-id` | a `<template>` id | Which template the line list stamps, using `{item.*}` tokens. |
+| Attribute | Description |
+|---|---|
+| `data-next-order-items` | Renders the order's lines |
+| `data-item-template-id` | Names the template each line stamps |
+
+Each line is one stamp of the named `<template>`, using `{item.*}` tokens.
+
+### Example
+
+Below is an example that renders the purchased lines: a named template holding the row markup, and a list element that stamps it once per line on the order.
+
+```html
+<template id="order-item-template">
+  <div>{item.quantity}x {item.name} {item.lineTotal}</div>
+</template>
+<div data-item-template-id="order-item-template" data-next-order-items=""></div>
+```
 
 ## Cart summary and lists
 
 The live totals panel on checkout and upsell pages. The nesting that makes `{item.*}` work (the summary's own `<template>` holding a `data-summary-lines` list with its own `<template>` per line) is shown in [How it works](../start-here/how-it-works.md) and assembled in full in the [Checkout guide](../pages/checkout-page.md).
 
-| Attribute | Value | What it does |
-|---|---|---|
-| `data-next-cart-summary` | none | The live order summary. Its direct `<template>` is the layout, interpolating `{subtotal}`, `{shipping}`, `{total}`, `{currency}`, `{discounts}`, and per-line `{item.*}` tokens inside a nested `data-summary-lines` template. There is no `{tax}` summary token. |
-| `data-next-discounts` | `offer` \| `voucher` | A repeating list of discount rows, one `<template>` stamp per discount, with `{discount.name}`, `{discount.amount}`, `{discount.description}`. |
-| `data-next-quantity` | `increase` \| `decrease` | Cart-line quantity buttons, targeted by a `data-package-id` on the same element. |
+| Attribute | Description |
+|---|---|
+| `data-next-cart-summary` | The live order summary |
+| `data-next-discounts` | A repeating list of discount rows |
+| `data-next-quantity` | Cart-line quantity buttons |
 
-The template tokens the starter templates interpolate, by the template that owns them. A token only means something inside its owner's `<template>`; anywhere else it stays on screen as literal text:
+`data-next-discounts` takes `offer` or `voucher`. `data-next-quantity` takes `increase` or `decrease`, targeted by a `data-package-id` on the same element.
 
-| Tokens | What they render | Inside |
-|---|---|---|
-| `{item.quantity}`, `{item.name}`, `{item.variantName}`, `{item.packageId}` | The cart line's identity: quantity, product title, variant title, package id. | the `data-summary-lines` line template |
-| `{item.price}`, `{item.originalPrice}`, `{item.unitPrice}`, `{item.originalUnitPrice}`, `{item.frequency}` | The cart line's pricing: discounted and compare-at, per line and per unit, plus the subscription frequency label. | the `data-summary-lines` line template |
-| `{item.image}` | The package image URL. | the `data-summary-lines` line template |
-| `{item.hasDiscount}` | A CSS class hook: `show` when the line has a discount, `hide` when it does not. | the `data-summary-lines` line template |
-| `{subtotal}`, `{shipping}`, `{total}`, `{currency}`, `{discounts}` | The summary totals. | the cart summary's own `<template>` |
-| `{discount.name}`, `{discount.amount}`, `{discount.description}`, `{discount.percentage}` | One discount row. | a `data-next-discounts` template |
-| `{item.quantity}`, `{item.name}`, `{item.image}`, `{item.id}`, `{item.lineTotal}` | One purchased order line. | the receipt's `order-item-template` |
+### Example
+
+Below is an example that renders a live totals panel: one row per cart line with quantity buttons, a list of applied vouchers, and the subtotal, shipping, and grand total beneath them.
+
+```html
+<div data-next-cart-summary>
+  <template>
+    <div data-summary-lines>
+      <template>
+        <div data-package-id="{item.packageId}">
+          {item.quantity}x {item.name} {item.price}
+          <button
+            data-next-quantity="decrease"
+            data-package-id="{item.packageId}"
+          >
+            -
+          </button>
+          <button
+            data-next-quantity="increase"
+            data-package-id="{item.packageId}"
+          >
+            +
+          </button>
+        </div>
+      </template>
+    </div>
+    <ul data-next-discounts="voucher">
+      <template><li>{discount.name} {discount.amount}</li></template>
+    </ul>
+    <div>{subtotal} {shipping} {total}</div>
+  </template>
+</div>
+```
+
+### Summary tokens
+
+The summary's direct `<template>` is the layout.
+
+| Token | Description |
+|---|---|
+| `{subtotal}` | Lines before shipping and discounts |
+| `{shipping}` | Shipping charge |
+| `{total}` | Grand total |
+| `{currency}` | Currency symbol |
+| `{discounts}` | Total discount amount |
+
+There is no `{tax}` summary token.
+
+### Cart line tokens
+
+Available inside the `data-summary-lines` line template.
+
+| Token | Description |
+|---|---|
+| `{item.quantity}` | Units on this line |
+| `{item.name}` | Product title |
+| `{item.variantName}` | Variant title |
+| `{item.packageId}` | The line's package id |
+| `{item.image}` | Package image URL |
+| `{item.price}` | Line total after discounts |
+| `{item.originalPrice}` | Line total before discounts |
+| `{item.unitPrice}` | Per-unit price |
+| `{item.originalUnitPrice}` | Per-unit price before discounts |
+| `{item.frequency}` | Subscription frequency label |
+| `{item.hasDiscount}` | `show` or `hide`, as a CSS class hook |
+
+### Discount row tokens
+
+Available inside a `data-next-discounts` template.
+
+| Token | Description |
+|---|---|
+| `{discount.name}` | The discount's name |
+| `{discount.amount}` | Amount taken off |
+| `{discount.description}` | Longer description |
+| `{discount.percentage}` | Discount as a percentage |
+
+### Order line tokens
+
+Available inside the receipt's `order-item-template`.
+
+| Token | Description |
+|---|---|
+| `{item.quantity}` | Units on this line |
+| `{item.name}` | Product title |
+| `{item.image}` | Package image URL |
+| `{item.id}` | The line's id |
+| `{item.lineTotal}` | Line total |
+
+A token only means something inside its owner's `<template>`. Anywhere else it stays on screen as literal text.
 
 ## UI helpers
 
-| Attribute | Value | What it does |
-|---|---|---|
-| `data-next-accordion` | a name, e.g. `order-summary` | Collapsible section, with `data-next-accordion-trigger`, `data-next-accordion-panel`, and `data-next-accordion-text` sharing the name, and `data-open-text` / `data-close-text` / `data-toggle-class` / `data-initial-state` configuring it. The mobile order-summary drawer on every starter checkout. |
-| `data-next-tooltip` | the tooltip text | Hover tooltip. The templates use it on the card-number and CVV field icons. |
-| `data-next-action` | `add-to-cart` | A buy button that writes to the cart directly, with `data-next-package-id` for its target. |
+| Attribute | Description |
+|---|---|
+| `data-next-accordion` | A collapsible section |
+| `data-next-tooltip` | A hover tooltip, taking the text |
+| `data-next-action` | A buy button that writes to the cart |
+
+`data-next-action` takes `add-to-cart`, with `data-next-package-id` naming its target.
+
+```html
+<button data-next-action="add-to-cart" data-next-package-id="1">Buy now</button>
+```
+
+### Tooltip options
+
+| Attribute | Description |
+|---|---|
+| `data-next-tooltip` | The text to show |
+| `data-next-tooltip-placement` | Which side it opens on, default `top` |
+| `data-next-tooltip-offset` | Gap in pixels, default `8` |
+| `data-next-tooltip-delay` | Delay in milliseconds before it opens |
+
+All four tooltip attributes on one element.
+
+```html
+<span
+  data-next-tooltip="Helpful text"
+  data-next-tooltip-placement="top"
+  data-next-tooltip-offset="8"
+  data-next-tooltip-delay="0"
+></span>
+```
+
+### Accordion parts
+
+`data-next-accordion` takes a name, e.g. `order-summary`. These share that name.
+
+| Attribute | Description |
+|---|---|
+| `data-next-accordion-trigger` | the clickable header |
+| `data-next-accordion-panel` | the collapsing body |
+| `data-next-accordion-text` | the label that swaps |
+
+Configure it with `data-open-text`, `data-close-text`, `data-toggle-class`, and `data-initial-state`. This is the mobile order-summary drawer on every starter checkout.
+
+```html
+<div data-next-accordion="faq1" data-initial-state="closed">
+  <button data-next-accordion-trigger="faq1">
+    <span data-next-accordion-text="faq1">Show</span>
+  </button>
+  <div data-next-accordion-panel="faq1">Panel body</div>
+</div>
+```
 
 ## Cautions
 

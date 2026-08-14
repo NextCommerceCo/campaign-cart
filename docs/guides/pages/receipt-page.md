@@ -20,8 +20,12 @@ The order takes a moment to load, so hide order-bearing sections until the SDK h
 
 ```html
 <div data-next-await="">
-  <div>Confirmation #<span data-next-display="order.number">DQFDHG5E0</span></div>
-  <h2>Thank you, <span data-next-display="order.customer.name">Taylor</span>!</h2>
+  <div>
+    Confirmation #<span data-next-display="order.number">DQFDHG5E0</span>
+  </div>
+  <h2>
+    Thank you, <span data-next-display="order.customer.name">Taylor</span>!
+  </h2>
 </div>
 ```
 
@@ -35,7 +39,11 @@ Every field on the confirmation is one `data-next-display` binding into the orde
 <div data-next-display="order.customer.email">jordan.chen@domain.com</div>
 <div data-next-display="order.shippingAddress.line1">151 O'Connor St</div>
 <div data-next-display="order.shippingAddress.line2">Apt 1011</div>
-<div><span data-next-display="order.shippingAddress.city">Ottawa</span>, <span data-next-display="order.shippingAddress.state">ON</span>, <span data-next-display="order.shippingAddress.postcode">K2P 2L8</span></div>
+<div>
+  <span data-next-display="order.shippingAddress.city">Ottawa</span>,
+  <span data-next-display="order.shippingAddress.state">ON</span>,
+  <span data-next-display="order.shippingAddress.postcode">K2P 2L8</span>
+</div>
 <div data-next-display="order.shippingAddress.country">Canada</div>
 <div data-next-display="order.shippingMethod">FedEx Ground</div>
 <div data-next-display="order.paymentMethod">Credit Card</div>
@@ -66,7 +74,10 @@ Totals are plain bindings, with the tax row shown only when the order has tax:
 <div data-next-show="order.hasTax">
   <div data-next-display="order.tax"></div>
 </div>
-<div><span data-next-display="order.currency"></span><span data-next-display="order.total"></span></div>
+<div>
+  <span data-next-display="order.currency"></span
+  ><span data-next-display="order.total"></span>
+</div>
 ```
 
 ## Cautions

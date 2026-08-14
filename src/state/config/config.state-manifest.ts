@@ -140,6 +140,14 @@ export default defineStore({
         "The **locale** decides the decimal separator and which side the currency symbol sits on; the currency code does not. So a EUR campaign still shows `€69.99` to an `en-US` browser, and that is a locale setting, not a currency bug. Set this only when a store must render identically for every visitor — a German shopper's browser already asks for `69,99 €`. An unparseable tag (`de_DE` with an underscore) is rejected at load with a warning and the browser locale is used, so a typo costs formatting, not the page. The debug overlay's locale picker still wins over this, so a pinned campaign can be previewed in other locales.",
     },
     {
+      name: 'storageScope',
+      kind: 'transient',
+      description:
+        'Overrides the per-campaign suffix that keeps two campaigns on one origin from sharing a cart. Empty means the scope is derived from the API key and the page path, which is the default and is right for every campaign we host.',
+      notes:
+        'It is read by `core/storage-scope.ts › storageScopeSuffix`, not by `loadFromWindow()`, because the storage modules are created before the config store loads — which is why it has to be set before the SDK script runs rather than merely before boot finishes. It is also the one key where `window.nextConfig` wins over the matching `<meta name="next-storage-scope">` tag; every other key resolves the other way round. The layout that needs it is a funnel whose pages sit at different depths, such as `/hu/` and `/hu/checkout`, which derive two different scopes and lose the cart between them.',
+    },
+    {
       name: 'autoInit',
       kind: 'transient',
       description:
