@@ -4,45 +4,37 @@
 
 ### Fixed
 
-- **The platform's local payment methods can be offered on the checkout form.**
+- **The platform's local payment methods work on the checkout form.** iDEAL, Bancontact, SEPA Direct Debit, TWINT, Swish, Affirm, Link, Giropay and Sofort can be offered as radio options. The form recognised five names (card, PayPal, Apple Pay, Google Pay, Klarna) and read every other one as a card, so the order went out as a card payment with no card on it, the orders API refused it, and the shopper never reached the payment page. ([#74](https://github.com/NextCommerceCo/campaign-cart/issues/74))
 
-  iDEAL, Bancontact, SEPA Direct Debit, TWINT, Swish, Affirm, Link, Giropay and Sofort now work as radio options. None of them has an express button, so a radio is the only way to offer them, and selecting one did nothing: the form recognised five names (card, PayPal, Apple Pay, Google Pay, Klarna) and read every other one as a card. The order went out as a card payment with no card on it, the orders API refused it, and the shopper never reached the payment page.
+- **A receipt names the payment method instead of printing its API code.** `order.paymentMethod` had names for four methods, so a Klarna order printed `klarna`. Every code an order can carry now has a name. A code with no name yet is printed as it arrived rather than guessed at.
 
-  The radio flow is also the one that collects the shopper's details before sending them away, which is why it matters even for a method that has an express button. ([#74](https://github.com/NextCommerceCo/campaign-cart/issues/74))
-
-- **A receipt names the payment method instead of printing its API code.**
-
-  `data-next-display="order.paymentMethod"` had names for four methods. Everything else reached the page as the code the API sends, so a Klarna order printed `klarna`. Every code an order can carry now has a name: `iDEAL`, `SEPA Direct Debit`, `Klarna`, `Swish`, `Saved Card` and the rest. A code with no name yet is still printed as it arrived rather than guessed at.
-
-- **The payment step is reported for a method that collects nothing on the page.**
-
-  `dl_add_payment_info` was reported by the card fields when they were complete, and by an express button when it was pressed. A method chosen by radio reached neither, so it was missing from the funnel. It is now reported when the form is submitted, once per page however many attempts follow. Klarna is the one method this affected before this release.
+- **The payment step is reported for a method that collects nothing on the page.** `dl_add_payment_info` came from the card fields or from an express button, and a method chosen by radio reached neither. It is now reported when the form is submitted. Klarna is the one method this affected before this release.
 
 ### New
 
-- **Link as an express button.** A fourth button beside PayPal, Apple Pay and Google Pay, shown when the campaign lists Link among its express methods. Link is the only method the platform offers both ways: as a button it goes straight to Link, and as a radio it validates the form and captures the shopper's details first. Offering both shows the same method twice.
+- **Link as an express button**, beside PayPal, Apple Pay and Google Pay, shown when the campaign lists Link. Link is the only method offered both ways: as a button it goes straight to Link, as a radio it validates the form and captures the shopper's details first. Offering both shows it twice.
 
-- **A payment method the SDK does not recognise is sent to the orders API as written.** A method the platform adds can be offered on a page without waiting for an SDK release: the API decides whether it can charge that way, and answers with either an order or a refusal naming the method. The console carries `Payment method "…" is not one the SDK knows` when this happens.
+- **A payment method the SDK does not recognise is sent to the orders API.** A method the platform adds can be offered before the SDK names it, and the API decides whether it can charge that way. The console carries `Payment method "…" is not one the SDK knows`.
 
-- **`PaymentMethod` and `CheckoutPaymentMethod` are exported types.** For TypeScript integrations: `PaymentMethod` is what an order carries, `CheckoutPaymentMethod` is what the checkout store holds. `PaymentMethod` gained `swish`, `sepa_direct` and `saved_card`; nothing was removed from it.
+- **`PaymentMethod` and `CheckoutPaymentMethod` are exported types**, for TypeScript integrations. `PaymentMethod` gained `swish`, `sepa_direct` and `saved_card`; nothing was removed from it.
 
 ### Changed
 
-- **Payment method names in markup are written with underscores.** `data-next-payment-method="apple_pay"`, matching the names the checkout store and the orders API use. `-` and any casing are still accepted, so `apple-pay` and `APPLE_PAY` select the same method and existing pages keep working.
+- **Payment method names in markup are written with underscores.** `data-next-payment-method="apple_pay"`, matching the checkout store and the orders API. `-` and any casing still work, so existing pages keep working.
 
-- **Express methods can be configured under their underscored names.** `window.nextConfig.paymentConfig.expressCheckout.methods` accepts `apple_pay` and `google_pay` alongside the older `applePay` and `googlePay`, which are still read. `link` is accepted there too. This block is consulted only when the campaign lists no express methods of its own.
+- **Express methods can be configured under their underscored names.** `expressCheckout.methods` accepts `apple_pay`, `google_pay` and `link` alongside the older `applePay` and `googlePay`, which are still read.
 
 ### Before you upgrade
 
-**There is nothing to add to your pages.** Every existing payment-method radio keeps working under the name it already carries. The notes below are things to be aware of.
+**There is nothing to add to your pages.** Every existing payment-method radio keeps working under the name it already carries.
 
-**A misspelled payment method now reaches the API.** Because an unrecognised name is passed through rather than replaced, a typo in `data-next-payment-method` produces a refused order where it used to show the card form. The symptom is a shopper who cannot complete checkout on one payment option; the console line `Payment method "…" is not one the SDK knows` names the value. Check for it once after adding a method to a template.
+**A misspelled payment method now reaches the API.** It used to show the card form; it now produces a refused order. The console line `Payment method "…" is not one the SDK knows` names the value, so check for it once after adding a method to a template.
 
-**Receipt text changes for the non-card methods.** A page showing `order.paymentMethod` printed `klarna` and now prints `Klarna`. If you match on that text in your own code or in a tag, match on the order's `payment_method` code instead.
+**Receipt text changes for the non-card methods.** A page showing `order.paymentMethod` printed `klarna` and now prints `Klarna`. Match on the order's `payment_method` code if your own code or a tag reads that text.
 
-**One funnel step gains volume.** `dl_add_payment_info` is now reported for radio-chosen methods, so a campaign offering Klarna or one of the new methods records that step where it recorded nothing. Reports that compare periods across this release will show the step.
+**One funnel step gains volume.** `dl_add_payment_info` is now reported for radio-chosen methods, so a campaign offering Klarna or one of the new methods records that step where it recorded nothing.
 
-**SEPA Direct Debit goes out as `sepa_debit`.** Two of the platform's own references disagree on the name: the payment-methods guide calls it `sepa_direct` and the orders API field calls it `sepa_debit`. Write either one, or plain `sepa`, in your markup; the order carries `sepa_debit`.
+**Write `sepa_debit` for SEPA Direct Debit.** The platform's payment-methods guide calls it `sepa_direct` and the orders API field calls it `sepa_debit`. Markup accepts either, plus plain `sepa`, and the order carries `sepa_debit`.
 
 ---
 
