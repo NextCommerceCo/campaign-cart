@@ -105,20 +105,20 @@ Marks a payment method choice — a radio or a button — and names the method i
 
 **Valid values:**
 
-- `credit` — Card, entered in the hosted card fields.
+- `credit_card` — Card, entered in the hosted card fields. `credit` and `card_token` select the same method.
 - `paypal` — PayPal.
-- `apple-pay` — Apple Pay.
-- `google-pay` — Google Pay.
+- `apple_pay` — Apple Pay.
+- `google_pay` — Google Pay.
 - `klarna` — Klarna.
 - `affirm` — Affirm.
 - `bancontact` — Bancontact.
 - `ideal` — iDEAL.
 - `link` — Link.
-- `sepa-direct` — SEPA Direct Debit. `sepa-debit` and `sepa` select the same method.
+- `sepa_direct` — SEPA Direct Debit. `sepa_debit` and `sepa` select the same method.
 - `swish` — Swish.
 - `twint` — TWINT.
 
-> **Watch out:** These are the markup spellings; the API names differ (`credit` becomes `card_token`). Use the values above in HTML and let the SDK translate. `-` and `_` are interchangeable and case does not matter, so `apple-pay` and `APPLE_PAY` select the same method. **A value that is not on this list still works if the API accepts it** — it is sent to the orders API exactly as written, so a method added to the platform after this SDK release can be offered without waiting for an upgrade. `Payment method "…" is not one the SDK knows` in the console is a heads-up rather than a failure; if it was a typo, the API refuses the order and names the method.
+> **Watch out:** Written with underscores, the same as everywhere else the SDK names a payment method. `-` and `_` are interchangeable and case is ignored, so `apple_pay`, `apple-pay` and `APPLE_PAY` are one value — but keep to underscores in new markup so a page reads the same as the docs. The API name still differs for a card (`credit_card` becomes `card_token`); the SDK translates that. **A value that is not on this list still works if the API accepts it** — it is sent to the orders API exactly as written, so a method added to the platform after this SDK release can be offered without waiting for an upgrade. `Payment method "…" is not one the SDK knows` in the console is a heads-up rather than a failure; if it was a typo, the API refuses the order and names the method.
 
 ## Structural components
 
@@ -162,7 +162,7 @@ These are not placed on the element this feature is bound to — look for them o
 
 | Name | Values | Meaning |
 |---|---|---|
-| `data-next-payment-method` | `credit` / `paypal` / `apple-pay` / `google-pay` / `klarna` / `affirm` / `bancontact` / `ideal` / `link` / `sepa-direct` / `swish` / `twint` | Wraps one payment choice inside the form, and names the method it offers. The feature looks for a radio input and a `[data-next-payment-form]` **inside** this wrapper, so a payment form that is not nested in one is never revealed or collapsed. **Watch out:** These markup spellings differ from the names the store and the API use (`credit` maps to `credit-card` and `card_token`). Use the values above in HTML and let the SDK translate. Everything after `klarna` is a **redirect method**: it has no fields to reveal, so its `[data-next-payment-form]` can be empty — the shopper is sent to the payment provider to pay once the order exists. |
+| `data-next-payment-method` | `credit_card` / `paypal` / `apple_pay` / `google_pay` / `klarna` / `affirm` / `bancontact` / `ideal` / `link` / `sepa_direct` / `swish` / `twint` | Wraps one payment choice inside the form, and names the method it offers. The feature looks for a radio input and a `[data-next-payment-form]` **inside** this wrapper, so a payment form that is not nested in one is never revealed or collapsed. **Watch out:** Underscores, `-` accepted, case ignored — `apple_pay` and `apple-pay` are one value. The card is the only one whose name changes downstream: `credit_card` here is `credit-card` in the checkout store and `card_token` on the order, and the SDK translates both hops. Everything after `klarna` is a **redirect method**: it has no fields to reveal, so its `[data-next-payment-form]` can be empty — the shopper is sent to the payment provider to pay once the order exists. |
 | `data-next-payment-form` | — | Marks the fields belonging to a payment method, inside that method's container. The form is revealed when the method is chosen and collapsed when another is — so card fields are not in the tab order while PayPal is selected. |
 
 ## Set by the feature
@@ -226,7 +226,7 @@ SDK code — only the token from `payment:tokenized` does.
     </div>
   </div>
 
-  <label><input type="radio" data-next-checkout-payment="credit"> Card</label>
+  <label><input type="radio" data-next-checkout-payment="credit_card"> Card</label>
   <label><input type="radio" data-next-checkout-payment="paypal"> PayPal</label>
 
   <button data-next-checkout-submit>Complete order</button>

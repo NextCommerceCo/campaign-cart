@@ -75,15 +75,15 @@ next page. With `?debug=true` the console confirms the form read it, logging
 inside the form rather than as an express shortcut above it.
 
 **Why this enhancer:** `data-next-checkout-payment` marks each choice and names
-the method in markup spelling (`credit`, `paypal`, `apple-pay`, `google-pay`,
-`klarna`, and the redirect methods below); the SDK translates those to the API's
+the method in markup spelling (`credit_card`, `paypal`, `apple_pay`,
+`google_pay`, `klarna`, and the redirect methods below); the SDK translates those to the API's
 names, so you never reconcile the two vocabularies by hand. Errors from the card fields and from PayPal each get
 their own container, so a decline appears next to the method that produced it
 rather than at the top of the page.
 
 ```html
 <label>
-  <input type="radio" name="payment" data-next-checkout-payment="credit" /> Card
+  <input type="radio" name="payment" data-next-checkout-payment="credit_card" /> Card
 </label>
 <label>
   <input type="radio" name="payment" data-next-checkout-payment="paypal" />
@@ -139,7 +139,7 @@ shopper away before you have their address.
 </div>
 ```
 
-The full list is `affirm`, `bancontact`, `ideal`, `klarna`, `link`, `sepa-direct`,
+The full list is `affirm`, `bancontact`, `ideal`, `klarna`, `link`, `sepa_direct`,
 `swish`, `twint`; see [reference/attributes.md](./reference/attributes.md) for all
 of them.
 
@@ -151,8 +151,8 @@ shopper is redirected exactly as above.
 **Watch out for:** That pass-through means a typo is only caught by the API. The
 console line `Payment method "…" is not one the SDK knows` is the early warning,
 so check for it after adding a method — otherwise the first sign is a shopper
-meeting a refused order. SEPA Direct Debit is the one to watch: `sepa-direct` is
-the name the orders API takes, and `sepa-debit` and `sepa` are accepted as the
+meeting a refused order. SEPA Direct Debit is the one to watch: `sepa_direct` is
+the name the orders API takes, and `sepa_debit` and `sepa` are accepted as the
 same method because older SDK types called it `sepa_debit`.
 
 ---

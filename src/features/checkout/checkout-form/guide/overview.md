@@ -44,9 +44,11 @@ the two can never drift apart.
   name is not part of the order at all.
 - Some fields are optional by default. `data-next-required="true"` forces
   validation on one; phone is the usual case.
-- Payment methods are declared in markup with short names (`credit`, `paypal`,
-  `apple-pay`, …). The SDK translates them to the API's names, so the two
-  vocabularies never have to be reconciled by hand.
+- Payment methods are declared in markup with short names, written with
+  underscores like everywhere else the SDK names one (`credit_card`, `paypal`,
+  `apple_pay`, …); `-` is accepted and case is ignored. The SDK translates them
+  to the API's names, so the two vocabularies never have to be reconciled by
+  hand.
 - **A method the SDK does not recognise is passed through, not replaced.** It is
   sent to the orders API as written and logged as
   `Payment method "…" is not one the SDK knows`, because the API is what decides

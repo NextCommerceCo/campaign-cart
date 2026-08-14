@@ -120,11 +120,23 @@ describe('handlePaymentMethodChange', () => {
     }
   );
 
-  it('reads a method the same whichever separator the markup uses', () => {
-    handlePaymentMethodChange(paymentContext(), radioEvent('APPLE_PAY'));
+  it.each(['apple_pay', 'apple-pay', 'APPLE_PAY', ' Apple-Pay '])(
+    'reads a method the same however the markup spells it: "%s"',
+    value => {
+      handlePaymentMethodChange(paymentContext(), radioEvent(value));
 
-    expect(useCheckoutStore.getState().paymentMethod).toBe('apple_pay');
-  });
+      expect(useCheckoutStore.getState().paymentMethod).toBe('apple_pay');
+    }
+  );
+
+  it.each(['credit_card', 'credit-card', 'credit', 'card', 'card_token'])(
+    'reads every spelling of a card as one method: "%s"',
+    value => {
+      handlePaymentMethodChange(paymentContext(), radioEvent(value));
+
+      expect(useCheckoutStore.getState().paymentMethod).toBe('credit-card');
+    }
+  );
 
   it('keeps a method it does not know, so the API is the one that decides', () => {
     // A store can be given a new way to pay before this SDK release knows its

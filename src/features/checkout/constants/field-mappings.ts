@@ -25,12 +25,16 @@ import type { CheckoutPaymentMethod } from '@/types/global';
 /**
  * The page's word for a payment method → the checkout store's.
  *
- * Keys are normalised (lower case, `_` for `-`) so `apple-pay` and `apple_pay`
- * are the same key — a template that picks the other spelling still selects the
- * method the shopper pressed instead of silently falling back to the card form.
- * `sepa` and `sepa_debit` are accepted alongside `sepa_direct`, which is the one
- * name the orders API takes; `sepa_debit` is what this SDK's own type called it
- * until 2026-08-14.
+ * Keys are written with underscores, and a value is normalised (lower case, `_`
+ * for `-`) before it is looked up — so `apple_pay`, `apple-pay` and `APPLE_PAY`
+ * are one key. Underscore is the spelling the docs give, because it is the one
+ * the store and the API use too; a template carrying the kebab form keeps
+ * working rather than falling back to the card form.
+ *
+ * Two methods answer to more than one name: a card to `credit_card`, `credit`,
+ * `card` and `card_token`, and SEPA Direct Debit to `sepa_direct`, `sepa_debit`
+ * and `sepa` — `sepa_debit` is what this SDK's own type called it until
+ * 2026-08-14.
  */
 const RADIO_PAYMENT_METHOD_MAP: Record<string, CheckoutPaymentMethod> = {
   card: 'credit-card',
@@ -63,8 +67,9 @@ const RADIO_PAYMENT_METHOD_MAP: Record<string, CheckoutPaymentMethod> = {
  *
  * @example
  * ```ts
- * toCheckoutPaymentMethod('apple-pay'); // 'apple_pay'
- * toCheckoutPaymentMethod('credit');    // 'credit-card'
+ * toCheckoutPaymentMethod('apple_pay');  // 'apple_pay'
+ * toCheckoutPaymentMethod('apple-pay');  // 'apple_pay' — same key
+ * toCheckoutPaymentMethod('credit_card'); // 'credit-card'
  * toCheckoutPaymentMethod('Pix');       // 'pix' — unknown here, the API decides
  * toCheckoutPaymentMethod('');          // undefined
  * ```
@@ -127,11 +132,19 @@ const API_PAYMENT_METHOD_MAP: Record<string, PaymentMethod> = {
   twint: 'twint',
 };
 
+/**
+ * The three methods `ExpressCheckoutProcessor` can drive.
+ *
+ * Keyed by the checkout store's names, which is what it is handed. It used to be
+ * keyed `apple-pay`/`google-pay` — spellings that never arrive, so both fell
+ * through the `|| method` fallback to the right answer by luck rather than by the
+ * table.
+ */
 export const EXPRESS_PAYMENT_METHOD_MAP: Record<
   string,
   'paypal' | 'apple_pay' | 'google_pay'
 > = {
   paypal: 'paypal',
-  'apple-pay': 'apple_pay',
-  'google-pay': 'google_pay',
+  apple_pay: 'apple_pay',
+  google_pay: 'google_pay',
 };
