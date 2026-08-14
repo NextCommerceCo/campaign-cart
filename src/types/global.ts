@@ -1322,31 +1322,209 @@ export interface AddressConfig {
 }
 
 /**
- * The SDK's resolved runtime configuration — API credentials, page type,
- * payment/maps/address setup, detected location and currency, and analytics
- * settings. Held in {@link useConfigStore}; most values come from the loader
- * script and are read-only at runtime.
+ * Everything a page can configure about the SDK.
+ *
+ * You write these keys on `window.nextConfig` before the loader script runs. Some
+ * also have a `<meta name="next-*">` equivalent, and where both exist the meta tag
+ * wins, because `loadFromWindow()` runs first and `loadFromMeta()` overwrites it
+ * (`core/sdk-initializer.ts › SDKInitializer.initialize`).
+ *
+ * Fields marked "the SDK fills this in" are readable at runtime but are not yours
+ * to set. Writing them on `window.nextConfig` has no effect.
+ *
+ * @example
+ * ```html
+ * <script>
+ *   window.nextConfig = {
+ *     apiKey: "{YOUR_CAMPAIGN_API_KEY}",
+ *     storeName: "acme",
+ *     currencyBehavior: "auto",
+ *     analytics: { enabled: true, mode: "auto", debug: false, providers: {} }
+ *   };
+ * </script>
+ * <script src="/next-campaign-cart.js" type="module"></script>
+ * ```
+ *
+ * @category Core
  */
 export interface ConfigState {
+  /**
+   * The campaign API key every request authenticates with.
+   *
+   * Also settable as `<meta name="next-api-key">`, which wins over this value. An
+   * empty string means the SDK never found a key, so no prices load and no order
+   * can be placed.
+   *
+   * A leftover meta tag silently overriding the key here is the usual cause of a
+   * page loading the wrong campaign. Check the markup before anything else.
+   *
+   * @example "{YOUR_CAMPAIGN_API_KEY}"
+   */
   apiKey: string;
+
+  /**
+   * A campaign identifier shown in the debug panel.
+   *
+   * Nothing in the SDK sends it: requests identify the campaign from {@link ConfigState.apiKey}
+   * alone. Setting it does not point the page at a different campaign.
+   *
+   * @example "winter-sale"
+   * @default "" (not supplied)
+   */
   campaignId: string;
+
+  /**
+   * Turns on verbose SDK logging in the browser console.
+   *
+   * Also turned on by `<meta name="next-debug" content="true">` or `?debugger=true`
+   * in the URL. Leave it off for shopper traffic.
+   *
+   * @example true
+   * @default false
+   */
   debug: boolean;
+
+  /**
+   * Opens the on-page debug overlay at boot.
+   *
+   * The overlay also reads `?debugger=true` and `window.nextConfig.debugger`
+   * directly, so changing this value after boot does not open or close it.
+   *
+   * @example true
+   * @default false
+   */
   debugger: boolean | undefined;
+
+  /**
+   * Which stage of the funnel this page is.
+   *
+   * Analytics reports it as `page_type`, so a mislabelled page files its events
+   * under the wrong funnel step. Prefer the meta tag, which wins over this value.
+   *
+   * @example "checkout"
+   * @see {@link PageType}
+   */
   pageType: PageType;
+
+  /**
+   * The store identifier used to deduplicate purchases against a server-side copy
+   * of the same order.
+   *
+   * Required by the NEXT Storefront Meta App: with it set, the Meta event carries
+   * `eventID: "{storeName}-{orderNumber}"`. Leave it unset and browser and server
+   * events count the same order twice.
+   *
+   * @example "acme"
+   */
   storeName?: string;
+
+  /**
+   * The key that authorises the hosted credit-card fields.
+   *
+   * `undefined` means the card fields cannot start, so card payment is unavailable
+   * and only express or pay-later methods work. Once the campaign loads its own
+   * `payment_env_key` overwrites whatever was set here, so check the campaign
+   * response before the page markup when the card fields use an unexpected key.
+   */
   spreedlyEnvironmentKey?: string | undefined;
+
+  /**
+   * Express checkout and card field behaviour.
+   *
+   * Accepted on `window.nextConfig` as either `paymentConfig` or `payment`.
+   *
+   * @example
+   * ```js
+   * paymentConfig: {
+   *   expressCheckout: {
+   *     enabled: true,
+   *     methodOrder: ["paypal", "apple_pay", "google_pay"]
+   *   }
+   * }
+   * ```
+   * @see {@link PaymentConfig}
+   */
   paymentConfig: PaymentConfig;
+
+  /**
+   * Google Maps address autocomplete settings.
+   *
+   * Written as `googleMaps` on `window.nextConfig`. Leave `apiKey` empty to use the
+   * NEXT autocomplete instead; a non-empty key takes priority over it.
+   *
+   * @example
+   * ```js
+   * googleMaps: { apiKey: "{GOOGLE_MAPS_API_KEY}", region: "US" }
+   * ```
+   * @see {@link GoogleMapsConfig}
+   */
   googleMapsConfig: GoogleMapsConfig;
+
+  /**
+   * How the checkout address form behaves.
+   *
+   * @example
+   * ```js
+   * addressConfig: { dontShowStates: ["AS", "GU", "PR", "VI"], enableAutocomplete: true }
+   * ```
+   * @see {@link AddressConfig}
+   */
   addressConfig: AddressConfig;
 
-  // Location and currency detection
+  /** The visitor's country, as geo-detected at boot. The SDK fills this in. */
   detectedCountry?: string;
+
+  /** The currency geo-detection chose for the visitor. The SDK fills this in. */
   detectedCurrency?: string;
-  detectedIp?: string; // User's IP address from location detection
+
+  /** The visitor's IP address, from geo-detection. The SDK fills this in. */
+  detectedIp?: string;
+
+  /**
+   * The currency the visitor is actually being charged in, held for the whole
+   * session. The SDK fills this in from `?currency=`, a stored session value, or
+   * geo-detection, in that order.
+   */
   selectedCurrency?: string;
+
+  /** The raw geo-detection response. The SDK fills this in. */
   locationData?: any;
-  currencyBehavior?: 'auto' | 'manual'; // auto: change currency when country changes, manual: never auto-change
-  currencyFallbackOccurred?: boolean; // Track if currency fallback happened
+
+  /**
+   * Whether the SDK may change currency when the visitor's country changes.
+   *
+   * `"auto"` geo-detects on first load when no `?currency=` parameter and no stored
+   * currency exist, then locks that currency for the session. `"manual"` never
+   * auto-detects and falls back to the campaign default.
+   *
+   * @example "manual"
+   * @default "auto"
+   */
+  currencyBehavior?: 'auto' | 'manual';
+
+  /**
+   * Whether the requested currency was unavailable and a fallback was used. The
+   * SDK fills this in.
+   */
+  currencyFallbackOccurred?: boolean;
+
+  /**
+   * Keeps two campaigns on one domain from sharing a cart.
+   *
+   * The SDK derives a scope from the API key and the folder the page is served
+   * from, so you do not normally set this. Reach for it when a funnel's pages sit
+   * at different depths (`/hu/` and `/hu/checkout`), which derives two scopes and
+   * loses the cart between them. Pages that must share a cart declare the same
+   * value; pages that must not declare different ones.
+   *
+   * Also settable as `<meta name="next-storage-scope">`. Unlike every other key
+   * here, this value wins over the meta tag. It is read while the storage modules
+   * are created, so it must be set before the loader script runs.
+   *
+   * @example "hu-earbuds"
+   * @default undefined (derived from the API key and page path)
+   */
+  storageScope?: string;
 
   /**
    * BCP 47 tag that pins how prices are written — `"de-DE"`, `"fr-FR"`, `"en-US"`.

@@ -54,7 +54,10 @@
 /* Inline code and fenced blocks: the default theme's code color is close
    enough to body text at a glance to be missed inline, and fenced blocks
    have low border contrast against the page background in dark mode. */
-.tsd-typography code {
+/* Inline code only. A fenced block is `pre > code`, and padding on that inner
+   element indents every line by 0.35em, which reads as a stray leading space
+   before the first character of each line. */
+.tsd-typography :not(pre) > code {
   color: var(--color-text);
   background-color: var(--color-background-secondary);
   border-radius: 3px;

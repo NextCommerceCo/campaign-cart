@@ -24,16 +24,39 @@ Everything the visitor can act on sits inside one wrapper: `data-next-upsell="of
 
 ```html
 <div data-next-upsell="offer" data-next-await="">
-  <div data-next-bundle-selector data-next-upsell-context data-next-selector-id="upsell-bundle">
-    <div role="button" data-next-bundle-card data-next-bundle-id="upsell-bundle-1x" data-next-bundle-items='[{"packageId":3,"quantity":1}]' data-next-bundle-vouchers='["UP50"]' data-next-selected="true">
+  <div
+    data-next-bundle-selector
+    data-next-upsell-context
+    data-next-selector-id="upsell-bundle"
+  >
+    <div
+      role="button"
+      data-next-bundle-card
+      data-next-bundle-id="upsell-bundle-1x"
+      data-next-bundle-items='[{"packageId":3,"quantity":1}]'
+      data-next-bundle-vouchers='["UP50"]'
+      data-next-selected="true"
+    >
       <div data-next-package-id="3">
         <p>Buy 1</p>
         <span data-next-bundle-display="price">-</span>
         <span data-next-bundle-display="originalPrice"></span>
-        <div data-next-bundle-display="hasDiscount"><span data-next-bundle-display="discountPercentage" data-next-format="percentage"></span> off</div>
+        <div data-next-bundle-display="hasDiscount">
+          <span
+            data-next-bundle-display="discountPercentage"
+            data-next-format="percentage"
+          ></span>
+          off
+        </div>
       </div>
     </div>
-    <div role="button" data-next-bundle-card data-next-bundle-id="upsell-bundle-2x" data-next-bundle-items='[{"packageId":3,"quantity":2}]' data-next-bundle-vouchers='["UP60"]'>
+    <div
+      role="button"
+      data-next-bundle-card
+      data-next-bundle-id="upsell-bundle-2x"
+      data-next-bundle-items='[{"packageId":3,"quantity":2}]'
+      data-next-bundle-vouchers='["UP60"]'
+    >
       <div data-next-package-id="3">
         <p>Buy 2</p>
         <span data-next-bundle-display="price">-</span>
@@ -41,7 +64,9 @@ Everything the visitor can act on sits inside one wrapper: `data-next-upsell="of
     </div>
   </div>
   <a data-next-upsell-action="add" href="#">Yes, Add to My Order</a>
-  <a data-next-upsell-action="skip" href="#">No thank you, I don't want this one-time offer</a>
+  <a data-next-upsell-action="skip" href="#"
+    >No thank you, I don't want this one-time offer</a
+  >
 </div>
 ```
 
@@ -56,9 +81,19 @@ How it behaves:
 A summary block elsewhere on the page can mirror the selected tier through the `bundle.<selectorId>.*` display namespace:
 
 ```html
-<div data-next-display="bundle.upsell-bundle.originalPrice" data-next-format="currency">$49.99</div>
-<div data-next-display="bundle.upsell-bundle.price" data-next-format="currency">$24.95</div>
-<span data-next-display="bundle.upsell-bundle.discountPercentage" data-next-format="percentage"></span>
+<div
+  data-next-display="bundle.upsell-bundle.originalPrice"
+  data-next-format="currency"
+>
+  $49.99
+</div>
+<div data-next-display="bundle.upsell-bundle.price" data-next-format="currency">
+  $24.95
+</div>
+<span
+  data-next-display="bundle.upsell-bundle.discountPercentage"
+  data-next-format="percentage"
+></span>
 ```
 
 These remote bindings need an explicit `data-next-format` (`currency` or `percentage`) to render as money or percent. Inside a card, `data-next-bundle-display` formats itself.

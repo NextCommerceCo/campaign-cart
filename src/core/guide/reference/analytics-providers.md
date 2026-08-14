@@ -13,13 +13,25 @@ Which destinations the SDK can forward events to, what each one does to an event
 
 ## The matrix
 
-| Provider | Config key | Refuses to start without | Events it accepts | Where they go |
-|---|---|---|---|---|
-| [NextCampaign](#nextcampaign) | `analytics.providers.nextCampaign` | nothing | 1 of 35 | Reports page views to the 29Next campaign analytics platform, loading its own script. |
-| [GTM](#gtm) | `analytics.providers.gtm` | nothing | all 35 | Forwards every event into Google Tag Manager, where your container decides what to do with it. |
-| [Facebook](#facebook) | `analytics.providers.facebook` | `analytics.providers.facebook.settings.pixelId` | 19 of 35 | Sends mapped events to the Meta Pixel through `fbq`. |
-| [RudderStack](#rudderstack) | `analytics.providers.rudderstack` | nothing | 18 of 35 | Sends events to RudderStack under its ecommerce spec names, via the page's `rudderanalytics` SDK. |
-| [Custom](#custom) | `analytics.providers.custom` | `analytics.providers.custom.settings.endpoint` | all 35 | POSTs events to an endpoint of your own, batched, with retries. |
+**[NextCampaign](#nextcampaign)** `analytics.providers.nextCampaign`
+
+Reports page views to the 29Next campaign analytics platform, loading its own script. Accepts 1 of 35 events. Needs no settings of its own.
+
+**[GTM](#gtm)** `analytics.providers.gtm`
+
+Forwards every event into Google Tag Manager, where your container decides what to do with it. Accepts all 35 events. Needs no settings of its own.
+
+**[Facebook](#facebook)** `analytics.providers.facebook`
+
+Sends mapped events to the Meta Pixel through `fbq`. Accepts 19 of 35 events. Refuses to start without `analytics.providers.facebook.settings.pixelId`.
+
+**[RudderStack](#rudderstack)** `analytics.providers.rudderstack`
+
+Sends events to RudderStack under its ecommerce spec names, via the page's `rudderanalytics` SDK. Accepts 18 of 35 events. Needs no settings of its own.
+
+**[Custom](#custom)** `analytics.providers.custom`
+
+POSTs events to an endpoint of your own, batched, with retries. Accepts all 35 events. Refuses to start without `analytics.providers.custom.settings.endpoint`.
 
 Every provider is optional. With `analytics.enabled: true` and no provider configured, events are still built, validated and pushed to `window.NextDataLayer` — see [Analytics events](./analytics-events.md).
 
@@ -172,18 +184,105 @@ POSTs events to an endpoint of your own, batched, with retries.
 
 An event can stop at any of these points, in this order. The first three happen before any provider is asked, so a provider that "receives nothing" is often not the provider's fault at all. Walk the list from the top.
 
-| # | Stops here when | What you see | Fix |
-|---|---|---|---|
-| 1. **Analytics never started**<br>`core/analytics/index.ts › NextAnalytics.initialize` | `config.analytics.enabled` is not `true`. | One info log, `Analytics disabled in configuration`, and an empty or absent `window.NextDataLayer`. No provider is constructed, so the overlay shows *No analytics providers registered*. | Set `window.nextConfig.analytics.enabled = true` before the SDK loads. There is no meta tag for this. |
-| 2. **Visit is being ignored**<br>`core/analytics/index.ts › NextAnalytics.shouldIgnoreAnalytics` | `?ignore=true` was on the URL at any point this session — the flag is stored in sessionStorage under `analytics_ignore` and outlives the parameter. | Log `Analytics ignored due to ignore parameter`, then `Event tracking skipped due to ignore flag` for each attempt. Nothing reaches the array. | Run `window.NextAnalyticsClearIgnore()` in the console, or open the page in a fresh session. |
-| 3. **Validation dropped it**<br>`core/analytics/data-layer-manager.ts › DataLayerManager.push` | A field listed in `EVENT_VALIDATION_RULES` for that event is missing or falsy — for example `dl_add_to_cart` without `ecommerce.currency`, or `dl_purchase` without `ecommerce.value`. | An error log naming the field (`Missing required field for dl_add_to_cart: ecommerce.currency`) and **nothing in `window.NextDataLayer`** — the event is dropped before the push, so no provider is ever asked and the overlay has no row for it at all. | Fix the payload at the source, not the provider. An event missing here never existed as far as every downstream tag is concerned. |
-| 4. **A transform returned null**<br>`core/analytics/data-layer-manager.ts › DataLayerManager.push` | `window.NextDataLayerTransformFn` is set and returned `null` for this event. | Debug log `Event filtered out by transform function`, no array entry, no provider call. | Return the event (or a modified copy) from your transform. Returning nothing filters it out. |
-| 5. **Held for the next page**<br>`core/analytics/data-layer-manager.ts › DataLayerManager.push` | The event carries the internal `_willRedirect` flag — accepted upsell purchases do, because the page navigates immediately after. | Nothing on this page; the event appears on the *next* page once the pending-events handler replays it, about 200 ms after that page boots. | Look for it after the redirect. This is intended behaviour, not a loss — it prevents the duplicate that firing on both pages would create. |
-| 6. **Provider never constructed**<br>`core/analytics/index.ts › NextAnalytics.initializeProviders` | The provider is `enabled` but its required setting is missing (Meta Pixel without `pixelId`, custom endpoint without `endpoint`). | One warning naming the exact config path — `Provider "facebook" is enabled but analytics.providers.facebook.settings.pixelId is missing — set it to enable facebook; skipping.` The provider is absent from `getStatus().providers` and from the overlay strip. | Supply the setting named in the warning. Until then the events flow to the data layer and to every other provider. |
-| 7. **Blocked for this provider**<br>`core/analytics/providers/provider-adapter.ts › ProviderAdapter.trackEvent` | The event name is in that provider's `blockedEvents`, or the adapter was disabled at runtime with `setEnabled(false)`. | Overlay status **blocked**, with detail `blockedEvents` or `provider disabled`. Other providers still receive it. | Remove the name from `blockedEvents`. Match the canonical name exactly — `purchase` blocks nothing, `dl_purchase` does. |
-| 8. **Provider has no mapping**<br>`core/analytics/providers/provider-adapter.ts › ProviderAdapter.trackEvent` | The adapter answers `notSupported` — NextCampaign for anything but a page view, RudderStack for a `dl_user_data` with no email or user id, Meta for an event outside its table. | Overlay status **skipped** with the reason spelled out (`NextCampaign only tracks page_view`, `no identifiable user (guest)`, `no Facebook mapping for this event`). No error, no log at warn level. | Nothing to fix if the reason is by design. If you need the event at that destination, add it to that adapter's mapping table. |
-| 9. **Vendor script never loaded**<br>`core/analytics/providers/provider-adapter.ts › ProviderAdapter.trackEvent` | The destination's own snippet is missing, so `fbq` / `rudderanalytics` / the NextCampaign SDK never appears. Each adapter waits 5 seconds before giving up. | Overlay status **failed** after roughly 5 s, with the prepared payload still visible so you can check the mapping, plus a one-time warning carrying the fix (`Meta Pixel (fbq) not found — add the Meta Pixel base code to the page`). | Add the vendor snippet to the page. The SDK maps and reports the event but never loads the Meta or RudderStack script for you. |
-| 10. **Dispatch threw**<br>`core/analytics/providers/provider-adapter.ts › ProviderAdapter.trackEvent` | The vendor call itself raised, or returned a rejected promise. | Overlay status **failed** with the error message. Every other provider still receives the event — the base class catches both throws and rejections so one broken destination cannot stop the loop. | Read the recorded error. A swallowed failure is invisible in the console at error level only for expected delivery problems, which are logged as warnings instead. |
+### 1. Analytics never started
+
+`core/analytics/index.ts › NextAnalytics.initialize`
+
+**Stops here when:** `config.analytics.enabled` is not `true`.
+
+**What you see:** One info log, `Analytics disabled in configuration`, and an empty or absent `window.NextDataLayer`. No provider is constructed, so the overlay shows *No analytics providers registered*.
+
+**Fix:** Set `window.nextConfig.analytics.enabled = true` before the SDK loads. There is no meta tag for this.
+
+### 2. Visit is being ignored
+
+`core/analytics/index.ts › NextAnalytics.shouldIgnoreAnalytics`
+
+**Stops here when:** `?ignore=true` was on the URL at any point this session — the flag is stored in sessionStorage under `analytics_ignore` and outlives the parameter.
+
+**What you see:** Log `Analytics ignored due to ignore parameter`, then `Event tracking skipped due to ignore flag` for each attempt. Nothing reaches the array.
+
+**Fix:** Run `window.NextAnalyticsClearIgnore()` in the console, or open the page in a fresh session.
+
+### 3. Validation dropped it
+
+`core/analytics/data-layer-manager.ts › DataLayerManager.push`
+
+**Stops here when:** A field listed in `EVENT_VALIDATION_RULES` for that event is missing or falsy — for example `dl_add_to_cart` without `ecommerce.currency`, or `dl_purchase` without `ecommerce.value`.
+
+**What you see:** An error log naming the field (`Missing required field for dl_add_to_cart: ecommerce.currency`) and **nothing in `window.NextDataLayer`** — the event is dropped before the push, so no provider is ever asked and the overlay has no row for it at all.
+
+**Fix:** Fix the payload at the source, not the provider. An event missing here never existed as far as every downstream tag is concerned.
+
+### 4. A transform returned null
+
+`core/analytics/data-layer-manager.ts › DataLayerManager.push`
+
+**Stops here when:** `window.NextDataLayerTransformFn` is set and returned `null` for this event.
+
+**What you see:** Debug log `Event filtered out by transform function`, no array entry, no provider call.
+
+**Fix:** Return the event (or a modified copy) from your transform. Returning nothing filters it out.
+
+### 5. Held for the next page
+
+`core/analytics/data-layer-manager.ts › DataLayerManager.push`
+
+**Stops here when:** The event carries the internal `_willRedirect` flag — accepted upsell purchases do, because the page navigates immediately after.
+
+**What you see:** Nothing on this page; the event appears on the *next* page once the pending-events handler replays it, about 200 ms after that page boots.
+
+**Fix:** Look for it after the redirect. This is intended behaviour, not a loss — it prevents the duplicate that firing on both pages would create.
+
+### 6. Provider never constructed
+
+`core/analytics/index.ts › NextAnalytics.initializeProviders`
+
+**Stops here when:** The provider is `enabled` but its required setting is missing (Meta Pixel without `pixelId`, custom endpoint without `endpoint`).
+
+**What you see:** One warning naming the exact config path — `Provider "facebook" is enabled but analytics.providers.facebook.settings.pixelId is missing — set it to enable facebook; skipping.` The provider is absent from `getStatus().providers` and from the overlay strip.
+
+**Fix:** Supply the setting named in the warning. Until then the events flow to the data layer and to every other provider.
+
+### 7. Blocked for this provider
+
+`core/analytics/providers/provider-adapter.ts › ProviderAdapter.trackEvent`
+
+**Stops here when:** The event name is in that provider's `blockedEvents`, or the adapter was disabled at runtime with `setEnabled(false)`.
+
+**What you see:** Overlay status **blocked**, with detail `blockedEvents` or `provider disabled`. Other providers still receive it.
+
+**Fix:** Remove the name from `blockedEvents`. Match the canonical name exactly — `purchase` blocks nothing, `dl_purchase` does.
+
+### 8. Provider has no mapping
+
+`core/analytics/providers/provider-adapter.ts › ProviderAdapter.trackEvent`
+
+**Stops here when:** The adapter answers `notSupported` — NextCampaign for anything but a page view, RudderStack for a `dl_user_data` with no email or user id, Meta for an event outside its table.
+
+**What you see:** Overlay status **skipped** with the reason spelled out (`NextCampaign only tracks page_view`, `no identifiable user (guest)`, `no Facebook mapping for this event`). No error, no log at warn level.
+
+**Fix:** Nothing to fix if the reason is by design. If you need the event at that destination, add it to that adapter's mapping table.
+
+### 9. Vendor script never loaded
+
+`core/analytics/providers/provider-adapter.ts › ProviderAdapter.trackEvent`
+
+**Stops here when:** The destination's own snippet is missing, so `fbq` / `rudderanalytics` / the NextCampaign SDK never appears. Each adapter waits 5 seconds before giving up.
+
+**What you see:** Overlay status **failed** after roughly 5 s, with the prepared payload still visible so you can check the mapping, plus a one-time warning carrying the fix (`Meta Pixel (fbq) not found — add the Meta Pixel base code to the page`).
+
+**Fix:** Add the vendor snippet to the page. The SDK maps and reports the event but never loads the Meta or RudderStack script for you.
+
+### 10. Dispatch threw
+
+`core/analytics/providers/provider-adapter.ts › ProviderAdapter.trackEvent`
+
+**Stops here when:** The vendor call itself raised, or returned a rejected promise.
+
+**What you see:** Overlay status **failed** with the error message. Every other provider still receives the event — the base class catches both throws and rejections so one broken destination cannot stop the loop.
+
+**Fix:** Read the recorded error. A swallowed failure is invisible in the console at error level only for expected delivery problems, which are logged as warnings instead.
 
 ## Finding out where an event went
 
