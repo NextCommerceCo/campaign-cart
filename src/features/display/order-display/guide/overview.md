@@ -37,6 +37,13 @@ a receipt page needs no configuration beyond the bindings themselves.
   Use them to render a waiting state and a failure state.
 - API-shaped fields keep their original names (`total_incl_tax`, `created_at`,
   `ref_id`), so what you see in the docs matches what the API returns.
+- **`order.paymentMethod` is the one value that is relabelled, not passed
+  through.** The API's code becomes the platform's own name for the method, so a
+  receipt reads `iDEAL`, `SEPA Direct Debit` or `Credit Card` rather than `ideal`,
+  `sepa_debit` or `card_token` — see `beautifyPaymentMethod` in
+  `order-display.properties.ts` for the table. A method with no label yet is shown
+  as the API spelled it, on purpose: a raw code on a receipt gets reported, an
+  invented label does not.
 - For a per-line breakdown of what was bought, this feature is the wrong tool —
   those are rows, not single values.
 
@@ -48,6 +55,10 @@ a receipt page needs no configuration beyond the bindings themselves.
   because what to show while waiting is a design decision, not an SDK one.
 - We kept the API's snake_case field names rather than renaming them, so a value in
   the docs can be matched against an API response without a translation table.
+- We relabel the payment method from a table rather than title-casing its code,
+  because the right answers are not derivable: `iDEAL`, `PayPal` and `SEPA Direct
+  Debit` are all house capitalisation, and `card_token` reads as plumbing rather
+  than as how somebody paid.
 - We expire the stored order after 15 minutes so a shared or bookmarked receipt
   link does not display someone's purchase indefinitely.
 

@@ -98,14 +98,37 @@ describe('order.paymentMethod', () => {
 });
 
 describe('beautifyPaymentMethod', () => {
-  it('labels the methods it knows and passes the API code through otherwise', () => {
-    expect(beautifyPaymentMethod('card_token')).toBe('Credit Card');
-    expect(beautifyPaymentMethod('paypal')).toBe('PayPal');
-    expect(beautifyPaymentMethod('apple_pay')).toBe('Apple Pay');
-    expect(beautifyPaymentMethod('google_pay')).toBe('Google Pay');
-    // Not in the lookup table: the API's own code is shown as-is, which is
-    // honest. It is never substituted for a friendlier but wrong method.
-    expect(beautifyPaymentMethod('klarna')).toBe('klarna');
+  it.each([
+    ['card_token', 'Credit Card'],
+    ['saved_card', 'Saved Card'],
+    ['apple_pay', 'Apple Pay'],
+    ['google_pay', 'Google Pay'],
+    ['paypal', 'PayPal'],
+    ['affirm', 'Affirm'],
+    ['bancontact', 'Bancontact'],
+    ['external', 'External'],
+    ['giropay', 'Giropay'],
+    ['ideal', 'iDEAL'],
+    ['klarna', 'Klarna'],
+    ['link', 'Link'],
+    ['sepa_debit', 'SEPA Direct Debit'],
+    ['sofort', 'Sofort'],
+    ['swish', 'Swish'],
+    ['twint', 'Twint'],
+  ])('labels %s as "%s", the platform’s own name for it', (code, label) => {
+    expect(beautifyPaymentMethod(code)).toBe(label);
+  });
+
+  it('reads the same code however the order spelled it', () => {
+    expect(beautifyPaymentMethod('Apple Pay')).toBe('Apple Pay');
+    expect(beautifyPaymentMethod('apple-pay')).toBe('Apple Pay');
+    expect(beautifyPaymentMethod(' PAYPAL ')).toBe('PayPal');
+  });
+
+  it('shows a method it has no label for exactly as the API spelled it', () => {
+    // Never substituted for a friendlier but wrong name, and not title-cased
+    // either: a raw code on a receipt gets reported, an invented label does not.
+    expect(beautifyPaymentMethod('pix')).toBe('pix');
     expect(beautifyPaymentMethod('')).toBe('');
   });
 });

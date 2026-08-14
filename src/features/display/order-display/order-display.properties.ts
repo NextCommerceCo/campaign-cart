@@ -220,23 +220,67 @@ export function formatAddress(address: any): string {
   return parts.join(', ');
 }
 
+/**
+ * What to print for each payment method the orders API can put on an order.
+ *
+ * The platform's own labels, so a receipt names the method the way the shopper
+ * met it — `iDEAL` and `PayPal` keep their house capitalisation, which is why
+ * this is a table rather than a title-case function over the code.
+ *
+ * `card_token` is the one deliberate difference: the API calls it "Card Token",
+ * which is a word about plumbing, and a shopper reading their own receipt is
+ * being told how they paid.
+ *
+ * Two codes for SEPA because two of the platform's own references disagree about
+ * which one it is; both land on the same label, so a receipt reads correctly
+ * whichever arrives.
+ */
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  card_token: 'Credit Card',
+  credit_card: 'Credit Card',
+  saved_card: 'Saved Card',
+  apple_pay: 'Apple Pay',
+  google_pay: 'Google Pay',
+  paypal: 'PayPal',
+  affirm: 'Affirm',
+  bancontact: 'Bancontact',
+  external: 'External',
+  giropay: 'Giropay',
+  ideal: 'iDEAL',
+  klarna: 'Klarna',
+  link: 'Link',
+  sepa_debit: 'SEPA Direct Debit',
+  sepa_direct: 'SEPA Direct Debit',
+  sofort: 'Sofort',
+  swish: 'Swish',
+  twint: 'Twint',
+};
+
+/**
+ * Turns the API's payment-method code into the label to show a shopper.
+ *
+ * A code this build has no label for is returned **unchanged** rather than
+ * prettified by a rule: guessing would print a plausible wrong name for a method
+ * the platform has just added, and a raw `pix` on a receipt is a bug someone
+ * reports, where "Pix Payments" is one nobody notices.
+ *
+ * @example
+ * ```ts
+ * beautifyPaymentMethod('sepa_debit');  // 'SEPA Direct Debit'
+ * beautifyPaymentMethod('Apple Pay');   // 'Apple Pay' — spacing and case ignored
+ * beautifyPaymentMethod('pix');         // 'pix' — no label for it yet
+ * ```
+ */
 export function beautifyPaymentMethod(method: string): string {
   if (!method) return '';
 
-  // Mapping of raw payment method values to beautified names
-  const paymentMethodMap: Record<string, string> = {
-    card_token: 'Credit Card',
-    'credit card': 'Credit Card',
-    apple_pay: 'Apple Pay',
-    'apple pay': 'Apple Pay',
-    google_pay: 'Google Pay',
-    'google pay': 'Google Pay',
-    paypal: 'PayPal',
-    Paypal: 'PayPal',
-  };
+  // Same normalisation the payment-method radios get: an order fetched from an
+  // older API, or hand-written test data, may carry `Apple Pay` or `apple-pay`.
+  const code = method.trim().toLowerCase().replace(/[\s-]+/g, '_');
 
-  // Return beautified name or original if not in map
-  return paymentMethodMap[method] || method;
+  // The original, not the normalised code, so an unlabelled method is shown
+  // exactly as the API spelled it.
+  return PAYMENT_METHOD_LABELS[code] ?? method;
 }
 
 export function isComplexOrderProperty(property: string): boolean {
