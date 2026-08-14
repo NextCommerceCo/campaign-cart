@@ -445,26 +445,28 @@ Values `data-next-component` accepts.
 
 Values `data-next-payment-method` and `data-next-payment-form` both accept. Pair a section with a form body of the same value.
 
-| Value | Description | Shopper enters payment details on your page |
-|---|---|---|
-| `credit` | Card | yes, in the hosted card fields |
-| `paypal` | PayPal | no |
-| `apple_pay` | Apple Pay | no |
-| `google_pay` | Google Pay | no |
-| `klarna` | Klarna | no |
-| `affirm` | Affirm | no |
-| `bancontact` | Bancontact | no |
-| `giropay` | Giropay | no |
-| `ideal` | iDEAL | no |
-| `link` | Link | no |
-| `sepa_debit` | SEPA Direct Debit | no |
-| `sofort` | Sofort | no |
-| `swish` | Swish | no |
-| `twint` | TWINT | no |
+| Value | Method | Collects details on your page | Express button |
+|---|---|---|---|
+| `credit` | Card | yes, in the hosted card fields | no |
+| `paypal` | PayPal | no | yes |
+| `apple_pay` | Apple Pay | no | yes, except on Android |
+| `google_pay` | Google Pay | no | yes |
+| `klarna` | Klarna | no | no |
+| `link` | Link | no | yes |
+| `affirm` | Affirm | no | no |
+| `bancontact` | Bancontact | no | no |
+| `giropay` | Giropay | no | no |
+| `ideal` | iDEAL | no | no |
+| `sepa_debit` | SEPA Direct Debit | no | no |
+| `sofort` | Sofort | no | no |
+| `swish` | Swish | no | no |
+| `twint` | TWINT | no | no |
 
-Names are written with underscores, and `-` and any casing are also accepted, so `apple_pay` and `apple-pay` select the same method. The card answers to `credit`, which the starter templates carry, and to `card_token`, the orders API's own name. No other spelling of it is accepted. SEPA Direct Debit answers to `sepa_debit` alone: the platform's payment-methods guide calls the same method `sepa_direct`, and that name is refused so a page cannot reach the API under two identifiers.
+The card is the only method that collects anything on your page. For every other one, `data-next-payment-form` can be empty: the form still validates and captures the shopper's details, then the order is created and the shopper is sent to that provider to pay.
 
-Every method whose last column reads "no" has nothing to reveal, so its `data-next-payment-form` can be empty. The form still validates and captures the shopper's details, then the order is created and the shopper is sent to that provider to pay.
+Names are written with underscores, and `-` and any casing are also accepted, so `apple_pay` and `apple-pay` select the same method. Two methods are stricter than that. The card answers to `credit`, which the starter templates carry, and to `card_token`, the orders API's own name, and to no other spelling. SEPA Direct Debit answers to `sepa_debit` alone: the platform's payment-methods guide calls the same method `sepa_direct`, and that name is refused so a page cannot reach the API under two identifiers.
+
+The card is also the one method whose name changes on the way out, to `card_token`. Every other method goes on the order under the value in the table.
 
 A value that is not in this table is sent to the orders API under that name, lower-cased with `_` for `-`, rather than treated as a card, so a method the platform adds can be offered before the SDK names it. A misspelling therefore produces a refused order: the console line `Payment method "…" is not one the SDK knows` names the value, so check for it once after adding a method.
 

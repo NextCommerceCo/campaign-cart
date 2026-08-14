@@ -6,23 +6,30 @@
 
 - **Local payment methods work on the checkout form.**
 
-  Choosing one of these used to be read as a card payment, so the order was refused and the shopper never reached the payment page. Each is a radio option now, with nothing to fill in on your page: the shopper is sent to the provider to pay once the order exists.
+  Choosing one of the methods marked new below used to be read as a card payment, so the order was refused and the shopper never reached the payment page. Each is a radio option now, with nothing to fill in on your page: the shopper is sent to the provider to pay once the order exists.
 
-  | Method | Write in your markup |
-  |---|---|
-  | iDEAL | `ideal` |
-  | Bancontact | `bancontact` |
-  | SEPA Direct Debit | `sepa_debit` |
-  | TWINT | `twint` |
-  | Swish | `swish` |
-  | Affirm | `affirm` |
-  | Link | `link` |
-  | Giropay | `giropay` |
-  | Sofort | `sofort` |
+  Every method the SDK supports, and the name to write for it:
 
-  **SEPA Direct Debit is `sepa_debit`, and only that.** The platform's payment-methods guide calls the same method `sepa_direct`; the orders API does not take that name, so neither does the SDK. A page carrying it is refused rather than quietly working under a second identifier. No page could pay by SEPA before this release, so there is nothing to migrate: write `sepa_debit`.
+  | Method | Write in your markup | Express button |
+  |---|---|---|
+  | Card | `credit` | no |
+  | PayPal | `paypal` | yes |
+  | Apple Pay | `apple_pay` | yes |
+  | Google Pay | `google_pay` | yes |
+  | Klarna | `klarna` | no |
+  | Link **(new)** | `link` | yes **(new)** |
+  | iDEAL **(new)** | `ideal` | no |
+  | Bancontact **(new)** | `bancontact` | no |
+  | SEPA Direct Debit **(new)** | `sepa_debit` | no |
+  | TWINT **(new)** | `twint` | no |
+  | Swish **(new)** | `swish` | no |
+  | Affirm **(new)** | `affirm` | no |
+  | Giropay **(new)** | `giropay` | no |
+  | Sofort **(new)** | `sofort` | no |
 
-  PayPal, Apple Pay, Google Pay and Klarna are untouched, and the card answers to `credit` as it always has. [Payment methods](docs/guides/reference/data-attributes.md#payment-methods) lists all of them together. ([#74](https://github.com/NextCommerceCo/campaign-cart/issues/74))
+  The card also answers to `card_token`, and it is the one method whose name changes on the way out: the order carries `card_token`. Every other method goes on the order under the same name you write. Apple Pay's button is left out on Android. A method the SDK does not list is sent to the API anyway, so this is what it names, not the limit of what it can charge.
+
+  **SEPA Direct Debit is `sepa_debit`, and only that.** The platform's payment-methods guide calls the same method `sepa_direct`; the orders API does not take that name, so neither does the SDK. A page carrying it is refused rather than quietly working under a second identifier. No page could pay by SEPA before this release, so there is nothing to migrate: write `sepa_debit`. ([#74](https://github.com/NextCommerceCo/campaign-cart/issues/74))
 
 - **Receipts name the payment method.** A Klarna order printed `klarna` and now prints `Klarna`. Every method an order can carry has a name.
 
