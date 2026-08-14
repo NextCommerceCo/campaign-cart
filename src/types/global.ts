@@ -526,13 +526,13 @@ export interface EventMap {
 
   // Express Checkout Events
   /**
-   * An express payment button — PayPal, Apple Pay, or Google Pay — rendered and
-   * is ready to click. Fires once per available method, so a page offering all
-   * three sees it three times.
+   * An express payment button — PayPal, Apple Pay, Google Pay or Link — rendered
+   * and is ready to click. Fires once per available method, so a page offering
+   * all four sees it four times.
    */
   'express-checkout:initialized': {
     /** Which express method became available. */
-    method: 'paypal' | 'apple_pay' | 'google_pay';
+    method: 'paypal' | 'apple_pay' | 'google_pay' | 'link';
     /** The container the button was rendered into. */
     element: HTMLElement;
   };
@@ -543,7 +543,7 @@ export interface EventMap {
    * `error:occurred`.
    */
   'express-checkout:error': {
-    method: 'paypal' | 'apple_pay' | 'google_pay';
+    method: 'paypal' | 'apple_pay' | 'google_pay' | 'link';
     error: string;
   };
   /**
@@ -1550,12 +1550,13 @@ export interface PaymentConfig {
       paypal?: boolean;
       apple_pay?: boolean;
       google_pay?: boolean;
+      link?: boolean;
       /** @deprecated Write `apple_pay`. Still read, so existing config keeps working. */
       applePay?: boolean;
       /** @deprecated Write `google_pay`. Still read, so existing config keeps working. */
       googlePay?: boolean;
     };
-    methodOrder?: ('paypal' | 'apple_pay' | 'google_pay')[]; // Order in which payment methods should be displayed
+    methodOrder?: ('paypal' | 'apple_pay' | 'google_pay' | 'link')[]; // Order in which payment methods should be displayed
     requireValidation?: boolean; // If true, express payment methods in combo form will require form validation
     requiredFields?: string[]; // List of fields required for express checkout (e.g., ['email', 'fname', 'lname'])
   };

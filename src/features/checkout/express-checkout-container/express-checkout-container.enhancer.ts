@@ -19,9 +19,9 @@ import { useCampaignStore } from '@/state/campaign';
 import { getApiClient } from '@/client';
 import { OrderManager } from '../managers/order-manager';
 import { ExpressCheckoutProcessor } from '../processors/express-checkout-processor';
-import { PAYPAL_SVG, APPLE_PAY_SVG, GOOGLE_PAY_SVG } from '../constants/payment-icons';
+import { PAYPAL_SVG, APPLE_PAY_SVG, GOOGLE_PAY_SVG, LINK_SVG } from '../constants/payment-icons';
 import { LoadingOverlay } from '@/core/ui/loading-overlay';
-import { isApplePayAvailable, isGooglePayAvailable, isPayPalAvailable, getPaymentCapabilities } from '@/features/checkout/utils/payment-availability';
+import { isApplePayAvailable, isGooglePayAvailable, isPayPalAvailable, isLinkAvailable, getPaymentCapabilities } from '@/features/checkout/utils/payment-availability';
 import type { PaymentConfig, CartState } from '@/types/global';
 import type { PaymentMethodOption } from '@/types/api';
 
@@ -177,6 +177,13 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
               this.logger.debug('Google Pay not available on this device/browser');
             }
             break;
+          case 'link':
+            if (isLinkAvailable()) {
+              this.createLinkButton();
+            } else {
+              this.logger.debug('Link not available on this device/browser');
+            }
+            break;
           default:
             this.logger.warn(`Unknown express payment method: ${method.code}`);
         }
@@ -204,6 +211,7 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
         paypal: configured.paypal ?? false,
         apple_pay: configured.apple_pay ?? configured.applePay ?? false,
         google_pay: configured.google_pay ?? configured.googlePay ?? false,
+        link: configured.link ?? false,
       };
 
       if (!enabled) {
@@ -226,7 +234,7 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
       this.clearButtons();
 
       // Determine order of methods
-      const order = methodOrder || ['paypal', 'apple_pay', 'google_pay'];
+      const order = methodOrder || ['paypal', 'apple_pay', 'google_pay', 'link'];
 
       // Create buttons in the specified order
       // BUT only if the device actually supports them
@@ -251,6 +259,13 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
               this.createGooglePayButton();
             } else if (methods.google_pay) {
               this.logger.debug('Google Pay enabled in config but not available on device/browser');
+            }
+            break;
+          case 'link':
+            if (methods.link && isLinkAvailable()) {
+              this.createLinkButton();
+            } else if (methods.link) {
+              this.logger.debug('Link enabled in config but not available on device/browser');
             }
             break;
           default:
@@ -445,6 +460,25 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
     this.logger.debug('Google Pay express checkout button created');
   }
   
+  private async createLinkButton(): Promise<void> {
+    const button = this.createButton('link', 'cc-link', 'payment-btn__logo', LINK_SVG);
+    this.buttonInstances.set('link', button);
+    this.buttonsContainer!.appendChild(button);
+
+    // Add click handler
+    const handler = (event: Event) => this.handleButtonClick('link', event);
+    this.buttonClickHandlers.set('link', handler);
+    button.addEventListener('click', handler);
+
+    // Emit initialized event
+    this.emit('express-checkout:initialized', {
+      method: 'link',
+      element: button
+    });
+
+    this.logger.debug('Link express checkout button created');
+  }
+
   private createButton(method: string, className: string, logoClass: string, svgContent: string): HTMLElement {
     const button = document.createElement('button');
     button.setAttribute('data-next-express-checkout', method);

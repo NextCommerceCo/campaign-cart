@@ -144,11 +144,11 @@ export interface EventMap {
         error: string;
     };
     'express-checkout:initialized': {
-        method: 'paypal' | 'apple_pay' | 'google_pay';
+        method: 'paypal' | 'apple_pay' | 'google_pay' | 'link';
         element: HTMLElement;
     };
     'express-checkout:error': {
-        method: 'paypal' | 'apple_pay' | 'google_pay';
+        method: 'paypal' | 'apple_pay' | 'google_pay' | 'link';
         error: string;
     };
     'express-checkout:started': {
@@ -604,10 +604,11 @@ export interface PaymentConfig {
             paypal?: boolean;
             apple_pay?: boolean;
             google_pay?: boolean;
+            link?: boolean;
             applePay?: boolean;
             googlePay?: boolean;
         };
-        methodOrder?: ('paypal' | 'apple_pay' | 'google_pay')[];
+        methodOrder?: ('paypal' | 'apple_pay' | 'google_pay' | 'link')[];
         requireValidation?: boolean;
         requiredFields?: string[];
     };

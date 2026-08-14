@@ -7,7 +7,7 @@ export declare class OrderManager {
     private orderBuilder;
     constructor(apiClient: IApiClient, logger: Logger, emitCallback: (event: string, data: any) => void);
     createOrder(checkoutFormData: Record<string, any>, cartItems: any[], paymentMethod: string, paymentToken?: string, billingAddress?: any, sameAsShipping?: boolean, shippingMethod?: any, vouchers?: string[]): Promise<any>;
-    createExpressOrder(cartItems: any[], paymentMethod: 'paypal' | 'apple_pay' | 'google_pay'): Promise<any>;
+    createExpressOrder(cartItems: any[], paymentMethod: 'paypal' | 'apple_pay' | 'google_pay' | 'link'): Promise<any>;
     createTestOrder(cartItems: any[]): Promise<any>;
     handleOrderRedirect(order: any): void;
     handleTokenizedPayment(token: string, pmData: any, createOrderCallback: () => Promise<any>): Promise<void>;

@@ -38,3 +38,16 @@ export const GOOGLE_PAY_SVG = `<?xml version="1.0" encoding="UTF-8"?>
   <path fill="#fabb05" fill-rule="evenodd" d="M3.2,11.6c-.3-.8-.3-1.7,0-2.6v-1.7H1c-.5.9-.7,2-.7,3,0,1.1.3,2.1.7,3l2.2-1.7h0Z" />
   <path fill="#e94235" fill-rule="evenodd" d="M7,6.2c1,0,1.9.3,2.6,1h0s1.9-1.9,1.9-1.9c-1.2-1.1-2.7-1.7-4.5-1.7-2.5,0-4.9,1.4-6,3.7l2.2,1.7c.5-1.6,2-2.8,3.8-2.8" />
 </svg>`;
+
+/**
+ * Link's name set as text, not its brand mark.
+ *
+ * **Placeholder.** The other three constants here are the providers' own artwork;
+ * this one is a wordmark drawn in `currentColor` so the button still reads
+ * correctly and inherits the page's own colour. Swap it for the official asset
+ * when there is one — it is this constant and nothing else, and the SVG carries
+ * its own `aria-label` so the button keeps an accessible name either way.
+ */
+export const LINK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 22" width="100%" height="100%" role="img" aria-label="Link">
+  <text x="0" y="17" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="17" font-weight="600" fill="currentColor">Link</text>
+</svg>`;

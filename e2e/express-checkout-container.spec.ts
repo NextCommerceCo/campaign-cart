@@ -1,6 +1,7 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Request } from '@playwright/test';
 import type { Campaign } from '../src/types/campaign';
 import { MINIMAL_CAMPAIGN } from './fixtures/campaign';
+import { TEST_ORDER } from './fixtures/order';
 import { stubCampaign, stubCart, bootSdk } from './fixtures/routes';
 
 /**
@@ -108,3 +109,47 @@ for (const [key, description] of CONFIGURED_METHODS) {
     ).toHaveCount(1);
   });
 }
+
+/**
+ * Link is the one method the platform offers **both** ways — as an express button
+ * here and as a radio in the checkout form. This covers the button: it renders
+ * like the other three, and pressing it creates the order with `link` on it and
+ * sends the shopper to Link to pay.
+ */
+test('renders a Link button and pays with it', async ({ page }) => {
+  await stubCampaign(page, {
+    ...MINIMAL_CAMPAIGN,
+    available_express_payment_methods: [{ code: 'link', label: 'Link' }],
+  });
+
+  const posted: Request[] = [];
+  await page.route('**/api/v1/orders/**', route => {
+    if (route.request().method() === 'POST') posted.push(route.request());
+    return route.fulfill({
+      json: {
+        ...TEST_ORDER,
+        number: 'E2E-LINK-1',
+        payment_complete_url: '/e2e/fixtures/express-gateway.html',
+      },
+    });
+  });
+
+  await bootSdk(page, FIXTURE);
+
+  const button = page.locator(
+    '[data-next-express-checkout="buttons"] [data-next-express-checkout="link"]'
+  );
+  await expect(button).toHaveCount(1);
+
+  // A button with no text needs its name from somewhere; the wordmark carries it.
+  await expect(button.locator('svg[aria-label="Link"]')).toHaveCount(1);
+
+  await page.evaluate(() => (window as any).next.addItem({ packageId: 1 }));
+  await expect(button).not.toHaveClass(/next-cart-empty/);
+  await button.click();
+
+  await page.waitForURL('**/e2e/fixtures/express-gateway.html');
+  expect(posted[0]?.postDataJSON().payment_detail).toEqual({
+    payment_method: 'link',
+  });
+});

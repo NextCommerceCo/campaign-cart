@@ -50,7 +50,8 @@ export class ExpressCheckoutProcessor {
         const paymentTypeMap: Record<string, string> = {
           'paypal': 'PayPal',
           'apple_pay': 'Apple Pay',
-          'google_pay': 'Google Pay'
+          'google_pay': 'Google Pay',
+          'link': 'Link'
         };
         const paymentType = paymentTypeMap[paymentMethod] || paymentMethod;
         nextAnalytics.track(EcommerceEvents.createAddPaymentInfoEvent(paymentType));

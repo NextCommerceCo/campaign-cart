@@ -9,7 +9,7 @@ category: "Express Checkout Container"
 <!-- Generated from the feature manifest. Do not edit by hand:
      edit <feature>.manifest.ts, then run `npm run docs:reference`. -->
 
-Renders the express payment buttons — PayPal, Apple Pay, Google Pay — for whichever of them the campaign and device support.
+Renders the express payment buttons — PayPal, Apple Pay, Google Pay, Link — for whichever of them the campaign and device support.
 
 Turned on by `[data-next-express-checkout="container"]`.
 
@@ -36,7 +36,7 @@ Written to the element as state changes. Read these from CSS or tests instead of
 
 | Name | Values | Meaning |
 |---|---|---|
-| `data-next-express-checkout` | `paypal`, `apple_pay`, `google_pay` | On each generated button: which method it is (`paypal`, `apple_pay`, `google_pay`). Style individual methods from this. |
+| `data-next-express-checkout` | `paypal`, `apple_pay`, `google_pay`, `link` | On each generated button: which method it is (`paypal`, `apple_pay`, `google_pay`, `link`). Style individual methods from this. |
 | `data-action` | `submit` | Set to `submit` on each generated button. |
 
 ## Example
@@ -49,7 +49,7 @@ Written to the element as state changes. Read these from CSS or tests instead of
 ```
 
 `express-checkout:initialized` fires **once per available method**, so a page
-offering all three sees it three times. Use it to reveal the section only when at
+offering all four sees it four times. Use it to reveal the section only when at
 least one button actually rendered — Apple Pay is absent on non-Apple devices, and
 an empty "Express checkout" heading looks broken.
 

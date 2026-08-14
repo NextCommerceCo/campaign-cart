@@ -10,7 +10,7 @@ category: "Express Checkout Container"
 > Last reviewed: 2026-07-30
 > Owner: Campaigns
 
-Renders the express payment buttons — PayPal, Apple Pay, Google Pay — for whichever
+Renders the express payment buttons — PayPal, Apple Pay, Google Pay, Link — for whichever
 of them the campaign and the visitor's device actually support.
 
 ## Concept
@@ -33,9 +33,17 @@ non-Apple devices.
   data-next-express-checkout="buttons"` and renders nothing — the usual cause of an
   empty express section.
 - `express-checkout:initialized` fires **once per available method**, so a page
-  offering all three sees it three times.
+  offering all four sees it four times.
 - Each generated button carries `data-next-express-checkout="{method}"` and
   `data-action="submit"`, so individual methods can be styled.
+- **Link is the one method offered both ways.** As a button here it behaves like
+  the other three — no form, straight to Link to pay. It can also be a radio in
+  the [checkout form](../../checkout-form/guide/use-cases.md), which validates the
+  form and captures the shopper's details before sending them. Offer whichever
+  suits the page; offering both means the same method appears twice.
+- **Link's button carries a wordmark, not a brand mark.** The other three ship the
+  provider's own artwork; Link's is its name drawn in `currentColor`, so it takes
+  the colour your button styles give it.
 - Completion and failure are **not** express-specific: an express order finishes
   through `order:completed` and fails through `payment:error`, exactly like a
   standard checkout.
@@ -58,6 +66,9 @@ non-Apple devices.
   device.
 - Does not style the buttons beyond what each provider allows; their branding rules
   constrain this.
+- Does not carry Link's official brand mark yet — see `LINK_SVG` in
+  `features/checkout/constants/payment-icons.ts`, which is the one place to swap
+  it.
 - Does not provide a fallback when no method is available — hide your own section.
 - Does not collect shipping or contact details itself; the provider's sheet does,
   and the order is created from what it returns.

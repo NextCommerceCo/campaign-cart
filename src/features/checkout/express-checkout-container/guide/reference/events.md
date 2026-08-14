@@ -13,11 +13,11 @@ Subscribe with `next.on('<event>', handler)`. Payloads are the exact shapes decl
 
 ## `express-checkout:initialized`
 
-**When:** An express payment button — PayPal, Apple Pay, or Google Pay — rendered and is ready to click. Fires once per available method, so a page offering all three sees it three times.
+**When:** An express payment button — PayPal, Apple Pay, Google Pay or Link — rendered and is ready to click. Fires once per available method, so a page offering all four sees it four times.
 
 **Payload:**
 
 | Field | Type | Description |
 |---|---|---|
-| `method` | `'paypal' \| 'apple_pay' \| 'google_pay'` | Which express method became available. |
+| `method` | `'paypal' \| 'apple_pay' \| 'google_pay' \| 'link'` | Which express method became available. |
 | `element` | `HTMLElement` | The container the button was rendered into. |
