@@ -21,7 +21,7 @@ Everything else lives inside the form root:
 <form data-next-checkout="form" method="post"></form>
 ```
 
-## 1. Package selection
+## Package selection
 
 The bundle selector presents the offer tiers as clickable cards. Each card declares its cart contents as JSON; clicking a card swaps the whole cart to that tier.
 
@@ -73,7 +73,7 @@ The pieces that matter:
 - `data-next-bundle-display`: that card's calculated prices.
 - `data-next-await`: the template's loading gate. The SDK adds the `next-display-ready` class to `<html>` when its DOM scan finishes, and the template's `next-core.css` keeps anything under `data-next-await` invisible until then, so the visitor never sees `-` placeholders flash. The SDK only sets the class; without that stylesheet the attribute does nothing.
 
-## 2. Customer and shipping fields
+## Customer and shipping fields
 
 You write ordinary inputs and name each one with `data-next-checkout-field`. The SDK finds them by name; layout, order, and styling are yours.
 
@@ -128,7 +128,7 @@ You write ordinary inputs and name each one with `data-next-checkout-field`. The
 
 Two of these are SDK-managed containers, not fields. The country and state `<select>`s start with one empty option, and the SDK fills them from the campaign's country list. The city/state/postal group sits inside `data-next-component="location"` with `class="next-hidden"`: the SDK reveals it the moment the street address (`address1`) has a value (typed, autofilled, or autocompleted) and never hides it again (`location-field-visibility.ts`). The trigger is not configurable; omit the `location` wrapper to keep the fields visible from the start.
 
-## 3. Order bump
+## Order bump
 
 An order bump is a checkbox card that adds a second package to the order when toggled. From `_includes/bump-check01.html`:
 
@@ -150,7 +150,7 @@ An order bump is a checkbox card that adds a second package to the order when to
 
 `data-next-package-sync="1"` keeps the bump's quantity equal to the cart quantity of package 1. `data-next-toggle-display` accepts per-unit tokens (`unitPrice`, stable across tiers) or line totals (`price`, which scales with the synced quantity). Pick one pricing style per card.
 
-## 4. Payment
+## Payment
 
 Payment methods are declared as radio sections. The card fields are the deliberate exception to "you write the inputs": `cc-number` and `cvv` are empty `<div>`s, and the SDK mounts hosted payment fields into them, so no card number ever passes through your page. From `_includes/payment-methods.html`:
 
@@ -186,7 +186,7 @@ Express checkout is two containers; the SDK injects the wallet buttons into the 
 </div>
 ```
 
-## 5. Order summary
+## Order preview
 
 The live summary renders the cart from a `<template>` using `{item.*}` tokens, with per-discount rows below it. Condensed from `_includes/cart-summary01.html`:
 
@@ -214,7 +214,7 @@ The live summary renders the cart from a `<template>` using `{item.*}` tokens, w
 </div>
 ```
 
-## 6. Submit
+## Create order
 
 The submit button is a plain `type="submit"` button inside the form. No `data-next-*` attribute is needed. On submit the SDK validates, tokenizes payment, creates the order once, then sends the visitor to `next-success-url` with `?ref_id=` appended so the next page can load the order (`checkout-form.enhancer.ts › CheckoutFormEnhancer`).
 
