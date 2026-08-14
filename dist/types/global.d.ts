@@ -653,7 +653,7 @@ export interface ShippingMethod {
     hasDiscounts: boolean;
     discounts?: Discount[];
 }
-export type KnownCheckoutPaymentMethod = 'card_token' | 'paypal' | 'apple_pay' | 'google_pay' | 'credit-card' | 'klarna' | 'affirm' | 'bancontact' | 'ideal' | 'link' | 'sepa_direct' | 'swish' | 'twint';
+export type KnownCheckoutPaymentMethod = 'card_token' | 'paypal' | 'apple_pay' | 'google_pay' | 'credit-card' | 'klarna' | 'affirm' | 'bancontact' | 'giropay' | 'ideal' | 'link' | 'sepa_debit' | 'sofort' | 'swish' | 'twint';
 export type CheckoutPaymentMethod = KnownCheckoutPaymentMethod | (string & {});
 export interface CheckoutData {
     formData: Record<string, any>;

@@ -72,8 +72,8 @@ checkout always sends the shopper back through the hosted card fields.
   all build through `OrderBuilder`.
 - **`paymentMethod` is a UI-side vocabulary that is mapped at submit.** The order
   builder translates it through `API_PAYMENT_METHOD_MAP`, which lists every
-  method the SDK knows — the redirect ones (`ideal`, `bancontact`, `sepa_direct`,
-  `twint`, `swish`, `affirm`, `link`, `klarna`) included. Only the card entry
+  method the SDK knows — the redirect ones (`ideal`, `bancontact`, `sepa_debit`,
+  `twint`, `swish`, `affirm`, `link`, `giropay`, `sofort`, `klarna`) included. Only the card entry
   actually changes name on the way, and **a method that is not listed is sent as
   it stands** rather than turned into a card, so the field can hold a name this
   SDK release predates and the API is what accepts or refuses it.

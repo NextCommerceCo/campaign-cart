@@ -125,19 +125,19 @@ test('an iDEAL order goes out as iDEAL and sends the shopper to the payment page
 test('a SEPA radio is posted under the name the orders API uses', async ({
   page,
 }) => {
-  // The orders API takes `sepa_direct`; this SDK's own type called the same
-  // method `sepa_debit` until 2026-08-14, so a template may write either and
-  // only one of them is valid on an order.
+  // The platform's payment-methods guide calls SEPA `sepa_direct`; the orders
+  // API field lists `sepa_debit`. A template may carry either, and only one of
+  // them is valid on an order.
   const posted = await stubOrderCreate(page, AWAITING_PAYMENT);
 
   await bootSdk(page, CHECKOUT);
   await page.evaluate(() => (window as any).next.addItem({ packageId: 1 }));
-  await submitWith(page, 'sepa-debit');
+  await submitWith(page, 'sepa_direct');
 
   await page.waitForURL(`**${GATEWAY}`);
 
   expect(posted[0]?.postDataJSON().payment_detail.payment_method).toBe(
-    'sepa_direct'
+    'sepa_debit'
   );
 });
 

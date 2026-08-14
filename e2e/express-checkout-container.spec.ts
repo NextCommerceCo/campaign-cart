@@ -141,8 +141,8 @@ test('renders a Link button and pays with it', async ({ page }) => {
   );
   await expect(button).toHaveCount(1);
 
-  // A button with no text needs its name from somewhere; the wordmark carries it.
-  await expect(button.locator('svg[aria-label="Link"]')).toHaveCount(1);
+  // The button has no text of its own, so the logo has to carry its name.
+  await expect(button.locator('svg title')).toHaveText('Link');
 
   await page.evaluate(() => (window as any).next.addItem({ packageId: 1 }));
   await expect(button).not.toHaveClass(/next-cart-empty/);

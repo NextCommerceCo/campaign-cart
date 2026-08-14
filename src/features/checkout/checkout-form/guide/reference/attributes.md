@@ -114,7 +114,9 @@ Marks a payment method choice — a radio or a button — and names the method i
 - `bancontact` — Bancontact.
 - `ideal` — iDEAL.
 - `link` — Link.
-- `sepa_direct` — SEPA Direct Debit. `sepa_debit` and `sepa` select the same method.
+- `giropay` — Giropay.
+- `sepa_debit` — SEPA Direct Debit. `sepa_direct` and `sepa` select the same method; the order carries `sepa_debit`.
+- `sofort` — Sofort.
 - `swish` — Swish.
 - `twint` — TWINT.
 
@@ -162,7 +164,7 @@ These are not placed on the element this feature is bound to — look for them o
 
 | Name | Values | Meaning |
 |---|---|---|
-| `data-next-payment-method` | `credit_card` / `paypal` / `apple_pay` / `google_pay` / `klarna` / `affirm` / `bancontact` / `ideal` / `link` / `sepa_direct` / `swish` / `twint` | Wraps one payment choice inside the form, and names the method it offers. The feature looks for a radio input and a `[data-next-payment-form]` **inside** this wrapper, so a payment form that is not nested in one is never revealed or collapsed. **Watch out:** Underscores, `-` accepted, case ignored — `apple_pay` and `apple-pay` are one value. The card is the only one whose name changes downstream: `credit_card` here is `credit-card` in the checkout store and `card_token` on the order, and the SDK translates both hops. Everything after `klarna` is a **redirect method**: it has no fields to reveal, so its `[data-next-payment-form]` can be empty — the shopper is sent to the payment provider to pay once the order exists. |
+| `data-next-payment-method` | `credit_card` / `paypal` / `apple_pay` / `google_pay` / `klarna` / `affirm` / `bancontact` / `giropay` / `ideal` / `link` / `sepa_debit` / `sofort` / `swish` / `twint` | Wraps one payment choice inside the form, and names the method it offers. The feature looks for a radio input and a `[data-next-payment-form]` **inside** this wrapper, so a payment form that is not nested in one is never revealed or collapsed. **Watch out:** Underscores, `-` accepted, case ignored — `apple_pay` and `apple-pay` are one value. The card is the only one whose name changes downstream: `credit_card` here is `credit-card` in the checkout store and `card_token` on the order, and the SDK translates both hops. Everything after `klarna` is a **redirect method**: it has no fields to reveal, so its `[data-next-payment-form]` can be empty — the shopper is sent to the payment provider to pay once the order exists. |
 | `data-next-payment-form` | — | Marks the fields belonging to a payment method, inside that method's container. The form is revealed when the method is chosen and collapsed when another is — so card fields are not in the tab order while PayPal is selected. |
 
 ## Set by the feature

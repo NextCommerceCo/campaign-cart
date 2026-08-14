@@ -32,9 +32,11 @@ import type { CheckoutPaymentMethod } from '@/types/global';
  * working rather than falling back to the card form.
  *
  * Two methods answer to more than one name: a card to `credit_card`, `credit`,
- * `card` and `card_token`, and SEPA Direct Debit to `sepa_direct`, `sepa_debit`
- * and `sepa` — `sepa_debit` is what this SDK's own type called it until
- * 2026-08-14.
+ * `card` and `card_token`, and SEPA Direct Debit to `sepa_debit`, `sepa_direct`
+ * and `sepa`. The platform's own references disagree on that last one — its
+ * payment-methods guide says `sepa_direct`, the orders API field says
+ * `sepa_debit` — so both are accepted here and `sepa_debit` is what goes on the
+ * order.
  */
 const RADIO_PAYMENT_METHOD_MAP: Record<string, CheckoutPaymentMethod> = {
   card: 'credit-card',
@@ -47,11 +49,13 @@ const RADIO_PAYMENT_METHOD_MAP: Record<string, CheckoutPaymentMethod> = {
   klarna: 'klarna',
   affirm: 'affirm',
   bancontact: 'bancontact',
+  giropay: 'giropay',
   ideal: 'ideal',
   link: 'link',
-  sepa: 'sepa_direct',
-  sepa_debit: 'sepa_direct',
-  sepa_direct: 'sepa_direct',
+  sepa: 'sepa_debit',
+  sepa_debit: 'sepa_debit',
+  sepa_direct: 'sepa_debit',
+  sofort: 'sofort',
   swish: 'swish',
   twint: 'twint',
 };
@@ -125,9 +129,11 @@ const API_PAYMENT_METHOD_MAP: Record<string, PaymentMethod> = {
   klarna: 'klarna',
   affirm: 'affirm',
   bancontact: 'bancontact',
+  giropay: 'giropay',
   ideal: 'ideal',
   link: 'link',
-  sepa_direct: 'sepa_direct',
+  sepa_debit: 'sepa_debit',
+  sofort: 'sofort',
   swish: 'swish',
   twint: 'twint',
 };

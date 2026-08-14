@@ -108,9 +108,13 @@ describe('handlePaymentMethodChange', () => {
     ['swish', 'swish'],
     ['affirm', 'affirm'],
     ['link', 'link'],
-    ['sepa-direct', 'sepa_direct'],
-    // What this SDK's own type called SEPA until 2026-08-14.
-    ['sepa-debit', 'sepa_direct'],
+    ['sepa_debit', 'sepa_debit'],
+    // The platform's payment-methods guide calls SEPA this; the orders API does
+    // not, so both spellings land on the one the order carries.
+    ['sepa-direct', 'sepa_debit'],
+    ['sepa', 'sepa_debit'],
+    ['giropay', 'giropay'],
+    ['sofort', 'sofort'],
   ])(
     'keeps the redirect method the shopper picked: %s',
     (radioValue, stored) => {

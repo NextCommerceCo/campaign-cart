@@ -54,13 +54,13 @@
         <label for="pm-ideal">iDEAL</label>
         <div data-next-payment-form></div>
       </div>
-      <!-- Deliberately the *old* spelling: what an existing template may carry,
-           and what the SDK has to translate to `sepa_direct` on the order. -->
-      <div data-next-payment-method="sepa-debit">
+      <!-- Deliberately the payment-methods guide's spelling, which the orders
+           API does not take: the SDK has to send `sepa_debit` for this. -->
+      <div data-next-payment-method="sepa_direct">
         <input
           type="radio"
           name="payment_method"
-          value="sepa-debit"
+          value="sepa_direct"
           id="pm-sepa"
         />
         <label for="pm-sepa">SEPA Direct Debit</label>

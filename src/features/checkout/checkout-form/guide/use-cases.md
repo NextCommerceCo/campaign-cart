@@ -139,8 +139,8 @@ shopper away before you have their address.
 </div>
 ```
 
-The full list is `affirm`, `bancontact`, `ideal`, `klarna`, `link`, `sepa_direct`,
-`swish`, `twint`; see [reference/attributes.md](./reference/attributes.md) for all
+The full list is `affirm`, `bancontact`, `giropay`, `ideal`, `klarna`, `link`,
+`sepa_debit`, `sofort`, `swish`, `twint`; see [reference/attributes.md](./reference/attributes.md) for all
 of them.
 
 A name that is not on that list is sent to the API as written rather than
@@ -151,9 +151,10 @@ shopper is redirected exactly as above.
 **Watch out for:** That pass-through means a typo is only caught by the API. The
 console line `Payment method "…" is not one the SDK knows` is the early warning,
 so check for it after adding a method — otherwise the first sign is a shopper
-meeting a refused order. SEPA Direct Debit is the one to watch: `sepa_direct` is
-the name the orders API takes, and `sepa_debit` and `sepa` are accepted as the
-same method because older SDK types called it `sepa_debit`.
+meeting a refused order. SEPA Direct Debit is the one to watch: the platform's
+payment-methods guide calls it `sepa_direct` and the orders API field calls it
+`sepa_debit`. Write either — plus plain `sepa` — and the order carries
+`sepa_debit`.
 
 ---
 

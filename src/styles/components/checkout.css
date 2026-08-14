@@ -113,8 +113,8 @@
   border-top-color: #ffffff;
 }
 
-/* Link ships a wordmark in currentColor rather than a coloured mark, so its
-   spinner follows the button's own text colour instead of a brand one. */
+/* Link's wordmark is drawn in currentColor — only its mark carries brand green —
+   so the spinner follows the button's own text colour rather than a fixed hue. */
 .payment-btn.cc-link .spinner {
   border-color: rgba(0, 0, 0, 0.1);
   border-top-color: currentColor;

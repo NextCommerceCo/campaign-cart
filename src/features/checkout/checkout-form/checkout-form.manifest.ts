@@ -109,11 +109,13 @@ export default defineFeature({
         { value: 'bancontact', description: 'Bancontact.' },
         { value: 'ideal', description: 'iDEAL.' },
         { value: 'link', description: 'Link.' },
+        { value: 'giropay', description: 'Giropay.' },
         {
-          value: 'sepa_direct',
+          value: 'sepa_debit',
           description:
-            'SEPA Direct Debit. `sepa_debit` and `sepa` select the same method.',
+            'SEPA Direct Debit. `sepa_direct` and `sepa` select the same method; the order carries `sepa_debit`.',
         },
+        { value: 'sofort', description: 'Sofort.' },
         { value: 'swish', description: 'Swish.' },
         { value: 'twint', description: 'TWINT.' },
       ],
@@ -163,7 +165,7 @@ export default defineFeature({
       description:
         'Wraps one payment choice inside the form, and names the method it offers. The feature looks for a radio input and a `[data-next-payment-form]` **inside** this wrapper, so a payment form that is not nested in one is never revealed or collapsed.',
       values:
-        '`credit_card` / `paypal` / `apple_pay` / `google_pay` / `klarna` / `affirm` / `bancontact` / `ideal` / `link` / `sepa_direct` / `swish` / `twint`',
+        '`credit_card` / `paypal` / `apple_pay` / `google_pay` / `klarna` / `affirm` / `bancontact` / `giropay` / `ideal` / `link` / `sepa_debit` / `sofort` / `swish` / `twint`',
       notes:
         'Underscores, `-` accepted, case ignored — `apple_pay` and `apple-pay` are one value. The card is the only one whose name changes downstream: `credit_card` here is `credit-card` in the checkout store and `card_token` on the order, and the SDK translates both hops. Everything after `klarna` is a **redirect method**: it has no fields to reveal, so its `[data-next-payment-form]` can be empty — the shopper is sent to the payment provider to pay once the order exists.',
     },

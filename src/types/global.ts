@@ -1697,9 +1697,11 @@ export type KnownCheckoutPaymentMethod =
   | 'klarna'
   | 'affirm'
   | 'bancontact'
+  | 'giropay'
   | 'ideal'
   | 'link'
-  | 'sepa_direct'
+  | 'sepa_debit'
+  | 'sofort'
   | 'swish'
   | 'twint';
 
