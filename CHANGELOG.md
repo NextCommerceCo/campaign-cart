@@ -8,9 +8,9 @@
 
   Choosing one of the methods marked new below used to be read as a card payment, so the order was refused and the shopper never reached the payment page. Each is a radio option now, with nothing to fill in on your page: the shopper is sent to the provider to pay once the order exists.
 
-  Every method the SDK supports, and the name to write for it:
+  Every method the SDK supports, and the value to give `data-next-payment-method`:
 
-  | Method | Write in your markup | Express button |
+  | Method | Value | Express button |
   |---|---|---|
   | Card | `credit` | no |
   | PayPal | `paypal` | yes |
