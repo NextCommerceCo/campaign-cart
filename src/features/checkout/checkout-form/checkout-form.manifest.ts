@@ -113,7 +113,7 @@ export default defineFeature({
         {
           value: 'sepa_debit',
           description:
-            'SEPA Direct Debit. `sepa_direct` and `sepa` select the same method; the order carries `sepa_debit`.',
+            'SEPA Direct Debit, under the one name the orders API takes. The platform payment-methods guide calls the same method `sepa_direct`; that name is not accepted.',
         },
         { value: 'sofort', description: 'Sofort.' },
         { value: 'swish', description: 'Swish.' },

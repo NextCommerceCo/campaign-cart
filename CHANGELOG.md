@@ -20,7 +20,9 @@
   | Giropay | `giropay` |
   | Sofort | `sofort` |
 
-  `sepa_direct` and `sepa` also select SEPA Direct Debit. Card, PayPal, Apple Pay, Google Pay and Klarna are unchanged, and [Payment methods](docs/guides/reference/data-attributes.md#payment-methods) lists all of them together. ([#74](https://github.com/NextCommerceCo/campaign-cart/issues/74))
+  **SEPA Direct Debit is `sepa_debit`, and only that.** The platform's payment-methods guide calls the same method `sepa_direct`; the orders API does not take that name, so neither does the SDK. A page carrying it is refused rather than quietly working under a second identifier. No page could pay by SEPA before this release, so there is nothing to migrate: write `sepa_debit`.
+
+  Card, PayPal, Apple Pay, Google Pay and Klarna are unchanged, and [Payment methods](docs/guides/reference/data-attributes.md#payment-methods) lists all of them together. ([#74](https://github.com/NextCommerceCo/campaign-cart/issues/74))
 
 - **Receipts name the payment method.** A Klarna order printed `klarna` and now prints `Klarna`. Every method an order can carry has a name.
 
@@ -32,7 +34,7 @@
 
 - **A method the SDK does not recognise is sent to the orders API.** A payment method the platform adds can be offered before an SDK release names it.
 
-- **For TypeScript:** `PaymentMethod` and `CheckoutPaymentMethod` are now exported. `PaymentMethod` gained `swish`, `sepa_direct` and `saved_card`.
+- **For TypeScript:** `PaymentMethod` and `CheckoutPaymentMethod` are now exported. `PaymentMethod` gained `swish` and `saved_card`; nothing was removed from it.
 
 ### Changed
 

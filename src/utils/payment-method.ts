@@ -24,9 +24,10 @@
  * `iDEAL` and `PayPal` keep their house capitalisation, which is the reason this
  * is a table and not a title-case function over the code.
  *
- * Two codes for SEPA because two of the platform's own references disagree about
- * which one it is; both land on the same label, so a receipt reads correctly
- * whichever arrives.
+ * `sepa_direct` is here for reading only. The SDK sends SEPA Direct Debit as
+ * `sepa_debit` and accepts no other name for it, but the platform's own
+ * payment-methods guide calls it `sepa_direct`, so an order recorded through
+ * another integration can come back under that name and still has to print.
  */
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   card_token: 'Credit Card',

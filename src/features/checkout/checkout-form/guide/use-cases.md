@@ -151,10 +151,10 @@ shopper is redirected exactly as above.
 **Watch out for:** That pass-through means a typo is only caught by the API. The
 console line `Payment method "…" is not one the SDK knows` is the early warning,
 so check for it after adding a method — otherwise the first sign is a shopper
-meeting a refused order. SEPA Direct Debit has two names: the platform's
-payment-methods guide calls it `sepa_direct` and the orders API field calls it
-`sepa_debit`. Write either — plus plain `sepa` — and the order carries
-`sepa_debit`.
+meeting a refused order. SEPA Direct Debit is the one to check: write
+`sepa_debit`, the name the orders API field takes. The platform's
+payment-methods guide calls the same method `sepa_direct`, and that name is not
+accepted, so a page carrying it is refused rather than translated.
 
 ---
 

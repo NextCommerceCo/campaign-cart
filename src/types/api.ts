@@ -490,9 +490,9 @@ export interface Voucher {
  * has not enabled arrive on a fetched order but are never something the SDK
  * sends: it has no flow that produces them.
  *
- * `sepa_debit` and `sepa_direct` are the same method under the two names the
- * platform's own references use. The SDK sends `sepa_debit`, which is the name
- * the orders API field lists.
+ * SEPA Direct Debit is `sepa_debit`, the name the orders API field lists. The
+ * platform's payment-methods guide calls the same method `sepa_direct`, which is
+ * not a value here.
  */
 export type PaymentMethod =
   | 'apple_pay'
@@ -506,7 +506,6 @@ export type PaymentMethod =
   | 'google_pay'
   | 'sofort'
   | 'sepa_debit'
-  | 'sepa_direct'
   | 'swish'
   | 'twint'
   | 'link'

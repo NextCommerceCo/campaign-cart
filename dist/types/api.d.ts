@@ -229,7 +229,7 @@ export interface Voucher {
     description?: string;
     name?: string;
 }
-export type PaymentMethod = 'apple_pay' | 'card_token' | 'saved_card' | 'paypal' | 'klarna' | 'ideal' | 'bancontact' | 'giropay' | 'google_pay' | 'sofort' | 'sepa_debit' | 'sepa_direct' | 'swish' | 'twint' | 'link' | 'affirm' | 'external';
+export type PaymentMethod = 'apple_pay' | 'card_token' | 'saved_card' | 'paypal' | 'klarna' | 'ideal' | 'bancontact' | 'giropay' | 'google_pay' | 'sofort' | 'sepa_debit' | 'swish' | 'twint' | 'link' | 'affirm' | 'external';
 export interface CartBase {
     address?: AddressCart;
     attribution?: Attribution;

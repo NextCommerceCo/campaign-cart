@@ -66,16 +66,28 @@
         <label for="pm-ideal">iDEAL</label>
         <div data-next-payment-form></div>
       </div>
-      <!-- Deliberately the payment-methods guide's spelling, which the orders
-           API does not take: the SDK has to send `sepa_debit` for this. -->
+      <!-- The one name SEPA answers to. The platform's payment-methods guide
+           calls the same method `sepa_direct`, which is not accepted. -->
+      <div data-next-payment-method="sepa_debit">
+        <input
+          type="radio"
+          name="payment_method"
+          value="sepa_debit"
+          id="pm-sepa"
+        />
+        <label for="pm-sepa">SEPA Direct Debit</label>
+        <div data-next-payment-form></div>
+      </div>
+      <!-- The guide's name for the same method, which is not accepted. Here so a
+           spec can prove it is never translated into `sepa_debit`. -->
       <div data-next-payment-method="sepa_direct">
         <input
           type="radio"
           name="payment_method"
           value="sepa_direct"
-          id="pm-sepa"
+          id="pm-sepa-guide"
         />
-        <label for="pm-sepa">SEPA Direct Debit</label>
+        <label for="pm-sepa-guide">SEPA (guide name)</label>
         <div data-next-payment-form></div>
       </div>
 

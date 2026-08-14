@@ -109,10 +109,6 @@ describe('handlePaymentMethodChange', () => {
     ['affirm', 'affirm'],
     ['link', 'link'],
     ['sepa_debit', 'sepa_debit'],
-    // The platform's payment-methods guide calls SEPA this; the orders API does
-    // not, so both spellings land on the one the order carries.
-    ['sepa-direct', 'sepa_debit'],
-    ['sepa', 'sepa_debit'],
     ['giropay', 'giropay'],
     ['sofort', 'sofort'],
   ])(
@@ -162,6 +158,21 @@ describe('handlePaymentMethodChange', () => {
     handlePaymentMethodChange(paymentContext(), radioEvent(''));
 
     expect(useCheckoutStore.getState().paymentMethod).toBe('ideal');
+  });
+
+  it('does not accept the payment-methods guide’s name for SEPA', () => {
+    // `sepa_direct` is the guide's name and the orders API field does not take
+    // it. No shipped page could pay by SEPA before this, so there was nothing to
+    // keep working under a second name: it is passed through and refused rather
+    // than translated (issue #74 asked for the one identifier).
+    const ctx = paymentContext();
+
+    handlePaymentMethodChange(ctx, radioEvent('sepa_direct'));
+
+    expect(useCheckoutStore.getState().paymentMethod).toBe('sepa_direct');
+    expect(ctx.logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('sepa_direct')
+    );
   });
 
   it('does not warn about a method it does offer', () => {

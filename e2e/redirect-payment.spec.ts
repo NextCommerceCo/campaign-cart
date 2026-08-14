@@ -122,22 +122,30 @@ test('an iDEAL order goes out as iDEAL and sends the shopper to the payment page
   });
 });
 
-test('a SEPA radio is posted under the name the orders API uses', async ({
+test('SEPA answers to one name, not to the guide\u2019s other one', async ({
   page,
 }) => {
-  // The platform's payment-methods guide calls SEPA `sepa_direct`; the orders
-  // API field lists `sepa_debit`. A template may carry either, and only one of
-  // them is valid on an order.
+  // The platform's payment-methods guide calls this method `sepa_direct` and the
+  // orders API field calls it `sepa_debit`. Only `sepa_debit` is accepted, so the
+  // other name must **not** be translated into it: it goes out as written and the
+  // API refuses it. Asserting the accepted name alone would prove nothing, since
+  // an unrecognised name reaches the API under its own spelling anyway.
   const posted = await stubOrderCreate(page, AWAITING_PAYMENT);
 
   await bootSdk(page, CHECKOUT);
   await page.evaluate(() => (window as any).next.addItem({ packageId: 1 }));
-  await submitWith(page, 'sepa_direct');
-
+  await submitWith(page, 'sepa_debit');
   await page.waitForURL(`**${GATEWAY}`);
-
   expect(posted[0]?.postDataJSON().payment_detail.payment_method).toBe(
     'sepa_debit'
+  );
+
+  await bootSdk(page, CHECKOUT);
+  await page.evaluate(() => (window as any).next.addItem({ packageId: 1 }));
+  await submitWith(page, 'sepa_direct');
+  await page.waitForURL(`**${GATEWAY}`);
+  expect(posted[1]?.postDataJSON().payment_detail.payment_method).toBe(
+    'sepa_direct'
   );
 });
 

@@ -115,7 +115,7 @@ Marks a payment method choice — a radio or a button — and names the method i
 - `ideal` — iDEAL.
 - `link` — Link.
 - `giropay` — Giropay.
-- `sepa_debit` — SEPA Direct Debit. `sepa_direct` and `sepa` select the same method; the order carries `sepa_debit`.
+- `sepa_debit` — SEPA Direct Debit, under the one name the orders API takes. The platform payment-methods guide calls the same method `sepa_direct`; that name is not accepted.
 - `sofort` — Sofort.
 - `swish` — Swish.
 - `twint` — TWINT.

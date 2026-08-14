@@ -31,12 +31,15 @@ import type { CheckoutPaymentMethod } from '@/types/global';
  * the store and the API use too; a template carrying the kebab form keeps
  * working rather than falling back to the card form.
  *
- * Two methods answer to more than one name: a card to `credit_card`, `credit`,
- * `card` and `card_token`, and SEPA Direct Debit to `sepa_debit`, `sepa_direct`
- * and `sepa`. The platform's own references disagree on that last one — its
- * payment-methods guide says `sepa_direct`, the orders API field says
- * `sepa_debit` — so both are accepted here and `sepa_debit` is what goes on the
- * order.
+ * A card answers to four names, because `credit` is what shipped templates carry
+ * and dropping it would break them.
+ *
+ * SEPA Direct Debit answers to exactly one, `sepa_debit`, which is the name the
+ * orders API field takes. The platform's payment-methods guide calls the same
+ * method `sepa_direct`; that name is deliberately absent, so a page carrying it
+ * is warned about and refused by the API rather than quietly working under a
+ * second identifier. No shipped page could pay by SEPA before this, so there was
+ * nothing to keep compatible (issue #74 asked for the one name).
  */
 const RADIO_PAYMENT_METHOD_MAP: Record<string, CheckoutPaymentMethod> = {
   card: 'credit-card',
@@ -52,9 +55,7 @@ const RADIO_PAYMENT_METHOD_MAP: Record<string, CheckoutPaymentMethod> = {
   giropay: 'giropay',
   ideal: 'ideal',
   link: 'link',
-  sepa: 'sepa_debit',
   sepa_debit: 'sepa_debit',
-  sepa_direct: 'sepa_debit',
   sofort: 'sofort',
   swish: 'swish',
   twint: 'twint',
