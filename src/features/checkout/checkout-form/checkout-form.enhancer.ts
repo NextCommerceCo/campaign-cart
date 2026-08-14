@@ -36,6 +36,7 @@ import {
 } from '@/core/analytics/tracking/purchase-tracking';
 import { OrderBuilder } from '../builders/order-builder';
 import { nextAnalytics, EcommerceEvents } from '@/core/analytics/index';
+import { paymentMethodLabel } from '@/utils/payment-method';
 import {
   injectIntlTelInputStyles,
   initializePhoneInputs,
@@ -265,6 +266,16 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // Track if analytics events have been fired
   /** Ref, shared with `autofill-detection.ts` so the event cannot fire twice. */
   private hasTrackedShippingInfo = { value: false };
+  /**
+   * Whether `add_payment_info` has been reported for a redirect method.
+   *
+   * The card path and the express path each own that event for their own methods
+   * — `CreditCardService` when the card fields are complete, and
+   * `ExpressCheckoutProcessor` when the button is pressed — and each fires once.
+   * A redirect method reaches neither, so this form reports it on submit, and
+   * this flag keeps a second attempt after a declined order from counting twice.
+   */
+  private hasTrackedRedirectPaymentInfo = false;
   /**
    * Stops autofill detection: clears its poll **and** unsubscribes it from the event bus.
    * Was an untyped `(this as any)` stash holding only the interval.
@@ -1843,7 +1854,31 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         }
       }
 
-      // This should not be reached for express payments
+      // Everything that is left is a redirect method — iDEAL, Klarna, SEPA and
+      // the rest. Nothing collected payment details on this page, so submitting
+      // is the moment the shopper committed to paying that way, and it is the
+      // only chance to report `add_payment_info` for them: the card path reports
+      // from `CreditCardService` and the express path from
+      // `ExpressCheckoutProcessor`, and neither runs here.
+      if (!this.hasTrackedRedirectPaymentInfo) {
+        try {
+          nextAnalytics.track(
+            EcommerceEvents.createAddPaymentInfoEvent(
+              paymentMethodLabel(checkoutStore.paymentMethod)
+            )
+          );
+          this.hasTrackedRedirectPaymentInfo = true;
+          this.logger.info('Tracked add_payment_info event', {
+            paymentMethod: checkoutStore.paymentMethod,
+          });
+        } catch (error) {
+          this.logger.warn(
+            'Failed to track add_payment_info event for the redirect method:',
+            error
+          );
+        }
+      }
+
       // span?.setAttribute('payment.type', checkoutStore.paymentMethod || 'unknown');
       await this.processOrder();
     } catch (error) {

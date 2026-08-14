@@ -160,6 +160,43 @@ test('a method this build has no name for still reaches the API and redirects', 
   });
 });
 
+/** Every `dl_add_payment_info` currently on the page's canonical data layer. */
+const paymentInfoEvents = (page: Page) =>
+  page.evaluate(() =>
+    ((window as any).NextDataLayer ?? []).filter(
+      (e: any) => e.event === 'dl_add_payment_info'
+    )
+  );
+
+test('reports add_payment_info once, named for the method', async ({
+  page,
+}) => {
+  // A redirect method enters no payment details on this page, so submitting is
+  // the moment it can be reported — and the card and express paths, which report
+  // their own, are both out of this journey.
+  //
+  // The order is refused so the page stays put and the data layer survives long
+  // enough to read. The event goes out before the order call, so a refusal does
+  // not change whether it fired — only whether a second attempt repeats it.
+  await page.route('**/api/v1/orders/**', route =>
+    route.fulfill({ status: 400, json: { message: 'Refused by the test' } })
+  );
+
+  await bootSdk(page, CHECKOUT);
+  await page.evaluate(() => (window as any).next.addItem({ packageId: 1 }));
+  await submitWith(page, 'ideal');
+
+  await expect.poll(() => paymentInfoEvents(page)).toHaveLength(1);
+  const [event] = await paymentInfoEvents(page);
+  expect(event.ecommerce.payment_type).toBe('iDEAL');
+
+  // The negative control: a second attempt after a refusal is the same funnel
+  // step, not another one.
+  await page.click('[data-next-checkout-submit]');
+  await page.waitForTimeout(1000);
+  expect(await paymentInfoEvents(page)).toHaveLength(1);
+});
+
 test('an order that came back paid goes to the thank-you page, not to a gateway', async ({
   page,
 }) => {

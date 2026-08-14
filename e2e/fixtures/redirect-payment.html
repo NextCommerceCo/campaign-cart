@@ -12,6 +12,18 @@
       content="/e2e/fixtures/redirect-payment.html"
     />
     <title>E2E — redirect payment methods</title>
+    <!-- Analytics is off by default; auto mode is what registers the checkout
+         handlers, and `dl_add_payment_info` is part of what this journey owes. -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      window.nextConfig = {
+        analytics: {
+          enabled: true,
+          mode: 'auto',
+          providers: { gtm: { enabled: true } },
+        },
+      };
+    </script>
   </head>
   <body>
     <h1>Redirect payment fixture</h1>

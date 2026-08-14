@@ -69,9 +69,12 @@ export interface ShippingMethodContext {
 /**
  * Handles a `change` on a payment-method radio.
  *
- * `add_payment_info` is **not** reported here: for a card it fires when the card fields
- * are complete (`CreditCardService`), and for an express method when the button is pressed
- * (`ExpressCheckoutProcessor`).
+ * `add_payment_info` is **not** reported here — picking a radio is not committing to pay,
+ * and a shopper flipping between methods would report it several times. Each method has its
+ * own moment: a card when the card fields are complete (`CreditCardService`), an express
+ * method when the button is pressed (`ExpressCheckoutProcessor`), and a redirect method
+ * when the form is submitted (`handleFormSubmit`, since nothing about paying is entered on
+ * the page).
  *
  * A method the SDK does not know by name is **kept**, not replaced: it is stored as the
  * page wrote it and sent to the API, which is the only thing that can say whether it can

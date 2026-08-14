@@ -598,8 +598,12 @@ export const ANALYTICS_EVENT_DOCS: AnalyticsEventDoc[] = [
   {
     name: 'dl_add_payment_info',
     firesWhen:
-      'Payment details are accepted by the form — after validation, before the ' +
-      'order is created.',
+      'The shopper has committed to a way of paying — always before the order ' +
+      'is created, and once per page however many attempts follow. Which moment ' +
+      'that is depends on the method: for a card, when the card fields are ' +
+      'complete; for an express button, when it is pressed; and for a redirect ' +
+      'method chosen by radio (iDEAL, Klarna, SEPA and the rest), when the form ' +
+      'is submitted, because nothing about paying was entered on the page.',
     providerNotes: 'RudderStack reports it as checkout `step: 3`.',
   },
   {

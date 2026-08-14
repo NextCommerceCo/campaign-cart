@@ -38,6 +38,7 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private billingAnimationTimeouts;
     private billingListenerAbort;
     private hasTrackedShippingInfo;
+    private hasTrackedRedirectPaymentInfo;
     private stopAutofillDetection?;
     private hasTrackedBeginCheckout;
     private beginCheckoutTimer?;
