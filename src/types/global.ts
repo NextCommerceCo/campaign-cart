@@ -1538,9 +1538,21 @@ export interface PaymentConfig {
 
   expressCheckout?: {
     enabled: boolean;
+    /**
+     * Which express buttons to offer, when the campaign does not say.
+     *
+     * Write the method names with underscores — `apple_pay`, `google_pay` — the
+     * same as `methodOrder` beside them and as every other place the SDK names a
+     * payment method. `applePay`/`googlePay` are the older camelCase spellings and
+     * still work; a method turned on under either key is turned on.
+     */
     methods: {
       paypal?: boolean;
+      apple_pay?: boolean;
+      google_pay?: boolean;
+      /** @deprecated Write `apple_pay`. Still read, so existing config keeps working. */
       applePay?: boolean;
+      /** @deprecated Write `google_pay`. Still read, so existing config keeps working. */
       googlePay?: boolean;
     };
     methodOrder?: ('paypal' | 'apple_pay' | 'google_pay')[]; // Order in which payment methods should be displayed

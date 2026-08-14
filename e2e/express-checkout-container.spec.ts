@@ -70,3 +70,41 @@ test('buttons get next-cart-empty when the cart becomes empty', async ({
   await expect(button).toHaveClass(/next-cart-empty/);
   await expect(button).toHaveAttribute('disabled', 'true');
 });
+
+/**
+ * The fallback path: the campaign lists no express methods, so the buttons come
+ * from `window.nextConfig.paymentConfig.expressCheckout.methods`.
+ *
+ * Google Pay drives it because it is the one method available on every project —
+ * `isGooglePayAvailable()` is unconditional, where Apple Pay is hidden on Android
+ * and so would not render on Pixel 5.
+ */
+const CONFIGURED_METHODS = [
+  ['google_pay', 'the spelling to write'],
+  ['googlePay', 'the older camelCase spelling'],
+] as const;
+
+for (const [key, description] of CONFIGURED_METHODS) {
+  test(`turns on a configured button named with ${description}`, async ({
+    page,
+  }) => {
+    // Overrides the campaign stubbed in beforeEach: this one offers no express
+    // methods of its own, which is what hands the decision to the config.
+    await stubCampaign(page, MINIMAL_CAMPAIGN);
+    await page.addInitScript(methodKey => {
+      (window as any).nextConfig = {
+        paymentConfig: {
+          expressCheckout: { enabled: true, methods: { [methodKey]: true } },
+        },
+      };
+    }, key);
+
+    await bootSdk(page, FIXTURE);
+
+    await expect(
+      page.locator(
+        '[data-next-express-checkout="buttons"] [data-next-express-checkout="google_pay"]'
+      )
+    ).toHaveCount(1);
+  });
+}

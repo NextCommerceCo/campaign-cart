@@ -196,7 +196,15 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
       }
     } else if (this.paymentConfig?.expressCheckout) {
       // Fall back to config-based setup
-      const { enabled, methods, methodOrder } = this.paymentConfig.expressCheckout;
+      const { enabled, methodOrder } = this.paymentConfig.expressCheckout;
+      // `apple_pay` is the spelling to write; `applePay` is the older one and is
+      // still read, so a config written either way turns the same button on.
+      const configured = this.paymentConfig.expressCheckout.methods ?? {};
+      const methods = {
+        paypal: configured.paypal ?? false,
+        apple_pay: configured.apple_pay ?? configured.applePay ?? false,
+        google_pay: configured.google_pay ?? configured.googlePay ?? false,
+      };
 
       if (!enabled) {
         this.hideContainer();
@@ -232,16 +240,16 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
             }
             break;
           case 'apple_pay':
-            if (methods.applePay && isApplePayAvailable()) {
+            if (methods.apple_pay && isApplePayAvailable()) {
               this.createApplePayButton();
-            } else if (methods.applePay) {
+            } else if (methods.apple_pay) {
               this.logger.debug('Apple Pay enabled in config but not available on device/browser');
             }
             break;
           case 'google_pay':
-            if (methods.googlePay && isGooglePayAvailable()) {
+            if (methods.google_pay && isGooglePayAvailable()) {
               this.createGooglePayButton();
-            } else if (methods.googlePay) {
+            } else if (methods.google_pay) {
               this.logger.debug('Google Pay enabled in config but not available on device/browser');
             }
             break;
@@ -252,11 +260,7 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
 
       const actuallyAvailable = this.buttonInstances.size > 0;
       this.logger.debug('Express checkout buttons updated from config', {
-        requestedMethods: {
-          paypal: methods.paypal,
-          applePay: methods.applePay,
-          googlePay: methods.googlePay
-        },
+        requestedMethods: methods,
         methodOrder: order,
         actuallyShown: Array.from(this.buttonInstances.keys()),
         hasVisibleButtons: actuallyAvailable

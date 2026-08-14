@@ -71,7 +71,7 @@ export default defineStore({
       description:
         'How payment is offered on this page: which express-checkout methods appear and in what order, what they must validate first, and how the hosted card fields are laid out (`cardInputConfig`). An empty object means SDK defaults — card fields with standard formatting and no express-checkout restrictions.',
       notes:
-        'The card-field block is accepted under three names for backwards compatibility — `cardInputConfig`, `spreedly`, `spreedlyConfig` — and the first one present wins in that order. Supplying two of them means the later ones are ignored, which reads as "my styling did nothing".',
+        'The card-field block is accepted under three names for backwards compatibility — `cardInputConfig`, `spreedly`, `spreedlyConfig` — and the first one present wins in that order. Supplying two of them means the later ones are ignored, which reads as "my styling did nothing". Inside `expressCheckout.methods`, name a method the way the rest of the SDK does — `apple_pay`, `google_pay`, matching the `methodOrder` beside it; `applePay`/`googlePay` are the older spellings and are still read, so a config written either way turns the same button on. **`expressCheckout` is only consulted when the campaign lists no express methods of its own** — `available_express_payment_methods` wins, so a method switched on here that the campaign does not offer shows nothing.',
     },
     {
       name: 'googleMapsConfig',
@@ -317,6 +317,8 @@ export default defineStore({
   "spreedlyEnvironmentKey": "{PAYMENT_ENV_KEY}",
   "paymentConfig": {
     "expressCheckout": {
+      "enabled": true,
+      "methods": { "paypal": true, "apple_pay": true, "google_pay": true },
       "requireValidation": true,
       "requiredFields": ["email", "fname", "lname"],
       "methodOrder": ["paypal", "apple_pay", "google_pay"]

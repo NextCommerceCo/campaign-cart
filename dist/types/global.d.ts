@@ -602,6 +602,8 @@ export interface PaymentConfig {
         enabled: boolean;
         methods: {
             paypal?: boolean;
+            apple_pay?: boolean;
+            google_pay?: boolean;
             applePay?: boolean;
             googlePay?: boolean;
         };
