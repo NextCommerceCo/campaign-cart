@@ -127,8 +127,25 @@ Docs are for the reader, not the compiler. Every doc must clear this bar:
 - **Every caution names the trap, the symptom, and the fix.** A warning with no
   fix is noise.
 - **No wall of types with no overview**, no class/kind page used as a feature
-  list. Group by task/shape, not by TypeScript kind.
+  list. Group by task, not by TypeScript kind.
 - **Forbidden words:** "simple", "easy", "just", "straightforward".
+- **Plain technical tone — no cleverness.** Headings are noun phrases that name
+  the thing (`Enabling analytics`, `Event names`, `The purchase event`), never
+  quips, questions, or personification. `## Nothing fires until you turn it on`
+  and `## dl_purchase — the one that pays the bills` both shipped and both had
+  to be rewritten. Banned everywhere in docs: jokes, idioms ("pays the bills",
+  "earns its keep", "load-bearing"), coined metaphors, and editorializing
+  ("blessed", "have no business", "tricks"). Write the fact in the words a
+  reader would search for.
+- **No em dashes anywhere in published docs** — `docs/guides/**`,
+  `docs/site-home.md`, and TSDoc that renders on the site. Rewrite with a
+  period, comma, colon, or parentheses. 145 shipped in one PR and every one was
+  rewritten out.
+- **Headings are plain text: no inline code, no dashes.** TypeDoc's page TOC
+  drops `<code>` spans from heading link text — `## The purchase event —
+  \`dl_purchase\`` rendered in the sidebar as "The purchase event —" with a
+  dangling dash. Put the identifier in the first sentence under the heading
+  instead.
 
 ## 3. One doc for everyone — no external/internal fork
 
@@ -158,3 +175,7 @@ The generators and the site nav rely on this — see `sdk-docs` §5.
 - [ ] Each new/changed doc clears the §2 readability bar (question-first,
       example, cautions have fixes, no forbidden words).
 - [ ] No content duplicated — cross-linked instead.
+- [ ] Every factual claim passes the fact-check rules in
+      [docs-fact-check.md](./docs-fact-check.md) — apollo-only examples,
+      SDK-source citations for behavior claims, traced example chains,
+      open-bug check, traced analytics callers.

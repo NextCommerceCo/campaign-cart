@@ -117,10 +117,11 @@ block. Vague warnings are useless; be specific and name the failure.
 - **TypeDoc = the exact API lookup**, grouped by task via `@category`. It is *not*
   where you explain concepts or list features — that's the catalog/guides. Full
   authoring rules in [`references/typedoc.md`](./references/typedoc.md).
-- **Three entry points, not one:** `src/index.ts`, `src/core`, `src/state`, with
-  `entryPointStrategy: "expand"`. Every file under `core/` and `state/` publishes
-  its own module page, so their TSDoc reaches a reader. `src/features/**` is
-  *not* an entry point — features publish through their `guide/` folders.
+- **One entry point:** `src/index.ts` — the public API surface, and the only
+  code whose TSDoc renders on the site. `src/core`, `src/state`, and
+  `src/features/**` are *not* entry points; the published site is that surface
+  plus the hand-written `docs/guides/` pages named in `projectDocuments`
+  (`typedoc.json`).
 - **`src/core` has its own guide** — [`src/core/guide/`](../../../src/core/guide/):
   a landing page, 11 subsystem overviews under `subsystems/`, and 10 generated
   reference pages under `reference/` (boot order, meta tags, URL parameters,
@@ -130,14 +131,12 @@ block. Vague warnings are useless; be specific and name the failure.
   Its unit of documentation is the **contract a page depends on**, not the class —
   a contract, because by-file and by-symbol both cut across the thing a page
   actually depends on.
-- **Core TSDoc now reaches a reader.** `src/core` (and `src/state`) is a TypeDoc
-  entry point, so its exported symbols render as real pages on the docs site —
-  for **contributors** browsing classes/interfaces. That does not change where
-  *author-facing* explanations live: an author reads `src/core/guide/` markdown,
-  not a class page, so behaviour like boot order, meta tags, and storage TTLs
-  stays documented there, not in comments. (Core is **not** excluded by
-  `@internal` tags — there are none on any exported declaration there.
-  `src/core/README.md` claimed otherwise until 2026-07-31.)
+- **Core TSDoc does not reach a reader.** `src/core` and `src/state` are not
+  TypeDoc entry points, so their exported symbols render no pages — write that
+  TSDoc for the next contributor reading the source. The `src/**/guide/` trees
+  stay on disk, unpublished, still measured by `docs:coverage` and
+  drift-checked by `src/tests/docs/` — keep them accurate; publishing one back
+  means rewriting it first, then adding its glob to `projectDocuments`.
 - When code changes, update the doc in the **same change** (the sync rule in
   `.claude/rules/guide.md` applies to all these layers, not just guides).
 
@@ -152,8 +151,8 @@ the same page; put the simple usage first and the depth below it.
 
 | Source | Renders as | Answers |
 |---|---|---|
-| Code TSDoc (`src/index.ts`, `src/core`, `src/state` entry points) | API reference pages | "what fields/methods does X have?" |
-| `src/.../guide/*.md` markdown | Feature guide pages | "what is this feature and how do I use it?" |
+| Code TSDoc (`src/index.ts`, the only entry point) | API reference pages | "what fields/methods does X have?" |
+| `docs/guides/*.md` markdown (`projectDocuments`) | Start Here / Building Pages / Reference guides | "how do I build a page with this?" |
 
 - **One page tree per feature, simple-first.** A feature's guide reads
   `overview` → `get-started` → `use-cases` → `relations` → `glossary` →
@@ -206,10 +205,10 @@ Full reference — every tag, the config, the gates:
   `@defaultValue` and `@group` have **zero** uses — `@group` in particular would
   fight `@category`, since `categorizeByGroup` is `false`.
 
-Write for the audience the entry point implies: `src/index.ts` TSDoc is read by
-integrators, `core/`/`state/` symbol pages by contributors, and page authors read
-`src/core/guide/` markdown instead of either. Author-facing behaviour in a class
-comment is hidden from the person who needs it.
+Write for the audience the surface implies: `src/index.ts` TSDoc is read by
+integrators on the published site, `core/`/`state/` TSDoc by contributors reading
+the source, and page authors read the `docs/guides/` pages. Author-facing
+behaviour in a class comment is hidden from the person who needs it.
 
 ## 6. Writing style (applies everywhere)
 
@@ -217,6 +216,15 @@ comment is hidden from the person who needs it.
 - No jargon a newcomer wouldn't know without defining it (link the glossary).
 - Every public method/attribute gets a runnable `@example` — the single biggest
   readability win.
-- Forbidden words: "simple", "easy", "just", "straightforward". Forbidden shapes:
+- Forbidden words: "simple", "easy", "just", "straightforward". Forbidden forms:
   a wall of types with no overview; a class page used as a feature list; a
   caution with no fix.
+- Plain technical tone. Headings are noun phrases naming the thing; no quips,
+  idioms, metaphors, personification, or humor anywhere — in headings, cautions,
+  or prose. State the fact in the words a reader would search for. The full tone
+  rule with the shipped counter-examples is in
+  [.claude/rules/documentation.md](../../rules/documentation.md) §2.
+- No em dashes in anything that publishes (guides, site home, TSDoc); use a
+  period, comma, colon, or parentheses. Headings are plain text with no inline
+  code and no dashes — TypeDoc's page TOC drops `<code>` spans from heading
+  link text, leaving broken sidebar entries.

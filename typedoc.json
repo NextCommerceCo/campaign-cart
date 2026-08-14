@@ -1,11 +1,8 @@
 {
   "$schema": "https://typedoc.org/schema.json",
   "entryPoints": [
-    "src/index.ts",
-    "src/core",
-    "src/state"
+    "src/index.ts"
   ],
-  "entryPointStrategy": "expand",
   "exclude": [
     "**/*.test.ts",
     "**/tests/**",
@@ -17,13 +14,9 @@
   "name": "Campaign Cart SDK",
   "readme": "docs/site-home.md",
   "projectDocuments": [
-    "src/features/**/guide/*.md",
-    "src/features/**/guide/reference/*.md",
-    "src/state/**/guide/*.md",
-    "src/state/**/guide/reference/*.md",
-    "src/core/guide/**/*.md",
-    "docs/attribute-index.md",
-    "docs/sdk-attributes.md"
+    "docs/guides/start-here/*.md",
+    "docs/guides/pages/*.md",
+    "docs/guides/reference/*.md"
   ],
   "searchInDocuments": true,
   "plugin": [

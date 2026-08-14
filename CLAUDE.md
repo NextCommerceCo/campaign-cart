@@ -30,7 +30,7 @@ Guidance for Claude Code when working in this repository.
 - [src/features/](src/features/) — DOM-bound feature classes, organised by category (`cart/`, `display/`, `checkout/`, `order/`, `ui/`, `behavior/`). Every feature extends `BaseEnhancer` (or `BaseCartEnhancer` / `BaseActionEnhancer` / `BaseDisplayEnhancer`) and is activated by a `data-next-*` attribute.
 - [src/state/](src/state/) — Zustand stores. Field-name gotcha: campaign data lives on `useCampaignStore.getState().data` (not `.campaign`).
 - [src/api/](src/api/) — pure fetch calls. No store imports, no Zustand. Features depend on the **`IApiClient`** interface ([`src/api/client.types.ts`](src/api/client.types.ts)), not the concrete `ApiClient`; import the class only where one is constructed. See [src/api/README.md](src/api/README.md).
-- [src/core/](src/core/) — singleton services: `NextCommerce` and `EventBus` (obtain via `.getInstance()`), plus `Logger` (obtain via `createLogger(name)`). Its author-facing behaviour — boot order, meta tags, URL parameters, storage keys and TTLs, the `window.next` API, logs, errors, analytics — is documented in [src/core/guide/](src/core/guide/), mostly generated and drift-checked. `src/core` is a TypeDoc entry point, so its TSDoc now publishes to the docs site for **contributors** reading class/symbol pages — but author-facing explanations still belong in that guide, not in comments: an author reads the guide, not a class page.
+- [src/core/](src/core/) — singleton services: `NextCommerce` and `EventBus` (obtain via `.getInstance()`), plus `Logger` (obtain via `createLogger(name)`). Its author-facing behaviour — boot order, meta tags, URL parameters, storage keys and TTLs, the `window.next` API, logs, errors, analytics — is documented in [src/core/guide/](src/core/guide/), mostly generated and drift-checked. `src/core` is **not** a TypeDoc entry point, so none of its TSDoc reaches the docs site — write it for the next contributor reading the source, and put author-facing explanation in a published guide instead.
 - [src/types/](src/types/) — shared types. Global event names live on `EventMap` in [src/types/global.ts](src/types/global.ts).
 - [src/utils/](src/utils/) — pure utilities. Do not import stores here (circular-dep risk).
 
@@ -60,6 +60,25 @@ fields/example data → what to watch out for), and carries the feature-catalog
 and state-reference templates plus the "cautions" and cross-link/no-duplicate
 rules.
 
+**What the docs site publishes.** The site is deliberately small: the hand-written
+guides under [docs/guides/](docs/guides/) (Start Here, Building Pages, Reference)
+plus the public API surface generated from `src/index.ts`. `typedoc.json` lists
+exactly that — `projectDocuments` names the `docs/guides/` globs and `entryPoints`
+is `src/index.ts` alone.
+
+Everything else under `src/**/guide/` stays **on disk and unpublished**. Those
+trees were largely machine-written, were never readable end to end, and are hidden
+until a human rewrites them. They are still real source: `scripts/docs-coverage.mjs`
+measures them and `src/tests/docs/` drift-checks the generated ones, so keep them
+accurate — a coverage gap or a drift failure is still a failure. Publishing one
+back means rewriting it first, then adding its glob to `projectDocuments`.
+
+So there are three places a doc can live, and only the first two reach a reader
+today: a `docs/guides/` page (published, hand-written, for page authors), TSDoc on
+a `src/index.ts` export (published, for integrators), or a `src/**/guide/` page
+(unpublished, accurate, awaiting a rewrite). Write author-facing explanation in a
+guide, never in a class comment.
+
 **The documentation programme itself** — what is generated from what, and which gaps
 are measured — now lives in the code rather than a plan document:
 [src/docs/](src/docs/) holds the extractors (`extract/`), the hand-written content
@@ -72,6 +91,7 @@ Defects found while documenting go to [docs/code-findings.md](docs/code-findings
 Cross-cutting rules stay under [.claude/rules/](.claude/rules/):
 
 - [.claude/rules/documentation.md](.claude/rules/documentation.md) — **docs ship with the code** (update in the same change) + the readability bar. Read before finishing any change.
+- [.claude/rules/docs-fact-check.md](.claude/rules/docs-fact-check.md) — **mandatory re-checks before any docs change ships** (apollo-only examples, no `os-*`, behavior claims need SDK source citations, trace example property chains, check open bugs, analytics "auto" needs a traced caller). Born from the PR #82 review.
 - [.claude/rules/typescript.md](.claude/rules/typescript.md) — path aliases (`@/` → `src/`), strict-mode rules, style
 - [.claude/rules/testing.md](.claude/rules/testing.md) — Vitest conventions, what to unit-test vs E2E
 - [.claude/rules/e2e.md](.claude/rules/e2e.md) — **when a Playwright spec is required**, the fixture→docs contract, and the fact that CI does not run E2E
