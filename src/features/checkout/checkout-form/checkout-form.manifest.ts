@@ -97,9 +97,9 @@ export default defineFeature({
         'Marks a payment method choice — a radio or a button — and names the method it selects.',
       values: [
         {
-          value: 'credit_card',
+          value: 'credit',
           description:
-            'Card, entered in the hosted card fields. `credit` and `card_token` select the same method.',
+            'Card, entered in the hosted card fields. `credit_card`, `card` and `card_token` select the same method; `credit` is what the starter templates carry.',
         },
         { value: 'paypal', description: 'PayPal.' },
         { value: 'apple_pay', description: 'Apple Pay.' },
@@ -120,7 +120,7 @@ export default defineFeature({
         { value: 'twint', description: 'TWINT.' },
       ],
       notes:
-        'Written with underscores, the same as everywhere else the SDK names a payment method. `-` and `_` are interchangeable and case is ignored, so `apple_pay`, `apple-pay` and `APPLE_PAY` are one value — but keep to underscores in new markup so a page reads the same as the docs. The API name still differs for a card (`credit_card` becomes `card_token`); the SDK translates that. **A value that is not on this list still works if the API accepts it** — it is sent to the orders API exactly as written, so a method added to the platform after this SDK release can be offered without waiting for an upgrade. `Payment method "…" is not one the SDK knows` in the console is a heads-up rather than a failure; if it was a typo, the API refuses the order and names the method.',
+        'Written with underscores, the same as everywhere else the SDK names a payment method. `-` and `_` are interchangeable and case is ignored, so `apple_pay`, `apple-pay` and `APPLE_PAY` are one value — but keep to underscores in new markup so a page reads the same as the docs. The API name still differs for a card (`credit` becomes `card_token`); the SDK translates that. **A value that is not on this list still works if the API accepts it** — it is sent to the orders API exactly as written, so a method added to the platform after this SDK release can be offered without waiting for an upgrade. `Payment method "…" is not one the SDK knows` in the console is a heads-up rather than a failure; if it was a typo, the API refuses the order and names the method.',
     },
 
     {
@@ -165,9 +165,9 @@ export default defineFeature({
       description:
         'Wraps one payment choice inside the form, and names the method it offers. The feature looks for a radio input and a `[data-next-payment-form]` **inside** this wrapper, so a payment form that is not nested in one is never revealed or collapsed.',
       values:
-        '`credit_card` / `paypal` / `apple_pay` / `google_pay` / `klarna` / `affirm` / `bancontact` / `giropay` / `ideal` / `link` / `sepa_debit` / `sofort` / `swish` / `twint`',
+        '`credit` / `paypal` / `apple_pay` / `google_pay` / `klarna` / `affirm` / `bancontact` / `giropay` / `ideal` / `link` / `sepa_debit` / `sofort` / `swish` / `twint`',
       notes:
-        'Underscores, `-` accepted, case ignored — `apple_pay` and `apple-pay` are one value. The card is the only one whose name changes downstream: `credit_card` here is `credit-card` in the checkout store and `card_token` on the order, and the SDK translates both hops. Everything after `klarna` is a **redirect method**: it has no fields to reveal, so its `[data-next-payment-form]` can be empty — the shopper is sent to the payment provider to pay once the order exists.',
+        'Underscores, `-` accepted, case ignored — `apple_pay` and `apple-pay` are one value. The card is the only one whose name changes downstream: `credit` here is `credit-card` in the checkout store and `card_token` on the order, and the SDK translates both hops. Everything after `klarna` is a **redirect method**: it has no fields to reveal, so its `[data-next-payment-form]` can be empty — the shopper is sent to the payment provider to pay once the order exists.',
     },
     {
       name: 'data-next-payment-form',
@@ -392,7 +392,7 @@ SDK code — only the token from \`payment:tokenized\` does.
     </div>
   </div>
 
-  <label><input type="radio" data-next-checkout-payment="credit_card"> Card</label>
+  <label><input type="radio" data-next-checkout-payment="credit"> Card</label>
   <label><input type="radio" data-next-checkout-payment="paypal"> PayPal</label>
 
   <button data-next-checkout-submit>Complete order</button>

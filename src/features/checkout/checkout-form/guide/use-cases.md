@@ -75,7 +75,7 @@ next page. With `?debug=true` the console confirms the form read it, logging
 inside the form rather than as an express shortcut above it.
 
 **Why this enhancer:** `data-next-checkout-payment` marks each choice and names
-the method in markup spelling (`credit_card`, `paypal`, `apple_pay`,
+the method in markup spelling (`credit`, `paypal`, `apple_pay`,
 `google_pay`, `klarna`, and the redirect methods below); the SDK translates those to the API's
 names, so you never reconcile the two vocabularies by hand. Errors from the card fields and from PayPal each get
 their own container, so a decline appears next to the method that produced it
@@ -83,7 +83,7 @@ rather than at the top of the page.
 
 ```html
 <label>
-  <input type="radio" name="payment" data-next-checkout-payment="credit_card" /> Card
+  <input type="radio" name="payment" data-next-checkout-payment="credit" /> Card
 </label>
 <label>
   <input type="radio" name="payment" data-next-checkout-payment="paypal" />

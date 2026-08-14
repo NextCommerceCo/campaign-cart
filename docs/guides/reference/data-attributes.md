@@ -447,7 +447,7 @@ Values `data-next-payment-method` and `data-next-payment-form` both accept. Pair
 
 | Value | Description | Shopper enters payment details on your page |
 |---|---|---|
-| `credit_card` | Card | yes, in the hosted card fields |
+| `credit` | Card | yes, in the hosted card fields |
 | `paypal` | PayPal | no |
 | `apple_pay` | Apple Pay | no |
 | `google_pay` | Google Pay | no |
@@ -462,7 +462,7 @@ Values `data-next-payment-method` and `data-next-payment-form` both accept. Pair
 | `swish` | Swish | no |
 | `twint` | TWINT | no |
 
-Names are written with underscores, and `-` and any casing are also accepted, so `apple_pay` and `apple-pay` select the same method. `credit`, `card` and `card_token` are accepted for the card. SEPA Direct Debit answers to `sepa_debit` alone: the platform's payment-methods guide calls the same method `sepa_direct`, and that name is refused so a page cannot reach the API under two identifiers.
+Names are written with underscores, and `-` and any casing are also accepted, so `apple_pay` and `apple-pay` select the same method. The card also answers to `credit_card`, `card` and `card_token`; `credit` is what the starter templates carry. SEPA Direct Debit answers to `sepa_debit` alone: the platform's payment-methods guide calls the same method `sepa_direct`, and that name is refused so a page cannot reach the API under two identifiers.
 
 Every method whose last column reads "no" has nothing to reveal, so its `data-next-payment-form` can be empty. The form still validates and captures the shopper's details, then the order is created and the shopper is sent to that provider to pay.
 
