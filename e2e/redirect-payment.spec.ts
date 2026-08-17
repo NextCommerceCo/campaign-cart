@@ -2,7 +2,12 @@ import { test, expect, type Page, type Request } from '@playwright/test';
 import type { Order } from '../src/types/api';
 import { MINIMAL_CAMPAIGN } from './fixtures/campaign';
 import { TEST_ORDER } from './fixtures/order';
-import { stubCampaign, stubCart, bootSdk } from './fixtures/routes';
+import {
+  stubCampaign,
+  stubCart,
+  stubCountryService,
+  bootSdk,
+} from './fixtures/routes';
 
 /**
  * Paying by a method that has no form and no express button — iDEAL, Bancontact,
@@ -73,35 +78,48 @@ async function submitWith(page: Page, method: string): Promise<void> {
 test.beforeEach(async ({ page }) => {
   await stubCampaign(page, MINIMAL_CAMPAIGN);
   await stubCart(page);
-  // The form's CountryService reaches an external CDN. Two endpoints, two
-  // shapes — only /states carries countryConfig, and answering both with the
-  // location shape makes updateFormLabels throw.
-  await page.route('**/cdn-countries*/**', route => {
-    const config = {
-      stateLabel: 'State',
-      stateRequired: true,
-      postcodeLabel: 'ZIP Code',
-      postcodeRegex: '',
-      postcodeExample: '10001',
-      stateExample: 'NY',
-    };
-    if (route.request().url().includes('/states')) {
-      return route.fulfill({
-        json: {
-          countryConfig: config,
-          states: [{ code: 'NY', name: 'New York' }],
-        },
-      });
-    }
-    return route.fulfill({
-      json: {
-        detectedCountryCode: 'US',
-        detectedCountryConfig: config,
-        detectedStates: [{ code: 'NY', name: 'New York' }],
-        countries: [{ code: 'US', name: 'United States' }],
-      },
-    });
-  });
+  await stubCountryService(page);
+});
+
+/**
+ * The card is what the checkout store starts on, so a shopper who has just
+ * arrived must find it already chosen and its fields already open.
+ *
+ * This stopped happening in 0.4.35. The startup pass compared the markup's word
+ * for a method with the store's by putting **both** through the radio table, and
+ * the store's own word for a card, `credit-card`, is deliberately not a radio
+ * name — so it came back as `credit_card` and matched nothing. Every radio was
+ * unchecked, including the one this fixture ships `checked`, and the card form
+ * stayed collapsed until the shopper clicked it.
+ *
+ * Why this cannot be a unit test alone: the symptom is a radio the browser had
+ * already checked from markup being unchecked by the SDK afterwards. That is the
+ * page's real initial state, not a constructed one.
+ */
+test('the card is chosen and open before the shopper touches anything', async ({
+  page,
+}) => {
+  await bootSdk(page, CHECKOUT);
+
+  const cardForm = page.locator(
+    '[data-next-payment-method="credit"] [data-next-payment-form]'
+  );
+  await expect(page.locator('#pm-credit')).toBeChecked();
+  await expect(cardForm).toHaveAttribute('data-next-payment-state', 'expanded');
+  await expect(page.locator('[data-next-payment-method="credit"]')).toHaveClass(
+    /next-selected/
+  );
+
+  // The negative control: choosing the card is not the same as choosing
+  // everything, so the methods beside it must be shut.
+  const idealForm = page.locator(
+    '[data-next-payment-method="ideal"] [data-next-payment-form]'
+  );
+  await expect(page.locator('#pm-ideal')).not.toBeChecked();
+  await expect(idealForm).toHaveAttribute(
+    'data-next-payment-state',
+    'collapsed'
+  );
 });
 
 test('an iDEAL order goes out as iDEAL and sends the shopper to the payment page', async ({

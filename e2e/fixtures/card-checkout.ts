@@ -12,7 +12,7 @@
 
 import { expect, type Page } from '@playwright/test';
 import { MINIMAL_CAMPAIGN } from './campaign';
-import { stubCampaign, stubCart } from './routes';
+import { stubCampaign, stubCart, stubCountryService } from './routes';
 
 /** The checkout fixture both specs boot. */
 export const CARD_CHECKOUT = '/e2e/fixtures/card-purchase.html';
@@ -62,40 +62,6 @@ export async function stubSpreedly(page: Page): Promise<void> {
     };
     (window as any).Spreedly = new Proxy(impl, {
       get: (target, key: string) => target[key] ?? (() => {}),
-    });
-  });
-}
-
-/**
- * The form's `CountryService` reaches an external CDN. Two endpoints, two shapes
- * — only `/states` carries `countryConfig`, and answering both with the location
- * shape makes `updateFormLabels` throw.
- */
-export async function stubCountryService(page: Page): Promise<void> {
-  await page.route('**/cdn-countries*/**', route => {
-    const config = {
-      stateLabel: 'State',
-      stateRequired: true,
-      postcodeLabel: 'ZIP Code',
-      postcodeRegex: '',
-      postcodeExample: '10001',
-      stateExample: 'NY',
-    };
-    if (route.request().url().includes('/states')) {
-      return route.fulfill({
-        json: {
-          countryConfig: config,
-          states: [{ code: 'NY', name: 'New York' }],
-        },
-      });
-    }
-    return route.fulfill({
-      json: {
-        detectedCountryCode: 'US',
-        detectedCountryConfig: config,
-        detectedStates: [{ code: 'NY', name: 'New York' }],
-        countries: [{ code: 'US', name: 'United States' }],
-      },
     });
   });
 }

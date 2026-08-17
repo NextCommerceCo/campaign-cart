@@ -89,6 +89,35 @@ describe('initializePaymentForms', () => {
     expect(credit.style.height).toBe('0px');
   });
 
+  /**
+   * The store starts on `credit-card`, so a page that has not been touched yet
+   * must open its card form and check its card radio. It stopped doing either in
+   * 0.4.35: `credit-card` normalises to `credit_card`, which was dropped from the
+   * radio table, so the store's own word for a card no longer resolved to the
+   * word the `credit` wrapper resolves to. Nothing matched, every radio was
+   * actively unchecked — including one the markup shipped `checked` — and the
+   * card fields stayed collapsed until the shopper clicked.
+   */
+  it('opens the card the store starts on, and checks its radio', () => {
+    const ctx = createCtx(['credit', 'ideal']);
+    useCheckoutStore.setState({ paymentMethod: 'credit-card' });
+
+    initializePaymentForms(ctx);
+
+    expect(formOf(ctx, 'credit').getAttribute('data-next-payment-state')).toBe(
+      'expanded'
+    );
+    expect(formOf(ctx, 'ideal').getAttribute('data-next-payment-state')).toBe(
+      'collapsed'
+    );
+
+    const radios = ctx.form.querySelectorAll<HTMLInputElement>(
+      'input[type="radio"]'
+    );
+    expect(radios[0]?.checked).toBe(true);
+    expect(radios[1]?.checked).toBe(false);
+  });
+
   it('translates the store name to the markup spelling', () => {
     const ctx = createCtx(['credit', 'apple-pay']);
     useCheckoutStore.setState({ paymentMethod: 'apple_pay' });

@@ -45,10 +45,18 @@ the two can never drift apart.
 - Some fields are optional by default. `data-next-required="true"` forces
   validation on one; phone is the usual case.
 - Payment methods are declared in markup with short names, written with
-  underscores like everywhere else the SDK names one (`credit_card`, `paypal`,
+  underscores like everywhere else the SDK names one (`credit`, `paypal`,
   `apple_pay`, …); `-` is accepted and case is ignored. The SDK translates them
   to the API's names, so the two vocabularies never have to be reconciled by
-  hand.
+  hand. A card is named `credit` here — the full list is in
+  [the attribute reference](./reference/attributes.md).
+- **The card is chosen before the shopper does anything.** A page that has not
+  been touched yet opens its `credit` section, marks it `next-selected` and
+  checks its radio, because a card is what the checkout store starts on. On a
+  return visit it is the method the shopper last picked that opens instead. Name
+  the card section anything other than `credit` or `card_token` and none of that
+  happens: the section stays collapsed and the radio is left unchecked, since the
+  SDK has no way to tell it is looking at a card.
 - **A method the SDK does not recognise is passed through, not replaced.** It is
   sent to the orders API as written and logged as
   `Payment method "…" is not one the SDK knows`, because the API is what decides

@@ -18,10 +18,11 @@
  *   which is a different question from which one is open. It reads the campaign.
  *
  * The markup spellings (`credit`, `apple-pay`) are not the names the store and API use
- * (`credit-card`, `apple_pay`), so the startup pass translates both sides through
- * `toCheckoutPaymentMethod` — the same table the radio handler reads — rather than
- * comparing the two vocabularies directly. The update pass needs no translation at all: it
- * is matching one radio value against another.
+ * (`credit-card`, `apple_pay`), so the startup pass asks `namesStoredPaymentMethod`
+ * whether a wrapper names what the store holds, rather than translating the two
+ * vocabularies into each other and comparing. It used to do the latter, and the card was
+ * the method it got wrong. The update pass needs no translation at all: it is matching one
+ * radio value against another.
  *
  * Extracted verbatim from `ui-service.ts`. It needs three things from the service
  * ({@link PaymentFormDisplayContext}) and calls none of its methods.
@@ -30,7 +31,10 @@
 import type { Logger } from '@/core/logger';
 import { useCheckoutStore } from '@/state/checkout';
 
-import { toCheckoutPaymentMethod } from '../../constants/field-mappings';
+import {
+  namesStoredPaymentMethod,
+  toCheckoutPaymentMethod,
+} from '../../constants/field-mappings';
 import type { ErrorDisplayManager } from '../../utils/error-display-utils';
 
 /** What this module needs from `UIService`. */
@@ -78,12 +82,13 @@ export function initializePaymentForms(ctx: PaymentFormDisplayContext): void {
         return;
       }
 
-      // The markup's word for this method and the store's are read through the
-      // same table, so `credit` and `card_token` land on one value and match.
-      const offeredMethod = toCheckoutPaymentMethod(methodType);
-      const shouldBeSelected =
-        !!offeredMethod &&
-        offeredMethod === toCheckoutPaymentMethod(storePaymentMethod);
+      // The markup's word and the store's are different vocabularies, so the
+      // comparison is one function's job — see `namesStoredPaymentMethod` for what
+      // running both sides through the radio table cost.
+      const shouldBeSelected = namesStoredPaymentMethod(
+        methodType,
+        storePaymentMethod
+      );
 
       // Sync radio button state with store
       radio.checked = !!shouldBeSelected;
