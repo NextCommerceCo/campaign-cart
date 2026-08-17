@@ -12,6 +12,7 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private expressProcessor?;
     private orderManager?;
     private announcingPaymentError;
+    private paymentErrorShown;
     constructor(element: HTMLElement);
     private fields;
     private billingFields;

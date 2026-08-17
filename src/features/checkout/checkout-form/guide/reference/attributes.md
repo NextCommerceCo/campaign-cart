@@ -142,9 +142,17 @@ Names a structural part of the form so the feature can show, hide, clone, or wri
 - `location` — The country/state/postcode group. Revealed together once a country is known, and cloned to build the billing equivalent.
 - `billing-location` — Set by the feature on the cloned billing location group.
 - `shipping-field-row` — One row of shipping fields, for row-level show and hide.
-- `credit-error` — Container for card errors.
-- `credit-error-text` — Element the card error message is written into.
-- `paypal-error` — Container for PayPal errors.
+- `{method}-error` — Container for a failure paying by that method, named for the
+  method's own `data-next-payment-method` value: `credit-error`, `ideal-error`,
+  `paypal-error`, `sepa_debit-error`, and so on for every method the page offers.
+  `-` and `_` are interchangeable, so `apple-pay-error` and `apple_pay-error` are
+  one name.
+- `{method}-error-text` — Element the message is written into. Optional: a
+  container with no `-text` child is written into directly.
+- `credit-error` — The container used when the failing method has none of its own.
+  Keep it **outside** `data-next-payment-form`: a container inside a method's form
+  is hidden whenever that method is not the chosen one, and the SDK has to move it
+  out to make the message readable.
 
 ---
 

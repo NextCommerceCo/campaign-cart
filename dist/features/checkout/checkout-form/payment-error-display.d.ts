@@ -2,6 +2,7 @@ import { Logger } from '../../../core/logger';
 import { EventMap } from '../../../types/global';
 export interface PaymentErrorDisplayContext {
     logger: Logger;
+    paymentMethod: () => string;
     announcingPaymentError: {
         value: boolean;
     };

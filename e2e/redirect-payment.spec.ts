@@ -1,4 +1,10 @@
-import { test, expect, type Page, type Request } from '@playwright/test';
+import {
+  test,
+  expect,
+  type Locator,
+  type Page,
+  type Request,
+} from '@playwright/test';
 import type { Order } from '../src/types/api';
 import { MINIMAL_CAMPAIGN } from './fixtures/campaign';
 import { TEST_ORDER } from './fixtures/order';
@@ -75,6 +81,31 @@ async function submitWith(page: Page, method: string): Promise<void> {
   await page.click('[data-next-checkout-submit]');
 }
 
+/**
+ * Whether a shopper could actually read this element: it has a rendered box, and
+ * the point at its centre really paints it rather than something clipping or
+ * covering it.
+ *
+ * Polled rather than measured once, because the loading overlay covers the whole
+ * page until the failed submit tears it down, and a single measurement taken in
+ * that window says "unreadable" about markup that is fine.
+ */
+async function expectReadable(locator: Locator): Promise<void> {
+  await expect
+    .poll(() =>
+      locator.evaluate(el => {
+        const r = el.getBoundingClientRect();
+        if (!r.width || !r.height) return false;
+        const hit = document.elementFromPoint(
+          r.left + r.width / 2,
+          r.top + r.height / 2
+        );
+        return Boolean(hit && (el === hit || el.contains(hit)));
+      })
+    )
+    .toBe(true);
+}
+
 test.beforeEach(async ({ page }) => {
   await stubCampaign(page, MINIMAL_CAMPAIGN);
   await stubCart(page);
@@ -120,6 +151,77 @@ test('the card is chosen and open before the shopper touches anything', async ({
     'data-next-payment-state',
     'collapsed'
   );
+});
+
+/**
+ * A refusal has to be readable, and for every method — not only the two the SDK
+ * used to name.
+ *
+ * The message was always written. It went into `credit-error`, which the starter
+ * templates put inside the card's own `data-next-payment-form`, and that form is
+ * collapsed to `height: 0; overflow: hidden` whenever a card is not the chosen
+ * method. Measured in Chromium before the fix: text present, `display: flex`,
+ * 18px tall, clipped out of existence by a parent of height 0. The shopper saw an
+ * idle page and no reason for it.
+ *
+ * Why this cannot be a unit test: the defect is a rendered box of zero height
+ * clipping its own content. happy-dom does no layout, so every measurement it
+ * offers here is zero whether the bug is present or not.
+ */
+test('a refused iDEAL order is readable, in iDEAL’s own container', async ({
+  page,
+}) => {
+  await page.route('**/api/v1/orders/**', route =>
+    route.fulfill({
+      status: 400,
+      json: { payment_details: 'Your iDEAL payment was refused.' },
+    })
+  );
+
+  await bootSdk(page, CHECKOUT);
+  await page.evaluate(() => (window as any).next.addItem({ packageId: 1 }));
+  await submitWith(page, 'ideal');
+
+  const error = page.locator('[data-next-component="ideal-error"]');
+  await expect(error).toContainText('Your iDEAL payment was refused.');
+
+  // Readable, not merely present: the box has height, and the point at its
+  // centre really paints it rather than whatever was clipping it.
+  await expectReadable(error);
+
+  // The negative control: the card's container is not where this went, and it
+  // stays empty rather than quietly collecting every method's failures.
+  await expect(
+    page.locator('[data-next-component="credit-error-text"]')
+  ).toHaveText('');
+});
+
+/**
+ * The shipped-page case: a checkout whose only error slot is the card's. Nobody
+ * has to add `<method>-error` for a decline to become readable again.
+ */
+test('a refusal is readable even when the card owns the only container', async ({
+  page,
+}) => {
+  await page.route('**/api/v1/orders/**', route =>
+    route.fulfill({
+      status: 400,
+      json: { payment_details: 'That account was refused.' },
+    })
+  );
+
+  await bootSdk(page, CHECKOUT);
+  // Take iDEAL's own slot away, leaving the markup every live page has today.
+  await page.evaluate(() =>
+    document.querySelector('[data-next-component="ideal-error"]')?.remove()
+  );
+  await page.evaluate(() => (window as any).next.addItem({ packageId: 1 }));
+  await submitWith(page, 'ideal');
+
+  const error = page.locator('[data-next-component="credit-error"]');
+  await expect(error).toContainText('That account was refused.');
+
+  await expectReadable(error);
 });
 
 test('an iDEAL order goes out as iDEAL and sends the shopper to the payment page', async ({

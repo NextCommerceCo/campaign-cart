@@ -59,12 +59,26 @@
           checked
         />
         <label for="pm-credit">Card</label>
-        <div data-next-payment-form></div>
+        <!-- Where the starter templates put the shared error slot: inside the
+             card's own collapsible form. That is what made an iDEAL decline
+             unreadable — the message went in here, and this box is shut whenever
+             a card is not the chosen method. -->
+        <div data-next-payment-form>
+          <div data-next-component="credit-error">
+            <div data-next-component="credit-error-text"></div>
+          </div>
+        </div>
       </div>
       <div data-next-payment-method="ideal">
         <input type="radio" name="payment_method" value="ideal" id="pm-ideal" />
         <label for="pm-ideal">iDEAL</label>
-        <div data-next-payment-form></div>
+        <!-- iDEAL's own slot, which is what `<method>-error` means: the SDK
+             writes a refusal here rather than into the card's. -->
+        <div data-next-payment-form>
+          <div data-next-component="ideal-error">
+            <div data-next-component="ideal-error-text"></div>
+          </div>
+        </div>
       </div>
       <!-- The one name SEPA answers to. The platform's payment-methods guide
            calls the same method `sepa_direct`, which is not accepted. -->

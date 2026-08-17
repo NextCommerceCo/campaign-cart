@@ -40,6 +40,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or no
 | `Error handling order redirect:` | `order-manager.ts › OrderManager.handleOrderRedirect` | yes |
 | `Failed to get order status:` | `order-manager.ts › OrderManager.getOrderStatus` | yes |
 | `Express checkout failed:` | `express-checkout-processor.ts › ExpressCheckoutProcessor.handleExpressCheckout` | yes |
+| `Express checkout failed and the page has no payment error container to say so in` | `express-checkout-processor.ts › ExpressCheckoutProcessor.displayGeneralPaymentError` | yes |
 | `No Spreedly environment key provided` | `credit-card-service.ts › CreditCardService.constructor` | — |
 | `Failed to initialize CreditCardService:` | `credit-card-service.ts › CreditCardService.initialize` | yes |
 | `Failed to load Spreedly script` | `credit-card-service.ts › CreditCardService.loadSpreedlyScript` | — |
@@ -153,7 +154,7 @@ Normal progress, useful for confirming the feature ran at all.
 | `handleOrderRedirect called with order:` | `order-manager.ts › OrderManager.handleOrderRedirect` | yes |
 | `Tracked add_payment_info event for express checkout` | `express-checkout-processor.ts › ExpressCheckoutProcessor.handleExpressCheckout` | yes |
 | `Express checkout initiated with {method}` | `express-checkout-processor.ts › ExpressCheckoutProcessor.handleExpressCheckout` | — |
-| `PayPal error displayed:` | `express-checkout-processor.ts › ExpressCheckoutProcessor.displayPayPalError` | yes |
+| `Express payment error displayed` | `express-checkout-processor.ts › ExpressCheckoutProcessor.displayGeneralPaymentError` | yes |
 | `[Spreedly Event: ready] iFrame initialized and ready for configuration` | `credit-card-service.ts › CreditCardService.setupSpreedlyEventListeners` | — |
 | `[Spreedly Event: paymentMethod] Successfully tokenized!` | `credit-card-service.ts › CreditCardService.setupSpreedlyEventListeners` | yes |
 | `[Spreedly Event: validation] Validation requested:` | `credit-card-service.ts › CreditCardService.setupSpreedlyEventListeners` | yes |

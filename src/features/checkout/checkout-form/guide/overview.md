@@ -84,6 +84,17 @@ the two can never drift apart.
 - After the order is created the visitor is redirected using the URL the API
   returns. When that URL is missing, `order:redirect-missing` fires — otherwise
   they would sit on a checkout page for an order that already succeeded.
+- **A refusal is shown in the failing method's own container.** Name it for the
+  method — `data-next-component="ideal-error"` beside `data-next-payment-method="ideal"`
+  — and every refusal of that method is written there, with the message text into
+  its `ideal-error-text` child or into the container itself if there is none. A
+  method with no container of its own falls back to `credit-error`, which is what
+  every page had before this. That fallback belongs **outside**
+  `data-next-payment-form`: inside one it is hidden whenever its method is not the
+  chosen one, which is why a refused iDEAL payment used to show the shopper
+  nothing, and the SDK now moves it out rather than leaving the message unread.
+  Changing method clears every one of these containers, since the failure belonged
+  to the method they left.
 - **The loading overlay stays up until the attempt ends.** It goes up on submit
   and comes down on a redirect or an error, and nothing the shopper does to the
   page in between takes it away — on a phone, the keyboard closing or a tap fires

@@ -192,6 +192,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
    * see [`payment-error-display.ts`](./payment-error-display.ts).
    */
   private announcingPaymentError = { value: false };
+  /** Whether this submit has already put a payment failure on screen. */
+  private paymentErrorShown = false;
 
   constructor(element: HTMLElement) {
     super(element);
@@ -1616,6 +1618,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     try {
       checkoutStore.clearAllErrors();
+      this.paymentErrorShown = false;
       checkoutStore.setProcessing(true);
 
       // Show loading overlay
@@ -1899,10 +1902,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       // span?.setAttribute('error.message', (error as Error).message);
 
       this.handleError(error, 'handleFormSubmit');
-      checkoutStore.setError(
-        'general',
-        'Failed to process order. Please try again.'
-      );
+      // `general` is not a field, so `setError` alone renders nowhere — every
+      // page looks up an error key as a field name. The shopper has to be told
+      // the order did not go through, so it is displayed as well.
+      const message = 'Failed to process order. Please try again.';
+      checkoutStore.setError('general', message);
+      if (!this.paymentErrorShown) this.displayPaymentError(message);
       // Only set processing to false on error
       checkoutStore.setProcessing(false);
       this.loadingOverlay.hide(true); // Hide immediately on error
@@ -2593,12 +2598,26 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private paymentErrorDisplayContext(): PaymentErrorDisplayContext {
     return {
       logger: this.logger,
+      // Read at display time, not at boot: the shopper may have changed method
+      // several times before anything failed.
+      paymentMethod: () => useCheckoutStore.getState().paymentMethod,
       announcingPaymentError: this.announcingPaymentError,
       emit: detail => this.emit('payment:error', detail),
     };
   }
 
+  /**
+   * Shows the shopper a payment failure, and records that one has been shown for
+   * this submit.
+   *
+   * {@link handleFormSubmit}'s catch is the last line of defence — it fires for
+   * every failure, including the ones with nothing shopper-readable in them. It
+   * must not overwrite the specific message `createOrder` already put on screen
+   * (`Your card was declined`) with its own generic one, so it asks this flag
+   * first.
+   */
   private displayPaymentError(message: string): void {
+    this.paymentErrorShown = true;
     displayPaymentError(this.paymentErrorDisplayContext(), message);
   }
 
