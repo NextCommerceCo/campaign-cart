@@ -39,6 +39,7 @@ import {
   isKnownPaymentMethod,
   toCheckoutPaymentMethod,
 } from '../constants/field-mappings';
+import { hideAllPaymentErrors } from '../utils/payment-error-container';
 import type { UIService } from '../services/ui-service';
 
 /** GA4's `shipping_tier` for each method code. */
@@ -108,20 +109,10 @@ export function handlePaymentMethodChange(
   }
   if (mappedMethod) checkoutStore.setPaymentMethod(mappedMethod);
 
-  // Hide any payment-specific errors when switching methods
-  const paypalError = document.querySelector(
-    '[data-next-component="paypal-error"]'
-  );
-  if (paypalError instanceof HTMLElement) {
-    paypalError.style.display = 'none';
-  }
-
-  const creditError = document.querySelector(
-    '[data-next-component="credit-error"]'
-  );
-  if (creditError instanceof HTMLElement) {
-    creditError.style.display = 'none';
-  }
+  // Any payment error on the page belonged to the method they have just moved
+  // away from. All of them, not the two the SDK used to name: a page can carry an
+  // `<method>-error` for every way it offers to pay.
+  hideAllPaymentErrors();
 
   ctx.ui.updatePaymentFormVisibility(target.value);
 

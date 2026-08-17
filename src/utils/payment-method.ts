@@ -1,5 +1,6 @@
 /**
- * The one name to show a shopper for each way of paying.
+ * What the SDK knows about a way of paying that is not about charging it: the one
+ * name to show a shopper, and whether paying that way leaves the page.
  *
  * Three places used to answer this, each with its own table: the order display
  * (18 methods), the `add_payment_info` analytics event (4), and the express
@@ -46,6 +47,42 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   swish: 'Swish',
   twint: 'Twint',
 };
+
+/**
+ * The methods an express *button* starts, which are the ones that leave this page
+ * to be paid for.
+ *
+ * Four places asked this question with a list of their own — the checkout store's
+ * `partialize`, the bfcache restore, the window-focus reset, and the submit path
+ * that routes to `ExpressCheckoutProcessor` — and all four have to agree, because
+ * three of them undo what the fourth started.
+ *
+ * Link is deliberately **not** here, though `EXPRESS_PAYMENT_METHOD_MAP` lists it:
+ * the platform offers Link both as an express button and as a radio on the form,
+ * and the store holds `link` either way. Answering `true` would reset a shopper's
+ * Link *radio* to a card behind their back, which is issue #74 again.
+ */
+const EXPRESS_PAYMENT_METHODS = ['paypal', 'apple_pay', 'google_pay'];
+
+/**
+ * Whether paying by this method sends the shopper off the checkout page.
+ *
+ * The question behind it is "does anything that happens in this tab still tell us
+ * about this payment": for an express method the answer is no, so a return to the
+ * page means the shopper came back without paying. For a card it is yes, the
+ * request is in flight here, and a page event says nothing about it.
+ *
+ * @example
+ * ```ts
+ * isExpressPaymentMethod('paypal');      // true
+ * isExpressPaymentMethod('credit-card'); // false
+ * isExpressPaymentMethod('ideal');       // false — a redirect method, but the
+ *                                        //   order is created here first
+ * ```
+ */
+export function isExpressPaymentMethod(method: string): boolean {
+  return EXPRESS_PAYMENT_METHODS.includes(method);
+}
 
 /**
  * Turns a payment-method code into the name to show a shopper.

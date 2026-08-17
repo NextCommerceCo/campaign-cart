@@ -7,7 +7,7 @@ category: "Checkout Form"
 # Checkout Form
 
 > Category: `checkout`
-> Last reviewed: 2026-08-03
+> Last reviewed: 2026-08-17
 > Owner: Campaigns
 
 Turns a plain HTML form into a working checkout. You write the markup and name each
@@ -45,10 +45,18 @@ the two can never drift apart.
 - Some fields are optional by default. `data-next-required="true"` forces
   validation on one; phone is the usual case.
 - Payment methods are declared in markup with short names, written with
-  underscores like everywhere else the SDK names one (`credit_card`, `paypal`,
+  underscores like everywhere else the SDK names one (`credit`, `paypal`,
   `apple_pay`, …); `-` is accepted and case is ignored. The SDK translates them
   to the API's names, so the two vocabularies never have to be reconciled by
-  hand.
+  hand. A card is named `credit` here — the full list is in
+  [the attribute reference](./reference/attributes.md).
+- **The card is chosen before the shopper does anything.** A page that has not
+  been touched yet opens its `credit` section, marks it `next-selected` and
+  checks its radio, because a card is what the checkout store starts on. On a
+  return visit it is the method the shopper last picked that opens instead. Name
+  the card section anything other than `credit` or `card_token` and none of that
+  happens: the section stays collapsed and the radio is left unchecked, since the
+  SDK has no way to tell it is looking at a card.
 - **A method the SDK does not recognise is passed through, not replaced.** It is
   sent to the orders API as written and logged as
   `Payment method "…" is not one the SDK knows`, because the API is what decides
@@ -76,6 +84,26 @@ the two can never drift apart.
 - After the order is created the visitor is redirected using the URL the API
   returns. When that URL is missing, `order:redirect-missing` fires — otherwise
   they would sit on a checkout page for an order that already succeeded.
+- **A refusal is shown in the failing method's own container.** Name it for the
+  method — `data-next-component="ideal-error"` beside `data-next-payment-method="ideal"`
+  — and every refusal of that method is written there, with the message text into
+  its `ideal-error-text` child or into the container itself if there is none. A
+  method with no container of its own falls back to `credit-error`, which is what
+  every page had before this. That fallback belongs **outside**
+  `data-next-payment-form`: inside one it is hidden whenever its method is not the
+  chosen one, which is why a refused iDEAL payment used to show the shopper
+  nothing, and the SDK now moves it out rather than leaving the message unread.
+  Changing method clears every one of these containers, since the failure belonged
+  to the method they left.
+- **The loading overlay stays up until the attempt ends.** It goes up on submit
+  and comes down on a redirect or an error, and nothing the shopper does to the
+  page in between takes it away — on a phone, the keyboard closing or a tap fires
+  a window `focus` event, and an order can take a minute or more. The one thing
+  that does clear it early is `focus` returning during an **express** payment
+  (PayPal, Apple Pay, Google Pay): those are paid for off this page, so coming
+  back to it means the shopper came back without paying, and the method is reset
+  to a card so they can try again. A card or a redirect method creates its order
+  here, so the same event says nothing about it and is ignored.
 - **The pay button is borrowed, not owned.** It is disabled while the order is
   being placed and put back exactly as it was when the attempt ends — so a button
   your page holds shut until terms are accepted stays shut, and a button that was

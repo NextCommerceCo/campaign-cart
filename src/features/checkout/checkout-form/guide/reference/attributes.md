@@ -142,9 +142,13 @@ Names a structural part of the form so the feature can show, hide, clone, or wri
 - `location` — The country/state/postcode group. Revealed together once a country is known, and cloned to build the billing equivalent.
 - `billing-location` — Set by the feature on the cloned billing location group.
 - `shipping-field-row` — One row of shipping fields, for row-level show and hide.
-- `credit-error` — Container for card errors.
-- `credit-error-text` — Element the card error message is written into.
-- `paypal-error` — Container for PayPal errors.
+- `{method}-error` — Container for a failure paying by that method, named for the method's own `data-next-payment-method` value: `credit-error`, `ideal-error`, `paypal-error`, `sepa_debit-error`, and so on for every method the page offers. `-` and `_` are interchangeable, so `apple-pay-error` and `apple_pay-error` are one name.
+- `{method}-error-text` — Element the message is written into. Optional: a container with no `-text` child is written into directly.
+- `credit-error` — The container used when the failing method has none of its own, and what every page carried before per-method containers existed.
+- `express-error` — Container for an express button failure.
+- `express-error-text` — Element the express message is written into.
+
+> **Watch out:** Keep an error container **outside** `data-next-payment-form`. A container inside a method's form is hidden whenever that method is not the chosen one, so a refusal written into it cannot be read — which is what made a refused iDEAL payment look like an idle page. The SDK moves `credit-error` out of a collapsed form when it has to, but a container that starts outside never needs moving. Choosing a different method clears every one of these.
 
 ---
 
@@ -164,7 +168,7 @@ These are not placed on the element this feature is bound to — look for them o
 
 | Name | Values | Meaning |
 |---|---|---|
-| `data-next-payment-method` | `credit` / `paypal` / `apple_pay` / `google_pay` / `klarna` / `affirm` / `bancontact` / `giropay` / `ideal` / `link` / `sepa_debit` / `sofort` / `swish` / `twint` | Wraps one payment choice inside the form, and names the method it offers. The feature looks for a radio input and a `[data-next-payment-form]` **inside** this wrapper, so a payment form that is not nested in one is never revealed or collapsed. **Watch out:** Underscores, `-` accepted, case ignored — `apple_pay` and `apple-pay` are one value. The card is the only one whose name changes downstream: `credit` here is `credit-card` in the checkout store and `card_token` on the order, and the SDK translates both hops. Everything after `klarna` is a **redirect method**: it has no fields to reveal, so its `[data-next-payment-form]` can be empty — the shopper is sent to the payment provider to pay once the order exists. |
+| `data-next-payment-method` | `credit` / `paypal` / `apple_pay` / `google_pay` / `klarna` / `affirm` / `bancontact` / `giropay` / `ideal` / `link` / `sepa_debit` / `sofort` / `swish` / `twint` | Wraps one payment choice inside the form, and names the method it offers. The feature looks for a radio input and a `[data-next-payment-form]` **inside** this wrapper, so a payment form that is not nested in one is never revealed or collapsed. **Watch out:** Underscores, `-` accepted, case ignored — `apple_pay` and `apple-pay` are one value. The card is the only one whose name changes downstream: `credit` here is `credit-card` in the checkout store and `card_token` on the order, and the SDK translates both hops. **A section for a method the campaign does not offer is hidden**, since an order naming it would be refused: `available_payment_methods` on the campaign decides, the card is never hidden, and a campaign listing nothing hides nothing. Everything after `klarna` is a **redirect method**: it has no fields to reveal, so its `[data-next-payment-form]` can be empty — the shopper is sent to the payment provider to pay once the order exists. |
 | `data-next-payment-form` | — | Marks the fields belonging to a payment method, inside that method's container. The form is revealed when the method is chosen and collapsed when another is — so card fields are not in the tab order while PayPal is selected. |
 
 ## Set by the feature

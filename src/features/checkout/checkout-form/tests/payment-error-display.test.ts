@@ -37,6 +37,7 @@ function createDisplayCtx(): {
   return {
     ctx: {
       logger: logger as unknown as Logger,
+      paymentMethod: () => 'credit-card',
       announcingPaymentError: announcing,
       emit,
     },
@@ -152,6 +153,7 @@ describe('listenForPaymentErrors', () => {
 
     const displayCtx: PaymentErrorDisplayContext = {
       logger: logger as unknown as Logger,
+      paymentMethod: () => 'credit-card',
       announcingPaymentError: announcing,
       emit: detail => deliver(detail),
     };

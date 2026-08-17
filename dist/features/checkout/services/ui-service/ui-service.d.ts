@@ -27,6 +27,7 @@ export declare class UIService {
     handleCartUpdate(cartState: CartState): void;
     initializePaymentForms(): void;
     updatePaymentFormVisibility(paymentMethod: string): void;
+    applyAvailablePaymentMethods(availableCodes: readonly string[] | undefined): void;
     handleSpreedlyFieldFocus(fieldName: 'number' | 'cvv'): void;
     handleSpreedlyFieldBlur(fieldName: 'number' | 'cvv', hasValue: boolean): void;
     handleSpreedlyFieldInput(fieldName: 'number' | 'cvv', hasValue: boolean): void;

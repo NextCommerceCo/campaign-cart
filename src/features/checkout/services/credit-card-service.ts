@@ -6,6 +6,11 @@
 import { createLogger } from '@/core/logger';
 // import { ErrorDisplayManager } from '../utils/error-display-utils'; - removed unused import
 import { FieldFinder } from '../utils/field-finder-utils';
+import {
+  hideAllPaymentErrors,
+  resolvePaymentErrorTarget,
+  showPaymentErrorTarget,
+} from '../utils/payment-error-container';
 import type { Logger } from '@/core/logger';
 import { useCheckoutStore } from '@/state/checkout';
 import { nextAnalytics, EcommerceEvents } from '@/core/analytics/index';
@@ -387,14 +392,9 @@ export class CreditCardService {
   }
 
   private hidePaymentErrorContainers(): void {
-    // Hide credit error container (used for all payment errors)
-    const creditErrorContainer = document.querySelector(
-      '[data-next-component="credit-error"]'
-    );
-    if (creditErrorContainer instanceof HTMLElement) {
-      creditErrorContainer.style.display = 'none';
-      creditErrorContainer.classList.remove('visible');
-    }
+    // Every payment error container, not only the card's: a decline the shopper
+    // has now fixed should not be left on screen under another method's heading.
+    hideAllPaymentErrors();
   }
 
   /**
@@ -1207,49 +1207,29 @@ export class CreditCardService {
   private showSpreedlyErrors(errors: any[]): void {
     this.logger.info('[Spreedly] Showing errors:', errors);
 
-    // Use the credit error container for all payment errors
-    const errorContainer = document.querySelector(
-      '[data-next-component="credit-error"]'
-    );
-    if (errorContainer instanceof HTMLElement) {
-      const messageElement = errorContainer.querySelector(
-        '[data-next-component="credit-error-text"]'
-      );
-      if (messageElement) {
-        const errorMessages = errors.map(e => e.message).join('. ');
-        messageElement.textContent = errorMessages;
-        errorContainer.style.display = 'flex';
-        errorContainer.classList.add('visible');
-
-        this.logger.debug(
-          '[Spreedly] Error displayed with message:',
-          errorMessages
-        );
-
-        // Auto-hide after 10 seconds
-        setTimeout(() => {
-          if (errorContainer.style.display === 'flex') {
-            errorContainer.style.display = 'none';
-            errorContainer.classList.remove('visible');
-            this.logger.debug('[Spreedly] Error auto-hidden after 10 seconds');
-          }
-        }, 10000);
-      }
-    } else {
+    const message = errors.map(e => e.message).join('. ');
+    // A card is being tokenized, so the card is the method — resolved through the
+    // shared rule rather than a `credit-error` lookup of its own, so a page that
+    // names its card container anything else still gets the message.
+    const target = resolvePaymentErrorTarget('credit-card', this.logger);
+    if (!target) {
       this.logger.error(
         '[Spreedly] Could not find error container to display errors'
       );
+      return;
     }
 
-    // Mark fields with errors
-    errors.forEach(error => {
-      const fieldType = error.attribute;
-      if (fieldType === 'number' || fieldType === 'card_number') {
-        this.setCreditCardFieldError('number', error.message);
-      } else if (fieldType === 'cvv') {
-        this.setCreditCardFieldError('cvv', error.message);
-      }
-    });
+    target.text.textContent = message;
+    showPaymentErrorTarget(target);
+    this.logger.debug('[Spreedly] Error displayed with message:', message);
+
+    // Auto-hide after 10 seconds, unless a newer failure has replaced the text.
+    setTimeout(() => {
+      if (target.text.textContent !== message) return;
+      target.container.style.display = 'none';
+      target.container.classList.remove('visible');
+      this.logger.debug('[Spreedly] Error auto-hidden after 10 seconds');
+    }, 10000);
   }
 
   private setCreditCardFieldValid(

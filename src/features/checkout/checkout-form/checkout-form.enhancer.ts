@@ -7,7 +7,7 @@ import { scopedKey } from '@/core/storage';
 import { useCheckoutStore, type CheckoutState } from '@/state/checkout';
 import { useCartStore } from '@/state/cart';
 import { useConfigStore } from '@/state/config';
-import { useCampaignStore } from '@/state/campaign';
+import { useCampaignStore, type CampaignState } from '@/state/campaign';
 import { getApiClient } from '@/client';
 import type { IApiClient } from '@/api/client.types';
 import {
@@ -36,7 +36,10 @@ import {
 } from '@/core/analytics/tracking/purchase-tracking';
 import { OrderBuilder } from '../builders/order-builder';
 import { nextAnalytics, EcommerceEvents } from '@/core/analytics/index';
-import { paymentMethodLabel } from '@/utils/payment-method';
+import {
+  isExpressPaymentMethod,
+  paymentMethodLabel,
+} from '@/utils/payment-method';
 import {
   injectIntlTelInputStyles,
   initializePhoneInputs,
@@ -189,6 +192,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
    * see [`payment-error-display.ts`](./payment-error-display.ts).
    */
   private announcingPaymentError = { value: false };
+  /** Whether this submit has already put a payment failure on screen. */
+  private paymentErrorShown = false;
 
   constructor(element: HTMLElement) {
     super(element);
@@ -266,6 +271,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // Track if analytics events have been fired
   /** Ref, shared with `autofill-detection.ts` so the event cannot fire twice. */
   private hasTrackedShippingInfo = { value: false };
+  /**
+   * The campaign's payment-method codes as last applied, so a campaign write that
+   * did not change them does not re-run the filter.
+   */
+  private availablePaymentMethods: string[] | undefined;
   /**
    * Whether `add_payment_info` has been reported for a redirect method.
    *
@@ -459,6 +469,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     // Initialize payment forms to sync with DOM state
     this.ui.initializePaymentForms();
+
+    // Then drop the methods this campaign cannot charge. Campaign data may not
+    // have arrived yet, in which case nothing is hidden until it does and
+    // `handleCampaignUpdate` runs.
+    this.applyAvailablePaymentMethods();
   }
 
   /** Runs after {@link initializePhoneInputs} so the validator can ask a live intl-tel-input instance. */
@@ -485,6 +500,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     this.subscribe(useCheckoutStore, this.handleCheckoutUpdate.bind(this));
     this.subscribe(useCartStore, this.handleCartUpdate.bind(this));
     this.subscribe(useConfigStore, this.handleConfigUpdate.bind(this));
+    // The campaign decides which payment methods this store can charge, and it
+    // usually loads after this form is built.
+    this.subscribe(useCampaignStore, this.handleCampaignUpdate.bind(this));
   }
 
   private setupDebugEventListeners(): void {
@@ -561,11 +579,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
         // Always reset express payment methods when returning from bfcache
         // This handles cases where user pressed back from Apple Pay/Google Pay/PayPal
-        if (
-          checkoutStore.paymentMethod === 'apple_pay' ||
-          checkoutStore.paymentMethod === 'google_pay' ||
-          checkoutStore.paymentMethod === 'paypal'
-        ) {
+        if (isExpressPaymentMethod(checkoutStore.paymentMethod)) {
           this.logger.info(
             'Resetting payment method from',
             checkoutStore.paymentMethod,
@@ -600,38 +614,39 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   /**
    * Catches the user cancelling PayPal/Apple Pay/Google Pay, which returns focus
    * to the page without triggering `pageshow`.
+   *
+   * **Express methods only.** A card is charged from this page, so focus returning
+   * says nothing about whether the request is still in flight — and the reset used
+   * to run for every method. On mobile, focus fires routinely mid-checkout (the
+   * keyboard closing, a tap on the page), which stripped the overlay off a live
+   * card order and re-enabled the pay button; the shopper read that as a failure
+   * and submitted again. Issue #75.
    */
   private setupWindowFocusHandler(): void {
     this.listen(window, 'focus', () => {
       const checkoutStore = useCheckoutStore.getState();
 
-      // Only reset if we're in processing state (likely from express checkout)
-      if (checkoutStore.isProcessing) {
-        this.logger.info(
-          'Window focused with processing=true, resetting express checkout state'
-        );
-
-        // Hide loading overlay
-        this.loadingOverlay.hide(true);
-
-        // Reset processing state
-        checkoutStore.setProcessing(false);
-
-        // Reset payment method back to credit-card if it's an express method
-        if (
-          checkoutStore.paymentMethod === 'apple_pay' ||
-          checkoutStore.paymentMethod === 'google_pay' ||
-          checkoutStore.paymentMethod === 'paypal'
-        ) {
-          this.logger.info(
-            'Resetting payment method from',
-            checkoutStore.paymentMethod,
-            'to credit-card'
-          );
-          checkoutStore.setPaymentMethod('credit-card');
-          checkoutStore.setPaymentToken('');
-        }
+      if (
+        !checkoutStore.isProcessing ||
+        !isExpressPaymentMethod(checkoutStore.paymentMethod)
+      ) {
+        return;
       }
+
+      this.logger.info(
+        'Window focused with processing=true, resetting express checkout state'
+      );
+
+      this.loadingOverlay.hide(true);
+      checkoutStore.setProcessing(false);
+
+      this.logger.info(
+        'Resetting payment method from',
+        checkoutStore.paymentMethod,
+        'to credit-card'
+      );
+      checkoutStore.setPaymentMethod('credit-card');
+      checkoutStore.setPaymentToken('');
     });
   }
 
@@ -1603,6 +1618,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     try {
       checkoutStore.clearAllErrors();
+      this.paymentErrorShown = false;
       checkoutStore.setProcessing(true);
 
       // Show loading overlay
@@ -1644,8 +1660,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       }
 
       // Check if this is an express payment method
-      const expressPaymentMethods = ['paypal', 'apple_pay', 'google_pay'];
-      const isExpressPayment = expressPaymentMethods.includes(
+      const isExpressPayment = isExpressPaymentMethod(
         checkoutStore.paymentMethod
       );
 
@@ -1887,14 +1902,45 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       // span?.setAttribute('error.message', (error as Error).message);
 
       this.handleError(error, 'handleFormSubmit');
-      checkoutStore.setError(
-        'general',
-        'Failed to process order. Please try again.'
-      );
+      // `general` is not a field, so `setError` alone renders nowhere — every
+      // page looks up an error key as a field name. The shopper has to be told
+      // the order did not go through, so it is displayed as well.
+      const message = 'Failed to process order. Please try again.';
+      checkoutStore.setError('general', message);
+      if (!this.paymentErrorShown) this.displayPaymentError(message);
       // Only set processing to false on error
       checkoutStore.setProcessing(false);
       this.loadingOverlay.hide(true); // Hide immediately on error
     }
+  }
+
+  /**
+   * Re-runs the availability filter when the campaign changes.
+   *
+   * Compared by value rather than by reference: the campaign store is written on
+   * every currency change and cache rehydrate, and re-hiding an already-hidden
+   * method would log the same line again on each of them.
+   */
+  private handleCampaignUpdate(state: CampaignState): void {
+    const codes = this.availablePaymentCodes(state);
+    if (
+      JSON.stringify(codes) === JSON.stringify(this.availablePaymentMethods)
+    ) {
+      return;
+    }
+    this.availablePaymentMethods = codes;
+    this.applyAvailablePaymentMethods();
+  }
+
+  /** The campaign's payment-method codes, or `undefined` when it lists none. */
+  private availablePaymentCodes(
+    state: CampaignState = useCampaignStore.getState()
+  ): string[] | undefined {
+    return state.data?.available_payment_methods?.map(method => method.code);
+  }
+
+  private applyAvailablePaymentMethods(): void {
+    this.ui.applyAvailablePaymentMethods(this.availablePaymentCodes());
   }
 
   private async processOrder(): Promise<void> {
@@ -2552,12 +2598,26 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private paymentErrorDisplayContext(): PaymentErrorDisplayContext {
     return {
       logger: this.logger,
+      // Read at display time, not at boot: the shopper may have changed method
+      // several times before anything failed.
+      paymentMethod: () => useCheckoutStore.getState().paymentMethod,
       announcingPaymentError: this.announcingPaymentError,
       emit: detail => this.emit('payment:error', detail),
     };
   }
 
+  /**
+   * Shows the shopper a payment failure, and records that one has been shown for
+   * this submit.
+   *
+   * {@link handleFormSubmit}'s catch is the last line of defence — it fires for
+   * every failure, including the ones with nothing shopper-readable in them. It
+   * must not overwrite the specific message `createOrder` already put on screen
+   * (`Your card was declined`) with its own generic one, so it asks this flag
+   * first.
+   */
   private displayPaymentError(message: string): void {
+    this.paymentErrorShown = true;
     displayPaymentError(this.paymentErrorDisplayContext(), message);
   }
 
