@@ -1,5 +1,53 @@
 # Changelog
 
+## [0.4.36] — 2026-08-17 — Slow Payments, Refused Payments, and the Card Selected Again
+
+Three things a shopper sees during checkout, all of them wrong in `0.4.35`. Nothing to add to your pages for any of them.
+
+### Fixed
+
+- **The loading overlay stays up until a card payment finishes.**
+
+  On a phone, the overlay could vanish while the order was still being processed. The page looked idle again and the **Complete Purchase** button became clickable, so the shopper assumed the payment had failed and pressed it a second time, which raised the duplicate-purchase warning. Their first order had gone through the whole time. Observed on orders that took 60 to 150 seconds.
+
+  The cause was a reset built for a shopper cancelling PayPal, Apple Pay or Google Pay, which returns to the page without the browser announcing a navigation. It ran for every payment method, and on a phone the event it listens for fires routinely mid-checkout, from the keyboard closing or a tap on the page. It is now limited to the express methods it was written for. A card or a local payment method is charged from the checkout page itself, so nothing the shopper does to that page can end the wait early. ([#75](https://github.com/NextCommerceCo/campaign-cart/issues/75))
+
+- **The card is selected again when the checkout page loads.**
+
+  A shopper arriving at a checkout found no payment method chosen and the card fields collapsed, and had to click the card option before they could type into it. A card radio that your markup ships as `checked` was unchecked by the SDK a moment after the page appeared. Only the card was affected: every other method was selected correctly on a return visit.
+
+  Introduced in `0.4.35`, when the card became the only method whose internal name differed from the value you write on the page.
+
+- **A refused payment is shown to the shopper, whichever method they chose.**
+
+  A shopper refused by iDEAL, Bancontact, SEPA, TWINT, Affirm, Klarna or Link saw an idle page and no reason for it. The message was produced correctly and written into the card's error box, and that box is closed whenever a card is not the chosen method, so it was rendered inside a container of zero height and clipped out of sight.
+
+  Every method's refusals are now readable, on the markup you already have. Where a page's only error box is the card's, the SDK moves it out of the card's collapsible section so the message can be seen.
+
+- **A checkout that cannot proceed says so.** "Failed to process order. Please try again." and "the payment system is not ready" were both produced and never displayed, because they were filed under a field name no page has. Both reach the shopper now. A specific message from the payment provider, such as "Your card was declined", still wins over the generic one.
+
+### New
+
+- **An error box per payment method**, named for the method: `data-next-component="ideal-error"` beside `data-next-payment-method="ideal"`, and the same for every method you offer. Write `{method}-error-text` inside it for the message, or leave it out and the message goes into the box itself. `-` and `_` are interchangeable, so `apple-pay-error` and `apple_pay-error` are one name.
+
+  Optional. A method with no box of its own uses `credit-error`, which is what every page had before this.
+
+### Changed
+
+- **A PayPal refusal is shown once.** It was written into `paypal-error` and `credit-error` at the same time, worded differently in each, so a page carrying both showed the shopper the same refusal twice.
+
+- **Choosing a different payment method clears every error box on the page**, not the two the SDK used to know about. A refusal belongs to the method the shopper has just left.
+
+- **An error box hides itself ten seconds after its own message**, rather than ten seconds after the first one. A second refusal arriving inside that window used to be wiped early.
+
+### Before you upgrade
+
+**The pay button now stays disabled for the whole of a slow payment.** That is the fix, and it is worth knowing if you time checkout steps or watch session recordings: a card payment that takes a minute now shows a minute of spinner, where it used to show an idle page. No page change is needed.
+
+**Put `credit-error` outside `data-next-payment-form` when you next touch your template.** The SDK copes with it being inside, by moving it out when it has to. A box that starts outside never needs moving, and a `{method}-error` box for each method is better still.
+
+---
+
 ## [0.4.35] — 2026-08-14 — Local Payment Methods, and Link as an Express Button
 
 ### Fixed

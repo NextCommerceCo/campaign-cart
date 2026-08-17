@@ -144,10 +144,26 @@ export default defineFeature({
         },
         { value: 'billing-location', description: 'Set by the feature on the cloned billing location group.' },
         { value: 'shipping-field-row', description: 'One row of shipping fields, for row-level show and hide.' },
-        { value: 'credit-error', description: 'Container for card errors.' },
-        { value: 'credit-error-text', description: 'Element the card error message is written into.' },
-        { value: 'paypal-error', description: 'Container for PayPal errors.' },
+        {
+          value: '{method}-error',
+          description:
+            "Container for a failure paying by that method, named for the method's own `data-next-payment-method` value: `credit-error`, `ideal-error`, `paypal-error`, `sepa_debit-error`, and so on for every method the page offers. `-` and `_` are interchangeable, so `apple-pay-error` and `apple_pay-error` are one name.",
+        },
+        {
+          value: '{method}-error-text',
+          description:
+            'Element the message is written into. Optional: a container with no `-text` child is written into directly.',
+        },
+        {
+          value: 'credit-error',
+          description:
+            'The container used when the failing method has none of its own, and what every page carried before per-method containers existed.',
+        },
+        { value: 'express-error', description: 'Container for an express button failure.' },
+        { value: 'express-error-text', description: 'Element the express message is written into.' },
       ],
+      notes:
+        'Keep an error container **outside** `data-next-payment-form`. A container inside a method\'s form is hidden whenever that method is not the chosen one, so a refusal written into it cannot be read — which is what made a refused iDEAL payment look like an idle page. The SDK moves `credit-error` out of a collapsed form when it has to, but a container that starts outside never needs moving. Choosing a different method clears every one of these.',
     },
     {
       group: STRUCTURE,
