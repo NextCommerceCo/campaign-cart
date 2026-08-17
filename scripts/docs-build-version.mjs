@@ -32,10 +32,16 @@
  *   --no-latest          Do not point `<site>/latest` at this build.
  *   --strict             Keep `validation.invalidLink` on for a tag build.
  *
- * Why the tag's own `typedoc.json` is not used: no released tag has one, and the folder
- * layout moved (`src/enhancers` -> `src/features`, `src/stores` -> `src/state`). The
- * config is generated per build from this checkout's `typedoc.json` plus the layout
- * actually present in the worktree, so one script covers every tag.
+ * Which `typedoc.json` decides what gets documented: the **ref's own**, whenever it has
+ * one (v0.4.31 and up). Its `entryPoints` and `projectDocuments` are what the author saw
+ * from `npm run docs` on that ref, so the published folder shows the same site they
+ * previewed. Ignoring them is what published v0.4.35 with the old per-feature `guide`
+ * sidebar and none of its `docs/guides` pages.
+ *
+ * Older tags carry no config of their own, and the layout moved under them
+ * (`src/enhancers` -> `src/features`, `src/stores` -> `src/state`), so those fall back to
+ * {@link LAYOUTS}. Everything else — theme, plugins, site chrome — always comes from this
+ * checkout, so every folder on the site still looks like one site.
  */
 
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -73,11 +79,12 @@ const short = path => {
 };
 
 /**
- * Entry-point and document globs, per layout generation.
+ * Entry-point and document globs, per layout generation — the fallback for a ref that
+ * carries no `typedoc.json` of its own (everything below v0.4.31).
  *
  * Both generations are listed and only the directories that exist in the worktree are
  * used, so the same config generator serves `v0.4.3` (`src/enhancers`, `src/stores`,
- * no `src/core/guide`) and today's tree (`src/features`, `src/state`, `src/core/guide`).
+ * no `src/core/guide`) and `v0.4.30` (`src/features`, `src/state`, `src/core/guide`).
  */
 const LAYOUTS = [
   { dir: 'src/core', entryPoint: true, documents: ['src/core/guide/**/*.md'] },
@@ -113,13 +120,20 @@ const LAYOUTS = [
 ];
 
 /**
- * Options whose paths must come from *this* checkout — no tag has `docs/assets/` or
- * `docs/site-home.md`, so resolving them against the worktree fails the build outright
+ * Path options that are resolved rather than taken as written, because a ref may not carry
+ * the file at all — resolving a missing one against the worktree fails the build outright
  * ("Provided README path … could not be read", exit 4).
+ *
+ * The split is content vs chrome. `readme` is the folder's home page, so the ref's own copy
+ * wins where it has one: a tag's home page describes that tag. `customCss`/`customJs` are
+ * the shared shell — `site.js` is the version switcher every folder runs — so they always
+ * come from this checkout, and fixing the switcher fixes every folder on the next publish
+ * instead of only the ones built since.
  *
  * `readme` also takes the literal `"none"`, which is a mode and not a path. Left alone.
  */
-const ASSET_OPTIONS = ['customCss', 'customJs', 'readme'];
+const CONTENT_OPTIONS = ['readme'];
+const CHROME_OPTIONS = ['customCss', 'customJs'];
 
 /**
  * Names a branch folder may not take, because the published site root already uses them.
@@ -179,6 +193,34 @@ function baseConfig() {
 }
 
 /**
+ * The ref's own `typedoc.json`, or `null` when it predates having one.
+ *
+ * A malformed one throws rather than falling back: a ref that has a config but cannot be
+ * read would otherwise publish the {@link LAYOUTS} sidebar with no sign anything was wrong,
+ * which is the exact failure this whole path exists to stop.
+ */
+function ownConfig(sourceRoot) {
+  const file = join(sourceRoot, 'typedoc.json');
+  if (!existsSync(file)) return null;
+  try {
+    return JSON.parse(readFileSync(file, 'utf8'));
+  } catch (error) {
+    throw new Error(
+      `${file} is not valid JSON, so this ref cannot be documented: ` +
+        `${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
+/**
+ * Document globs that match at least one file. TypeDoc warns on a glob matching nothing,
+ * and with `--treatWarningsAsErrors` that would fail every ref whose layout is a subset of
+ * the globs it was handed.
+ */
+const matching = (globs, cwd) =>
+  globs.filter(glob => globSync(glob, { cwd }).length > 0);
+
+/**
  * Turns the base config into one for a specific source tree.
  *
  * Every path in the result is absolute. TypeDoc resolves relative option paths against
@@ -199,21 +241,48 @@ function versionConfig({
 }) {
   const config = { ...base };
   const abs = path => join(sourceRoot, path);
+  const own = ownConfig(sourceRoot);
 
-  config.entryPoints = [abs('src/index.ts')];
-  config.projectDocuments = [];
-  for (const layout of LAYOUTS) {
-    if (!existsSync(abs(layout.dir))) continue;
-    if (layout.entryPoint) config.entryPoints.push(abs(layout.dir));
-    for (const glob of layout.documents) {
-      if (globSync(glob, { cwd: sourceRoot }).length > 0)
-        config.projectDocuments.push(abs(glob));
+  if (own) {
+    // Entry points are taken as written, unfiltered: one that is missing should fail the
+    // build loudly rather than quietly publish a smaller site than the ref describes.
+    config.entryPoints = (own.entryPoints ?? ['src/index.ts']).map(abs);
+    config.projectDocuments = matching(
+      own.projectDocuments ?? [],
+      sourceRoot
+    ).map(abs);
+    // Reproduce the ref exactly — including its *absence* of a strategy, which means
+    // TypeDoc's `resolve` default and not whatever this checkout happens to set.
+    if (own.entryPointStrategy)
+      config.entryPointStrategy = own.entryPointStrategy;
+    else delete config.entryPointStrategy;
+  } else {
+    config.entryPoints = [abs('src/index.ts')];
+    config.projectDocuments = [];
+    for (const layout of LAYOUTS) {
+      if (!existsSync(abs(layout.dir))) continue;
+      if (layout.entryPoint) config.entryPoints.push(abs(layout.dir));
+      config.projectDocuments.push(
+        ...matching(layout.documents, sourceRoot).map(abs)
+      );
     }
+    // Set here, not inherited: LAYOUTS pushes *directories* (`src/core`, `src/stores`) as
+    // entry points, which only work under `expand`. This checkout's `typedoc.json` stopped
+    // setting it once its own entry points became a single file, and inheriting that would
+    // break every pre-v0.4.31 tag with "Unable to find any entry points".
+    config.entryPointStrategy = 'expand';
   }
 
-  for (const key of ASSET_OPTIONS) {
+  for (const key of CHROME_OPTIONS) {
     if (typeof config[key] === 'string' && config[key] !== 'none')
       config[key] = resolve(REPO, config[key]);
+  }
+  for (const key of CONTENT_OPTIONS) {
+    const wanted = own?.[key] ?? config[key];
+    if (typeof wanted !== 'string' || wanted === 'none') continue;
+    config[key] = existsSync(join(sourceRoot, wanted))
+      ? join(sourceRoot, wanted)
+      : resolve(REPO, config[key]);
   }
 
   config.out = outDir;
