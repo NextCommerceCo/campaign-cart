@@ -31,21 +31,21 @@ Details in [the window surface](./window-surface.md).
 
 | Job | Calls |
 |---|---|
-| **[Getting hold of the SDK](#getting-hold-of-the-sdk)** | [`NextCommerce.getInstance()`](#nextcommercegetinstance) |
+| **[The SDK instance](#the-sdk-instance)** | [`NextCommerce.getInstance()`](#nextcommercegetinstance) |
 | **[Reading the cart](#reading-the-cart)** | [`next.hasItemInCart()`](#nexthasitemincart), [`next.getCartData()`](#nextgetcartdata), [`next.getCartTotals()`](#nextgetcarttotals), [`next.getCartCount()`](#nextgetcartcount) |
 | **[Changing the cart](#changing-the-cart)** | [`next.cart`](#nextcart), [`next.addItem()`](#nextadditem), [`next.removeItem()`](#nextremoveitem), [`next.updateQuantity()`](#nextupdatequantity), [`next.clearCart()`](#nextclearcart), [`next.swapCart()`](#nextswapcart) |
 | **[Coupons](#coupons)** | [`next.applyCoupon()`](#nextapplycoupon), [`next.removeCoupon()`](#nextremovecoupon), [`next.getCoupons()`](#nextgetcoupons) |
 | **[Shipping](#shipping)** | [`next.getShippingMethods()`](#nextgetshippingmethods), [`next.getSelectedShippingMethod()`](#nextgetselectedshippingmethod), [`next.setShippingMethod()`](#nextsetshippingmethod) |
-| **[Products, packages, and variants](#products-packages-and-variants)** | [`next.getCampaignData()`](#nextgetcampaigndata), [`next.getPackage()`](#nextgetpackage), [`next.getVariantsByProductId()`](#nextgetvariantsbyproductid), [`next.getAvailableVariantAttributes()`](#nextgetavailablevariantattributes), [`next.getPackageByVariantSelection()`](#nextgetpackagebyvariantselection), [`next.createVariantKey()`](#nextcreatevariantkey) |
-| **[Reacting to what happens](#reacting-to-what-happens)** | [`next.on()`](#nexton), [`next.off()`](#nextoff), [`next.registerCallback()`](#nextregistercallback), [`next.unregisterCallback()`](#nextunregistercallback), [`next.triggerCallback()`](#nexttriggercallback) |
-| **[Sending analytics events yourself](#sending-analytics-events-yourself)** | [`next.trackViewItemList()`](#nexttrackviewitemlist), [`next.trackViewItem()`](#nexttrackviewitem), [`next.trackAddToCart()`](#nexttrackaddtocart), [`next.trackRemoveFromCart()`](#nexttrackremovefromcart), [`next.trackBeginCheckout()`](#nexttrackbegincheckout), [`next.trackPurchase()`](#nexttrackpurchase), [`next.trackCustomEvent()`](#nexttrackcustomevent), [`next.trackSignUp()`](#nexttracksignup), [`next.trackLogin()`](#nexttracklogin), [`next.setDebugMode()`](#nextsetdebugmode), [`next.invalidateAnalyticsContext()`](#nextinvalidateanalyticscontext) |
-| **[Attribution and order metadata](#attribution-and-order-metadata)** | [`next.addMetadata()`](#nextaddmetadata), [`next.setMetadata()`](#nextsetmetadata), [`next.clearMetadata()`](#nextclearmetadata), [`next.getMetadata()`](#nextgetmetadata), [`next.setAttribution()`](#nextsetattribution), [`next.getAttribution()`](#nextgetattribution), [`next.debugAttribution()`](#nextdebugattribution) |
+| **[Catalog](#catalog)** | [`next.getCampaignData()`](#nextgetcampaigndata), [`next.getPackage()`](#nextgetpackage), [`next.getVariantsByProductId()`](#nextgetvariantsbyproductid), [`next.getAvailableVariantAttributes()`](#nextgetavailablevariantattributes), [`next.getPackageByVariantSelection()`](#nextgetpackagebyvariantselection), [`next.createVariantKey()`](#nextcreatevariantkey) |
+| **[Events](#events)** | [`next.on()`](#nexton), [`next.off()`](#nextoff), [`next.registerCallback()`](#nextregistercallback), [`next.unregisterCallback()`](#nextunregistercallback), [`next.triggerCallback()`](#nexttriggercallback) |
+| **[Analytics](#analytics)** | [`next.trackViewItemList()`](#nexttrackviewitemlist), [`next.trackViewItem()`](#nexttrackviewitem), [`next.trackAddToCart()`](#nexttrackaddtocart), [`next.trackRemoveFromCart()`](#nexttrackremovefromcart), [`next.trackBeginCheckout()`](#nexttrackbegincheckout), [`next.trackPurchase()`](#nexttrackpurchase), [`next.trackCustomEvent()`](#nexttrackcustomevent), [`next.trackSignUp()`](#nexttracksignup), [`next.trackLogin()`](#nexttracklogin), [`next.setDebugMode()`](#nextsetdebugmode), [`next.invalidateAnalyticsContext()`](#nextinvalidateanalyticscontext) |
+| **[Attribution and metadata](#attribution-and-metadata)** | [`next.addMetadata()`](#nextaddmetadata), [`next.setMetadata()`](#nextsetmetadata), [`next.clearMetadata()`](#nextclearmetadata), [`next.getMetadata()`](#nextgetmetadata), [`next.setAttribution()`](#nextsetattribution), [`next.getAttribution()`](#nextgetattribution), [`next.debugAttribution()`](#nextdebugattribution) |
 | **[URL parameters](#url-parameters)** | [`next.setParam()`](#nextsetparam), [`next.setParams()`](#nextsetparams), [`next.getParam()`](#nextgetparam), [`next.getAllParams()`](#nextgetallparams), [`next.hasParam()`](#nexthasparam), [`next.clearParam()`](#nextclearparam), [`next.clearAllParams()`](#nextclearallparams), [`next.mergeParams()`](#nextmergeparams) |
 | **[Post-purchase upsells](#post-purchase-upsells)** | [`next.addUpsell()`](#nextaddupsell), [`next.canAddUpsells()`](#nextcanaddupsells), [`next.getCompletedUpsells()`](#nextgetcompletedupsells), [`next.isUpsellAlreadyAdded()`](#nextisupsellalreadyadded) |
 | **[On-page popups](#on-page-popups)** | [`next.exitIntent()`](#nextexitintent), [`next.disableExitIntent()`](#nextdisableexitintent), [`next.fomo()`](#nextfomo), [`next.stopFomo()`](#nextstopfomo) |
-| **[Formatting, version, and checks](#formatting-version-and-checks)** | [`next.getVersion()`](#nextgetversion), [`next.formatPrice()`](#nextformatprice), [`next.validateCheckout()`](#nextvalidatecheckout) |
+| **[Utilities](#utilities)** | [`next.getVersion()`](#nextgetversion), [`next.formatPrice()`](#nextformatprice), [`next.validateCheckout()`](#nextvalidatecheckout) |
 
-## Getting hold of the SDK
+## The SDK instance
 
 The SDK creates one instance of itself during boot and assigns it to `window.next`. You do not construct it. Because boot is asynchronous, code that runs early has to wait — that is what `window.nextReady` is for (see the [window surface](./window-surface.md)).
 
@@ -160,7 +160,7 @@ cart
 
 The full programmatic cart API — the supported way to drive the cart from code.
 
-**Returns:** The cart operations object. Its members are listed under [What `next.cart` can do](#what-nextcart-can-do) below.
+**Returns:** The cart operations object. Its members are listed under [What `next.cart` can do](#cart-operations) below.
 
 ```ts
 await next.cart.addItem({ packageId: 2, quantity: 1, isUpsell: false });
@@ -368,7 +368,7 @@ console.log(next.getCartTotals().total); // now includes shipping
 
 <sub>Source: `src/core/next-commerce/next-commerce.ts › NextCommerce.setShippingMethod`</sub>
 
-## Products, packages, and variants
+## Catalog
 
 Read-only lookups into the loaded campaign. A *package* is the sellable unit — a quantity of a product at a price — and its `ref_id` is the number every cart call takes. The variant lookups exist so you can build your own size/colour picker instead of using the built-in one.
 
@@ -476,7 +476,7 @@ next.createVariantKey({ color: 'red', size: 'L' }); // 'color:red|size:L' — sa
 
 <sub>Source: `src/core/next-commerce/next-commerce.ts › NextCommerce.createVariantKey`</sub>
 
-## Reacting to what happens
+## Events
 
 Two mechanisms, and they are not interchangeable. `on`/`off` subscribe to the typed SDK event bus and are what you want. `registerCallback` is the older lifecycle-hook channel, kept for pages that already use it.
 
@@ -575,7 +575,7 @@ next.triggerCallback('cartUpdated', next.getCartData());
 
 <sub>Source: `src/core/next-commerce/next-commerce.ts › NextCommerce.triggerCallback`</sub>
 
-## Sending analytics events yourself
+## Analytics
 
 The SDK already tracks the standard ecommerce funnel on its own. Call these only for something it cannot see — a custom step, a view of a list you rendered yourself, a sign-up outside the checkout form. Every one of them is fire-and-forget: it queues the work and resolves immediately, and a failure is logged rather than thrown, so analytics can never break a page.
 
@@ -759,7 +759,7 @@ router.afterEach(() => next.invalidateAnalyticsContext());
 
 <sub>Source: `src/core/next-commerce/next-commerce.ts › NextCommerce.invalidateAnalyticsContext`</sub>
 
-## Attribution and order metadata
+## Attribution and metadata
 
 Attribution is the record of where the visitor came from; metadata is the free-form bag of extra values attached to the order. Both are collected automatically and sent with the order — these calls are for adding your own values on top.
 
@@ -1159,7 +1159,7 @@ next.stopFomo();
 
 <sub>Source: `src/core/next-commerce/next-commerce.ts › NextCommerce.stopFomo`</sub>
 
-## Formatting, version, and checks
+## Utilities
 
 Small helpers that do not belong to any one part of the flow.
 

@@ -72,7 +72,7 @@ These name the list a product view or click came from, so a report can tell a se
 
 The SDK does not search or filter anything. These describe a page your site already renders: on your search page, `?q=blue+widget` makes the SDK report clicks there as `Search Results: blue widget`.
 
-The URL path wins over the parameter. A path containing `/search`, `/collections/`, `/category/`, `/tag/` or `/brand/` is used instead, and the parameter is never read.
+For the list-attribution parameters, the URL path wins. A path containing `/search`, `/collections/`, `/category/`, `/tag/` or `/brand/` is used instead and the parameter is never read. `ignore` is unaffected: it is read straight off the URL.
 
 | Parameter | Description |
 |---|---|

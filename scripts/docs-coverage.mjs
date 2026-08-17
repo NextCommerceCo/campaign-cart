@@ -861,7 +861,7 @@ const pct = (have, total) => (total === 0 ? 100 : Math.round((have / total) * 10
 //   a pronoun, which names nothing — "Checking it booted", "Seeing it work", "Opening it"
 //   a question, which is a blog voice — "Which switch does what", "What you can do with the link"
 const HEADING_PRONOUN = /\b(it|its|you|your|yours|we|our|us)\b/i;
-const HEADING_QUESTION = /^(what|which|which|how|why|when|where|should|can|do|does)\b|\?\s*$/i;
+const HEADING_QUESTION = /^(what|which|how|why|when|where|should|can|do|does|is|are)\b|\?\s*$/i;
 
 function scanHeadingVoice() {
   const files = walk(join(ROOT, 'docs', 'guides'), isMarkdown);
