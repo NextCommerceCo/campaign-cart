@@ -36,7 +36,10 @@ import {
 } from '@/core/analytics/tracking/purchase-tracking';
 import { OrderBuilder } from '../builders/order-builder';
 import { nextAnalytics, EcommerceEvents } from '@/core/analytics/index';
-import { paymentMethodLabel } from '@/utils/payment-method';
+import {
+  isExpressPaymentMethod,
+  paymentMethodLabel,
+} from '@/utils/payment-method';
 import {
   injectIntlTelInputStyles,
   initializePhoneInputs,
@@ -574,11 +577,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
         // Always reset express payment methods when returning from bfcache
         // This handles cases where user pressed back from Apple Pay/Google Pay/PayPal
-        if (
-          checkoutStore.paymentMethod === 'apple_pay' ||
-          checkoutStore.paymentMethod === 'google_pay' ||
-          checkoutStore.paymentMethod === 'paypal'
-        ) {
+        if (isExpressPaymentMethod(checkoutStore.paymentMethod)) {
           this.logger.info(
             'Resetting payment method from',
             checkoutStore.paymentMethod,
@@ -613,38 +612,39 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   /**
    * Catches the user cancelling PayPal/Apple Pay/Google Pay, which returns focus
    * to the page without triggering `pageshow`.
+   *
+   * **Express methods only.** A card is charged from this page, so focus returning
+   * says nothing about whether the request is still in flight — and the reset used
+   * to run for every method. On mobile, focus fires routinely mid-checkout (the
+   * keyboard closing, a tap on the page), which stripped the overlay off a live
+   * card order and re-enabled the pay button; the shopper read that as a failure
+   * and submitted again. Issue #75.
    */
   private setupWindowFocusHandler(): void {
     this.listen(window, 'focus', () => {
       const checkoutStore = useCheckoutStore.getState();
 
-      // Only reset if we're in processing state (likely from express checkout)
-      if (checkoutStore.isProcessing) {
-        this.logger.info(
-          'Window focused with processing=true, resetting express checkout state'
-        );
-
-        // Hide loading overlay
-        this.loadingOverlay.hide(true);
-
-        // Reset processing state
-        checkoutStore.setProcessing(false);
-
-        // Reset payment method back to credit-card if it's an express method
-        if (
-          checkoutStore.paymentMethod === 'apple_pay' ||
-          checkoutStore.paymentMethod === 'google_pay' ||
-          checkoutStore.paymentMethod === 'paypal'
-        ) {
-          this.logger.info(
-            'Resetting payment method from',
-            checkoutStore.paymentMethod,
-            'to credit-card'
-          );
-          checkoutStore.setPaymentMethod('credit-card');
-          checkoutStore.setPaymentToken('');
-        }
+      if (
+        !checkoutStore.isProcessing ||
+        !isExpressPaymentMethod(checkoutStore.paymentMethod)
+      ) {
+        return;
       }
+
+      this.logger.info(
+        'Window focused with processing=true, resetting express checkout state'
+      );
+
+      this.loadingOverlay.hide(true);
+      checkoutStore.setProcessing(false);
+
+      this.logger.info(
+        'Resetting payment method from',
+        checkoutStore.paymentMethod,
+        'to credit-card'
+      );
+      checkoutStore.setPaymentMethod('credit-card');
+      checkoutStore.setPaymentToken('');
     });
   }
 
@@ -1657,8 +1657,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       }
 
       // Check if this is an express payment method
-      const expressPaymentMethods = ['paypal', 'apple_pay', 'google_pay'];
-      const isExpressPayment = expressPaymentMethods.includes(
+      const isExpressPayment = isExpressPaymentMethod(
         checkoutStore.paymentMethod
       );
 

@@ -5,6 +5,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { normalizeVoucherCode } from '@/utils/voucher';
+import { isExpressPaymentMethod } from '@/utils/payment-method';
 import { CHECKOUT_STORAGE_KEY } from '@/core/storage';
 import type { CheckoutPaymentMethod } from '@/types/global';
 
@@ -209,12 +210,9 @@ export const useCheckoutStore = create<CheckoutState & CheckoutActions>()(
       // Exclude transient state from persistence
       partialize: state => {
         // Don't persist express payment methods (they should reset to credit-card on page load/navigation)
-        const paymentMethod =
-          state.paymentMethod === 'apple_pay' ||
-          state.paymentMethod === 'google_pay' ||
-          state.paymentMethod === 'paypal'
-            ? 'credit-card'
-            : state.paymentMethod;
+        const paymentMethod = isExpressPaymentMethod(state.paymentMethod)
+          ? 'credit-card'
+          : state.paymentMethod;
 
         // Filter out sensitive payment fields from formData
         const {

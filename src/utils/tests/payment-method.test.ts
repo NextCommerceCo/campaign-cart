@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, it, expect } from 'vitest';
 
-import { paymentMethodLabel } from '../payment-method';
+import { isExpressPaymentMethod, paymentMethodLabel } from '../payment-method';
 
 /**
  * The one table three call sites read: the order display, the
@@ -44,6 +44,41 @@ describe('paymentMethodLabel', () => {
     // either: a raw code on a receipt gets reported, an invented label does not.
     expect(paymentMethodLabel('pix')).toBe('pix');
     expect(paymentMethodLabel('')).toBe('');
+  });
+});
+
+/**
+ * Four call sites undo or start the same thing with this answer, so what it must
+ * *not* say is as load-bearing as what it says: a `true` for a card is issue #75
+ * (the overlay stripped off a live order), and a `true` for Link is issue #74 (a
+ * radio choice replaced by a card).
+ */
+describe('isExpressPaymentMethod', () => {
+  it.each(['paypal', 'apple_pay', 'google_pay'])(
+    'says %s is paid for off this page',
+    method => {
+      expect(isExpressPaymentMethod(method)).toBe(true);
+    }
+  );
+
+  it('says a card is not', () => {
+    expect(isExpressPaymentMethod('credit-card')).toBe(false);
+    expect(isExpressPaymentMethod('card_token')).toBe(false);
+  });
+
+  it('says a redirect method is not — its order is created here first', () => {
+    for (const method of ['ideal', 'bancontact', 'sepa_debit', 'twint']) {
+      expect(isExpressPaymentMethod(method)).toBe(false);
+    }
+  });
+
+  it('says Link is not, because it is also offerable as a radio', () => {
+    expect(isExpressPaymentMethod('link')).toBe(false);
+  });
+
+  it('says a method this release predates is not', () => {
+    expect(isExpressPaymentMethod('pix')).toBe(false);
+    expect(isExpressPaymentMethod('')).toBe(false);
   });
 });
 

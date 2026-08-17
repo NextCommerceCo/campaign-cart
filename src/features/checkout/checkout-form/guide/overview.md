@@ -7,7 +7,7 @@ category: "Checkout Form"
 # Checkout Form
 
 > Category: `checkout`
-> Last reviewed: 2026-08-03
+> Last reviewed: 2026-08-17
 > Owner: Campaigns
 
 Turns a plain HTML form into a working checkout. You write the markup and name each
@@ -76,6 +76,15 @@ the two can never drift apart.
 - After the order is created the visitor is redirected using the URL the API
   returns. When that URL is missing, `order:redirect-missing` fires — otherwise
   they would sit on a checkout page for an order that already succeeded.
+- **The loading overlay stays up until the attempt ends.** It goes up on submit
+  and comes down on a redirect or an error, and nothing the shopper does to the
+  page in between takes it away — on a phone, the keyboard closing or a tap fires
+  a window `focus` event, and an order can take a minute or more. The one thing
+  that does clear it early is `focus` returning during an **express** payment
+  (PayPal, Apple Pay, Google Pay): those are paid for off this page, so coming
+  back to it means the shopper came back without paying, and the method is reset
+  to a card so they can try again. A card or a redirect method creates its order
+  here, so the same event says nothing about it and is ignored.
 - **The pay button is borrowed, not owned.** It is disabled while the order is
   being placed and put back exactly as it was when the attempt ends — so a button
   your page holds shut until terms are accepted stays shut, and a button that was
