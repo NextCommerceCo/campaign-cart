@@ -1,10 +1,11 @@
+import { CheckoutPaymentMethod } from '../../types/global';
 export interface CheckoutState {
     step: number;
     isProcessing: boolean;
     errors: Record<string, string>;
     formData: Record<string, any>;
     paymentToken?: string;
-    paymentMethod: 'card_token' | 'paypal' | 'apple_pay' | 'google_pay' | 'credit-card' | 'klarna';
+    paymentMethod: CheckoutPaymentMethod;
     shippingMethod?: {
         id: number;
         name: string;

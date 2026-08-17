@@ -66,6 +66,7 @@ The feature carried on, but something in the markup or the data was not what it 
 | `API 400 error response:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.createOrder` | yes |
 | `Payment error detected:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.createOrder` | yes |
 | `Validation failed` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFormSubmit` | yes |
+| `Failed to track add_payment_info event for the redirect method:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFormSubmit` | yes |
 | `Invalid {fieldName} detected on blur:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.validateContactFieldOnCommit` | yes |
 | `Failed to track add_shipping_info event:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.trackAddShippingInfoOnAddress` | yes |
 | `Failed to track begin_checkout event:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.trackBeginCheckout` | yes |
@@ -74,6 +75,7 @@ The feature carried on, but something in the markup or the data was not what it 
 | `Saved country {savedCountryOverride} not in available countries` | `country-selection.ts › resolveShippingCountry` | — |
 | `Submit button not found in checkout form` | `field-scanning.ts › scanAllFields` | — |
 | `Province {storedProvince} not found in options for country {storedCountry}` | `form-population.ts › populateFormData` | — |
+| `Payment method "{value}" is not one the SDK knows — sending it to the API as it stands` | `method-selection.ts › handlePaymentMethodChange` | — |
 | `Shipping method {methodId} is not one this campaign offers` | `method-selection.ts › handleShippingMethodChange` | yes |
 | `Step number "{rawStep}" is not a whole number above zero, treating this form as step 1` | `multi-step-navigation.ts › readStepNumber` | — |
 | `Step {currentStep} has no rules of its own, validating it as the address step` | `multi-step-navigation.ts › handleStepNavigation` | — |
@@ -123,6 +125,7 @@ Normal progress, useful for confirming the feature ran at all.
 | `Processing express checkout for {paymentMethod} (skipping validation)` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFormSubmit` | — |
 | `Express payment {paymentMethod} requires validation (requireValidation: true)` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFormSubmit` | — |
 | `Processing express checkout for {paymentMethod} (after validation)` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFormSubmit` | — |
+| `Tracked add_payment_info event` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFormSubmit` | yes |
 | `Tracked add_shipping_info event (address complete)` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.trackAddShippingInfoOnAddress` | yes |
 | `Tracked begin_checkout event on checkout form initialization` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.trackBeginCheckout` | — |
 | `Shipping country selection priority check (does not affect currency):` | `country-selection.ts › resolveShippingCountry` | yes |

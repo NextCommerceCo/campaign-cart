@@ -1,6 +1,6 @@
 import { Decimal } from 'decimal.js';
 import { Offer } from './campaign';
-import { Order } from './api';
+import { Order, PaymentMethod } from './api';
 export interface EventMap {
     'cart:updated': CartState;
     'cart:item-added': {
@@ -144,11 +144,11 @@ export interface EventMap {
         error: string;
     };
     'express-checkout:initialized': {
-        method: 'paypal' | 'apple_pay' | 'google_pay';
+        method: 'paypal' | 'apple_pay' | 'google_pay' | 'link';
         element: HTMLElement;
     };
     'express-checkout:error': {
-        method: 'paypal' | 'apple_pay' | 'google_pay';
+        method: 'paypal' | 'apple_pay' | 'google_pay' | 'link';
         error: string;
     };
     'express-checkout:started': {
@@ -498,6 +498,7 @@ export interface ConfigState {
     locationData?: any;
     currencyBehavior?: 'auto' | 'manual';
     currencyFallbackOccurred?: boolean;
+    storageScope?: string;
     locale?: string;
     autoInit: boolean | undefined;
     rateLimit: number | undefined;
@@ -602,10 +603,13 @@ export interface PaymentConfig {
         enabled: boolean;
         methods: {
             paypal?: boolean;
+            apple_pay?: boolean;
+            google_pay?: boolean;
+            link?: boolean;
             applePay?: boolean;
             googlePay?: boolean;
         };
-        methodOrder?: ('paypal' | 'apple_pay' | 'google_pay')[];
+        methodOrder?: ('paypal' | 'apple_pay' | 'google_pay' | 'link')[];
         requireValidation?: boolean;
         requiredFields?: string[];
     };
@@ -650,9 +654,10 @@ export interface ShippingMethod {
     hasDiscounts: boolean;
     discounts?: Discount[];
 }
+export type CheckoutPaymentMethod = PaymentMethod | 'credit-card' | (string & {});
 export interface CheckoutData {
     formData: Record<string, any>;
-    paymentMethod: 'card_token' | 'paypal' | 'apple_pay' | 'google_pay' | 'credit-card' | 'klarna';
+    paymentMethod: CheckoutPaymentMethod;
     isProcessing?: boolean;
     step?: number;
 }

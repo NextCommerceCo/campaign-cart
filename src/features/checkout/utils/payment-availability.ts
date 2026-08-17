@@ -51,10 +51,22 @@ export function isPayPalAvailable(): boolean {
   return true;
 }
 
+/**
+ * Whether Link can be offered here.
+ *
+ * Always: like PayPal it is a redirect, so nothing about the device or browser
+ * decides it — whether the shopper *has* a Link account is settled on Link's own
+ * page, not on ours.
+ */
+export function isLinkAvailable(): boolean {
+  return true;
+}
+
 export function getPaymentCapabilities(): {
   applePay: boolean;
   googlePay: boolean;
   paypal: boolean;
+  link: boolean;
   userAgent: string;
   platform: string;
 } {
@@ -62,6 +74,7 @@ export function getPaymentCapabilities(): {
     applePay: isApplePayAvailable(),
     googlePay: isGooglePayAvailable(),
     paypal: isPayPalAvailable(),
+    link: isLinkAvailable(),
     userAgent: navigator.userAgent,
     platform: navigator.platform || 'unknown',
   };

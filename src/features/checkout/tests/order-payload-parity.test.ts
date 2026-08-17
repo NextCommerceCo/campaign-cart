@@ -132,7 +132,9 @@ function cartItem(overrides: Partial<CartItem> = {}): CartItem {
   };
 }
 
-function cartShippingMethod(overrides: Partial<ShippingMethod> = {}): ShippingMethod {
+function cartShippingMethod(
+  overrides: Partial<ShippingMethod> = {}
+): ShippingMethod {
   return {
     id: 1,
     name: 'Standard',
@@ -250,8 +252,12 @@ describe('shipping_method — both paths resolve it the same way', () => {
 // ─── payment_detail parity ────────────────────────────────────────────────────
 
 const paymentCases: Array<[CheckoutState['paymentMethod'], string]> = [
+  // The store's word for a card and the API's are not the same word.
   ['credit-card', 'card_token'],
   ['card_token', 'card_token'],
+  ['ideal', 'ideal'],
+  // Not a method this build knows: it still reaches the API untouched.
+  ['pix', 'pix'],
   ['paypal', 'paypal'],
   ['apple_pay', 'apple_pay'],
   ['google_pay', 'google_pay'],
@@ -364,7 +370,8 @@ describe('the test order', () => {
     });
 
     const { attribution } = payload;
-    if (!attribution) throw new Error('expected attribution to be set on the test order');
+    if (!attribution)
+      throw new Error('expected attribution to be set on the test order');
     expect(attribution.utm_source).toBe('konami_code');
     expect(attribution.metadata?.test_order).toBe(true);
   });

@@ -16,10 +16,7 @@ import { describe, it, expect } from 'vitest';
 import { getPropertyConfig } from '@/core/base/display-types';
 import { createLogger } from '@/core/logger';
 import type { Order } from '@/types/api';
-import {
-  beautifyPaymentMethod,
-  getDisplayValue,
-} from '../order-display.properties';
+import { getDisplayValue } from '../order-display.properties';
 
 const logger = createLogger('OrderDisplayPropertiesTest');
 
@@ -78,6 +75,21 @@ describe('order.paymentMethod', () => {
     expect(rendered('order.payment_method', ORDER)).toBe('PayPal');
   });
 
+  it('relabels every method, not only the four it once knew', () => {
+    // The table itself is covered in utils/tests/payment-method.test.ts; what is
+    // asserted here is that this display path runs it at all. Before, anything
+    // outside card/PayPal/Apple/Google reached a receipt as its API code.
+    expect(
+      rendered('order.paymentMethod', { ...ORDER, payment_method: 'ideal' })
+    ).toBe('iDEAL');
+    expect(
+      rendered('order.payment_method', {
+        ...ORDER,
+        payment_method: 'sepa_debit',
+      })
+    ).toBe('SEPA Direct Debit');
+  });
+
   it('renders empty rather than "Credit Card" when the API sent none', () => {
     const noMethod = { ...ORDER, payment_method: null };
     expect(rendered('order.paymentMethod', noMethod)).toBe('');
@@ -94,18 +106,5 @@ describe('order.paymentMethod', () => {
   it('renders empty before an order has loaded', () => {
     expect(rendered('order.paymentMethod', null)).toBe('');
     expect(rendered('order.status', null)).toBe('');
-  });
-});
-
-describe('beautifyPaymentMethod', () => {
-  it('labels the methods it knows and passes the API code through otherwise', () => {
-    expect(beautifyPaymentMethod('card_token')).toBe('Credit Card');
-    expect(beautifyPaymentMethod('paypal')).toBe('PayPal');
-    expect(beautifyPaymentMethod('apple_pay')).toBe('Apple Pay');
-    expect(beautifyPaymentMethod('google_pay')).toBe('Google Pay');
-    // Not in the lookup table: the API's own code is shown as-is, which is
-    // honest. It is never substituted for a friendlier but wrong method.
-    expect(beautifyPaymentMethod('klarna')).toBe('klarna');
-    expect(beautifyPaymentMethod('')).toBe('');
   });
 });

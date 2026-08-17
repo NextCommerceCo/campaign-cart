@@ -110,6 +110,47 @@ describe('initializePaymentForms', () => {
     );
   });
 
+  it('reopens a redirect method the shopper picked before reloading', () => {
+    const ctx = createCtx(['credit', 'ideal']);
+    useCheckoutStore.setState({ paymentMethod: 'ideal' });
+
+    initializePaymentForms(ctx);
+
+    expect(formOf(ctx, 'ideal').getAttribute('data-next-payment-state')).toBe(
+      'expanded'
+    );
+    expect(formOf(ctx, 'credit').getAttribute('data-next-payment-state')).toBe(
+      'collapsed'
+    );
+  });
+
+  it('reopens a method the SDK does not know by name', () => {
+    // The page may offer a method this release predates. It is stored under its
+    // own name, so it has to be found again under that name on the way back.
+    const ctx = createCtx(['credit', 'pix']);
+    useCheckoutStore.setState({ paymentMethod: 'pix' });
+
+    initializePaymentForms(ctx);
+
+    expect(formOf(ctx, 'pix').getAttribute('data-next-payment-state')).toBe(
+      'expanded'
+    );
+    expect(formOf(ctx, 'credit').getAttribute('data-next-payment-state')).toBe(
+      'collapsed'
+    );
+  });
+
+  it('opens nothing for a wrapper that names no method at all', () => {
+    const ctx = createCtx(['credit', '']);
+    useCheckoutStore.setState({ paymentMethod: '' as never });
+
+    initializePaymentForms(ctx);
+
+    expect(formOf(ctx, '').getAttribute('data-next-payment-state')).toBe(
+      'collapsed'
+    );
+  });
+
   it('checks the radio of the method it opened', () => {
     const ctx = createCtx(['credit', 'paypal']);
     useCheckoutStore.setState({ paymentMethod: 'paypal' });

@@ -58,7 +58,7 @@ export default defineStore({
       name: 'paymentMethod',
       kind: 'persisted',
       description:
-        'How the shopper is paying. `credit-card` is the default and covers the hosted card fields; `paypal`, `apple_pay`, and `google_pay` are the express buttons; `klarna` is pay-later; `card_token` is the API-side spelling of `credit-card` kept for callers that pass the API value straight through.',
+        'How the shopper is paying. `credit-card` is the default and covers the hosted card fields; `paypal`, `apple_pay`, and `google_pay` are the express buttons; `card_token` is the API-side spelling of `credit-card` kept for callers that pass the API value straight through. The rest — `klarna`, `affirm`, `bancontact`, `giropay`, `ideal`, `link`, `sepa_debit`, `sofort`, `swish`, `twint` — are redirect methods: the checkout collects no payment details for them, and the shopper finishes paying at the provider the created order points to. Any other string is allowed too and is sent to the orders API unchanged, so a page can offer a method this SDK release does not know by name.',
       notes:
         'Express methods are downgraded on the way to storage: if the shopper picked Apple Pay, Google Pay, or PayPal and then reloads, the store comes back as `credit-card`, because an express session does not survive the page. The symptom is a shopper who "loses" their Apple Pay choice on refresh — expected, not a bug.',
     },

@@ -180,7 +180,7 @@ export class OrderManager {
 
   public async createExpressOrder(
     cartItems: any[],
-    paymentMethod: 'paypal' | 'apple_pay' | 'google_pay',
+    paymentMethod: 'paypal' | 'apple_pay' | 'google_pay' | 'link',
     // resetCartCallback?: () => void
   ): Promise<any> {
     this.logger.info('createExpressOrder called with:', {

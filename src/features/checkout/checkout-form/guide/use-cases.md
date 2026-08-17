@@ -75,9 +75,9 @@ next page. With `?debug=true` the console confirms the form read it, logging
 inside the form rather than as an express shortcut above it.
 
 **Why this enhancer:** `data-next-checkout-payment` marks each choice and names
-the method in markup spelling (`credit`, `paypal`, `apple-pay`, `google-pay`,
-`klarna`); the SDK translates those to the API's names, so you never reconcile the
-two vocabularies by hand. Errors from the card fields and from PayPal each get
+the method in markup spelling (`credit`, `paypal`, `apple_pay`,
+`google_pay`, `klarna`, and the redirect methods below); the SDK translates those to the API's
+names, so you never reconcile the two vocabularies by hand. Errors from the card fields and from PayPal each get
 their own container, so a decline appears next to the method that produced it
 rather than at the top of the page.
 
@@ -109,6 +109,52 @@ loading. Enabling the pay button before then produces
 form that refuses to submit for no visible reason. Gate the button on
 `checkout:spreedly-ready`, and disable it while a submit is in flight — repeated
 bursts are what produce `Too many requests. Please wait a moment and try again.`
+
+---
+
+## Offering iDEAL, Bancontact, SEPA, TWINT, Swish, Affirm or Link
+
+> Effort: lightweight
+
+**When:** The campaign sells where a local method is how people expect to pay — a
+Dutch shopper reaching for iDEAL, a Belgian one for Bancontact — or wants a
+pay-over-time option such as Affirm. None of these has an express button, so a
+radio inside the form is the only way to offer them.
+
+**Why this enhancer:** These are **redirect methods**: there is nothing to collect
+on your page, because the shopper approves the payment at the provider. Add the
+radio with the method's name and the form does the rest — it validates and
+captures the shopper's details exactly as it does for a card, creates the order
+with that method on it, and sends the shopper to the payment page the API answers
+with. That capture is the point of the radio flow: an express button takes the
+shopper away before you have their address.
+
+```html
+<div data-next-payment-method="ideal">
+  <label>
+    <input type="radio" name="payment_method" value="ideal" /> iDEAL
+  </label>
+  <!-- Nothing to reveal — the provider collects the payment details -->
+  <div data-next-payment-form></div>
+</div>
+```
+
+The full list is `affirm`, `bancontact`, `giropay`, `ideal`, `klarna`, `link`,
+`sepa_debit`, `sofort`, `swish`, `twint`; see [reference/attributes.md](./reference/attributes.md) for all
+of them.
+
+A name that is not on that list is sent to the API as written rather than
+replaced, so a method the platform gains after this SDK release can be offered
+straight away — as long as the API accepts it, the order is created and the
+shopper is redirected exactly as above.
+
+**Watch out for:** That pass-through means a typo is only caught by the API. The
+console line `Payment method "…" is not one the SDK knows` is the early warning,
+so check for it after adding a method — otherwise the first sign is a shopper
+meeting a refused order. SEPA Direct Debit is the one to check: write
+`sepa_debit`, the name the orders API field takes. The platform's
+payment-methods guide calls the same method `sepa_direct`, and that name is not
+accepted, so a page carrying it is refused rather than translated.
 
 ---
 

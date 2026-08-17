@@ -96,14 +96,31 @@ export default defineFeature({
       description:
         'Marks a payment method choice — a radio or a button — and names the method it selects.',
       values: [
-        { value: 'credit', description: 'Card, entered in the hosted card fields.' },
+        {
+          value: 'credit',
+          description:
+            'Card, entered in the hosted card fields. `card_token`, the orders API name, selects the same method; no other spelling of the card is accepted.',
+        },
         { value: 'paypal', description: 'PayPal.' },
-        { value: 'apple-pay', description: 'Apple Pay.' },
-        { value: 'google-pay', description: 'Google Pay.' },
+        { value: 'apple_pay', description: 'Apple Pay.' },
+        { value: 'google_pay', description: 'Google Pay.' },
         { value: 'klarna', description: 'Klarna.' },
+        { value: 'affirm', description: 'Affirm.' },
+        { value: 'bancontact', description: 'Bancontact.' },
+        { value: 'ideal', description: 'iDEAL.' },
+        { value: 'link', description: 'Link.' },
+        { value: 'giropay', description: 'Giropay.' },
+        {
+          value: 'sepa_debit',
+          description:
+            'SEPA Direct Debit, under the one name the orders API takes. The platform payment-methods guide calls the same method `sepa_direct`; that name is not accepted.',
+        },
+        { value: 'sofort', description: 'Sofort.' },
+        { value: 'swish', description: 'Swish.' },
+        { value: 'twint', description: 'TWINT.' },
       ],
       notes:
-        'These are the markup spellings; the API names differ (`credit` becomes `card_token`). Use the values above in HTML and let the SDK translate.',
+        'Written with underscores, the same as everywhere else the SDK names a payment method. `-` and `_` are interchangeable and case is ignored, so `apple_pay`, `apple-pay` and `APPLE_PAY` are one value — but keep to underscores in new markup so a page reads the same as the docs. The API name still differs for a card (`credit` becomes `card_token`); the SDK translates that. **A value that is not on this list still works if the API accepts it** — it is sent to the orders API exactly as written, so a method added to the platform after this SDK release can be offered without waiting for an upgrade. `Payment method "…" is not one the SDK knows` in the console is a heads-up rather than a failure; if it was a typo, the API refuses the order and names the method.',
     },
 
     {
@@ -147,9 +164,10 @@ export default defineFeature({
       name: 'data-next-payment-method',
       description:
         'Wraps one payment choice inside the form, and names the method it offers. The feature looks for a radio input and a `[data-next-payment-form]` **inside** this wrapper, so a payment form that is not nested in one is never revealed or collapsed.',
-      values: '`credit` / `paypal` / `apple-pay` / `google-pay` / `klarna`',
+      values:
+        '`credit` / `paypal` / `apple_pay` / `google_pay` / `klarna` / `affirm` / `bancontact` / `giropay` / `ideal` / `link` / `sepa_debit` / `sofort` / `swish` / `twint`',
       notes:
-        'These markup spellings differ from the names the store and the API use (`credit` maps to `credit-card` and `card_token`). Use the values above in HTML and let the SDK translate.',
+        'Underscores, `-` accepted, case ignored — `apple_pay` and `apple-pay` are one value. The card is the only one whose name changes downstream: `credit` here is `credit-card` in the checkout store and `card_token` on the order, and the SDK translates both hops. Everything after `klarna` is a **redirect method**: it has no fields to reveal, so its `[data-next-payment-form]` can be empty — the shopper is sent to the payment provider to pay once the order exists.',
     },
     {
       name: 'data-next-payment-form',
@@ -399,9 +417,11 @@ The order of events is the fastest way to see where a checkout stopped:
 declined order alike.
 
 **Nothing here announces that the order was created**, deliberately. Creating an
-order is not completing one: a card payment that needs 3-D Secure, and every express
-method, leave this page with the money still unmoved and a
-\`payment_complete_url\` to send the shopper to. So purchase tracking hangs on
+order is not completing one: a card payment that needs 3-D Secure, every express
+method, and every redirect method (iDEAL, Bancontact, SEPA, TWINT, Swish, Affirm,
+Link, Klarna) leave this page with the money still unmoved and a
+\`payment_complete_url\` to send the shopper to — which the SDK always follows in
+preference to any success URL of your own. So purchase tracking hangs on
 \`order:completed\`, which the order store emits on the page the shopper lands on
 next, for an order fetched back from the API — and which is where the SDK's own
 \`dl_purchase\` comes from. Do not use \`checkout:started\` either: it fires before

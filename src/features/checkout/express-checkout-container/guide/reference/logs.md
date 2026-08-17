@@ -41,15 +41,18 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 | `PayPal not available on this device` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.updateExpressCheckoutButtons` | — |
 | `Apple Pay not available on this device/browser` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.updateExpressCheckoutButtons` | — |
 | `Google Pay not available on this device/browser` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.updateExpressCheckoutButtons` | — |
+| `Link not available on this device/browser` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.updateExpressCheckoutButtons` | — |
 | `Express checkout buttons updated from campaign data` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.updateExpressCheckoutButtons` | yes |
 | `PayPal enabled in config but not available on device` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.updateExpressCheckoutButtons` | — |
 | `Apple Pay enabled in config but not available on device/browser` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.updateExpressCheckoutButtons` | — |
 | `Google Pay enabled in config but not available on device/browser` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.updateExpressCheckoutButtons` | — |
+| `Link enabled in config but not available on device/browser` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.updateExpressCheckoutButtons` | — |
 | `Express checkout buttons updated from config` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.updateExpressCheckoutButtons` | yes |
 | `Express checkout container hidden - no methods enabled` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.hideContainer` | — |
 | `Express checkout container shown` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.showContainer` | — |
 | `PayPal express checkout button created` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.createPayPalButton` | — |
 | `Apple Pay express checkout button created` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.createApplePayButton` | — |
 | `Google Pay express checkout button created` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.createGooglePayButton` | — |
+| `Link express checkout button created` | `express-checkout-container.enhancer.ts › ExpressCheckoutContainerEnhancer.createLinkButton` | — |
 
 The **Extra context** column says whether the call passes a second argument — an object or an error logged alongside the message. Expand that entry in the console to see it; the message alone will not tell you which element or package was involved.

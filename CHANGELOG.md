@@ -1,5 +1,64 @@
 # Changelog
 
+## [0.4.35] — 2026-08-14 — Local Payment Methods, and Link as an Express Button
+
+### Fixed
+
+- **Local payment methods work on the checkout form.**
+
+  Choosing one of the methods marked new below used to be read as a card payment, so the order was refused and the shopper never reached the payment page. Each is a radio option now, with nothing to fill in on your page: the shopper is sent to the provider to pay once the order exists.
+
+  Every method the SDK supports, and the value to give `data-next-payment-method`:
+
+  | Method | Value | Express button |
+  |---|---|---|
+  | Card | `credit` | no |
+  | PayPal | `paypal` | yes |
+  | Apple Pay | `apple_pay` | yes |
+  | Google Pay | `google_pay` | yes |
+  | Klarna | `klarna` | no |
+  | Link **(new)** | `link` | yes **(new)** |
+  | iDEAL **(new)** | `ideal` | no |
+  | Bancontact **(new)** | `bancontact` | no |
+  | SEPA Direct Debit **(new)** | `sepa_debit` | no |
+  | TWINT **(new)** | `twint` | no |
+  | Swish **(new)** | `swish` | no |
+  | Affirm **(new)** | `affirm` | no |
+  | Giropay **(new)** | `giropay` | no |
+  | Sofort **(new)** | `sofort` | no |
+
+  The card also answers to `card_token`, and it is the one method whose name changes on the way out: the order carries `card_token`. Every other method goes on the order under the same name you write. Apple Pay's button is left out on Android. A method the SDK does not list is sent to the API anyway, so this is what it names, not the limit of what it can charge.
+
+  **SEPA Direct Debit is `sepa_debit`, and only that.** The platform's payment-methods guide calls the same method `sepa_direct`; the orders API does not take that name, so neither does the SDK. A page carrying it is refused rather than quietly working under a second identifier. No page could pay by SEPA before this release, so there is nothing to migrate: write `sepa_debit`. ([#74](https://github.com/NextCommerceCo/campaign-cart/issues/74))
+
+- **Receipts name the payment method.** A Klarna order printed `klarna` and now prints `Klarna`. Every method an order can carry has a name.
+
+- **The payment step reaches your reports for these methods.** It is recorded when the form is submitted, for methods that collect no payment details on the page. Klarna was the only affected method before this release.
+
+### New
+
+- **Link as an express button**, beside PayPal, Apple Pay and Google Pay. Link can also be a radio; a page carrying both shows it twice.
+
+- **A method the SDK does not recognise is sent to the orders API.** A payment method the platform adds can be offered before an SDK release names it.
+
+- **For TypeScript:** `PaymentMethod` and `CheckoutPaymentMethod` are now exported. `PaymentMethod` gained `swish` and `saved_card`; nothing was removed from it.
+
+### Changed
+
+- **Method names in markup use underscores:** `apple_pay`, not `apple-pay`. The older spellings and any casing still work.
+
+- **Express method config accepts the same spellings:** `apple_pay`, `google_pay` and `link`, alongside `applePay` and `googlePay`.
+
+### Before you upgrade
+
+**Write `credit` for the card, not `card` or `credit_card`.** Those two reached the card form on earlier releases, because any unrecognised name did. They now go to the orders API and come back refused, with `Payment method "…" is not one the SDK knows` in the console.
+
+**Receipt text changed.** `order.paymentMethod` prints `Klarna` where it printed `klarna`. If your own code or a tag reads that text, read the order's `payment_method` code instead.
+
+**The payment step appears in reports where it did not before.** Campaigns offering Klarna or one of the new methods now record it, so that step's numbers are not comparable across this release.
+
+---
+
 ## [0.4.34] — 2026-08-11 — One Website, Many Campaigns, Separate Carts
 
 ### Fixed

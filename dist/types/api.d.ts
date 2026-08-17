@@ -229,7 +229,7 @@ export interface Voucher {
     description?: string;
     name?: string;
 }
-export type PaymentMethod = 'apple_pay' | 'card_token' | 'paypal' | 'klarna' | 'ideal' | 'bancontact' | 'giropay' | 'google_pay' | 'sofort' | 'sepa_debit' | 'twint' | 'link' | 'affirm' | 'external';
+export type PaymentMethod = 'apple_pay' | 'card_token' | 'saved_card' | 'paypal' | 'klarna' | 'ideal' | 'bancontact' | 'giropay' | 'google_pay' | 'sofort' | 'sepa_debit' | 'swish' | 'twint' | 'link' | 'affirm' | 'external';
 export interface CartBase {
     address?: AddressCart;
     attribution?: Attribution;
@@ -324,7 +324,7 @@ export interface Payment {
     external_payment_method?: string;
     payment_gateway?: number;
     payment_gateway_group?: number;
-    payment_method: PaymentMethod;
+    payment_method: PaymentMethod | (string & {});
 }
 export interface AddUpsellLine {
     lines: UpsellLineItem[];

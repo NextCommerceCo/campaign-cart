@@ -38,8 +38,12 @@ function radioEvent(value: string): Event {
 
 function paymentContext(): PaymentMethodContext & {
   ui: { updatePaymentFormVisibility: ReturnType<typeof vi.fn> };
+  logger: ReturnType<typeof createMockLogger>;
 } {
-  return { ui: { updatePaymentFormVisibility: vi.fn() } } as never;
+  return {
+    ui: { updatePaymentFormVisibility: vi.fn() },
+    logger: createMockLogger(),
+  } as never;
 }
 
 function shippingContext(): ShippingMethodContext & {
@@ -97,10 +101,103 @@ describe('handlePaymentMethodChange', () => {
     );
   });
 
-  it('falls back to the card form for a value it does not recognise', () => {
-    handlePaymentMethodChange(paymentContext(), radioEvent('bitcoin'));
+  it.each([
+    ['ideal', 'ideal'],
+    ['bancontact', 'bancontact'],
+    ['twint', 'twint'],
+    ['swish', 'swish'],
+    ['affirm', 'affirm'],
+    ['link', 'link'],
+    ['sepa_debit', 'sepa_debit'],
+    ['giropay', 'giropay'],
+    ['sofort', 'sofort'],
+  ])(
+    'keeps the redirect method the shopper picked: %s',
+    (radioValue, stored) => {
+      handlePaymentMethodChange(paymentContext(), radioEvent(radioValue));
 
-    expect(useCheckoutStore.getState().paymentMethod).toBe('credit-card');
+      expect(useCheckoutStore.getState().paymentMethod).toBe(stored);
+    }
+  );
+
+  it.each(['apple_pay', 'apple-pay', 'APPLE_PAY', ' Apple-Pay '])(
+    'reads a method the same however the markup spells it: "%s"',
+    value => {
+      handlePaymentMethodChange(paymentContext(), radioEvent(value));
+
+      expect(useCheckoutStore.getState().paymentMethod).toBe('apple_pay');
+    }
+  );
+
+  it.each(['credit', 'card_token', 'CREDIT', ' Card_Token '])(
+    'reads a card under the two names it answers to: "%s"',
+    value => {
+      handlePaymentMethodChange(paymentContext(), radioEvent(value));
+
+      expect(useCheckoutStore.getState().paymentMethod).toBe('credit-card');
+    }
+  );
+
+  it.each(['card', 'credit_card', 'credit-card'])(
+    'does not invent a third name for a card: "%s"',
+    value => {
+      // `credit` is the markup name and `card_token` is the API's. Anything else
+      // is passed through like any unknown method, so a page cannot reach the card
+      // form under a name nothing documents.
+      const ctx = paymentContext();
+
+      handlePaymentMethodChange(ctx, radioEvent(value));
+
+      expect(useCheckoutStore.getState().paymentMethod).not.toBe('credit-card');
+      expect(ctx.logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining(value)
+      );
+    }
+  );
+
+  it('keeps a method it does not know, so the API is the one that decides', () => {
+    // A store can be given a new way to pay before this SDK release knows its
+    // name. Substituting a card would end the checkout at "Payment token is
+    // required" without ever asking the API — issue #74's failure exactly.
+    const ctx = paymentContext();
+
+    handlePaymentMethodChange(ctx, radioEvent('Pix'));
+
+    expect(useCheckoutStore.getState().paymentMethod).toBe('pix');
+    expect(ctx.logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Pix')
+    );
+  });
+
+  it('selects nothing for a radio with no value', () => {
+    useCheckoutStore.setState({ paymentMethod: 'ideal' });
+
+    handlePaymentMethodChange(paymentContext(), radioEvent(''));
+
+    expect(useCheckoutStore.getState().paymentMethod).toBe('ideal');
+  });
+
+  it('does not accept the payment-methods guide’s name for SEPA', () => {
+    // `sepa_direct` is the guide's name and the orders API field does not take
+    // it. No shipped page could pay by SEPA before this, so there was nothing to
+    // keep working under a second name: it is passed through and refused rather
+    // than translated (issue #74 asked for the one identifier).
+    const ctx = paymentContext();
+
+    handlePaymentMethodChange(ctx, radioEvent('sepa_direct'));
+
+    expect(useCheckoutStore.getState().paymentMethod).toBe('sepa_direct');
+    expect(ctx.logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('sepa_direct')
+    );
+  });
+
+  it('does not warn about a method it does offer', () => {
+    const ctx = paymentContext();
+
+    handlePaymentMethodChange(ctx, radioEvent('ideal'));
+
+    expect(ctx.logger.warn).not.toHaveBeenCalled();
   });
 
   it('hides the errors belonging to the method being left', () => {

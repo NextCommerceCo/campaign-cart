@@ -15,9 +15,11 @@
  * - {@link updatePaymentFormVisibility} runs when the shopper picks a different method and
  *   **animates** the swap. It reads the radio values, not the store.
  *
- * That the two identify a method differently — store name vs. radio value — is why the
- * mapping table exists in one and not the other. The markup spellings (`credit`,
- * `apple-pay`) are not the names the store and API use (`credit-card`, `apple_pay`).
+ * The markup spellings (`credit`, `apple-pay`) are not the names the store and API use
+ * (`credit-card`, `apple_pay`), so the startup pass translates both sides through
+ * `toCheckoutPaymentMethod` — the same table the radio handler reads — rather than
+ * comparing the two vocabularies directly. The update pass needs no translation at all: it
+ * is matching one radio value against another.
  *
  * Extracted verbatim from `ui-service.ts`. It needs three things from the service
  * ({@link PaymentFormDisplayContext}) and calls none of its methods.
@@ -26,6 +28,7 @@
 import type { Logger } from '@/core/logger';
 import { useCheckoutStore } from '@/state/checkout';
 
+import { toCheckoutPaymentMethod } from '../../constants/field-mappings';
 import type { ErrorDisplayManager } from '../../utils/error-display-utils';
 
 /** What this module needs from `UIService`. */
@@ -73,21 +76,12 @@ export function initializePaymentForms(ctx: PaymentFormDisplayContext): void {
         return;
       }
 
-      // Map store payment method to radio value
-      // Store uses: 'credit-card', 'paypal', 'apple_pay', 'google_pay', 'klarna'
-      // Radio uses: 'credit', 'paypal', 'apple-pay', 'google-pay', 'klarna'
-      const paymentMethodMap: Record<string, string[]> = {
-        credit: ['credit-card', 'card_token'],
-        paypal: ['paypal'],
-        'apple-pay': ['apple_pay'],
-        'google-pay': ['google_pay'],
-        klarna: ['klarna'],
-      };
-
-      // Check if this payment method should be selected based on store
+      // The markup's word for this method and the store's are read through the
+      // same table, so `credit` and `card_token` land on one value and match.
+      const offeredMethod = toCheckoutPaymentMethod(methodType);
       const shouldBeSelected =
-        methodType &&
-        paymentMethodMap[methodType]?.includes(storePaymentMethod || '');
+        !!offeredMethod &&
+        offeredMethod === toCheckoutPaymentMethod(storePaymentMethod);
 
       // Sync radio button state with store
       radio.checked = !!shouldBeSelected;

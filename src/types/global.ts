@@ -5,7 +5,7 @@
 import type { Decimal } from 'decimal.js';
 import type { Offer } from './campaign';
 
-import type { Order } from './api';
+import type { Order, PaymentMethod } from './api';
 
 /**
  * The complete catalog of events the SDK emits, mapped to their payload shape.
@@ -526,13 +526,13 @@ export interface EventMap {
 
   // Express Checkout Events
   /**
-   * An express payment button — PayPal, Apple Pay, or Google Pay — rendered and
-   * is ready to click. Fires once per available method, so a page offering all
-   * three sees it three times.
+   * An express payment button (PayPal, Apple Pay, Google Pay or Link) rendered
+   * and is ready to click. Fires once per available method, so a page offering
+   * all four sees it four times.
    */
   'express-checkout:initialized': {
     /** Which express method became available. */
-    method: 'paypal' | 'apple_pay' | 'google_pay';
+    method: 'paypal' | 'apple_pay' | 'google_pay' | 'link';
     /** The container the button was rendered into. */
     element: HTMLElement;
   };
@@ -543,7 +543,7 @@ export interface EventMap {
    * `error:occurred`.
    */
   'express-checkout:error': {
-    method: 'paypal' | 'apple_pay' | 'google_pay';
+    method: 'paypal' | 'apple_pay' | 'google_pay' | 'link';
     error: string;
   };
   /**
@@ -1716,12 +1716,25 @@ export interface PaymentConfig {
 
   expressCheckout?: {
     enabled: boolean;
+    /**
+     * Which express buttons to offer, when the campaign does not say.
+     *
+     * Write the method names with underscores (`apple_pay`, `google_pay`), the
+     * same as `methodOrder` beside them and as every other place the SDK names a
+     * payment method. `applePay`/`googlePay` are the older camelCase spellings and
+     * still work; a method turned on under either key is turned on.
+     */
     methods: {
       paypal?: boolean;
+      apple_pay?: boolean;
+      google_pay?: boolean;
+      link?: boolean;
+      /** @deprecated Write `apple_pay`. Still read, so existing config keeps working. */
       applePay?: boolean;
+      /** @deprecated Write `google_pay`. Still read, so existing config keeps working. */
       googlePay?: boolean;
     };
-    methodOrder?: ('paypal' | 'apple_pay' | 'google_pay')[]; // Order in which payment methods should be displayed
+    methodOrder?: ('paypal' | 'apple_pay' | 'google_pay' | 'link')[]; // Order in which payment methods should be displayed
     requireValidation?: boolean; // If true, express payment methods in combo form will require form validation
     requiredFields?: string[]; // List of fields required for express checkout (e.g., ['email', 'fname', 'lname'])
   };
@@ -1841,6 +1854,29 @@ export interface ShippingMethod {
 }
 
 /**
+ * The method the shopper chose: every {@link PaymentMethod} the orders API takes,
+ * plus `credit-card`, plus any other name the page offered.
+ *
+ * **The names are the API's own**, so a listener reading this and a request going
+ * out say the same thing. `credit-card` is the single exception: it is what this
+ * store has always held for a card, and it becomes `card_token` on the order.
+ * A page writes `credit` for that method, which is the markup's word for it.
+ *
+ * The open end is deliberate. A store can be given a new way to pay before this
+ * SDK release knows about it, so a name that is not in `PaymentMethod` is **passed
+ * through to the orders API** rather than replaced with a card. The API decides
+ * whether it can charge that way.
+ *
+ * Every method except a directly-charged card sends the shopper away to pay, so
+ * the created order comes back carrying a `payment_complete_url` to finish at.
+ * See {@link Order.payment_complete_url}.
+ */
+export type CheckoutPaymentMethod =
+  | PaymentMethod
+  | 'credit-card'
+  | (string & {});
+
+/**
  * The state of the checkout in progress — the collected form values, chosen
  * payment method, and which step the shopper is on. Delivered with the
  * `checkout:started` event.
@@ -1849,13 +1885,7 @@ export interface CheckoutData {
   /** Collected checkout form field values, keyed by field name. */
   formData: Record<string, any>;
   /** The payment method the shopper selected. */
-  paymentMethod:
-    | 'card_token'
-    | 'paypal'
-    | 'apple_pay'
-    | 'google_pay'
-    | 'credit-card'
-    | 'klarna';
+  paymentMethod: CheckoutPaymentMethod;
   /** `true` while the order is being submitted. */
   isProcessing?: boolean;
   /** Current step index in a multi-step checkout. */

@@ -13,7 +13,7 @@ Domain terms used across the `express-checkout-container` guide.
 The wallets the **campaign** allows, delivered with the campaign data as
 `available_express_payment_methods`. It is a permission list, not a promise: the
 feature still checks each one against the visitor's device before rendering a
-button, so a campaign that allows all three can still show none.
+button, so a campaign that allows all of them can still show none.
 
 ---
 

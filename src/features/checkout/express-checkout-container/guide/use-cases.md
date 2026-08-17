@@ -70,7 +70,7 @@ around the buttons. On a device that supports none of the methods, that furnitur
 would sit above nothing.
 
 **Why this enhancer:** `express-checkout:initialized` fires **once per available
-method**, so a page offering all three sees it three times. Use the first one to
+method**, so a page offering all four sees it four times. Use the first one to
 reveal your own surrounding furniture rather than guessing from the device.
 
 ```js

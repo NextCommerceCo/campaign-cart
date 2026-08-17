@@ -13,6 +13,7 @@ import {
 import { getPropertyMapping } from '@/core/base/display-types';
 import type { Logger } from '@/core/logger';
 import type { Order } from '@/types/api';
+import { paymentMethodLabel } from '@/utils/payment-method';
 import {
   getOrderLinesProperty,
   getOrderAttributionProperty,
@@ -62,13 +63,13 @@ export function getDisplayValue(
         mappedPath.substring(6)
       );
       if (value !== undefined) {
-        // Special handling for payment_method - beautify the name
+        // Payment method is the one value relabelled rather than shown raw
         if (
           mappedPath === 'order.payment_method' ||
           propertyStr === 'payment_method' ||
           propertyStr === 'paymentMethod'
         ) {
-          return beautifyPaymentMethod(value);
+          return paymentMethodLabel(value);
         }
         return value;
       }
@@ -110,7 +111,7 @@ export function getDisplayValue(
 
     case 'payment_method':
     case 'paymentMethod':
-      return beautifyPaymentMethod(order.payment_method || '');
+      return paymentMethodLabel(order.payment_method || '');
 
     // User/Customer properties
     case 'user':
@@ -218,25 +219,6 @@ export function formatAddress(address: any): string {
     .map(part => String(part));
 
   return parts.join(', ');
-}
-
-export function beautifyPaymentMethod(method: string): string {
-  if (!method) return '';
-
-  // Mapping of raw payment method values to beautified names
-  const paymentMethodMap: Record<string, string> = {
-    card_token: 'Credit Card',
-    'credit card': 'Credit Card',
-    apple_pay: 'Apple Pay',
-    'apple pay': 'Apple Pay',
-    google_pay: 'Google Pay',
-    'google pay': 'Google Pay',
-    paypal: 'PayPal',
-    Paypal: 'PayPal',
-  };
-
-  // Return beautified name or original if not in map
-  return paymentMethodMap[method] || method;
 }
 
 export function isComplexOrderProperty(property: string): boolean {
