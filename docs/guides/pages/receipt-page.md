@@ -14,7 +14,7 @@ The head only needs the page type:
 <meta name="next-page-type" content="receipt">
 ```
 
-## Loading state first, content after
+## Loading states
 
 The order takes a moment to load, so hide order-bearing sections until the SDK has real values. The SDK's gate is `data-next-await`: the SDK adds the `next-display-ready` class to `<html>` when its DOM scan finishes, and the shipped `next-core.css` keeps anything under `data-next-await` invisible until then:
 
@@ -29,7 +29,7 @@ The order takes a moment to load, so hide order-bearing sections until the SDK h
 </div>
 ```
 
-The apollo template goes further and shows a full placeholder skeleton while the order loads, swapping it for the real content. That pattern lives in the template, not the SDK: its `data-next-skeleton` / `data-next-content` markers are the template's own, styled by its CSS (`_includes/receipt-skeleton.html`), so copy the include if you want it, but don't expect those two attributes to do anything on their own.
+The apollo template goes further and shows a full placeholder skeleton while the order loads, swapping it for the real content. That pattern lives in the template, not the SDK: its `data-next-skeleton` / `data-next-content` markers are the template's own, styled by its CSS (`_includes/receipt-skeleton.html`), so copy the include if you want it, but don't expect those markers to do anything on their own.
 
 ## Order fields
 
@@ -74,10 +74,7 @@ Totals are plain bindings, with the tax row shown only when the order has tax:
 <div data-next-show="order.hasTax">
   <div data-next-display="order.tax"></div>
 </div>
-<div>
-  <span data-next-display="order.currency"></span
-  ><span data-next-display="order.total"></span>
-</div>
+<div data-next-display="order.total"></div>
 ```
 
 ## Cautions
