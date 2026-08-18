@@ -49,7 +49,6 @@ const WORD_CASE: Record<string, string> = {
   api: 'API',
   cta: 'CTA',
   dom: 'DOM',
-  fomo: 'FOMO',
   ga4: 'GA4',
   html: 'HTML',
   id: 'ID',

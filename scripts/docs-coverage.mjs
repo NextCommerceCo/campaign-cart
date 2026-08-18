@@ -294,7 +294,7 @@ function scanFeatures() {
         // When to reach for this feature, and when not to. Hand-written: recognising
         // the right tool for a product situation is not derivable from the code.
         hasUseCases: guideDirs.some(d => existsSync(join(d, 'guide/use-cases.md'))),
-        // A feature turned on from JavaScript (`next.fomo({…})`) has no markup to
+        // A feature turned on from JavaScript (`next.exitIntent({…})`) has no markup to
         // show, so a markup example is not a gap for it — it is not applicable.
         needsExample: guideDirs.every(d => {
           const manifest = join(d, `${base}.manifest.ts`);

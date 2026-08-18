@@ -338,14 +338,6 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
   },
   {
     level: 'error',
-    message: 'Failed to start FOMO popup:',
-    meaning:
-      'The FOMO popup did not start, so no social-proof messages appear. The error is re-thrown to your caller.',
-    action:
-      'Read the attached error and check the configuration you passed — an empty or malformed customer list is the usual cause.',
-  },
-  {
-    level: 'error',
     message: 'Failed to add upsell(s) via SDK:',
     meaning:
       'A post-purchase upsell could not be added. The error is re-thrown, so the promise from `next.addUpsell()` rejects.',

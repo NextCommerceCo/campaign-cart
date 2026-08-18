@@ -237,11 +237,6 @@ export interface EventMap {
         action: string;
         couponCode?: string;
     };
-    'fomo:shown': {
-        customer: string;
-        product: string;
-        image: string;
-    };
     'sdk:url-parameters-processed': {};
     'offer:selected': {
         offerId: number;

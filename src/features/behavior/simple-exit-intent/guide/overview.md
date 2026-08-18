@@ -15,7 +15,7 @@ for the tab bar on desktop, a fast scroll up on mobile.
 
 ## Concept
 
-Like the FOMO popup, this has **no activating attribute**: it is started with
+This has **no activating attribute**: it is started with
 `next.exitIntent({…})`, and the popup's contents are HTML you pass in.
 
 The interesting design problem is that "leaving" is a guess. On desktop it is a

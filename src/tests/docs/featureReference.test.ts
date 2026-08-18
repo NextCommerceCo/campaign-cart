@@ -531,9 +531,8 @@ describe('feature reference docs', () => {
    *
    * They are banned for being dismissive — "just add the attribute" tells a reader who
    * is stuck that their problem is trivial. A plain word search is useless here: the
-   * feature `simple-exit-intent` is named after one, and `fomo-popup` legitimately
-   * quotes "Sarah from Denver just bought this". So code spans, fenced blocks, and the
-   * feature's own id are stripped first, and `just` is only flagged in the
+   * feature `simple-exit-intent` is named after one. So code spans, fenced blocks, and
+   * the feature's own id are stripped first, and `just` is only flagged in the
    * instructional form ("just add", "just set"), not in "not just the total".
    */
   it('avoids the forbidden dismissive words', () => {

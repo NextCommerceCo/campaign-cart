@@ -9,7 +9,7 @@ category: "Attributes"
 <!-- Generated from the feature manifests. Do not edit by hand:
      edit the feature's *.manifest.ts, then run `npm run docs:reference`. -->
 
-Every attribute the SDK reads or writes — 268 of them across 29 features — with the feature that owns each one. Follow a feature link for what its attributes mean, their defaults, and their traps.
+Every attribute the SDK reads or writes — 268 of them across 28 features — with the feature that owns each one. Follow a feature link for what its attributes mean, their defaults, and their traps.
 
 Attributes marked **sets** are written *by* the SDK for you to read from CSS or tests; you do not set them yourself.
 
@@ -54,7 +54,6 @@ Classes the SDK toggles for you. Style these rather than tracking the same state
 | `next-disabled` | [coupon](../src/features/cart/coupon/guide/reference/attributes.md) |
 | `next-error` | [checkout-form](../src/features/checkout/checkout-form/guide/reference/attributes.md) |
 | `next-error-field` | [checkout-form](../src/features/checkout/checkout-form/guide/reference/attributes.md) |
-| `next-fomo-show` | [fomo-popup](../src/features/behavior/fomo-popup/guide/reference/attributes.md) |
 | `next-free-shipping` | [cart-summary](../src/features/cart/cart-summary/guide/reference/attributes.md) |
 | `next-has-discounts` | [cart-summary](../src/features/cart/cart-summary/guide/reference/attributes.md) |
 | `next-has-shipping` | [cart-summary](../src/features/cart/cart-summary/guide/reference/attributes.md) |
@@ -83,14 +82,6 @@ Classes the SDK toggles for you. Style these rather than tracking the same state
 | `removing` | [remove-item](../src/features/cart/remove-item/guide/reference/attributes.md) |
 
 ## behavior
-
-### [fomo-popup](../src/features/behavior/fomo-popup/guide/overview.md) *(optional)*
-
-Rotates small social-proof notifications — "Sarah from Denver just bought this" — to show the page has traffic.
-
-Turned on by `next.fomo({ … })`.
-
-No attributes — configured entirely from JavaScript.
 
 ### [simple-exit-intent](../src/features/behavior/simple-exit-intent/guide/overview.md) *(optional)*
 

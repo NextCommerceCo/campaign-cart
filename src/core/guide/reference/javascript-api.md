@@ -42,7 +42,7 @@ Details in [the window surface](./window-surface.md).
 | **[Attribution and order metadata](#attribution-and-order-metadata)** | [`next.addMetadata()`](#nextaddmetadata), [`next.setMetadata()`](#nextsetmetadata), [`next.clearMetadata()`](#nextclearmetadata), [`next.getMetadata()`](#nextgetmetadata), [`next.setAttribution()`](#nextsetattribution), [`next.getAttribution()`](#nextgetattribution), [`next.debugAttribution()`](#nextdebugattribution) |
 | **[URL parameters](#url-parameters)** | [`next.setParam()`](#nextsetparam), [`next.setParams()`](#nextsetparams), [`next.getParam()`](#nextgetparam), [`next.getAllParams()`](#nextgetallparams), [`next.hasParam()`](#nexthasparam), [`next.clearParam()`](#nextclearparam), [`next.clearAllParams()`](#nextclearallparams), [`next.mergeParams()`](#nextmergeparams) |
 | **[Post-purchase upsells](#post-purchase-upsells)** | [`next.addUpsell()`](#nextaddupsell), [`next.canAddUpsells()`](#nextcanaddupsells), [`next.getCompletedUpsells()`](#nextgetcompletedupsells), [`next.isUpsellAlreadyAdded()`](#nextisupsellalreadyadded) |
-| **[On-page popups](#on-page-popups)** | [`next.exitIntent()`](#nextexitintent), [`next.disableExitIntent()`](#nextdisableexitintent), [`next.fomo()`](#nextfomo), [`next.stopFomo()`](#nextstopfomo) |
+| **[On-page popups](#on-page-popups)** | [`next.exitIntent()`](#nextexitintent), [`next.disableExitIntent()`](#nextdisableexitintent) |
 | **[Formatting, version, and checks](#formatting-version-and-checks)** | [`next.getVersion()`](#nextgetversion), [`next.formatPrice()`](#nextformatprice), [`next.validateCheckout()`](#nextvalidatecheckout) |
 
 ## Getting hold of the SDK
@@ -1119,45 +1119,6 @@ next.disableExitIntent();
 > ⚠️ Does nothing if `exitIntent()` was never called — there is nothing to disable, and no warning either.
 
 <sub>Source: `src/core/next-commerce/next-commerce.ts › NextCommerce.disableExitIntent`</sub>
-
-### `next.fomo()`
-
-```ts
-fomo(config?: FomoConfig): Promise<void>
-```
-
-Starts the rotating social-proof popup — "someone in Denver bought this a moment ago" — from a list you supply.
-
-```ts
-await next.fomo({
-  items: [
-    { text: 'bought the 3-pack', image: 'https://cdn.example.com/p3.png' },
-  ],
-  customers: { 'United States': ['Ava from Denver', 'Noah from Austin'] },
-  displayDuration: 5000,
-  delayBetween: 12000,
-});
-```
-
-> ⚠️ Called with no argument it starts with its built-in defaults rather than doing nothing. Full options: [fomo-popup guide](../../../features/behavior/fomo-popup/guide/overview.md).
-
-<sub>Source: `src/core/next-commerce/next-commerce.ts › NextCommerce.fomo`</sub>
-
-### `next.stopFomo()`
-
-```ts
-stopFomo(): void
-```
-
-Stops the social-proof popup rotation.
-
-```ts
-next.stopFomo();
-```
-
-> ⚠️ A no-op when `fomo()` was never called.
-
-<sub>Source: `src/core/next-commerce/next-commerce.ts › NextCommerce.stopFomo`</sub>
 
 ## Formatting, version, and checks
 
