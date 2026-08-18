@@ -1,33 +1,56 @@
 # Changelog
 
-## [0.4.37] — 2026-08-18 — The FOMO Popup Leaves the SDK
+## [0.4.37] — 2026-08-18 — The FOMO Popup Leaves the SDK, and getCartData Lists Every Cart Line
 
-One feature removed, nothing else changed. If your pages never called `next.fomo()`, this release changes nothing for them.
+One feature removed and one long-standing bug fixed. The removal only concerns a page that called `next.fomo()`. The fix concerns any code that reads `next.getCartData()`, and it deletes the empty `enrichedItems` field from the cart state along the way. Before you upgrade covers both.
 
 ### Removed
 
-- **The social-proof popup is no longer part of the SDK.**
+- **The FOMO features are removed from the SDK.** ([#560](https://github.com/NextCommerceCo/campaigns-app/issues/560))
 
-  It rotated small notifications — "Sarah from Denver just bought this" — built from the lists of names and products passed to `next.fomo()`, not from orders placed on the campaign. It moves out to a library of its own, hosted in the Sellmore organisation, so the cart SDK stays to the cart, the checkout and the order. ([#560](https://github.com/NextCommerceCo/campaigns-app/issues/560))
-
-  Four things go with it:
+  Four things go with them:
 
   | Removed | Description |
   |---|---|
-  | `next.fomo(config)` | Started the rotation and configured it |
-  | `next.stopFomo()` | Stopped the rotation |
-  | `fomo:shown` | Fired once per notification shown |
-  | `next-fomo-show` | Class placed on the notification while on screen |
+  | `next.fomo(config)` | Started and configured the popup |
+  | `next.stopFomo()` | Stopped it |
+  | `fomo:shown` | Fired once per popup shown |
+  | `next-fomo-show` | Class on the popup while on screen |
 
   The exit-intent popup is untouched. `next.exitIntent()` and `next.disableExitIntent()` behave exactly as before, and exit intent is now the only entry under On-page popups in the JavaScript API reference.
 
+### Fixed
+
+- **`next.getCartData()` returns the cart's lines.**
+
+  `cartLines` came back as an empty array no matter how full the cart was. The totals, campaign data and coupon codes beside it stayed correct, so it read as an empty cart rather than as a bug: page code and QA checks that gate on `cartData.cartLines.length` took the empty-cart path on a cart that was fine. ([#36](https://github.com/NextCommerceCo/campaign-cart/issues/36))
+
+  The lines are now built from the cart's own items on each call, one line per item, so a line is in the snapshot the moment it is added.
+
+  ```js
+  const { cartLines } = next.getCartData();
+  cartLines.forEach(line =>
+    console.log(line.packageId, line.quantity, line.price.excl_tax.formatted)
+  );
+  ```
+
+  A line carries its package, quantity and product details, plus whether it came from an upsell (`is_upsell`) and whether it repeats on a subscription (`is_recurring`). Its prices come as `excl_tax`, `incl_tax`, `original` and `savings`, each one a raw `value` and a `formatted` string. Two things to expect from those amounts:
+
+  **They lag the API by a moment.** Until the calculate call answers, roughly 150 ms after an add, a line carries the campaign's prices, with no offer or coupon discount in them. Call `next.getCartData()` again inside a `cart:updated` handler when a discount has to be reflected; the event itself delivers the cart state, not this snapshot.
+
+  **They carry no tax.** The calculate response has no tax figures in it, so `excl_tax` and `incl_tax` hold the same amount. Tax appears on the order, after checkout.
+
 ### Before you upgrade
+
+Three notes for a page that used the FOMO popup, then one for anything reading the cart state.
 
 **Search your pages for `next.fomo(` before taking this release.** The method is gone rather than left as a no-op, so a page that still calls it raises `next.fomo is not a function` at the call.
 
 **A call inside `window.nextReady.push(...)` does not break the page.** The SDK catches what a ready callback throws and logs `[SDKInitializer] Ready callback error:`. The rest of that one callback is skipped, though, so anything set up after the `next.fomo()` line will not run. Move those lines into a callback of their own, or delete the call.
 
 **There is no markup to clean up.** The popup had no `data-next-*` attribute of its own and built its own element, so nothing in your HTML refers to it. Any `next-fomo-show` rule left in a stylesheet is dead and can go whenever it suits you.
+
+**`enrichedItems` is gone from the cart state.** The empty field `cartLines` used to read is no longer on the `cart:updated` payload, nor on the TypeScript `CartState`. A page reading `cart.enrichedItems` now gets `undefined` where it got `[]`, and a TypeScript build naming the field stops compiling. Read `items` for what the shopper chose, or `next.getCartData().cartLines` for priced rows.
 
 ---
 
