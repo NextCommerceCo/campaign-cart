@@ -46,7 +46,6 @@ afterAll(() => {
 function makeState(overrides: Partial<CartState> = {}): CartState {
   return {
     items: [],
-    enrichedItems: [],
     totalQuantity: 0,
     isEmpty: true,
     vouchers: [],

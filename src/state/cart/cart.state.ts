@@ -12,7 +12,6 @@ const logger = createLogger('CartStore');
 
 const initialCartState: CartState = {
   items: [],
-  enrichedItems: [],
   totalQuantity: 0,
   isEmpty: true,
   vouchers: [],
@@ -109,7 +108,6 @@ const cartStoreInstance = create<CartStore>()(
           shippingMethod: state.shippingMethod,
           totalQuantity: state.totalQuantity,
           isEmpty: state.isEmpty,
-          enrichedItems: [],
         }) as unknown as CartStore,
     }
   )

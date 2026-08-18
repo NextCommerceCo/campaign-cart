@@ -84,6 +84,31 @@ describe('NextCommerce — Cart category (next-commerce.cart.ts)', () => {
 
     expect(NextCommerce.getInstance().getCartCount()).toBe(5);
   });
+
+  it('getCartData returns one priced line per cart item (issue #36)', () => {
+    useCartStore.setState({
+      items: [
+        makeItem({
+          id: 1,
+          packageId: 1,
+          quantity: 2,
+          price: 100,
+          total: '180.00',
+        }),
+        makeItem({ id: 2, packageId: 4, quantity: 1, price: 50 }),
+      ],
+    });
+
+    const { cartLines } = NextCommerce.getInstance().getCartData();
+
+    expect(cartLines.map(line => line.packageId)).toEqual([1, 4]);
+    expect(cartLines[0]?.price.excl_tax.value).toBe(180);
+    expect(cartLines[1]?.price.excl_tax.value).toBe(50);
+  });
+
+  it('getCartData returns no lines while the cart is empty', () => {
+    expect(NextCommerce.getInstance().getCartData().cartLines).toEqual([]);
+  });
 });
 
 describe('NextCommerce — Campaign category (next-commerce.campaign.ts)', () => {

@@ -104,7 +104,7 @@ console.log(`${cartLines.length} lines, ${cartTotals.total} total`);
 console.log('coupons:', vouchers);
 ```
 
-> ⚠️ This is the same shape your `registerCallback` handlers receive, so it is the one to reach for when you are reproducing a callback outside its trigger. The amounts inside `cartTotals` are `Decimal` objects — see [`next.getCartTotals()`](#nextgetcarttotals).
+> ⚠️ This is the same shape your `registerCallback` handlers receive, so it is the one to reach for when you are reproducing a callback outside its trigger. The amounts inside `cartTotals` are `Decimal` objects — see [`next.getCartTotals()`](#nextgetcarttotals). `cartLines` is built from the cart items on each call, so a line appears the moment it is added, but its prices are the campaign ones until the calculate API answers about 150 ms later. Read prices after `cart:updated` when a discount has to be reflected.
 
 <sub>Source: `src/core/next-commerce/next-commerce.ts › NextCommerce.getCartData`</sub>
 
