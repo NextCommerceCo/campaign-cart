@@ -899,19 +899,12 @@ describe('every listener registered in the enhancer layer is removable', () => {
     reason: string;
   }[] = [
     {
-      file: 'features/behavior/fomo-popup/fomo-popup.enhancer.ts',
+      file: 'features/behavior/simple-exit-intent/simple-exit-intent.enhancer.ts',
       count: 1,
       reason:
         'Page-lifetime by design: a one-shot DOMContentLoaded awaited in ' +
         'initialize(), registered only while document.readyState is "loading" and ' +
         'fired at most once per page. `{ once: true }` would say so in code.',
-    },
-    {
-      file: 'features/behavior/simple-exit-intent/simple-exit-intent.enhancer.ts',
-      count: 1,
-      reason:
-        'Page-lifetime by design: the same one-shot DOMContentLoaded await as ' +
-        'fomo-popup.',
     },
     {
       file: 'features/behavior/simple-exit-intent/simple-exit-intent.renderer.ts',

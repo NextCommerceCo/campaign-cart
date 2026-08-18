@@ -113,7 +113,7 @@ export const CORE_LOG_SOURCES: CoreLogSource[] = [
     prefix: 'NextCommerce',
     file: 'next-commerce/next-commerce.popups.ts',
     area: 'Boot and wiring',
-    what: 'Part of the `window.next` API — exit-intent and FOMO popups a page turns on or off from JavaScript.',
+    what: 'Part of the `window.next` API — the exit-intent popup a page turns on or off from JavaScript.',
     dynamicPrefix: true,
     prefixFrom: 'next-commerce/next-commerce.ts',
     prefixNote: 'A free function, not a class with its own logger. `NextCommerce` builds one `Logger(\'NextCommerce\')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.',

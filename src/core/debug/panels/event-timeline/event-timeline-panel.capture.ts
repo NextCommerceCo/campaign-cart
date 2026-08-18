@@ -78,7 +78,6 @@ const INTERNAL_EVENT_PATTERNS = [
   'exit-intent:dismissed',
   'exit-intent:closed',
   'exit-intent:action',
-  'fomo:shown',
 ];
 
 // Events to filter out (noise events)

@@ -196,7 +196,7 @@ to a cart. A reader following it gets a page where nothing happens and no error 
 Redirecting to the section index rather than one page, because its six sections have four
 different owners: bundle building is covered better by
 `guides/bundle-set-sale.md` and the generated bundle-selector guide,
-multi-currency by `campaigns/configuration.mdx`, FOMO and coupons by their feature guides.
+multi-currency by `campaigns/configuration.mdx`, coupons by their feature guides.
 What is left after removing the wrong and the duplicated is generic JavaScript with no SDK
 content — which is why this is a retire, not a rewrite.
 

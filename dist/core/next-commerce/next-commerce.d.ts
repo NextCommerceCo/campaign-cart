@@ -1,6 +1,6 @@
 import { Campaign, CallbackType, CallbackData, EventMap } from '../../types/global';
 import { ShippingMethodInfo, SelectedShippingMethod } from './next-commerce.shipping';
-import { ExitIntentOptions, FomoConfig } from './next-commerce.popups';
+import { ExitIntentOptions } from './next-commerce.popups';
 import { AddUpsellOptions } from './next-commerce.upsells';
 export declare class NextCommerce {
     private static instance;
@@ -87,8 +87,6 @@ export declare class NextCommerce {
     getCoupons(): string[];
     exitIntent(options: ExitIntentOptions): Promise<void>;
     disableExitIntent(): void;
-    fomo(config?: FomoConfig): Promise<void>;
-    stopFomo(): void;
     addUpsell(options: AddUpsellOptions): Promise<any>;
     canAddUpsells(): boolean;
     getCompletedUpsells(): string[];

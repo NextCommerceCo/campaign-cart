@@ -10,7 +10,7 @@ category: "Core Reference"
      src/docs/content/core-logs.ts. Do not edit by hand: change the log line in the
      code or the note in core-logs.ts, then run `npm run docs:reference`. -->
 
-Every message the SDK's own machinery can print — 508 of them, across 62 console prefixes plus 13 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
+Every message the SDK's own machinery can print — 506 of them, across 62 console prefixes plus 13 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
 
 Messages are listed at the wording the code uses. A `{name}` inside one is a value filled in at runtime, so search for the text on either side of it. **Extra context** means the call passes a second argument — an object or an error logged beside the message; expand that entry in the console, because the message alone will not tell you which element, package, or event was involved.
 
@@ -80,7 +80,7 @@ Console lines are prefixed with the part of the SDK that produced them. Find the
 - **`[NextCommerce]`** Part of the `window.next` API — metadata and attribution a page sets on itself, which every later order carries. Prints 7 error, 4 debug.
 - **`[NextCommerce]`** Part of the `window.next` API — the cart operations a page drives directly — adding, swapping, clearing. Prints 1 debug.
 - **`[NextCommerce]`** Part of the `window.next` API — the callbacks a page registers through `next.on…`, and the SDK calling them back. Prints 1 error.
-- **`[NextCommerce]`** Part of the `window.next` API — exit-intent and FOMO popups a page turns on or off from JavaScript. Prints 2 error, 2 debug.
+- **`[NextCommerce]`** Part of the `window.next` API — the exit-intent popup a page turns on or off from JavaScript. Prints 1 error, 1 debug.
 - **`[NextCommerce]`** Part of the `window.next` API — post-purchase upsells accepted from JavaScript rather than from markup. Prints 1 error, 1 info.
 - **`[NextCommerce]`** Part of the `window.next` API — the URL parameters a page reads or applies through the API. Prints 5 debug.
 - **`[ErrorHandler]`** Catches uncaught page errors and rejected promises, wraps them with SDK version and URL, and re-publishes them as the `error:occurred` event. Prints 1 error, 1 debug.
@@ -782,7 +782,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 ## `[NextCommerce]`
 
-Part of the `window.next` API — exit-intent and FOMO popups a page turns on or off from JavaScript.
+Part of the `window.next` API — the exit-intent popup a page turns on or off from JavaScript.
 
 Logged from `next-commerce/next-commerce.popups.ts`. A free function, not a class with its own logger. `NextCommerce` builds one `Logger('NextCommerce')` in `next-commerce.ts` and passes it in, so every line here prints under `[NextCommerce]`.
 
@@ -798,14 +798,6 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 **Action:** Read the attached error and check the options you passed, particularly the image URL. Handle the rejection in your own code so a popup failing does not stop the rest of your setup.
 
-#### `Failed to start FOMO popup:`
-
-`next-commerce/next-commerce.popups.ts › fomo` · extra context attached
-
-**Meaning:** The FOMO popup did not start, so no social-proof messages appear. The error is re-thrown to your caller.
-
-**Action:** Read the attached error and check the configuration you passed — an empty or malformed customer list is the usual cause.
-
 ### Debug
 
 The detail behind the info lines. Expected in bulk, and only visible with debug mode on — a long list here is health, not trouble.
@@ -813,7 +805,6 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 | Message | Source | Extra context |
 |---|---|---|
 | `Exit intent configured with image:` | `next-commerce/next-commerce.popups.ts › exitIntent` | yes |
-| `FOMO popup started` | `next-commerce/next-commerce.popups.ts › fomo` | — |
 
 ## `[NextCommerce]`
 

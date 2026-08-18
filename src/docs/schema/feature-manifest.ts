@@ -234,7 +234,7 @@ export interface FeatureManifest {
   alsoActivates?: string[];
   /**
    * For a feature with no activating attribute: the `window.next` call that turns
-   * it on, e.g. `next.fomo({ … })`. These features are invisible to a reader
+   * it on, e.g. `next.exitIntent({ … })`. These features are invisible to a reader
    * scanning attribute docs, so the call has to be stated somewhere.
    */
   activatedByApi?: string;

@@ -23,7 +23,7 @@ const SRC = resolve(__dirname, '../..');
 const IMPORT_SITES = [
   'core/attribute-scanner/attribute-scanner.ts', // activation — a broken path kills the feature
   'index.ts', // idle-time preload hints
-  'core/next-commerce/next-commerce.ts', // FomoPopupEnhancer, loaded on demand
+  'core/next-commerce/next-commerce.popups.ts', // ExitIntentEnhancer, loaded on demand
 ] as const;
 
 /** `const { Name } = await import('spec')` — activation sites we can name-check. */

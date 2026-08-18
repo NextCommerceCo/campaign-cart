@@ -28,7 +28,6 @@ import * as popupMethods from '@/core/next-commerce/next-commerce.popups';
 import type {
   PopupsState,
   ExitIntentOptions,
-  FomoConfig,
 } from '@/core/next-commerce/next-commerce.popups';
 import * as upsellMethods from '@/core/next-commerce/next-commerce.upsells';
 import type { AddUpsellOptions } from '@/core/next-commerce/next-commerce.upsells';
@@ -70,10 +69,9 @@ export class NextCommerce {
   private logger: Logger;
   private eventBus: EventBus;
   private callbacks = new Map<CallbackType, Set<Function>>();
-  /** Owned lazily by {@link NextCommerce.exitIntent} / {@link NextCommerce.fomo}. */
+  /** Owned lazily by {@link NextCommerce.exitIntent}. */
   private popupsState: PopupsState = {
     exitIntentEnhancer: null,
-    fomoEnhancer: null,
   };
 
   private constructor() {
@@ -608,27 +606,6 @@ export class NextCommerce {
    */
   public disableExitIntent(): void {
     popupMethods.disableExitIntent({ state: this.popupsState });
-  }
-
-  // FOMO Popup - Simple social proof
-  /**
-   * Starts the rotating social-proof popup, lazy-loading its enhancer on the
-   * first call. With no config it uses the enhancer's own defaults.
-   * @category Popups
-   */
-  public async fomo(config?: FomoConfig): Promise<void> {
-    return popupMethods.fomo(
-      { state: this.popupsState, logger: this.logger },
-      config
-    );
-  }
-
-  /**
-   * Stops the social-proof popup rotation. No-op when {@link NextCommerce.fomo} was never called.
-   * @category Popups
-   */
-  public stopFomo(): void {
-    popupMethods.stopFomo({ state: this.popupsState });
   }
 
   // Upsell methods

@@ -165,14 +165,12 @@ Offers added to an order that has already been paid for. They only work on a pag
 
 ## On-page popups
 
-Two behaviours with no `data-next-*` attribute of their own: you turn them on by calling them. Each has a full guide of its own, linked from its row.
+One behaviour with no `data-next-*` attribute of its own: you turn it on by calling it. It has a full guide of its own, linked from its row.
 
 | Method | Description |
 |---|---|
 | [`next.exitIntent`](#nextexitintent) | Shows an image or template popup when the visitor looks like they are about to leave. |
 | [`next.disableExitIntent`](#nextdisableexitintent) | Stops the exit-intent popup from appearing again on this page. |
-| [`next.fomo`](#nextfomo) | Starts the rotating social-proof popup — "someone in Denver bought this a moment ago" — from a list you supply. |
-| [`next.stopFomo`](#nextstopfomo) | Stops the social-proof popup rotation. |
 
 ## Utilities
 
@@ -1112,41 +1110,6 @@ next.disableExitIntent();
 ```
 
 > **Watch out:** Does nothing if `exitIntent()` was never called — there is nothing to disable, and no warning either.
-
-### next.fomo
-
-Starts the rotating social-proof popup — "someone in Denver bought this a moment ago" — from a list you supply.
-
-```ts
-fomo(config?: FomoConfig): Promise<void>
-```
-
-```ts
-await next.fomo({
-  items: [
-    { text: 'bought the 3-pack', image: 'https://cdn.example.com/p3.png' },
-  ],
-  customers: { 'United States': ['Ava from Denver', 'Noah from Austin'] },
-  displayDuration: 5000,
-  delayBetween: 12000,
-});
-```
-
-> **Watch out:** Called with no argument it starts with its built-in defaults rather than doing nothing. Full options: fomo-popup guide.
-
-### next.stopFomo
-
-Stops the social-proof popup rotation.
-
-```ts
-stopFomo(): void
-```
-
-```ts
-next.stopFomo();
-```
-
-> **Watch out:** A no-op when `fomo()` was never called.
 
 ### next.getVersion
 

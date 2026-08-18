@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.4.37] — 2026-08-18 — The FOMO Popup Leaves the SDK
+
+One feature removed, nothing else changed. If your pages never called `next.fomo()`, this release changes nothing for them.
+
+### Removed
+
+- **The social-proof popup is no longer part of the SDK.**
+
+  It rotated small notifications — "Sarah from Denver just bought this" — built from the lists of names and products passed to `next.fomo()`, not from orders placed on the campaign. It moves out to a library of its own, hosted in the Sellmore organisation, so the cart SDK stays to the cart, the checkout and the order. ([#560](https://github.com/NextCommerceCo/campaigns-app/issues/560))
+
+  Four things go with it:
+
+  | Removed | Description |
+  |---|---|
+  | `next.fomo(config)` | Started the rotation and configured it |
+  | `next.stopFomo()` | Stopped the rotation |
+  | `fomo:shown` | Fired once per notification shown |
+  | `next-fomo-show` | Class placed on the notification while on screen |
+
+  The exit-intent popup is untouched. `next.exitIntent()` and `next.disableExitIntent()` behave exactly as before, and exit intent is now the only entry under On-page popups in the JavaScript API reference.
+
+### Before you upgrade
+
+**Search your pages for `next.fomo(` before taking this release.** The method is gone rather than left as a no-op, so a page that still calls it raises `next.fomo is not a function` at the call.
+
+**A call inside `window.nextReady.push(...)` does not break the page.** The SDK catches what a ready callback throws and logs `[SDKInitializer] Ready callback error:`. The rest of that one callback is skipped, though, so anything set up after the `next.fomo()` line will not run. Move those lines into a callback of their own, or delete the call.
+
+**There is no markup to clean up.** The popup had no `data-next-*` attribute of its own and built its own element, so nothing in your HTML refers to it. Any `next-fomo-show` rule left in a stylesheet is dead and can go whenever it suits you.
+
+---
+
 ## [0.4.36] — 2026-08-17 — Slow Payments, Refused Payments, and the Card Selected Again
 
 Three things a shopper sees during checkout, all of them wrong in `0.4.35`. Nothing to add to your pages for any of them.

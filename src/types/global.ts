@@ -776,29 +776,6 @@ export interface EventMap {
     couponCode?: string;
   };
 
-  // FOMO Events
-  /**
-   * A social-proof notification was shown — "someone in Denver just bought this".
-   * Fires once per notification, on a rotation.
-   *
-   * @example
-   * ```json
-   * {
-   *   "customer": "Sarah from Denver",
-   *   "product": "3-Pack Bundle",
-   *   "image": "https://cdn.example.com/pack3.jpg"
-   * }
-   * ```
-   */
-  'fomo:shown': {
-    /** The customer line as displayed, already formatted. */
-    customer: string;
-    /** The product name shown in the notification. */
-    product: string;
-    /** Image shown alongside it. */
-    image: string;
-  };
-
   // SDK Events
   /**
    * The SDK finished reading campaign parameters off the page URL — currency,

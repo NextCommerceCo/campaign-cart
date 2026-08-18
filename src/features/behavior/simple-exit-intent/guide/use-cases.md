@@ -188,14 +188,6 @@ it.
 [`accept-upsell`](../../../cart/accept-upsell/guide/overview.md) — an in-page
 offer the visitor accepts when they are ready.
 
-### Keeping a presence on the page throughout the visit
-
-**Why not:** The exit popup is a single interruption, not an ambient signal.
-
-**Use instead:**
-[`fomo-popup`](../../../behavior/fomo-popup/guide/overview.md) — small
-notifications on a schedule instead of one blocking offer.
-
 ## Next steps
 
 - [get-started.md](./get-started.md) — the call, with every option

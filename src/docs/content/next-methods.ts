@@ -908,31 +908,6 @@ console.log(\`added \${addedLines.length} lines worth \${totalValue}\`);`,
       'Does nothing if `exitIntent()` was never called — there is nothing to disable, and no ' +
       'warning either.',
   },
-  {
-    name: 'fomo',
-    group: 'popups',
-    summary:
-      'Starts the rotating social-proof popup — "someone in Denver bought this a moment ago" — from a list you supply.',
-    example: `await next.fomo({
-  items: [
-    { text: 'bought the 3-pack', image: 'https://cdn.example.com/p3.png' },
-  ],
-  customers: { 'United States': ['Ava from Denver', 'Noah from Austin'] },
-  displayDuration: 5000,
-  delayBetween: 12000,
-});`,
-    caution:
-      'Called with no argument it starts with its built-in defaults rather than doing ' +
-      'nothing. Full options: ' +
-      '[fomo-popup guide](../../../features/behavior/fomo-popup/guide/overview.md).',
-  },
-  {
-    name: 'stopFomo',
-    group: 'popups',
-    summary: 'Stops the social-proof popup rotation.',
-    example: `next.stopFomo();`,
-    caution: 'A no-op when `fomo()` was never called.',
-  },
 
   // ── utility ──
   {

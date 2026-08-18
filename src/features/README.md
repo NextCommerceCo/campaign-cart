@@ -18,7 +18,7 @@ free-standing services — they exist because some HTML asked for them.
 | `display/` | Reactive `data-next-display` bindings (product, selection, cart, order, conditional…) |
 | `order/` | Post-purchase order views + upsells |
 | `ui/` | Presentational widgets (accordion, tooltip, scroll-hint) |
-| `behavior/` | Page-level behaviors (FOMO popup, exit-intent) |
+| `behavior/` | Page-level behaviors (exit-intent) |
 
 ## Anatomy
 
