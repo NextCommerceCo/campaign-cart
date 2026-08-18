@@ -1,5 +1,6 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import type { CartSummary } from '../src/types/api';
+import type { EnrichedCartLine } from '../src/types/global';
 import { MINIMAL_CAMPAIGN, RICH_CAMPAIGN } from './fixtures/campaign';
 import { stubCampaign, stubCart, bootSdk } from './fixtures/routes';
 
@@ -22,22 +23,11 @@ import { stubCampaign, stubCart, bootSdk } from './fixtures/routes';
 
 const FIXTURE = '/e2e/fixtures/add-to-cart.html';
 
-/** The snapshot as page code sees it, narrowed to what this spec asserts on. */
-type Line = {
-  packageId: number;
-  quantity: number;
-  price: {
-    excl_tax: { value: number; formatted: string };
-    incl_tax: { value: number };
-    original: { value: number };
-    savings: { value: number };
-  };
-  product: { title: string; sku: string; image: string };
-  is_upsell: boolean;
-  is_recurring: boolean;
-};
-
-const cartLines = (page: import('@playwright/test').Page): Promise<Line[]> =>
+/**
+ * The public snapshot's lines, typed as the SDK types them: a local copy of the
+ * shape would keep passing after a field on `EnrichedCartLine` was renamed.
+ */
+const cartLines = (page: Page): Promise<EnrichedCartLine[]> =>
   page.evaluate(() => (window as any).next.getCartData().cartLines);
 
 test('reports no lines while the cart is empty', async ({ page }) => {
@@ -154,5 +144,7 @@ test('reports compare-at savings from the campaign retail price', async ({
   const [line] = await cartLines(page);
   expect(line?.price.excl_tax.value).toBe(74.97);
   expect(line?.price.original.value).toBe(119.97);
-  expect(line?.price.savings.value).toBeCloseTo(45, 2);
+  // 119.97 − 74.97 is exact in IEEE 754, so pin it: toBeCloseTo would also pass
+  // a wrongly rounded 45.004.
+  expect(line?.price.savings.value).toBe(45);
 });
