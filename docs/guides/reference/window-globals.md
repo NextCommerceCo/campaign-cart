@@ -18,7 +18,7 @@ Each entry says whether the SDK installs it or reads what you set, and which of 
 | [`window.next`](#windownext) | The SDK itself — every call in the JavaScript API hangs off this. |
 | [`window.nextReady`](#windownextready) | The queue for code that needs the SDK before you know whether it has loaded — push a function and it runs with the SDK as its argument. |
 | [`window.nextConfig`](#windownextconfig) | The configuration object your page sets before the SDK loads — API key, debug flag, page type, and analytics settings. |
-| [`window.__NEXT_SDK_VERSION__`](#windownext_sdk_version) | The version the loader script reports, which `next.getVersion()` prefers over the build-time value. |
+| [`window.__NEXT_SDK_VERSION__`](#window__next_sdk_version__) | The version the loader script reports, which `next.getVersion()` prefers over the build-time value. |
 
 
 ## Analytics and tag-manager hooks
@@ -117,7 +117,7 @@ The configuration object your page sets before the SDK loads — API key, debug 
 Read during boot, so it has to be set before the SDK script runs; assigning it afterwards changes nothing. Meta tags override it where both are present.
 
 
-### window.__NEXT_SDK_VERSION__
+### window.\_\_NEXT_SDK_VERSION\_\_
 
 The version the loader script reports, which `next.getVersion()` prefers over the build-time value.
 
