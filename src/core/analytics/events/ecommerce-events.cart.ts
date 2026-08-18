@@ -18,9 +18,6 @@ import type { CartItem, EnrichedCartLine } from '@/types/global';
  * the cart total as `value`, and the applied coupon. Shared by view_cart,
  * begin_checkout, add_shipping_info and add_payment_info so they stay
  * consistent (same items, same value, same coupon handling).
- *
- * Uses `cartState.items` directly — `enrichedItems` is never populated by the
- * store, so mapping over it would emit an empty items array.
  */
 export function buildCartEcommerce(): EcommerceData {
   const cartState = useCartStore.getState();

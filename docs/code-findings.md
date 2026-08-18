@@ -68,19 +68,20 @@ A fix to one silently misses the other — finding 1 is an instance of exactly t
 
 **Fix:** make the standard path use `OrderManager`, and delete the enhancer's copy.
 
-### 3. `sdk.getCartData().cartLines` is always empty — *verified*
+### 3. ~~`sdk.getCartData().cartLines` is always empty~~ — **FIXED 2026-08-18**
 
-`enrichedItems` is assigned `[]` at `cart.state.ts:15` and again inside `partialize`
-at `:112`, and **nothing anywhere writes to it** — the analytics code says so in a
-comment (`core/analytics/events/ecommerce-events.ts:23,352`). It is exposed publicly as
-`cartLines` at `core/next-commerce.ts:191`, and its TSDoc
-(`types/global.ts:1034`) describes it as "enriched with full pricing breakdown for
-display".
+Issue #36, reported twice from live pages. `getCartData()` returned the store's
+`enrichedItems`, which the initial state and `partialize` both hardcoded to `[]` and
+nothing ever wrote to, so every integration reading `cartLines` got an empty array and
+no error.
 
-Any integration reading `cartLines` gets an empty array and no error.
-
-**Fix:** either populate it or remove it from the public snapshot. Removing is an API
-change; leaving it is a silent wrong answer.
+`cartLines` is now derived on each read from `items` by `state/cart/enriched-lines.ts`,
+and the dead `enrichedItems` field is gone from `CartState`. Derived rather than stored
+because `items` is written synchronously by every cart operation while `summary` only
+lands when the calculate API answers: a stored copy would have been empty right after
+the first add and would still have listed a line that was just removed. Covered by
+`state/cart/enriched-lines.test.ts`, the `getCartData` cases in
+`core/tests/next-commerce.test.ts`, and `e2e/cart-data.spec.ts`.
 
 ### 4. ~~`removeCoupon` is case-sensitive while `applyCoupon` is not~~ — **FIXED 2026-07-31**
 

@@ -1065,8 +1065,6 @@ export interface SelectorItem {
 export interface CartState {
   /** All items currently in the cart. */
   items: CartItem[];
-  /** Cart items enriched with full pricing breakdown for display. See `EnrichedCartLine`. */
-  enrichedItems: EnrichedCartLine[];
   /** Total unit count across all items (sum of each item's `quantity × qty`). */
   totalQuantity: number;
   /** `true` when the cart has no items. */
@@ -1102,7 +1100,9 @@ export interface CartState {
 /**
  * A cart line prepared for display: the same item as {@link CartItem} but with
  * a structured price breakdown (with/without tax, original, savings) and product
- * details ready to render. This is what `data-next-display` fields read from.
+ * details ready to render. This is the shape `next.getCartData().cartLines`
+ * returns, built from the cart's items on each call. The `data-next-display`
+ * fields read the stored {@link CartItem} instead.
  */
 export interface EnrichedCartLine {
   /** Cart line ID (matches {@link CartItem.id}). */
@@ -1113,13 +1113,13 @@ export interface EnrichedCartLine {
   quantity: number;
   /** Price breakdown, each as a raw `value` and a display `formatted` string. */
   price: {
-    /** Line price excluding tax. */
+    /** Line total after discounts. The cart calculate API reports no tax, so this matches `incl_tax`. */
     excl_tax: { value: number; formatted: string };
-    /** Line price including tax. */
+    /** Line total after discounts. The cart calculate API reports no tax, so this matches `excl_tax`. */
     incl_tax: { value: number; formatted: string };
-    /** Original (compare-at) price before discounts. */
+    /** The highest compare-at figure the line carries: its retail price, else its price before offer discounts. */
     original: { value: number; formatted: string };
-    /** Amount saved versus the original price. */
+    /** `original` minus the line total, never negative. */
     savings: { value: number; formatted: string };
   };
   /** Product details for rendering. */
@@ -1134,9 +1134,9 @@ export interface EnrichedCartLine {
   is_recurring: boolean;
   /** Billing interval for recurring lines. */
   interval?: 'day' | 'month';
-  /** `true` if this line is part of a bundle. */
+  /** `true` when one selector put this line and at least one other in the cart, as a bundle selector does. */
   is_bundle: boolean;
-  /** Cart line IDs of the bundle's other components, when `is_bundle`. */
+  /** Cart line IDs of the bundle's other lines. Absent unless `is_bundle`. */
   bundleComponents?: number[];
 }
 

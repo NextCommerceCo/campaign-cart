@@ -105,8 +105,8 @@ export async function submitCard(page: Page): Promise<void> {
 /**
  * Puts one package in the cart, which is what makes the form submittable.
  *
- * `getCartCount` rather than `getCartData().cartLines`, which enriches from the
- * campaign and is empty until that has loaded (issue #36).
+ * `getCartCount` rather than `getCartData().cartLines`: the count comes straight from
+ * the store, while a line's prices are the campaign's until the calculate API answers.
  */
 export async function addOnePackage(page: Page): Promise<void> {
   await page.evaluate(() => (window as any).next.addItem({ packageId: 1 }));

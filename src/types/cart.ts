@@ -23,7 +23,6 @@ export interface CartState {
   isEmpty: boolean;
   coupon?: Coupon;
   shippingMethod?: ShippingMethod;
-  enrichedItems: EnrichedCartLine[];
   totals: CartTotals;
   swapInProgress?: boolean;
 }

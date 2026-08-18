@@ -355,7 +355,6 @@ export interface SelectorItem {
 }
 export interface CartState {
     items: CartItem[];
-    enrichedItems: EnrichedCartLine[];
     totalQuantity: number;
     isEmpty: boolean;
     vouchers: string[];

@@ -8,6 +8,7 @@
 import type { CallbackData } from '@/types/global';
 import { useCartStore, cartOperations } from '@/state/cart';
 import { useCampaignStore } from '@/state/campaign';
+import { toEnrichedCartLines } from '@/state/cart/enriched-lines';
 import type { Logger } from '@/core/logger';
 
 /**
@@ -108,7 +109,7 @@ export function getCartData(): CallbackData {
   const campaignStore = useCampaignStore.getState();
 
   return {
-    cartLines: cartStore.enrichedItems,
+    cartLines: toEnrichedCartLines(cartStore.items),
     cartTotals: {
       subtotal: cartStore.subtotal,
       total: cartStore.total,

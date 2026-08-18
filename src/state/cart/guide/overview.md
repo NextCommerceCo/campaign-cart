@@ -6,7 +6,7 @@ category: "Cart Store"
 
 # useCartStore
 
-> Last reviewed: 2026-07-30
+> Last reviewed: 2026-08-18
 > Owner: platform
 
 The cart store holds what the shopper has decided to buy and what it costs: the
@@ -135,12 +135,13 @@ recalculated on rehydration instead of being restored.
   and the final total all come from the pricing API; the local sum is quantity
   times captured price. Never compute a displayed total from `items` — read
   `total` and `summary` after `cart:updated`.
-- **`enrichedItems` is never populated, and it is exposed publicly as
-  `cartLines`.** `sdk.getCartData().cartLines` returns `[]` for a full cart,
-  because `next-commerce.ts` reads `cartStore.enrichedItems` and nothing writes
-  to it — the initial state and `partialize` both hardcode `[]`. Read `items` for
-  what was bought, or `summary.lines` for priced, product-enriched rows. This is
-  a bug, not a design.
+- **The display-ready lines carry no tax breakdown, and their prices lag the
+  API.** `sdk.getCartData().cartLines` is built from `items` on each call by
+  [`enriched-lines.ts`](../enriched-lines.ts), so a line shows up as soon as it is
+  added, but until the calculate API answers its prices are the campaign's, with no
+  offer or coupon discount in them. The cart calculate response has no tax figures
+  at all, so a line's `excl_tax` and `incl_tax` are the same amount. Read prices
+  after `cart:updated`, and take tax from the order after checkout.
 - **`getTotalWeight()` computes no weight.** It sums quantities and returns the
   same number as `getTotalItemCount()`, because no weight data reaches the cart.
   Do not build shipping or freight rules on it; take weight from the campaign

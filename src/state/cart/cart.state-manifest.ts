@@ -14,7 +14,7 @@ export default defineStore({
     mechanism: 'zustand-persist',
     key: 'next-cart-state',
     newFieldRule:
-      'a new field is **not** persisted unless you add it to the `partialize` list in `state/cart/cart.state.ts`. That list is an allow-list of six keys (`items`, `vouchers`, `shippingMethod`, `totalQuantity`, `isEmpty`, and a hardcoded empty `enrichedItems`) — everything else is dropped on write and starts from `initialCartState` on the next page. Adding a field and expecting it back after a refresh is the single most common mistake with this store.',
+      'a new field is **not** persisted unless you add it to the `partialize` list in `state/cart/cart.state.ts`. That list is an allow-list of five keys (`items`, `vouchers`, `shippingMethod`, `totalQuantity`, `isEmpty`) — everything else is dropped on write and starts from `initialCartState` on the next page. Adding a field and expecting it back after a refresh is the single most common mistake with this store.',
   },
 
   fields: [
@@ -25,14 +25,6 @@ export default defineStore({
         'The lines the shopper has chosen: one entry per package, with the quantity and the package pricing captured when it was added. This is the list checkout submits, so it is the field to trust over any display copy.',
       notes:
         'A line `id` is `Date.now()` at add time, not a server id — two lines added in the same millisecond can collide. Match lines by `packageId`, never by `id`.',
-    },
-    {
-      name: 'enrichedItems',
-      kind: 'transient',
-      description:
-        'Intended to hold display-ready lines with a full price breakdown, but nothing populates it — it is `[]` on a fresh store, `[]` in storage, and `[]` after every recalculation.',
-      notes:
-        'Rendering from `enrichedItems` shows an empty cart even when items exist (the analytics layer hit this and switched to `items`). Read `items` for what was bought and `summary.lines` for priced, product-enriched rows.',
     },
     {
       name: 'totalQuantity',
@@ -302,7 +294,6 @@ export default defineStore({
       "is_recurring": false
     }
   ],
-  "enrichedItems": [],
   "totalQuantity": 2,
   "isEmpty": false,
   "vouchers": ["SAVE10"],
@@ -353,7 +344,7 @@ export default defineStore({
     '**Never rename the `next-cart-state` key.** Every shopper mid-funnel is holding a cart under the old key; a rename orphans it and their cart silently empties between pages. Add fields, change the shape, but leave the key alone.',
     '**Totals are asynchronous, debounced by 150 ms, and cancellable.** `await sdk.cart.addItem({ packageId: 2, quantity: 1, isUpsell: false })` resolves before the API has priced anything, so reading `total` on the next line gives an optimistic sum with no discounts and no shipping — a page that submits or displays it shows the wrong money. Read totals from the `cart:updated` event, or gate rendering on `isCalculating`.',
     '**Money fields are `decimal.js` instances, not numbers.** `subtotal`, `total`, `totalDiscount`, `totalDiscountPercentage`, and the prices on `shippingMethod` all throw or concatenate under `+`. Use `.plus()`/`.minus()` for arithmetic and `.toNumber()` or `.toFixed(2)` at the display boundary.',
-    '**`enrichedItems` is always empty.** Anything rendering from it shows a cart with no lines even though `items` is full, because both the initial state and `partialize` hardcode `[]` and nothing ever writes to it. Read `items`, or `summary.lines` when you need priced, product-enriched rows.',
+    '**Display-ready lines are derived, not stored.** The store keeps `items` (what was chosen) and `summary.lines` (what the API priced); the display-ready `EnrichedCartLine[]` that `next.getCartData().cartLines` returns is built from `items` on each read by `state/cart/enriched-lines.ts`. Read `items` or `summary.lines` in the store, and do not add a second copy of them to the state — the field that used to hold one (`enrichedItems`) shipped empty for every release because nothing wrote to it.',
     '**Coupons do not live on the cart.** `vouchers` is a copy refreshed only when a recalculation succeeds; the store of record is `useCheckoutStore().vouchers`. Pushing a code onto `cart.vouchers` changes no price and disappears at the next recalculation — call `sdk.cart.applyCoupon(code)`.',
     "**`addItem` merges by `packageId` alone.** Adding the same package twice with different `properties` folds it into one line and throws the new properties away, so a second personalised slot loses its engraving. Build the lines yourself and call `sdk.cart.swapCart(items)` when each slot needs its own properties.",
     '**Async cart logic belongs in `operations/`, not in the store.** The store is a state container; the methods it still exposes are legacy delegators kept for older pages. New code calls `sdk.cart.*` / `cartOperations`, and new business logic goes in a file under `state/cart/operations/`.',
