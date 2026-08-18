@@ -7,4 +7,5 @@ export interface PaymentFormDisplayContext {
 }
 export declare function initializePaymentForms(ctx: PaymentFormDisplayContext): void;
 export declare function updatePaymentFormVisibility(ctx: PaymentFormDisplayContext, paymentMethod: string): void;
+export declare function applyAvailablePaymentMethods(ctx: PaymentFormDisplayContext, availableCodes: readonly string[] | undefined): void;
 //# sourceMappingURL=payment-form-display.d.ts.map

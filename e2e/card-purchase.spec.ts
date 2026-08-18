@@ -1,9 +1,14 @@
 import { test, expect, type Page } from '@playwright/test';
 import { ORDER_KEY } from './fixtures/storage-keys';
 import type { Order } from '../src/types/api';
-import { MINIMAL_CAMPAIGN } from './fixtures/campaign';
 import { TEST_ORDER } from './fixtures/order';
-import { stubCampaign, stubCart, bootSdk } from './fixtures/routes';
+import { bootSdk } from './fixtures/routes';
+import {
+  CARD_CHECKOUT,
+  addOnePackage,
+  stubCardCheckout,
+  submitCard,
+} from './fixtures/card-checkout';
 
 /**
  * `dl_purchase` on the **card** path, which is how most shoppers pay —
@@ -22,12 +27,13 @@ import { stubCampaign, stubCart, bootSdk } from './fixtures/routes';
  * SDK boot. happy-dom has one document and no history.
  *
  * Spreedly is stubbed rather than loaded: it is an off-site iframe tokenizer that
- * cannot run headless, and `CreditCardService.loadSpreedlyScript` skips fetching
- * the real script when `window.Spreedly` already exists. Everything after the
- * token — order creation, redirect, landing page — is the real SDK.
+ * cannot run headless. That stub, the form-filling and the rest of the card
+ * harness live in [`fixtures/card-checkout.ts`](./fixtures/card-checkout.ts),
+ * shared with `checkout-overlay.spec.ts`. Everything after the token — order
+ * creation, redirect, landing page — is the real SDK.
  */
 
-const CHECKOUT = '/e2e/fixtures/card-purchase.html';
+const CHECKOUT = CARD_CHECKOUT;
 /** What the fixture names in its `next-failure-url` meta tag. */
 const FAILED = '/e2e/fixtures/express-purchase-failed.html';
 
@@ -67,109 +73,8 @@ async function afterQueueReplay(page: Page): Promise<void> {
   await page.waitForTimeout(1500);
 }
 
-/**
- * A stand-in for the Spreedly tokenizer, installed before `/src/index.ts` runs.
- *
- * A Proxy answers every method the SDK calls — there are fourteen today — so a
- * new one added later is a no-op rather than a `TypeError` that reads like an SDK
- * defect. Only the three that carry the flow are real: `on` records handlers,
- * `init` announces readiness, and `tokenizeCreditCard` hands back a token.
- */
-async function stubSpreedly(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    const handlers: Record<string, Function[]> = {};
-    const fire = (name: string, ...args: unknown[]): void => {
-      setTimeout(() => (handlers[name] ?? []).forEach(cb => cb(...args)), 0);
-    };
-    const impl: Record<string, Function> = {
-      on: (event: string, cb: Function) => {
-        (handlers[event] ??= []).push(cb);
-      },
-      init: () => {
-        fire('ready');
-        // Then the shopper types a card. Without these the SDK considers the
-        // number and cvv fields untouched and refuses to submit — the fields are
-        // Spreedly iframes, so a `fill()` cannot reach them.
-        fire('fieldEvent', 'number', 'input', null, {
-          validNumber: true,
-          numberLength: 16,
-          cardType: 'visa',
-          iin: '411111',
-        });
-        fire('fieldEvent', 'cvv', 'input', null, {
-          validCvv: true,
-          cvvLength: 3,
-        });
-      },
-      tokenizeCreditCard: () =>
-        fire('paymentMethod', 'e2e-card-token', {
-          card_type: 'visa',
-          last_four_digits: '1111',
-        }),
-    };
-    (window as any).Spreedly = new Proxy(impl, {
-      get: (target, key: string) => target[key] ?? (() => {}),
-    });
-  });
-}
-
-/** Fills every field the form requires, then submits. */
-async function submitCard(page: Page): Promise<void> {
-  await page.fill('[data-next-checkout-field="email"]', 'ada@example.test');
-  await page.fill('[data-next-checkout-field="fname"]', 'Ada');
-  await page.fill('[data-next-checkout-field="lname"]', 'Lovelace');
-  await page.fill('[data-next-checkout-field="address1"]', '1 Test Street');
-  await page.fill('[data-next-checkout-field="city"]', 'New York');
-  await page.fill('[data-next-checkout-field="postal"]', '10001');
-  // A number libphonenumber accepts — the form runs intl-tel-input, and a
-  // 555-01xx placeholder is rejected as invalid.
-  await page.fill('[data-next-checkout-field="phone"]', '4155552671');
-  await page.selectOption('[data-next-checkout-field="country"]', 'US');
-  await page.selectOption('[data-next-checkout-field="province"]', 'NY');
-  await page.selectOption('[data-next-checkout-field="cc-month"]', '12');
-  await page.selectOption('[data-next-checkout-field="cc-year"]', '2030');
-  await page.click('[data-next-checkout-submit]');
-}
-
 test.beforeEach(async ({ page }) => {
-  // A non-empty `payment_env_key` is what makes the SDK build its CreditCardService
-  // at all; MINIMAL_CAMPAIGN ships an empty one, and without it the form refuses to
-  // submit with "the payment system is not ready".
-  await stubCampaign(page, {
-    ...MINIMAL_CAMPAIGN,
-    payment_env_key: 'e2e-env-key',
-  });
-  await stubCart(page);
-  await stubSpreedly(page);
-  // The form's CountryService reaches an external CDN. Two endpoints, two
-  // shapes — only /states carries countryConfig, and answering both with the
-  // location shape makes updateFormLabels throw.
-  await page.route('**/cdn-countries*/**', route => {
-    const config = {
-      stateLabel: 'State',
-      stateRequired: true,
-      postcodeLabel: 'ZIP Code',
-      postcodeRegex: '',
-      postcodeExample: '10001',
-      stateExample: 'NY',
-    };
-    if (route.request().url().includes('/states')) {
-      return route.fulfill({
-        json: {
-          countryConfig: config,
-          states: [{ code: 'NY', name: 'New York' }],
-        },
-      });
-    }
-    return route.fulfill({
-      json: {
-        detectedCountryCode: 'US',
-        detectedCountryConfig: config,
-        detectedStates: [{ code: 'NY', name: 'New York' }],
-        countries: [{ code: 'US', name: 'United States' }],
-      },
-    });
-  });
+  await stubCardCheckout(page);
 });
 
 test('a card charged on the checkout page reports one purchase, on the thank-you page', async ({
@@ -180,7 +85,7 @@ test('a card charged on the checkout page reports one purchase, on the thank-you
   );
 
   await bootSdk(page, CHECKOUT);
-  await page.evaluate(() => (window as any).next.addItem({ packageId: 1 }));
+  await addOnePackage(page);
   await submitCard(page);
 
   // The SDK builds the success URL itself and appends the order reference. That
@@ -210,7 +115,7 @@ test('a card sent to 3-D Secure reports nothing until the bank returns', async (
   );
 
   await bootSdk(page, CHECKOUT);
-  await page.evaluate(() => (window as any).next.addItem({ packageId: 1 }));
+  await addOnePackage(page);
   await submitCard(page);
 
   // Off to the bank, which is off our site.
@@ -250,7 +155,7 @@ test('a card declined at 3-D Secure reports no purchase', async ({ page }) => {
   );
 
   await bootSdk(page, CHECKOUT);
-  await page.evaluate(() => (window as any).next.addItem({ packageId: 1 }));
+  await addOnePackage(page);
   await submitCard(page);
   await page.waitForURL('**/e2e/fixtures/express-gateway.html');
 

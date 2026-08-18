@@ -73,9 +73,9 @@ const RADIO_PAYMENT_METHOD_MAP: Record<string, CheckoutPaymentMethod> = {
  * ```ts
  * toCheckoutPaymentMethod('apple_pay');  // 'apple_pay'
  * toCheckoutPaymentMethod('apple-pay');  // 'apple_pay' — same key
- * toCheckoutPaymentMethod('credit_card'); // 'credit-card'
- * toCheckoutPaymentMethod('Pix');       // 'pix' — unknown here, the API decides
- * toCheckoutPaymentMethod('');          // undefined
+ * toCheckoutPaymentMethod('credit');     // 'credit-card'
+ * toCheckoutPaymentMethod('Pix');        // 'pix' — unknown here, the API decides
+ * toCheckoutPaymentMethod('');           // undefined
  * ```
  */
 export function toCheckoutPaymentMethod(
@@ -84,6 +84,50 @@ export function toCheckoutPaymentMethod(
   const normalized = value?.trim().toLowerCase().replace(/-/g, '_');
   if (!normalized) return undefined;
   return RADIO_PAYMENT_METHOD_MAP[normalized] ?? normalized;
+}
+
+/**
+ * The names a **card** is held under in the checkout store: its own word, and the
+ * API's word for a caller that wrote that one in. Not the same list as the card's
+ * radio names — `credit` is a page word and never reaches the store.
+ */
+const STORED_CARD_METHODS = new Set(['credit-card', 'card_token']);
+
+/**
+ * Whether a `[data-next-payment-method]` value names the method the checkout store
+ * is currently holding.
+ *
+ * The two arguments come from **different vocabularies** — the page's word and the
+ * store's — so only the page's is translated. Putting the store's word through
+ * {@link toCheckoutPaymentMethod} as well looks equivalent and is not: that table
+ * is keyed by page words, and `credit-card` is deliberately not one of them, so the
+ * store's own word for a card came back as `credit_card` and matched nothing. That
+ * is what stopped the card being selected by default in 0.4.35 — the shopper opened
+ * a checkout with no method chosen and the card fields collapsed, and a radio the
+ * markup shipped `checked` was actively unchecked.
+ *
+ * A card is the one method with two stored spellings, which is why it is folded
+ * here rather than compared directly.
+ *
+ * @example
+ * ```ts
+ * namesStoredPaymentMethod('credit', 'credit-card'); // true
+ * namesStoredPaymentMethod('credit', 'card_token');  // true — same method
+ * namesStoredPaymentMethod('ideal', 'credit-card');  // false
+ * namesStoredPaymentMethod('pix', 'pix');            // true — unknown, still matched
+ * namesStoredPaymentMethod('', 'credit-card');       // false — names nothing
+ * ```
+ */
+export function namesStoredPaymentMethod(
+  markupValue: string | null | undefined,
+  storedMethod: string
+): boolean {
+  const offered = toCheckoutPaymentMethod(markupValue);
+  if (!offered) return false;
+
+  return STORED_CARD_METHODS.has(offered)
+    ? STORED_CARD_METHODS.has(storedMethod)
+    : offered === storedMethod;
 }
 
 /** Whether {@link toCheckoutPaymentMethod} recognised this method by name. */

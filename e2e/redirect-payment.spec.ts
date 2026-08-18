@@ -1,8 +1,19 @@
-import { test, expect, type Page, type Request } from '@playwright/test';
+import {
+  test,
+  expect,
+  type Locator,
+  type Page,
+  type Request,
+} from '@playwright/test';
 import type { Order } from '../src/types/api';
 import { MINIMAL_CAMPAIGN } from './fixtures/campaign';
 import { TEST_ORDER } from './fixtures/order';
-import { stubCampaign, stubCart, bootSdk } from './fixtures/routes';
+import {
+  stubCampaign,
+  stubCart,
+  stubCountryService,
+  bootSdk,
+} from './fixtures/routes';
 
 /**
  * Paying by a method that has no form and no express button — iDEAL, Bancontact,
@@ -70,38 +81,147 @@ async function submitWith(page: Page, method: string): Promise<void> {
   await page.click('[data-next-checkout-submit]');
 }
 
+/**
+ * Whether a shopper could actually read this element: it has a rendered box, and
+ * the point at its centre really paints it rather than something clipping or
+ * covering it.
+ *
+ * Polled rather than measured once, because the loading overlay covers the whole
+ * page until the failed submit tears it down, and a single measurement taken in
+ * that window says "unreadable" about markup that is fine.
+ */
+async function expectReadable(locator: Locator): Promise<void> {
+  await expect
+    .poll(() =>
+      locator.evaluate(el => {
+        const r = el.getBoundingClientRect();
+        if (!r.width || !r.height) return false;
+        const hit = document.elementFromPoint(
+          r.left + r.width / 2,
+          r.top + r.height / 2
+        );
+        return Boolean(hit && (el === hit || el.contains(hit)));
+      })
+    )
+    .toBe(true);
+}
+
 test.beforeEach(async ({ page }) => {
   await stubCampaign(page, MINIMAL_CAMPAIGN);
   await stubCart(page);
-  // The form's CountryService reaches an external CDN. Two endpoints, two
-  // shapes — only /states carries countryConfig, and answering both with the
-  // location shape makes updateFormLabels throw.
-  await page.route('**/cdn-countries*/**', route => {
-    const config = {
-      stateLabel: 'State',
-      stateRequired: true,
-      postcodeLabel: 'ZIP Code',
-      postcodeRegex: '',
-      postcodeExample: '10001',
-      stateExample: 'NY',
-    };
-    if (route.request().url().includes('/states')) {
-      return route.fulfill({
-        json: {
-          countryConfig: config,
-          states: [{ code: 'NY', name: 'New York' }],
-        },
-      });
-    }
-    return route.fulfill({
-      json: {
-        detectedCountryCode: 'US',
-        detectedCountryConfig: config,
-        detectedStates: [{ code: 'NY', name: 'New York' }],
-        countries: [{ code: 'US', name: 'United States' }],
-      },
-    });
-  });
+  await stubCountryService(page);
+});
+
+/**
+ * The card is what the checkout store starts on, so a shopper who has just
+ * arrived must find it already chosen and its fields already open.
+ *
+ * This stopped happening in 0.4.35. The startup pass compared the markup's word
+ * for a method with the store's by putting **both** through the radio table, and
+ * the store's own word for a card, `credit-card`, is deliberately not a radio
+ * name — so it came back as `credit_card` and matched nothing. Every radio was
+ * unchecked, including the one this fixture ships `checked`, and the card form
+ * stayed collapsed until the shopper clicked it.
+ *
+ * Why this cannot be a unit test alone: the symptom is a radio the browser had
+ * already checked from markup being unchecked by the SDK afterwards. That is the
+ * page's real initial state, not a constructed one.
+ */
+test('the card is chosen and open before the shopper touches anything', async ({
+  page,
+}) => {
+  await bootSdk(page, CHECKOUT);
+
+  const cardForm = page.locator(
+    '[data-next-payment-method="credit"] [data-next-payment-form]'
+  );
+  await expect(page.locator('#pm-credit')).toBeChecked();
+  await expect(cardForm).toHaveAttribute('data-next-payment-state', 'expanded');
+  await expect(page.locator('[data-next-payment-method="credit"]')).toHaveClass(
+    /next-selected/
+  );
+
+  // The negative control: choosing the card is not the same as choosing
+  // everything, so the methods beside it must be shut.
+  const idealForm = page.locator(
+    '[data-next-payment-method="ideal"] [data-next-payment-form]'
+  );
+  await expect(page.locator('#pm-ideal')).not.toBeChecked();
+  await expect(idealForm).toHaveAttribute(
+    'data-next-payment-state',
+    'collapsed'
+  );
+});
+
+/**
+ * A refusal has to be readable, and for every method — not only the two the SDK
+ * used to name.
+ *
+ * The message was always written. It went into `credit-error`, which the starter
+ * templates put inside the card's own `data-next-payment-form`, and that form is
+ * collapsed to `height: 0; overflow: hidden` whenever a card is not the chosen
+ * method. Measured in Chromium before the fix: text present, `display: flex`,
+ * 18px tall, clipped out of existence by a parent of height 0. The shopper saw an
+ * idle page and no reason for it.
+ *
+ * Why this cannot be a unit test: the defect is a rendered box of zero height
+ * clipping its own content. happy-dom does no layout, so every measurement it
+ * offers here is zero whether the bug is present or not.
+ */
+test('a refused iDEAL order is readable, in iDEAL’s own container', async ({
+  page,
+}) => {
+  await page.route('**/api/v1/orders/**', route =>
+    route.fulfill({
+      status: 400,
+      json: { payment_details: 'Your iDEAL payment was refused.' },
+    })
+  );
+
+  await bootSdk(page, CHECKOUT);
+  await page.evaluate(() => (window as any).next.addItem({ packageId: 1 }));
+  await submitWith(page, 'ideal');
+
+  const error = page.locator('[data-next-component="ideal-error"]');
+  await expect(error).toContainText('Your iDEAL payment was refused.');
+
+  // Readable, not merely present: the box has height, and the point at its
+  // centre really paints it rather than whatever was clipping it.
+  await expectReadable(error);
+
+  // The negative control: the card's container is not where this went, and it
+  // stays empty rather than quietly collecting every method's failures.
+  await expect(
+    page.locator('[data-next-component="credit-error-text"]')
+  ).toHaveText('');
+});
+
+/**
+ * The shipped-page case: a checkout whose only error slot is the card's. Nobody
+ * has to add `<method>-error` for a decline to become readable again.
+ */
+test('a refusal is readable even when the card owns the only container', async ({
+  page,
+}) => {
+  await page.route('**/api/v1/orders/**', route =>
+    route.fulfill({
+      status: 400,
+      json: { payment_details: 'That account was refused.' },
+    })
+  );
+
+  await bootSdk(page, CHECKOUT);
+  // Take iDEAL's own slot away, leaving the markup every live page has today.
+  await page.evaluate(() =>
+    document.querySelector('[data-next-component="ideal-error"]')?.remove()
+  );
+  await page.evaluate(() => (window as any).next.addItem({ packageId: 1 }));
+  await submitWith(page, 'ideal');
+
+  const error = page.locator('[data-next-component="credit-error"]');
+  await expect(error).toContainText('That account was refused.');
+
+  await expectReadable(error);
 });
 
 test('an iDEAL order goes out as iDEAL and sends the shopper to the payment page', async ({
@@ -203,6 +323,50 @@ test('reports add_payment_info once, named for the method', async ({
   await page.click('[data-next-checkout-submit]');
   await page.waitForTimeout(1000);
   expect(await paymentInfoEvents(page)).toHaveLength(1);
+});
+
+test('hides the methods the campaign cannot charge', async ({ page }) => {
+  // What a real campaign answers with: the card (as `bankcard`), Apple Pay,
+  // iDEAL and PayPal. Every other radio on the page is a dead end, because an
+  // order naming it would be refused.
+  await stubCampaign(page, {
+    ...MINIMAL_CAMPAIGN,
+    available_payment_methods: [
+      { code: 'apple_pay', label: 'Apple Pay' },
+      { code: 'bankcard', label: 'Bankcard' },
+      { code: 'ideal', label: 'iDEAL' },
+      { code: 'paypal', label: 'PayPal' },
+    ],
+  });
+
+  await bootSdk(page, CHECKOUT);
+
+  const wrapper = (method: string) =>
+    page.locator(`[data-next-payment-method="${method}"]`);
+
+  // Offered by this campaign, so still on the page.
+  await expect(wrapper('credit')).toBeVisible();
+  await expect(wrapper('ideal')).toBeVisible();
+
+  // Not offered, so gone. `toBeHidden` is the assertion that matters: the
+  // wrapper is still in the DOM, and what must be true is that nobody can see
+  // or press it.
+  await expect(wrapper('sepa_debit')).toBeHidden();
+  await expect(wrapper('pix')).toBeHidden();
+});
+
+test('leaves every method visible when the campaign lists none', async ({
+  page,
+}) => {
+  // The negative control for the test above, and the safe default: MINIMAL_CAMPAIGN
+  // carries no `available_payment_methods`, and not knowing what a campaign
+  // supports must not empty the page of ways to pay.
+  await bootSdk(page, CHECKOUT);
+
+  await expect(
+    page.locator('[data-next-payment-method="sepa_debit"]')
+  ).toBeVisible();
+  await expect(page.locator('[data-next-payment-method="pix"]')).toBeVisible();
 });
 
 test('an order that came back paid goes to the thank-you page, not to a gateway', async ({

@@ -100,6 +100,43 @@ export async function stubProspectCart(page: Page): Promise<void> {
 }
 
 /**
+ * Stub the country/state lists the checkout form's `CountryService` fetches from
+ * an external CDN.
+ *
+ * Two endpoints, two shapes — only `/states` carries `countryConfig`, and
+ * answering both with the location shape makes `updateFormLabels` throw. Every
+ * spec that boots a checkout form needs this.
+ */
+export async function stubCountryService(page: Page): Promise<void> {
+  await page.route('**/cdn-countries*/**', route => {
+    const config = {
+      stateLabel: 'State',
+      stateRequired: true,
+      postcodeLabel: 'ZIP Code',
+      postcodeRegex: '',
+      postcodeExample: '10001',
+      stateExample: 'NY',
+    };
+    if (route.request().url().includes('/states')) {
+      return route.fulfill({
+        json: {
+          countryConfig: config,
+          states: [{ code: 'NY', name: 'New York' }],
+        },
+      });
+    }
+    return route.fulfill({
+      json: {
+        detectedCountryCode: 'US',
+        detectedCountryConfig: config,
+        detectedStates: [{ code: 'NY', name: 'New York' }],
+        countries: [{ code: 'US', name: 'United States' }],
+      },
+    });
+  });
+}
+
+/**
  * Stub the address autocomplete provider. `suggestions` is returned verbatim as
  * the `predictions`/results payload the enhancer consumes.
  */

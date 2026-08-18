@@ -8,6 +8,10 @@ import type { OrderManager } from '../managers/order-manager';
 import type { CartItem } from '@/types/global';
 import { nextAnalytics, EcommerceEvents } from '@/core/analytics/index';
 import { paymentMethodLabel } from '@/utils/payment-method';
+import {
+  resolvePaymentErrorTarget,
+  showPaymentErrorTarget,
+} from '../utils/payment-error-container';
 
 export class ExpressCheckoutProcessor {
   constructor(
@@ -117,51 +121,50 @@ export class ExpressCheckoutProcessor {
     }
   }
 
+  /**
+   * PayPal is the one method whose message is worded for it: the shopper is
+   * standing in front of a PayPal button, not a form, so "try a different
+   * payment method" is the only useful next step.
+   */
   private displayPayPalError(errorMessage: string): void {
-    // Find PayPal error container
-    const errorContainer = document.querySelector(
-      '[data-next-component="paypal-error"]'
+    this.displayGeneralPaymentError(
+      errorMessage + ' Please try a different payment method.',
+      'paypal'
     );
-    const errorTextElement = document.querySelector(
-      '[data-next-component="paypal-error-text"]'
-    );
-
-    if (errorContainer instanceof HTMLElement && errorTextElement) {
-      // Update error message
-      errorTextElement.textContent =
-        errorMessage + ' Please try a different payment method.';
-
-      // Show error container
-      errorContainer.style.display = 'flex';
-
-      this.logger.info('PayPal error displayed:', errorMessage);
-    }
-
-    // Also display in general payment error area
-    this.displayGeneralPaymentError(errorMessage);
   }
 
   private displayExpressPaymentError(
     method: string,
     errorMessage: string
   ): void {
-    // Display in general payment error area
-    const fullMessage = `${paymentMethodLabel(method)} error: ${errorMessage}. Please try a different payment method.`;
-    this.displayGeneralPaymentError(fullMessage);
+    this.displayGeneralPaymentError(
+      `${paymentMethodLabel(method)} error: ${errorMessage}. Please try a different payment method.`,
+      method
+    );
   }
 
-  private displayGeneralPaymentError(message: string): void {
-    // Find general credit error container (used for all payment errors)
-    const errorContainer = document.querySelector(
-      '[data-next-component="credit-error"]'
-    );
-    const errorTextElement = document.querySelector(
-      '[data-next-component="credit-error-text"]'
-    );
-
-    if (errorContainer instanceof HTMLElement && errorTextElement) {
-      errorTextElement.textContent = message;
-      errorContainer.style.display = 'flex';
+  /**
+   * Writes into the failing method's own container, falling back to the page's
+   * shared one — the same rule the checkout form and the card tokenizer follow,
+   * because all three share
+   * [`payment-error-container.ts`](../utils/payment-error-container.ts).
+   *
+   * This used to hold its own `paypal-error` and `credit-error` lookups, which is
+   * why a PayPal decline was written into both containers at once and every other
+   * express method was written into the card's.
+   */
+  private displayGeneralPaymentError(message: string, method?: string): void {
+    const target = resolvePaymentErrorTarget(method, this.logger);
+    if (!target) {
+      this.logger.error(
+        'Express checkout failed and the page has no payment error container to say so in',
+        { method, message }
+      );
+      return;
     }
+
+    target.text.textContent = message;
+    showPaymentErrorTarget(target);
+    this.logger.info('Express payment error displayed', { method, message });
   }
 }

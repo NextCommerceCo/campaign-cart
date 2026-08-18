@@ -55,6 +55,7 @@ import {
 } from './loading-state';
 import type { PaymentFormDisplayContext } from './payment-form-display';
 import {
+  applyAvailablePaymentMethods as filterToAvailablePaymentMethods,
   initializePaymentForms as initializePaymentFormDisplay,
   updatePaymentFormVisibility as applyPaymentFormVisibility,
 } from './payment-form-display';
@@ -265,6 +266,18 @@ export class UIService {
    */
   public updatePaymentFormVisibility(paymentMethod: string): void {
     applyPaymentFormVisibility(this.paymentFormContext(), paymentMethod);
+  }
+
+  /**
+   * Hide the payment methods this campaign cannot charge.
+   *
+   * @param availableCodes `code` values from the campaign's
+   * `available_payment_methods`. An empty or missing list hides nothing.
+   */
+  public applyAvailablePaymentMethods(
+    availableCodes: readonly string[] | undefined
+  ): void {
+    filterToAvailablePaymentMethods(this.paymentFormContext(), availableCodes);
   }
 
   // ============================================================================

@@ -144,10 +144,26 @@ export default defineFeature({
         },
         { value: 'billing-location', description: 'Set by the feature on the cloned billing location group.' },
         { value: 'shipping-field-row', description: 'One row of shipping fields, for row-level show and hide.' },
-        { value: 'credit-error', description: 'Container for card errors.' },
-        { value: 'credit-error-text', description: 'Element the card error message is written into.' },
-        { value: 'paypal-error', description: 'Container for PayPal errors.' },
+        {
+          value: '{method}-error',
+          description:
+            "Container for a failure paying by that method, named for the method's own `data-next-payment-method` value: `credit-error`, `ideal-error`, `paypal-error`, `sepa_debit-error`, and so on for every method the page offers. `-` and `_` are interchangeable, so `apple-pay-error` and `apple_pay-error` are one name.",
+        },
+        {
+          value: '{method}-error-text',
+          description:
+            'Element the message is written into. Optional: a container with no `-text` child is written into directly.',
+        },
+        {
+          value: 'credit-error',
+          description:
+            'The container used when the failing method has none of its own, and what every page carried before per-method containers existed.',
+        },
+        { value: 'express-error', description: 'Container for an express button failure.' },
+        { value: 'express-error-text', description: 'Element the express message is written into.' },
       ],
+      notes:
+        'Keep an error container **outside** `data-next-payment-form`. A container inside a method\'s form is hidden whenever that method is not the chosen one, so a refusal written into it cannot be read — which is what made a refused iDEAL payment look like an idle page. The SDK moves `credit-error` out of a collapsed form when it has to, but a container that starts outside never needs moving. Choosing a different method clears every one of these.',
     },
     {
       group: STRUCTURE,
@@ -167,7 +183,7 @@ export default defineFeature({
       values:
         '`credit` / `paypal` / `apple_pay` / `google_pay` / `klarna` / `affirm` / `bancontact` / `giropay` / `ideal` / `link` / `sepa_debit` / `sofort` / `swish` / `twint`',
       notes:
-        'Underscores, `-` accepted, case ignored — `apple_pay` and `apple-pay` are one value. The card is the only one whose name changes downstream: `credit` here is `credit-card` in the checkout store and `card_token` on the order, and the SDK translates both hops. Everything after `klarna` is a **redirect method**: it has no fields to reveal, so its `[data-next-payment-form]` can be empty — the shopper is sent to the payment provider to pay once the order exists.',
+        'Underscores, `-` accepted, case ignored — `apple_pay` and `apple-pay` are one value. The card is the only one whose name changes downstream: `credit` here is `credit-card` in the checkout store and `card_token` on the order, and the SDK translates both hops. **A section for a method the campaign does not offer is hidden**, since an order naming it would be refused: `available_payment_methods` on the campaign decides, the card is never hidden, and a campaign listing nothing hides nothing. Everything after `klarna` is a **redirect method**: it has no fields to reveal, so its `[data-next-payment-form]` can be empty — the shopper is sent to the payment provider to pay once the order exists.',
     },
     {
       name: 'data-next-payment-form',

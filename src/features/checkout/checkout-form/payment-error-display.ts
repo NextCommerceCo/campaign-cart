@@ -18,10 +18,12 @@
  * emit, which is exactly what tells our own echo apart from a real error raised elsewhere.
  * If you move either half, the ref moves with it.
  *
- * The container is forced visible with five separate writes because author stylesheets hide
- * it in different ways — `display`, `visibility`, `opacity` and a `hidden` class are each
- * enough on their own to swallow a decline message, and a shopper who sees no message reads
- * the silence as "nothing happened" and presses pay again.
+ * **Which** container it writes into is not this module's decision — see
+ * [`payment-error-container.ts`](../utils/payment-error-container.ts), which is
+ * shared with the express processor and the card tokenizer so all three name the
+ * same element. It is what makes `<method>-error` work for every way of paying
+ * rather than for the two the SDK used to hard-code, and what stops a decline
+ * being written into a container the chosen method has collapsed shut.
  *
  * Extracted from `checkout-form.enhancer.ts` verbatim. Each half needs three things from
  * the form ({@link PaymentErrorDisplayContext}, {@link PaymentErrorListenerContext}).
@@ -30,9 +32,16 @@
 import type { Logger } from '@/core/logger';
 import type { EventMap } from '@/types/global';
 
+import {
+  resolvePaymentErrorTarget,
+  showPaymentErrorTarget,
+} from '../utils/payment-error-container';
+
 /** What showing a payment error needs from the checkout form. */
 export interface PaymentErrorDisplayContext {
   logger: Logger;
+  /** The method the failure belongs to, so its own `<method>-error` can be found. */
+  paymentMethod: () => string;
   /**
    * True only while this module is emitting its own `payment:error` echo. Shared by
    * reference with {@link PaymentErrorListenerContext} — one flag, two readers.
@@ -97,38 +106,30 @@ export function displayPaymentError(
 
   // Use a slight delay to ensure DOM is ready
   setTimeout(() => {
-    // Find the credit error container
-    const errorContainer = document.querySelector('[data-next-component="credit-error"]');
-    if (errorContainer instanceof HTMLElement) {
-      // Find the message element
-      const messageElement = errorContainer.querySelector('[data-next-component="credit-error-text"]');
-      if (messageElement) {
-        messageElement.textContent = message;
-      }
-
-      // Force show the error container
-      errorContainer.style.display = 'flex';
-      errorContainer.style.visibility = 'visible';
-      errorContainer.style.opacity = '1';
-      errorContainer.classList.add('visible');
-      errorContainer.classList.remove('hidden');
-
-      // Remove any inline styles that might be hiding it
-      if (errorContainer.style.display === 'none') {
-        errorContainer.style.removeProperty('display');
-        errorContainer.style.display = 'flex';
-      }
-
-      ctx.logger.info('[Payment Error] Error container shown with message:', message);
-
-      // Auto-hide after 10 seconds
-      setTimeout(() => {
-        errorContainer.style.display = 'none';
-        errorContainer.classList.remove('visible');
-      }, 10000);
-    } else {
-      ctx.logger.error('[Payment Error] Could not find error container element');
+    const target = resolvePaymentErrorTarget(ctx.paymentMethod(), ctx.logger);
+    if (!target) {
+      ctx.logger.error(
+        '[Payment Error] Could not find error container element'
+      );
+      return;
     }
+
+    target.text.textContent = message;
+    showPaymentErrorTarget(target);
+
+    ctx.logger.info(
+      '[Payment Error] Error container shown with message:',
+      message
+    );
+
+    // Auto-hide after 10 seconds, unless a newer failure has replaced the text
+    // in the meantime — the container is shared, and hiding someone else's
+    // message is how a second decline went unread.
+    setTimeout(() => {
+      if (target.text.textContent !== message) return;
+      target.container.style.display = 'none';
+      target.container.classList.remove('visible');
+    }, 10000);
   }, 100); // Small delay to ensure DOM is ready
 
   // Also emit an event for other components to handle. The flag marks this as

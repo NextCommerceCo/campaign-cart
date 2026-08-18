@@ -3,6 +3,8 @@ import { CheckoutFormEnhancer } from '../checkout-form.enhancer';
 import { scanBillingFields, setupBillingForm } from '../billing-form-setup';
 import { useCheckoutStore, type CheckoutState } from '@/state/checkout';
 import { useConfigStore } from '@/state/config';
+import { useCartStore } from '@/state/cart';
+import { useCampaignStore } from '@/state/campaign';
 import { EventBus } from '@/core/events';
 
 // The clone step is the only boot step whose branch lives in another module, so
@@ -47,6 +49,7 @@ interface BootSteps {
 
   form: HTMLElement;
   logger: ReturnType<typeof createMockLogger>;
+  loadingOverlay: { hide: (immediate?: boolean) => void };
   validator: { setPhoneValidator: (fn: PhoneValidator) => void };
   phoneInputs: Map<string, PhoneInstance>;
   creditCardService?: { initialize: () => Promise<void> };
@@ -205,13 +208,21 @@ describe('setupPhoneValidation', () => {
 // ─── subscribeToStores / setupDebugEventListeners ─────────────────────────────
 
 describe('subscribeToStores', () => {
-  it('subscribes to the checkout, cart and config stores', () => {
+  it('subscribes to the checkout, cart, config and campaign stores', () => {
+    // The campaign store is the fourth: it decides which payment methods this
+    // store can charge, and it usually loads after the form is built.
     const { steps } = createEnhancer();
     const subscribe = vi.spyOn(steps, 'subscribe').mockImplementation(() => {});
 
     steps.subscribeToStores();
 
-    expect(subscribe).toHaveBeenCalledTimes(3);
+    const subscribed = subscribe.mock.calls.map(call => call[0]);
+    expect(subscribed).toEqual([
+      useCheckoutStore,
+      useCartStore,
+      useConfigStore,
+      useCampaignStore,
+    ]);
   });
 });
 
@@ -497,18 +508,28 @@ describe('setupWindowFocusHandler', () => {
 
   it('cancels a stuck express payment when the window regains focus', () => {
     const { steps } = createEnhancer();
+    const hide = vi.spyOn(steps.loadingOverlay, 'hide');
     setCheckoutState({ isProcessing: true, paymentMethod: 'google_pay' });
 
     focus(steps)(new Event('focus'));
 
     const state = useCheckoutStore.getState();
+    expect(hide).toHaveBeenCalledWith(true);
     expect(state.isProcessing).toBe(false);
     expect(state.paymentMethod).toBe('credit-card');
     expect(state.paymentToken).toBe('');
   });
 
-  it('clears processing but keeps a card payment method and its token', () => {
-    const { steps } = createEnhancer();
+  /**
+   * Issue #75. A card is charged from this page, so focus returning says nothing
+   * about the request — and on mobile it fires routinely mid-checkout, from the
+   * keyboard closing or a tap. The reset used to run for every method, so a slow
+   * card order lost its overlay and got its pay button back, and the shopper
+   * submitted a second time.
+   */
+  it('leaves a card payment in flight alone', () => {
+    const { steps, logger } = createEnhancer();
+    const hide = vi.spyOn(steps.loadingOverlay, 'hide');
     setCheckoutState({
       isProcessing: true,
       paymentMethod: 'credit-card',
@@ -518,8 +539,28 @@ describe('setupWindowFocusHandler', () => {
     focus(steps)(new Event('focus'));
 
     const state = useCheckoutStore.getState();
-    expect(state.isProcessing).toBe(false);
+    expect(hide).not.toHaveBeenCalled();
+    expect(state.isProcessing).toBe(true);
+    expect(state.paymentMethod).toBe('credit-card');
     expect(state.paymentToken).toBe('tok_live');
+    expect(logger.info).not.toHaveBeenCalled();
+  });
+
+  /**
+   * A redirect method creates its order from this page too — the shopper only
+   * leaves once the API has answered with a `payment_complete_url`. So it is the
+   * card case, not the express one.
+   */
+  it('leaves a redirect method in flight alone', () => {
+    const { steps } = createEnhancer();
+    const hide = vi.spyOn(steps.loadingOverlay, 'hide');
+    setCheckoutState({ isProcessing: true, paymentMethod: 'ideal' });
+
+    focus(steps)(new Event('focus'));
+
+    expect(hide).not.toHaveBeenCalled();
+    expect(useCheckoutStore.getState().isProcessing).toBe(true);
+    expect(useCheckoutStore.getState().paymentMethod).toBe('ideal');
   });
 });
 
