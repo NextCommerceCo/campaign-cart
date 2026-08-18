@@ -6,7 +6,7 @@ category: "Reference"
 
 # Data attributes
 
-Every attribute a production funnel page uses, grouped by what you are building. This is the working set drawn from the shipped starter templates (the attributes on real checkout, upsell, and receipt pages) with the value syntax each one takes.
+Use this page to build a page without writing JavaScript. Mark an element and the SDK wires it up: a card that swaps the cart, an input the order reads, a price that stays in step with the cart. Everything here is drawn from the markup the starter templates actually ship.
 
 How to read this page: sections run in funnel order, and each starts with a minimal skeleton (real template markup stripped to its attributes) showing which attribute sits on which element. The [Building Pages guides](../pages/checkout-page.md) show the same markup assembled in full, and [How it works](../start-here/how-it-works.md) explains the three kinds of markup these tables mix: activation attributes, display bindings, and template tokens.
 
@@ -33,9 +33,10 @@ Below is an example that binds the cart total to a span, shows one block only wh
 <div data-next-show="cart.hasItems">You have items in your cart</div>
 <div data-next-hide="cart.isEmpty">Ready to check out</div>
 <div data-next-await="">
-  <span data-next-display="bundle.main.price" data-next-format="currency"
-    >$0.00</span
-  >
+  <span
+    data-next-display="bundle.main.price"
+    data-next-format="currency"
+  ></span>
 </div>
 ```
 
@@ -88,13 +89,13 @@ A discount row that disappears at zero, and a pack price shown per unit.
 ></span>
 ```
 
-### Waiting for the scan
+### Hiding placeholders until prices load
 
 `data-next-await` stops visitors seeing `-` placeholders flash before prices load.
 
 The SDK adds `next-display-ready` to `<html>` when its scan finishes. The hiding is done by `next-core.css`, so the attribute does nothing without that stylesheet on the page.
 
-## What a display path can read
+## Display paths
 
 The first segment of a path names one of these objects. The same paths work in `data-next-show` and `data-next-hide` conditions.
 
@@ -171,7 +172,7 @@ The completed order, loaded from `?ref_id=`. Used on [Receipt](../pages/receipt-
 
 `order.billingAddress.*` carries the same fields as `order.shippingAddress.*`, plus `.name`.
 
-## The bundle selector
+## Bundle selector
 
 One container, one card per tier; clicking a card writes that tier's lines to the cart. Used on checkout pages and, in select mode, on [upsell pages](../pages/upsell-page.md). Assembled in full in the [Checkout guide](../pages/checkout-page.md):
 
@@ -713,7 +714,7 @@ Below is an example that renders the purchased lines: a named template holding t
 <div data-item-template-id="order-item-template" data-next-order-items=""></div>
 ```
 
-## Cart summary and lists
+## Cart summary
 
 The live totals panel on checkout and upsell pages. The nesting that makes `{item.*}` work (the summary's own `<template>` holding a `data-summary-lines` list with its own `<template>` per line) is shown in [How it works](../start-here/how-it-works.md) and assembled in full in the [Checkout guide](../pages/checkout-page.md).
 
@@ -873,6 +874,7 @@ Configure it with `data-open-text`, `data-close-text`, `data-toggle-class`, and 
 
 ## Cautions
 
+- **Use the debugger to find a mistyped attribute.** Open the page with `?debugger=true` and turn on x-ray mode: every element the SDK enhanced is outlined, so the one that is not outlined is the one with the typo. See [Debugger](./debugger.md).
 - **A mistyped attribute does nothing, silently.** The scanner matches exact names; `data-next-bundle-card` misspelled is inert markup with no warning. When something fails to come alive, diff your attribute spelling against these tables first.
 - **Remote `bundle.*` display bindings need `data-next-format`.** Inside a card, `data-next-bundle-display` formats itself; outside one, `data-next-display="bundle.main.price"` renders an unformatted number until you add `data-next-format="currency"`.
 - **A display path is not a template token.** `data-next-display="cart.total"` binds an element; `{total}` works only inside a list feature's `<template>`. Mixing them leaves a literal `{total}` on screen or a binding that never fills.

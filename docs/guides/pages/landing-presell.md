@@ -32,7 +32,7 @@ That is the whole integration. Loading the SDK here still matters: it captures a
 
 A page that sells *and* drives the cart directly (a buy button that adds a package without going through a selector) uses the `data-next-action="add-to-cart"` attribute instead of a plain link. The starter templates don't; their product selection happens on the checkout page.
 
-## Clearing the cart on entry
+## Cart clearing
 
 A returning visitor still carries the cart from their last session. If this page is the funnel's entry point, clear it:
 
@@ -44,11 +44,38 @@ Entry pages only: the tag clears on every load of the page it is on, including r
 
 ## URL parameters
 
-Two URL-parameter patterns the shop starter templates use, both driven by query parameters the SDK captures at boot:
+A landing page's real output is the link it sends people to. These parameters let one link decide what the next page shows, so you can run several offers off the same checkout page instead of building one page per variant.
 
-**Preload the cart from the link.** The shop templates' landing CTA points at `/checkout/?forcePackageId=1:1`. The checkout page then has no selector at all; the cart arrives fully formed from the URL.
+### Send traffic to a pre-filled cart
 
-**Toggle page sections per traffic source.** Every URL parameter is stored for the session, and conditional display can read it through the `param.*` namespace:
+Point the call to action at a checkout that already has the offer in it. The visitor lands on a page with no selector to click.
+
+```html
+<a href="/checkout/?forcePackageId=1:1">Claim Your 60% Discount</a>
+```
+
+The value is `{ID}` or `{ID}:{QTY}`, comma-separated for several packages. Use `?forceBundleId=` instead when the checkout has a bundle selector and you want one tier pre-picked.
+
+This empties the cart first, every time. Keep it on ad links, never on a link a returning shopper might follow.
+
+### Run one page in several currencies
+
+A link can pin the currency and the address rules, which is how one landing page serves several markets.
+
+```html
+<a href="/checkout/?currency=EUR&country=DE">Jetzt bestellen</a>
+```
+
+| Parameter | Description |
+|---|---|
+| `currency` | Prices the campaign in that currency |
+| `country` | Loads that country's address rules and shipping |
+
+Set both. `country` on its own gives German address fields with US prices.
+
+### Show different sections per source
+
+Every parameter on the link is readable from your markup for the rest of the session, so one page can dress itself differently per audience.
 
 ```html
 <div data-next-hide="param.banner=='n'">
@@ -56,7 +83,28 @@ Two URL-parameter patterns the shop starter templates use, both driven by query 
 </div>
 ```
 
-A link with `?banner=n` hides the promo banner for that whole session.
+A visitor arriving on `?banner=n` never sees the banner, on that page or any later one in the funnel.
+
+### Excluding internal traffic
+
+```html
+<a href="/?ignore=true">Preview</a>
+```
+
+Analytics stops for the whole tab, so QA clicks and demo runs do not land in the campaign's numbers.
+
+### Credit the sale
+
+Attribution parameters are captured on arrival and sent with the order, so a presell page at the front of the funnel is where they need to land.
+
+| Parameter | Description |
+|---|---|
+| `utm_source` and the other `utm_*` | Where the visit came from |
+| `affid` | The affiliate credited with the order |
+| `gclid` | Google Ads click id, added by auto-tagging |
+| `fbclid` | Facebook click id, added on outbound clicks |
+
+These are remembered for the session, so they keep applying as the visitor moves through the funnel without the parameters in later URLs.
 
 ## Cautions
 

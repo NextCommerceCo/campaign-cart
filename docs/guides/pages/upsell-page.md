@@ -18,7 +18,7 @@ The head declares the page type and both exits:
 
 `upsell` as the page type is what fires the upsell page-view event. Without it the funnel reports purchases with no upsell views. Accept and decline can point at the same page; the starter templates set the decline URL to the receipt.
 
-## The offer
+## Offer markup
 
 Everything the visitor can act on sits inside one wrapper: `data-next-upsell="offer"`. Inside it, a bundle selector in upsell context carries the tiers, and two links accept or skip the offer:
 
@@ -64,9 +64,7 @@ Everything the visitor can act on sits inside one wrapper: `data-next-upsell="of
     </div>
   </div>
   <a data-next-upsell-action="add" href="#">Yes, Add to My Order</a>
-  <a data-next-upsell-action="skip" href="#"
-    >No thank you, I don't want this one-time offer</a
-  >
+  <a data-next-upsell-action="skip" href="#">No thanks</a>
 </div>
 ```
 
@@ -76,7 +74,7 @@ How it behaves:
 - `data-next-bundle-vouchers` rides a coupon code on each tier: `UP50` on the 1x tier, `UP60` on the 2x tier. The code is priced into the card *and* sent with the add, so the discount the visitor saw is the discount the order gets. The codes must exist in the Campaigns App.
 - `add` submits the selected tier to the order, then forwards to the accept URL. `skip` forwards to the decline URL without touching the order.
 
-## Prices outside the cards
+## Remote price bindings
 
 A summary block elsewhere on the page can mirror the selected tier through the `bundle.<selectorId>.*` display namespace:
 

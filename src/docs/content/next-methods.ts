@@ -105,7 +105,7 @@ export interface WindowGlobalDoc {
 export const NEXT_METHOD_GROUPS: NextMethodGroup[] = [
   {
     id: 'boot',
-    title: 'Getting hold of the SDK',
+    title: 'The SDK instance',
     intro:
       'The SDK creates one instance of itself during boot and assigns it to `window.next`. ' +
       'You do not construct it. Because boot is asynchronous, code that runs early has to ' +
@@ -144,7 +144,7 @@ export const NEXT_METHOD_GROUPS: NextMethodGroup[] = [
   },
   {
     id: 'catalog',
-    title: 'Products, packages, and variants',
+    title: 'Catalog',
     intro:
       'Read-only lookups into the loaded campaign. A *package* is the sellable unit — a ' +
       'quantity of a product at a price — and its `ref_id` is the number every cart call ' +
@@ -153,7 +153,7 @@ export const NEXT_METHOD_GROUPS: NextMethodGroup[] = [
   },
   {
     id: 'events',
-    title: 'Reacting to what happens',
+    title: 'Events',
     intro:
       'Two mechanisms, and they are not interchangeable. `on`/`off` subscribe to the ' +
       'typed SDK event bus and are what you want. `registerCallback` is the older ' +
@@ -161,7 +161,7 @@ export const NEXT_METHOD_GROUPS: NextMethodGroup[] = [
   },
   {
     id: 'analytics',
-    title: 'Sending analytics events yourself',
+    title: 'Analytics',
     intro:
       'The SDK already tracks the standard ecommerce funnel on its own. Call these only ' +
       'for something it cannot see — a custom step, a view of a list you rendered ' +
@@ -171,7 +171,7 @@ export const NEXT_METHOD_GROUPS: NextMethodGroup[] = [
   },
   {
     id: 'attribution',
-    title: 'Attribution and order metadata',
+    title: 'Attribution and metadata',
     intro:
       'Attribution is the record of where the visitor came from; metadata is the free-form ' +
       'bag of extra values attached to the order. Both are collected automatically and ' +
@@ -202,7 +202,7 @@ export const NEXT_METHOD_GROUPS: NextMethodGroup[] = [
   },
   {
     id: 'utility',
-    title: 'Formatting, version, and checks',
+    title: 'Utilities',
     intro: 'Small helpers that do not belong to any one part of the flow.',
   },
 ];
@@ -295,7 +295,7 @@ next.formatPrice(total.toNumber()); // '$59.98'`,
       'The full programmatic cart API — the supported way to drive the cart from code.',
     returns:
       'The cart operations object. Its members are listed under [What `next.cart` can ' +
-      'do](#what-nextcart-can-do) below.',
+      'do](#cart-operations) below.',
     example: `await next.cart.addItem({ packageId: 2, quantity: 1, isUpsell: false });
 await next.cart.updateQuantity(2, 3);
 await next.cart.swapPackage(2, { packageId: 7, quantity: 1, isUpsell: false });`,

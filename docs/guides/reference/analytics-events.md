@@ -6,7 +6,7 @@ category: "Reference"
 
 # Analytics events
 
-The SDK reports funnel activity as `dl_*` events (view, add-to-cart, checkout, purchase, upsell), pushed to its own `window.NextDataLayer` array and forwarded to whichever providers you configure. This page lists every event name, what fires automatically, the purchase event in detail, and the configuration mistakes that produce wrong numbers.
+Use this page to get your funnel reporting correctly: what the SDK sends, when it sends it, what each payload carries, and the configuration mistakes that quietly produce wrong revenue numbers.
 
 ## Enabling analytics
 
@@ -28,11 +28,15 @@ There is no default analytics setup and no meta tag creates one. Only `window.ne
 
 Providers are optional. With `enabled: true` and no providers, every event is still built, validated, and pushed to `window.NextDataLayer`. Providers are forwarders on top of that array, so your own script can read it and be the only consumer. `mode: "auto"` fires the view, cart, and checkout events from page activity. `"manual"` mode only switches those auto-trackers off: every `next.track*` method (`trackViewItem`, `trackPurchase`, `trackCustomEvent`, and the rest) still works and becomes your only source, with the same event names.
 
+The debug overlay's Analytics panel lists every event with its per-provider delivery status, which is faster than reading the array by hand. Open it with `?debugger=true` and see [Debugger](./debugger.md).
+
 Verify in the console: `window.NextDataLayer` grows as you interact, and `window.NextAnalytics.getStatus()` reports `initialized: true` with the provider list.
 
 ## Event names
 
 Every name is exact. These are the strings that land in `window.NextDataLayer`, and the strings `blockedEvents` must match verbatim: `"purchase"` blocks nothing, `"dl_purchase"` does.
+
+Everything in the four category tables below fires on its own once analytics is enabled. The two exceptions have their own sections: **Fired only by your code**, and **Declared but never fired**.
 
 ### Commerce events
 
@@ -80,7 +84,7 @@ Every name is exact. These are the strings that land in `window.NextDataLayer`, 
 | [`dl_exit_intent_closed`](#dl_exit_intent_closed) | Exit-intent popup closed |
 | [`dl_exit_intent_action`](#dl_exit_intent_action) | Exit-intent custom action |
 
-### Fired only by your code
+### Manual events
 
 These two have no automatic trigger. Call the method and the SDK builds the event.
 
@@ -119,7 +123,7 @@ Providers are forwarders on top of `window.NextDataLayer`. With `analytics.enabl
 
 Each is configured under `analytics.providers.<name>`.
 
-### What each provider needs
+### Required settings
 
 | Provider | Required setting |
 |---|---|
@@ -167,7 +171,7 @@ One section per event, with the payload it pushes to `window.NextDataLayer`.
 
 Every payload below shows the fields the SDK actually populates. Item objects are typed by {@link ProductSchema} and the `user_properties` block by {@link UserPropertiesSchema}; both pages list the full set of fields the validator accepts, including ones no builder fills in.
 
-Fields come from `core/analytics/schemas/index.ts › eventSchemas` for the 19 events that declare a schema. The rest are read from their builders, named in the section.
+Fields come from `core/analytics/schemas/index.ts › eventSchemas` where an event declares a schema. The rest are read from their builders, named in the section.
 
 ### dl_view_item_list
 

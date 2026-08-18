@@ -175,6 +175,42 @@ grep -oE '^\|([^|]*\|){3,}$' docs/guides/**/*.md
 
 ---
 
+## 11. Library voice, not blog voice
+
+Match the reference documentation of a library a reader already trusts: Stripe.js, MDN.
+Those pages name things and get out of the way.
+
+**Headings name the thing, never the reader and never a question.** Gerunds are correct
+and common (`Loading the SDK`, `Debugging`, `Handling errors`). These are not:
+
+| Wrote | Should be |
+|---|---|
+| Checking it booted | Verifying the install |
+| Seeing it work | Debugging |
+| What you can do with the link | URL parameters |
+| Which switch does what | Debug switches |
+| Running your own code | Initialization |
+| Where to go next | Next steps |
+
+Two patterns fail, and `npm run docs:coverage` gates both:
+
+- **A pronoun in a heading.** `it`, `you`, `your`, `we`, `our`. A pronoun names nothing,
+  so the sidebar entry reads as a sentence fragment from a tutorial.
+- **A question as a heading.** `What…`, `Which…`, `How…`, or a trailing `?`.
+
+**Use the conventional section names.** A reader scanning for setup looks for
+Installation, Configuration, Usage, API reference, Troubleshooting, Migration. Inventing
+a name for a slot that already has one is how `Checking it booted` ends up between
+`Running your own code` and `Where to go next`.
+
+**Do not promote a note to a section.** Two lines about opening the debugger belong at
+the end of the section that raises the question, not as a step of their own.
+
+**First sentence names the thing and says what it is for.** Mechanism comes after usage,
+never before it. `A landing page's real output is the link it sends people to` opens a
+section; `driven by query parameters the SDK captures at boot` does not.
+
+
 ## Checklist
 
 - [ ] Every table is two columns, second column headed `Description`.
@@ -186,4 +222,6 @@ grep -oE '^\|([^|]*\|){3,}$' docs/guides/**/*.md
 - [ ] Every `html` block went through prettier; no line over 80 chars; void elements not self-closed.
 - [ ] Every description traces to a manifest, type, or fixture — cited `file:line`.
 - [ ] The file being edited is in `typedoc.json` `projectDocuments`.
+- [ ] No heading contains a pronoun or is a question.
+- [ ] Section names are the conventional ones, not invented.
 - [ ] Rebuilt with `npm run docs` and checked on the page, not in the markdown.
