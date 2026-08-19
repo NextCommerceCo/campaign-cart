@@ -106,7 +106,8 @@ export class ErrorDisplayManager {
     // container, which is where they land on a page with no wrapper classes.
     const key = fieldKey(field);
     if (key) {
-      const owned = (field.closest('form') ?? wrapper).querySelectorAll(
+      const scope: ParentNode = field.closest('form') ?? field.ownerDocument;
+      const owned = scope.querySelectorAll(
         `.${this.options.errorLabelClass}[${ERROR_OWNER_ATTR}="${key}"]`
       );
       owned.forEach(label => label.remove());
@@ -116,13 +117,11 @@ export class ErrorDisplayManager {
     // page's own markup. Only ever removed from a *real* wrapper — never from the
     // parent-element fallback, which on a wrapperless page is the whole form.
     this.clearUnownedLabelIn(wrapper === field.parentElement ? null : wrapper);
-    this.clearUnownedLabelIn(
-      field.closest(`.${this.options.wrapperClass}`) as HTMLElement | null
-    );
+    this.clearUnownedLabelIn(field.closest(`.${this.options.wrapperClass}`));
   }
 
   /** Removes one message that names no field, from a container known to be a wrapper. */
-  private clearUnownedLabelIn(container: HTMLElement | null): void {
+  private clearUnownedLabelIn(container: Element | null): void {
     const label = container?.querySelector(
       `.${this.options.errorLabelClass}:not([${ERROR_OWNER_ATTR}])`
     );

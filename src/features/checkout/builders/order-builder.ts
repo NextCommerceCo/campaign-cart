@@ -65,6 +65,13 @@ export class OrderBuilder {
     shippingMethod?: any,
     vouchers: string[] = []
   ): CreateOrder {
+    // Resolved once: the shipping address and the customer record carry the same
+    // number, and asking twice would log the same warning twice for one order.
+    const shopperPhone = this.phoneForApi(
+      checkoutFormData.phone,
+      checkoutFormData.country
+    );
+
     // Build shipping address
     const shippingAddress: Address = {
       first_name: checkoutFormData.fname || '',
@@ -75,10 +82,7 @@ export class OrderBuilder {
       state: checkoutFormData.province,
       postcode: checkoutFormData.postal,
       country: checkoutFormData.country || '',
-      phone_number: this.phoneForApi(
-        checkoutFormData.phone,
-        checkoutFormData.country
-      )
+      phone_number: shopperPhone
     };
     
     // Build billing address
@@ -130,10 +134,7 @@ export class OrderBuilder {
         first_name: checkoutFormData.fname || '',
         last_name: checkoutFormData.lname || '',
         language: 'en',
-        phone_number: this.phoneForApi(
-          checkoutFormData.phone,
-          checkoutFormData.country
-        ),
+        phone_number: shopperPhone,
         accepts_marketing: checkoutFormData.accepts_marketing ?? true
       },
       vouchers: vouchers,

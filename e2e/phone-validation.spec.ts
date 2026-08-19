@@ -98,7 +98,10 @@ test('a real phone is accepted and sent in E.164', async ({ page }) => {
   await page.waitForURL(url => url.searchParams.has('ref_id'));
 
   expect(posts).toHaveLength(1);
-  const body = posts[0]?.postDataJSON();
+  const body = posts[0]?.postDataJSON() as {
+    shipping_address: { phone_number: string };
+    user: { phone_number: string };
+  };
 
   // Typed nationally, sent internationally. Both places the order carries it.
   expect(body.shipping_address.phone_number).toBe('+14155552671');

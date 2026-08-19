@@ -75,6 +75,7 @@ export type PhoneReason =
   | 'library-length'
   | 'digit-count'
   | 'utils-not-loaded'
+  /** No widget to ask — none on the page, or the one there is displaying another number. */
   | 'no-instance';
 
 export interface PhoneCheck {
@@ -179,11 +180,15 @@ function isRepeatedUnit(digits: string): boolean {
  * This is the check that closes the reported bug: `0000000000` and `1234567890` are the
  * right length for a US number, so every length-based check in the world passes them.
  *
- * Deliberately narrow. It rejects only shapes a person types when they are refusing to give
- * a phone number, never a shape a real number could take, because the cost of the two
- * mistakes is not symmetric: a junk number on an order is an order operations cannot follow
- * up, while a real number rejected is a sale that does not happen and that nobody finds out
- * about.
+ * Deliberately narrow, because the cost of the two mistakes is not symmetric: a junk number
+ * on an order is an order operations cannot follow up, while a real number rejected is a
+ * sale that does not happen and that nobody finds out about.
+ *
+ * The price is measurable rather than theoretical. Enumerating every shape these three
+ * rules match gives **68** ten-digit numbers that are otherwise structurally valid North
+ * American ones (`2345678901`, `4242424242`, `9012345678`, …) out of roughly six billion
+ * assignable — about one in a hundred million. Widen a rule and re-run that count before
+ * assuming the trade still holds.
  *
  * @example
  * ```ts
@@ -218,11 +223,61 @@ function alreadyE164(value: string): string | null {
  * drops its leading zero is a per-country rule (the UK and Germany drop it, Italy keeps
  * it). Getting that wrong produces a number that looks like a valid E.164 and is not, which
  * is worse than handing the API a national number it knows it has to convert.
+ *
+ * Only reached for a source that {@link speaksFor} this number; the caller has already
+ * established that.
  */
 function readE164(value: string, source?: PhoneNumberSource): string | null {
   const fromLibrary = ask(() => source?.getNumber?.());
   if (fromLibrary?.startsWith('+')) return fromLibrary;
   return alreadyE164(value);
+}
+
+/**
+ * Whether the widget is talking about the number being judged.
+ *
+ * Everything a widget can tell us — the international form *and* the verdict — is read
+ * from its own field, never from the value passed in, and the two are not always the same
+ * thing: a caller may be judging a number restored from an earlier page while the field on
+ * screen holds something else entirely. A widget on a different number is not a source of
+ * truth about this one, so it is set aside for both answers rather than for one of them,
+ * and the result says `unknown` instead of borrowing a stranger's verdict.
+ *
+ * When the widget cannot produce a number at all — its utils script has not landed — there
+ * is nothing to compare, and nothing is lost by carrying on: the verdict it would give in
+ * that state is `null` anyway.
+ */
+function speaksFor(value: string, source?: PhoneNumberSource): boolean {
+  if (!source) return false;
+  const fromLibrary = ask(() => source.getNumber?.());
+  if (!fromLibrary?.startsWith('+')) return true;
+  return describesSameNumber(fromLibrary, value);
+}
+
+/**
+ * Whether the library's number is the one that was asked about.
+ *
+ * Compared by digits and by suffix rather than equality, because converting to
+ * international form legitimately changes both ends: a country code goes on the front
+ * (`4155552671` becomes `14155552671`) and a national trunk prefix may come off it (the UK
+ * writes `07700 900123` for `+447700900123`, while Italy keeps its leading zero). So a
+ * match is allowed against the digits as given *and* against them without a leading zero,
+ * which covers both conventions without having to know which country follows which.
+ *
+ * What it still rejects is a number that shares no tail with the one asked about — the
+ * case this exists for, where the widget's field holds something other than the value
+ * being judged.
+ */
+function describesSameNumber(fromLibrary: string, value: string): boolean {
+  const library = digitsOf(fromLibrary);
+  const asked = digitsOf(value);
+  const withoutTrunkPrefix = asked.replace(/^0/, '');
+
+  return [asked, withoutTrunkPrefix].some(
+    candidate =>
+      candidate.length > 0 &&
+      (library.endsWith(candidate) || candidate.endsWith(library))
+  );
 }
 
 /**
@@ -272,7 +327,11 @@ export function checkPhone(
     };
   }
 
-  const dialCode = ask(() => source?.getSelectedCountryData?.())?.dialCode;
+  // Resolved before anything is asked of the widget: one that is displaying a different
+  // number answers about that one, and is no help here.
+  const speaker = speaksFor(value, source) ? source : undefined;
+
+  const dialCode = ask(() => speaker?.getSelectedCountryData?.())?.dialCode;
   const national = nationalDigitsOf(value, dialCode);
 
   if (isJunkPhoneNumber(national)) {
@@ -285,17 +344,17 @@ export function checkPhone(
     };
   }
 
-  const e164 = readE164(value, source);
+  const e164 = readE164(value, speaker);
   const resolved = { value: e164 ?? value, isE164: e164 !== null };
 
   // `null` here is the utils script not having loaded, not a rejection.
-  const byLength = ask(() => source?.isValidNumber?.()) ?? null;
+  const byLength = ask(() => speaker?.isValidNumber?.()) ?? null;
   if (byLength !== null) {
     return {
       ...resolved,
       verdict: byLength ? 'valid' : 'invalid',
       reason: 'library-length',
-      precise: ask(() => source?.isValidNumberPrecise?.()) ?? null,
+      precise: ask(() => speaker?.isValidNumberPrecise?.()) ?? null,
     };
   }
 
@@ -306,7 +365,7 @@ export function checkPhone(
     ...resolved,
     verdict: withinRange ? 'unknown' : 'invalid',
     reason: withinRange
-      ? source
+      ? speaker
         ? 'utils-not-loaded'
         : 'no-instance'
       : 'digit-count',

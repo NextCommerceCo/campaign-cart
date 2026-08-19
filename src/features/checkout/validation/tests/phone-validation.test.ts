@@ -162,3 +162,36 @@ describe('normalizePhone', () => {
     expect(normalizePhone('(415) 555-2671', source())).toBe('(415) 555-2671');
   });
 });
+
+describe('a widget displaying a different number', () => {
+  /**
+   * Everything the widget can tell us it reads from its own field, never from the value it
+   * is asked about. The two come apart when a number is judged on a page where the field
+   * holds something else — a later step of a multi-step checkout, or a value restored from
+   * an earlier visit. Borrowing that widget's answer would put a stranger's number on the
+   * order and judge the wrong one.
+   */
+  const onAnotherNumber = loadedSource(true, '+447700900123');
+
+  it('does not take its number', () => {
+    expect(checkPhone('4155552671', onAnotherNumber).value).toBe('4155552671');
+    expect(checkPhone('4155552671', onAnotherNumber).isE164).toBe(false);
+  });
+
+  it('does not take its verdict either', () => {
+    const check = checkPhone('4155552671', onAnotherNumber);
+
+    expect(check.verdict).toBe('unknown');
+    expect(check.reason).toBe('no-instance');
+    expect(check.precise).toBeNull();
+  });
+
+  it('still recognises the same number written nationally', () => {
+    // The trunk prefix comes off in international form for the UK, and a country code
+    // goes on the front: both are the same number, and both are accepted as such.
+    const uk = loadedSource(true, '+447700900123');
+
+    expect(checkPhone('07700 900123', uk).value).toBe('+447700900123');
+    expect(checkPhone('07700 900123', uk).verdict).toBe('valid');
+  });
+});

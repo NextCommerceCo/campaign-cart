@@ -53,9 +53,12 @@ export interface FieldValidationContext {
 function clearErrorLabels(field: HTMLElement): void {
   const key = fieldKey(field);
   if (key) {
-    field
-      .closest('form')
-      ?.querySelectorAll(`${ERROR_LABEL}[${ERROR_OWNER_ATTR}="${key}"]`)
+    // The form when there is one, the document when there is not: a billing field cloned
+    // into a `data-next-component` block can sit outside the `<form>`, and a message that
+    // cannot be found is a message that stays on screen after the shopper fixes the field.
+    const scope: ParentNode = field.closest('form') ?? field.ownerDocument;
+    scope
+      .querySelectorAll(`${ERROR_LABEL}[${ERROR_OWNER_ATTR}="${key}"]`)
       .forEach(label => label.remove());
   }
 

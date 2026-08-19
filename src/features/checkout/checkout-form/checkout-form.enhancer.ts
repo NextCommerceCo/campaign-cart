@@ -22,6 +22,7 @@ import {
   type CreditCardData,
 } from '../services/credit-card-service';
 import { CheckoutValidator } from '../validation/checkout-validator';
+import { checkPhone, normalizePhone } from '../validation/phone-validation';
 import { UIService } from '../services/ui-service';
 import { useAttributionStore } from '@/state/attribution';
 import { useParameterStore } from '@/state/parameter';
@@ -471,6 +472,72 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     // have arrived yet, in which case nothing is hidden until it does and
     // `handleCampaignUpdate` runs.
     this.applyAvailablePaymentMethods();
+  }
+
+  /**
+   * Rewrites the stored phone numbers in international format, once the phone library
+   * is in a position to produce one.
+   *
+   * The field handlers already do this as the shopper types, but only from the moment the
+   * library's utils script has loaded: a shopper who finished typing before it landed and
+   * never touched the field again leaves a national number in the store.
+   *
+   * Submit-time validation catches the shipping number on its way past. Nothing catches
+   * the **billing** one — the billing check deliberately does not write to the store's own
+   * address object — so without this a shopper who entered a separate billing address
+   * early in the page's life sends it nationally.
+   */
+  private normalizeStoredPhones(): void {
+    const checkoutStore = useCheckoutStore.getState();
+
+    const phone = checkoutStore.formData.phone;
+    if (phone) {
+      const normalized = normalizePhone(
+        phone,
+        this.phoneInputs.get('shipping')
+      );
+      if (normalized !== phone)
+        checkoutStore.updateFormData({ phone: normalized });
+    }
+
+    const billing = checkoutStore.billingAddress;
+    if (billing?.phone) {
+      const normalized = normalizePhone(
+        billing.phone,
+        this.phoneInputs.get('billing')
+      );
+      if (normalized !== billing.phone) {
+        checkoutStore.setBillingAddress({ ...billing, phone: normalized });
+      }
+    }
+
+    this.reportStricterPhoneVerdict();
+  }
+
+  /**
+   * Records the numbers a stricter phone check would have refused.
+   *
+   * The form accepts a number the phone library considers the right length for its
+   * country. The library can also answer a harder question — is this a number that
+   * actually exists — but its author marks that check dangerous for exactly our situation:
+   * the rules change monthly and an SDK release pinned on a page freezes them, so over
+   * time it starts refusing real numbers with nobody the wiser.
+   *
+   * So it is asked and not acted on. This line is the evidence for deciding later, from
+   * real orders rather than from an argument, how many shoppers a stricter gate would
+   * turn away.
+   */
+  private reportStricterPhoneVerdict(): void {
+    const phone = useCheckoutStore.getState().formData.phone;
+    if (!phone) return;
+
+    const check = checkPhone(phone, this.phoneInputs.get('shipping'));
+    if (check.verdict === 'valid' && check.precise === false) {
+      this.logger.info(
+        'Phone accepted on length but refused by precise validation; not blocked',
+        { country: useCheckoutStore.getState().formData.country ?? 'unknown' }
+      );
+    }
   }
 
   /**
@@ -1628,6 +1695,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       // the phone check below real and the stored number E.164 — and it is free, because
       // the overlay is already up.
       await awaitPhoneUtils(this.phoneInputs);
+      this.normalizeStoredPhones();
 
       // Check if this is an express payment method
       const isExpressPayment = isExpressPaymentMethod(
