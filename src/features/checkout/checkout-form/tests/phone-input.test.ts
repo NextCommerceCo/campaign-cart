@@ -48,10 +48,19 @@ function makeLogger(): {
   return { logger, errorSpy };
 }
 
+/**
+ * Fields carrying the national text a shopper would have typed.
+ *
+ * Not blank: the handler under test stores the *number*, and a number is only worth
+ * anything when there is something in the box to normalise. A blank field correctly
+ * stores nothing, which would make the assertions below pass for the wrong reason.
+ */
 function makeFields(names: string[]): Map<string, HTMLElement> {
   const map = new Map<string, HTMLElement>();
   for (const name of names) {
-    map.set(name, document.createElement('input'));
+    const input = document.createElement('input');
+    input.value = '(555) 123-4567';
+    map.set(name, input);
   }
   return map;
 }
@@ -197,8 +206,10 @@ describe('phone-input teardown', () => {
     country: HTMLSelectElement;
   } {
     const phone = document.createElement('input');
+    phone.value = '(555) 123-4567';
     const country = document.createElement('select');
-    country.innerHTML = '<option value="US">US</option><option value="CA">CA</option>';
+    country.innerHTML =
+      '<option value="US">US</option><option value="CA">CA</option>';
 
     const fields = new Map<string, HTMLElement>([
       ['phone', phone],

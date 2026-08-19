@@ -9,7 +9,7 @@ category: "Attributes"
 <!-- Generated from the feature manifests. Do not edit by hand:
      edit the feature's *.manifest.ts, then run `npm run docs:reference`. -->
 
-Every attribute the SDK reads or writes — 268 of them across 28 features — with the feature that owns each one. Follow a feature link for what its attributes mean, their defaults, and their traps.
+Every attribute the SDK reads or writes — 269 of them across 28 features — with the feature that owns each one. Follow a feature link for what its attributes mean, their defaults, and their traps.
 
 Attributes marked **sets** are written *by* the SDK for you to read from CSS or tests; you do not set them yourself.
 
@@ -364,6 +364,7 @@ Turned on by `form[data-next-checkout]`.
 | `data-next-component-location` | optional | — |
 | `data-next-payment-method` | on another element | — |
 | `data-next-payment-form` | on another element | — |
+| `data-next-error-for` | **sets** | — |
 | `data-next-payment-state` | **sets** | — |
 
 ### [checkout-review](../src/features/checkout/checkout-review/guide/overview.md) *(optional)*

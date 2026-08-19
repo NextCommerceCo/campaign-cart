@@ -5,7 +5,6 @@ import {
   isValidCity,
   isValidEmail,
   isValidName,
-  isValidPhone,
 } from '../validation-patterns';
 
 describe('isValidEmail', () => {
@@ -21,32 +20,6 @@ describe('isValidEmail', () => {
     expect(isValidEmail('shopper..name@example.com')).toBe(false);
     expect(isValidEmail('.shopper@example.com')).toBe(false);
     expect(isValidEmail('shopper@example.c')).toBe(false);
-  });
-});
-
-describe('isValidPhone', () => {
-  it('accepts a punctuated ten-digit number', () => {
-    expect(isValidPhone('(555) 123-4567')).toBe(true);
-    expect(isValidPhone('+1 555 123 4567')).toBe(true);
-  });
-
-  it('rejects letters and anything under ten digits', () => {
-    expect(isValidPhone('555-CALL-NOW')).toBe(false);
-    expect(isValidPhone('555 1234')).toBe(false);
-  });
-
-  /**
-   * DEFECT (left as found) — the ten-digit floor is a US assumption applied to every
-   * country. A shopper in Norway (8 national digits), Denmark (8) or Iceland (7) types a
-   * complete, correct number and is told "Please enter a valid phone number".
-   *
-   * It only bites where `intl-tel-input` is not wired up, because the form installs a
-   * country-aware `phoneValidator` that takes priority — see `form-validation.ts`. On a
-   * page without it, checkout is unreachable for those countries.
-   */
-  it('DEFECT: rejects complete national numbers shorter than ten digits', () => {
-    expect(isValidPhone('+47 22 12 34 56')).toBe(true); // has 10 digits once the +47 counts
-    expect(isValidPhone('22 12 34 56')).toBe(false); // the same Norwegian number, nationally
   });
 });
 

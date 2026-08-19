@@ -38,13 +38,9 @@ import { applyRule, createValidationRules } from './field-rules';
 import { formatFieldName } from './field-labels';
 import { focusFirstErrorField } from './first-error-field';
 import { validateForm, type FormValidationContext } from './form-validation';
+import { checkPhone, type PhoneNumberSource } from './phone-validation';
 import { validateStep } from './step-validation';
-import {
-  isValidCity,
-  isValidEmail,
-  isValidName,
-  isValidPhone,
-} from './validation-patterns';
+import { isValidCity, isValidEmail, isValidName } from './validation-patterns';
 import type {
   FormValidationResult,
   ValidationResult,
@@ -61,13 +57,11 @@ export type {
 export class CheckoutValidator {
   private logger: Logger;
   private countryService: any;
-  private phoneInputManager?: any;
   private errorManager: ErrorDisplayManager;
   private creditCardService?: CreditCardService;
-  private phoneValidator?: (
-    phoneNumber: string,
-    type?: 'shipping' | 'billing'
-  ) => boolean;
+  private phoneSource?: (
+    type: 'shipping' | 'billing'
+  ) => PhoneNumberSource | undefined;
 
   // Validation rules for form fields
   private rules: Map<string, ValidationRule[]> = new Map();
@@ -75,10 +69,9 @@ export class CheckoutValidator {
   // Error storage
   private errors: Map<string, string> = new Map();
 
-  constructor(logger: Logger, countryService: any, phoneInputManager?: any) {
+  constructor(logger: Logger, countryService: any) {
     this.logger = logger;
     this.countryService = countryService;
-    this.phoneInputManager = phoneInputManager;
     this.errorManager = new ErrorDisplayManager();
     this.rules = createValidationRules();
   }
@@ -91,12 +84,21 @@ export class CheckoutValidator {
   }
 
   /**
-   * Set custom phone validator function
+   * Installs the lookup that hands phone checks the live `intl-tel-input` instance.
+   *
+   * Called by the form once the phone widgets exist. One installer for every phone check
+   * in this class — per-field, per-step and submit-time all resolve the instance the same
+   * way, which is what stops them disagreeing about the same number.
+   *
+   * @example
+   * ```ts
+   * validator.setPhoneSource(type => this.phoneInputs.get(type));
+   * ```
    */
-  public setPhoneValidator(
-    validator: (phoneNumber: string, type?: 'shipping' | 'billing') => boolean
+  public setPhoneSource(
+    resolve: (type: 'shipping' | 'billing') => PhoneNumberSource | undefined
   ): void {
-    this.phoneValidator = validator;
+    this.phoneSource = resolve;
   }
 
   // ============================================================================
@@ -105,16 +107,13 @@ export class CheckoutValidator {
 
   /**
    * The four things form and step validation may reach for. Rebuilt per call because
-   * `creditCardService` and `phoneValidator` are installed after construction.
+   * `creditCardService` and `phoneSource` are installed after construction.
    */
   private formContext(): FormValidationContext {
     return {
       countryService: this.countryService,
-      ...(this.phoneInputManager !== undefined && {
-        phoneInputManager: this.phoneInputManager,
-      }),
-      ...(this.phoneValidator !== undefined && {
-        phoneValidator: this.phoneValidator,
+      ...(this.phoneSource !== undefined && {
+        phoneSource: this.phoneSource,
       }),
       ...(this.creditCardService !== undefined && {
         creditCardService: this.creditCardService,
@@ -152,8 +151,8 @@ export class CheckoutValidator {
 
     const ruleContext = {
       countryService: this.countryService,
-      ...(this.phoneInputManager !== undefined && {
-        phoneInputManager: this.phoneInputManager,
+      ...(this.phoneSource !== undefined && {
+        phoneSource: this.phoneSource,
       }),
     };
 
@@ -235,8 +234,16 @@ export class CheckoutValidator {
     return isValidEmail(email);
   }
 
+  /**
+   * Whether a phone number can be used, asking the live widget when there is one.
+   *
+   * `unknown` counts as usable here — see `phone-validation.ts` for why nothing blocks a
+   * shopper over a check that could not run.
+   */
   public isValidPhone(phone: string): boolean {
-    return isValidPhone(phone);
+    return (
+      checkPhone(phone, this.phoneSource?.('shipping')).verdict !== 'invalid'
+    );
   }
 
   public isValidName(name: string): boolean {

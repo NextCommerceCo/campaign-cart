@@ -98,14 +98,14 @@ describe('isValidPhone', () => {
   it('defaults minPhoneDigits to 7 when the context omits it', () => {
     const logger = createMockLogger();
     expect(
-      isValidPhone('123456', {
+      isValidPhone('555123', {
         phoneField: undefined,
         minPhoneDigits: undefined,
         logger: logger as unknown as Logger,
       })
     ).toBe(false);
     expect(
-      isValidPhone('1234567', {
+      isValidPhone('5551234', {
         phoneField: undefined,
         minPhoneDigits: undefined,
         logger: logger as unknown as Logger,

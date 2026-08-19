@@ -25,25 +25,21 @@ import type {
 import { validateBillingAddress } from './billing-address-validation';
 import { formatFieldName } from './field-labels';
 import { findFirstErrorFieldInDOM } from './first-error-field';
-import {
-  isValidCity,
-  isValidEmail,
-  isValidName,
-  isValidPhone,
-} from './validation-patterns';
+import { checkPhone, type PhoneNumberSource } from './phone-validation';
+import { isValidCity, isValidEmail, isValidName } from './validation-patterns';
 import type { FormValidationResult } from './validation.types';
 
 /** What form and step validation need from `CheckoutValidator`. */
 export interface FormValidationContext {
   /** Provides `validatePostalCode(value, countryCode, config)`. */
   countryService: any;
-  /** `intl-tel-input` wrapper, when the form has one. */
-  phoneInputManager?: any;
-  /** Country-aware phone check installed by the form. Preferred over `phoneInputManager`. */
-  phoneValidator?: (
-    phoneNumber: string,
-    type?: 'shipping' | 'billing'
-  ) => boolean;
+  /**
+   * The live `intl-tel-input` instance for a phone field, when the form has one.
+   *
+   * Installed by the form after the widgets are built. Without it `checkPhone` can only
+   * answer `unknown`, which is what happens on a step that carries no phone field.
+   */
+  phoneSource?: (type: 'shipping' | 'billing') => PhoneNumberSource | undefined;
   /** Set once the card fields exist. Absent means the card is not checked here at all. */
   creditCardService?: CreditCardService;
 }
@@ -139,24 +135,13 @@ export async function validateForm(
     isValid = false;
   }
 
-  // Phone validation
+  // Phone validation. The check also normalises, so the E.164 number goes back on the
+  // form data here rather than being reassembled by whoever builds the order.
   if (formData.phone) {
-    let phoneIsValid = false;
+    const check = checkPhone(formData.phone, ctx.phoneSource?.('shipping'));
+    formData.phone = check.value;
 
-    if (ctx.phoneValidator) {
-      phoneIsValid = ctx.phoneValidator(formData.phone, 'shipping');
-    } else if (ctx.phoneInputManager) {
-      phoneIsValid = ctx.phoneInputManager.validatePhoneNumber(true);
-      const formattedPhone =
-        ctx.phoneInputManager.getFormattedPhoneNumber(true);
-      if (formattedPhone) {
-        formData.phone = formattedPhone;
-      }
-    } else {
-      phoneIsValid = isValidPhone(formData.phone);
-    }
-
-    if (!phoneIsValid) {
+    if (check.verdict === 'invalid') {
       errors.phone = 'Please enter a valid phone number';
       isValid = false;
     }

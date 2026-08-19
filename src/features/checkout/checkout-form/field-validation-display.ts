@@ -20,6 +20,7 @@
  */
 
 import type { CheckoutValidator } from '../validation/checkout-validator';
+import { ERROR_OWNER_ATTR, fieldKey } from '../utils/error-display-utils';
 import { useCheckoutStore } from '@/state/checkout';
 
 /** Wrappers the SDK styles around a field. Either may carry the error label. */
@@ -37,18 +38,32 @@ export interface FieldValidationContext {
 }
 
 /**
- * Removes every error label reachable from a field.
+ * Removes this field's error labels, and only this field's.
  *
- * Looks in three places rather than one because the label's position depends on the
- * author's markup: inside the immediate wrapper, inside a `.form-group` that wraps a
- * `.form-input`, or inside a `.form-group` ancestor of the field itself. Missing one leaves
- * a stale error visible under a field the shopper has already corrected.
+ * Two passes, because a message may or may not name its owner. A label the SDK wrote
+ * carries `data-next-error-for`, so it can be found wherever the markup put it — including
+ * a container shared with other fields, which is where messages land on a page that uses no
+ * wrapper classes at all. Anything unowned is looked for in the three places a label can
+ * sit relative to *this* field, which is what the original three lookups were for: missing
+ * one leaves a stale error under a field the shopper has already corrected.
+ *
+ * The owner check is what stops one field's blur erasing another field's message — a
+ * shopper left with a red outline, no text, and nothing they can do to clear it.
  */
 function clearErrorLabels(field: HTMLElement): void {
+  const key = fieldKey(field);
+  if (key) {
+    field
+      .closest('form')
+      ?.querySelectorAll(`${ERROR_LABEL}[${ERROR_OWNER_ATTR}="${key}"]`)
+      .forEach(label => label.remove());
+  }
+
+  const unowned = `${ERROR_LABEL}:not([${ERROR_OWNER_ATTR}])`;
   const wrapper = field.closest(FIELD_WRAPPER);
-  wrapper?.querySelector(ERROR_LABEL)?.remove();
-  wrapper?.closest(FORM_GROUP)?.querySelector(ERROR_LABEL)?.remove();
-  field.closest(FORM_GROUP)?.querySelector(ERROR_LABEL)?.remove();
+  wrapper?.querySelector(unowned)?.remove();
+  wrapper?.closest(FORM_GROUP)?.querySelector(unowned)?.remove();
+  field.closest(FORM_GROUP)?.querySelector(unowned)?.remove();
 }
 
 /**

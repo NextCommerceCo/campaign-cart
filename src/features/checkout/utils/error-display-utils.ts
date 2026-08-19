@@ -24,6 +24,27 @@ const DEFAULT_OPTIONS: ErrorDisplayOptions = {
   iconSuccessClass: 'addTick'
 };
 
+/**
+ * Marks an error message as belonging to one field.
+ *
+ * Without it a message is an anonymous `<div>`, and clearing one field's error means
+ * "remove the first error label inside this field's wrapper" — where the wrapper falls
+ * back to the field's parent element when the page uses no wrapper classes. On such a
+ * page the parent is the `<form>`, so blurring one field erased a *different* field's
+ * message while leaving its red outline: an error the shopper can no longer read and
+ * cannot clear. Stamping the owner makes clearing exact.
+ */
+export const ERROR_OWNER_ATTR = 'data-next-error-for';
+
+/** The name a field is known by, across both attribute conventions. */
+export function fieldKey(field: HTMLElement): string | null {
+  return (
+    field.getAttribute('data-next-checkout-field') ??
+    field.getAttribute('os-checkout-field') ??
+    field.getAttribute('name')
+  );
+}
+
 export class ErrorDisplayManager {
   private options: ErrorDisplayOptions;
 
@@ -52,6 +73,8 @@ export class ErrorDisplayManager {
     // Create and append error label
     const errorElement = document.createElement('div');
     errorElement.className = this.options.errorLabelClass!;
+    const key = fieldKey(field);
+    if (key) errorElement.setAttribute(ERROR_OWNER_ATTR, key);
     errorElement.textContent = message;
     errorElement.setAttribute('role', 'alert');
     errorElement.setAttribute('aria-live', 'polite');
@@ -70,29 +93,40 @@ export class ErrorDisplayManager {
    */
   clearFieldError(field: HTMLElement): void {
     const wrapper = FieldFinder.findFieldWrapper(field);
-    
+
     // Remove error classes from field
     field.classList.remove('has-error', this.options.errorClass!);
-    
-    if (wrapper) {
-      // Remove error classes from wrapper
-      wrapper.classList.remove(this.options.iconErrorClass!);
-      
-      // Remove error label
-      const errorLabel = wrapper.querySelector(`.${this.options.errorLabelClass}`);
-      if (errorLabel) {
-        errorLabel.remove();
-      }
 
-      // Also check parent form group
-      const formGroup = field.closest(`.${this.options.wrapperClass}`);
-      if (formGroup) {
-        const formGroupError = formGroup.querySelector(`.${this.options.errorLabelClass}`);
-        if (formGroupError) {
-          formGroupError.remove();
-        }
-      }
+    if (!wrapper) return;
+
+    // Remove error classes from wrapper
+    wrapper.classList.remove(this.options.iconErrorClass!);
+
+    // This field's own messages, wherever they were put — including a form-level
+    // container, which is where they land on a page with no wrapper classes.
+    const key = fieldKey(field);
+    if (key) {
+      const owned = (field.closest('form') ?? wrapper).querySelectorAll(
+        `.${this.options.errorLabelClass}[${ERROR_OWNER_ATTR}="${key}"]`
+      );
+      owned.forEach(label => label.remove());
     }
+
+    // Messages with no owner stamped on them: written by an older build, or by a
+    // page's own markup. Only ever removed from a *real* wrapper — never from the
+    // parent-element fallback, which on a wrapperless page is the whole form.
+    this.clearUnownedLabelIn(wrapper === field.parentElement ? null : wrapper);
+    this.clearUnownedLabelIn(
+      field.closest(`.${this.options.wrapperClass}`) as HTMLElement | null
+    );
+  }
+
+  /** Removes one message that names no field, from a container known to be a wrapper. */
+  private clearUnownedLabelIn(container: HTMLElement | null): void {
+    const label = container?.querySelector(
+      `.${this.options.errorLabelClass}:not([${ERROR_OWNER_ATTR}])`
+    );
+    label?.remove();
   }
 
   /**

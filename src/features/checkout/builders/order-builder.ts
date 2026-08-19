@@ -12,8 +12,41 @@ import { useCheckoutStore } from '@/state/checkout';
 import { createLogger } from '@/core/logger';
 import type { CreateOrder, Address, Payment, Attribution } from '@/types/api';
 
+import { checkPhone } from '../validation/phone-validation';
+
 export class OrderBuilder {
   private logger = createLogger('OrderBuilder');
+
+  /**
+   * The phone number to put on the order, in E.164 where that is possible.
+   *
+   * Every order goes through here, whichever page and whichever payment method built it,
+   * which is what makes this the one place the format can actually be guaranteed rather
+   * than hoped for. The form normalises as the shopper types, but a number restored from
+   * an earlier page, or typed before the phone library finished loading, reaches this
+   * point national.
+   *
+   * The API converts a national number, so a value that could not be normalised is still
+   * sent — with a warning naming the country, because a conversion the SDK did not make is
+   * one nobody here can see.
+   */
+  private phoneForApi(
+    raw: string | undefined,
+    country?: string
+  ): string | undefined {
+    const check = checkPhone(raw);
+    // Absent, not empty: an empty string is a value the API would have to interpret,
+    // and `phone_number` is optional. This is also what the old code did by passing
+    // `undefined` straight through.
+    if (!check.value) return undefined;
+    if (check.isE164) return check.value;
+
+    this.logger.warn(
+      'Sending a phone number the SDK could not put in E.164 format; the API will have to convert it',
+      { country: country ?? 'unknown', reason: check.reason }
+    );
+    return check.value;
+  }
 
   private getCurrency(): string {
     return (
@@ -42,7 +75,10 @@ export class OrderBuilder {
       state: checkoutFormData.province,
       postcode: checkoutFormData.postal,
       country: checkoutFormData.country || '',
-      phone_number: checkoutFormData.phone
+      phone_number: this.phoneForApi(
+        checkoutFormData.phone,
+        checkoutFormData.country
+      )
     };
     
     // Build billing address
@@ -57,7 +93,12 @@ export class OrderBuilder {
         ...(billingAddress.address2 && { line2: billingAddress.address2 }),
         ...(billingAddress.province && { state: billingAddress.province }),
         ...(billingAddress.postal && { postcode: billingAddress.postal }),
-        ...(billingAddress.phone && { phone_number: billingAddress.phone })
+        ...(billingAddress.phone && {
+          phone_number: this.phoneForApi(
+            billingAddress.phone,
+            billingAddress.country
+          )
+        })
       };
     }
     
@@ -89,7 +130,10 @@ export class OrderBuilder {
         first_name: checkoutFormData.fname || '',
         last_name: checkoutFormData.lname || '',
         language: 'en',
-        phone_number: checkoutFormData.phone,
+        phone_number: this.phoneForApi(
+          checkoutFormData.phone,
+          checkoutFormData.country
+        ),
         accepts_marketing: checkoutFormData.accepts_marketing ?? true
       },
       vouchers: vouchers,

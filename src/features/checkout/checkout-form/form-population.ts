@@ -23,6 +23,8 @@ import { useCheckoutStore } from '@/state/checkout';
 
 import type { Iti } from 'intl-tel-input';
 
+import { normalizePhone } from '../validation/phone-validation';
+
 import {
   updateStateOptions,
   type ShippingStateFieldsContext,
@@ -183,7 +185,10 @@ export async function populateFormData(
   if (shippingPhoneInstance && formData.phone) {
     // Give intlTelInput a moment to process the value we just set
     setTimeout(() => {
-      const internationalNumber = shippingPhoneInstance.getNumber();
+      const internationalNumber = normalizePhone(
+        String(formData.phone),
+        shippingPhoneInstance
+      );
       if (internationalNumber && internationalNumber !== formData.phone) {
         ctx.logger.debug(
           `Converting phone to international format: ${formData.phone} -> ${internationalNumber}`
