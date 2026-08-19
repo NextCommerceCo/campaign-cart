@@ -1,6 +1,7 @@
 import { CreateOrder } from '../../../types/api';
 export declare class OrderBuilder {
     private logger;
+    private phoneForApi;
     private getCurrency;
     buildOrder(checkoutFormData: Record<string, any>, cartItems: any[], paymentMethod: string, paymentToken?: string, billingAddress?: any, sameAsShipping?: boolean, shippingMethod?: any, vouchers?: string[]): CreateOrder;
     buildExpressOrder(cartItems: any[], paymentMethod: 'paypal' | 'apple_pay' | 'google_pay' | 'link', vouchers?: string[]): CreateOrder;
