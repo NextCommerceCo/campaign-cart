@@ -185,12 +185,16 @@
   document.head.appendChild(moduleScript);
 
   // Inject favicon (sits next to loader.js on jsDelivr / custom host / dev)
-  const loaderBase = loaderUrl.substring(0, loaderUrl.lastIndexOf('/loader.js'));
-  const iconLink = document.createElement('link');
-  iconLink.rel = 'icon';
-  iconLink.type = 'image/x-icon';
-  iconLink.href = `${loaderBase}/favicon.ico`;
-  document.head.appendChild(iconLink);
+  const loaderMarker = loaderUrl.lastIndexOf('/loader.js');
+  const priorIcon = document.head.querySelector('link[rel="icon"][data-next-loader]');
+  if (loaderMarker !== -1) {
+    const iconLink = priorIcon || document.createElement('link');
+    iconLink.rel = 'icon';
+    iconLink.type = 'image/x-icon';
+    iconLink.href = `${loaderUrl.substring(0, loaderMarker)}/favicon.ico`;
+    iconLink.dataset.nextLoader = '1';
+    if (!priorIcon) document.head.appendChild(iconLink);
+  }
 
   // Fallback for browsers that don't support modules
   const nomoduleScript = document.createElement('script');

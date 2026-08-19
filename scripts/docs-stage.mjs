@@ -23,7 +23,7 @@
 import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir, rm, readdir } from 'node:fs/promises';
 import { join, dirname, extname, relative, basename, posix } from 'node:path';
-import { chromium } from 'playwright';
+import { chromium } from '@playwright/test';
 import { slugifyHeading } from '@clean-jsdoc-theme/utils';
 
 const ROOT = process.cwd();
