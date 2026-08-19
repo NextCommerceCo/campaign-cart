@@ -1,0 +1,123 @@
+<svg viewBox="0 0 920 500" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    svg {
+      --bg: #fafafa;
+      --grid: #e5e5e5;
+      --text-primary: #333;
+      --text-secondary: #666;
+      --text-tag: #888;
+      --text-muted: #999;
+      --border: #ccc;
+      --surface: #fff;
+      --color-success: #27ae60;
+      --color-accent: #3498db;
+      --color-process: #9b59b6;
+      --color-warning: #f39c12;
+    }
+    @media (prefers-color-scheme: dark) {
+      svg {
+        --bg: #18181b;
+        --grid: #27272a;
+        --text-primary: #f4f4f5;
+        --text-secondary: #a1a1aa;
+        --text-tag: #71717a;
+        --text-muted: #71717a;
+        --border: #52525b;
+        --surface: #1f1f23;
+        --color-success: #4ade80;
+        --color-accent: #60a5fa;
+        --color-process: #c084fc;
+        --color-warning: #fbbf24;
+      }
+    }
+    :root.dark svg, .dark svg, html.dark svg {
+      --bg: #18181b;
+      --grid: #27272a;
+      --text-primary: #f4f4f5;
+      --text-secondary: #a1a1aa;
+      --text-tag: #71717a;
+      --text-muted: #71717a;
+      --border: #52525b;
+      --surface: #1f1f23;
+      --color-success: #4ade80;
+      --color-accent: #60a5fa;
+      --color-process: #c084fc;
+      --color-warning: #fbbf24;
+    }
+  </style>
+  <defs>
+    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="var(--grid)" stroke-width="0.5"/>
+    </pattern>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="var(--border)"/>
+    </marker>
+    <marker id="arrowGreen" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="var(--color-success)"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="var(--color-accent)"/>
+    </marker>
+  </defs>
+
+  <rect width="920" height="500" fill="var(--bg)"/>
+  <rect width="920" height="500" fill="url(#grid)"/>
+
+  <text x="40" y="40" font-family="monospace" font-size="14" fill="var(--text-primary)" font-weight="bold">HOW THE SDK WORKS</text>
+  <text x="220" y="40" font-family="monospace" font-size="12" fill="var(--text-tag)">[ LIFECYCLE ]</text>
+
+  <rect x="20" y="160" width="130" height="90" fill="var(--surface)" fill-opacity="0" stroke="var(--border)" stroke-width="2"/>
+  <text x="85" y="190" font-family="monospace" font-size="11" fill="var(--text-primary)" font-weight="bold" text-anchor="middle">PAGE</text>
+  <text x="85" y="210" font-family="monospace" font-size="9" fill="var(--text-secondary)" text-anchor="middle">html +</text>
+  <text x="85" y="224" font-family="monospace" font-size="9" fill="var(--text-secondary)" text-anchor="middle">data-next-* attrs</text>
+  <text x="85" y="240" font-family="monospace" font-size="8" fill="var(--text-muted)" text-anchor="middle">your code</text>
+
+  <rect x="190" y="160" width="160" height="90" fill="var(--surface)" fill-opacity="0" stroke="var(--border)" stroke-width="2"/>
+  <text x="270" y="180" font-family="monospace" font-size="11" fill="var(--color-process)" font-weight="bold" text-anchor="middle">SCANNER</text>
+  <rect x="206" y="190" width="128" height="22" fill="var(--surface)" stroke="var(--color-process)" stroke-width="1"/>
+  <text x="270" y="205" font-family="monospace" font-size="9" fill="var(--color-process)" text-anchor="middle">boot · 14 ordered steps</text>
+  <rect x="206" y="218" width="128" height="22" fill="var(--surface)" stroke="var(--color-process)" stroke-width="1"/>
+  <text x="270" y="233" font-family="monospace" font-size="9" fill="var(--color-process)" text-anchor="middle">dom observer</text>
+
+  <rect x="390" y="160" width="160" height="90" fill="var(--surface)" fill-opacity="0" stroke="var(--border)" stroke-width="2"/>
+  <text x="470" y="180" font-family="monospace" font-size="11" fill="var(--color-accent)" font-weight="bold" text-anchor="middle">FEATURES</text>
+  <text x="470" y="200" font-family="monospace" font-size="9" fill="var(--text-secondary)" text-anchor="middle">one enhancer per</text>
+  <text x="470" y="214" font-family="monospace" font-size="9" fill="var(--text-secondary)" text-anchor="middle">matched element</text>
+  <text x="470" y="234" font-family="monospace" font-size="8" fill="var(--text-muted)" text-anchor="middle">cart · checkout · display…</text>
+
+  <rect x="590" y="160" width="160" height="90" fill="var(--surface)" fill-opacity="0" stroke="var(--color-warning)" stroke-width="2" stroke-dasharray="5,3"/>
+  <text x="670" y="180" font-family="monospace" font-size="11" fill="var(--color-warning)" font-weight="bold" text-anchor="middle">STORES</text>
+  <text x="670" y="200" font-family="monospace" font-size="9" fill="var(--text-secondary)" text-anchor="middle">cart · campaign</text>
+  <text x="670" y="214" font-family="monospace" font-size="9" fill="var(--text-secondary)" text-anchor="middle">order · checkout</text>
+  <text x="670" y="234" font-family="monospace" font-size="8" fill="var(--color-warning)" text-anchor="middle">persistent · single source</text>
+
+  <rect x="790" y="160" width="110" height="90" fill="var(--surface)" fill-opacity="0" stroke="var(--border)" stroke-width="2"/>
+  <text x="845" y="185" font-family="monospace" font-size="11" fill="var(--text-primary)" font-weight="bold" text-anchor="middle">EVENTS</text>
+  <text x="845" y="205" font-family="monospace" font-size="9" fill="var(--text-secondary)" text-anchor="middle">typed · global</text>
+  <text x="845" y="219" font-family="monospace" font-size="9" fill="var(--text-secondary)" text-anchor="middle">bus</text>
+  <text x="845" y="240" font-family="monospace" font-size="8" fill="var(--text-muted)" text-anchor="middle">next.on('cart:updated')</text>
+
+  <path d="M 150 195 L 188 195" stroke="var(--color-success)" stroke-width="2" fill="none" marker-end="url(#arrowGreen)"/>
+  <text x="169" y="187" font-family="monospace" font-size="8" fill="var(--color-success)" text-anchor="middle">scan</text>
+
+  <path d="M 350 195 L 388 195" stroke="var(--color-success)" stroke-width="2" fill="none" marker-end="url(#arrowGreen)"/>
+  <text x="369" y="187" font-family="monospace" font-size="8" fill="var(--color-success)" text-anchor="middle">match</text>
+
+  <path d="M 550 195 L 588 195" stroke="var(--color-success)" stroke-width="2" fill="none" marker-end="url(#arrowGreen)"/>
+  <text x="569" y="187" font-family="monospace" font-size="8" fill="var(--color-success)" text-anchor="middle">read · write</text>
+
+  <path d="M 750 195 L 788 195" stroke="var(--color-success)" stroke-width="2" fill="none" marker-end="url(#arrowGreen)"/>
+  <text x="769" y="187" font-family="monospace" font-size="8" fill="var(--color-success)" text-anchor="middle">emit</text>
+
+  <path d="M 845 250 Q 845 380 660 380 Q 470 380 470 252" stroke="var(--color-accent)" stroke-width="1.5" fill="none" stroke-dasharray="6,4" marker-end="url(#arrowBlue)"/>
+  <text x="660" y="395" font-family="monospace" font-size="9" fill="var(--color-accent)" text-anchor="middle">subscribe · re-render</text>
+
+  <path d="M 390 250 Q 270 415 85 252" stroke="var(--color-accent)" stroke-width="1.5" fill="none" stroke-dasharray="6,4" marker-end="url(#arrowBlue)"/>
+  <text x="220" y="430" font-family="monospace" font-size="9" fill="var(--color-accent)" text-anchor="middle">displays write dom</text>
+
+  <line x1="20" y1="295" x2="900" y2="295" stroke="var(--grid)" stroke-width="1" stroke-dasharray="3,3"/>
+  <text x="20" y="312" font-family="monospace" font-size="9" fill="var(--text-muted)">boot · once per page load</text>
+  <text x="20" y="450" font-family="monospace" font-size="9" fill="var(--color-accent)">↻ every store change · reactive cycle</text>
+
+  <text x="460" y="475" font-family="monospace" font-size="10" fill="var(--text-muted)" text-anchor="middle">one boot · reactive on every state change · dom observer picks up late elements</text>
+</svg>

@@ -8,14 +8,7 @@ category: "Start Here"
 
 The markup is the configuration. You never instantiate anything: you put `data-next-*` attributes on the elements you already have, and when the page loads the SDK finds them, attaches the matching feature to each one, and keeps them live from then on.
 
-```mermaid
-flowchart LR
-  A["HTML with<br>data-next-* attributes"] --> B["Boot:<br>scan the page"]
-  B --> C["Features attach<br>to matched elements"]
-  C --> D["State stores<br>cart · campaign · order"]
-  D --> E["Events emit<br>displays update"]
-  E --> C
-```
+![How the SDK works: page → scanner → features → stores → events, with reactive cycles back to features and the DOM](./diagrams/how-the-sdk-works.svg)
 
 What each piece is:
 

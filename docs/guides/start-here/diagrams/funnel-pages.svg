@@ -1,0 +1,105 @@
+<svg viewBox="0 0 600 660" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    svg {
+      --bg: #fafafa;
+      --grid: #e5e5e5;
+      --text-primary: #333;
+      --text-secondary: #666;
+      --text-tag: #888;
+      --text-muted: #999;
+      --border: #ccc;
+      --surface: #fff;
+      --color-success: #27ae60;
+      --color-accent: #3498db;
+      --color-process: #9b59b6;
+      --color-warning: #f39c12;
+    }
+    @media (prefers-color-scheme: dark) {
+      svg {
+        --bg: #18181b;
+        --grid: #27272a;
+        --text-primary: #f4f4f5;
+        --text-secondary: #a1a1aa;
+        --text-tag: #71717a;
+        --text-muted: #71717a;
+        --border: #52525b;
+        --surface: #1f1f23;
+        --color-success: #4ade80;
+        --color-accent: #60a5fa;
+        --color-process: #c084fc;
+        --color-warning: #fbbf24;
+      }
+    }
+    :root.dark svg, .dark svg, html.dark svg {
+      --bg: #18181b;
+      --grid: #27272a;
+      --text-primary: #f4f4f5;
+      --text-secondary: #a1a1aa;
+      --text-tag: #71717a;
+      --text-muted: #71717a;
+      --border: #52525b;
+      --surface: #1f1f23;
+      --color-success: #4ade80;
+      --color-accent: #60a5fa;
+      --color-process: #c084fc;
+      --color-warning: #fbbf24;
+    }
+  </style>
+  <defs>
+    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="var(--grid)" stroke-width="0.5"/>
+    </pattern>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="var(--border)"/>
+    </marker>
+  </defs>
+
+  <rect width="600" height="660" fill="var(--bg)"/>
+  <rect width="600" height="660" fill="url(#grid)"/>
+
+  <text x="40" y="40" font-family="monospace" font-size="14" fill="var(--text-primary)" font-weight="bold">TYPICAL FUNNEL</text>
+  <text x="195" y="40" font-family="monospace" font-size="12" fill="var(--text-tag)">[ PAGE TYPES ]</text>
+
+  <text x="40" y="68" font-family="monospace" font-size="10" fill="var(--text-secondary)">each page declares next-page-type; visitors move forward via the labelled links</text>
+
+  <line x1="300" y1="100" x2="300" y2="600" stroke="var(--grid)" stroke-width="1" stroke-dasharray="4,4"/>
+
+  <rect x="200" y="120" width="200" height="48" fill="var(--surface)" stroke="var(--color-process)" stroke-width="2"/>
+  <text x="300" y="140" font-family="monospace" font-size="12" fill="var(--color-process)" font-weight="bold" text-anchor="middle">PRESELL</text>
+  <text x="300" y="156" font-family="monospace" font-size="9" fill="var(--text-secondary)" text-anchor="middle">next-page-type: product</text>
+
+  <path d="M 300 170 L 300 196" stroke="var(--border)" stroke-width="1.5"/>
+  <polygon points="295,194 300,204 305,194" fill="var(--border)"/>
+  <text x="312" y="190" font-family="monospace" font-size="9" fill="var(--text-secondary)">plain link</text>
+
+  <rect x="200" y="208" width="200" height="48" fill="var(--surface)" stroke="var(--color-process)" stroke-width="2"/>
+  <text x="300" y="228" font-family="monospace" font-size="12" fill="var(--color-process)" font-weight="bold" text-anchor="middle">LANDING</text>
+  <text x="300" y="244" font-family="monospace" font-size="9" fill="var(--text-secondary)" text-anchor="middle">next-page-type: product</text>
+
+  <path d="M 300 258 L 300 284" stroke="var(--border)" stroke-width="1.5"/>
+  <polygon points="295,282 300,292 305,282" fill="var(--border)"/>
+  <text x="312" y="278" font-family="monospace" font-size="9" fill="var(--text-secondary)">plain link</text>
+
+  <rect x="200" y="296" width="200" height="48" fill="var(--surface)" stroke="var(--color-accent)" stroke-width="2"/>
+  <text x="300" y="316" font-family="monospace" font-size="12" fill="var(--color-accent)" font-weight="bold" text-anchor="middle">CHECKOUT</text>
+  <text x="300" y="332" font-family="monospace" font-size="9" fill="var(--text-secondary)" text-anchor="middle">next-page-type: checkout</text>
+
+  <path d="M 300 346 L 300 372" stroke="var(--color-success)" stroke-width="1.5"/>
+  <polygon points="295,370 300,380 305,370" fill="var(--color-success)"/>
+  <text x="312" y="366" font-family="monospace" font-size="9" fill="var(--color-success)">next-success-url</text>
+
+  <rect x="200" y="384" width="200" height="48" fill="var(--surface)" stroke="var(--color-warning)" stroke-width="2" stroke-dasharray="5,3"/>
+  <text x="300" y="404" font-family="monospace" font-size="12" fill="var(--color-warning)" font-weight="bold" text-anchor="middle">UPSELL</text>
+  <text x="300" y="420" font-family="monospace" font-size="9" fill="var(--text-secondary)" text-anchor="middle">next-page-type: upsell</text>
+
+  <path d="M 300 434 L 300 460" stroke="var(--color-success)" stroke-width="1.5"/>
+  <polygon points="295,458 300,468 305,458" fill="var(--color-success)"/>
+  <text x="312" y="454" font-family="monospace" font-size="9" fill="var(--color-success)">accept / decline URL</text>
+
+  <rect x="200" y="472" width="200" height="48" fill="var(--surface)" stroke="var(--color-success)" stroke-width="2"/>
+  <text x="300" y="492" font-family="monospace" font-size="12" fill="var(--color-success)" font-weight="bold" text-anchor="middle">RECEIPT</text>
+  <text x="300" y="508" font-family="monospace" font-size="9" fill="var(--text-secondary)" text-anchor="middle">next-page-type: receipt</text>
+
+  <text x="300" y="558" font-family="monospace" font-size="10" fill="var(--text-muted)" text-anchor="middle">presell · landing · product page; checkout · upsell · receipt all run on the same SDK</text>
+  <text x="300" y="586" font-family="monospace" font-size="10" fill="var(--text-muted)" text-anchor="middle">5 page types · 4 link kinds · post-purchase tracking keys off next-page-type</text>
+</svg>

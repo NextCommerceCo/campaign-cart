@@ -70,13 +70,7 @@ To confirm it loaded, open the page with `?debugger=true`. The overlay reports t
 
 A typical funnel, with what moves the visitor from page to page:
 
-```mermaid
-flowchart LR
-  A[Presell] -- plain link --> B[Landing]
-  B -- plain link --> C[Checkout]
-  C -- next-success-url --> D[Upsell]
-  D -- accept / decline URL --> E[Receipt]
-```
+![Funnel page types: presell → landing → checkout → upsell → receipt, linked by the labelled URL meta tags](./diagrams/funnel-pages.svg)
 
 - **Presell** declares `product`. Sells, and links forward to the landing page. Build it with [Landing & Presell](../pages/landing-presell.md).
 - **Landing** declares `product`. Sells, and links to checkout. Build it with [Landing & Presell](../pages/landing-presell.md).
