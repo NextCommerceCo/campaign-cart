@@ -125,5 +125,6 @@ export const cartStore = cartStoreInstance;
  * const { total, items } = useCartStore.getState();
  * useCartStore.subscribe(cart => render(cart.total));
  * ```
+  * @category Cart
  */
 export const useCartStore = cartStoreInstance;

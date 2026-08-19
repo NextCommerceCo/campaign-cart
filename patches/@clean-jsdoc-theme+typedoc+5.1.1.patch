@@ -1,0 +1,38 @@
+diff --git a/node_modules/@clean-jsdoc-theme/typedoc/dist/index.js b/node_modules/@clean-jsdoc-theme/typedoc/dist/index.js
+index d2d5d45..004ba9a 100644
+--- a/node_modules/@clean-jsdoc-theme/typedoc/dist/index.js
++++ b/node_modules/@clean-jsdoc-theme/typedoc/dist/index.js
+@@ -1207,6 +1207,7 @@ async function writeSite(outDir, project, app) {
+     ...sources.length > 0 ? { sources } : {},
+     ...docs.length > 0 ? { docs } : {},
+     ...docGroups ? { docGroups } : {},
++    ...Array.isArray(block.sectionOrder) ? { sectionOrder: block.sectionOrder } : {},
+     ...defaultDocGroup ? { defaultDocGroup } : {},
+     ...menu ? { menu } : {},
+     ...collapsibleSidebarSections !== void 0 ? { collapsibleSidebarSections } : {},
+@@ -1252,9 +1253,25 @@ async function writeSite(outDir, project, app) {
+   const footer = await resolveFooter(block.footer, logger);
+   const favicon = await resolveFavicon(block.favicon, logger, hrefForServed);
+   const meta = normalizeMeta(block.meta, logger);
++  const readCustomAsset = async (file, inline) => {
++    const parts = [];
++    if (typeof file === "string" && file.trim().length > 0) {
++      try {
++        parts.push(await readFile2(resolvePath2(file.trim()), "utf8"));
++      } catch {
++        logger.warn(`[clean-jsdoc-theme] could not read custom asset '${file.trim()}'; skipping it.`);
++      }
++    }
++    if (typeof inline === "string" && inline.trim().length > 0) parts.push(inline.trim());
++    return parts.length > 0 ? parts.join("\n") : void 0;
++  };
++  const customCss = await readCustomAsset(block.customCssFile, block.customCss);
++  const customJs = await readCustomAsset(block.customJsFile, block.customJs);
+   const result = await render(manifest, {
+     theme: {
+       ...resolveTheme(block, siteName, fonts, basePath),
++      ...customCss ? { customCss } : {},
++      ...customJs ? { customJs } : {},
+       ...footer ? { footer } : {},
+       ...favicon ? { favicon: favicon.href } : {},
+       ...meta ? { meta } : {},

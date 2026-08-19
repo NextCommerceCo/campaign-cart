@@ -1,8 +1,16 @@
 // @ts-check
 /**
- * Static file server for the TypeDoc HTML site (`docs/site`), plus an optional
- * `--watch` flag that runs `typedoc --watch` alongside it so the site rebuilds
- * on source/guide changes while you browse it.
+ * Static file server for the clean-jsdoc-theme site (`docs/site`), plus an
+ * optional `--watch` flag that runs `typedoc --watch` alongside it so the site
+ * rebuilds on source/guide changes while you browse it.
+ *
+ * The theme injects `clean-theme.css` and `site.js` into every page itself, via
+ * `cleanJsdocTheme.customCssFile` / `customJsFile` in `typedoc.json` (wired through
+ * the adapter by patches/@clean-jsdoc-theme+typedoc+5.1.1.patch). `--watch` therefore
+ * only has to stage the guides once at startup (`docs-stage.mjs` pre-renders mermaid
+ * fences and rewrites TypeDoc-convention titles/links) and re-run the canonical
+ * `docs-versions.mjs` after each rebuild so `versions.json` and the root redirect
+ * stay in step with the built folders.
  *
  * Zero new dependencies — `node:http` / `node:fs` / `node:path` only, matching
  * this repo's habit of scripting over adding libraries (see
@@ -10,11 +18,11 @@
  *
  * Usage:
  *   node scripts/docs-serve.mjs           serve docs/site on :3500
- *   node scripts/docs-serve.mjs --watch   also runs `typedoc --watch`
+ *   node scripts/docs-serve.mjs --watch   also runs the build pipeline in watch mode
  *   PORT=4000 node scripts/docs-serve.mjs override the port
  */
 import { createServer } from 'node:http';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve } from 'node:path';
 
@@ -85,14 +93,19 @@ server.listen(PORT, () => {
 
 let watchProcess = null;
 if (process.argv.includes('--watch')) {
+  spawnSync('node', ['scripts/docs-stage.mjs'], { stdio: 'inherit' });
+
   watchProcess = spawn('npx', ['typedoc', '--watch'], {
     stdio: ['inherit', 'pipe', 'inherit'],
     shell: true,
   });
   // typedoc's build log scrolls the startup URL away; re-print it after each build.
+  // The theme's writer signs off with `clean-jsdoc-theme generated at <dir>`, which is
+  // also the cue to re-inject the overrides the build just overwrote.
   watchProcess.stdout.on('data', chunk => {
     process.stdout.write(chunk);
-    if (chunk.toString().includes('html generated')) {
+    if (chunk.toString().includes('generated at')) {
+      spawnSync('node', ['scripts/docs-versions.mjs'], { stdio: 'inherit' });
       console.log(`docs site: http://localhost:${PORT}`);
     }
   });

@@ -48,9 +48,9 @@
     "check:unused-exports": "node scripts/check-unused-exports.mjs",
     "check:unused-exports:update": "UPDATE_UNUSED_EXPORTS_BASELINE=1 node scripts/check-unused-exports.mjs",
     "validate:display": "ts-node scripts/validate-display-config.ts",
-    "docs": "typedoc",
+    "docs": "node scripts/docs-stage.mjs && typedoc && node scripts/docs-versions.mjs",
     "docs:serve": "node scripts/docs-serve.mjs --watch",
-    "docs:check": "typedoc --treatWarningsAsErrors",
+    "docs:check": "node scripts/docs-stage.mjs && typedoc --treatWarningsAsErrors && node scripts/docs-versions.mjs",
     "docs:version": "node scripts/docs-build-version.mjs",
     "docs:main": "node scripts/docs-build-version.mjs --branch main",
     "docs:versions": "node scripts/docs-versions.mjs",
@@ -58,7 +58,8 @@
     "docs:reference": "UPDATE_DOCS=1 vitest run src/tests/docs/",
     "docs:coverage": "node scripts/docs-coverage.mjs",
     "docs:coverage:update": "UPDATE_DOCS_BASELINE=1 node scripts/docs-coverage.mjs",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@floating-ui/dom": "^1.5.3",
@@ -70,6 +71,7 @@
   },
   "devDependencies": {
     "@boneskull/typedoc-plugin-mermaid": "^0.2.1",
+    "@clean-jsdoc-theme/typedoc": "^5.1.1",
     "@playwright/test": "^1.62.1",
     "@testing-library/dom": "^9.3.3",
     "@testing-library/jest-dom": "^6.1.5",
@@ -84,6 +86,7 @@
     "eslint-plugin-prettier": "^5.0.1",
     "happy-dom": "^18.0.1",
     "mermaid": "^11.16.0",
+    "patch-package": "^8.0.1",
     "prettier": "^3.1.0",
     "rimraf": "^5.0.5",
     "rollup-plugin-visualizer": "^6.0.3",

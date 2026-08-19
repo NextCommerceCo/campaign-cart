@@ -23,6 +23,35 @@
 (() => {
   'use strict';
 
+  /*
+   * clean-jsdoc-theme adapter. This file was written against TypeDoc's default theme
+   * and reaches for three things that theme provides: `data-base` on `<html>`, the
+   * `#tsd-toolbar-links` toolbar host, and `.container-main`. clean-jsdoc-theme has
+   * none of them, so equivalents are derived here first — its Header renders the brand
+   * link as `<a href={basePath}>` (the same value `data-base` carries), and the
+   * right-hand control cluster is the header's `ml-auto` div. Every step is guarded on
+   * the original being absent, so on the default theme (which old version folders are
+   * still built with) this whole block is a no-op.
+   */
+  if (!document.documentElement.dataset.base) {
+    const brand = document.querySelector('header a[href]');
+    if (brand) {
+      document.documentElement.dataset.base = brand.getAttribute('href') || '/';
+    }
+  }
+  if (!document.getElementById('tsd-toolbar-links')) {
+    const controls = document.querySelector('header div.ml-auto');
+    if (controls) {
+      const host = document.createElement('span');
+      host.id = 'tsd-toolbar-links';
+      host.className = 'flex items-center';
+      controls.prepend(host);
+    }
+  }
+  if (!document.querySelector('.container-main')) {
+    document.querySelector('main')?.classList.add('container-main');
+  }
+
   /**
    * The version folder's root URL.
    *
@@ -174,6 +203,10 @@
     for (const entry of await unreleasedOptions())
       options.push({ value: entry.folder, text: entry.label });
     for (const version of versions) {
+      // A local single-folder build indexes the current release with `path: "latest"`,
+      // already offered above — a second option with the same value would win the
+      // `selected` race and misreport where the reader is.
+      if (options.some(option => option.value === version.path)) continue;
       options.push({
         value: version.path,
         text: version.current

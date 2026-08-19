@@ -336,5 +336,7 @@ export const configStore = create<ConfigState & ConfigActions>((set, get) => ({
  * ```ts
  * const currency = useConfigStore.getState().getCurrency();
  * ```
+ *
+ * @category Core
  */
-export { configStore as useConfigStore };
+export const useConfigStore = configStore;

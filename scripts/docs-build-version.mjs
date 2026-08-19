@@ -285,7 +285,36 @@ function versionConfig({
       : resolve(REPO, config[key]);
   }
 
-  config.out = outDir;
+  /*
+   * Which theme a version build gets follows the *ref's own* typedoc.json, so history
+   * renders the way it was written. A ref whose config declares `outputs` is
+   * clean-jsdoc-theme era: `out` must go, because it is an output shortcut — when set,
+   * TypeDoc pushes the built-in `html` writer and skips `outputs` entirely, which
+   * would silently build the version with the default theme. Older refs (and any with
+   * no typedoc.json at all) keep the default theme they were written against; for
+   * them the base config's clean-theme fields would break the build — the adapter's
+   * `cleanJsdocTheme` option is unknown when the plugin is not loaded — so those
+   * fields are swapped for the plugin set and chrome the default-theme builds always
+   * used from this checkout.
+   */
+  if (own?.outputs) {
+    delete config.out;
+    config.outputs = [{ name: 'clean-jsdoc-theme', path: outDir }];
+  } else {
+    delete config.outputs;
+    delete config.cleanJsdocTheme;
+    config.plugin = [
+      'typedoc-plugin-mdn-links',
+      '@boneskull/typedoc-plugin-mermaid',
+      'typedoc-plugin-llms-txt',
+    ];
+    config.customCss = resolve(REPO, 'docs/assets/typedoc.css');
+    config.customJs = resolve(REPO, 'docs/assets/site.js');
+    config.readme = existsSync(join(sourceRoot, 'docs/site-home.md'))
+      ? join(sourceRoot, 'docs/site-home.md')
+      : resolve(REPO, 'docs/site-home.md');
+    config.out = outDir;
+  }
   config.tsconfig = abs('tsconfig.json');
   if (gitRevision) config.gitRevision = gitRevision;
   if (hostedBaseUrl) config.hostedBaseUrl = hostedBaseUrl;
@@ -433,6 +462,16 @@ function buildRef({
       gitRevision,
       strict,
     });
+    // Clean-theme refs read prose from `docs/.staged`, which is generated, not
+    // checked in — stage the worktree's guides before typedoc runs there.
+    if (config.outputs) {
+      const staged = spawnSync(
+        process.execPath,
+        [join(REPO, 'scripts', 'docs-stage.mjs')],
+        { cwd: worktree, stdio: 'inherit' }
+      );
+      if (staged.status !== 0) throw new Error('docs-stage failed for this ref');
+    }
     runTypedoc({ cwd: worktree, optionsFile: writeOptions(worktree, config) });
   } finally {
     cleanupWorktree(worktree);

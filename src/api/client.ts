@@ -35,6 +35,7 @@ import type { IApiClient } from './client.types';
  * Because the instance is shared, **every field here must stay per-page, not per-caller**.
  * A cache, an in-flight map or an abort controller added to this class would silently be
  * shared by every holder — that state belongs in the caller.
+  * @category Core
  */
 export class ApiClient implements IApiClient {
   private baseURL = 'https://campaigns.apps.29next.com';

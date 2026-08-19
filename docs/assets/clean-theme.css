@@ -1,0 +1,337 @@
+/*
+ * Matches the SDK docs to developer-docs (docs.nextcommerce.com).
+ *
+ * Values are copied from that site, not invented:
+ *   accent            app/globals.css                 --color-fd-primary: #3c7dff
+ *   accent foreground app/globals.css                 --color-fd-primary-foreground: #ffffff
+ *   bg / fg / border  fumadocs-ui/css/black.css       --color-fd-background / -foreground / -border
+ *   link treatment    components/graphql-operation.tsx
+ *                     text-fd-foreground underline decoration-fd-primary
+ *                     decoration-[1.5px] underline-offset-[3.5px]
+ *
+ * Fonts are not set here — Inter and JetBrains Mono are real theme options and are
+ * configured in `typedoc.clean.json` under `cleanJsdocTheme.fonts`.
+ *
+ * This file is injected by `scripts/docs-postbuild.mjs`. clean-jsdoc-theme's TypeDoc
+ * adapter accepts `customCss` (it is in THEME_OPT_KEYS) but never forwards it to the
+ * renderer, so the option is a silent no-op and the stylesheet has to be stitched in
+ * after the build.
+ */
+
+/* The theme hardcodes its Google Fonts request to `wght@400;500;600;700`
+   (dwar/dist/index.js), so Inter 800 — what developer-docs uses for h1 — is never
+   downloaded and the browser would fake it. Fetch the one missing weight. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@800&display=swap');
+
+:root {
+  --clean-bg: hsl(0, 0%, 98%);
+  --clean-bg-muted: hsl(0, 0%, 96.1%);
+  --clean-fg: hsl(0, 0%, 3.9%);
+  --clean-fg-muted: hsl(0, 0%, 45.1%);
+  --clean-border: hsla(0, 0%, 60%, 0.2);
+  --clean-accent: #3c7dff;
+  --clean-accent-fg: #ffffff;
+  --clean-link: #3c7dff;
+  --clean-code-header-bg: hsl(0, 0%, 96.1%);
+  --clean-code-header-fg: hsl(0, 0%, 45.1%);
+  --clean-code-highlight-bg: hsl(0, 0%, 96.1%);
+  --cc-accent: hsl(0, 0%, 94.1%);
+  --cc-accent-fg: hsl(0, 0%, 9%);
+}
+
+[data-theme='dark'] {
+  --clean-bg: hsl(0, 0%, 2%);
+  --clean-bg-muted: hsl(0, 0%, 8%);
+  --clean-fg: hsl(0, 0%, 98%);
+  --clean-fg-muted: hsl(0, 0%, 60%);
+  --clean-border: hsla(0, 0%, 50%, 0.2);
+  --clean-accent: #3c7dff;
+  --clean-accent-fg: #ffffff;
+  --clean-link: #3c7dff;
+  --clean-code-header-bg: hsl(0, 0%, 8%);
+  --clean-code-header-fg: hsl(0, 0%, 60%);
+  --clean-code-highlight-bg: hsl(0, 0%, 8%);
+  --cc-accent: hsl(0, 0%, 15%);
+  --cc-accent-fg: hsl(0, 0%, 100%);
+}
+
+/*
+ * Headings. Both sides use the same family and the same sizes — the theme puts
+ * `font-medium` (500) on every level, where developer-docs runs much heavier. That
+ * weight gap is what reads as a different typeface. Weights and line-heights below
+ * are fumadocs' own, from its `:where(h1..h4)` prose rules in
+ * fumadocs-ui/dist/style.css:
+ *   h1  font-weight: 800  line-height: 1.1111111
+ *   h2  font-weight: 600  line-height: 1.3333333
+ *   h3  font-weight: 600  line-height: 1.6
+ *   h4  font-weight: 600  line-height: 1.5
+ * `!important` because the theme sets the weight with a utility class on the element.
+ */
+main h1 {
+  font-weight: 800 !important;
+  line-height: 1.1111111;
+}
+
+main h2 {
+  font-weight: 600 !important;
+  line-height: 1.3333333;
+}
+
+main h3 {
+  font-weight: 600 !important;
+  line-height: 1.6;
+}
+
+main h4 {
+  font-weight: 600 !important;
+  line-height: 1.5;
+}
+
+/*
+ * Prose links. The theme already underlines them — it ships
+ * `font-bold text-(--clean-link) underline decoration-1 underline-offset-2` on each
+ * one — so only the treatment differs: developer-docs keeps link text in the
+ * foreground colour and carries the accent in the underline instead of colouring the
+ * whole word. Values below are fumadocs':
+ *   fumadocs-ui/dist/style.css
+ *   :where(a:not([data-card])):not(:where([class~="not-prose"],[class~="not-prose"] *))
+ *     font-weight: 500; text-decoration: underline; text-underline-offset: 3.5px;
+ *     text-decoration-color: var(--color-fd-primary); text-decoration-thickness: 1.5px
+ *
+ * Scoped to prose elements so it cannot reach the pagination cards, and `!important`
+ * because the theme sets these through Tailwind utility classes on the anchor itself.
+ */
+main :is(p, li, td, dd) a {
+  color: var(--clean-fg) !important;
+  font-weight: 500 !important;
+  text-decoration-color: var(--clean-accent) !important;
+  text-decoration-thickness: 1.5px !important;
+  text-underline-offset: 3.5px !important;
+}
+
+/*
+ * Pagination cards. The theme stacks [label][title][description]; developer-docs puts
+ * the title first with the muted label beneath and no description:
+ *   fumadocs-ui/dist/layouts/docs/page/slots/footer.js
+ *   <div class="inline-flex items-center gap-1.5 font-medium">[chevron]<p>{item.name}</p></div>
+ *   <p class="text-fd-muted-foreground truncate">{description ?? "Previous Page"}</p>
+ * The chevron stays with the label rather than the title — it is a child of that span,
+ * so CSS cannot lift it out.
+ */
+main nav[aria-label='Pagination'] a > span:nth-child(1) {
+  order: 2;
+}
+
+main nav[aria-label='Pagination'] a > span:nth-child(2) {
+  order: 1;
+}
+
+main nav[aria-label='Pagination'] a > span:nth-child(3) {
+  display: none;
+}
+
+/*
+ * Pagination hover. The theme turns the border and the title accent-coloured on
+ * hover, which became loud once `--clean-link` was repointed at the brand blue.
+ * developer-docs keeps the border fixed and shifts to a neutral grey:
+ *   fumadocs-ui/dist/layouts/docs/page/slots/footer.js
+ *   hover:bg-fd-accent/80 hover:text-fd-accent-foreground
+ */
+main nav[aria-label='Pagination'] a:hover {
+  border-color: var(--clean-border) !important;
+  background-color: color-mix(in oklab, var(--cc-accent) 80%, transparent) !important;
+}
+
+main nav[aria-label='Pagination'] a:hover > span:nth-child(2) {
+  color: var(--cc-accent-fg) !important;
+}
+
+/* Sidebar items never wrap. The theme ships `break-words hyphens-auto` on the link
+   and `wrap-break-words` on the label span, so a long symbol name folds onto a second
+   line ("CheckoutPaymentMetho / d"). One line per item, ellipsis when it truly runs
+   out of room. */
+nav[aria-label='Documentation navigation'] a span.min-w-0 {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Sidebar groups. developer-docs indents the pages inside a collapsible group and
+   runs a rail down the left of them; this theme leaves them flush with the group
+   heading. The nested list is always the button's next sibling. */
+nav[aria-label='Documentation navigation'] button[aria-expanded] + ul {
+  margin-inline-start: 0.75rem;
+  border-inline-start: 1px solid var(--clean-border);
+  padding-inline-start: 0.5rem;
+}
+
+/*
+ * Sidebar items. The accent colours already line up — the theme's `bg-primary/10`
+ * and `text-primary` both resolve to `--clean-accent`. What differs is everything
+ * around them: the theme bolds the active row, rounds corners further, and leaves
+ * idle rows at full foreground. developer-docs keeps idle rows muted and the active
+ * row at normal weight:
+ *   fumadocs-ui/dist/layouts/docs/slots/sidebar.js
+ *   base   rounded-lg p-2 text-fd-muted-foreground
+ *   link   hover:bg-fd-accent/50 hover:text-fd-accent-foreground/80
+ *          data-[active=true]:bg-fd-primary/10 data-[active=true]:text-fd-primary
+ */
+nav[aria-label='Documentation navigation'] li a {
+  border-radius: 0.5rem;
+  color: var(--clean-fg-muted) !important;
+}
+
+nav[aria-label='Documentation navigation'] li a:hover {
+  background-color: color-mix(in oklab, var(--cc-accent) 50%, transparent) !important;
+  color: color-mix(in oklab, var(--cc-accent-fg) 80%, transparent) !important;
+}
+
+nav[aria-label='Documentation navigation'] li a[aria-current='page'] {
+  font-weight: 400 !important;
+  color: var(--clean-accent) !important;
+}
+
+/*
+ * API member signatures. Each property, method and accessor is an `h3` at `text-xl`
+ * (20px), which makes a page of them read as a wall of headings. developer-docs sizes
+ * a schema property at 14px in medium-weight mono:
+ *   fumadocs-openapi/dist/ui/schema/client.js
+ *   <div className="text-sm ..."><span className="font-medium font-mono text-fd-primary">
+ *
+ * Only the signature shrinks, not the heading box, so anchor offsets and spacing are
+ * untouched. `code.shiki-inline` is what separates a member signature from an ordinary
+ * prose subheading — the theme wraps signatures in it and prose headings never are.
+ */
+main :is(h2, h3, h4) > code.shiki-inline {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/*
+ * Version switcher. `site.js` is shared with the default-theme build and styles the
+ * control with TypeDoc's own variables:
+ *   docs/assets/site.js
+ *   .cc-version-switcher select { background: var(--color-background);
+ *     color: var(--color-text); border: 1px solid var(--color-accent) }
+ *
+ * None of those exist here, so the select fell back to the browser default — a white
+ * popup with near-invisible text in dark mode. Aliasing the three names onto the theme's
+ * tokens fixes it without forking `site.js`, which the default-theme build still uses.
+ *
+ * `color-scheme` is what actually repaints the native option popup; styling `option`
+ * alone is ignored by most browsers.
+ */
+:root {
+  --color-background: var(--clean-bg);
+  --color-text: var(--clean-fg);
+  --color-accent: var(--clean-border);
+}
+
+.cc-version-switcher select {
+  height: 1.75rem;
+  padding-inline: 0.5rem;
+  border-radius: 0.5rem;
+  color-scheme: light;
+}
+
+[data-theme='dark'] .cc-version-switcher select {
+  color-scheme: dark;
+}
+
+.cc-version-switcher select:hover {
+  background-color: color-mix(in oklab, var(--cc-accent) 50%, transparent);
+}
+
+/*
+ * NEXT wordmark in the header, to the left of the site name.
+ *
+ * The theme's `siteName` option does take a logo, but Brand renders the logo *instead
+ * of* the text (rang/dist/index.js: `if (!logo) return <span>{name}</span>`, then it
+ * returns the image alone), so using it would drop "Campaign Cart SDK".
+ *
+ * Same artwork and sizing developer-docs uses in its own header:
+ *   lib/layout.shared.tsx
+ *   <img src="/next-dark.svg"  class="h-auto w-24 dark:hidden" />
+ *   <img src="/next-white.svg" class="hidden h-auto w-24 dark:block" />
+ *
+ * Both files are shipped because the wordmark is two-colour — the N is #3C7DFF and the
+ * lettering flips between #030E1F and white. A single masked copy would flatten the
+ * blue out, so the pair is swapped on the theme exactly as developer-docs does.
+ * Height follows the 451x148 viewBox at the w-24 (6rem) width.
+ */
+header > div > a:first-child::before {
+  content: '';
+  flex-shrink: 0;
+  width: 6rem;
+  height: calc(6rem * 148 / 451);
+  margin-inline-end: 0.625rem;
+  background: url("data:image/svg+xml,%3Csvg%20width=%22451%22%20height=%22148%22%20viewBox=%220%200%20451%20148%22%20fill=%22none%22%20xmlns=%22http://www.w3.org/2000/svg%22%3E%20%3Cpath%20d=%22M104.893%2081.8347L102.955%2080.5593L48.6035%2044.7975C47.8986%2044.3777%2047.2106%2044.1521%2046.5957%2044.152C44.6173%2044.152%2043.008%2045.7606%2043.0078%2047.739V101.117C43.0079%20103.095%2044.6173%20104.704%2046.5957%20104.704H50.4307V117.046H46.5957C37.8153%20117.046%2030.75%20109.98%2030.75%20101.2V47.8229C30.75%2039.0426%2037.8153%2031.9772%2046.5957%2031.9772C49.6698%2031.9773%2052.752%2032.8805%2055.3037%2034.612H55.3047L104.346%2067.9733L104.893%2068.3454V81.8347Z%22%20fill=%22%233C7DFF%22%20stroke=%22%233C7DFF%22%20stroke-width=%222.5%22/%3E%20%3Cpath%20d=%22M111.568%2031.9772C120.349%2031.9772%20127.414%2039.0426%20127.414%2047.8229V101.2C127.414%20109.98%20120.349%20117.046%20111.568%20117.046C108.494%20117.046%20105.412%20116.142%20102.86%20114.411H102.859L53.8184%2081.0495L53.2715%2080.6774V67.1911L55.207%2068.4626L109.552%20104.136C110.26%20104.56%20110.951%20104.788%20111.568%20104.788C113.547%20104.788%20115.156%20103.178%20115.156%20101.2V47.8229C115.156%2045.8444%20113.547%2044.235%20111.568%2044.235H107.733V31.9772H111.568Z%22%20fill=%22%233C7DFF%22%20stroke=%22%233C7DFF%22%20stroke-width=%222.5%22/%3E%20%3Cpath%20fill-rule=%22evenodd%22%20clip-rule=%22evenodd%22%20d=%22M369.22%2056.1629V115.796H393.789V56.1629H418.88V32.3098L383.452%2032.3079L369.22%2056.1629ZM369.22%2056.1629L383.452%2032.3079L368.105%2032.3098L352.65%2055.7335L369.22%2056.1629Z%22%20fill=%22%23030E1F%22/%3E%20%3Cpath%20fill-rule=%22evenodd%22%20clip-rule=%22evenodd%22%20d=%22M279.292%20115.486L307.796%2072.6695L282.035%2032L309.943%2032.002L337.612%2070.9998L304.75%20115.488L279.292%20115.486ZM323.974%2093.9864L339.089%20115.488L364.236%20115.486L339.089%2074.4328L323.974%2093.9864ZM339.089%2067.9248L325.856%2049.4455L337.612%2032.002L363.731%2032L339.089%2067.9248Z%22%20fill=%22%23030E1F%22/%3E%20%3Cpath%20d=%22M227.824%20115.79V32.304H277.438L292.154%2056.157H252.392V63.3129H277.438V84.7807H252.392V91.9366H290.845L274.778%20115.792L227.824%20115.79Z%22%20fill=%22%23030E1F%22/%3E%20%3Cpath%20d=%22M149.164%20115.792V32.3059H177.191L199.971%2072.2598V32.3059H223.824V115.792H198.897L173.017%2071.4249V115.792H149.164Z%22%20fill=%22%23030E1F%22/%3E%20%3C/svg%3E") no-repeat center / contain;
+}
+
+[data-theme='dark'] header > div > a:first-child::before {
+  background-image: url("data:image/svg+xml,%3Csvg%20width=%22451%22%20height=%22148%22%20viewBox=%220%200%20451%20148%22%20fill=%22none%22%20xmlns=%22http://www.w3.org/2000/svg%22%3E%20%3Cpath%20d=%22M104.893%2081.8346L102.955%2080.5593L48.6035%2044.7975C47.8986%2044.3777%2047.2106%2044.1521%2046.5957%2044.152C44.6173%2044.152%2043.008%2045.7606%2043.0078%2047.7389V101.117C43.0079%20103.095%2044.6173%20104.704%2046.5957%20104.704H50.4307V117.046H46.5957C37.8153%20117.046%2030.75%20109.98%2030.75%20101.2V47.8229C30.75%2039.0426%2037.8153%2031.9772%2046.5957%2031.9772C49.6698%2031.9773%2052.752%2032.8804%2055.3037%2034.612H55.3047L104.346%2067.9733L104.893%2068.3454V81.8346Z%22%20fill=%22%233C7DFF%22%20stroke=%22%233C7DFF%22%20stroke-width=%222.5%22/%3E%20%3Cpath%20d=%22M111.568%2031.9772C120.349%2031.9772%20127.414%2039.0426%20127.414%2047.8229V101.2C127.414%20109.98%20120.349%20117.046%20111.568%20117.046C108.494%20117.046%20105.412%20116.142%20102.86%20114.411H102.859L53.8184%2081.0495L53.2715%2080.6774V67.1911L55.207%2068.4626L109.552%20104.136C110.26%20104.56%20110.951%20104.788%20111.568%20104.788C113.547%20104.788%20115.156%20103.178%20115.156%20101.2V47.8229C115.156%2045.8444%20113.547%2044.235%20111.568%2044.235H107.733V31.9772H111.568Z%22%20fill=%22%233C7DFF%22%20stroke=%22%233C7DFF%22%20stroke-width=%222.5%22/%3E%20%3Cpath%20fill-rule=%22evenodd%22%20clip-rule=%22evenodd%22%20d=%22M369.22%2056.1629V115.796H393.789V56.1629H418.88V32.3098L383.452%2032.3079L369.22%2056.1629ZM369.22%2056.1629L383.452%2032.3079L368.105%2032.3098L352.65%2055.7335L369.22%2056.1629Z%22%20fill=%22white%22/%3E%20%3Cpath%20fill-rule=%22evenodd%22%20clip-rule=%22evenodd%22%20d=%22M279.292%20115.486L307.796%2072.6695L282.035%2032L309.943%2032.0019L337.612%2070.9998L304.75%20115.488L279.292%20115.486ZM323.974%2093.9863L339.089%20115.488L364.236%20115.486L339.089%2074.4328L323.974%2093.9863ZM339.089%2067.9248L325.856%2049.4455L337.612%2032.0019L363.731%2032L339.089%2067.9248Z%22%20fill=%22white%22/%3E%20%3Cpath%20d=%22M227.824%20115.79V32.304H277.438L292.154%2056.157H252.392V63.3129H277.438V84.7807H252.392V91.9366H290.845L274.778%20115.792L227.824%20115.79Z%22%20fill=%22white%22/%3E%20%3Cpath%20d=%22M149.164%20115.792V32.3059H177.191L199.971%2072.2598V32.3059H223.824V115.792H198.897L173.017%2071.4249V115.792H149.164Z%22%20fill=%22white%22/%3E%20%3C/svg%3E");
+}
+
+/*
+ * Kind chips on API sidebar items. The doc groups (Start Here, Building Pages,
+ * Reference) are prose; everything under Cart / Checkout / Orders / … is a code
+ * reference, and nothing distinguished them. Each API item carries its TypeDoc kind
+ * as a class (the setu patch emits `cc-kind cc-kind-<kind>` on the nav node, and the
+ * theme passes `node.class` through to the link), so the chip is pure CSS: a circled
+ * letter in TypeDoc's own kind colours, the same legend its default theme uses.
+ *   typedoc/static/style.css
+ *   --light-color-ts-class: #1f70c2      --dark-color-ts-class: #8ac4ff
+ *   --light-color-ts-interface: #108024  --dark-color-ts-interface: #6cff87
+ *   --light-color-ts-type-alias: #d51270 --dark-color-ts-type-alias: #ff6492
+ *   --light-color-ts-variable: #4760ec   --dark-color-ts-variable: #798dff
+ */
+:root {
+  --cc-ts-class: #1f70c2;
+  --cc-ts-interface: #108024;
+  --cc-ts-typedef: #d51270;
+  --cc-ts-variable: #4760ec;
+}
+
+[data-theme='dark'] {
+  --cc-ts-class: #8ac4ff;
+  --cc-ts-interface: #6cff87;
+  --cc-ts-typedef: #ff6492;
+  --cc-ts-variable: #798dff;
+}
+
+.cc-kind::before {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-top: 0.1rem;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in oklab, var(--cc-ts) 45%, transparent);
+  background-color: color-mix(in oklab, var(--cc-ts) 12%, transparent);
+  color: var(--cc-ts);
+  font-size: 0.6rem;
+  font-weight: 700;
+  font-family: var(--clean-font-mono);
+}
+
+.cc-kind-class::before {
+  content: 'C';
+  --cc-ts: var(--cc-ts-class);
+}
+
+.cc-kind-interface::before {
+  content: 'I';
+  --cc-ts: var(--cc-ts-interface);
+}
+
+.cc-kind-typedef::before {
+  content: 'T';
+  --cc-ts: var(--cc-ts-typedef);
+}
+
+.cc-kind-variable::before {
+  content: 'V';
+  --cc-ts: var(--cc-ts-variable);
+}

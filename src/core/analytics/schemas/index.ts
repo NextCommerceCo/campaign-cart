@@ -4,6 +4,11 @@
 // below defines field-level validation for the subset that carries one.
 export * from './events';
 
+/**
+ * Product payload carried by commerce analytics events. Field names follow the GA4 item schema (`item_id`, `item_name`, `price`).
+ *
+ * @category Analytics
+ */
 export interface ProductSchema {
   item_id: string;
   item_name: string;
@@ -29,9 +34,15 @@ export interface ProductSchema {
 /**
  * Identical to {@link ProductSchema}; retained as a named alias so list
  * impressions read clearly at call sites.
+  * @category Analytics
  */
 export type ImpressionSchema = ProductSchema;
 
+/**
+ * Visitor and customer identity fields attached to analytics events as `user_properties`.
+ *
+ * @category Analytics
+ */
 export interface UserPropertiesSchema {
   visitor_type?: string;
   customer_id?: string;
@@ -51,6 +62,11 @@ export interface UserPropertiesSchema {
   [key: string]: any;
 }
 
+/**
+ * Fields shared by every analytics event: the `dl_*` event name plus optional session and customer context.
+ *
+ * @category Analytics
+ */
 export interface BaseEventSchema {
   event: string;
   event_id?: string;
