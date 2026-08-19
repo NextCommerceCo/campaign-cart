@@ -11,9 +11,7 @@
  *   2. Shows a banner when the reader is on an older version than the current release,
  *      or on one of the unreleased folders (`main/`, `dev/`).
  *
- * That is all it does. Mermaid rendering is *not* here — `@boneskull/typedoc-plugin-mermaid`
- * (`"mermaidSource": "local"` in `typedoc.json`) injects its own module script and copies
- * mermaid's ESM bundle into `assets/mermaid/`. Do not re-add a hand-rolled renderer.
+ * That is all it does.
  *
  * It does nothing at all when `versions.json` is absent — that is the normal state of an
  * unversioned local `npm run docs` build, and a warning-free no-op is the correct

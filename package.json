@@ -70,7 +70,6 @@
     "zustand": "^4.4.7"
   },
   "devDependencies": {
-    "@boneskull/typedoc-plugin-mermaid": "^0.2.1",
     "@clean-jsdoc-theme/typedoc": "^5.1.1",
     "@playwright/test": "^1.62.1",
     "@testing-library/dom": "^9.3.3",
@@ -85,7 +84,6 @@
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.1",
     "happy-dom": "^18.0.1",
-    "mermaid": "^11.16.0",
     "patch-package": "^8.0.1",
     "prettier": "^3.1.0",
     "rimraf": "^5.0.5",

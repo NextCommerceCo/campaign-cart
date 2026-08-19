@@ -12,10 +12,11 @@ The markup is the configuration. You never instantiate anything: you put `data-n
 
 What each piece is:
 
-- **Attributes** are the public contract. `data-next-bundle-selector` turns a `<div>` into a package picker; `data-next-checkout="form"` turns a `<form>` into a checkout. The [Building Pages guides](../pages/checkout-page.md) show the ones real funnels use.
-- **Features** are the code behind the attributes, one per capability. The [Data Attributes reference](../reference/data-attributes.md) lists every attribute that turns one on.
-- **State** is a handful of stores: the cart, the loaded campaign, the checkout form, the completed order. Features read and write them; your own code can too, through `window.next` ([JavaScript API](../reference/javascript-api.md)) and the exported store hooks.
-- **Events** tie it together. Every change emits a typed event (see {@link EventMap} for all of them) and displays re-render when the state they bind to changes.
+- **Page** — the HTML you ship. Plain markup with `data-next-*` attributes; no SDK script calls, no special elements. `data-next-bundle-selector` turns a `<div>` into a package picker; `data-next-checkout="form"` turns a `<form>` into a checkout. The [Building Pages guides](../pages/checkout-page.md) show the ones real funnels use.
+- **Scanner** — runs once on load, then watches the DOM. Boot is 14 ordered steps: configuration, campaign fetch, cart restore, then the DOM scan, then `next:initialized`. After boot, a `MutationObserver` matches any `data-next-*` element added later — drop one in the page at runtime and the SDK picks it up.
+- **Features** — the code behind the attributes, one per capability. `data-next-bundle-selector` enables `BundleSelectorEnhancer`, `data-next-checkout="form"` enables `CheckoutFormEnhancer`, and so on. The [Data Attributes reference](../reference/data-attributes.md) lists every attribute that turns one on.
+- **Stores** — a handful of Zustand stores: the cart, the loaded campaign, the checkout form, the completed order. Features read and write them; your own code can too, through `window.next` ([JavaScript API](../reference/javascript-api.md)) and the exported `useXStore` hooks.
+- **Events** — tie it together. Every change emits a typed event (see {@link EventMap} for all of them). Features subscribe to the ones they care about, re-run their logic, and re-render any displays bound to the changed state. The dashed arrows in the diagram are that loop.
 
 Boot happens once per page load, in 14 ordered steps: configuration, campaign fetch, cart restore, then the DOM scan, then `next:initialized`. Elements added to the page *after* boot are enhanced too: a DOM observer watches for new `data-next-*` matches.
 

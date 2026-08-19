@@ -7,10 +7,10 @@
  * The theme injects `clean-theme.css` and `site.js` into every page itself, via
  * `cleanJsdocTheme.customCssFile` / `customJsFile` in `typedoc.json` (wired through
  * the adapter by patches/@clean-jsdoc-theme+typedoc+5.1.1.patch). `--watch` therefore
- * only has to stage the guides once at startup (`docs-stage.mjs` pre-renders mermaid
- * fences and rewrites TypeDoc-convention titles/links) and re-run the canonical
- * `docs-versions.mjs` after each rebuild so `versions.json` and the root redirect
- * stay in step with the built folders.
+ * only has to stage the guides once at startup (`docs-stage.mjs` rewrites
+ * TypeDoc-convention titles/links) and re-run the canonical `docs-versions.mjs`
+ * after each rebuild so `versions.json` and the root redirect stay in step with the
+ * built folders.
  *
  * Zero new dependencies — `node:http` / `node:fs` / `node:path` only, matching
  * this repo's habit of scripting over adding libraries (see
@@ -33,9 +33,6 @@ const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
-  // mermaid ships as ESM (`assets/mermaid/**.mjs`). A module script served as
-  // application/octet-stream is refused by the browser, so every diagram page
-  // would fall back to showing its source.
   '.mjs': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml',
@@ -53,9 +50,6 @@ function contentTypeFor(filePath) {
  * (and any path with no matching file) as `index.html`. Rejects any path that
  * escapes ROOT via `..` traversal.
  *
- * Everything is served from the build — including `assets/mermaid/**`, which
- * `@boneskull/typedoc-plugin-mermaid` re-copies on every render, so `--watch`
- * keeps its diagrams after a rebuild wipes the output directory.
  * @param {string} urlPath
  */
 function resolveFile(urlPath) {

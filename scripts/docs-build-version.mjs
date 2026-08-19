@@ -305,7 +305,6 @@ function versionConfig({
     delete config.cleanJsdocTheme;
     config.plugin = [
       'typedoc-plugin-mdn-links',
-      '@boneskull/typedoc-plugin-mermaid',
       'typedoc-plugin-llms-txt',
     ];
     config.customCss = resolve(REPO, 'docs/assets/typedoc.css');
@@ -340,11 +339,8 @@ function runTypedoc({ cwd, optionsFile }) {
 }
 
 /*
- * No asset-copy step here on purpose. TypeDoc emits only `customCss`/`customJs`, but the
- * one runtime asset the site needs beyond those — mermaid's ESM bundle — is copied into
- * `<outDir>/assets/mermaid/` by `@boneskull/typedoc-plugin-mermaid` itself, and only for
- * builds that actually contain a diagram. A tag whose guides have no mermaid block pays
- * nothing.
+ * No asset-copy step here on purpose. TypeDoc emits only `customCss`/`customJs`, which is
+ * everything the site runtime needs.
  */
 
 /** Writes the generated options next to the sources it describes. */
