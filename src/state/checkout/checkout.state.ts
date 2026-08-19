@@ -104,7 +104,7 @@ const initialState: AllFieldsOf<CheckoutState> = {
  * ```ts
  * const { paymentMethod, sameAsShipping } = useCheckoutStore.getState();
  * ```
-  * @category Checkout
+ * @category Checkout
  */
 export const useCheckoutStore = create<CheckoutState & CheckoutActions>()(
   persist(

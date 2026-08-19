@@ -14,23 +14,7 @@
       --color-process: #9b59b6;
       --color-warning: #f39c12;
     }
-    @media (prefers-color-scheme: dark) {
-      svg {
-        --bg: #18181b;
-        --grid: #27272a;
-        --text-primary: #f4f4f5;
-        --text-secondary: #a1a1aa;
-        --text-tag: #71717a;
-        --text-muted: #71717a;
-        --border: #52525b;
-        --surface: #1f1f23;
-        --color-success: #4ade80;
-        --color-accent: #60a5fa;
-        --color-process: #c084fc;
-        --color-warning: #fbbf24;
-      }
-    }
-    :root.dark svg, .dark svg, html.dark svg {
+    html[data-theme="dark"] svg {
       --bg: #18181b;
       --grid: #27272a;
       --text-primary: #f4f4f5;

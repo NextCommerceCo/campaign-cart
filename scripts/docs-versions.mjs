@@ -15,6 +15,7 @@
  *   node scripts/docs-versions.mjs                # write docs/site/{versions.json,index.html}
  *   node scripts/docs-versions.mjs --print        # print the JSON, write nothing
  *   node scripts/docs-versions.mjs --all          # list every eligible tag, built or not
+ *   node scripts/docs-versions.mjs --local        # index only the local latest/ build
  *   node scripts/docs-versions.mjs --out <dir>    # site root other than docs/site
  *
  * Reads tags with `git for-each-ref refs/tags`, not `git tag` — `git tag` is on the
@@ -106,22 +107,36 @@ export function packageVersion(cwd = REPO) {
 /**
  * Builds the version index.
  *
- * `current: true` marks the newest release — the one `latest/` aliases. When
- * `package.json`'s version has no tag yet (an unreleased bump), it is *not* added as a
- * version: nothing is built for it and a switcher entry pointing at a missing folder is
- * a 404. It surfaces as `unreleased` on the returned metadata instead.
+ * `current: true` marks the newest release, which `latest/` aliases on the published
+ * site. Local mode indexes only the `latest/` folder built from the working tree.
  *
  * @param options.floor      oldest tag to include (default {@link VERSION_FLOOR})
  * @param options.root       absolute site root; entries without a built folder there are
  *                           dropped unless `all` is set
  * @param options.all        include every eligible tag regardless of what is built
+ * @param options.local      index only the working tree's `latest/` folder
  */
 export function buildVersionIndex({
   floor = VERSION_FLOOR,
   root = join(REPO, DEFAULT_SITE_ROOT),
   all = false,
+  local = false,
   cwd = REPO,
 } = {}) {
+  const pkg = packageVersion(cwd);
+  if (local) {
+    return {
+      versions: [
+        { version: pkg, tag: `v${pkg}`, path: 'latest', current: true },
+      ],
+      floor,
+      packageVersion: pkg,
+      eligible: [],
+      skipped: [],
+      unreleased: null,
+    };
+  }
+
   const floorTag = parseTag(floor);
   if (!floorTag) throw new Error(`Not a release tag: ${floor}`);
 
@@ -140,8 +155,6 @@ export function buildVersionIndex({
     path: t.tag,
     current: i === 0,
   }));
-
-  const pkg = packageVersion(cwd);
   return {
     versions,
     floor: floorTag.tag,
@@ -181,23 +194,32 @@ export function renderRootRedirect(target = 'latest/') {
 }
 
 function parseArgs(argv) {
-  const opts = { print: false, all: false, root: null, floor: VERSION_FLOOR };
+  const opts = {
+    print: false,
+    all: false,
+    local: false,
+    root: null,
+    floor: VERSION_FLOOR,
+  };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--print') opts.print = true;
     else if (arg === '--all') opts.all = true;
+    else if (arg === '--local') opts.local = true;
     else if (arg === '--out') opts.root = argv[++i];
     else if (arg === '--floor') opts.floor = argv[++i];
     else if (arg === '--help' || arg === '-h') opts.help = true;
     else throw new Error(`Unknown argument: ${arg}`);
   }
+  if (opts.all && opts.local) throw new Error('Pass either --all or --local.');
   return opts;
 }
 
-const USAGE = `Usage: node scripts/docs-versions.mjs [--print] [--all] [--out <dir>] [--floor <tag>]
+const USAGE = `Usage: node scripts/docs-versions.mjs [--print] [--all] [--local] [--out <dir>] [--floor <tag>]
 
   --print        Print versions.json to stdout and write nothing.
   --all          Include every tag at or above the floor, even if not built yet.
+  --local        Index only latest/, using package.json's version.
   --out <dir>    Site root to inspect and write into (default ${DEFAULT_SITE_ROOT}).
   --floor <tag>  Oldest tag to include (default ${VERSION_FLOOR}).
 `;
@@ -210,7 +232,12 @@ function main(argv) {
   }
 
   const root = resolve(opts.root ?? join(REPO, DEFAULT_SITE_ROOT));
-  const index = buildVersionIndex({ floor: opts.floor, root, all: opts.all });
+  const index = buildVersionIndex({
+    floor: opts.floor,
+    root,
+    all: opts.all,
+    local: opts.local,
+  });
   const json = `${JSON.stringify(index.versions, null, 2)}\n`;
 
   if (opts.print) {
@@ -221,15 +248,14 @@ function main(argv) {
   if (index.versions.length === 0) {
     process.stderr.write(
       `No built version folders found under ${root}.\n` +
-        `Build one first:  npm run docs:version -- v${index.packageVersion}\n` +
-        `Or list every eligible tag without building:  npm run docs:versions -- --all\n`
+        `Build one first, or pass --local after building latest/.\n`
     );
     return 1;
   }
 
   mkdirSync(root, { recursive: true });
-  writeFileSync(join(root, 'versions.json'), json);
   writeFileSync(join(root, 'index.html'), renderRootRedirect());
+  writeFileSync(join(root, 'versions.json'), json);
 
   const current = index.versions[0];
   process.stdout.write(

@@ -34,7 +34,7 @@ export interface ProductSchema {
 /**
  * Identical to {@link ProductSchema}; retained as a named alias so list
  * impressions read clearly at call sites.
-  * @category Analytics
+ * @category Analytics
  */
 export type ImpressionSchema = ProductSchema;
 
@@ -589,4 +589,3 @@ export function validateEventSchema(eventData: any, schema: EventSchema): { vali
 export function getEventSchema(eventName: string): EventSchema | undefined {
   return eventSchemas[eventName];
 }
-

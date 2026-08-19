@@ -196,7 +196,7 @@
     // `latest`, `main` and `dev` are real folders but not index entries, so they are
     // offered explicitly — otherwise a reader in `dev/` could never get back out.
     const options = [];
-    if (currentFolder === 'latest')
+    if (currentFolder === 'latest' && !versions.some(v => v.path === 'latest'))
       options.push({ value: 'latest', text: 'latest' });
     for (const entry of await unreleasedOptions())
       options.push({ value: entry.folder, text: entry.label });

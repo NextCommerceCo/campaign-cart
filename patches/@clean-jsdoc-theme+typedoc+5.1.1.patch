@@ -36,3 +36,22 @@ index d2d5d45..004ba9a 100644
        ...footer ? { footer } : {},
        ...favicon ? { favicon: favicon.href } : {},
        ...meta ? { meta } : {},
+@@ -1271,5 +1287,18 @@ async function writeSite(outDir, project, app) {
+     ...typeof block.siteUrl === "string" && block.siteUrl.trim().length > 0 ? { siteUrl: block.siteUrl.trim() } : {}
+   });
++  const siteUrl = typeof block.siteUrl === "string" ? block.siteUrl.trim() : "";
++  if (siteUrl) {
++    const rootUrl = siteUrl.endsWith("/") ? siteUrl : `${siteUrl}/`;
++    for (const file of result.files) {
++      if (!file.path.endsWith(".html") || typeof file.contents !== "string") continue;
++      const route = file.path === "index.html" ? "" : file.path.replace(/index\.html$/, "");
++      const canonical = new URL(route, rootUrl).href;
++      file.contents = file.contents.replace(
++        "</title>",
++        `</title><link rel="canonical" href="${canonical}" />`
++      );
++    }
++  }
+   const outputFiles = [
+     ...result.files,
+     ...logoFiles,

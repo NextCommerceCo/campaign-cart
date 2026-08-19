@@ -26,6 +26,6 @@ export const campaignStore = campaignStoreInstance;
  * const campaign = useCampaignStore.getState().data;
  * const pkg = campaign?.packages.find(p => p.ref_id === 2);
  * ```
-  * @category Campaign
+ * @category Campaign
  */
 export const useCampaignStore = campaignStoreInstance;

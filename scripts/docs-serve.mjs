@@ -6,11 +6,9 @@
  *
  * The theme injects `clean-theme.css` and `site.js` into every page itself, via
  * `cleanJsdocTheme.customCssFile` / `customJsFile` in `typedoc.json` (wired through
- * the adapter by patches/@clean-jsdoc-theme+typedoc+5.1.1.patch). `--watch` therefore
- * only has to stage the guides once at startup (`docs-stage.mjs` rewrites
- * TypeDoc-convention titles/links) and re-run the canonical `docs-versions.mjs`
- * after each rebuild so `versions.json` and the root redirect stay in step with the
- * built folders.
+ * the adapter by patches/@clean-jsdoc-theme+typedoc+5.1.1.patch). `--watch` stages the
+ * guides at startup, stages them again when their source changes, and refreshes the
+ * local version index after each TypeDoc rebuild.
  *
  * Zero new dependencies — `node:http` / `node:fs` / `node:path` only, matching
  * this repo's habit of scripting over adding libraries (see
@@ -23,7 +21,7 @@
  */
 import { createServer } from 'node:http';
 import { spawn, spawnSync } from 'node:child_process';
-import { createReadStream, existsSync, statSync } from 'node:fs';
+import { createReadStream, existsSync, statSync, watch } from 'node:fs';
 import { extname, join, normalize, resolve } from 'node:path';
 
 const ROOT = resolve(process.cwd(), 'docs/site');
@@ -86,8 +84,25 @@ server.listen(PORT, () => {
 });
 
 let watchProcess = null;
+let guidesWatcher = null;
+let homeWatcher = null;
+let stageTimer = null;
 if (process.argv.includes('--watch')) {
-  spawnSync('node', ['scripts/docs-stage.mjs'], { stdio: 'inherit' });
+  const staged = spawnSync('node', ['scripts/docs-stage.mjs'], {
+    stdio: 'inherit',
+  });
+  if (staged.error) throw staged.error;
+  if (staged.status !== 0) process.exit(staged.status ?? 1);
+
+  const queueStage = () => {
+    if (stageTimer) clearTimeout(stageTimer);
+    stageTimer = setTimeout(() => {
+      stageTimer = null;
+      spawnSync('node', ['scripts/docs-stage.mjs'], { stdio: 'inherit' });
+    }, 50);
+  };
+  guidesWatcher = watch('docs/guides', { recursive: true }, queueStage);
+  homeWatcher = watch('docs/site-home.md', queueStage);
 
   watchProcess = spawn('npx', ['typedoc', '--watch'], {
     stdio: ['inherit', 'pipe', 'inherit'],
@@ -99,13 +114,18 @@ if (process.argv.includes('--watch')) {
   watchProcess.stdout.on('data', chunk => {
     process.stdout.write(chunk);
     if (chunk.toString().includes('generated at')) {
-      spawnSync('node', ['scripts/docs-versions.mjs'], { stdio: 'inherit' });
+      spawnSync('node', ['scripts/docs-versions.mjs', '--local'], {
+        stdio: 'inherit',
+      });
       console.log(`docs site: http://localhost:${PORT}`);
     }
   });
 }
 
 process.on('SIGINT', () => {
+  if (stageTimer) clearTimeout(stageTimer);
+  guidesWatcher?.close();
+  homeWatcher?.close();
   watchProcess?.kill('SIGINT');
   server.close(() => process.exit(0));
 });

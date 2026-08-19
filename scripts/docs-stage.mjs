@@ -17,7 +17,14 @@
  * Sources are never modified: `docs/guides` is the input, `docs/.staged` the output.
  */
 
-import { readFile, writeFile, mkdir, rm, readdir } from 'node:fs/promises';
+import {
+  readFile,
+  writeFile,
+  mkdir,
+  rm,
+  readdir,
+  rename,
+} from 'node:fs/promises';
 import { join, dirname, relative, posix } from 'node:path';
 import { slugifyHeading } from '@clean-jsdoc-theme/utils';
 import { renderRootRedirect } from './docs-versions.mjs';
@@ -30,7 +37,7 @@ const SITE = join(ROOT, 'docs/site');
 function stripGroupPrefix(text) {
   const group = /^title:\s*"([^"/]+)\/(.+)"\s*$/m;
   return text.replace(group, (line, prefix, page) =>
-    text.includes(`group: "${prefix}"`) ? `title: "${page}"` : line,
+    text.includes(`group: "${prefix}"`) ? `title: "${page}"` : line
   );
 }
 
@@ -55,18 +62,26 @@ async function walk(dir) {
   return out;
 }
 
-await rm(OUT, { recursive: true, force: true });
+await mkdir(OUT, { recursive: true });
+const staleFiles = new Set(await walk(OUT));
 
 let count = 0;
 for (const file of await walk(SRC)) {
   const text = rewriteLinks(
     stripGroupPrefix(await readFile(file, 'utf8')),
-    relative(SRC, dirname(file)) || '.',
+    relative(SRC, dirname(file)) || '.'
   );
   const target = join(OUT, relative(SRC, file));
+  const temporary = `${target}.${process.pid}.tmp`;
   await mkdir(dirname(target), { recursive: true });
-  await writeFile(target, text);
+  await writeFile(temporary, text);
+  await rename(temporary, target);
+  staleFiles.delete(target);
   count++;
+}
+
+for (const staleFile of staleFiles) {
+  await rm(staleFile, { force: true });
 }
 
 /**
@@ -76,15 +91,18 @@ for (const file of await walk(SRC)) {
  * Bare names do.
  */
 const home = await readFile(join(ROOT, 'docs/site-home.md'), 'utf8');
+const stagedHome = join(ROOT, 'docs/.staged-home.md');
+const temporaryHome = `${stagedHome}.${process.pid}.tmp`;
 await writeFile(
-  join(ROOT, 'docs/.staged-home.md'),
+  temporaryHome,
   rewriteLinks(
     home
       .replace(/\{@link index!(\w+)\}/g, '{@link $1}')
       .replace(/\]\(\.?\/?guides\//g, '](./'),
-    '.',
-  ),
+    '.'
+  )
 );
+await rename(temporaryHome, stagedHome);
 
 console.log(`docs: staged ${count} guide file(s) into docs/.staged`);
 

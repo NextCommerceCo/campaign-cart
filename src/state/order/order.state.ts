@@ -128,7 +128,7 @@ const initialState: OrderState = {
  * const order = useOrderStore.getState().order;
  * console.log(order?.number);
  * ```
-  * @category Orders
+ * @category Orders
  */
 export const useOrderStore = create<OrderState & OrderActions>()(
   persist(
