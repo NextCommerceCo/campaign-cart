@@ -252,6 +252,35 @@
   }
 
   /**
+   * Element the banner is inserted before.
+   *
+   * The banner has to be a *sibling* of the container that lays the page out in
+   * columns, never a child of it. On the default theme `.container-main` is that
+   * container itself (`display: grid`, sidebar / content / TOC) and sits directly in
+   * `<body>`, so the answer is `.container-main`. On clean-jsdoc-theme the class is an
+   * alias this file puts on `<main>`, which is one cell of the theme's
+   * `grid-cols-[16rem_minmax(0,1fr)_14rem]` row: inserting there made the banner a
+   * fourth grid child, which pushed the page content into the 14rem TOC track and
+   * stretched the banner down the full height of the page. So climb out of every
+   * side-by-side parent first and insert above the whole row.
+   */
+  function bannerAnchor(start) {
+    let node = start;
+    for (let depth = 0; depth < 3; depth += 1) {
+      const parent = node.parentElement;
+      if (!parent || parent === document.body) return node;
+      const style = getComputedStyle(parent);
+      const sideBySide =
+        style.display.includes('grid') ||
+        (style.display.includes('flex') &&
+          style.flexDirection.startsWith('row'));
+      if (!sideBySide) return node;
+      node = parent;
+    }
+    return node;
+  }
+
+  /**
    * Banner above the page, for the two ways a reader can be off the current release:
    * reading an older version, or reading an unreleased folder. Both point at the current
    * release, because that is the docs for the SDK a page actually loads.
@@ -269,6 +298,7 @@
 
     const main = document.querySelector('.container-main');
     if (!main) return;
+    const anchor = bannerAnchor(main);
 
     const banner = document.createElement('aside');
     banner.className = 'cc-stale-banner';
@@ -285,8 +315,13 @@
       if (ok) link.href = pageIn(current.path, pagePath);
     });
 
-    banner.append(text, link);
-    main.parentNode?.insertBefore(banner, main);
+    // Inner row so the text lines up with the header and the page content, which are
+    // both centred at the theme's max width, while the amber bar itself is full-bleed.
+    const inner = document.createElement('div');
+    inner.className = 'cc-stale-banner-inner';
+    inner.append(text, link);
+    banner.append(inner);
+    anchor.parentNode?.insertBefore(banner, anchor);
   }
 
   /**
@@ -307,17 +342,23 @@
   font-size: 0.875em;
 }
 .cc-stale-banner {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75em;
-  align-items: baseline;
   margin: 0;
-  padding: 0.75em 1.25em;
+  padding: 0.75rem 1rem;
   /* Fixed amber, not a theme variable. TypeDoc's --color-warning-text is a *text*
      colour and reads near-black in the light theme, which made the banner
      dark-on-dark. A warning is the same amber in both themes on purpose. */
   background: #f6c344;
   color: #1c1c1c;
+}
+.cc-stale-banner-inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75em;
+  align-items: baseline;
+  /* Tailwind's screen-2xl, the width clean-jsdoc-theme centres its header and page
+     grid at. Wider than the default theme's container, which centres inside it. */
+  max-width: 96rem;
+  margin-inline: auto;
 }
 .cc-stale-banner a { color: inherit; font-weight: 700; }
 `;
