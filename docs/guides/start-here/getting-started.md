@@ -22,7 +22,7 @@ Every page in a live funnel carries the same three things in its `<head>`, in th
   <meta name="next-page-type" content="checkout">
   <meta name="next-success-url" content="/upsell-1/">
   <script
-    src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.4.34/dist/loader.js"
+    src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v{{SDK_VERSION}}/dist/loader.js"
     type="module"
   ></script>
 </head>
@@ -39,7 +39,7 @@ The starter templates keep that same configuration in a shared file instead, so 
   <meta name="next-success-url" content="/upsell-1/">
   <meta name="next-page-type" content="checkout">
   <script
-    src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.4.34/dist/loader.js"
+    src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v{{SDK_VERSION}}/dist/loader.js"
     type="module"
   ></script>
 </head>
@@ -56,7 +56,7 @@ A page can also run without a config script at all: `next-api-key` as a meta tag
   <meta name="next-api-key" content="{YOUR_CAMPAIGN_API_KEY}">
   <meta name="next-page-type" content="product">
   <script
-    src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.4.34/dist/loader.js"
+    src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v{{SDK_VERSION}}/dist/loader.js"
     type="module"
   ></script>
 </head>

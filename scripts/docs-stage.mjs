@@ -31,6 +31,9 @@ import { slugifyHeading } from '@clean-jsdoc-theme/utils';
 const ROOT = process.cwd();
 const SRC = join(ROOT, 'docs/guides');
 const OUT = join(ROOT, 'docs/.staged');
+const SDK_VERSION = JSON.parse(
+  await readFile(join(ROOT, 'package.json'), 'utf8')
+).version;
 
 function stripGroupPrefix(text) {
   const group = /^title:\s*"([^"/]+)\/(.+)"\s*$/m;
@@ -66,7 +69,9 @@ const staleFiles = new Set(await walk(OUT));
 let count = 0;
 for (const file of await walk(SRC)) {
   const text = rewriteLinks(
-    stripGroupPrefix(await readFile(file, 'utf8')),
+    stripGroupPrefix(
+      (await readFile(file, 'utf8')).replaceAll('{{SDK_VERSION}}', SDK_VERSION)
+    ),
     relative(SRC, dirname(file)) || '.'
   );
   const target = join(OUT, relative(SRC, file));
@@ -95,6 +100,7 @@ await writeFile(
   temporaryHome,
   rewriteLinks(
     home
+      .replaceAll('{{SDK_VERSION}}', SDK_VERSION)
       .replace(/\{@link index!(\w+)\}/g, '{@link $1}')
       .replace(/\]\(\.?\/?guides\//g, '](./'),
     '.'

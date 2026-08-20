@@ -16,7 +16,7 @@ The head is three lines shorter than checkout's. There are no success or upsell 
   <meta name="next-funnel" content="Apollo">
   <meta name="next-page-type" content="product">
   <script
-    src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.4.34/dist/loader.js"
+    src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v{{SDK_VERSION}}/dist/loader.js"
     type="module"
   ></script>
 </head>
