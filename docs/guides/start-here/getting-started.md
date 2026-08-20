@@ -22,7 +22,7 @@ Every page in a live funnel carries the same three things in its `<head>`, in th
   <meta name="next-page-type" content="checkout">
   <meta name="next-success-url" content="/upsell-1/">
   <script
-    src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.4.34/dist/loader.js"
+    src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v{{SDK_VERSION}}/dist/loader.js"
     type="module"
   ></script>
 </head>
@@ -39,7 +39,7 @@ The starter templates keep that same configuration in a shared file instead, so 
   <meta name="next-success-url" content="/upsell-1/">
   <meta name="next-page-type" content="checkout">
   <script
-    src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.4.34/dist/loader.js"
+    src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v{{SDK_VERSION}}/dist/loader.js"
     type="module"
   ></script>
 </head>
@@ -56,7 +56,7 @@ A page can also run without a config script at all: `next-api-key` as a meta tag
   <meta name="next-api-key" content="{YOUR_CAMPAIGN_API_KEY}">
   <meta name="next-page-type" content="product">
   <script
-    src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.4.34/dist/loader.js"
+    src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v{{SDK_VERSION}}/dist/loader.js"
     type="module"
   ></script>
 </head>
@@ -70,13 +70,7 @@ To confirm it loaded, open the page with `?debugger=true`. The overlay reports t
 
 A typical funnel, with what moves the visitor from page to page:
 
-```mermaid
-flowchart LR
-  A[Presell] -- plain link --> B[Landing]
-  B -- plain link --> C[Checkout]
-  C -- next-success-url --> D[Upsell]
-  D -- accept / decline URL --> E[Receipt]
-```
+![Funnel page types: presell → landing → checkout → upsell → receipt, linked by the labelled URL meta tags](./diagrams/funnel-pages.svg)
 
 - **Presell** declares `product`. Sells, and links forward to the landing page. Build it with [Landing & Presell](../pages/landing-presell.md).
 - **Landing** declares `product`. Sells, and links to checkout. Build it with [Landing & Presell](../pages/landing-presell.md).

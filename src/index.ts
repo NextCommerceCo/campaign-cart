@@ -117,6 +117,7 @@ declare global {
  * import { VERSION } from '@next-commerce/campaign-cart';
  * console.log(VERSION); // "0.4.30"
  * ```
+ * @category Core
  */
 export const VERSION = typeof window !== 'undefined' && window.__NEXT_SDK_VERSION__
   ? window.__NEXT_SDK_VERSION__

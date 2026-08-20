@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 
@@ -75,11 +82,23 @@ const packageVersion = (
 /**
  * Every tag at or above the version floor, ignoring what happens to be built. The
  * built-only default would be empty on a fresh checkout, and an empty list cannot prove
- * anything about the shape.
+ * anything about its contents.
  */
 const eligible = generate(['--all']);
+const local = generate(['--local']);
 
 describe('docs site version index', () => {
+  it('indexes only latest for a local working-tree build', () => {
+    expect(local).toEqual([
+      {
+        version: packageVersion,
+        tag: `v${packageVersion}`,
+        path: 'latest',
+        current: true,
+      },
+    ]);
+  });
+
   it('finds at least one release eligible for a versioned docs build', () => {
     // Zero here almost always means the checkout has no tags rather than that the
     // project has no releases — `actions/checkout` fetches none unless asked, which
@@ -146,12 +165,50 @@ describe('docs site version index', () => {
   });
 });
 
+describe('docs site version files', () => {
+  it('writes no redirect until latest has been built', () => {
+    const root = mkdtempSync(join(tmpdir(), 'campaign-cart-docs-versions-'));
+    const args = [
+      join(REPO, 'scripts/docs-versions.mjs'),
+      '--local',
+      '--out',
+      root,
+    ];
+
+    try {
+      const missing = spawnSync('node', args, {
+        cwd: REPO,
+        encoding: 'utf8',
+      });
+      expect(missing.status).toBe(1);
+      expect(missing.stderr).toContain('No latest docs build found');
+      expect(existsSync(join(root, 'index.html'))).toBe(false);
+      expect(existsSync(join(root, 'versions.json'))).toBe(false);
+
+      mkdirSync(join(root, 'latest'));
+      const built = spawnSync('node', args, {
+        cwd: REPO,
+        encoding: 'utf8',
+      });
+      expect(built.status).toBe(0);
+      expect(existsSync(join(root, 'index.html'))).toBe(true);
+      expect(existsSync(join(root, 'versions.json'))).toBe(true);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
 describe.runIf(existsSync(VERSIONS_JSON))(
   'built docs/site/versions.json',
   () => {
     it('matches what scripts/docs-versions.mjs generates', () => {
       const committed = readFileSync(VERSIONS_JSON, 'utf8');
-      const expected = `${JSON.stringify(generate(), null, 2)}\n`;
+      const parsed = JSON.parse(committed) as VersionEntry[];
+      const args = parsed.some(entry => entry.path === 'latest')
+        ? ['--local']
+        : [];
+      const expected = `${JSON.stringify(generate(args), null, 2)}\n`;
       expect(
         committed,
         'docs/site/versions.json is stale — regenerate with: npm run docs:versions'

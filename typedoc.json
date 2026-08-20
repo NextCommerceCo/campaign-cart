@@ -10,24 +10,54 @@
     "**/*.manifest.ts"
   ],
   "tsconfig": "tsconfig.json",
-  "out": "docs/site",
   "name": "Campaign Cart SDK",
-  "readme": "docs/site-home.md",
-  "projectDocuments": [
-    "docs/guides/start-here/*.md",
-    "docs/guides/pages/*.md",
-    "docs/guides/reference/*.md"
-  ],
-  "searchInDocuments": true,
+  "readme": "docs/.staged-home.md",
   "plugin": [
     "typedoc-plugin-mdn-links",
-    "@boneskull/typedoc-plugin-mermaid",
-    "typedoc-plugin-llms-txt"
+    "@clean-jsdoc-theme/typedoc"
   ],
-  "ignoredHighlightLanguages": [
-    "mermaid"
+  "outputs": [
+    {
+      "name": "clean-jsdoc-theme",
+      "path": "docs/site/latest"
+    }
   ],
-  "mermaidSource": "local",
+  "cleanJsdocTheme": {
+    "siteName": "Campaign Cart SDK",
+    "docs": "docs/.staged",
+    "docGroups": [
+      "Start Here",
+      "Building Pages",
+      "Reference"
+    ],
+    "fonts": {
+      "heading": "Inter",
+      "body": "Inter",
+      "mono": "JetBrains Mono"
+    },
+    "basePath": "/latest/",
+    "customCssFile": "docs/assets/clean-theme.css",
+    "customJsFile": "docs/assets/site.js",
+    "favicon": "docs/assets/favicon.ico",
+    "sectionOrder": [
+      "Cart",
+      "Campaign",
+      "Shipping",
+      "Coupons",
+      "Upsells",
+      "Checkout",
+      "Orders",
+      "Events",
+      "Analytics",
+      "Attribution",
+      "Metadata",
+      "URL Parameters",
+      "Popups",
+      "Utility",
+      "Core"
+    ],
+    "footer": "<div class=\"border-t border-(--clean-border) bg-background py-6 text-sm text-muted-foreground\"><div class=\"mx-auto flex w-full max-w-screen-2xl items-center px-4\"><span>NEXT Commerce &copy; 2026</span></div></div>"
+  },
   "excludePrivate": true,
   "excludeInternal": true,
   "excludeExternals": true,
@@ -42,6 +72,8 @@
     "Shipping",
     "Coupons",
     "Upsells",
+    "Checkout",
+    "Orders",
     "Events",
     "Analytics",
     "Attribution",
@@ -56,7 +88,5 @@
     "invalidLink": true,
     "notExported": false,
     "notDocumented": false
-  },
-  "customCss": "docs/assets/typedoc.css",
-  "customJs": "docs/assets/site.js"
+  }
 }

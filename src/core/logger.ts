@@ -33,6 +33,11 @@ interface ILogger {
   debug(message: string, ...args: any[]): void;
 }
 
+/**
+ * Console logger used across the SDK. Each instance carries a context label shown as a prefix; the static global level filters what prints.
+ *
+ * @category Core
+ */
 export class Logger implements ILogger {
   private context: string;
   private static globalLevel: LogLevel = LogLevel.INFO;

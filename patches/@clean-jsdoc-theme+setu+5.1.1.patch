@@ -1,0 +1,69 @@
+diff --git a/node_modules/@clean-jsdoc-theme/setu/dist/index.js b/node_modules/@clean-jsdoc-theme/setu/dist/index.js
+index b1f2d55..1cec31a 100644
+--- a/node_modules/@clean-jsdoc-theme/setu/dist/index.js
++++ b/node_modules/@clean-jsdoc-theme/setu/dist/index.js
+@@ -2595,9 +2595,48 @@ function assembleTypedocNav({
+   docGroups = [],
+   home,
+   source,
+-  menu
++  menu,
++  sectionOrder
+ }) {
+-  const moduleNodes = buildTypedocApiNav(apiPages);
++  const groupedApi = [];
++  const treeApi = [];
++  for (const p2 of apiPages) {
++    if (p2.frontmatter.group !== void 0) groupedApi.push(p2);
++    else treeApi.push(p2);
++  }
++  const catByTop = /* @__PURE__ */ new Map();
++  const catSeen = [];
++  for (const p2 of groupedApi) {
++    const path = String(p2.frontmatter.group);
++    const top = splitGroupPath(path)[0] ?? OTHER_SECTION;
++    let bucket = catByTop.get(top);
++    if (!bucket) {
++      bucket = [];
++      catByTop.set(top, bucket);
++      catSeen.push(top);
++    }
++    bucket.push({
++      leaf: {
++        label: p2.frontmatter.title,
++        slug: p2.slug,
++        ...p2.frontmatter.kind ? { class: `cc-kind cc-kind-${p2.frontmatter.kind}` } : {}
++      },
++      path,
++      explicit: true,
++      order: p2.frontmatter.order,
++      sort: "alpha"
++    });
++  }
++  const catOrder = [];
++  for (const label of sectionOrder ?? []) {
++    if (catByTop.has(label) && !catOrder.includes(label)) catOrder.push(label);
++  }
++  for (const label of catSeen) {
++    if (!catOrder.includes(label)) catOrder.push(label);
++  }
++  const catSections = [];
++  for (const top of catOrder) catSections.push(...buildGroupTree(top, catByTop.get(top)));
++  const moduleNodes = buildTypedocApiNav(treeApi);
+   const auxEntries = [];
+   const docSectionOrder = [];
+   for (const d of docs) {
+@@ -2642,11 +2681,11 @@ function assembleTypedocNav({
+       const node = resolveMenuItem(item, home, source, i);
+       if (node) out.push(node);
+     });
+-    out.push(...docSections, ...moduleNodes, ...tutorialSections);
++    out.push(...docSections, ...catSections, ...moduleNodes, ...tutorialSections);
+     return out;
+   }
+   if (home) out.push({ ...home, order: -1 });
+-  out.push(...docSections, ...moduleNodes, ...tutorialSections);
++  out.push(...docSections, ...catSections, ...moduleNodes, ...tutorialSections);
+   if (source) out.push({ ...source });
+   return out;
+ }

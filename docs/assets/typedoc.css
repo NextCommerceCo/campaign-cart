@@ -77,16 +77,9 @@ div.tsd-typography table {
   overflow-x: auto;
 }
 
-/* Mermaid diagrams. `@boneskull/typedoc-plugin-mermaid` wraps each fenced block in
-   `.mermaid-block` (a dark and a light copy, plus the source as a no-JS fallback) and
-   ships its own sizing rules. It toggles the two copies with an inline `display`, so
-   styling `.mermaid` itself would either lose to that or fight it — space the block and
-   center the SVG instead. */
-.tsd-typography .mermaid-block {
-  margin: 1.5em 0;
-}
-
-.tsd-typography .mermaid svg {
+.tsd-typography img[role="img"] {
   display: block;
-  margin-inline: auto;
+  margin: 1.5em auto;
+  max-width: 100%;
+  height: auto;
 }

@@ -11,9 +11,7 @@
  *   2. Shows a banner when the reader is on an older version than the current release,
  *      or on one of the unreleased folders (`main/`, `dev/`).
  *
- * That is all it does. Mermaid rendering is *not* here — `@boneskull/typedoc-plugin-mermaid`
- * (`"mermaidSource": "local"` in `typedoc.json`) injects its own module script and copies
- * mermaid's ESM bundle into `assets/mermaid/`. Do not re-add a hand-rolled renderer.
+ * That is all it does.
  *
  * It does nothing at all when `versions.json` is absent — that is the normal state of an
  * unversioned local `npm run docs` build, and a warning-free no-op is the correct
@@ -22,6 +20,35 @@
 
 (() => {
   'use strict';
+
+  /*
+   * clean-jsdoc-theme adapter. This file was written against TypeDoc's default theme
+   * and reaches for three things that theme provides: `data-base` on `<html>`, the
+   * `#tsd-toolbar-links` toolbar host, and `.container-main`. clean-jsdoc-theme has
+   * none of them, so equivalents are derived here first — its Header renders the brand
+   * link as `<a href={basePath}>` (the same value `data-base` carries), and the
+   * right-hand control cluster is the header's `ml-auto` div. Every step is guarded on
+   * the original being absent, so on the default theme (which old version folders are
+   * still built with) this whole block is a no-op.
+   */
+  if (!document.documentElement.dataset.base) {
+    const brand = document.querySelector('header a[href]');
+    if (brand) {
+      document.documentElement.dataset.base = brand.getAttribute('href') || '/';
+    }
+  }
+  if (!document.getElementById('tsd-toolbar-links')) {
+    const controls = document.querySelector('header div.ml-auto');
+    if (controls) {
+      const host = document.createElement('span');
+      host.id = 'tsd-toolbar-links';
+      host.className = 'flex items-center';
+      controls.prepend(host);
+    }
+  }
+  if (!document.querySelector('.container-main')) {
+    document.querySelector('main')?.classList.add('container-main');
+  }
 
   /**
    * The version folder's root URL.
@@ -169,11 +196,15 @@
     // `latest`, `main` and `dev` are real folders but not index entries, so they are
     // offered explicitly — otherwise a reader in `dev/` could never get back out.
     const options = [];
-    if (currentFolder === 'latest')
+    if (currentFolder === 'latest' && !versions.some(v => v.path === 'latest'))
       options.push({ value: 'latest', text: 'latest' });
     for (const entry of await unreleasedOptions())
       options.push({ value: entry.folder, text: entry.label });
     for (const version of versions) {
+      // A local single-folder build indexes the current release with `path: "latest"`,
+      // already offered above — a second option with the same value would win the
+      // `selected` race and misreport where the reader is.
+      if (options.some(option => option.value === version.path)) continue;
       options.push({
         value: version.path,
         text: version.current
@@ -221,6 +252,35 @@
   }
 
   /**
+   * Element the banner is inserted before.
+   *
+   * The banner has to be a *sibling* of the container that lays the page out in
+   * columns, never a child of it. On the default theme `.container-main` is that
+   * container itself (`display: grid`, sidebar / content / TOC) and sits directly in
+   * `<body>`, so the answer is `.container-main`. On clean-jsdoc-theme the class is an
+   * alias this file puts on `<main>`, which is one cell of the theme's
+   * `grid-cols-[16rem_minmax(0,1fr)_14rem]` row: inserting there made the banner a
+   * fourth grid child, which pushed the page content into the 14rem TOC track and
+   * stretched the banner down the full height of the page. So climb out of every
+   * side-by-side parent first and insert above the whole row.
+   */
+  function bannerAnchor(start) {
+    let node = start;
+    for (let depth = 0; depth < 3; depth += 1) {
+      const parent = node.parentElement;
+      if (!parent || parent === document.body) return node;
+      const style = getComputedStyle(parent);
+      const sideBySide =
+        style.display.includes('grid') ||
+        (style.display.includes('flex') &&
+          style.flexDirection.startsWith('row'));
+      if (!sideBySide) return node;
+      node = parent;
+    }
+    return node;
+  }
+
+  /**
    * Banner above the page, for the two ways a reader can be off the current release:
    * reading an older version, or reading an unreleased folder. Both point at the current
    * release, because that is the docs for the SDK a page actually loads.
@@ -238,6 +298,7 @@
 
     const main = document.querySelector('.container-main');
     if (!main) return;
+    const anchor = bannerAnchor(main);
 
     const banner = document.createElement('aside');
     banner.className = 'cc-stale-banner';
@@ -254,8 +315,13 @@
       if (ok) link.href = pageIn(current.path, pagePath);
     });
 
-    banner.append(text, link);
-    main.parentNode?.insertBefore(banner, main);
+    // Inner row so the text lines up with the header and the page content, which are
+    // both centred at the theme's max width, while the amber bar itself is full-bleed.
+    const inner = document.createElement('div');
+    inner.className = 'cc-stale-banner-inner';
+    inner.append(text, link);
+    banner.append(inner);
+    anchor.parentNode?.insertBefore(banner, anchor);
   }
 
   /**
@@ -276,17 +342,23 @@
   font-size: 0.875em;
 }
 .cc-stale-banner {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75em;
-  align-items: baseline;
   margin: 0;
-  padding: 0.75em 1.25em;
+  padding: 0.75rem 1rem;
   /* Fixed amber, not a theme variable. TypeDoc's --color-warning-text is a *text*
      colour and reads near-black in the light theme, which made the banner
      dark-on-dark. A warning is the same amber in both themes on purpose. */
   background: #f6c344;
   color: #1c1c1c;
+}
+.cc-stale-banner-inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75em;
+  align-items: baseline;
+  /* Tailwind's screen-2xl, the width clean-jsdoc-theme centres its header and page
+     grid at. Wider than the default theme's container, which centres inside it. */
+  max-width: 96rem;
+  margin-inline: auto;
 }
 .cc-stale-banner a { color: inherit; font-weight: 700; }
 `;
