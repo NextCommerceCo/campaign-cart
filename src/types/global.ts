@@ -14,6 +14,7 @@ import type { Order, PaymentMethod } from './api';
  * and its value is the object your handler receives. Use this as the lookup for
  * "what fields does *this* event give me?" — the narrative guide to subscribing
  * lives in [the JavaScript API reference](../core/guide/reference/javascript-api.md).
+ * @category Events
  */
 export interface EventMap {
   /**
@@ -934,6 +935,7 @@ export interface EventMap {
  * One line in the cart — a package the shopper has added, plus every price and
  * product detail the SDK tracks for it. This is the raw stored shape; for the
  * display-ready version with a full pricing breakdown see {@link EnrichedCartLine}.
+ * @category Cart
  */
 export interface CartItem {
   /** Unique cart line ID returned by the API. */
@@ -1021,6 +1023,7 @@ export interface CartItem {
  * A single discount applied to the cart, an item, or shipping — whether from an
  * offer or a voucher. Appears in {@link CartState.offerDiscounts},
  * {@link CartState.voucherDiscounts}, and {@link ShippingMethod.discounts}.
+ * @category Coupons
  */
 export interface Discount {
   /** ID of the offer that generated this discount. */
@@ -1039,6 +1042,7 @@ export interface Discount {
  * One selectable option inside a package selector — the data behind a single
  * card the shopper can pick. Emitted on `selector:item-selected` and related
  * events so handlers know which package a card represents.
+ * @category Cart
  */
 export interface SelectorItem {
   /** The card's DOM element. */
@@ -1061,6 +1065,7 @@ export interface SelectorItem {
  * The full cart snapshot — items, totals, discounts, and shipping — as held in
  * {@link useCartStore} and delivered with every `cart:updated` event. This is
  * what you read to render prices, item counts, and totals.
+ * @category Cart
  */
 export interface CartState {
   /** All items currently in the cart. */
@@ -1103,6 +1108,7 @@ export interface CartState {
  * details ready to render. This is the shape `next.getCartData().cartLines`
  * returns, built from the cart's items on each call. The `data-next-display`
  * fields read the stored {@link CartItem} instead.
+ * @category Cart
  */
 export interface EnrichedCartLine {
   /** Cart line ID (matches {@link CartItem.id}). */
@@ -1145,6 +1151,7 @@ export interface EnrichedCartLine {
  * options, and the payment/currency/country choices available to the shopper.
  * Loaded once at init and held in {@link useCampaignStore} (on its `.data`
  * field), and delivered with the `campaign:loaded` event.
+ * @category Campaign
  */
 export interface Campaign {
   /** Internal NEXT campaign id. */
@@ -1177,6 +1184,7 @@ export interface Campaign {
  * A single purchasable package (offer) within a {@link Campaign} — one buyable
  * unit with its own pricing, product, and recurring/variant details. `ref_id`
  * is the id you pass everywhere else (add-to-cart, selectors, `data-next-package-id`).
+ * @category Campaign
  */
 export interface Package {
   /** The package id used throughout the SDK (add-to-cart, selectors, attributes). */
@@ -1227,6 +1235,7 @@ export interface Package {
  * A shipping choice offered by a {@link Campaign}, as returned by the API. Its
  * `ref_id` is what a shopper's selection resolves to; the richer runtime form
  * with computed discounts is {@link ShippingMethod}.
+ * @category Shipping
  */
 export interface ShippingOption {
   /** Shipping option id. */
@@ -1240,6 +1249,7 @@ export interface ShippingOption {
 /**
  * Google Maps settings for address autocomplete on checkout forms. Optional —
  * autocomplete is off unless an API key is supplied.
+ * @category Checkout
  */
 export interface GoogleMapsConfig {
   /** Google Maps API key. Autocomplete stays disabled without it. */
@@ -1256,6 +1266,7 @@ export interface GoogleMapsConfig {
  * How the checkout address form behaves — default country, which countries and
  * states to show, and whether to autocomplete. All fields are optional; sensible
  * defaults are derived from the campaign's shipping countries.
+ * @category Checkout
  */
 export interface AddressConfig {
   /**
@@ -1610,6 +1621,7 @@ export interface ConfigState {
  * ```html
  * <meta name="next-page-type" content="upsell">
  * ```
+ * @category Core
  */
 export type PageType = 'product' | 'cart' | 'checkout' | 'upsell' | 'receipt';
 
@@ -1618,6 +1630,7 @@ export type PageType = 'product' | 'cart' | 'checkout' | 'upsell' | 'receipt';
  * type, formatting, labels, styling, and the security tokens required to
  * authenticate the fields. Previously named `SpreedlyConfig`; {@link SpreedlyConfig}
  * remains as an alias.
+ * @category Checkout
  */
 export interface CardInputConfig {
   // Field type configuration - controls keyboard display on mobile
@@ -1678,12 +1691,14 @@ export interface CardInputConfig {
 /**
  * @deprecated Use {@link CardInputConfig}. Kept as an alias for backward
  * compatibility — the two are identical.
+ * @category Checkout
  */
 export type SpreedlyConfig = CardInputConfig;
 
 /**
  * Payment setup for checkout — the card-input configuration plus which express
  * methods (PayPal, Apple Pay, Google Pay) are enabled and how they behave.
+ * @category Checkout
  */
 export interface PaymentConfig {
   // Generic card input configuration (preferred)
@@ -1720,6 +1735,7 @@ export interface PaymentConfig {
 /**
  * The lifecycle hooks you can register a callback for — points in the render and
  * checkout flow where the SDK will invoke your function with {@link CallbackData}.
+ * @category Events
  */
 export type CallbackType =
   | 'beforeRender'
@@ -1735,6 +1751,7 @@ export type CallbackType =
  * The snapshot passed to a lifecycle callback ({@link CallbackType}) — the
  * current cart lines, totals, campaign data, and applied vouchers at the moment
  * the hook fires.
+ * @category Events
  */
 export interface CallbackData {
   /** Display-ready cart lines at the time the hook fires. */
@@ -1757,6 +1774,7 @@ export interface CallbackData {
  * The rules that define a discount code — its type, value, what it applies to,
  * and any limits. These are configured up front; when a shopper enters a code
  * that matches one, it becomes an {@link AppliedCoupon}.
+ * @category Coupons
  */
 export interface DiscountDefinition {
   /** The code a shopper enters (e.g. `"SAVE10"`). */
@@ -1784,6 +1802,7 @@ export interface DiscountDefinition {
 /**
  * A discount code the shopper has successfully applied — its code, the computed
  * discount amount, and the {@link DiscountDefinition} it matched.
+ * @category Coupons
  */
 export interface AppliedCoupon {
   /** The applied code. */
@@ -1797,6 +1816,7 @@ export interface AppliedCoupon {
 /**
  * @deprecated Legacy coupon shape kept for backward compatibility. New code uses
  * {@link AppliedCoupon} / {@link DiscountDefinition}.
+ * @category Coupons
  */
 export interface Coupon {
   code: string;
@@ -1808,6 +1828,7 @@ export interface Coupon {
  * The shipping method currently applied to the cart, with fully computed pricing
  * (original price, discount, final price). The runtime counterpart to the
  * campaign's {@link ShippingOption}.
+ * @category Shipping
  */
 export interface ShippingMethod {
   /** Shipping method ID. */
@@ -1847,6 +1868,7 @@ export interface ShippingMethod {
  * Every method except a directly-charged card sends the shopper away to pay, so
  * the created order comes back carrying a `payment_complete_url` to finish at.
  * See {@link Order.payment_complete_url}.
+ * @category Checkout
  */
 export type CheckoutPaymentMethod =
   | PaymentMethod
@@ -1857,6 +1879,7 @@ export type CheckoutPaymentMethod =
  * The state of the checkout in progress — the collected form values, chosen
  * payment method, and which step the shopper is on. Delivered with the
  * `checkout:started` event.
+ * @category Checkout
  */
 export interface CheckoutData {
   /** Collected checkout form field values, keyed by field name. */
@@ -1891,6 +1914,7 @@ export interface CheckoutData {
  *
  * window.next.on('order:completed', order => console.log(receiptLine(order)));
  * ```
+ * @category Orders
  */
 export interface OrderData
   extends Pick<
@@ -1930,6 +1954,7 @@ export interface OrderData
 /**
  * The payload of an `error:occurred` event — a human-readable message plus an
  * optional machine code and extra details for debugging.
+ * @category Core
  */
 export interface ErrorData {
   /** Human-readable error message. */

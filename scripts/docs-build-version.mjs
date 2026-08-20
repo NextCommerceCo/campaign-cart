@@ -21,7 +21,7 @@
  *                        (see `docs/assets/site.js`).
  *   --dev                Build the working tree into `<site>/dev`. Never published.
  *   --out <dir>          Site root (default `docs/site`).
- *   --base-url <url>     Site root URL. Sets TypeDoc `hostedBaseUrl` to
+ *   --base-url <url>     Site root URL. Sets the selected theme's public URL to
  *                        `<url>/<folder>/` so canonical links and the sitemap point at
  *                        the version they belong to. Also read from `DOCS_BASE_URL`.
  *                        Omitted by default — hosting is undecided, and a wrong
@@ -58,7 +58,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, relative, resolve } from 'node:path';
+import { basename, dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   DEFAULT_SITE_ROOT,
@@ -285,7 +285,37 @@ function versionConfig({
       : resolve(REPO, config[key]);
   }
 
-  config.out = outDir;
+  /*
+   * Which theme a version build gets follows the *ref's own* typedoc.json, so history
+   * renders the way it was written. A ref whose config declares `outputs` is
+   * clean-jsdoc-theme era: `out` must go, because it is an output shortcut — when set,
+   * TypeDoc pushes the built-in `html` writer and skips `outputs` entirely, which
+   * would silently build the version with the default theme. Older refs (and any with
+   * no typedoc.json at all) keep the default theme they were written against; for
+   * them the base config's clean-theme fields would break the build — the adapter's
+   * `cleanJsdocTheme` option is unknown when the plugin is not loaded — so those
+   * fields are swapped for the plugin set and chrome the default-theme builds always
+   * used from this checkout.
+   */
+  if (own?.outputs) {
+    delete config.out;
+    config.outputs = [{ name: 'clean-jsdoc-theme', path: outDir }];
+    config.cleanJsdocTheme = {
+      ...config.cleanJsdocTheme,
+      basePath: `/${basename(outDir)}/`,
+      ...(hostedBaseUrl ? { siteUrl: hostedBaseUrl } : {}),
+    };
+  } else {
+    delete config.outputs;
+    delete config.cleanJsdocTheme;
+    config.plugin = ['typedoc-plugin-mdn-links', 'typedoc-plugin-llms-txt'];
+    config.customCss = resolve(REPO, 'docs/assets/typedoc.css');
+    config.customJs = resolve(REPO, 'docs/assets/site.js');
+    config.readme = existsSync(join(sourceRoot, 'docs/site-home.md'))
+      ? join(sourceRoot, 'docs/site-home.md')
+      : resolve(REPO, 'docs/site-home.md');
+    config.out = outDir;
+  }
   config.tsconfig = abs('tsconfig.json');
   if (gitRevision) config.gitRevision = gitRevision;
   if (hostedBaseUrl) config.hostedBaseUrl = hostedBaseUrl;
@@ -310,12 +340,20 @@ function runTypedoc({ cwd, optionsFile }) {
     throw new Error(`typedoc exited with code ${result.status}`);
 }
 
+/** Generates clean-theme guide and readme inputs inside one source tree. */
+function stageDocs(cwd) {
+  const staged = spawnSync(
+    process.execPath,
+    [join(REPO, 'scripts', 'docs-stage.mjs')],
+    { cwd, stdio: 'inherit' }
+  );
+  if (staged.error) throw staged.error;
+  if (staged.status !== 0) throw new Error('docs-stage failed');
+}
+
 /*
- * No asset-copy step here on purpose. TypeDoc emits only `customCss`/`customJs`, but the
- * one runtime asset the site needs beyond those — mermaid's ESM bundle — is copied into
- * `<outDir>/assets/mermaid/` by `@boneskull/typedoc-plugin-mermaid` itself, and only for
- * builds that actually contain a diagram. A tag whose guides have no mermaid block pays
- * nothing.
+ * No asset-copy step here on purpose. TypeDoc emits only `customCss`/`customJs`, which is
+ * everything the site runtime needs.
  */
 
 /** Writes the generated options next to the sources it describes. */
@@ -425,6 +463,9 @@ function buildRef({
       'junction'
     );
 
+    const own = ownConfig(worktree);
+    if (own?.outputs) stageDocs(worktree);
+
     const config = versionConfig({
       base,
       sourceRoot: worktree,
@@ -483,7 +524,7 @@ const USAGE = `Usage: node scripts/docs-build-version.mjs <tag> | --branch <name
   --branch <name>    Build that branch's tip into <site>/<name> — the unreleased docs.
   --dev              Build the working tree into <site>/dev instead. Never published.
   --out <dir>        Site root (default ${DEFAULT_SITE_ROOT}).
-  --base-url <url>   Site root URL; sets hostedBaseUrl to <url>/<folder>/.
+  --base-url <url>   Site root URL; sets the selected theme's public URL to <url>/<folder>/.
   --floor <tag>      Oldest tag allowed (default ${VERSION_FLOOR}).
   --skip-existing    Leave an already-built folder alone.
   --no-latest        Do not point <site>/latest at this build.
@@ -515,6 +556,9 @@ function main(argv) {
   mkdirSync(root, { recursive: true });
 
   if (opts.dev) {
+    const own = ownConfig(REPO);
+    if (own?.outputs) stageDocs(REPO);
+
     const config = versionConfig({
       base,
       sourceRoot: REPO,

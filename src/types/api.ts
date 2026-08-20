@@ -154,6 +154,7 @@ export interface CartLine {
  *   console.log(`${upsells.length} upsell line(s) added after checkout`);
  * }
  * ```
+ * @category Orders
  */
 export interface Order {
   /**
@@ -268,6 +269,7 @@ export interface Order {
  * Money fields are decimal strings in the order's currency. The
  * `*_excl_discounts` pair is the price *before* discounts, so
  * `price_incl_tax_excl_discounts - price_incl_tax` is what this line saved.
+ * @category Orders
  */
 export interface OrderLine {
   /** The line's id on the order. Use it to tell two lines of the same package apart. */
@@ -330,6 +332,7 @@ export interface OrderLine {
 /**
  * One customer-facing custom value collected on an {@link OrderLine} at
  * checkout — a gift message, an engraving, a personalization choice.
+ * @category Orders
  */
 export interface OrderLineProperty {
   /** The field's name, e.g. `"engraving"`. */
@@ -346,6 +349,7 @@ export interface OrderLineProperty {
  * Every field is optional: a direct visit with no campaign parameters produces
  * an object with almost nothing in it, and absent means "not present on the
  * landing URL", never "attribution failed".
+ * @category Attribution
  */
 export interface MarketingAttribution {
   /** `utm_source` — which site or channel sent the visit. */
@@ -408,6 +412,7 @@ export interface User {
  *
  * Same fields as the customer on a cart; it is a separate name because the two
  * come from different endpoints and may diverge.
+ * @category Orders
  */
 export interface OrderUser {
   /** Whether the customer opted in to marketing email at checkout. */
@@ -436,6 +441,7 @@ export interface OrderUser {
  * `state` and `postcode` are optional because not every country has them. An
  * absent field means the country does not use it or the shopper left it blank,
  * so print the lines that are present rather than assuming a fixed layout.
+ * @category Orders
  */
 export interface OrderAddress {
   /** Two-letter country code, e.g. `"US"`. */
@@ -493,6 +499,7 @@ export interface Voucher {
  * SEPA Direct Debit is `sepa_debit`, the name the orders API field lists. The
  * platform's payment-methods guide calls the same method `sepa_direct`, which is
  * not a value here.
+ * @category Orders
  */
 export type PaymentMethod =
   | 'apple_pay'

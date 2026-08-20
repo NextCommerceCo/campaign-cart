@@ -1,8 +1,14 @@
 // @ts-check
 /**
- * Static file server for the TypeDoc HTML site (`docs/site`), plus an optional
- * `--watch` flag that runs `typedoc --watch` alongside it so the site rebuilds
- * on source/guide changes while you browse it.
+ * Static file server for the clean-jsdoc-theme site (`docs/site`), plus an
+ * optional `--watch` flag that runs `typedoc --watch` alongside it so the site
+ * rebuilds on source/guide changes while you browse it.
+ *
+ * The theme injects `clean-theme.css` and `site.js` into every page itself, via
+ * `cleanJsdocTheme.customCssFile` / `customJsFile` in `typedoc.json` (wired through
+ * the adapter by patches/@clean-jsdoc-theme+typedoc+5.1.1.patch). `--watch` stages the
+ * guides at startup, stages them again when their source changes, and refreshes the
+ * local version index after each TypeDoc rebuild.
  *
  * Zero new dependencies — `node:http` / `node:fs` / `node:path` only, matching
  * this repo's habit of scripting over adding libraries (see
@@ -10,12 +16,12 @@
  *
  * Usage:
  *   node scripts/docs-serve.mjs           serve docs/site on :3500
- *   node scripts/docs-serve.mjs --watch   also runs `typedoc --watch`
+ *   node scripts/docs-serve.mjs --watch   also runs the build pipeline in watch mode
  *   PORT=4000 node scripts/docs-serve.mjs override the port
  */
 import { createServer } from 'node:http';
-import { spawn } from 'node:child_process';
-import { createReadStream, existsSync, statSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { createReadStream, existsSync, statSync, watch } from 'node:fs';
 import { extname, join, normalize, resolve } from 'node:path';
 
 const ROOT = resolve(process.cwd(), 'docs/site');
@@ -25,9 +31,6 @@ const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
-  // mermaid ships as ESM (`assets/mermaid/**.mjs`). A module script served as
-  // application/octet-stream is refused by the browser, so every diagram page
-  // would fall back to showing its source.
   '.mjs': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml',
@@ -45,9 +48,6 @@ function contentTypeFor(filePath) {
  * (and any path with no matching file) as `index.html`. Rejects any path that
  * escapes ROOT via `..` traversal.
  *
- * Everything is served from the build — including `assets/mermaid/**`, which
- * `@boneskull/typedoc-plugin-mermaid` re-copies on every render, so `--watch`
- * keeps its diagrams after a rebuild wipes the output directory.
  * @param {string} urlPath
  */
 function resolveFile(urlPath) {
@@ -84,21 +84,48 @@ server.listen(PORT, () => {
 });
 
 let watchProcess = null;
+let guidesWatcher = null;
+let homeWatcher = null;
+let stageTimer = null;
 if (process.argv.includes('--watch')) {
+  const staged = spawnSync('node', ['scripts/docs-stage.mjs'], {
+    stdio: 'inherit',
+  });
+  if (staged.error) throw staged.error;
+  if (staged.status !== 0) process.exit(staged.status ?? 1);
+
+  const queueStage = () => {
+    if (stageTimer) clearTimeout(stageTimer);
+    stageTimer = setTimeout(() => {
+      stageTimer = null;
+      spawnSync('node', ['scripts/docs-stage.mjs'], { stdio: 'inherit' });
+    }, 50);
+  };
+  guidesWatcher = watch('docs/guides', { recursive: true }, queueStage);
+  homeWatcher = watch('docs/site-home.md', queueStage);
+
   watchProcess = spawn('npx', ['typedoc', '--watch'], {
     stdio: ['inherit', 'pipe', 'inherit'],
     shell: true,
   });
   // typedoc's build log scrolls the startup URL away; re-print it after each build.
+  // The theme's writer signs off with `clean-jsdoc-theme generated at <dir>`, which is
+  // also the cue to re-inject the overrides the build just overwrote.
   watchProcess.stdout.on('data', chunk => {
     process.stdout.write(chunk);
-    if (chunk.toString().includes('html generated')) {
+    if (chunk.toString().includes('generated at')) {
+      spawnSync('node', ['scripts/docs-versions.mjs', '--local'], {
+        stdio: 'inherit',
+      });
       console.log(`docs site: http://localhost:${PORT}`);
     }
   });
 }
 
 process.on('SIGINT', () => {
+  if (stageTimer) clearTimeout(stageTimer);
+  guidesWatcher?.close();
+  homeWatcher?.close();
   watchProcess?.kill('SIGINT');
   server.close(() => process.exit(0));
 });

@@ -23,6 +23,11 @@ import * as locationCurrencyMethods from '@/core/sdk-initializer/sdk-initializer
 import * as attributionMethods from '@/core/sdk-initializer/sdk-initializer.attribution';
 import type { AttributionCtx } from '@/core/sdk-initializer/sdk-initializer.attribution';
 
+/**
+ * Boots the SDK on page load: reads meta tag configuration, loads the campaign, restores persisted state, and scans the DOM for `data-next-*` attributes.
+ *
+ * @category Core
+ */
 export class SDKInitializer {
   private static logger = createLogger('SDKInitializer');
   private static initialized = false;

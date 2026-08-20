@@ -4,6 +4,11 @@
 
 import type { EventMap } from '@/types/global';
 
+/**
+ * Singleton event bus behind `sdk.on` and `sdk.off`. Typed by {@link EventMap}, so a handler receives the payload its event name declares.
+ *
+ * @category Events
+ */
 export class EventBus {
   private static instance: EventBus;
   private listeners = new Map<keyof EventMap, Set<Function>>();

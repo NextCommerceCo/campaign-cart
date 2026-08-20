@@ -11,9 +11,7 @@
  *   2. Shows a banner when the reader is on an older version than the current release,
  *      or on one of the unreleased folders (`main/`, `dev/`).
  *
- * That is all it does. Mermaid rendering is *not* here — `@boneskull/typedoc-plugin-mermaid`
- * (`"mermaidSource": "local"` in `typedoc.json`) injects its own module script and copies
- * mermaid's ESM bundle into `assets/mermaid/`. Do not re-add a hand-rolled renderer.
+ * That is all it does.
  *
  * It does nothing at all when `versions.json` is absent — that is the normal state of an
  * unversioned local `npm run docs` build, and a warning-free no-op is the correct
@@ -22,6 +20,35 @@
 
 (() => {
   'use strict';
+
+  /*
+   * clean-jsdoc-theme adapter. This file was written against TypeDoc's default theme
+   * and reaches for three things that theme provides: `data-base` on `<html>`, the
+   * `#tsd-toolbar-links` toolbar host, and `.container-main`. clean-jsdoc-theme has
+   * none of them, so equivalents are derived here first — its Header renders the brand
+   * link as `<a href={basePath}>` (the same value `data-base` carries), and the
+   * right-hand control cluster is the header's `ml-auto` div. Every step is guarded on
+   * the original being absent, so on the default theme (which old version folders are
+   * still built with) this whole block is a no-op.
+   */
+  if (!document.documentElement.dataset.base) {
+    const brand = document.querySelector('header a[href]');
+    if (brand) {
+      document.documentElement.dataset.base = brand.getAttribute('href') || '/';
+    }
+  }
+  if (!document.getElementById('tsd-toolbar-links')) {
+    const controls = document.querySelector('header div.ml-auto');
+    if (controls) {
+      const host = document.createElement('span');
+      host.id = 'tsd-toolbar-links';
+      host.className = 'flex items-center';
+      controls.prepend(host);
+    }
+  }
+  if (!document.querySelector('.container-main')) {
+    document.querySelector('main')?.classList.add('container-main');
+  }
 
   /**
    * The version folder's root URL.
@@ -169,11 +196,15 @@
     // `latest`, `main` and `dev` are real folders but not index entries, so they are
     // offered explicitly — otherwise a reader in `dev/` could never get back out.
     const options = [];
-    if (currentFolder === 'latest')
+    if (currentFolder === 'latest' && !versions.some(v => v.path === 'latest'))
       options.push({ value: 'latest', text: 'latest' });
     for (const entry of await unreleasedOptions())
       options.push({ value: entry.folder, text: entry.label });
     for (const version of versions) {
+      // A local single-folder build indexes the current release with `path: "latest"`,
+      // already offered above — a second option with the same value would win the
+      // `selected` race and misreport where the reader is.
+      if (options.some(option => option.value === version.path)) continue;
       options.push({
         value: version.path,
         text: version.current
