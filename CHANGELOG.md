@@ -1,5 +1,59 @@
 # Changelog
 
+## [0.4.38] — 2026-08-20 — One Phone Check, and the Order Carries E.164
+
+A phone number the checkout accepted is now judged the same way everywhere, and the number that reaches the orders API is international. Two fixes with the same root: the question "can this phone be used" was being asked in five places against four different yardsticks, and none of them was the one that could actually answer it.
+
+Nothing to add to your pages. **Before you upgrade** matters if your test data or QA scripts fill a placeholder phone number.
+
+### Fixed
+
+- **A phone number nobody holds no longer reaches the orders API.** ([#58](https://github.com/NextCommerceCo/campaign-cart/issues/58))
+
+  `0000000000` and `1234567890` were accepted on a card checkout: no message appeared under the phone field, validation passed, and the order was created with the number on it. Ten digits is the right length for a US number, and length was all anything checked — including `intl-tel-input`'s own `isValidNumber()`, which the library documents as a length test despite its name.
+
+  Three shapes are now refused, whatever their length says:
+
+  | Refused | Description |
+  |---|---|
+  | `0000000000` | Every digit the same |
+  | `1234567890` | Digits running up or down |
+  | `1212121212` | A short pattern repeated |
+
+  A number of the wrong length for its country is refused as before. Everything else is accepted, including a number that could not be checked at all, because the library that checks it arrives over the network and a shopper should not be blocked for a delay that is ours.
+
+- **The order carries E.164.** A shopper types `(415) 555-2671` and the API is now sent `+14155552671`, on the shipping address, the billing address and the customer record.
+
+  ```js
+  // What the orders API receives for a number typed nationally
+  { shipping_address: { phone_number: '+14155552671' },
+    user:             { phone_number: '+14155552671' } }
+  ```
+
+  The number was already converted as the shopper typed, but only from the moment the phone library finished loading a script it fetches separately. A shopper who finished typing before that landed, or who filled the field on an earlier step, sent a national number for the API to convert. Submitting now waits for that script, briefly, and the number is converted once more where every order passes. When it still cannot be converted the national number is sent as before, and the SDK logs that it did so rather than leaving it to be discovered.
+
+- **A message no longer disappears when a different field is corrected.** On a page whose inputs are not wrapped in `.form-group` or `.form-input` elements, every error message was appended to the form itself, and clearing any field removed whichever message came first. The shopper was left with a field outlined in red, no text under it, and no way to make it go away. Each message now names the field it belongs to.
+
+- **A step gate checks the phone whether or not it is required.** On a multi-step checkout, the phone was only validated on a step where the markup marked the field `required`. A shopper could go back, replace a good number with a bad one, and carry it forward to a page where the field was no longer on screen to correct.
+
+- **A landline is no longer refused for being the wrong length for a mobile.** The phone library was left on its default of validating mobile numbers only, so in countries where a landline is not the same length as a mobile, a shopper who gave one was told their number was invalid with no way to satisfy the form.
+
+- **The same yardstick now applies to the prospect cart.** It carried its own, looser rule, so a number could be good enough to capture a lead and not good enough to submit the order that lead turns into.
+
+### Changed
+
+- **Error messages carry `data-next-error-for`**, naming the field they belong to. It is written by the SDK, not something you put in your markup, and it is what scopes clearing one field's message to that field. Documented in the checkout form's attribute reference.
+
+- **A new log line reports what a stricter check would have refused.** The phone library can also answer whether a number really exists, not just whether it is the right length. That check is asked and deliberately not acted on: its rules change monthly and an SDK release pinned on your page freezes them, so over time it would start refusing real numbers. `Phone accepted on length but refused by precise validation; not blocked` records how often it disagrees, so the decision to promote it can be made from real orders rather than from an argument.
+
+### Before you upgrade
+
+**A placeholder phone number in your test data will now be refused.** `0000000000`, `1234567890`, `5555555555`, `4242424242` and `1212121212` are all junk shapes as of this release. A QA script, a seeded test order or a browser autofill entry that uses one will stop at the phone field with `Please enter a valid phone number`. Give it a number of the right shape instead — `4155552671` is used by this SDK's own browser tests.
+
+**Nothing changes for a page that styles `.next-error-label`.** The class, the element and where it sits are all the same; the new attribute is added alongside.
+
+---
+
 ## [0.4.37] — 2026-08-18 — The FOMO Popup Leaves the SDK, and getCartData Lists Every Cart Line
 
 One feature removed and one long-standing bug fixed. The removal only concerns a page that called `next.fomo()`. The fix concerns any code that reads `next.getCartData()`, and it deletes the empty `enrichedItems` field from the cart state along the way. Before you upgrade covers both.
