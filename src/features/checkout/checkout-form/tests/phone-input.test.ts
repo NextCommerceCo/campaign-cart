@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import intlTelInput from 'intl-tel-input';
 import {
+  awaitPhoneUtils,
   injectIntlTelInputStyles,
   initializePhoneInputs,
 } from '../phone-input';
 import type { PhoneInputContext } from '../phone-input';
+import type { Iti } from 'intl-tel-input';
 import type { Logger } from '@/core/logger';
 import { useCheckoutStore } from '@/state/checkout';
 
@@ -48,10 +50,19 @@ function makeLogger(): {
   return { logger, errorSpy };
 }
 
+/**
+ * Fields carrying the national text a shopper would have typed.
+ *
+ * Not blank: the handler under test stores the *number*, and a number is only worth
+ * anything when there is something in the box to normalise. A blank field correctly
+ * stores nothing, which would make the assertions below pass for the wrong reason.
+ */
 function makeFields(names: string[]): Map<string, HTMLElement> {
   const map = new Map<string, HTMLElement>();
   for (const name of names) {
-    map.set(name, document.createElement('input'));
+    const input = document.createElement('input');
+    input.value = '(555) 123-4567';
+    map.set(name, input);
   }
   return map;
 }
@@ -197,8 +208,10 @@ describe('phone-input teardown', () => {
     country: HTMLSelectElement;
   } {
     const phone = document.createElement('input');
+    phone.value = '(555) 123-4567';
     const country = document.createElement('select');
-    country.innerHTML = '<option value="US">US</option><option value="CA">CA</option>';
+    country.innerHTML =
+      '<option value="US">US</option><option value="CA">CA</option>';
 
     const fields = new Map<string, HTMLElement>([
       ['phone', phone],
@@ -250,5 +263,53 @@ describe('phone-input teardown', () => {
     ctx.phoneInputs.get('shipping')?.destroy();
 
     expect(mockDestroy).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ─── awaitPhoneUtils ──────────────────────────────────────────────────────────
+
+/**
+ * The wait that makes everything else about a phone number real.
+ *
+ * `intl-tel-input` fetches the script it validates and formats with, and until it lands
+ * `getNumber()` answers `''` and `isValidNumber()` answers `null`. Both degrade quietly,
+ * so a submit racing that fetch stored a national number and skipped the check with
+ * nothing looking wrong. `instance.promise` is what turns the race into a wait.
+ */
+describe('awaitPhoneUtils', () => {
+  const instance = (promise: Promise<unknown>): Iti =>
+    ({ promise }) as unknown as Iti;
+
+  it('resolves once every instance is ready', async () => {
+    const inputs = new Map<string, Iti>([
+      ['shipping', instance(Promise.resolve())],
+      ['billing', instance(Promise.resolve())],
+    ]);
+
+    await expect(awaitPhoneUtils(inputs)).resolves.toBe(true);
+  });
+
+  it('gives up after the timeout rather than holding the submit', async () => {
+    const inputs = new Map<string, Iti>([
+      ['shipping', instance(new Promise(() => {}))],
+    ]);
+
+    await expect(awaitPhoneUtils(inputs, 5)).resolves.toBe(false);
+  });
+
+  /**
+   * A rejected init promise is the geo-IP lookup or the chunk failing, both already
+   * logged by the library. Rethrowing here would take down a submit over a phone widget.
+   */
+  it('reports failure rather than throwing', async () => {
+    const inputs = new Map<string, Iti>([
+      ['shipping', instance(Promise.reject(new Error('chunk 404')))],
+    ]);
+
+    await expect(awaitPhoneUtils(inputs)).resolves.toBe(false);
+  });
+
+  it('returns immediately when the page has no phone field', async () => {
+    await expect(awaitPhoneUtils(new Map())).resolves.toBe(false);
   });
 });

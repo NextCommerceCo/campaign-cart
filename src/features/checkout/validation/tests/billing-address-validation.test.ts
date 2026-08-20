@@ -105,9 +105,14 @@ describe('validateBillingAddress', () => {
     );
   });
 
-  it('prefers the country-aware phone validator when the form installed one', () => {
-    const phoneValidator = vi.fn().mockReturnValue(true);
-    const ctx = createContext({ phoneValidator });
+  it('asks the billing widget, not the shipping one', () => {
+    const phoneSource = vi.fn().mockReturnValue({
+      getNumber: () => '+22212345678',
+      isValidNumber: () => true,
+      isValidNumberPrecise: () => true,
+      getSelectedCountryData: () => ({ dialCode: '222', iso2: 'mr' }),
+    });
+    const ctx = createContext({ phoneSource });
 
     const result = validateBillingAddress(
       ctx,
@@ -115,32 +120,36 @@ describe('validateBillingAddress', () => {
       configs
     );
 
-    expect(phoneValidator).toHaveBeenCalledWith('22 12 34 56', 'billing');
+    expect(phoneSource).toHaveBeenCalledWith('billing');
     expect(result.isValid).toBe(true);
   });
 
   /**
-   * DEFECT (left as found) — with no `phoneValidator` installed the billing phone falls
-   * back to `isValidPhone`, whose ten-digit floor is a US assumption. Unlike the shipping
-   * path, there is no `phoneInputManager` fallback in between, so the billing phone is
-   * judged more crudely than the shipping phone on the very same form.
-   *
-   * What the shopper sees: they enter a valid national billing number for a country whose
-   * numbers are shorter than ten digits and are told "Please enter a valid billing phone
-   * number" with no way to satisfy it — while the identical number in the shipping phone
-   * field is accepted.
+   * The billing phone used to fall back to a ten-digit floor, which is a US assumption: a
+   * shorter national number valid in the shopper's country was refused here while the
+   * identical number was accepted in the shipping field on the same form.
    */
-  it('DEFECT: without the installed validator the billing phone gets the US ten-digit rule', () => {
+  it('accepts a short national number no widget could judge', () => {
     const result = validateBillingAddress(
       createContext(),
       { ...completeAddress, phone: '22 12 34 56' },
       configs
     );
 
+    expect(result.errors.phone).toBeUndefined();
+    expect(result.isValid).toBe(true);
+  });
+
+  it('rejects a junk billing phone', () => {
+    const result = validateBillingAddress(
+      createContext(),
+      { ...completeAddress, phone: '0000000000' },
+      configs
+    );
+
     expect(result.errors.phone).toBe(
       'Please enter a valid billing phone number'
     );
-    expect(result.isValid).toBe(false);
   });
 
   /**

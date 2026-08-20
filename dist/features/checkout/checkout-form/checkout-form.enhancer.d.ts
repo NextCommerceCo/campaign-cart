@@ -56,6 +56,8 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private cloneBillingFormFromShipping;
     private restoreBillingChoice;
     private initializeUIService;
+    private normalizeStoredPhones;
+    private reportStricterPhoneVerdict;
     private setupPhoneValidation;
     private subscribeToStores;
     private setupDebugEventListeners;

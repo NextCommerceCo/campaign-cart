@@ -116,6 +116,7 @@ Normal progress, useful for confirming the feature ran at all.
 | `[Billing] Collapsing form...` | `billing-toggle.ts › handleBillingAddressToggle` | — |
 | `[Billing] Expanding form...` | `billing-toggle.ts › handleBillingAddressToggle` | — |
 | `[Billing] Adopted the markup choice into the store` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.restoreBillingChoice` | yes |
+| `Phone accepted on length but refused by precise validation; not blocked` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.reportStricterPhoneVerdict` | yes |
 | `Page restored from bfcache, resetting express checkout state` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupBfcacheRestoreHandler` | — |
 | `Resetting processing state after bfcache restore` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupBfcacheRestoreHandler` | — |
 | `Resetting payment method from` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupBfcacheRestoreHandler` | yes |

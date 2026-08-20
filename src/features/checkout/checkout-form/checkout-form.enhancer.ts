@@ -22,6 +22,7 @@ import {
   type CreditCardData,
 } from '../services/credit-card-service';
 import { CheckoutValidator } from '../validation/checkout-validator';
+import { checkPhone, normalizePhone } from '../validation/phone-validation';
 import { UIService } from '../services/ui-service';
 import { useAttributionStore } from '@/state/attribution';
 import { useParameterStore } from '@/state/parameter';
@@ -41,6 +42,7 @@ import {
   paymentMethodLabel,
 } from '@/utils/payment-method';
 import {
+  awaitPhoneUtils,
   injectIntlTelInputStyles,
   initializePhoneInputs,
   type PhoneInputContext,
@@ -419,11 +421,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   }
 
   private initializeValidator(): void {
-    this.validator = new CheckoutValidator(
-      this.logger,
-      this.countryService,
-      undefined // PhoneInputManager will be handled by us
-    );
+    this.validator = new CheckoutValidator(this.logger, this.countryService);
   }
 
   private cloneBillingFormFromShipping(): void {
@@ -476,19 +474,83 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     this.applyAvailablePaymentMethods();
   }
 
-  /** Runs after {@link initializePhoneInputs} so the validator can ask a live intl-tel-input instance. */
-  private setupPhoneValidation(): void {
-    this.validator.setPhoneValidator(
-      (phoneNumber: string, type: 'shipping' | 'billing' = 'shipping') => {
-        const instance = this.phoneInputs.get(type);
-        if (instance) {
-          return instance.isValidNumber();
-        }
+  /**
+   * Rewrites the stored phone numbers in international format, once the phone library
+   * is in a position to produce one.
+   *
+   * The field handlers already do this as the shopper types, but only from the moment the
+   * library's utils script has loaded: a shopper who finished typing before it landed and
+   * never touched the field again leaves a national number in the store.
+   *
+   * Submit-time validation catches the shipping number on its way past. Nothing catches
+   * the **billing** one — the billing check deliberately does not write to the store's own
+   * address object — so without this a shopper who entered a separate billing address
+   * early in the page's life sends it nationally.
+   */
+  private normalizeStoredPhones(): void {
+    const checkoutStore = useCheckoutStore.getState();
 
-        // Fallback to basic validation if instance not found
-        return /^[\d\s\-\+\(\)]+$/.test(phoneNumber);
+    const phone = checkoutStore.formData.phone;
+    if (phone) {
+      const normalized = normalizePhone(
+        phone,
+        this.phoneInputs.get('shipping')
+      );
+      if (normalized !== phone)
+        checkoutStore.updateFormData({ phone: normalized });
+    }
+
+    const billing = checkoutStore.billingAddress;
+    if (billing?.phone) {
+      const normalized = normalizePhone(
+        billing.phone,
+        this.phoneInputs.get('billing')
+      );
+      if (normalized !== billing.phone) {
+        checkoutStore.setBillingAddress({ ...billing, phone: normalized });
       }
-    );
+    }
+
+    this.reportStricterPhoneVerdict();
+  }
+
+  /**
+   * Records the numbers a stricter phone check would have refused.
+   *
+   * The form accepts a number the phone library considers the right length for its
+   * country. The library can also answer a harder question — is this a number that
+   * actually exists — but its author marks that check dangerous for exactly our situation:
+   * the rules change monthly and an SDK release pinned on a page freezes them, so over
+   * time it starts refusing real numbers with nobody the wiser.
+   *
+   * So it is asked and not acted on. This line is the evidence for deciding later, from
+   * real orders rather than from an argument, how many shoppers a stricter gate would
+   * turn away.
+   */
+  private reportStricterPhoneVerdict(): void {
+    const phone = useCheckoutStore.getState().formData.phone;
+    if (!phone) return;
+
+    const check = checkPhone(phone, this.phoneInputs.get('shipping'));
+    if (check.verdict === 'valid' && check.precise === false) {
+      this.logger.info(
+        'Phone accepted on length but refused by precise validation; not blocked',
+        { country: useCheckoutStore.getState().formData.country ?? 'unknown' }
+      );
+    }
+  }
+
+  /**
+   * Runs after {@link initializePhoneInputs} so the validator can ask a live
+   * intl-tel-input instance.
+   *
+   * Hands over the instance itself rather than a yes/no answer. The form used to pass a
+   * predicate that fell back to a permissive regex when no instance was found, which meant
+   * a page whose phone widget never got built validated phones *less* strictly than one
+   * with no widget at all. `checkPhone` handles the missing instance instead, and says so.
+   */
+  private setupPhoneValidation(): void {
+    this.validator.setPhoneSource(type => this.phoneInputs.get(type));
   }
 
   /**
@@ -1598,6 +1660,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     cartStore: any
   ): Promise<void> {
     void cartStore;
+    // Same reason as the submit path: the phone check is only real once the library's
+    // utils script has landed. A step gate that skips it lets a bad number through to a
+    // page where the field is no longer on screen to correct.
+    await awaitPhoneUtils(this.phoneInputs);
     await handleStepNavigation(this.stepNavigationContext(), checkoutStore);
   }
 
@@ -1624,40 +1690,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       // Show loading overlay
       this.loadingOverlay.show();
 
-      // Validate phone numbers using intl-tel-input if available
-      if (this.isIntlTelInputAvailable) {
-        // Validate shipping phone
-        const shippingPhoneInstance = this.phoneInputs.get('shipping');
-        if (shippingPhoneInstance) {
-          const isValidShipping = shippingPhoneInstance.isValidNumber();
-          if (!isValidShipping && checkoutStore.formData.phone) {
-            checkoutStore.setError(
-              'phone',
-              'Please enter a valid phone number'
-            );
-          } else if (isValidShipping) {
-            // Update with formatted number
-            const formattedNumber = shippingPhoneInstance.getNumber();
-            if (formattedNumber) {
-              checkoutStore.updateFormData({ phone: formattedNumber });
-            }
-          }
-        }
-
-        // Validate billing phone if different from shipping
-        if (!checkoutStore.sameAsShipping && checkoutStore.billingAddress) {
-          const billingPhoneInstance = this.phoneInputs.get('billing');
-          if (billingPhoneInstance) {
-            const isValidBilling = billingPhoneInstance.isValidNumber();
-            if (!isValidBilling && checkoutStore.billingAddress.phone) {
-              checkoutStore.setError(
-                'billing-phone',
-                'Please enter a valid phone number'
-              );
-            }
-          }
-        }
-      }
+      // The phone library validates and formats with a script it fetches separately, and
+      // both of those return "nothing" until it lands. Waiting for it here is what makes
+      // the phone check below real and the stored number E.164 — and it is free, because
+      // the overlay is already up.
+      await awaitPhoneUtils(this.phoneInputs);
+      this.normalizeStoredPhones();
 
       // Check if this is an express payment method
       const isExpressPayment = isExpressPaymentMethod(

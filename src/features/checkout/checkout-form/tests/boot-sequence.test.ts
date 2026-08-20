@@ -23,7 +23,9 @@ function createMockLogger() {
 }
 
 type PhoneInstance = { isValidNumber: () => boolean };
-type PhoneValidator = (phone: string, type?: 'shipping' | 'billing') => boolean;
+type PhoneSourceResolver = (
+  type: 'shipping' | 'billing'
+) => PhoneInstance | undefined;
 
 /** Every private the boot steps touch, reachable without a cast at each call. */
 interface BootSteps {
@@ -50,7 +52,7 @@ interface BootSteps {
   form: HTMLElement;
   logger: ReturnType<typeof createMockLogger>;
   loadingOverlay: { hide: (immediate?: boolean) => void };
-  validator: { setPhoneValidator: (fn: PhoneValidator) => void };
+  validator: { setPhoneSource: (fn: PhoneSourceResolver) => void };
   phoneInputs: Map<string, PhoneInstance>;
   creditCardService?: { initialize: () => Promise<void> };
   boundHandleTestDataFilled?: EventListener;
@@ -172,36 +174,40 @@ describe('cloneBillingFormFromShipping', () => {
 // ─── setupPhoneValidation ─────────────────────────────────────────────────────
 
 describe('setupPhoneValidation', () => {
-  function installValidator(steps: BootSteps): PhoneValidator {
-    let validate: PhoneValidator | undefined;
+  function installResolver(steps: BootSteps): PhoneSourceResolver {
+    let resolve: PhoneSourceResolver | undefined;
     steps.validator = {
-      setPhoneValidator: (fn: PhoneValidator) => {
-        validate = fn;
+      setPhoneSource: (fn: PhoneSourceResolver) => {
+        resolve = fn;
       },
     };
     steps.setupPhoneValidation();
-    if (!validate) throw new Error('no phone validator was installed');
-    return validate;
+    if (!resolve) throw new Error('no phone source was installed');
+    return resolve;
   }
 
-  it('asks the intl-tel-input instance for the requested form', () => {
+  it('hands over the intl-tel-input instance for the requested form', () => {
     const { steps } = createEnhancer();
-    steps.phoneInputs.set('shipping', { isValidNumber: () => true });
-    steps.phoneInputs.set('billing', { isValidNumber: () => false });
+    const shipping = { isValidNumber: () => true };
+    const billing = { isValidNumber: () => false };
+    steps.phoneInputs.set('shipping', shipping);
+    steps.phoneInputs.set('billing', billing);
 
-    const validate = installValidator(steps);
+    const resolve = installResolver(steps);
 
-    expect(validate('+15551234567')).toBe(true);
-    expect(validate('+15551234567', 'billing')).toBe(false);
+    expect(resolve('shipping')).toBe(shipping);
+    expect(resolve('billing')).toBe(billing);
   });
 
-  it('falls back to a character check when no instance exists', () => {
+  /**
+   * No instance means no instance. The form used to answer with a permissive regex here,
+   * which validated a page whose phone widget failed to build *less* strictly than one
+   * with no widget at all; `checkPhone` now decides what a missing instance means.
+   */
+  it('reports a missing instance rather than guessing', () => {
     const { steps } = createEnhancer();
 
-    const validate = installValidator(steps);
-
-    expect(validate('+1 (555) 123-4567')).toBe(true);
-    expect(validate('not-a-number')).toBe(false);
+    expect(installResolver(steps)('shipping')).toBeUndefined();
   });
 });
 

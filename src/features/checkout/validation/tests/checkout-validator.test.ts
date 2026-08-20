@@ -47,7 +47,7 @@ describe('CheckoutValidator — public surface', () => {
 
     for (const method of [
       'setCreditCardService',
-      'setPhoneValidator',
+      'setPhoneSource',
       'validateField',
       'validateStep',
       'validateForm',
@@ -157,19 +157,17 @@ describe('error bookkeeping', () => {
 
 describe('services installed after construction', () => {
   /**
-   * `setCreditCardService` and `setPhoneValidator` are called minutes after the constructor
+   * `setCreditCardService` and `setPhoneSource` are called minutes after the constructor
    * — the card service only once a Spreedly key arrives. The contexts handed to the modules
    * are therefore built per call, not once; this pins that, because caching them would
    * silently drop card validation on every form whose key arrives late.
    */
   it('picks up a card service installed after construction', async () => {
     const { validator } = createValidator();
-    const validateCreditCard = vi
-      .fn()
-      .mockReturnValue({
-        isValid: false,
-        errors: { 'cc-month': 'Expiration month is required' },
-      });
+    const validateCreditCard = vi.fn().mockReturnValue({
+      isValid: false,
+      errors: { 'cc-month': 'Expiration month is required' },
+    });
 
     validator.setCreditCardService({
       checkSpreedlyFieldsReady: () => ({ hasEmptyFields: false, errors: [] }),
@@ -195,10 +193,15 @@ describe('services installed after construction', () => {
     expect(result.errors['cc-month']).toBe('Expiration month is required');
   });
 
-  it('picks up a phone validator installed after construction', async () => {
+  it('picks up a phone source installed after construction', async () => {
     const { validator } = createValidator();
-    const phoneValidator = vi.fn().mockReturnValue(false);
-    validator.setPhoneValidator(phoneValidator);
+    const phoneSource = vi.fn().mockReturnValue({
+      getNumber: () => '+15551234567',
+      isValidNumber: () => false,
+      isValidNumberPrecise: () => false,
+      getSelectedCountryData: () => ({ dialCode: '1', iso2: 'us' }),
+    });
+    validator.setPhoneSource(phoneSource);
 
     const result = await validator.validateForm(
       {
@@ -214,7 +217,23 @@ describe('services installed after construction', () => {
       new Map()
     );
 
-    expect(phoneValidator).toHaveBeenCalledWith('+15551234567', 'shipping');
+    expect(phoneSource).toHaveBeenCalledWith('shipping');
     expect(result.errors.phone).toBe('Please enter a valid phone number');
+  });
+
+  /**
+   * The same instance answers the per-field path, so a number rejected as the shopper
+   * tabs out is rejected on submit and for the same reason.
+   */
+  it('uses the installed phone source for per-field validation too', () => {
+    const { validator } = createValidator();
+    validator.setPhoneSource(() => ({
+      getNumber: () => '+15551234567',
+      isValidNumber: () => false,
+      isValidNumberPrecise: () => false,
+      getSelectedCountryData: () => ({ dialCode: '1', iso2: 'us' }),
+    }));
+
+    expect(validator.validateField('phone', '5551234567').isValid).toBe(false);
   });
 });

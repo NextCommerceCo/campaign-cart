@@ -24,7 +24,6 @@ export const VALIDATION_PATTERNS = {
   // Enhanced email validation - supports all valid TLDs including .co, .uk, etc.
   EMAIL:
     /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/,
-  PHONE: /^[\d\s\-\+\(\)]+$/,
   // Name validation - letter runs (any script, via \p{L}) separated by a single
   // apostrophe (straight or curly), hyphen, or space.
   // Examples: "田中", "Владимир", "Anne-Marie du Pré", "O'Brien", "O’Brien"
@@ -101,27 +100,6 @@ export function isValidEmail(email: string): boolean {
   }
 
   return true;
-}
-
-/**
- * Whether a phone number is plausible without knowing the country: digits, spaces, and
- * `+ - ( )` only, and at least ten digits once the punctuation is stripped.
- *
- * @remarks This is the fallback. When `intl-tel-input` is wired up the form validates
- * against the shopper's actual country instead, which is both stricter and looser than
- * this — see `checkout-form/phone-input.ts`.
- *
- * @example
- * ```ts
- * isValidPhone('(555) 123-4567'); // true
- * isValidPhone('555-1234');       // false — only seven digits
- * ```
- */
-export function isValidPhone(phone: string): boolean {
-  return (
-    VALIDATION_PATTERNS.PHONE.test(phone) &&
-    phone.replace(/\D/g, '').length >= 10
-  );
 }
 
 /**

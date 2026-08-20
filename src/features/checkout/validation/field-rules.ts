@@ -15,20 +15,23 @@
  * validator ({@link FieldRuleContext}); {@link createValidationRules} needs nothing.
  */
 
-import {
-  isValidCity,
-  isValidEmail,
-  isValidName,
-  isValidPhone,
-} from './validation-patterns';
+import { checkPhone, type PhoneNumberSource } from './phone-validation';
+import { isValidCity, isValidEmail, isValidName } from './validation-patterns';
 import type { ValidationRule } from './validation.types';
 
 /** What {@link applyRule} needs from `CheckoutValidator`. */
 export interface FieldRuleContext {
   /** Provides `validatePostalCode(value, countryCode, config)`. */
   countryService: any;
-  /** `intl-tel-input` wrapper, when the form has one. Validates the live phone widget. */
-  phoneInputManager?: any;
+  /**
+   * The live `intl-tel-input` instance for a phone field, when the form has one.
+   *
+   * The same resolver the submit-time check uses, so a number rejected as the shopper
+   * tabs out of the field is rejected on submit too, and for the same reason. Before this
+   * existed, per-field validation had no way to reach the widget and fell back to a digit
+   * count, which is how a number the form accepted on blur could be refused on submit.
+   */
+  phoneSource?: (type: 'shipping' | 'billing') => PhoneNumberSource | undefined;
 }
 
 /**
@@ -112,12 +115,11 @@ export function applyRule(
 
     case 'phone':
       if (!value) return true;
-
-      if (ctx.phoneInputManager) {
-        return ctx.phoneInputManager.validatePhoneNumber(true);
-      } else {
-        return isValidPhone(value);
-      }
+      // `unknown` passes here: nothing could check the number, and a shopper is not told
+      // their phone is wrong because our own script had not loaded.
+      return (
+        checkPhone(value, ctx.phoneSource?.('shipping')).verdict !== 'invalid'
+      );
 
     case 'name':
       return !value || isValidName(value);

@@ -122,16 +122,48 @@ describe('validateForm', () => {
 
   it('normalises the phone to the widget’s formatted number so the order carries E.164', async () => {
     const ctx = createContext({
-      phoneInputManager: {
-        validatePhoneNumber: vi.fn().mockReturnValue(true),
-        getFormattedPhoneNumber: vi.fn().mockReturnValue('+15551234567'),
-      },
+      phoneSource: () => ({
+        getNumber: () => '+15551234567',
+        isValidNumber: () => true,
+        isValidNumberPrecise: () => true,
+        getSelectedCountryData: () => ({ dialCode: '1', iso2: 'us' }),
+      }),
     });
     const form = { ...completeForm(), phone: '(555) 123-4567' };
 
     await validateForm(ctx, form, configs);
 
     expect(form.phone).toBe('+15551234567');
+  });
+
+  it('rejects a junk phone the widget considers the right length', async () => {
+    const ctx = createContext({
+      phoneSource: () => ({
+        getNumber: () => '+10000000000',
+        isValidNumber: () => true,
+        isValidNumberPrecise: () => true,
+        getSelectedCountryData: () => ({ dialCode: '1', iso2: 'us' }),
+      }),
+    });
+
+    const result = await validateForm(
+      ctx,
+      { ...completeForm(), phone: '0000000000' },
+      configs
+    );
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors.phone).toBe('Please enter a valid phone number');
+  });
+
+  it('lets a plausible phone through when no widget can judge it', async () => {
+    const result = await validateForm(
+      createContext(),
+      { ...completeForm(), phone: '4155552671' },
+      configs
+    );
+
+    expect(result.errors.phone).toBeUndefined();
   });
 
   it('maps billing errors onto the billing- prefixed field names the form renders', async () => {

@@ -25,6 +25,7 @@ import type { Iti } from 'intl-tel-input';
 import type { Logger } from '@/core/logger';
 import { userDataStorage } from '@/core/analytics/user-data-storage';
 import type { ProspectCartEnhancer } from '../prospect-cart/prospect-cart.enhancer';
+import { normalizePhone } from '../validation/phone-validation';
 
 /** The three things this module needs from the checkout form. */
 export interface ContactPersistenceContext {
@@ -83,11 +84,9 @@ export function persistContactField(
     if (fieldName === 'fname') updates.firstName = value;
     if (fieldName === 'lname') updates.lastName = value;
     if (fieldName === 'phone') {
-      // Use international format for phone if intlTelInput is available
-      const phoneInstance = ctx.phoneInputs.get('shipping');
-      updates.phone = phoneInstance
-        ? phoneInstance.getNumber() || value
-        : value;
+      // Stored international, so a shopper who returns on a later page is repopulated
+      // with a number the orders API takes as-is.
+      updates.phone = normalizePhone(value, ctx.phoneInputs.get('shipping'));
     }
 
     userDataStorage.updateUserData(updates);

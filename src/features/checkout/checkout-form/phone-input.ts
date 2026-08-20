@@ -20,6 +20,8 @@ import type { Iti } from 'intl-tel-input';
 import type { Logger } from '@/core/logger';
 import { useCheckoutStore } from '@/state/checkout';
 
+import { normalizePhone } from '../validation/phone-validation';
+
 /** Which of the two addresses a phone field belongs to. */
 export type PhoneFieldType = 'shipping' | 'billing';
 
@@ -168,6 +170,11 @@ function initializePhoneInput(
       nationalMode: true,
       autoPlaceholder: 'off',
       loadUtils: () => import('intl-tel-input/utils'),
+      // The library's default is `["MOBILE"]`, which makes *both* of its validation
+      // methods answer "is this a valid mobile number" rather than "is this a valid
+      // number". In countries where a landline is not the same length as a mobile, that
+      // rejects a shopper who gave a landline. `null` turns the type filter off.
+      validationNumberTypes: null,
       countryOrder: ['us', 'ca', 'gb', 'au'],
       allowDropdown: false,
       showFlags: true,
@@ -193,11 +200,13 @@ function initializePhoneInput(
     };
 
     // Store the full international number, not the national text the shopper sees —
-    // the order needs E.164.
+    // the order needs E.164. `normalizePhone` rather than `getNumber()` because the
+    // latter returns `''` until the utils script has loaded, and writing that would blank
+    // a phone the shopper has already typed.
     phoneField.addEventListener(
       'input',
       () => {
-        const fullNumber = instance.getNumber();
+        const fullNumber = normalizePhone(phoneField.value, instance);
         if (type === 'shipping') {
           ctx.updateFormData({ phone: fullNumber });
           return;
@@ -223,13 +232,21 @@ function initializePhoneInput(
 
     // Changing the address country re-bases the phone country, so a shopper who
     // switches country does not keep the previous dial code.
+    //
+    // Except when the shopper wrote the number internationally. `setCountry` keeps the
+    // national digits and swaps the dial code in front of them, which turns a stated
+    // `+66 81 234 5678` into `+1 81 234 5678` — a number that is not theirs, is not valid,
+    // and is what the field then shows them. A number carrying its own country code has
+    // already said which country it belongs to, and the address country is a different
+    // question: someone shipping to the US may well be reachable on a Thai phone.
     if (countryField instanceof HTMLSelectElement) {
       countryField.addEventListener(
         'change',
         () => {
           const countryCode = countryField.value;
-          if (countryCode)
-            instance.setCountry(asCountryCode(countryCode.toLowerCase()));
+          if (!countryCode) return;
+          if (phoneField.value.trim().startsWith('+')) return;
+          instance.setCountry(asCountryCode(countryCode.toLowerCase()));
         },
         { signal: listenerAbort.signal }
       );
@@ -245,6 +262,62 @@ function initializePhoneInput(
  * Called on boot and again after the billing form is revealed, since the billing phone
  * field may not have been in the DOM the first time.
  */
+/**
+ * How long a submit waits for the phone library's utils script before going ahead anyway.
+ *
+ * Two seconds is long enough for the chunk on any connection that can also reach the
+ * orders API, and short enough that a shopper whose network dropped it entirely is not
+ * left staring at a spinner. The wait happens under the loading overlay, so in the normal
+ * case — the chunk arrived seconds ago, during typing — it costs nothing and shows nothing.
+ */
+const UTILS_WAIT_MS = 2000;
+
+/**
+ * Waits for `intl-tel-input` to finish loading the utils script it validates and formats
+ * with, and reports whether it arrived.
+ *
+ * Everything the SDK wants from that library needs this script: `getNumber()` returns `''`
+ * without it and `isValidNumber()` returns `null`. Both degrade quietly, so a submit that
+ * races the chunk stores a national number and skips the check without anything looking
+ * wrong. Calling this first turns that race into a wait.
+ *
+ * Resolving `false` means the wait ran out, not that anything failed — the caller carries
+ * on and the number is handled as {@link checkPhone}'s `unknown`, which never blocks a
+ * shopper for a problem that is ours.
+ *
+ * @example
+ * ```ts
+ * await awaitPhoneUtils(this.phoneInputs);
+ * const validation = await this.validator.validateForm(formData, countryConfigs);
+ * ```
+ */
+export async function awaitPhoneUtils(
+  phoneInputs: Map<string, Iti>,
+  timeoutMs: number = UTILS_WAIT_MS
+): Promise<boolean> {
+  const pending = [...phoneInputs.values()].map(instance => instance.promise);
+  if (pending.length === 0) return false;
+
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const expiry = new Promise<false>(resolve => {
+    timer = setTimeout(() => resolve(false), timeoutMs);
+  });
+
+  try {
+    const settled = await Promise.race([
+      Promise.all(pending).then(() => true),
+      expiry,
+    ]);
+    return settled;
+  } catch {
+    // A rejected init promise is the geo-IP lookup or the chunk failing. Both are already
+    // logged by the library, and both mean the same thing here: carry on without it.
+    return false;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 export function initializePhoneInputs(ctx: PhoneInputContext): void {
   if (!ctx.isIntlTelInputAvailable) return;
 

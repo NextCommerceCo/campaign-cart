@@ -32,7 +32,9 @@ function createContext(
     // assert the thing it is actually about; the cases that care override it.
     creditCardService: {
       checkSpreedlyFieldsReady: () => ({ hasEmptyFields: false, errors: [] }),
-      validateCreditCard: vi.fn().mockReturnValue({ isValid: true, errors: {} }),
+      validateCreditCard: vi
+        .fn()
+        .mockReturnValue({ isValid: true, errors: {} }),
     } as unknown as FormValidationContext['creditCardService'],
     ...overrides,
   };
@@ -313,20 +315,11 @@ describe('validateStep — the gaps between the steps', () => {
   });
 
   /**
-   * DEFECT (left as found) — the phone block is guarded by
-   * `requiredFields.includes('phone')`, and only step 1 ever pushes `phone`. Step 2 rebuilds
-   * the list without it, so a phone number is never re-checked there.
-   *
-   * What the shopper sees: they go back from step 2, replace a valid phone with garbage,
-   * and step 2's "next" accepts it. The bad number is only caught at the final submit, if
-   * the phone happens to be required there too.
+   * Every step that carries a phone number checks it. The check used to be guarded by
+   * `requiredFields.includes('phone')`, which only step 1 ever pushed — so a shopper could
+   * go back from step 2, replace a good number with a bad one, and walk it forward.
    */
-  it('DEFECT: step 2 never checks the phone, even when the markup requires it', async () => {
-    const named = document.createElement('input');
-    named.setAttribute('name', 'phone');
-    named.setAttribute('required', '');
-    document.body.appendChild(named);
-
+  it('checks the phone on both steps, required or not', async () => {
     const step1 = await validateStep(
       createContext(),
       1,
@@ -341,7 +334,19 @@ describe('validateStep — the gaps between the steps', () => {
     );
 
     expect(step1.errors.phone).toBe('Please enter a valid phone number');
-    expect(step2.errors.phone).toBeUndefined();
+    expect(step2.errors.phone).toBe('Please enter a valid phone number');
+  });
+
+  it('rejects a junk phone on a step gate', async () => {
+    const result = await validateStep(
+      createContext(),
+      1,
+      { ...completeForm(), phone: '1234567890' },
+      configs
+    );
+
+    expect(result.errors.phone).toBe('Please enter a valid phone number');
+    expect(result.isValid).toBe(false);
   });
 
   /**

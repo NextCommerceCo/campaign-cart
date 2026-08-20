@@ -22,6 +22,8 @@
 import intlTelInput from 'intl-tel-input';
 import type { Iti } from 'intl-tel-input';
 
+import { normalizePhone } from '../validation/phone-validation';
+
 /**
  * The E.164 number for a phone field (`+447700900123`), or the text the shopper typed when
  * there is no number to be had.
@@ -52,7 +54,7 @@ export function readPhoneValue(
       ? intlTelInput.getInstance(target)
       : null);
 
-  return live?.getNumber() || target.value;
+  return normalizePhone(target.value, live ?? undefined);
 }
 
 /**
