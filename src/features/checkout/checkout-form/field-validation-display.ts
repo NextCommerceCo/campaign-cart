@@ -20,7 +20,11 @@
  */
 
 import type { CheckoutValidator } from '../validation/checkout-validator';
-import { ERROR_OWNER_ATTR, fieldKey } from '../utils/error-display-utils';
+import {
+  ERROR_OWNER_ATTR,
+  fieldKey,
+  holdsOneFieldAtMost,
+} from '../utils/error-display-utils';
 import { useCheckoutStore } from '@/state/checkout';
 
 /** Wrappers the SDK styles around a field. Either may carry the error label. */
@@ -64,9 +68,19 @@ function clearErrorLabels(field: HTMLElement): void {
 
   const unowned = `${ERROR_LABEL}:not([${ERROR_OWNER_ATTR}])`;
   const wrapper = field.closest(FIELD_WRAPPER);
-  wrapper?.querySelector(unowned)?.remove();
-  wrapper?.closest(FORM_GROUP)?.querySelector(unowned)?.remove();
-  field.closest(FORM_GROUP)?.querySelector(unowned)?.remove();
+  const containers = [
+    wrapper,
+    wrapper?.closest(FORM_GROUP),
+    field.closest(FORM_GROUP),
+  ];
+
+  for (const container of containers) {
+    // Only a container holding this field alone: several fields can share one
+    // `.form-group`, and there the first unowned label in it belongs to whichever
+    // field happens to come first in the markup.
+    if (!container || !holdsOneFieldAtMost(container)) continue;
+    container.querySelector(unowned)?.remove();
+  }
 }
 
 /**

@@ -195,3 +195,25 @@ describe('a widget displaying a different number', () => {
     expect(checkPhone('07700 900123', uk).verdict).toBe('valid');
   });
 });
+
+describe('a shared tail that is too short to be a number', () => {
+  /**
+   * `2671` is the tail of a million real numbers. Treating it as "the same number" as the
+   * one in the widget's field would turn four stray digits into a full, valid phone number
+   * on the order.
+   */
+  it('does not adopt the widget’s number for a four-digit value', () => {
+    const check = checkPhone('2671', loadedSource(true, '+14155552671'));
+
+    expect(check.value).toBe('2671');
+    expect(check.isE164).toBe(false);
+    expect(check.verdict).toBe('invalid');
+    expect(check.reason).toBe('digit-count');
+  });
+
+  it('still matches a seven-digit national number', () => {
+    const check = checkPhone('5552671', loadedSource(true, '+14155552671'));
+
+    expect(check.verdict).toBe('valid');
+  });
+});

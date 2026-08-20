@@ -70,6 +70,28 @@ describe('error label ownership', () => {
     expect(labelsIn(form)).toEqual(['Please enter a valid city name']);
   });
 
+  it('leaves an unowned message alone when the container holds other fields too', () => {
+    // Several inputs in one `.form-group` is ordinary markup. The first unowned label
+    // inside it belongs to whichever field comes first, not to the one being cleared.
+    const group = document.createElement('div');
+    group.className = 'form-group';
+    const phone = document.createElement('input');
+    phone.setAttribute('data-next-checkout-field', 'phone');
+    const city = document.createElement('input');
+    city.setAttribute('data-next-checkout-field', 'city');
+    const stale = document.createElement('div');
+    stale.className = 'next-error-label';
+    stale.textContent = 'Please enter a valid phone number';
+    group.append(phone, city, stale);
+    document.body.appendChild(group);
+
+    new ErrorDisplayManager().clearFieldError(city);
+
+    expect(group.querySelector('.next-error-label')?.textContent).toBe(
+      'Please enter a valid phone number'
+    );
+  });
+
   it('still removes an unowned message from a real wrapper', () => {
     // A label written by an older build, or by the page's own markup: no owner
     // attribute to match on, so the wrapper lookup is all there is.

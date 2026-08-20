@@ -1,6 +1,6 @@
 /**
  * Error Display Utilities - Consolidated error display management
- * 
+ *
  * Reduces code duplication for error handling and display across services
  */
 
@@ -21,7 +21,7 @@ const DEFAULT_OPTIONS: ErrorDisplayOptions = {
   errorLabelClass: 'next-error-label',
   successClass: 'no-error',
   iconErrorClass: 'addErrorIcon',
-  iconSuccessClass: 'addTick'
+  iconSuccessClass: 'addTick',
 };
 
 /**
@@ -35,6 +35,23 @@ const DEFAULT_OPTIONS: ErrorDisplayOptions = {
  * cannot clear. Stamping the owner makes clearing exact.
  */
 export const ERROR_OWNER_ATTR = 'data-next-error-for';
+
+/** Any element carrying a checkout field name, in either convention. */
+const CHECKOUT_FIELD_SELECTOR =
+  '[data-next-checkout-field], [os-checkout-field]';
+
+/**
+ * Whether a container is narrow enough for "the error label in here" to mean one field.
+ *
+ * The question the old code asked instead was whether the container was the field's direct
+ * parent, which is neither necessary nor sufficient: a `.form-group` wrapping one input
+ * *is* its parent and is perfectly safe, while a container two levels up holding six
+ * inputs is not. Counting the fields answers it directly, and covers the case that started
+ * this — a page with no wrapper classes, where the container resolves to the whole form.
+ */
+export function holdsOneFieldAtMost(container: Element): boolean {
+  return container.querySelectorAll(CHECKOUT_FIELD_SELECTOR).length <= 1;
+}
 
 /** The name a field is known by, across both attribute conventions. */
 export function fieldKey(field: HTMLElement): string | null {
@@ -113,19 +130,22 @@ export class ErrorDisplayManager {
       owned.forEach(label => label.remove());
     }
 
-    // Messages with no owner stamped on them: written by an older build, or by a
-    // page's own markup. Only ever removed from a *real* wrapper — never from the
-    // parent-element fallback, which on a wrapperless page is the whole form.
-    this.clearUnownedLabelIn(wrapper === field.parentElement ? null : wrapper);
+    // Messages with no owner stamped on them: a field with no name to stamp, or a page's
+    // own markup. Removed only from a container that holds this field alone, so clearing
+    // one field cannot take another's message with it.
+    this.clearUnownedLabelIn(wrapper);
     this.clearUnownedLabelIn(field.closest(`.${this.options.wrapperClass}`));
   }
 
-  /** Removes one message that names no field, from a container known to be a wrapper. */
+  /** Removes one message that names no field, from a container narrow enough to own it. */
   private clearUnownedLabelIn(container: Element | null): void {
-    const label = container?.querySelector(
-      `.${this.options.errorLabelClass}:not([${ERROR_OWNER_ATTR}])`
-    );
-    label?.remove();
+    if (!container || !holdsOneFieldAtMost(container)) return;
+
+    container
+      .querySelector(
+        `.${this.options.errorLabelClass}:not([${ERROR_OWNER_ATTR}])`
+      )
+      ?.remove();
   }
 
   /**
@@ -133,13 +153,13 @@ export class ErrorDisplayManager {
    */
   showFieldValid(field: HTMLElement): void {
     const wrapper = FieldFinder.findFieldWrapper(field);
-    
+
     // Clear any errors first
     this.clearFieldError(field);
-    
+
     // Add success styling
     field.classList.add(this.options.successClass!);
-    
+
     if (wrapper) {
       wrapper.classList.add(this.options.iconSuccessClass!);
     }
@@ -150,17 +170,23 @@ export class ErrorDisplayManager {
    */
   clearAllErrors(container: HTMLElement): void {
     // Remove all error labels
-    const errorLabels = container.querySelectorAll(`.${this.options.errorLabelClass}`);
+    const errorLabels = container.querySelectorAll(
+      `.${this.options.errorLabelClass}`
+    );
     errorLabels.forEach(label => label.remove());
 
     // Remove error classes from fields
-    const errorFields = container.querySelectorAll(`.${this.options.errorClass}, .has-error`);
+    const errorFields = container.querySelectorAll(
+      `.${this.options.errorClass}, .has-error`
+    );
     errorFields.forEach(field => {
       field.classList.remove('has-error', this.options.errorClass!);
     });
 
     // Remove error icons from wrappers
-    const errorWrappers = container.querySelectorAll(`.${this.options.iconErrorClass}`);
+    const errorWrappers = container.querySelectorAll(
+      `.${this.options.iconErrorClass}`
+    );
     errorWrappers.forEach(wrapper => {
       wrapper.classList.remove(this.options.iconErrorClass!);
     });
@@ -185,12 +211,15 @@ export class ErrorDisplayManager {
   /**
    * Find a field by name within a container
    */
-  private findField(fieldName: string, container: HTMLElement): HTMLElement | null {
+  private findField(
+    fieldName: string,
+    container: HTMLElement
+  ): HTMLElement | null {
     const selectors = [
       `[data-next-checkout-field="${fieldName}"]`,
       `[os-checkout-field="${fieldName}"]`,
       `[name="${fieldName}"]`,
-      `#${fieldName}`
+      `#${fieldName}`,
     ];
 
     for (const selector of selectors) {
@@ -205,10 +234,14 @@ export class ErrorDisplayManager {
    * Show a toast error message
    */
   static showToastError(message: string, duration: number = 10000): void {
-    const toastHandler = document.querySelector('[next-checkout-element="spreedly-error"]');
+    const toastHandler = document.querySelector(
+      '[next-checkout-element="spreedly-error"]'
+    );
     if (!(toastHandler instanceof HTMLElement)) return;
 
-    const messageElement = toastHandler.querySelector('[data-os-message="error"]');
+    const messageElement = toastHandler.querySelector(
+      '[data-os-message="error"]'
+    );
     if (messageElement instanceof HTMLElement) {
       messageElement.textContent = message;
       toastHandler.style.display = 'flex';
@@ -226,10 +259,11 @@ export class ErrorDisplayManager {
    * Hide toast error message
    */
   static hideToastError(): void {
-    const toastHandler = document.querySelector('[next-checkout-element="spreedly-error"]');
+    const toastHandler = document.querySelector(
+      '[next-checkout-element="spreedly-error"]'
+    );
     if (toastHandler instanceof HTMLElement) {
       toastHandler.style.display = 'none';
     }
   }
 }
-

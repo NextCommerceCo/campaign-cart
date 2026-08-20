@@ -267,6 +267,12 @@ function speaksFor(value: string, source?: PhoneNumberSource): boolean {
  * What it still rejects is a number that shares no tail with the one asked about — the
  * case this exists for, where the widget's field holds something other than the value
  * being judged.
+ *
+ * A shared tail only counts when it is long enough to be a number in its own right. Four
+ * digits are the tail of a million real numbers, so matching on them would hand a caller
+ * asking about `2671` the widget's whole `+14155552671` and call it the same number.
+ * Anything shorter than {@link MIN_PHONE_DIGITS} therefore matches nothing, and the result
+ * is `unknown` — which is the honest answer about a value that short anyway.
  */
 function describesSameNumber(fromLibrary: string, value: string): boolean {
   const library = digitsOf(fromLibrary);
@@ -275,7 +281,7 @@ function describesSameNumber(fromLibrary: string, value: string): boolean {
 
   return [asked, withoutTrunkPrefix].some(
     candidate =>
-      candidate.length > 0 &&
+      candidate.length >= MIN_PHONE_DIGITS &&
       (library.endsWith(candidate) || candidate.endsWith(library))
   );
 }
