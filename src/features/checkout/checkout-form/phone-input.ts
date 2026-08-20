@@ -232,13 +232,21 @@ function initializePhoneInput(
 
     // Changing the address country re-bases the phone country, so a shopper who
     // switches country does not keep the previous dial code.
+    //
+    // Except when the shopper wrote the number internationally. `setCountry` keeps the
+    // national digits and swaps the dial code in front of them, which turns a stated
+    // `+66 81 234 5678` into `+1 81 234 5678` — a number that is not theirs, is not valid,
+    // and is what the field then shows them. A number carrying its own country code has
+    // already said which country it belongs to, and the address country is a different
+    // question: someone shipping to the US may well be reachable on a Thai phone.
     if (countryField instanceof HTMLSelectElement) {
       countryField.addEventListener(
         'change',
         () => {
           const countryCode = countryField.value;
-          if (countryCode)
-            instance.setCountry(asCountryCode(countryCode.toLowerCase()));
+          if (!countryCode) return;
+          if (phoneField.value.trim().startsWith('+')) return;
+          instance.setCountry(asCountryCode(countryCode.toLowerCase()));
         },
         { signal: listenerAbort.signal }
       );

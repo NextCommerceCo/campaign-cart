@@ -81,13 +81,41 @@ test('a sequential phone is refused too', async ({ page }) => {
 });
 
 /**
+ * A shopper reachable in one country and shipping to another.
+ *
+ * `intl-tel-input` re-bases the field on the address country when that `<select>`
+ * changes, keeping the national digits and swapping the dial code in front of
+ * them. On a number the shopper wrote internationally that produces one that is
+ * not theirs: `+66 81 234 5678` became `+1 81 234 5678`, which is what the field
+ * then showed them, with no message to explain it.
+ */
+test('a number written internationally survives choosing another country', async ({
+  page,
+}) => {
+  await bootSdk(page, CHECKOUT);
+  await addOnePackage(page);
+
+  await page.fill(PHONE, '+66812345678');
+  await page.selectOption('[data-next-checkout-field="country"]', 'US');
+
+  await expect(page.locator(PHONE)).toHaveValue(/^\+66/);
+});
+
+/**
  * The negative control, and the reason the two tests above mean anything: a
  * checkout that refuses every phone would pass them both.
  */
 test('a real phone is accepted and sent in E.164', async ({ page }) => {
   const errors: string[] = [];
-  page.on('console', m => m.type() === 'error' && errors.push(m.text()));
-  page.on('pageerror', e => errors.push(e.message));
+  const collect = (text: string): void => {
+    // The dev server's own hot-reload socket is not the SDK. It fails loudly whenever
+    // Vite is served on a port other than the one `vite.config.ts` names for the HMR
+    // client, which is nothing to do with what this spec is watching for.
+    if (/\[vite\]|WebSocket/i.test(text)) return;
+    errors.push(text);
+  };
+  page.on('console', m => m.type() === 'error' && collect(m.text()));
+  page.on('pageerror', e => collect(e.message));
 
   const posts = await recordOrders(page);
 

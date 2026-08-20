@@ -34,6 +34,8 @@ Nothing to add to your pages. **Before you upgrade** matters if your test data o
 
 - **A message no longer disappears when a different field is corrected.** On a page whose inputs are not wrapped in `.form-group` or `.form-input` elements, every error message was appended to the form itself, and clearing any field removed whichever message came first. The shopper was left with a field outlined in red, no text under it, and no way to make it go away. Each message now names the field it belongs to.
 
+- **Choosing a country no longer rewrites a phone number the shopper wrote internationally.** Picking the address country re-bases the phone field on that country, which keeps the national digits and swaps the dial code in front of them: a stated `+66 81 234 5678` became `+1 81 234 5678`, and that is what the field then showed, with no message to explain it. A number carrying its own country code has already said which country it belongs to, and the address country is a separate question — someone shipping to the United States may well be reachable on a Thai phone.
+
 - **A step gate checks the phone whether or not it is required.** On a multi-step checkout, the phone was only validated on a step where the markup marked the field `required`. A shopper could go back, replace a good number with a bad one, and carry it forward to a page where the field was no longer on screen to correct.
 
 - **A landline is no longer refused for being the wrong length for a mobile.** The phone library was left on its default of validating mobile numbers only, so in countries where a landline is not the same length as a mobile, a shopper who gave one was told their number was invalid with no way to satisfy the form.
