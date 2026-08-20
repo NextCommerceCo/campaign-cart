@@ -7,6 +7,7 @@ export interface ErrorDisplayOptions {
     iconSuccessClass?: string;
 }
 export declare const ERROR_OWNER_ATTR = "data-next-error-for";
+export declare function holdsOneFieldAtMost(container: Element): boolean;
 export declare function fieldKey(field: HTMLElement): string | null;
 export declare class ErrorDisplayManager {
     private options;
