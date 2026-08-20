@@ -27,12 +27,10 @@ import {
 } from 'node:fs/promises';
 import { join, dirname, relative, posix } from 'node:path';
 import { slugifyHeading } from '@clean-jsdoc-theme/utils';
-import { renderRootRedirect } from './docs-versions.mjs';
 
 const ROOT = process.cwd();
 const SRC = join(ROOT, 'docs/guides');
 const OUT = join(ROOT, 'docs/.staged');
-const SITE = join(ROOT, 'docs/site');
 
 function stripGroupPrefix(text) {
   const group = /^title:\s*"([^"/]+)\/(.+)"\s*$/m;
@@ -105,12 +103,3 @@ await writeFile(
 await rename(temporaryHome, stagedHome);
 
 console.log(`docs: staged ${count} guide file(s) into docs/.staged`);
-
-/**
- * Bare visits to `docs/site/` should land in `/latest/`. The version-index generator
- * (`docs-versions.mjs`) writes this when per-tag folders exist; write it here too so
- * `bun run docs:check` and `bun run docs:serve` against an otherwise-empty site still
- * serve content at the root.
- */
-await mkdir(SITE, { recursive: true });
-await writeFile(join(SITE, 'index.html'), renderRootRedirect());

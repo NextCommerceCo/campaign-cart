@@ -253,6 +253,15 @@ function main(argv) {
     return 1;
   }
 
+  const latest = join(root, 'latest');
+  if (!existsSync(latest) || !statSync(latest).isDirectory()) {
+    process.stderr.write(
+      `No latest docs build found at ${latest}.\n` +
+        `Build it before generating the version index.\n`
+    );
+    return 1;
+  }
+
   mkdirSync(root, { recursive: true });
   writeFileSync(join(root, 'index.html'), renderRootRedirect());
   writeFileSync(join(root, 'versions.json'), json);
@@ -271,12 +280,6 @@ function main(argv) {
   if (index.unreleased) {
     process.stdout.write(
       `package.json is at ${index.unreleased}, which has no tag yet — not listed.\n`
-    );
-  }
-  if (!existsSync(join(root, 'latest'))) {
-    process.stderr.write(
-      `warning: ${join(root, 'latest')} does not exist, so index.html redirects nowhere.\n` +
-        `  npm run docs:version -- ${current.tag}   creates it.\n`
     );
   }
   return 0;

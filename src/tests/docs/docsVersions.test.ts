@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 
@@ -154,6 +161,40 @@ describe('docs site version index', () => {
         }),
         `package.json ${packageVersion} is older than the newest tag ${newest.tag}`
       ).toBeLessThan(0);
+    }
+  });
+});
+
+describe('docs site version files', () => {
+  it('writes no redirect until latest has been built', () => {
+    const root = mkdtempSync(join(tmpdir(), 'campaign-cart-docs-versions-'));
+    const args = [
+      join(REPO, 'scripts/docs-versions.mjs'),
+      '--local',
+      '--out',
+      root,
+    ];
+
+    try {
+      const missing = spawnSync('node', args, {
+        cwd: REPO,
+        encoding: 'utf8',
+      });
+      expect(missing.status).toBe(1);
+      expect(missing.stderr).toContain('No latest docs build found');
+      expect(existsSync(join(root, 'index.html'))).toBe(false);
+      expect(existsSync(join(root, 'versions.json'))).toBe(false);
+
+      mkdirSync(join(root, 'latest'));
+      const built = spawnSync('node', args, {
+        cwd: REPO,
+        encoding: 'utf8',
+      });
+      expect(built.status).toBe(0);
+      expect(existsSync(join(root, 'index.html'))).toBe(true);
+      expect(existsSync(join(root, 'versions.json'))).toBe(true);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
     }
   });
 });

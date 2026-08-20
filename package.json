@@ -50,7 +50,7 @@
     "validate:display": "ts-node scripts/validate-display-config.ts",
     "docs": "node scripts/docs-stage.mjs && typedoc && node scripts/docs-versions.mjs --local",
     "docs:serve": "node scripts/docs-serve.mjs --watch",
-    "docs:check": "node scripts/docs-stage.mjs && typedoc --treatWarningsAsErrors && node scripts/docs-versions.mjs --local",
+    "docs:check": "patch-package --error-on-fail && node scripts/docs-stage.mjs && typedoc --treatWarningsAsErrors && node scripts/docs-versions.mjs --local",
     "docs:version": "node scripts/docs-build-version.mjs",
     "docs:main": "node scripts/docs-build-version.mjs --branch main",
     "docs:versions": "node scripts/docs-versions.mjs",
