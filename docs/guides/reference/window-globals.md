@@ -267,9 +267,10 @@ Pre-loads the cart with a package for preview, taken from the `?forcePackageId=`
 
 **Direction:** the SDK installs it
 
-```js
-// Open the page with:
-// https://example.com/offer?forcePackageId=2
+Open the page with:
+
+```text
+https://example.com/offer?forcePackageId=2
 ```
 
 > **Watch out:** Consumed and deleted once the campaign has loaded, so reading it later gives `undefined` even though it worked. Drive it from the URL, not from script.
@@ -281,8 +282,8 @@ Pre-selects a shipping method for preview, from the `?forceShippingId=` URL para
 
 **Direction:** the SDK installs it
 
-```js
-// https://example.com/checkout?forceShippingId=1
+```text
+https://example.com/checkout?forceShippingId=1
 ```
 
 > **Watch out:** Consumed and deleted after the campaign loads, same as `_nextForcePackageId`.
@@ -294,11 +295,16 @@ Forces which bundle card starts selected, from the `?forceBundleId=` URL paramet
 
 **Direction:** the SDK installs it
 
-```js
-// One selector on the page:
-// https://example.com/offer?forceBundleId=3
-// Several selectors, addressed by id:
-// https://example.com/offer?forceBundleId=main:3,upsell:7
+For one selector on the page:
+
+```text
+https://example.com/offer?forceBundleId=3
+```
+
+For several selectors addressed by id:
+
+```text
+https://example.com/offer?forceBundleId=main:3,upsell:7
 ```
 
 > **Watch out:** Unlike the other two this one is not deleted after use, because the bundle selector reads it when it initialises, which can be after the campaign has loaded.

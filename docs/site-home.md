@@ -8,7 +8,10 @@ The shortest page that works:
 <head>
   <meta name="next-api-key" content="{YOUR_CAMPAIGN_API_KEY}">
   <meta name="next-page-type" content="product">
-  <script src="/next-campaign-cart.js" defer></script>
+  <script
+    src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.4.34/dist/loader.js"
+    defer
+  ></script>
 </head>
 
 <body>
