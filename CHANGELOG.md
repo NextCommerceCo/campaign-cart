@@ -6,18 +6,14 @@ A phone number is now judged the same way everywhere, and the order carries the 
 
 ### Fixed
 
-- **Junk phone numbers are refused.** `0000000000`, `1234567890` and `1212121212` used to pass every check and reach the orders API. ([#58](https://github.com/NextCommerceCo/campaign-cart/issues/58))
+- **A rejected phone number now says so on the field.** The phone widget refused the number and the SDK stored the error without ever rendering it, so the shopper saw a form that would not submit and no reason why. ([#58](https://github.com/NextCommerceCo/campaign-cart/issues/58))
 - **The order carries E.164.** A shopper types `(415) 555-2671`, the API is sent `+14155552671` — on both addresses and the customer record.
 - **One check instead of four.** Leaving the field, moving to the next step and pressing pay each used a different rule, so a number one accepted another refused.
 - **A landline is no longer refused** in countries where a landline is not the same length as a mobile.
 - **Choosing a country no longer rewrites a number typed with a country code.** `+66 81 234 5678` became `+1 81 234 5678`.
 - **One field's error message no longer disappears when a different field is corrected.**
 
-A number nothing can check is still accepted: the library that checks it loads over the network, and a slow script never blocks a sale.
-
-### Before you upgrade
-
-Placeholder phone numbers in test data and QA scripts are now refused — `0000000000`, `1234567890`, `5555555555`, `1212121212` and the like. A number that looks like a placeholder but is one the numbering plan really assigns is kept, so `4242424242` (424 is Los Angeles) still goes through. Where a test needs a number that passes, this SDK's own browser tests use `4155552671`.
+Two things are still accepted on purpose. A number nothing can check: the library that checks it loads over the network, and a slow script never blocks a sale. And a well-formed number nobody appears to hold, such as `0000000000` — whether a number is real is the server's call, and a shape rule in a page that runs for years cannot see the outcome to correct itself.
 
 ---
 

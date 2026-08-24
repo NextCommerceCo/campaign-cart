@@ -337,18 +337,6 @@ describe('validateStep — the gaps between the steps', () => {
     expect(step2.errors.phone).toBe('Please enter a valid phone number');
   });
 
-  it('rejects a junk phone on a step gate', async () => {
-    const result = await validateStep(
-      createContext(),
-      1,
-      { ...completeForm(), phone: '1234567890' },
-      configs
-    );
-
-    expect(result.errors.phone).toBe('Please enter a valid phone number');
-    expect(result.isValid).toBe(false);
-  });
-
   /**
    * DEFECT (left as found) — step validation sets `firstErrorField` to whichever check ran
    * first, in source order. `form-validation.ts` instead sorts the failing fields by their

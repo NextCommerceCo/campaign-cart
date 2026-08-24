@@ -14,14 +14,18 @@ import {
  *
  * Two things are proved here, and neither can be proved anywhere else:
  *
- * - **a number nobody holds does not reach the orders API.** `0000000000` is ten
- *   digits, which is the right length for a US number, so every length-based
- *   check accepts it — including `intl-tel-input`'s own `isValidNumber()`, whose
- *   name says validity and whose implementation says length. It reached the API
- *   with a 201 for months.
+ * - **the phone library's verdict reaches the shopper.** A number it refuses is
+ *   shown as an error on the field and blocks the submit, wherever the check
+ *   runs. That is the half of #58 the SDK owns.
  * - **what is sent is E.164.** The API converts a national number, but a
  *   conversion the SDK did not make is one nobody here can see, so the SDK is
  *   expected to send `+14155552671` rather than `4155552671`.
+ *
+ * What the SDK deliberately does **not** do is decide whether a well-formed
+ * number is one anybody holds. `0000000000` is a valid length for a US number
+ * and goes through, normalised, for the server to accept or refuse. A shape rule
+ * in the SDK would be a second opinion, frozen at release time on a page that
+ * runs for years, and it never sees the outcome to correct itself.
  *
  * Why this cannot be a unit test: the number is assembled by `intl-tel-input`
  * from a utils script it fetches at runtime, and the verdict comes from
@@ -51,12 +55,16 @@ test.beforeEach(async ({ page }) => {
   await stubCardCheckout(page);
 });
 
-test('a junk phone is refused, shown, and never sent', async ({ page }) => {
+test('a number the library refuses is shown and never sent', async ({
+  page,
+}) => {
   const posts = await recordOrders(page);
 
   await bootSdk(page, CHECKOUT);
   await addOnePackage(page);
-  await submitCard(page, '0000000000');
+  // Nine digits where the US wants ten. This is what the library refuses, and
+  // before the fix its refusal was set on the store and never rendered.
+  await submitCard(page, '415555267');
 
   // Shown: the shopper is told which field is wrong.
   await expect(page.locator(`${PHONE}.next-error-field`)).toHaveCount(1);
@@ -69,15 +77,29 @@ test('a junk phone is refused, shown, and never sent', async ({ page }) => {
   expect(posts).toHaveLength(0);
 });
 
-test('a sequential phone is refused too', async ({ page }) => {
+/**
+ * The handoff, stated as a test so that re-adding a client-side shape rule turns
+ * it red rather than passing quietly.
+ */
+test('a placeholder of the right length is left to the server', async ({
+  page,
+}) => {
   const posts = await recordOrders(page);
 
   await bootSdk(page, CHECKOUT);
   await addOnePackage(page);
-  await submitCard(page, '1234567890');
+  await submitCard(page, '0000000000');
 
-  await expect(page.locator(`${PHONE}.next-error-field`)).toHaveCount(1);
-  expect(posts).toHaveLength(0);
+  await page.waitForURL(url => url.searchParams.has('ref_id'));
+
+  await expect(page.locator(`${PHONE}.next-error-field`)).toHaveCount(0);
+  expect(posts).toHaveLength(1);
+  const body = posts[0]?.postDataJSON() as {
+    shipping_address: { phone_number: string };
+  };
+  // As typed: libphonenumber will not render this one internationally, so there
+  // is no E.164 to send and the SDK logs that it could not make one.
+  expect(body.shipping_address.phone_number).toBe('0000000000');
 });
 
 /**

@@ -47,13 +47,11 @@ the two can never drift apart.
 - **A phone number is judged once, and the same way everywhere.** Leaving the
   field, moving to the next step and pressing pay all ask the same question of
   the same phone widget, so a number cannot be accepted by one and refused by
-  another. Refused: a number of the wrong length for its country, and a shape
-  nobody holds — every digit the same (`0000000000`), a run (`1234567890`), or a
-  short pattern repeated (`1212121212`). A number of one of those shapes that the
-  numbering plan really does assign is kept, so a shopper is never turned away
-  for holding an unlikely-looking number. Accepted: everything else, including a
-  number nothing could check, because the widget's validation arrives over the
-  network and a shopper is not blocked for a delay that is ours.
+  another. Refused: a number of the wrong length for its country. Accepted:
+  everything else, including a number nothing could check, because the widget's
+  validation arrives over the network and a shopper is not blocked for a delay
+  that is ours. Whether a well-formed number is one anybody holds is the
+  server's call, so `0000000000` reaches it and is answered there.
 - **The order carries E.164.** What the shopper types nationally
   (`(415) 555-2671`) is stored and sent as `+14155552671`, on the shipping
   address, the billing address and the customer record. Submitting waits, briefly,

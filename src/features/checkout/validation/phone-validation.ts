@@ -11,18 +11,21 @@
  *
  * Checks run in this order, first answer wins:
  *
- * 1. {@link isJunkPhoneNumber}, unless the library knows the number is really assignable.
- * 2. `isValidNumber()` — the library's length check. It is not the precise one, whose
- *    rules change monthly: an SDK release pinned on a customer's page freezes them, so a
- *    precise *gate* starts refusing real numbers as it ages. Precise is asked only to
- *    overrule step 1, where a frozen answer can accept a number but never refuse one.
- * 3. Digit count, {@link MIN_PHONE_DIGITS}..15 — yields `unknown`, never `valid`.
+ * 1. `isValidNumber()` — the library's length check, per country.
+ * 2. Digit count, {@link MIN_PHONE_DIGITS}..15 — yields `unknown`, never `valid`.
+ *
+ * **What this deliberately does not do** is judge whether a well-formed number is one
+ * anybody holds. `0000000000` is a valid length for a US number, so the SDK accepts it and
+ * sends it. A shape rule here would be a second opinion competing with the server's, frozen
+ * at release time on a page that may run for years, and the SDK never sees the outcome to
+ * correct itself. The server owns that call; this owns sending it a well-formed number and
+ * showing what comes back.
  */
 
 /**
  * The part of `intl-tel-input`'s `Iti` this module uses.
  *
- * Structural, so the module stays free of the widget and of the DOM. Every method is
+ * Structural, so the module stays free of the widget and of the DOM. Both methods are
  * optional and a throwing one yields `unknown`: a real instance can format but not judge
  * until its utils script lands, one caller reads its instance off a DOM element, and this
  * runs on every keystroke of the phone field.
@@ -32,17 +35,6 @@ export interface PhoneNumberSource {
   getNumber?(format?: number): string;
   /** Length-based verdict. `null` before the utils script loads. */
   isValidNumber?(): boolean | null;
-  /**
-   * Whether the number exists in its country's numbering plan. `null` before the utils
-   * script loads.
-   *
-   * Read only to *accept* — see {@link checkPhone}. Never to refuse: these rules change
-   * monthly and an SDK release pinned on a customer's page freezes them, so a gate built
-   * on them starts turning real shoppers away as it ages.
-   */
-  isValidNumberPrecise?(): boolean | null;
-  /** The country the field is on. Available without the utils script. */
-  getSelectedCountryData?(): { dialCode?: string; iso2?: string };
 }
 
 /** `valid` and `invalid` are verdicts. `unknown` means nothing could check it. */
@@ -51,7 +43,6 @@ export type PhoneVerdict = 'valid' | 'invalid' | 'unknown';
 /** Which check produced the verdict. Carried for logs, never for control flow. */
 export type PhoneReason =
   | 'empty'
-  | 'junk-pattern'
   | 'library-length'
   | 'digit-count'
   | 'utils-not-loaded'
@@ -93,23 +84,6 @@ const MAX_PHONE_DIGITS = 15;
  */
 const MAX_DIAL_PREFIX_DIGITS = 4;
 
-/** Below this, length already rejects the number, so the junk check does not run. */
-const MIN_JUNK_CHECK_DIGITS = 7;
-
-/**
- * Two, not three. Three costs nothing at ten digits (10 % 3 ≠ 0) but at **nine** — the
- * national length of a mobile in AU, FR, DE, IT, ES and NL — it takes the numbers this
- * rule can refuse from 16 to 1,006, all to catch `123123123`.
- */
-const MAX_JUNK_UNIT_LENGTH = 2;
-
-/**
- * A keypad read straight through, in both directions and from either end. Matched as a
- * substring: counting steps and wrapping 9 to 0 also catches numbers people hold, such as
- * the Australian mobile `+61 432 109 876`.
- */
-const KEYPAD_RUNS = ['1234567890', '0987654321', '0123456789', '9876543210'];
-
 /** Digits only, so `(415) 555-2671` and `+1 415-555-2671` compare the same. */
 function digitsOf(value: string): string {
   return value.replace(/\D/g, '');
@@ -122,53 +96,6 @@ function ask<T>(question: () => T): T | undefined {
   } catch {
     return undefined;
   }
-}
-
-function isKeypadRun(digits: string): boolean {
-  return KEYPAD_RUNS.some(run => run.includes(digits));
-}
-
-/** Three repetitions minimum, so a number that opens and closes alike is not caught. */
-function isRepeatedUnit(digits: string): boolean {
-  for (let unit = 1; unit <= MAX_JUNK_UNIT_LENGTH; unit++) {
-    const repeats = digits.length / unit;
-    if (!Number.isInteger(repeats) || repeats < 3) continue;
-    if (digits === digits.slice(0, unit).repeat(repeats)) return true;
-  }
-  return false;
-}
-
-/**
- * Whether a national number is one nobody holds.
- *
- * The check that closes the reported bug: `0000000000` and `1234567890` are the right
- * length for a US number, so every length-based check passes them.
- *
- * Shape only — it knows nothing about who was ever assigned what, so on its own it refuses
- * 6,391 numbers that really are assignable somewhere. {@link checkPhone} is what makes it
- * safe, by asking the library before acting on it.
- *
- * @example
- * ```ts
- * isJunkPhoneNumber('0000000000'); // → true
- * isJunkPhoneNumber('4155552671'); // → false
- * ```
- */
-export function isJunkPhoneNumber(nationalDigits: string): boolean {
-  return (
-    nationalDigits.length >= MIN_JUNK_CHECK_DIGITS &&
-    (isKeypadRun(nationalDigits) || isRepeatedUnit(nationalDigits))
-  );
-}
-
-/**
- * The number without its dial code. The junk check runs on this, or it would miss
- * `+1 0000000000`, whose full digit string starts with a `1`.
- */
-function nationalDigitsOf(value: string, dialCode?: string): string {
-  const digits = digitsOf(value);
-  if (!dialCode || !value.trim().startsWith('+')) return digits;
-  return digits.startsWith(dialCode) ? digits.slice(dialCode.length) : digits;
 }
 
 /**
@@ -242,9 +169,9 @@ function widgetFor(
   const shown = ask(() => source.getNumber?.());
   if (shown) return describesSameNumber(shown, value) ? source : undefined;
 
-  // Nothing to compare, which is two states: the utils script has not landed (the widget
-  // can still name the country, and its verdict is `null` anyway), or the field is empty
-  // and `isValidNumber()` answers `false` about a number that is not there.
+  // Nothing to compare, which is two states: the utils script has not landed (its verdict
+  // is `null` anyway), or the field is empty and `isValidNumber()` answers `false` about a
+  // number that is not there.
   return ask(() => source.isValidNumber?.()) == null ? source : undefined;
 }
 
@@ -257,9 +184,8 @@ function widgetFor(
  *
  * @example
  * ```ts
- * checkPhone('0000000000', phoneInputs.get('shipping'));
- * // → { verdict: 'invalid', reason: 'junk-pattern', value: '0000000000', isE164: false }
- *
+ * checkPhone('123', phoneInputs.get('shipping'));
+ * // → { verdict: 'invalid', reason: 'library-length', value: '123', isE164: false }
  *
  * checkPhone('(415) 555-2671', phoneInputs.get('shipping'));
  * // → { verdict: 'valid', reason: 'library-length', value: '+14155552671', isE164: true }
@@ -276,24 +202,6 @@ export function checkPhone(
   }
 
   const widget = widgetFor(value, source);
-  const dialCode = ask(() => widget?.getSelectedCountryData?.())?.dialCode;
-  const national = nationalDigitsOf(value, dialCode);
-
-  // A shape nobody types on purpose, unless the library knows the number is really
-  // assignable — `4242424242` is a Los Angeles number as well as a placeholder, and a
-  // shopper who holds one is not who this rule is for. `null` or no widget means the
-  // question could not be put, and then the shape decides.
-  const reallyAssignable = ask(() => widget?.isValidNumberPrecise?.()) === true;
-
-  if (!reallyAssignable && isJunkPhoneNumber(national)) {
-    return {
-      verdict: 'invalid',
-      value,
-      isE164: false,
-      reason: 'junk-pattern',
-    };
-  }
-
   const e164 = readE164(value, widget);
   const resolved = { value: e164 ?? value, isE164: e164 !== null };
 
@@ -307,8 +215,8 @@ export function checkPhone(
     };
   }
 
-  const withinRange =
-    national.length >= MIN_PHONE_DIGITS && national.length <= MAX_PHONE_DIGITS;
+  const digits = digitsOf(value).length;
+  const withinRange = digits >= MIN_PHONE_DIGITS && digits <= MAX_PHONE_DIGITS;
 
   return {
     ...resolved,

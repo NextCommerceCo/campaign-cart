@@ -139,18 +139,6 @@ describe('validateBillingAddress', () => {
     expect(result.isValid).toBe(true);
   });
 
-  it('rejects a junk billing phone', () => {
-    const result = validateBillingAddress(
-      createContext(),
-      { ...completeAddress, phone: '0000000000' },
-      configs
-    );
-
-    expect(result.errors.phone).toBe(
-      'Please enter a valid billing phone number'
-    );
-  });
-
   /**
    * DEFECT (left as found) — the required-field loop calls `value.trim()` on whatever the
    * address holds. A billing address restored from JSON with a numeric postal code (`90210`

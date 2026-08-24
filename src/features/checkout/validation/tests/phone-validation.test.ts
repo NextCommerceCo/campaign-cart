@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 
 import {
   checkPhone,
-  isJunkPhoneNumber,
   normalizePhone,
   type PhoneNumberSource,
 } from '../phone-validation';
@@ -18,7 +17,6 @@ function source(overrides: Partial<PhoneNumberSource> = {}): PhoneNumberSource {
   return {
     getNumber: () => '',
     isValidNumber: () => null,
-    getSelectedCountryData: () => ({ dialCode: '1', iso2: 'us' }),
     ...overrides,
   };
 }
@@ -34,49 +32,6 @@ function loadedSource(
   });
 }
 
-describe('isJunkPhoneNumber', () => {
-  it('rejects a number that is one digit repeated', () => {
-    expect(isJunkPhoneNumber('0000000000')).toBe(true);
-    expect(isJunkPhoneNumber('5555555555')).toBe(true);
-  });
-
-  it('rejects a run read straight off the keypad, either direction', () => {
-    expect(isJunkPhoneNumber('1234567890')).toBe(true);
-    expect(isJunkPhoneNumber('9876543210')).toBe(true);
-    expect(isJunkPhoneNumber('0123456789')).toBe(true);
-  });
-
-  it('rejects a one or two digit unit repeated at least three times', () => {
-    expect(isJunkPhoneNumber('1212121212')).toBe(true);
-    expect(isJunkPhoneNumber('424242424242')).toBe(true);
-  });
-
-  it('accepts a three-digit unit repeated, which real plans do assign', () => {
-    // 432 432 432 is a plausible Australian mobile. Catching `123123123` is not worth
-    // the 1,006 nine-digit numbers a three-digit unit rule refuses.
-    expect(isJunkPhoneNumber('432432432')).toBe(false);
-    expect(isJunkPhoneNumber('123123123')).toBe(false);
-  });
-
-  it('accepts real numbers that merely repeat some digits', () => {
-    expect(isJunkPhoneNumber('4155552671')).toBe(false);
-    expect(isJunkPhoneNumber('2025550147')).toBe(false);
-    expect(isJunkPhoneNumber('7700900123')).toBe(false);
-  });
-
-  it('accepts a real number whose digits happen to step downwards', () => {
-    // The Australian mobile 0432 109 876, national part of +61 432 109 876. A rule that
-    // counted steps and wrapped 9 to 0 called this junk and blocked the sale.
-    expect(isJunkPhoneNumber('432109876')).toBe(false);
-    expect(isJunkPhoneNumber('210987654')).toBe(false);
-  });
-
-  it('does not run on numbers too short to be phone numbers anyway', () => {
-    expect(isJunkPhoneNumber('123')).toBe(false);
-    expect(isJunkPhoneNumber('000')).toBe(false);
-  });
-});
-
 describe('checkPhone', () => {
   it('treats an empty value as nothing to judge', () => {
     const check = checkPhone('   ');
@@ -85,46 +40,16 @@ describe('checkPhone', () => {
     expect(check.value).toBe('');
   });
 
-  it('rejects junk before asking the library, which would accept it', () => {
-    // This is the reported bug: the library's length check passes any ten digits.
+  /**
+   * Whether anybody holds a well-formed number is the server's call. The SDK refuses only
+   * what the phone library refuses, so a placeholder of the right length goes through and
+   * is normalised on the way out.
+   */
+  it('sends on a well-formed number whoever holds it', () => {
     const check = checkPhone('0000000000', loadedSource(true, '+10000000000'));
 
-    expect(check.verdict).toBe('invalid');
-    expect(check.reason).toBe('junk-pattern');
-  });
-
-  it('keeps a junk-shaped number the library knows is really assignable', () => {
-    // 424 is Los Angeles. `4242424242` is a placeholder to a tester and a phone number to
-    // whoever holds it, and the library is the only thing that can tell them apart.
-    const assignable = source({
-      getNumber: () => '+14242424242',
-      isValidNumber: () => true,
-      isValidNumberPrecise: () => true,
-    });
-    const check = checkPhone('4242424242', assignable);
-
     expect(check.verdict).toBe('valid');
-    expect(check.reason).toBe('library-length');
-  });
-
-  it('still refuses a junk shape the library says is not assignable', () => {
-    const notAssignable = source({
-      getNumber: () => '+11234567890',
-      isValidNumber: () => true,
-      isValidNumberPrecise: () => false,
-    });
-
-    expect(checkPhone('1234567890', notAssignable).reason).toBe('junk-pattern');
-  });
-
-  it('rejects junk written internationally, past the dial code', () => {
-    const check = checkPhone(
-      '+1 0000000000',
-      loadedSource(true, '+10000000000')
-    );
-
-    expect(check.verdict).toBe('invalid');
-    expect(check.reason).toBe('junk-pattern');
+    expect(check.value).toBe('+10000000000');
   });
 
   it('takes the library verdict and its E.164 number when utils are loaded', () => {
@@ -240,7 +165,6 @@ describe('a widget whose field is empty', () => {
   const emptyField: PhoneNumberSource = {
     getNumber: () => '',
     isValidNumber: () => false,
-    getSelectedCountryData: () => ({ dialCode: '1', iso2: 'us' }),
   };
 
   it('does not take its verdict', () => {

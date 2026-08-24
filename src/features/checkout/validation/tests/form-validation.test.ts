@@ -135,23 +135,24 @@ describe('validateForm', () => {
     expect(form.phone).toBe('+15551234567');
   });
 
-  it('rejects a junk phone the widget considers the right length', async () => {
+  /**
+   * Whether a well-formed number is one anybody holds is the server's call, not the SDK's.
+   * `0000000000` is a valid length for a US number, so it goes through and is normalised
+   * on the way — a shape rule here would be a second opinion frozen at release time.
+   */
+  it('sends on a well-formed number the widget accepts, whoever holds it', async () => {
     const ctx = createContext({
       phoneSource: () => ({
         getNumber: () => '+10000000000',
         isValidNumber: () => true,
-        getSelectedCountryData: () => ({ dialCode: '1', iso2: 'us' }),
       }),
     });
+    const formData = { ...completeForm(), phone: '0000000000' };
 
-    const result = await validateForm(
-      ctx,
-      { ...completeForm(), phone: '0000000000' },
-      configs
-    );
+    const result = await validateForm(ctx, formData, configs);
 
-    expect(result.isValid).toBe(false);
-    expect(result.errors.phone).toBe('Please enter a valid phone number');
+    expect(result.errors.phone).toBeUndefined();
+    expect(formData.phone).toBe('+10000000000');
   });
 
   it('lets a plausible phone through when no widget can judge it', async () => {

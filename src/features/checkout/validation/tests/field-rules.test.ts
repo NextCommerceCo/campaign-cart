@@ -119,16 +119,15 @@ describe('applyRule', () => {
     expect(phoneSource).toHaveBeenCalledWith('shipping');
   });
 
-  it('rejects a junk number even though the widget calls it the right length', () => {
-    const ctx = createContext({
+  it('takes the widget’s verdict, and only the widget’s', () => {
+    const refused = createContext({
       phoneSource: () => ({
-        getNumber: () => '+10000000000',
-        isValidNumber: () => true,
-        getSelectedCountryData: () => ({ dialCode: '1', iso2: 'us' }),
+        getNumber: () => '+1415555267',
+        isValidNumber: () => false,
       }),
     });
 
-    expect(applyRule(ctx, { type: 'phone' }, '0000000000')).toBe(false);
+    expect(applyRule(refused, { type: 'phone' }, '415555267')).toBe(false);
   });
 
   /**
