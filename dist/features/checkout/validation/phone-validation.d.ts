@@ -1,6 +1,7 @@
 export interface PhoneNumberSource {
     getNumber?(format?: number): string;
     isValidNumber?(): boolean | null;
+    isValidNumberPrecise?(): boolean | null;
     getSelectedCountryData?(): {
         dialCode?: string;
         iso2?: string;
@@ -14,7 +15,6 @@ export interface PhoneCheck {
     isE164: boolean;
     reason: PhoneReason;
 }
-export declare const MIN_PHONE_DIGITS = 7;
 export declare function isJunkPhoneNumber(nationalDigits: string): boolean;
 export declare function checkPhone(raw: string | undefined | null, source?: PhoneNumberSource): PhoneCheck;
 export declare function normalizePhone(raw: string | undefined | null, source?: PhoneNumberSource): string;
