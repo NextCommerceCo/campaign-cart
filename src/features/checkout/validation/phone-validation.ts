@@ -11,10 +11,11 @@
  *
  * Checks run in this order, first answer wins:
  *
- * 1. {@link isJunkPhoneNumber} — needs nothing, can never go stale.
- * 2. `isValidNumber()` — the library's length check. Not `isValidNumberPrecise()`: precise
- *    rules change monthly, and an SDK release pinned on a customer's page freezes them, so
- *    a precise gate starts refusing real numbers as it ages.
+ * 1. {@link isJunkPhoneNumber}, unless the library knows the number is really assignable.
+ * 2. `isValidNumber()` — the library's length check. It is not the precise one, whose
+ *    rules change monthly: an SDK release pinned on a customer's page freezes them, so a
+ *    precise *gate* starts refusing real numbers as it ages. Precise is asked only to
+ *    overrule step 1, where a frozen answer can accept a number but never refuse one.
  * 3. Digit count, {@link MIN_PHONE_DIGITS}..15 — yields `unknown`, never `valid`.
  */
 
@@ -31,6 +32,15 @@ export interface PhoneNumberSource {
   getNumber?(format?: number): string;
   /** Length-based verdict. `null` before the utils script loads. */
   isValidNumber?(): boolean | null;
+  /**
+   * Whether the number exists in its country's numbering plan. `null` before the utils
+   * script loads.
+   *
+   * Read only to *accept* — see {@link checkPhone}. Never to refuse: these rules change
+   * monthly and an SDK release pinned on a customer's page freezes them, so a gate built
+   * on them starts turning real shoppers away as it ages.
+   */
+  isValidNumberPrecise?(): boolean | null;
   /** The country the field is on. Available without the utils script. */
   getSelectedCountryData?(): { dialCode?: string; iso2?: string };
 }
@@ -62,13 +72,26 @@ export interface PhoneCheck {
 }
 
 /**
- * Floor for the digit-count fallback, and the shortest tail that counts as naming a number.
- * Seven, because national numbers that short exist (Norway, Iceland, the Pacific).
+ * The shortest national number in service anywhere: Niue and Tokelau assign four digits.
+ *
+ * The floor was seven until a sweep of every country's example number showed it refusing
+ * every number in nineteen of them — Greenland `32 10 00`, the Faroes `201234`, Andorra
+ * `712 345`. Below four is a service code (`911`, `112`), never a number a shopper is
+ * reachable on.
  */
-export const MIN_PHONE_DIGITS = 7;
+const MIN_PHONE_DIGITS = 4;
 
 /** E.164's own ceiling. */
 const MAX_PHONE_DIGITS = 15;
+
+/**
+ * How much longer the widget's number may be than the one asked about and still be it.
+ *
+ * A dial code of up to three digits goes on the front, and a trunk prefix of one may come
+ * off. Anything further apart is a different number: `2671` is the tail of a million real
+ * numbers, and must not adopt the widget's whole `+14155552671`.
+ */
+const MAX_DIAL_PREFIX_DIGITS = 4;
 
 /** Below this, length already rejects the number, so the junk check does not run. */
 const MIN_JUNK_CHECK_DIGITS = 7;
@@ -119,11 +142,11 @@ function isRepeatedUnit(digits: string): boolean {
  * Whether a national number is one nobody holds.
  *
  * The check that closes the reported bug: `0000000000` and `1234567890` are the right
- * length for a US number, so every length-based check passes them. It is also the only
- * rule here that can refuse a number the library accepts, which is why it stays narrow —
- * junk on an order is an order operations cannot follow up, but a real number refused is a
- * sale nobody finds out about. Ten-digit North American numbers it can refuse: 65 out of
- * ~6.4 billion assignable. Widen a rule and count again.
+ * length for a US number, so every length-based check passes them.
+ *
+ * Shape only — it knows nothing about who was ever assigned what, so on its own it refuses
+ * 6,391 numbers that really are assignable somewhere. {@link checkPhone} is what makes it
+ * safe, by asking the library before acting on it.
  *
  * @example
  * ```ts
@@ -164,23 +187,42 @@ function readE164(value: string, widget?: PhoneNumberSource): string | null {
   return /^\+\d{8,15}$/.test(compact) ? compact : null;
 }
 
+/** How many digits at the end two strings share. */
+function commonSuffixLength(a: string, b: string): number {
+  let shared = 0;
+  while (
+    shared < a.length &&
+    shared < b.length &&
+    a[a.length - 1 - shared] === b[b.length - 1 - shared]
+  ) {
+    shared++;
+  }
+  return shared;
+}
+
 /**
  * Whether the widget's number is the one being asked about.
  *
- * Matched on digit tails, not equality: international form adds a country code
- * (`4155552671` → `14155552671`) and may drop a trunk prefix (`07700 900123` →
- * `+447700900123`), so both the digits as given and without a leading zero count. A tail
- * shorter than {@link MIN_PHONE_DIGITS} matches nothing — `2671` is the tail of a million
- * real numbers.
+ * Two forms of one number differ in exactly two ways: a dial code goes on the front, and a
+ * national trunk prefix comes off (`0` in most of the world, `8` in Russia and Kazakhstan).
+ * So they match when they are within {@link MAX_DIAL_PREFIX_DIGITS} of each other in length
+ * and share everything but at most one digit of the shorter one.
+ *
+ * Naming the trunk prefixes instead was tried and is what left every Russian order carrying
+ * a national number. An absolute floor was tried before that and discarded the widget for
+ * every Greenlandic and Andorran number, which are shorter than seven digits in full.
  */
 function describesSameNumber(fromWidget: string, value: string): boolean {
   const widget = digitsOf(fromWidget);
   const asked = digitsOf(value);
+  if (!widget || !asked) return false;
 
-  return [asked, asked.replace(/^0/, '')].some(
-    candidate =>
-      candidate.length >= MIN_PHONE_DIGITS &&
-      (widget.endsWith(candidate) || candidate.endsWith(widget))
+  const [longer, shorter] =
+    widget.length >= asked.length ? [widget, asked] : [asked, widget];
+
+  return (
+    longer.length - shorter.length <= MAX_DIAL_PREFIX_DIGITS &&
+    commonSuffixLength(longer, shorter) >= shorter.length - 1
   );
 }
 
@@ -218,6 +260,7 @@ function widgetFor(
  * checkPhone('0000000000', phoneInputs.get('shipping'));
  * // → { verdict: 'invalid', reason: 'junk-pattern', value: '0000000000', isE164: false }
  *
+ *
  * checkPhone('(415) 555-2671', phoneInputs.get('shipping'));
  * // → { verdict: 'valid', reason: 'library-length', value: '+14155552671', isE164: true }
  * ```
@@ -236,7 +279,13 @@ export function checkPhone(
   const dialCode = ask(() => widget?.getSelectedCountryData?.())?.dialCode;
   const national = nationalDigitsOf(value, dialCode);
 
-  if (isJunkPhoneNumber(national)) {
+  // A shape nobody types on purpose, unless the library knows the number is really
+  // assignable — `4242424242` is a Los Angeles number as well as a placeholder, and a
+  // shopper who holds one is not who this rule is for. `null` or no widget means the
+  // question could not be put, and then the shape decides.
+  const reallyAssignable = ask(() => widget?.isValidNumberPrecise?.()) === true;
+
+  if (!reallyAssignable && isJunkPhoneNumber(national)) {
     return {
       verdict: 'invalid',
       value,

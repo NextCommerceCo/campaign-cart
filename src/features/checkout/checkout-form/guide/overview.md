@@ -49,7 +49,9 @@ the two can never drift apart.
   the same phone widget, so a number cannot be accepted by one and refused by
   another. Refused: a number of the wrong length for its country, and a shape
   nobody holds — every digit the same (`0000000000`), a run (`1234567890`), or a
-  short pattern repeated (`1212121212`). Accepted: everything else, including a
+  short pattern repeated (`1212121212`). A number of one of those shapes that the
+  numbering plan really does assign is kept, so a shopper is never turned away
+  for holding an unlikely-looking number. Accepted: everything else, including a
   number nothing could check, because the widget's validation arrives over the
   network and a shopper is not blocked for a delay that is ours.
 - **The order carries E.164.** What the shopper types nationally

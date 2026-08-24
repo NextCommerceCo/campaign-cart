@@ -93,6 +93,30 @@ describe('checkPhone', () => {
     expect(check.reason).toBe('junk-pattern');
   });
 
+  it('keeps a junk-shaped number the library knows is really assignable', () => {
+    // 424 is Los Angeles. `4242424242` is a placeholder to a tester and a phone number to
+    // whoever holds it, and the library is the only thing that can tell them apart.
+    const assignable = source({
+      getNumber: () => '+14242424242',
+      isValidNumber: () => true,
+      isValidNumberPrecise: () => true,
+    });
+    const check = checkPhone('4242424242', assignable);
+
+    expect(check.verdict).toBe('valid');
+    expect(check.reason).toBe('library-length');
+  });
+
+  it('still refuses a junk shape the library says is not assignable', () => {
+    const notAssignable = source({
+      getNumber: () => '+11234567890',
+      isValidNumber: () => true,
+      isValidNumberPrecise: () => false,
+    });
+
+    expect(checkPhone('1234567890', notAssignable).reason).toBe('junk-pattern');
+  });
+
   it('rejects junk written internationally, past the dial code', () => {
     const check = checkPhone(
       '+1 0000000000',
@@ -145,10 +169,18 @@ describe('checkPhone', () => {
     expect(check.verdict).toBe('unknown');
   });
 
-  it('rejects a digit count outside E.164 when nothing else can judge', () => {
-    expect(checkPhone('12345').verdict).toBe('invalid');
-    expect(checkPhone('12345').reason).toBe('digit-count');
+  it('rejects only what no numbering plan could hold when nothing can judge', () => {
+    // Three digits is a service code, seventeen is past E.164's ceiling.
+    expect(checkPhone('123').verdict).toBe('invalid');
+    expect(checkPhone('123').reason).toBe('digit-count');
     expect(checkPhone('12345678901234567').verdict).toBe('invalid');
+  });
+
+  it('does not refuse a short number some country really assigns', () => {
+    // Ascension assigns five digits, Niue and Tokelau four. A seven-digit floor here
+    // refused every number in nineteen countries.
+    expect(checkPhone('62889').verdict).toBe('unknown');
+    expect(checkPhone('7012').verdict).toBe('unknown');
   });
 });
 
@@ -228,24 +260,33 @@ describe('a widget whose field is empty', () => {
   });
 });
 
-describe('a shared tail that is too short to be a number', () => {
+describe('a value too far from the widget’s number to be it', () => {
   /**
    * `2671` is the tail of a million real numbers. Treating it as "the same number" as the
    * one in the widget's field would turn four stray digits into a full, valid phone number
-   * on the order.
+   * on the order. What separates the two is the gap between their lengths: a dial code and
+   * a dropped trunk zero are at most four digits, and this is seven.
    */
   it('does not adopt the widget’s number for a four-digit value', () => {
     const check = checkPhone('2671', loadedSource(true, '+14155552671'));
 
     expect(check.value).toBe('2671');
     expect(check.isE164).toBe(false);
-    expect(check.verdict).toBe('invalid');
-    expect(check.reason).toBe('digit-count');
+    expect(check.verdict).toBe('unknown');
+    expect(check.reason).toBe('no-instance');
   });
 
   it('still matches a seven-digit national number', () => {
     const check = checkPhone('5552671', loadedSource(true, '+14155552671'));
 
     expect(check.verdict).toBe('valid');
+  });
+
+  it('matches a national number shorter than a dial code plus four', () => {
+    // Greenland: +299 321000, six national digits. The widget must still be trusted.
+    const check = checkPhone('32 10 00', loadedSource(true, '+299321000'));
+
+    expect(check.verdict).toBe('valid');
+    expect(check.value).toBe('+299321000');
   });
 });

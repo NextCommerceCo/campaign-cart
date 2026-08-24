@@ -8,9 +8,17 @@ import intlTelInput from 'intl-tel-input';
 
 import {
   checkPhone,
-  MIN_PHONE_DIGITS,
   type PhoneNumberSource,
 } from '../validation/phone-validation';
+
+/**
+ * Digits a phone must have before a lead is worth capturing, when nothing could judge it.
+ *
+ * A prospect's own threshold, not the SDK's floor for a usable number: capturing a lead on
+ * three digits is noise, while an order from Greenland on six is a sale. Override per page
+ * with `ProspectCartConfig.minPhoneDigits` or `data-min-phone-digits`.
+ */
+const MIN_PROSPECT_PHONE_DIGITS = 7;
 
 import type { PhoneValidationContext } from './prospect-cart.types';
 
@@ -79,10 +87,8 @@ export function isValidPhone(
   }
 
   // Nothing could judge it. A prospect is captured on partial intent, so the bar here is
-  // a plausible digit count rather than a verdict. Default 7 covers most national and
-  // international formats; override via ProspectCartConfig.minPhoneDigits or the
-  // data-min-phone-digits attribute for a country with shorter or longer numbers.
-  const minDigits = context.minPhoneDigits ?? MIN_PHONE_DIGITS;
+  // a plausible digit count rather than a verdict.
+  const minDigits = context.minPhoneDigits ?? MIN_PROSPECT_PHONE_DIGITS;
   const digits = phone.replace(/\D/g, '');
   return digits.length >= minDigits;
 }

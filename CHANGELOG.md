@@ -17,7 +17,7 @@ A number nothing can check is still accepted: the library that checks it loads o
 
 ### Before you upgrade
 
-Placeholder phone numbers in test data and QA scripts are now refused — `0000000000`, `1234567890`, `5555555555`, `4242424242`, `1212121212`. Use a real-looking one instead; this SDK's own browser tests use `4155552671`.
+Placeholder phone numbers in test data and QA scripts are now refused — `0000000000`, `1234567890`, `5555555555`, `1212121212` and the like. A number that looks like a placeholder but is one the numbering plan really assigns is kept, so `4242424242` (424 is Los Angeles) still goes through. Where a test needs a number that passes, this SDK's own browser tests use `4155552671`.
 
 ---
 
