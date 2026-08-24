@@ -20,18 +20,11 @@
  */
 
 import type { CheckoutValidator } from '../validation/checkout-validator';
-import {
-  ERROR_OWNER_ATTR,
-  fieldKey,
-  holdsOneFieldAtMost,
-} from '../utils/error-display-utils';
+import { fieldMessages } from '../utils/error-display-utils';
 import { useCheckoutStore } from '@/state/checkout';
 
-/** Wrappers the SDK styles around a field. Either may carry the error label. */
+/** Wrappers the SDK styles around a field. Either may carry the error icon. */
 const FIELD_WRAPPER = '.form-group, .form-input';
-const FORM_GROUP = '.form-group';
-/** The element the validator inserts to show a message. */
-const ERROR_LABEL = '.next-error-label';
 
 /** What this module needs from the checkout form. */
 export interface FieldValidationContext {
@@ -44,43 +37,12 @@ export interface FieldValidationContext {
 /**
  * Removes this field's error labels, and only this field's.
  *
- * Two passes, because a message may or may not name its owner. A label the SDK wrote
- * carries `data-next-error-for`, so it can be found wherever the markup put it — including
- * a container shared with other fields, which is where messages land on a page that uses no
- * wrapper classes at all. Anything unowned is looked for in the three places a label can
- * sit relative to *this* field, which is what the original three lookups were for: missing
- * one leaves a stale error under a field the shopper has already corrected.
- *
- * The owner check is what stops one field's blur erasing another field's message — a
- * shopper left with a red outline, no text, and nothing they can do to clear it.
+ * `fieldMessages` decides whose a message is — one rule shared with the validator that
+ * writes them, so blurring one field cannot erase another's and leave a shopper with a red
+ * outline, no text, and nothing they can do to clear it.
  */
 function clearErrorLabels(field: HTMLElement): void {
-  const key = fieldKey(field);
-  if (key) {
-    // The form when there is one, the document when there is not: a billing field cloned
-    // into a `data-next-component` block can sit outside the `<form>`, and a message that
-    // cannot be found is a message that stays on screen after the shopper fixes the field.
-    const scope: ParentNode = field.closest('form') ?? field.ownerDocument;
-    scope
-      .querySelectorAll(`${ERROR_LABEL}[${ERROR_OWNER_ATTR}="${key}"]`)
-      .forEach(label => label.remove());
-  }
-
-  const unowned = `${ERROR_LABEL}:not([${ERROR_OWNER_ATTR}])`;
-  const wrapper = field.closest(FIELD_WRAPPER);
-  const containers = [
-    wrapper,
-    wrapper?.closest(FORM_GROUP),
-    field.closest(FORM_GROUP),
-  ];
-
-  for (const container of containers) {
-    // Only a container holding this field alone: several fields can share one
-    // `.form-group`, and there the first unowned label in it belongs to whichever
-    // field happens to come first in the markup.
-    if (!container || !holdsOneFieldAtMost(container)) continue;
-    container.querySelector(unowned)?.remove();
-  }
+  fieldMessages(field).forEach(label => label.remove());
 }
 
 /**
@@ -88,9 +50,10 @@ function clearErrorLabels(field: HTMLElement): void {
  *
  * Uses {@link clearErrorLabels} rather than only clearing the immediate wrapper. The
  * original code cleared the label in **one** place here but in **three** on `input`, so a
- * field whose error message sat in a `.form-group` ancestor kept showing it after the value
- * became valid — the exact "stale error under a corrected field" that `input` was written
- * carefully to avoid. That asymmetry predates the extraction; the two paths now agree.
+ * field whose error message sat in a `.form-group` ancestor kept showing it after the
+ * value became valid — the exact "stale error under a corrected field" that `input` was
+ * written carefully to avoid. That asymmetry predates the extraction; every path now asks
+ * the same question.
  */
 function markValid(field: HTMLElement): void {
   field.classList.remove('has-error', 'next-error-field');
@@ -129,12 +92,10 @@ function handleBlur(
   const wrapper = field.closest(FIELD_WRAPPER);
 
   if (isEmptyValue(value)) {
-    const formGroup = field.closest(FORM_GROUP);
-    const errorLabel =
-      wrapper?.querySelector(ERROR_LABEL) ??
-      formGroup?.querySelector(ERROR_LABEL);
-
-    if (errorLabel) {
+    // Asked of `fieldMessages` rather than of the wrapper: on a page with no wrapper
+    // classes there is no container to look in, and the field would lose its outline
+    // while its message stayed on screen.
+    if (fieldMessages(field).length > 0) {
       field.classList.add('has-error', 'next-error-field');
       field.classList.remove('no-error');
       wrapper?.classList.add('addErrorIcon');

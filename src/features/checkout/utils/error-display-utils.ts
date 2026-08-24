@@ -15,10 +15,14 @@ export interface ErrorDisplayOptions {
   iconSuccessClass?: string;
 }
 
+/** Named separately: the two the message lookup needs without an instance to ask. */
+const DEFAULT_WRAPPER_CLASS = 'form-group';
+const DEFAULT_LABEL_CLASS = 'next-error-label';
+
 const DEFAULT_OPTIONS: ErrorDisplayOptions = {
-  wrapperClass: 'form-group',
+  wrapperClass: DEFAULT_WRAPPER_CLASS,
   errorClass: 'next-error-field',
-  errorLabelClass: 'next-error-label',
+  errorLabelClass: DEFAULT_LABEL_CLASS,
   successClass: 'no-error',
   iconErrorClass: 'addErrorIcon',
   iconSuccessClass: 'addTick',
@@ -34,7 +38,7 @@ const DEFAULT_OPTIONS: ErrorDisplayOptions = {
  * message while leaving its red outline: an error the shopper can no longer read and
  * cannot clear. Stamping the owner makes clearing exact.
  */
-export const ERROR_OWNER_ATTR = 'data-next-error-for';
+const ERROR_OWNER_ATTR = 'data-next-error-for';
 
 /** Any element carrying a checkout field name, in either convention. */
 const CHECKOUT_FIELD_SELECTOR =
@@ -49,17 +53,77 @@ const CHECKOUT_FIELD_SELECTOR =
  * inputs is not. Counting the fields answers it directly, and covers the case that started
  * this — a page with no wrapper classes, where the container resolves to the whole form.
  */
-export function holdsOneFieldAtMost(container: Element): boolean {
+function holdsOneFieldAtMost(container: Element): boolean {
   return container.querySelectorAll(CHECKOUT_FIELD_SELECTOR).length <= 1;
 }
 
 /** The name a field is known by, across both attribute conventions. */
-export function fieldKey(field: HTMLElement): string | null {
+function fieldKey(field: HTMLElement): string | null {
   return (
     field.getAttribute('data-next-checkout-field') ??
     field.getAttribute('os-checkout-field') ??
     field.getAttribute('name')
   );
+}
+
+/**
+ * The containers an unstamped message could belong to this field from.
+ *
+ * Three, because where a label sits depends on the author's markup: the wrapper the SDK
+ * styles, a `.form-group` ancestor, or a `.form-input` one. Missing one leaves a stale
+ * error under a field the shopper has already corrected.
+ */
+function messageContainers(field: HTMLElement): Element[] {
+  const found = [
+    FieldFinder.findFieldWrapper(field),
+    field.closest(`.${DEFAULT_WRAPPER_CLASS}`),
+    field.closest('.form-input'),
+  ].filter((container): container is Element => container !== null);
+
+  return [...new Set(found)];
+}
+
+/**
+ * This field's error messages, wherever the markup put them.
+ *
+ * The one place that answers "whose message is this", for every caller that shows, clears
+ * or counts one. Two passes, because a message may or may not name its owner:
+ *
+ * - **stamped** with {@link ERROR_OWNER_ATTR} — the SDK wrote it, so it is found anywhere
+ *   in the form, including a container shared with other fields.
+ * - **unstamped** — page markup, or a field with no name to stamp. Claimed only from a
+ *   container holding this field alone, so clearing one field cannot take another's
+ *   message with it.
+ *
+ * @example
+ * ```ts
+ * fieldMessages(phoneInput).forEach(message => message.remove());
+ * ```
+ */
+export function fieldMessages(
+  field: HTMLElement,
+  labelClass: string = DEFAULT_LABEL_CLASS
+): Element[] {
+  const key = fieldKey(field);
+  // The form when there is one, the document when there is not: a billing field cloned
+  // into a `data-next-component` block can sit outside the `<form>`, and a message that
+  // cannot be found is a message that stays on screen after the shopper fixes the field.
+  const scope: ParentNode = field.closest('form') ?? field.ownerDocument;
+
+  const stamped = key
+    ? scope.querySelectorAll(
+        `.${labelClass}[${ERROR_OWNER_ATTR}="${CSS.escape(key)}"]`
+      )
+    : [];
+
+  const unstamped = messageContainers(field)
+    .filter(holdsOneFieldAtMost)
+    .map(container =>
+      container.querySelector(`.${labelClass}:not([${ERROR_OWNER_ATTR}])`)
+    )
+    .filter((label): label is Element => label !== null);
+
+  return [...new Set([...stamped, ...unstamped])];
 }
 
 export class ErrorDisplayManager {
@@ -107,45 +171,19 @@ export class ErrorDisplayManager {
 
   /**
    * Clear error from a field
+   *
+   * The classes go whether or not a wrapper was found, and the messages are whichever
+   * {@link fieldMessages} says are this field's — never "the first label nearby".
    */
   clearFieldError(field: HTMLElement): void {
-    const wrapper = FieldFinder.findFieldWrapper(field);
-
-    // Remove error classes from field
     field.classList.remove('has-error', this.options.errorClass!);
+    FieldFinder.findFieldWrapper(field)?.classList.remove(
+      this.options.iconErrorClass!
+    );
 
-    if (!wrapper) return;
-
-    // Remove error classes from wrapper
-    wrapper.classList.remove(this.options.iconErrorClass!);
-
-    // This field's own messages, wherever they were put — including a form-level
-    // container, which is where they land on a page with no wrapper classes.
-    const key = fieldKey(field);
-    if (key) {
-      const scope: ParentNode = field.closest('form') ?? field.ownerDocument;
-      const owned = scope.querySelectorAll(
-        `.${this.options.errorLabelClass}[${ERROR_OWNER_ATTR}="${key}"]`
-      );
-      owned.forEach(label => label.remove());
-    }
-
-    // Messages with no owner stamped on them: a field with no name to stamp, or a page's
-    // own markup. Removed only from a container that holds this field alone, so clearing
-    // one field cannot take another's message with it.
-    this.clearUnownedLabelIn(wrapper);
-    this.clearUnownedLabelIn(field.closest(`.${this.options.wrapperClass}`));
-  }
-
-  /** Removes one message that names no field, from a container narrow enough to own it. */
-  private clearUnownedLabelIn(container: Element | null): void {
-    if (!container || !holdsOneFieldAtMost(container)) return;
-
-    container
-      .querySelector(
-        `.${this.options.errorLabelClass}:not([${ERROR_OWNER_ATTR}])`
-      )
-      ?.remove();
+    fieldMessages(field, this.options.errorLabelClass).forEach(message =>
+      message.remove()
+    );
   }
 
   /**

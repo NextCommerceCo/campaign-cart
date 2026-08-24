@@ -257,18 +257,12 @@ function initializePhoneInput(
 }
 
 /**
- * Initialises both phone fields, where they exist and the library is available.
- *
- * Called on boot and again after the billing form is revealed, since the billing phone
- * field may not have been in the DOM the first time.
- */
-/**
- * How long a submit waits for the phone library's utils script before going ahead anyway.
+ * How long a caller waits for the phone library's utils script before going ahead anyway.
  *
  * Two seconds is long enough for the chunk on any connection that can also reach the
  * orders API, and short enough that a shopper whose network dropped it entirely is not
- * left staring at a spinner. The wait happens under the loading overlay, so in the normal
- * case — the chunk arrived seconds ago, during typing — it costs nothing and shows nothing.
+ * left staring at a spinner. In the normal case — the chunk arrived seconds ago, during
+ * typing — the promise is already settled, so the wait costs nothing and shows nothing.
  */
 const UTILS_WAIT_MS = 2000;
 
@@ -318,6 +312,12 @@ export async function awaitPhoneUtils(
   }
 }
 
+/**
+ * Initialises both phone fields, where they exist and the library is available.
+ *
+ * Called on boot and again after the billing form is revealed, since the billing phone
+ * field may not have been in the DOM the first time.
+ */
 export function initializePhoneInputs(ctx: PhoneInputContext): void {
   if (!ctx.isIntlTelInputAvailable) return;
 

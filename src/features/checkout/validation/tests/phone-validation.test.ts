@@ -42,9 +42,10 @@ describe('isJunkPhoneNumber', () => {
     expect(isJunkPhoneNumber('5555555555')).toBe(true);
   });
 
-  it('rejects a consecutive run, including the 9 to 0 wrap', () => {
+  it('rejects a run read straight off the keypad, either direction', () => {
     expect(isJunkPhoneNumber('1234567890')).toBe(true);
     expect(isJunkPhoneNumber('9876543210')).toBe(true);
+    expect(isJunkPhoneNumber('0123456789')).toBe(true);
   });
 
   it('rejects a short unit repeated at least three times', () => {
@@ -56,6 +57,13 @@ describe('isJunkPhoneNumber', () => {
     expect(isJunkPhoneNumber('4155552671')).toBe(false);
     expect(isJunkPhoneNumber('2025550147')).toBe(false);
     expect(isJunkPhoneNumber('7700900123')).toBe(false);
+  });
+
+  it('accepts a real number whose digits happen to step downwards', () => {
+    // The Australian mobile 0432 109 876, national part of +61 432 109 876. A rule that
+    // counted steps and wrapped 9 to 0 called this junk and blocked the sale.
+    expect(isJunkPhoneNumber('432109876')).toBe(false);
+    expect(isJunkPhoneNumber('210987654')).toBe(false);
   });
 
   it('does not run on numbers too short to be phone numbers anyway', () => {
@@ -100,7 +108,9 @@ describe('checkPhone', () => {
   });
 
   it('blocks a number the library rejects on length', () => {
-    const check = checkPhone('123', loadedSource(false, ''));
+    // Nine digits where the country wants ten. The widget still formats it, which is why
+    // it is the widget's verdict that decides and not the digit count.
+    const check = checkPhone('415555267', loadedSource(false, '+1415555267'));
 
     expect(check.verdict).toBe('invalid');
     expect(check.reason).toBe('library-length');
@@ -193,6 +203,37 @@ describe('a widget displaying a different number', () => {
 
     expect(checkPhone('07700 900123', uk).value).toBe('+447700900123');
     expect(checkPhone('07700 900123', uk).verdict).toBe('valid');
+  });
+});
+
+describe('a widget whose field is empty', () => {
+  /**
+   * `getNumber()` answers `''` for an empty field just as it does while the utils script
+   * loads, but the verdict that comes with it is `false`, not `null` — a judgement on a
+   * number that is not there. A phone restored from an earlier visit is judged before the
+   * field is populated, and taking that `false` would refuse a number that is fine.
+   */
+  const emptyField: PhoneNumberSource = {
+    getNumber: () => '',
+    isValidNumber: () => false,
+    isValidNumberPrecise: () => false,
+    getSelectedCountryData: () => ({ dialCode: '1', iso2: 'us' }),
+  };
+
+  it('does not take its verdict', () => {
+    const check = checkPhone('+14155552671', emptyField);
+
+    expect(check.verdict).toBe('unknown');
+    expect(check.reason).toBe('no-instance');
+    expect(check.value).toBe('+14155552671');
+    expect(check.isE164).toBe(true);
+  });
+
+  it('still says unknown while the utils script is the reason there is no number', () => {
+    const check = checkPhone('4155552671', source());
+
+    expect(check.verdict).toBe('unknown');
+    expect(check.reason).toBe('utils-not-loaded');
   });
 });
 
