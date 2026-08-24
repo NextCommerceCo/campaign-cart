@@ -198,7 +198,6 @@ describe('services installed after construction', () => {
     const phoneSource = vi.fn().mockReturnValue({
       getNumber: () => '+15551234567',
       isValidNumber: () => false,
-      isValidNumberPrecise: () => false,
       getSelectedCountryData: () => ({ dialCode: '1', iso2: 'us' }),
     });
     validator.setPhoneSource(phoneSource);
@@ -230,7 +229,6 @@ describe('services installed after construction', () => {
     validator.setPhoneSource(() => ({
       getNumber: () => '+15551234567',
       isValidNumber: () => false,
-      isValidNumberPrecise: () => false,
       getSelectedCountryData: () => ({ dialCode: '1', iso2: 'us' }),
     }));
 

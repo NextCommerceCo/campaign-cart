@@ -102,6 +102,37 @@ test('a number written internationally survives choosing another country', async
 });
 
 /**
+ * A shopper who gave a landline.
+ *
+ * `intl-tel-input` defaults `validationNumberTypes` to `["MOBILE"]`, which makes
+ * `isValidNumber()` answer "is this a valid *mobile* number". In a country where
+ * a landline is not the length of a mobile, that refuses a real number with
+ * nothing the shopper can do about it. Berlin `030 1234567` is nine national
+ * digits; a German mobile is ten or eleven.
+ *
+ * Verified against the live widget: with the default the library answers
+ * `false` for this number and `true` with the filter off.
+ */
+test('a landline is accepted where a mobile would be a different length', async ({
+  page,
+}) => {
+  const posts = await recordOrders(page);
+
+  await bootSdk(page, CHECKOUT);
+  await addOnePackage(page);
+  await submitCard(page, '+49301234567');
+
+  await page.waitForURL(url => url.searchParams.has('ref_id'));
+
+  await expect(page.locator(`${PHONE}.next-error-field`)).toHaveCount(0);
+  expect(posts).toHaveLength(1);
+  const body = posts[0]?.postDataJSON() as {
+    shipping_address: { phone_number: string };
+  };
+  expect(body.shipping_address.phone_number).toBe('+49301234567');
+});
+
+/**
  * The negative control, and the reason the two tests above mean anything: a
  * checkout that refuses every phone would pass them both.
  */

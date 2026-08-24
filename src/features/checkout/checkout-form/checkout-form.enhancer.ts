@@ -22,7 +22,7 @@ import {
   type CreditCardData,
 } from '../services/credit-card-service';
 import { CheckoutValidator } from '../validation/checkout-validator';
-import { checkPhone, normalizePhone } from '../validation/phone-validation';
+import { normalizePhone } from '../validation/phone-validation';
 import { UIService } from '../services/ui-service';
 import { useAttributionStore } from '@/state/attribution';
 import { useParameterStore } from '@/state/parameter';
@@ -509,34 +509,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       if (normalized !== billing.phone) {
         checkoutStore.setBillingAddress({ ...billing, phone: normalized });
       }
-    }
-
-    this.reportStricterPhoneVerdict();
-  }
-
-  /**
-   * Records the numbers a stricter phone check would have refused.
-   *
-   * The form accepts a number the phone library considers the right length for its
-   * country. The library can also answer a harder question — is this a number that
-   * actually exists — but its author marks that check dangerous for exactly our situation:
-   * the rules change monthly and an SDK release pinned on a page freezes them, so over
-   * time it starts refusing real numbers with nobody the wiser.
-   *
-   * So it is asked and not acted on. This line is the evidence for deciding later, from
-   * real orders rather than from an argument, how many shoppers a stricter gate would
-   * turn away.
-   */
-  private reportStricterPhoneVerdict(): void {
-    const phone = useCheckoutStore.getState().formData.phone;
-    if (!phone) return;
-
-    const check = checkPhone(phone, this.phoneInputs.get('shipping'));
-    if (check.verdict === 'valid' && check.precise === false) {
-      this.logger.info(
-        'Phone accepted on length but refused by precise validation; not blocked',
-        { country: useCheckoutStore.getState().formData.country ?? 'unknown' }
-      );
     }
   }
 

@@ -125,7 +125,6 @@ describe('validateForm', () => {
       phoneSource: () => ({
         getNumber: () => '+15551234567',
         isValidNumber: () => true,
-        isValidNumberPrecise: () => true,
         getSelectedCountryData: () => ({ dialCode: '1', iso2: 'us' }),
       }),
     });
@@ -141,7 +140,6 @@ describe('validateForm', () => {
       phoneSource: () => ({
         getNumber: () => '+10000000000',
         isValidNumber: () => true,
-        isValidNumberPrecise: () => true,
         getSelectedCountryData: () => ({ dialCode: '1', iso2: 'us' }),
       }),
     });

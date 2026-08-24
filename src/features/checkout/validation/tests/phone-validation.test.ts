@@ -18,7 +18,6 @@ function source(overrides: Partial<PhoneNumberSource> = {}): PhoneNumberSource {
   return {
     getNumber: () => '',
     isValidNumber: () => null,
-    isValidNumberPrecise: () => null,
     getSelectedCountryData: () => ({ dialCode: '1', iso2: 'us' }),
     ...overrides,
   };
@@ -32,7 +31,6 @@ function loadedSource(
   return source({
     getNumber: () => e164,
     isValidNumber: () => verdict,
-    isValidNumberPrecise: () => verdict,
   });
 }
 
@@ -48,9 +46,16 @@ describe('isJunkPhoneNumber', () => {
     expect(isJunkPhoneNumber('0123456789')).toBe(true);
   });
 
-  it('rejects a short unit repeated at least three times', () => {
+  it('rejects a one or two digit unit repeated at least three times', () => {
     expect(isJunkPhoneNumber('1212121212')).toBe(true);
-    expect(isJunkPhoneNumber('123123123123')).toBe(true);
+    expect(isJunkPhoneNumber('424242424242')).toBe(true);
+  });
+
+  it('accepts a three-digit unit repeated, which real plans do assign', () => {
+    // 432 432 432 is a plausible Australian mobile. Catching `123123123` is not worth
+    // the 1,006 nine-digit numbers a three-digit unit rule refuses.
+    expect(isJunkPhoneNumber('432432432')).toBe(false);
+    expect(isJunkPhoneNumber('123123123')).toBe(false);
   });
 
   it('accepts real numbers that merely repeat some digits', () => {
@@ -114,18 +119,6 @@ describe('checkPhone', () => {
 
     expect(check.verdict).toBe('invalid');
     expect(check.reason).toBe('library-length');
-  });
-
-  it('carries the precise verdict without acting on it', () => {
-    const precise = source({
-      getNumber: () => '+11112223333',
-      isValidNumber: () => true,
-      isValidNumberPrecise: () => false,
-    });
-    const check = checkPhone('1112223333', precise);
-
-    expect(check.precise).toBe(false);
-    expect(check.verdict).toBe('valid');
   });
 
   it('says unknown rather than invalid while the utils script is loading', () => {
@@ -193,7 +186,6 @@ describe('a widget displaying a different number', () => {
 
     expect(check.verdict).toBe('unknown');
     expect(check.reason).toBe('no-instance');
-    expect(check.precise).toBeNull();
   });
 
   it('still recognises the same number written nationally', () => {
@@ -216,7 +208,6 @@ describe('a widget whose field is empty', () => {
   const emptyField: PhoneNumberSource = {
     getNumber: () => '',
     isValidNumber: () => false,
-    isValidNumberPrecise: () => false,
     getSelectedCountryData: () => ({ dialCode: '1', iso2: 'us' }),
   };
 

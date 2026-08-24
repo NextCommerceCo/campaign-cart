@@ -109,7 +109,6 @@ describe('validateBillingAddress', () => {
     const phoneSource = vi.fn().mockReturnValue({
       getNumber: () => '+22212345678',
       isValidNumber: () => true,
-      isValidNumberPrecise: () => true,
       getSelectedCountryData: () => ({ dialCode: '222', iso2: 'mr' }),
     });
     const ctx = createContext({ phoneSource });
