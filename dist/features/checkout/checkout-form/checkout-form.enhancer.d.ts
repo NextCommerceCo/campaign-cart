@@ -102,7 +102,6 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private createTestOrder;
     private handleOrderRedirect;
     private getNextPageUrlFromMeta;
-    private validateExpressCheckoutFields;
     private multiStepDetectionContext;
     private detectMultiStepCheckout;
     private getBillingValidationInput;
