@@ -21,17 +21,10 @@
 import type { Logger } from '@/core/logger';
 import { useCheckoutStore } from '@/state/checkout';
 
-import type { Iti } from 'intl-tel-input';
-
-import { normalizePhone } from '../validation/phone-validation';
-
 import {
   updateStateOptions,
   type ShippingStateFieldsContext,
 } from './state-fields';
-
-/** How long `intl-tel-input` is given to digest a value written straight into its input. */
-const PHONE_REFORMAT_DELAY_MS = 50;
 
 /**
  * What one checkout field is worth in the store: text for most, a boolean for a checkbox
@@ -63,8 +56,6 @@ export interface FormPopulationContext {
   /** The country resolved at boot. A stored country equal to it means states are already loaded. */
   detectedCountryCode: string;
   logger: Logger;
-  /** Keyed `shipping` / `billing`; used to re-read the phone in international format. */
-  phoneInputs: Map<string, Iti>;
   /** Passed through to refill the province dropdown when the stored country differs. */
   shippingStateFields: ShippingStateFieldsContext;
   updateFormData: (data: Record<string, unknown>) => void;
@@ -93,9 +84,9 @@ export interface FormClearingContext {
  * Order matters and is the reason this is not one loop. The country goes first, because a
  * province `<select>` can only be given a value once that country's options exist; the
  * generic loop then skips the province for exactly that reason; and the province is set
- * last, after the options have loaded. A phone written straight into the input is national
- * text until `intl-tel-input` reformats it, which is why the store is corrected on a short
- * delay rather than immediately.
+ * last, after the options have loaded. A phone written straight into the input stays
+ * national text until `intl-tel-input` reformats it; the store is corrected before submit
+ * by `phone-normalization.ts`, not on a timer from here.
  *
  * A checkbox or radio is put back through `checked`, never `value` — the store holds a
  * boolean for it, and writing that into `value` would leave the tick exactly as the markup
@@ -106,7 +97,7 @@ export interface FormClearingContext {
  * @example
  * ```ts
  * await populateFormData({
- *   fields, detectedCountryCode, logger, phoneInputs,
+ *   fields, detectedCountryCode, logger,
  *   shippingStateFields, updateFormData, updateLabelsForPopulatedData,
  * });
  * ```
@@ -178,25 +169,6 @@ export async function populateFormData(
 
     field.value = String(stored);
   });
-
-  // After populating phone field, ensure it's stored in international format
-  // This handles the case where phone was persisted in national format before intlTelInput processed it
-  const shippingPhoneInstance = ctx.phoneInputs.get('shipping');
-  if (shippingPhoneInstance && formData.phone) {
-    // Give intlTelInput a moment to process the value we just set
-    setTimeout(() => {
-      const internationalNumber = normalizePhone(
-        String(formData.phone),
-        shippingPhoneInstance
-      );
-      if (internationalNumber && internationalNumber !== formData.phone) {
-        ctx.logger.debug(
-          `Converting phone to international format: ${formData.phone} -> ${internationalNumber}`
-        );
-        ctx.updateFormData({ phone: internationalNumber });
-      }
-    }, PHONE_REFORMAT_DELAY_MS);
-  }
 
   // Set province value after states are loaded
   const storedProvince = formData.province;

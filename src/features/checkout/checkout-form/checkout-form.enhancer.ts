@@ -2297,7 +2297,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       fields: this.fields,
       detectedCountryCode: this.detectedCountryCode,
       logger: this.logger,
-      phoneInputs: this.phoneInputs,
       shippingStateFields: this.shippingStateFieldsContext(),
       updateFormData: data => this.updateFormData(data),
       updateLabelsForPopulatedData: () =>

@@ -190,7 +190,6 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 | `Updated user data storage:` | `contact-persistence.ts › persistContactField` | yes |
 | `Already shown warning for order` | `duplicate-purchase-warning.ts › handlePurchaseEvent` | yes |
 | `Found submit button:` | `field-scanning.ts › scanAllFields` | yes |
-| `Converting phone to international format: {phone} -> {internationalNumber}` | `form-population.ts › populateFormData` | — |
 | `Restored province: {storedProvince}` | `form-population.ts › populateFormData` | — |
 | `Location fields hidden` | `location-field-visibility.ts › hideLocationFields` | — |
 | `Location fields shown` | `location-field-visibility.ts › showLocationFields` | — |

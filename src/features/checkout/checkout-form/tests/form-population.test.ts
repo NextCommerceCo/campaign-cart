@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { Iti } from 'intl-tel-input';
 import type { Logger } from '@/core/logger';
 import { useCheckoutStore } from '@/state/checkout';
 import {
@@ -40,7 +39,7 @@ function buildForm(html: string): {
 
 function createPopulationCtx(
   html: string,
-  options: { detectedCountryCode?: string; phoneNumber?: string } = {}
+  options: { detectedCountryCode?: string } = {}
 ): {
   ctx: FormPopulationContext;
   fields: Map<string, HTMLElement>;
@@ -52,13 +51,6 @@ function createPopulationCtx(
   const logger = createMockLogger();
   const updateFormData = vi.fn();
   const updateLabels = vi.fn();
-  const phoneInputs = new Map<string, Iti>();
-  if (options.phoneNumber !== undefined) {
-    phoneInputs.set('shipping', {
-      getNumber: vi.fn(() => options.phoneNumber),
-    } as unknown as Iti);
-  }
-
   return {
     fields,
     logger,
@@ -68,7 +60,6 @@ function createPopulationCtx(
       fields,
       detectedCountryCode: options.detectedCountryCode ?? 'US',
       logger: logger as unknown as Logger,
-      phoneInputs,
       shippingStateFields: {} as ShippingStateFieldsContext,
       updateFormData,
       updateLabelsForPopulatedData: updateLabels,
@@ -158,18 +149,24 @@ describe('populateFormData', () => {
     );
   });
 
-  it('rewrites the stored phone into international format once the widget has parsed it', async () => {
+  /**
+   * Populating writes the store's value into the box and stops there. Putting that number
+   * in E.164 is `phone-normalization.ts`, on the gates that wait for the phone library —
+   * not a 50 ms timer racing the widget from here.
+   */
+  it('leaves the stored phone in whatever format it was, and starts no timer', async () => {
     vi.useFakeTimers();
     useCheckoutStore.getState().updateFormData({ phone: '07700 900123' });
     const { ctx, updateFormData } = createPopulationCtx(
-      '<input data-field="phone" />',
-      { phoneNumber: '+447700900123' }
+      '<input data-field="phone" />'
     );
 
     await populateFormData(ctx);
-    vi.advanceTimersByTime(50);
+    vi.advanceTimersByTime(1000);
 
-    expect(updateFormData).toHaveBeenCalledWith({ phone: '+447700900123' });
+    expect(updateFormData).not.toHaveBeenCalledWith({
+      phone: '+447700900123',
+    });
   });
 
   it('floats the labels of the boxes it just filled', async () => {
@@ -239,22 +236,23 @@ describe('populateFormData', () => {
     expect((fields.get('city') as HTMLInputElement).value).toBe('London');
   });
 
-  // DEFECT (left as found): the phone rewrite runs on a bare `setTimeout` nobody holds a
-  // handle to — `populateFormData` returns nothing the caller could cancel. A checkout
-  // form destroyed inside those 50 ms still writes to the store and logs afterwards.
-  it('DEFECT: hands back no way to cancel the pending phone rewrite', async () => {
+  /**
+   * Was a defect: the phone rewrite ran on a bare `setTimeout` nobody held a handle to, so
+   * a form destroyed inside those 50 ms still wrote to the store, logged, and called a
+   * widget that had been torn down. There is nothing left to cancel.
+   */
+  it('leaves nothing pending for a caller to cancel', async () => {
     vi.useFakeTimers();
     useCheckoutStore.getState().updateFormData({ phone: '07700 900123' });
     const { ctx, updateFormData } = createPopulationCtx(
-      '<input data-field="phone" />',
-      { phoneNumber: '+447700900123' }
+      '<input data-field="phone" />'
     );
 
-    const returned = await populateFormData(ctx);
-    expect(returned).toBeUndefined();
+    await populateFormData(ctx);
+    updateFormData.mockClear();
+    vi.advanceTimersByTime(1000);
 
-    vi.advanceTimersByTime(50);
-    expect(updateFormData).toHaveBeenCalledWith({ phone: '+447700900123' });
+    expect(updateFormData).not.toHaveBeenCalled();
   });
 });
 

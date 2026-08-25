@@ -72,15 +72,6 @@ function digitsOf(value: string): string {
   return value.replace(/\D/g, '');
 }
 
-/** Asks the widget one question; a throw means it could not answer. */
-function ask<T>(question: () => T): T | undefined {
-  try {
-    return question();
-  } catch {
-    return undefined;
-  }
-}
-
 /**
  * Whether a `+`-prefixed string has the length of a number rather than of a dial code.
  *
@@ -102,8 +93,28 @@ function isE164Shaped(value: string): boolean {
  * never be taken for the number it was asked about.
  */
 export function e164FromWidget(widget?: PhoneNumberSource): string | undefined {
-  const e164 = ask(() => widget?.getNumber?.());
+  let e164: string | undefined;
+  try {
+    e164 = widget?.getNumber?.();
+  } catch {
+    return undefined; // A widget torn down under us; see verdictOf.
+  }
   return e164 && isE164Shaped(e164) ? e164 : undefined;
+}
+
+/**
+ * The widget's length verdict, `null` while its utils script loads, `undefined` when it
+ * could not answer at all.
+ *
+ * The `catch` is for one case: a destroyed instance still reachable through a stale
+ * reference. Every other state the library reports rather than throws.
+ */
+function verdictOf(widget?: PhoneNumberSource): boolean | null | undefined {
+  try {
+    return widget?.isValidNumber?.();
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -133,7 +144,7 @@ function readE164(value: string, widget?: PhoneNumberSource): string | null {
 function widgetFor(source?: PhoneNumberSource): PhoneNumberSource | undefined {
   if (!source) return undefined;
   if (e164FromWidget(source)) return source;
-  return ask(() => source.isValidNumber?.()) == null ? source : undefined;
+  return verdictOf(source) == null ? source : undefined;
 }
 
 /**
@@ -171,7 +182,7 @@ export function checkPhone(
   const resolved = { value: e164 ?? value, isE164: e164 !== null };
 
   // `null` is the utils script not having loaded, not a rejection.
-  const byLength = ask(() => widget?.isValidNumber?.()) ?? null;
+  const byLength = verdictOf(widget) ?? null;
   if (byLength !== null) {
     return {
       ...resolved,
