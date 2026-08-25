@@ -3,6 +3,7 @@ import { ValidationRule } from './validation.types';
 export interface FieldRuleContext {
     countryService: any;
     phoneSource?: (type: 'shipping' | 'billing') => PhoneNumberSource | undefined;
+    fieldName?: string;
 }
 export declare function createValidationRules(): Map<string, ValidationRule[]>;
 export declare function applyRule(ctx: FieldRuleContext, rule: ValidationRule, value: any, context?: any): boolean;
