@@ -59,6 +59,7 @@ field list and nothing more.
 | `postal-code-format.ts` | Rewriting a postcode into its country's shape as it is typed, and putting the caret back where the shopper left it | 2 fields |
 | `field-value.ts` | What a field is *worth* to the order — a phone as E.164, a checkbox as a boolean, everything else as typed | 1 field |
 | `phone-normalization.ts` | Rewriting the phone numbers already in the store as E.164, once the phone library can produce one. The only thing that writes them back: validation reports on the store rather than rewriting it | store only |
+| `express-field-validation.ts` | The handful of fields a merchant asks for before an express payment. Express normally skips validation; this is the opt-in, and it checks email and phone for shape through the same functions the form uses | 1 (the phone widget) |
 | `billing-field-routing.ts` | Where a `billing-*` value goes: renamed to the orders API's spelling (`fname` → `first_name`) on its way into `billingAddress`, plus the billing postcode and province dropdown | 3 fields |
 | `contact-persistence.ts` | What happens once the shopper *finishes* with a contact field — the prospect cart's email, user-data storage, and creating the prospect cart. Never on `input` | 3 fields |
 

@@ -47,6 +47,7 @@ import {
   type PhoneInputContext,
 } from './phone-input';
 import { normalizeStoredPhones } from './phone-normalization';
+import { validateExpressFields } from './express-field-validation';
 import type { BillingAnimationContext } from './billing-animation';
 import {
   reconcileBillingToggle,
@@ -1482,56 +1483,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     return preserveQueryParams(redirectUrl.href);
   }
 
-  private async validateExpressCheckoutFields(
-    formData: any,
-    requiredFields: string[]
-  ): Promise<any> {
-    const errors: Record<string, string> = {};
-    let firstErrorField: string | null = null;
-
-    // Validate only the specified required fields
-    for (const field of requiredFields) {
-      const value = formData[field];
-
-      if (!value || (typeof value === 'string' && !value.trim())) {
-        const fieldNameMap: Record<string, string> = {
-          email: 'Email',
-          fname: 'First Name',
-          lname: 'Last Name',
-          phone: 'Phone',
-          address1: 'Address',
-          city: 'City',
-          province: 'State/Province',
-          postal: 'ZIP/Postal Code',
-          country: 'Country',
-        };
-
-        const fieldLabel = fieldNameMap[field] || field;
-        errors[field] = `${fieldLabel} is required`;
-
-        if (!firstErrorField) {
-          firstErrorField = field;
-        }
-      }
-
-      // Special validation for email using the validator
-      if (field === 'email' && value) {
-        if (!this.validator.isValidEmail(value)) {
-          errors[field] = 'Please enter a valid email address';
-          if (!firstErrorField) {
-            firstErrorField = field;
-          }
-        }
-      }
-    }
-
-    return {
-      isValid: Object.keys(errors).length === 0,
-      errors,
-      firstErrorField,
-    };
-  }
-
   // ============================================================================
   // MULTI-STEP CHECKOUT SUPPORT
   // ============================================================================
@@ -1711,7 +1662,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       ) {
         const requiredFields =
           config.paymentConfig.expressCheckout.requiredFields;
-        validation = await this.validateExpressCheckoutFields(
+        validation = validateExpressFields(
+          { phoneSource: () => this.phoneInputs.get('shipping') },
           checkoutStore.formData,
           requiredFields
         );
