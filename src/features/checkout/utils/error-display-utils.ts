@@ -19,7 +19,7 @@ export interface ErrorDisplayOptions {
 const DEFAULT_WRAPPER_CLASS = 'form-group';
 const DEFAULT_LABEL_CLASS = 'next-error-label';
 
-const DEFAULT_OPTIONS: ErrorDisplayOptions = {
+const DEFAULT_OPTIONS: Required<ErrorDisplayOptions> = {
   wrapperClass: DEFAULT_WRAPPER_CLASS,
   errorClass: 'next-error-field',
   errorLabelClass: DEFAULT_LABEL_CLASS,
@@ -127,46 +127,44 @@ export function fieldMessages(
 }
 
 export class ErrorDisplayManager {
-  private options: ErrorDisplayOptions;
+  /**
+   * `Required`, because the constructor fills every one from {@link DEFAULT_OPTIONS}. The
+   * type says so once, instead of every read asserting it.
+   */
+  private options: Required<ErrorDisplayOptions>;
 
   constructor(options: ErrorDisplayOptions = {}) {
     this.options = { ...DEFAULT_OPTIONS, ...options };
   }
 
   /**
-   * Show error on a field with consistent styling
+   * Shows a message under a field and marks the field itself.
+   *
+   * The field's own classes go on whether or not it sits in a wrapper, which is what
+   * {@link ErrorDisplayManager.clearFieldError} already assumed: a page that wraps nothing
+   * used to get its outline and its message from clearing but neither from showing.
    */
   showFieldError(field: HTMLElement, message: string): void {
-    const wrapper = FieldFinder.findFieldWrapper(field);
-    if (!wrapper) return;
-
-    // Remove any existing error
     this.clearFieldError(field);
 
-    // Add error styling to field
-    field.classList.add('has-error', this.options.errorClass!);
-    field.classList.remove(this.options.successClass!);
+    field.classList.add('has-error', this.options.errorClass);
+    field.classList.remove(this.options.successClass);
 
-    // Add error styling to wrapper
-    wrapper.classList.add(this.options.iconErrorClass!);
-    wrapper.classList.remove(this.options.iconSuccessClass!);
+    const wrapper = FieldFinder.findFieldWrapper(field);
+    wrapper?.classList.add(this.options.iconErrorClass);
+    wrapper?.classList.remove(this.options.iconSuccessClass);
 
-    // Create and append error label
     const errorElement = document.createElement('div');
-    errorElement.className = this.options.errorLabelClass!;
+    errorElement.className = this.options.errorLabelClass;
     const key = fieldKey(field);
     if (key) errorElement.setAttribute(ERROR_OWNER_ATTR, key);
     errorElement.textContent = message;
     errorElement.setAttribute('role', 'alert');
     errorElement.setAttribute('aria-live', 'polite');
 
-    // Append to appropriate container
-    const formGroup = field.closest(`.${this.options.wrapperClass}`);
-    if (formGroup) {
-      formGroup.appendChild(errorElement);
-    } else {
-      wrapper.appendChild(errorElement);
-    }
+    // The stamp is what makes the message findable, so the nearest container will do.
+    const container = field.closest(`.${this.options.wrapperClass}`) ?? wrapper;
+    container?.appendChild(errorElement);
   }
 
   /**
@@ -176,9 +174,9 @@ export class ErrorDisplayManager {
    * {@link fieldMessages} says are this field's — never "the first label nearby".
    */
   clearFieldError(field: HTMLElement): void {
-    field.classList.remove('has-error', this.options.errorClass!);
+    field.classList.remove('has-error', this.options.errorClass);
     FieldFinder.findFieldWrapper(field)?.classList.remove(
-      this.options.iconErrorClass!
+      this.options.iconErrorClass
     );
 
     fieldMessages(field, this.options.errorLabelClass).forEach(message =>
@@ -196,38 +194,39 @@ export class ErrorDisplayManager {
     this.clearFieldError(field);
 
     // Add success styling
-    field.classList.add(this.options.successClass!);
+    field.classList.add(this.options.successClass);
 
     if (wrapper) {
-      wrapper.classList.add(this.options.iconSuccessClass!);
+      wrapper.classList.add(this.options.iconSuccessClass);
     }
   }
 
   /**
-   * Clear all error displays in a container
+   * Returns every field in `container` to the state it had before anything was judged.
+   *
+   * Clears the success marks as well as the error ones. Leaving them behind left a field
+   * showing a tick it had not just earned, which is the same stale-state problem as a
+   * message under a corrected field, in the other direction.
    */
   clearAllErrors(container: HTMLElement): void {
-    // Remove all error labels
-    const errorLabels = container.querySelectorAll(
-      `.${this.options.errorLabelClass}`
-    );
-    errorLabels.forEach(label => label.remove());
+    const { errorLabelClass, errorClass, successClass } = this.options;
+    const { iconErrorClass, iconSuccessClass } = this.options;
 
-    // Remove error classes from fields
-    const errorFields = container.querySelectorAll(
-      `.${this.options.errorClass}, .has-error`
-    );
-    errorFields.forEach(field => {
-      field.classList.remove('has-error', this.options.errorClass!);
-    });
+    container
+      .querySelectorAll(`.${errorLabelClass}`)
+      .forEach(label => label.remove());
 
-    // Remove error icons from wrappers
-    const errorWrappers = container.querySelectorAll(
-      `.${this.options.iconErrorClass}`
-    );
-    errorWrappers.forEach(wrapper => {
-      wrapper.classList.remove(this.options.iconErrorClass!);
-    });
+    container
+      .querySelectorAll(`.${errorClass}, .has-error, .${successClass}`)
+      .forEach(field =>
+        field.classList.remove('has-error', errorClass, successClass)
+      );
+
+    container
+      .querySelectorAll(`.${iconErrorClass}, .${iconSuccessClass}`)
+      .forEach(wrapper =>
+        wrapper.classList.remove(iconErrorClass, iconSuccessClass)
+      );
   }
 
   /**
@@ -247,22 +246,26 @@ export class ErrorDisplayManager {
   }
 
   /**
-   * Find a field by name within a container
+   * Finds a field by name within a container, in whichever convention the page uses.
+   *
+   * Escaped like every other selector this file builds: a name is page data, and an id
+   * beginning with a digit throws rather than missing quietly.
    */
   private findField(
     fieldName: string,
     container: HTMLElement
   ): HTMLElement | null {
+    const name = CSS.escape(fieldName);
     const selectors = [
-      `[data-next-checkout-field="${fieldName}"]`,
-      `[os-checkout-field="${fieldName}"]`,
-      `[name="${fieldName}"]`,
-      `#${fieldName}`,
+      `[data-next-checkout-field="${name}"]`,
+      `[os-checkout-field="${name}"]`,
+      `[name="${name}"]`,
+      `#${name}`,
     ];
 
     for (const selector of selectors) {
       const field = container.querySelector(selector);
-      if (field) return field as HTMLElement;
+      if (field instanceof HTMLElement) return field;
     }
 
     return null;

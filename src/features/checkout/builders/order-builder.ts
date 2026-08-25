@@ -18,17 +18,18 @@ export class OrderBuilder {
   private logger = createLogger('OrderBuilder');
 
   /**
-   * The phone number to put on the order, in E.164 where that is possible.
+   * The phone number to put on the order, and a warning when it is not E.164.
    *
-   * Every order goes through here, whichever page and whichever payment method built it,
-   * which is what makes this the one place the format can actually be guaranteed rather
-   * than hoped for. The form normalises as the shopper types, but a number restored from
-   * an earlier page, or typed before the phone library finished loading, reaches this
-   * point national.
+   * This reports on the number, it does not convert it. There is no `intl-tel-input`
+   * instance to ask here — the widget belongs to the form — so a national number can be
+   * recognised as national but not turned international. Converting is
+   * `checkout-form/phone-normalization.ts`, which runs before submit while the widget is
+   * still in reach.
    *
-   * The API converts a national number, so a value that could not be normalised is still
-   * sent — with a warning naming the country, because a conversion the SDK did not make is
-   * one nobody here can see.
+   * So this is the last look rather than the fix: every order passes through it whichever
+   * page and payment method built it, which makes it the one place that can say a national
+   * number went out. The API converts one, so it is still sent, with the country named
+   * because a conversion the SDK did not make is one nobody here can see.
    */
   private phoneForApi(
     raw: string | undefined,
