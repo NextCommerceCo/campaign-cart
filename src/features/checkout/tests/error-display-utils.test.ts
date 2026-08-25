@@ -128,6 +128,32 @@ function buildWrappedField(): {
   return { form, email };
 }
 
+describe('a field named only by id', () => {
+  /**
+   * `findField` looks a field up by `id` as well, so one can be shown a message without
+   * being stampable by name. Unstamped, in a container holding other fields, that message
+   * can never be cleared: the outline comes off and the red text stays.
+   */
+  it('can still have its message cleared', () => {
+    const manager = new ErrorDisplayManager();
+    const group = document.createElement('div');
+    group.className = 'form-group';
+    const city = document.createElement('input');
+    city.setAttribute('data-next-checkout-field', 'city');
+    const postal = document.createElement('input');
+    postal.setAttribute('data-next-checkout-field', 'postal');
+    const company = document.createElement('input');
+    company.id = 'company';
+    group.append(city, postal, company);
+    document.body.appendChild(group);
+
+    manager.showFieldError(company, 'Company is wrong');
+    manager.clearFieldError(company);
+
+    expect(group.querySelectorAll('.next-error-label')).toHaveLength(0);
+  });
+});
+
 describe('clearAllErrors', () => {
   it('clears the success marks, not only the error ones', () => {
     const manager = new ErrorDisplayManager();

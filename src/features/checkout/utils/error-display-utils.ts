@@ -51,12 +51,17 @@ function holdsOneFieldAtMost(container: Element): boolean {
   return container.querySelectorAll(CHECKOUT_FIELD_SELECTOR).length <= 1;
 }
 
-/** The name a field is known by, across both attribute conventions. */
+/**
+ * The name a field is known by. The same four ways {@link ErrorDisplayManager.findField}
+ * looks one up, `id` included: a field found by id but not stampable by it got an unowned
+ * message, and an unowned message in a container holding other fields can never be cleared.
+ */
 function fieldKey(field: HTMLElement): string | null {
   return (
     field.getAttribute('data-next-checkout-field') ??
     field.getAttribute('os-checkout-field') ??
-    field.getAttribute('name')
+    field.getAttribute('name') ??
+    (field.id || null)
   );
 }
 
