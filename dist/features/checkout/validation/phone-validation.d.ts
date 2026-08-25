@@ -10,6 +10,7 @@ export interface PhoneCheck {
     isE164: boolean;
     reason: PhoneReason;
 }
+export declare function e164FromWidget(widget?: PhoneNumberSource): string | undefined;
 export declare function checkPhone(raw: string | undefined | null, source?: PhoneNumberSource): PhoneCheck;
 export declare function isValidPhone(raw: string | undefined | null, source?: PhoneNumberSource): boolean;
 export declare function normalizePhone(raw: string | undefined | null, source?: PhoneNumberSource): string;
