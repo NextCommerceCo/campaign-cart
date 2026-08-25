@@ -123,38 +123,6 @@ describe('normalizePhone', () => {
   });
 });
 
-describe('a widget displaying a different number', () => {
-  /**
-   * Everything the widget can tell us it reads from its own field, never from the value it
-   * is asked about. The two come apart when a number is judged on a page where the field
-   * holds something else — a later step of a multi-step checkout, or a value restored from
-   * an earlier visit. Borrowing that widget's answer would put a stranger's number on the
-   * order and judge the wrong one.
-   */
-  const onAnotherNumber = loadedSource(true, '+447700900123');
-
-  it('does not take its number', () => {
-    expect(checkPhone('4155552671', onAnotherNumber).value).toBe('4155552671');
-    expect(checkPhone('4155552671', onAnotherNumber).isE164).toBe(false);
-  });
-
-  it('does not take its verdict either', () => {
-    const check = checkPhone('4155552671', onAnotherNumber);
-
-    expect(check.verdict).toBe('unknown');
-    expect(check.reason).toBe('no-instance');
-  });
-
-  it('still recognises the same number written nationally', () => {
-    // The trunk prefix comes off in international form for the UK, and a country code
-    // goes on the front: both are the same number, and both are accepted as such.
-    const uk = loadedSource(true, '+447700900123');
-
-    expect(checkPhone('07700 900123', uk).value).toBe('+447700900123');
-    expect(checkPhone('07700 900123', uk).verdict).toBe('valid');
-  });
-});
-
 describe('a widget whose field is empty', () => {
   /**
    * `getNumber()` answers `''` for an empty field just as it does while the utils script
@@ -184,30 +152,22 @@ describe('a widget whose field is empty', () => {
   });
 });
 
-describe('a value too far from the widget’s number to be it', () => {
+describe('a widget speaking for its own field', () => {
   /**
-   * `2671` is the tail of a million real numbers. Treating it as "the same number" as the
-   * one in the widget's field would turn four stray digits into a full, valid phone number
-   * on the order. What separates the two is the gap between their lengths: a dial code and
-   * a dropped trunk zero are at most four digits, and this is seven.
+   * The widget is trusted because the value came from the field it is bound to — the
+   * contract on `checkPhone`, held by `phone-normalization.ts` writing the store from the
+   * field before anything judges it. So a number written nationally, and one shorter than
+   * a dial code, are both simply the field's number.
    */
-  it('does not adopt the widget’s number for a four-digit value', () => {
-    const check = checkPhone('2671', loadedSource(true, '+14155552671'));
+  it('takes the international form of a number written nationally', () => {
+    const uk = loadedSource(true, '+447700900123');
 
-    expect(check.value).toBe('2671');
-    expect(check.isE164).toBe(false);
-    expect(check.verdict).toBe('unknown');
-    expect(check.reason).toBe('no-instance');
+    expect(checkPhone('07700 900123', uk).value).toBe('+447700900123');
+    expect(checkPhone('07700 900123', uk).verdict).toBe('valid');
   });
 
-  it('still matches a seven-digit national number', () => {
-    const check = checkPhone('5552671', loadedSource(true, '+14155552671'));
-
-    expect(check.verdict).toBe('valid');
-  });
-
-  it('matches a national number shorter than a dial code plus four', () => {
-    // Greenland: +299 321000, six national digits. The widget must still be trusted.
+  it('trusts it for a national number shorter than a dial code', () => {
+    // Greenland: +299 321000, six national digits.
     const check = checkPhone('32 10 00', loadedSource(true, '+299321000'));
 
     expect(check.verdict).toBe('valid');

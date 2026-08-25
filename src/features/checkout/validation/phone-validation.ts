@@ -78,15 +78,6 @@ const MIN_PHONE_DIGITS = 4;
 /** E.164's own ceiling. */
 const MAX_PHONE_DIGITS = 15;
 
-/**
- * How much longer the widget's number may be than the one asked about and still be it.
- *
- * A dial code of up to three digits goes on the front, and a trunk prefix of one may come
- * off. Anything further apart is a different number: `2671` is the tail of a million real
- * numbers, and must not adopt the widget's whole `+14155552671`.
- */
-const MAX_DIAL_PREFIX_DIGITS = 4;
-
 /** Digits only, so `(415) 555-2671` and `+1 415-555-2671` compare the same. */
 function digitsOf(value: string): string {
   return value.replace(/\D/g, '');
@@ -118,48 +109,19 @@ function readE164(value: string, widget?: PhoneNumberSource): string | null {
 }
 
 /**
- * Whether the widget's number is the one being asked about.
+ * The widget, when it is in a position to answer at all.
  *
- * Two forms of one number differ in exactly two ways: a dial code goes on the front, and a
- * national trunk prefix comes off (`0` in most of the world, `8` in Russia and Kazakhstan).
- * So one is the tail of the other, give or take that one leading digit, and no more than
- * {@link MAX_DIAL_PREFIX_DIGITS} longer.
+ * A widget reads its number and its verdict from its own field, so it can only speak for a
+ * value that came from that field. Callers pass one that did — see the contract on
+ * {@link checkPhone}.
  *
- * Naming the trunk prefixes instead was tried and is what left every Russian order carrying
- * a national number. An absolute floor was tried before that and discarded the widget for
- * every Greenlandic and Andorran number, which are shorter than seven digits in full.
+ * The one state left to rule out is a widget whose field is empty while the caller asks
+ * about a number: `isValidNumber()` then answers `false` about a number that is not there.
+ * A `null` answer is the utils script not having landed, which is not a rejection.
  */
-function describesSameNumber(fromWidget: string, value: string): boolean {
-  const widget = digitsOf(fromWidget);
-  const asked = digitsOf(value);
-  if (!widget || !asked) return false;
-
-  const [longer, shorter] =
-    widget.length >= asked.length ? [widget, asked] : [asked, widget];
-  if (longer.length - shorter.length > MAX_DIAL_PREFIX_DIGITS) return false;
-
-  return longer.endsWith(shorter) || longer.endsWith(shorter.slice(1));
-}
-
-/**
- * The widget, but only when its own field holds the number being judged.
- *
- * A widget reads its number and its verdict from its own field, never from the value it is
- * asked about. The two come apart on a page judging a number the field is not showing: one
- * restored from an earlier visit, or a field not populated yet.
- */
-function widgetFor(
-  value: string,
-  source?: PhoneNumberSource
-): PhoneNumberSource | undefined {
+function widgetFor(source?: PhoneNumberSource): PhoneNumberSource | undefined {
   if (!source) return undefined;
-
-  const shown = ask(() => source.getNumber?.());
-  if (shown) return describesSameNumber(shown, value) ? source : undefined;
-
-  // Nothing to compare, which is two states: the utils script has not landed (its verdict
-  // is `null` anyway), or the field is empty and `isValidNumber()` answers `false` about a
-  // number that is not there.
+  if (ask(() => source.getNumber?.())) return source;
   return ask(() => source.isValidNumber?.()) == null ? source : undefined;
 }
 
@@ -169,6 +131,13 @@ function widgetFor(
  * Pass `source` — the `intl-tel-input` instance bound to the field — whenever it is to
  * hand. Without it the answer can only be `unknown`: nothing else on the page knows what a
  * valid number looks like in the shopper's country.
+ *
+ * **`source` must be the widget for `raw`.** A widget reads its number and its verdict from
+ * its own field, so it can only speak for a value that came from that field. Every caller
+ * either reads the value straight off the field, or reads it from the store after
+ * `checkout-form/phone-normalization.ts` has written the store from the field. This used to
+ * be checked at runtime by comparing the two numbers digit by digit, which was a guess
+ * standing in for a fact the callers already had.
  *
  * @example
  * ```ts
@@ -189,7 +158,7 @@ export function checkPhone(
     return { verdict: 'unknown', value: '', isE164: false, reason: 'empty' };
   }
 
-  const widget = widgetFor(value, source);
+  const widget = widgetFor(source);
   const e164 = readE164(value, widget);
   const resolved = { value: e164 ?? value, isE164: e164 !== null };
 

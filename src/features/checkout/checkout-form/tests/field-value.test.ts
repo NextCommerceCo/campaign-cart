@@ -128,15 +128,6 @@ describe('readPhoneValue', () => {
    * from an earlier page can be judged against a field holding something else entirely.
    * The typed value wins there rather than a stranger's number reaching the order.
    */
-  it('ignores an instance answering about a different number', () => {
-    expect(
-      readPhoneValue(
-        input({ value: '07700 900123' }),
-        phoneInstance('+15558675')
-      )
-    ).toBe('07700 900123');
-  });
-
   it('falls back to the typed text when there is no instance anywhere', () => {
     expect(readPhoneValue(input({ value: '07700 900123' }))).toBe(
       '07700 900123'

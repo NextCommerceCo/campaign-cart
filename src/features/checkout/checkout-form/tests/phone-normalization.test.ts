@@ -76,12 +76,26 @@ describe('normalizeStoredPhones', () => {
     expect(useCheckoutStore.getState().formData.phone).toBe('(555) 123-4567');
   });
 
-  it('leaves the store untouched when there is no number to normalise', () => {
+  /**
+   * The store is a copy of the field, so it takes the field's number even when it had none
+   * of its own. Leaving it empty is how an order went out with no phone on it while the
+   * shopper was looking at the one they had typed.
+   */
+  it('fills an empty store from the field', () => {
     useCheckoutStore.setState({ formData: {} } as never);
 
     normalizeStoredPhones(
       widgets([['shipping', loadedWidget('+15551234567')]])
     );
+
+    expect(useCheckoutStore.getState().formData.phone).toBe('+15551234567');
+  });
+
+  /** A widget on an empty field answers with the country's dial code, not a number. */
+  it('does not write a bare dial code into the store', () => {
+    useCheckoutStore.setState({ formData: {} } as never);
+
+    normalizeStoredPhones(widgets([['shipping', loadedWidget('+1')]]));
 
     expect(useCheckoutStore.getState().formData.phone).toBeUndefined();
   });
