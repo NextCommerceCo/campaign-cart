@@ -15,7 +15,7 @@
  * validator ({@link FieldRuleContext}); {@link createValidationRules} needs nothing.
  */
 
-import { isPhoneUsable, type PhoneNumberSource } from './phone-validation';
+import { isValidPhone, type PhoneNumberSource } from './phone-validation';
 import { isValidCity, isValidEmail, isValidName } from './validation-patterns';
 import type { ValidationRule } from './validation.types';
 
@@ -115,7 +115,7 @@ export function applyRule(
 
     case 'phone':
       if (!value) return true;
-      return isPhoneUsable(value, ctx.phoneSource?.('shipping'));
+      return isValidPhone(value, ctx.phoneSource?.('shipping'));
 
     case 'name':
       return !value || isValidName(value);

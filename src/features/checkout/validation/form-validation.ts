@@ -25,7 +25,7 @@ import type {
 import { validateBillingAddress } from './billing-address-validation';
 import { formatFieldName } from './field-labels';
 import { findFirstErrorFieldInDOM } from './first-error-field';
-import { isPhoneUsable, type PhoneNumberSource } from './phone-validation';
+import { isValidPhone, type PhoneNumberSource } from './phone-validation';
 import { isValidCity, isValidEmail, isValidName } from './validation-patterns';
 import type { FormValidationResult } from './validation.types';
 
@@ -137,7 +137,7 @@ export async function validateForm(
 
   if (
     formData.phone &&
-    !isPhoneUsable(formData.phone, ctx.phoneSource?.('shipping'))
+    !isValidPhone(formData.phone, ctx.phoneSource?.('shipping'))
   ) {
     errors.phone = 'Please enter a valid phone number';
     isValid = false;

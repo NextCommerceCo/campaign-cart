@@ -4,7 +4,7 @@
  * One question, one answer, one place: {@link checkPhone}. It used to be asked in five
  * places against four yardsticks, so a number could pass one gate and fail the next.
  *
- * Most callers want {@link isPhoneUsable} rather than the verdict itself — it is the one
+ * Most callers want {@link isValidPhone} rather than the verdict itself — it is the one
  * place that decides what an `unknown` answer means, so every gate decides it the same way.
  *
  * Three verdicts, because the library that judges a number loads over the network:
@@ -218,20 +218,24 @@ export function checkPhone(
 }
 
 /**
- * Whether a phone should be let through a gate.
+ * Whether a phone number is good enough to accept, the way every gate in the SDK asks it.
  *
- * `unknown` passes. Nothing could check the number, and a shopper is not told their phone
- * is wrong because our own script had not loaded. Every gate in the SDK asks the question
- * this way, which is the point: a number that opens one gate opens all of them.
+ * The companion to {@link isValidEmail} and {@link isValidName}, and what a caller wants
+ * unless it needs the E.164 number as well.
+ *
+ * Only a number something actually rejected counts as invalid: an `unknown` verdict passes,
+ * because a shopper is not told their phone is wrong on the strength of a check that could
+ * not run. Deciding that here rather than at each gate is the point — a number that opens
+ * one gate opens all of them.
  *
  * @example
  * ```ts
- * if (!isPhoneUsable(formData.phone, phoneSource('shipping'))) {
+ * if (!isValidPhone(formData.phone, phoneSource('shipping'))) {
  *   errors.phone = 'Please enter a valid phone number';
  * }
  * ```
  */
-export function isPhoneUsable(
+export function isValidPhone(
   raw: string | undefined | null,
   source?: PhoneNumberSource
 ): boolean {

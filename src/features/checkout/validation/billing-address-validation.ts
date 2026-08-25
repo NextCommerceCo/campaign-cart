@@ -13,7 +13,7 @@
 
 import type { CountryConfig } from '@/core/country-service';
 
-import { isPhoneUsable, type PhoneNumberSource } from './phone-validation';
+import { isValidPhone, type PhoneNumberSource } from './phone-validation';
 import { isValidName } from './validation-patterns';
 
 /** What this module needs from `CheckoutValidator`. */
@@ -105,7 +105,7 @@ export function validateBillingAddress(
 
   if (
     billingAddress?.phone &&
-    !isPhoneUsable(billingAddress.phone, ctx.phoneSource?.('billing'))
+    !isValidPhone(billingAddress.phone, ctx.phoneSource?.('billing'))
   ) {
     errors.phone = 'Please enter a valid billing phone number';
     isValid = false;

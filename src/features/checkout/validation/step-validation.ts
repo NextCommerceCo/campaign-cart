@@ -17,7 +17,7 @@ import type { CountryConfig } from '@/core/country-service';
 import { formatFieldName } from './field-labels';
 import type { FormValidationContext } from './form-validation';
 import { validateForm } from './form-validation';
-import { isPhoneUsable } from './phone-validation';
+import { isValidPhone } from './phone-validation';
 import { isValidCity, isValidEmail, isValidName } from './validation-patterns';
 import type { FormValidationResult } from './validation.types';
 
@@ -173,7 +173,7 @@ export async function validateStep(
   // to the last step where it is more expensive to fix.
   if (
     formData.phone &&
-    !isPhoneUsable(formData.phone, ctx.phoneSource?.('shipping'))
+    !isValidPhone(formData.phone, ctx.phoneSource?.('shipping'))
   ) {
     errors.phone = 'Please enter a valid phone number';
     isValid = false;
