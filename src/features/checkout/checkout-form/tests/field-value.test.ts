@@ -113,8 +113,8 @@ describe('readFieldValue', () => {
 describe('readPhoneValue', () => {
   it('prefers the instance it is handed', () => {
     // Both instances answer for the same typed number; only the handed one is asked.
-    // A marker that is not recognisably the same number would be discarded rather than
-    // preferred — see `describesSameNumber` in `validation/phone-validation.ts`.
+    // Passing an instance bound to a different field is a caller bug — see the contract
+    // on `checkPhone` in `validation/phone-validation.ts`.
     const handed = phoneInstance('+447700900123');
     const onTheElement = phoneInstance('+447700900999');
     const field = input({ value: '07700 900123' });

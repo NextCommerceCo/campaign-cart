@@ -1,13 +1,13 @@
 # Changelog
 
-## [0.4.38] — 2026-08-20 — One Phone Check, and the Order Carries E.164
+## [0.4.38] — 2026-08-20 — One Phone Check
 
-A phone number is now judged the same way everywhere, and the order carries the international form of it.
+A phone number is now judged the same way everywhere it is judged, and a number the checkout could not use says so on the field instead of failing the form in silence.
 
 ### Fixed
 
 - **A rejected phone number now says so on the field.** The phone widget refused the number and the SDK stored the error without ever rendering it, so the shopper saw a form that would not submit and no reason why. ([#58](https://github.com/NextCommerceCo/campaign-cart/issues/58))
-- **The order carries E.164.** A shopper types `(415) 555-2671`, the API is sent `+14155552671` — on both addresses and the customer record.
+- **A phone number is no longer dropped while the formatting library loads.** That library answers `''` until it lands, and the empty answer was what got stored — so a shopper on a slow connection could see their number in the field while the order went out with none.
 - **One check instead of four.** Leaving the field, moving to the next step and pressing pay each used a different rule, so a number one accepted another refused.
 - **A landline is no longer refused** in countries where a landline is not the same length as a mobile.
 - **Choosing a country no longer rewrites a number typed with a country code.** `+66 81 234 5678` became `+1 81 234 5678`.
