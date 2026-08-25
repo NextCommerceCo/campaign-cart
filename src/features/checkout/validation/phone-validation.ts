@@ -80,8 +80,10 @@ function digitsOf(value: string): string {
  * sum is the floor: `+1` is a country, `+6831234` is Niue.
  */
 function isE164Shaped(value: string): boolean {
-  if (!value.startsWith('+')) return false;
-  const digits = digitsOf(value).length;
+  // Digits only after the `+`: counting digits alone would call `+1415CALL2671` E.164 and
+  // send the letters to the API.
+  if (!/^\+\d+$/.test(value)) return false;
+  const digits = value.length - 1;
   return digits > MIN_PHONE_DIGITS && digits <= MAX_PHONE_DIGITS;
 }
 

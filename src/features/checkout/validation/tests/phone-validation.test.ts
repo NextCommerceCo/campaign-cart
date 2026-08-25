@@ -174,6 +174,17 @@ describe('an E.164 number written in the text, with no widget', () => {
   it('still refuses more digits than E.164 allows', () => {
     expect(checkPhone('+1234567890123456').isE164).toBe(false);
   });
+
+  /** Counting digits alone would call these E.164 and send the letters to the API. */
+  it('refuses anything but digits after the plus', () => {
+    expect(checkPhone('+1415CALL2671').isE164).toBe(false);
+    expect(checkPhone('+1 415 ABC 2671').isE164).toBe(false);
+    expect(checkPhone('+1_415_555_2671').isE164).toBe(false);
+  });
+
+  it('still strips the punctuation a shopper types', () => {
+    expect(checkPhone('+44 7700 900123').value).toBe('+447700900123');
+  });
 });
 
 describe('a widget whose field holds only a dial code', () => {

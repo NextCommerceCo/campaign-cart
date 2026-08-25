@@ -1663,7 +1663,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         const requiredFields =
           config.paymentConfig.expressCheckout.requiredFields;
         validation = validateExpressFields(
-          { phoneSource: () => this.phoneInputs.get('shipping') },
+          { phoneSource: type => this.phoneInputs.get(type) },
           checkoutStore.formData,
           requiredFields
         );

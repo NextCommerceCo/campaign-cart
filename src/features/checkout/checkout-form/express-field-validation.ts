@@ -28,8 +28,11 @@ const FIELD_LABELS: Record<string, string> = {
 
 /** What this needs from the checkout form. */
 export interface ExpressFieldValidationContext {
-  /** The live `intl-tel-input` instance for the shipping phone, when the form has one. */
-  phoneSource?: () => PhoneNumberSource | undefined;
+  /**
+   * The live `intl-tel-input` instance for a phone field, when the form has one. The same
+   * shape the validation contexts take, so the form installs one resolver for all of them.
+   */
+  phoneSource?: (type: 'shipping' | 'billing') => PhoneNumberSource | undefined;
 }
 
 /**
@@ -72,7 +75,10 @@ export function validateExpressFields(
       fail(field, 'Please enter a valid email address');
     }
 
-    if (field === 'phone' && !isValidPhone(String(text), ctx.phoneSource?.())) {
+    if (
+      field === 'phone' &&
+      !isValidPhone(String(text), ctx.phoneSource?.('shipping'))
+    ) {
       fail(field, 'Please enter a valid phone number');
     }
   }
