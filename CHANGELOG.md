@@ -12,6 +12,7 @@ A phone number is now judged the same way everywhere, and the order carries the 
 - **A landline is no longer refused** in countries where a landline is not the same length as a mobile.
 - **Choosing a country no longer rewrites a number typed with a country code.** `+66 81 234 5678` became `+1 81 234 5678`.
 - **One field's error message no longer disappears when a different field is corrected.**
+- **A field no longer keeps a tick it has not just earned.** Re-validating a form cleared every error mark but left the success ones behind, so a field that had passed an earlier check still showed as correct after the check that would have failed it.
 
 Two things are still accepted on purpose. A number nothing can check: the library that checks it loads over the network, and a slow script never blocks a sale. And a well-formed number nobody appears to hold, such as `0000000000` — whether a number is real is the server's call, and a shape rule in a page that runs for years cannot see the outcome to correct itself.
 
