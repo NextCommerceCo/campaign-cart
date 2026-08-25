@@ -82,17 +82,28 @@ function ask<T>(question: () => T): T | undefined {
 }
 
 /**
+ * Whether a `+`-prefixed string has the length of a number rather than of a dial code.
+ *
+ * One rule for both sources of an E.164 number, the widget and the typed text. A dial code
+ * is one to three digits and a national number at least {@link MIN_PHONE_DIGITS}, so their
+ * sum is the floor: `+1` is a country, `+6831234` is Niue.
+ */
+function isE164Shaped(value: string): boolean {
+  if (!value.startsWith('+')) return false;
+  const digits = digitsOf(value).length;
+  return digits > MIN_PHONE_DIGITS && digits <= MAX_PHONE_DIGITS;
+}
+
+/**
  * The number the widget's own field holds, in E.164, or nothing.
  *
- * The one place the widget's number is read, so the floor below cannot apply in one caller
- * and not another. Length floor = dial code (>= 1) + {@link MIN_PHONE_DIGITS}, because a
- * widget on an empty field can answer with the selected country alone and `+1` must never
- * be taken for the number it was asked about.
+ * Nothing when the widget cannot speak for a number: none on the page, the utils script not
+ * landed (`getNumber()` answers `''`), an empty field, or a bare dial code — which must
+ * never be taken for the number it was asked about.
  */
 export function e164FromWidget(widget?: PhoneNumberSource): string | undefined {
   const e164 = ask(() => widget?.getNumber?.());
-  if (!e164?.startsWith('+')) return undefined;
-  return digitsOf(e164).length > MIN_PHONE_DIGITS ? e164 : undefined;
+  return e164 && isE164Shaped(e164) ? e164 : undefined;
 }
 
 /**
@@ -108,18 +119,20 @@ function readE164(value: string, widget?: PhoneNumberSource): string | null {
   if (fromWidget) return fromWidget;
 
   const compact = value.replace(/[\s\-().]/g, '');
-  return /^\+\d{8,15}$/.test(compact) ? compact : null;
+  return isE164Shaped(compact) ? compact : null;
 }
 
 /**
  * The widget, when it is in a position to answer at all.
  *
- * Rules out an empty field, whose `isValidNumber()` answers `false` about a number that is
- * not there. `null` is the utils script not having landed, which is not a rejection.
+ * It is when it holds a number. When it does not, its `isValidNumber()` answers `false`
+ * about a number that is not there, so the only usable answer left is `null` — the utils
+ * script not having landed, which is not a rejection. A field holding a bare dial code is
+ * the "does not" case, by the same rule that stops that dial code being taken as a value.
  */
 function widgetFor(source?: PhoneNumberSource): PhoneNumberSource | undefined {
   if (!source) return undefined;
-  if (ask(() => source.getNumber?.())) return source;
+  if (e164FromWidget(source)) return source;
   return ask(() => source.isValidNumber?.()) == null ? source : undefined;
 }
 

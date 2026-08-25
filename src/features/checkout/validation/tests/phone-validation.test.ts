@@ -155,6 +155,47 @@ describe('a widget whose field is empty', () => {
   });
 });
 
+describe('an E.164 number written in the text, with no widget', () => {
+  /**
+   * One length rule for both sources. The text path used to demand eight digits, so a
+   * complete E.164 number from a short numbering plan was reported as *not* E.164 and the
+   * order builder warned that it had failed to convert something already converted.
+   */
+  it('recognises a number as short as a dial code plus four digits', () => {
+    expect(checkPhone('+6831234').isE164).toBe(true); // Niue
+    expect(checkPhone('+2901234').isE164).toBe(true); // Saint Helena
+  });
+
+  it('still refuses a bare dial code', () => {
+    expect(checkPhone('+1').isE164).toBe(false);
+    expect(checkPhone('+299').isE164).toBe(false);
+  });
+
+  it('still refuses more digits than E.164 allows', () => {
+    expect(checkPhone('+1234567890123456').isE164).toBe(false);
+  });
+});
+
+describe('a widget whose field holds only a dial code', () => {
+  /**
+   * The same rule that stops the dial code being taken as a *value* stops its verdict being
+   * taken too. Otherwise a widget showing `+1` refused a ten-digit number it knew nothing
+   * about, on the strength of judging a country.
+   */
+  const dialCodeOnly = loadedSource(false, '+1');
+
+  it('does not take its verdict', () => {
+    const check = checkPhone('4155552671', dialCodeOnly);
+
+    expect(check.verdict).toBe('unknown');
+    expect(check.value).toBe('4155552671');
+  });
+
+  it('still refuses a number the digit count cannot accept', () => {
+    expect(checkPhone('415', dialCodeOnly).verdict).toBe('invalid');
+  });
+});
+
 describe('a widget offering a dial code instead of a number', () => {
   /** Adopting it would replace the shopper's ten digits with a country. */
   it('does not take a bare dial code as the number', () => {
