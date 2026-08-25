@@ -170,10 +170,8 @@ function initializePhoneInput(
       nationalMode: true,
       autoPlaceholder: 'off',
       loadUtils: () => import('intl-tel-input/utils'),
-      // The library's default is `["MOBILE"]`, which makes *both* of its validation
-      // methods answer "is this a valid mobile number" rather than "is this a valid
-      // number". In countries where a landline is not the same length as a mobile, that
-      // rejects a shopper who gave a landline. `null` turns the type filter off.
+      // Default `["MOBILE"]` makes both validation methods mean "valid mobile", which
+      // rejects a landline of a different length. `null` turns the filter off.
       validationNumberTypes: null,
       countryOrder: ['us', 'ca', 'gb', 'au'],
       allowDropdown: false,
@@ -200,9 +198,8 @@ function initializePhoneInput(
     };
 
     // Store the full international number, not the national text the shopper sees —
-    // the order needs E.164. `normalizePhone` rather than `getNumber()` because the
-    // latter returns `''` until the utils script has loaded, and writing that would blank
-    // a phone the shopper has already typed.
+    // the order needs E.164. Not `getNumber()`: it answers `''` until the utils script
+    // loads, and writing that blanks a phone the shopper has already typed.
     phoneField.addEventListener(
       'input',
       () => {
@@ -233,12 +230,9 @@ function initializePhoneInput(
     // Changing the address country re-bases the phone country, so a shopper who
     // switches country does not keep the previous dial code.
     //
-    // Except when the shopper wrote the number internationally. `setCountry` keeps the
-    // national digits and swaps the dial code in front of them, which turns a stated
-    // `+66 81 234 5678` into `+1 81 234 5678` — a number that is not theirs, is not valid,
-    // and is what the field then shows them. A number carrying its own country code has
-    // already said which country it belongs to, and the address country is a different
-    // question: someone shipping to the US may well be reachable on a Thai phone.
+    // Except when the number states its own country: `setCountry` keeps the national digits
+    // and swaps the dial code, turning `+66 81 234 5678` into `+1 81 234 5678`. Shipping to
+    // one country and being reachable in another is ordinary.
     if (countryField instanceof HTMLSelectElement) {
       countryField.addEventListener(
         'change',
@@ -259,10 +253,8 @@ function initializePhoneInput(
 /**
  * How long a caller waits for the phone library's utils script before going ahead anyway.
  *
- * Two seconds is long enough for the chunk on any connection that can also reach the
- * orders API, and short enough that a shopper whose network dropped it entirely is not
- * left staring at a spinner. In the normal case — the chunk arrived seconds ago, during
- * typing — the promise is already settled, so the wait costs nothing and shows nothing.
+ * Long enough for the chunk on any connection that can also reach the orders API, short
+ * enough not to hold a shopper whose network dropped it. Normally already settled.
  */
 const UTILS_WAIT_MS = 2000;
 
@@ -270,10 +262,8 @@ const UTILS_WAIT_MS = 2000;
  * Waits for `intl-tel-input` to finish loading the utils script it validates and formats
  * with, and reports whether it arrived.
  *
- * Everything the SDK wants from that library needs this script: `getNumber()` returns `''`
- * without it and `isValidNumber()` returns `null`. Both degrade quietly, so a submit that
- * races the chunk stores a national number and skips the check without anything looking
- * wrong. Calling this first turns that race into a wait.
+ * Without it `getNumber()` answers `''` and `isValidNumber()` `null`, both quietly, so a
+ * submit that races the chunk skips the check. This turns that race into a wait.
  *
  * Resolves `true` when every widget is ready, and when the page has no phone field at all:
  * both mean "nothing here is waiting on that script". Only `false` needs handling, and it

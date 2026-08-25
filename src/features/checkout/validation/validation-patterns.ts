@@ -6,13 +6,11 @@
  * one of them. They are pure functions of their argument, so they need **nothing** from
  * `CheckoutValidator` and can be tested by calling them.
  *
- * Country-specific checks are deliberately *not* here, and being pure is what disqualifies
- * them. A postal code is only valid relative to a country, so that check lives with
- * `CountryService`. A phone number is the same, which is why `isValidPhone` is in
- * [phone-validation.ts](./phone-validation.ts) instead: it has to ask the `intl-tel-input`
- * widget bound to the field what a valid number looks like where the shopper is. It lived
- * here once, as a regex plus "at least ten digits", and judging a number without knowing
- * its country is exactly what made it wrong.
+ * Country-specific checks are deliberately *not* here, because being pure disqualifies
+ * them. A postal code lives with `CountryService`; a phone number lives in
+ * [phone-validation.ts](./phone-validation.ts), which asks the field's `intl-tel-input`
+ * widget. It was here once as a regex plus "at least ten digits", and judging a number
+ * without knowing its country is what made it wrong.
  *
  * Extracted verbatim from `checkout-validator.ts`, which still exposes all three as public
  * methods.

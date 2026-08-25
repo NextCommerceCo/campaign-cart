@@ -72,9 +72,7 @@ export function isValidPhone(
     return false;
   }
 
-  // One yardstick for the whole SDK — see `validation/phone-validation.ts`. This path
-  // used to carry its own, which is how the same number could be good enough to create a
-  // prospect cart and not good enough to submit the order it turns into.
+  // One yardstick for the whole SDK — see `validation/phone-validation.ts`.
   const instance = context.phoneField
     ? ((context.phoneField as { iti?: PhoneNumberSource }).iti ??
       intlTelInput.getInstance(context.phoneField) ??
@@ -86,8 +84,7 @@ export function isValidPhone(
     return check.verdict === 'valid';
   }
 
-  // Nothing could judge it. A prospect is captured on partial intent, so the bar here is
-  // a plausible digit count rather than a verdict.
+  // Nothing could judge it. A prospect is captured on partial intent, so a digit count.
   const minDigits = context.minPhoneDigits ?? MIN_PROSPECT_PHONE_DIGITS;
   const digits = phone.replace(/\D/g, '');
   return digits.length >= minDigits;

@@ -1,14 +1,9 @@
 /**
  * Putting the phone numbers already in the store into international format.
  *
- * The field handlers normalise as the shopper types, but only from the moment
- * `intl-tel-input`'s utils script has loaded. A shopper who finished typing before it
- * landed, or whose number was restored from an earlier page, leaves a national number
- * behind. Validation reports on the store rather than rewriting it, so this is the only
- * thing that corrects those.
- *
- * A module rather than a method because a store write is worth testing on a real store,
- * and the enhancer that used to own this is not constructible in a unit test.
+ * The field handlers do this as the shopper types, but only once `intl-tel-input`'s utils
+ * script has loaded. Validation reports on the store rather than rewriting it, so this is
+ * the only thing that corrects a number left behind by that race.
  */
 
 import { useCheckoutStore } from '@/state/checkout';
@@ -19,14 +14,10 @@ import {
 } from '../validation/phone-validation';
 
 /**
- * Rewrites the stored shipping and billing numbers in E.164, where one can be produced.
+ * Rewrites the stored shipping and billing numbers as the ones their fields hold.
  *
- * Writes through the store's own actions, so subscribers see the change. Each number is
- * written only when it actually differs, because `setBillingAddress` replaces the whole
- * address object and a no-op write would wake every subscriber for nothing.
- *
- * Call it after the utils script has settled — before that the widget has no number to
- * give, and every stored value is left exactly as it is.
+ * Call it after the utils script has settled; before that the widget has no number to give
+ * and nothing is written.
  *
  * @example
  * ```ts
@@ -46,6 +37,7 @@ export function normalizeStoredPhones(
 
   const billing = checkoutStore.billingAddress;
   const billingNumber = e164FromWidget(phoneInputs.get('billing'));
+  // Compared before writing: setBillingAddress replaces the whole address object.
   if (billing && billingNumber && billingNumber !== billing.phone) {
     checkoutStore.setBillingAddress({ ...billing, phone: billingNumber });
   }

@@ -31,12 +31,9 @@ const DEFAULT_OPTIONS: Required<ErrorDisplayOptions> = {
 /**
  * Marks an error message as belonging to one field.
  *
- * Without it a message is an anonymous `<div>`, and clearing one field's error means
- * "remove the first error label inside this field's wrapper" — where the wrapper falls
- * back to the field's parent element when the page uses no wrapper classes. On such a
- * page the parent is the `<form>`, so blurring one field erased a *different* field's
- * message while leaving its red outline: an error the shopper can no longer read and
- * cannot clear. Stamping the owner makes clearing exact.
+ * Without it, clearing means "remove the first label in this field's wrapper" — and that
+ * wrapper falls back to the `<form>` on a page with no wrapper classes, so one field's
+ * blur erased another's message and left its red outline behind.
  */
 const ERROR_OWNER_ATTR = 'data-next-error-for';
 
@@ -47,11 +44,8 @@ const CHECKOUT_FIELD_SELECTOR =
 /**
  * Whether a container is narrow enough for "the error label in here" to mean one field.
  *
- * The question the old code asked instead was whether the container was the field's direct
- * parent, which is neither necessary nor sufficient: a `.form-group` wrapping one input
- * *is* its parent and is perfectly safe, while a container two levels up holding six
- * inputs is not. Counting the fields answers it directly, and covers the case that started
- * this — a page with no wrapper classes, where the container resolves to the whole form.
+ * Counted rather than inferred from being the field's parent: a container two levels up
+ * holding six inputs is a parent too.
  */
 function holdsOneFieldAtMost(container: Element): boolean {
   return container.querySelectorAll(CHECKOUT_FIELD_SELECTOR).length <= 1;
@@ -66,13 +60,7 @@ function fieldKey(field: HTMLElement): string | null {
   );
 }
 
-/**
- * The containers an unstamped message could belong to this field from.
- *
- * Three, because where a label sits depends on the author's markup: the wrapper the SDK
- * styles, a `.form-group` ancestor, or a `.form-input` one. Missing one leaves a stale
- * error under a field the shopper has already corrected.
- */
+/** Where a label can sit, which depends on the author's markup. Missing one leaves a stale error. */
 function messageContainers(field: HTMLElement): Element[] {
   const found = [
     FieldFinder.findFieldWrapper(field),
@@ -84,16 +72,11 @@ function messageContainers(field: HTMLElement): Element[] {
 }
 
 /**
- * This field's error messages, wherever the markup put them.
+ * This field's error messages, wherever the markup put them. The one place that answers
+ * "whose message is this", for every caller that shows, clears or counts one.
  *
- * The one place that answers "whose message is this", for every caller that shows, clears
- * or counts one. Two passes, because a message may or may not name its owner:
- *
- * - **stamped** with {@link ERROR_OWNER_ATTR} — the SDK wrote it, so it is found anywhere
- *   in the form, including a container shared with other fields.
- * - **unstamped** — page markup, or a field with no name to stamp. Claimed only from a
- *   container holding this field alone, so clearing one field cannot take another's
- *   message with it.
+ * - **stamped** with {@link ERROR_OWNER_ATTR} — found anywhere in the form.
+ * - **unstamped** — page markup; claimed only from a container holding this field alone.
  *
  * @example
  * ```ts
@@ -105,9 +88,8 @@ export function fieldMessages(
   labelClass: string = DEFAULT_LABEL_CLASS
 ): Element[] {
   const key = fieldKey(field);
-  // The form when there is one, the document when there is not: a billing field cloned
-  // into a `data-next-component` block can sit outside the `<form>`, and a message that
-  // cannot be found is a message that stays on screen after the shopper fixes the field.
+  // Document when there is no form: a billing field cloned into a `data-next-component`
+  // block can sit outside it.
   const scope: ParentNode = field.closest('form') ?? field.ownerDocument;
 
   const stamped = key
@@ -127,10 +109,7 @@ export function fieldMessages(
 }
 
 export class ErrorDisplayManager {
-  /**
-   * `Required`, because the constructor fills every one from {@link DEFAULT_OPTIONS}. The
-   * type says so once, instead of every read asserting it.
-   */
+  /** `Required`: the constructor fills every one from {@link DEFAULT_OPTIONS}. */
   private options: Required<ErrorDisplayOptions>;
 
   constructor(options: ErrorDisplayOptions = {}) {
@@ -140,9 +119,8 @@ export class ErrorDisplayManager {
   /**
    * Shows a message under a field and marks the field itself.
    *
-   * The field's own classes go on whether or not it sits in a wrapper, which is what
-   * {@link ErrorDisplayManager.clearFieldError} already assumed: a page that wraps nothing
-   * used to get its outline and its message from clearing but neither from showing.
+   * The field's own classes go on with or without a wrapper, matching
+   * {@link ErrorDisplayManager.clearFieldError}, which takes them off either way.
    */
   showFieldError(field: HTMLElement, message: string): void {
     this.clearFieldError(field);
@@ -204,9 +182,7 @@ export class ErrorDisplayManager {
   /**
    * Returns every field in `container` to the state it had before anything was judged.
    *
-   * Clears the success marks as well as the error ones. Leaving them behind left a field
-   * showing a tick it had not just earned, which is the same stale-state problem as a
-   * message under a corrected field, in the other direction.
+   * Success marks included, or a field keeps a tick it has not just earned.
    */
   clearAllErrors(container: HTMLElement): void {
     container
@@ -256,8 +232,7 @@ export class ErrorDisplayManager {
   /**
    * Finds a field by name within a container, in whichever convention the page uses.
    *
-   * Escaped like every other selector this file builds: a name is page data, and an id
-   * beginning with a digit throws rather than missing quietly.
+   * Escaped: a name is page data, and an id beginning with a digit throws unescaped.
    */
   private findField(
     fieldName: string,

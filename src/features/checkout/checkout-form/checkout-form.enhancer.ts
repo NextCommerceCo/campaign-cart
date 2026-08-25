@@ -477,14 +477,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   /**
    * Waits for the phone library's utils script, then puts the stored numbers in E.164.
    *
-   * The two always go together: `isValidNumber()` and `getNumber()` both answer "nothing"
-   * until that script lands, so a check that runs before it is not a check and a number
-   * normalised before it is still national. Both gates that judge a phone call this first.
-   *
-   * A wait that runs out is reported rather than swallowed. It means the shopper's number
-   * goes to the API unchecked and possibly national, which is deliberate (see
-   * `validation/phone-validation.ts`) but is not something to find out about from the
-   * order.
+   * The two go together: both `isValidNumber()` and `getNumber()` answer "nothing" until
+   * that script lands, so a check before it is not a check. Called by both gates that
+   * judge a phone.
    */
   private async settlePhoneNumbers(): Promise<void> {
     if (!(await awaitPhoneUtils(this.phoneInputs))) {

@@ -156,12 +156,7 @@ describe('a widget whose field is empty', () => {
 });
 
 describe('a widget offering a dial code instead of a number', () => {
-  /**
-   * A widget can answer with the selected country and no number behind it. Adopting that
-   * would replace the shopper's number with a country: their ten digits become `+1`, which
-   * is well formed, reaches the order, and is nobody's phone. The floor is a dial code plus
-   * the shortest national number in service.
-   */
+  /** Adopting it would replace the shopper's ten digits with a country. */
   it('does not take a bare dial code as the number', () => {
     const check = checkPhone('4155552671', loadedSource(null, '+1'));
 
@@ -186,12 +181,7 @@ describe('a widget offering a dial code instead of a number', () => {
 });
 
 describe('a widget speaking for its own field', () => {
-  /**
-   * The widget is trusted because the value came from the field it is bound to — the
-   * contract on `checkPhone`, held by `phone-normalization.ts` writing the store from the
-   * field before anything judges it. So a number written nationally, and one shorter than
-   * a dial code, are both simply the field's number.
-   */
+  /** The value came from the field this widget is bound to — the contract on `checkPhone`. */
   it('takes the international form of a number written nationally', () => {
     const uk = loadedSource(true, '+447700900123');
 

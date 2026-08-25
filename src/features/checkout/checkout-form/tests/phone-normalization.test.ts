@@ -61,11 +61,6 @@ describe('normalizeStoredPhones', () => {
     expect(state.billingAddress?.phone).toBe('+442079460958');
   });
 
-  /**
-   * The reason this runs at all: before the utils script lands there is nothing to convert
-   * with, and blanking a number the shopper has already typed would be worse than leaving
-   * it national for the API to convert.
-   */
   it('leaves a number alone rather than blanking it mid-load', () => {
     useCheckoutStore.setState({
       formData: { phone: '(555) 123-4567' },
@@ -76,11 +71,7 @@ describe('normalizeStoredPhones', () => {
     expect(useCheckoutStore.getState().formData.phone).toBe('(555) 123-4567');
   });
 
-  /**
-   * The store is a copy of the field, so it takes the field's number even when it had none
-   * of its own. Leaving it empty is how an order went out with no phone on it while the
-   * shopper was looking at the one they had typed.
-   */
+  /** The store is a copy of the field, so it takes its number even when it had none. */
   it('fills an empty store from the field', () => {
     useCheckoutStore.setState({ formData: {} } as never);
 
@@ -100,7 +91,6 @@ describe('normalizeStoredPhones', () => {
     expect(useCheckoutStore.getState().formData.phone).toBeUndefined();
   });
 
-  /** A no-op write would replace the whole billing address and wake every subscriber. */
   it('does not rewrite a number that is already E.164', () => {
     useCheckoutStore.setState({
       billingAddress: { phone: '+442079460958', city: 'London' },

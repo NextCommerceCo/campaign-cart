@@ -20,25 +20,16 @@ export class OrderBuilder {
   /**
    * The phone number to put on the order, and a warning when it is not E.164.
    *
-   * This reports on the number, it does not convert it. There is no `intl-tel-input`
-   * instance to ask here — the widget belongs to the form — so a national number can be
-   * recognised as national but not turned international. Converting is
-   * `checkout-form/phone-normalization.ts`, which runs before submit while the widget is
-   * still in reach.
-   *
-   * So this is the last look rather than the fix: every order passes through it whichever
-   * page and payment method built it, which makes it the one place that can say a national
-   * number went out. The API converts one, so it is still sent, with the country named
-   * because a conversion the SDK did not make is one nobody here can see.
+   * Reports, does not convert: there is no `intl-tel-input` instance to ask here.
+   * Converting is `checkout-form/phone-normalization.ts`, before submit. Every order passes
+   * through this, so it is the one place that can say a national number went out.
    */
   private phoneForApi(
     raw: string | undefined,
     country?: string
   ): string | undefined {
     const check = checkPhone(raw);
-    // Absent, not empty: an empty string is a value the API would have to interpret,
-    // and `phone_number` is optional. This is also what the old code did by passing
-    // `undefined` straight through.
+    // Absent, not empty: `phone_number` is optional and `''` is a value to interpret.
     if (!check.value) return undefined;
     if (check.isE164) return check.value;
 
@@ -66,8 +57,7 @@ export class OrderBuilder {
     shippingMethod?: any,
     vouchers: string[] = []
   ): CreateOrder {
-    // Resolved once: the shipping address and the customer record carry the same
-    // number, and asking twice would log the same warning twice for one order.
+    // Once: the address and the customer record share it, and twice logs twice.
     const shopperPhone = this.phoneForApi(
       checkoutFormData.phone,
       checkoutFormData.country

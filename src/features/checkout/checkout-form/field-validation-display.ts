@@ -37,9 +37,8 @@ export interface FieldValidationContext {
 /**
  * Removes this field's error labels, and only this field's.
  *
- * `fieldMessages` decides whose a message is — one rule shared with the validator that
- * writes them, so blurring one field cannot erase another's and leave a shopper with a red
- * outline, no text, and nothing they can do to clear it.
+ * `fieldMessages` decides whose a message is, sharing one rule with the validator that
+ * writes them, so blurring one field cannot erase another's.
  */
 function clearErrorLabels(field: HTMLElement): void {
   fieldMessages(field).forEach(label => label.remove());
@@ -51,9 +50,8 @@ function clearErrorLabels(field: HTMLElement): void {
  * Uses {@link clearErrorLabels} rather than only clearing the immediate wrapper. The
  * original code cleared the label in **one** place here but in **three** on `input`, so a
  * field whose error message sat in a `.form-group` ancestor kept showing it after the
- * value became valid — the exact "stale error under a corrected field" that `input` was
- * written carefully to avoid. That asymmetry predates the extraction; every path now asks
- * the same question.
+ * value became valid. That asymmetry predates the extraction; every path now asks the same
+ * question.
  */
 function markValid(field: HTMLElement): void {
   field.classList.remove('has-error', 'next-error-field');
@@ -92,9 +90,8 @@ function handleBlur(
   const wrapper = field.closest(FIELD_WRAPPER);
 
   if (isEmptyValue(value)) {
-    // Asked of `fieldMessages` rather than of the wrapper: on a page with no wrapper
-    // classes there is no container to look in, and the field would lose its outline
-    // while its message stayed on screen.
+    // Not the wrapper: a page with no wrapper classes has no container to look in, and the
+    // field would lose its outline while its message stayed.
     if (fieldMessages(field).length > 0) {
       field.classList.add('has-error', 'next-error-field');
       field.classList.remove('no-error');

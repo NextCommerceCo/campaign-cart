@@ -112,11 +112,7 @@ describe('error label ownership', () => {
   });
 });
 
-/**
- * The markup the SDK styles: a `.form-group` around the input. Used by the state tests
- * below, where the question is which classes are left on a field rather than which
- * container a message was found in.
- */
+/** The markup the SDK styles: a `.form-group` around the input. */
 function buildWrappedField(): {
   form: HTMLFormElement;
   email: HTMLInputElement;
@@ -133,10 +129,6 @@ function buildWrappedField(): {
 }
 
 describe('clearAllErrors', () => {
-  /**
-   * `showFieldValid` sets the success class and the tick. A sweep that clears only the
-   * error half leaves a field showing a tick it has not just earned.
-   */
   it('clears the success marks, not only the error ones', () => {
     const manager = new ErrorDisplayManager();
     const { form, email } = buildWrappedField();
@@ -170,12 +162,7 @@ describe('clearAllErrors', () => {
 });
 
 describe('showFieldError without a wrapper', () => {
-  /**
-   * `clearFieldError` takes the classes off whether or not a wrapper was found, so showing
-   * has to put them on under the same condition. A field with no parent at all is the only
-   * markup where the two differ, since `findFieldWrapper` otherwise falls back to the
-   * parent element.
-   */
+  /** A field with no parent is the only markup where show and clear could disagree. */
   it('marks the field even when there is no container to put the message in', () => {
     const manager = new ErrorDisplayManager();
     const orphan = document.createElement('input');
