@@ -17,7 +17,7 @@ import type { CountryConfig } from '@/core/country-service';
 import { formatFieldName } from './field-labels';
 import type { FormValidationContext } from './form-validation';
 import { validateForm } from './form-validation';
-import { checkPhone } from './phone-validation';
+import { isPhoneUsable } from './phone-validation';
 import { isValidCity, isValidEmail, isValidName } from './validation-patterns';
 import type { FormValidationResult } from './validation.types';
 
@@ -171,15 +171,13 @@ export async function validateStep(
   // markup marks required: an optional field left blank is fine, but one filled in with a
   // number that cannot be used is not, and letting it through here only moves the failure
   // to the last step where it is more expensive to fix.
-  if (formData.phone) {
-    const check = checkPhone(formData.phone, ctx.phoneSource?.('shipping'));
-    formData.phone = check.value;
-
-    if (check.verdict === 'invalid') {
-      errors.phone = 'Please enter a valid phone number';
-      isValid = false;
-      if (!firstErrorField) firstErrorField = 'phone';
-    }
+  if (
+    formData.phone &&
+    !isPhoneUsable(formData.phone, ctx.phoneSource?.('shipping'))
+  ) {
+    errors.phone = 'Please enter a valid phone number';
+    isValid = false;
+    if (!firstErrorField) firstErrorField = 'phone';
   }
 
   // Postal code validation

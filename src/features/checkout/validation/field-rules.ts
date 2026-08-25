@@ -15,7 +15,7 @@
  * validator ({@link FieldRuleContext}); {@link createValidationRules} needs nothing.
  */
 
-import { checkPhone, type PhoneNumberSource } from './phone-validation';
+import { isPhoneUsable, type PhoneNumberSource } from './phone-validation';
 import { isValidCity, isValidEmail, isValidName } from './validation-patterns';
 import type { ValidationRule } from './validation.types';
 
@@ -115,11 +115,7 @@ export function applyRule(
 
     case 'phone':
       if (!value) return true;
-      // `unknown` passes here: nothing could check the number, and a shopper is not told
-      // their phone is wrong because our own script had not loaded.
-      return (
-        checkPhone(value, ctx.phoneSource?.('shipping')).verdict !== 'invalid'
-      );
+      return isPhoneUsable(value, ctx.phoneSource?.('shipping'));
 
     case 'name':
       return !value || isValidName(value);

@@ -4,6 +4,9 @@
  * One question, one answer, one place: {@link checkPhone}. It used to be asked in five
  * places against four yardsticks, so a number could pass one gate and fail the next.
  *
+ * Most callers want {@link isPhoneUsable} rather than the verdict itself — it is the one
+ * place that decides what an `unknown` answer means, so every gate decides it the same way.
+ *
  * Three verdicts, because the library that judges a number loads over the network:
  * `unknown` means nobody could check it, which is not the same as "the number is wrong".
  * The value is E.164 whenever one can be produced, because the orders API converts a
@@ -114,26 +117,13 @@ function readE164(value: string, widget?: PhoneNumberSource): string | null {
   return /^\+\d{8,15}$/.test(compact) ? compact : null;
 }
 
-/** How many digits at the end two strings share. */
-function commonSuffixLength(a: string, b: string): number {
-  let shared = 0;
-  while (
-    shared < a.length &&
-    shared < b.length &&
-    a[a.length - 1 - shared] === b[b.length - 1 - shared]
-  ) {
-    shared++;
-  }
-  return shared;
-}
-
 /**
  * Whether the widget's number is the one being asked about.
  *
  * Two forms of one number differ in exactly two ways: a dial code goes on the front, and a
  * national trunk prefix comes off (`0` in most of the world, `8` in Russia and Kazakhstan).
- * So they match when they are within {@link MAX_DIAL_PREFIX_DIGITS} of each other in length
- * and share everything but at most one digit of the shorter one.
+ * So one is the tail of the other, give or take that one leading digit, and no more than
+ * {@link MAX_DIAL_PREFIX_DIGITS} longer.
  *
  * Naming the trunk prefixes instead was tried and is what left every Russian order carrying
  * a national number. An absolute floor was tried before that and discarded the widget for
@@ -146,11 +136,9 @@ function describesSameNumber(fromWidget: string, value: string): boolean {
 
   const [longer, shorter] =
     widget.length >= asked.length ? [widget, asked] : [asked, widget];
+  if (longer.length - shorter.length > MAX_DIAL_PREFIX_DIGITS) return false;
 
-  return (
-    longer.length - shorter.length <= MAX_DIAL_PREFIX_DIGITS &&
-    commonSuffixLength(longer, shorter) >= shorter.length - 1
-  );
+  return longer.endsWith(shorter) || longer.endsWith(shorter.slice(1));
 }
 
 /**
@@ -227,6 +215,27 @@ export function checkPhone(
         : 'no-instance'
       : 'digit-count',
   };
+}
+
+/**
+ * Whether a phone should be let through a gate.
+ *
+ * `unknown` passes. Nothing could check the number, and a shopper is not told their phone
+ * is wrong because our own script had not loaded. Every gate in the SDK asks the question
+ * this way, which is the point: a number that opens one gate opens all of them.
+ *
+ * @example
+ * ```ts
+ * if (!isPhoneUsable(formData.phone, phoneSource('shipping'))) {
+ *   errors.phone = 'Please enter a valid phone number';
+ * }
+ * ```
+ */
+export function isPhoneUsable(
+  raw: string | undefined | null,
+  source?: PhoneNumberSource
+): boolean {
+  return checkPhone(raw, source).verdict !== 'invalid';
 }
 
 /**

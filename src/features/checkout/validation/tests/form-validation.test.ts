@@ -120,7 +120,12 @@ describe('validateForm', () => {
     expect(result.firstErrorField).toBe('email');
   });
 
-  it('normalises the phone to the widget’s formatted number so the order carries E.164', async () => {
+  /**
+   * Validation reports on the form, it does not rewrite it. Putting the number in E.164 is
+   * `CheckoutFormEnhancer.normalizeStoredPhones`, which writes through the store instead of
+   * mutating the object it was handed.
+   */
+  it('leaves the form data alone', async () => {
     const ctx = createContext({
       phoneSource: () => ({
         getNumber: () => '+15551234567',
@@ -130,15 +135,16 @@ describe('validateForm', () => {
     });
     const form = { ...completeForm(), phone: '(555) 123-4567' };
 
-    await validateForm(ctx, form, configs);
+    const result = await validateForm(ctx, form, configs);
 
-    expect(form.phone).toBe('+15551234567');
+    expect(result.errors.phone).toBeUndefined();
+    expect(form.phone).toBe('(555) 123-4567');
   });
 
   /**
    * Whether a well-formed number is one anybody holds is the server's call, not the SDK's.
-   * `0000000000` is a valid length for a US number, so it goes through and is normalised
-   * on the way — a shape rule here would be a second opinion frozen at release time.
+   * `0000000000` is a valid length for a US number, so it goes through — a shape rule here
+   * would be a second opinion frozen at release time.
    */
   it('sends on a well-formed number the widget accepts, whoever holds it', async () => {
     const ctx = createContext({
@@ -152,7 +158,6 @@ describe('validateForm', () => {
     const result = await validateForm(ctx, formData, configs);
 
     expect(result.errors.phone).toBeUndefined();
-    expect(formData.phone).toBe('+10000000000');
   });
 
   it('lets a plausible phone through when no widget can judge it', async () => {

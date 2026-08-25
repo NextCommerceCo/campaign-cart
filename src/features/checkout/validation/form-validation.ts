@@ -25,7 +25,7 @@ import type {
 import { validateBillingAddress } from './billing-address-validation';
 import { formatFieldName } from './field-labels';
 import { findFirstErrorFieldInDOM } from './first-error-field';
-import { checkPhone, type PhoneNumberSource } from './phone-validation';
+import { isPhoneUsable, type PhoneNumberSource } from './phone-validation';
 import { isValidCity, isValidEmail, isValidName } from './validation-patterns';
 import type { FormValidationResult } from './validation.types';
 
@@ -135,16 +135,12 @@ export async function validateForm(
     isValid = false;
   }
 
-  // Phone validation. The check also normalises, so the E.164 number goes back on the
-  // form data here rather than being reassembled by whoever builds the order.
-  if (formData.phone) {
-    const check = checkPhone(formData.phone, ctx.phoneSource?.('shipping'));
-    formData.phone = check.value;
-
-    if (check.verdict === 'invalid') {
-      errors.phone = 'Please enter a valid phone number';
-      isValid = false;
-    }
+  if (
+    formData.phone &&
+    !isPhoneUsable(formData.phone, ctx.phoneSource?.('shipping'))
+  ) {
+    errors.phone = 'Please enter a valid phone number';
+    isValid = false;
   }
 
   // Postal code validation

@@ -22,7 +22,6 @@ import {
   type CreditCardData,
 } from '../services/credit-card-service';
 import { CheckoutValidator } from '../validation/checkout-validator';
-import { normalizePhone } from '../validation/phone-validation';
 import { UIService } from '../services/ui-service';
 import { useAttributionStore } from '@/state/attribution';
 import { useParameterStore } from '@/state/parameter';
@@ -47,6 +46,7 @@ import {
   initializePhoneInputs,
   type PhoneInputContext,
 } from './phone-input';
+import { normalizeStoredPhones } from './phone-normalization';
 import type { BillingAnimationContext } from './billing-animation';
 import {
   reconcileBillingToggle,
@@ -475,41 +475,25 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   }
 
   /**
-   * Rewrites the stored phone numbers in international format, once the phone library
-   * is in a position to produce one.
+   * Waits for the phone library's utils script, then puts the stored numbers in E.164.
    *
-   * The field handlers already do this as the shopper types, but only from the moment the
-   * library's utils script has loaded: a shopper who finished typing before it landed and
-   * never touched the field again leaves a national number in the store.
+   * The two always go together: `isValidNumber()` and `getNumber()` both answer "nothing"
+   * until that script lands, so a check that runs before it is not a check and a number
+   * normalised before it is still national. Both gates that judge a phone call this first.
    *
-   * Submit-time validation catches the shipping number on its way past. Nothing catches
-   * the **billing** one — the billing check deliberately does not write to the store's own
-   * address object — so without this a shopper who entered a separate billing address
-   * early in the page's life sends it nationally.
+   * A wait that runs out is reported rather than swallowed. It means the shopper's number
+   * goes to the API unchecked and possibly national, which is deliberate (see
+   * `validation/phone-validation.ts`) but is not something to find out about from the
+   * order.
    */
-  private normalizeStoredPhones(): void {
-    const checkoutStore = useCheckoutStore.getState();
-
-    const phone = checkoutStore.formData.phone;
-    if (phone) {
-      const normalized = normalizePhone(
-        phone,
-        this.phoneInputs.get('shipping')
+  private async settlePhoneNumbers(): Promise<void> {
+    const ready = await awaitPhoneUtils(this.phoneInputs);
+    if (!ready && this.phoneInputs.size > 0) {
+      this.logger.warn(
+        'intl-tel-input utils did not load in time; the phone number is sent unchecked and may not be E.164'
       );
-      if (normalized !== phone)
-        checkoutStore.updateFormData({ phone: normalized });
     }
-
-    const billing = checkoutStore.billingAddress;
-    if (billing?.phone) {
-      const normalized = normalizePhone(
-        billing.phone,
-        this.phoneInputs.get('billing')
-      );
-      if (normalized !== billing.phone) {
-        checkoutStore.setBillingAddress({ ...billing, phone: normalized });
-      }
-    }
+    normalizeStoredPhones(this.phoneInputs);
   }
 
   /**
@@ -1632,10 +1616,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     cartStore: any
   ): Promise<void> {
     void cartStore;
-    // Same reason as the submit path: the phone check is only real once the library's
-    // utils script has landed. A step gate that skips it lets a bad number through to a
-    // page where the field is no longer on screen to correct.
-    await awaitPhoneUtils(this.phoneInputs);
+    // A step gate that skips this lets a bad number through to a page where the field is
+    // no longer on screen to correct.
+    await this.settlePhoneNumbers();
     await handleStepNavigation(this.stepNavigationContext(), checkoutStore);
   }
 
@@ -1662,12 +1645,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       // Show loading overlay
       this.loadingOverlay.show();
 
-      // The phone library validates and formats with a script it fetches separately, and
-      // both of those return "nothing" until it lands. Waiting for it here is what makes
-      // the phone check below real and the stored number E.164 — and it is free, because
-      // the overlay is already up.
-      await awaitPhoneUtils(this.phoneInputs);
-      this.normalizeStoredPhones();
+      // Free here, because the overlay is already up.
+      await this.settlePhoneNumbers();
 
       // Check if this is an express payment method
       const isExpressPayment = isExpressPaymentMethod(

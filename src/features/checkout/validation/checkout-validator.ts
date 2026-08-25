@@ -38,7 +38,7 @@ import { applyRule, createValidationRules } from './field-rules';
 import { formatFieldName } from './field-labels';
 import { focusFirstErrorField } from './first-error-field';
 import { validateForm, type FormValidationContext } from './form-validation';
-import { checkPhone, type PhoneNumberSource } from './phone-validation';
+import { type PhoneNumberSource } from './phone-validation';
 import { validateStep } from './step-validation';
 import { isValidCity, isValidEmail, isValidName } from './validation-patterns';
 import type {
@@ -232,18 +232,6 @@ export class CheckoutValidator {
 
   public isValidEmail(email: string): boolean {
     return isValidEmail(email);
-  }
-
-  /**
-   * Whether a phone number can be used, asking the live widget when there is one.
-   *
-   * `unknown` counts as usable here — see `phone-validation.ts` for why nothing blocks a
-   * shopper over a check that could not run.
-   */
-  public isValidPhone(phone: string): boolean {
-    return (
-      checkPhone(phone, this.phoneSource?.('shipping')).verdict !== 'invalid'
-    );
   }
 
   public isValidName(name: string): boolean {

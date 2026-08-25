@@ -52,7 +52,6 @@ describe('CheckoutValidator — public surface', () => {
       'validateStep',
       'validateForm',
       'isValidEmail',
-      'isValidPhone',
       'isValidName',
       'isValidCity',
       'setError',
