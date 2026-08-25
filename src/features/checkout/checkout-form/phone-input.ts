@@ -275,9 +275,11 @@ const UTILS_WAIT_MS = 2000;
  * races the chunk stores a national number and skips the check without anything looking
  * wrong. Calling this first turns that race into a wait.
  *
- * Resolving `false` means the wait ran out, not that anything failed — the caller carries
- * on and the number is handled as {@link checkPhone}'s `unknown`, which never blocks a
- * shopper for a problem that is ours.
+ * Resolves `true` when every widget is ready, and when the page has no phone field at all:
+ * both mean "nothing here is waiting on that script". Only `false` needs handling, and it
+ * means the wait ran out rather than that anything failed — the caller carries on and the
+ * number is handled as {@link checkPhone}'s `unknown`, which never blocks a shopper for a
+ * problem that is ours.
  *
  * @example
  * ```ts
@@ -290,7 +292,9 @@ export async function awaitPhoneUtils(
   timeoutMs: number = UTILS_WAIT_MS
 ): Promise<boolean> {
   const pending = [...phoneInputs.values()].map(instance => instance.promise);
-  if (pending.length === 0) return false;
+  // Nothing to wait for is not a failure to wait, and a caller that treats it as one warns
+  // about a script no field on the page needs.
+  if (pending.length === 0) return true;
 
   let timer: ReturnType<typeof setTimeout> | undefined;
   const expiry = new Promise<false>(resolve => {

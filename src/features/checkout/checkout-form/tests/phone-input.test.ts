@@ -309,7 +309,8 @@ describe('awaitPhoneUtils', () => {
     await expect(awaitPhoneUtils(inputs)).resolves.toBe(false);
   });
 
-  it('returns immediately when the page has no phone field', async () => {
-    await expect(awaitPhoneUtils(new Map())).resolves.toBe(false);
+  /** Nothing is waiting on the script, so nothing is wrong — see the caller's warning. */
+  it('is satisfied immediately when the page has no phone field', async () => {
+    await expect(awaitPhoneUtils(new Map())).resolves.toBe(true);
   });
 });

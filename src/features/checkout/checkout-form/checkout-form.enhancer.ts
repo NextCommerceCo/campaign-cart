@@ -487,8 +487,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
    * order.
    */
   private async settlePhoneNumbers(): Promise<void> {
-    const ready = await awaitPhoneUtils(this.phoneInputs);
-    if (!ready && this.phoneInputs.size > 0) {
+    if (!(await awaitPhoneUtils(this.phoneInputs))) {
       this.logger.warn(
         'intl-tel-input utils did not load in time; the phone number is sent unchecked and may not be E.164'
       );
