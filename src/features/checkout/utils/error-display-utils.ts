@@ -209,23 +209,31 @@ export class ErrorDisplayManager {
    * message under a corrected field, in the other direction.
    */
   clearAllErrors(container: HTMLElement): void {
-    const { errorLabelClass, errorClass, successClass } = this.options;
-    const { iconErrorClass, iconSuccessClass } = this.options;
-
     container
-      .querySelectorAll(`.${errorLabelClass}`)
+      .querySelectorAll(`.${this.options.errorLabelClass}`)
       .forEach(label => label.remove());
 
     container
-      .querySelectorAll(`.${errorClass}, .has-error, .${successClass}`)
+      .querySelectorAll(
+        `.${this.options.errorClass}, .has-error, .${this.options.successClass}`
+      )
       .forEach(field =>
-        field.classList.remove('has-error', errorClass, successClass)
+        field.classList.remove(
+          'has-error',
+          this.options.errorClass,
+          this.options.successClass
+        )
       );
 
     container
-      .querySelectorAll(`.${iconErrorClass}, .${iconSuccessClass}`)
+      .querySelectorAll(
+        `.${this.options.iconErrorClass}, .${this.options.iconSuccessClass}`
+      )
       .forEach(wrapper =>
-        wrapper.classList.remove(iconErrorClass, iconSuccessClass)
+        wrapper.classList.remove(
+          this.options.iconErrorClass,
+          this.options.iconSuccessClass
+        )
       );
   }
 
