@@ -13,34 +13,10 @@
 
 import { useCheckoutStore } from '@/state/checkout';
 
-import type { PhoneNumberSource } from '../validation/phone-validation';
-
-/**
- * The shortest E.164 number that can be a number rather than a dial code.
- *
- * A dial code is one to three digits and the shortest national number in service is four
- * (Niue and Tokelau), so five is the floor. The guard matters because a widget on an empty
- * field can answer with the selected country's dial code alone, and writing `+1` into the
- * store would replace a number with a country.
- */
-const MIN_E164_DIGITS = 5;
-
-/**
- * The number the field itself is showing, in E.164, or nothing.
- *
- * Nothing means one of four states that all want the stored value left alone: no widget on
- * the page, the utils script has not landed (`getNumber()` answers `''`), the field is empty
- * because it has not been populated yet, or the widget offered a bare dial code.
- */
-function fieldNumber(widget?: PhoneNumberSource): string | undefined {
-  try {
-    const e164 = widget?.getNumber?.();
-    if (!e164?.startsWith('+')) return undefined;
-    return e164.replace(/\D/g, '').length >= MIN_E164_DIGITS ? e164 : undefined;
-  } catch {
-    return undefined;
-  }
-}
+import {
+  e164FromWidget,
+  type PhoneNumberSource,
+} from '../validation/phone-validation';
 
 /**
  * Rewrites the stored shipping and billing numbers in E.164, where one can be produced.
@@ -49,8 +25,8 @@ function fieldNumber(widget?: PhoneNumberSource): string | undefined {
  * written only when it actually differs, because `setBillingAddress` replaces the whole
  * address object and a no-op write would wake every subscriber for nothing.
  *
- * Call it after the utils script has settled — before that, `normalizePhone` has nothing
- * to convert with and returns the text as typed.
+ * Call it after the utils script has settled — before that the widget has no number to
+ * give, and every stored value is left exactly as it is.
  *
  * @example
  * ```ts
@@ -63,13 +39,13 @@ export function normalizeStoredPhones(
 ): void {
   const checkoutStore = useCheckoutStore.getState();
 
-  const shipping = fieldNumber(phoneInputs.get('shipping'));
+  const shipping = e164FromWidget(phoneInputs.get('shipping'));
   if (shipping && shipping !== checkoutStore.formData.phone) {
     checkoutStore.updateFormData({ phone: shipping });
   }
 
   const billing = checkoutStore.billingAddress;
-  const billingNumber = fieldNumber(phoneInputs.get('billing'));
+  const billingNumber = e164FromWidget(phoneInputs.get('billing'));
   if (billing && billingNumber && billingNumber !== billing.phone) {
     checkoutStore.setBillingAddress({ ...billing, phone: billingNumber });
   }

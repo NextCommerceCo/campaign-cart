@@ -93,6 +93,27 @@ function ask<T>(question: () => T): T | undefined {
 }
 
 /**
+ * The number the widget's own field holds, in E.164, or nothing.
+ *
+ * Nothing means the widget cannot speak for a number right now: there is none, the utils
+ * script has not landed (`getNumber()` answers `''`), the field is empty, or the answer is
+ * a bare dial code. That last one is the reason for the length floor: a widget can answer
+ * with the selected country and no number, and `+1` must never be mistaken for the value it
+ * was asked about — that would replace a shopper's number with a country.
+ *
+ * The one place the widget's number is read, so the floor cannot apply in one caller and
+ * not another.
+ */
+export function e164FromWidget(widget?: PhoneNumberSource): string | undefined {
+  const e164 = ask(() => widget?.getNumber?.());
+  if (!e164?.startsWith('+')) return undefined;
+
+  // A dial code is at least one digit and a national number at least MIN_PHONE_DIGITS, so
+  // anything shorter than their sum is not a number in E.164.
+  return digitsOf(e164).length > MIN_PHONE_DIGITS ? e164 : undefined;
+}
+
+/**
  * E.164 from the widget, then from the text when it was already written internationally.
  *
  * Deliberately no third source: `+{dialCode}{digits}` is assemblable without the utils
@@ -101,8 +122,8 @@ function ask<T>(question: () => T): T | undefined {
  * E.164 and is not, which is worse than a national number the API knows it must convert.
  */
 function readE164(value: string, widget?: PhoneNumberSource): string | null {
-  const fromWidget = ask(() => widget?.getNumber?.());
-  if (fromWidget?.startsWith('+')) return fromWidget;
+  const fromWidget = e164FromWidget(widget);
+  if (fromWidget) return fromWidget;
 
   const compact = value.replace(/[\s\-().]/g, '');
   return /^\+\d{8,15}$/.test(compact) ? compact : null;

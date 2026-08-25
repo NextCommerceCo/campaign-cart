@@ -21,9 +21,12 @@ function source(overrides: Partial<PhoneNumberSource> = {}): PhoneNumberSource {
   };
 }
 
-/** An instance with the utils script loaded, answering as it would for a US number. */
+/**
+ * An instance answering as it would for a US number. `null` is the utils script not having
+ * landed, which is what `isValidNumber` really returns then.
+ */
 function loadedSource(
-  verdict: boolean,
+  verdict: boolean | null,
   e164 = '+14155552671'
 ): PhoneNumberSource {
   return source({
@@ -149,6 +152,36 @@ describe('a widget whose field is empty', () => {
 
     expect(check.verdict).toBe('unknown');
     expect(check.reason).toBe('utils-not-loaded');
+  });
+});
+
+describe('a widget offering a dial code instead of a number', () => {
+  /**
+   * A widget can answer with the selected country and no number behind it. Adopting that
+   * would replace the shopper's number with a country: their ten digits become `+1`, which
+   * is well formed, reaches the order, and is nobody's phone. The floor is a dial code plus
+   * the shortest national number in service.
+   */
+  it('does not take a bare dial code as the number', () => {
+    const check = checkPhone('4155552671', loadedSource(null, '+1'));
+
+    expect(check.value).toBe('4155552671');
+    expect(check.isE164).toBe(false);
+  });
+
+  it('does not take a three-digit dial code either', () => {
+    const check = checkPhone('4155552671', loadedSource(null, '+299'));
+
+    expect(check.value).toBe('4155552671');
+    expect(check.isE164).toBe(false);
+  });
+
+  it('still takes a real number that is barely longer than one', () => {
+    // Greenland: +299 321000. Five digits would be the floor; this is nine.
+    const check = checkPhone('321000', loadedSource(true, '+299321000'));
+
+    expect(check.value).toBe('+299321000');
+    expect(check.isE164).toBe(true);
   });
 });
 
