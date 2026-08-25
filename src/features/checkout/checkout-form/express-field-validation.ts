@@ -55,33 +55,25 @@ export function validateExpressFields(
   requiredFields: string[]
 ): FormValidationResult {
   const errors: Record<string, string> = {};
-  let firstErrorField: string | undefined;
-
-  const fail = (field: string, message: string): void => {
-    errors[field] = message;
-    firstErrorField ??= field;
-  };
 
   for (const field of requiredFields) {
     const value = formData[field];
     const text = typeof value === 'string' ? value.trim() : value;
 
     if (!text) {
-      fail(field, `${FIELD_LABELS[field] ?? field} is required`);
-      continue;
-    }
-
-    if (field === 'email' && !isValidEmail(String(text))) {
-      fail(field, 'Please enter a valid email address');
-    }
-
-    if (
+      errors[field] = `${FIELD_LABELS[field] ?? field} is required`;
+    } else if (field === 'email' && !isValidEmail(String(text))) {
+      errors[field] = 'Please enter a valid email address';
+    } else if (
       field === 'phone' &&
       !isValidPhone(String(text), ctx.phoneSource?.('shipping'))
     ) {
-      fail(field, 'Please enter a valid phone number');
+      errors[field] = 'Please enter a valid phone number';
     }
   }
+
+  // The order asked for is the order to report in, so the first failure is a lookup.
+  const firstErrorField = requiredFields.find(field => field in errors);
 
   return {
     isValid: Object.keys(errors).length === 0,

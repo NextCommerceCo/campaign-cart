@@ -143,7 +143,9 @@ function readE164(value: string, widget?: PhoneNumberSource): string | null {
  * script not having landed, which is not a rejection. A field holding a bare dial code is
  * the "does not" case, by the same rule that stops that dial code being taken as a value.
  */
-function widgetFor(source?: PhoneNumberSource): PhoneNumberSource | undefined {
+function usableWidget(
+  source?: PhoneNumberSource
+): PhoneNumberSource | undefined {
   if (!source) return undefined;
   if (e164FromWidget(source)) return source;
   return verdictOf(source) == null ? source : undefined;
@@ -179,7 +181,7 @@ export function checkPhone(
     return { verdict: 'unknown', value: '', isE164: false, reason: 'empty' };
   }
 
-  const widget = widgetFor(source);
+  const widget = usableWidget(source);
   const e164 = readE164(value, widget);
   const resolved = { value: e164 ?? value, isE164: e164 !== null };
 
