@@ -58,6 +58,7 @@ field list and nothing more.
 | `store-subscriptions.ts` | What the form does when state changes underneath it rather than because the shopper touched something: store errors onto fields, address rows opened, submit button disabled while processing, cart emptiness noted, and the card fields built if the Spreedly key arrives after boot | 3 (checkout) / 1 (cart) / 3 (config) |
 | `postal-code-format.ts` | Rewriting a postcode into its country's shape as it is typed, and putting the caret back where the shopper left it | 2 fields |
 | `field-value.ts` | What a field is *worth* to the order — a phone as E.164, a checkbox as a boolean, everything else as typed | 1 field |
+| `phone-normalization.ts` | Rewriting the phone numbers already in the store as E.164, once the phone library can produce one. The only thing that writes them back: validation reports on the store rather than rewriting it | store only |
 | `billing-field-routing.ts` | Where a `billing-*` value goes: renamed to the orders API's spelling (`fname` → `first_name`) on its way into `billingAddress`, plus the billing postcode and province dropdown | 3 fields |
 | `contact-persistence.ts` | What happens once the shopper *finishes* with a contact field — the prospect cart's email, user-data storage, and creating the prospect cart. Never on `input` | 3 fields |
 
@@ -237,7 +238,8 @@ folder moved.
 
 | Module | What it owns | Needs from the validator |
 |---|---|---|
-| `validation-patterns.ts` | Whether one value looks like an email, phone, name or city — with no knowledge of forms or countries | 0 |
+| `validation-patterns.ts` | Whether one value looks like an email, a name or a city — with no knowledge of forms or countries | 0 |
+| `phone-validation.ts` | Whether a phone number can be used, and the E.164 form to store for it. Separate from the patterns above because it has to ask the field's `intl-tel-input` widget what is valid in the shopper's country | 0 (takes the widget) |
 | `field-labels.ts` | The name a shopper sees for a field in a message, including the country's word for "state" and "postcode" | 0 |
 | `first-error-field.ts` | Which of several problems to scroll to (topmost on the page), and handing card fields to Spreedly's own focus | 0 |
 | `field-rules.ts` | The per-field rule table and running one rule — the path used while the shopper types | 2 |
@@ -351,7 +353,7 @@ Container for express payment buttons. Manages visibility of PayPal/Apple Pay/Go
 
 ## Validation
 
-`CheckoutValidator` validates fields on submit and optionally on blur. The rules live in `validation/`: `validation/field-rules.ts` builds the per-field rule set, `validation/validation-patterns.ts` holds the email/phone/name checks, and `validation/field-labels.ts` turns a field name into the wording an error message uses.
+`CheckoutValidator` validates fields on submit and optionally on blur. The rules live in `validation/`: `validation/field-rules.ts` builds the per-field rule set, `validation/validation-patterns.ts` holds the email/name/city checks, `validation/phone-validation.ts` holds the phone check that needs the country, and `validation/field-labels.ts` turns a field name into the wording an error message uses.
 
 Error display is handled by `UIService` which looks for `[data-next-error="<fieldName>"]` or `[os-checkout-error="<fieldName>"]` elements adjacent to or within each field.
 
