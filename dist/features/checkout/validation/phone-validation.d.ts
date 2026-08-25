@@ -11,5 +11,6 @@ export interface PhoneCheck {
     reason: PhoneReason;
 }
 export declare function checkPhone(raw: string | undefined | null, source?: PhoneNumberSource): PhoneCheck;
+export declare function isValidPhone(raw: string | undefined | null, source?: PhoneNumberSource): boolean;
 export declare function normalizePhone(raw: string | undefined | null, source?: PhoneNumberSource): string;
 //# sourceMappingURL=phone-validation.d.ts.map

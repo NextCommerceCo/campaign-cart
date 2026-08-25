@@ -22,7 +22,6 @@ export declare class CheckoutValidator {
     validateStep(step: number, formData: Record<string, any>, countryConfigs: Map<string, CountryConfig>, currentCountryConfig?: CountryConfig, billingAddress?: any, sameAsShipping?: boolean): Promise<FormValidationResult>;
     validateForm(formData: Record<string, any>, countryConfigs: Map<string, CountryConfig>, currentCountryConfig?: CountryConfig, includePayment?: boolean, billingAddress?: any, sameAsShipping?: boolean): Promise<FormValidationResult>;
     isValidEmail(email: string): boolean;
-    isValidPhone(phone: string): boolean;
     isValidName(name: string): boolean;
     isValidCity(city: string): boolean;
     setError(fieldName: string, message: string): void;
