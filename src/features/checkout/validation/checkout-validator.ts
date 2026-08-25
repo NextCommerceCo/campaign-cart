@@ -106,7 +106,7 @@ export class CheckoutValidator {
   // ============================================================================
 
   /**
-   * The four things form and step validation may reach for. Rebuilt per call because
+   * The three things form and step validation may reach for. Rebuilt per call because
    * `creditCardService` and `phoneSource` are installed after construction.
    */
   private formContext(): FormValidationContext {
@@ -154,6 +154,7 @@ export class CheckoutValidator {
       ...(this.phoneSource !== undefined && {
         phoneSource: this.phoneSource,
       }),
+      fieldName: name,
     };
 
     for (const rule of rules) {

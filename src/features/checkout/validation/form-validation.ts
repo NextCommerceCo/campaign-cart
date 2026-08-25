@@ -48,8 +48,8 @@ export interface FormValidationContext {
  * Validates the whole form and returns every problem found.
  *
  * @param ctx What this needs from the validator.
- * @param formData The collected form values. **Mutated** when `intl-tel-input` is active:
- * `formData.phone` is replaced with the E.164 number so the order carries a normalised one.
+ * @param formData The collected form values. Read, never written: putting the phone in
+ * E.164 is `checkout-form/phone-normalization.ts`, which writes through the store.
  * @param countryConfigs Country code → rules (state required, postal format).
  * @param currentCountryConfig The shopper's country, used only for the wording of messages.
  * @param includePayment Whether to check the card fields. Pass `true` for card payments.

@@ -32,6 +32,17 @@ export interface FieldRuleContext {
    * count, which is how a number the form accepted on blur could be refused on submit.
    */
   phoneSource?: (type: 'shipping' | 'billing') => PhoneNumberSource | undefined;
+  /**
+   * The field being validated, so the phone rule asks the widget bound to *that* field.
+   * Without it the rule can only guess, and guessing meant a billing number judged against
+   * the shipping widget.
+   */
+  fieldName?: string;
+}
+
+/** Which address a field belongs to. Every billing field is named `billing-*`. */
+function phoneTypeOf(fieldName?: string): 'shipping' | 'billing' {
+  return fieldName?.startsWith('billing') ? 'billing' : 'shipping';
 }
 
 /**
@@ -115,7 +126,7 @@ export function applyRule(
 
     case 'phone':
       if (!value) return true;
-      return isValidPhone(value, ctx.phoneSource?.('shipping'));
+      return isValidPhone(value, ctx.phoneSource?.(phoneTypeOf(ctx.fieldName)));
 
     case 'name':
       return !value || isValidName(value);

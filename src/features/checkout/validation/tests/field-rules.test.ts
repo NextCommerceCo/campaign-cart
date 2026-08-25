@@ -15,6 +15,41 @@ function createContext(
   };
 }
 
+describe('the phone rule and which widget it asks', () => {
+  /** Finding 133.8: the rule used to hard-select the shipping widget whatever the field. */
+  it('asks the billing widget for a billing field', () => {
+    const asked: string[] = [];
+    const ctx = createContext({
+      phoneSource: (type: string) => {
+        asked.push(type);
+        return { getNumber: () => '+442079460958', isValidNumber: () => true };
+      },
+    });
+
+    applyRule(
+      { ...ctx, fieldName: 'billing-phone' },
+      { type: 'phone' },
+      '020 7946 0958'
+    );
+
+    expect(asked).toEqual(['billing']);
+  });
+
+  it('asks the shipping widget for the shipping field', () => {
+    const asked: string[] = [];
+    const ctx = createContext({
+      phoneSource: (type: string) => {
+        asked.push(type);
+        return { getNumber: () => '+14155552671', isValidNumber: () => true };
+      },
+    });
+
+    applyRule({ ...ctx, fieldName: 'phone' }, { type: 'phone' }, '4155552671');
+
+    expect(asked).toEqual(['shipping']);
+  });
+});
+
 describe('createValidationRules', () => {
   it('covers the fields the shopper types into', () => {
     const rules = createValidationRules();
