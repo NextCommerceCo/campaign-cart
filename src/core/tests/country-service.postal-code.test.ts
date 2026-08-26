@@ -219,9 +219,8 @@ describe('formatPostalCode over countries whose format carries literals', () => 
   // The pattern language has no escape, so a literal that is also a slot
   // character is consumed as a slot (MC '980NN', GI 'GX11 1AA'). IM 'IMN NAA'
   // and JE 'JEN NAA' go the other way: 'I'/'M'/'J'/'E' are literals, leaving
-  // four slots for a six-character code, so neither anchor can place it and the
-  // value stands as typed, separators kept. Every result below is still
-  // accepted by its own regex.
+  // four slots for a six-character code, so neither anchor can place it. Every
+  // result below is still accepted by its own regex.
   const cases: [string, string, string][] = [
     ['MC', '98000', '98000'],
     ['IM', 'IM2 1AA', 'IM2 1AA'],
@@ -235,9 +234,29 @@ describe('formatPostalCode over countries whose format carries literals', () => 
     expect(expectAcceptedByOwnRegex(code, input)).toBe(expected);
   });
 
-  it('keeps the separator when no anchor can place the code', () => {
+  it('keeps the separator the shopper typed', () => {
     expect(expectAcceptedByOwnRegex('IM', 'im2 1aa')).toBe('IM2 1AA');
-    expect(expectAcceptedByOwnRegex('IM', 'im21aa')).toBe('IM21AA');
+  });
+});
+
+// ─── formatPostalCode — the per-length list ──────────────────────────────────
+
+describe('formatPostalCode falls back to a format chosen by length', () => {
+  // FORMAT_BY_LENGTH covers the patterns neither anchor expresses, by
+  // re-expressing the country's own letters as placeholders.
+  const cases: [string, string, string][] = [
+    ['IM', 'im21aa', 'IM2 1AA'],
+    ['JE', 'je23zz', 'JE2 3ZZ'],
+    ['GI', 'GX111AA', 'GX11 1AA'],
+    ['LT', 'LT55798', 'LT-55798'],
+  ];
+
+  it.each(cases)('%s %s becomes %s', (code, input, expected) => {
+    expect(expectAcceptedByOwnRegex(code, input)).toBe(expected);
+  });
+
+  it('leaves a 7-character IM code unspaced, since spaced it exceeds the country maximum', () => {
+    expect(formatPostalCode('IM991AA', configOf('IM'))).toBe('IM991AA');
   });
 });
 

@@ -16,6 +16,24 @@ import type { CountryConfig } from '@/core/country-service';
  */
 const FORMAT_SLOTS = new Set(['N', 'X', 'A', '#', '9']);
 
+/**
+ * Formats for a CDN pattern the pattern language cannot express, keyed by the
+ * pattern and then by the length of the cleaned code. The country's own letters
+ * are re-expressed as placeholders, which is what lets a code whose prefix the
+ * shopper already typed take its separator.
+ *
+ * IM `IMN NAA` + `IM00AX` → `IM0 0AX`, LT `LT-NNNNN` + `LT55798` → `LT-55798`
+ *
+ * A 7-character IM or JE code has no entry: spaced it is 8 characters, which
+ * those countries' own `postcodeMaxLength` of 7 rejects.
+ */
+const FORMAT_BY_LENGTH: Record<string, Record<number, string>> = {
+  'IMN NAA': { 6: 'AAN NAA' },
+  'JEN NAA': { 6: 'AAN NAA' },
+  'GX11 1AA': { 7: 'AANN NAA' },
+  'LT-NNNNN': { 7: 'AA-NNNNN' },
+};
+
 const compiledRegexes = new Map<string, RegExp | null>();
 
 function postcodeRegexOf(pattern: string): RegExp | null {
@@ -103,7 +121,8 @@ function applyFormat(
  *
  * A `postcodeFormat` positions its literals at fixed offsets from the start,
  * which fits a fixed-length postcode only; the same pattern anchored from the
- * end fits the variable-length ones (GB outward codes run 2 to 4 characters).
+ * end fits the variable-length ones (GB outward codes run 2 to 4 characters),
+ * and {@link FORMAT_BY_LENGTH} covers the patterns neither reading expresses.
  * A candidate is used only when the country's own `postcodeRegex` accepts it,
  * which also leaves a half-typed value alone instead of rearranging it.
  */
@@ -122,6 +141,17 @@ export function formatPostalCode(
   if (!cleanCode) return postalCode;
 
   const format = countryConfig.postcodeFormat;
+
+  const byLength = FORMAT_BY_LENGTH[format]?.[cleanCode.length];
+  if (byLength !== undefined) {
+    const corrected = applyFormat(cleanCode, byLength, 'start');
+    if (
+      corrected !== null &&
+      checkAgainstCountry(corrected, countryConfig) === true
+    ) {
+      return corrected;
+    }
+  }
 
   const fromStart = applyFormat(cleanCode, format, 'start');
   if (

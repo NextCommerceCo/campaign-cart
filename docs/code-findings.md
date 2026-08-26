@@ -3628,11 +3628,21 @@ Three mechanisms, none of them GB-specific:
 
 Fixed by building the start-anchored candidate, then the same pattern anchored from the
 end, and using a candidate only when that country's own rule accepts it; otherwise the
-input is returned uppercased. Measured at 0 of 26,099 with 0 regressions on the other 41
-countries. Mechanism 2 is why the fix is a check against the country's rule rather than
-per-country pattern handling: the patterns come from a service outside this repo, so a
-country added later with a literal `A`, `N`, `X`, `9` or `#` would take the same path with
-nothing to report it.
+input is returned uppercased. Mechanism 2 is why the check is against the country's rule
+rather than per-country pattern handling: the patterns come from a service outside this
+repo, so a country added later with a literal `A`, `N`, `X`, `9` or `#` would take the same
+path with nothing to report it.
+
+Mechanisms 2 and 3 also mean four patterns cannot be read as written at any anchor, so
+`FORMAT_BY_LENGTH` carries a format for those, keyed by the pattern and then by the length
+of the cleaned code, with the country's own letters re-expressed as placeholders:
+`IMN NAA` and `JEN NAA` at 6, `GX11 1AA` at 7, `LT-NNNNN` at 7. That is what lets a code
+whose prefix the shopper already typed take its separator (`IM00AX` to `IM0 0AX`,
+`LT55798` to `LT-55798`, `GX111AA` to `GX11 1AA`).
+
+Measured over 38,148 valid inputs sampled from all 47 countries' own regexes: 0 come out in
+a shape their country rejects, 0 regressions against the previous behaviour, and no
+separator-less input in any of the 47 countries is left failing validation.
 
 Also closed here: the formatter's trailing "append whatever is left over" branch, which
 could emit a value longer than the country's `postcodeMaxLength` (12 characters for
@@ -3727,6 +3737,39 @@ Not fixed here: the repair is to hide nothing when no recognised container is fo
 hide the field and its label rather than an unknown ancestor, and it belongs with a spec of
 its own on an unwrapped fixture. The #92 spec works around it by wrapping the fixture's
 fields in `.form-group`.
+
+### 207. A four-character outward code in the Isle of Man or Jersey cannot be written with its space — *verified, not fixed*
+
+Both countries give `postcodeMaxLength: 7` in their CDN data, and both regexes accept a
+four-character outward code (`\d{1,2}` after the two letters). `IM99 1AA` matches the regex
+and is 8 characters, so `country-service.postal-code.ts › validatePostalCode` rejects it on
+length before the pattern is consulted.
+
+The formatter behaves correctly around it: there is no `FORMAT_BY_LENGTH` entry at 7 for
+either pattern, so `IM991AA` is left unspaced rather than reshaped into a value the same
+validation would then refuse. A shopper who types the space is refused.
+
+Not fixed here: the length belongs to the countries service, not to this repo. The
+in-repo options are to raise the maximum for those two patterns alongside
+`FORMAT_BY_LENGTH`, or to treat `postcodeMaxLength` as advisory when the regex already
+matches. Both change what validation accepts, which is a decision rather than a fix.
+
+### 208. Running prettier over a guide page rewrites its frontmatter quotes and moves the published page — *reproduced, worked around*
+
+`npx prettier --write` on any `src/**/guide/*.md` rewrites `title: "…"` to `title: '…'`.
+The frontmatter is parsed as text, so the leading quote becomes part of the title, the page
+claims a different sidebar path from its siblings, and `npm run docs:coverage` fails with
+*guide folder(s) whose pages disagree on their sidebar path*. Hit while editing
+`checkout-form/guide/overview.md` during #92 and reverted by hand.
+
+Every one of the 357 guide pages is double-quoted today, so `npm run format` across the
+repo would move all of them at once. `title` is the page's URL
+([documentation.md](../.claude/rules/documentation.md)), so that is a change to customer
+links, not a formatting detail.
+
+Not fixed here: the repair is a prettier override for `src/**/guide/*.md` (or
+`singleQuote: false` scoped to markdown frontmatter) so the formatter and the gate agree.
+Until then, re-check the frontmatter after formatting a guide page.
 
 ## Open decisions
 
