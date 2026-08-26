@@ -14,7 +14,7 @@ A phone number is now judged the same way everywhere it is judged, and a number 
 - **One field's error message no longer disappears when a different field is corrected.**
 - **A field no longer keeps a tick it has not just earned.** Re-validating a form cleared every error mark but left the success ones behind, so a field that had passed an earlier check still showed as correct after the check that would have failed it.
 
-Two things are still accepted on purpose. A number nothing can check: the library that checks it loads over the network, and a slow script never blocks a sale. And a well-formed number nobody appears to hold, such as `0000000000` — whether a number is real is the server's call, and a shape rule in a page that runs for years cannot see the outcome to correct itself.
+Two things are still accepted on purpose. A number nothing can check: the library that checks it loads over the network, and a slow script never blocks a sale. And a well-formed number nobody appears to hold, such as `0000000000` or `1234567890` — those are what someone types to place a test order, and the server is what decides which orders are real.
 
 ---
 

@@ -14,9 +14,11 @@
  * check it, not that the number is wrong.
  *
  * **Deliberately not judged:** whether a well-formed number is one anybody holds.
- * `0000000000` is a valid US length, so it is sent. A shape rule here would be a second
- * opinion competing with the server's, frozen at release time on a page that runs for
- * years, with no way to see the outcome and correct itself.
+ * `0000000000` and `1234567890` are valid US lengths and are sent as typed. They are what
+ * someone types to place a test order, and refusing them here would block the testing the
+ * checkout is put through. Which orders are real is the server's call — its order response
+ * carries `is_test` — and a shape rule here would be a second opinion on that, frozen at
+ * release time on a page that runs for years.
  */
 
 /**

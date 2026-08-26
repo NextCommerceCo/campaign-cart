@@ -22,10 +22,10 @@ import {
  *   expected to send `+14155552671` rather than `4155552671`.
  *
  * What the SDK deliberately does **not** do is decide whether a well-formed
- * number is one anybody holds. `0000000000` is a valid length for a US number
- * and goes through, normalised, for the server to accept or refuse. A shape rule
- * in the SDK would be a second opinion, frozen at release time on a page that
- * runs for years, and it never sees the outcome to correct itself.
+ * number is one anybody holds. `0000000000` and `1234567890` are valid lengths
+ * for a US number and go through as typed: they are what someone types to place
+ * a test order, and refusing them here would block the testing the checkout is
+ * put through. Which orders are real is the server's call.
  *
  * Why this cannot be a unit test: the number is assembled by `intl-tel-input`
  * from a utils script it fetches at runtime, and the verdict comes from
