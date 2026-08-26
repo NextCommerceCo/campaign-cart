@@ -7,7 +7,7 @@ export interface CountryConfig {
     postcodeMinLength: number;
     postcodeMaxLength: number;
     postcodeExample: string | null;
-    postcodeFormat: string | null;
+    postcodeFormat: string | string[] | null;
     currencyCode: string;
     currencySymbol: string;
 }
