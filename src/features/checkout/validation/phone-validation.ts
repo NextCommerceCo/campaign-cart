@@ -13,12 +13,10 @@
  * Three verdicts because that library loads over the network: `unknown` means nobody could
  * check it, not that the number is wrong.
  *
- * **Deliberately not judged:** whether a well-formed number is one anybody holds.
- * `0000000000` and `1234567890` are valid US lengths and are sent as typed. They are what
- * someone types to place a test order, and refusing them here would block the testing the
- * checkout is put through. Which orders are real is the server's call — its order response
- * carries `is_test` — and a shape rule here would be a second opinion on that, frozen at
- * release time on a page that runs for years.
+ * **The bar is the library's own `isValidNumber()`,** which asks whether a number is
+ * well formed for its country, not whether it is in service. `0000000000` and `1234567890`
+ * pass it and are sent. The library's `isValidNumberPrecise()` refuses both; whether to
+ * call it instead is an open question, not a settled contract.
  */
 
 /**

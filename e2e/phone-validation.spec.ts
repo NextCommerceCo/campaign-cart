@@ -21,11 +21,11 @@ import {
  *   conversion the SDK did not make is one nobody here can see, so the SDK is
  *   expected to send `+14155552671` rather than `4155552671`.
  *
- * What the SDK deliberately does **not** do is decide whether a well-formed
- * number is one anybody holds. `0000000000` and `1234567890` are valid lengths
- * for a US number and go through as typed: they are what someone types to place
- * a test order, and refusing them here would block the testing the checkout is
- * put through. Which orders are real is the server's call.
+ * What the SDK asks is the phone library's `isValidNumber()` — whether a number
+ * is well formed for its country, not whether it is in service. `0000000000` and
+ * `1234567890` pass that and go through. The library's `isValidNumberPrecise()`
+ * refuses both; whether the SDK should call it instead is an open question, so
+ * this test pins today's answer rather than arguing for it.
  *
  * Why this cannot be a unit test: the number is assembled by `intl-tel-input`
  * from a utils script it fetches at runtime, and the verdict comes from
