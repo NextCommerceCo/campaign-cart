@@ -216,9 +216,6 @@ export class CountryService {
     return statesData.countryConfig;
   }
 
-  /**
-   * Validate postal code based on country configuration
-   */
   public validatePostalCode(
     postalCode: string,
     _countryCode: string,
@@ -232,10 +229,7 @@ export class CountryService {
     );
   }
 
-  /**
-   * Format postal code based on country configuration
-   * Applies formatting pattern from CDN (e.g., "XXX XXX" for Canadian postal codes)
-   */
+  /** Applies the country's `postcodeFormat` from the CDN (CA `ANA NAN`). */
   public formatPostalCode(
     postalCode: string,
     countryConfig: CountryConfig

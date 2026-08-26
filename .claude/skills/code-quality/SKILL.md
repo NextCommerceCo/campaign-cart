@@ -33,7 +33,7 @@ Review in this order because each one narrows what the next has to look at.
 | 2 | **Domain** (reliable) | Sample the input space from its authority and count failures (§2) |
 | 3 | **Single home** (maintainable) | For each fact the change touches, name its one home |
 | 4 | **Copies** (reusable) | Grep the distinctive line; count how many files carry it |
-| 5 | **Comments** (readable) | Check each comment against the code and the data it names |
+| 5 | **Comments** (readable) | Check each one against the code, then against whether it earns its place (§5) |
 | 6 | **Frequency** (efficient) | Find what triggers the function; hoist per-call setup |
 
 Altitude comes first of all, before lens 1: is this solved at the right layer, and
@@ -128,7 +128,41 @@ Check [typescript.md](../../rules/typescript.md) before deleting the old export 
 `declaration: true` and the generated-docs extractors both keep symbols alive that
 look dead.
 
-## 5. Scoping what you found
+## 5. Lens 5 — comments earn their place
+
+Two questions per comment, in order. **Is it true** — checkable against the code
+and the data it names; the first two rows of §3 are both failures of this half.
+**Does it earn its place** — the default is no comment, and one is justified only
+by the non-obvious *why*: a deliberate choice that would otherwise invite a
+"simplification" that breaks something, or a trap the next reader would walk into.
+The policy is [code-quality.md](../../rules/code-quality.md) §2, under *Comments*.
+
+Three shapes to delete on sight in a file the change already opens: a restatement
+(`// Remove all spaces and special characters for processing` over the `replace`
+that removes them), statement-by-statement narration, and a TSDoc summary that
+says the function's own name back (`Format postal code based on country
+configuration`). Trim instead of deleting when a long comment carries context the
+code cannot express: keep the one sentence, drop the rest.
+
+**Before and after, from the postcode fix.** `country-service.postal-code.ts`
+carried a dozen line comments narrating each step, and a restating TSDoc summary on
+each of its two exported functions. Out of the code the fix reworked, what came
+through is the module header, a one-line note on an internal helper, and three
+comments carrying a *why* the code cannot state itself:
+
+- **the placeholder set** — all five slots accept any character and the pattern
+  language has no escape, which is why every candidate is re-checked against the
+  country's own regex;
+- **the format example** — `GB AANN NAA + M11AE -> start M11A E, end M1 1AE`, one
+  line in place of a paragraph;
+- **the public contract** — what `formatPostalCode` returns when it cannot place
+  the input, and why the pattern is tried from both ends.
+
+The file also carried `// Default configurations for common countries` over the
+one function the fix did not otherwise touch. It went with the rest: a restatement
+in a file you already have open costs one line to delete.
+
+## 6. Scoping what you found
 
 Sort every finding into three buckets, and say which is which in the report:
 
@@ -145,7 +179,7 @@ leave behind go in [`docs/code-findings.md`](../../../docs/code-findings.md).
 Describe behaviour in neutral technical terms — what the code does and what it is
 scoped to, never what it risks.
 
-## 6. Closing the loop
+## 7. Closing the loop
 
 A reliability finding closes with a test that has been **seen failing**. Revert the
 fix, run it, watch it go red, restore. For anything a shopper sees, that test is a

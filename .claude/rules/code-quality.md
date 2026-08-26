@@ -34,8 +34,7 @@ Sibling rules own their own slices and are not repeated here:
 **Readable.** Every comment must be checkable against the code or the data it
 names. A comment that assigns distinct meanings to values the code treats
 identically is a defect, not a style issue: it is what a later reader will trust.
-Delete comments that restate the code; keep the non-obvious *why*, and prefer a
-formula over prose.
+Which comments exist at all is the *Comments* subsection below.
 
 **Maintainable.** If two places define the same fact — a hardcoded fallback and its
 remote source, a constant and a doc page, a type and a manifest — a test asserts
@@ -65,6 +64,30 @@ test the domain, not the example:
 function on an `input` handler, a store subscription, or a template re-render runs
 orders of magnitude more often than one on submit. Hoist compiled regexes,
 constant sets, and lookups out of the call; do not micro-optimise anything else.
+
+### Comments
+
+**The default is no comment.** A comment earns its place by carrying the
+non-obvious *why*: a deliberate choice that would otherwise invite a
+"simplification" that breaks something, or a trap the next reader would walk into.
+Everything else is reading cost.
+
+- **Never restate the code.** `// Postal code validation` over a block that
+  validates a postal code, `// Remove all spaces` over a `replace` that removes
+  them, and a TSDoc line that says the function's own name back all add nothing.
+  Delete them on sight in code you are already editing.
+- **No step-by-step narration.** A comment per statement turns a 10-line function
+  into 20 lines to read.
+- **Prefer the formula over prose.** When the logic is a calculation or a
+  transformation, show it: `GB AANN NAA + M11AE -> start M11A E, end M1 1AE`.
+- **A banner needs something to group.** A section banner is justified only when
+  it binds several symbols a reader must take as one unit, never when it repeats
+  the name of the single symbol below it.
+- **Trim, do not drop.** A long pre-existing comment that carries real context
+  keeps the one thing the code cannot express. Length alone is not a reason.
+
+A comment that describes behaviour the code does not have is a defect, not a style
+issue — see **Readable** above.
 
 ## 3. When they conflict
 
@@ -104,6 +127,7 @@ separate issue with a reason.
 - [ ] The contract is stated in one sentence, and a test asserts it by that name.
 - [ ] The input domain was sampled from its authority, not from the example.
 - [ ] Every new comment is checkable against the code or data it names.
+- [ ] No comment restates or narrates the code; the ones kept carry a *why*.
 - [ ] No fact gained a second home without a test that they agree.
 - [ ] No block was copied; the second call site got the extraction.
 - [ ] The failure path returns the input, not a partial result.

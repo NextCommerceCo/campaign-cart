@@ -3595,6 +3595,139 @@ Not fixed here: it is a release-process decision, and the fix (build in CI, or a
 script that refuses to tag a stale `dist/`) is a human's call.
 
 
+## Found while fixing issue #92 (2026-08-26)
+
+### 200. The postcode formatter placed a pattern's literals at fixed offsets from the start, so a variable-length postcode came out in a shape its own country rejects — *measured, fixed*
+
+[Issue #92](https://github.com/NextCommerceCo/campaign-cart/issues/92). `CR2 6XH` typed or
+autofilled into the checkout postcode field came back `CR26 XH`, which the GB
+`postcodeRegex` from the countries CDN then rejects.
+
+`country-service.postal-code.ts › formatPostalCode` walked the CDN `postcodeFormat` from
+left to right and emitted each literal at its index in the pattern. GB ships `AANN NAA`,
+seven placeholders, so the separator only landed where GB writes it for the 7-character
+codes. UK outward codes run 2 to 4 characters, so 5- and 6-character postcodes took the
+separator at a different offset.
+
+The report named GB and stated that the other thirteen separator countries round-tripped
+clean. Sampling each country's own `postcodeRegex` for inputs and checking the formatter's
+output against that same regex gave a wider picture: of 47 countries that ship a
+`postcodeFormat`, **6 were affected, and 2,034 of 26,099 valid inputs came out in a shape
+their own country rejects** (GB 451/600, IM 600/600, JE 600/600, LT 282/598, MC 100/100,
+GI 1/1).
+
+Three mechanisms, none of them GB-specific:
+
+1. A variable-length code with the separator anchored from the start (GB, IM, JE — the
+   latter two are `\d{1,2}` in their own regex).
+2. The pattern language has no escape, so a literal that is one of `N X A # 9` is consumed
+   as a placeholder: the `9` in Monaco's `980NN`, the `X` and digits in Gibraltar's
+   `GX11 1AA`.
+3. A literal prefix emitted a second time when the input already carries it: `LT-`, `IM`,
+   `JE`.
+
+Fixed by building the start-anchored candidate, then the same pattern anchored from the
+end, and using a candidate only when that country's own rule accepts it; otherwise the
+input is returned uppercased. Measured at 0 of 26,099 with 0 regressions on the other 41
+countries. Mechanism 2 is why the fix is a check against the country's rule rather than
+per-country pattern handling: the patterns come from a service outside this repo, so a
+country added later with a literal `A`, `N`, `X`, `9` or `#` would take the same path with
+nothing to report it.
+
+Also closed here: the formatter's trailing "append whatever is left over" branch, which
+could emit a value longer than the country's `postcodeMaxLength` (12 characters for
+Gibraltar, whose max is 8), and the per-call `new RegExp` in
+`country-service.postal-code.ts › validatePostalCode`, now a module-level cache shared with
+the formatter.
+
+### 201. The postcode caret restore assumes the length changed before the caret — *verified by trace, not fixed*
+
+`checkout-form/postal-code-format.ts › formatPostalCodeInPlace` restores the caret with
+`cursorPos + lengthDiff`. That holds when the reformat inserts its separator ahead of the
+caret, and not otherwise. With `M11AE` in the field and the caret at index 1, typing `S`
+gives `SM11AE`, which formats to `SM11 AE`: the separator goes in at index 4, after the
+caret, but the caret still moves by the whole diff and lands one character further right
+than the shopper left it. The next keystroke goes in at that position.
+
+Not fixed here: the repair is to count the alphanumerics before the caret and find that
+same count in the formatted value, which is a change to a different module than #92 and
+wants its own E2E on real caret positions.
+
+### 202. `validatePostalCode` takes a country code it does not read — *verified, not fixed*
+
+`country-service.postal-code.ts › validatePostalCode` and its wrapper
+`country-service.ts › CountryService.validatePostalCode` both take `_countryCode` between
+the value and the config, and neither reads it. All four call sites
+(`validation/form-validation.ts`, `validation/step-validation.ts`,
+`validation/billing-address-validation.ts`, `validation/field-rules.ts`) have to supply it.
+
+Not fixed here: removing a positional parameter changes a public signature on
+`CountryService`, so it belongs in a change that can carry the call-site updates and a
+note in the release.
+
+### 203. The built-in country configs and the CDN disagree about the same country — *verified, not fixed*
+
+`country-service.postal-code.ts › getDefaultCountryConfig` and
+`sdk-initializer.location-currency.ts` each hold their own `postcodeRegex` per country, used
+when the CDN has not answered. For GB the built-in pattern is
+`^[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}$` and the CDN ships
+`^[A-Za-z]{1,2}\d[A-Za-z\d]? ?\d[A-Za-z]{2}$`. The first accepts only upper case, the
+second accepts either, so whether a lower-case postcode validates depends on which config
+is in play at that moment.
+
+The built-in GB entry also carries `postcodeFormat: null`, so a shopper served the fallback
+gets no postcode formatting at all. The #92 fix reaches a shopper only through the CDN.
+
+Not fixed here: the two tables want either a test asserting they agree with the CDN for the
+countries they cover, or a decision to drop the built-in patterns and treat a missing config
+as unvalidated. Both are larger than #92.
+
+### 204. The postcode validation block is copied across three validators — *verified, not fixed*
+
+`validation/form-validation.ts`, `validation/step-validation.ts` and
+`validation/billing-address-validation.ts` each carry the same sequence: read the country
+config, call `validatePostalCode`, then build the message from `postcodeLabel` and
+`postcodeExample`. The three copies differ only in the word "billing" and in whether they
+also record `firstErrorField`.
+
+Not fixed here: it is the same shape that `checkout-form/postal-code-format.ts` was extracted
+for, and the extraction is straightforward (`postcodeError(config, value, { billing })`
+returning a string or null), but it touches three files in a different layer than #92.
+
+### 205. Address autocomplete writes its raw postcode into the store after the field has been formatted — *verified by trace, not fixed*
+
+`address-autocomplete/next-commerce-autocomplete.ts › NextCommerceAutocomplete._fillAddress`
+sets the postal input and dispatches `change`, which reaches
+`checkout-form.enhancer.ts › routeShippingField`, formats the field in place and writes the
+formatted value into the store. `_fillAddress` then calls `updateFormData` with its own
+`postcode` string, so the store holds the value as the autocomplete provider returned it
+while the field shows the formatted one.
+
+With #92 fixed both values pass validation for the countries checked, so there is nothing
+shopper-visible today. Not fixed here: the ordering is the point, and it belongs with a
+decision about which of the two writes is authoritative.
+
+### 206. A page whose fields are not inside a recognised container hides whatever the province field's parent happens to be — *reproduced in a browser, not fixed*
+
+Found while building the #92 Playwright spec: selecting GB in the flat
+`e2e/fixtures/country-service.html` set `display: none` on the whole `<form>`, which made
+the postcode input unactionable.
+
+`checkout-form/state-fields.ts › updateStateOptions` hides the province row when the
+selected country needs no state (GB has `stateRequired: false` and ships no states). It
+looks for the row with `closest('.frm-flds, .form-group, .form-field, .field-group')` and
+falls back to `provinceField.parentElement`. On a page where the province `<select>` sits
+directly inside the form, that fallback is the form itself.
+
+The starter templates all wrap their fields, which is why this has not been seen in
+production. A hand-built page that omits the wrapper loses the whole checkout the moment a
+stateless country is selected.
+
+Not fixed here: the repair is to hide nothing when no recognised container is found, or to
+hide the field and its label rather than an unknown ancestor, and it belongs with a spec of
+its own on an unwrapped fixture. The #92 spec works around it by wrapping the fixture's
+fields in `.form-group`.
+
 ## Open decisions
 
 1. **Lint.** 12,365 errors now that it runs — 7,391 auto-fixable (7,296 of them pure

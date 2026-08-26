@@ -1,15 +1,53 @@
 /**
  * `CountryService`'s postal-code validation, formatting and per-country
- * defaults — extracted verbatim from `country-service.ts`. Pure country
- * formatting rules; the service itself still owns fetching and caching.
+ * defaults. Pure country formatting rules; the service itself still owns
+ * fetching and caching.
  */
 
 import type { Logger } from '@/core/logger';
 import type { CountryConfig } from '@/core/country-service';
 
 /**
- * Validate postal code based on country configuration
+ * Placeholder characters in a CDN `postcodeFormat`. All five accept any
+ * character, and the pattern language has no escape, so a literal that happens
+ * to be one of them is consumed as a placeholder (`980NN`, `GX11 1AA`). Hence
+ * every formatted candidate is checked against the country's own regex before
+ * it is used.
  */
+const FORMAT_SLOTS = new Set(['N', 'X', 'A', '#', '9']);
+
+const compiledRegexes = new Map<string, RegExp | null>();
+
+function postcodeRegexOf(pattern: string): RegExp | null {
+  const cached = compiledRegexes.get(pattern);
+  if (cached !== undefined) return cached;
+
+  let regex: RegExp | null = null;
+  try {
+    regex = new RegExp(pattern);
+  } catch {
+    regex = null;
+  }
+  compiledRegexes.set(pattern, regex);
+  return regex;
+}
+
+/** `null` when the country ships no usable rule to check against. */
+function checkAgainstCountry(
+  postalCode: string,
+  countryConfig: CountryConfig
+): boolean | null {
+  if (
+    postalCode.length < countryConfig.postcodeMinLength ||
+    postalCode.length > countryConfig.postcodeMaxLength
+  ) {
+    return false;
+  }
+
+  if (!countryConfig.postcodeRegex) return null;
+  return postcodeRegexOf(countryConfig.postcodeRegex)?.test(postalCode) ?? null;
+}
+
 export function validatePostalCode(
   logger: Logger,
   postalCode: string,
@@ -18,93 +56,93 @@ export function validatePostalCode(
 ): boolean {
   if (!postalCode) return false;
 
-  // Check length constraints
-  if (
-    postalCode.length < countryConfig.postcodeMinLength ||
-    postalCode.length > countryConfig.postcodeMaxLength
-  ) {
-    return false;
+  const verdict = checkAgainstCountry(postalCode, countryConfig);
+  if (verdict === null && countryConfig.postcodeRegex) {
+    logger.error('Invalid postal code regex:', countryConfig.postcodeRegex);
   }
-
-  // Check regex pattern if provided
-  if (countryConfig.postcodeRegex) {
-    try {
-      const regex = new RegExp(countryConfig.postcodeRegex);
-      return regex.test(postalCode);
-    } catch (error) {
-      logger.error('Invalid postal code regex:', error);
-      return true; // Allow if regex is invalid
-    }
-  }
-
-  return true;
+  return verdict ?? true;
 }
 
 /**
- * Format postal code based on country configuration
- * Applies formatting pattern from CDN (e.g., "XXX XXX" for Canadian postal codes)
+ * Fills `format` with `code`, anchoring the pattern's literals to the start or
+ * to the end. `null` when `code` has more characters than the pattern has
+ * placeholders.
+ *
+ * GB `AANN NAA` + `M11AE` → start `M11A E`, end `M1 1AE`
+ */
+function applyFormat(
+  code: string,
+  format: string,
+  anchor: 'start' | 'end'
+): string | null {
+  const reverse = (value: string): string => [...value].reverse().join('');
+  const source = anchor === 'start' ? code : reverse(code);
+  const pattern = anchor === 'start' ? format : reverse(format);
+
+  let formatted = '';
+  let charIndex = 0;
+
+  for (const formatChar of pattern) {
+    if (charIndex >= source.length) break;
+
+    if (FORMAT_SLOTS.has(formatChar)) {
+      formatted += source[charIndex];
+      charIndex++;
+    } else {
+      formatted += formatChar;
+    }
+  }
+
+  if (charIndex < source.length) return null;
+  return anchor === 'start' ? formatted : reverse(formatted);
+}
+
+/**
+ * Formats a postal code into the shape its country writes it in, and returns
+ * the input unchanged when it cannot.
+ *
+ * A `postcodeFormat` positions its literals at fixed offsets from the start,
+ * which fits a fixed-length postcode only; the same pattern anchored from the
+ * end fits the variable-length ones (GB outward codes run 2 to 4 characters).
+ * A candidate is used only when the country's own `postcodeRegex` accepts it,
+ * which also leaves a half-typed value alone instead of rearranging it.
  */
 export function formatPostalCode(
   postalCode: string,
   countryConfig: CountryConfig
 ): string {
-  if (!postalCode) {
-    return postalCode;
-  }
+  if (!postalCode) return postalCode;
 
-  // Check if postal code contains letters (alphanumeric postal codes should be uppercase)
-  const hasLetters = /[a-zA-Z]/.test(postalCode);
+  const asTyped = /[a-zA-Z]/.test(postalCode)
+    ? postalCode.toUpperCase()
+    : postalCode;
+  if (!countryConfig.postcodeFormat) return asTyped;
 
-  // If no format pattern from CDN, apply basic uppercase conversion for alphanumeric codes
-  if (!countryConfig.postcodeFormat) {
-    if (hasLetters) {
-      return postalCode.toUpperCase();
-    }
-    return postalCode;
-  }
-
-  // Remove all spaces and special characters for processing
   const cleanCode = postalCode.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-
-  if (!cleanCode) {
-    return postalCode;
-  }
+  if (!cleanCode) return postalCode;
 
   const format = countryConfig.postcodeFormat;
-  let formatted = '';
-  let charIndex = 0;
 
-  // Process each character in the format pattern
-  for (let i = 0; i < format.length && charIndex < cleanCode.length; i++) {
-    const formatChar = format[i];
-
-    if (
-      formatChar === 'N' ||
-      formatChar === 'X' ||
-      formatChar === '#' ||
-      formatChar === '9' ||
-      formatChar === 'A'
-    ) {
-      // Format character placeholders - insert actual character from postal code
-      // N = any alphanumeric, X = any char, # = digit, 9 = digit, A = letter
-      formatted += cleanCode[charIndex];
-      charIndex++;
-    } else {
-      // Literal character (space, dash, etc.) - insert as is
-      formatted += formatChar;
-    }
+  const fromStart = applyFormat(cleanCode, format, 'start');
+  if (
+    fromStart !== null &&
+    checkAgainstCountry(fromStart, countryConfig) !== false
+  ) {
+    return fromStart;
   }
 
-  // If there are remaining characters after format is complete, append them
-  if (charIndex < cleanCode.length) {
-    formatted += cleanCode.substring(charIndex);
+  const fromEnd = applyFormat(cleanCode, format, 'end');
+  if (
+    fromEnd !== null &&
+    checkAgainstCountry(fromEnd, countryConfig) === true
+  ) {
+    return fromEnd;
   }
 
-  return formatted;
+  return asTyped;
 }
 
 export function getDefaultCountryConfig(countryCode: string): CountryConfig {
-  // Default configurations for common countries
   const configs: Record<string, CountryConfig> = {
     US: {
       stateLabel: 'State',
