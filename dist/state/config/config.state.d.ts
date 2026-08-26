@@ -8,5 +8,6 @@ interface ConfigActions {
     getCurrency: () => string;
 }
 export declare const configStore: import('zustand').UseBoundStore<import('zustand').StoreApi<ConfigState & ConfigActions>>;
-export { configStore as useConfigStore };
+export declare const useConfigStore: import('zustand').UseBoundStore<import('zustand').StoreApi<ConfigState & ConfigActions>>;
+export {};
 //# sourceMappingURL=config.state.d.ts.map

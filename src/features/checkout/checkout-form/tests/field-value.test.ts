@@ -112,11 +112,22 @@ describe('readFieldValue', () => {
 
 describe('readPhoneValue', () => {
   it('prefers the instance it is handed', () => {
-    expect(
-      readPhoneValue(input({ value: '07700 900123' }), phoneInstance('+44770'))
-    ).toBe('+44770');
+    // Both instances answer for the same typed number; only the handed one is asked.
+    // Passing an instance bound to a different field is a caller bug — see the contract
+    // on `checkPhone` in `validation/phone-validation.ts`.
+    const handed = phoneInstance('+447700900123');
+    const onTheElement = phoneInstance('+447700900999');
+    const field = input({ value: '07700 900123' });
+    (field as unknown as { iti: Iti }).iti = onTheElement;
+
+    expect(readPhoneValue(field, handed)).toBe('+447700900123');
   });
 
+  /**
+   * The widget reads its own field, not the value it is asked about, so a number restored
+   * from an earlier page can be judged against a field holding something else entirely.
+   * The typed value wins there rather than a stranger's number reaching the order.
+   */
   it('falls back to the typed text when there is no instance anywhere', () => {
     expect(readPhoneValue(input({ value: '07700 900123' }))).toBe(
       '07700 900123'

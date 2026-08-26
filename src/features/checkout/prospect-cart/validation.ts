@@ -4,6 +4,22 @@
  * prospect is captured on partial intent, not a submitted order.
  */
 
+import intlTelInput from 'intl-tel-input';
+
+import {
+  checkPhone,
+  type PhoneNumberSource,
+} from '../validation/phone-validation';
+
+/**
+ * Digits a phone must have before a lead is worth capturing, when nothing could judge it.
+ *
+ * A prospect's own threshold, not the SDK's floor for a usable number: capturing a lead on
+ * three digits is noise, while an order from Greenland on six is a sale. Override per page
+ * with `ProspectCartConfig.minPhoneDigits` or `data-min-phone-digits`.
+ */
+const MIN_PROSPECT_PHONE_DIGITS = 7;
+
 import type { PhoneValidationContext } from './prospect-cart.types';
 
 export function isValidEmail(email: string): boolean {
@@ -56,33 +72,20 @@ export function isValidPhone(
     return false;
   }
 
-  // Prefer intlTelInput validation when available. The instance is attached
-  // to the input as `.iti` by the library (v19+); fall back to the global
-  // getter. The legacy `window.intlTelInputGlobals` global is gone in v19+.
-  if (context.phoneField) {
-    const intlTelInputInstance =
-      (context.phoneField as any).iti ||
-      (window as any).intlTelInput?.getInstance?.(context.phoneField);
-    if (
-      intlTelInputInstance &&
-      typeof intlTelInputInstance.isValidNumber === 'function'
-    ) {
-      try {
-        return intlTelInputInstance.isValidNumber();
-      } catch (error) {
-        context.logger.debug(
-          'intlTelInput isValidNumber threw, falling back:',
-          error
-        );
-      }
-    }
+  // One yardstick for the whole SDK — see `validation/phone-validation.ts`.
+  const instance = context.phoneField
+    ? ((context.phoneField as { iti?: PhoneNumberSource }).iti ??
+      intlTelInput.getInstance(context.phoneField) ??
+      undefined)
+    : undefined;
+
+  const check = checkPhone(phone, instance ?? undefined);
+  if (check.verdict !== 'unknown') {
+    return check.verdict === 'valid';
   }
 
-  // Fallback when intlTelInput is unavailable: require a minimum digit count.
-  // Default 7 covers most national/international formats; override via
-  // ProspectCartConfig.minPhoneDigits or the data-min-phone-digits attribute
-  // when the page targets a country with shorter/longer valid numbers.
-  const minDigits = context.minPhoneDigits ?? 7;
+  // Nothing could judge it. A prospect is captured on partial intent, so a digit count.
+  const minDigits = context.minPhoneDigits ?? MIN_PROSPECT_PHONE_DIGITS;
   const digits = phone.replace(/\D/g, '');
   return digits.length >= minDigits;
 }

@@ -1,16 +1,18 @@
 /**
- * Whether one value looks like an email address, a phone number, a person's name, or a
- * city — with no knowledge of forms, fields, or the shopper's country.
+ * Whether one value looks like an email address, a person's name, or a city — with no
+ * knowledge of forms, fields, or the shopper's country.
  *
  * These are the bottom of the validation stack: every other module here eventually calls
  * one of them. They are pure functions of their argument, so they need **nothing** from
  * `CheckoutValidator` and can be tested by calling them.
  *
- * Country-specific checks are deliberately *not* here — a postal code is only valid
- * relative to a country, so that check lives with `CountryService` and is reached through
- * the modules that know which country the shopper picked.
+ * Country-specific checks are deliberately *not* here, because being pure disqualifies
+ * them. A postal code lives with `CountryService`; a phone number lives in
+ * [phone-validation.ts](./phone-validation.ts), which asks the field's `intl-tel-input`
+ * widget. It was here once as a regex plus "at least ten digits", and judging a number
+ * without knowing its country is what made it wrong.
  *
- * Extracted verbatim from `checkout-validator.ts`, which still exposes all four as public
+ * Extracted verbatim from `checkout-validator.ts`, which still exposes all three as public
  * methods.
  */
 
@@ -24,7 +26,6 @@ export const VALIDATION_PATTERNS = {
   // Enhanced email validation - supports all valid TLDs including .co, .uk, etc.
   EMAIL:
     /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/,
-  PHONE: /^[\d\s\-\+\(\)]+$/,
   // Name validation - letter runs (any script, via \p{L}) separated by a single
   // apostrophe (straight or curly), hyphen, or space.
   // Examples: "田中", "Владимир", "Anne-Marie du Pré", "O'Brien", "O’Brien"
@@ -101,27 +102,6 @@ export function isValidEmail(email: string): boolean {
   }
 
   return true;
-}
-
-/**
- * Whether a phone number is plausible without knowing the country: digits, spaces, and
- * `+ - ( )` only, and at least ten digits once the punctuation is stripped.
- *
- * @remarks This is the fallback. When `intl-tel-input` is wired up the form validates
- * against the shopper's actual country instead, which is both stricter and looser than
- * this — see `checkout-form/phone-input.ts`.
- *
- * @example
- * ```ts
- * isValidPhone('(555) 123-4567'); // true
- * isValidPhone('555-1234');       // false — only seven digits
- * ```
- */
-export function isValidPhone(phone: string): boolean {
-  return (
-    VALIDATION_PATTERNS.PHONE.test(phone) &&
-    phone.replace(/\D/g, '').length >= 10
-  );
 }
 
 /**

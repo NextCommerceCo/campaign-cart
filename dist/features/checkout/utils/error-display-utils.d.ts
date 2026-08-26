@@ -6,6 +6,7 @@ export interface ErrorDisplayOptions {
     iconErrorClass?: string;
     iconSuccessClass?: string;
 }
+export declare function fieldMessages(field: HTMLElement, labelClass?: string): Element[];
 export declare class ErrorDisplayManager {
     private options;
     constructor(options?: ErrorDisplayOptions);

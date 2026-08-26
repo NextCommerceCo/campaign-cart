@@ -25,25 +25,21 @@ import type {
 import { validateBillingAddress } from './billing-address-validation';
 import { formatFieldName } from './field-labels';
 import { findFirstErrorFieldInDOM } from './first-error-field';
-import {
-  isValidCity,
-  isValidEmail,
-  isValidName,
-  isValidPhone,
-} from './validation-patterns';
+import { isValidPhone, type PhoneNumberSource } from './phone-validation';
+import { isValidCity, isValidEmail, isValidName } from './validation-patterns';
 import type { FormValidationResult } from './validation.types';
 
 /** What form and step validation need from `CheckoutValidator`. */
 export interface FormValidationContext {
   /** Provides `validatePostalCode(value, countryCode, config)`. */
   countryService: any;
-  /** `intl-tel-input` wrapper, when the form has one. */
-  phoneInputManager?: any;
-  /** Country-aware phone check installed by the form. Preferred over `phoneInputManager`. */
-  phoneValidator?: (
-    phoneNumber: string,
-    type?: 'shipping' | 'billing'
-  ) => boolean;
+  /**
+   * The live `intl-tel-input` instance for a phone field, when the form has one.
+   *
+   * Installed by the form after the widgets are built. Without it `checkPhone` can only
+   * answer `unknown`, which is what happens on a step that carries no phone field.
+   */
+  phoneSource?: (type: 'shipping' | 'billing') => PhoneNumberSource | undefined;
   /** Set once the card fields exist. Absent means the card is not checked here at all. */
   creditCardService?: CreditCardService;
 }
@@ -52,8 +48,8 @@ export interface FormValidationContext {
  * Validates the whole form and returns every problem found.
  *
  * @param ctx What this needs from the validator.
- * @param formData The collected form values. **Mutated** when `intl-tel-input` is active:
- * `formData.phone` is replaced with the E.164 number so the order carries a normalised one.
+ * @param formData The collected form values. Read, never written: putting the phone in
+ * E.164 is `checkout-form/phone-normalization.ts`, which writes through the store.
  * @param countryConfigs Country code → rules (state required, postal format).
  * @param currentCountryConfig The shopper's country, used only for the wording of messages.
  * @param includePayment Whether to check the card fields. Pass `true` for card payments.
@@ -139,27 +135,12 @@ export async function validateForm(
     isValid = false;
   }
 
-  // Phone validation
-  if (formData.phone) {
-    let phoneIsValid = false;
-
-    if (ctx.phoneValidator) {
-      phoneIsValid = ctx.phoneValidator(formData.phone, 'shipping');
-    } else if (ctx.phoneInputManager) {
-      phoneIsValid = ctx.phoneInputManager.validatePhoneNumber(true);
-      const formattedPhone =
-        ctx.phoneInputManager.getFormattedPhoneNumber(true);
-      if (formattedPhone) {
-        formData.phone = formattedPhone;
-      }
-    } else {
-      phoneIsValid = isValidPhone(formData.phone);
-    }
-
-    if (!phoneIsValid) {
-      errors.phone = 'Please enter a valid phone number';
-      isValid = false;
-    }
+  if (
+    formData.phone &&
+    !isValidPhone(formData.phone, ctx.phoneSource?.('shipping'))
+  ) {
+    errors.phone = 'Please enter a valid phone number';
+    isValid = false;
   }
 
   // Postal code validation

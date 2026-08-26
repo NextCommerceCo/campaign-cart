@@ -15,20 +15,34 @@
  * validator ({@link FieldRuleContext}); {@link createValidationRules} needs nothing.
  */
 
-import {
-  isValidCity,
-  isValidEmail,
-  isValidName,
-  isValidPhone,
-} from './validation-patterns';
+import { isValidPhone, type PhoneNumberSource } from './phone-validation';
+import { isValidCity, isValidEmail, isValidName } from './validation-patterns';
 import type { ValidationRule } from './validation.types';
 
 /** What {@link applyRule} needs from `CheckoutValidator`. */
 export interface FieldRuleContext {
   /** Provides `validatePostalCode(value, countryCode, config)`. */
   countryService: any;
-  /** `intl-tel-input` wrapper, when the form has one. Validates the live phone widget. */
-  phoneInputManager?: any;
+  /**
+   * The live `intl-tel-input` instance for a phone field, when the form has one.
+   *
+   * The same resolver the submit-time check uses, so a number rejected as the shopper
+   * tabs out of the field is rejected on submit too, and for the same reason. Before this
+   * existed, per-field validation had no way to reach the widget and fell back to a digit
+   * count, which is how a number the form accepted on blur could be refused on submit.
+   */
+  phoneSource?: (type: 'shipping' | 'billing') => PhoneNumberSource | undefined;
+  /**
+   * The field being validated, so the phone rule asks the widget bound to *that* field.
+   * Without it the rule can only guess, and guessing meant a billing number judged against
+   * the shipping widget.
+   */
+  fieldName?: string;
+}
+
+/** Which address a field belongs to. Every billing field is named `billing-*`. */
+function phoneTypeOf(fieldName?: string): 'shipping' | 'billing' {
+  return fieldName?.startsWith('billing') ? 'billing' : 'shipping';
 }
 
 /**
@@ -112,12 +126,7 @@ export function applyRule(
 
     case 'phone':
       if (!value) return true;
-
-      if (ctx.phoneInputManager) {
-        return ctx.phoneInputManager.validatePhoneNumber(true);
-      } else {
-        return isValidPhone(value);
-      }
+      return isValidPhone(value, ctx.phoneSource?.(phoneTypeOf(ctx.fieldName)));
 
     case 'name':
       return !value || isValidName(value);

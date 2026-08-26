@@ -15,6 +15,41 @@ function createContext(
   };
 }
 
+describe('the phone rule and which widget it asks', () => {
+  /** Finding 133.8: the rule used to hard-select the shipping widget whatever the field. */
+  it('asks the billing widget for a billing field', () => {
+    const asked: string[] = [];
+    const ctx = createContext({
+      phoneSource: (type: string) => {
+        asked.push(type);
+        return { getNumber: () => '+442079460958', isValidNumber: () => true };
+      },
+    });
+
+    applyRule(
+      { ...ctx, fieldName: 'billing-phone' },
+      { type: 'phone' },
+      '020 7946 0958'
+    );
+
+    expect(asked).toEqual(['billing']);
+  });
+
+  it('asks the shipping widget for the shipping field', () => {
+    const asked: string[] = [];
+    const ctx = createContext({
+      phoneSource: (type: string) => {
+        asked.push(type);
+        return { getNumber: () => '+14155552671', isValidNumber: () => true };
+      },
+    });
+
+    applyRule({ ...ctx, fieldName: 'phone' }, { type: 'phone' }, '4155552671');
+
+    expect(asked).toEqual(['shipping']);
+  });
+});
+
 describe('createValidationRules', () => {
   it('covers the fields the shopper types into', () => {
     const rules = createValidationRules();
@@ -102,42 +137,41 @@ describe('applyRule', () => {
   });
 
   /**
-   * DEFECT (left as found) — the `phone` rule consults `phoneInputManager` but never
-   * `phoneValidator`, which is the country-aware check the form installs via
-   * `setPhoneValidator`. `form-validation.ts` prefers `phoneValidator` over
-   * `phoneInputManager`; this path does not know it exists.
-   *
-   * What the shopper sees: on a form where both are wired, the blur verdict and the submit
-   * verdict come from two different checks. A number their country accepts can be marked
-   * red on blur and then accepted on submit, or the reverse.
+   * The blur verdict and the submit verdict now come from the same place: both resolve the
+   * live `intl-tel-input` instance through `phoneSource` and hand it to `checkPhone`.
+   * Before that, this path could only count digits, so a number one check accepted the
+   * other could refuse.
    */
-  it('DEFECT: the phone rule cannot see the country-aware validator the form installs', () => {
-    const phoneValidator = vi.fn().mockReturnValue(true);
-    // `phoneValidator` is not part of FieldRuleContext at all — pass it and nothing reads it.
-    const ctx = createContext({
-      phoneValidator,
-    } as unknown as Partial<FieldRuleContext>);
+  it('judges the phone through the same instance the submit path uses', () => {
+    const phoneSource = vi.fn().mockReturnValue({
+      getNumber: () => '+22212345678',
+      isValidNumber: () => true,
+      getSelectedCountryData: () => ({ dialCode: '222', iso2: 'mr' }),
+    });
+    const ctx = createContext({ phoneSource });
 
-    expect(applyRule(ctx, { type: 'phone' }, '22 12 34 56')).toBe(false);
-    expect(phoneValidator).not.toHaveBeenCalled();
+    expect(applyRule(ctx, { type: 'phone' }, '22 12 34 56')).toBe(true);
+    expect(phoneSource).toHaveBeenCalledWith('shipping');
+  });
+
+  it('takes the widget’s verdict, and only the widget’s', () => {
+    const refused = createContext({
+      phoneSource: () => ({
+        getNumber: () => '+1415555267',
+        isValidNumber: () => false,
+      }),
+    });
+
+    expect(applyRule(refused, { type: 'phone' }, '415555267')).toBe(false);
   });
 
   /**
-   * DEFECT (left as found) — when `phoneInputManager` is present the rule calls
-   * `validatePhoneNumber(true)` and **ignores the `value` it was handed**. The `true`
-   * hard-selects the *shipping* phone widget.
-   *
-   * What the shopper sees: the shipping phone's verdict is reused for whatever field was
-   * blurred. A blank shipping phone can mark a filled billing phone invalid, and a valid
-   * shipping phone marks any garbage typed elsewhere as fine.
+   * A shopper is not told their phone is wrong because our own script had not arrived —
+   * `checkPhone` answers `unknown` there, and `unknown` passes.
    */
-  it('DEFECT: with intl-tel-input active the phone rule judges the widget, not the value', () => {
-    const validatePhoneNumber = vi.fn().mockReturnValue(true);
-    const ctx = createContext({ phoneInputManager: { validatePhoneNumber } });
-
-    expect(applyRule(ctx, { type: 'phone' }, 'not a phone number at all')).toBe(
+  it('passes a plausible number while nothing can judge it', () => {
+    expect(applyRule(createContext(), { type: 'phone' }, '4155552671')).toBe(
       true
     );
-    expect(validatePhoneNumber).toHaveBeenCalledWith(true);
   });
 });

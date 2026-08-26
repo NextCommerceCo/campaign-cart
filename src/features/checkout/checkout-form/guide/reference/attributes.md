@@ -177,6 +177,7 @@ Written to the element as state changes. Read these from CSS or tests instead of
 
 | Name | Values | Meaning |
 |---|---|---|
+| `data-next-error-for` | A checkout field name, e.g. `phone` | On an error message the form wrote: the field the message belongs to. Style or find a message by it, and note that clearing one field only removes messages naming that field. **Watch out:** Written so a message can be found wherever the markup put it. On a page with no wrapper element around each input, every message is appended to the form itself, and without an owner on it clearing one field removed whichever message happened to be first — leaving another field outlined in red with nothing to read. |
 | `data-next-payment-state` | `expanded` / `collapsed` | On a payment form: whether it is currently shown. Animate the reveal from this rather than from the element appearing. |
 
 ## CSS classes

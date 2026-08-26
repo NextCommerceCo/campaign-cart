@@ -2186,18 +2186,19 @@ missing.
 ### 133. Fourteen further validation defects, all pre-existing — *verified, pinned by tests*
 
 Found writing the first tests this file has ever had. Each is pinned by a test that documents
-*current* behaviour, so fixing one starts as a failing test.
+*current* behaviour, so fixing one starts as a failing test. Numbers 1, 2 and 8 were fixed
+in 0.4.38; the rest still stand.
 
 | # | Defect | What a shopper sees |
 |---|---|---|
-| 1 | `isValidPhone`'s ten-digit floor is a US assumption | a complete Norwegian/Danish/Icelandic number is rejected on any page without `intl-tel-input` |
-| 2 | Billing phone has no `phoneInputManager` fallback, only `isValidPhone` | billing phone judged more crudely than shipping phone on the same form |
+| 1 | ~~`isValidPhone`'s ten-digit floor is a US assumption~~ | **fixed in 0.4.38** — the function is gone; `validation/phone-validation.ts` asks the field's widget and floors at four digits |
+| 2 | ~~Billing phone has no `phoneInputManager` fallback~~ | **fixed in 0.4.38** — `billing-address-validation.ts` resolves the billing widget through the same `phoneSource` |
 | 3 | Billing city is never format-checked | `12345` accepted as a billing city, rejected as a shipping city |
 | 4 | `province` is only checked for emptiness, never against the country's state list | a nonexistent province passes |
 | 5 | Required-phone detection reads `document.querySelector('[name="phone"]')`, not `FieldFinder` | a required phone marked only with `data-next-checkout-field` is never enforced; with two forms on a page, the *other* form decides the rule |
 | 6 | `applyRule`'s `postal`, `custom` and `default` arms are unreachable — `createValidationRules` emits neither type and nothing can register a rule | blur a US ZIP containing `ABCDE` → green; submit → rejected. Blur and pay disagree |
 | 7 | `focusFirstErrorField`'s card list has `number` but not `cc-number`, the only key the validator emits | the error renders below the fold and the page never scrolls to it |
-| 8 | `applyRule`'s phone rule ignores `phoneValidator` and, with `phoneInputManager` present, hard-selects the **shipping** widget while ignoring the value it was handed | billing phone validated against the shipping field |
+| 8 | ~~`applyRule`'s phone rule hard-selects the **shipping** widget and ignores the value it was handed~~ | **fixed in 0.4.38** — the rule judges the value it is given, against the widget for `ctx.fieldName` |
 | 9 | `validateField` returns valid for any field with no rule | `province`, `address2` and every `billing-*` field report correct on blur whatever is typed |
 | 10 | `clearAllErrors` clears the map unconditionally but only clears the display for elements carrying the SDK attribute, while `setError` reaches fields by `name`/`id`/`data-field` too | a red message stays on screen while `isValid()` says the form is clean |
 | 11 | `step-validation` picks `firstErrorField` by source order; `form-validation` picks by page position | the two paths send the shopper to different fields on identical markup |

@@ -13,17 +13,15 @@
 
 import type { CountryConfig } from '@/core/country-service';
 
-import { isValidName, isValidPhone } from './validation-patterns';
+import { isValidPhone, type PhoneNumberSource } from './phone-validation';
+import { isValidName } from './validation-patterns';
 
 /** What this module needs from `CheckoutValidator`. */
 export interface BillingAddressValidationContext {
   /** Provides `validatePostalCode(value, countryCode, config)`. */
   countryService: any;
   /** Set by the form when `intl-tel-input` is wired up, so the number is checked per country. */
-  phoneValidator?: (
-    phoneNumber: string,
-    type?: 'shipping' | 'billing'
-  ) => boolean;
+  phoneSource?: (type: 'shipping' | 'billing') => PhoneNumberSource | undefined;
 }
 
 /**
@@ -105,20 +103,12 @@ export function validateBillingAddress(
     }
   });
 
-  // Validate billing phone
-  if (billingAddress?.phone) {
-    let phoneIsValid = false;
-
-    if (ctx.phoneValidator) {
-      phoneIsValid = ctx.phoneValidator(billingAddress.phone, 'billing');
-    } else {
-      phoneIsValid = isValidPhone(billingAddress.phone);
-    }
-
-    if (!phoneIsValid) {
-      errors.phone = 'Please enter a valid billing phone number';
-      isValid = false;
-    }
+  if (
+    billingAddress?.phone &&
+    !isValidPhone(billingAddress.phone, ctx.phoneSource?.('billing'))
+  ) {
+    errors.phone = 'Please enter a valid billing phone number';
+    isValid = false;
   }
 
   // Validate billing postal code

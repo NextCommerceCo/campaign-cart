@@ -12,8 +12,33 @@ import { useCheckoutStore } from '@/state/checkout';
 import { createLogger } from '@/core/logger';
 import type { CreateOrder, Address, Payment, Attribution } from '@/types/api';
 
+import { checkPhone } from '../validation/phone-validation';
+
 export class OrderBuilder {
   private logger = createLogger('OrderBuilder');
+
+  /**
+   * The phone number to put on the order, and a warning when it is not E.164.
+   *
+   * Reports, does not convert: there is no `intl-tel-input` instance to ask here.
+   * Converting is `checkout-form/phone-normalization.ts`, before submit. Every order passes
+   * through this, so it is the one place that can say a national number went out.
+   */
+  private phoneForApi(
+    raw: string | undefined,
+    country?: string
+  ): string | undefined {
+    const check = checkPhone(raw);
+    // Absent, not empty: `phone_number` is optional and `''` is a value to interpret.
+    if (!check.value) return undefined;
+    if (check.isE164) return check.value;
+
+    this.logger.warn(
+      'Sending a phone number the SDK could not put in E.164 format; the API will have to convert it',
+      { country: country ?? 'unknown', reason: check.reason }
+    );
+    return check.value;
+  }
 
   private getCurrency(): string {
     return (
@@ -32,6 +57,12 @@ export class OrderBuilder {
     shippingMethod?: any,
     vouchers: string[] = []
   ): CreateOrder {
+    // Once: the address and the customer record share it, and twice logs twice.
+    const shopperPhone = this.phoneForApi(
+      checkoutFormData.phone,
+      checkoutFormData.country
+    );
+
     // Build shipping address
     const shippingAddress: Address = {
       first_name: checkoutFormData.fname || '',
@@ -42,7 +73,7 @@ export class OrderBuilder {
       state: checkoutFormData.province,
       postcode: checkoutFormData.postal,
       country: checkoutFormData.country || '',
-      phone_number: checkoutFormData.phone
+      phone_number: shopperPhone
     };
     
     // Build billing address
@@ -57,7 +88,12 @@ export class OrderBuilder {
         ...(billingAddress.address2 && { line2: billingAddress.address2 }),
         ...(billingAddress.province && { state: billingAddress.province }),
         ...(billingAddress.postal && { postcode: billingAddress.postal }),
-        ...(billingAddress.phone && { phone_number: billingAddress.phone })
+        ...(billingAddress.phone && {
+          phone_number: this.phoneForApi(
+            billingAddress.phone,
+            billingAddress.country
+          )
+        })
       };
     }
     
@@ -89,7 +125,7 @@ export class OrderBuilder {
         first_name: checkoutFormData.fname || '',
         last_name: checkoutFormData.lname || '',
         language: 'en',
-        phone_number: checkoutFormData.phone,
+        phone_number: shopperPhone,
         accepts_marketing: checkoutFormData.accepts_marketing ?? true
       },
       vouchers: vouchers,

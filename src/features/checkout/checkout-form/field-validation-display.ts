@@ -20,13 +20,11 @@
  */
 
 import type { CheckoutValidator } from '../validation/checkout-validator';
+import { fieldMessages } from '../utils/error-display-utils';
 import { useCheckoutStore } from '@/state/checkout';
 
-/** Wrappers the SDK styles around a field. Either may carry the error label. */
+/** Wrappers the SDK styles around a field. Either may carry the error icon. */
 const FIELD_WRAPPER = '.form-group, .form-input';
-const FORM_GROUP = '.form-group';
-/** The element the validator inserts to show a message. */
-const ERROR_LABEL = '.next-error-label';
 
 /** What this module needs from the checkout form. */
 export interface FieldValidationContext {
@@ -37,18 +35,13 @@ export interface FieldValidationContext {
 }
 
 /**
- * Removes every error label reachable from a field.
+ * Removes this field's error labels, and only this field's.
  *
- * Looks in three places rather than one because the label's position depends on the
- * author's markup: inside the immediate wrapper, inside a `.form-group` that wraps a
- * `.form-input`, or inside a `.form-group` ancestor of the field itself. Missing one leaves
- * a stale error visible under a field the shopper has already corrected.
+ * `fieldMessages` decides whose a message is, sharing one rule with the validator that
+ * writes them, so blurring one field cannot erase another's.
  */
 function clearErrorLabels(field: HTMLElement): void {
-  const wrapper = field.closest(FIELD_WRAPPER);
-  wrapper?.querySelector(ERROR_LABEL)?.remove();
-  wrapper?.closest(FORM_GROUP)?.querySelector(ERROR_LABEL)?.remove();
-  field.closest(FORM_GROUP)?.querySelector(ERROR_LABEL)?.remove();
+  fieldMessages(field).forEach(label => label.remove());
 }
 
 /**
@@ -56,9 +49,9 @@ function clearErrorLabels(field: HTMLElement): void {
  *
  * Uses {@link clearErrorLabels} rather than only clearing the immediate wrapper. The
  * original code cleared the label in **one** place here but in **three** on `input`, so a
- * field whose error message sat in a `.form-group` ancestor kept showing it after the value
- * became valid — the exact "stale error under a corrected field" that `input` was written
- * carefully to avoid. That asymmetry predates the extraction; the two paths now agree.
+ * field whose error message sat in a `.form-group` ancestor kept showing it after the
+ * value became valid. That asymmetry predates the extraction; every path now asks the same
+ * question.
  */
 function markValid(field: HTMLElement): void {
   field.classList.remove('has-error', 'next-error-field');
@@ -97,12 +90,9 @@ function handleBlur(
   const wrapper = field.closest(FIELD_WRAPPER);
 
   if (isEmptyValue(value)) {
-    const formGroup = field.closest(FORM_GROUP);
-    const errorLabel =
-      wrapper?.querySelector(ERROR_LABEL) ??
-      formGroup?.querySelector(ERROR_LABEL);
-
-    if (errorLabel) {
+    // Not the wrapper: a page with no wrapper classes has no container to look in, and the
+    // field would lose its outline while its message stayed.
+    if (fieldMessages(field).length > 0) {
       field.classList.add('has-error', 'next-error-field');
       field.classList.remove('no-error');
       wrapper?.classList.add('addErrorIcon');

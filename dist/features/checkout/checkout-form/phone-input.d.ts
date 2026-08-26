@@ -11,5 +11,6 @@ export interface PhoneInputContext {
     logger: Logger;
 }
 export declare function injectIntlTelInputStyles(): void;
+export declare function awaitPhoneUtils(phoneInputs: Map<string, Iti>, timeoutMs?: number): Promise<boolean>;
 export declare function initializePhoneInputs(ctx: PhoneInputContext): void;
 //# sourceMappingURL=phone-input.d.ts.map

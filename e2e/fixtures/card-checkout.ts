@@ -12,7 +12,12 @@
 
 import { expect, type Page } from '@playwright/test';
 import { MINIMAL_CAMPAIGN } from './campaign';
-import { stubCampaign, stubCart, stubCountryService } from './routes';
+import {
+  stubCampaign,
+  stubCart,
+  stubCountryService,
+  stubProspectCart,
+} from './routes';
 
 /** The checkout fixture both specs boot. */
 export const CARD_CHECKOUT = '/e2e/fixtures/card-purchase.html';
@@ -67,8 +72,8 @@ export async function stubSpreedly(page: Page): Promise<void> {
 }
 
 /**
- * Campaign, cart, tokenizer and country lists — everything except the orders
- * endpoint, which each spec answers its own way.
+ * Campaign, cart, tokenizer, country lists and prospect carts — everything
+ * except the orders endpoint, which each spec answers its own way.
  *
  * A non-empty `payment_env_key` is what makes the SDK build its
  * `CreditCardService` at all; `MINIMAL_CAMPAIGN` ships an empty one, and without
@@ -82,19 +87,42 @@ export async function stubCardCheckout(page: Page): Promise<void> {
   await stubCart(page);
   await stubSpreedly(page);
   await stubCountryService(page);
+  // Filling an email and a phone is what a shopper does, and it makes the SDK
+  // create a prospect cart. Unstubbed, those calls go to the live API — which
+  // `.claude/rules/e2e.md` §4 forbids and which WebKit reports as console
+  // errors while Chromium stays silent.
+  await stubProspectCart(page);
+  // The prospect cart is created through the ordinary cart endpoint, which the
+  // `/carts/calculate/` glob does not match. Registered after `stubCart` for
+  // that reason.
+  await page.route('**/api/v1/carts/', route =>
+    route.fulfill({
+      json: { checkout_url: 'https://example.test/checkout/prospect-1' },
+    })
+  );
 }
 
-/** Fills every field the form requires, then submits. */
-export async function submitCard(page: Page): Promise<void> {
+/**
+ * Fills every field the form requires, then submits.
+ *
+ * `phone` defaults to a number libphonenumber accepts — the form runs
+ * intl-tel-input, and a 555-01xx placeholder is rejected as invalid. It is a
+ * parameter so `phone-validation.spec.ts` can drive the same form with a number
+ * that must be refused, without restating the other ten fields.
+ */
+export async function submitCard(
+  page: Page,
+  phone: string = '4155552671'
+): Promise<void> {
   await page.fill('[data-next-checkout-field="email"]', 'ada@example.test');
   await page.fill('[data-next-checkout-field="fname"]', 'Ada');
   await page.fill('[data-next-checkout-field="lname"]', 'Lovelace');
   await page.fill('[data-next-checkout-field="address1"]', '1 Test Street');
   await page.fill('[data-next-checkout-field="city"]', 'New York');
   await page.fill('[data-next-checkout-field="postal"]', '10001');
-  // A number libphonenumber accepts — the form runs intl-tel-input, and a
-  // 555-01xx placeholder is rejected as invalid.
-  await page.fill('[data-next-checkout-field="phone"]', '4155552671');
+  await page.fill('[data-next-checkout-field="phone"]', phone);
+  // Blur, because the inline verdict is committed on leaving the field.
+  await page.locator('[data-next-checkout-field="phone"]').blur();
   await page.selectOption('[data-next-checkout-field="country"]', 'US');
   await page.selectOption('[data-next-checkout-field="province"]', 'NY');
   await page.selectOption('[data-next-checkout-field="cc-month"]', '12');

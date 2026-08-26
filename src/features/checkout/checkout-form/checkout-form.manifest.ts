@@ -194,6 +194,14 @@ export default defineFeature({
 
   sets: [
     {
+      name: 'data-next-error-for',
+      description:
+        'On an error message the form wrote: the field the message belongs to. Style or find a message by it, and note that clearing one field only removes messages naming that field.',
+      values: 'A checkout field name, e.g. `phone`',
+      notes:
+        'Written so a message can be found wherever the markup put it. On a page with no wrapper element around each input, every message is appended to the form itself, and without an owner on it clearing one field removed whichever message happened to be first — leaving another field outlined in red with nothing to read.',
+    },
+    {
       name: 'data-next-payment-state',
       description:
         'On a payment form: whether it is currently shown. Animate the reveal from this rather than from the element appearing.',

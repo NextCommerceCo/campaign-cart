@@ -20,6 +20,8 @@ import type { Iti } from 'intl-tel-input';
 import type { Logger } from '@/core/logger';
 import { useCheckoutStore } from '@/state/checkout';
 
+import { normalizePhone } from '../validation/phone-validation';
+
 /** Which of the two addresses a phone field belongs to. */
 export type PhoneFieldType = 'shipping' | 'billing';
 
@@ -168,6 +170,9 @@ function initializePhoneInput(
       nationalMode: true,
       autoPlaceholder: 'off',
       loadUtils: () => import('intl-tel-input/utils'),
+      // Default `["MOBILE"]` makes both validation methods mean "valid mobile", which
+      // rejects a landline of a different length. `null` turns the filter off.
+      validationNumberTypes: null,
       countryOrder: ['us', 'ca', 'gb', 'au'],
       allowDropdown: false,
       showFlags: true,
@@ -193,11 +198,12 @@ function initializePhoneInput(
     };
 
     // Store the full international number, not the national text the shopper sees —
-    // the order needs E.164.
+    // the order needs E.164. Not `getNumber()`: it answers `''` until the utils script
+    // loads, and writing that blanks a phone the shopper has already typed.
     phoneField.addEventListener(
       'input',
       () => {
-        const fullNumber = instance.getNumber();
+        const fullNumber = normalizePhone(phoneField.value, instance);
         if (type === 'shipping') {
           ctx.updateFormData({ phone: fullNumber });
           return;
@@ -223,19 +229,80 @@ function initializePhoneInput(
 
     // Changing the address country re-bases the phone country, so a shopper who
     // switches country does not keep the previous dial code.
+    //
+    // Except when the number states its own country: `setCountry` keeps the national digits
+    // and swaps the dial code, turning `+66 81 234 5678` into `+1 81 234 5678`. Shipping to
+    // one country and being reachable in another is ordinary.
     if (countryField instanceof HTMLSelectElement) {
       countryField.addEventListener(
         'change',
         () => {
           const countryCode = countryField.value;
-          if (countryCode)
-            instance.setCountry(asCountryCode(countryCode.toLowerCase()));
+          if (!countryCode) return;
+          if (phoneField.value.trim().startsWith('+')) return;
+          instance.setCountry(asCountryCode(countryCode.toLowerCase()));
         },
         { signal: listenerAbort.signal }
       );
     }
   } catch (error) {
     ctx.logger.error(`Failed to initialize ${type} phone field:`, error);
+  }
+}
+
+/**
+ * How long a caller waits for the phone library's utils script before going ahead anyway.
+ *
+ * Long enough for the chunk on any connection that can also reach the orders API, short
+ * enough not to hold a shopper whose network dropped it. Normally already settled.
+ */
+const UTILS_WAIT_MS = 2000;
+
+/**
+ * Waits for `intl-tel-input` to finish loading the utils script it validates and formats
+ * with, and reports whether it arrived.
+ *
+ * Without it `getNumber()` answers `''` and `isValidNumber()` `null`, both quietly, so a
+ * submit that races the chunk skips the check. This turns that race into a wait.
+ *
+ * Resolves `true` when every widget is ready, and when the page has no phone field at all:
+ * both mean "nothing here is waiting on that script". Only `false` needs handling, and it
+ * means the wait ran out rather than that anything failed — the caller carries on and the
+ * number is handled as {@link checkPhone}'s `unknown`, which never blocks a shopper for a
+ * problem that is ours.
+ *
+ * @example
+ * ```ts
+ * await awaitPhoneUtils(this.phoneInputs);
+ * const validation = await this.validator.validateForm(formData, countryConfigs);
+ * ```
+ */
+export async function awaitPhoneUtils(
+  phoneInputs: Map<string, Iti>,
+  timeoutMs: number = UTILS_WAIT_MS
+): Promise<boolean> {
+  const pending = [...phoneInputs.values()].map(instance => instance.promise);
+  // Nothing to wait for is not a failure to wait, and a caller that treats it as one warns
+  // about a script no field on the page needs.
+  if (pending.length === 0) return true;
+
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const expiry = new Promise<false>(resolve => {
+    timer = setTimeout(() => resolve(false), timeoutMs);
+  });
+
+  try {
+    const settled = await Promise.race([
+      Promise.all(pending).then(() => true),
+      expiry,
+    ]);
+    return settled;
+  } catch {
+    // A rejected init promise is the geo-IP lookup or the chunk failing. Both are already
+    // logged by the library, and both mean the same thing here: carry on without it.
+    return false;
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 

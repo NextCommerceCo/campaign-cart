@@ -63,6 +63,7 @@ The feature carried on, but something in the markup or the data was not what it 
 | `[Billing] Could not set initial state - missing elements` | `billing-form-setup.ts › setInitialBillingFormState` | — |
 | `[Billing] Some stored billing values have no field` | `billing-form-setup.ts › restoreBillingAddressFields` | yes |
 | `[Billing] Click blocked - animation in progress` | `billing-toggle.ts › handleBillingAddressToggle` | — |
+| `intl-tel-input utils did not load in time; the phone number is sent unchecked and may not be E.164` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.settlePhoneNumbers` | — |
 | `[Spreedly] Credit card validation errors:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeCreditCard` | yes |
 | `API 400 error response:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.createOrder` | yes |
 | `Payment error detected:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.createOrder` | yes |
@@ -189,7 +190,6 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 | `Updated user data storage:` | `contact-persistence.ts › persistContactField` | yes |
 | `Already shown warning for order` | `duplicate-purchase-warning.ts › handlePurchaseEvent` | yes |
 | `Found submit button:` | `field-scanning.ts › scanAllFields` | yes |
-| `Converting phone to international format: {phone} -> {internationalNumber}` | `form-population.ts › populateFormData` | — |
 | `Restored province: {storedProvince}` | `form-population.ts › populateFormData` | — |
 | `Location fields hidden` | `location-field-visibility.ts › hideLocationFields` | — |
 | `Location fields shown` | `location-field-visibility.ts › showLocationFields` | — |

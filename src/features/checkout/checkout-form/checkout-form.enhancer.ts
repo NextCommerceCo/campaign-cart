@@ -41,10 +41,13 @@ import {
   paymentMethodLabel,
 } from '@/utils/payment-method';
 import {
+  awaitPhoneUtils,
   injectIntlTelInputStyles,
   initializePhoneInputs,
   type PhoneInputContext,
 } from './phone-input';
+import { normalizeStoredPhones } from './phone-normalization';
+import { validateExpressFields } from './express-field-validation';
 import type { BillingAnimationContext } from './billing-animation';
 import {
   reconcileBillingToggle,
@@ -419,11 +422,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   }
 
   private initializeValidator(): void {
-    this.validator = new CheckoutValidator(
-      this.logger,
-      this.countryService,
-      undefined // PhoneInputManager will be handled by us
-    );
+    this.validator = new CheckoutValidator(this.logger, this.countryService);
   }
 
   private cloneBillingFormFromShipping(): void {
@@ -476,19 +475,33 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     this.applyAvailablePaymentMethods();
   }
 
-  /** Runs after {@link initializePhoneInputs} so the validator can ask a live intl-tel-input instance. */
-  private setupPhoneValidation(): void {
-    this.validator.setPhoneValidator(
-      (phoneNumber: string, type: 'shipping' | 'billing' = 'shipping') => {
-        const instance = this.phoneInputs.get(type);
-        if (instance) {
-          return instance.isValidNumber();
-        }
+  /**
+   * Waits for the phone library's utils script, then puts the stored numbers in E.164.
+   *
+   * The two go together: both `isValidNumber()` and `getNumber()` answer "nothing" until
+   * that script lands, so a check before it is not a check. Called by both gates that
+   * judge a phone.
+   */
+  private async settlePhoneNumbers(): Promise<void> {
+    if (!(await awaitPhoneUtils(this.phoneInputs))) {
+      this.logger.warn(
+        'intl-tel-input utils did not load in time; the phone number is sent unchecked and may not be E.164'
+      );
+    }
+    normalizeStoredPhones(this.phoneInputs);
+  }
 
-        // Fallback to basic validation if instance not found
-        return /^[\d\s\-\+\(\)]+$/.test(phoneNumber);
-      }
-    );
+  /**
+   * Runs after {@link initializePhoneInputs} so the validator can ask a live
+   * intl-tel-input instance.
+   *
+   * Hands over the instance itself rather than a yes/no answer. The form used to pass a
+   * predicate that fell back to a permissive regex when no instance was found, which meant
+   * a page whose phone widget never got built validated phones *less* strictly than one
+   * with no widget at all. `checkPhone` handles the missing instance instead, and says so.
+   */
+  private setupPhoneValidation(): void {
+    this.validator.setPhoneSource(type => this.phoneInputs.get(type));
   }
 
   /**
@@ -1470,56 +1483,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     return preserveQueryParams(redirectUrl.href);
   }
 
-  private async validateExpressCheckoutFields(
-    formData: any,
-    requiredFields: string[]
-  ): Promise<any> {
-    const errors: Record<string, string> = {};
-    let firstErrorField: string | null = null;
-
-    // Validate only the specified required fields
-    for (const field of requiredFields) {
-      const value = formData[field];
-
-      if (!value || (typeof value === 'string' && !value.trim())) {
-        const fieldNameMap: Record<string, string> = {
-          email: 'Email',
-          fname: 'First Name',
-          lname: 'Last Name',
-          phone: 'Phone',
-          address1: 'Address',
-          city: 'City',
-          province: 'State/Province',
-          postal: 'ZIP/Postal Code',
-          country: 'Country',
-        };
-
-        const fieldLabel = fieldNameMap[field] || field;
-        errors[field] = `${fieldLabel} is required`;
-
-        if (!firstErrorField) {
-          firstErrorField = field;
-        }
-      }
-
-      // Special validation for email using the validator
-      if (field === 'email' && value) {
-        if (!this.validator.isValidEmail(value)) {
-          errors[field] = 'Please enter a valid email address';
-          if (!firstErrorField) {
-            firstErrorField = field;
-          }
-        }
-      }
-    }
-
-    return {
-      isValid: Object.keys(errors).length === 0,
-      errors,
-      firstErrorField,
-    };
-  }
-
   // ============================================================================
   // MULTI-STEP CHECKOUT SUPPORT
   // ============================================================================
@@ -1598,6 +1561,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     cartStore: any
   ): Promise<void> {
     void cartStore;
+    // A step gate that skips this lets a bad number through to a page where the field is
+    // no longer on screen to correct.
+    await this.settlePhoneNumbers();
     await handleStepNavigation(this.stepNavigationContext(), checkoutStore);
   }
 
@@ -1624,40 +1590,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       // Show loading overlay
       this.loadingOverlay.show();
 
-      // Validate phone numbers using intl-tel-input if available
-      if (this.isIntlTelInputAvailable) {
-        // Validate shipping phone
-        const shippingPhoneInstance = this.phoneInputs.get('shipping');
-        if (shippingPhoneInstance) {
-          const isValidShipping = shippingPhoneInstance.isValidNumber();
-          if (!isValidShipping && checkoutStore.formData.phone) {
-            checkoutStore.setError(
-              'phone',
-              'Please enter a valid phone number'
-            );
-          } else if (isValidShipping) {
-            // Update with formatted number
-            const formattedNumber = shippingPhoneInstance.getNumber();
-            if (formattedNumber) {
-              checkoutStore.updateFormData({ phone: formattedNumber });
-            }
-          }
-        }
-
-        // Validate billing phone if different from shipping
-        if (!checkoutStore.sameAsShipping && checkoutStore.billingAddress) {
-          const billingPhoneInstance = this.phoneInputs.get('billing');
-          if (billingPhoneInstance) {
-            const isValidBilling = billingPhoneInstance.isValidNumber();
-            if (!isValidBilling && checkoutStore.billingAddress.phone) {
-              checkoutStore.setError(
-                'billing-phone',
-                'Please enter a valid phone number'
-              );
-            }
-          }
-        }
-      }
+      // Free here, because the overlay is already up.
+      await this.settlePhoneNumbers();
 
       // Check if this is an express payment method
       const isExpressPayment = isExpressPaymentMethod(
@@ -1728,7 +1662,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       ) {
         const requiredFields =
           config.paymentConfig.expressCheckout.requiredFields;
-        validation = await this.validateExpressCheckoutFields(
+        validation = validateExpressFields(
+          { phoneSource: type => this.phoneInputs.get(type) },
           checkoutStore.formData,
           requiredFields
         );
@@ -2362,7 +2297,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       fields: this.fields,
       detectedCountryCode: this.detectedCountryCode,
       logger: this.logger,
-      phoneInputs: this.phoneInputs,
       shippingStateFields: this.shippingStateFieldsContext(),
       updateFormData: data => this.updateFormData(data),
       updateLabelsForPopulatedData: () =>

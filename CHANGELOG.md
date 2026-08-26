@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.4.38] — 2026-08-20 — One Phone Check
+
+A phone number is now judged the same way everywhere it is judged, and a number the checkout could not use says so on the field instead of failing the form in silence.
+
+### Fixed
+
+- **A rejected phone number now says so on the field.** The phone widget refused the number and the SDK stored the error without ever rendering it, so the shopper saw a form that would not submit and no reason why. ([#58](https://github.com/NextCommerceCo/campaign-cart/issues/58))
+- **A phone number is no longer dropped while the formatting library loads.** That library answers `''` until it lands, and the empty answer was what got stored — so a shopper on a slow connection could see their number in the field while the order went out with none.
+- **One check instead of four.** Leaving the field, moving to the next step and pressing pay each used a different rule, so a number one accepted another refused.
+- **A landline is no longer refused** in countries where a landline is not the same length as a mobile.
+- **Choosing a country no longer rewrites a number typed with a country code.** `+66 81 234 5678` became `+1 81 234 5678`.
+- **One field's error message no longer disappears when a different field is corrected.**
+- **A field no longer keeps a tick it has not just earned.** Re-validating a form cleared every error mark but left the success ones behind, so a field that had passed an earlier check still showed as correct after the check that would have failed it.
+
+Two things are still accepted. A number nothing can check: the library that checks it loads over the network, and a slow script never blocks a sale. And a number that is well formed for its country but not in service, such as `0000000000` or `1234567890` — the check asks whether the number is well formed, which these are. A stricter check is available and deliberately not used: refusing a real number loses a sale, while accepting an unreachable one costs a rejection the server reports back.
+
+---
+
 ## [0.4.37] — 2026-08-18 — The FOMO Popup Leaves the SDK, and getCartData Lists Every Cart Line
 
 One feature removed and one long-standing bug fixed. The removal only concerns a page that called `next.fomo()`. The fix concerns any code that reads `next.getCartData()`, and it deletes the empty `enrichedItems` field from the cart state along the way. Before you upgrade covers both.
