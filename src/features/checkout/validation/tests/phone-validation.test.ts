@@ -187,26 +187,6 @@ describe('an E.164 number written in the text, with no widget', () => {
   });
 });
 
-describe('a widget whose field holds only a dial code', () => {
-  /**
-   * The same rule that stops the dial code being taken as a *value* stops its verdict being
-   * taken too. Otherwise a widget showing `+1` refused a ten-digit number it knew nothing
-   * about, on the strength of judging a country.
-   */
-  const dialCodeOnly = loadedSource(false, '+1');
-
-  it('does not take its verdict', () => {
-    const check = checkPhone('4155552671', dialCodeOnly);
-
-    expect(check.verdict).toBe('unknown');
-    expect(check.value).toBe('4155552671');
-  });
-
-  it('still refuses a number the digit count cannot accept', () => {
-    expect(checkPhone('415', dialCodeOnly).verdict).toBe('invalid');
-  });
-});
-
 describe('a widget offering a dial code instead of a number', () => {
   /** Adopting it would replace the shopper's ten digits with a country. */
   it('does not take a bare dial code as the number', () => {

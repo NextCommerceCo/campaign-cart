@@ -138,16 +138,27 @@ function readE164(value: string, widget?: PhoneNumberSource): string | null {
 /**
  * The widget, when it is in a position to answer at all.
  *
- * It is when it holds a number. When it does not, its `isValidNumber()` answers `false`
- * about a number that is not there, so the only usable answer left is `null` — the utils
- * script not having landed, which is not a rejection. A field holding a bare dial code is
- * the "does not" case, by the same rule that stops that dial code being taken as a value.
+ * It is whenever its field holds anything. `getNumber()` answers the national text for a
+ * number it cannot yet parse — `"(415) 555-267"` for nine US digits — and that is the case
+ * whose verdict matters most, so the test is "holds something", not "holds E.164".
+ *
+ * An empty field answers `''`, and its `isValidNumber()` is `false` about a number that is
+ * not there. The only usable answer left there is `null`: the utils script not having
+ * landed, which is not a rejection.
  */
 function usableWidget(
   source?: PhoneNumberSource
 ): PhoneNumberSource | undefined {
   if (!source) return undefined;
-  if (e164FromWidget(source)) return source;
+
+  let shown: string | undefined;
+  try {
+    shown = source.getNumber?.();
+  } catch {
+    return undefined;
+  }
+  if (shown) return source;
+
   return verdictOf(source) == null ? source : undefined;
 }
 
