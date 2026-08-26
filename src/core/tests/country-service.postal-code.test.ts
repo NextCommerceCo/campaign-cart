@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
   formatPostalCode,
+  getDefaultCountryConfig,
   validatePostalCode,
   withPostcodeFormats,
 } from '@/core/country-service/country-service.postal-code';
@@ -317,6 +318,35 @@ describe('formatPostalCode with a list in the config', () => {
 
   it('still leaves a half-typed postcode alone', () => {
     expect(formatPostalCode('M11A', gbAsAList)).toBe('M11A');
+  });
+});
+
+// ─── the built-in config, used when the countries service does not answer ────
+
+describe('the built-in GB config formats without the countries service', () => {
+  // What `CountryService.getDefaultCountryConfig` hands back: the built-in
+  // config read through the same merge every other config goes through.
+  const gb = withPostcodeFormats('GB', getDefaultCountryConfig('GB'));
+
+  const cases: [string, string][] = [
+    ['m11ae', 'M1 1AE'],
+    ['cr26xh', 'CR2 6XH'],
+    ['b338th', 'B33 8TH'],
+    ['sw1a1aa', 'SW1A 1AA'],
+    ['dn551pt', 'DN55 1PT'],
+  ];
+
+  it.each(cases)('%s becomes %s', (input, expected) => {
+    expect(formatPostalCode(input, gb)).toBe(expected);
+    expect(validatePostalCode(loggerStub(), expected, 'GB', gb)).toBe(true);
+  });
+
+  it('accepts a lower-case postcode, as the countries service does', () => {
+    expect(validatePostalCode(loggerStub(), 'm1 1ae', 'GB', gb)).toBe(true);
+  });
+
+  it('leaves a half-typed postcode alone', () => {
+    expect(formatPostalCode('M11A', gb)).toBe('M11A');
   });
 });
 

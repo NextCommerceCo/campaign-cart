@@ -29,10 +29,12 @@ const FORMAT_SLOTS = new Set(['N', 'X', 'A', '#', '9']);
  * sent, whenever a config is read, so `formatPostalCode` knows nothing about
  * countries. When the service ships a list for a country, its entry here goes.
  *
- * GB is deliberately absent: one pattern anchored from the end already covers
- * its 5, 6 and 7 character postcodes.
+ * GB is spelled out by length even though one pattern anchored from the end
+ * derives the same three shapes, because the service sends a single pattern and
+ * pages on released versions of this SDK are reading it today.
  */
 const POSTCODE_FORMATS: Record<string, string[]> = {
+  GB: ['AANN NAA', 'AAN NAA', 'AN NAA'],
   GI: ['AANN NAA'],
   IM: ['AAN NAA'],
   JE: ['AAN NAA'],
@@ -222,10 +224,12 @@ export function getDefaultCountryConfig(countryCode: string): CountryConfig {
       stateLabel: 'County',
       stateRequired: false,
       postcodeLabel: 'Postcode',
-      postcodeRegex: '^[A-Z]{1,2}\\d{1,2}[A-Z]?\\s?\\d[A-Z]{2}$',
+      // The pattern the countries service ships, so a postcode validates the
+      // same way whether or not that service answered.
+      postcodeRegex: '^[A-Za-z]{1,2}\\d[A-Za-z\\d]? ?\\d[A-Za-z]{2}$',
       postcodeMinLength: 5,
       postcodeMaxLength: 8,
-      postcodeExample: 'SW1A 1AA',
+      postcodeExample: 'SW1A 0AA',
       postcodeFormat: null,
       currencyCode: 'GBP',
       currencySymbol: '£',

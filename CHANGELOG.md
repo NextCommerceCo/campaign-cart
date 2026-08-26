@@ -15,6 +15,8 @@ Nothing changes in your markup. Postcode rules come from the countries service, 
 
 ### Changed
 
+- **The UK's postcode shapes ship with the SDK.** The countries service sends one pattern per country, which describes a 7-character UK postcode and no other length. The SDK now carries all three UK shapes itself, so a page gets them without waiting for that service to change.
+- **The built-in UK fallback matches the countries service.** When that service does not answer, the SDK falls back to its own country data; the UK entry there had no format at all and a stricter validation pattern that refused a lower-case postcode. Both now match what the service sends.
 - **A country's `postcodeFormat` may now be a list of formats, not only one.** Postcode shape is a per-country rule rather than a global one, and a country whose postcodes take more than one shape can be described as `["AANN NAA", "AAN NAA", "AN NAA"]`. Each is tried in order and the first one the country's own validation accepts is used. A single string keeps working exactly as before.
 
 ---
