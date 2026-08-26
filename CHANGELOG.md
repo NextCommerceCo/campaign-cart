@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.4.39] — 2026-08-26 — Postcodes Keep Their Own Shape
+
+A postcode typed or autofilled into the checkout now comes out written the way its country writes it, and the SDK no longer produces one its own validation then refuses.
+
+### Fixed
+
+- **A UK postcode with a short outward code is no longer rearranged.** `CR2 6XH` became `CR26 XH` and was then refused, so the shopper could not get past the address step. Manchester, Liverpool, Birmingham and Croydon were all affected; only the seven-character postcodes came through. ([#92](https://github.com/NextCommerceCo/campaign-cart/issues/92))
+- **Five more countries were doing the same thing**, and none of them was reported: the Isle of Man, Jersey, Gibraltar, Lithuania and Monaco. Monaco's `98000` came out as `9808000`.
+- **A postcode still being typed is left alone.** Formatting runs on every keystroke, so a half-finished postcode is now reshaped only once it is complete.
+- **A postcode with its separator missing is completed**, where the country's own rule accepts the result: `gx111aa` becomes `GX11 1AA`, `LT55798` becomes `LT-55798`.
+
+Nothing changes in your markup. Postcode rules come from the countries service, and the SDK now checks every candidate against that country's own rule before using it, so a country whose pattern it cannot read falls back to what the shopper typed instead of rearranging it.
+
+---
+
 ## [0.4.38] — 2026-08-20 — One Phone Check
 
 A phone number is now judged the same way everywhere it is judged, and a number the checkout could not use says so on the field instead of failing the form in silence.
