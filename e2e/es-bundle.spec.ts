@@ -27,7 +27,9 @@ import { stubCampaign, stubCart, bootSdk } from './fixtures/routes';
  * `src/tests/contract/es-bundle-init.test.ts` covers the same property in CI, which
  * does not run Playwright. It evaluates the graph under Node's ES-module semantics;
  * this spec is the half that proves five real engines agree, and that the loader
- * stayed on the module path.
+ * stayed on the module path. Both run the same list of boot conditions, because
+ * what a module body does at init time depends on the URL: see `?debugger=true`
+ * below and `BOOTS` there.
  *
  * **It tests the committed `dist/`, not your working tree.** Run `npm run build`
  * first, or you are re-testing the last artifact someone committed.
@@ -86,6 +88,43 @@ test.describe('built ES bundle', () => {
     expect(
       errors,
       'the built bundle logged errors a source-served spec cannot see'
+    ).toEqual([]);
+  });
+
+  test('boots the debug overlay from the ES chunks too', async ({ page }) => {
+    // The test above loads a shopper's URL, and on that URL the debug chunk's
+    // module bodies do almost nothing. `?debugger=true` is what makes them
+    // construct the overlay and its panels, and a panel reaching into the `state`
+    // chunk while `state` was still mid-evaluation is what threw
+    // `Cannot access 'o' before initialization` on every debug page load in
+    // v0.4.35–v0.4.37 ([#93]). The test above stayed green for all three, so the
+    // flag needs its own boot here, not just its own assertion.
+    const errors: string[] = [];
+    page.on('console', m => {
+      if (m.type() === 'error') errors.push(m.text());
+    });
+    page.on('pageerror', e => errors.push(String(e)));
+
+    const umdRequests: string[] = [];
+    page.on('request', r => {
+      if (r.url().includes('index.umd.js')) umdRequests.push(r.url());
+    });
+
+    await bootSdk(page, `${FIXTURE}?debugger=true`);
+
+    // Mounting the overlay is the only proof the panels were constructed — the
+    // throw happened inside `initializePanels`, two panels in.
+    await expect(page.locator('#next-debug-overlay-host')).toHaveCount(1, {
+      timeout: 5000,
+    });
+
+    expect(
+      umdRequests,
+      'the loader fell back to the UMD bundle, so evaluating dist/index.js threw under ?debugger=true'
+    ).toEqual([]);
+    expect(
+      errors,
+      'the built bundle logged errors under ?debugger=true'
     ).toEqual([]);
   });
 

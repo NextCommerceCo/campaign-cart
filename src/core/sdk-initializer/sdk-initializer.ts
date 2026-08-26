@@ -396,8 +396,8 @@ export class SDKInitializer {
       this.logger.info('Logger level set to DEBUG');
 
       // Initialize debug overlay only in debug mode
-      const { debugOverlay } = await import('@/core/debug/debug-overlay');
-      debugOverlay.initialize();
+      const { DebugOverlay } = await import('@/core/debug/debug-overlay');
+      DebugOverlay.getInstance().initialize();
 
       // Initialize test mode manager
       // Removed test mode indicator - using debug overlay instead

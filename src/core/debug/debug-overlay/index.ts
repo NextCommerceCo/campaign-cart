@@ -1,1 +1,1 @@
-export { DebugOverlay, debugOverlay } from './debug-overlay';
+export { DebugOverlay } from './debug-overlay';
