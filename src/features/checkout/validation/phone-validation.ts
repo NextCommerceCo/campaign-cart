@@ -15,8 +15,9 @@
  *
  * **The bar is the library's own `isValidNumber()`,** which asks whether a number is
  * well formed for its country, not whether it is in service. `0000000000` and `1234567890`
- * pass it and are sent. The library's `isValidNumberPrecise()` refuses both; whether to
- * call it instead is an open question, not a settled contract.
+ * pass it and are sent. The library's stricter `isValidNumberPrecise()` would refuse both
+ * and is deliberately not used: well-formedness is what the SDK checks, and whether a
+ * number is in service is left to the server.
  */
 
 /**
