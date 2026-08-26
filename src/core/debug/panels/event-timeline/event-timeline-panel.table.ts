@@ -1,7 +1,7 @@
 /**
  * The events table: the Analytics/Events view tabs, the header stats strip,
  * the table itself and its rows, and the empty state. Extracted verbatim from
- * `event-timeline-panel.ts` (see docs/code-findings.md #147) — logic
+ * `event-timeline-panel.ts` — logic
  * unchanged. Functions that only ever read an already-computed value
  * (`view`, `events`, `filteredEvents`, `activeFilterCount`, `hasActiveFilters`)
  * take it as a plain parameter instead of a live accessor: a render pass is

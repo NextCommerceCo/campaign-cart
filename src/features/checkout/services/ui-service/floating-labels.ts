@@ -371,8 +371,8 @@ function handleInput(ctx: FloatingLabelContext, event: Event): void {
  * its own. {@link handleResponsiveUI} used to attach one per field on every crossing of
  * the mobile breakpoint, which stacked and could never be removed; and it could not
  * simply be moved into {@link FloatingLabelContext.events}, because that manager keeps
- * one handler per element/event pair and would have *replaced* this one (finding 169 in
- * `docs/code-findings.md`). One handler that knows both rules has neither problem.
+ * one handler per element/event pair and would have *replaced* this one. One handler that
+ * knows both rules has neither problem.
  */
 function handleFocus(ctx: FloatingLabelContext, event: Event): void {
   const field = event.target as HTMLInputElement | HTMLSelectElement;
@@ -617,8 +617,7 @@ export function updateLabelsForPopulatedData(ctx: FloatingLabelContext): void {
  *
  * It used to attach a fresh `focus` handler to every tracked field on each pass under
  * the mobile breakpoint. Those could never be removed, so `UIService.destroy()` left
- * them live and a resizing browser stacked a new set every time (finding 169 in
- * `docs/code-findings.md`).
+ * them live and a resizing browser stacked a new set every time.
  *
  * Lives here rather than in `ui-service.ts` because the class it writes is read as label
  * behaviour.

@@ -11,7 +11,7 @@
  *
  * The alternative to reading the declarations was a hand-kept allowlist of "paths
  * the fallback answers", which is the same unchecked list that put four fictional
- * properties on `bundle-selector`'s page (finding 109 in `docs/code-findings.md`).
+ * properties on `bundle-selector`'s page.
  * A declared interface is checkable; a list is not.
  *
  * **What it proves, and what it does not.** It proves the *contract* declares the

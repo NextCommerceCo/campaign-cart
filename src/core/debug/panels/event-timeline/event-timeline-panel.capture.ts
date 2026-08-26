@@ -1,7 +1,7 @@
 /**
  * Hooks the four event sources the timeline records from: GTM's dataLayer,
  * the internal EventBus, DOM CustomEvents, and the Performance API. Extracted
- * verbatim from `event-timeline-panel.ts` (see docs/code-findings.md #137) —
+ * verbatim from `event-timeline-panel.ts` —
  * logic unchanged; `this` became an explicit `EventCaptureHost` context
  * because these overrides fire asynchronously (long after `watchDataLayer`
  * etc. return), so they must read the panel's *current* `isRecording`/

@@ -231,7 +231,8 @@ function domActivatedFiles() {
       ...enhancerFiles.filter(isDomActivated),
       ...others.filter(f => enhancerClassesIn(f).some(c => registered.has(c))),
     ],
-    // Named out loud, because a silent exclusion is what finding 95 was.
+    // Named out loud, because a silent exclusion is how a DOM-activated class
+    // stops being counted without anyone noticing.
     excluded: [
       ...enhancerFiles.filter(f => !isDomActivated(f)),
       ...others.filter(f => {
@@ -318,28 +319,28 @@ function scanFeatures() {
  * Read from `AttributeScanner`'s display routing rather than from the manifests, so
  * the denominator is every namespace the SDK really answers — a namespace whose
  * manifest forgot `displayNamespace` has to count as a gap, not vanish from the
- * total. That is the documentation half of finding 95.
+ * total. That is the documentation half of the same blind spot the exclusion list
+ * above names.
  *
- * **One row per namespace, not per feature** — finding 143's second defect.
- * `product-display` answers both `package.` and `campaign.` from one
- * `getPropertyValue`, and the old version of this scan kept one row per *feature*,
- * so a `package.` page alone scored the whole row covered and `campaign.` — routed
- * nowhere, documented nowhere — vanished into a metric reading 8/8. Two namespace
- * literals joined by `||` in the same `AttributeScanner` branch are only counted
- * separately when the feature's own source actually tells them apart (a
+ * **One row per namespace, not per feature.** `product-display` answers both `package.`
+ * and `campaign.` from one `getPropertyValue`, and the old version of this scan kept
+ * one row per *feature*, so a `package.` page alone scored the whole row covered and
+ * `campaign.` — routed nowhere, documented nowhere — vanished into a metric reading
+ * 8/8. Two namespace literals joined by `||` in the same `AttributeScanner` branch are
+ * only counted separately when the feature's own source actually tells them apart (a
  * `startsWith('{ns}.')` or `=== '{ns}'` guard on that literal) — `cart`/`cart-summary`
  * share one branch and one untouched resolver, so they fold into a single `cart` row;
- * `package`/`campaign` share a branch too, but `product-display` guards on
- * `campaign.` explicitly, so they are two rows. That is the same test
- * `extract-display-paths.ts › claimsNamespace` runs against the resolver, kept as a
- * plain regex here since this script does not carry a TypeScript AST walker.
+ * `package`/`campaign` share a branch too, but `product-display` guards on `campaign.`
+ * explicitly, so they are two rows. That is the same test `extract-display-paths.ts ›
+ * claimsNamespace` runs against the resolver, kept as a plain regex here since this
+ * script does not carry a TypeScript AST walker.
  *
- * **Generated, not merely present**, since finding 114: the three cart namespaces
- * were hand-written for want of a generator, and a hand-written property table is
- * unchecked by definition. `bundle-selector`'s listed four properties its enhancer
- * has no case for (finding 109) while this metric read 8/8. Counting the "do not
- * edit by hand" marker, and the exact namespace's own opening sentence, is what stops
- * a page quietly reverting to prose or being credited to the wrong namespace.
+ * **Generated, not merely present**: the three cart namespaces were hand-written for
+ * want of a generator, and a hand-written property table is unchecked by definition.
+ * `bundle-selector`'s listed four properties its enhancer has no case for while this
+ * metric read 8/8. Counting the "do not edit by hand" marker, and the exact
+ * namespace's own opening sentence, is what stops a page quietly reverting to prose
+ * or being credited to the wrong namespace.
  */
 function scanDisplayNamespaces() {
   const file = join(SRC, 'core/attribute-scanner/attribute-scanner.ts');

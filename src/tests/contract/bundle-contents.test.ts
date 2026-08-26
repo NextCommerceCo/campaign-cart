@@ -33,7 +33,7 @@ import { resolve, join, relative } from 'node:path';
  *
  * Until 2026-08-02 only the UMD was scanned, which left the gate blind to exactly
  * the case its own comment claimed to guard — the docs layer sitting in a sibling
- * chunk. See finding 105 in `docs/code-findings.md`.
+ * chunk.
  *
  * ## What it cannot prove
  *

@@ -4,7 +4,7 @@
  * `data-next-display` attribute. `setupCurrencyChangeListener()` used to register an
  * inline arrow on `document` with no teardown path at all: the listener could not be
  * removed even deliberately, and a re-enhance added another one on top of every
- * listener the previous pass had left behind (finding 149 in `docs/code-findings.md`).
+ * listener the previous pass had left behind.
  *
  * These tests pin both halves of the fix — the listener still drives a re-render
  * while the enhancer is alive, and it is gone once `destroy()` has run.

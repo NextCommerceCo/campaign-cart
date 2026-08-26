@@ -165,10 +165,9 @@ describe('setupEmailEntryTrigger', () => {
   });
 
   /**
-   * Pins finding 139's fix: every listener this module registers is tied to
-   * `context.signal`, so aborting it (what `ProspectCartEnhancer.cleanupEventListeners`
-   * does on destroy) removes the listener rather than leaving it to outlive whatever
-   * created the context.
+   * Every listener this module registers is tied to `context.signal`, so aborting it
+   * (what `ProspectCartEnhancer.cleanupEventListeners` does on destroy) removes the
+   * listener rather than leaving it to outlive whatever created the context.
    */
   it('stops reacting to blur once context.signal aborts', () => {
     const controller = new AbortController();

@@ -7,7 +7,7 @@ category: "Checkout Form"
 # Checkout Form
 
 > Category: `checkout`
-> Last reviewed: 2026-08-19
+> Last reviewed: 2026-08-26
 > Owner: Campaigns
 
 Turns a plain HTML form into a working checkout. You write the markup and name each
@@ -58,6 +58,29 @@ the two can never drift apart.
   for the phone library to finish loading so there is a number to convert; if it
   never arrives the national number is sent for the API to convert, and the SDK
   logs that it did so.
+- **A postcode is rewritten into the shape its country writes it in, while the
+  shopper is still typing.** Each country's rules arrive with its data from the
+  countries service: a format pattern, a validation pattern, and a minimum and
+  maximum length. 47 of the 250 countries ship a format pattern. The field is
+  reformatted in place on every keystroke, as well as on change and on blur, and
+  the caret is put back where the shopper left it, so `k1a0b1` is written
+  `K1A 0B1` in Canada and `sw1a1aa` is written `SW1A 1AA` in the UK. Nothing is
+  rewritten before a country is chosen, because the rule belongs to the country.
+- **A rewrite is used only when the country's own rule accepts it.** A format
+  pattern places its literal characters at fixed offsets, which fits a
+  fixed-length postcode when the pattern is filled from the start and a
+  variable-length one when it is filled from the end. A UK outward code runs 2
+  to 4 characters, so one pattern has to work at three lengths. The SDK builds
+  the start-anchored candidate first, then the end-anchored one. A country whose
+  postcodes take more than one shape can carry a list of formats rather than a
+  single one, and each is tried in turn. It keeps a candidate only if that
+  country's own validation pattern accepts it; otherwise the value the shopper
+  typed stands, uppercased when it contains letters
+  (`core/country-service/country-service.postal-code.ts › formatPostalCode`).
+  Two things follow from that. A half-typed postcode is left alone rather than
+  rearranged, because a partial value does not satisfy the country's rule yet,
+  and it is reshaped once it is complete. And the SDK never submits a postcode
+  that its own validation would then refuse.
 - Payment methods are declared in markup with short names, written with
   underscores like everywhere else the SDK names one (`credit`, `paypal`,
   `apple_pay`, …); `-` is accepted and case is ignored. The SDK translates them
@@ -148,6 +171,18 @@ the two can never drift apart.
   it twice, so a change to the shipping markup cannot leave billing behind.
 - We keep the legacy attribute names working rather than requiring a migration,
   because a half-migrated checkout is worse than a consistent old one.
+- We check each formatted postcode against the country's own validation pattern
+  instead of trusting its format pattern, because the patterns come from a
+  service this repo does not own: a country whose pattern the SDK cannot express
+  falls back to the shopper's value rather than producing one that validation
+  would then refuse.
+- We try the start-anchored candidate before the end-anchored one, because the
+  41 countries whose patterns already produced a valid postcode are
+  start-anchored, so covering the variable-length ones changed nothing for them.
+- We rewrite the postcode on input rather than only on blur, and restore the
+  caret, because the browser drops the cursor to the end of the field whenever a
+  space is inserted, and a shopper correcting one character in the middle of a
+  postcode would then type the rest of it backwards.
 
 ## Limitations
 
@@ -161,6 +196,20 @@ the two can never drift apart.
   finish through `order:completed`, which the order store emits on the page the
   shopper lands on next — see
   [the order store's events](../../../../state/order/guide/reference/events.md).
+- Does not express a format pattern whose literal characters collide with the
+  pattern language. `N`, `X`, `A`, `#` and `9` mark the positions a postcode's
+  own characters go in, and the pattern language has no escape character, so
+  Monaco's `980NN`, Gibraltar's `GX11 1AA`, the Isle of Man's `IMN NAA`,
+  Jersey's `JEN NAA` and Lithuania's `LT-NNNNN` cannot be read as written. The
+  SDK carries formats of its own for those countries and tries them first, so
+  there is nothing to change in your markup. A pattern the SDK has no format for
+  falls back to the value the shopper typed.
+- Does not write a postcode longer than the country's own maximum length, even
+  when that country writes one. An Isle of Man or Jersey postcode with a
+  four-character outward code is 8 characters with its space, and both
+  countries give their maximum as 7, so `IM991AA` is left unspaced. Typing
+  `IM99 1AA` in full is refused by the same length rule, which is a limit of
+  the country data rather than of the formatting.
 
 ## Reference
 

@@ -26,10 +26,10 @@ export interface DisplayPath {
    * nothing about what a page visitor sees — `BaseDisplayEnhancer` only applies it
    * when the resolver returns `null`/`undefined`, and `order-display.properties.ts
    * › getDisplayValue` returns `''` on every miss, which is why `order.status`'s
-   * declared `fallback: 'Completed'` never once rendered (finding 144 in
-   * `docs/code-findings.md`). It only becomes a live trap on an entry the resolver
-   * has no branch for at all — see {@link DisplayPathSource.unanswered} in
-   * `render-feature-reference.ts`, which is the one place this is load-bearing.
+   * declared `fallback: 'Completed'` never once rendered. It only becomes a live
+   * trap on an entry the resolver has no branch for at all — see
+   * {@link DisplayPathSource.unanswered} in `render-feature-reference.ts`, which is
+   * the one place this is load-bearing.
    */
   hasFallback: boolean;
 }

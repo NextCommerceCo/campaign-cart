@@ -8,7 +8,7 @@ import { DOMObserver, type DOMChangeEvent } from '@/core/base/dom-observer';
  *
  * Removals are reported unfiltered because the observer is not the thing that knows
  * what was enhanced — `AttributeScanner` is, and it activates thirty selectors where
- * this filter watches eight (finding 164 in `docs/code-findings.md`).
+ * this filter watches eight.
  */
 
 /** One MutationObserver microtask plus the observer's own 16ms throttle. */

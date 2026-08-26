@@ -17,8 +17,8 @@
  *
  * Extracted from `checkout-form.enhancer.ts`. Detection needs three things from the form
  * ({@link MultiStepDetectionContext}); navigation needs eight
- * ({@link StepNavigationContext}). Both were lifted verbatim, and both have since had the
- * unreadable-step-number half of finding 181 fixed in them.
+ * ({@link StepNavigationContext}). Both were lifted verbatim, and both have since had
+ * their handling of an unreadable step number fixed.
  */
 
 import type { CountryConfig } from '@/core/country-service';
@@ -99,7 +99,7 @@ export interface StepNavigationContext {
    * Narrowed to the three members this module calls rather than the whole
    * `CheckoutValidator`: the class carries twenty fields a step-navigation test has no
    * reason to build, and demanding them turns every test double into an `as any` — the
-   * dishonest-fixture shape `npm run type-check:tests` exists to catch (finding 116).
+   * dishonest-fixture shape `npm run type-check:tests` exists to catch.
    */
   validator: Pick<
     CheckoutValidator,

@@ -7,8 +7,7 @@
  *   element already enhanced, and with what".
  * - `enhancedElements` (Set) is the *iterable* registry beside it, and the only
  *   thing that makes a full teardown possible — a WeakMap cannot be iterated, so
- *   `destroy()` had no way to reach a single live instance and tore down nothing
- *   (finding 154 in `docs/code-findings.md`).
+ *   `destroy()` had no way to reach a single live instance and tore down nothing.
  * - The Set holds its elements **strongly**, so every element in it must leave
  *   through `cleanupElement()` — that is the one place an element is dropped from
  *   both structures and its enhancers destroyed. `destroy()` empties it.

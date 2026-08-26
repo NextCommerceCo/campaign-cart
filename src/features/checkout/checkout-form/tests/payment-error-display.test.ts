@@ -133,7 +133,7 @@ describe('displayPaymentError', () => {
   });
 });
 
-// ─── The loop that must stay shut (finding 150) ───────────────────────────────
+// ─── The loop that must stay shut ─────────────────────────────────────────────
 
 describe('listenForPaymentErrors', () => {
   /**
@@ -182,7 +182,7 @@ describe('listenForPaymentErrors', () => {
     raise('Your card was declined.');
 
     // Two would mean the echo was displayed as well; unbounded would mean the
-    // recursion of finding 150 is back.
+    // display-and-listen recursion is back.
     expect(displayed).toEqual(['Your card was declined.']);
   });
 

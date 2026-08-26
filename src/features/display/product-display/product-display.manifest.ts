@@ -22,7 +22,7 @@ export default defineFeature({
   // same way `selector`/`bundle`/`toggle` do. It used to be undocumented
   // everywhere: not in PROPERTY_MAPPINGS, not on any page, and invisible to
   // `docs:coverage` because that scan counts by owning feature, not by
-  // namespace (finding 143 in docs/code-findings.md).
+  // namespace.
   additionalDisplayNamespaces: [
     {
       namespace: 'campaign',

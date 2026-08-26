@@ -309,8 +309,7 @@ describe('onQuantityChanged', () => {
 /**
  * Selector mode binds a `click` to every option card and a `change` to the offer's
  * `<select>` — both author DOM. They used to be registered raw, so they survived
- * `destroy()` and a re-enhanced container answered every click twice (finding 169 in
- * `docs/code-findings.md`).
+ * `destroy()` and a re-enhanced container answered every click twice.
  *
  * They go through the same `bind` helper the quantity controls use, but into
  * `state.selectorTeardowns` rather than `state.scanTeardowns`: a scan resets its own

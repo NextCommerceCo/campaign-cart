@@ -5,8 +5,7 @@ import { CreditCardService } from '../credit-card-service';
 /**
  * Teardown proof for the six listeners this service puts on the checkout form's own
  * markup — `change` on the expiry month and year selects, and `click` on the hosted
- * card number and CVV fields plus each of their wrappers (finding 169 in
- * `docs/code-findings.md`).
+ * card number and CVV fields plus each of their wrappers.
  *
  * All six were inline arrows, so `removeEventListener` could never be handed one back,
  * and the service is rebuilt on every checkout-form init: each rebuild added another

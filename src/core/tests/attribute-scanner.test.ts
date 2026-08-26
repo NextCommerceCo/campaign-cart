@@ -7,10 +7,10 @@ import type { CartItem } from '@/types/global';
 /**
  * `AttributeScanner.destroy()` used to tear down nothing at all: the only index of
  * live enhancers was a `WeakMap`, which cannot be iterated, so a full SDK teardown
- * left every enhancer subscribed and every listener it registered attached (finding
- * 154 in `docs/code-findings.md`). The per-instance teardown fixed underneath it —
- * `BaseDisplayEnhancer`'s `AbortController` (149) and `ProspectCartEnhancer`'s (139) —
- * only ever runs when something calls `destroy()` on the instance, and nothing did.
+ * left every enhancer subscribed and every listener it registered attached. The
+ * per-instance teardown fixed underneath it — `BaseDisplayEnhancer`'s
+ * `AbortController` and `ProspectCartEnhancer`'s — only ever runs when something
+ * calls `destroy()` on the instance, and nothing did.
  *
  * These tests drive the scanner through a real enhancer (`CartDisplayEnhancer`, via
  * `data-next-display="cart.itemCount"`) and a real cart store, so "still alive" means
@@ -230,11 +230,11 @@ describe('AttributeScanner teardown', () => {
 });
 
 /**
- * Removing a container has to take the features inside it with it (finding 164 in
- * `docs/code-findings.md`). Before this, `DOMObserver` reported only the node that
- * was removed, and only when that node itself carried one of the eight attributes it
- * filters on — so pulling out a wrapper `<div>` left every enhancer inside it
- * subscribed, listening and running timers for the rest of the page's life.
+ * Removing a container has to take the features inside it with it. Before this,
+ * `DOMObserver` reported only the node that was removed, and only when that node
+ * itself carried one of the eight attributes it filters on — so pulling out a
+ * wrapper `<div>` left every enhancer inside it subscribed, listening and running
+ * timers for the rest of the page's life.
  *
  * These tests drive the real `MutationObserver`, so "cleaned up" means what it means
  * on a page: the element stops re-rendering when the cart changes.

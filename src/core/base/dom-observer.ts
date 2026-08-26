@@ -10,8 +10,7 @@
  *   left the document and lets the handler decide whether it owned it. A filter here
  *   was wrong twice over — it is narrower than what `AttributeScanner` activates, and
  *   it never looked past the removed node itself, so a removed wrapper took its
- *   enhanced children out of the DOM with nothing torn down (finding 164 in
- *   `docs/code-findings.md`).
+ *   enhanced children out of the DOM with nothing torn down.
  */
 
 import { Logger, createLogger } from '@/core/logger';

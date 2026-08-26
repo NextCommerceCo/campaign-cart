@@ -27,8 +27,8 @@ class AddressAutocomplete {
    * the checkout form's own address field, plus the two on the nodes it builds.
    *
    * All six were inline arrows, which `removeEventListener` can never be handed back, so
-   * they outlived the form and a second lazy load stacked another set on the same field
-   * (finding 169 in `docs/code-findings.md`). Aborted by {@link destroy}.
+   * they outlived the form and a second lazy load stacked another set on the same field.
+   * Aborted by {@link destroy}.
    */
   private _listenerAbort = new AbortController();
 

@@ -23,10 +23,10 @@
  * the campaign does not list is refused with a warning rather than written.
  * `add_shipping_info` is reported the first time a method is chosen and never again.
  *
- * Extracted from `checkout-form.enhancer.ts` verbatim; the shipping half has since had
- * finding 180 fixed in it — it read a hard-coded table of three ids and two invented
- * prices. Payment needs one thing from the form ({@link PaymentMethodContext}), shipping
- * two ({@link ShippingMethodContext}).
+ * Extracted from `checkout-form.enhancer.ts` verbatim; the shipping half has since been
+ * fixed — it read a hard-coded table of three ids and two invented prices. Payment needs
+ * one thing from the form ({@link PaymentMethodContext}), shipping two
+ * ({@link ShippingMethodContext}).
  */
 
 import { nextAnalytics, EcommerceEvents } from '@/core/analytics/index';

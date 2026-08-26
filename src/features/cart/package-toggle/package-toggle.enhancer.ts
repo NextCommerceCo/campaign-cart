@@ -163,7 +163,7 @@ export class PackageToggleEnhancer extends BaseEnhancer {
   /**
    * Holds the property-field listeners each registered card puts on author DOM.
    * They used to be unremovable, so they outlived the enhancer and a re-scan stacked
-   * another set (finding 169 in `docs/code-findings.md`).
+   * another set.
    */
   private listenerAbort = new AbortController();
   private mutationObserver: MutationObserver | null = null;

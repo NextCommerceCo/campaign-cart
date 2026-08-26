@@ -56,8 +56,8 @@ function isTerminalStatement(stmt: ts.Statement): boolean {
  *
  * - Nested: `if (this.displayPath?.startsWith('campaign.')) { … }` — code *inside*
  *   that block only runs for `campaign.`. Without this the three campaign
- *   properties would be published as `package.` paths that render nothing —
- *   finding 109 again, produced by the generator this time.
+ *   properties would be published as `package.` paths that render nothing — a
+ *   documented path nothing answers, produced by the generator this time.
  * - Early return: `if (this.displayPath?.startsWith('campaign.')) { return …; }`
  *   with nothing else in the branch, followed by the `package.` handling as plain
  *   sibling statements. Nothing marks those siblings as campaign-free — they run
@@ -65,7 +65,7 @@ function isTerminalStatement(stmt: ts.Statement): boolean {
  *   explicitly. Without this, resolving `campaign.` walked straight past the
  *   guard into every `package.` branch below it and published `discountedPrice`,
  *   `unitPrice.raw`, and 27 more as if they were `campaign.` paths — measured
- *   while wiring finding 143's ninth namespace into this extractor.
+ *   while wiring the ninth namespace into this extractor.
  */
 export function underOtherNamespace(
   node: ts.Node,

@@ -25,7 +25,7 @@ export class CouponEnhancer extends BaseActionEnhancer {
    * The input, keypress, apply-click and per-card remove-click handlers used to be
    * inline arrows, which `removeEventListener` can never be handed back — so they
    * stayed on the author's coupon field for the life of the page and re-enhancing it
-   * stacked another set (finding 169 in `docs/code-findings.md`). The remove button
+   * stacked another set. The remove button
    * was the one with teeth: it does not check the element refs `destroy()` nulls, so a
    * destroyed coupon card went on removing coupons from a live cart. Same pattern as
    * `accordion.enhancer.ts` and `base-display-enhancer.ts`.

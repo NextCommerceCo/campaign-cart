@@ -63,9 +63,9 @@ export function mergeWithDefaults(
  *
  * The fields are the page author's, not the enhancer's, so `signal` is required
  * rather than optional: without it these listeners survived `destroy()` and
- * re-enhancing the same card stacked another set on top of the first (finding 169
- * in `docs/code-findings.md`). Pass the signal of a controller the calling enhancer
- * aborts from its `cleanupEventListeners()`.
+ * re-enhancing the same card stacked another set on top of the first. Pass the
+ * signal of a controller the calling enhancer aborts from its
+ * `cleanupEventListeners()`.
  *
  * @example
  * // Inside an enhancer holding `private listenerAbort = new AbortController()`:

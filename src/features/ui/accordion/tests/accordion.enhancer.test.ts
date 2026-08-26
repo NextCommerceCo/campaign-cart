@@ -4,9 +4,9 @@ import { EventBus } from '@/core/events';
 
 /**
  * The accordion registers `click` and `keydown` on each of its triggers. Those
- * listeners are the whole feature, so the question these tests ask is the one
- * finding 165 in `docs/code-findings.md` says the destroy-contract gate was not
- * asking: after `destroy()`, does clicking a trigger still toggle the accordion?
+ * listeners are the whole feature, so the question these tests ask is the one the
+ * destroy-contract gate was not asking: after `destroy()`, does clicking a trigger
+ * still toggle the accordion?
  */
 
 function buildAccordion(id = 'order-summary'): HTMLElement {

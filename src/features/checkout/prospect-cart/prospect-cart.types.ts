@@ -66,7 +66,7 @@ export interface HasTriggeredRef {
  *  the cart directly instead of going through `checkAndCreateCart`'s validation.
  *  `signal` is the enhancer's `cleanupEventListeners()`-aborted controller — every
  *  `addEventListener` this module makes must pass it, or the listener outlives the
- *  enhancer (see finding 139 in `docs/code-findings.md`). */
+ *  enhancer. */
 export interface TriggerContext {
   element: HTMLElement;
   emailField: HTMLInputElement | undefined;

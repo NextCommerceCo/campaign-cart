@@ -35,7 +35,7 @@ import { resolve, join, basename } from 'node:path';
  * - **It reads the committed `dist/`, not a build of the working tree.** `dist/` is
  *   committed and `.github/workflows/build.yml` tests before it builds, so a source
  *   or `manualChunks` change that reopens this goes green until someone rebuilds and
- *   commits `dist/` (finding 111 in `docs/code-findings.md`). Unlike the docs-marker
+ *   commits `dist/`. Unlike the docs-marker
  *   gate next door, that is only half a weakness here: the committed `dist/` *is*
  *   the artifact jsDelivr serves from the tag, so a pass is a true statement about
  *   what customers load today. Rebuild `dist/` before trusting it about your edit.

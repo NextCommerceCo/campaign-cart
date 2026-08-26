@@ -334,8 +334,7 @@ export class DebugOverlay {
    * `extract-storage-keys.ts` only resolves `DebugOverlay.EXPANDED_STORAGE_KEY`
    * as a static class field when the reference lives in the same file as the
    * class declaration — moving this would have turned the
-   * `debug-overlay-expanded` documentation row into an unresolvable `{token}`
-   * (docs/code-findings.md #183).
+   * `debug-overlay-expanded` documentation row into an unresolvable `{token}`.
    */
   private handleDebugAction(action: string): void {
     this.logger.debug('[Debug] Action clicked:', action);

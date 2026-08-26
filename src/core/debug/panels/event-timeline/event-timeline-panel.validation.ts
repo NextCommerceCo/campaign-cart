@@ -1,7 +1,7 @@
 /**
  * The Validation tab of the event detail modal: the pass/fail/skip checklist
  * for a dataLayer event's ecommerce payload. Extracted verbatim from
- * `event-timeline-panel.ts` (see docs/code-findings.md #137) — the other seam
+ * `event-timeline-panel.ts` — the other seam
  * the finding notes as moving no cited symbol. Both functions were already
  * pure; the caller computes the checks (`auditDataLayerEvent`, in the main
  * file) and passes the result in, so this module only renders.

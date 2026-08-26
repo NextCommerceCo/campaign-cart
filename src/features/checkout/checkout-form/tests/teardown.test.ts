@@ -6,13 +6,13 @@ import { EventBus } from '@/core/events';
 /**
  * What the form must stop doing once it is destroyed.
  *
- * Every case here failed before findings 117, 118 and 121 were fixed: the bus
- * handlers were registered with `this.eventBus.on` instead of `this.on`, the
- * `document`/`window` handlers with inline arrows that `removeEventListener` can
- * never match, the `begin_checkout` delay was untracked, and `UIService` was never
- * torn down. `EventBus` and `window` both live as long as the page, so each of
- * those kept a destroyed enhancer running — the two express-checkout handlers
- * writing `checkoutStore` on every restore and every window focus.
+ * Every case here failed before teardown was fixed: the bus handlers were
+ * registered with `this.eventBus.on` instead of `this.on`, the `document`/`window`
+ * handlers with inline arrows that `removeEventListener` can never match, the
+ * `begin_checkout` delay was untracked, and `UIService` was never torn down.
+ * `EventBus` and `window` both live as long as the page, so each of those kept a
+ * destroyed enhancer running — the two express-checkout handlers writing
+ * `checkoutStore` on every restore and every window focus.
  */
 
 function createMockLogger() {
@@ -82,7 +82,7 @@ afterEach(() => {
   useCheckoutStore.getState().reset();
 });
 
-// ─── Event-bus handlers (finding 117) ─────────────────────────────────────────
+// ─── Event-bus handlers ───────────────────────────────────────────────────────
 
 describe('destroy: event-bus handlers', () => {
   it('stops displaying payment errors raised elsewhere', () => {
@@ -125,7 +125,7 @@ describe('destroy: event-bus handlers', () => {
   });
 });
 
-// ─── document / window handlers (finding 117) ─────────────────────────────────
+// ─── document / window handlers ───────────────────────────────────────────────
 
 describe('destroy: document and window handlers', () => {
   it('stops following the debug country selector', () => {

@@ -25,10 +25,10 @@ export class GoogleMapsAutocomplete {
    * {@link destroy} can take them all back.
    *
    * All four were inline arrows, which `removeEventListener` can never be handed back —
-   * so they outlived the form and a second lazy load stacked another set (finding 169 in
-   * `docs/code-findings.md`). The `keydown` one had teeth: it calls `preventDefault()`
-   * unconditionally, so a destroyed provider went on swallowing the Enter key in the
-   * address field. Same pattern as `accordion.enhancer.ts`.
+   * so they outlived the form and a second lazy load stacked another set. The `keydown`
+   * one had teeth: it calls `preventDefault()` unconditionally, so a destroyed provider
+   * went on swallowing the Enter key in the address field. Same pattern as
+   * `accordion.enhancer.ts`.
    */
   private listenerAbort = new AbortController();
 

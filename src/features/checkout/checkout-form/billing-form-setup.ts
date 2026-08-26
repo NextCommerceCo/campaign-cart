@@ -387,7 +387,7 @@ function isWritableField(
  * region on an address the shopper entered precisely because it differs.
  *
  * Values are written exactly as stored, including a phone number kept as raw text rather
- * than E.164 (finding 157): restoring is not the place to change what the order will
+ * than E.164: restoring is not the place to change what the order will
  * carry.
  *
  * @param billingAddress What `checkoutStore.billingAddress` holds. `undefined` is the

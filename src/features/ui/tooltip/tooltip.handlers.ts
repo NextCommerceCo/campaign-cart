@@ -8,9 +8,8 @@ export interface TooltipTimers {
   /**
    * The 200ms "remove from DOM after fade" timer scheduled by `dismissTooltip`.
    * Tracked here (rather than left to run untracked) so `show()` and `destroy()`
-   * can cancel it — see finding 96 in `docs/code-findings.md`: an untracked
-   * version of this timer is what let a rapid re-tap resurrect a tooltip out
-   * from under its own removal.
+   * can cancel it — an untracked version of this timer is what let a rapid
+   * re-tap resurrect a tooltip out from under its own removal.
    */
   dismissTimeout: number | null;
 }

@@ -17,7 +17,7 @@ import type { DataLayerEvent } from '@/core/analytics/types';
  * `dataLayer` singleton end-to-end (push -> validateEvent -> NextDataLayer),
  * not just a validator function in isolation.
  */
-describe('a 100%-discount order still produces a dl_purchase event (finding 46)', () => {
+describe('a 100%-discount order still produces a dl_purchase event', () => {
   const lastPushed = (): DataLayerEvent =>
     window.NextDataLayer[window.NextDataLayer.length - 1];
 

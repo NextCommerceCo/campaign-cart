@@ -4,8 +4,7 @@
  * Four more maps once lived here — `COMMON_FIELD_PATTERNS`, `FIELD_NAME_MAP`,
  * `BILLING_FIELD_MAPPING` and `PAYMENT_METHOD_MAP` — none with an importer.
  * `validation/field-labels.ts` owns the field-label wording, so keeping the
- * copies here only invited them to drift (finding 158's shape). Removed; this
- * file's history has them.
+ * copies here only invited them to drift. Removed; this file's history has them.
  *
  * A payment method is spelled three ways — the page's word on the radio, the
  * SDK's word in the checkout store, the API's word on the order — and the two

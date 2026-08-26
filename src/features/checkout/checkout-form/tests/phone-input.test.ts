@@ -190,7 +190,7 @@ describe('initializePhoneInputs', () => {
  * `change` on the address country `<select>` — sit on author DOM, and nothing but the
  * `Iti` instance is handed back to the caller. Destroying that instance used to leave
  * both attached, so a torn-down form went on writing phone numbers into checkout state
- * and a re-init stacked another pair (finding 169 in `docs/code-findings.md`).
+ * and a re-init stacked another pair.
  *
  * The fix hangs an `AbortController` off the instance's own `destroy()`, which is the
  * one call both teardown paths already make: the replace-on-re-init inside this module,

@@ -203,8 +203,8 @@ export async function validateForm(
         // shopper mistake, and no card field is actually wrong. `general` is also the key
         // this file's caller already uses for the same class of "can't proceed" failure
         // (see `checkout-form.enhancer.ts`'s `setError('general', …)` calls), and it steers
-        // clear of `focusFirstErrorField`'s card-field list (finding 133 #7), which does not
-        // reliably resolve every card field name to something focusable.
+        // clear of `focusFirstErrorField`'s card-field list, which does not reliably
+        // resolve every card field name to something focusable.
         errors.general =
           'Payment cannot be validated right now because the payment system is not ready. Please wait a moment and try again.';
         isValid = false;

@@ -26,8 +26,8 @@ function createContext(
 ): FormValidationContext {
   return {
     countryService: { validatePostalCode: vi.fn().mockReturnValue(true) },
-    // Step 3 asks `validateForm` for the payment check too, and finding 132 made a
-    // missing card service an invalid verdict rather than a silent pass. Steps 1 and 2
+    // Step 3 asks `validateForm` for the payment check too, where a missing card
+    // service is an invalid verdict rather than a silent pass. Steps 1 and 2
     // never reach the card block, so a satisfied service by default lets each test
     // assert the thing it is actually about; the cases that care override it.
     creditCardService: {
@@ -200,8 +200,8 @@ describe('validateStep — step 3', () => {
   });
 
   /**
-   * The decision behind finding 131's fix: "the shopper asked for a separate billing
-   * address and nothing has been captured" is **not** the same as "billing is fine".
+   * The decision behind the fix: "the shopper asked for a separate billing address
+   * and nothing has been captured" is **not** the same as "billing is fine".
    *
    * It is reachable on exactly the path this fix is for: the checkout store drops an
    * all-empty billing address when it persists (`partialize`), so a step-3 page loaded

@@ -3,12 +3,12 @@
  *
  * `tsconfig.json` sets `noUnusedLocals: false` and `noUnusedParameters: false`,
  * so nothing in this repo has ever reported a dead import, local, or parameter
- * — see finding 171 in docs/code-findings.md, where `RawDataHelper` sat
- * imported-and-unused for a whole wave. Turning the flags on in `tsconfig.json`
- * itself would change what `npm run build`/`type-check` compiles, which is a
- * decision for that file's owner, not this gate — so `tsconfig.unused-check.json`
- * flips them on in a config used only here, extending `tsconfig.eslint.json`'s
- * already-wide program (src + e2e + scripts + build configs).
+ * — `RawDataHelper` sat imported-and-unused for a whole wave. Turning the flags
+ * on in `tsconfig.json` itself would change what `npm run build`/`type-check`
+ * compiles, which is a decision for that file's owner, not this gate — so
+ * `tsconfig.unused-check.json` flips them on in a config used only here,
+ * extending `tsconfig.eslint.json`'s already-wide program (src + e2e + scripts
+ * + build configs).
  *
  * This is a ratchet, same shape as `type-check-tests.mjs` /
  * `type-check-tests.baseline.json`: known occurrences are frozen in
@@ -32,12 +32,12 @@
  * What this gate does NOT cover: an unused *export* — a function or constant
  * nothing imports, but which is still "read" inside its own file, or not read
  * anywhere but never flagged because `noUnusedLocals` only inspects a single
- * file's own bindings, never cross-file import graphs. Finding 167 (a 267-line
- * module, 23 exports, zero callers) and finding 158 (an exported constant
- * duplicated locally, original left with no importers) are both invisible to
- * this gate for exactly that reason — it would take a project-wide reference
- * count (e.g. a `ts-prune`-style pass over the checker's symbol table) to
- * catch those, which is a different tool than turning on two compiler flags.
+ * file's own bindings, never cross-file import graphs. A 267-line module with
+ * 23 exports and zero callers, and an exported constant duplicated locally with
+ * the original left with no importers, are both invisible to this gate for
+ * exactly that reason — it would take a project-wide reference count (e.g. a
+ * `ts-prune`-style pass over the checker's symbol table) to catch those, which
+ * is a different tool than turning on two compiler flags.
  */
 
 import { execFileSync } from 'node:child_process';

@@ -235,7 +235,7 @@ describe('the billing address a shopper carries between pages', () => {
 
   it('leaves the fields empty when the shopper is billing to the shipping address', async () => {
     // `checkoutStore.reset()` returns `sameAsShipping` to true but leaves `billingAddress`
-    // behind (finding 156), so this is what a shared browser holds after someone else's
+    // behind, so this is what a shared browser holds after someone else's
     // order. It must not reach the DOM.
     useCheckoutStore.setState({
       sameAsShipping: true,

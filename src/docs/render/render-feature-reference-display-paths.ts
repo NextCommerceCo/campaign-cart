@@ -54,10 +54,10 @@ export interface DisplayPathSource {
      * depends on the resolver too — `BaseDisplayEnhancer` only applies it when the
      * resolver returns `null`/`undefined` on the miss, which `order-display` never
      * does (it returns `''`), so `order.status`'s declared fallback rendered nothing,
-     * ever, the whole time the page claimed otherwise (finding 144 in
-     * `docs/code-findings.md`). `cart.discountCode` is the one entry in the codebase
-     * today where this is actually true: `CartDisplayEnhancer.resolveValue` returns
-     * `undefined` on its `default:`, so the declared `fallback: ''` does render.
+     * ever, the whole time the page claimed otherwise. `cart.discountCode` is the one
+     * entry in the codebase today where this is actually true:
+     * `CartDisplayEnhancer.resolveValue` returns `undefined` on its `default:`, so the
+     * declared `fallback: ''` does render.
      */
     hasFallback: boolean;
   }>;
@@ -160,10 +160,10 @@ export function renderDisplayPaths(
     'in the feature accepts it.';
 
   // The "renders the fallback instead" clause is only true when *this* page has an
-  // entry where the routing table declares one — finding 144 found it asserted on
-  // every routed namespace's page, including `order.`, whose resolver returns `''`
-  // on a miss and so can never reach a declared fallback at all. Print the caveat
-  // only where a row below can actually exhibit it.
+  // entry where the routing table declares one. It was once printed on every routed
+  // namespace's page, including `order.`, whose resolver returns `''` on a miss and
+  // so can never reach a declared fallback at all. Print the caveat only where a row
+  // below can actually exhibit it.
   const anyFallback = source.unanswered?.some(u => u.hasFallback) ?? false;
 
   const unanswered = source.unanswered?.length

@@ -264,8 +264,8 @@ describe('listenForPaymentErrors', () => {
       .mockImplementation(() => {});
     steps.listenForPaymentErrors();
 
-    // What `order-manager` emits for a declined express order — and, since
-    // finding 120, what the EventMap declares.
+    // What `order-manager` emits for a declined express order, and what the
+    // EventMap declares.
     EventBus.getInstance().emit('payment:error', {
       message: 'Your card was declined.',
       code: 'gateway_declined',

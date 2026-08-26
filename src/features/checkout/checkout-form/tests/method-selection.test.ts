@@ -18,7 +18,7 @@ import {
  * The shipping half is answered entirely by the campaign: which ids exist, what each one
  * is called, and what it costs. Every test here therefore starts by saying what the
  * campaign offers, and the ids deliberately are not 1, 2 and 3 — the three the SDK used
- * to hard-code (finding 180).
+ * to hard-code.
  */
 
 function createMockLogger() {

@@ -69,11 +69,12 @@ export interface ResolvedDisplayPaths {
    * Names the format table declares a format for that the resolver has no answer
    * for — always empty in a healthy enhancer.
    *
-   * This is the raw material for the gate on the root cause of finding 109. The
-   * extractor already refuses to *publish* a name that only exists in the format
-   * table, but a reader opening the source still meets the table first, and the
-   * table is what the wrong page was transcribed from. Reporting the difference
-   * lets the docs suite fail on the trap itself rather than on its next victim.
+   * This is the raw material for the gate on the root cause of a documented path
+   * nothing answers. The extractor already refuses to *publish* a name that only
+   * exists in the format table, but a reader opening the source still meets the
+   * table first, and the table is what the wrong page was transcribed from.
+   * Reporting the difference lets the docs suite fail on the trap itself rather
+   * than on its next victim.
    */
   formatsWithoutPath: string[];
   /**
@@ -136,7 +137,7 @@ function findResolver(
  * resolver all the same — `CartDisplayEnhancer.resolveValue`, reached through the
  * `getPropertyValue` that delegates to it. Treating the routing table as the answer
  * for those five is what published ten `cart.` paths that render nothing and hid six
- * that work (finding 127 in `docs/code-findings.md`), so the table is now a claim
+ * that work, so the table is now a claim
  * this list is checked against rather than the list itself.
  *
  * Throws rather than returning an empty list when nothing is found. An empty list
