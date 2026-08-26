@@ -40,9 +40,8 @@ Files are **kebab-case with a dotted role suffix**: `<name>.<role>.ts`.
     `AttributeScanner` registers for `data-next-display="selector.…"`. It is *not* the
     "state → DOM" layer that the same suffix means in `features/display/`. Do not put a
     layer helper in one of those four files; a cart-state reconciler that writes to the
-    cart belongs in `handlers`, and a read-only one in `renderer`. See finding 95 in
-    [docs/code-findings.md](../../docs/code-findings.md) — those four enhancers are also
-    invisible to `npm run docs:coverage` because it scans `*.enhancer.ts`.
+    cart belongs in `handlers`, and a read-only one in `renderer`. Those four enhancers
+    are also invisible to `npm run docs:coverage` because it scans `*.enhancer.ts`.
 - Folders are kebab-case too (`features/cart/add-to-cart/`).
 - `index.ts` stays `index.ts` (barrel — exports only).
 - **Kebab governs the file name only.** Identifiers inside keep normal JS casing: classes/types PascalCase (`AddToCartEnhancer`, `CartState`), functions/vars camelCase.
@@ -105,7 +104,7 @@ Two hard blockers on 1 and 2, both of which have bitten:
   `core/guide/reference/meta-tags.md`; `core/debug/debug-module.ts` is cited by four generated
   pages precisely *because* nothing imports it. Before deleting, grep the symbol **and its
   string values** across `src/core/guide/`, `src/docs/` and `src/tests/docs/`, then run
-  `npx vitest run src/tests/docs/` — finding 183: the feature's own suite passes either way.
+  `npx vitest run src/tests/docs/` — the feature's own suite passes either way.
 
 A helper whose only importer is a test is **test infrastructure**, not dead code. Say so in the
 notes rather than deleting it.

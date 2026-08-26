@@ -192,7 +192,7 @@ describe('destroy', () => {
   });
 });
 
-// ─── Regression — finding 96: rapid re-tap (touch) permanently kills the tooltip ──
+// ─── Regression — rapid re-tap (touch) permanently kills the tooltip ──────────
 //
 // `handleTouchStart` toggles show/hide with no delay, unlike the hover path
 // (500ms show delay, 150ms hide delay), which never lands inside the 200ms
@@ -200,7 +200,7 @@ describe('destroy', () => {
 // `isVisible === true` with `tooltip === null` — unrecoverable, since both
 // `show()` and `hide()` early-return without ever repairing that state.
 
-describe('regression: rapid double-tap on touch (finding 96)', () => {
+describe('regression: rapid double-tap on touch', () => {
   it('does not strand isVisible=true / tooltip=null when the pending dismissal fires after a re-tap remounts', async () => {
     vi.useFakeTimers();
     stubSyncRaf();

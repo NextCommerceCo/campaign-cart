@@ -94,7 +94,8 @@ are measured — now lives in the code rather than a plan document:
 measured gaps and their frozen baseline; and `src/tests/docs/` fails when a generated
 page drifts from its source. `docs/documentation-plan.md` used to carry the narrative
 and was deleted in `23f2562` — read the extractor and its drift test instead.
-Defects found while documenting go to [docs/code-findings.md](docs/code-findings.md).
+A defect you find while documenting and are not fixing is reported to the person
+you are working with, not written into the repo.
 
 Cross-cutting rules stay under [.claude/rules/](.claude/rules/):
 

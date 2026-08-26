@@ -166,9 +166,8 @@ feature legitimately logs an error, assert the *expected* one rather than silenc
 A cheap way to find these in bulk is a **seeded monkey**: drive random clicks and
 inputs across every fixture with a fixed seed, collecting `pageerror` and
 `console.error`. One was written and thrown away once it had found what it was
-built to find (finding 197) — the traps below are what it cost to get there, and
-they are the reason a throwaway one is worth writing again rather than kept
-running.
+built to find — the traps below are what it cost to get there, and they are the
+reason a throwaway one is worth writing again rather than kept running.
 
 Reproducibility is the whole point — a finding you cannot replay is not
 actionable. Four traps make a monkey lie. The first two produced phantom findings

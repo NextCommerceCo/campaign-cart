@@ -7,7 +7,7 @@ import ts from 'typescript';
  * `UpsellEnhancer.destroy()` shipped clearing `this.state.actionButtons` — the array
  * `cleanupEventListeners` iterates — *before* calling `super.destroy()`, which is what
  * invokes that cleanup. The array was already empty by the time it ran, so the click
- * listener was never removed. See finding 98 in `docs/code-findings.md`.
+ * listener was never removed.
  *
  * This test finds every class in `src/` that extends one of the four base enhancers
  * and declares its own `destroy()`, then asserts the method's first statement is
@@ -21,15 +21,15 @@ import ts from 'typescript';
  *
  * This started as a ratchet with 18 violators. **One is left** (see ALLOWLIST below),
  * and it is left because it belongs to another session's file, not because it is
- * unfixable. Two of the other 17 were bugs — findings 98 and 101 — and the remaining
- * 15 were each moved to `super.destroy()`-first only after checking the one thing
- * that makes a late `super.destroy()` actually harmful.
+ * unfixable. Two of the other 17 were bugs, and the remaining 15 were each moved to
+ * `super.destroy()`-first only after checking the one thing that makes a late
+ * `super.destroy()` actually harmful.
  *
  * That check is short, because base `destroy()` is short: it runs the recorded
  * unsubscribes, then calls `cleanupEventListeners()`. So the order can only matter
  * when the subclass's own pre-`super` code destroys state that its own
- * `cleanupEventListeners()` override then reads — which is exactly what findings 98
- * and 101 were. For the other 15 the move was behaviour-neutral, and neutral for the
+ * `cleanupEventListeners()` override then reads — which is exactly what those two
+ * bugs were. For the other 15 the move was behaviour-neutral, and neutral for the
  * same reason each time: nothing observable runs between the two positions.
  * Unsubscribing a store or bus listener does not invoke it, and removing a DOM
  * listener, clearing a timer, disconnecting an observer or detaching a node
@@ -205,7 +205,7 @@ describe('destroy() calls super.destroy() first', () => {
 
 /**
  * The gate above only ever inspects classes that *override* `destroy()` — which is
- * exactly the blind spot finding 139 fell through: `ProspectCartEnhancer` had **no**
+ * exactly the blind spot `ProspectCartEnhancer` fell through: it had **no**
  * `destroy()` or `cleanupEventListeners()` override at all, so it never appeared in
  * `findDestroyOverrides()`, and every listener its sibling module `triggers.ts`
  * registered (email/phone/name `blur`+`change`, plus a `focus`+`input` pair on every
@@ -221,17 +221,19 @@ describe('destroy() calls super.destroy() first', () => {
  * would require tracing which listener the override's body targets) — only that a
  * teardown path exists at all, which is the one thing a class that overrides
  * nothing cannot dodge. `this.on()` / `this.subscribe()` calls are out of scope
- * here: those are auto-cleaned by base `destroy()` already (finding 103), so a raw
- * `addEventListener` reachable from the class is the only shape this needs to catch.
+ * here: those are auto-cleaned by base `destroy()` already, so a raw
+ * `addEventListener` reachable from the class is the only shape this needs to
+ * catch.
  *
  * Scoped to `.addEventListener(` (not `eventBus.on(`/`this.on(`) because the DOM
  * listener path is the one with no built-in cleanup — see `BaseEnhancer.on()`'s own
  * doc comment for why event-bus listeners already record their unsubscribe.
  *
  * This is a ratchet, like the allowlist above: it fails today on more than
- * `ProspectCartEnhancer` (see NO_TEARDOWN_ALLOWLIST below), each with a reason. Fix
- * finding 139 shrinks it by one; the other entries are separate decisions for
- * whoever owns that file, not something this change makes for them.
+ * `ProspectCartEnhancer` (see NO_TEARDOWN_ALLOWLIST below), each with a reason.
+ * Giving that enhancer a teardown path shrinks it by one; the other entries are
+ * separate decisions for whoever owns that file, not something this change makes for
+ * them.
  */
 describe('a class that registers a raw addEventListener has a teardown path', () => {
   interface ListenerRegisteringClass {
@@ -347,8 +349,8 @@ describe('a class that registers a raw addEventListener has a teardown path', ()
    * **It is empty, and that is the point** — every class that reaches a raw
    * `addEventListener` now has a teardown path, so this check is a plain red gate
    * rather than a ratchet. The last two entries were `BaseDisplayEnhancer` and
-   * `ProductDisplayEnhancer` (finding 149), which between them leaked one permanent
-   * `document` listener per `data-next-display` element on the page; both now register
+   * `ProductDisplayEnhancer`, which between them left one permanent `document`
+   * listener per `data-next-display` element on the page; both now register
    * through `BaseDisplayEnhancer.listen()` and are aborted by its
    * `cleanupEventListeners()`. Nothing may be added back here without the same
    * scrutiny: an entry is a leak someone chose to keep.
@@ -416,7 +418,7 @@ describe('a class that registers a raw addEventListener has a teardown path', ()
  * `BaseEnhancer.cleanupEventListeners()` is an empty no-op, so for most enhancers an
  * override that never calls `super` costs nothing. `BaseDisplayEnhancer`'s is **not**
  * a no-op — it aborts the controller that holds the `next:currency-changed` listener
- * every display enhancer inherits (finding 149). A display subclass that overrides
+ * every display enhancer inherits. A display subclass that overrides
  * `cleanupEventListeners()` and forgets `super.cleanupEventListeners()` therefore
  * silently re-opens the leak for itself, with every other gate in this file still
  * green: it *has* a teardown path, it just skips the one that matters.
@@ -536,11 +538,11 @@ describe('a display enhancer overriding cleanupEventListeners() calls super', ()
  * The gate above asks whether a *teardown path exists*. The accordion answered yes
  * and removed nothing: it registered `click` and `keydown` on its triggers as inline
  * arrows, and its `destroy()` cleared a `Map`. A destroyed accordion went on toggling
- * whenever someone clicked its header (finding 165 in `docs/code-findings.md`).
+ * whenever someone clicked its header.
  *
  * That was the **second** escape from the same gate in two waves — the first was
- * `ProspectCartEnhancer`, which overrode nothing at all (finding 139). Two escapes in
- * two waves is a pattern, and the pattern has a name: *a rule that checks shape gets
+ * `ProspectCartEnhancer`, which overrode nothing at all. Two escapes in two waves
+ * is a pattern, and the pattern has a name: *a rule that checks shape gets
  * satisfied by shape*. Both classes could be made green by adding a method. Neither
  * fix had to remove a listener.
  *
@@ -568,8 +570,8 @@ describe('a display enhancer overriding cleanupEventListeners() calls super', ()
  *   hoisting the arrow to `const h = () => …` satisfies shape 2's *look* while leaving
  *   the reference just as unreachable. That clause is here because it is the obvious
  *   way to satisfy this rule without fixing anything, and writing it down beforehand
- *   is cheaper than another finding 165 next wave. It is not theoretical — it is what
- *   caught `floating-labels.ts`.
+ *   is cheaper than catching the same shape again next wave. It is not theoretical —
+ *   it is what caught `floating-labels.ts`.
  *
  * And because `signal:` would otherwise become its own shape to satisfy — declare a
  * controller, pass its signal, never abort it — every `AbortController` constructed
@@ -718,7 +720,7 @@ describe('every listener registered in the enhancer layer is removable', () => {
    * `private get listenerOptions() { return { signal: this.abort.signal }; }` reads
    * identically to a human, is just as removable, and was counted unremovable
    * anyway. An agent that factored the repeated literal out that way had the ratchet
-   * fail all eight files it had just fixed (finding 174).
+   * fail all eight files it had just fixed.
    *
    * **The limitation that remains, stated so it is not rediscovered:** resolution
    * stops at the file boundary and at anything not syntactically an object. Options

@@ -6,8 +6,7 @@ import { attachPropertyListeners } from '../properties';
  * `attachPropertyListeners` binds `input` and `blur` to author-supplied
  * `[data-next-property]` fields inside a card the enhancer does not own, and writes
  * into a properties object the enhancer does. Both listeners used to be unremovable,
- * so they survived the enhancer and re-enhancing the same card stacked another set
- * (finding 169 in `docs/code-findings.md`).
+ * so they survived the enhancer and re-enhancing the same card stacked another set.
  *
  * The signal the caller passes is the whole contract: when the enhancer aborts it, the
  * card stops writing into an object nothing reads any more.

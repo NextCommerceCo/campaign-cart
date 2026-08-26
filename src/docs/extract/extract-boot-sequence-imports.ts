@@ -2,9 +2,9 @@
  * Follows a call that leaves `SDKInitializer` through an import, the same way
  * `./extract-boot-sequence-collect` follows a call that stays inside it. This is what
  * lets a boot step be split out into its own file without vanishing from the
- * published page or having its failure behaviour silently relabelled — the defect
- * finding 166 describes, and the reason this module exists as its own concern rather
- * than a helper inlined into the step walk.
+ * published page or having its failure behaviour silently relabelled. Ruling out that
+ * defect is why this module exists as its own concern rather than a helper inlined
+ * into the step walk.
  */
 
 import ts from 'typescript';

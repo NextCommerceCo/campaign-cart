@@ -193,9 +193,9 @@ describe('boot sequence docs', () => {
 
   /**
    * `data-next-sdk-loading` is cleared on success and **left set** on failure — that
-   * asymmetry is the point, and it is what finding 26 fixed. Clearing it on the failure
-   * path revealed the un-enhanced page, `{price}` placeholders and all, because the same
-   * attribute is the documented hook for revealing markup.
+   * asymmetry is the point. Clearing it on the failure path revealed the un-enhanced
+   * page, `{price}` placeholders and all, because the same attribute is the
+   * documented hook for revealing markup.
    *
    * A failure is therefore not detectable from the attribute alone: it stays `"true"`,
    * indistinguishable from a boot still in progress. The signal for "gave up" is the
@@ -215,7 +215,7 @@ describe('boot sequence docs', () => {
     expect(
       failed,
       'the failure path clears the loading attribute again — that un-hides the ' +
-        'un-enhanced page, which is finding 26 regressing'
+        'un-enhanced page'
     ).toBeUndefined();
     expect(
       sequence.signals.some(signal => signal.name === 'next-display-ready'),

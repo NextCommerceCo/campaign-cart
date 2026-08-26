@@ -534,9 +534,8 @@ describe('focus event', () => {
 /**
  * Four of this provider's six listeners sit on `this.input` — the checkout form's own
  * address field — and used to be inline arrows nothing could take back, so they outlived
- * the form and a second lazy load stacked another set (finding 169 in
- * `docs/code-findings.md`). The other two are on nodes this module creates, and go the
- * same way for the same price.
+ * the form and a second lazy load stacked another set. The other two are on nodes this
+ * module creates, and go the same way for the same price.
  *
  * `destroy()` is what the enhancer above it now calls; before this it had none at all,
  * so the instances were simply dropped on the floor.

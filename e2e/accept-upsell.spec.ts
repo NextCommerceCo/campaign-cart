@@ -26,9 +26,9 @@ import {
  *   twice is slow by design, not flaky.
  * - **The boot-time state of a selector-linked accept button is a race, so nothing
  *   here asserts it.** A `PackageSelectorEnhancer` in upsell context pre-selects a
- *   card while initialising, and the accept button only learns of that selection if it
- *   subscribed first — see `docs/code-findings.md` finding 24. The disabled state is
- *   asserted on a button with no package and no selector, which is deterministic.
+ *   card while initialising, and the accept button only learns of that selection if
+ *   it subscribed first. The disabled state is asserted on a button with no package
+ *   and no selector, which is deterministic.
  */
 
 const FIXTURE = '/e2e/fixtures/accept-upsell.html?ref_id=test-order-ref';

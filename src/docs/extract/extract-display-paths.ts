@@ -9,18 +9,18 @@
  * | the enhancer that resolves the namespace | **what the SDK answers** | {@link extractResolvedDisplayPaths} |
  * | the `PROPERTY_MAPPINGS` routing table | **what the SDK claims**, for five namespaces | {@link extractDisplayPaths} |
  *
- * The published list comes from the first. The second is a claim checked against it,
- * which is the correction finding 127 in `docs/code-findings.md` asked for: the
- * generated `cart.` page was rendered straight from the routing table, and ten of its
- * twenty-two rows named paths `CartDisplayEnhancer.resolveValue` has no case for
- * while six paths it does answer were missing. A routing entry is a format, a
+ * The published list comes from the first. The second is a claim checked against it.
+ * That correction was needed because the generated `cart.` page was rendered straight
+ * from the routing table, and ten of its twenty-two rows named paths
+ * `CartDisplayEnhancer.resolveValue` has no case for while six paths it does answer
+ * were missing. A routing entry is a format, a
  * validator and a fallback — never a promise that something resolves the path.
  *
  * The same mistake one layer down is why the **names** come only from the resolver
  * and never from a format table: `bundle-selector`'s reference documented four
  * properties (`compare`, `savings`, `savingsPercentage`, `hasSavings`) that its
  * enhancer has no case for, because they were read off the card renderer's
- * `FORMAT_MAP` (finding 109). The format table is read only to look up the format
+ * `FORMAT_MAP`. The format table is read only to look up the format
  * *of a name the resolver already answers*; names that appear solely in it are
  * reported as {@link ResolvedDisplayPaths.formatsWithoutPath} so the docs suite can
  * fail on the trap in the source instead of waiting for its next victim.

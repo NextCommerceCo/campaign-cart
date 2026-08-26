@@ -237,7 +237,7 @@ export abstract class BaseDisplayEnhancer extends BaseEnhancer {
    * multiplier in the SDK. Before this controller existed,
    * {@link setupCurrencyChangeListener} registered an inline arrow with no teardown
    * anywhere in the hierarchy, so a re-enhance stacked a fresh generation of listeners
-   * on top of every generation before it (finding 149 in `docs/code-findings.md`).
+   * on top of every generation before it.
    * Same pattern as `checkout-form.enhancer.ts` and `prospect-cart.enhancer.ts`.
    */
   private displayListenerAbort = new AbortController();

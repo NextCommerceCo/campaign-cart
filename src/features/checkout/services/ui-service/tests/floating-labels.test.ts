@@ -432,7 +432,7 @@ describe('handleResponsiveUI', () => {
   /**
    * The mobile rule is a branch inside the one `focus` handler `setupFloatingLabel`
    * registers, not a second handler of its own — so `UIService.destroy()` removes it
-   * along with everything else it tracks (finding 169 in `docs/code-findings.md`).
+   * along with everything else it tracks.
    */
   it('stops floating labels on focus once every tracked listener is removed', () => {
     setViewport(375);

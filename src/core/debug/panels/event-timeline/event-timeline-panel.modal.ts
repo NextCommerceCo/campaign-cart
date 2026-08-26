@@ -1,7 +1,7 @@
 /**
  * The event detail modal: header/meta, the Flow/Validation tab bar, and the
  * open/close lifecycle. Extracted verbatim from `event-timeline-panel.ts`
- * (see docs/code-findings.md #147) — logic unchanged. `showEventModal`/
+ * — logic unchanged. `showEventModal`/
  * `closeEventModal` mutate the panel's `selectedEventId`/`selectedFlowNode`
  * and dispatch the same `debug:update-content` CustomEvent inline rather than
  * calling `requestRerender()` — that duplication already existed in the

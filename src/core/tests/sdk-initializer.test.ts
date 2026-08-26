@@ -1,16 +1,15 @@
 /**
- * Boot-failure handling in SDKInitializer.initialize() — findings #26, #30,
- * #41 in docs/code-findings.md.
+ * Boot-failure handling in SDKInitializer.initialize().
  *
  * A missing API key throws inside loadCampaignData (boot step 5). Before the
  * fix this:
- *   - flipped `data-next-sdk-loading` to "false" on every failed attempt
- *     (#26/#41), un-hiding the page before window.next, the DOM scan, or
+ *   - flipped `data-next-sdk-loading` to "false" on every failed attempt,
+ *     un-hiding the page before window.next, the DOM scan, or
  *     next:display-ready ever ran;
- *   - never told the page a boot had failed at all (#26);
+ *   - never told the page a boot had failed at all;
  *   - re-registered the attribution event/popstate listeners on every retry
- *     and every reinitialize() (#30), so a page that retried three times
- *     ended up with three sets of handlers.
+ *     and every reinitialize(), so a page that retried three times ended up
+ *     with three sets of handlers.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SDKInitializer } from '@/core/sdk-initializer';
@@ -59,13 +58,13 @@ describe('SDKInitializer boot failure (missing API key)', () => {
     resetBootState();
     useConfigStore.getState().reset();
     // Skip the location/currency detection network path — irrelevant to
-    // these findings and not something this test should have to mock.
+    // these tests and not something this test should have to mock.
     useConfigStore.getState().updateConfig({ currencyBehavior: 'manual' });
     document.body.removeAttribute('data-next-sdk-loading');
   });
 
   it(
-    'finding #26/#41: never flips data-next-sdk-loading to "false" on a failing boot',
+    'never flips data-next-sdk-loading to "false" on a failing boot',
     async () => {
       const setAttributeSpy = vi.spyOn(document.body, 'setAttribute');
 
@@ -79,7 +78,7 @@ describe('SDKInitializer boot failure (missing API key)', () => {
 
       // Pre-fix this was ['true', 'false', 'true', 'false', 'true', 'false',
       // 'true', 'false'] — one true/false cycle per attempt, un-hiding the page
-      // mid-retry (#41) and after the final failure (#26).
+      // mid-retry and after the final failure.
       expect(loadingValues).not.toContain('false');
       expect(document.body.getAttribute('data-next-sdk-loading')).toBe('true');
     },
@@ -87,7 +86,7 @@ describe('SDKInitializer boot failure (missing API key)', () => {
   );
 
   it(
-    'finding #26: surfaces the permanent failure through error:occurred',
+    'surfaces the permanent failure through error:occurred',
     async () => {
       const handler = vi.fn((_data: ErrorData) => {});
       EventBus.getInstance().on('error:occurred', handler);
@@ -105,7 +104,7 @@ describe('SDKInitializer boot failure (missing API key)', () => {
   );
 });
 
-describe('SDKInitializer.setupAttributionListeners idempotence (finding #30)', () => {
+describe('SDKInitializer.setupAttributionListeners idempotence', () => {
   beforeEach(() => {
     internals.attributionCtx.attributionListenersCleanup?.();
     internals.attributionCtx.attributionListenersCleanup = null;

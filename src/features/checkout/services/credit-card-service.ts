@@ -92,7 +92,7 @@ export class CreditCardService {
    *
    * All six were inline arrows, which `removeEventListener` can never be handed back,
    * and the form builds a fresh service on every init: each one added another generation
-   * to the same four elements (finding 169 in `docs/code-findings.md`). {@link destroy}
+   * to the same four elements. {@link destroy}
    * aborts it. Nothing here concerns the Spreedly bridge, whose own `window.Spreedly.on`
    * callbacks are a separate, page-lifetime registration.
    */

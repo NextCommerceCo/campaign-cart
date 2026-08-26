@@ -174,10 +174,12 @@ Sort every finding into three buckets, and say which is which in the report:
    across files the fix does not touch. Name it, do not silently fold it in.
 
 Use the severity prefixes the global review rules use: 🔴 correctness or
-reliability, 🟠 behaviour or altitude, 🟡 cleanup or conventions. Findings you
-leave behind go in [`docs/code-findings.md`](../../../docs/code-findings.md).
-Describe behaviour in neutral technical terms — what the code does and what it is
-scoped to, never what it risks.
+reliability, 🟠 behaviour or altitude, 🟡 cleanup or conventions. A finding you
+leave behind is reported in the conversation, and goes to the issue tracker if it
+has to outlive it — never into a findings file in the repo
+([code-quality.md](../../rules/code-quality.md) §5 says why). Describe behaviour
+in neutral technical terms — what the code does and what it is scoped to, never
+what it risks.
 
 ## 7. Closing the loop
 

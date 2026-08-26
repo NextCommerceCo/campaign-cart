@@ -2,8 +2,7 @@
  * Lifecycle tests for UpsellEnhancer, driven through the real DOM and the real
  * interaction handlers — only the stores, the API client and the modal/overlay
  * are mocked. These exist because the money path (what quantity actually
- * reaches `addUpsell`) was never exercised end to end; see findings 97–99 in
- * `docs/code-findings.md`.
+ * reaches `addUpsell`) was never exercised end to end.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { Mock } from 'vitest';

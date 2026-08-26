@@ -1,13 +1,13 @@
 /**
  * Loading, saving, and expiring the event timeline's localStorage history.
- * Extracted verbatim from `event-timeline-panel.ts` (see docs/code-findings.md
- * #137) — logic unchanged. The storage-key constants moved here as plain
- * exported `const`s (were `private static readonly` on the class) so the
- * doc-generation source scan (`extract-storage-keys.ts`) attributes them to
- * this file regardless of which module references them; `saveTimeout` and
- * `events` cross the module boundary via a small live-accessor context
- * (`PersistenceHost`) instead of `this`, because the debounced save in
- * `saveEvents` reads both at fire time, not at call time.
+ * Extracted verbatim from `event-timeline-panel.ts` — logic unchanged. The
+ * storage-key constants moved here as plain exported `const`s (were
+ * `private static readonly` on the class) so the doc-generation source scan
+ * (`extract-storage-keys.ts`) attributes them to this file regardless of which
+ * module references them; `saveTimeout` and `events` cross the module boundary
+ * via a small live-accessor context (`PersistenceHost`) instead of `this`,
+ * because the debounced save in `saveEvents` reads both at fire time, not at
+ * call time.
  */
 import type { TimelineEvent } from './event-timeline-panel.types';
 

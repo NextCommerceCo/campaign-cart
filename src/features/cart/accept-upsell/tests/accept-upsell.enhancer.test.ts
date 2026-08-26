@@ -1,11 +1,11 @@
 /**
- * Reproduces finding 24 in docs/code-findings.md: `findSelectorElement()`
- * (accept-upsell.enhancer.ts) never matches `[data-next-package-selector]` —
- * the container `PackageSelectorEnhancer` actually renders, and the one this
- * feature's own guide/get-started.md (Option B) tells authors to use. So the
- * 100ms init read whose entire job is to pick up a selection that already
- * exists always misses on correct markup, and the button's enabled state is
- * left to which of the two enhancers `AttributeScanner` initializes first.
+ * Reproduces the case where `findSelectorElement()` (accept-upsell.enhancer.ts)
+ * never matches `[data-next-package-selector]` — the container
+ * `PackageSelectorEnhancer` actually renders, and the one this feature's own
+ * guide/get-started.md (Option B) tells authors to use. So the 100ms init read
+ * whose entire job is to pick up a selection that already exists always misses
+ * on correct markup, and the button's enabled state is left to which of the two
+ * enhancers `AttributeScanner` initializes first.
  *
  * These tests exercise the ordering hazard directly: the selector's
  * pre-selection hook (`_getSelectedPackageId`) is already present on the
@@ -157,7 +157,7 @@ async function mountWithPreSelectedContainer(
   return { button, enhancer };
 }
 
-describe('AcceptUpsellEnhancer — selector-driven init read (finding 24)', () => {
+describe('AcceptUpsellEnhancer — selector-driven init read', () => {
   it('enables the button from a selection that already exists on a [data-next-package-selector] container', async () => {
     const { button } = await mountWithPreSelectedContainer(42);
 

@@ -79,7 +79,7 @@ const routingTableFile = findPropertyMappings([
  *
  * Not what it can show. The table decides a path's format, validator and fallback
  * value; nothing in it makes a path resolve. Publishing it as the answer is what put
- * ten dead paths on the `cart.` page while hiding six live ones (finding 127).
+ * ten dead paths on the `cart.` page while hiding six live ones.
  */
 const routingClaims = extractDisplayPaths(routingTableFile);
 
@@ -692,7 +692,7 @@ describe('feature reference docs', () => {
      * `getPropertyValue`, and `campaign.` had none of the checks below until this
      * loop existed — `PROPERTY_MAPPINGS` has no entry for it and `docs:coverage`
      * scored the feature covered because it counts by owning feature, not by
-     * namespace (finding 143 in `docs/code-findings.md`).
+     * namespace.
      */
     const displayNamespaces = [
       ...(manifest.displayNamespace
@@ -745,16 +745,16 @@ describe('feature reference docs', () => {
     );
 
     /**
-     * The gate finding 114 asked for, in both directions — now for every namespace,
-     * not only the three that route through no table.
+     * The manifest checked against the resolver, in both directions — now for every
+     * namespace, not only the three that route through no table.
      *
      * Forwards: a property added to the resolver with no entry in the manifest fails
      * here, so a new path cannot ship undocumented. Backwards: an entry for a
-     * property the enhancer cannot answer fails here too — which is finding 109
-     * exactly. `bundle-selector` documented `compare`, `savings`, `savingsPercentage`
-     * and `hasSavings` for months because they exist in the card renderer's format
-     * table, a different mechanism on a different attribute, and nothing compared the
-     * doc against the method that actually answers a `bundle.` path.
+     * property the enhancer cannot answer fails here too. `bundle-selector`
+     * documented `compare`, `savings`, `savingsPercentage` and `hasSavings` for
+     * months because they exist in the card renderer's format table, a different
+     * mechanism on a different attribute, and nothing compared the doc against the
+     * method that actually answers a `bundle.` path.
      *
      * Prose is required for a namespace no table routes, because those pages replaced
      * hand-written ones whose per-path meaning is the reason to read them. The routed
@@ -800,8 +800,8 @@ describe('feature reference docs', () => {
     /**
      * The routing table, checked as a claim rather than published as the answer.
      *
-     * This is finding 127. `reference/display-paths.md` for `cart.` was rendered
-     * straight from `PROPERTY_MAPPINGS.cart`, so it named ten paths
+     * `reference/display-paths.md` for `cart.` was rendered straight from
+     * `PROPERTY_MAPPINGS.cart`, so it named ten paths that
      * `CartDisplayEnhancer.resolveValue` has no branch for and omitted six it answers.
      * A routing entry supplies a format, a validator and a fallback value — never a
      * resolver. `discountCode` was the worst of them: its `fallback: ''` made a dead
@@ -883,7 +883,8 @@ describe('feature reference docs', () => {
     );
 
     /**
-     * The root cause behind finding 109, gated in the source instead of on the page.
+     * The root cause behind a documented path nothing answers, gated in the source
+     * instead of on the page.
      *
      * The check above compares the *manifest* against the resolver, which stops a wrong
      * page from being published. It does not touch what made the page wrong: a
@@ -914,8 +915,8 @@ describe('feature reference docs', () => {
             `${source.where ?? 'the resolver'} has no case for any of them, so ` +
             `\`data-next-display="${namespace}.…"\` using one renders ` +
             'nothing. A format table is not an inventory of paths, but it reads like one — ' +
-            'that is how four fictional bundle paths reached a published page (finding 109 ' +
-            'in docs/code-findings.md). Delete the entry, or add the case that answers it'
+            'that is how four fictional bundle paths reached a published page. ' +
+            'Delete the entry, or add the case that answers it'
         ).toEqual([]);
       }
     );

@@ -340,8 +340,7 @@ export default defineConfig({
           //
           // This chunk is NOT lazy, despite what the rule looks like: nine
           // chunks import it statically, so every campaign page downloads it.
-          // See finding 104 in docs/code-findings.md — fixing that is a
-          // behaviour change and wants its own e2e run.
+          // Fixing that is a behaviour change and wants its own e2e run.
           //
           // Two more clauses used to sit on this line and matched nothing after
           // the `utils/` → `core/` migration: `/testMode` (the file is

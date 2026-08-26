@@ -36,7 +36,7 @@ export class SDKInitializer {
   private static maxRetries = 3;
   // Shared with `sdk-initializer.attribution.ts` — `attributionListenersCleanup`
   // must persist across calls so `setupAttributionListeners` stays idempotent
-  // through a boot retry or `reinitialize()` (finding #30).
+  // through a boot retry or `reinitialize()`.
   private static attributionCtx: AttributionCtx = {
     logger: this.logger,
     attributionListenersCleanup: null,
@@ -115,7 +115,7 @@ export class SDKInitializer {
       // Leave it "true": nothing after the failed step ran — no DOM scan, no
       // window.next, no next:display-ready — so a page revealing itself on
       // "false" would show raw un-enhanced markup. True through every retry
-      // and after the final failure alike (findings #26, #41).
+      // and after the final failure alike.
 
       // Retry logic
       if (this.retryAttempts < this.maxRetries) {
@@ -133,7 +133,7 @@ export class SDKInitializer {
 
       // Step 9's error handler never installs this early in boot, and
       // window.next/nextDebug never get created either — this emit is the
-      // only failure signal a page can subscribe to (finding #26).
+      // only failure signal a page can subscribe to.
       const message = error instanceof Error ? error.message : String(error);
       EventBus.getInstance().emit('error:occurred', {
         message,

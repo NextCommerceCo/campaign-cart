@@ -8,7 +8,7 @@
  *
  * Two dependencies: `logger`, and `attributionListenersCleanup` — the
  * teardown handle `setupAttributionListeners` needs to stay idempotent across
- * a boot retry or `reinitialize()` (finding #30 in `docs/code-findings.md`).
+ * a boot retry or `reinitialize()`.
  * Both live on one `AttributionCtx` object that `SDKInitializer` holds as a
  * single static field and passes by reference to both functions below, so a
  * cleanup registered by one call is visible to the next.
@@ -85,7 +85,7 @@ export async function initializeAttribution(
 export function setupAttributionListeners(ctx: AttributionCtx): void {
   // Idempotent: a boot retry or reinitialize() calls this again, and
   // without tearing down the previous registration first, every cart
-  // update and popstate would re-run once per past call (finding #30).
+  // update and popstate would re-run once per past call.
   ctx.attributionListenersCleanup?.();
 
   const eventBus = EventBus.getInstance();

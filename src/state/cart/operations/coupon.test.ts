@@ -5,12 +5,12 @@ import { applyCoupon } from './apply-coupon';
 import { removeCoupon } from './remove-coupon';
 
 /**
- * Regression coverage for code-findings.md #4: `applyCoupon` normalises the
- * code it stores (`toUpperCase().trim()`), but `removeCoupon` used to pass
- * the raw string straight into `removeVoucher`'s `v !== code` filter. So
- * `applyCoupon('save10')` followed by `removeCoupon('save10')` removed
- * nothing and reported no error, while `calculateTotals()` still ran and the
- * shopper kept a discount the page believed it had removed.
+ * Regression coverage: `applyCoupon` normalises the code it stores
+ * (`toUpperCase().trim()`), but `removeCoupon` used to pass the raw string
+ * straight into `removeVoucher`'s `v !== code` filter. So
+ * `applyCoupon('save10')` followed by `removeCoupon('save10')` removed nothing
+ * and reported no error, while `calculateTotals()` still ran and the shopper
+ * kept a discount the page believed it had removed.
  *
  * Fake timers keep `calculateTotals`'s 150ms debounce from ever firing during
  * the test (no timer is advanced), so no network mocking is needed — the

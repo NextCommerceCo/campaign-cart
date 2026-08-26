@@ -207,7 +207,7 @@ export class TooltipEnhancer extends BaseEnhancer {
     // Capture the element/arrow this dismissal is for — the callback must act
     // on these, not on whatever `this.tooltip`/`this.arrow` point to when the
     // timeout fires, or a tooltip mounted by a `show()` in between gets torn
-    // down out from under itself (finding 96).
+    // down out from under itself.
     const dismissedTooltip = this.tooltip;
     const dismissedArrow = this.arrow;
     this.timers.dismissTimeout = dismissTooltip(dismissedTooltip, () => {

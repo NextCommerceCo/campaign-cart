@@ -2,7 +2,7 @@
  * The right-side filter drawer: search, provider, issues-only, and
  * internal-events toggles — the single home for all timeline filters, add
  * future filters as new `.filter-section` blocks here. Extracted verbatim from
- * `event-timeline-panel.ts` (see docs/code-findings.md #147) — logic
+ * `event-timeline-panel.ts` — logic
  * unchanged. `filterDrawerOpen`/`view`/`searchTerm`/`providerFilter`/
  * `showInternalEvents`/`issuesOnly` and the two active-filter figures are read
  * only once per render (rendering is synchronous), so they cross as plain

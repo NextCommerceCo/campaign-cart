@@ -120,7 +120,7 @@ export function revealTooltip(tooltip: HTMLElement | null): void {
  *
  * The callback closes over `tooltip` — the element this dismissal was
  * scheduled for — rather than re-reading whatever the enhancer's live field
- * points to. Finding 96 (`docs/code-findings.md`) was exactly that: a re-read
+ * points to. Finding 96 was exactly that: a re-read
  * let this timer remove a *different*, newer tooltip that a re-tap had mounted
  * in the meantime, then null out the fields backing it. Callers that mount a
  * new tooltip before this fires are expected to cancel it first (`show()` and

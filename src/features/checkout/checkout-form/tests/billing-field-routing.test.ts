@@ -244,7 +244,7 @@ describe('routeBillingField', () => {
     expect(getInstance).not.toHaveBeenCalled();
   });
 
-  /** Regression coverage for code-findings.md #156 — see `src/state/checkout`. */
+  /** Regression coverage for the checkout-store reset — see `src/state/checkout`. */
   it('clears the billing address on a checkout-store reset', () => {
     routeBillingFieldValue('billing-fname', 'Ada', store());
 

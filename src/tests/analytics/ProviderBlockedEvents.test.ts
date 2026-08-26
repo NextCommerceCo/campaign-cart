@@ -17,7 +17,7 @@ import type { DataLayerEvent } from '@/core/analytics/types';
  * name — asserted by spying on `sendEvent` directly rather than on a
  * provider-specific side effect (script loading, fetch, etc.).
  */
-describe('blockedEvents reaches every provider adapter, not just GTM/Facebook (finding 45)', () => {
+describe('blockedEvents reaches every provider adapter, not just GTM/Facebook', () => {
   it('NextCampaignAdapter drops a blocked event before calling sendEvent', () => {
     const adapter = new NextCampaignAdapter({
       blockedEvents: ['dl_page_view'],

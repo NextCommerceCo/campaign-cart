@@ -12,11 +12,11 @@
  *
  * **The display emits the event the listener handles.** Without a guard, the first decline
  * is displayed, its own echo comes straight back to the listener, is displayed again, emits
- * again — unbounded synchronous recursion on the live express-decline path (finding 150 in
- * `docs/code-findings.md`). `announcingPaymentError` is a ref rather than a local so both
- * halves read the *same* flag; it is true only for the duration of that one synchronous
- * emit, which is exactly what tells our own echo apart from a real error raised elsewhere.
- * If you move either half, the ref moves with it.
+ * again — unbounded synchronous recursion on the live express-decline path.
+ * `announcingPaymentError` is a ref rather than a local so both halves read the *same* flag;
+ * it is true only for the duration of that one synchronous emit, which is exactly what tells
+ * our own echo apart from a real error raised elsewhere. If you move either half, the ref
+ * moves with it.
  *
  * **Which** container it writes into is not this module's decision — see
  * [`payment-error-container.ts`](../utils/payment-error-container.ts), which is

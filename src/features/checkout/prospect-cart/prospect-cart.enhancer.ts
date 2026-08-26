@@ -56,8 +56,7 @@ export class ProspectCartEnhancer extends BaseEnhancer {
    * `cleanupEventListeners()` aborts it, so base `destroy()` drops them all in one
    * call — same pattern as `checkout-form.enhancer.ts`'s `domListenerAbort`. Before
    * this, the class had no `destroy()`/`cleanupEventListeners()` override at all, so
-   * every one of those listeners outlived the enhancer (finding 139 in
-   * `docs/code-findings.md`).
+   * every one of those listeners outlived the enhancer.
    */
   private domListenerAbort = new AbortController();
 

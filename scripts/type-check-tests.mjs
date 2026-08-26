@@ -5,8 +5,7 @@
  * `**\/*.test.ts` and `**\/*.spec.ts` (tests are not part of the shipped
  * build). That means the SDK's type gate has never once checked a test file —
  * including the `Pick<IApiClient, …>` test-double annotations added
- * specifically so the compiler would catch drift (see finding 116 in
- * docs/code-findings.md).
+ * specifically so the compiler would catch drift.
  *
  * `tsconfig.eslint.json` already covers the wider program (src + e2e +
  * scripts + the two build configs) — it exists for ESLint's type-aware rules.

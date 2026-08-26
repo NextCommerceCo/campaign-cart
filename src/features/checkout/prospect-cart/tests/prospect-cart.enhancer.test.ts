@@ -854,7 +854,7 @@ describe('ProspectCartEnhancer', () => {
 
   describe('destroy', () => {
     /**
-     * Pins finding 139: the class had no `destroy()`/`cleanupEventListeners()`
+     * Pins the case where the class had no `destroy()`/`cleanupEventListeners()`
      * override at all, so every listener `triggers.ts` registered (here, the
      * `emailEntry` blur+change pair) outlived the enhancer. `CheckoutFormEnhancer`
      * calls `this.prospectCartEnhancer.destroy()` believing it tears the feature

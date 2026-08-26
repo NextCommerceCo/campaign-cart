@@ -4,8 +4,8 @@ import { CouponEnhancer } from '../coupon.enhancer';
 import { cartOperations, useCartStore } from '@/state/cart';
 
 /**
- * Teardown proof for the four listeners this enhancer puts on author-supplied DOM
- * (finding 169 in `docs/code-findings.md`). All four used to be inline arrows, which
+ * Teardown proof for the four listeners this enhancer puts on author-supplied DOM.
+ * All four used to be inline arrows, which
  * `removeEventListener` can never be handed back, so they outlived `destroy()`.
  *
  * The visible symptom is the **remove** button on a rendered coupon card:

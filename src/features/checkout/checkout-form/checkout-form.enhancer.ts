@@ -1270,9 +1270,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
       // The same two records `OrderManager` writes before it posts an order.
       // This is the standard card path and it builds and posts its own order
-      // rather than going through `OrderManager` (finding 2 in
-      // docs/code-findings.md), so anything the landing page needs has to be
-      // recorded here as well or it is missing for every card order.
+      // rather than going through `OrderManager`, so anything the landing page
+      // needs has to be recorded here as well or it is missing for every card
+      // order.
       rememberCheckoutReturnPaths(
         orderData.success_url,
         orderData.payment_failed_url
@@ -2319,7 +2319,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
    *
    * Restores only when the store says the shopper chose a *separate* billing address.
    * `checkoutStore.reset()` returns `sameAsShipping` to `true` but leaves `billingAddress`
-   * behind (finding 156), so a page booted after a completed order can still hold the
+   * behind, so a page booted after a completed order can still hold the
    * previous shopper's address. Gating on the choice keeps that out of the DOM instead of
    * writing it into collapsed inputs that a later untick would put on screen.
    */

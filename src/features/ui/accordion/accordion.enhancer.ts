@@ -39,9 +39,8 @@ export class AccordionEnhancer extends BaseEnhancer {
    *
    * The trigger `click`/`keydown` handlers used to be inline arrows, which
    * `removeEventListener` can never take back — so a destroyed accordion went on
-   * toggling whenever someone clicked its header (finding 165 in
-   * `docs/code-findings.md`). Same pattern as `base-display-enhancer.ts` and
-   * `checkout-form.enhancer.ts`.
+   * toggling whenever someone clicked its header. Same pattern as
+   * `base-display-enhancer.ts` and `checkout-form.enhancer.ts`.
    */
   private listenerAbort = new AbortController();
 

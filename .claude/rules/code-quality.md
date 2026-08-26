@@ -104,8 +104,8 @@ issue — see **Readable** above.
 When a bug is one instance of a class the code allows, the fix addresses the class
 and the change says so. Patching the reported input and leaving the mechanism that
 produced it is a band-aid, and the next instance is already in the tree. If the
-class is too large for one change, fix the class you can, name the remainder in
-[docs/code-findings.md](../../docs/code-findings.md), and say which is which.
+class is too large for one change, fix the class you can, and say in your report
+which is which.
 
 Never solve a class of input by adding a branch per case. A per-case branch for
 data that arrives from outside the repo (per-country, per-currency, per-gateway)
@@ -114,11 +114,16 @@ missing.
 
 ## 5. Reporting what you did not fix
 
-A review finding you are not fixing in this change is recorded, not dropped. Use
-the severity prefixes from the global review rules — 🔴 correctness/reliability,
-🟠 behaviour/altitude, 🟡 cleanup/conventions — and say which bucket each finding
-is in: fixed here, fixed next to it because the file was already open, or a
-separate issue with a reason.
+A review finding you are not fixing in this change is reported, not dropped, and
+it is reported **to the person you are working with, in the conversation** — not
+written into a file in the repo. A findings document goes stale, gets cited from
+code comments, and sends the next reader somewhere that no longer describes the
+tree. Use the severity prefixes from the global review rules — 🔴 correctness or
+reliability, 🟠 behaviour or altitude, 🟡 cleanup or conventions — and say which
+bucket each finding is in: fixed here, fixed next to it because the file was
+already open, or left for a separate change with a reason. If a finding needs to
+outlive the conversation, it goes in the issue tracker, which is where someone
+will look for it.
 
 ---
 
@@ -132,6 +137,6 @@ separate issue with a reason.
 - [ ] No block was copied; the second call site got the extraction.
 - [ ] The failure path returns the input, not a partial result.
 - [ ] Call frequency was checked; per-call setup hoisted out of hot paths.
-- [ ] The fix addresses the class; the remainder is named in `code-findings.md`.
+- [ ] The fix addresses the class; the remainder is named in the report.
 - [ ] `npm run type-check`, `lint`, `test`, `check:unused`, and the E2E the change
       owes ([e2e.md](./e2e.md) §1) all pass.

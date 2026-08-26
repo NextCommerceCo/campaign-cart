@@ -12,7 +12,7 @@
  * `META_TAG_SELECTORS` is the exception: nothing imports it either, but the meta
  * tags it lists are extracted from this file's text into the generated
  * `core/guide/reference/meta-tags.md`, so deleting it would silently drop rows
- * from a published page. See the report on finding 182.
+ * from a published page.
  *
  * **Every element selector below must list both attribute spellings.** A page may
  * mark its checkout up with the legacy `os-checkout-*` attributes or the current

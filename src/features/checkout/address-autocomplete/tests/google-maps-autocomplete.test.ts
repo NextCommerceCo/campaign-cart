@@ -9,7 +9,7 @@ import { useConfigStore } from '@/state/config';
 /**
  * Teardown proof for the four listeners this provider puts on the checkout form's own
  * markup: `focus` and `keydown` on the address input, and `change` on each country
- * `<select>` (finding 169 in `docs/code-findings.md`).
+ * `<select>`.
  *
  * The `keydown` one is the visible symptom — it calls `preventDefault()` unconditionally,
  * so a destroyed provider went on swallowing the Enter key in the address field, which is

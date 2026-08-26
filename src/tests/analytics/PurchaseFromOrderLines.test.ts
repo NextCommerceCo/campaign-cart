@@ -86,7 +86,7 @@ function purchaseEvent(orderData: any): DataLayerEvent {
   return event;
 }
 
-describe('dl_purchase reports the order, not the cart (finding 163)', () => {
+describe('dl_purchase reports the order, not the cart', () => {
   beforeEach(() => {
     seedCampaign();
     seedDisagreeingCart();
@@ -210,8 +210,8 @@ describe('dl_purchase reports the order, not the cart (finding 163)', () => {
     it('unwraps a { method, order } payload handed to createPurchaseEvent', () => {
       // ExpressCheckoutProcessor emits `{ method, order }`, not the order. Read
       // as an order the wrapper has no number, no lines and no currency, so the
-      // event fell back to a `order_<timestamp>` id, USD, and the cart's items
-      // (finding 192). That event is no longer wired to purchase reporting, but
+      // event fell back to a `order_<timestamp>` id, USD, and the cart's items.
+      // That event is no longer wired to purchase reporting, but
       // the unwrap still guards `next.trackPurchase()`, which is handed whatever
       // the caller has — so the check moves to where the logic lives.
       const event = EcommerceEvents.createPurchaseEvent({

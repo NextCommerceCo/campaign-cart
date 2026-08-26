@@ -1,7 +1,7 @@
 /**
  * The debug overlay's mini-cart: a floating cart summary that mirrors the
  * live cart store, independent of which panel is active. Extracted verbatim
- * from `debug-overlay.ts` (see docs/code-findings.md #137) — logic unchanged,
+ * from `debug-overlay.ts` — logic unchanged,
  * only `this.shadowRoot` became an explicit `ctx: MiniCartHost` parameter and
  * calls between these functions are now direct calls instead of `this.foo()`.
  */

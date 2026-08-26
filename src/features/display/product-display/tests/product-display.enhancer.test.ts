@@ -2,8 +2,8 @@
  * `ProductDisplayEnhancer` registers a *second* `document` listener for
  * `next:currency-changed` on top of the one `BaseDisplayEnhancer` registers — its own
  * reloads the package data so the new currency's prices are read before the re-render.
- * Both used to be inline arrows with no teardown path (finding 149 in
- * `docs/code-findings.md`), so a destroyed price display kept re-rendering forever.
+ * Both used to be inline arrows with no teardown path, so a destroyed price display
+ * kept re-rendering forever.
  *
  * These tests pin the reload behaviour while the enhancer is alive and its absence
  * after `destroy()`.

@@ -9,7 +9,7 @@
  * rather than moving here: both write `DebugOverlay.EXPANDED_STORAGE_KEY` /
  * `ACTIVE_PANEL_KEY` / `ACTIVE_TAB_KEY`, and `extract-storage-keys.ts` only
  * resolves a static class field when the reference lives in the same file as
- * the class declaration (see docs/code-findings.md #183). Moving them would
+ * the class declaration. Moving them would
  * have turned three documented storage-key rows into unresolvable `{token}`
  * patterns, so this split stops at the dispatcher that calls them.
  */

@@ -13,7 +13,7 @@ export const CORE_LOG_SOURCES: CoreLogSource[] = [
   // which silently kept only the last-declared file per prefix — so the order
   // of these entries decided what the check could see, and two clean splits of
   // `sdk-initializer.ts` (location/currency detection, attribution capture)
-  // were abandoned to work around it (finding #155). That lookup now
+  // were abandoned to work around it. That lookup now
   // accumulates across every file sharing a prefix, so declaration order here
   // carries no meaning beyond readability.
   {

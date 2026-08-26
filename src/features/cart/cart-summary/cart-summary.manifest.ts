@@ -25,8 +25,8 @@ export default defineFeature({
   // this feature owns that path inventory.
   displayNamespace: 'cart',
   // `PROPERTY_MAPPINGS.cart` routes these, and `resolveValue` answers none of them.
-  // They were published as working paths until finding 127 — ten of the twenty-two
-  // rows on this page. Nothing here needs a fallback shape: the resolver is a closed
+  // They were published as working paths for a while — ten of the twenty-two rows
+  // on this page. Nothing here needs a fallback shape: the resolver is a closed
   // switch over the cart state, with no `getNestedProperty` behind it.
   displayUnanswered: [
     {

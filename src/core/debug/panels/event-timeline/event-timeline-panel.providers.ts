@@ -3,7 +3,7 @@
  * providers received it, and rendering that correlation both as compact row
  * chips (`renderDeliverySummary`) and as the top-of-table provider status strip
  * (`renderProviderStrip`). Extracted verbatim from `event-timeline-panel.ts`
- * (see docs/code-findings.md #147) — logic unchanged. `getEventId`,
+ * — logic unchanged. `getEventId`,
  * `getDeliveriesForEvent`, `formatDeliveryDuration`, `providerAbbrev`, and
  * `providerIcon` never touched `this` in the original either — they read only
  * their own arguments plus the module-level `analyticsDebug` singleton — so

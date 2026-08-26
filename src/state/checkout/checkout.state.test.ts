@@ -2,11 +2,12 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { useCheckoutStore } from './checkout.state';
 
 /**
- * Regression coverage for code-findings.md #156: `reset()` calls `set(initialState)`, and
- * Zustand's `set` **merges**. `initialState` used to declare no `billingAddress`,
- * `paymentToken` or `shippingMethod`, so those three were left behind — two of them
- * persisted to sessionStorage. On a shared or kiosk browser that put one shopper's billing
- * address and card token into the next shopper's checkout.
+ * Regression coverage: `reset()` calls `set(initialState)`, and Zustand's `set`
+ * **merges**. `initialState` used to declare no `billingAddress`,
+ * `paymentToken` or `shippingMethod`, so those three were left behind — two of
+ * them persisted to sessionStorage. On a shared or kiosk browser that carried
+ * one shopper's billing address and card token into the next shopper's
+ * checkout.
  */
 describe('checkout store — reset clears every field', () => {
   beforeEach(() => {
@@ -70,11 +71,11 @@ describe('checkout store — reset clears every field', () => {
 });
 
 /**
- * Regression coverage for code-findings.md #4: `removeVoucher` used to filter
- * on raw string equality (`v !== code`) while `addVoucher` is fed an
- * already-normalised (`toUpperCase().trim()`) code by `applyCoupon`. Any
- * casing/whitespace mismatch between what a caller passes to `removeVoucher`
- * and what is stored meant the voucher was never removed, silently.
+ * Regression coverage: `removeVoucher` used to filter on raw string equality
+ * (`v !== code`) while `addVoucher` is fed an already-normalised
+ * (`toUpperCase().trim()`) code by `applyCoupon`. Any casing/whitespace
+ * mismatch between what a caller passes to `removeVoucher` and what is stored
+ * meant the voucher was never removed, silently.
  */
 describe('checkout store — removeVoucher normalisation', () => {
   beforeEach(() => {

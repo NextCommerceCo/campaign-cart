@@ -1,10 +1,9 @@
 /**
  * Dead-code gate: unused *exports* — the gap `check-unused.mjs` documents but
- * cannot close (see finding 176 in docs/code-findings.md). `noUnusedLocals`
- * only inspects a binding inside its own file; a function nothing outside the
- * file imports is never reported by the compiler. That is exactly how finding
- * 167 (`src/utils/typeGuards.ts`, 267 lines, 23 exports, zero callers) and
- * finding 158 (`BILLING_ADDRESS_FIELD_MAP` duplicated, the exported original
+ * cannot close. `noUnusedLocals` only inspects a binding inside its own file; a
+ * function nothing outside the file imports is never reported by the compiler.
+ * That is exactly how `src/utils/typeGuards.ts` (267 lines, 23 exports, zero
+ * callers) and a duplicated `BILLING_ADDRESS_FIELD_MAP` (the exported original
  * left with no importers) went unnoticed.
  *
  * ## Why a hand-rolled scanner, not ts-prune or knip

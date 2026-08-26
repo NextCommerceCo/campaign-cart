@@ -1,7 +1,7 @@
 /**
  * The Flow tab of the event detail modal: a node graph of the event's fan-out
  * to each analytics provider. Extracted verbatim from `event-timeline-panel.ts`
- * (see docs/code-findings.md #137) — one of the two seams the finding notes as
+ * — one of the two seams the finding notes as
  * moving no cited symbol, so it needed no doc regeneration on its own. Every
  * function here was already pure (no instance field beside the one read-only
  * `selectedFlowNode` value, passed as a plain parameter since rendering is

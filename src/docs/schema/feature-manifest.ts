@@ -269,8 +269,7 @@ export interface FeatureManifest {
    * `core/base/display-types.ts` routes five of the namespaces, but a routing entry
    * is a format and a fallback, not a promise that anything resolves the path, so it
    * is checked against the resolver rather than published as if it were the answer.
-   * Reading it as the answer put ten paths that render nothing on the `cart.` page
-   * (finding 127 in `docs/code-findings.md`).
+   * Reading it as the answer put ten paths that render nothing on the `cart.` page.
    *
    * A namespace nothing resolves fails the drift test instead of publishing "no
    * paths".
