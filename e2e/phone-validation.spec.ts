@@ -80,6 +80,33 @@ test('a number the library refuses is shown and never sent', async ({
 });
 
 /**
+ * The case the old digit-count rule let through.
+ *
+ * `isValidPhone` accepted any ten-or-more-digit string, so a number that is *too
+ * long* for its country passed it, the widget's `false` was stored and never
+ * rendered, and the order went out. Eleven digits is the smallest number that
+ * shows it: nine would have been caught by the count alone, which is why a
+ * nine-digit test proves nothing about this.
+ */
+test('a number too long for its country is refused, not just a short one', async ({
+  page,
+}) => {
+  const posts = await recordOrders(page);
+
+  await bootSdk(page, CHECKOUT);
+  await addOnePackage(page);
+  await submitCard(page, '41555526712');
+
+  await expect(page.locator(`${PHONE}.next-error-field`)).toHaveCount(1);
+  await expect(page.locator('.next-error-label')).toContainText(
+    'valid phone number'
+  );
+
+  await expect(page).toHaveURL(new RegExp('card-purchase'));
+  expect(posts).toHaveLength(0);
+});
+
+/**
  * The handoff, stated as a test so that re-adding a client-side shape rule turns
  * it red rather than passing quietly.
  */
