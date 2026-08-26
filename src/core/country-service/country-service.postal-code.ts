@@ -17,22 +17,48 @@ import type { CountryConfig } from '@/core/country-service';
 const FORMAT_SLOTS = new Set(['N', 'X', 'A', '#', '9']);
 
 /**
- * Formats for a CDN pattern the pattern language cannot express, keyed by the
- * pattern and then by the length of the cleaned code. The country's own letters
- * are re-expressed as placeholders, which is what lets a code whose prefix the
- * shopper already typed take its separator.
+ * Postcode formats this SDK knows a country by, for the countries whose pattern
+ * from the countries service cannot describe their real postcodes: the pattern
+ * language has no escape, so a pattern's own letters (`IM`, `JE`, `GX`, `LT`)
+ * are consumed as placeholders. Re-expressing them as placeholders is what lets
+ * a code whose prefix the shopper already typed take its separator.
  *
- * IM `IMN NAA` + `IM00AX` → `IM0 0AX`, LT `LT-NNNNN` + `LT55798` → `LT-55798`
+ * IM `IM00AX` → `IM0 0AX`, LT `LT55798` → `LT-55798`, GI `GX111AA` → `GX11 1AA`
  *
- * A 7-character IM or JE code has no entry: spaced it is 8 characters, which
- * those countries' own `postcodeMaxLength` of 7 rejects.
+ * {@link withPostcodeFormats} merges these ahead of the pattern the service
+ * sent, whenever a config is read, so `formatPostalCode` knows nothing about
+ * countries. When the service ships a list for a country, its entry here goes.
+ *
+ * GB is deliberately absent: one pattern anchored from the end already covers
+ * its 5, 6 and 7 character postcodes.
  */
-const FORMAT_BY_LENGTH: Record<string, Record<number, string>> = {
-  'IMN NAA': { 6: 'AAN NAA' },
-  'JEN NAA': { 6: 'AAN NAA' },
-  'GX11 1AA': { 7: 'AANN NAA' },
-  'LT-NNNNN': { 7: 'AA-NNNNN' },
+const POSTCODE_FORMATS: Record<string, string[]> = {
+  GI: ['AANN NAA'],
+  IM: ['AAN NAA'],
+  JE: ['AAN NAA'],
+  LT: ['LT-NNNNN', 'AA-NNNNN'],
 };
+
+/**
+ * The config as read, with this SDK's formats for `countryCode` in front of the
+ * one the countries service sent. Returns the config untouched for a country
+ * with no entry.
+ */
+export function withPostcodeFormats(
+  countryCode: string,
+  countryConfig: CountryConfig
+): CountryConfig {
+  const known = POSTCODE_FORMATS[countryCode.toUpperCase()];
+  if (!known) return countryConfig;
+
+  const sent = countryConfig.postcodeFormat;
+  const asSent = sent === null ? [] : Array.isArray(sent) ? sent : [sent];
+
+  return {
+    ...countryConfig,
+    postcodeFormat: [...known, ...asSent.filter(f => !known.includes(f))],
+  };
+}
 
 const compiledRegexes = new Map<string, RegExp | null>();
 
@@ -119,12 +145,12 @@ function applyFormat(
  * Formats a postal code into the shape its country writes it in, and returns
  * the input unchanged when it cannot.
  *
- * A `postcodeFormat` positions its literals at fixed offsets from the start,
- * which fits a fixed-length postcode only; the same pattern anchored from the
- * end fits the variable-length ones (GB outward codes run 2 to 4 characters),
- * and {@link FORMAT_BY_LENGTH} covers the patterns neither reading expresses.
- * A candidate is used only when the country's own `postcodeRegex` accepts it,
- * which also leaves a half-typed value alone instead of rearranging it.
+ * A format positions its literals at fixed offsets from the start, which fits a
+ * fixed-length postcode only; the same format anchored from the end fits the
+ * variable-length ones (GB outward codes run 2 to 4 characters). A country whose
+ * postcodes take more than one shape carries a list, tried in order. A candidate
+ * is used only when the country's own `postcodeRegex` accepts it, which also
+ * leaves a half-typed value alone instead of rearranging it.
  */
 export function formatPostalCode(
   postalCode: string,
@@ -140,33 +166,27 @@ export function formatPostalCode(
   const cleanCode = postalCode.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
   if (!cleanCode) return postalCode;
 
-  const format = countryConfig.postcodeFormat;
+  const formats = Array.isArray(countryConfig.postcodeFormat)
+    ? countryConfig.postcodeFormat
+    : [countryConfig.postcodeFormat];
 
-  const byLength = FORMAT_BY_LENGTH[format]?.[cleanCode.length];
-  if (byLength !== undefined) {
-    const corrected = applyFormat(cleanCode, byLength, 'start');
-    if (
-      corrected !== null &&
-      checkAgainstCountry(corrected, countryConfig) === true
-    ) {
-      return corrected;
+  for (const format of formats) {
+    for (const anchor of ['start', 'end'] as const) {
+      const candidate = applyFormat(cleanCode, format, anchor);
+      if (
+        candidate !== null &&
+        checkAgainstCountry(candidate, countryConfig) === true
+      ) {
+        return candidate;
+      }
     }
   }
 
-  const fromStart = applyFormat(cleanCode, format, 'start');
-  if (
-    fromStart !== null &&
-    checkAgainstCountry(fromStart, countryConfig) !== false
-  ) {
-    return fromStart;
-  }
-
-  const fromEnd = applyFormat(cleanCode, format, 'end');
-  if (
-    fromEnd !== null &&
-    checkAgainstCountry(fromEnd, countryConfig) === true
-  ) {
-    return fromEnd;
+  // A country with no rule to check against gives nothing to choose between its
+  // formats, so the first one's start-anchored output stands.
+  const first = applyFormat(cleanCode, formats[0], 'start');
+  if (first !== null && checkAgainstCountry(first, countryConfig) === null) {
+    return first;
   }
 
   return asTyped;

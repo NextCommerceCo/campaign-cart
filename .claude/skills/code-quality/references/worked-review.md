@@ -86,12 +86,17 @@ Both candidates were ported and run over the same 26,099 inputs.
 | Candidates gated by the country's own regex | **0** | Try today's left-anchored output; if the country's regex rejects it, try the same walk anchored from the right; if that is rejected too, return the input uppercased |
 
 Four patterns are unreadable at either anchor, because their own letters are literals the
-walk consumes as placeholders. Those get an explicit list in this repo, keyed by the
-pattern and then by the length of the code: `IMN NAA` and `JEN NAA` at 6, `GX11 1AA` at 7,
-`LT-NNNNN` at 7. Note what the list is not: it is not a branch per country, it holds only
-the patterns the general rule cannot express, and every entry still has to pass the same
-gate. That is the line between a correction the repo owns and a per-case branch the rule in
-[code-quality.md](../../../rules/code-quality.md) §4 forbids.
+walk consumes as placeholders. The first attempt put those in a table inside the formatter,
+keyed by the pattern string and then by the length of the code. That was rejected on
+review, and the reason is worth keeping: postcode shapes are country data, so they belong
+in the country's config, not in a lookup the formatter carries. The config field widened
+from one format to a list, the formatter now tries each in turn, and the four countries'
+formats are merged into their config where it is read. The formatter ends up knowing
+nothing about countries at all, and the day the countries service ships a list itself, the
+merged entry is deleted and nothing else changes.
+
+Note what the list is not: it is not a branch per country in the algorithm, it holds only
+what the general rule cannot express, and every entry still has to pass the same gate.
 
 The gate is what makes it safe, and it is safe for a reason worth keeping in mind:
 the length check inside `validatePostalCode` rejects partial input on its own, so a

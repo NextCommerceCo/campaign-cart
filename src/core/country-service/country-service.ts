@@ -16,7 +16,12 @@ export interface CountryConfig {
   postcodeMinLength: number;
   postcodeMaxLength: number;
   postcodeExample: string | null;
-  postcodeFormat: string | null;
+  /**
+   * Pattern(s) the postcode is written in. A list is tried in order, which is how
+   * a country whose postcodes run to more than one shape is described (GB
+   * `AANN NAA` at 7 characters, `AAN NAA` at 6, `AN NAA` at 5).
+   */
+  postcodeFormat: string | string[] | null;
   currencyCode: string;
   currencySymbol: string;
 }
@@ -163,6 +168,10 @@ export class CountryService {
     if (cached) {
       return {
         ...cached,
+        countryConfig: postalCodeMethods.withPostcodeFormats(
+          countryCode,
+          cached.countryConfig
+        ),
         states: this.applyStateFiltering(cached.states || []),
       };
     }
@@ -189,6 +198,10 @@ export class CountryService {
 
       return {
         ...data,
+        countryConfig: postalCodeMethods.withPostcodeFormats(
+          countryCode,
+          data.countryConfig
+        ),
         states: this.applyStateFiltering(data.states || []),
       };
     } catch (error) {
@@ -208,7 +221,10 @@ export class CountryService {
     // First try to get from location data if it's the detected country
     const locationData = await this.getLocationData();
     if (locationData.detectedCountryCode === countryCode) {
-      return locationData.detectedCountryConfig;
+      return postalCodeMethods.withPostcodeFormats(
+        countryCode,
+        locationData.detectedCountryConfig
+      );
     }
 
     // Otherwise fetch states data which includes country config
@@ -333,7 +349,10 @@ export class CountryService {
   }
 
   private getDefaultCountryConfig(countryCode: string): CountryConfig {
-    return postalCodeMethods.getDefaultCountryConfig(countryCode);
+    return postalCodeMethods.withPostcodeFormats(
+      countryCode,
+      postalCodeMethods.getDefaultCountryConfig(countryCode)
+    );
   }
 
   private getFallbackLocationData(): LocationData {

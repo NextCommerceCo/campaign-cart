@@ -71,11 +71,11 @@ the two can never drift apart.
   fixed-length postcode when the pattern is filled from the start and a
   variable-length one when it is filled from the end. A UK outward code runs 2
   to 4 characters, so one pattern has to work at three lengths. The SDK builds
-  the start-anchored candidate first, then the end-anchored one, and for the
-  five patterns neither reading expresses it holds its own format chosen by the
-  postcode's length. It keeps a candidate only if that country's own validation
-  pattern accepts it; otherwise the value the shopper typed stands, uppercased
-  when it contains letters
+  the start-anchored candidate first, then the end-anchored one. A country whose
+  postcodes take more than one shape can carry a list of formats rather than a
+  single one, and each is tried in turn. It keeps a candidate only if that
+  country's own validation pattern accepts it; otherwise the value the shopper
+  typed stands, uppercased when it contains letters
   (`core/country-service/country-service.postal-code.ts › formatPostalCode`).
   Two things follow from that. A half-typed postcode is left alone rather than
   rearranged, because a partial value does not satisfy the country's rule yet,
@@ -201,9 +201,9 @@ the two can never drift apart.
   own characters go in, and the pattern language has no escape character, so
   Monaco's `980NN`, Gibraltar's `GX11 1AA`, the Isle of Man's `IMN NAA`,
   Jersey's `JEN NAA` and Lithuania's `LT-NNNNN` cannot be read as written. The
-  SDK carries its own format for those, chosen by how many characters the
-  postcode has, so there is nothing to change in your markup. A pattern the SDK
-  has no entry for falls back to the value the shopper typed.
+  SDK carries formats of its own for those countries and tries them first, so
+  there is nothing to change in your markup. A pattern the SDK has no format for
+  falls back to the value the shopper typed.
 - Does not write a postcode longer than the country's own maximum length, even
   when that country writes one. An Isle of Man or Jersey postcode with a
   four-character outward code is 8 characters with its space, and both

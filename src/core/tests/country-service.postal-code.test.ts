@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   formatPostalCode,
   validatePostalCode,
+  withPostcodeFormats,
 } from '@/core/country-service/country-service.postal-code';
 import type { CountryConfig } from '@/core/country-service';
 import type { Logger } from '@/core/logger';
@@ -114,10 +115,14 @@ const rowOf = (code: string): CdnRow => {
   return row;
 };
 
+/**
+ * The config a caller actually holds: what the countries service sent, read
+ * through `withPostcodeFormats` the way `CountryService` reads it.
+ */
 function configOf(code: string, overrides?: Partial<CountryConfig>) {
   const [, postcodeFormat, postcodeRegex, min, max, postcodeExample] =
     rowOf(code);
-  return {
+  return withPostcodeFormats(code, {
     stateLabel: 'State',
     stateRequired: false,
     postcodeLabel: 'Postcode',
@@ -129,7 +134,7 @@ function configOf(code: string, overrides?: Partial<CountryConfig>) {
     currencyCode: 'USD',
     currencySymbol: '$',
     ...overrides,
-  } satisfies CountryConfig;
+  } satisfies CountryConfig);
 }
 
 /** Formats with `code`'s config and asserts the result against its own regex. */
@@ -239,11 +244,11 @@ describe('formatPostalCode over countries whose format carries literals', () => 
   });
 });
 
-// ─── formatPostalCode — the per-length list ──────────────────────────────────
+// ─── formatPostalCode — a config carrying several formats ────────────────────
 
-describe('formatPostalCode falls back to a format chosen by length', () => {
-  // FORMAT_BY_LENGTH covers the patterns neither anchor expresses, by
-  // re-expressing the country's own letters as placeholders.
+describe('formatPostalCode tries every format the config lists', () => {
+  // withPostcodeFormats puts this SDK's formats in front of the one the service
+  // sent, for the patterns neither anchor expresses.
   const cases: [string, string, string][] = [
     ['IM', 'im21aa', 'IM2 1AA'],
     ['JE', 'je23zz', 'JE2 3ZZ'],
@@ -257,6 +262,61 @@ describe('formatPostalCode falls back to a format chosen by length', () => {
 
   it('leaves a 7-character IM code unspaced, since spaced it exceeds the country maximum', () => {
     expect(formatPostalCode('IM991AA', configOf('IM'))).toBe('IM991AA');
+  });
+});
+
+// ─── a config that lists its own formats ─────────────────────────────────────
+
+describe('withPostcodeFormats', () => {
+  it('leaves a country it has no formats for untouched', () => {
+    const [, format, regex, min, max, example] = rowOf('DE');
+    const sent = {
+      stateLabel: 'State',
+      stateRequired: false,
+      postcodeLabel: 'Postcode',
+      postcodeRegex: regex,
+      postcodeMinLength: min,
+      postcodeMaxLength: max,
+      postcodeExample: example,
+      postcodeFormat: format,
+      currencyCode: 'EUR',
+      currencySymbol: '€',
+    } satisfies CountryConfig;
+
+    expect(withPostcodeFormats('DE', sent)).toBe(sent);
+  });
+
+  it("puts its own formats in front of the service's, without repeating one", () => {
+    const merged = withPostcodeFormats('LT', configOf('LT'));
+    expect(merged.postcodeFormat).toEqual(['LT-NNNNN', 'AA-NNNNN']);
+  });
+
+  it('is case-insensitive about the country code', () => {
+    const merged = withPostcodeFormats('gi', configOf('DE'));
+    expect(merged.postcodeFormat).toEqual(['AANN NAA', 'NNNNN']);
+  });
+});
+
+describe('formatPostalCode with a list in the config', () => {
+  // A country described by three formats instead of one, which is what a
+  // countries service shipping a list for GB would send.
+  const gbAsAList = configOf('GB', {
+    postcodeFormat: ['AANN NAA', 'AAN NAA', 'AN NAA'],
+  });
+
+  const cases: [string, string][] = [
+    ['m11ae', 'M1 1AE'],
+    ['cr26xh', 'CR2 6XH'],
+    ['sw1a1aa', 'SW1A 1AA'],
+    ['dn551pt', 'DN55 1PT'],
+  ];
+
+  it.each(cases)('%s becomes %s', (input, expected) => {
+    expect(formatPostalCode(input, gbAsAList)).toBe(expected);
+  });
+
+  it('still leaves a half-typed postcode alone', () => {
+    expect(formatPostalCode('M11A', gbAsAList)).toBe('M11A');
   });
 });
 

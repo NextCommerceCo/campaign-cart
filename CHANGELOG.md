@@ -13,6 +13,10 @@ A postcode typed or autofilled into the checkout now comes out written the way i
 
 Nothing changes in your markup. Postcode rules come from the countries service, and the SDK now checks every candidate against that country's own rule before using it, so a country whose pattern it cannot read falls back to what the shopper typed instead of rearranging it.
 
+### Changed
+
+- **A country's `postcodeFormat` may now be a list of formats, not only one.** Postcode shape is a per-country rule rather than a global one, and a country whose postcodes take more than one shape can be described as `["AANN NAA", "AAN NAA", "AN NAA"]`. Each is tried in order and the first one the country's own validation accepts is used. A single string keeps working exactly as before.
+
 ---
 
 ## [0.4.38] — 2026-08-20 — One Phone Check
