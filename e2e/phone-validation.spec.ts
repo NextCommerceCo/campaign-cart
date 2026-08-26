@@ -24,8 +24,10 @@ import {
  * What the SDK asks is the phone library's `isValidNumber()` — whether a number
  * is well formed for its country, not whether it is in service. `0000000000` and
  * `1234567890` pass that and go through. The stricter `isValidNumberPrecise()`
- * would refuse both and is deliberately not used, which is what this test pins:
- * re-adding a stricter client-side rule turns it red rather than passing quietly.
+ * would refuse both and is deliberately not used: refusing a real number loses a
+ * sale for good, while accepting an unreachable one costs a server-side rejection
+ * we can see. This test pins that, so re-adding a stricter client-side rule turns
+ * red rather than passing quietly.
  *
  * Why this cannot be a unit test: the number is assembled by `intl-tel-input`
  * from a utils script it fetches at runtime, and the verdict comes from

@@ -14,7 +14,7 @@ A phone number is now judged the same way everywhere it is judged, and a number 
 - **One field's error message no longer disappears when a different field is corrected.**
 - **A field no longer keeps a tick it has not just earned.** Re-validating a form cleared every error mark but left the success ones behind, so a field that had passed an earlier check still showed as correct after the check that would have failed it.
 
-Two things are still accepted. A number nothing can check: the library that checks it loads over the network, and a slow script never blocks a sale. And a number that is well formed for its country but not in service, such as `0000000000` or `1234567890` — the check asks the phone library whether the number is well formed, which these are.
+Two things are still accepted. A number nothing can check: the library that checks it loads over the network, and a slow script never blocks a sale. And a number that is well formed for its country but not in service, such as `0000000000` or `1234567890` — the check asks whether the number is well formed, which these are. A stricter check is available and deliberately not used: refusing a real number loses a sale, while accepting an unreachable one costs a rejection the server reports back.
 
 ---
 
