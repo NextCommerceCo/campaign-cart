@@ -30,7 +30,7 @@ export class GeneralModal {
   constructor(options: ModalOptions) {
     this.options = {
       backdropDismiss: true,
-      ...options
+      ...options,
     };
   }
 
@@ -39,7 +39,7 @@ export class GeneralModal {
    * @returns Promise that resolves to the action taken ('confirm', 'cancel', 'custom', or 'backdrop')
    */
   public async show(): Promise<string> {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       this.resolve = resolve;
       this.createModal();
     });
@@ -62,7 +62,7 @@ export class GeneralModal {
       z-index: 10000;
       animation: fadeIn 0.2s ease-out;
     `;
-    
+
     // Create modal content
     this.modal = document.createElement('div');
     this.modal.className = `next-modal ${this.options.className || ''}`;
@@ -77,15 +77,16 @@ export class GeneralModal {
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
       animation: slideIn 0.3s ease-out;
     `;
-    
+
     // Build modal HTML
-    const buttonsHtml = this.options.buttons.map((button, index) => {
-      const defaultStyles = this.getDefaultButtonStyles(button.action);
-      const style = button.style || defaultStyles;
-      const className = button.className || `next-modal-${button.action}`;
-      
-      if (button.href) {
-        return `<a 
+    const buttonsHtml = this.options.buttons
+      .map((button, index) => {
+        const defaultStyles = this.getDefaultButtonStyles(button.action);
+        const style = button.style || defaultStyles;
+        const className = button.className || `next-modal-${button.action}`;
+
+        if (button.href) {
+          return `<a 
           href="${button.href}" 
           target="${button.target || '_self'}"
           class="${className}" 
@@ -93,16 +94,17 @@ export class GeneralModal {
           data-index="${index}"
           style="${style}"
         >${button.text}</a>`;
-      }
-      
-      return `<button 
+        }
+
+        return `<button 
         class="${className}" 
         data-action="${button.action}"
         data-index="${index}"
         style="${style}"
       >${button.text}</button>`;
-    }).join('');
-    
+      })
+      .join('');
+
     this.modal.innerHTML = `
       <div class="next-modal-header" style="padding: 20px 24px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
         <h3 style="margin: 0; font-size: 20px; font-weight: 600; color: #1a202c;">
@@ -133,7 +135,7 @@ export class GeneralModal {
         ${buttonsHtml}
       </div>
     `;
-    
+
     // Add CSS animations
     this.style = document.createElement('style');
     this.style.textContent = `
@@ -170,24 +172,26 @@ export class GeneralModal {
       }
     `;
     document.head.appendChild(this.style);
-    
+
     this.backdrop.appendChild(this.modal);
     document.body.appendChild(this.backdrop);
-    
+
     // Handle button clicks
     const actionElements = this.modal.querySelectorAll('[data-action]');
     actionElements.forEach(element => {
       if (element.tagName !== 'A') {
-        element.addEventListener('click', (e) => this.handleAction(e));
+        element.addEventListener('click', e => this.handleAction(e));
       } else {
         // For links, we still want to track the action before navigation
-        element.addEventListener('click', (e) => {
-          const action = (e.currentTarget as HTMLElement).getAttribute('data-action') || 'custom';
-          
+        element.addEventListener('click', e => {
+          const action =
+            (e.currentTarget as HTMLElement).getAttribute('data-action') ||
+            'custom';
+
           // Store resolve before cleanup
           const resolveFunc = this.resolve;
           this.cleanup();
-          
+
           // Call resolve after cleanup
           if (resolveFunc) {
             resolveFunc(action);
@@ -195,10 +199,10 @@ export class GeneralModal {
         });
       }
     });
-    
+
     // Handle backdrop click
     if (this.options.backdropDismiss) {
-      this.backdrop.addEventListener('click', (e) => {
+      this.backdrop.addEventListener('click', e => {
         if (e.target === this.backdrop) {
           this.handleDismiss();
         }
@@ -256,13 +260,13 @@ export class GeneralModal {
   }
 
   private handleAction(e: Event): void {
-    const action = (e.currentTarget as HTMLElement).getAttribute('data-action') || 'custom';
-    console.log('[GeneralModal] Button clicked with action:', action);
-    
+    const action =
+      (e.currentTarget as HTMLElement).getAttribute('data-action') || 'custom';
+
     // Store resolve before cleanup
     const resolveFunc = this.resolve;
     this.cleanup();
-    
+
     // Call resolve after cleanup
     if (resolveFunc) {
       resolveFunc(action);
@@ -273,7 +277,7 @@ export class GeneralModal {
     // Store resolve before cleanup
     const resolveFunc = this.resolve;
     this.cleanup();
-    
+
     // Call resolve after cleanup
     if (resolveFunc) {
       resolveFunc('backdrop');
@@ -308,11 +312,12 @@ export class GeneralModal {
   public static async showDuplicateUpsell(): Promise<boolean> {
     const action = await GeneralModal.show({
       title: 'Already Added!',
-      content: "You've already added this item to your order. Would you like to add it again?",
+      content:
+        "You've already added this item to your order. Would you like to add it again?",
       buttons: [
         { text: 'Yes, Add Again', action: 'cancel' },
-        { text: 'Skip to Next', action: 'confirm' }
-      ]
+        { text: 'Skip to Next', action: 'confirm' },
+      ],
     });
     return action === 'cancel';
   }
@@ -326,8 +331,8 @@ export class GeneralModal {
       content: `Your initial order has been successfully processed. Please check your email for the order confirmation. Entering your payment details again will result in a secondary purchase.`,
       buttons: [
         { text: 'Close', action: 'cancel' },
-        { text: 'Back', action: 'confirm' }
-      ]
+        { text: 'Back', action: 'confirm' },
+      ],
     });
     return action;
   }

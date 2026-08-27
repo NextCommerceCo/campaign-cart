@@ -28,6 +28,20 @@ import { resolve, join, basename } from 'node:path';
  * browser (the same evaluation order, the same temporal dead zone), with happy-dom
  * supplying the browser globals the SDK touches while its modules initialise.
  *
+ * ## Why it evaluates the graph more than once
+ *
+ * Module-init work is often behind a flag, so one evaluation only proves the graph
+ * is safe on the boot it happened to take. `?debugger=true` is the flag that
+ * matters: the `debug` chunk holds nine statically-imported modules, and what its
+ * module bodies *do* changes with the flag. v0.4.35 through v0.4.37 threw
+ * `Cannot access 'o' before initialization` on every debug page load and this test
+ * was green throughout, because it only ever loaded `https://campaign.test/`
+ * ([#93](https://github.com/NextCommerceCo/campaign-cart/issues/93)).
+ *
+ * So `BOOTS` below lists every input that changes what runs at module-init time,
+ * and each one gets its own child process. Add a row whenever a module body starts
+ * branching on something new.
+ *
  * ## What it cannot prove
  *
  * Two limits, both worth knowing before trusting a pass:
@@ -63,7 +77,7 @@ const RUNNER = `
 import { pathToFileURL } from 'node:url';
 const { Window } = await import('happy-dom');
 
-const win = new Window({ url: 'https://campaign.test/' });
+const win = new Window({ url: process.argv[2] });
 
 // Browser globals the bundle reaches for while its modules initialise. Every key
 // happy-dom defines is copied unless Node already has it; these are forced, because
@@ -91,6 +105,7 @@ for (const key of keys) {
 }
 globalThis.window = win;
 globalThis.self = win;
+win.nextConfig = JSON.parse(process.argv[3]);
 
 try {
   const ns = await import(pathToFileURL(process.argv[1]).href);
@@ -103,10 +118,36 @@ try {
 process.exit(0);
 `;
 
-function evaluateBundle(): string {
+/**
+ * Every input a module body in `src/` branches on at init time. One child process
+ * each — a flag that changes what runs changes what can throw.
+ */
+const BOOTS = [
+  { name: 'a shopper visit', url: 'https://campaign.test/', config: {} },
+  {
+    name: '?debugger=true',
+    url: 'https://campaign.test/?debugger=true',
+    config: {},
+  },
+  { name: '?debug=true', url: 'https://campaign.test/?debug=true', config: {} },
+  {
+    name: 'window.nextConfig.debugger',
+    url: 'https://campaign.test/',
+    config: { debugger: true },
+  },
+] as const;
+
+function evaluateBundle(boot: (typeof BOOTS)[number]): string {
   return execFileSync(
     process.execPath,
-    ['--input-type=module', '-e', RUNNER, ENTRY],
+    [
+      '--input-type=module',
+      '-e',
+      RUNNER,
+      ENTRY,
+      boot.url,
+      JSON.stringify(boot.config),
+    ],
     {
       cwd: resolve(__dirname, '../../..'), // so `happy-dom` resolves
       encoding: 'utf8',
@@ -116,14 +157,88 @@ function evaluateBundle(): string {
   );
 }
 
+/**
+ * The chunks `manualChunks` names by hand. Everything else in `dist/chunks/` is a
+ * per-feature chunk Rollup named after its entry module, and those come and go with
+ * the feature set — these seven are the fixed frame the SDK is split into.
+ */
+const NAMED_CHUNKS = new Set([
+  'state',
+  'debug',
+  'analytics',
+  'utils',
+  'api',
+  'core-services',
+  'vendor',
+]);
+
+/** `debug-CqP2tos2.js` → `debug`. The hash is 8 chars of `[A-Za-z0-9_-]`. */
+function chunkName(file: string): string {
+  return basename(file)
+    .replace(/-[A-Za-z0-9_-]{8}\.js$/, '')
+    .replace(/\.js$/, '');
+}
+
+function importsOf(file: string): string[] {
+  return [
+    ...readFileSync(file, 'utf8').matchAll(
+      /(?:^|[;}])\s*import\s*(?:[^'"]*?from\s*)?["']([^"']+)["']/g
+    ),
+  ].map(m => basename(m[1]));
+}
+
+/**
+ * Which named chunk imports which, read out of the built files. Sorted, so it is
+ * comparable to the frozen map below.
+ */
+function namedChunkGraph(chunks: string[]): Record<string, string[]> {
+  const graph: Record<string, string[]> = {};
+  for (const file of chunks) {
+    const name = chunkName(file);
+    if (!NAMED_CHUNKS.has(name)) continue;
+    const deps = new Set<string>();
+    for (const imported of importsOf(join(CHUNKS, file))) {
+      const dep = chunkName(imported);
+      if (NAMED_CHUNKS.has(dep) && dep !== name) deps.add(dep);
+    }
+    graph[name] = [...deps].sort();
+  }
+  return graph;
+}
+
+/**
+ * Every edge between the named chunks as of #93, frozen.
+ *
+ * A cycle here is what makes a module-scope call across a chunk boundary able to
+ * throw, and four of these seven chunks are already in one — `analytics`, `debug`,
+ * `state` and `utils` all reach each other. That is the standing hazard the `BOOTS`
+ * matrix above exists to detect, and it is why `.claude/rules/bundling.md` says
+ * module scope in `src/` does no work.
+ *
+ * So this map is a tripwire, not a target. If it fails, a `manualChunks` rule or an
+ * import moved and the hazard surface changed shape. Read the diff before updating
+ * it: a **new** edge into `analytics`/`debug`/`state`/`utils` widens an existing
+ * cycle, and an edge out of `core-services` or `vendor` (both leaves today) is a new
+ * cycle outright. An edge that disappears is progress and the map should shrink.
+ */
+const FROZEN_CHUNK_GRAPH: Record<string, string[]> = {
+  analytics: ['core-services', 'debug', 'state', 'utils'],
+  api: ['core-services'],
+  'core-services': [],
+  debug: ['analytics', 'core-services', 'state', 'vendor'],
+  state: ['core-services', 'debug', 'utils', 'vendor'],
+  utils: ['core-services', 'state'],
+  vendor: [],
+};
+
 describe('ES bundle initialisation contract', () => {
   // Skips on a clean checkout, or on `npm run test` before any build.
   const built = existsSync(ENTRY);
 
-  it.skipIf(!built)(
-    'evaluates the built module graph without throwing',
-    () => {
-      const output = evaluateBundle();
+  it.skipIf(!built).each(BOOTS)(
+    'evaluates the built module graph without throwing on $name',
+    boot => {
+      const output = evaluateBundle(boot);
       const threw = output.includes('THREW');
 
       expect(
@@ -163,15 +278,18 @@ describe('ES bundle initialisation contract', () => {
       'no core-services-*.js chunk — the leaf that holds createLogger/EventBus/sessionStorageManager was reassigned'
     ).toBeDefined();
 
-    const imports = [
-      ...readFileSync(join(CHUNKS, leaf as string), 'utf8').matchAll(
-        /(?:^|[;}])\s*import\s*(?:[^'"]*?from\s*)?["']([^"']+)["']/g
-      ),
-    ].map(m => basename(m[1]));
-
     expect(
-      imports,
+      importsOf(join(CHUNKS, leaf as string)),
       'the core-services chunk imports another chunk, so it can now be the half-evaluated side of a cycle'
     ).toEqual([]);
+  });
+
+  it.skipIf(!built)('holds the frozen graph of the named chunks', () => {
+    const chunks = readdirSync(CHUNKS).filter(f => f.endsWith('.js'));
+
+    expect(
+      namedChunkGraph(chunks),
+      'the import graph between the named chunks changed — see FROZEN_CHUNK_GRAPH above for how to read the diff, and .claude/rules/bundling.md before updating it'
+    ).toEqual(FROZEN_CHUNK_GRAPH);
   });
 });

@@ -84,7 +84,7 @@ Read the surprises in that table rather than the pattern:
   add `?debug=true` to the URL, or set `window.nextConfig.debug = true` before the loader
   runs. (On the dev server the gate is absent, so the tag behaves as expected there —
   which is how the mismatch survives review.)
-- **Only `debugger` opens the overlay.** `debugOverlay.initialize()` is called for any
+- **Only `debugger` opens the overlay.** `DebugOverlay.getInstance().initialize()` is called for any
   value of `config.debug`, and returns at its own gate unless `?debugger=true` or
   `window.nextConfig.debugger === true` (`core/debug/debug-overlay/debug-overlay.ts › DebugOverlay.initialize`).
   **Symptom:** louder logs, `window.nextDebug` present, no panel. **Fix:** the parameter
@@ -104,7 +104,7 @@ Read the surprises in that table rather than the pattern:
   an error call ──────────────────────────────────► │ always printed            │
                                                    └───────────────────────────┘
 
-  config.debug true ──► log level DEBUG + window.nextDebug ──► debugOverlay.initialize()
+  config.debug true ──► log level DEBUG + window.nextDebug ──► DebugOverlay.initialize()
                                                                         │
                                                      ?debugger=true only ─┴─► overlay opens
 ```

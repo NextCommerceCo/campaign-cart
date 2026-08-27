@@ -53,14 +53,13 @@ export class DebugModule {
       await DebugStyleLoader.loadDebugStyles();
 
       // Then load the debug overlay
-      const { debugOverlay } = await import('./debug-overlay');
-      
-      debugOverlayInstance = debugOverlay;
+      const { DebugOverlay } = await import('./debug-overlay');
+
+      debugOverlayInstance = DebugOverlay.getInstance();
       isLoading = false;
-      
+
       this.logger.info('Debug overlay module loaded successfully ✅');
       return debugOverlayInstance;
-      
     } catch (error) {
       isLoading = false;
       this.logger.error('Failed to load debug overlay module:', error);
@@ -74,17 +73,17 @@ export class DebugModule {
   public static async initializeIfEnabled(): Promise<void> {
     const urlParams = new URLSearchParams(window.location.search);
     const windowConfig = (window as any).nextConfig;
-    const isDebugMode = urlParams.get('debugger') === 'true' || windowConfig?.debugger === true;
-    
+    const isDebugMode =
+      urlParams.get('debugger') === 'true' || windowConfig?.debugger === true;
+
     if (!isDebugMode) return;
 
     try {
       const overlay = await this.loadDebugOverlay();
       overlay.initialize();
-      
+
       // Set up global debug access
       this.setupGlobalDebugAccess(overlay);
-      
     } catch (error) {
       this.logger.error('Failed to initialize debug mode:', error);
     }
@@ -96,12 +95,12 @@ export class DebugModule {
   public static async enableDebugMode(): Promise<DebugModuleInterface> {
     const overlay = await this.loadDebugOverlay();
     overlay.show();
-    
+
     // Update URL to reflect debug mode
     const url = new URL(window.location.href);
     url.searchParams.set('debugger', 'true');
     window.history.replaceState({}, '', url.toString());
-    
+
     this.setupGlobalDebugAccess(overlay);
     return overlay;
   }
@@ -136,7 +135,9 @@ export class DebugModule {
   public static isDebugMode(): boolean {
     const urlParams = new URLSearchParams(window.location.search);
     const windowConfig = (window as any).nextConfig;
-    return urlParams.get('debugger') === 'true' || windowConfig?.debugger === true;
+    return (
+      urlParams.get('debugger') === 'true' || windowConfig?.debugger === true
+    );
   }
 
   /**
@@ -162,10 +163,12 @@ export class DebugModule {
       enableDebug: () => this.enableDebugMode(),
       disableDebug: () => this.disableDebugMode(),
       toggleDebug: () => this.toggleDebugMode(),
-      isDebugMode: () => this.isDebugMode()
+      isDebugMode: () => this.isDebugMode(),
     };
 
-    console.log('🐛 Debug overlay loaded! Use nextDebug.overlay to control it.');
+    console.log(
+      '🐛 Debug overlay loaded! Use nextDebug.overlay to control it.'
+    );
   }
 }
 

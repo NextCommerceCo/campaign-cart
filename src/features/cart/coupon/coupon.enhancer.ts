@@ -261,9 +261,6 @@ export class CouponEnhancer extends BaseActionEnhancer {
       setTimeout(() => {
         messageEl.remove();
       }, 5000);
-    } else {
-      // Fallback to console for debugging
-      console.log(`[Coupon ${type.toUpperCase()}] ${message}`);
     }
   }
 

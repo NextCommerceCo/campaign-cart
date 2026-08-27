@@ -29,7 +29,9 @@ export function setupGlobalDebugUtils(ctx: {
     // Add global debug utilities to window for console access
     (window as any).nextDebug = {
       overlay: () =>
-        import('@/core/debug/debug-overlay').then(m => m.debugOverlay),
+        import('@/core/debug/debug-overlay').then(m =>
+          m.DebugOverlay.getInstance()
+        ),
       testMode: testModeManager,
       stores: {
         cart: useCartStore,

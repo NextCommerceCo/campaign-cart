@@ -37,6 +37,12 @@ jobs:
       - name: Type check
         run: bun run type-check
 
+      # Fails only on NEW raw `console.*` calls; the ones that exist are frozen in
+      # scripts/check-console.baseline.json with a note each. Nothing gates a bare
+      # `console.log`, so it prints on a shopper's page with whatever it was handed.
+      - name: Console check
+        run: bun run check:console
+
       - name: Test
         run: bun run test:coverage
 

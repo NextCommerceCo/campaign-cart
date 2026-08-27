@@ -232,11 +232,9 @@ export class CreditCardService {
         originalReject(error);
       };
 
-      // Tokenize with Spreedly
-      console.log(
-        '🟢 [CreditCardService] Calling Spreedly.tokenizeCreditCard with:',
-        cardData
-      );
+      // Tokenize with Spreedly. `logger.debug('Tokenizing credit card')` above
+      // covers this call; a raw `console.log` here printed `cardData` on every
+      // production checkout, because nothing routed through `Logger` gates it.
       window.Spreedly.tokenizeCreditCard(cardData);
     });
   }

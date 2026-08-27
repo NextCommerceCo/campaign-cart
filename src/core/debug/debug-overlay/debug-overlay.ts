@@ -664,12 +664,16 @@ export class DebugOverlay {
   }
 }
 
-// Global instance
-export const debugOverlay = DebugOverlay.getInstance();
-
-// Auto-initialize if debug mode
+// Nothing here may construct the overlay. `getInstance()` builds the panels, and
+// a panel constructor calls `useCartStore.subscribe` — a `state` chunk binding.
+// `debug` and `state` import each other, so at `debug`'s module-init time `state`
+// may not have evaluated yet: `ReferenceError: Cannot access 'o' before
+// initialization`, the whole ES graph throws, and every visitor silently falls
+// back to the UMD bundle with no overlay at all. That was issue #93; issue #77 was
+// the same shape one chunk over. Construct on first call instead, which is after
+// boot in every path that reaches here.
 if (typeof window !== 'undefined') {
   document.addEventListener('DOMContentLoaded', () => {
-    debugOverlay.initialize();
+    DebugOverlay.getInstance().initialize();
   });
 }
