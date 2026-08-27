@@ -7,7 +7,12 @@ import { useParameterStore } from '@/state/parameter';
 
 /**
  * Query parameters that describe **this page load**, not this visitor, and so are
- * never copied onto an outbound URL.
+ * never *copied* onto an outbound URL.
+ *
+ * Copied, not stripped. `getFailureUrl` builds the checkout URL with
+ * `payment_failed` on it deliberately; a name on this list is one
+ * `preserveQueryParams` declines to carry forward, never one it removes from a URL
+ * the caller handed it.
  *
  * `preserveQueryParams` defaults to `'all'` and every in-site navigation the SDK
  * performs goes through it, so a parameter seen once follows the shopper for the
@@ -22,8 +27,9 @@ import { useParameterStore } from '@/state/parameter';
  *   `isPaymentFailureLanding`). Carried forward, a cancelled PayPal attempt
  *   suppressed the purchase event of the card order that followed it, silently —
  *   [issue #90](https://github.com/NextCommerceCo/campaign-cart/issues/90).
- * - `payment_method` is written by the platform on that same return leg. The SDK
- *   never reads it from a URL, and it describes one payment attempt.
+ * - `payment_method` arrives on that same return leg from outside the SDK, which
+ *   reads and writes it nowhere: it describes one payment attempt, so a later page
+ *   naming the method of an attempt the shopper abandoned is worse than silence.
  * - `forcePackageId`, `forceShippingId` and `forceBundleId` are commands, run at
  *   boot. `forcePackageId` empties the cart before it runs
  *   (`sdk-initializer.url-params.ts` › `processForcePackageId`), so carrying it
@@ -31,6 +37,12 @@ import { useParameterStore } from '@/state/parameter';
  * - `reset` clears storage at boot and already strips itself from the address bar
  *   (`sdk-initializer.ts` › `loadConfiguration`). It is listed here so the policy
  *   has one home rather than living in that one `delete`.
+ *
+ * Two parameters that look like they belong here and do not: `debug` and `debugger`
+ * describe a session, not a page, and the checkout copies them onto the order's own
+ * return URLs on purpose (`checkout/utils/url-utils.ts` › `DEBUG_PARAMS`); `test`
+ * follows `debugger` because a funnel half in test mode is worse than one wholly in
+ * it.
  *
  * Capture is deliberately left alone: the parameter store still records these, so
  * a `data-next-show="param.payment_failed"` block on the failure page — the only

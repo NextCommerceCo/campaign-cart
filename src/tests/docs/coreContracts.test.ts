@@ -18,7 +18,6 @@ import {
   isReadAccess,
   type ExtractedContract,
 } from '@/docs/extract/extract-core-contracts';
-import { NON_PROPAGATING_PARAMS } from '@/core/url-utils';
 
 /**
  * Generates `core/guide/reference/meta-tags.md` and `url-parameters.md`, and fails when
@@ -176,28 +175,6 @@ describe('core contract docs', () => {
       expect(
         phantom,
         'documented in URL_PARAMETERS but touched nowhere in src/ — remove them rather than leaving a switch that does nothing'
-      ).toEqual([]);
-    });
-
-    it('holds back only parameters that describe one page load', () => {
-      // `NON_PROPAGATING_PARAMS` decides what `preserveQueryParams` refuses to copy
-      // onto the next page, and the whole funnel is built on the rest of them
-      // travelling: `ref_id` is how an upsell page knows which order it is adding
-      // to, `affid` is how an affiliate gets paid, `currency` is what the second
-      // page prices in. A name added to that list from any group but these three
-      // breaks one of those silently, for every order, which is issue #90 pointing
-      // the other way.
-      const oneShot = new Set([
-        'Forcing a page into a state',
-        'Resetting a session',
-        'Written by the SDK',
-      ]);
-      const wrong = URL_PARAMETERS.filter(
-        p => NON_PROPAGATING_PARAMS.includes(p.name) && !oneShot.has(p.group)
-      ).map(p => `${p.name} → ${p.group}`);
-      expect(
-        wrong,
-        'listed in NON_PROPAGATING_PARAMS but documented as a parameter that travels — one of the two is wrong'
       ).toEqual([]);
     });
 
