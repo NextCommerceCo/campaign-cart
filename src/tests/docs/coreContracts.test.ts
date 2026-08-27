@@ -179,18 +179,25 @@ describe('core contract docs', () => {
       ).toEqual([]);
     });
 
-    it('holds back no parameter that attribution depends on travelling', () => {
+    it('holds back only parameters that describe one page load', () => {
       // `NON_PROPAGATING_PARAMS` decides what `preserveQueryParams` refuses to copy
-      // onto the next page. Every name on it is meant to describe one page load;
-      // an attribution parameter added to it by mistake would stop crediting the
-      // affiliate, silently and for every order, which is the same shape of
-      // failure as issue #90 pointing the other way.
-      const held = URL_PARAMETERS.filter(
-        p => NON_PROPAGATING_PARAMS.has(p.name) && p.group === 'Attribution'
-      ).map(p => p.name);
+      // onto the next page, and the whole funnel is built on the rest of them
+      // travelling: `ref_id` is how an upsell page knows which order it is adding
+      // to, `affid` is how an affiliate gets paid, `currency` is what the second
+      // page prices in. A name added to that list from any group but these three
+      // breaks one of those silently, for every order, which is issue #90 pointing
+      // the other way.
+      const oneShot = new Set([
+        'Forcing a page into a state',
+        'Resetting a session',
+        'Written by the SDK',
+      ]);
+      const wrong = URL_PARAMETERS.filter(
+        p => NON_PROPAGATING_PARAMS.includes(p.name) && !oneShot.has(p.group)
+      ).map(p => `${p.name} → ${p.group}`);
       expect(
-        held,
-        'listed in NON_PROPAGATING_PARAMS but documented as attribution — one of the two is wrong'
+        wrong,
+        'listed in NON_PROPAGATING_PARAMS but documented as a parameter that travels — one of the two is wrong'
       ).toEqual([]);
     });
 

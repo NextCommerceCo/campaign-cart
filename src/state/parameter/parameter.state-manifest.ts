@@ -20,7 +20,7 @@ export default defineStore({
       name: 'params',
       kind: 'persisted',
       description:
-        'Every query-string key seen this session, as a flat `key → value` map of strings. The SDK captures the current URL during boot and merges it over what is already stored, so the newest value for a key wins and a key from an earlier page of the funnel survives on later pages that no longer carry it. **Whatever the link carried lands here**: a campaign link built with `?email=` or `?first_name=` puts personal data into this map and into sessionStorage, and `preserveQueryParams()` copies it onto outbound navigation URLs.',
+        'Every query-string key seen this session, as a flat `key → value` map of strings. The SDK captures the current URL during boot and merges it over what is already stored, so the newest value for a key wins and a key from an earlier page of the funnel survives on later pages that no longer carry it. **Whatever the link carried lands here**: a campaign link built with `?email=` or `?first_name=` puts personal data into this map and into sessionStorage, and `preserveQueryParams()` copies it onto outbound navigation URLs — every key but the handful that describe one page load rather than one visitor, which the third caution below lists.',
       notes:
         'Values are always strings, never numbers or booleans — `?seen=0` is stored as `"0"`, which is truthy, so `if (next.getParam("seen"))` fires on a URL that meant "not seen". Compare against the string.',
     },

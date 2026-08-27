@@ -36,14 +36,14 @@ import { useParameterStore } from '@/state/parameter';
  * a `data-next-show="param.payment_failed"` block on the failure page — the only
  * way a merchant can explain a declined payment — still works.
  */
-export const NON_PROPAGATING_PARAMS = new Set([
+export const NON_PROPAGATING_PARAMS: readonly string[] = [
   'payment_failed',
   'payment_method',
   'forcePackageId',
   'forceShippingId',
   'forceBundleId',
   'reset',
-]);
+];
 
 /**
  * Preserves query parameters when navigating
@@ -81,7 +81,7 @@ export function preserveQueryParams(
 
       // Apply all parameters to the target URL (don't override existing params in target)
       Object.entries(allParams).forEach(([key, value]) => {
-        if (NON_PROPAGATING_PARAMS.has(key)) return;
+        if (NON_PROPAGATING_PARAMS.includes(key)) return;
         if (!url.searchParams.has(key)) {
           url.searchParams.append(key, value);
         }

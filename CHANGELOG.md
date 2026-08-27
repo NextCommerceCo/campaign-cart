@@ -1,5 +1,22 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- **A card payment that follows a cancelled PayPal attempt is reported again.** A shopper who started PayPal, backed out, and then paid by card in the same tab produced an order that no purchase event ever mentioned, so GTM, ads and affiliate tags never saw the sale. Nothing showed on the page; the revenue was simply missing from the reports. The flag the SDK writes onto its own failure URL was being copied onto the success URL of the order that followed, and the success page read it as proof that a paid order had failed. ([#90](https://github.com/NextCommerceCo/campaign-cart/issues/90))
+- **A purchase is no longer lost to a `payment_failed=true` that arrives from somewhere else.** The page the SDK recorded as this order's success page now reports the purchase whatever that parameter says, so a merchant's own redirect, a shared link or a restored tab carrying the flag cannot suppress a real sale. A payment that actually failed lands on the failure page, which is still never reported.
+
+### Changed
+
+- **Six URL parameters no longer follow the shopper to the next page.** `payment_failed`, `payment_method`, `forcePackageId`, `forceShippingId`, `forceBundleId` and `reset` describe one page load rather than one visitor, so the SDK no longer copies them onto the links and redirects it builds. Everything else travels exactly as before: `utm_*`, `affid`, the click ids, `currency`, `country`, `ref_id`, `debug` and `debugger`.
+
+  This is worth knowing if you test with `?forcePackageId=`. It empties the cart every time it is read, so carrying it from a landing page to the checkout used to wipe whatever the shopper had put in on the way. Put it on the page you want it to act on; the cart itself already persists across the funnel.
+
+  All six are still captured, so `data-next-show="param.payment_failed"` on your failure page reads the flag as it did before.
+
+---
+
 ## [0.4.39] — 2026-08-26 — Postcodes Keep Their Own Shape
 
 A postcode typed or autofilled into the checkout now comes out written the way its country writes it, and the SDK no longer produces one its own validation then refuses.
