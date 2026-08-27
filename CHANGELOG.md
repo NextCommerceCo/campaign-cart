@@ -1,58 +1,35 @@
 # Changelog
 
-## [Unreleased]
+## [Unreleased] — everything since 0.4.37
 
-### Fixed
+Postcodes, phone numbers, a missing purchase event, and two things that were running on every shopper's page.
 
-- **A card payment that follows a cancelled PayPal attempt is reported again.** A shopper who started PayPal, backed out, and then paid by card in the same tab produced an order that no purchase event ever mentioned, so GTM, ads and affiliate tags never saw the sale. Nothing showed on the page; the revenue was simply missing from the reports. The flag the SDK writes onto its own failure URL was being copied onto the success URL of the order that followed, and the success page read it as proof that a paid order had failed. ([#90](https://github.com/NextCommerceCo/campaign-cart/issues/90))
-- **A purchase is no longer lost to a `payment_failed=true` that arrives from somewhere else.** The page the SDK recorded as this order's success page now reports the purchase whatever that parameter says, so a merchant's own redirect, a shared link or a restored tab carrying the flag cannot suppress a real sale. A payment that actually failed lands on the failure page, which is still never reported.
+### Checkout
 
-### Changed
-
-- **Six URL parameters no longer follow the shopper to the next page.** `payment_failed`, `payment_method`, `forcePackageId`, `forceShippingId`, `forceBundleId` and `reset` describe one page load rather than one visitor, so the SDK no longer copies them onto the links and redirects it builds. Everything else travels exactly as before: `utm_*`, `affid`, the click ids, `currency`, `country`, `ref_id`, `debug` and `debugger`.
-
-  This is worth knowing if you test with `?forcePackageId=`. It empties the cart every time it is read, so carrying it from a landing page to the checkout used to wipe whatever the shopper had put in on the way. Put it on the page you want it to act on; the cart itself already persists across the funnel.
-
-  All six are still captured, so `data-next-show="param.payment_failed"` on your failure page reads the flag as it did before.
-
----
-
-## [0.4.39] — 2026-08-26 — Postcodes Keep Their Own Shape
-
-A postcode typed or autofilled into the checkout now comes out written the way its country writes it, and the SDK no longer produces one its own validation then refuses.
-
-### Fixed
-
-- **A UK postcode with a short outward code is no longer rearranged.** `CR2 6XH` became `CR26 XH` and was then refused, so the shopper could not get past the address step. Manchester, Liverpool, Birmingham and Croydon were all affected; only the seven-character postcodes came through. ([#92](https://github.com/NextCommerceCo/campaign-cart/issues/92))
-- **Five more countries were doing the same thing**, and none of them was reported: the Isle of Man, Jersey, Gibraltar, Lithuania and Monaco. Monaco's `98000` came out as `9808000`.
-- **A postcode still being typed is left alone.** Formatting runs on every keystroke, so a half-finished postcode is now reshaped only once it is complete.
-- **A postcode with its separator missing is completed**, where the country's own rule accepts the result: `gx111aa` becomes `GX11 1AA`, `LT55798` becomes `LT-55798`.
-
-Nothing changes in your markup. Postcode rules come from the countries service, and the SDK now checks every candidate against that country's own rule before using it, so a country whose pattern it cannot read falls back to what the shopper typed instead of rearranging it.
-
-### Changed
-
-- **The UK's postcode shapes ship with the SDK.** The countries service sends one pattern per country, which describes a 7-character UK postcode and no other length. The SDK now carries all three UK shapes itself, so a page gets them without waiting for that service to change.
-- **The built-in UK fallback matches the countries service.** When that service does not answer, the SDK falls back to its own country data; the UK entry there had no format at all and a stricter validation pattern that refused a lower-case postcode. Both now match what the service sends.
-- **A country's `postcodeFormat` may now be a list of formats, not only one.** Postcode shape is a per-country rule rather than a global one, and a country whose postcodes take more than one shape can be described as `["AANN NAA", "AAN NAA", "AN NAA"]`. Each is tried in order and the first one the country's own validation accepts is used. A single string keeps working exactly as before.
-
----
-
-## [0.4.38] — 2026-08-20 — One Phone Check
-
-A phone number is now judged the same way everywhere it is judged, and a number the checkout could not use says so on the field instead of failing the form in silence.
-
-### Fixed
-
-- **A rejected phone number now says so on the field.** The phone widget refused the number and the SDK stored the error without ever rendering it, so the shopper saw a form that would not submit and no reason why. ([#58](https://github.com/NextCommerceCo/campaign-cart/issues/58))
-- **A phone number is no longer dropped while the formatting library loads.** That library answers `''` until it lands, and the empty answer was what got stored — so a shopper on a slow connection could see their number in the field while the order went out with none.
-- **One check instead of four.** Leaving the field, moving to the next step and pressing pay each used a different rule, so a number one accepted another refused.
-- **A landline is no longer refused** in countries where a landline is not the same length as a mobile.
+- **A UK postcode with a short outward code is no longer rearranged.** `CR2 6XH` became `CR26 XH` and was then refused, so the shopper could not get past the address step. Five more countries did the same and none was reported: the Isle of Man, Jersey, Gibraltar, Lithuania and Monaco. ([#92](https://github.com/NextCommerceCo/campaign-cart/issues/92))
+- **A postcode is left alone until it is finished**, and one missing its separator is completed where the country's own rule accepts the result: `gx111aa` becomes `GX11 1AA`.
+- **A rejected phone number now says so on the field.** The widget refused it, the SDK stored the error and never rendered it, so the shopper saw a form that would not submit and no reason why. ([#58](https://github.com/NextCommerceCo/campaign-cart/issues/58))
+- **A phone number is no longer dropped while its library loads**, and a landline is no longer refused in countries where a landline is not mobile length.
 - **Choosing a country no longer rewrites a number typed with a country code.** `+66 81 234 5678` became `+1 81 234 5678`.
-- **One field's error message no longer disappears when a different field is corrected.**
-- **A field no longer keeps a tick it has not just earned.** Re-validating a form cleared every error mark but left the success ones behind, so a field that had passed an earlier check still showed as correct after the check that would have failed it.
+- **One phone check instead of four.** Leaving the field, moving to the next step and pressing pay each used a different rule, so a number one accepted another refused.
+- **Error and success marks belong to their own field.** One field's message no longer clears when a different field is corrected, and a field no longer keeps a tick it has not just earned.
 
-Two things are still accepted. A number nothing can check: the library that checks it loads over the network, and a slow script never blocks a sale. And a number that is well formed for its country but not in service, such as `0000000000` or `1234567890` — the check asks whether the number is well formed, which these are. A stricter check is available and deliberately not used: refusing a real number loses a sale, while accepting an unreachable one costs a rejection the server reports back.
+### Tracking
+
+- **A card payment that follows a cancelled PayPal attempt is reported again.** The shopper backed out of PayPal, paid by card in the same tab, and `dl_purchase` never fired — so GTM, ads and affiliate tags never saw the sale, with nothing on the page to show for it. ([#90](https://github.com/NextCommerceCo/campaign-cart/issues/90))
+
+### Debugging
+
+- **`?debugger=true` no longer throws on page load.** The overlay was built while the module graph was still evaluating, which threw and quietly dropped every visitor onto the fallback bundle — the page still worked, so nobody noticed. ([#93](https://github.com/NextCommerceCo/campaign-cart/issues/93))
+- **Nothing prints to a shopper's console any more.** Ungated `console.log` calls ran on every visit, one of them on the checkout's card path. `npm run check:console` keeps new ones out.
+
+### Changed
+
+- **Six URL parameters no longer follow the shopper to the next page**: `payment_failed`, `payment_method`, `forcePackageId`, `forceShippingId`, `forceBundleId` and `reset`. Everything else travels as before. Worth knowing if you test with `?forcePackageId=` — it empties the cart every time it is read, so carrying it from a landing page to the checkout used to wipe what the shopper had put in.
+- **The UK's postcode shapes ship with the SDK.** The countries service describes one 7-character UK postcode and no other length; the SDK now carries all three shapes itself, and its built-in fallback matches what the service sends.
+- **A country's `postcodeFormat` may be a list, not only one format** — `["AANN NAA", "AAN NAA", "AN NAA"]`, tried in order. A single string works exactly as before.
+
+Still accepted on purpose: a phone number that is well formed for its country but not in service, such as `1234567890`. Refusing a real number loses a sale; an unreachable one costs a rejection the server reports back.
 
 ---
 
