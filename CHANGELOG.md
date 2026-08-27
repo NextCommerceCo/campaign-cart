@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased] — everything since 0.4.37
+## [0.4.38] — 2026-08-27 — Address and Phone Fields, and Two Silent Failures
 
 Postcodes, phone numbers, a missing purchase event, and two things that were running on every shopper's page.
 
