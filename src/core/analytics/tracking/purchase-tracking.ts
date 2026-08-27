@@ -178,21 +178,10 @@ function readReturnPaths(): CheckoutReturnPaths | null {
  *   which covers the stores that have. A store pointing **both** legs at one page
  *   makes the path meaningless, so that case falls back to the parameter alone.
  *
- * The recorded **success** path outranks both, because it is the stronger
- * evidence: it came from the order payload this session actually sent, where the
- * parameter is only a string on a URL that anything can put there. A cancelled
- * PayPal attempt leaves `payment_failed=true` on the checkout page's address bar,
- * and until [issue #90](https://github.com/NextCommerceCo/campaign-cart/issues/90)
- * `preserveQueryParams` copied it onto the success URL of the card order that
- * followed — vetoing a purchase that had been paid for. That copy is fixed at
- * source (`core/url-utils.ts` › `NON_PROPAGATING_PARAMS`); this is the second
- * line, for the flag arriving by a route the SDK does not control — a merchant's
- * own redirect, a shared link, a restored tab.
- *
- * It does not loosen the guarantee #71 bought. A payment that really failed lands
- * on the failure leg, which is not the success path, so both signals still apply
- * there; and when a store points both legs at one page the success path proves
- * nothing and is ignored, exactly as the failure path already was.
+ * The recorded success path outranks both: it came from the order payload this
+ * session sent, where the parameter is a string anything can put on a URL. This
+ * does not loosen #71 — a real failure lands on the failure leg, and one page
+ * serving both legs ignores the success path too. Issue #90.
  */
 export function isPaymentFailureLanding(): boolean {
   if (typeof window === 'undefined') return false;

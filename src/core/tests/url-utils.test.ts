@@ -5,27 +5,16 @@ import { URL_PARAMETERS } from '@/docs/content/url-parameters';
 import parameterStateManifest from '@/state/parameter/parameter.state-manifest';
 
 /**
- * What follows a shopper from one page of a funnel to the next.
- *
  * `preserveQueryParams(url)` defaults to `'all'` and every in-site navigation the
  * SDK performs goes through it, so this one function decides the query string of
- * every checkout, upsell and decline URL. The contract: **given a target URL, it
- * returns that URL with every parameter this session has seen appended, except the
- * ones that describe a single page load and the ones the target already carries.**
+ * every checkout, upsell and decline URL. Issue #90 was a `payment_failed` from a
+ * cancelled PayPal attempt riding it onto the success page of the card order that
+ * followed, where it read as "this is the failure leg" and dropped `dl_purchase`.
  *
- * The bug that made this file necessary is
- * [#90](https://github.com/NextCommerceCo/campaign-cart/issues/90): a cancelled
- * PayPal attempt leaves `?payment_failed=true` on the checkout page, it was copied
- * onto the success URL of the card order the shopper then paid with, and the
- * landing page read it back as "this is the failure leg" and dropped
- * `dl_purchase`.
- *
- * The first test is the domain sweep. Which parameters travel is not a matter of
- * opinion — `src/docs/content/url-parameters.ts` is the inventory of every one the
- * SDK touches, gated in both directions by `src/tests/docs/coreContracts.test.ts`,
- * so it is the authority to sample from. Running all of them through both sources
- * is what proves the list holds back what it means to and nothing else; the
- * hand-written cases below only cover what a per-parameter sweep cannot see.
+ * The first test sweeps `src/docs/content/url-parameters.ts` — the inventory of
+ * every parameter the SDK touches, gated both ways by
+ * `src/tests/docs/coreContracts.test.ts`. The cases after it cover only what a
+ * per-parameter sweep cannot see.
  */
 
 function setUrl(url: string): void {
@@ -54,10 +43,6 @@ beforeEach(() => {
 
 describe('preserveQueryParams', () => {
   it('holds back every documented parameter that describes one page load, and no other', () => {
-    // Frozen from the inventory: everything filed under a group whose parameters
-    // act once and are done. Change this list only by changing what the SDK is for
-    // — an attribution or order parameter appearing here means a funnel has
-    // silently stopped crediting, or an upsell page has stopped finding its order.
     const ONE_SHOT_GROUPS = new Set([
       'Forcing a page into a state',
       'Resetting a session',
@@ -82,9 +67,7 @@ describe('preserveQueryParams', () => {
       'each row is a documented parameter whose group and behaviour disagree'
     ).toEqual([]);
 
-    // The sweep above is only worth its runtime if both outcomes are in it. Freeze
-    // the split so a change that quietly stops holding anything back — or starts
-    // holding everything — cannot pass by agreeing with itself.
+    // Freeze the split: a sweep with one outcome in it agrees with itself.
     const held = URL_PARAMETERS.filter(p => ONE_SHOT_GROUPS.has(p.group)).map(
       p => p.name
     );
@@ -99,9 +82,8 @@ describe('preserveQueryParams', () => {
   });
 
   it('holds back payment_method, which the inventory cannot carry', () => {
-    // The inventory is generated from `searchParams` access in `src/`, and the SDK
-    // reads and writes this one nowhere — so it can be neither documented there nor
-    // covered by the sweep, and this is the only thing asserting it.
+    // The inventory is generated from `searchParams` access, which this parameter
+    // has none of, so the sweep cannot reach it.
     expect(travels('payment_method')).toEqual({
       fromUrl: false,
       fromStore: false,
@@ -109,9 +91,7 @@ describe('preserveQueryParams', () => {
   });
 
   it('lists the same names the parameter store documents to page authors', () => {
-    // The store's caution renders into `state/parameter/guide/`, where a page
-    // author reads which keys will not follow their shopper. Two homes for one
-    // list, so they are asserted to agree rather than left to drift.
+    // The caution renders into `state/parameter/guide/`: second home, same list.
     const caution = parameterStateManifest.cautions?.find(c =>
       c.includes('never copied forward')
     );
@@ -124,9 +104,7 @@ describe('preserveQueryParams', () => {
   });
 
   it('carries ref_id, which the upsell chain has no other source for', () => {
-    // accept-upsell.handlers.ts calls preserveQueryParams(acceptUrl) and never
-    // appends ref_id itself. The sweep says this parameter travels; this says who
-    // breaks when it stops — the second upsell page, with no order to add onto.
+    // accept-upsell.handlers.ts never appends it; it breaks when this stops.
     setUrl('/upsell?ref_id=ord_42');
 
     const url = new URL(preserveQueryParams('/upsell-2'));
@@ -135,8 +113,6 @@ describe('preserveQueryParams', () => {
   });
 
   it('does not carry a cancelled attempt onto the order that follows it', () => {
-    // Issue #90 end to end: PayPal cancelled, the shopper stays on the checkout
-    // page and pays by card, the SDK redirects to the success page.
     setUrl('/checkout?payment_failed=true&payment_method=paypal');
 
     const url = new URL(preserveQueryParams('/upsell?ref_id=ord_42'));
@@ -147,9 +123,7 @@ describe('preserveQueryParams', () => {
   });
 
   it('leaves a held-back parameter the caller put on the target itself', () => {
-    // The list decides what is *copied*, never what a caller deliberately built.
-    // getFailureUrl constructs the checkout URL plus the flag; nothing here may
-    // take it back off.
+    // getFailureUrl builds this URL on purpose; the filter is on the copy only.
     setUrl('/checkout?utm_source=newsletter');
 
     const url = new URL(preserveQueryParams('/checkout?payment_failed=true'));
@@ -159,8 +133,6 @@ describe('preserveQueryParams', () => {
   });
 
   it('honours an explicit list without consulting the store', () => {
-    // The other branch, used for the success/failure URLs that go inside the
-    // order payload. It has always taken only what it was asked for.
     setUrl('/checkout?debugger=true&utm_source=newsletter');
     useParameterStore.setState({ params: { affid: 'a-42' } });
 
@@ -172,8 +144,7 @@ describe('preserveQueryParams', () => {
   });
 
   it('still records a held-back parameter in the store', () => {
-    // Deliberate: the failure page's own `data-next-show="param.payment_failed"`
-    // block reads it from there. What changed in #90 is propagation, not capture.
+    // `data-next-show="param.payment_failed"` on the failure page reads it here.
     setUrl('/checkout?payment_failed=true');
 
     preserveQueryParams('/upsell');

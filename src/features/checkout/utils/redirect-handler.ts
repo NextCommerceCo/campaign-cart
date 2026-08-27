@@ -45,9 +45,6 @@ export function handleOrderRedirect(
   }
 
   if (redirectUrl) {
-    // Carries the session's captured parameters — currency, country, attribution
-    // — onto the page the shopper lands on. Not just the debug ones, and not the
-    // one-shot flags either: `NON_PROPAGATING_PARAMS` holds those back.
     const finalUrl = preserveQueryParams(redirectUrl);
     logger.info('Redirecting to:', finalUrl);
     window.location.href = finalUrl;
