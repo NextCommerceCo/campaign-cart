@@ -1,3 +1,4 @@
+export declare const NON_PROPAGATING_PARAMS: Set<string>;
 export declare function preserveQueryParams(targetUrl: string, preserveParams?: string[] | 'all'): string;
 export declare function navigateWithParams(url: string, options?: {
     replace?: boolean;
