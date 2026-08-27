@@ -177,16 +177,24 @@ function readReturnPaths(): CheckoutReturnPaths | null {
  * - the path matches the `payment_failed_url` this session sent with its order —
  *   which covers the stores that have. A store pointing **both** legs at one page
  *   makes the path meaningless, so that case falls back to the parameter alone.
+ *
+ * The recorded success path outranks both: it came from the order payload this
+ * session sent, where the parameter is a string anything can put on a URL. This
+ * does not loosen #71 — a real failure lands on the failure leg, and one page
+ * serving both legs ignores the success path too. Issue #90.
  */
 export function isPaymentFailureLanding(): boolean {
   if (typeof window === 'undefined') return false;
 
   const { search, pathname } = window.location;
-  if (new URLSearchParams(search).get('payment_failed') === 'true') return true;
+  const recorded = readReturnPaths();
+  const legs =
+    recorded && recorded.failure !== recorded.success ? recorded : null;
+  const here = normalizePath(pathname);
 
-  const paths = readReturnPaths();
-  if (!paths || paths.failure === paths.success) return false;
-  return normalizePath(pathname) === paths.failure;
+  if (legs && here === legs.success) return false;
+  if (new URLSearchParams(search).get('payment_failed') === 'true') return true;
+  return legs ? here === legs.failure : false;
 }
 
 /**

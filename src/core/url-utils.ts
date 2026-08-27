@@ -6,6 +6,21 @@
 import { useParameterStore } from '@/state/parameter';
 
 /**
+ * Params `preserveQueryParams` will not carry to the next page. Two traps:
+ * `ref_id` must never join them (`accept-upsell.handlers.ts` has no other source
+ * for it), and this filters propagation only — capture still stores them, which is
+ * what `data-next-show="param.payment_failed"` reads. Issue #90.
+ */
+export const NON_PROPAGATING_PARAMS: readonly string[] = [
+  'payment_failed',
+  'payment_method',
+  'forcePackageId',
+  'forceShippingId',
+  'forceBundleId',
+  'reset',
+];
+
+/**
  * Preserves query parameters when navigating
  * @param targetUrl - The URL to navigate to
  * @param preserveParams - Array of parameter names to preserve, or 'all' to preserve all stored parameters (defaults to 'all')
@@ -41,6 +56,7 @@ export function preserveQueryParams(
 
       // Apply all parameters to the target URL (don't override existing params in target)
       Object.entries(allParams).forEach(([key, value]) => {
+        if (NON_PROPAGATING_PARAMS.includes(key)) return;
         if (!url.searchParams.has(key)) {
           url.searchParams.append(key, value);
         }

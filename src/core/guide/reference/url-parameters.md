@@ -199,7 +199,7 @@ Add to any page URL:
 
 | Parameter | Values | Default | What it does |
 |---|---|---|---|
-| `payment_failed` ✍︎ | `'true'` | — | **Written by the SDK, not by you.** Added by the SDK to the fallback failure URL — the current page — when no `next-failure-url` meta tag is set. It is a signal for your page to explain that payment did not go through.<br>⚠️ Nothing in the SDK reads it, so a declined visitor comes back to a checkout form that looks exactly as it did before, with no message. Either handle this parameter in your own page code or set `next-failure-url` to a page that does. See [meta tags](./meta-tags.md). |
+| `payment_failed` ✍︎ | `'true'` | — | **Written by the SDK, not by you.** Added by the SDK to the fallback failure URL — the current page — when no `next-failure-url` meta tag is set. It is a signal for your page to explain that payment did not go through.<br>⚠️ Nothing in the SDK **renders** anything from it, so a declined visitor comes back to a checkout form that looks exactly as it did before, with no message. Either handle this parameter in your own page code or set `next-failure-url` to a page that does — see [meta tags](./meta-tags.md), and read it with `data-next-show="param.payment_failed"` or `next.getParam()`. One thing in the SDK does read it: the page a shopper lands on after checkout takes it as proof of a failed payment and reports no `dl_purchase` there. That is why it is one of the few parameters the SDK never copies onto the next page ([issue #90](https://github.com/NextCommerceCo/campaign-cart/issues/90)). |
 
 ## Any other parameter is still captured
 

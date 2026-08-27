@@ -219,6 +219,29 @@ describe('dl_purchase requires a paid order (issue #71)', () => {
       expect(purchases()).toHaveLength(1);
     });
 
+    it('reports on the success page even with a stale payment_failed flag on it', () => {
+      // Issue #90. A cancelled PayPal attempt leaves `?payment_failed=true` in
+      // the address bar; the shopper then pays by card from the same tab. The
+      // flag reaching the success page at all is fixed in
+      // `core/url-utils.ts` (`NON_PROPAGATING_PARAMS`) — this is the second line,
+      // for a flag arriving by a route the SDK does not control: a merchant's own
+      // redirect, a shared link, a restored tab. The recorded success path is
+      // order-specific evidence; the parameter is a string anything can write.
+      rememberCheckoutReturnPaths(
+        'https://shop.test/thanks',
+        'https://shop.test/checkout'
+      );
+      window.history.replaceState(
+        {},
+        '',
+        '/thanks?ref_id=ord_pending&payment_failed=true&payment_method=paypal'
+      );
+
+      EventBus.getInstance().emit('order:completed', PAID as never);
+
+      expect(purchases()).toHaveLength(1);
+    });
+
     it('reports when both legs point at one page, since the path proves nothing', () => {
       // A store that sends success and failure to the same page leaves only the
       // `payment_failed` parameter to go on. Vetoing on the path here would drop
@@ -262,7 +285,9 @@ describe('dl_purchase requires a paid order (issue #71)', () => {
       EcommerceEvents.createPurchaseEvent({ order: { currency: 'USD' } })
     ).toBeNull();
 
-    EventBus.getInstance().emit('order:completed', { currency: 'USD' } as never);
+    EventBus.getInstance().emit('order:completed', {
+      currency: 'USD',
+    } as never);
     expect(purchases()).toHaveLength(0);
   });
 });
