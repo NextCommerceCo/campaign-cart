@@ -103,6 +103,42 @@ test('a card charged on the checkout page reports one purchase, on the thank-you
   expect(events[0].ecommerce.transaction_id).not.toMatch(/^order_\d+$/);
 });
 
+test('a card paid after a cancelled PayPal still reports its purchase', async ({
+  page,
+}) => {
+  // Issue #90, the whole journey in one test. The shopper starts PayPal, backs
+  // out, and lands on the checkout page carrying the flag the SDK puts on its own
+  // failure URL. They stay in the tab and pay by card. Two things had to go wrong
+  // together: the flag was copied onto the success URL, and the landing page read
+  // it as proof that a paid order had failed — so `dl_purchase` never fired and
+  // the sale was invisible to every tag on the page.
+  //
+  // Both assertions matter. The URL one pins the fix at its source
+  // (`NON_PROPAGATING_PARAMS`); the event one would still pass on the recorded
+  // success path alone, which is the second line of defence, not this bug.
+  await page.route('**/api/v1/orders/**', route =>
+    route.fulfill({ json: PAID_ORDER })
+  );
+
+  await bootSdk(page, `${CHECKOUT}?payment_failed=true&payment_method=paypal`);
+  await addOnePackage(page);
+  await submitCard(page);
+
+  await page.waitForURL(
+    url => url.searchParams.get('ref_id') === PAID_ORDER.ref_id
+  );
+  const landed = new URL(page.url());
+  expect(landed.searchParams.get('payment_failed')).toBeNull();
+  expect(landed.searchParams.get('payment_method')).toBeNull();
+
+  await page.waitForFunction(() => Boolean((window as any).next?.on));
+  await afterQueueReplay(page);
+
+  const events = await purchases(page);
+  expect(events).toHaveLength(1);
+  expect(events[0].ecommerce.transaction_id).toBe('E2E-CARD-1');
+});
+
 test('a card sent to 3-D Secure reports nothing until the bank returns', async ({
   page,
 }) => {

@@ -6,6 +6,46 @@
 import { useParameterStore } from '@/state/parameter';
 
 /**
+ * Query parameters that describe **this page load**, not this visitor, and so are
+ * never copied onto an outbound URL.
+ *
+ * `preserveQueryParams` defaults to `'all'` and every in-site navigation the SDK
+ * performs goes through it, so a parameter seen once follows the shopper for the
+ * rest of the session. That is what attribution wants (`utm_*`, `affid`), and the
+ * upsell chain depends on it too: `accept-upsell.handlers.ts` never appends
+ * `ref_id` itself, it relies on arriving this way. It is wrong for a one-shot
+ * signal:
+ *
+ * - `payment_failed` is written by the SDK onto its own default failure URL
+ *   (`checkout/utils/url-utils.ts` › `getFailureUrl`) and read back as a veto on
+ *   `dl_purchase` (`analytics/tracking/purchase-tracking.ts` ›
+ *   `isPaymentFailureLanding`). Carried forward, a cancelled PayPal attempt
+ *   suppressed the purchase event of the card order that followed it, silently —
+ *   [issue #90](https://github.com/NextCommerceCo/campaign-cart/issues/90).
+ * - `payment_method` is written by the platform on that same return leg. The SDK
+ *   never reads it from a URL, and it describes one payment attempt.
+ * - `forcePackageId`, `forceShippingId` and `forceBundleId` are commands, run at
+ *   boot. `forcePackageId` empties the cart before it runs
+ *   (`sdk-initializer.url-params.ts` › `processForcePackageId`), so carrying it
+ *   from a lander to the checkout wipes what the shopper put in.
+ * - `reset` clears storage at boot and already strips itself from the address bar
+ *   (`sdk-initializer.ts` › `loadConfiguration`). It is listed here so the policy
+ *   has one home rather than living in that one `delete`.
+ *
+ * Capture is deliberately left alone: the parameter store still records these, so
+ * a `data-next-show="param.payment_failed"` block on the failure page — the only
+ * way a merchant can explain a declined payment — still works.
+ */
+export const NON_PROPAGATING_PARAMS = new Set([
+  'payment_failed',
+  'payment_method',
+  'forcePackageId',
+  'forceShippingId',
+  'forceBundleId',
+  'reset',
+]);
+
+/**
  * Preserves query parameters when navigating
  * @param targetUrl - The URL to navigate to
  * @param preserveParams - Array of parameter names to preserve, or 'all' to preserve all stored parameters (defaults to 'all')
@@ -41,6 +81,7 @@ export function preserveQueryParams(
 
       // Apply all parameters to the target URL (don't override existing params in target)
       Object.entries(allParams).forEach(([key, value]) => {
+        if (NON_PROPAGATING_PARAMS.has(key)) return;
         if (!url.searchParams.has(key)) {
           url.searchParams.append(key, value);
         }

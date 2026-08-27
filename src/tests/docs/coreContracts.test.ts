@@ -18,6 +18,7 @@ import {
   isReadAccess,
   type ExtractedContract,
 } from '@/docs/extract/extract-core-contracts';
+import { NON_PROPAGATING_PARAMS } from '@/core/url-utils';
 
 /**
  * Generates `core/guide/reference/meta-tags.md` and `url-parameters.md`, and fails when
@@ -175,6 +176,21 @@ describe('core contract docs', () => {
       expect(
         phantom,
         'documented in URL_PARAMETERS but touched nowhere in src/ — remove them rather than leaving a switch that does nothing'
+      ).toEqual([]);
+    });
+
+    it('holds back no parameter that attribution depends on travelling', () => {
+      // `NON_PROPAGATING_PARAMS` decides what `preserveQueryParams` refuses to copy
+      // onto the next page. Every name on it is meant to describe one page load;
+      // an attribution parameter added to it by mistake would stop crediting the
+      // affiliate, silently and for every order, which is the same shape of
+      // failure as issue #90 pointing the other way.
+      const held = URL_PARAMETERS.filter(
+        p => NON_PROPAGATING_PARAMS.has(p.name) && p.group === 'Attribution'
+      ).map(p => p.name);
+      expect(
+        held,
+        'listed in NON_PROPAGATING_PARAMS but documented as attribution — one of the two is wrong'
       ).toEqual([]);
     });
 

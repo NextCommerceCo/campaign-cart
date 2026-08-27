@@ -177,16 +177,35 @@ function readReturnPaths(): CheckoutReturnPaths | null {
  * - the path matches the `payment_failed_url` this session sent with its order —
  *   which covers the stores that have. A store pointing **both** legs at one page
  *   makes the path meaningless, so that case falls back to the parameter alone.
+ *
+ * The recorded **success** path outranks both, because it is the stronger
+ * evidence: it came from the order payload this session actually sent, where the
+ * parameter is only a string on a URL that anything can put there. A cancelled
+ * PayPal attempt leaves `payment_failed=true` on the checkout page's address bar,
+ * and until [issue #90](https://github.com/NextCommerceCo/campaign-cart/issues/90)
+ * `preserveQueryParams` copied it onto the success URL of the card order that
+ * followed — vetoing a purchase that had been paid for. That copy is fixed at
+ * source (`core/url-utils.ts` › `NON_PROPAGATING_PARAMS`); this is the second
+ * line, for the flag arriving by a route the SDK does not control — a merchant's
+ * own redirect, a shared link, a restored tab.
+ *
+ * It does not loosen the guarantee #71 bought. A payment that really failed lands
+ * on the failure leg, which is not the success path, so both signals still apply
+ * there; and when a store points both legs at one page the success path proves
+ * nothing and is ignored, exactly as the failure path already was.
  */
 export function isPaymentFailureLanding(): boolean {
   if (typeof window === 'undefined') return false;
 
   const { search, pathname } = window.location;
-  if (new URLSearchParams(search).get('payment_failed') === 'true') return true;
+  const recorded = readReturnPaths();
+  const legs =
+    recorded && recorded.failure !== recorded.success ? recorded : null;
+  const here = normalizePath(pathname);
 
-  const paths = readReturnPaths();
-  if (!paths || paths.failure === paths.success) return false;
-  return normalizePath(pathname) === paths.failure;
+  if (legs && here === legs.success) return false;
+  if (new URLSearchParams(search).get('payment_failed') === 'true') return true;
+  return legs ? here === legs.failure : false;
 }
 
 /**
