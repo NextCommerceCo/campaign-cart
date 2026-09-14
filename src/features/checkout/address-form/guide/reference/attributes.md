@@ -1,0 +1,95 @@
+---
+title: "Features/Checkout/Address Form/Attributes"
+group: "Features"
+category: "Address Form"
+---
+
+# Attributes
+
+<!-- Generated from the feature manifest. Do not edit by hand:
+     edit <feature>.manifest.ts, then run `npm run docs:reference`. -->
+
+Builds the address fields a country actually collects, in the order that country writes them, so one page works everywhere without a field set per market.
+
+Turned on by `[data-next-address]`.
+
+## `data-next-address`
+
+| | |
+|---|---|
+| Type | `'shipping'` |
+| Required | yes |
+| Default | — |
+
+Turns an empty container into the shipping address block. The fields are built inside it, so whatever the element already held is replaced.
+
+**Valid values:**
+
+- `shipping` — Builds the shipping address fields.
+- `billing` — Accepted but not built yet: the checkout form makes its billing address by copying the shipping one. A warning says so and the container stays empty.
+
+> **Watch out:** The element must be empty. Fields already written inside it are replaced on the first render, not merged with.
+
+---
+
+## `data-next-address-lang`
+
+| | |
+|---|---|
+| Type | `string (language tag)` |
+| Required | no |
+| Default | `en` |
+
+Which language the field labels come back in. Accepts `da de en es fi fr it nl no pt sv th`, with or without a region (`th-TH` works).
+
+> **Watch out:** Labels only. It does not translate the rest of the page, and it does not change which fields a country collects.
+
+---
+
+## `data-next-address-api`
+
+| | |
+|---|---|
+| Type | `string (URL)` |
+| Required | no |
+| Default | — |
+
+Where the layouts are fetched from. Set it to point a page at your own deployment; leave it off for the default.
+
+## Set by the feature
+
+Written to the element as state changes. Read these from CSS or tests instead of inferring state from the rendered text.
+
+| Name | Values | Meaning |
+|---|---|---|
+| `data-next-address-row` | the row index, `0` upward | Goes on each row of the built block, numbered from zero in layout order. Style the rows through it: how many there are and what they hold differs per country, so a stylesheet cannot name them individually. |
+| `data-next-address-field` | a checkout field name — `address1`, `city`, `province`, `postal`, … | Goes on the wrapper around one built field, carrying that field’s checkout-field name. This is how a stylesheet reaches a field that only some countries have. **Watch out:** It is on the wrapper, not on the input. The input next to it carries `data-next-checkout-field` with the same value. |
+
+## Example
+
+Below is an example that puts a country-driven shipping address inside an ordinary
+checkout form. The container is empty: everything inside it at runtime was built from
+the country's layout.
+
+```html
+<form data-next-checkout>
+  <input data-next-checkout-field="email" type="email" />
+  <div data-next-address="shipping"></div>
+  <button type="submit">Pay</button>
+</form>
+```
+
+The fields differ per country, and that is the point. Japan leads with the postcode and
+puts the prefecture beside it; Germany collects no state at all; the United States puts
+city, state and ZIP on one row. A page that hard-codes `address1 / city / state / zip`
+is wrong in most of the world.
+
+## What it does not do
+
+It decides **which fields and in what order**, and nothing else. The country list, the
+province options, the postcode rules, the validation messages and the order payload all
+still come from [checkout-form](../../../checkout-form/guide/overview.md), exactly as they do
+for hand-written fields. That is why the two styles can sit on the same site.
+
+A country that collects a third address line has that line left out: the orders API
+carries `address1` and `address2` and has nowhere to put a third.

@@ -620,6 +620,16 @@ export interface EventMap {
    */
   'address:location-fields-shown': {};
   /**
+   * The address block built its fields for a country, so anything that scanned the form
+   * earlier has to look again. Carries the checkout-field names it rendered, in the order
+   * that country writes them.
+   */
+  'address:fields-rendered': {
+    form: 'shipping' | 'billing';
+    country: string;
+    fields: string[];
+  };
+  /**
    * The shipping address fields were revealed — the visitor moved past the
    * collapsed autocomplete input, so state, city, and postcode are now on screen.
    *

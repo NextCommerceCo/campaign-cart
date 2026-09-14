@@ -366,6 +366,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     await this.initializeProspectCart();
 
     this.listenForPaymentErrors();
+    this.listenForRenderedAddressFields();
     this.listenForDebugCountryChanges();
     this.setupBfcacheRestoreHandler();
     this.setupWindowFocusHandler();
@@ -529,6 +530,26 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       'next:test-mode-activated',
       this.boundHandleKonamiActivation as EventListener
     );
+  }
+
+  /**
+   * An address block built its fields after this form scanned for them.
+   *
+   * `data-next-address` renders a country's fields from a layout it has to fetch, so they
+   * cannot exist when {@link scanAllFields} runs at boot. Re-scanning is the whole
+   * integration: the rendered inputs carry `data-next-checkout-field`, so once they are
+   * found they are ordinary checkout fields and nothing else here knows the difference.
+   *
+   * `update()` re-scans and re-binds the phone widgets, which is exactly what a set of
+   * new fields needs. A page with no address block never emits this.
+   */
+  private listenForRenderedAddressFields(): void {
+    this.on('address:fields-rendered', event => {
+      this.logger.debug(
+        `Address fields rendered for ${event.country}; re-scanning the form`
+      );
+      this.update();
+    });
   }
 
   /**
@@ -2209,11 +2230,16 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
    * Set up detection for browser autofill
    */
 
-  private setupEventHandlers(): void {
-    this.submitHandler = this.handleFormSubmit.bind(this);
-    this.form.addEventListener('submit', this.submitHandler);
-
-    this.changeHandler = this.handleFieldChange.bind(this);
+  /**
+   * Puts the change/blur/input listeners on every scanned field.
+   *
+   * Safe to run again after a re-scan, and that is the point: `this.changeHandler` is one
+   * bound function held for the form's lifetime, so `addEventListener` with it is a no-op
+   * on a field that already has it, and a field that has just replaced another gets it.
+   * Re-scanning alone would find the new elements and leave them deaf.
+   */
+  private bindFieldListeners(): void {
+    if (!this.changeHandler) return;
     [...this.fields.values(), ...this.billingFields.values()].forEach(field => {
       if (
         field instanceof HTMLInputElement ||
@@ -2227,6 +2253,14 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         field.addEventListener('input', this.changeHandler!);
       }
     });
+  }
+
+  private setupEventHandlers(): void {
+    this.submitHandler = this.handleFormSubmit.bind(this);
+    this.form.addEventListener('submit', this.submitHandler);
+
+    this.changeHandler = this.handleFieldChange.bind(this);
+    this.bindFieldListeners();
 
     // Set up Chrome autofill detection
     this.stopAutofillDetection = setupAutofillDetection(
@@ -2433,6 +2467,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
   public update(): void {
     this.scanAllFields();
+    this.bindFieldListeners();
     this.initializePhoneInputs();
   }
 

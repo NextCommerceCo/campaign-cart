@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Address form</title>
+  </head>
+  <body>
+    <h1>Address form fixture</h1>
+
+    <!-- docs:example A country-driven address block -->
+    <!-- The container is empty: the SDK builds the fields a country collects, in
+         the order that country writes them. Everything else on the form is
+         ordinary checkout markup. -->
+    <form data-next-checkout>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input
+          type="text"
+          id="email"
+          data-next-checkout-field="email"
+          name="email"
+        />
+      </div>
+
+      <div data-next-address="shipping"></div>
+
+      <button type="submit">Place order</button>
+    </form>
+    <!-- /docs:example -->
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

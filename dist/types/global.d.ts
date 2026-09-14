@@ -175,6 +175,11 @@ export interface EventMap {
         components: any;
     };
     'address:location-fields-shown': {};
+    'address:fields-rendered': {
+        form: 'shipping' | 'billing';
+        country: string;
+        fields: string[];
+    };
     'checkout:location-fields-shown': {};
     'checkout:billing-location-fields-shown': {};
     'upsell:initialized': {
