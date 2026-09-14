@@ -59,7 +59,7 @@ This is the markup `e2e/fixtures/address-form.html` uses, so it is known to work
 
 ## Check it worked
 
-- With `?debug=true` on the URL, the console shows `Address form initialized for {form}` under `AddressFormEnhancer`. No line means the feature never activated — check the activating attribute is spelled exactly as above.
+- With `?debug=true` on the URL, look for `AddressFormEnhancer` lines in the console. None at all means the feature never activated.
 - It emits `address:fields-rendered`. Listen for one to confirm it is running:
   ```js
   window.nextReady.push(() => {

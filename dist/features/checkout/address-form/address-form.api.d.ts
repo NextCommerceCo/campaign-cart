@@ -1,9 +1,8 @@
-export type AddressRole = string;
 export interface AddressFieldSpec {
     name: string;
     label: string;
     required: boolean;
-    autocomplete: AddressRole;
+    autocomplete: string;
     control: 'text' | 'select' | 'tel';
     optionsSource?: 'states';
     placeholder?: string;

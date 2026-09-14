@@ -532,17 +532,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     );
   }
 
-  /**
-   * An address block built its fields after this form scanned for them.
-   *
-   * `data-next-address` renders a country's fields from a layout it has to fetch, so they
-   * cannot exist when {@link scanAllFields} runs at boot. Re-scanning is the whole
-   * integration: the rendered inputs carry `data-next-checkout-field`, so once they are
-   * found they are ordinary checkout fields and nothing else here knows the difference.
-   *
-   * `update()` re-scans and re-binds the phone widgets, which is exactly what a set of
-   * new fields needs. A page with no address block never emits this.
-   */
+  /** `data-next-address` builds its fields after {@link scanAllFields} has already run. */
   private listenForRenderedAddressFields(): void {
     this.on('address:fields-rendered', event => {
       this.logger.debug(
@@ -2231,12 +2221,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
    */
 
   /**
-   * Puts the change/blur/input listeners on every scanned field.
-   *
-   * Safe to run again after a re-scan, and that is the point: `this.changeHandler` is one
-   * bound function held for the form's lifetime, so `addEventListener` with it is a no-op
-   * on a field that already has it, and a field that has just replaced another gets it.
-   * Re-scanning alone would find the new elements and leave them deaf.
+   * Re-runnable: `changeHandler` is one bound function for the form's lifetime, so
+   * `addEventListener` is a no-op on a field that already has it. A re-scan that skipped
+   * this would find the new elements and leave them deaf.
    */
   private bindFieldListeners(): void {
     if (!this.changeHandler) return;

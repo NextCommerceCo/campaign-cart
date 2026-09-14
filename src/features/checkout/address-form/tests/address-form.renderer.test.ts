@@ -1,11 +1,3 @@
-/**
- * Turning a country's layout into inputs the checkout form can read.
- *
- * The specs here are the shapes next-address serves (`docs/http-api.md`,
- * `packages/data/src/types.ts`): `fields` describes every field, and `layout` is what says
- * which of them the country collects and how they are grouped.
- */
-
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { AddressSpec } from '../address-form.api';
@@ -22,7 +14,6 @@ const text = (
   extra: Record<string, unknown> = {}
 ) => ({ name, label, required: true, autocomplete, control: 'text' as const, ...extra });
 
-/** The US: city, state and ZIP share one row. */
 const US: AddressSpec = {
   country: 'US',
   layout: [['country'], ['line1'], ['city', 'state', 'postcode']],
@@ -42,7 +33,6 @@ const US: AddressSpec = {
   },
 };
 
-/** Japan leads with the postcode and puts the prefecture beside it. */
 const JP: AddressSpec = {
   country: 'JP',
   layout: [['country'], ['postcode', 'state'], ['city'], ['line1']],
@@ -55,7 +45,6 @@ const JP: AddressSpec = {
   },
 };
 
-/** Thailand collects a sub-district on a third line, which this SDK has nowhere to put. */
 const TH: AddressSpec = {
   country: 'TH',
   layout: [['country'], ['line1'], ['line3'], ['city'], ['postcode']],
@@ -91,8 +80,7 @@ describe('sdkFieldName', () => {
     expect(sdkFieldName('line1', 'billing')).toBe('billing-address1');
   });
 
-  /** The orders API carries two address lines, so a third has nowhere to go. */
-  it('maps line3 to nothing', () => {
+    it('maps line3 to nothing', () => {
     expect(sdkFieldName('line3', 'shipping')).toBeNull();
   });
 });
@@ -104,10 +92,6 @@ describe('renderAddressSpec', () => {
     expect(rendered).toEqual(['country', 'address1', 'city', 'province', 'postal']);
   });
 
-  /**
-   * The reason this feature exists: the same code produces a different form per country.
-   * Japan's postcode leads, and it shares its row with the prefecture.
-   */
   it('puts a country’s fields where that country writes them', () => {
     const rendered = renderAddressSpec(container, JP, { form: 'shipping' });
 
@@ -120,10 +104,6 @@ describe('renderAddressSpec', () => {
     ).toEqual(['postal', 'province']);
   });
 
-  /**
-   * The only contract that matters: the checkout form scans for this attribute, so a
-   * field built here has to be indistinguishable from one a page author typed.
-   */
   it('marks every control as a checkout field', () => {
     renderAddressSpec(container, US, { form: 'shipping' });
 
@@ -133,8 +113,7 @@ describe('renderAddressSpec', () => {
     expect(fields).toEqual(['country', 'address1', 'city', 'province', 'postal']);
   });
 
-  /** Without the prefix a browser autofills the billing form from shipping data. */
-  it('prefixes autocomplete with the form it belongs to', () => {
+    it('prefixes autocomplete with the form it belongs to', () => {
     renderAddressSpec(container, US, { form: 'shipping' });
 
     expect(
@@ -200,10 +179,6 @@ describe('readRenderedValues', () => {
     expect(readRenderedValues(container)).toEqual({ city: 'Testville' });
   });
 
-  /**
-   * A province belongs to the country being left, so carrying it across would put it in
-   * a list that does not contain it.
-   */
   it('does not carry a dropdown choice into another country', () => {
     renderAddressSpec(container, US, { form: 'shipping' });
     const province = container.querySelector<HTMLSelectElement>(
