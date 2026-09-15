@@ -63,6 +63,7 @@ Written to the element as state changes. Read these from CSS or tests instead of
 | Name | Values | Meaning |
 |---|---|---|
 | `data-next-address-row` | the row index, `0` upward | Goes on each row of the built block, numbered from zero in layout order. Style the rows through it: how many there are and what they hold differs per country, so a stylesheet cannot name them individually. |
+| `data-next-address-state` | `loading`, `ready`, `failed` | Goes on the block itself and says where it is. Hold space for the fields while they are on their way by keying off `loading`, and it is released when they arrive or when they are not coming. **Watch out:** Reserving space on `:empty` instead leaves a gap forever on a page whose layout request failed. |
 | `data-next-address-field` | a checkout field name — `address1`, `city`, `province`, `postal`, … | Goes on the wrapper around one built field, carrying that field’s checkout-field name. This is how a stylesheet reaches a field that only some countries have. **Watch out:** It is on the wrapper, not on the input. The input next to it carries `data-next-checkout-field` with the same value. |
 
 ## Example

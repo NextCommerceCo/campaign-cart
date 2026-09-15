@@ -57,6 +57,14 @@ export default defineFeature({
       values: 'the row index, `0` upward',
     },
     {
+      name: 'data-next-address-state',
+      description:
+        'Goes on the block itself and says where it is. Hold space for the fields while they are on their way by keying off `loading`, and it is released when they arrive or when they are not coming.',
+      values: '`loading`, `ready`, `failed`',
+      notes:
+        'Reserving space on `:empty` instead leaves a gap forever on a page whose layout request failed.',
+    },
+    {
       name: 'data-next-address-field',
       description:
         'Goes on the wrapper around one built field, carrying that field’s checkout-field name. This is how a stylesheet reaches a field that only some countries have.',

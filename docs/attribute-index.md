@@ -9,7 +9,7 @@ category: "Attributes"
 <!-- Generated from the feature manifests. Do not edit by hand:
      edit the feature's *.manifest.ts, then run `npm run docs:reference`. -->
 
-Every attribute the SDK reads or writes — 274 of them across 29 features — with the feature that owns each one. Follow a feature link for what its attributes mean, their defaults, and their traps.
+Every attribute the SDK reads or writes — 275 of them across 29 features — with the feature that owns each one. Follow a feature link for what its attributes mean, their defaults, and their traps.
 
 Attributes marked **sets** are written *by* the SDK for you to read from CSS or tests; you do not set them yourself.
 
@@ -357,6 +357,7 @@ Turned on by `[data-next-address]`.
 | `data-next-address-lang` | optional | `en` |
 | `data-next-address-api` | optional | — |
 | `data-next-address-row` | **sets** | — |
+| `data-next-address-state` | **sets** | — |
 | `data-next-address-field` | **sets** | — |
 
 ### [checkout-form](../src/features/checkout/checkout-form/guide/overview.md)

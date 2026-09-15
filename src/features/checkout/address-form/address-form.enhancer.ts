@@ -11,6 +11,8 @@ export class AddressFormEnhancer extends BaseEnhancer {
   private lang?: string;
   private baseUrl?: string;
   private renderedCountry?: string;
+  /** The country of the most recent render request, in flight or not. */
+  private requestedCountry?: string;
 
   public async initialize(): Promise<void> {
     this.validateElement();
@@ -20,9 +22,13 @@ export class AddressFormEnhancer extends BaseEnhancer {
       useCheckoutStore.getState().formData.country || FALLBACK_COUNTRY;
     await this.renderCountry(country);
 
+    // Compared against what was last *asked for*, not what is on screen. Going back to
+    // the country already rendered, while a different one is still in flight, is a real
+    // change of mind: judged against the screen it reads as "no change", the render never
+    // starts, and the in-flight layout lands last and wins.
     this.subscribe(useCheckoutStore, state => {
       const next = state.formData.country;
-      if (next && next !== this.renderedCountry) void this.renderCountry(next);
+      if (next && next !== this.requestedCountry) void this.renderCountry(next);
     });
   }
 
@@ -60,8 +66,19 @@ export class AddressFormEnhancer extends BaseEnhancer {
     return names;
   }
 
+  /**
+   * Says where the block is, so a stylesheet can hold space for fields that are coming
+   * without holding it for fields that never will.
+   */
+  private setState(state: 'loading' | 'ready' | 'failed'): void {
+    this.element.setAttribute('data-next-address-state', state);
+  }
+
   /** A failure leaves what is on screen alone rather than emptying a half-typed form. */
   private async renderCountry(countryCode: string): Promise<void> {
+    this.requestedCountry = countryCode;
+    if (!this.renderedCountry) this.setState('loading');
+
     let spec: AddressSpec;
     try {
       spec = await fetchAddressSpec(countryCode, {
@@ -70,6 +87,21 @@ export class AddressFormEnhancer extends BaseEnhancer {
       });
     } catch (error) {
       this.logger.error(`Failed to load the address layout for ${countryCode}:`, error);
+      if (this.requestedCountry === countryCode) {
+        // Forget the request, so choosing this country again is a change and retries it.
+        this.requestedCountry = this.renderedCountry;
+        if (!this.renderedCountry) this.setState('failed');
+      }
+      return;
+    }
+
+    // A later country was asked for while this layout was in flight. Rendering it now
+    // would leave the form showing a country the store has already moved off, and the
+    // store write that would correct it has been and gone.
+    if (this.requestedCountry !== countryCode) {
+      this.logger.debug(
+        `Discarding the ${countryCode} layout; ${this.requestedCountry} was asked for since`
+      );
       return;
     }
 
@@ -80,6 +112,7 @@ export class AddressFormEnhancer extends BaseEnhancer {
       alreadyCollected: this.collectedElsewhere(),
     });
     this.renderedCountry = countryCode;
+    this.setState('ready');
 
     this.logger.debug(
       `Rendered ${fields.length} address fields for ${countryCode}`,

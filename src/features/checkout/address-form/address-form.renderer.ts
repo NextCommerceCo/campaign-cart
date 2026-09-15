@@ -86,6 +86,7 @@ export function renderAddressSpec(
   ctx: AddressRenderContext
 ): string[] {
   const rendered: string[] = [];
+  const built = new Set<string>();
   const fragment = document.createDocumentFragment();
 
   spec.layout.forEach((row, rowIndex) => {
@@ -93,11 +94,19 @@ export function renderAddressSpec(
       .map(name => ({ name, field: spec.fields[name] }))
       .filter((entry): entry is { name: string; field: AddressFieldSpec } => {
         const checkoutField = sdkFieldName(entry.name, ctx.form);
-        return (
-          Boolean(entry.field) &&
-          checkoutField !== null &&
-          !ctx.alreadyCollected?.has(checkoutField)
-        );
+        if (
+          !entry.field ||
+          checkoutField === null ||
+          ctx.alreadyCollected?.has(checkoutField) ||
+          // One element per field name. Two would leave the order built from whichever
+          // the checkout form scanned last, which is the defect this whole block has to
+          // avoid — a layout naming a field twice must not reintroduce it.
+          built.has(checkoutField)
+        ) {
+          return false;
+        }
+        built.add(checkoutField);
+        return true;
       });
 
     if (cells.length === 0) return;

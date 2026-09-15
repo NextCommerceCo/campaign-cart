@@ -5,6 +5,7 @@ import {
   stubCart,
   stubAddressAutocomplete,
   bootSdk,
+  captureEvents,
 } from './fixtures/routes';
 import { CHECKOUT_KEY } from './fixtures/storage-keys';
 
@@ -45,20 +46,37 @@ const JP_SPEC = {
 };
 
 /**
+ * How long the block's layout request is held before it answers.
+ *
+ * Not padding: it is the ordering every visitor gets. The checkout form finishes its own
+ * boot — filling the country dropdown, binding its field listeners, putting stored values
+ * back — against whatever is on the page at that moment, and on a real connection the
+ * layout has not arrived yet. Answering instantly lets the block render *inside* that
+ * boot, which is a race no visitor wins and which quietly turned four of these tests
+ * green while the feature was broken in the browser.
+ *
+ * The form's own requests are not held, only the block's: boot awaits those.
+ */
+const LAYOUT_DELAY_MS = 300;
+
+/**
  * One stub for both callers: the checkout form's `CountryService` and this feature read
  * the same service, `/v1/bootstrap` for the country list and `/v1/layout/:country` for
- * one country's rules.
+ * one country's rules. The two are told apart by `include=states`, which only the form
+ * asks for.
  */
 async function stubAddressService(page: Page): Promise<void> {
-  await page.route('**/next-address*/**', route => {
+  await page.route('**/next-address*/**', async route => {
     const url = route.request().url();
     const country = url.match(/\/v1\/layout\/([A-Z]{2})/)?.[1];
     const spec = country === 'JP' ? JP_SPEC : US_SPEC;
+    const states = [{ code: 'NY', name: 'New York' }];
 
     if (country) {
-      return route.fulfill({
-        json: { spec, states: [{ code: 'NY', name: 'New York' }] },
-      });
+      if (!url.includes('include=states')) {
+        await new Promise(resolve => setTimeout(resolve, LAYOUT_DELAY_MS));
+      }
+      return route.fulfill({ json: { spec, states } });
     }
     return route.fulfill({
       json: {
@@ -68,7 +86,7 @@ async function stubAddressService(page: Page): Promise<void> {
           { code: 'US', name: 'United States' },
           { code: 'JP', name: 'Japan' },
         ],
-        states: [{ code: 'NY', name: 'New York' }],
+        states,
       },
     });
   });
@@ -227,17 +245,6 @@ test('a field the country requires shows its error on submit', async ({ page }) 
 test('the dropdowns are filled even when the layout arrives after boot', async ({
   page,
 }) => {
-  await page.route('**/next-address*/v1/layout/**', async route => {
-    await new Promise(resolve => setTimeout(resolve, 600));
-    const country = route.request().url().match(/\/v1\/layout\/([A-Z]{2})/)?.[1];
-    return route.fulfill({
-      json: {
-        spec: country === 'JP' ? JP_SPEC : US_SPEC,
-        states: [{ code: 'NY', name: 'New York' }],
-      },
-    });
-  });
-
   await bootSdk(page, FIXTURE);
   await expect(page.locator(FIELD('country'))).toBeVisible();
 
@@ -321,10 +328,6 @@ test('suggestions still load after a country change replaces the field', async (
 });
 
 test('a returning visitor sees the address they already gave', async ({ page }) => {
-  await page.route('**/next-address*/v1/layout/**', async route => {
-    await new Promise(resolve => setTimeout(resolve, 600));
-    return route.fulfill({ json: { spec: US_SPEC, states: [{ code: 'NY', name: 'New York' }] } });
-  });
   await page.addInitScript(key => {
     sessionStorage.setItem(
       key,
@@ -345,7 +348,9 @@ test('a returning visitor sees the address they already gave', async ({ page }) 
   await expect(page.locator(FIELD('postal'))).toHaveValue('60448');
 });
 
-test('a failed layout lookup leaves the page usable', async ({ page }) => {
+test('a failed layout lookup leaves the page usable, and holds no space', async ({
+  page,
+}) => {
   await page.route('**/next-address*/**', route =>
     route.fulfill({ status: 503, json: { error: 'unavailable' } })
   );
@@ -357,4 +362,75 @@ test('a failed layout lookup leaves the page usable', async ({ page }) => {
 
   await expect(page.locator(FIELD('email'))).toBeVisible();
   expect(errors).toEqual([]);
+
+  // A stylesheet holds space while the fields are coming. Nothing is coming.
+  await expect(page.locator('[data-next-address]')).toHaveAttribute(
+    'data-next-address-state',
+    'failed'
+  );
+});
+
+/**
+ * Two country changes in quick succession. The first layout is held longer than the
+ * second, so it lands last — and rendering it then would leave the form on a country the
+ * store has already moved off, with no further store write to correct it.
+ */
+test('a layout that arrives after a newer one is discarded', async ({ page }) => {
+  await bootSdk(page, FIXTURE);
+  await expect(page.locator(FIELD('address1'))).toBeVisible();
+
+  await page.unroute('**/next-address*/**');
+  await page.route('**/next-address*/**', async route => {
+    const country = route.request().url().match(/\/v1\/layout\/([A-Z]{2})/)?.[1];
+    if (!country) return route.fulfill({ status: 500, json: {} });
+    // JP is asked for first and answers last.
+    await new Promise(r => setTimeout(r, country === 'JP' ? 900 : 100));
+    return route.fulfill({
+      json: { spec: country === 'JP' ? JP_SPEC : US_SPEC, states: [] },
+    });
+  });
+
+  const rendered = await captureEvents(page, 'address:fields-rendered');
+
+  // Both in one tick, so both renders are genuinely in flight. Driving this through two
+  // `selectOption` calls does not race: the second waits for the element to be stable,
+  // which means waiting for the first render to land.
+  await page.evaluate(() => {
+    const select = document.querySelector(
+      '[data-next-checkout-field="country"]'
+    ) as HTMLSelectElement;
+    for (const value of ['JP', 'US']) {
+      select.value = value;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  });
+
+  const order = () =>
+    page
+      .locator('[data-next-address] [data-next-checkout-field]')
+      .evaluateAll(els => els.map(el => el.getAttribute('data-next-checkout-field')));
+
+  // No fname/lname: the page collects those itself, so the block leaves them alone.
+  const US_ORDER = ['country', 'address1', 'city', 'province', 'postal'];
+
+  await expect.poll(order, { timeout: 4000 }).toEqual(US_ORDER);
+
+  // Well after the slower JP answer has landed. The form self-corrects if a stale layout
+  // does render, so what is asserted is that one was never rendered: the countries this
+  // block reports building, in order, must never go back to JP.
+  await page.waitForTimeout(1500);
+  expect(await order()).toEqual(US_ORDER);
+  const countries = await rendered.all();
+  expect(countries.map(e => (e as { country: string }).country).at(-1)).toBe('US');
+  expect(countries.filter(e => (e as { country: string }).country === 'JP')).toEqual([]);
+});
+
+test('the block says it is loading until its fields arrive', async ({ page }) => {
+  await bootSdk(page, FIXTURE);
+  await expect(page.locator(FIELD('address1'))).toBeVisible();
+
+  await expect(page.locator('[data-next-address]')).toHaveAttribute(
+    'data-next-address-state',
+    'ready'
+  );
 });

@@ -171,6 +171,20 @@ describe('renderAddressSpec', () => {
     expect(rows).not.toContain('1');
   });
 
+  it('builds a field once even when the layout names it twice', () => {
+    const twice: AddressSpec = {
+      ...US,
+      layout: [['country'], ['line1'], ['line1'], ['city']],
+    };
+
+    const rendered = renderAddressSpec(container, twice, { form: 'shipping' });
+
+    expect(rendered).toEqual(['country', 'address1', 'city']);
+    expect(
+      container.querySelectorAll('[data-next-checkout-field="address1"]')
+    ).toHaveLength(1);
+  });
+
   it('replaces the previous country’s fields rather than adding to them', () => {
     renderAddressSpec(container, US, { form: 'shipping' });
     renderAddressSpec(container, JP, { form: 'shipping' });
