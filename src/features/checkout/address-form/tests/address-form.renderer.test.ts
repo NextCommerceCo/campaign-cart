@@ -160,6 +160,34 @@ describe('renderAddressSpec', () => {
     ).toBe('1 Test Street');
   });
 
+  it('wraps every field in .form-group, which the SDK queries for', () => {
+    renderAddressSpec(container, US, { form: 'shipping' });
+
+    expect(container.querySelectorAll('.form-group')).toHaveLength(5);
+    expect(
+      container
+        .querySelector('[data-next-address-field="province"]')
+        ?.classList.contains('form-group')
+    ).toBe(true);
+  });
+
+  it('builds billing-prefixed fields for a billing block', () => {
+    const rendered = renderAddressSpec(container, US, { form: 'billing' });
+
+    expect(rendered).toEqual([
+      'billing-country',
+      'billing-address1',
+      'billing-city',
+      'billing-province',
+      'billing-postal',
+    ]);
+    expect(
+      container
+        .querySelector('[data-next-checkout-field="billing-address1"]')
+        ?.getAttribute('autocomplete')
+    ).toBe('billing address-line1');
+  });
+
   it('labels every control, and the label points at it', () => {
     renderAddressSpec(container, JP, { form: 'shipping' });
 

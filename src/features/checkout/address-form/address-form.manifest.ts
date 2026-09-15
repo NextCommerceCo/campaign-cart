@@ -12,10 +12,10 @@ export default defineFeature({
   attributes: [
     {
       name: 'data-next-address',
-      type: "'shipping'",
+      type: "'shipping' | 'billing'",
       required: true,
       description:
-        'Turns an empty container into the shipping address block. The fields are built inside it, so whatever the element already held is replaced.',
+        'Turns an empty container into an address block and says which address it collects. The fields are built inside it, so whatever the element already held is replaced.',
       values: [
         {
           value: 'shipping',
@@ -24,7 +24,7 @@ export default defineFeature({
         {
           value: 'billing',
           description:
-            'Accepted but not built yet: the checkout form makes its billing address by copying the shipping one. A warning says so and the container stays empty.',
+            'Builds the billing address fields, named `billing-address1`, `billing-city` and so on.',
         },
       ],
       notes:
@@ -113,6 +113,11 @@ The fields differ per country, and that is the point. Japan leads with the postc
 puts the prefecture beside it; Germany collects no state at all; the United States puts
 city, state and ZIP on one row. A page that hard-codes \`address1 / city / state / zip\`
 is wrong in most of the world.
+
+A billing block is \`data-next-address="billing"\`, and its fields are named
+\`billing-…\`. Do not leave an \`os-checkout-component="billing-form"\` container on the
+same page: that is the checkout form's own clone-from-shipping mount, and with both
+present the page gets two sets of \`billing-*\` fields.
 
 ## What it does not do
 

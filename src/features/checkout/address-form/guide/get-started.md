@@ -28,7 +28,7 @@ These attributes are required:
 
 | Attribute | Type | What it does |
 |---|---|---|
-| `data-next-address` | `'shipping'` | Turns an empty container into the shipping address block. |
+| `data-next-address` | `'shipping' \| 'billing'` | Turns an empty container into an address block and says which address it collects. |
 
 Everything else is optional — see [attributes.md](./reference/attributes.md).
 

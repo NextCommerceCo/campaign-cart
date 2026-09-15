@@ -32,17 +32,9 @@ export class AddressFormEnhancer extends BaseEnhancer {
     void this.renderCountry(country);
   }
 
-  /**
-   * `billing` is left to the checkout form, which clones the shipping address. Rendering
-   * one here too would put two sets of `billing-*` fields on the page.
-   */
   private readConfiguration(): void {
-    if (this.getAttribute('data-next-address') === 'billing') {
-      this.logger.warn(
-        'data-next-address="billing" is not rendered yet; the checkout form clones the billing address from the shipping one'
-      );
-    }
-    this.form = 'shipping';
+    this.form =
+      this.getAttribute('data-next-address') === 'billing' ? 'billing' : 'shipping';
     this.lang = this.getAttribute('data-next-address-lang') ?? undefined;
     this.baseUrl = this.getAttribute('data-next-address-api') ?? undefined;
   }

@@ -53,8 +53,9 @@ checkout store country ──► GET /v1/layout/{country}
   error. A visitor from an uncurated country still has to be able to check out.
 - A failed lookup leaves whatever is on screen alone. Losing a half-typed address to a
   timed-out request is worse than an out-of-date layout.
-- `data-next-address="billing"` is accepted and warns: the checkout form builds its
-  billing address by copying the shipping one.
+- `data-next-address="billing"` builds the same layout under `billing-` names. A page
+  using it must drop the `os-checkout-component="billing-form"` container, which is the
+  checkout form's own clone-from-shipping mount.
 
 ## Decisions
 
@@ -72,7 +73,6 @@ checkout store country ──► GET /v1/layout/{country}
 
 ## Limitations
 
-- Does not build the billing address. The checkout form copies the shipping one.
 - Does not collect a third address line. The orders API carries `address1` and `address2`
   and has nowhere to put a third, so a country that collects one has that field left out.
 - Does not translate anything but the field labels, and only when

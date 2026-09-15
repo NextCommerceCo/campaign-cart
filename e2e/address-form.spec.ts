@@ -177,6 +177,18 @@ test('a typed address survives the rebuild', async ({ page }) => {
   await expect(page.locator(FIELD('address1'))).toHaveValue('1 Test Street');
 });
 
+test('a field the country requires shows its error on submit', async ({ page }) => {
+  await bootSdk(page, FIXTURE);
+  await expect(page.locator(FIELD('address1'))).toBeVisible();
+
+  await page.click('button[type="submit"]');
+
+  await expect(page.locator(FIELD('address1'))).toHaveClass(/next-error-field/);
+  await expect(
+    page.locator('[data-next-address-field="address1"] .next-error-label')
+  ).toBeVisible();
+});
+
 test('a failed layout lookup leaves the page usable', async ({ page }) => {
   await page.route('**/next-address*/**', route =>
     route.fulfill({ status: 503, json: { error: 'unavailable' } })

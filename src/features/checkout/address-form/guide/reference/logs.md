@@ -21,14 +21,6 @@ Something did not work. Each of these means a visitor saw the wrong thing, or no
 |---|---|---|
 | `Failed to load the address layout for {countryCode}:` | `address-form.enhancer.ts › AddressFormEnhancer.renderCountry` | yes |
 
-## Warn
-
-The feature carried on, but something in the markup or the data was not what it expected — usually a misspelled attribute or an id that matches nothing. Worth fixing even when the page looks fine.
-
-| Message | Source | Extra context |
-|---|---|---|
-| `data-next-address="billing" is not rendered yet; the checkout form clones the billing address from the shipping one` | `address-form.enhancer.ts › AddressFormEnhancer.readConfiguration` | — |
-
 ## Debug
 
 Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the play-by-play, not a list of problems.

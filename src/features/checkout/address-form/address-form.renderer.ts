@@ -96,7 +96,10 @@ export function renderAddressSpec(
       const id = `next-${ctx.form}-${checkoutField}`;
 
       const cell = document.createElement('div');
-      cell.className = 'next-address-field';
+      // `form-group` is not decoration: the SDK's error labels, its validation wrapper
+      // lookup, its floating labels and the hiding of a province field for a country with
+      // no states all query for it.
+      cell.className = 'form-group next-address-field';
       cell.setAttribute('data-next-address-field', checkoutField);
       if (field.span) cell.style.flexGrow = String(field.span);
 
