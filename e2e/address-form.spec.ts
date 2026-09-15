@@ -1,6 +1,11 @@
 import { test, expect, type Page } from '@playwright/test';
 import { MINIMAL_CAMPAIGN } from './fixtures/campaign';
-import { stubCampaign, stubCart, bootSdk } from './fixtures/routes';
+import {
+  stubCampaign,
+  stubCart,
+  stubAddressAutocomplete,
+  bootSdk,
+} from './fixtures/routes';
 import { CHECKOUT_KEY } from './fixtures/storage-keys';
 
 /**
@@ -76,6 +81,33 @@ test.beforeEach(async ({ page }) => {
 });
 
 const FIELD = (name: string) => `[data-next-checkout-field="${name}"]`;
+
+const SUGGESTION = {
+  label: '123 Main St, Testville, NY 10001',
+  address: {
+    line1: '123 Main St',
+    city: 'Testville',
+    state: 'New York',
+    state_code: 'NY',
+    postcode: '10001',
+    country: 'United States',
+    country_code: 'US',
+  },
+};
+
+/**
+ * Address suggestions attach to the address input. The provider loads on the first focus
+ * of it, and that input is built by this feature — it does not exist when the provider is
+ * wired, and it is replaced by a different element every time the country changes.
+ */
+async function withAutocomplete(page: Page): Promise<void> {
+  await stubAddressAutocomplete(page, [SUGGESTION]);
+  await page.addInitScript(() => {
+    (window as any).nextConfig = {
+      addressConfig: { enableAutocomplete: true },
+    };
+  });
+}
 
 test('builds the fields the country collects, in the order it writes them', async ({
   page,
@@ -247,6 +279,45 @@ test('a field the page already collects is not built a second time', async ({ pa
       }, CHECKOUT_KEY)
     )
     .toBe('Gwen');
+});
+
+test('suggestions load on an address field this feature built', async ({ page }) => {
+  await withAutocomplete(page);
+  await bootSdk(page, FIXTURE);
+
+  await page.locator(FIELD('address1')).click();
+  await page.fill(FIELD('address1'), '123 Main');
+
+  const suggestion = page.locator('.pac-item-nextcommerce').first();
+  await expect(suggestion).toBeVisible();
+  await suggestion.click();
+
+  await expect(page.locator(FIELD('city'))).toHaveValue('Testville');
+});
+
+test('suggestions still load after a country change replaces the field', async ({
+  page,
+}) => {
+  await withAutocomplete(page);
+  await bootSdk(page, FIXTURE);
+
+  // Load the provider against the first country's field.
+  await page.locator(FIELD('address1')).click();
+  await page.fill(FIELD('address1'), '123 Main');
+  await expect(page.locator('.pac-item-nextcommerce').first()).toBeVisible();
+
+  // The field it attached to is replaced by a different element.
+  const queried: string[] = [];
+  page.on('request', r => {
+    if (r.url().includes('/addresses/autocomplete/')) queried.push(r.url());
+  });
+  await page.selectOption(FIELD('country'), 'JP');
+  await expect(page.locator(FIELD('postal'))).toBeVisible();
+
+  await page.locator(FIELD('address1')).click();
+  await page.fill(FIELD('address1'), '456 Second');
+
+  await expect.poll(() => queried.length).toBeGreaterThan(0);
 });
 
 test('a failed layout lookup leaves the page usable', async ({ page }) => {

@@ -546,6 +546,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         `Address fields rendered for ${event.country}; re-applying the address form`
       );
       this.update();
+      // Independent of each other and of the province load, which is a request: a failure
+      // to refill a dropdown must not decide whether suggestions are attached.
+      void this.autocompleteEnhancer?.rebind();
       void this.repopulateAddressFields();
     });
   }
@@ -564,7 +567,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const country = checkoutStore.formData.country || this.detectedCountryCode;
 
     this.applySelectedCountry(country, this.countries);
-    await this.loadProvincesForSelectedCountry(country, country, storedProvince);
+    try {
+      await this.loadProvincesForSelectedCountry(country, country, storedProvince);
+    } catch (error) {
+      this.logger.error('Failed to refill the province options:', error);
+    }
 
     if (this.billingFields.size > 0) {
       populateBillingCountryDropdown(this.countryFieldsContext());

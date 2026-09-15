@@ -20,6 +20,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or no
 | Message | Source | Extra context |
 |---|---|---|
 | `[Billing] CRITICAL: Billing section not found!` | `billing-toggle.ts › handleBillingAddressToggle` | — |
+| `Failed to refill the province options:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.repopulateAddressFields` | yes |
 | `Failed to re-initialize credit card service:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupBfcacheRestoreHandler` | yes |
 | `Failed to load country data:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | yes |
 | `Failed to initialize credit card service:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeCreditCard` | yes |
