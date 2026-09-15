@@ -182,6 +182,43 @@ test('a field the country requires shows its error on submit', async ({ page }) 
   ).toBeVisible();
 });
 
+/**
+ * The real ordering, which an instant stub hides.
+ *
+ * The checkout form fills the country and province dropdowns during its own boot. When
+ * the layout arrives after that — which is the ordinary case on a real connection — those
+ * two elements did not exist yet, so nothing had been filled and nothing would refill
+ * them: an empty country select and a province stuck on "Select Country First".
+ */
+test('the dropdowns are filled even when the layout arrives after boot', async ({
+  page,
+}) => {
+  await page.route('**/next-address*/v1/layout/**', async route => {
+    await new Promise(resolve => setTimeout(resolve, 600));
+    const country = route.request().url().match(/\/v1\/layout\/([A-Z]{2})/)?.[1];
+    return route.fulfill({
+      json: {
+        spec: country === 'JP' ? JP_SPEC : US_SPEC,
+        states: [{ code: 'NY', name: 'New York' }],
+      },
+    });
+  });
+
+  await bootSdk(page, FIXTURE);
+  await expect(page.locator(FIELD('country'))).toBeVisible();
+
+  await expect(page.locator(`${FIELD('country')} option`)).not.toHaveCount(0);
+  await expect(
+    page.locator(`${FIELD('country')} option[value="US"]`)
+  ).toHaveCount(1);
+  await expect(page.locator(FIELD('province'))).not.toHaveValue(
+    /Select Country First/
+  );
+  await expect(
+    page.locator(`${FIELD('province')} option[value="NY"]`)
+  ).toHaveCount(1);
+});
+
 test('a failed layout lookup leaves the page usable', async ({ page }) => {
   await page.route('**/next-address*/**', route =>
     route.fulfill({ status: 503, json: { error: 'unavailable' } })

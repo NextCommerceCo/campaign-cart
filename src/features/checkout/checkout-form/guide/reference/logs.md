@@ -181,7 +181,7 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 | `[Billing] No toggle on this page - keeping the stored choice` | `billing-form-setup.ts › reconcileBillingToggle` | — |
 | `[Billing] Set country to:` | `billing-toggle.ts › handleBillingAddressToggle` | yes |
 | `CheckoutFormEnhancer initialized` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initialize` | — |
-| `Address fields rendered for {country}; re-scanning the form` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.listenForRenderedAddressFields` | — |
+| `Address fields rendered for {country}; re-applying the address form` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.listenForRenderedAddressFields` | — |
 | `No campaign shipping countries available, using config` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.configureCountryService` | — |
 | `[Spreedly] Credit card service ready` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeCreditCard` | — |
 | `[Spreedly] Connected floating label callbacks` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeCreditCard` | — |

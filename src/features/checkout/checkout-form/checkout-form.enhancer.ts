@@ -532,14 +532,43 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     );
   }
 
-  /** `data-next-address` builds its fields after {@link scanAllFields} has already run. */
+  /**
+   * `data-next-address` builds its fields after the whole address boot has already run.
+   *
+   * Finding the new elements is only half of it. `initializeAddressManagement` filled a
+   * country dropdown and a province dropdown that did not exist yet, so both arrive empty
+   * and the province sits on "Select Country First" forever. Everything that writes into
+   * those two has to run again against the elements that now exist.
+   */
   private listenForRenderedAddressFields(): void {
     this.on('address:fields-rendered', event => {
       this.logger.debug(
-        `Address fields rendered for ${event.country}; re-scanning the form`
+        `Address fields rendered for ${event.country}; re-applying the address form`
       );
       this.update();
+      void this.repopulateAddressFields();
     });
+  }
+
+  /**
+   * Fills the country and province dropdowns for the country already resolved at boot.
+   *
+   * Reads the stored province before the refill, because `updateStateOptions` clears it
+   * while rebuilding the list — the same order {@link initializeAddressManagement} uses.
+   */
+  private async repopulateAddressFields(): Promise<void> {
+    if (this.countries.length === 0) return;
+
+    const checkoutStore = useCheckoutStore.getState();
+    const storedProvince = checkoutStore.formData.province;
+    const country = checkoutStore.formData.country || this.detectedCountryCode;
+
+    this.applySelectedCountry(country, this.countries);
+    await this.loadProvincesForSelectedCountry(country, country, storedProvince);
+
+    if (this.billingFields.size > 0) {
+      populateBillingCountryDropdown(this.countryFieldsContext());
+    }
   }
 
   /**

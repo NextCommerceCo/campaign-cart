@@ -188,12 +188,31 @@ describe('renderAddressSpec', () => {
     ).toBe('billing address-line1');
   });
 
+  it('falls the placeholder back to the label, so an empty box is never blank', () => {
+    renderAddressSpec(container, US, { form: 'shipping' });
+
+    expect(
+      container.querySelector<HTMLInputElement>('[data-next-checkout-field="city"]')
+        ?.placeholder
+    ).toBe('City');
+  });
+
   it('labels every control, and the label points at it', () => {
     renderAddressSpec(container, JP, { form: 'shipping' });
 
     const label = container.querySelector<HTMLLabelElement>('label');
     expect(label?.textContent).toBe('Country');
     expect(container.querySelector(`#${label?.htmlFor}`)).not.toBeNull();
+  });
+
+  it('puts the label after its control, so CSS can reach it from the control', () => {
+    renderAddressSpec(container, US, { form: 'shipping' });
+
+    const cell = container.querySelector('[data-next-address-field="city"]');
+    expect([...(cell?.children ?? [])].map(el => el.tagName)).toEqual([
+      'INPUT',
+      'LABEL',
+    ]);
   });
 });
 

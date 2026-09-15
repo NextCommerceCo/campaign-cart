@@ -59,7 +59,11 @@ function controlFor(
 
   if (control instanceof HTMLInputElement) {
     control.type = field.control === 'tel' ? 'tel' : 'text';
-    if (field.placeholder) control.placeholder = field.placeholder;
+    // Always set, falling back to the label: it is what makes `:placeholder-shown` usable
+    // for a scriptless floating label, and an empty box has to say what it wants — a
+    // floating label is hidden until there is a value, so a blank placeholder leaves
+    // nothing on screen at all.
+    control.placeholder = field.placeholder || field.label;
     if (field.maxLength) control.maxLength = field.maxLength;
     if (field.inputMode) control.inputMode = field.inputMode;
     if (field.autoCapitalize) control.autocapitalize = field.autoCapitalize;
@@ -107,7 +111,10 @@ export function renderAddressSpec(
       const value = ctx.values?.[checkoutField];
       if (value && control instanceof HTMLInputElement) control.value = value;
 
-      cell.append(labelFor(field, id), control);
+      // Control first, label second: a floating label is positioned over the control by
+      // CSS, and `control + label` is the only way to reach it from the control's state.
+      // `for`/`id` carries the pairing, so the reading order is unaffected.
+      cell.append(control, labelFor(field, id));
 
       if (field.hint) {
         const hint = document.createElement('span');
