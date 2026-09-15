@@ -163,6 +163,17 @@ In almost every case the better answer is to add the feature's \`data-next-*\` a
 
   // ── Country service ────────────────────────────────────────────────────────
   {
+    message: '{url} carried no address layout',
+    owner: 'CountryService',
+    file: 'country-service/country-service.next-address.ts',
+    kind: 'recoverable',
+    cause:
+      'The address service answered, but the body had no list of address rows in it. A proxy or a captive portal returning an HTML page in place of the JSON is the realistic cause.',
+    caught:
+      'Caught by `CountryService` like any other failed lookup: it logs `Failed to fetch location data:` or `Failed to fetch states for {countryCode}:` and continues with the built-in fallback — the country list from configuration, United States as the country, and an empty state list with default labels.',
+    fix: 'Open the URL from the message directly and confirm it answers JSON carrying `spec.layout`. Reaching it through a network that rewrites responses is what produces this.',
+  },
+  {
     message: '{url} responded {status} {statusText}',
     owner: 'CountryService',
     file: 'country-service/country-service.next-address.ts',

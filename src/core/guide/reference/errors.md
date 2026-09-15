@@ -10,7 +10,7 @@ category: "Core Reference"
      src/core. Do not edit by hand: edit core-errors.ts, then run
      `npm run docs:reference`. -->
 
-Every error the SDK's own machinery can raise — 19 of them — at the exact message, so a console line can be matched to a cause. Each feature documents its own throws in its own `guide/reference/errors.md`.
+Every error the SDK's own machinery can raise — 20 of them — at the exact message, so a console line can be matched to a cause. Each feature documents its own throws in its own `guide/reference/errors.md`.
 
 **Recoverable** means a retry or a corrected input gets past it with no code change. **Fatal** means it happens every time until the markup, code, or configuration changes.
 
@@ -32,6 +32,7 @@ Fatal first, since those recur for every visitor until something changes.
 | `Either packageId or items array must be provided` | Fatal | `next-commerce/next-commerce.upsells.ts` |
 | `No test cards available` | Fatal | `test-mode.ts` |
 | `{name}: data-next-display attribute is required` | Fatal | `base/base-display-enhancer.ts` |
+| `{url} carried no address layout` | Recoverable | `country-service/country-service.next-address.ts` |
 | `{url} responded {status} {statusText}` | Recoverable | `country-service/country-service.next-address.ts` |
 | `Order does not support post-purchase upsells or is currently processing.` | Recoverable | `next-commerce/next-commerce.upsells.ts` |
 | `Failed to add upsell - no updated order returned` | Recoverable | `next-commerce/next-commerce.upsells.ts` |
@@ -86,7 +87,7 @@ Every part of `src/core`, and whether it raises anything of its own. "Nothing" i
 | `base/display-value-validator.ts` | `[DisplayValueValidator]` | nothing |
 | `base/dom-observer.ts` | `[DOMObserver]` | nothing |
 | `country-service/country-service.filtering.ts` | `[CountryService]` | nothing |
-| `country-service/country-service.next-address.ts` | — logs nothing | 1 — `{url} responded {status} {statusText}` |
+| `country-service/country-service.next-address.ts` | — logs nothing | 2 — `{url} carried no address layout`, `{url} responded {status} {statusText}` |
 | `country-service/country-service.postal-code.ts` | `[CountryService]` | nothing |
 | `country-service/country-service.ts` | `[CountryService]` | nothing |
 | `debug/country-selector.ts` | `[CountrySelector]` | nothing |
@@ -293,6 +294,19 @@ An `items: []` is treated as nothing provided, so guard an empty selection befor
 ```
 
 The namespace before the dot decides which part of the SDK answers — see the display feature's [attributes reference](../../../features/display/display-core/guide/reference/attributes.md) for the full list.
+
+---
+
+## `{url} carried no address layout`
+
+| | |
+|---|---|
+| Type | Recoverable |
+| Thrown by | `country-service/country-service.next-address.ts` — logs under `[CountryService]` |
+| Cause | The address service answered, but the body had no list of address rows in it. A proxy or a captive portal returning an HTML page in place of the JSON is the realistic cause. |
+| Caught | Caught by `CountryService` like any other failed lookup: it logs `Failed to fetch location data:` or `Failed to fetch states for {countryCode}:` and continues with the built-in fallback — the country list from configuration, United States as the country, and an empty state list with default labels. |
+
+**Fix:** Open the URL from the message directly and confirm it answers JSON carrying `spec.layout`. Reaching it through a network that rewrites responses is what produces this.
 
 ---
 

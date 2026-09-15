@@ -167,7 +167,14 @@ async function getJson<T>(url: string): Promise<T> {
   if (!response.ok) {
     throw new Error(`${url} responded ${response.status} ${response.statusText}`);
   }
-  return (await response.json()) as T;
+
+  const body = await response.json();
+  // Checked here rather than left to the first `layout.some(...)`, which would throw a
+  // TypeError from inside the mapping and tell the caller nothing about the cause.
+  if (!Array.isArray(body?.spec?.layout)) {
+    throw new Error(`${url} carried no address layout`);
+  }
+  return body as T;
 }
 
 /**

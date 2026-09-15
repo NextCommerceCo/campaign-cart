@@ -217,6 +217,13 @@ describe('fetchLocationData', () => {
     expect(await fetchLocationData('https://addr.test')).not.toHaveProperty('detectedIp');
   });
 
+  it('rejects a body whose layout is not a list of rows', async () => {
+    stubFetch({ geo: {}, spec: { country: 'US', layout: {}, fields: {} }, countries: [] });
+    await expect(fetchLocationData('https://addr.test')).rejects.toThrow(
+      'carried no address layout'
+    );
+  });
+
   it('throws on a non-ok response so the caller can fall back', async () => {
     vi.stubGlobal(
       'fetch',

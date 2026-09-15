@@ -47,7 +47,9 @@ export async function fetchAddressSpec(
   }
 
   const body = await response.json();
-  if (!body?.spec?.layout) {
+  // Checked for shape, not just presence: the caller guards the request, not the render,
+  // so a `layout` that is not an array throws where nothing is listening.
+  if (!Array.isArray(body?.spec?.layout)) {
     throw new Error(`Address layout for ${countryCode} carried no layout`);
   }
   return body.spec as AddressSpec;
