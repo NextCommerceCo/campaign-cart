@@ -39,6 +39,27 @@ export class AddressFormEnhancer extends BaseEnhancer {
     this.baseUrl = this.getAttribute('data-next-address-api') ?? undefined;
   }
 
+  /**
+   * Field names the surrounding form already collects outside this block.
+   *
+   * Read fresh on every render: a country change replaces this block's own inputs, and
+   * those must never count as already collected or the block would empty itself.
+   */
+  private collectedElsewhere(): ReadonlySet<string> {
+    const form = this.element.closest('form');
+    if (!form) return new Set();
+
+    const names = new Set<string>();
+    form
+      .querySelectorAll<HTMLElement>('[data-next-checkout-field]')
+      .forEach(field => {
+        if (this.element.contains(field)) return;
+        const name = field.getAttribute('data-next-checkout-field');
+        if (name) names.add(name);
+      });
+    return names;
+  }
+
   /** A failure leaves what is on screen alone rather than emptying a half-typed form. */
   private async renderCountry(countryCode: string): Promise<void> {
     let spec: AddressSpec;
@@ -56,6 +77,7 @@ export class AddressFormEnhancer extends BaseEnhancer {
     const fields = renderAddressSpec(this.element, spec, {
       form: this.form,
       values,
+      alreadyCollected: this.collectedElsewhere(),
     });
     this.renderedCountry = countryCode;
 

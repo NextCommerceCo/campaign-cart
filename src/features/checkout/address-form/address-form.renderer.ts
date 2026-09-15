@@ -18,6 +18,13 @@ export interface AddressRenderContext {
   form: 'shipping' | 'billing';
   /** Keyed by this SDK's field names. */
   values?: Record<string, string>;
+  /**
+   * Checkout fields the page already collects somewhere else, which are not built again.
+   * A country's layout describes a whole address form, contact details included, but a
+   * page is free to collect the name and phone in a step of its own — and two elements
+   * carrying one field name leave the order built from whichever was scanned last.
+   */
+  alreadyCollected?: ReadonlySet<string>;
 }
 
 export function sdkFieldName(
@@ -84,10 +91,14 @@ export function renderAddressSpec(
   spec.layout.forEach((row, rowIndex) => {
     const cells = row
       .map(name => ({ name, field: spec.fields[name] }))
-      .filter(
-        (entry): entry is { name: string; field: AddressFieldSpec } =>
-          Boolean(entry.field) && sdkFieldName(entry.name, ctx.form) !== null
-      );
+      .filter((entry): entry is { name: string; field: AddressFieldSpec } => {
+        const checkoutField = sdkFieldName(entry.name, ctx.form);
+        return (
+          Boolean(entry.field) &&
+          checkoutField !== null &&
+          !ctx.alreadyCollected?.has(checkoutField)
+        );
+      });
 
     if (cells.length === 0) return;
 

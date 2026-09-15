@@ -46,6 +46,9 @@ checkout store country ──► GET /v1/layout/{country}
 
 - The country comes from the checkout store. Before the form has resolved one, the block
   opens on `US` so the page is never empty while a layout is in flight.
+- A field the surrounding form already collects elsewhere is not built again. The page's
+  own markup wins, so a checkout that collects the name in its own step keeps it and the
+  block builds only what is left.
 - A country change rebuilds the block. What the shopper typed into text inputs is read
   back and written into the new fields; a `select` is not carried across, because its
   options belonged to the country being left.

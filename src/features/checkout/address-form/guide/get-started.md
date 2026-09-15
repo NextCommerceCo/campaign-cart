@@ -40,6 +40,14 @@ Everything else is optional — see [attributes.md](./reference/attributes.md).
      ordinary checkout markup. -->
 <form data-next-checkout>
   <div class="form-group">
+    <label for="fname">First name</label>
+    <input type="text" id="fname" data-next-checkout-field="fname" />
+  </div>
+  <div class="form-group">
+    <label for="lname">Last name</label>
+    <input type="text" id="lname" data-next-checkout-field="lname" />
+  </div>
+  <div class="form-group">
     <label for="email">Email</label>
     <input
       type="text"

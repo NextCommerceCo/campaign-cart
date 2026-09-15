@@ -119,6 +119,18 @@ A billing block is \`data-next-address="billing"\`, and its fields are named
 same page: that is the checkout form's own clone-from-shipping mount, and with both
 present the page gets two sets of \`billing-*\` fields.
 
+## A field the page already collects
+
+A country's layout describes a whole address form, the name and phone included. A page
+that collects those in a step of its own keeps them: **a field already carried by a
+\`data-next-checkout-field\` elsewhere in the same form is not built again.** Two elements
+under one field name would leave the order assembled from whichever the form scanned last,
+which is to say from neither reliably.
+
+So a checkout with its own Customer Information step needs no configuration — the block
+builds the address and leaves the name and phone where they are, and the row they would
+have occupied is dropped rather than left empty.
+
 ## What it does not do
 
 It decides **which fields and in what order**, and nothing else. The country list, the

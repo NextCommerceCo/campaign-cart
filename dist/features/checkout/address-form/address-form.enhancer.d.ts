@@ -7,6 +7,7 @@ export declare class AddressFormEnhancer extends BaseEnhancer {
     initialize(): Promise<void>;
     update(): void;
     private readConfiguration;
+    private collectedElsewhere;
     private renderCountry;
 }
 //# sourceMappingURL=address-form.enhancer.d.ts.map

@@ -57,6 +57,17 @@ const TH: AddressSpec = {
   },
 };
 
+/** The same layout with the name row a page may collect in a step of its own. */
+const US_WITH_NAME: AddressSpec = {
+  ...US,
+  layout: [['country'], ['first_name', 'last_name'], ['line1'], ['city', 'state', 'postcode']],
+  fields: {
+    ...US.fields,
+    first_name: text('first_name', 'First name', 'given-name'),
+    last_name: text('last_name', 'Last name', 'family-name'),
+  },
+};
+
 let container: HTMLElement;
 
 beforeEach(() => {
@@ -136,6 +147,28 @@ describe('renderAddressSpec', () => {
 
     expect(rendered).not.toContain('line3');
     expect(rendered).toEqual(['country', 'address1', 'city', 'postal']);
+  });
+
+  it('does not build a field the page already collects elsewhere', () => {
+    const rendered = renderAddressSpec(container, US_WITH_NAME, {
+      form: 'shipping',
+      alreadyCollected: new Set(['fname', 'lname']),
+    });
+
+    expect(rendered).toEqual(['country', 'address1', 'city', 'province', 'postal']);
+    expect(container.querySelector('[data-next-checkout-field="fname"]')).toBeNull();
+  });
+
+  it('drops the row entirely when every field on it is collected elsewhere', () => {
+    renderAddressSpec(container, US_WITH_NAME, {
+      form: 'shipping',
+      alreadyCollected: new Set(['fname', 'lname']),
+    });
+
+    const rows = [...container.querySelectorAll('[data-next-address-row]')].map(r =>
+      r.getAttribute('data-next-address-row')
+    );
+    expect(rows).not.toContain('1');
   });
 
   it('replaces the previous country’s fields rather than adding to them', () => {

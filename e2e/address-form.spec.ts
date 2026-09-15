@@ -15,9 +15,11 @@ const FIXTURE = '/e2e/fixtures/address-form.html';
 
 const US_SPEC = {
   country: 'US',
-  layout: [['country'], ['line1'], ['city', 'state', 'postcode']],
+  layout: [['country'], ['first_name', 'last_name'], ['line1'], ['city', 'state', 'postcode']],
   fields: {
     country: { name: 'country', label: 'Country', required: true, autocomplete: 'country', control: 'select' },
+    first_name: { name: 'first_name', label: 'First name', required: true, autocomplete: 'given-name', control: 'text' },
+    last_name: { name: 'last_name', label: 'Last name', required: true, autocomplete: 'family-name', control: 'text' },
     line1: { name: 'line1', label: 'Address', required: true, autocomplete: 'address-line1', control: 'text' },
     city: { name: 'city', label: 'City', required: true, autocomplete: 'address-level2', control: 'text' },
     state: { name: 'state', label: 'State', required: true, autocomplete: 'address-level1', control: 'select', optionsSource: 'states' },
@@ -217,6 +219,34 @@ test('the dropdowns are filled even when the layout arrives after boot', async (
   await expect(
     page.locator(`${FIELD('province')} option[value="NY"]`)
   ).toHaveCount(1);
+});
+
+/**
+ * A country's layout describes a whole address form, name included, but this page
+ * collects the name in a step of its own. Building it again would put two elements under
+ * `fname` on the page, and the order is assembled from whichever the form scanned last —
+ * so what the shopper typed in the first step is dropped.
+ */
+test('a field the page already collects is not built a second time', async ({ page }) => {
+  await bootSdk(page, FIXTURE);
+  await expect(page.locator(FIELD('address1'))).toBeVisible();
+
+  await expect(page.locator(FIELD('fname'))).toHaveCount(1);
+  await expect(
+    page.locator(`[data-next-address] ${FIELD('fname')}`)
+  ).toHaveCount(0);
+
+  await page.fill(FIELD('fname'), 'Gwen');
+  await page.locator(FIELD('fname')).blur();
+
+  await expect
+    .poll(() =>
+      page.evaluate(key => {
+        const raw = sessionStorage.getItem(key);
+        return raw ? JSON.parse(raw)?.state?.formData?.fname : undefined;
+      }, CHECKOUT_KEY)
+    )
+    .toBe('Gwen');
 });
 
 test('a failed layout lookup leaves the page usable', async ({ page }) => {
