@@ -320,6 +320,31 @@ test('suggestions still load after a country change replaces the field', async (
   await expect.poll(() => queried.length).toBeGreaterThan(0);
 });
 
+test('a returning visitor sees the address they already gave', async ({ page }) => {
+  await page.route('**/next-address*/v1/layout/**', async route => {
+    await new Promise(resolve => setTimeout(resolve, 600));
+    return route.fulfill({ json: { spec: US_SPEC, states: [{ code: 'NY', name: 'New York' }] } });
+  });
+  await page.addInitScript(key => {
+    sessionStorage.setItem(
+      key,
+      JSON.stringify({
+        state: {
+          formData: { address1: '9292 Magnolia Ave', city: 'Mokena', postal: '60448' },
+        },
+        version: 0,
+      })
+    );
+  }, CHECKOUT_KEY);
+
+  await bootSdk(page, FIXTURE);
+  await expect(page.locator(FIELD('address1'))).toBeVisible();
+
+  await expect(page.locator(FIELD('address1'))).toHaveValue('9292 Magnolia Ave');
+  await expect(page.locator(FIELD('city'))).toHaveValue('Mokena');
+  await expect(page.locator(FIELD('postal'))).toHaveValue('60448');
+});
+
 test('a failed layout lookup leaves the page usable', async ({ page }) => {
   await page.route('**/next-address*/**', route =>
     route.fulfill({ status: 503, json: { error: 'unavailable' } })

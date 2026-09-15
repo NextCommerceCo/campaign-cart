@@ -545,12 +545,34 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       this.logger.debug(
         `Address fields rendered for ${event.country}; re-applying the address form`
       );
-      this.update();
-      // Independent of each other and of the province load, which is a request: a failure
-      // to refill a dropdown must not decide whether suggestions are attached.
-      void this.autocompleteEnhancer?.rebind();
-      void this.repopulateAddressFields();
+      void this.reapplyToRenderedFields();
     });
+  }
+
+  /**
+   * Runs every boot step that reads or writes an address field, against the fields that
+   * exist now.
+   *
+   * `initialize` does this work once, in this order, on the assumption that the page it
+   * boots on is complete. `data-next-address` builds its fields from a layout it has to
+   * fetch, so they miss all of it — and are built again from scratch whenever the country
+   * changes. Each step patched on its own was a separate defect: an empty country
+   * dropdown, a province stuck on "Select Country First", suggestions that never
+   * attached, and a returning visitor's saved address left in the store. **A step added
+   * to the boot sequence that touches an address field belongs here too.**
+   *
+   * The order mirrors `initialize`, and it is load-bearing: the province options have to
+   * exist before a stored province can be selected into them.
+   */
+  private async reapplyToRenderedFields(): Promise<void> {
+    this.update();
+
+    // Not sequenced behind the two awaits below, which are requests: whether suggestions
+    // are attached must not depend on a dropdown refill completing.
+    void this.autocompleteEnhancer?.rebind();
+
+    await this.repopulateAddressFields();
+    await this.populateFormData();
   }
 
   /**
