@@ -7,6 +7,10 @@ import { Logger } from '@/core/logger';
 import type { AddressConfig } from '@/types/global';
 import * as postalCodeMethods from '@/core/country-service/country-service.postal-code';
 import * as filteringMethods from '@/core/country-service/country-service.filtering';
+import {
+  fetchCountryStates,
+  fetchLocationData,
+} from '@/core/country-service/country-service.next-address';
 
 export interface CountryConfig {
   stateLabel: string;
@@ -22,6 +26,16 @@ export interface CountryConfig {
    * `AANN NAA` at 7 characters, `AAN NAA` at 6, `AN NAA` at 5).
    */
   postcodeFormat: string | string[] | null;
+  /**
+   * True when {@link postcodeRegex} is written against the postcode **compacted** —
+   * uppercased, spaces removed — rather than against the string as typed.
+   *
+   * next-address defines every pattern that way so one pattern accepts every spacing a
+   * shopper might use (`SW1A 1AA`, `sw1a1aa`). Testing such a pattern against the raw
+   * value rejects the spaced form and blocks the checkout, so the flag travels with the
+   * pattern and `validatePostalCode` compacts before matching.
+   */
+  postcodeCompact?: boolean;
   currencyCode: string;
   currencySymbol: string;
 }
@@ -56,7 +70,6 @@ export class CountryService {
   private static instance: CountryService;
   private cachePrefix = 'next_country_';
   private cacheExpiry = 3600000; // 1 hour in milliseconds
-  private baseUrl = 'https://cdn-countries.muddy-wind-c7ca.workers.dev';
   private logger: Logger;
   private config: AddressConfig = {};
   private campaignShippingCountries: string[] | null = null;
@@ -131,15 +144,7 @@ export class CountryService {
     }
 
     try {
-      const response = await fetch(`${this.baseUrl}/location`);
-
-      if (!response.ok) {
-        throw new Error(
-          `Failed to fetch location data: ${response.statusText}`
-        );
-      }
-
-      const data = await response.json();
+      const data = await fetchLocationData();
       // Store in localStorage for longer persistence
       this.setCache('location_data', data, true);
 
@@ -177,17 +182,7 @@ export class CountryService {
     }
 
     try {
-      const response = await fetch(
-        `${this.baseUrl}/countries/${countryCode}/states`
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          `Failed to fetch states for ${countryCode}: ${response.statusText}`
-        );
-      }
-
-      const data = await response.json();
+      const data = await fetchCountryStates(countryCode);
       // Store in localStorage for longer persistence
       this.setCache(cacheKey, data, true);
 

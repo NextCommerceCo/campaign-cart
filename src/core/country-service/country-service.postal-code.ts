@@ -83,15 +83,20 @@ function checkAgainstCountry(
   postalCode: string,
   countryConfig: CountryConfig
 ): boolean | null {
+  // GB `SW1A 1AA` -> `SW1A1AA`, so one pattern covers every spacing the shopper may use.
+  const value = countryConfig.postcodeCompact
+    ? postalCode.toUpperCase().replace(/\s+/g, '')
+    : postalCode;
+
   if (
-    postalCode.length < countryConfig.postcodeMinLength ||
-    postalCode.length > countryConfig.postcodeMaxLength
+    value.length < countryConfig.postcodeMinLength ||
+    value.length > countryConfig.postcodeMaxLength
   ) {
     return false;
   }
 
   if (!countryConfig.postcodeRegex) return null;
-  return postcodeRegexOf(countryConfig.postcodeRegex)?.test(postalCode) ?? null;
+  return postcodeRegexOf(countryConfig.postcodeRegex)?.test(value) ?? null;
 }
 
 export function validatePostalCode(
@@ -143,6 +148,10 @@ function applyFormat(
   return anchor === 'start' ? formatted : reverse(formatted);
 }
 
+function slotsIn(format: string): number {
+  return [...format].filter(char => FORMAT_SLOTS.has(char)).length;
+}
+
 /**
  * Formats a postal code into the shape its country writes it in, and returns
  * the input unchanged when it cannot.
@@ -153,6 +162,15 @@ function applyFormat(
  * postcodes take more than one shape carries a list, tried in order. A candidate
  * is used only when the country's own `postcodeRegex` accepts it, which also
  * leaves a half-typed value alone instead of rearranging it.
+ *
+ * **A `postcodeCompact` pattern cannot do that choosing**, so length does it instead.
+ * The old patterns carried an optional space in the middle — GB
+ * `^[A-Za-z]{1,2}\d[A-Za-z\d]? ?\d[A-Za-z]{2}$` — which accepted `M1 1AE` and rejected
+ * `M11A E`, and that was the whole tie-break between GB's three shapes. A compact pattern
+ * has no space to place, so both candidates compact to `M11AE` and both match; the first
+ * format in the list would win whatever the shopper typed. Requiring the format to have
+ * exactly as many slots as the code has characters restores the choice, and still leaves
+ * a half-typed value alone — nothing matches it, so it falls through unchanged.
  */
 export function formatPostalCode(
   postalCode: string,
@@ -173,6 +191,9 @@ export function formatPostalCode(
     : [countryConfig.postcodeFormat];
 
   for (const format of formats) {
+    if (countryConfig.postcodeCompact && slotsIn(format) !== cleanCode.length) {
+      continue;
+    }
     for (const anchor of ['start', 'end'] as const) {
       const candidate = applyFormat(cleanCode, format, anchor);
       if (

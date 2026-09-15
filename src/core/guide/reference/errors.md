@@ -10,7 +10,7 @@ category: "Core Reference"
      src/core. Do not edit by hand: edit core-errors.ts, then run
      `npm run docs:reference`. -->
 
-Every error the SDK's own machinery can raise — 20 of them — at the exact message, so a console line can be matched to a cause. Each feature documents its own throws in its own `guide/reference/errors.md`.
+Every error the SDK's own machinery can raise — 19 of them — at the exact message, so a console line can be matched to a cause. Each feature documents its own throws in its own `guide/reference/errors.md`.
 
 **Recoverable** means a retry or a corrected input gets past it with no code change. **Fatal** means it happens every time until the markup, code, or configuration changes.
 
@@ -32,8 +32,7 @@ Fatal first, since those recur for every visitor until something changes.
 | `Either packageId or items array must be provided` | Fatal | `next-commerce/next-commerce.upsells.ts` |
 | `No test cards available` | Fatal | `test-mode.ts` |
 | `{name}: data-next-display attribute is required` | Fatal | `base/base-display-enhancer.ts` |
-| `Failed to fetch location data: {statusText}` | Recoverable | `country-service/country-service.ts` |
-| `Failed to fetch states for {countryCode}: {statusText}` | Recoverable | `country-service/country-service.ts` |
+| `{url} responded {status} {statusText}` | Recoverable | `country-service/country-service.next-address.ts` |
 | `Order does not support post-purchase upsells or is currently processing.` | Recoverable | `next-commerce/next-commerce.upsells.ts` |
 | `Failed to add upsell - no updated order returned` | Recoverable | `next-commerce/next-commerce.upsells.ts` |
 | `HTTP {status}: {statusText}` | Recoverable | `analytics/providers/custom-adapter.ts` |
@@ -87,8 +86,9 @@ Every part of `src/core`, and whether it raises anything of its own. "Nothing" i
 | `base/display-value-validator.ts` | `[DisplayValueValidator]` | nothing |
 | `base/dom-observer.ts` | `[DOMObserver]` | nothing |
 | `country-service/country-service.filtering.ts` | `[CountryService]` | nothing |
+| `country-service/country-service.next-address.ts` | — logs nothing | 1 — `{url} responded {status} {statusText}` |
 | `country-service/country-service.postal-code.ts` | `[CountryService]` | nothing |
-| `country-service/country-service.ts` | `[CountryService]` | 2 — `Failed to fetch location data: {statusText}`, `Failed to fetch states for {countryCode}: {statusText}` |
+| `country-service/country-service.ts` | `[CountryService]` | nothing |
 | `debug/country-selector.ts` | `[CountrySelector]` | nothing |
 | `debug/currency-selector.ts` | `[CurrencySelector]` | nothing |
 | `debug/debug-module.ts` | `[DebugModule]` | nothing |
@@ -296,29 +296,16 @@ The namespace before the dot decides which part of the SDK answers — see the d
 
 ---
 
-## `Failed to fetch location data: {statusText}`
+## `{url} responded {status} {statusText}`
 
 | | |
 |---|---|
 | Type | Recoverable |
-| Thrown by | `country-service/country-service.ts` — logs under `[CountryService]` |
-| Cause | The `/location` endpoint answered with a non-OK status. The visitor’s network, an ad blocker, or the service being briefly unavailable all produce this. |
-| Caught | Caught in the same method: it logs `Failed to fetch location data:` and continues with the built-in fallback — country list from configuration, United States as the country. Checkout still works; the country dropdown is shorter than it should be and the detected country may be wrong. |
+| Thrown by | `country-service/country-service.next-address.ts` — logs under `[CountryService]` |
+| Cause | The address service answered with a non-OK status while the SDK was asking for the country list or one country’s address rules. The visitor’s network, an extension, or the service being briefly unavailable all produce this. An unknown country code is not a cause: an uncurated country is answered with a generic layout. |
+| Caught | Caught by `CountryService`, which logs `Failed to fetch location data:` or `Failed to fetch states for {countryCode}:` and continues with its built-in fallback — the country list from configuration, United States as the country, and an empty state list with default labels. Checkout still works; the country dropdown is shorter than it should be, and a visitor in a country that requires a state cannot pick one. |
 
-**Fix:** Nothing to change in the page. If it is not intermittent, check that the campaigns host is reachable from the visitor’s network and is not blocked by an extension, then reload — the result is cached in localStorage, so one good response fixes the session.
-
----
-
-## `Failed to fetch states for {countryCode}: {statusText}`
-
-| | |
-|---|---|
-| Type | Recoverable |
-| Thrown by | `country-service/country-service.ts` — logs under `[CountryService]` |
-| Cause | The `/countries/{code}/states` endpoint answered with a non-OK status while the visitor was picking a country. |
-| Caught | Caught in the same method: it logs `Failed to fetch states for {countryCode}:` and returns an empty state list with default labels. The state field renders with no options, so a visitor in a country that requires a state cannot complete the address. |
-
-**Fix:** Retry by re-selecting the country — a successful response is cached. If it persists for one country only, the country code being sent is likely not one the API knows; confirm it against the `available_shipping_countries` list in the campaign data.
+**Fix:** Nothing to change in the page. If it is not intermittent, check that the address host is reachable from the visitor’s network, then reload — a good answer is cached in localStorage for an hour, so one fixes the session.
 
 ---
 

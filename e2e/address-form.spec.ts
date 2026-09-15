@@ -37,36 +37,30 @@ const JP_SPEC = {
   },
 };
 
-async function stubAddressLayouts(page: Page): Promise<void> {
+/**
+ * One stub for both callers: the checkout form's `CountryService` and this feature read
+ * the same service, `/v1/bootstrap` for the country list and `/v1/layout/:country` for
+ * one country's rules.
+ */
+async function stubAddressService(page: Page): Promise<void> {
   await page.route('**/next-address*/**', route => {
-    const country = route.request().url().match(/\/v1\/layout\/([A-Z]{2})/)?.[1];
-    return route.fulfill({ json: { spec: country === 'JP' ? JP_SPEC : US_SPEC } });
-  });
-}
-
-async function stubCountryService(page: Page): Promise<void> {
-  await page.route('**/cdn-countries.muddy-wind-c7ca.workers.dev/**', route => {
     const url = route.request().url();
-    if (url.includes('/location')) {
+    const country = url.match(/\/v1\/layout\/([A-Z]{2})/)?.[1];
+    const spec = country === 'JP' ? JP_SPEC : US_SPEC;
+
+    if (country) {
       return route.fulfill({
-        json: {
-          detectedCountryCode: 'US',
-          countries: [
-            { code: 'US', name: 'United States' },
-            { code: 'JP', name: 'Japan' },
-          ],
-        },
+        json: { spec, states: [{ code: 'NY', name: 'New York' }] },
       });
     }
     return route.fulfill({
       json: {
-        countryConfig: {
-          stateLabel: 'State',
-          stateRequired: true,
-          postcodeLabel: 'ZIP Code',
-          postcodeRegex: '',
-          postcodeExample: '10001',
-        },
+        geo: { country: 'US', currency: 'USD', ip: '203.0.113.7' },
+        spec: US_SPEC,
+        countries: [
+          { code: 'US', name: 'United States' },
+          { code: 'JP', name: 'Japan' },
+        ],
         states: [{ code: 'NY', name: 'New York' }],
       },
     });
@@ -76,8 +70,7 @@ async function stubCountryService(page: Page): Promise<void> {
 test.beforeEach(async ({ page }) => {
   await stubCampaign(page, MINIMAL_CAMPAIGN);
   await stubCart(page);
-  await stubCountryService(page);
-  await stubAddressLayouts(page);
+  await stubAddressService(page);
 });
 
 const FIELD = (name: string) => `[data-next-checkout-field="${name}"]`;

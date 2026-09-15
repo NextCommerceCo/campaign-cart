@@ -19,20 +19,23 @@ const FIXTURE = '/e2e/fixtures/prospect-cart.html';
 
 /** Stub the country/states CDN the checkout form's CountryService calls. */
 async function stubCountryService(page: Page): Promise<void> {
-  await page.route('**/cdn-countries.muddy-wind-c7ca.workers.dev/**', route => {
-    const url = route.request().url();
-    if (url.includes('/location')) {
-      return route.fulfill({
-        json: {
-          detectedCountryCode: 'US',
-          countries: [{ code: 'US', name: 'United States' }],
-        },
-      });
+  const spec = {
+    country: 'US',
+    layout: [['country'], ['line1'], ['city', 'state', 'postcode']],
+    fields: {
+      state: { label: 'State', required: false },
+      postcode: { label: 'ZIP', required: true },
+    },
+  };
+  await page.route('**/next-address*/**', route => {
+    if (route.request().url().includes('/v1/layout/')) {
+      return route.fulfill({ json: { spec, states: [] } });
     }
     return route.fulfill({
       json: {
-        countryConfig: { stateLabel: 'State', stateRequired: false, postcodeLabel: 'ZIP' },
-        states: [],
+        geo: { country: 'US' },
+        spec,
+        countries: [{ code: 'US', name: 'United States' }],
       },
     });
   });

@@ -52,15 +52,6 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
       'Check the attached error. A malformed URL or a blocked `sessionStorage` are the realistic causes; the page still works, but any behaviour driven by a URL parameter is silently off.',
   },
   {
-    level: 'warn',
-    message:
-      'Failed to fetch country config for {forcedCountry}, falling back to detection',
-    meaning:
-      'A country was forced — by `?country=` or a previous choice saved in the session — but the API returned no configuration for it, so normal detection is used instead. The visitor may see a different country than the one that was forced.',
-    action:
-      'Check that the forced code is a two-letter code the campaign ships to; the shipping list is logged at boot as `Campaign shipping countries set globally:`. Clear `next_selected_country` from sessionStorage to stop a stale saved choice from repeating this.',
-  },
-  {
     level: 'error',
     message: 'Error fetching country config:',
     meaning:
