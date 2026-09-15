@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Address form, billing</title>
+  </head>
+  <body>
+    <h1>Billing address block</h1>
+
+    <!-- A checkout that collects a separate billing address through the block rather
+         than through the checkout form's clone-from-shipping mount. No
+         os-checkout-component="billing-form" container: with both, the page would get
+         two sets of billing-* fields. -->
+    <form data-next-checkout>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="text" id="email" data-next-checkout-field="email" />
+      </div>
+
+      <div data-next-address="shipping"></div>
+
+      <label>
+        <input type="checkbox" name="use_shipping_address" />
+        Use shipping address as billing address
+      </label>
+      <div os-checkout-element="different-billing-address">
+        <div data-next-address="billing"></div>
+      </div>
+
+      <button type="submit">Place order</button>
+    </form>
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

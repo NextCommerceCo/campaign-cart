@@ -558,14 +558,24 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
    * fetch, so they miss all of it — and are built again from scratch whenever the country
    * changes. Each step patched on its own was a separate defect: an empty country
    * dropdown, a province stuck on "Select Country First", suggestions that never
-   * attached, and a returning visitor's saved address left in the store. **A step added
-   * to the boot sequence that touches an address field belongs here too.**
+   * attached, a returning visitor's saved address left in the store, and the same again
+   * for their billing address. **A step added to the boot sequence that touches an
+   * address field belongs here too.**
    *
    * The order mirrors `initialize`, and it is load-bearing: the province options have to
    * exist before a stored province can be selected into them.
+   *
+   * Two boot steps are deliberately absent. `initializeLocationFieldVisibility` finds its
+   * elements by `data-next-component="location"`, which a built block does not carry, so
+   * it would find nothing. `initializeUIService`'s floating labels look for a
+   * `.label-checkout` inside a `.form-group`, which a built block also does not carry —
+   * a page wanting floating labels on one styles them, which needs no script.
    */
   private async reapplyToRenderedFields(): Promise<void> {
     this.update();
+    // `update()` finds the shipping fields; the billing ones are a separate scan, and a
+    // billing block's fields are just as absent at boot as a shipping block's.
+    scanBillingFields(this.billingFormSetupContext());
 
     // Not sequenced behind the two awaits below, which are requests: whether suggestions
     // are attached must not depend on a dropdown refill completing.
@@ -573,6 +583,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     await this.repopulateAddressFields();
     await this.populateFormData();
+    await this.restoreBillingAddress();
   }
 
   /**

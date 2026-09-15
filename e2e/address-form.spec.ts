@@ -425,6 +425,39 @@ test('a layout that arrives after a newer one is discarded', async ({ page }) =>
   expect(countries.filter(e => (e as { country: string }).country === 'JP')).toEqual([]);
 });
 
+/**
+ * `restoreBillingAddress` is a boot step like the others: it writes the stored billing
+ * address into billing fields that, for a block, are not on the page yet.
+ */
+test('a returning visitor sees the billing address they already gave', async ({
+  page,
+}) => {
+  await page.addInitScript(key => {
+    sessionStorage.setItem(
+      key,
+      JSON.stringify({
+        state: {
+          sameAsShipping: false,
+          billingAddress: {
+            address1: '14 Billing Way',
+            city: 'Elsewhere',
+            postal: '90210',
+            country: 'US',
+          },
+        },
+        version: 0,
+      })
+    );
+  }, CHECKOUT_KEY);
+
+  await bootSdk(page, '/e2e/fixtures/address-form-billing.html');
+  await expect(page.locator(FIELD('billing-address1'))).toBeVisible();
+
+  await expect(page.locator(FIELD('billing-address1'))).toHaveValue(
+    '14 Billing Way'
+  );
+});
+
 test('the block says it is loading until its fields arrive', async ({ page }) => {
   await bootSdk(page, FIXTURE);
   await expect(page.locator(FIELD('address1'))).toBeVisible();
