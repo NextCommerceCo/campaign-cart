@@ -101,5 +101,5 @@ These remote bindings need an explicit `data-next-format` (`currency` or `percen
 ## Cautions
 
 - **The first selector inside the offer wrapper is the one that submits.** The upsell feature resolves its bundle from the first `[data-next-bundle-selector]` inside `[data-next-upsell="offer"]`. A display-only selector (one that exists to feed a `bundle.*` headline, like the hidden `upsell-bundle-1x` block in the apollo template) must sit *outside* the wrapper, or the visitor's click adds the wrong tier.
-- **The offer expires with the order store.** The completed order is kept for 15 minutes; after that an upsell page has nothing to add to. A visitor who parks on the page and returns later sees an offer that cannot complete. Keep upsell chains short and always give both exits.
+- **Check order expiry before accepting an offer.** Expiry is checked on demand, 15 minutes after the order was loaded or set. A visitor who parks on the page can return to an offer that cannot complete. Keep upsell chains short and always give both exits.
 - **Missing `next-page-type="upsell"` breaks tracking, not the page.** The offer still works, so the gap only shows up later as a funnel with no upsell views. Set it on every upsell page.

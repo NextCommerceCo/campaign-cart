@@ -81,5 +81,5 @@ Totals are plain bindings, with the tax row shown only when the order has tax:
 
 ## Cautions
 
-- **The order is kept for 15 minutes.** The order store expires after that, so a bookmarked or re-opened receipt link eventually renders the skeleton with nothing to fill it. That is by design: the receipt is a confirmation, not an order-history page.
+- **Cached orders are reused for 15 minutes.** Expiry is checked when the SDK decides whether to reuse an order; it does not erase the store on a timer. Reopening a receipt with `ref_id` can fetch the order again. Custom displays must follow the order-store guard above.
 - **Do not use cart attributes on a receipt.** The cart is a different store from the order; `cart.*` bindings and quantity buttons on a receipt read whatever cart state is left over, not the completed order. (The apollo receipt itself still carries a leftover `data-next-quantity` pair inside its line template; treat that as legacy carryover, not a pattern to copy.) Read from `order.*` only.
