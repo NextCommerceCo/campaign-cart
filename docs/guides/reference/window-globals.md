@@ -11,6 +11,8 @@ Loading the SDK puts a handful of objects on `window`. Use this page when you ne
 Each entry says whether the SDK installs it or reads what you set, and which of them are debugging tools rather than API.
 
 
+For custom completed-order reads, follow the [order store integration contract](order-store.md). It checks initialization, the current campaign's public store, loading, errors, expiry, and the URL's order identity.
+
 ## Page globals
 
 | Global | Description |

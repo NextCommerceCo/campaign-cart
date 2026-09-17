@@ -119,7 +119,40 @@ export const STORAGE_GROUPS: StorageGroup[] = [
 ];
 
 /** What a key holds and what it costs to lose. Everything a scan cannot tell you. */
+export interface StorageMigration {
+  since: string;
+  legacyKey: string;
+  releaseEvidence: { commit: string; tag: string; previousTag: string };
+}
+
+export interface StorageReplacement {
+  kind: 'public-store';
+  export: string;
+  guide: string;
+}
+
+/** Verified changes, attached to the existing registry rather than another key list. */
+const INITIAL_SCOPE_RELEASE = {
+  commit: 'a13d61f419a3ee0d2f759172eb064f1a13999fa1',
+  tag: 'v0.4.34',
+  previousTag: 'v0.4.33',
+};
+const CHECKOUT_SCOPE_RELEASE = {
+  commit: '68809874c9ddb7ee1b791a49251bf01250bc23b9',
+  tag: 'v0.4.34',
+  previousTag: 'v0.4.33',
+};
+const REMAINING_SCOPE_RELEASE = {
+  commit: '237cdaaeba3840c46aba552b64fc73d643c9c7af',
+  tag: 'v0.4.34',
+  previousTag: 'v0.4.33',
+};
+
 export interface StorageKeyDoc {
+  /** Verified release boundary; absent means unknown, not unchanged. */
+  migration?: StorageMigration;
+  /** Supported public replacement, when one has been documented. */
+  replacement?: StorageReplacement;
   /**
    * The key as a reader sees it, with varying parts named — `upsells_{orderId}`.
    * The drift test compares this against the extracted key with token *names*
@@ -158,6 +191,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   // ── Cart and pricing ──────────────────────────────────────────────────────
   {
     key: 'next-cart-state{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'next-cart-state',
+      releaseEvidence: INITIAL_SCOPE_RELEASE,
+    },
     examples: ['next-cart-state__1y693dl', 'next-cart-state'],
     group: 'cart',
     store: 'cart',
@@ -224,6 +262,16 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   // ── Order and post-purchase ───────────────────────────────────────────────
   {
     key: 'next-order{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'next-order',
+      releaseEvidence: INITIAL_SCOPE_RELEASE,
+    },
+    replacement: {
+      kind: 'public-store',
+      export: 'useOrderStore',
+      guide: 'docs/guides/reference/order-store.md',
+    },
     examples: ['next-order__1y693dl', 'next-order'],
     group: 'order',
     store: 'order',
@@ -233,12 +281,17 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
     holds:
       'The completed order — its number, ref id, lines and totals — so upsell and receipt pages can render it without refetching.',
     clearing:
-      'Upsell and receipt pages have no order to show and fall back to fetching by `ref_id` from the URL. Without that parameter they render empty.\n\nThe window is checked on rehydrate, not on a timer. A tab left open for an hour still holds the entry in storage; the store discards it the next time the page loads.',
+      'Upsell and receipt pages have no order to show and fall back to fetching by `ref_id` from the URL. Without that parameter they render empty.\n\nExpiry is checked by `isOrderExpired()` and before `loadOrder()` reuses a cached order, not by a timer or a rehydration hook. Stale data can remain in the store and storage until a caller checks it. Custom integrations must check expiry before using an order.',
     notes:
-      "The `__{scope}` suffix is one hash of the page's `next-api-key` and the first segment of its path, so two campaigns sharing a hostname — and two funnels of one campaign served from different top folders — cannot read each other's copy. Only the first segment counts, and only when a folder sits above the page, so walking from `/hu/earbuds` to `/hu/earbuds/checkout` keeps one key. A page whose API key was not readable when the store modules were created writes the **bare** name instead — what the SDK wrote before scoping existed — and boot logs a warning.",
+      "Scoped since 0.4.34. Custom integrations should use the [public order-store contract](https://github.com/NextCommerceCo/campaign-cart/blob/main/docs/guides/reference/order-store.md), with readiness, expiry and URL reference checks. The [versioned migration metadata](https://github.com/NextCommerceCo/campaign-cart/blob/main/docs/compatibility/storage-migrations.v1.json) records the release evidence. Do not read the bare key or scan the prefix for an order.\n\nThe `__{scope}` suffix is one hash of the page's `next-api-key` and the first segment of its path, so two campaigns sharing a hostname — and two funnels of one campaign served from different top folders — cannot read each other's copy. Only the first segment counts, and only when a folder sits above the page, so walking from `/hu/earbuds` to `/hu/earbuds/checkout` keeps one key. A page whose API key was not readable when the store modules were created writes the **bare** name instead — what the SDK wrote before scoping existed — and boot logs a warning.",
   },
   {
     key: 'upsells_{orderId}{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'upsells_{orderId}',
+      releaseEvidence: REMAINING_SCOPE_RELEASE,
+    },
     examples: ['upsells_4821-9930-1176'],
     group: 'order',
     ttl: null,
@@ -251,6 +304,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   // ── Checkout and abandoned cart ───────────────────────────────────────────
   {
     key: 'next-checkout-store{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'next-checkout-store',
+      releaseEvidence: INITIAL_SCOPE_RELEASE,
+    },
     examples: ['next-checkout-store__1y693dl'],
     group: 'checkout',
     store: 'checkout',
@@ -265,6 +323,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   },
   {
     key: 'next_prospect_cart{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'next_prospect_cart',
+      releaseEvidence: INITIAL_SCOPE_RELEASE,
+    },
     examples: ['next_prospect_cart__1y693dl'],
     group: 'checkout',
     ttl: 'whatever `expires_at` the API returned with the cart',
@@ -276,6 +339,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   },
   {
     key: 'next-shown-order-warnings{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'next-shown-order-warnings',
+      releaseEvidence: CHECKOUT_SCOPE_RELEASE,
+    },
     examples: ['next-shown-order-warnings__1y693dl'],
     group: 'checkout',
     ttl: null,
@@ -299,6 +367,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   // ── Attribution and funnel ────────────────────────────────────────────────
   {
     key: 'next-attribution{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'next-attribution',
+      releaseEvidence: REMAINING_SCOPE_RELEASE,
+    },
     group: 'attribution',
     store: 'attribution',
     storeRelation: 'persist-key',
@@ -312,6 +385,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   },
   {
     key: 'next_funnel_name{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'next_funnel_name',
+      releaseEvidence: REMAINING_SCOPE_RELEASE,
+    },
     group: 'attribution',
     store: 'attribution',
     storeRelation: 'side-write',
@@ -346,6 +424,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   // ── Currency, country and locale ──────────────────────────────────────────
   {
     key: 'next_selected_currency{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'next_selected_currency',
+      releaseEvidence: REMAINING_SCOPE_RELEASE,
+    },
     group: 'preferences',
     store: 'config',
     storeRelation: 'side-write',
@@ -357,6 +440,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   },
   {
     key: 'next_selected_country{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'next_selected_country',
+      releaseEvidence: REMAINING_SCOPE_RELEASE,
+    },
     group: 'preferences',
     ttl: null,
     holds:
@@ -366,6 +454,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   },
   {
     key: 'next_selected_locale{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'next_selected_locale',
+      releaseEvidence: REMAINING_SCOPE_RELEASE,
+    },
     group: 'preferences',
     ttl: null,
     holds:
@@ -377,6 +470,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   // ── Analytics ─────────────────────────────────────────────────────────────
   {
     key: 'analytics_session_id{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'analytics_session_id',
+      releaseEvidence: REMAINING_SCOPE_RELEASE,
+    },
     group: 'analytics',
     ttl: null,
     holds:
@@ -386,6 +484,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   },
   {
     key: 'analytics_sequence{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'analytics_sequence',
+      releaseEvidence: REMAINING_SCOPE_RELEASE,
+    },
     group: 'analytics',
     ttl: null,
     holds:
@@ -405,6 +508,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   },
   {
     key: 'analytics_list_id{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'analytics_list_id',
+      releaseEvidence: REMAINING_SCOPE_RELEASE,
+    },
     group: 'analytics',
     ttl: null,
     holds:
@@ -413,6 +521,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   },
   {
     key: 'analytics_list_name{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'analytics_list_name',
+      releaseEvidence: REMAINING_SCOPE_RELEASE,
+    },
     group: 'analytics',
     ttl: null,
     holds: 'The display name of that same product list.',
@@ -420,6 +533,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   },
   {
     key: 'analytics_ignore{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'analytics_ignore',
+      releaseEvidence: REMAINING_SCOPE_RELEASE,
+    },
     group: 'analytics',
     ttl: null,
     holds:
@@ -429,6 +547,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   },
   {
     key: 'next_v2_pending_events{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'next_v2_pending_events',
+      releaseEvidence: REMAINING_SCOPE_RELEASE,
+    },
     group: 'analytics',
     ttl: 'the key never expires; individual queued events older than 5 minutes are dropped when the queue is processed',
     ttlMechanism: 'pending-event staleness check (inline literal)',
@@ -439,6 +562,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   },
   {
     key: 'nextDataLayer_reportedPurchases{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'nextDataLayer_reportedPurchases',
+      releaseEvidence: REMAINING_SCOPE_RELEASE,
+    },
     group: 'analytics',
     ttl: 'never — the last 20 order ids are kept and the oldest falls off',
     ttlMechanism: '`REPORTED_LIMIT`',
@@ -449,6 +577,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   },
   {
     key: 'nextDataLayer_checkoutReturnPaths{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'nextDataLayer_checkoutReturnPaths',
+      releaseEvidence: CHECKOUT_SCOPE_RELEASE,
+    },
     examples: ['nextDataLayer_checkoutReturnPaths__1y693dl'],
     group: 'analytics',
     ttl: null,
@@ -461,6 +594,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   },
   {
     key: 'nextDataLayer_checkoutCoupon{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'nextDataLayer_checkoutCoupon',
+      releaseEvidence: CHECKOUT_SCOPE_RELEASE,
+    },
     examples: ['nextDataLayer_checkoutCoupon__1y693dl'],
     group: 'analytics',
     ttl: null,
@@ -473,6 +611,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   },
   {
     key: 'user_data{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'user_data',
+      releaseEvidence: REMAINING_SCOPE_RELEASE,
+    },
     group: 'analytics',
     ttl: null,
     holds:
@@ -482,6 +625,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   },
   {
     key: 'session_id{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'session_id',
+      releaseEvidence: REMAINING_SCOPE_RELEASE,
+    },
     group: 'analytics',
     ttl: null,
     holds:
@@ -490,6 +638,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   },
   {
     key: 'visitor_id{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'visitor_id',
+      releaseEvidence: REMAINING_SCOPE_RELEASE,
+    },
     group: 'analytics',
     ttl: null,
     holds:
@@ -499,6 +652,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   },
   {
     key: 'nextDataLayer_sessionId{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'nextDataLayer_sessionId',
+      releaseEvidence: REMAINING_SCOPE_RELEASE,
+    },
     group: 'analytics',
     ttl: 'refreshed on every event; a gap longer than the session timeout starts a new session',
     ttlMechanism: 'dataLayer `sessionTimeout`',
@@ -508,6 +666,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   },
   {
     key: 'nextDataLayer_sessionStart{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'nextDataLayer_sessionStart',
+      releaseEvidence: REMAINING_SCOPE_RELEASE,
+    },
     group: 'analytics',
     ttl: 'rewritten on every event, which is how the rolling session window is measured',
     ttlMechanism: 'dataLayer `sessionTimeout`',
@@ -517,6 +680,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   },
   {
     key: 'nextDataLayer_userProperties{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'nextDataLayer_userProperties',
+      releaseEvidence: REMAINING_SCOPE_RELEASE,
+    },
     group: 'analytics',
     ttl: null,
     holds:
@@ -525,6 +693,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   },
   {
     key: 'nextDataLayer_debugMode{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'nextDataLayer_debugMode',
+      releaseEvidence: REMAINING_SCOPE_RELEASE,
+    },
     group: 'analytics',
     ttl: null,
     holds:
@@ -558,6 +731,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   // ── Page behaviour ────────────────────────────────────────────────────────
   {
     key: 'next-timer-{persistenceId}{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'next-timer-{persistenceId}',
+      releaseEvidence: INITIAL_SCOPE_RELEASE,
+    },
     examples: [
       'next-timer-flash-sale__1y693dl',
       'next-timer-default-timer__1y693dl',
@@ -573,6 +751,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   },
   {
     key: 'next-url-params{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'next-url-params',
+      releaseEvidence: CHECKOUT_SCOPE_RELEASE,
+    },
     examples: ['next-url-params__1y693dl'],
     group: 'page-behaviour',
     store: 'parameter',
@@ -587,6 +770,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   },
   {
     key: 'next-exit-intent-dismissed{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'next-exit-intent-dismissed',
+      releaseEvidence: INITIAL_SCOPE_RELEASE,
+    },
     examples: ['next-exit-intent-dismissed__1y693dl'],
     group: 'page-behaviour',
     ttl: null,
@@ -622,6 +810,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   },
   {
     key: 'debug-mini-cart-visible{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'debug-mini-cart-visible',
+      releaseEvidence: REMAINING_SCOPE_RELEASE,
+    },
     group: 'debug',
     ttl: null,
     holds: 'Whether the floating mini-cart readout is shown.',
@@ -629,6 +822,11 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
   },
   {
     key: 'debug-mini-cart-height{__scope}',
+    migration: {
+      since: '0.4.34',
+      legacyKey: 'debug-mini-cart-height',
+      releaseEvidence: REMAINING_SCOPE_RELEASE,
+    },
     group: 'debug',
     ttl: null,
     holds: 'The height the mini-cart panel was last dragged to, in pixels.',
@@ -722,7 +920,7 @@ export const EXPIRY_MECHANISMS: ExpiryMechanism[] = [
     evidence: 'const EXPIRY_TIME = 15 * 60 * 1000',
     window: '15 minutes',
     governs:
-      '`next-order`. Checked when the store rehydrates, not on a timer — the entry sits in storage until a page load notices it is stale.',
+      '`next-order`. Checked on demand by `isOrderExpired()` and before `loadOrder()` reuses a cached order. No timer or rehydration hook removes stale data; callers must check expiry.',
   },
   {
     name: '`CACHE_EXPIRY_MS`',
