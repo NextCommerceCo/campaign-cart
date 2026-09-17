@@ -40,6 +40,7 @@ function createDisplayCtx(): {
       paymentMethod: () => 'credit-card',
       announcingPaymentError: announcing,
       emit,
+      timers: new Set(),
     },
     logger,
     emit,
@@ -90,6 +91,33 @@ describe('displayPaymentError', () => {
 
     expect(container.style.display).toBe('none');
     expect(container.classList.contains('visible')).toBe(false);
+  });
+
+  // The form clears whatever is in `timers` on destroy, so a timer that has fired
+  // must already be gone and a pending one must still be there to clear.
+  it('records each pending timer and forgets it once it fires', () => {
+    createErrorContainer();
+    const { ctx } = createDisplayCtx();
+
+    displayPaymentError(ctx, 'Your card was declined.');
+    expect(ctx.timers.size).toBe(1);
+
+    vi.advanceTimersByTime(100);
+    expect(ctx.timers.size).toBe(1);
+
+    vi.advanceTimersByTime(10000);
+    expect(ctx.timers.size).toBe(0);
+  });
+
+  it('draws nothing once its pending timers are cleared', () => {
+    const container = createErrorContainer();
+    const { ctx } = createDisplayCtx();
+
+    displayPaymentError(ctx, 'Your card was declined.');
+    ctx.timers.forEach(timer => clearTimeout(timer));
+    vi.advanceTimersByTime(10100);
+
+    expect(container.querySelector('span')?.textContent).toBe('');
   });
 
   it('reports a page with no error container instead of failing silently', () => {
@@ -156,6 +184,7 @@ describe('listenForPaymentErrors', () => {
       paymentMethod: () => 'credit-card',
       announcingPaymentError: announcing,
       emit: detail => deliver(detail),
+      timers: new Set(),
     };
 
     const display = (message: string): void => {

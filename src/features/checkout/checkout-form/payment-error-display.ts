@@ -25,7 +25,7 @@
  * rather than for the two the SDK used to hard-code, and what stops a decline
  * being written into a container the chosen method has collapsed shut.
  *
- * Extracted from `checkout-form.enhancer.ts` verbatim. Each half needs three things from
+ * Extracted from `checkout-form.enhancer.ts` verbatim. Each half needs a few things from
  * the form ({@link PaymentErrorDisplayContext}, {@link PaymentErrorListenerContext}).
  */
 
@@ -49,6 +49,13 @@ export interface PaymentErrorDisplayContext {
   announcingPaymentError: { value: boolean };
   /** `CheckoutFormEnhancer.emit` for `payment:error`. */
   emit: (detail: EventMap['payment:error']) => void;
+  /**
+   * Every timer a display is still waiting on — the short draw delay and the
+   * ten-second hide. Shared by reference with the form so `destroy()` can clear
+   * them: a form torn down inside either window must not reach for a container
+   * on a page that is gone. Same shape as the form's billing-animation timeouts.
+   */
+  timers: Set<ReturnType<typeof setTimeout>>;
 }
 
 /** What listening for payment errors needs from the checkout form. */
@@ -104,8 +111,11 @@ export function displayPaymentError(
 ): void {
   ctx.logger.info('[Payment Error] Displaying error:', message);
 
-  // Use a slight delay to ensure DOM is ready
-  setTimeout(() => {
+  // Use a slight delay to ensure DOM is ready. Both timers are recorded in
+  // `ctx.timers` and forgotten as they fire, so the form can cancel whatever is
+  // still pending when it is destroyed.
+  const showTimer = setTimeout(() => {
+    ctx.timers.delete(showTimer);
     const target = resolvePaymentErrorTarget(ctx.paymentMethod(), ctx.logger);
     if (!target) {
       ctx.logger.error(
@@ -125,12 +135,15 @@ export function displayPaymentError(
     // Auto-hide after 10 seconds, unless a newer failure has replaced the text
     // in the meantime — the container is shared, and hiding someone else's
     // message is how a second decline went unread.
-    setTimeout(() => {
+    const hideTimer = setTimeout(() => {
+      ctx.timers.delete(hideTimer);
       if (target.text.textContent !== message) return;
       target.container.style.display = 'none';
       target.container.classList.remove('visible');
     }, 10000);
+    ctx.timers.add(hideTimer);
   }, 100); // Small delay to ensure DOM is ready
+  ctx.timers.add(showTimer);
 
   // Also emit an event for other components to handle. The flag marks this as
   // our own echo, so `listenForPaymentErrors` does not display it a second time.

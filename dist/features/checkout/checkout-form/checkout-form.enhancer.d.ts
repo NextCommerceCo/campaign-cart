@@ -44,6 +44,7 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private stopAutofillDetection?;
     private hasTrackedBeginCheckout;
     private beginCheckoutTimer?;
+    private paymentErrorTimers;
     private isMultiStep;
     private currentStep;
     private nextStepUrl?;

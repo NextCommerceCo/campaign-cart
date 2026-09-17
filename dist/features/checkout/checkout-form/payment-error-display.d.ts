@@ -7,6 +7,7 @@ export interface PaymentErrorDisplayContext {
         value: boolean;
     };
     emit: (detail: EventMap['payment:error']) => void;
+    timers: Set<ReturnType<typeof setTimeout>>;
 }
 export interface PaymentErrorListenerContext {
     announcingPaymentError: {

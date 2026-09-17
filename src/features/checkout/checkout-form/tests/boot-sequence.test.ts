@@ -119,6 +119,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.clearAllMocks();
   EventBus.getInstance().removeAllListeners('payment:error');
@@ -278,6 +279,9 @@ describe('listenForPaymentErrors', () => {
   // `message`, so an error the form raised never reached the display path. One
   // shape now, so it does.
   it('displays an error another component put on the bus through the form', () => {
+    // The real display schedules a draw; run it here so it cannot fire after
+    // this test's document is gone.
+    vi.useFakeTimers();
     const raiser = createEnhancer().steps;
     const { steps } = createEnhancer();
     const display = vi
@@ -286,6 +290,7 @@ describe('listenForPaymentErrors', () => {
     steps.listenForPaymentErrors();
 
     raiser.displayPaymentError('Your card was declined.');
+    vi.runAllTimers();
 
     expect(display).toHaveBeenCalledWith('Your card was declined.');
   });
@@ -305,10 +310,12 @@ describe('listenForPaymentErrors', () => {
   // `displayPaymentError` emits the event this step listens for, so without the
   // re-entrancy guard the form displays its own echo — forever.
   it('does not display its own echo a second time', () => {
+    vi.useFakeTimers();
     const { steps, logger } = createEnhancer();
     steps.listenForPaymentErrors();
 
     steps.displayPaymentError('Your card was declined.');
+    vi.runAllTimers();
 
     const displayed = logger.info.mock.calls.filter(
       ([message]) => message === '[Payment Error] Displaying error:'
