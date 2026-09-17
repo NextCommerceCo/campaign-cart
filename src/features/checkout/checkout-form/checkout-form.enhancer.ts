@@ -300,6 +300,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
    * does not still report the event — see {@link scheduleBeginCheckoutTracking}.
    */
   private beginCheckoutTimer?: ReturnType<typeof setTimeout>;
+  /**
+   * The payment-error banner's pending draw and auto-hide timers, shared with
+   * `payment-error-display.ts` so {@link destroy} can clear them — a late fire on
+   * a torn-down page reads `document` that is no longer there.
+   */
+  private paymentErrorTimers: Set<ReturnType<typeof setTimeout>> = new Set();
 
   // Multi-step checkout support
   private isMultiStep = false;
@@ -2528,7 +2534,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     this.domListenerAbort.abort();
   }
 
-  /** The three things `payment-error-display.ts` needs to show a decline. */
+  /** What `payment-error-display.ts` needs to show a decline. */
   private paymentErrorDisplayContext(): PaymentErrorDisplayContext {
     return {
       logger: this.logger,
@@ -2537,6 +2543,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       paymentMethod: () => useCheckoutStore.getState().paymentMethod,
       announcingPaymentError: this.announcingPaymentError,
       emit: detail => this.emit('payment:error', detail),
+      timers: this.paymentErrorTimers,
     };
   }
 
@@ -2612,6 +2619,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       clearTimeout(this.beginCheckoutTimer);
       this.beginCheckoutTimer = undefined;
     }
+
+    // Nor may a pending payment-error draw or hide touch the page after it.
+    this.paymentErrorTimers.forEach(timer => clearTimeout(timer));
+    this.paymentErrorTimers.clear();
 
     if (this.validator) {
       this.validator.destroy();

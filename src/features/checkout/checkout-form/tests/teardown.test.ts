@@ -209,6 +209,24 @@ describe('destroy: pending work', () => {
     vi.useRealTimers();
   });
 
+  // The draw ran 100 ms after `displayPaymentError` on a bare `setTimeout`, so a
+  // form destroyed inside that window still queried `document` — in CI, one torn
+  // down with the test environment (`document is not defined`, intermittent).
+  it('cancels a pending payment-error draw', () => {
+    vi.useFakeTimers();
+    const { steps } = createEnhancer();
+    const container = document.createElement('div');
+    container.setAttribute('data-next-component', 'credit-error');
+    document.body.appendChild(container);
+
+    steps.displayPaymentError('Your card was declined.');
+    steps.destroy();
+    vi.advanceTimersByTime(10100);
+
+    expect(container.textContent).toBe('');
+    vi.useRealTimers();
+  });
+
   // Finding 121.
   it('tears down the UI service, which owns a 500 ms poll of its own', () => {
     const { steps } = createEnhancer();
