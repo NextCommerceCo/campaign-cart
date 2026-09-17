@@ -18,6 +18,8 @@ The head declares the page type and both exits:
 
 `upsell` as the page type is what fires the upsell page-view event. Without it the funnel reports purchases with no upsell views. Accept and decline can point at the same page; the starter templates set the decline URL to the receipt.
 
+For custom completed-order reads, follow the [order store integration contract](../reference/order-store.md). It checks initialization, the current campaign's public store, loading, errors, expiry, and the URL's order identity.
+
 ## Offer markup
 
 Everything the visitor can act on sits inside one wrapper: `data-next-upsell="offer"`. Inside it, a bundle selector in upsell context carries the tiers, and two links accept or skip the offer:

@@ -14,6 +14,8 @@ The head only needs the page type:
 <meta name="next-page-type" content="receipt">
 ```
 
+For custom completed-order reads, follow the [order store integration contract](../reference/order-store.md). It checks initialization, the current campaign's public store, loading, errors, expiry, and the URL's order identity.
+
 ## Loading states
 
 The order takes a moment to load, so hide order-bearing sections until the SDK has real values. The SDK's gate is `data-next-await`: the SDK adds the `next-display-ready` class to `<html>` when its DOM scan finishes, and the shipped `next-core.css` keeps anything under `data-next-await` invisible until then:
