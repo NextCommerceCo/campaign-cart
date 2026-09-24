@@ -20,6 +20,7 @@
 ### Documentation
 
 - **The checkout guide leads with the address block**, and says why static address fields suit a page that ships to one country.
+- **`AddressConfig` says when each setting applies.** `defaultCountry`, `countries` and `showCountries` are read only when the campaign has no shipping countries (or, for `defaultCountry`, an empty list), so none of them picks the country a form opens on. US territories stay out of the state list whatever `dontShowStates` says. `enableAutocomplete` is documented for the first time.
 - **Corrected in the checkout guide:** the state list comes from the selected country, not the campaign. The `location` group needs no `next-hidden` class, because the SDK hides and shows it itself and sets `display: flex` when it does. The SDK rewrites the state and postal labels for each country. The phone example uses `autocomplete="tel"`.
 
 ## [0.4.38] — 2026-08-27 — Address and Phone Fields, and Two Silent Failures
