@@ -61,9 +61,6 @@ interface FieldSpec {
   pattern?: string;
   example?: string;
   maxLength?: number;
-  /** On `phone_number` only. */
-  callingCode?: string;
-  phone?: Omit<PhoneRules, 'callingCode'>;
 }
 
 /** The subset of next-address's `ResolvedCountrySpec` this SDK reads. */
@@ -72,6 +69,7 @@ interface CountrySpec {
   layout: string[][];
   fields: Record<string, FieldSpec | undefined>;
   postcode?: { formatter?: string };
+  phone?: PhoneRules;
 }
 
 /**
@@ -105,12 +103,7 @@ interface LayoutResponse {
 }
 
 interface BootstrapResponse extends LayoutResponse {
-  countries: Array<{
-    code: string;
-    name: string;
-    callingCode?: string | null;
-    callingCodeMain?: boolean;
-  }>;
+  countries: Array<{ code: string; name: string }>;
   geo?: { ip?: string | null; currency?: string | null };
 }
 
@@ -148,9 +141,6 @@ export function toCountryConfig(
 ): CountryConfig {
   const state = fieldOf(spec, 'state');
   const postcode = fieldOf(spec, 'postcode');
-  // Read whether or not the layout collects a phone: the checkout collects one in its
-  // own step, outside any address layout.
-  const phone = spec.fields.phone_number;
 
   return {
     stateLabel: state?.label ?? 'State',
@@ -162,26 +152,24 @@ export function toCountryConfig(
     postcodeMaxLength: postcode?.maxLength ?? Number.MAX_SAFE_INTEGER,
     postcodeExample: postcode?.example ?? null,
     postcodeFormat: POSTCODE_PATTERNS[spec.postcode?.formatter ?? ''] ?? null,
-    ...(phone?.phone && phone.callingCode
-      ? { phone: { callingCode: phone.callingCode, ...phone.phone } }
-      : {}),
+    // Read whether or not the layout collects a phone: the checkout collects one in its
+    // own step, outside any address layout.
+    ...(spec.phone ? { phone: spec.phone } : {}),
     currencyCode: currencyCode ?? '',
     currencySymbol: '',
   };
 }
 
 /**
- * `phonecode` is the calling code, which lets a phone field recognise a number typed with
- * another country's code; `''` from a deployment that sends none. The currency fields are
- * read from nowhere: currency comes through `LocationData.detectedCountryConfig`, never
- * from a row of this list.
+ * The three empty fields are read from nowhere: `country-service.filtering.ts` already
+ * writes `''` for `phonecode` on every country it builds itself, and currency is read
+ * through `LocationData.detectedCountryConfig`, never from a row of this list.
  */
 function toCountries(rows: BootstrapResponse['countries']): Country[] {
   return rows.map(row => ({
     code: row.code,
     name: row.name,
-    phonecode: row.callingCode ?? '',
-    ...(row.callingCodeMain ? { phonecodeMain: true } : {}),
+    phonecode: '',
     currencyCode: '',
     currencySymbol: '',
   }));

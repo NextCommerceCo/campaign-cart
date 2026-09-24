@@ -73,14 +73,9 @@ afterEach(() => {
 });
 
 describe('toCountryConfig', () => {
-  it('carries the phone rules even where the layout collects no phone', () => {
-    // The checkout collects the phone in its own step, outside the address layout.
-    const phone = { lengths: [9], pattern: '[1-9]\\d{8}', types: [], formats: [] };
-    const config = toCountryConfig({
-      ...DE_SPEC,
-      fields: { ...DE_SPEC.fields, phone_number: { callingCode: '49', phone } },
-    });
-    expect(config.phone).toEqual({ callingCode: '49', ...phone });
+  it('carries the country\'s phone rule from spec.phone', () => {
+    const phone = { callingCode: '49', nationalPrefix: '0', pattern: '^[0-9]{5,15}$' };
+    expect(toCountryConfig({ ...DE_SPEC, phone }).phone).toEqual(phone);
   });
 
   it('leaves the phone rules out when the service sends none', () => {
@@ -201,23 +196,6 @@ describe('fetchLocationData', () => {
     expect(data.detectedCountryConfig.postcodeLabel).toBe('Postcode');
     expect(data.detectedStates).toEqual([{ code: 'ENG', name: 'England' }]);
     expect(data.countries.map(c => c.code)).toEqual(['GB', 'US']);
-  });
-
-  it('takes each country\'s calling code, and none from a deployment that sends none', async () => {
-    stubFetch({
-      geo: { country: 'GB' },
-      spec: GB_SPEC,
-      countries: [
-        { code: 'GB', name: 'United Kingdom', callingCode: '44', callingCodeMain: true },
-        { code: 'GG', name: 'Guernsey', callingCode: '44', callingCodeMain: false },
-        { code: 'US', name: 'United States' },
-      ],
-    });
-
-    const data = await fetchLocationData('https://addr.test');
-
-    expect(data.countries.map(c => c.phonecode)).toEqual(['44', '44', '']);
-    expect(data.countries.map(c => c.phonecodeMain ?? false)).toEqual([true, false, false]);
   });
 
   /** A country with no subdivisions omits `states` entirely rather than sending `[]`. */

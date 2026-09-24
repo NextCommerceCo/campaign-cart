@@ -38,9 +38,9 @@ export interface CountryConfig {
    */
   postcodeCompact?: boolean;
   /**
-   * The country's phone rules — libphonenumber's, as the address-rules service serves them —
-   * for formatting, validating and converting a number to E.164. Absent when the service
-   * sent none: a territory with no phone data, or a deployment older than the rules.
+   * How the country's phone numbers are shown and checked: the address-rules service's
+   * `spec.phone`. Absent for a country with no rules of its own, or from a deployment that
+   * sends none; the phone field is then a plain input.
    */
   phone?: PhoneRules;
   currencyCode: string;
@@ -50,14 +50,7 @@ export interface CountryConfig {
 export interface Country {
   code: string;
   name: string;
-  /** ITU calling code without the `+`, or `''` when the address-rules service sent none. */
   phonecode: string;
-  /**
-   * True for the country a calling code's numbers are formatted as, where several share
-   * the code: the US for `+1`, the UK for `+44`. Lets a phone field choose a flag for a
-   * number typed with the code alone.
-   */
-  phonecodeMain?: boolean;
   currencyCode: string;
   currencySymbol: string;
 }
