@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { MINIMAL_CAMPAIGN } from './fixtures/campaign';
-import { stubCampaign, stubCart, stubAddressAutocomplete, bootSdk, captureEvents } from './fixtures/routes';
+import { stubCampaign, stubCart, stubAddressAutocomplete, bootSdk, captureEvents, ADDRESS_SERVICE_ROUTE } from './fixtures/routes';
 
 /**
  * E2E for the address-autocomplete enhancer.
@@ -38,7 +38,7 @@ async function stubCountryService(page: Page): Promise<void> {
       postcode: { label: 'ZIP', required: true },
     },
   };
-  await page.route('**/next-address*/**', route => {
+  await page.route(ADDRESS_SERVICE_ROUTE, route => {
     if (route.request().url().includes('/v1/layout/')) {
       return route.fulfill({ json: { spec, states: [] } });
     }

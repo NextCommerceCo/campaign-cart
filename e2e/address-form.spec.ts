@@ -6,6 +6,7 @@ import {
   stubAddressAutocomplete,
   bootSdk,
   captureEvents,
+  ADDRESS_SERVICE_ROUTE,
 } from './fixtures/routes';
 import { CHECKOUT_KEY } from './fixtures/storage-keys';
 
@@ -66,7 +67,7 @@ const LAYOUT_DELAY_MS = 300;
  * asks for.
  */
 async function stubAddressService(page: Page): Promise<void> {
-  await page.route('**/next-address*/**', async route => {
+  await page.route(ADDRESS_SERVICE_ROUTE, async route => {
     const url = route.request().url();
     const country = url.match(/\/v1\/layout\/([A-Z]{2})/)?.[1];
     const spec = country === 'JP' ? JP_SPEC : US_SPEC;
@@ -393,7 +394,7 @@ test('a returning visitor sees the address they already gave', async ({ page }) 
 test('a failed layout lookup leaves the page usable, and holds no space', async ({
   page,
 }) => {
-  await page.route('**/next-address*/**', route =>
+  await page.route(ADDRESS_SERVICE_ROUTE, route =>
     route.fulfill({ status: 503, json: { error: 'unavailable' } })
   );
 
@@ -421,8 +422,8 @@ test('a layout that arrives after a newer one is discarded', async ({ page }) =>
   await bootSdk(page, FIXTURE);
   await expect(page.locator(FIELD('address1'))).toBeVisible();
 
-  await page.unroute('**/next-address*/**');
-  await page.route('**/next-address*/**', async route => {
+  await page.unroute(ADDRESS_SERVICE_ROUTE);
+  await page.route(ADDRESS_SERVICE_ROUTE, async route => {
     const country = route.request().url().match(/\/v1\/layout\/([A-Z]{2})/)?.[1];
     if (!country) return route.fulfill({ status: 500, json: {} });
     // JP is asked for first and answers last.
@@ -463,8 +464,8 @@ test('a layout that arrives after a newer one is discarded', async ({ page }) =>
   await page.waitForTimeout(1500);
   expect(await order()).toEqual(US_ORDER);
   const countries = await rendered.all();
-  expect(countries.map(e => (e as { country: string }).country).at(-1)).toBe('US');
-  expect(countries.filter(e => (e as { country: string }).country === 'JP')).toEqual([]);
+  expect(countries.map((e: unknown) => (e as { country: string }).country).at(-1)).toBe('US');
+  expect(countries.filter((e: unknown) => (e as { country: string }).country === 'JP')).toEqual([]);
 });
 
 /**

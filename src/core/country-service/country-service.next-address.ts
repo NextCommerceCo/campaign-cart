@@ -32,7 +32,7 @@ import type {
 } from '@/core/country-service/country-service';
 
 const NEXT_ADDRESS_BASE_URL =
-  'https://i18n-rules.kasemsanm-dev.workers.dev';
+  'https://i18n-rules.nextcommerce.com';
 
 /**
  * Pinned rather than left to `Accept-Language`.

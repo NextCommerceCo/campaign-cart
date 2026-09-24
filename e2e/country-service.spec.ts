@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import type { Campaign } from '../src/types/campaign';
 import { RICH_CAMPAIGN } from './fixtures/campaign';
-import { stubCampaign, stubCart, bootSdk } from './fixtures/routes';
+import { stubCampaign, stubCart, bootSdk, ADDRESS_SERVICE_ROUTE } from './fixtures/routes';
 import type { Page } from '@playwright/test';
 
 /**
@@ -25,7 +25,7 @@ import type { Page } from '@playwright/test';
  * caret. A unit test can call `formatPostalCode('m11ae')` once; only a browser
  * types the fifth character into a field the fourth one already rewrote.
  *
- * next-address (next-address.kasemsanm-dev.workers.dev) is stubbed here so the
+ * the address-rules service (i18n-rules.nextcommerce.com) is stubbed here so the
  * test is deterministic. Routes: `/v1/bootstrap` and `/v1/layout/{CODE}`
  * (src/core/country-service/country-service.next-address.ts).
  */
@@ -131,7 +131,7 @@ const LAYOUTS: Record<string, { spec: unknown; states: unknown[] }> = {
 
 /** Stub next-address: bootstrap + per-country layout. */
 async function stubCountriesCdn(page: Page): Promise<void> {
-  await page.route('**/next-address*/**', route => {
+  await page.route(ADDRESS_SERVICE_ROUTE, route => {
     const url = route.request().url();
     const layout = url.match(/\/v1\/layout\/([A-Z]{2})/)?.[1];
     if (layout) {

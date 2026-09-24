@@ -22,7 +22,7 @@ export interface AddressSpec {
   fallback?: boolean;
 }
 
-const DEFAULT_BASE_URL = 'https://i18n-rules.kasemsanm-dev.workers.dev';
+const DEFAULT_BASE_URL = 'https://i18n-rules.nextcommerce.com';
 
 /** Omitting it falls back to `Accept-Language`, which would localise shipped pages. */
 const DEFAULT_LANG = 'en';

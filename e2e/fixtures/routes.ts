@@ -100,8 +100,17 @@ export async function stubProspectCart(page: Page): Promise<void> {
 }
 
 /**
+ * Every request to the address-rules service, on either host it has been served from
+ * (`i18n-rules.nextcommerce.com`, `i18n-rules.kasemsanm-dev.workers.dev`). The SDK's
+ * base URLs live in `country-service.next-address.ts` and `address-form.api.ts`; if
+ * either moves to a host this does not match, every spec below silently calls the live
+ * service instead of its stub.
+ */
+export const ADDRESS_SERVICE_ROUTE = '**/i18n-rules.*/**';
+
+/**
  * Stub the country/state data the checkout form's `CountryService` fetches from
- * next-address.
+ * the address-rules service.
  *
  * Two routes, two shapes — `/v1/bootstrap` carries the country list as well as the
  * detected country's rules, `/v1/layout/:country` carries one country's. A spec that
@@ -121,7 +130,7 @@ export async function stubCountryService(page: Page): Promise<void> {
       postcode: { label: 'ZIP Code', required: true, example: '10001' },
     },
   };
-  await page.route('**/next-address*/**', route => {
+  await page.route(ADDRESS_SERVICE_ROUTE, route => {
     if (route.request().url().includes('/v1/layout/')) {
       return route.fulfill({
         json: { spec, states: [{ code: 'NY', name: 'New York' }] },
