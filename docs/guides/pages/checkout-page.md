@@ -231,11 +231,9 @@ Below is an example of a billing section that stays open while the box is untick
 </div>
 ```
 
-> **Watch out:** Copying the shipping fields into a billing address is deprecated. The starter template still does it, with `data-next-component="shipping-form"` and `shipping-field-row` on the shipping fields and an empty `billing-form` container: do not copy those. Put `<div data-next-address="billing"></div>` in the billing section instead, and never keep both, or the page carries two sets of billing fields.
-
 ### Static address fields (deprecated)
 
-> **Watch out:** Writing the address inputs yourself is deprecated. The starter template still does, so do not copy its country, address, city, state and postcode inputs: replace them with `<div data-next-address="shipping"></div>`. Static fields are the same in every country and miss every later fix to a country's address rules.
+> **Watch out:** Writing the address inputs yourself is deprecated, for the billing address as well as the shipping one. The starter template still does both, so do not copy its address inputs or its `shipping-form`, `shipping-field-row` and `billing-form` containers. Use `data-next-address="shipping"` and `data-next-address="billing"` instead: static fields are the same in every country and miss every later fix to a country's address rules.
 
 ## Order bump
 
