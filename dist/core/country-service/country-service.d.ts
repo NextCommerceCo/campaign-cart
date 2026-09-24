@@ -1,3 +1,4 @@
+import { PhoneRules } from './country-service.phone';
 import { AddressConfig } from '../../types/global';
 export interface CountryConfig {
     stateLabel: string;
@@ -9,6 +10,7 @@ export interface CountryConfig {
     postcodeExample: string | null;
     postcodeFormat: string | string[] | null;
     postcodeCompact?: boolean;
+    phone?: PhoneRules;
     currencyCode: string;
     currencySymbol: string;
 }

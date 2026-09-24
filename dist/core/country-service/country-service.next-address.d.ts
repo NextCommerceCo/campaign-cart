@@ -1,4 +1,6 @@
 import { CountryConfig, CountryStatesData, LocationData } from './country-service';
+import { PhoneRules } from './country-service.phone';
+export declare function flagUrl(countryCode: string, baseUrl?: string): string;
 interface FieldSpec {
     label?: string;
     required?: boolean;
@@ -13,6 +15,7 @@ interface CountrySpec {
     postcode?: {
         formatter?: string;
     };
+    phone?: PhoneRules;
 }
 export declare function toCountryConfig(spec: CountrySpec, currencyCode?: string | null): CountryConfig;
 export declare function fetchLocationData(baseUrl?: string): Promise<LocationData>;
