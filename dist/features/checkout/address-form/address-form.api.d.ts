@@ -19,6 +19,7 @@ export interface AddressSpec {
     fields: Record<string, AddressFieldSpec | undefined>;
     fallback?: boolean;
 }
+export declare function builtInAddressSpec(countryCode: string): AddressSpec;
 export declare function fetchAddressSpec(countryCode: string, options?: {
     baseUrl?: string;
     lang?: string;
