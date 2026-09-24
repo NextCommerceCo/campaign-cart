@@ -8,6 +8,7 @@ export interface CountryConfig {
     postcodeMaxLength: number;
     postcodeExample: string | null;
     postcodeFormat: string | string[] | null;
+    postcodeCompact?: boolean;
     currencyCode: string;
     currencySymbol: string;
 }
@@ -37,7 +38,6 @@ export declare class CountryService {
     private static instance;
     private cachePrefix;
     private cacheExpiry;
-    private baseUrl;
     private logger;
     private config;
     private campaignShippingCountries;

@@ -10,7 +10,7 @@ category: "Core Reference"
      src/docs/content/core-logs.ts. Do not edit by hand: change the log line in the
      code or the note in core-logs.ts, then run `npm run docs:reference`. -->
 
-Every message the SDK's own machinery can print — 506 of them, across 62 console prefixes plus 13 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
+Every message the SDK's own machinery can print — 505 of them, across 62 console prefixes plus 13 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
 
 Messages are listed at the wording the code uses. A `{name}` inside one is a value filled in at runtime, so search for the text on either side of it. **Extra context** means the call passes a second argument — an object or an error logged beside the message; expand that entry in the console, because the message alone will not tell you which element, package, or event was involved.
 
@@ -69,7 +69,7 @@ Console lines are prefixed with the part of the SDK that produced them. Find the
 
 ### Boot and wiring
 
-- **`[SDKInitializer]`** Detects the visitor's country and picks the display currency, before campaign prices are fetched so they arrive in the right currency. Runs as its own boot step, right after configuration loads. Prints 1 error, 4 warn, 8 info, 1 debug.
+- **`[SDKInitializer]`** Detects the visitor's country and picks the display currency, before campaign prices are fetched so they arrive in the right currency. Runs as its own boot step, right after configuration loads. Prints 1 error, 3 warn, 8 info, 1 debug.
 - **`[SDKInitializer]`** Captures where the visitor came from — funnel name, UTM transfer, conversion timestamp, landing page — and keeps the attribution event listeners idempotent across a boot retry or `reinitialize()`. Runs as its own boot step, right after location/currency detection. Prints 1 error, 1 info, 6 debug.
 - **`[SDKInitializer]`** The `forcePackageId` / `forceShippingId` URL overrides and the session's captured URL parameters, applied once configuration and campaign data are loaded. Prints 2 error, 4 warn, 5 info, 5 debug.
 - **`[SDKInitializer]`** Clears the SDK's own sessionStorage, localStorage, and cookies when the page carries `?reset=true`, for a clean-slate reload. Prints 2 info.
@@ -177,14 +177,6 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 ### Warn
 
 The SDK carried on, but something in the markup, the configuration, or the campaign data was not what it expected. Worth fixing even when the page looks right — several of these are how tracking goes quietly wrong.
-
-#### `Failed to fetch country config for {forcedCountry}, falling back to detection`
-
-`sdk-initializer/sdk-initializer.location-currency.ts › initializeLocationAndCurrency`
-
-**Meaning:** A country was forced — by `?country=` or a previous choice saved in the session — but the API returned no configuration for it, so normal detection is used instead. The visitor may see a different country than the one that was forced.
-
-**Action:** Check that the forced code is a two-letter code the campaign ships to; the shipping list is logged at boot as `Campaign shipping countries set globally:`. Clear `next_selected_country` from sessionStorage to stop a stale saved choice from repeating this.
 
 #### `Location detection failed or timed out, using defaults:`
 

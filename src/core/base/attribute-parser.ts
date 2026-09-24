@@ -119,6 +119,11 @@ export class AttributeParser {
       types.push('checkout');
     }
     
+    // Check for the country-driven address block
+    if (element.hasAttribute('data-next-address')) {
+      types.push('address-form');
+    }
+
     // Check for express checkout enhancer
     if (element.hasAttribute('data-next-express-checkout')) {
       const checkoutType = element.getAttribute('data-next-express-checkout');

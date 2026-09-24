@@ -8,6 +8,9 @@ export declare class AddressAutocompleteEnhancer {
     private apiClient;
     private googleMaps?;
     private nextCommerce?;
+    private listenerAbort;
+    private enabled;
+    private loaded;
     constructor(deps: {
         fields: Map<string, HTMLElement>;
         billingFields: Map<string, HTMLElement>;
@@ -17,6 +20,7 @@ export declare class AddressAutocompleteEnhancer {
         setHasTrackedShippingInfo: (value: boolean) => void;
     });
     initialize(options: AddressAutocompleteOptions): Promise<void>;
+    rebind(): Promise<void>;
     destroy(): void;
     private setupLazyLoading;
 }

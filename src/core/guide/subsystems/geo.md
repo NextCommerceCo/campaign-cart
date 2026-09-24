@@ -52,7 +52,7 @@ boot step 2   config read: currencyBehavior, addressConfig, ?country=, ?currency
                     │
 boot step 3   ┌─────────────────────────────────────────────────────┐
               │ CountryService.getLocationData()                    │
-              │   GET cdn-countries…/location                       │
+              │   GET next-address…/v1/bootstrap                    │
               │   cached 1 hour in localStorage (next_country_*)     │
               │   3-second budget → on timeout, US / USD hard-coded  │
               └─────────────────────────────────────────────────────┘
@@ -73,6 +73,13 @@ boot step 5   campaign fetched in that currency,         │
               checkout form: country dropdown, state list and label,
               postcode label, validation, and formatting
 ```
+
+One request answers both chains. `/v1/bootstrap` reports where the visitor is — country,
+currency and IP — alongside the rules and the country list, so the country chain and the
+currency chain are reading the same answer rather than two providers' separate guesses.
+The currency it reports is a reading of where the visitor is, not an instruction about
+what to charge: it is the lowest rung of the chain below, under `?currency=` and the
+choice already saved for the session.
 
 Currency resolution happening at **step 3** and the campaign loading at **step 5** is the
 ordering that makes everything downstream work — and the reason a price problem is a

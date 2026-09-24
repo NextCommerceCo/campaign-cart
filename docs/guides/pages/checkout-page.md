@@ -6,7 +6,7 @@ category: "Building Pages"
 
 # Building a checkout page
 
-A checkout page is one `<form>` that the SDK turns into a working checkout: package selection, customer fields, an order bump, hosted card fields, express payment buttons, and a live order summary. The SDK prices everything, validates the fields, creates the order, and sends the visitor to the next page. Every example below is condensed from `checkout.html` in the `apollo` starter template ([campaign-cart-starter-templates](https://github.com/NextCommerceCo/campaign-cart-starter-templates)).
+A checkout page is one `<form>` that the SDK turns into a working checkout: package selection, customer fields, an order bump, hosted card fields, express payment buttons, and a live order summary. The SDK prices everything, validates the fields, creates the order, and sends the visitor to the next page. Every example below is condensed from `checkout.html` in the `apollo` starter template ([campaign-cart-starter-templates](https://github.com/NextCommerceCo/campaign-cart-starter-templates)), except the address block, which the template does not use.
 
 The page declares itself in the head. See [Getting started](../start-here/getting-started.md) for the full boot setup:
 
@@ -75,7 +75,52 @@ The pieces that matter:
 
 ## Customer and shipping fields
 
-You write ordinary inputs and name each one with `data-next-checkout-field`. The SDK finds them by name; layout, order, and styling are yours.
+Every field reaches the order through its `data-next-checkout-field` name. For the shipping address, use the address block: the SDK builds the fields each country collects, in the order that country writes them. Write the address inputs yourself only on a page that ships to one country.
+
+### Address block
+
+Below is an example that collects the customer's email and name, then lets the SDK build the shipping address for the shopper's country.
+
+```html
+<input
+  data-next-checkout-field="email"
+  autocomplete="email"
+  placeholder="Email*"
+  type="email">
+<input
+  data-next-checkout-field="fname"
+  autocomplete="given-name"
+  placeholder="First Name*">
+<input
+  data-next-checkout-field="lname"
+  autocomplete="family-name"
+  placeholder="Last Name*">
+<div data-next-address="shipping"></div>
+```
+
+The empty `<div>` becomes the address fields the selected country collects, so a Japanese address leads with the postcode and a US one ends with state and ZIP. When the shopper changes country the block is rebuilt, and what they typed into text inputs is kept.
+
+The block builds the country, name, street, city, state, postcode and phone fields the country's layout includes, and skips any the form already collects outside it, such as the name above. It never builds the email. The country list, the state options, validation, and the city, state and postcode rows staying hidden until the street address is filled all work as they do for hand-written fields below.
+
+The SDK ships no styling for the block. Style it through the classes it sets: `next-address-row` on each row and `next-address-field` on each field, which also carries `data-next-address-field` with the field's name. While the layout loads, the block carries `data-next-address-state="loading"`, then `ready`. [Address block](../reference/data-attributes.md#address-block) lists its attributes.
+
+Three limits to plan for:
+
+| Limit | Description |
+|---|---|
+| Layout request | Fields appear once the layout loads |
+| First layout | United States, until the country is known |
+| Third address line | Not collected; orders carry two |
+
+If the layout request fails before any layout has loaded, the block builds a generic layout in English instead: country, name, street, city, state, postcode and phone, with state and postcode optional (`address-form.api.ts › builtInAddressSpec`). A later failure leaves the fields on screen as they are.
+
+### Hand-written fields
+
+You write ordinary inputs and name each one with `data-next-checkout-field`. The fields load with the page and need no layout request.
+
+Hand-written fields are not recommended for a page that ships to more than one country. The SDK hides the state field where a country has no states and rewrites the state and postal wording, but the fields keep the order and the set you wrote: a Japanese address still ends with its postcode, and a country with no postcode still shows the field.
+
+Below is an example that collects the customer's name, email and phone, and a shipping address whose city, state and ZIP stay hidden until the street address is filled.
 
 ```html
 <div data-next-component="shipping-form">
@@ -96,7 +141,7 @@ You write ordinary inputs and name each one with `data-next-checkout-field`. The
     type="email">
   <input
     data-next-checkout-field="phone"
-    autocomplete="tel-full"
+    autocomplete="tel"
     placeholder="Phone"
     type="tel">
   <select data-next-checkout-field="country" autocomplete="country-name">
@@ -110,7 +155,7 @@ You write ordinary inputs and name each one with `data-next-checkout-field`. The
     data-next-checkout-field="address2"
     autocomplete="address-line2"
     placeholder="Apartment, suite, etc. (optional)">
-  <div data-next-component="location" class="next-hidden">
+  <div data-next-component="location">
     <input
       data-next-checkout-field="city"
       autocomplete="address-level2"
@@ -126,7 +171,20 @@ You write ordinary inputs and name each one with `data-next-checkout-field`. The
 </div>
 ```
 
-Two of these are SDK-managed containers, not fields. The country and state `<select>`s start with one empty option, and the SDK fills them from the campaign's country list. The city/state/postal group sits inside `data-next-component="location"` with `class="next-hidden"`: the SDK reveals it the moment the street address (`address1`) has a value (typed, autofilled, or autocompleted) and never hides it again (`location-field-visibility.ts`). The trigger is not configurable; omit the `location` wrapper to keep the fields visible from the start.
+The SDK changes this markup in four places:
+
+| Part | Description |
+|---|---|
+| Country `<select>` | The campaign's shipping countries |
+| State `<select>` | The selected country's states |
+| State and postal wording | The selected country's labels |
+| `location` group | Hidden until `address1` has a value |
+
+The country list holds the countries the campaign ships to, and your empty first option stays as the prompt. The state list is replaced each time the country changes, and for a country with no states to choose from the SDK hides the state field (`state-fields.ts › updateStateOptions`).
+
+Once the country is known, the SDK rewrites the postal input's placeholder, and any `<label>` for the state or postal field, in that country's wording (`country-fields.ts › updateFormLabels`). The `ZIP Code*` you write is what shows before that.
+
+The SDK hides the `location` group when it boots and shows it once `address1` has a value: typed, autofilled, autocompleted, or restored for a returning visitor. It never hides the group again, and the trigger is not configurable (`location-field-visibility.ts`). No class is needed for this. The SDK sets the wrapper's inline `display` to `none`, then to `flex` when it shows the group, so a grid layout belongs on an element inside the wrapper, and a stylesheet rule that hides the wrapper with `!important` keeps it hidden for good. Leave the wrapper out to show the fields from the start.
 
 ## Order bump
 

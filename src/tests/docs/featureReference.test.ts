@@ -55,6 +55,9 @@ const modules = import.meta.glob<{ default: FeatureManifest }>(
   { eager: true }
 );
 
+// Features written without a manifest while the manifest system is being removed.
+const WITHOUT_MANIFEST = new Map([['address-form', '[data-next-address]']]);
+
 const eventDocs = extractEventDocs(join(SRC, 'types/global.ts'));
 
 /**
@@ -357,13 +360,14 @@ describe('feature reference docs', () => {
     ].flatMap(m => m[1].split(',').map(part => part.trim()));
     expect(queried.length, 'failed to parse the scanner selector list').toBeGreaterThan(10);
 
-    const claimed = new Set(
-      manifests.flatMap(({ manifest }) =>
+    const claimed = new Set([
+      ...manifests.flatMap(({ manifest }) =>
         [manifest.activates, ...(manifest.alsoActivates ?? [])]
           .filter((s): s is string => !!s)
           .flatMap(s => [s, bareSelector(s)])
-      )
-    );
+      ),
+      ...WITHOUT_MANIFEST.values(),
+    ]);
 
     const unclaimed = queried.filter(
       selector => !claimed.has(selector) && !claimed.has(bareSelector(selector))
@@ -458,7 +462,10 @@ describe('feature reference docs', () => {
    * to `features/cart/coupon/guide/`, and the orphan stayed behind.
    */
   it('has no orphaned guide folders', () => {
-    const known = new Set(manifests.map(m => m.manifest.id));
+    const known = new Set([
+      ...manifests.map(m => m.manifest.id),
+      ...WITHOUT_MANIFEST.keys(),
+    ]);
     // State stores keep guides too and are not features; they live under state/.
     const guideDirs = Object.keys(
       import.meta.glob('../../features/**/guide/**/*.md', { eager: true })

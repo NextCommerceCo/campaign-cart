@@ -7,6 +7,14 @@ import { useCampaignStore } from '@/state/campaign';
 import { scopedKey } from '@/core/storage';
 import { useConfigStore } from '@/state/config';
 
+/**
+ * The locale the debug overlay's picker has forced for this session, or `null` when it
+ * has not. Everything that follows the picker reads it here, so the key has one reader.
+ */
+export function getSelectedLocale(): string | null {
+  return sessionStorage.getItem(scopedKey('next_selected_locale'));
+}
+
 export class CurrencyFormatter {
   private static formatters: Map<string, Intl.NumberFormat> = new Map();
   private static formattersNoZeroCents: Map<string, Intl.NumberFormat> =
@@ -47,9 +55,7 @@ export class CurrencyFormatter {
    * 4. `'en-US'`, for a browser that reports nothing.
    */
   private static getUserLocale(): string {
-    const selectedLocale = sessionStorage.getItem(
-      scopedKey('next_selected_locale')
-    );
+    const selectedLocale = getSelectedLocale();
     if (selectedLocale) {
       return selectedLocale;
     }

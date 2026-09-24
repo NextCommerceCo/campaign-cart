@@ -27,6 +27,12 @@ export class AddressAutocompleteEnhancer {
 
   private googleMaps?: GoogleMapsAutocomplete;
   private nextCommerce?: NextCommerceAutocomplete;
+  private listenerAbort = new AbortController();
+  private enabled: AddressAutocompleteOptions = {
+    enableGoogleMaps: false,
+    enableNextCommerce: false,
+  };
+  private loaded = false;
 
   constructor(deps: {
     fields: Map<string, HTMLElement>;
@@ -56,10 +62,33 @@ export class AddressAutocompleteEnhancer {
       return;
     }
 
-    this.setupLazyLoading(enableGoogleMaps, enableNextCommerce);
+    this.enabled = options;
+    this.setupLazyLoading();
+  }
+
+  /**
+   * Binds the loaded provider to the address fields as they now stand.
+   *
+   * `data-next-address` replaces every input when the country changes, so a provider set
+   * up against the previous ones is attached to elements no longer on the page. A form
+   * whose address fields never change never calls this.
+   */
+  public async rebind(): Promise<void> {
+    if (!this.loaded) return;
+
+    try {
+      this.googleMaps?.destroy();
+      this.nextCommerce?.destroy();
+      await this.googleMaps?.setup();
+      this.nextCommerce?.setup();
+      this.ctx.logger.debug('Address autocomplete rebound to the current address fields');
+    } catch (error) {
+      this.ctx.logger.error('Failed to rebind address autocomplete:', error);
+    }
   }
 
   public destroy(): void {
+    this.listenerAbort.abort();
     this.googleMaps?.destroy();
     this.nextCommerce?.destroy();
   }
@@ -68,42 +97,52 @@ export class AddressAutocompleteEnhancer {
   // LAZY LOADING
   // ============================================================================
 
-  private setupLazyLoading(enableGoogleMaps: boolean, enableNextCommerce: boolean): void {
-    const { fields, billingFields } = this.ctx;
-    const addressField = fields.get('address1');
-    const billingAddressField = billingFields.get('billing-address1');
-
+  /**
+   * Waits for a focus on an address field, wherever that field comes from.
+   *
+   * One delegated listener rather than one per input, because the input it is waiting for
+   * may not exist yet: `data-next-address` builds its fields after this runs, and builds
+   * new ones every time the country changes. Reading the field map when the event fires
+   * instead of when the listener is attached is what makes both cases work — bound to the
+   * elements directly, this loaded for a hand-written form and never for a built one.
+   */
+  private setupLazyLoading(): void {
     let isLoading = false;
-    let isLoaded = false;
 
-    const loadOnFocus = async () => {
-      if (isLoaded || isLoading) return;
-      isLoading = true;
-      this.ctx.logger.info('User focused on address field, loading autocomplete...');
-
-      try {
-        if (enableGoogleMaps) {
-          this.googleMaps = new GoogleMapsAutocomplete(this.ctx);
-          await this.googleMaps.setup();
-        } else if (enableNextCommerce) {
-          this.nextCommerce = new NextCommerceAutocomplete(this.ctx, this.apiClient);
-          this.nextCommerce.setup();
-        }
-        isLoaded = true;
-        addressField?.removeEventListener('focus', loadOnFocus);
-        billingAddressField?.removeEventListener('focus', loadOnFocus);
-      } catch (error) {
-        this.ctx.logger.error('Failed to load autocomplete on focus:', error);
-      } finally {
-        isLoading = false;
-      }
+    // Not provable in a browser test with the NextCommerce provider, which builds no UI
+    // until it has results: the guard's only effect is that an unrelated focus does not
+    // load a provider at all, which matters most for Google Maps and its external script.
+    const isAddressField = (target: EventTarget | null): boolean => {
+      const { fields, billingFields } = this.ctx;
+      return (
+        target === fields.get('address1') ||
+        target === billingFields.get('billing-address1')
+      );
     };
 
-    if (addressField instanceof HTMLInputElement) {
-      addressField.addEventListener('focus', loadOnFocus);
-    }
-    if (billingAddressField instanceof HTMLInputElement) {
-      billingAddressField.addEventListener('focus', loadOnFocus);
-    }
+    document.addEventListener(
+      'focusin',
+      async event => {
+        if (this.loaded || isLoading || !isAddressField(event.target)) return;
+        isLoading = true;
+        this.ctx.logger.info('User focused on address field, loading autocomplete...');
+
+        try {
+          if (this.enabled.enableGoogleMaps) {
+            this.googleMaps = new GoogleMapsAutocomplete(this.ctx);
+            await this.googleMaps.setup();
+          } else if (this.enabled.enableNextCommerce) {
+            this.nextCommerce = new NextCommerceAutocomplete(this.ctx, this.apiClient);
+            this.nextCommerce.setup();
+          }
+          this.loaded = true;
+        } catch (error) {
+          this.ctx.logger.error('Failed to load autocomplete on focus:', error);
+        } finally {
+          isLoading = false;
+        }
+      },
+      { signal: this.listenerAbort.signal }
+    );
   }
 }
