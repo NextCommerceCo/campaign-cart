@@ -18,7 +18,7 @@
 
 ### Documentation
 
-- **The checkout guide leads with the address block**, and says why hand-written address fields suit a page that ships to one country.
+- **The checkout guide leads with the address block**, and says why static address fields suit a page that ships to one country.
 - **Corrected in the checkout guide:** the state list comes from the selected country, not the campaign. The `location` group needs no `next-hidden` class, because the SDK hides and shows it itself and sets `display: flex` when it does. The SDK rewrites the state and postal labels for each country. The phone example uses `autocomplete="tel"`.
 
 ## [0.4.38] — 2026-08-27 — Address and Phone Fields, and Two Silent Failures

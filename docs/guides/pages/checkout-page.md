@@ -113,7 +113,7 @@ The SDK requires the first name, last name and email. The phone is optional unle
 
 The empty `<div>` becomes the address fields the selected country collects, so a Japanese address leads with the postcode and a US one ends with state and ZIP. When the shopper changes country the block is rebuilt, and what they typed into text inputs is kept.
 
-The block builds the country, name, street, city, state, postcode and phone fields the country's layout includes, and skips any the form already collects outside it, such as the name and phone above. It never builds the email. The country list, the state options, validation, and the city, state and postcode rows staying hidden until the street address is filled all work as they do for hand-written fields below.
+The block builds the country, name, street, city, state, postcode and phone fields the country's layout includes, and skips any the form already collects outside it, such as the name and phone above. It never builds the email. The country list, the state options, validation, and the city, state and postcode rows staying hidden until the street address is filled all work as they do for static fields below.
 
 The SDK ships no styling for the block. Style it through the classes it sets: `next-address-row` on each row and `next-address-field` on each field, which also carries `data-next-address-field` with the field's name. While the layout loads, the block carries `data-next-address-state="loading"`, then `ready`. [Address block](../reference/data-attributes.md#address-block) lists its attributes.
 
@@ -127,11 +127,11 @@ Three limits to plan for:
 
 If the layout request fails before any layout has loaded, the block builds a generic layout in English instead: country, name, street, city, state, postcode and phone, with state and postcode optional (`address-form.api.ts › builtInAddressSpec`). A later failure leaves the fields on screen as they are.
 
-### Hand-written address fields
+### Static address fields
 
 You write the address inputs yourself and name each one with `data-next-checkout-field`. They load with the page and need no layout request.
 
-Hand-written address fields are not recommended for a page that ships to more than one country. The SDK hides the state field where a country has no states and rewrites the state and postal wording, but the fields keep the order and the set you wrote: a Japanese address still ends with its postcode, and a country with no postcode still shows the field.
+Static address fields are not recommended for a page that ships to more than one country. The SDK hides the state field where a country has no states and rewrites the state and postal wording, but the fields keep the order and the set you wrote: a Japanese address still ends with its postcode, and a country with no postcode still shows the field.
 
 Below is an example of the Shipping Information step written by hand, in place of the address block above. The city, state and ZIP stay hidden until the street address is filled.
 
@@ -182,7 +182,7 @@ The SDK hides the `location` group when it boots and shows it once `address1` ha
 
 ### Address suggestions
 
-The SDK can suggest whole addresses as the shopper types the street address. Suggestions attach to the field named `address1` (and `billing-address1`), in the address block and in hand-written fields alike, so the markup needs nothing extra. They stay off until `window.nextConfig` turns them on.
+The SDK can suggest whole addresses as the shopper types the street address. Suggestions attach to the field named `address1` (and `billing-address1`), in the address block and in static fields alike, so the markup needs nothing extra. They stay off until `window.nextConfig` turns them on.
 
 | Setting | Description |
 |---|---|
