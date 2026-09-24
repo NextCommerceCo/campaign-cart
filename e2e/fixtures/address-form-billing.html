@@ -14,7 +14,7 @@
 
          A checkout that collects a separate billing address through the block rather
          than through the checkout form's clone-from-shipping mount. No
-         os-checkout-component="billing-form" container: with both, the page would get
+         data-next-component="billing-form" container: with both, the page would get
          two sets of billing-* fields. -->
     <form data-next-checkout>
       <div class="form-group">
@@ -28,7 +28,7 @@
         <input type="checkbox" name="use_shipping_address" />
         Use shipping address as billing address
       </label>
-      <div os-checkout-element="different-billing-address">
+      <div data-next-component="different-billing-address">
         <div data-next-address="billing"></div>
       </div>
 

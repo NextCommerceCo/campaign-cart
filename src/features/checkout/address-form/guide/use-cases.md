@@ -48,9 +48,11 @@ waits for a layout before it can build anything.
 **Use instead:** Plain `data-next-checkout-field` inputs, as
 [checkout-form](../../checkout-form/guide/overview.md) documents.
 
-### A billing address
+### A billing address on a page that keeps its billing-form container
 
-**Why not:** The checkout form builds the billing address by copying the shipping one, so
-a second block would put two sets of `billing-*` fields on the page.
+**Why not:** The checkout form fills `data-next-component="billing-form"` by copying the
+shipping fields, so a `data-next-address="billing"` block beside it puts two sets of
+`billing-*` fields on the page.
 
-**Use instead:** `data-next-component="billing-form"`, which the checkout form fills.
+**Use instead:** One billing address per page. Keep the `billing-form` container, or
+replace it with `<div data-next-address="billing"></div>`.
