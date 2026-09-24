@@ -32,7 +32,7 @@
  */
 export interface PhoneNumberSource {
   /** E.164 for what is in the field now, or `''` when there is none to give. */
-  getNumber?(format?: number): string;
+  getNumber?(): string;
   /** Whether the number could be one for its country. `null` until the rules load. */
   isValidNumber?(): boolean | null;
 }
@@ -43,11 +43,11 @@ export type PhoneVerdict = 'valid' | 'invalid' | 'unknown';
 /** Which check produced the verdict. Carried for logs, never for control flow. */
 export type PhoneReason =
   | 'empty'
-  /** The phone field's verdict; named for the library that gave it before the field did. */
-  | 'library-length'
+  /** The country's phone rule decided it. */
+  | 'rule'
   | 'digit-count'
-  /** The phone field is there, and its rules have not loaded. */
-  | 'utils-not-loaded'
+  /** The phone field is there, and has no rule to check with. */
+  | 'rule-not-loaded'
   /** No widget to ask — none on the page, or the one there is shows another number. */
   | 'no-instance';
 
@@ -185,10 +185,10 @@ function usableWidget(
  * @example
  * ```ts
  * checkPhone('123', phoneInputs.get('shipping'));
- * // → { verdict: 'invalid', reason: 'library-length', value: '123', isE164: false }
+ * // → { verdict: 'invalid', reason: 'rule', value: '123', isE164: false }
  *
  * checkPhone('(415) 555-2671', phoneInputs.get('shipping'));
- * // → { verdict: 'valid', reason: 'library-length', value: '+14155552671', isE164: true }
+ * // → { verdict: 'valid', reason: 'rule', value: '+14155552671', isE164: true }
  * ```
  */
 export function checkPhone(
@@ -211,7 +211,7 @@ export function checkPhone(
     return {
       ...resolved,
       verdict: byLength ? 'valid' : 'invalid',
-      reason: 'library-length',
+      reason: 'rule',
     };
   }
 
@@ -223,7 +223,7 @@ export function checkPhone(
     verdict: withinRange ? 'unknown' : 'invalid',
     reason: withinRange
       ? widget
-        ? 'utils-not-loaded'
+        ? 'rule-not-loaded'
         : 'no-instance'
       : 'digit-count',
   };

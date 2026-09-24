@@ -59,7 +59,7 @@ describe('checkPhone', () => {
     const check = checkPhone('(415) 555-2671', loadedSource(true));
 
     expect(check.verdict).toBe('valid');
-    expect(check.reason).toBe('library-length');
+    expect(check.reason).toBe('rule');
     expect(check.value).toBe('+14155552671');
     expect(check.isE164).toBe(true);
   });
@@ -70,14 +70,14 @@ describe('checkPhone', () => {
     const check = checkPhone('415555267', loadedSource(false, '+1415555267'));
 
     expect(check.verdict).toBe('invalid');
-    expect(check.reason).toBe('library-length');
+    expect(check.reason).toBe('rule');
   });
 
   it('says unknown rather than invalid while the rules are loading', () => {
     const check = checkPhone('4155552671', source());
 
     expect(check.verdict).toBe('unknown');
-    expect(check.reason).toBe('utils-not-loaded');
+    expect(check.reason).toBe('rule-not-loaded');
     expect(check.value).toBe('4155552671');
     expect(check.isE164).toBe(false);
   });
@@ -151,7 +151,7 @@ describe('a widget whose field is empty', () => {
     const check = checkPhone('4155552671', source());
 
     expect(check.verdict).toBe('unknown');
-    expect(check.reason).toBe('utils-not-loaded');
+    expect(check.reason).toBe('rule-not-loaded');
   });
 });
 
