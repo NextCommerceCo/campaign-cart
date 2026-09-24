@@ -466,7 +466,7 @@ Below is an example that builds a shipping address with German labels, inside a 
 </form>
 ```
 
-A field the form already collects outside the block, such as the email above, is not built again. Until the checkout knows the country, the block shows the United States layout. Without `data-next-address-lang` the labels follow `window.nextConfig.locale`, then English, never the browser's language. The country list, state options and validation still come from the checkout form.
+Without `data-next-address-lang` the labels follow `window.nextConfig.locale`, then English, never the browser's language. What the block builds, how to style it, and its limits are in [Address block](../pages/checkout-page.md#address-block).
 
 Use one billing address per page: a `billing` block, or the `data-next-component="billing-form"` container the SDK copies the shipping fields into. With both, the page can carry two sets of billing fields.
 
