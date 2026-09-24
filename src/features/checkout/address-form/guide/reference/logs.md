@@ -27,7 +27,7 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Discarding the {countryCode} layout; {requestedCountry} was asked for since` | `address-form.enhancer.ts › AddressFormEnhancer.renderCountry` | — |
+| `Discarding the {countryCode} layout; a newer one was asked for since` | `address-form.enhancer.ts › AddressFormEnhancer.renderCountry` | — |
 | `Rendered {length} address fields for {countryCode}` | `address-form.enhancer.ts › AddressFormEnhancer.renderCountry` | yes |
 
 The **Extra context** column says whether the call passes a second argument — an object or an error logged alongside the message. Expand that entry in the console to see it; the message alone will not tell you which element or package was involved.

@@ -1,5 +1,7 @@
 import { BaseEnhancer } from '@/core/base/base-enhancer';
+import { getSelectedLocale } from '@/core/currency-formatter';
 import { useCheckoutStore } from '@/state/checkout';
+import { useConfigStore } from '@/state/config';
 
 import { fetchAddressSpec, type AddressSpec } from './address-form.api';
 import { readRenderedValues, renderAddressSpec } from './address-form.renderer';
@@ -13,6 +15,8 @@ export class AddressFormEnhancer extends BaseEnhancer {
   private renderedCountry?: string;
   /** The country of the most recent render request, in flight or not. */
   private requestedCountry?: string;
+  /** Only the newest request may render; a language switch keeps the country the same. */
+  private requestId = 0;
 
   public async initialize(): Promise<void> {
     this.validateElement();
@@ -30,7 +34,17 @@ export class AddressFormEnhancer extends BaseEnhancer {
       const next = state.formData.country;
       if (next && next !== this.requestedCountry) void this.renderCountry(next);
     });
+
+    // The debug overlay's locale picker. It says so on `document`, not the bus.
+    document.addEventListener('next:locale-changed', this.handleLocaleChange);
   }
+
+  public override destroy(): void {
+    super.destroy();
+    document.removeEventListener('next:locale-changed', this.handleLocaleChange);
+  }
+
+  private readonly handleLocaleChange = (): void => this.update();
 
   public update(): void {
     const country =
@@ -74,20 +88,33 @@ export class AddressFormEnhancer extends BaseEnhancer {
     this.element.setAttribute('data-next-address-state', state);
   }
 
+  /**
+   * Picker > `data-next-address-lang` > `nextConfig.locale` > the API's `en` default.
+   * The browser's own language is deliberately not a tier: a shipped page would then
+   * relabel itself per visitor.
+   */
+  private resolveLang(): string | undefined {
+    return (
+      getSelectedLocale() ?? this.lang ?? useConfigStore.getState().locale
+    );
+  }
+
   /** A failure leaves what is on screen alone rather than emptying a half-typed form. */
   private async renderCountry(countryCode: string): Promise<void> {
     this.requestedCountry = countryCode;
+    const requestId = ++this.requestId;
     if (!this.renderedCountry) this.setState('loading');
 
+    const lang = this.resolveLang();
     let spec: AddressSpec;
     try {
       spec = await fetchAddressSpec(countryCode, {
         ...(this.baseUrl ? { baseUrl: this.baseUrl } : {}),
-        ...(this.lang ? { lang: this.lang } : {}),
+        ...(lang ? { lang } : {}),
       });
     } catch (error) {
       this.logger.error(`Failed to load the address layout for ${countryCode}:`, error);
-      if (this.requestedCountry === countryCode) {
+      if (requestId === this.requestId) {
         // Forget the request, so choosing this country again is a change and retries it.
         this.requestedCountry = this.renderedCountry;
         if (!this.renderedCountry) this.setState('failed');
@@ -95,12 +122,12 @@ export class AddressFormEnhancer extends BaseEnhancer {
       return;
     }
 
-    // A later country was asked for while this layout was in flight. Rendering it now
-    // would leave the form showing a country the store has already moved off, and the
-    // store write that would correct it has been and gone.
-    if (this.requestedCountry !== countryCode) {
+    // A later country or language was asked for while this layout was in flight.
+    // Rendering it now would leave the form showing what the shopper has already moved
+    // off, and the change that would correct it has been and gone.
+    if (requestId !== this.requestId) {
       this.logger.debug(
-        `Discarding the ${countryCode} layout; ${this.requestedCountry} was asked for since`
+        `Discarding the ${countryCode} layout; a newer one was asked for since`
       );
       return;
     }

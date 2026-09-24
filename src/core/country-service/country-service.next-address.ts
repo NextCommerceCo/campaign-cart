@@ -32,7 +32,7 @@ import type {
 } from '@/core/country-service/country-service';
 
 const NEXT_ADDRESS_BASE_URL =
-  'https://next-address.kasemsanm-dev.workers.dev';
+  'https://i18n-rules.kasemsanm-dev.workers.dev';
 
 /**
  * Pinned rather than left to `Accept-Language`.

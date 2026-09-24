@@ -36,7 +36,7 @@ export default defineFeature({
       required: false,
       default: 'en',
       description:
-        'Which language the field labels come back in. Accepts `da de en es fi fr it nl no pt sv th`, with or without a region (`th-TH` works).',
+        'Which language the field labels come back in. Accepts `da de en es fi fr it nl no pt sv th`, with or without a region (`th-TH` works). Without it, `window.nextConfig.locale` is used, then `en`. The debug locale picker overrides all of these and rebuilds the block in the chosen language. The browser language is never used.',
       notes:
         'Labels only. It does not translate the rest of the page, and it does not change which fields a country collects.',
     },

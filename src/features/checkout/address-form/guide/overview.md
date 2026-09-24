@@ -84,6 +84,7 @@ checkout store country ──► GET /v1/layout/{country}
 - Does not collect a third address line. The orders API carries `address1` and `address2`
   and has nowhere to put a third, so a country that collects one has that field left out.
 - Does not translate anything but the field labels, and only when
-  `data-next-address-lang` asks for it.
+  `data-next-address-lang`, `window.nextConfig.locale` or the debug locale picker asks
+  for it. The visitor's browser language is not followed.
 - Does not validate. The checkout form owns which values are accepted.
 - Does not fill the country or province dropdowns; it builds them empty.

@@ -501,6 +501,44 @@ test('a returning visitor sees the billing address they already gave', async ({
   await expect(page.locator(FIELD('billing-city'))).toBeVisible();
 });
 
+/** The `lang` of every layout request the block makes, in order. */
+function recordLayoutLangs(page: Page): string[] {
+  const langs: string[] = [];
+  page.on('request', request => {
+    const url = new URL(request.url());
+    if (/\/v1\/layout\//.test(url.pathname) && !url.searchParams.has('include')) {
+      langs.push(url.searchParams.get('lang') ?? '');
+    }
+  });
+  return langs;
+}
+
+test('the debug locale picker asks for the layout again in the new language', async ({
+  page,
+}) => {
+  const langs = recordLayoutLangs(page);
+  await bootSdk(page, `${FIXTURE}?debugger=true`);
+  await expect(page.locator(FIELD('address1'))).toBeVisible();
+  expect(langs).toEqual(['en']);
+
+  const picker = page.locator('#debug-locale-selector #locale-select');
+  await expect(picker).toBeAttached({ timeout: 10000 });
+  await picker.selectOption('de-DE');
+
+  await expect.poll(() => langs).toEqual(['en', 'de-DE']);
+});
+
+test('the campaign’s pinned locale picks the label language', async ({ page }) => {
+  await page.addInitScript(() => {
+    (window as any).nextConfig = { locale: 'th-TH' };
+  });
+  const langs = recordLayoutLangs(page);
+  await bootSdk(page, FIXTURE);
+  await expect(page.locator(FIELD('address1'))).toBeVisible();
+
+  expect(langs).toEqual(['th-TH']);
+});
+
 test('the block says it is loading until its fields arrive', async ({ page }) => {
   await bootSdk(page, FIXTURE);
   await expect(page.locator(FIELD('address1'))).toBeVisible();
