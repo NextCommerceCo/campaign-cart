@@ -180,6 +180,30 @@ The SDK hides the `location` group when it boots and shows it once `address1` ha
 
 `data-next-component="shipping-form"` and `data-next-component="shipping-field-row"` matter only on a page that copies the shipping fields into a billing address: the SDK copies the rows marked `shipping-field-row` from inside `shipping-form` (`billing-form-setup.ts › setupBillingForm`). Without a billing copy, leave both out.
 
+### Address suggestions
+
+The SDK can suggest whole addresses as the shopper types the street address. Suggestions attach to the field named `address1` (and `billing-address1`), in the address block and in hand-written fields alike, so the markup needs nothing extra. They stay off until `window.nextConfig` turns them on.
+
+| Setting | Description |
+|---|---|
+| `addressConfig.enableAutocomplete` | NextCommerce suggestions, when `true` |
+| `googleMaps.apiKey` | Google Maps suggestions instead |
+
+Below is an example that turns on the NextCommerce suggestions, the setting the apollo template ships with.
+
+```html
+<script>
+  window.nextConfig = {
+    apiKey: '{YOUR_CAMPAIGN_API_KEY}',
+    addressConfig: {
+      enableAutocomplete: true,
+    },
+  };
+</script>
+```
+
+To use Google Maps instead, add `googleMaps: { apiKey: '{GOOGLE_MAPS_API_KEY}' }`. With a key present, Google Maps takes priority (`checkout-form.enhancer.ts › createAddressAutocomplete`). When the shopper picks a suggestion, the SDK fills the street, city, state, postcode and country, and shows the `location` group.
+
 ## Order bump
 
 An order bump is a checkbox card that adds a second package to the order when toggled. From `_includes/bump-check01.html`:
