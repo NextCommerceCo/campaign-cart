@@ -361,7 +361,7 @@ One `<form>` owns everything: fields bind to the order by name, payment methods 
   <input data-next-checkout-field="fname">
   <select data-next-checkout-field="country"></select>
   <input data-next-checkout-field="address1">
-  <div data-next-component="location" class="next-hidden">
+  <div data-next-component="location">
     <input data-next-checkout-field="city">
   </div>
   <div data-next-checkout-field="cc-number"></div>
@@ -389,7 +389,7 @@ Below is an example that collects a name and a city, reveals the city group once
 ```html
 <form data-next-checkout="form">
   <input data-next-checkout-field="fname">
-  <div data-next-component="location" class="next-hidden">
+  <div data-next-component="location">
     <input data-next-checkout-field="city">
   </div>
   <div data-next-payment-method="credit">
@@ -440,7 +440,35 @@ Values `data-next-component` accepts.
 | `express-error-text` | The error message inside it |
 | `scroll-hint` | The scroll affordance |
 
-`location` carries `class="next-hidden"`. The SDK reveals it the moment the street address has a value, and never hides it again.
+The SDK hides `location` when it boots and shows it once the street address has a value. It never hides it again, and needs no class to do this. [Customer and shipping fields](../pages/checkout-page.md#customer-and-shipping-fields) covers the layout it forces on the wrapper.
+
+### Address block
+
+`data-next-address` turns an empty element inside the checkout form into the address fields the selected country collects, in the order that country writes them. It rebuilds them when the country changes.
+
+| Attribute | Description |
+|---|---|
+| `data-next-address` | Which address the block collects |
+| `data-next-address-lang` | The language of the field labels |
+
+| Value | Description |
+|---|---|
+| `shipping` | The shipping address fields |
+| `billing` | The same, named `billing-address1` etc. |
+
+Below is an example that builds a shipping address with German labels, inside a form that collects the email itself.
+
+```html
+<form data-next-checkout="form">
+  <input data-next-checkout-field="email" type="email">
+  <div data-next-address="shipping" data-next-address-lang="de"></div>
+  <button type="submit">Complete Order</button>
+</form>
+```
+
+A field the form already collects outside the block, such as the email above, is not built again. Until the checkout knows the country, the block shows the United States layout. Without `data-next-address-lang` the labels follow `window.nextConfig.locale`, then English, never the browser's language. The country list, state options and validation still come from the checkout form.
+
+Use one billing address per page: a `billing` block, or the `data-next-component="billing-form"` container the SDK copies the shipping fields into. With both, the page can carry two sets of billing fields.
 
 ### Payment methods
 
