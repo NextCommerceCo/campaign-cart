@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { MINIMAL_CAMPAIGN } from './fixtures/campaign';
-import { stubCampaign, stubCart, bootSdk } from './fixtures/routes';
+import { stubCampaign, stubCart, bootSdk, ADDRESS_SERVICE_ROUTE } from './fixtures/routes';
 
 /**
  * E2E for the checkout-form enhancer (`form[data-next-checkout]`).
@@ -18,34 +18,24 @@ const FIXTURE = '/e2e/fixtures/checkout-form.html';
 
 /** Stub the country/states CDN the checkout form's CountryService calls. */
 async function stubCountryService(page: Page): Promise<void> {
-  await page.route('**/cdn-countries.muddy-wind-c7ca.workers.dev/**', route => {
-    const url = route.request().url();
-    if (url.includes('/location')) {
-      return route.fulfill({
-        json: {
-          detectedCountryCode: 'US',
-          countries: [
-            { code: 'US', name: 'United States' },
-            { code: 'CA', name: 'Canada' },
-          ],
-        },
-      });
+  const spec = {
+    country: 'US',
+    layout: [['country'], ['line1'], ['city', 'state', 'postcode']],
+    fields: {
+      state: { label: 'State', required: true },
+      postcode: { label: 'ZIP Code', required: true },
+    },
+  };
+  await page.route(ADDRESS_SERVICE_ROUTE, route => {
+    if (route.request().url().includes('/v1/layout/')) {
+      return route.fulfill({ json: { spec, states: [] } });
     }
-    // /countries/{code}/states
     return route.fulfill({
       json: {
-        countryConfig: {
-          stateLabel: 'State',
-          stateRequired: true,
-          postcodeLabel: 'ZIP Code',
-          postcodeRegex: '',
-          postcodeExample: '',
-          stateExample: '',
-        },
-        states: [
-          { code: 'NY', name: 'New York' },
-          { code: 'CA', name: 'California' },
-        ],
+        geo: { country: 'US' },
+        spec,
+        countries: [{ code: 'US', name: 'United States' },
+          { code: 'CA', name: 'Canada' }],
       },
     });
   });

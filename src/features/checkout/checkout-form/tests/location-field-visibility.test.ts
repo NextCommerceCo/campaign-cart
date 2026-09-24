@@ -250,3 +250,54 @@ describe('reacting to an address being typed', () => {
     expect(rows('brows').style.display).toBe('');
   });
 });
+
+// ─── Rows that arrive after boot ──────────────────────────────────────────────
+
+describe('refresh: rows and inputs built after boot', () => {
+  it('hides rows that appeared since initialize, and reveals them on the new input', () => {
+    const { ctx, form } = createCtx('');
+    const visibility = createLocationFieldVisibility(ctx);
+    visibility.initialize();
+
+    form.insertAdjacentHTML(
+      'beforeend',
+      SHIPPING_ROWS + '<input data-field="address1" />'
+    );
+    const address = form.querySelector(
+      '[data-field="address1"]'
+    ) as HTMLInputElement;
+    ctx.fields.set('address1', address);
+    visibility.refresh();
+
+    expect(rows('rows').style.display).toBe('none');
+
+    address.value = '100 New Montgomery St';
+    address.dispatchEvent(new Event('input'));
+
+    expect(rows('rows').style.display).toBe('flex');
+  });
+
+  it('keeps rebuilt rows revealed once the set has been shown', () => {
+    const { ctx, form } = createCtx(SHIPPING_ROWS);
+    const visibility = createLocationFieldVisibility(ctx);
+    visibility.initialize();
+    visibility.showLocationFields();
+
+    rows('rows').remove();
+    form.insertAdjacentHTML('beforeend', SHIPPING_ROWS);
+    visibility.refresh();
+
+    expect(rows('rows').style.display).toBe('flex');
+  });
+
+  it('binds an address input once, however often it refreshes', () => {
+    const { ctx, listened } = createCtx(
+      SHIPPING_ROWS + '<input data-field="address1" />'
+    );
+    const visibility = createLocationFieldVisibility(ctx);
+    visibility.initialize();
+    visibility.refresh();
+
+    expect(listened.map(l => l.type)).toEqual(['input', 'change', 'blur']);
+  });
+});

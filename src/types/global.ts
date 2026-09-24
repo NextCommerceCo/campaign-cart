@@ -620,6 +620,16 @@ export interface EventMap {
    */
   'address:location-fields-shown': {};
   /**
+   * The address block built its fields for a country, so anything that scanned the form
+   * earlier has to look again. Carries the checkout-field names it rendered, in the order
+   * that country writes them.
+   */
+  'address:fields-rendered': {
+    form: 'shipping' | 'billing';
+    country: string;
+    fields: string[];
+  };
+  /**
    * The shipping address fields were revealed — the visitor moved past the
    * collapsed autocomplete input, so state, city, and postcode are now on screen.
    *
@@ -1263,42 +1273,50 @@ export interface GoogleMapsConfig {
 }
 
 /**
- * How the checkout address form behaves — default country, which countries and
- * states to show, and whether to autocomplete. All fields are optional; sensible
- * defaults are derived from the campaign's shipping countries.
+ * Settings for the checkout's country and state dropdowns and its address suggestions.
+ * All are optional. The campaign's shipping countries decide the country list, so the
+ * country settings here only apply to a campaign that has none set.
+ *
+ * @example
+ * ```ts
+ * window.nextConfig = {
+ *   addressConfig: {
+ *     dontShowStates: ['AK', 'HI'],
+ *     enableAutocomplete: true,
+ *   },
+ * };
+ * ```
  * @category Checkout
  */
 export interface AddressConfig {
   /**
-   * Fallback country when detected country is not available (Low priority fallback).
-   *
-   * Automatic fallback priority:
-   * 1. United States (US) - if available in shipping countries
-   * 2. First country in available list - if US not available
-   * 3. This defaultCountry - only if list is empty (edge case)
+   * Read only when the country list is empty, so it cannot choose which country the
+   * form opens on. With a country list, the form opens on the shopper's detected
+   * country when the campaign ships there, otherwise the United States, otherwise the
+   * first country in the list.
    *
    * @example "US"
-   * @default undefined (auto-fallback to US or first available country)
    */
   defaultCountry?: string;
 
   /**
-   * @deprecated Use campaign API's available_shipping_countries instead.
-   * Countries are now automatically filtered based on your campaign configuration.
-   * This field is kept for backward compatibility only (Priority 3 fallback).
+   * @deprecated Set the shipping countries on the campaign instead. This list is read
+   * only when the campaign has no shipping countries and {@link countries} is not set.
    * @example ["US", "CA", "GB"]
    */
   showCountries?: string[];
 
   /**
-   * Array of state/province codes to hide from dropdowns (e.g., US territories).
-   * @example ["AS", "GU", "PR", "VI"]
+   * State or province codes to leave out of the state dropdown. US territories (`AS`,
+   * `GU`, `MP`, `PR`, `VI` and the `UM` minor outlying islands) are always left out and
+   * cannot be brought back.
+   * @example ["AK", "HI"]
    */
   dontShowStates?: string[];
 
   /**
-   * Custom countries list with full control over code and name.
-   * Takes priority over showCountries but not over campaign API countries.
+   * A country list with your own names. Read only when the campaign has no shipping
+   * countries set: the campaign's list always wins.
    * @example [{ code: "US", name: "United States" }]
    */
   countries?: Array<{
@@ -1306,6 +1324,10 @@ export interface AddressConfig {
     name: string;
   }>;
 
+  /**
+   * `true` turns on NextCommerce address suggestions on the street address field. A
+   * Google Maps key in `window.nextConfig.googleMaps.apiKey` takes priority over it.
+   */
   enableAutocomplete?: boolean;
 }
 

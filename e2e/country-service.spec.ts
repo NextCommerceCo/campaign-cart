@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import type { Campaign } from '../src/types/campaign';
 import { RICH_CAMPAIGN } from './fixtures/campaign';
-import { stubCampaign, stubCart, bootSdk } from './fixtures/routes';
+import { stubCampaign, stubCart, bootSdk, ADDRESS_SERVICE_ROUTE } from './fixtures/routes';
 import type { Page } from '@playwright/test';
 
 /**
@@ -25,9 +25,9 @@ import type { Page } from '@playwright/test';
  * caret. A unit test can call `formatPostalCode('m11ae')` once; only a browser
  * types the fifth character into a field the fourth one already rewrote.
  *
- * The CDN (cdn-countries.muddy-wind-c7ca.workers.dev) is stubbed here so the
- * test is deterministic. Endpoints: `/location` and `/countries/{CODE}/states`
- * (src/core/country-service.ts).
+ * the address-rules service (i18n-rules.nextcommerce.com) is stubbed here so the
+ * test is deterministic. Routes: `/v1/bootstrap` and `/v1/layout/{CODE}`
+ * (src/core/country-service/country-service.next-address.ts).
  */
 
 const FIXTURE = '/e2e/fixtures/country-service.html';
@@ -56,109 +56,99 @@ const GB_CAMPAIGN: Campaign = {
   ],
 };
 
-const US_CONFIG = {
-  stateLabel: 'State',
-  stateRequired: true,
-  postcodeLabel: 'ZIP Code',
-  postcodeRegex: null,
-  postcodeMinLength: 5,
-  postcodeMaxLength: 10,
-  postcodeExample: null,
-  postcodeFormat: null,
-  currencyCode: 'USD',
-  currencySymbol: '$',
+/**
+ * next-address spec shapes, as `docs/http-api.md` and `packages/data/src/types.ts`
+ * describe them: `fields` carries every field, `layout` says which ones the country
+ * actually collects, and a postcode pattern is written against the **compact** value.
+ */
+const US_SPEC = {
+  country: 'US',
+  layout: [['country'], ['line1'], ['city', 'state', 'postcode']],
+  fields: {
+    state: { label: 'State', required: true },
+    postcode: { label: 'ZIP Code', required: true, maxLength: 10 },
+  },
 };
 
 /**
- * Canada: fixed length, so its pattern fits from the start. Kept alongside GB so
- * that anchoring the pattern from the end cannot quietly break the case that
- * already worked. These values mirror the SDK's own fallback for CA
- * (`getDefaultCountryConfig`), plus the format the CDN serves.
+ * Canada: fixed length, so its pattern fits from the start. Kept alongside GB so that
+ * anchoring the pattern from the end cannot quietly break the case that already worked.
+ * `ca-postal` is the formatter name next-address serves; the adapter turns it into this
+ * SDK's slot pattern.
  */
-const CA_CONFIG = {
-  ...US_CONFIG,
-  stateLabel: 'Province',
-  postcodeLabel: 'Postal Code',
-  postcodeRegex: '^[A-Z]\\d[A-Z] ?\\d[A-Z]\\d$',
-  postcodeMinLength: 6,
-  postcodeMaxLength: 7,
-  postcodeExample: 'K1A 0B1',
-  postcodeFormat: 'ANA NAN',
-  currencyCode: 'CAD',
+const CA_SPEC = {
+  country: 'CA',
+  layout: [['country'], ['line1'], ['city', 'state', 'postcode']],
+  fields: {
+    state: { label: 'Province', required: true },
+    postcode: {
+      label: 'Postal Code',
+      required: true,
+      pattern: '^[A-Z]\\d[A-Z]\\d[A-Z]\\d$',
+      example: 'K1A 0B1',
+      maxLength: 6,
+    },
+  },
+  postcode: { formatter: 'ca-postal' },
 };
 
-/** The live CDN's GB entry, verbatim. */
-const GB_CONFIG = {
-  stateLabel: 'County',
-  stateRequired: false,
-  postcodeLabel: 'Postcode',
-  postcodeRegex: '^[A-Za-z]{1,2}\\d[A-Za-z\\d]? ?\\d[A-Za-z]{2}$',
-  postcodeMinLength: 5,
-  postcodeMaxLength: 8,
-  postcodeExample: 'SW1A 0AA',
-  postcodeFormat: 'AANN NAA',
-  currencyCode: 'GBP',
-  currencySymbol: '£',
+/** GB: no state, three postcode lengths, and `withPostcodeFormats` owns its shapes. */
+const GB_SPEC = {
+  country: 'GB',
+  layout: [['country'], ['line1'], ['city'], ['postcode']],
+  fields: {
+    state: { label: 'County', required: false },
+    postcode: {
+      label: 'Postcode',
+      required: true,
+      pattern: '^[A-Z]{1,2}\\d[A-Z\\d]?\\d[A-Z]{2}$',
+      example: 'SW1A 0AA',
+      maxLength: 7,
+    },
+  },
+  postcode: { formatter: 'gb-postcode' },
 };
 
-/** What `/countries/{CODE}/states` answers, per country. GB has no states. */
-const STATES: Record<string, { countryConfig: unknown; states: unknown[] }> = {
+/** What `/v1/layout/{CODE}` answers, per country. GB has no states. */
+const LAYOUTS: Record<string, { spec: unknown; states: unknown[] }> = {
   US: {
-    countryConfig: US_CONFIG,
+    spec: US_SPEC,
     states: [
       { code: 'CA', name: 'California' },
       { code: 'NY', name: 'New York' },
     ],
   },
   CA: {
-    countryConfig: CA_CONFIG,
+    spec: CA_SPEC,
     states: [
       { code: 'ON', name: 'Ontario' },
       { code: 'QC', name: 'Quebec' },
       { code: 'BC', name: 'British Columbia' },
     ],
   },
-  GB: { countryConfig: GB_CONFIG, states: [] },
+  GB: { spec: GB_SPEC, states: [] },
 };
 
-/** Stub the countries CDN: geo/location + per-country states. */
+/** Stub next-address: bootstrap + per-country layout. */
 async function stubCountriesCdn(page: Page): Promise<void> {
-  await page.route('**/cdn-countries.muddy-wind-c7ca.workers.dev/**', route => {
+  await page.route(ADDRESS_SERVICE_ROUTE, route => {
     const url = route.request().url();
-    if (url.endsWith('/location')) {
-      return route.fulfill({
-        json: {
-          detectedCountryCode: 'US',
-          detectedCountryConfig: US_CONFIG,
-          detectedStates: [],
-          countries: [
-            {
-              code: 'US',
-              name: 'United States',
-              phonecode: '+1',
-              currencyCode: 'USD',
-              currencySymbol: '$',
-            },
-            {
-              code: 'CA',
-              name: 'Canada',
-              phonecode: '+1',
-              currencyCode: 'CAD',
-              currencySymbol: '$',
-            },
-            {
-              code: 'GB',
-              name: 'United Kingdom',
-              phonecode: '+44',
-              currencyCode: 'GBP',
-              currencySymbol: '£',
-            },
-          ],
-        },
-      });
+    const layout = url.match(/\/v1\/layout\/([A-Z]{2})/)?.[1];
+    if (layout) {
+      return route.fulfill({ json: LAYOUTS[layout] ?? LAYOUTS.US });
     }
-    const code = url.match(/\/countries\/([A-Z]{2})\/states/)?.[1] ?? 'US';
-    return route.fulfill({ json: STATES[code] ?? STATES.US });
+    return route.fulfill({
+      json: {
+        geo: { country: 'US' },
+        spec: US_SPEC,
+        countries: [
+          { code: 'US', name: 'United States' },
+          { code: 'CA', name: 'Canada' },
+          { code: 'GB', name: 'United Kingdom' },
+        ],
+        states: [],
+      },
+    });
   });
 }
 

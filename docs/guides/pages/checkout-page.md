@@ -6,7 +6,7 @@ category: "Building Pages"
 
 # Building a checkout page
 
-A checkout page is one `<form>` that the SDK turns into a working checkout: package selection, customer fields, an order bump, hosted card fields, express payment buttons, and a live order summary. The SDK prices everything, validates the fields, creates the order, and sends the visitor to the next page. Every example below is condensed from `checkout.html` in the `apollo` starter template ([campaign-cart-starter-templates](https://github.com/NextCommerceCo/campaign-cart-starter-templates)).
+A checkout page is one `<form>` that the SDK turns into a working checkout: package selection, customer fields, an order bump, hosted card fields, express payment buttons, and a live order summary. The SDK prices everything, validates the fields, creates the order, and sends the visitor to the next page. Every example below is condensed from `checkout.html` in the `apollo` starter template ([campaign-cart-starter-templates](https://github.com/NextCommerceCo/campaign-cart-starter-templates)), except the address block, which the template does not use.
 
 The page declares itself in the head. See [Getting started](../start-here/getting-started.md) for the full boot setup:
 
@@ -75,58 +75,103 @@ The pieces that matter:
 
 ## Customer and shipping fields
 
-You write ordinary inputs and name each one with `data-next-checkout-field`. The SDK finds them by name; layout, order, and styling are yours.
+Every field reaches the order through its `data-next-checkout-field` name. The starter template collects them in two steps, customer information and then the shipping address. For the address, use the address block: the SDK builds the fields each country collects, in the order that country writes them.
+
+Below is an example of both steps, with the shipping address built by the SDK.
 
 ```html
-<div data-next-component="shipping-form">
+<h2>Customer Information</h2>
+<input
+  data-next-checkout-field="fname"
+  autocomplete="given-name"
+  placeholder="First Name*">
+<input
+  data-next-checkout-field="lname"
+  autocomplete="family-name"
+  placeholder="Last Name*">
+<input
+  data-next-checkout-field="email"
+  autocomplete="email"
+  placeholder="Email*"
+  type="email">
+<input
+  data-next-checkout-field="phone"
+  autocomplete="tel"
+  placeholder="Phone (Optional)"
+  type="tel">
+
+<h2>Shipping Information</h2>
+<div data-next-address="shipping"></div>
+```
+
+The SDK requires the first name, last name and email. The phone is optional unless its input carries `required` or `data-next-required="true"`.
+
+### Address block
+
+The empty `<div>` becomes the address fields the selected country collects, in the order that country writes them: a Japanese address leads with the postcode, a US one ends with state and ZIP. When the shopper changes country, the fields are rebuilt and what they typed is kept.
+
+The block builds only the fields the form does not already have, so the name and phone above are not built twice. It never builds the email. The country list, the state options, validation, and hiding city, state and postcode until the street address is filled all work as they do for static fields below.
+
+The SDK ships no styling for the block. Style it through the classes it sets: `next-address-row` on each row and `next-address-field` on each field, which also carries `data-next-address-field` with the field's name. While the fields load, the block carries `data-next-address-state="loading"`, then `ready`. [Address block](../reference/data-attributes.md#address-block) lists its attributes.
+
+Limits to plan for:
+
+| Limit | Description |
+|---|---|
+| Loading | Fields arrive after a network request |
+| Before the country is known | The block shows US fields |
+| Third address line | Not collected; orders carry two |
+
+If the fields cannot be loaded, the block shows a generic English address form instead, with state and postcode optional, so the shopper can still check out.
+
+### Static address fields
+
+The alternative to the address block is writing the address inputs yourself, each named with `data-next-checkout-field`. They load with the page and need no request.
+
+> **Watch out:** Static address fields are not recommended for a page that ships to more than one country. The fields keep the order and the set you wrote in every country: a Japanese address still ends with its postcode, and a country with no postcode still shows the field. Use the address block instead.
+
+Below is an example of the Shipping Information step written this way, in place of the address block above. The city, state and ZIP stay hidden until the street address is filled.
+
+```html
+<h2>Shipping Information</h2>
+<select data-next-checkout-field="country" autocomplete="country-name">
+  <option value="">Select Country</option>
+</select>
+<input
+  data-next-checkout-field="address1"
+  autocomplete="address-line1"
+  placeholder="Address*">
+<input
+  data-next-checkout-field="address2"
+  autocomplete="address-line2"
+  placeholder="Apartment, suite, etc. (optional)">
+<div data-next-component="location">
   <input
-    data-next-checkout-field="fname"
-    autocomplete="given-name"
-    placeholder="First Name*"
-    type="text">
-  <input
-    data-next-checkout-field="lname"
-    autocomplete="family-name"
-    placeholder="Last Name*"
-    type="text">
-  <input
-    data-next-checkout-field="email"
-    autocomplete="email"
-    placeholder="Email*"
-    type="email">
-  <input
-    data-next-checkout-field="phone"
-    autocomplete="tel-full"
-    placeholder="Phone"
-    type="tel">
-  <select data-next-checkout-field="country" autocomplete="country-name">
-    <option value="">Select Country</option>
+    data-next-checkout-field="city"
+    autocomplete="address-level2"
+    placeholder="City*">
+  <select data-next-checkout-field="province" autocomplete="address-level1">
+    <option value="">Select State</option>
   </select>
   <input
-    data-next-checkout-field="address1"
-    autocomplete="address-line1"
-    placeholder="Address*">
-  <input
-    data-next-checkout-field="address2"
-    autocomplete="address-line2"
-    placeholder="Apartment, suite, etc. (optional)">
-  <div data-next-component="location" class="next-hidden">
-    <input
-      data-next-checkout-field="city"
-      autocomplete="address-level2"
-      placeholder="City*">
-    <select data-next-checkout-field="province" autocomplete="address-level1">
-      <option value="">Select State</option>
-    </select>
-    <input
-      data-next-checkout-field="postal"
-      autocomplete="postal-code"
-      placeholder="ZIP Code*">
-  </div>
+    data-next-checkout-field="postal"
+    autocomplete="postal-code"
+    placeholder="ZIP Code*">
 </div>
 ```
 
-Two of these are SDK-managed containers, not fields. The country and state `<select>`s start with one empty option, and the SDK fills them from the campaign's country list. The city/state/postal group sits inside `data-next-component="location"` with `class="next-hidden"`: the SDK reveals it the moment the street address (`address1`) has a value (typed, autofilled, or autocompleted) and never hides it again (`location-field-visibility.ts`). The trigger is not configurable; omit the `location` wrapper to keep the fields visible from the start.
+The SDK still adjusts this markup for the selected country:
+
+| Part | Description |
+|---|---|
+| Country `<select>` | The campaign's shipping countries |
+| State `<select>` | Refilled per country, hidden if none |
+| State and postal labels | Reworded per country |
+| `location` group | Hidden until `address1` has a value |
+
+The SDK shows the `location` group once `address1` has a value, whether typed, autofilled or restored, and never hides it again. Leave the wrapper out to show the fields from the start.
+
+> **Watch out:** The SDK hides and shows the `location` wrapper with an inline `display` (`none`, then `flex`). A `display: grid` on the wrapper is overwritten, so put the grid on an element inside it. A stylesheet rule that hides the wrapper with `!important` keeps it hidden for good.
 
 ## Order bump
 

@@ -100,37 +100,48 @@ export async function stubProspectCart(page: Page): Promise<void> {
 }
 
 /**
- * Stub the country/state lists the checkout form's `CountryService` fetches from
- * an external CDN.
+ * Every request to the address-rules service, on either host it has been served from
+ * (`i18n-rules.nextcommerce.com`, `i18n-rules.kasemsanm-dev.workers.dev`). The SDK's
+ * base URLs live in `country-service.next-address.ts` and `address-form.api.ts`; if
+ * either moves to a host this does not match, every spec below silently calls the live
+ * service instead of its stub.
+ */
+export const ADDRESS_SERVICE_ROUTE = '**/i18n-rules.*/**';
+
+/**
+ * Stub the country/state data the checkout form's `CountryService` fetches from
+ * the address-rules service.
  *
- * Two endpoints, two shapes — only `/states` carries `countryConfig`, and
- * answering both with the location shape makes `updateFormLabels` throw. Every
- * spec that boots a checkout form needs this.
+ * Two routes, two shapes — `/v1/bootstrap` carries the country list as well as the
+ * detected country's rules, `/v1/layout/:country` carries one country's. A spec that
+ * answers both with the bootstrap shape makes `updateFormLabels` throw. Every spec that
+ * boots a checkout form needs this.
+ *
+ * `spec.layout` is what decides which fields a country collects; a spec whose layout
+ * omits `state` produces a config with no state label however `spec.fields` reads, so
+ * the layout here has to name every field the assertions expect.
  */
 export async function stubCountryService(page: Page): Promise<void> {
-  await page.route('**/cdn-countries*/**', route => {
-    const config = {
-      stateLabel: 'State',
-      stateRequired: true,
-      postcodeLabel: 'ZIP Code',
-      postcodeRegex: '',
-      postcodeExample: '10001',
-      stateExample: 'NY',
-    };
-    if (route.request().url().includes('/states')) {
+  const spec = {
+    country: 'US',
+    layout: [['country'], ['line1'], ['city', 'state', 'postcode']],
+    fields: {
+      state: { label: 'State', required: true },
+      postcode: { label: 'ZIP Code', required: true, example: '10001' },
+    },
+  };
+  await page.route(ADDRESS_SERVICE_ROUTE, route => {
+    if (route.request().url().includes('/v1/layout/')) {
       return route.fulfill({
-        json: {
-          countryConfig: config,
-          states: [{ code: 'NY', name: 'New York' }],
-        },
+        json: { spec, states: [{ code: 'NY', name: 'New York' }] },
       });
     }
     return route.fulfill({
       json: {
-        detectedCountryCode: 'US',
-        detectedCountryConfig: config,
-        detectedStates: [{ code: 'NY', name: 'New York' }],
+        geo: { country: 'US' },
+        spec,
         countries: [{ code: 'US', name: 'United States' }],
+        states: [{ code: 'NY', name: 'New York' }],
       },
     });
   });

@@ -17,7 +17,7 @@ import type { CountryConfig } from '@/core/country-service';
 import { formatFieldName } from './field-labels';
 import type { FormValidationContext } from './form-validation';
 import { validateForm } from './form-validation';
-import { isValidPhone } from './phone-validation';
+import { isPhoneMarkedRequired, isValidPhone } from './phone-validation';
 import { isValidCity, isValidEmail, isValidName } from './validation-patterns';
 import type { FormValidationResult } from './validation.types';
 
@@ -89,15 +89,7 @@ export async function validateStep(
       requiredFields.push('province');
     }
 
-    // Check if phone field is marked as required in HTML
-    const phoneField = document.querySelector(
-      '[name="phone"]'
-    ) as HTMLInputElement;
-    if (
-      phoneField &&
-      (phoneField.hasAttribute('required') ||
-        phoneField.dataset.nextRequired === 'true')
-    ) {
+    if (isPhoneMarkedRequired()) {
       requiredFields.push('phone');
     }
   } else if (step === 2) {

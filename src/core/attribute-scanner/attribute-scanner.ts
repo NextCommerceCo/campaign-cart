@@ -92,6 +92,7 @@ export class AttributeScanner {
         '[data-next-show]',
         '[data-next-hide]',
         'form[data-next-checkout]',
+        '[data-next-address]',
         '[data-next-express-checkout]',
         '[data-next-timer-display]',
         '[data-next-timer-expired]',
@@ -417,6 +418,10 @@ export class AttributeScanner {
           this.logger.debug('Skipping individual express checkout button - managed by container');
           return null;
           
+        case 'address-form':
+          const { AddressFormEnhancer } = await import('@/features/checkout/address-form');
+          return new AddressFormEnhancer(element);
+
         case 'express-checkout-container':
           const { ExpressCheckoutContainerEnhancer } = await import('@/features/checkout/express-checkout-container');
           return new ExpressCheckoutContainerEnhancer(element);

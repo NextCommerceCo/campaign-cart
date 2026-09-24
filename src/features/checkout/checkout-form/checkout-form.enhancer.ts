@@ -372,6 +372,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     await this.initializeProspectCart();
 
     this.listenForPaymentErrors();
+    this.listenForRenderedAddressFields();
     this.listenForDebugCountryChanges();
     this.setupBfcacheRestoreHandler();
     this.setupWindowFocusHandler();
@@ -535,6 +536,89 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       'next:test-mode-activated',
       this.boundHandleKonamiActivation as EventListener
     );
+  }
+
+  /**
+   * `data-next-address` builds its fields after the whole address boot has already run.
+   *
+   * Finding the new elements is only half of it. `initializeAddressManagement` filled a
+   * country dropdown and a province dropdown that did not exist yet, so both arrive empty
+   * and the province sits on "Select Country First" forever. Everything that writes into
+   * those two has to run again against the elements that now exist.
+   */
+  private listenForRenderedAddressFields(): void {
+    this.on('address:fields-rendered', event => {
+      this.logger.debug(
+        `Address fields rendered for ${event.country}; re-applying the address form`
+      );
+      void this.reapplyToRenderedFields();
+    });
+  }
+
+  /**
+   * Runs every boot step that reads or writes an address field, against the fields that
+   * exist now.
+   *
+   * `initialize` does this work once, in this order, on the assumption that the page it
+   * boots on is complete. `data-next-address` builds its fields from a layout it has to
+   * fetch, so they miss all of it — and are built again from scratch whenever the country
+   * changes. Each step patched on its own was a separate defect: an empty country
+   * dropdown, a province stuck on "Select Country First", suggestions that never
+   * attached, a returning visitor's saved address left in the store, and the same again
+   * for their billing address. **A step added to the boot sequence that touches an
+   * address field belongs here too.**
+   *
+   * The order mirrors `initialize`, and it is load-bearing: the province options have to
+   * exist before a stored province can be selected into them.
+   *
+   * Location visibility runs straight after the scan, before the first await, so the
+   * city/state/postcode rows a built block marks `data-next-component="location"` never
+   * paint before they collapse. A restored address reaches it later through the input's
+   * own events.
+   *
+   * One boot step is deliberately absent. `initializeUIService`'s floating labels look
+   * for a `.label-checkout` inside a `.form-group`, which a built block does not carry —
+   * a page wanting floating labels on one styles them, which needs no script.
+   */
+  private async reapplyToRenderedFields(): Promise<void> {
+    this.update();
+    // `update()` finds the shipping fields; the billing ones are a separate scan, and a
+    // billing block's fields are just as absent at boot as a shipping block's.
+    scanBillingFields(this.billingFormSetupContext());
+    this.locationFields?.refresh();
+
+    // Not sequenced behind the two awaits below, which are requests: whether suggestions
+    // are attached must not depend on a dropdown refill completing.
+    void this.autocompleteEnhancer?.rebind();
+
+    await this.repopulateAddressFields();
+    await this.populateFormData();
+    await this.restoreBillingAddress();
+  }
+
+  /**
+   * Fills the country and province dropdowns for the country already resolved at boot.
+   *
+   * Reads the stored province before the refill, because `updateStateOptions` clears it
+   * while rebuilding the list — the same order {@link initializeAddressManagement} uses.
+   */
+  private async repopulateAddressFields(): Promise<void> {
+    if (this.countries.length === 0) return;
+
+    const checkoutStore = useCheckoutStore.getState();
+    const storedProvince = checkoutStore.formData.province;
+    const country = checkoutStore.formData.country || this.detectedCountryCode;
+
+    this.applySelectedCountry(country, this.countries);
+    try {
+      await this.loadProvincesForSelectedCountry(country, country, storedProvince);
+    } catch (error) {
+      this.logger.error('Failed to refill the province options:', error);
+    }
+
+    if (this.billingFields.size > 0) {
+      populateBillingCountryDropdown(this.countryFieldsContext());
+    }
   }
 
   /**
@@ -2215,11 +2299,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
    * Set up detection for browser autofill
    */
 
-  private setupEventHandlers(): void {
-    this.submitHandler = this.handleFormSubmit.bind(this);
-    this.form.addEventListener('submit', this.submitHandler);
-
-    this.changeHandler = this.handleFieldChange.bind(this);
+  /**
+   * Re-runnable: `changeHandler` is one bound function for the form's lifetime, so
+   * `addEventListener` is a no-op on a field that already has it. A re-scan that skipped
+   * this would find the new elements and leave them deaf.
+   */
+  private bindFieldListeners(): void {
+    if (!this.changeHandler) return;
     [...this.fields.values(), ...this.billingFields.values()].forEach(field => {
       if (
         field instanceof HTMLInputElement ||
@@ -2233,6 +2319,14 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         field.addEventListener('input', this.changeHandler!);
       }
     });
+  }
+
+  private setupEventHandlers(): void {
+    this.submitHandler = this.handleFormSubmit.bind(this);
+    this.form.addEventListener('submit', this.submitHandler);
+
+    this.changeHandler = this.handleFieldChange.bind(this);
+    this.bindFieldListeners();
 
     // Set up Chrome autofill detection
     this.stopAutofillDetection = setupAutofillDetection(
@@ -2439,6 +2533,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
   public update(): void {
     this.scanAllFields();
+    this.bindFieldListeners();
     this.initializePhoneInputs();
   }
 

@@ -44,10 +44,15 @@ export interface LocationFieldsContext {
   ) => void;
 }
 
-/** The three things the form drives this module through. */
+/** The four things the form drives this module through. */
 export interface LocationFieldVisibility {
   /** Finds the rows, hides them, then reveals either set that already has an address. */
   initialize(): void;
+  /**
+   * Runs the same scan again for rows and address inputs that arrived after boot. A set
+   * already revealed stays revealed, new rows included.
+   */
+  refresh(): void;
   /** Reveals the shipping rows. Does nothing after the first call. */
   showLocationFields(): void;
   /** Reveals the billing rows. Does nothing after the first call. */
@@ -80,32 +85,26 @@ export function createLocationFieldVisibility(
   let billingLocationElements: NodeListOf<Element> | null = null;
   let locationFieldsShown = false;
   let billingLocationFieldsShown = false;
+  const boundInputs = new WeakSet<HTMLInputElement>();
 
-  function hideLocationFields(): void {
-    if (!locationElements) return;
-
-    locationElements.forEach(el => {
+  /** Applies the current latch to every row, including rows found since the last scan. */
+  function applyVisibility(
+    elements: NodeListOf<Element> | null,
+    shown: boolean
+  ): void {
+    elements?.forEach(el => {
       if (el instanceof HTMLElement) {
-        el.style.display = 'none';
-        el.classList.add('next-location-hidden');
+        el.style.display = shown ? 'flex' : 'none';
+        el.classList.toggle('next-location-hidden', !shown);
       }
     });
-
-    locationFieldsShown = false;
-    ctx.logger.debug('Location fields hidden');
   }
 
   function showLocationFields(): void {
     if (locationFieldsShown || !locationElements) return;
 
-    locationElements.forEach(el => {
-      if (el instanceof HTMLElement) {
-        el.style.display = 'flex';
-        el.classList.remove('next-location-hidden');
-      }
-    });
-
     locationFieldsShown = true;
+    applyVisibility(locationElements, true);
 
     // Emit event for other components
     ctx.eventBus.emit('checkout:location-fields-shown', {});
@@ -114,31 +113,11 @@ export function createLocationFieldVisibility(
     ctx.logger.debug('Location fields shown');
   }
 
-  function hideBillingLocationFields(): void {
-    if (!billingLocationElements) return;
-
-    billingLocationElements.forEach(el => {
-      if (el instanceof HTMLElement) {
-        el.style.display = 'none';
-        el.classList.add('next-location-hidden');
-      }
-    });
-
-    billingLocationFieldsShown = false;
-    ctx.logger.debug('Billing location fields hidden');
-  }
-
   function showBillingLocationFields(): void {
     if (billingLocationFieldsShown || !billingLocationElements) return;
 
-    billingLocationElements.forEach(el => {
-      if (el instanceof HTMLElement) {
-        el.style.display = 'flex';
-        el.classList.remove('next-location-hidden');
-      }
-    });
-
     billingLocationFieldsShown = true;
+    applyVisibility(billingLocationElements, true);
 
     // Emit event for other components
     ctx.eventBus.emit('checkout:billing-location-fields-shown', {});
@@ -163,73 +142,62 @@ export function createLocationFieldVisibility(
     }
   }
 
-  function initialize(): void {
-    // Find all location elements - check both possible attributes
+  function hasValue(field: HTMLElement | undefined): boolean {
+    return (
+      field instanceof HTMLInputElement &&
+      Boolean(field.value) &&
+      field.value.trim().length > 0
+    );
+  }
+
+  /** A `data-next-address` rebuild replaces the input, so the new one needs binding too. */
+  function bindAddressInput(
+    field: HTMLElement | undefined,
+    handler: (event: Event) => void
+  ): void {
+    if (!(field instanceof HTMLInputElement) || boundInputs.has(field)) return;
+    boundInputs.add(field);
+    ctx.listen(field, 'input', handler);
+    ctx.listen(field, 'change', handler);
+    ctx.listen(field, 'blur', handler);
+  }
+
+  function scan(): void {
     locationElements = ctx.form.querySelectorAll(
       '[data-next-component="location"], [data-next-component-location="location"]'
     );
-
-    // Also find billing location elements
     billingLocationElements = ctx.form.querySelectorAll(
       '[data-next-component="billing-location"]'
     );
 
-    if (!locationElements || locationElements.length === 0) {
-      ctx.logger.debug('No shipping location elements found');
-    }
+    applyVisibility(locationElements, locationFieldsShown);
+    applyVisibility(billingLocationElements, billingLocationFieldsShown);
 
-    if (!billingLocationElements || billingLocationElements.length === 0) {
-      ctx.logger.debug('No billing location elements found');
-    }
-
-    // Hide location fields initially
-    hideLocationFields();
-    hideBillingLocationFields();
-
-    // Set up address field listeners for shipping
     const addressField = ctx.fields.get('address1');
-    if (addressField instanceof HTMLInputElement) {
-      // Listen for changes on address1 field
-      ctx.listen(addressField, 'input', handleAddressInput);
-      ctx.listen(addressField, 'change', handleAddressInput);
-      ctx.listen(addressField, 'blur', handleAddressInput);
-
-      // Check initial state
-      if (addressField.value && addressField.value.trim().length > 0) {
-        showLocationFields();
-      }
-    }
-
-    // Set up address field listeners for billing
     const billingAddressField = ctx.billingFields?.get('billing-address1');
-    if (billingAddressField instanceof HTMLInputElement) {
-      // Listen for changes on billing address1 field
-      ctx.listen(billingAddressField, 'input', handleBillingAddressInput);
-      ctx.listen(billingAddressField, 'change', handleBillingAddressInput);
-      ctx.listen(billingAddressField, 'blur', handleBillingAddressInput);
+    bindAddressInput(addressField, handleAddressInput);
+    bindAddressInput(billingAddressField, handleBillingAddressInput);
 
-      // Check initial state
-      if (
-        billingAddressField.value &&
-        billingAddressField.value.trim().length > 0
-      ) {
-        showBillingLocationFields();
-      }
-    }
-
-    // Listen for address field changes via store updates
     const formData = useCheckoutStore.getState().formData as Record<
       string,
       string | undefined
     >;
-    if (formData.address1 && formData.address1.trim().length > 0) {
+    if (hasValue(addressField) || formData.address1?.trim()) {
       showLocationFields();
     }
-    if (
-      formData['billing-address1'] &&
-      formData['billing-address1'].trim().length > 0
-    ) {
+    if (hasValue(billingAddressField) || formData['billing-address1']?.trim()) {
       showBillingLocationFields();
+    }
+  }
+
+  function initialize(): void {
+    scan();
+
+    if (locationElements?.length === 0) {
+      ctx.logger.debug('No shipping location elements found');
+    }
+    if (billingLocationElements?.length === 0) {
+      ctx.logger.debug('No billing location elements found');
     }
 
     ctx.logger.debug('Location field visibility initialized', {
@@ -238,5 +206,10 @@ export function createLocationFieldVisibility(
     });
   }
 
-  return { initialize, showLocationFields, showBillingLocationFields };
+  return {
+    initialize,
+    refresh: scan,
+    showLocationFields,
+    showBillingLocationFields,
+  };
 }

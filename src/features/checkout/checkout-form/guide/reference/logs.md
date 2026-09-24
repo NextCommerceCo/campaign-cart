@@ -20,6 +20,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or no
 | Message | Source | Extra context |
 |---|---|---|
 | `[Billing] CRITICAL: Billing section not found!` | `billing-toggle.ts › handleBillingAddressToggle` | — |
+| `Failed to refill the province options:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.repopulateAddressFields` | yes |
 | `Failed to re-initialize credit card service:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.setupBfcacheRestoreHandler` | yes |
 | `Failed to load country data:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeAddressManagement` | yes |
 | `Failed to initialize credit card service:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeCreditCard` | yes |
@@ -181,6 +182,7 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 | `[Billing] No toggle on this page - keeping the stored choice` | `billing-form-setup.ts › reconcileBillingToggle` | — |
 | `[Billing] Set country to:` | `billing-toggle.ts › handleBillingAddressToggle` | yes |
 | `CheckoutFormEnhancer initialized` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initialize` | — |
+| `Address fields rendered for {country}; re-applying the address form` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.listenForRenderedAddressFields` | — |
 | `No campaign shipping countries available, using config` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.configureCountryService` | — |
 | `[Spreedly] Credit card service ready` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeCreditCard` | — |
 | `[Spreedly] Connected floating label callbacks` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeCreditCard` | — |
@@ -191,9 +193,7 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 | `Already shown warning for order` | `duplicate-purchase-warning.ts › handlePurchaseEvent` | yes |
 | `Found submit button:` | `field-scanning.ts › scanAllFields` | yes |
 | `Restored province: {storedProvince}` | `form-population.ts › populateFormData` | — |
-| `Location fields hidden` | `location-field-visibility.ts › hideLocationFields` | — |
 | `Location fields shown` | `location-field-visibility.ts › showLocationFields` | — |
-| `Billing location fields hidden` | `location-field-visibility.ts › hideBillingLocationFields` | — |
 | `Billing location fields shown` | `location-field-visibility.ts › showBillingLocationFields` | — |
 | `No shipping location elements found` | `location-field-visibility.ts › initialize` | — |
 | `No billing location elements found` | `location-field-visibility.ts › initialize` | — |

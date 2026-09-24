@@ -57,6 +57,9 @@ export async function initializeLocationAndCurrency(ctx: {
 
     // Initialize country service early
     const countryService = CountryService.getInstance();
+    if (configStore.addressConfig) {
+      countryService.setConfig(configStore.addressConfig);
+    }
 
     // Check for country override in URL or session
     const urlParams = new URLSearchParams(window.location.search);
@@ -77,46 +80,28 @@ export async function initializeLocationAndCurrency(ctx: {
       );
 
       try {
-        const response = await fetch(
-          `https://cdn-countries.muddy-wind-c7ca.workers.dev/countries/${forcedCountry.toUpperCase()}/states`
+        const data = await countryService.getCountryStates(
+          forcedCountry.toUpperCase()
         );
 
-        if (response.ok) {
-          const data = await response.json();
+        locationData = {
+          detectedCountryCode: forcedCountry.toUpperCase(),
+          detectedCountryConfig: data.countryConfig,
+          detectedStates: data.states,
+          countries: [] as Country[],
+        };
 
-          // Format response to match location detection structure
-          locationData = {
-            detectedCountryCode: forcedCountry.toUpperCase(),
-            detectedCountryConfig: data.countryConfig || {
-              currencyCode: 'USD',
-              currencySymbol: '$',
-              stateLabel: 'State / Province',
-              stateRequired: true,
-              postcodeLabel: 'Postcode / ZIP',
-              postcodeMinLength: 2,
-              postcodeMaxLength: 20,
-            },
-            detectedStates: data.states || [],
-            countries: [] as Country[],
-          };
-
-          // Save to session if from URL
-          if (countryOverride) {
-            sessionStorage.setItem(
-              scopedKey('next_selected_country'),
-              countryOverride.toUpperCase()
-            );
-          }
-
-          ctx.logger.info('Country config loaded:', {
-            country: locationData?.detectedCountryCode,
-            currency: locationData?.detectedCountryConfig.currencyCode,
-          });
-        } else {
-          ctx.logger.warn(
-            `Failed to fetch country config for ${forcedCountry}, falling back to detection`
+        // Save to session if from URL
+        if (countryOverride) {
+          sessionStorage.setItem(
+            scopedKey('next_selected_country'),
+            countryOverride.toUpperCase()
           );
         }
+
+        ctx.logger.info('Country config loaded:', {
+          country: locationData?.detectedCountryCode,
+        });
       } catch (error) {
         ctx.logger.error('Error fetching country config:', error);
       }
@@ -124,11 +109,6 @@ export async function initializeLocationAndCurrency(ctx: {
 
     // If no forced country or fetch failed, use normal detection
     if (!locationData) {
-      // Apply address config if available
-      if (configStore.addressConfig) {
-        countryService.setConfig(configStore.addressConfig);
-      }
-
       // Fetch location data with timeout to prevent blocking
       const locationDataPromise = countryService.getLocationData();
       const timeoutPromise = new Promise<null>((_, reject) =>

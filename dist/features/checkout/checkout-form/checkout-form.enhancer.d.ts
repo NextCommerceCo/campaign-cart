@@ -61,6 +61,9 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private setupPhoneValidation;
     private subscribeToStores;
     private setupDebugEventListeners;
+    private listenForRenderedAddressFields;
+    private reapplyToRenderedFields;
+    private repopulateAddressFields;
     private listenForPaymentErrors;
     private listenForDebugCountryChanges;
     private setupBfcacheRestoreHandler;
@@ -131,6 +134,7 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private handleShippingMethodChange;
     private billingToggleContext;
     private handleBillingAddressToggle;
+    private bindFieldListeners;
     private setupEventHandlers;
     private updateFormData;
     private clearError;

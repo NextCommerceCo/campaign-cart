@@ -2,9 +2,26 @@
 
 ## [Unreleased]
 
+### New
+
+- **`data-next-address` builds the address fields each country collects, in the order that country writes them.** Put an empty `<div data-next-address="shipping"></div>` in the checkout form and the SDK builds the fields for the selected country, rebuilds them when the country changes, and keeps what the shopper typed. A Japanese address leads with its postcode, and a field the country does not collect is left out. Fields the form already collects outside the block are not built twice. `data-next-address="billing"` builds the billing address, and `data-next-address-lang` picks the label language. See [Address block](docs/guides/pages/checkout-page.md#address-block).
+- **If the first layout cannot be loaded, the block builds a generic English address form** instead of staying empty, so the shopper can still check out.
+
+### Changed
+
+- **Country lists, address rules, states, and the visitor's detected country and currency now come from `i18n-rules.nextcommerce.com`**, replacing the previous countries service. A page that sets a Content-Security-Policy must allow it in `connect-src`, or those requests are blocked.
+
 ### Fixed
 
 - **A checkout form taken down while a decline is still being drawn no longer touches the page after it is gone.** The payment-error banner waits a moment before it writes and ten seconds before it hides, and neither timer was cancelled when the form was destroyed. On a page that removes the form mid-decline the late write ran against elements that were no longer there; in the test suite it was the intermittent `document is not defined` that turned a green `Build` run red.
+- **A phone input marked `required` is enforced without `name="phone"`.** The SDK found every checkout field by `data-next-checkout-field` except this one, which it looked up by `name`, so a required phone without that attribute was never required and the order went through with no number. On a page with another form's `name="phone"` input, that input decided the rule instead.
+- **Guide links from before 0.4.38 work again.** The twelve pages whose addresses changed in 0.4.38 now redirect to their new locations, so old bookmarks and search results no longer end on a 404.
+
+### Documentation
+
+- **The checkout guide leads with the address block**, and says why static address fields suit a page that ships to one country.
+- **`AddressConfig` says when each setting applies.** `defaultCountry`, `countries` and `showCountries` are read only when the campaign has no shipping countries (or, for `defaultCountry`, an empty list), so none of them picks the country a form opens on. US territories stay out of the state list whatever `dontShowStates` says. `enableAutocomplete` is documented for the first time.
+- **Corrected in the checkout guide:** the state list comes from the selected country, not the campaign. The `location` group needs no `next-hidden` class, because the SDK hides and shows it itself and sets `display: flex` when it does. The SDK rewrites the state and postal labels for each country. The phone example uses `autocomplete="tel"`.
 
 ## [0.4.38] — 2026-08-27 — Address and Phone Fields, and Two Silent Failures
 

@@ -1,3 +1,4 @@
+export declare function getSelectedLocale(): string | null;
 export declare class CurrencyFormatter {
     private static formatters;
     private static formattersNoZeroCents;
