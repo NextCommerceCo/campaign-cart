@@ -84,7 +84,7 @@ export class CheckoutValidator {
   }
 
   /**
-   * Installs the lookup that hands phone checks the live `intl-tel-input` instance.
+   * Installs the lookup that hands phone checks the live phone field.
    *
    * Called by the form once the phone widgets exist. One installer for every phone check
    * in this class — per-field, per-step and submit-time all resolve the instance the same

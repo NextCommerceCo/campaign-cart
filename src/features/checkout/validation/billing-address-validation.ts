@@ -20,7 +20,7 @@ import { isValidName } from './validation-patterns';
 export interface BillingAddressValidationContext {
   /** Provides `validatePostalCode(value, countryCode, config)`. */
   countryService: any;
-  /** Set by the form when `intl-tel-input` is wired up, so the number is checked per country. */
+  /** Set by the form once its phone fields exist, so the number is checked per country. */
   phoneSource?: (type: 'shipping' | 'billing') => PhoneNumberSource | undefined;
 }
 

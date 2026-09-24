@@ -84,9 +84,10 @@ export interface FormClearingContext {
  * Order matters and is the reason this is not one loop. The country goes first, because a
  * province `<select>` can only be given a value once that country's options exist; the
  * generic loop then skips the province for exactly that reason; and the province is set
- * last, after the options have loaded. A phone written straight into the input stays
- * national text until `intl-tel-input` reformats it; the store is corrected before submit
- * by `phone-normalization.ts`, not on a timer from here.
+ * last, after the options have loaded. A phone written straight into the input stays as
+ * written until the shopper next edits it — its phone field reads the new text whenever it
+ * is asked — and the store is corrected before submit by `phone-normalization.ts`, not on
+ * a timer from here.
  *
  * A checkbox or radio is put back through `checked`, never `value` — the store holds a
  * boolean for it, and writing that into `value` would leave the tick exactly as the markup

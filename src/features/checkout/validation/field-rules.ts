@@ -24,7 +24,7 @@ export interface FieldRuleContext {
   /** Provides `validatePostalCode(value, countryCode, config)`. */
   countryService: any;
   /**
-   * The live `intl-tel-input` instance for a phone field, when the form has one.
+   * The live phone field for an address, when the form has one.
    *
    * The same resolver the submit-time check uses, so a number rejected as the shopper
    * tabs out of the field is rejected on submit too, and for the same reason. Before this

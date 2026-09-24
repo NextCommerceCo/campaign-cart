@@ -4,12 +4,8 @@
  * prospect is captured on partial intent, not a submitted order.
  */
 
-import intlTelInput from 'intl-tel-input';
-
-import {
-  checkPhone,
-  type PhoneNumberSource,
-} from '../validation/phone-validation';
+import { phoneFieldFor } from '../checkout-form/phone-input';
+import { checkPhone } from '../validation/phone-validation';
 
 /**
  * Digits a phone must have before a lead is worth capturing, when nothing could judge it.
@@ -73,13 +69,10 @@ export function isValidPhone(
   }
 
   // One yardstick for the whole SDK — see `validation/phone-validation.ts`.
-  const instance = context.phoneField
-    ? ((context.phoneField as { iti?: PhoneNumberSource }).iti ??
-      intlTelInput.getInstance(context.phoneField) ??
-      undefined)
-    : undefined;
-
-  const check = checkPhone(phone, instance ?? undefined);
+  const check = checkPhone(
+    phone,
+    context.phoneField ? phoneFieldFor(context.phoneField) : undefined
+  );
   if (check.verdict !== 'unknown') {
     return check.verdict === 'valid';
   }

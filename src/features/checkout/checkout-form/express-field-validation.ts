@@ -29,8 +29,8 @@ const FIELD_LABELS: Record<string, string> = {
 /** What this needs from the checkout form. */
 export interface ExpressFieldValidationContext {
   /**
-   * The live `intl-tel-input` instance for a phone field, when the form has one. The same
-   * shape the validation contexts take, so the form installs one resolver for all of them.
+   * The live phone field for an address, when the form has one. The same shape the
+   * validation contexts take, so the form installs one resolver for all of them.
    */
   phoneSource?: (type: 'shipping' | 'billing') => PhoneNumberSource | undefined;
 }

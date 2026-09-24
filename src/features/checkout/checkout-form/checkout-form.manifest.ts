@@ -207,6 +207,14 @@ export default defineFeature({
         'On a payment form: whether it is currently shown. Animate the reveal from this rather than from the element appearing.',
       values: '`expanded` / `collapsed`',
     },
+    {
+      name: 'data-next-phone-country',
+      description:
+        'On the shipping and billing phone inputs: the country the number is formatted and checked for, and whose flag is shown. It follows the address country, or the detected country while the address country has no value.',
+      values: 'An ISO country code, e.g. `GB`',
+      notes:
+        'Absent while no country is known, and the flag is hidden then too. A number typed with `+` and a calling code does not change it: the number is shown as `+` and its digits and sent as typed.',
+    },
   ],
 
   classes: [
@@ -218,6 +226,21 @@ export default defineFeature({
     {
       name: 'next-error-field',
       description: 'On an input that failed validation.',
+    },
+    {
+      name: 'next-phone-input',
+      description:
+        'On the shipping and billing phone inputs, once the SDK formats them.',
+    },
+    {
+      name: 'next-phone-field',
+      description:
+        "On a phone input's parent element, which the flag is positioned against. The input is never wrapped or moved.",
+    },
+    {
+      name: 'next-phone-flag',
+      description:
+        "On the flag image the SDK inserts immediately before a phone input, so an `input + label` rule still reaches the input's label.",
     },
   ],
 

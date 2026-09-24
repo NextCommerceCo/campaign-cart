@@ -64,7 +64,7 @@ The feature carried on, but something in the markup or the data was not what it 
 | `[Billing] Could not set initial state - missing elements` | `billing-form-setup.ts › setInitialBillingFormState` | — |
 | `[Billing] Some stored billing values have no field` | `billing-form-setup.ts › restoreBillingAddressFields` | yes |
 | `[Billing] Click blocked - animation in progress` | `billing-toggle.ts › handleBillingAddressToggle` | — |
-| `intl-tel-input utils did not load in time; the phone number is sent unchecked and may not be E.164` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.settlePhoneNumbers` | — |
+| `Phone rules did not load in time; the phone number is sent unchecked and may not be E.164` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.settlePhoneNumbers` | — |
 | `[Spreedly] Credit card validation errors:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeCreditCard` | yes |
 | `API 400 error response:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.createOrder` | yes |
 | `Payment error detected:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.createOrder` | yes |

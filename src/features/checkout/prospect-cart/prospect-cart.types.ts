@@ -38,7 +38,7 @@ export interface FieldDiscoveryContext {
   logger: Logger;
 }
 
-/** Needs from the enhancer: `phoneField` to prefer intl-tel-input's own verdict, the
+/** Needs from the enhancer: `phoneField` to prefer its phone field's own verdict, the
  *  configured `minPhoneDigits` fallback, and `logger` for a thrown-validator trace. */
 export interface PhoneValidationContext {
   phoneField: HTMLInputElement | undefined;

@@ -226,7 +226,7 @@ Every parameter above, with the code that reads or writes it. Generated from the
 | `collection` | `ListAttributionTracker.detectListFromUrl` *(has)* — `core/analytics/tracking/list-attribution-tracker.ts` |
 | `country` | `initializeLocationAndCurrency` *(get)* — `core/sdk-initializer/sdk-initializer.location-currency.ts`<br>`resolveShippingCountry` *(get)* — `features/checkout/checkout-form/country-selection.ts` |
 | `currency` | `initializeLocationAndCurrency` *(get)* — `core/sdk-initializer/sdk-initializer.location-currency.ts`<br>`loadCampaign` *(get)* — `state/campaign/api.slice.ts` |
-| `debug` | `detectDebugMode` *(get)* — `core/attribute-scanner/attribute-scanner.performance.ts`<br>`DebugOverlay.constructor` *(get)* — `core/debug/debug-overlay/debug-overlay.ts`<br>`EventTimelinePanel.constructor` *(get)* — `core/debug/panels/event-timeline/event-timeline-panel.ts`<br>…and 3 more |
+| `debug` | `detectDebugMode` *(get)* — `core/attribute-scanner/attribute-scanner.performance.ts`<br>`DebugOverlay.constructor` *(get)* — `core/debug/debug-overlay/debug-overlay.ts`<br>`EventTimelinePanel.constructor` *(get)* — `core/debug/panels/event-timeline/event-timeline-panel.ts`<br>…and 2 more |
 | `debugger` | `DebugModule.initializeIfEnabled` *(get)* — `core/debug/debug-module.ts`<br>`DebugModule.enableDebugMode` *(set)* — `core/debug/debug-module.ts`<br>`DebugModule.disableDebugMode` *(delete)* — `core/debug/debug-module.ts`<br>…and 9 more |
 | `evclid` | `AttributionCollector.handleEverflowClickId` *(has)* — `core/attribution/attribution-collector.ts` |
 | `fbclid` | `AttributionCollector.collectMetadata` *(get)* — `core/attribution/attribution-collector.ts` |

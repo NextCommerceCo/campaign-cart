@@ -3,6 +3,8 @@
  * feature can watch them without the form telling it where they are.
  */
 
+import { phoneFieldFor } from '../checkout-form/phone-input';
+
 import type { FieldDiscoveryContext } from './prospect-cart.types';
 
 export function findEmailField(
@@ -56,7 +58,8 @@ export function findPhoneField(
 }
 
 /**
- * Get formatted phone number in E.164 format from existing intlTelInput instance
+ * The phone number for the prospect cart: E.164 from the checkout's phone field when the
+ * input has one, else the text as typed.
  */
 export function getFormattedPhoneNumber(
   context: FieldDiscoveryContext
@@ -70,38 +73,9 @@ export function getFormattedPhoneNumber(
     return '';
   }
 
-  // intl-tel-input attaches the instance directly as `input.iti`, and also
-  // exposes `intlTelInput.getInstance(input)` on the global. Prefer the direct
-  // reference — the legacy `window.intlTelInputGlobals` global no longer exists
-  // in v19+ of the library.
-  const intlTelInputInstance =
-    (phoneField as any).iti ||
-    (window as any).intlTelInput?.getInstance?.(phoneField);
+  const e164 = phoneFieldFor(phoneField)?.getNumber();
+  if (e164) return e164;
 
-  if (
-    intlTelInputInstance &&
-    typeof intlTelInputInstance.getNumber === 'function'
-  ) {
-    try {
-      const e164Number = intlTelInputInstance.getNumber();
-      if (e164Number) {
-        context.logger.debug(
-          'Got E.164 formatted phone from existing instance:',
-          e164Number
-        );
-        return e164Number;
-      }
-    } catch (error) {
-      context.logger.warn(
-        'Failed to get E.164 formatted phone from existing instance:',
-        error
-      );
-    }
-  }
-
-  // Fallback to raw phone value if intlTelInput not available or not initialized
-  context.logger.debug(
-    'Using raw phone value (intlTelInput instance not found)'
-  );
+  context.logger.debug('Using raw phone value (no phone field formats it)');
   return phoneField.value || '';
 }

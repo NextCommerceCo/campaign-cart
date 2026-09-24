@@ -20,7 +20,7 @@ export class OrderBuilder {
   /**
    * The phone number to put on the order, and a warning when it is not E.164.
    *
-   * Reports, does not convert: there is no `intl-tel-input` instance to ask here.
+   * Reports, does not convert: there is no phone field to ask here.
    * Converting is `checkout-form/phone-normalization.ts`, before submit. Every order passes
    * through this, so it is the one place that can say a national number went out.
    */

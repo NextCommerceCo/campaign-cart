@@ -38,9 +38,9 @@ export interface FormValidationContext {
   /** Provides `validatePostalCode(value, countryCode, config)`. */
   countryService: any;
   /**
-   * The live `intl-tel-input` instance for a phone field, when the form has one.
+   * The live phone field for an address, when the form has one.
    *
-   * Installed by the form after the widgets are built. Without it `checkPhone` can only
+   * Installed by the form after the phone fields are built. Without it `checkPhone` can only
    * answer `unknown`, which is what happens on a step that carries no phone field.
    */
   phoneSource?: (type: 'shipping' | 'billing') => PhoneNumberSource | undefined;

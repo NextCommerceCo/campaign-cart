@@ -179,6 +179,7 @@ Written to the element as state changes. Read these from CSS or tests instead of
 |---|---|---|
 | `data-next-error-for` | A checkout field name, e.g. `phone` | On an error message the form wrote: the field the message belongs to. Style or find a message by it, and note that clearing one field only removes messages naming that field. **Watch out:** Written so a message can be found wherever the markup put it. On a page with no wrapper element around each input, every message is appended to the form itself, and without an owner on it clearing one field removed whichever message happened to be first — leaving another field outlined in red with nothing to read. |
 | `data-next-payment-state` | `expanded` / `collapsed` | On a payment form: whether it is currently shown. Animate the reveal from this rather than from the element appearing. |
+| `data-next-phone-country` | An ISO country code, e.g. `GB` | On the shipping and billing phone inputs: the country the number is formatted and checked for, and whose flag is shown. It follows the address country, or the detected country while the address country has no value. **Watch out:** Absent while no country is known, and the flag is hidden then too. A number typed with `+` and a calling code does not change it: the number is shown as `+` and its digits and sent as typed. |
 
 ## CSS classes
 
@@ -188,6 +189,9 @@ Toggled by the feature. Style these rather than tracking the same state yourself
 |---|---|---|
 | `next-error` | — | On a field's error message element when validation fails, alongside `next-error-field` on the input itself. |
 | `next-error-field` | — | On an input that failed validation. |
+| `next-phone-input` | — | On the shipping and billing phone inputs, once the SDK formats them. |
+| `next-phone-field` | — | On a phone input's parent element, which the flag is positioned against. The input is never wrapped or moved. |
+| `next-phone-flag` | — | On the flag image the SDK inserts immediately before a phone input, so an `input + label` rule still reaches the input's label. |
 
 ## Field names
 

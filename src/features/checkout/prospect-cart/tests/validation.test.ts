@@ -1,6 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
 import { isValidEmail, isValidName, isValidPhone } from '../validation';
 import type { Logger } from '@/core/logger';
+import type { PhoneNumberSource } from '../../validation/phone-validation';
+
+/** The phone field the checkout form registered on an input, when a test plants one. */
+const phoneFields = vi.hoisted(() => new WeakMap<Element, PhoneNumberSource>());
+vi.mock('../../checkout-form/phone-input', () => ({
+  phoneFieldFor: (input: Element) => phoneFields.get(input),
+}));
 
 function createMockLogger() {
   return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
@@ -56,10 +63,11 @@ describe('isValidPhone', () => {
     ).toBe(false);
   });
 
-  it('uses intlTelInput.isValidNumber when the phone field carries an instance', () => {
+  it("uses the phone field's isValidNumber when the input has one", () => {
     const logger = createMockLogger();
-    const phoneField = document.createElement('input') as any;
-    phoneField.iti = { isValidNumber: vi.fn().mockReturnValue(true) };
+    const phoneField = document.createElement('input');
+    const source = { isValidNumber: vi.fn().mockReturnValue(true) };
+    phoneFields.set(phoneField, source);
 
     const result = isValidPhone('+15551234567', {
       phoneField,
@@ -67,17 +75,17 @@ describe('isValidPhone', () => {
       logger: logger as unknown as Logger,
     });
     expect(result).toBe(true);
-    expect(phoneField.iti.isValidNumber).toHaveBeenCalled();
+    expect(source.isValidNumber).toHaveBeenCalled();
   });
 
-  it('falls back to the configured digit count when intlTelInput throws', () => {
+  it('falls back to the configured digit count when the phone field throws', () => {
     const logger = createMockLogger();
-    const phoneField = document.createElement('input') as any;
-    phoneField.iti = {
+    const phoneField = document.createElement('input');
+    phoneFields.set(phoneField, {
       isValidNumber: vi.fn().mockImplementation(() => {
         throw new Error('boom');
       }),
-    };
+    });
 
     expect(
       isValidPhone('555-123-4567', {

@@ -11,7 +11,7 @@
  * changing the billing country rebuilds the billing province dropdown.
  *
  * One field is not stored as typed. The billing phone goes on the address as the E.164
- * number `intl-tel-input` assembled, the same rule the shipping phone follows — see
+ * number its phone field assembled, the same rule the shipping phone follows — see
  * {@link readPhoneValue}.
  *
  * Extracted from the field-name routing half of `handleFieldChange`. Three dependencies

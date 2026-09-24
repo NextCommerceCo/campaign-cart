@@ -22,7 +22,10 @@ function createMockLogger() {
   return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 }
 
-type PhoneInstance = { isValidNumber: () => boolean };
+type PhoneInstance = {
+  isValidNumber: () => boolean;
+  whenReady?: () => Promise<void>;
+};
 type PhoneSourceResolver = (
   type: 'shipping' | 'billing'
 ) => PhoneInstance | undefined;
@@ -34,6 +37,7 @@ interface BootSteps {
   cloneBillingFormFromShipping(): void;
   restoreBillingChoice(): void;
   setupPhoneValidation(): void;
+  initializePhoneInputs(): void;
   subscribeToStores(): void;
   setupDebugEventListeners(): void;
   listenForPaymentErrors(): void;
@@ -54,6 +58,9 @@ interface BootSteps {
   loadingOverlay: { hide: (immediate?: boolean) => void };
   validator: { setPhoneSource: (fn: PhoneSourceResolver) => void };
   phoneInputs: Map<string, PhoneInstance>;
+  fields: Map<string, HTMLElement>;
+  detectedCountryCode: string;
+  countryService: unknown;
   creditCardService?: { initialize: () => Promise<void> };
   boundHandleTestDataFilled?: EventListener;
   boundHandleKonamiActivation?: EventListener;
@@ -187,7 +194,7 @@ describe('setupPhoneValidation', () => {
     return resolve;
   }
 
-  it('hands over the intl-tel-input instance for the requested form', () => {
+  it('hands over the phone field for the requested form', () => {
     const { steps } = createEnhancer();
     const shipping = { isValidNumber: () => true };
     const billing = { isValidNumber: () => false };
@@ -209,6 +216,43 @@ describe('setupPhoneValidation', () => {
     const { steps } = createEnhancer();
 
     expect(installResolver(steps)('shipping')).toBeUndefined();
+  });
+});
+
+// ─── initializePhoneInputs ────────────────────────────────────────────────────
+
+describe('initializePhoneInputs', () => {
+  /** Not `getCountryConfig`, which answers the detected country with the visitor's own. */
+  it('formats and stores the number by the rules getCountryStates gives', async () => {
+    const { steps, form } = createEnhancer();
+    const input = document.createElement('input');
+    form.appendChild(input);
+    const getCountryStates = vi.fn(() =>
+      Promise.resolve({
+        countryConfig: {
+          phone: {
+            callingCode: '44',
+            nationalPrefix: '0',
+            mask: '##### ######',
+            pattern: '^[0-9]{7,11}$',
+            example: '07400 123456',
+          },
+        },
+        states: [],
+      })
+    );
+    steps.fields = new Map([['phone', input]]);
+    steps.countryService = { getCountryStates };
+    steps.detectedCountryCode = 'GB';
+
+    steps.initializePhoneInputs();
+    await steps.phoneInputs.get('shipping')?.whenReady?.();
+    input.value = '07400123456';
+    input.dispatchEvent(new InputEvent('input', { inputType: 'insertText' }));
+
+    expect(getCountryStates).toHaveBeenCalledWith('GB');
+    expect(input.value).toBe('07400 123456');
+    expect(useCheckoutStore.getState().formData.phone).toBe('+447400123456');
   });
 });
 
