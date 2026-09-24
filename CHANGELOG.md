@@ -9,11 +9,16 @@
 
 ### Changed
 
-- **Country lists, address rules, states, and the visitor's detected country and currency now come from `i18n-rules.nextcommerce.com`**, replacing the previous countries service. A page that sets a Content-Security-Policy must allow it in `connect-src`, or those requests are blocked.
+- **Country lists, address and phone rules, states, and the visitor's detected country and currency now come from `i18n-rules.nextcommerce.com`**, replacing the previous countries service. A page that sets a Content-Security-Policy must allow it in `connect-src`, or those requests are blocked.
+- **The phone field no longer uses `intl-tel-input`.** The SDK writes the number in the country's format as the shopper types (`(415) 555-2671` in the US) and sends it as E.164 (`+14155552671`), from the phone rule the address-rules service serves for the country. Its own check is loose, a plausible length for the country, and the order API validates the number. The flag follows the country chosen for the address, even for a number typed with another country's code such as `+44`. The flag is an image from `i18n-rules.nextcommerce.com`, so a page that sets a Content-Security-Policy must also allow that host in `img-src`, or the flag does not show. The input is no longer wrapped: the SDK adds the flag before it, `next-phone-input` and `data-next-phone-country` to it, and `next-phone-field` to its parent. In a country without a phone rule, the number is not formatted and is sent as typed. See [Phone field](docs/guides/pages/checkout-page.md#phone-field).
 
 ### Deprecated
 
 - **Writing the address inputs yourself is deprecated, for billing as well as shipping.** Replace the shipping inputs and their `data-next-component="location"` wrapper with `<div data-next-address="shipping"></div>`, and the billing copy (`shipping-form`, `shipping-field-row` and an empty `billing-form`) with `<div data-next-address="billing"></div>` in the `different-billing-address` section. Fields written by hand are the same in every country and miss later fixes to a country's address rules. Both keep working in this release.
+
+### Removed
+
+- **The `.iti` markup around the phone input, and the `intl-tel-input` dependency.** A stylesheet that targets `.iti` or `.iti__*` stops matching; style the phone field with `.next-phone-field`, `.next-phone-flag` and `.next-phone-input` instead. A floating label written as `input + label` now reaches the phone input's label, so a workaround for the wrapper can go.
 
 ### Fixed
 
