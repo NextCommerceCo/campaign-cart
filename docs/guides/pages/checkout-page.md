@@ -188,7 +188,7 @@ Below is an example of the markup the block builds for a US address, cut down to
 
 The label comes after its control so a stylesheet can reach it from the control's state, and every input has a placeholder, so a floating label needs no script. The SDK sets an inline `display` on the city, state and postcode row when it shows it (`flex`), and an inline `flex-grow` on wider fields such as the city, so lay the rows out with flex, and never hide a row with an `!important` rule, or it stays hidden.
 
-Below is a stylesheet that gives the block bordered fields with floating labels, puts each row on one line, narrows the postcode, holds space while the fields load, and marks failed fields.
+Below is a stylesheet that gives the block bordered fields with floating labels and a drop-down arrow on the selects, puts each row on one line, holds space while the fields load, and marks failed fields. It is the one the [playground example](https://developers.nextcommerce.com/playground) uses for its address fields.
 
 ```css
 [data-next-address] .next-address-row {
@@ -201,9 +201,6 @@ Below is a stylesheet that gives the block bordered fields with floating labels,
   flex: 1;
   min-width: 0;
 }
-[data-next-address-field='postal'] {
-  max-width: 160px;
-}
 [data-next-address-state='loading'] {
   min-height: 256px;
 }
@@ -214,10 +211,29 @@ Below is a stylesheet that gives the block bordered fields with floating labels,
   padding: 18px 12px 4px;
   border: 1px solid #c9ccd1;
   border-radius: 8px;
+  background: #fff;
+  color: inherit;
   font: inherit;
+  font-size: 15px;
+}
+select.next-address-control {
+  appearance: none;
+  padding-right: 36px;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14' fill='none' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='2 4.75 7 9.25 12 4.75'/%3E%3C/svg%3E")
+    no-repeat right 12px center / 14px;
 }
 .next-address-control:placeholder-shown {
   padding: 12px;
+}
+.next-address-control::placeholder {
+  color: #6b7280;
+}
+.next-address-control:focus {
+  border-color: #2563eb;
+  outline: none;
+}
+.next-address-control.has-error {
+  border-color: #dc2626;
 }
 .next-address-label {
   position: absolute;
@@ -230,8 +246,15 @@ Below is a stylesheet that gives the block bordered fields with floating labels,
 .next-address-control:placeholder-shown + .next-address-label {
   display: none;
 }
-.next-address-control.has-error {
-  border-color: #dc2626;
+.next-address-hint,
+[data-next-address] .next-error-label {
+  display: block;
+  margin-top: 4px;
+  color: #6b7280;
+  font-size: 12px;
+}
+[data-next-address] .next-error-label {
+  color: #dc2626;
 }
 .next-address-field .iti {
   display: block;
