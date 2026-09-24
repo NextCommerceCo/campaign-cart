@@ -431,8 +431,8 @@ Values `data-next-component` accepts.
 
 | Value | Description |
 |---|---|
-| `shipping-form` | The shipping field group |
-| `shipping-field-row` | One row inside that group |
+| `shipping-form` | Where a billing copy is taken from |
+| `shipping-field-row` | One row the billing copy takes |
 | `location` | The city, state, and postal group |
 | `<method>-error` | Where one method's errors render |
 | `<method>-error-text` | The error message inside it |

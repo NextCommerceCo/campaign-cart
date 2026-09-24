@@ -75,18 +75,12 @@ The pieces that matter:
 
 ## Customer and shipping fields
 
-Every field reaches the order through its `data-next-checkout-field` name. For the shipping address, use the address block: the SDK builds the fields each country collects, in the order that country writes them. Write the address inputs yourself only on a page that ships to one country.
+Every field reaches the order through its `data-next-checkout-field` name. The starter template collects them in two steps, customer information and then the shipping address. For the address, use the address block: the SDK builds the fields each country collects, in the order that country writes them.
 
-### Address block
-
-Below is an example that collects the customer's email and name, then lets the SDK build the shipping address for the shopper's country.
+Below is an example of both steps, with the shipping address built by the SDK.
 
 ```html
-<input
-  data-next-checkout-field="email"
-  autocomplete="email"
-  placeholder="Email*"
-  type="email">
+<h2>Customer Information</h2>
 <input
   data-next-checkout-field="fname"
   autocomplete="given-name"
@@ -95,96 +89,89 @@ Below is an example that collects the customer's email and name, then lets the S
   data-next-checkout-field="lname"
   autocomplete="family-name"
   placeholder="Last Name*">
+<input
+  data-next-checkout-field="email"
+  autocomplete="email"
+  placeholder="Email*"
+  type="email">
+<input
+  data-next-checkout-field="phone"
+  autocomplete="tel"
+  placeholder="Phone (Optional)"
+  type="tel">
+
+<h2>Shipping Information</h2>
 <div data-next-address="shipping"></div>
 ```
 
-The empty `<div>` becomes the address fields the selected country collects, so a Japanese address leads with the postcode and a US one ends with state and ZIP. When the shopper changes country the block is rebuilt, and what they typed into text inputs is kept.
+The SDK requires the first name, last name and email. The phone is optional unless its input carries `required` or `data-next-required="true"`.
 
-The block builds the country, name, street, city, state, postcode and phone fields the country's layout includes, and skips any the form already collects outside it, such as the name above. It never builds the email. The country list, the state options, validation, and the city, state and postcode rows staying hidden until the street address is filled all work as they do for hand-written fields below.
+### Address block
 
-The SDK ships no styling for the block. Style it through the classes it sets: `next-address-row` on each row and `next-address-field` on each field, which also carries `data-next-address-field` with the field's name. While the layout loads, the block carries `data-next-address-state="loading"`, then `ready`. [Address block](../reference/data-attributes.md#address-block) lists its attributes.
+The empty `<div>` becomes the address fields the selected country collects, in the order that country writes them: a Japanese address leads with the postcode, a US one ends with state and ZIP. When the shopper changes country, the fields are rebuilt and what they typed is kept.
 
-Three limits to plan for:
+The block builds only the fields the form does not already have, so the name and phone above are not built twice. It never builds the email. The country list, the state options, validation, and hiding city, state and postcode until the street address is filled all work as they do for static fields below.
+
+The SDK ships no styling for the block. Style it through the classes it sets: `next-address-row` on each row and `next-address-field` on each field, which also carries `data-next-address-field` with the field's name. While the fields load, the block carries `data-next-address-state="loading"`, then `ready`. [Address block](../reference/data-attributes.md#address-block) lists its attributes.
+
+Limits to plan for:
 
 | Limit | Description |
 |---|---|
-| Layout request | Fields appear once the layout loads |
-| First layout | United States, until the country is known |
+| Loading | Fields arrive after a network request |
+| Before the country is known | The block shows US fields |
 | Third address line | Not collected; orders carry two |
 
-If the layout request fails before any layout has loaded, the block builds a generic layout in English instead: country, name, street, city, state, postcode and phone, with state and postcode optional (`address-form.api.ts › builtInAddressSpec`). A later failure leaves the fields on screen as they are.
+If the fields cannot be loaded, the block shows a generic English address form instead, with state and postcode optional, so the shopper can still check out.
 
-### Hand-written fields
+### Static address fields
 
-You write ordinary inputs and name each one with `data-next-checkout-field`. The fields load with the page and need no layout request.
+The alternative to the address block is writing the address inputs yourself, each named with `data-next-checkout-field`. They load with the page and need no request.
 
-Hand-written fields are not recommended for a page that ships to more than one country. The SDK hides the state field where a country has no states and rewrites the state and postal wording, but the fields keep the order and the set you wrote: a Japanese address still ends with its postcode, and a country with no postcode still shows the field.
+> **Watch out:** Static address fields are not recommended for a page that ships to more than one country. The fields keep the order and the set you wrote in every country: a Japanese address still ends with its postcode, and a country with no postcode still shows the field. Use the address block instead.
 
-Below is an example that collects the customer's name, email and phone, and a shipping address whose city, state and ZIP stay hidden until the street address is filled.
+Below is an example of the Shipping Information step written this way, in place of the address block above. The city, state and ZIP stay hidden until the street address is filled.
 
 ```html
-<div data-next-component="shipping-form">
+<h2>Shipping Information</h2>
+<select data-next-checkout-field="country" autocomplete="country-name">
+  <option value="">Select Country</option>
+</select>
+<input
+  data-next-checkout-field="address1"
+  autocomplete="address-line1"
+  placeholder="Address*">
+<input
+  data-next-checkout-field="address2"
+  autocomplete="address-line2"
+  placeholder="Apartment, suite, etc. (optional)">
+<div data-next-component="location">
   <input
-    data-next-checkout-field="fname"
-    autocomplete="given-name"
-    placeholder="First Name*"
-    type="text">
-  <input
-    data-next-checkout-field="lname"
-    autocomplete="family-name"
-    placeholder="Last Name*"
-    type="text">
-  <input
-    data-next-checkout-field="email"
-    autocomplete="email"
-    placeholder="Email*"
-    type="email">
-  <input
-    data-next-checkout-field="phone"
-    autocomplete="tel"
-    placeholder="Phone"
-    type="tel">
-  <select data-next-checkout-field="country" autocomplete="country-name">
-    <option value="">Select Country</option>
+    data-next-checkout-field="city"
+    autocomplete="address-level2"
+    placeholder="City*">
+  <select data-next-checkout-field="province" autocomplete="address-level1">
+    <option value="">Select State</option>
   </select>
   <input
-    data-next-checkout-field="address1"
-    autocomplete="address-line1"
-    placeholder="Address*">
-  <input
-    data-next-checkout-field="address2"
-    autocomplete="address-line2"
-    placeholder="Apartment, suite, etc. (optional)">
-  <div data-next-component="location">
-    <input
-      data-next-checkout-field="city"
-      autocomplete="address-level2"
-      placeholder="City*">
-    <select data-next-checkout-field="province" autocomplete="address-level1">
-      <option value="">Select State</option>
-    </select>
-    <input
-      data-next-checkout-field="postal"
-      autocomplete="postal-code"
-      placeholder="ZIP Code*">
-  </div>
+    data-next-checkout-field="postal"
+    autocomplete="postal-code"
+    placeholder="ZIP Code*">
 </div>
 ```
 
-The SDK changes this markup in four places:
+The SDK still adjusts this markup for the selected country:
 
 | Part | Description |
 |---|---|
 | Country `<select>` | The campaign's shipping countries |
-| State `<select>` | The selected country's states |
-| State and postal wording | The selected country's labels |
+| State `<select>` | Refilled per country, hidden if none |
+| State and postal labels | Reworded per country |
 | `location` group | Hidden until `address1` has a value |
 
-The country list holds the countries the campaign ships to, and your empty first option stays as the prompt. The state list is replaced each time the country changes, and for a country with no states to choose from the SDK hides the state field (`state-fields.ts › updateStateOptions`).
+The SDK shows the `location` group once `address1` has a value, whether typed, autofilled or restored, and never hides it again. Leave the wrapper out to show the fields from the start.
 
-Once the country is known, the SDK rewrites the postal input's placeholder, and any `<label>` for the state or postal field, in that country's wording (`country-fields.ts › updateFormLabels`). The `ZIP Code*` you write is what shows before that.
-
-The SDK hides the `location` group when it boots and shows it once `address1` has a value: typed, autofilled, autocompleted, or restored for a returning visitor. It never hides the group again, and the trigger is not configurable (`location-field-visibility.ts`). No class is needed for this. The SDK sets the wrapper's inline `display` to `none`, then to `flex` when it shows the group, so a grid layout belongs on an element inside the wrapper, and a stylesheet rule that hides the wrapper with `!important` keeps it hidden for good. Leave the wrapper out to show the fields from the start.
+> **Watch out:** The SDK hides and shows the `location` wrapper with an inline `display` (`none`, then `flex`). A `display: grid` on the wrapper is overwritten, so put the grid on an element inside it. A stylesheet rule that hides the wrapper with `!important` keeps it hidden for good.
 
 ## Order bump
 
