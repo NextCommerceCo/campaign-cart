@@ -1327,7 +1327,6 @@ export interface AddressConfig {
   /**
    * `true` turns on NextCommerce address suggestions on the street address field. A
    * Google Maps key in `window.nextConfig.googleMaps.apiKey` takes priority over it.
-   * @defaultValue false
    */
   enableAutocomplete?: boolean;
 }
