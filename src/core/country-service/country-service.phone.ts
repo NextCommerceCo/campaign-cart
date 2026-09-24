@@ -25,6 +25,18 @@ export interface PhoneRules {
 const MIN_INTERNATIONAL_DIGITS = 8;
 const MAX_INTERNATIONAL_DIGITS = 15;
 
+/** Compiled once per pattern: the check runs on every keystroke. */
+const compiled = new Map<string, RegExp>();
+
+function patternOf(rules: PhoneRules): RegExp {
+  let pattern = compiled.get(rules.pattern);
+  if (!pattern) {
+    pattern = new RegExp(rules.pattern);
+    compiled.set(rules.pattern, pattern);
+  }
+  return pattern;
+}
+
 function digitsOf(text: string): string {
   return text.replace(/\D/g, '');
 }
@@ -88,7 +100,7 @@ export function formatPhone(text: string, rules?: PhoneRules): string {
  * code only has to be the length of an E.164 number.
  */
 export function isPlausiblePhone(text: string, rules: PhoneRules): boolean {
-  const pattern = new RegExp(rules.pattern);
+  const pattern = patternOf(rules);
   const digits = internationalDigits(text);
   if (digits === null) return pattern.test(digitsOf(text));
   if (rules.callingCode && digits.startsWith(rules.callingCode)) {
