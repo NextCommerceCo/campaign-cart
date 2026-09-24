@@ -75,36 +75,34 @@ The pieces that matter:
 
 ## Customer and shipping fields
 
-Every field reaches the order through its `data-next-checkout-field` name. The starter template collects them in two steps, customer information and then the shipping address, both inside one `data-next-component="shipping-form"` container. For the address, use the address block: the SDK builds the fields each country collects, in the order that country writes them.
+Every field reaches the order through its `data-next-checkout-field` name. The starter template collects them in two steps, customer information and then the shipping address. For the address, use the address block: the SDK builds the fields each country collects, in the order that country writes them.
 
 Below is an example of both steps, with the shipping address built by the SDK.
 
 ```html
-<div data-next-component="shipping-form">
-  <h2>Customer Information</h2>
-  <input
-    data-next-checkout-field="fname"
-    autocomplete="given-name"
-    placeholder="First Name*">
-  <input
-    data-next-checkout-field="lname"
-    autocomplete="family-name"
-    placeholder="Last Name*">
-  <input
-    data-next-checkout-field="email"
-    autocomplete="email"
-    placeholder="Email*"
-    type="email">
-  <input
-    data-next-checkout-field="phone"
-    name="phone"
-    autocomplete="tel"
-    placeholder="Phone (Optional)"
-    type="tel">
+<h2>Customer Information</h2>
+<input
+  data-next-checkout-field="fname"
+  autocomplete="given-name"
+  placeholder="First Name*">
+<input
+  data-next-checkout-field="lname"
+  autocomplete="family-name"
+  placeholder="Last Name*">
+<input
+  data-next-checkout-field="email"
+  autocomplete="email"
+  placeholder="Email*"
+  type="email">
+<input
+  data-next-checkout-field="phone"
+  name="phone"
+  autocomplete="tel"
+  placeholder="Phone (Optional)"
+  type="tel">
 
-  <h2>Shipping Information</h2>
-  <div data-next-address="shipping"></div>
-</div>
+<h2>Shipping Information</h2>
+<div data-next-address="shipping"></div>
 ```
 
 ### Customer information
@@ -135,7 +133,7 @@ You write the address inputs yourself and name each one with `data-next-checkout
 
 Hand-written address fields are not recommended for a page that ships to more than one country. The SDK hides the state field where a country has no states and rewrites the state and postal wording, but the fields keep the order and the set you wrote: a Japanese address still ends with its postcode, and a country with no postcode still shows the field.
 
-Below is an example of the Shipping Information step written by hand, in place of the address block inside the `shipping-form` container above. The city, state and ZIP stay hidden until the street address is filled.
+Below is an example of the Shipping Information step written by hand, in place of the address block above. The city, state and ZIP stay hidden until the street address is filled.
 
 ```html
 <h2>Shipping Information</h2>
@@ -179,6 +177,8 @@ The country list holds the countries the campaign ships to, and your empty first
 Once the country is known, the SDK rewrites the postal input's placeholder, and any `<label>` for the state or postal field, in that country's wording (`country-fields.ts › updateFormLabels`). The `ZIP Code*` you write is what shows before that.
 
 The SDK hides the `location` group when it boots and shows it once `address1` has a value: typed, autofilled, autocompleted, or restored for a returning visitor. It never hides the group again, and the trigger is not configurable (`location-field-visibility.ts`). No class is needed for this. The SDK sets the wrapper's inline `display` to `none`, then to `flex` when it shows the group, so a grid layout belongs on an element inside the wrapper, and a stylesheet rule that hides the wrapper with `!important` keeps it hidden for good. Leave the wrapper out to show the fields from the start.
+
+`data-next-component="shipping-form"` and `data-next-component="shipping-field-row"` matter only on a page that copies the shipping fields into a billing address: the SDK copies the rows marked `shipping-field-row` from inside `shipping-form` (`billing-form-setup.ts › setupBillingForm`). Without a billing copy, leave both out.
 
 ## Order bump
 
