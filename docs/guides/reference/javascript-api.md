@@ -8,6 +8,8 @@ category: "Reference"
 
 Reach for `window.next` when the markup cannot express what you need: a coupon applied from your own code, a shipping picker you render yourself, a popup that reacts to the cart. The attributes cover everything else, so most pages never open this page at all.
 
+For custom completed-order reads, follow the [order store integration contract](order-store.md). It checks initialization, the current campaign's public store, loading, errors, expiry, and the URL's order identity.
+
 ## Initialization
 
 `window.next` does not exist until boot finishes. Two safe patterns, both usable before or after boot:

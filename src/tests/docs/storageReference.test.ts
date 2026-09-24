@@ -12,7 +12,11 @@ import {
   renderStorageReference,
   type ExtractedKeyFacts,
 } from '@/docs/render/render-storage-reference';
-import { extractStorageKeys, toPattern } from '@/docs/extract/extract-storage-keys';
+import { renderStorageCompatibility } from '@/docs/render/render-storage-compatibility';
+import {
+  extractStorageKeys,
+  toPattern,
+} from '@/docs/extract/extract-storage-keys';
 
 /**
  * Generates `src/core/guide/reference/storage-keys.md` from the source plus
@@ -51,6 +55,7 @@ const sources = Object.entries(
 )
   .filter(
     ([path]) =>
+      path.startsWith('../../') &&
       !/\.(test|spec)\.ts$/.test(path) &&
       !path.startsWith('../../tests/') &&
       !path.startsWith('../../test/') &&
@@ -223,6 +228,75 @@ describe('storage key reference', () => {
       prose.includes(word)
     );
     expect(banned, 'see .claude/rules/documentation.md §2').toEqual([]);
+  });
+
+  it('storage migration JSON matches source-derived keys and provenance', () => {
+    const root = join(SRC, '..');
+    const keyFiles = new Set(
+      extracted.flatMap(key => key.where.map(site => site.split(' › ')[0]))
+    );
+    const generationPaths = [
+      'package.json',
+      'src/docs/extract/extract-storage-keys.ts',
+      'src/docs/extract/source-anchor.ts',
+      'src/docs/content/storage-keys.ts',
+      'src/docs/render/render-storage-compatibility.ts',
+      'src/tests/docs/storageReference.test.ts',
+    ];
+    const expected = renderStorageCompatibility({
+      sdkVersion: (
+        JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as {
+          version: string;
+        }
+      ).version,
+      extracted,
+      docs: STORAGE_KEYS_DOC,
+      // Hash only the files that write a key, so unrelated source edits leave the
+      // manifest stable; a new key in a new file still drifts the key list above.
+      provenanceInputs: [
+        ...sources
+          .filter(([path]) => keyFiles.has(path))
+          .map(([path, source]) => [`src/${path}`, source] as [string, string]),
+        ...generationPaths.map(
+          path =>
+            [path, readFileSync(join(root, path), 'utf8')] as [string, string]
+        ),
+      ],
+    });
+    const output = join(root, 'docs/compatibility/storage-migrations.v1.json');
+    if (UPDATE) {
+      mkdirSync(dirname(output), { recursive: true });
+      writeFileSync(output, expected);
+    }
+    expect(readFileSync(output, 'utf8')).toBe(expected);
+    const manifest = JSON.parse(expected) as { keys: Array<{ key: string }> };
+    expect(manifest.keys).toHaveLength(extracted.length);
+    expect(
+      manifest.keys.find(
+        (key: { key: string }) => key.key === 'next-order{__scope}'
+      )
+    ).toMatchObject({
+      scoped: true,
+      migration: { since: '0.4.34', legacyKey: 'next-order' },
+      replacement: { export: 'useOrderStore' },
+    });
+  });
+
+  it('anchors migration replacements to public exports and published guides', () => {
+    const index = readFileSync(join(SRC, 'index.ts'), 'utf8');
+    for (const doc of STORAGE_KEYS_DOC) {
+      if (doc.migration) {
+        expect(doc.key).toBe(doc.migration.legacyKey + '{__scope}');
+        expect(doc.migration.releaseEvidence.commit).toMatch(/^[a-f0-9]{40}$/);
+        expect(doc.migration.releaseEvidence.tag).toBe(
+          `v${doc.migration.since}`
+        );
+      }
+      if (doc.replacement) {
+        expect(index).toContain(`export { ${doc.replacement.export} }`);
+        expect(existsSync(join(SRC, '..', doc.replacement.guide))).toBe(true);
+      }
+    }
   });
 
   it('storage-keys.md matches the registry', () => {

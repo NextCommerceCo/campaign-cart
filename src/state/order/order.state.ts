@@ -120,8 +120,10 @@ const initialState: OrderState = {
  * tracking (which upsells were viewed, accepted, or skipped). Populated after
  * checkout and used to drive the receipt and upsell pages.
  *
- * Note: this store expires 15 minutes after the order completes, so upsell pages
- * can't be replayed indefinitely.
+ * `isOrderExpired()` checks 15 minutes since the order was loaded or set.
+ * Persistence does not remove stale orders on a timer or during rehydration.
+ * Custom readers must check loading, errors, expiry and URL reference identity;
+ * see the [order-store integration contract](https://github.com/NextCommerceCo/campaign-cart/blob/main/docs/guides/reference/order-store.md).
  *
  * @example
  * ```ts

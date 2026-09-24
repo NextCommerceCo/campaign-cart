@@ -1,0 +1,1351 @@
+{
+  "schemaVersion": 1,
+  "sdkVersion": "0.4.38",
+  "supportedSdkVersions": {
+    "min": "0.4.38",
+    "max": "0.4.38"
+  },
+  "provenance": {
+    "extractor": "src/docs/extract/extract-storage-keys.ts",
+    "registry": "src/docs/content/storage-keys.ts",
+    "inputSha256": "fa5116d1745491056c56e402579f2e355d7721098356685d80c0782c555cf845",
+    "inputs": [
+      {
+        "path": "package.json",
+        "sha256": "b0ed78eff66c3615229b038a49162471d0fce2fe31f9d692c00ed10cf283ed4e"
+      },
+      {
+        "path": "src/core/analytics/data-layer-manager.ts",
+        "sha256": "62721eac992842bdfc71efc787b48232d41edaeeffea6d50877cabd866fa3503"
+      },
+      {
+        "path": "src/core/analytics/events/event-builder.context.ts",
+        "sha256": "b9b234eb0c1208f705c4e8237cf3273655059ea32d70ff4adeb45a498067cdd3"
+      },
+      {
+        "path": "src/core/analytics/events/list-attribution-storage.ts",
+        "sha256": "829af293d0dfc626707b5d05bc1eb0d12bec7713bcaeecedfc8baa181ca7706d"
+      },
+      {
+        "path": "src/core/analytics/index.ts",
+        "sha256": "fc214b16bf534a1f120f0e21083d54a7a6dbd3b058ec4d9b3dd5228349bbac6e"
+      },
+      {
+        "path": "src/core/analytics/tracking/auto-event-upsell-handlers.ts",
+        "sha256": "05e0bce0b9a8ca752a9dd16a1da380faa7ee006082995bdd4492482728921a74"
+      },
+      {
+        "path": "src/core/analytics/tracking/list-attribution-tracker.ts",
+        "sha256": "6da032223c0fc6d48100151b40e5f9c3b5cbe419233e8c0b7b3a3d1d2f836d13"
+      },
+      {
+        "path": "src/core/analytics/tracking/pending-events-handler.ts",
+        "sha256": "f3ac91005a5ed74a53b8d18ab855467798a33e88726ecedea90c8ee0f418db68"
+      },
+      {
+        "path": "src/core/analytics/tracking/purchase-tracking.ts",
+        "sha256": "b0aff5ece3bdcf834b971069c57fd4f17fc24d13ee0868404dc2b9b51276efe3"
+      },
+      {
+        "path": "src/core/analytics/user-data-storage.ts",
+        "sha256": "b27b33bd27400085338420456bccd1cda1bf57a04fa5bd1fc6a6e03de5064e69"
+      },
+      {
+        "path": "src/core/attribution/attribution-collector.ts",
+        "sha256": "48a7bf913792758c7f9e2129fd385e3d0cc5e7d4ae46a9bfecbf9ec9d4063a9c"
+      },
+      {
+        "path": "src/core/country-service/country-service.ts",
+        "sha256": "ae57125d04c9437675940ea10e8b335ca8e726ead072ec87c4cbaa104a5c3a0b"
+      },
+      {
+        "path": "src/core/currency-formatter.ts",
+        "sha256": "c7d64c0e12b67a07d6dffbcd0bcaeba1326826463c9b96ee281f7b6a332ce4c7"
+      },
+      {
+        "path": "src/core/debug/country-selector.ts",
+        "sha256": "00303d0df69405c65182977edacf8eaaa1ad301b68dc2a8092f297897aae7b76"
+      },
+      {
+        "path": "src/core/debug/currency-selector.ts",
+        "sha256": "5efcc2895117756ec3b1f0c235a35190e186e77969c5a257912f92674173d0a4"
+      },
+      {
+        "path": "src/core/debug/debug-overlay/debug-overlay.mini-cart.ts",
+        "sha256": "283a3d06e8ccbc160abc72539b57e7a92aeaec691873c659ccb18bd81eb016c6"
+      },
+      {
+        "path": "src/core/debug/debug-overlay/debug-overlay.ts",
+        "sha256": "de5f13e66973fc87e5c8cd73b79a0d4a36480ebab43a808b0455cc81ce86bd7b"
+      },
+      {
+        "path": "src/core/debug/locale-selector.ts",
+        "sha256": "8f66b2325c01d5045dea952bcb18a9f3bbf6f59a25789cbdb1601218951db079"
+      },
+      {
+        "path": "src/core/debug/panels/event-timeline/event-timeline-panel.persistence.ts",
+        "sha256": "fbf52ef59a605ec628a0eba5692a06a84bcdf98809e84b8538ca2e753d8041ed"
+      },
+      {
+        "path": "src/core/debug/panels/event-timeline/event-timeline-panel.ts",
+        "sha256": "9047deb5f0a8c4362e41c69bca9aa7539f4115c762974db513f461c068497b00"
+      },
+      {
+        "path": "src/core/debug/xray-styles.ts",
+        "sha256": "2b570fda0f377f3303ddf9648844c98f029addb8e4ee2a3919c7948ff99a5025"
+      },
+      {
+        "path": "src/core/sdk-initializer/sdk-initializer.debug-utils.ts",
+        "sha256": "3804a2e5d605d85811d858e642a8b0f4215ca9796cce1aff75c2bd13101b50ac"
+      },
+      {
+        "path": "src/core/sdk-initializer/sdk-initializer.location-currency.ts",
+        "sha256": "ff19d42f4076e7c082b5a3378f99b20955dc262f0f2a3bbdfbba78148a104f73"
+      },
+      {
+        "path": "src/core/sdk-initializer/sdk-initializer.ts",
+        "sha256": "794672f2e1fbcf50b54d84dece75e9856fa5296f0b252e29672f11e31c5848c4"
+      },
+      {
+        "path": "src/core/storage.ts",
+        "sha256": "32732bba97de0441a5ea8761af2a5cc5dccfe77602644fbfbdbd7babd18fe465"
+      },
+      {
+        "path": "src/docs/content/storage-keys.ts",
+        "sha256": "902ec523a3676adc0a212603b131d70a09006acf80eab3caf3342979def41a43"
+      },
+      {
+        "path": "src/docs/extract/extract-storage-keys.ts",
+        "sha256": "9b2459d84a8b0cd481e19c94e604a26c7028257c3ee66953c58bc89dc20654fe"
+      },
+      {
+        "path": "src/docs/extract/source-anchor.ts",
+        "sha256": "ca183b09143496fc6b518ca8a2fbe0aa22d16bf9488c1637ba7aeccaccade1dd"
+      },
+      {
+        "path": "src/docs/render/render-storage-compatibility.ts",
+        "sha256": "94d1f711a88788ed7597c5be9ee6cb748a7b516f29196b2e841018e2aa7297b9"
+      },
+      {
+        "path": "src/features/behavior/simple-exit-intent/simple-exit-intent.enhancer.ts",
+        "sha256": "606b2d9bf8e598ef58e0d12935dbcd3125f67294cffa2fdeddf315ca666f6bd3"
+      },
+      {
+        "path": "src/features/checkout/checkout-form/checkout-form.enhancer.ts",
+        "sha256": "043ce545d28db2feaf29143501e5724c7e2dcb53d3e51a1a4a8d90626bdd1dae"
+      },
+      {
+        "path": "src/features/checkout/checkout-form/country-selection.ts",
+        "sha256": "bc0270385be7fd607e225cb93444027a8ff85ff47af69e781dddd2ece0927d7f"
+      },
+      {
+        "path": "src/features/checkout/checkout-form/duplicate-purchase-warning.ts",
+        "sha256": "43e1ae077fb6ca22bae105813737264227e3b4ffc1bfc3ee73336e83ce27bec6"
+      },
+      {
+        "path": "src/features/checkout/prospect-cart/cart-creation.ts",
+        "sha256": "4350438ada4ccb6b7c0453f3273e54d4b06dab96662b7c19005e421b99420771"
+      },
+      {
+        "path": "src/features/checkout/prospect-cart/prospect-cart.enhancer.ts",
+        "sha256": "83d04ba3ae1faf8ca9a2de9886eaff6d4a09c577bbc73e8d53f4a1934823a41a"
+      },
+      {
+        "path": "src/state/attribution/attribution.state.ts",
+        "sha256": "6e647d4a5b71e19d29a85b6c7e26ebfc7396b313a7e2e205770c62cc4a41aa68"
+      },
+      {
+        "path": "src/state/campaign/api.slice.ts",
+        "sha256": "ad8103dc749b4003d5b5ef96901ffd3ef5325e5f34fc53a5e03c09d81b569d63"
+      },
+      {
+        "path": "src/state/campaign/items.slice.ts",
+        "sha256": "b55ae5b7fd1a290f0a75b2052f970670efdd2a16f0829ed699364866a6bcb03d"
+      },
+      {
+        "path": "src/state/cart/cart-calculator.ts",
+        "sha256": "5b85e1a66a73893d4ba0c8cdcf85e6c746ae1e5f2b27d4ef50de17810f795e16"
+      },
+      {
+        "path": "src/state/cart/cart.state.ts",
+        "sha256": "09f7bd59af51a97053b100e2efde0776911dfc1891dfb201489ef1cf066236a1"
+      },
+      {
+        "path": "src/state/checkout/checkout.state.ts",
+        "sha256": "9d0fd894b6617c6251730b752cbe1a8e3be3ee4c8855eb1924a93738df6edf9a"
+      },
+      {
+        "path": "src/state/order/order.state.ts",
+        "sha256": "34c9d15cf83e6dee0187ec56bd52d3c5a45dbeaaf4d7120ed0fd8230477469a3"
+      },
+      {
+        "path": "src/state/parameter/parameter.state.ts",
+        "sha256": "8fa493b14bc4d03f9f6ba95c5fb4dd6d9604d105389a5ba3cd70e55453c4a505"
+      },
+      {
+        "path": "src/tests/docs/storageReference.test.ts",
+        "sha256": "648fc7ca6a07df2ed625f6ede323aef53dbb066528648acd21abd4a450357381"
+      }
+    ]
+  },
+  "keys": [
+    {
+      "key": "analytics_current_list",
+      "pattern": "analytics_current_list",
+      "areas": [
+        "sessionStorage"
+      ],
+      "scoped": false,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/analytics/tracking/list-attribution-tracker.ts › ListAttributionTracker.loadFromStorage",
+        "core/analytics/tracking/list-attribution-tracker.ts › ListAttributionTracker.removeFromStorage",
+        "core/analytics/tracking/list-attribution-tracker.ts › ListAttributionTracker.saveToStorage"
+      ],
+      "migration": null,
+      "replacement": null
+    },
+    {
+      "key": "analytics_ignore{__scope}",
+      "pattern": "analytics_ignore{}",
+      "areas": [
+        "sessionStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/analytics/index.ts › NextAnalytics.checkAndSetIgnoreFlag",
+        "core/analytics/index.ts › NextAnalytics.clearIgnoreFlag",
+        "core/analytics/index.ts › NextAnalytics.shouldIgnoreAnalytics"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "analytics_ignore",
+        "releaseEvidence": {
+          "commit": "237cdaaeba3840c46aba552b64fc73d643c9c7af",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "analytics_list_id{__scope}",
+      "pattern": "analytics_list_id{}",
+      "areas": [
+        "sessionStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/analytics/events/list-attribution-storage.ts › clearListAttribution",
+        "core/analytics/events/list-attribution-storage.ts › getListAttribution",
+        "core/analytics/events/list-attribution-storage.ts › setListAttribution"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "analytics_list_id",
+        "releaseEvidence": {
+          "commit": "237cdaaeba3840c46aba552b64fc73d643c9c7af",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "analytics_list_name{__scope}",
+      "pattern": "analytics_list_name{}",
+      "areas": [
+        "sessionStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/analytics/events/list-attribution-storage.ts › clearListAttribution",
+        "core/analytics/events/list-attribution-storage.ts › getListAttribution",
+        "core/analytics/events/list-attribution-storage.ts › setListAttribution"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "analytics_list_name",
+        "releaseEvidence": {
+          "commit": "237cdaaeba3840c46aba552b64fc73d643c9c7af",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "analytics_sequence{__scope}",
+      "pattern": "analytics_sequence{}",
+      "areas": [
+        "sessionStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/analytics/events/event-builder.context.ts › getNextSequenceNumber"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "analytics_sequence",
+        "releaseEvidence": {
+          "commit": "237cdaaeba3840c46aba552b64fc73d643c9c7af",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "analytics_session_id{__scope}",
+      "pattern": "analytics_session_id{}",
+      "areas": [
+        "sessionStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/analytics/events/event-builder.context.ts › getSessionId"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "analytics_session_id",
+        "releaseEvidence": {
+          "commit": "237cdaaeba3840c46aba552b64fc73d643c9c7af",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "debug-events-expiry",
+      "pattern": "debug-events-expiry",
+      "areas": [
+        "localStorage"
+      ],
+      "scoped": false,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/debug/panels/event-timeline/event-timeline-panel.persistence.ts › checkAndCleanExpiredStorage",
+        "core/debug/panels/event-timeline/event-timeline-panel.persistence.ts › saveEvents"
+      ],
+      "migration": null,
+      "replacement": null
+    },
+    {
+      "key": "debug-events-history",
+      "pattern": "debug-events-history",
+      "areas": [
+        "localStorage"
+      ],
+      "scoped": false,
+      "sources": [
+        "call",
+        "constant"
+      ],
+      "where": [
+        "core/debug/panels/event-timeline/event-timeline-panel.persistence.ts",
+        "core/debug/panels/event-timeline/event-timeline-panel.persistence.ts › checkAndCleanExpiredStorage",
+        "core/debug/panels/event-timeline/event-timeline-panel.persistence.ts › loadSavedState",
+        "core/debug/panels/event-timeline/event-timeline-panel.persistence.ts › saveEvents",
+        "core/debug/panels/event-timeline/event-timeline-panel.ts › action"
+      ],
+      "migration": null,
+      "replacement": null
+    },
+    {
+      "key": "debug-events-show-internal",
+      "pattern": "debug-events-show-internal",
+      "areas": [
+        "localStorage"
+      ],
+      "scoped": false,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/debug/panels/event-timeline/event-timeline-panel.persistence.ts › loadSavedState",
+        "core/debug/panels/event-timeline/event-timeline-panel.ts › EventTimelinePanel.toggleInternalEvents"
+      ],
+      "migration": null,
+      "replacement": null
+    },
+    {
+      "key": "debug-events-view",
+      "pattern": "debug-events-view",
+      "areas": [
+        "localStorage"
+      ],
+      "scoped": false,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/debug/panels/event-timeline/event-timeline-panel.persistence.ts › loadSavedState",
+        "core/debug/panels/event-timeline/event-timeline-panel.ts › EventTimelinePanel.setView"
+      ],
+      "migration": null,
+      "replacement": null
+    },
+    {
+      "key": "debug-mini-cart-height{__scope}",
+      "pattern": "debug-mini-cart-height{}",
+      "areas": [
+        "localStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/debug/debug-overlay/debug-overlay.mini-cart.ts › bindResizeHandle",
+        "core/debug/debug-overlay/debug-overlay.mini-cart.ts › onMouseUp"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "debug-mini-cart-height",
+        "releaseEvidence": {
+          "commit": "237cdaaeba3840c46aba552b64fc73d643c9c7af",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "debug-mini-cart-visible{__scope}",
+      "pattern": "debug-mini-cart-visible{}",
+      "areas": [
+        "localStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/debug/debug-overlay/debug-overlay.mini-cart.ts › closeMiniCart",
+        "core/debug/debug-overlay/debug-overlay.mini-cart.ts › toggleMiniCart",
+        "core/debug/debug-overlay/debug-overlay.ts › DebugOverlay.show"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "debug-mini-cart-visible",
+        "releaseEvidence": {
+          "commit": "237cdaaeba3840c46aba552b64fc73d643c9c7af",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "debug-overlay-active-panel",
+      "pattern": "debug-overlay-active-panel",
+      "areas": [
+        "localStorage"
+      ],
+      "scoped": false,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/debug/debug-overlay/debug-overlay.ts › DebugOverlay.constructor",
+        "core/debug/debug-overlay/debug-overlay.ts › DebugOverlay.handleTabSwitch",
+        "core/debug/debug-overlay/debug-overlay.ts › DebugOverlay.setActivePanel"
+      ],
+      "migration": null,
+      "replacement": null
+    },
+    {
+      "key": "debug-overlay-active-tab",
+      "pattern": "debug-overlay-active-tab",
+      "areas": [
+        "localStorage"
+      ],
+      "scoped": false,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/debug/debug-overlay/debug-overlay.ts › DebugOverlay.constructor",
+        "core/debug/debug-overlay/debug-overlay.ts › DebugOverlay.handleTabSwitch"
+      ],
+      "migration": null,
+      "replacement": null
+    },
+    {
+      "key": "debug-overlay-expanded",
+      "pattern": "debug-overlay-expanded",
+      "areas": [
+        "localStorage"
+      ],
+      "scoped": false,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/debug/debug-overlay/debug-overlay.ts › DebugOverlay.constructor",
+        "core/debug/debug-overlay/debug-overlay.ts › DebugOverlay.handleDebugAction"
+      ],
+      "migration": null,
+      "replacement": null
+    },
+    {
+      "key": "debug-xray-active",
+      "pattern": "debug-xray-active",
+      "areas": [
+        "localStorage"
+      ],
+      "scoped": false,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/debug/xray-styles.ts › XrayManager.activate",
+        "core/debug/xray-styles.ts › XrayManager.deactivate",
+        "core/debug/xray-styles.ts › XrayManager.initialize"
+      ],
+      "migration": null,
+      "replacement": null
+    },
+    {
+      "key": "evclid",
+      "pattern": "evclid",
+      "areas": [
+        "sessionStorage",
+        "localStorage"
+      ],
+      "scoped": false,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/attribution/attribution-collector.ts › AttributionCollector.handleEverflowClickId",
+        "state/attribution/attribution.state.ts › debug",
+        "state/attribution/attribution.state.ts › setEverflowClickId"
+      ],
+      "migration": null,
+      "replacement": null
+    },
+    {
+      "key": "next_country_{cacheKey}",
+      "pattern": "next_country_{}",
+      "areas": [
+        "sessionStorage",
+        "localStorage"
+      ],
+      "scoped": false,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/country-service/country-service.ts › CountryService.getFromCache",
+        "core/country-service/country-service.ts › CountryService.setCache"
+      ],
+      "migration": null,
+      "replacement": null
+    },
+    {
+      "key": "next_country_states_{countryCode}",
+      "pattern": "next_country_states_{}",
+      "areas": [
+        "sessionStorage",
+        "localStorage"
+      ],
+      "scoped": false,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/country-service/country-service.ts › CountryService.clearCountryCache"
+      ],
+      "migration": null,
+      "replacement": null
+    },
+    {
+      "key": "next_funnel_name{__scope}",
+      "pattern": "next_funnel_name{}",
+      "areas": [
+        "sessionStorage",
+        "localStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/attribution/attribution-collector.ts › AttributionCollector.getFunnelName",
+        "core/sdk-initializer/sdk-initializer.debug-utils.ts › getFunnel",
+        "state/attribution/attribution.state.ts › clearPersistedFunnel",
+        "state/attribution/attribution.state.ts › setFunnelName"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "next_funnel_name",
+        "releaseEvidence": {
+          "commit": "237cdaaeba3840c46aba552b64fc73d643c9c7af",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "next_prospect_cart{__scope}",
+      "pattern": "next_prospect_cart{}",
+      "areas": [
+        "sessionStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call",
+        "constant"
+      ],
+      "where": [
+        "core/storage.ts",
+        "features/checkout/prospect-cart/cart-creation.ts › createProspectCart",
+        "features/checkout/prospect-cart/prospect-cart.enhancer.ts › ProspectCartEnhancer.abandonCart",
+        "features/checkout/prospect-cart/prospect-cart.enhancer.ts › ProspectCartEnhancer.checkExistingProspectCart",
+        "features/checkout/prospect-cart/prospect-cart.enhancer.ts › ProspectCartEnhancer.convertCart"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "next_prospect_cart",
+        "releaseEvidence": {
+          "commit": "a13d61f419a3ee0d2f759172eb064f1a13999fa1",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "next_selected_country{__scope}",
+      "pattern": "next_selected_country{}",
+      "areas": [
+        "sessionStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/debug/country-selector.ts › CountrySelector.doRender",
+        "core/debug/country-selector.ts › CountrySelector.handleCountryChange",
+        "core/sdk-initializer/sdk-initializer.location-currency.ts › initializeLocationAndCurrency",
+        "features/checkout/checkout-form/checkout-form.enhancer.ts › CheckoutFormEnhancer.applyCountrySelection",
+        "features/checkout/checkout-form/country-selection.ts › resolveShippingCountry"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "next_selected_country",
+        "releaseEvidence": {
+          "commit": "237cdaaeba3840c46aba552b64fc73d643c9c7af",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "next_selected_currency{__scope}",
+      "pattern": "next_selected_currency{}",
+      "areas": [
+        "sessionStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/debug/country-selector.ts › CountrySelector.handleCountryChange",
+        "core/debug/currency-selector.ts › CurrencySelector.handleCurrencyChange",
+        "core/sdk-initializer/sdk-initializer.location-currency.ts › initializeLocationAndCurrency",
+        "state/campaign/api.slice.ts › loadCampaign"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "next_selected_currency",
+        "releaseEvidence": {
+          "commit": "237cdaaeba3840c46aba552b64fc73d643c9c7af",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "next_selected_locale{__scope}",
+      "pattern": "next_selected_locale{}",
+      "areas": [
+        "sessionStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/currency-formatter.ts › getSelectedLocale",
+        "core/debug/locale-selector.ts › LocaleSelector.getCurrentLocale",
+        "core/debug/locale-selector.ts › LocaleSelector.handleLocaleChange"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "next_selected_locale",
+        "releaseEvidence": {
+          "commit": "237cdaaeba3840c46aba552b64fc73d643c9c7af",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "next_utm_data",
+      "pattern": "next_utm_data",
+      "areas": [
+        "sessionStorage"
+      ],
+      "scoped": false,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "features/checkout/prospect-cart/cart-creation.ts › collectUtmData"
+      ],
+      "migration": null,
+      "replacement": null
+    },
+    {
+      "key": "next_v2_pending_events{__scope}",
+      "pattern": "next_v2_pending_events{}",
+      "areas": [
+        "sessionStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/analytics/tracking/pending-events-handler.ts › PendingEventsHandler.clearPendingEvents",
+        "core/analytics/tracking/pending-events-handler.ts › PendingEventsHandler.getPendingEvents",
+        "core/analytics/tracking/pending-events-handler.ts › PendingEventsHandler.processPendingEvents",
+        "core/analytics/tracking/pending-events-handler.ts › PendingEventsHandler.queueEvent"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "next_v2_pending_events",
+        "releaseEvidence": {
+          "commit": "237cdaaeba3840c46aba552b64fc73d643c9c7af",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "next-attribution{__scope}",
+      "pattern": "next-attribution{}",
+      "areas": [
+        "sessionStorage",
+        "localStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call",
+        "persist"
+      ],
+      "where": [
+        "core/attribution/attribution-collector.ts › AttributionCollector.getFirstVisitTimestamp",
+        "core/attribution/attribution-collector.ts › AttributionCollector.getFunnelName",
+        "core/attribution/attribution-collector.ts › AttributionCollector.getStoredValue",
+        "state/attribution/attribution.state.ts"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "next-attribution",
+        "releaseEvidence": {
+          "commit": "237cdaaeba3840c46aba552b64fc73d643c9c7af",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "next-campaign-cache",
+      "pattern": "next-campaign-cache",
+      "areas": [
+        "sessionStorage"
+      ],
+      "scoped": false,
+      "sources": [
+        "call",
+        "constant"
+      ],
+      "where": [
+        "core/storage.ts",
+        "state/campaign/items.slice.ts › clearCache"
+      ],
+      "migration": null,
+      "replacement": null
+    },
+    {
+      "key": "next-campaign-cache_{currency}",
+      "pattern": "next-campaign-cache_{}",
+      "areas": [
+        "sessionStorage"
+      ],
+      "scoped": false,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "state/campaign/api.slice.ts › loadCampaign",
+        "state/campaign/items.slice.ts › clearCache",
+        "state/campaign/items.slice.ts › getCacheInfo"
+      ],
+      "migration": null,
+      "replacement": null
+    },
+    {
+      "key": "next-campaign-cache_USD",
+      "pattern": "next-campaign-cache_USD",
+      "areas": [
+        "sessionStorage"
+      ],
+      "scoped": false,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "state/campaign/api.slice.ts › loadCampaign"
+      ],
+      "migration": null,
+      "replacement": null
+    },
+    {
+      "key": "next-cart-state{__scope}",
+      "pattern": "next-cart-state{}",
+      "areas": [
+        "sessionStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call",
+        "constant",
+        "persist"
+      ],
+      "where": [
+        "core/sdk-initializer/sdk-initializer.ts › SDKInitializer.waitForStoreRehydration",
+        "core/storage.ts",
+        "state/cart/cart.state.ts"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "next-cart-state",
+        "releaseEvidence": {
+          "commit": "a13d61f419a3ee0d2f759172eb064f1a13999fa1",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "next-checkout-store{__scope}",
+      "pattern": "next-checkout-store{}",
+      "areas": [
+        "sessionStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "constant",
+        "persist"
+      ],
+      "where": [
+        "core/storage.ts",
+        "state/checkout/checkout.state.ts"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "next-checkout-store",
+        "releaseEvidence": {
+          "commit": "a13d61f419a3ee0d2f759172eb064f1a13999fa1",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "next-config-state",
+      "pattern": "next-config-state",
+      "areas": [],
+      "scoped": false,
+      "sources": [
+        "constant"
+      ],
+      "where": [
+        "core/storage.ts"
+      ],
+      "migration": null,
+      "replacement": null
+    },
+    {
+      "key": "next-exit-intent-dismissed{__scope}",
+      "pattern": "next-exit-intent-dismissed{}",
+      "areas": [
+        "sessionStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call",
+        "constant"
+      ],
+      "where": [
+        "core/storage.ts",
+        "features/behavior/simple-exit-intent/simple-exit-intent.enhancer.ts › ExitIntentEnhancer.initialize",
+        "features/behavior/simple-exit-intent/simple-exit-intent.enhancer.ts › ExitIntentEnhancer.reset"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "next-exit-intent-dismissed",
+        "releaseEvidence": {
+          "commit": "a13d61f419a3ee0d2f759172eb064f1a13999fa1",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "next-order{__scope}",
+      "pattern": "next-order{}",
+      "areas": [
+        "sessionStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call",
+        "constant",
+        "persist"
+      ],
+      "where": [
+        "core/storage.ts",
+        "features/checkout/checkout-form/duplicate-purchase-warning.ts › handlePurchaseEvent",
+        "state/order/order.state.ts"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "next-order",
+        "releaseEvidence": {
+          "commit": "a13d61f419a3ee0d2f759172eb064f1a13999fa1",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": {
+        "kind": "public-store",
+        "export": "useOrderStore",
+        "guide": "docs/guides/reference/order-store.md"
+      }
+    },
+    {
+      "key": "next-price-{hash}",
+      "pattern": "next-price-{}",
+      "areas": [
+        "sessionStorage"
+      ],
+      "scoped": false,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "state/cart/cart-calculator.ts › calculateBundlePrice"
+      ],
+      "migration": null,
+      "replacement": null
+    },
+    {
+      "key": "next-shown-order-warnings{__scope}",
+      "pattern": "next-shown-order-warnings{}",
+      "areas": [
+        "sessionStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "features/checkout/checkout-form/duplicate-purchase-warning.ts › handlePurchaseEvent"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "next-shown-order-warnings",
+        "releaseEvidence": {
+          "commit": "68809874c9ddb7ee1b791a49251bf01250bc23b9",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "next-timer-{persistenceId}{__scope}",
+      "pattern": "next-timer-{}{}",
+      "areas": [
+        "sessionStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/storage.ts › clearTimerState",
+        "core/storage.ts › loadTimerState",
+        "core/storage.ts › saveTimerState"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "next-timer-{persistenceId}",
+        "releaseEvidence": {
+          "commit": "a13d61f419a3ee0d2f759172eb064f1a13999fa1",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "next-url-params{__scope}",
+      "pattern": "next-url-params{}",
+      "areas": [
+        "sessionStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "persist"
+      ],
+      "where": [
+        "state/parameter/parameter.state.ts"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "next-url-params",
+        "releaseEvidence": {
+          "commit": "68809874c9ddb7ee1b791a49251bf01250bc23b9",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "nextDataLayer_checkoutCoupon{__scope}",
+      "pattern": "nextDataLayer_checkoutCoupon{}",
+      "areas": [
+        "sessionStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/analytics/tracking/purchase-tracking.ts › recallCheckoutCoupon",
+        "core/analytics/tracking/purchase-tracking.ts › rememberCheckoutCoupon"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "nextDataLayer_checkoutCoupon",
+        "releaseEvidence": {
+          "commit": "68809874c9ddb7ee1b791a49251bf01250bc23b9",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "nextDataLayer_checkoutReturnPaths{__scope}",
+      "pattern": "nextDataLayer_checkoutReturnPaths{}",
+      "areas": [
+        "sessionStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/analytics/tracking/purchase-tracking.ts › readReturnPaths",
+        "core/analytics/tracking/purchase-tracking.ts › rememberCheckoutReturnPaths"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "nextDataLayer_checkoutReturnPaths",
+        "releaseEvidence": {
+          "commit": "68809874c9ddb7ee1b791a49251bf01250bc23b9",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "nextDataLayer_debugMode{__scope}",
+      "pattern": "nextDataLayer_debugMode{}",
+      "areas": [
+        "localStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/analytics/data-layer-manager.ts › DataLayerManager.loadDebugMode",
+        "core/analytics/data-layer-manager.ts › DataLayerManager.setDebugMode"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "nextDataLayer_debugMode",
+        "releaseEvidence": {
+          "commit": "237cdaaeba3840c46aba552b64fc73d643c9c7af",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "nextDataLayer_reportedPurchases{__scope}",
+      "pattern": "nextDataLayer_reportedPurchases{}",
+      "areas": [
+        "localStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/analytics/tracking/purchase-tracking.ts › markPurchaseReported",
+        "core/analytics/tracking/purchase-tracking.ts › readReported",
+        "core/analytics/tracking/purchase-tracking.ts › resetReportedPurchases"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "nextDataLayer_reportedPurchases",
+        "releaseEvidence": {
+          "commit": "237cdaaeba3840c46aba552b64fc73d643c9c7af",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "nextDataLayer_sessionId{__scope}",
+      "pattern": "nextDataLayer_sessionId{}",
+      "areas": [
+        "localStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/analytics/data-layer-manager.ts › DataLayerManager.getOrCreateSessionId"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "nextDataLayer_sessionId",
+        "releaseEvidence": {
+          "commit": "237cdaaeba3840c46aba552b64fc73d643c9c7af",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "nextDataLayer_sessionStart{__scope}",
+      "pattern": "nextDataLayer_sessionStart{}",
+      "areas": [
+        "localStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/analytics/data-layer-manager.ts › DataLayerManager.getOrCreateSessionId"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "nextDataLayer_sessionStart",
+        "releaseEvidence": {
+          "commit": "237cdaaeba3840c46aba552b64fc73d643c9c7af",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "nextDataLayer_userProperties{__scope}",
+      "pattern": "nextDataLayer_userProperties{}",
+      "areas": [
+        "localStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/analytics/data-layer-manager.ts › DataLayerManager.getUserProperties",
+        "core/analytics/data-layer-manager.ts › DataLayerManager.setUserProperties"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "nextDataLayer_userProperties",
+        "releaseEvidence": {
+          "commit": "237cdaaeba3840c46aba552b64fc73d643c9c7af",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "session_id{__scope}",
+      "pattern": "session_id{}",
+      "areas": [
+        "sessionStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/analytics/user-data-storage.ts › UserDataStorage.loadUserData"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "session_id",
+        "releaseEvidence": {
+          "commit": "237cdaaeba3840c46aba552b64fc73d643c9c7af",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "tn_tag_{tagName}",
+      "pattern": "tn_tag_{}",
+      "areas": [
+        "sessionStorage"
+      ],
+      "scoped": false,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/attribution/attribution-collector.ts › AttributionCollector.collectTrackingTags"
+      ],
+      "migration": null,
+      "replacement": null
+    },
+    {
+      "key": "upsells_{orderId}{__scope}",
+      "pattern": "upsells_{}{}",
+      "areas": [
+        "sessionStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/analytics/tracking/auto-event-upsell-handlers.ts › handleUpsellAccepted"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "upsells_{orderId}",
+        "releaseEvidence": {
+          "commit": "237cdaaeba3840c46aba552b64fc73d643c9c7af",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "user_data{__scope}",
+      "pattern": "user_data{}",
+      "areas": [
+        "sessionStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/analytics/user-data-storage.ts › UserDataStorage.clearUserData",
+        "core/analytics/user-data-storage.ts › UserDataStorage.loadUserData",
+        "core/analytics/user-data-storage.ts › UserDataStorage.saveUserData"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "user_data",
+        "releaseEvidence": {
+          "commit": "237cdaaeba3840c46aba552b64fc73d643c9c7af",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    },
+    {
+      "key": "visitor_id{__scope}",
+      "pattern": "visitor_id{}",
+      "areas": [
+        "localStorage"
+      ],
+      "scoped": true,
+      "sources": [
+        "call"
+      ],
+      "where": [
+        "core/analytics/user-data-storage.ts › UserDataStorage.loadUserData"
+      ],
+      "migration": {
+        "since": "0.4.34",
+        "legacyKey": "visitor_id",
+        "releaseEvidence": {
+          "commit": "237cdaaeba3840c46aba552b64fc73d643c9c7af",
+          "tag": "v0.4.34",
+          "previousTag": "v0.4.33"
+        }
+      },
+      "replacement": null
+    }
+  ]
+}
