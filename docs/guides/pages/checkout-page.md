@@ -112,7 +112,7 @@ The empty `<div>` becomes the address fields the selected country collects, in t
 
 The block builds only the fields the form does not already have, so the name and phone above are not built twice. It never builds the email. The country list, the state options, validation, and hiding city, state and postcode until the street address is filled all work as they do for static fields below.
 
-The SDK ships no styling for the block. Style it through the classes it sets: `next-address-row` on each row and `next-address-field` on each field, which also carries `data-next-address-field` with the field's name. While the fields load, the block carries `data-next-address-state="loading"`, then `ready`. [Address block](../reference/data-attributes.md#address-block) lists its attributes.
+[Address block](../reference/data-attributes.md#address-block) lists its attributes, and [Styling the address block](#styling-the-address-block) below covers its markup.
 
 Limits to plan for:
 
@@ -123,6 +123,97 @@ Limits to plan for:
 | Third address line | Not collected; orders carry two |
 
 If the fields cannot be loaded, the block shows a generic English address form instead, with state and postcode optional, so the shopper can still check out.
+
+### Styling the address block
+
+The SDK ships no styling for the block, and rules written against your own input classes do not reach it: the fields it builds carry their own classes. Style them through the classes and attributes it sets.
+
+Below is an example of the markup the block builds for a US address, cut down to the street and the city and ZIP row, with the attributes that do not matter for styling left out.
+
+```html
+<div data-next-address="shipping" data-next-address-state="ready">
+  <div class="next-address-row" data-next-address-row="2">
+    <div
+      class="form-group next-address-field"
+      data-next-address-field="address1"
+    >
+      <input
+        class="next-address-control"
+        data-next-checkout-field="address1"
+        placeholder="Address"
+      >
+      <label class="next-address-label">Address</label>
+    </div>
+  </div>
+  <div
+    class="next-address-row"
+    data-next-address-row="4"
+    data-next-component="location"
+  >
+    <div
+      class="form-group next-address-field"
+      data-next-address-field="city"
+      style="flex-grow: 2"
+    >
+      <input
+        class="next-address-control"
+        data-next-checkout-field="city"
+        placeholder="City"
+      >
+      <label class="next-address-label">City</label>
+    </div>
+    <div class="form-group next-address-field" data-next-address-field="postal">
+      <input
+        class="next-address-control"
+        data-next-checkout-field="postal"
+        placeholder="ZIP Code"
+      >
+      <label class="next-address-label">ZIP Code</label>
+    </div>
+  </div>
+</div>
+```
+
+| Selector | Description |
+|---|---|
+| `.next-address-row` | One row of fields |
+| `.next-address-field` | The wrapper around one field |
+| `[data-next-address-field="postal"]` | One field, by its checkout name |
+| `.next-address-control` | The input or select |
+| `.next-address-label` | The label, after its control |
+| `.next-address-hint` | A hint under some fields |
+| `[data-next-address-state]` | `loading`, then `ready` |
+| `.has-error` | On a control that failed validation |
+| `.next-error-label` | The error message under it |
+
+The label comes after its control so a stylesheet can reach it from the control's state, and every input has a placeholder, so a floating label needs no script. The SDK sets an inline `display` on the city, state and postcode row when it shows it (`flex`), and an inline `flex-grow` on wider fields such as the city, so lay the rows out with flex.
+
+Below is an example that puts each row on one line, narrows the postcode, holds space while the fields load, floats the labels, and marks failed fields.
+
+```css
+[data-next-address] .next-address-row {
+  display: flex;
+  gap: 16px;
+}
+[data-next-address] .next-address-field {
+  position: relative;
+  flex: 1;
+}
+[data-next-address-field='postal'] {
+  max-width: 160px;
+}
+[data-next-address-state='loading'] {
+  min-height: 256px;
+}
+.next-address-control:placeholder-shown + .next-address-label {
+  display: none;
+}
+.next-address-control.has-error {
+  border-color: #dc2626;
+}
+```
+
+> **Watch out:** Style a field by its name, with `[data-next-address-field="postal"]`, never by its row number. Rows differ per country, so `data-next-address-row="4"` holds the city and postcode for one country and something else for the next.
 
 ### Static address fields
 
