@@ -215,6 +215,24 @@ Below is an example that puts each row on one line, narrows the postcode, holds 
 
 > **Watch out:** Style a field by its name, with `[data-next-address-field="postal"]`, never by its row number. Rows differ per country, so `data-next-address-row="4"` holds the city and postcode for one country and something else for the next.
 
+### Billing address
+
+A separate billing address is a second address block, `data-next-address="billing"`, inside the `different-billing-address` section. It builds the same fields as the shipping block, named `billing-address1`, `billing-city` and so on. A checkbox named `use_shipping_address` opens and closes the section: checked means billing matches shipping, and the SDK collapses it.
+
+Below is an example of a billing section that stays open while the box is unticked and closes when the shopper ticks it.
+
+```html
+<label>
+  <input type="checkbox" name="use_shipping_address">
+  Use shipping address as billing address
+</label>
+<div data-next-component="different-billing-address">
+  <div data-next-address="billing"></div>
+</div>
+```
+
+> **Watch out:** Copying the shipping fields into a billing address is deprecated. The starter template still does it, with `data-next-component="shipping-form"` and `shipping-field-row` on the shipping fields and an empty `billing-form` container: do not copy those. Put `<div data-next-address="billing"></div>` in the billing section instead, and never keep both, or the page carries two sets of billing fields.
+
 ### Static address fields (deprecated)
 
 > **Watch out:** Writing the address inputs yourself is deprecated. The starter template still does, so do not copy its country, address, city, state and postcode inputs: replace them with `<div data-next-address="shipping"></div>`. Static fields are the same in every country and miss every later fix to a country's address rules.
