@@ -141,6 +141,47 @@ test('builds the fields the country collects, in the order it writes them', asyn
   expect(order).toEqual(['country', 'address1', 'city', 'province', 'postal']);
 });
 
+test('city, state and ZIP wait until the street address is typed', async ({
+  page,
+}) => {
+  await bootSdk(page, FIXTURE);
+  await expect(page.locator(FIELD('address1'))).toBeVisible();
+
+  await expect(page.locator(FIELD('country'))).toBeVisible();
+  for (const name of ['city', 'province', 'postal']) {
+    await expect(page.locator(FIELD(name))).toBeHidden();
+  }
+
+  await page.fill(FIELD('address1'), '100 New Montgomery St');
+
+  for (const name of ['city', 'province', 'postal']) {
+    await expect(page.locator(FIELD(name))).toBeVisible();
+  }
+});
+
+test('a country change keeps the location rows open once they were shown', async ({
+  page,
+}) => {
+  await bootSdk(page, FIXTURE);
+  await page.fill(FIELD('address1'), '100 New Montgomery St');
+  await expect(page.locator(FIELD('city'))).toBeVisible();
+
+  await page.selectOption(FIELD('country'), 'JP');
+  await page.selectOption(FIELD('country'), 'US');
+
+  await expect(page.locator(FIELD('city'))).toBeVisible();
+});
+
+test('a field a country writes before the street address is not held back', async ({
+  page,
+}) => {
+  await bootSdk(page, FIXTURE);
+  await page.selectOption(FIELD('country'), 'JP');
+
+  await expect(page.locator(FIELD('postal'))).toBeVisible();
+  await expect(page.locator(FIELD('city'))).toBeVisible();
+});
+
 test('the checkout form adopts the built fields and reads them into the store', async ({
   page,
 }) => {
@@ -344,6 +385,7 @@ test('a returning visitor sees the address they already gave', async ({ page }) 
   await expect(page.locator(FIELD('address1'))).toBeVisible();
 
   await expect(page.locator(FIELD('address1'))).toHaveValue('9292 Magnolia Ave');
+  await expect(page.locator(FIELD('city'))).toBeVisible();
   await expect(page.locator(FIELD('city'))).toHaveValue('Mokena');
   await expect(page.locator(FIELD('postal'))).toHaveValue('60448');
 });
@@ -456,6 +498,7 @@ test('a returning visitor sees the billing address they already gave', async ({
   await expect(page.locator(FIELD('billing-address1'))).toHaveValue(
     '14 Billing Way'
   );
+  await expect(page.locator(FIELD('billing-city'))).toBeVisible();
 });
 
 test('the block says it is loading until its fields arrive', async ({ page }) => {

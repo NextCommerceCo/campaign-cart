@@ -565,10 +565,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
    * The order mirrors `initialize`, and it is load-bearing: the province options have to
    * exist before a stored province can be selected into them.
    *
-   * Two boot steps are deliberately absent. `initializeLocationFieldVisibility` finds its
-   * elements by `data-next-component="location"`, which a built block does not carry, so
-   * it would find nothing. `initializeUIService`'s floating labels look for a
-   * `.label-checkout` inside a `.form-group`, which a built block also does not carry —
+   * Location visibility runs straight after the scan, before the first await, so the
+   * city/state/postcode rows a built block marks `data-next-component="location"` never
+   * paint before they collapse. A restored address reaches it later through the input's
+   * own events.
+   *
+   * One boot step is deliberately absent. `initializeUIService`'s floating labels look
+   * for a `.label-checkout` inside a `.form-group`, which a built block does not carry —
    * a page wanting floating labels on one styles them, which needs no script.
    */
   private async reapplyToRenderedFields(): Promise<void> {
@@ -576,6 +579,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     // `update()` finds the shipping fields; the billing ones are a separate scan, and a
     // billing block's fields are just as absent at boot as a shipping block's.
     scanBillingFields(this.billingFormSetupContext());
+    this.locationFields?.refresh();
 
     // Not sequenced behind the two awaits below, which are requests: whether suggestions
     // are attached must not depend on a dropdown refill completing.

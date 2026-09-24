@@ -193,9 +193,7 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 | `Already shown warning for order` | `duplicate-purchase-warning.ts › handlePurchaseEvent` | yes |
 | `Found submit button:` | `field-scanning.ts › scanAllFields` | yes |
 | `Restored province: {storedProvince}` | `form-population.ts › populateFormData` | — |
-| `Location fields hidden` | `location-field-visibility.ts › hideLocationFields` | — |
 | `Location fields shown` | `location-field-visibility.ts › showLocationFields` | — |
-| `Billing location fields hidden` | `location-field-visibility.ts › hideBillingLocationFields` | — |
 | `Billing location fields shown` | `location-field-visibility.ts › showBillingLocationFields` | — |
 | `No shipping location elements found` | `location-field-visibility.ts › initialize` | — |
 | `No billing location elements found` | `location-field-visibility.ts › initialize` | — |

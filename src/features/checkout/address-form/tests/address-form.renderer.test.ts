@@ -263,6 +263,53 @@ describe('renderAddressSpec', () => {
   });
 });
 
+describe('renderAddressSpec: rows that wait for the street address', () => {
+  const US_WITH_LINE2: AddressSpec = {
+    ...US,
+    layout: [['country'], ['line1'], ['line2'], ['city', 'state', 'postcode']],
+    fields: {
+      ...US.fields,
+      line2: { ...text('line2', 'Apartment', 'address-line2'), required: false },
+    },
+  };
+
+  const locationRows = (component: string) =>
+    Array.from(
+      container.querySelectorAll(`[data-next-component="${component}"]`)
+    ).map(row =>
+      Array.from(row.querySelectorAll('[data-next-checkout-field]')).map(
+        field => field.getAttribute('data-next-checkout-field')
+      )
+    );
+
+  it('marks the city/state/postcode rows after line1, and nothing else', () => {
+    renderAddressSpec(container, US_WITH_LINE2, { form: 'shipping' });
+
+    expect(locationRows('location')).toEqual([['city', 'province', 'postal']]);
+  });
+
+  it('marks each location row when a country splits them (TH)', () => {
+    renderAddressSpec(container, TH, { form: 'shipping' });
+
+    expect(locationRows('location')).toEqual([['city'], ['postal']]);
+  });
+
+  it('marks nothing that comes before line1 (JP writes the postcode first)', () => {
+    renderAddressSpec(container, JP, { form: 'shipping' });
+
+    expect(locationRows('location')).toEqual([]);
+  });
+
+  it('marks a billing block’s rows as billing-location', () => {
+    renderAddressSpec(container, US, { form: 'billing' });
+
+    expect(locationRows('billing-location')).toEqual([
+      ['billing-city', 'billing-province', 'billing-postal'],
+    ]);
+    expect(locationRows('location')).toEqual([]);
+  });
+});
+
 describe('readRenderedValues', () => {
   it('reads what is in the text inputs', () => {
     renderAddressSpec(container, US, { form: 'shipping' });

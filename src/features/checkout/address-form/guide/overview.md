@@ -7,7 +7,7 @@ category: "Address Form"
 # Address Form
 
 > Category: `checkout`
-> Last reviewed: 2026-09-15
+> Last reviewed: 2026-09-24
 > Owner: checkout
 
 An address form hard-coded as `address1 / city / state / zip` is correct in the United
@@ -49,6 +49,11 @@ checkout store country ──► GET /v1/layout/{country}
 - A field the surrounding form already collects elsewhere is not built again. The page's
   own markup wins, so a checkout that collects the name in its own step keeps it and the
   block builds only what is left.
+- The city, state and postcode rows that come after the street address start hidden and
+  appear once `address1` has a value (typed, autofilled or restored), the same collapse a
+  hand-written form gets from `data-next-component="location"`. A row carrying any other
+  field stays visible, and so does a location row written before the street address, as
+  Japan's postcode is. Once shown the rows stay shown, including across a country change.
 - A country change rebuilds the block. What the shopper typed into text inputs is read
   back and written into the new fields; a `select` is not carried across, because its
   options belonged to the country being left.

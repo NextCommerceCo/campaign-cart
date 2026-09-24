@@ -10,6 +10,7 @@ export interface LocationFieldsContext {
 }
 export interface LocationFieldVisibility {
     initialize(): void;
+    refresh(): void;
     showLocationFields(): void;
     showBillingLocationFields(): void;
 }

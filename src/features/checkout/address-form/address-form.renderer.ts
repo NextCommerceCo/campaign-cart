@@ -14,6 +14,12 @@ const SDK_FIELD_NAMES: Record<string, string | null> = {
   phone_number: 'phone',
 };
 
+/**
+ * Fields a row may hold and still wait for the street address. A row carrying anything
+ * else (a name, a phone, line2) stays on screen from the start.
+ */
+const LOCATION_FIELDS = new Set(['city', 'state', 'postcode']);
+
 export interface AddressRenderContext {
   form: 'shipping' | 'billing';
   /** Keyed by this SDK's field names. */
@@ -88,6 +94,9 @@ export function renderAddressSpec(
   const rendered: string[] = [];
   const built = new Set<string>();
   const fragment = document.createDocumentFragment();
+  // Only rows *after* the street address wait for it. A country that writes its postcode
+  // first (JP) uses it to look the address up, so hiding it there would hide the way in.
+  const line1Row = spec.layout.findIndex(row => row.includes('line1'));
 
   spec.layout.forEach((row, rowIndex) => {
     const cells = row
@@ -114,6 +123,17 @@ export function renderAddressSpec(
     const rowElement = document.createElement('div');
     rowElement.className = 'next-address-row';
     rowElement.setAttribute('data-next-address-row', String(rowIndex));
+    if (
+      line1Row !== -1 &&
+      rowIndex > line1Row &&
+      cells.every(({ name }) => LOCATION_FIELDS.has(name))
+    ) {
+      // The marker the checkout form's location-field visibility already reads.
+      rowElement.setAttribute(
+        'data-next-component',
+        ctx.form === 'billing' ? 'billing-location' : 'location'
+      );
+    }
 
     cells.forEach(({ name, field }) => {
       const checkoutField = sdkFieldName(name, ctx.form) as string;
