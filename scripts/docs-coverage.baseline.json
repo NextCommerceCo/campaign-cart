@@ -1,38 +1,63 @@
 {
   "$comment": "Frozen documentation gaps (a ratchet). New gaps fail `npm run docs:coverage`; entries here are tolerated until closed. Regenerate: npm run docs:coverage:update",
   "generated": {
-    "attributes": "136/136",
+    "attributes": "139/143",
     "events": "73/73",
     "guides": "32/32",
-    "manifests": "32/32",
-    "testedExamples": "30/30",
-    "logs": "32/32",
-    "errors": "32/32",
-    "relations": "32/32",
-    "getStarted": "32/32",
+    "manifests": "31/32",
+    "testedExamples": "30/31",
+    "logs": "31/32",
+    "errors": "31/32",
+    "relations": "31/32",
+    "getStarted": "31/32",
     "useCases": "32/32",
     "displayPaths": "9/9",
     "stores": "7/7",
     "storeOverviews": "7/7",
-    "coreSubsystemOverviews": "11/11",
+    "coreSubsystemOverviews": "12/12",
     "coreReferencePages": "10/10",
     "analyticsEvents": "35/35",
-    "nextMethods": "64/64",
+    "nextMethods": "62/62",
     "metaTags": "21/21",
-    "storageKeys": "26/26"
+    "storageKeys": "5/5"
   },
-  "undocumentedAttributes": [],
+  "headingsInLibraryVoice": [],
+  "undocumentedAttributes": [
+    "data-next-address-api",
+    "data-next-address-field",
+    "data-next-address-row",
+    "data-next-address-state"
+  ],
   "undescribedEvents": [],
   "featuresWithoutGuide": [],
-  "featuresWithoutManifest": [],
-  "featuresWithoutTestedExample": [],
-  "featuresWithoutLogs": [],
-  "featuresWithoutErrors": [],
-  "featuresWithoutRelations": [],
-  "featuresWithoutGetStarted": [],
+  "featuresWithoutManifest": [
+    "address-form"
+  ],
+  "featuresWithoutTestedExample": [
+    "address-form"
+  ],
+  "featuresWithoutLogs": [
+    "address-form"
+  ],
+  "featuresWithoutErrors": [
+    "address-form"
+  ],
+  "featuresWithoutRelations": [
+    "address-form"
+  ],
+  "featuresWithoutGetStarted": [
+    "address-form"
+  ],
   "featuresWithoutUseCases": [],
   "displayNamespacesWithoutPaths": [],
-  "attributesNotInAManifest": [],
+  "attributesNotInAManifest": [
+    "data-next-address",
+    "data-next-address-api",
+    "data-next-address-field",
+    "data-next-address-lang",
+    "data-next-address-row",
+    "data-next-address-state"
+  ],
   "storesWithoutReference": [],
   "storesWithoutOverview": [],
   "coreSubsystemsWithoutOverview": [],
