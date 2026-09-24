@@ -50,7 +50,14 @@ export interface CountryConfig {
 export interface Country {
   code: string;
   name: string;
+  /** ITU calling code without the `+`, or `''` when the address-rules service sent none. */
   phonecode: string;
+  /**
+   * True for the country a calling code's numbers are formatted as, where several share
+   * the code: the US for `+1`, the UK for `+44`. Lets a phone field choose a flag for a
+   * number typed with the code alone.
+   */
+  phonecodeMain?: boolean;
   currencyCode: string;
   currencySymbol: string;
 }

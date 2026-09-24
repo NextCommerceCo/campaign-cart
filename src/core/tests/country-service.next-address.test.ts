@@ -208,14 +208,16 @@ describe('fetchLocationData', () => {
       geo: { country: 'GB' },
       spec: GB_SPEC,
       countries: [
-        { code: 'GB', name: 'United Kingdom', callingCode: '44' },
+        { code: 'GB', name: 'United Kingdom', callingCode: '44', callingCodeMain: true },
+        { code: 'GG', name: 'Guernsey', callingCode: '44', callingCodeMain: false },
         { code: 'US', name: 'United States' },
       ],
     });
 
     const data = await fetchLocationData('https://addr.test');
 
-    expect(data.countries.map(c => c.phonecode)).toEqual(['44', '']);
+    expect(data.countries.map(c => c.phonecode)).toEqual(['44', '44', '']);
+    expect(data.countries.map(c => c.phonecodeMain ?? false)).toEqual([true, false, false]);
   });
 
   /** A country with no subdivisions omits `states` entirely rather than sending `[]`. */

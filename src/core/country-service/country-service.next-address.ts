@@ -105,7 +105,12 @@ interface LayoutResponse {
 }
 
 interface BootstrapResponse extends LayoutResponse {
-  countries: Array<{ code: string; name: string; callingCode?: string | null }>;
+  countries: Array<{
+    code: string;
+    name: string;
+    callingCode?: string | null;
+    callingCodeMain?: boolean;
+  }>;
   geo?: { ip?: string | null; currency?: string | null };
 }
 
@@ -176,6 +181,7 @@ function toCountries(rows: BootstrapResponse['countries']): Country[] {
     code: row.code,
     name: row.name,
     phonecode: row.callingCode ?? '',
+    ...(row.callingCodeMain ? { phonecodeMain: true } : {}),
     currencyCode: '',
     currencySymbol: '',
   }));
