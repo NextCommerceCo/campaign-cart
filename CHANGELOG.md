@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- **A checkout form taken down while a decline is still being drawn no longer touches the page after it is gone.** The payment-error banner waits a moment before it writes and ten seconds before it hides, and neither timer was cancelled when the form was destroyed. On a page that removes the form mid-decline the late write ran against elements that were no longer there; in the test suite it was the intermittent `document is not defined` that turned a green `Build` run red.
+
 ## [0.4.38] — 2026-08-27 — Address and Phone Fields, and Two Silent Failures
 
 Postcodes, phone numbers, a missing purchase event, and two things that were running on every shopper's page.

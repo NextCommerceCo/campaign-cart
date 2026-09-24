@@ -54,7 +54,7 @@ field list and nothing more.
 | `test-order.ts` | The debug panel's "fill test data", and the Konami code that fills the form and places a **real** test order | 3 (fill) / 6 (Konami) |
 | `meta-tags.ts` | Where the checkout sends the visitor next, written as `<meta>` tags — the door `setSuccessUrl` / `setFailureUrl` open | 0 |
 | `prospect-cart-lifecycle.ts` | Bringing the prospect cart to life on a checkout form — constructing it against the form, starting it, and logging the two events it reports back. Failure is warned and swallowed: a prospect cart is a marketing convenience, never a condition of buying | 3 |
-| `payment-error-display.ts` | The banner a shopper sees when a payment is declined, and the re-entrancy guard that keeps it from announcing itself into an infinite loop — the display emits the event the listener handles | 3 (display) / 3 (listen) |
+| `payment-error-display.ts` | The banner a shopper sees when a payment is declined, and the re-entrancy guard that keeps it from announcing itself into an infinite loop — the display emits the event the listener handles | 4 (display) / 3 (listen) |
 | `store-subscriptions.ts` | What the form does when state changes underneath it rather than because the shopper touched something: store errors onto fields, address rows opened, submit button disabled while processing, cart emptiness noted, and the card fields built if the Spreedly key arrives after boot | 3 (checkout) / 1 (cart) / 3 (config) |
 | `postal-code-format.ts` | Rewriting a postcode into its country's shape as it is typed, and putting the caret back where the shopper left it | 2 fields |
 | `field-value.ts` | What a field is *worth* to the order — a phone as E.164, a checkbox as a boolean, everything else as typed | 1 field |
