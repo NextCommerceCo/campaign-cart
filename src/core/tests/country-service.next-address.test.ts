@@ -12,6 +12,7 @@ import { describe, expect, it, vi, afterEach } from 'vitest';
 import {
   fetchCountryStates,
   fetchLocationData,
+  flagUrl,
   toCountryConfig,
 } from '@/core/country-service/country-service.next-address';
 import { validatePostalCode } from '@/core/country-service/country-service.postal-code';
@@ -72,6 +73,20 @@ afterEach(() => {
 });
 
 describe('toCountryConfig', () => {
+  it('carries the phone rules even where the layout collects no phone', () => {
+    // The checkout collects the phone in its own step, outside the address layout.
+    const phone = { lengths: [9], pattern: '[1-9]\\d{8}', types: [], formats: [] };
+    const config = toCountryConfig({
+      ...DE_SPEC,
+      fields: { ...DE_SPEC.fields, phone_number: { callingCode: '49', phone } },
+    });
+    expect(config.phone).toEqual({ callingCode: '49', ...phone });
+  });
+
+  it('leaves the phone rules out when the service sends none', () => {
+    expect(toCountryConfig(DE_SPEC).phone).toBeUndefined();
+  });
+
   it('reads the state label only when the country collects a state', () => {
     expect(toCountryConfig(US_SPEC).stateLabel).toBe('State');
     expect(toCountryConfig(US_SPEC).stateRequired).toBe(true);
@@ -188,6 +203,21 @@ describe('fetchLocationData', () => {
     expect(data.countries.map(c => c.code)).toEqual(['GB', 'US']);
   });
 
+  it('takes each country\'s calling code, and none from a deployment that sends none', async () => {
+    stubFetch({
+      geo: { country: 'GB' },
+      spec: GB_SPEC,
+      countries: [
+        { code: 'GB', name: 'United Kingdom', callingCode: '44' },
+        { code: 'US', name: 'United States' },
+      ],
+    });
+
+    const data = await fetchLocationData('https://addr.test');
+
+    expect(data.countries.map(c => c.phonecode)).toEqual(['44', '']);
+  });
+
   /** A country with no subdivisions omits `states` entirely rather than sending `[]`. */
   it('reports no states when the response carries none', async () => {
     stubFetch({ geo: { country: 'DE' }, spec: DE_SPEC, countries: [] });
@@ -250,5 +280,11 @@ describe('fetchCountryStates', () => {
     const fetchMock = stubFetch({ spec: US_SPEC });
     await fetchCountryStates('../v1/geo', 'https://addr.test');
     expect(fetchMock.mock.calls[0][0]).toContain('%2F');
+  });
+});
+
+describe('flagUrl', () => {
+  it('asks the address-rules service for the lower-case code', () => {
+    expect(flagUrl('GB')).toBe('https://i18n-rules.nextcommerce.com/v1/flags/gb.svg');
   });
 });

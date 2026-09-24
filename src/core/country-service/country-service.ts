@@ -3,6 +3,7 @@
  * Handles fetching country and state data from the CDN API with caching
  */
 
+import type { PhoneRules } from '@/core/country-service/country-service.phone';
 import { Logger } from '@/core/logger';
 import type { AddressConfig } from '@/types/global';
 import * as postalCodeMethods from '@/core/country-service/country-service.postal-code';
@@ -36,6 +37,12 @@ export interface CountryConfig {
    * pattern and `validatePostalCode` compacts before matching.
    */
   postcodeCompact?: boolean;
+  /**
+   * The country's phone rules — libphonenumber's, as the address-rules service serves them —
+   * for formatting, validating and converting a number to E.164. Absent when the service
+   * sent none: a territory with no phone data, or a deployment older than the rules.
+   */
+  phone?: PhoneRules;
   currencyCode: string;
   currencySymbol: string;
 }
