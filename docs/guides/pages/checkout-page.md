@@ -188,16 +188,18 @@ Below is an example of the markup the block builds for a US address, cut down to
 
 The label comes after its control so a stylesheet can reach it from the control's state, and every input has a placeholder, so a floating label needs no script. The SDK sets an inline `display` on the city, state and postcode row when it shows it (`flex`), and an inline `flex-grow` on wider fields such as the city, so lay the rows out with flex, and never hide a row with an `!important` rule, or it stays hidden.
 
-Below is an example that puts each row on one line, narrows the postcode, holds space while the fields load, floats the labels, and marks failed fields.
+Below is a stylesheet that gives the block bordered fields with floating labels, puts each row on one line, narrows the postcode, holds space while the fields load, and marks failed fields.
 
 ```css
 [data-next-address] .next-address-row {
   display: flex;
   gap: 16px;
+  margin-bottom: 16px;
 }
 [data-next-address] .next-address-field {
   position: relative;
   flex: 1;
+  min-width: 0;
 }
 [data-next-address-field='postal'] {
   max-width: 160px;
@@ -205,13 +207,41 @@ Below is an example that puts each row on one line, narrows the postcode, holds 
 [data-next-address-state='loading'] {
   min-height: 256px;
 }
+.next-address-control {
+  box-sizing: border-box;
+  width: 100%;
+  height: 48px;
+  padding: 18px 12px 4px;
+  border: 1px solid #c9ccd1;
+  border-radius: 8px;
+  font: inherit;
+}
+.next-address-control:placeholder-shown {
+  padding: 12px;
+}
+.next-address-label {
+  position: absolute;
+  top: 6px;
+  left: 13px;
+  color: #6b7280;
+  font-size: 11px;
+  pointer-events: none;
+}
 .next-address-control:placeholder-shown + .next-address-label {
   display: none;
 }
 .next-address-control.has-error {
   border-color: #dc2626;
 }
+.next-address-field .iti {
+  display: block;
+}
+.iti:has(.next-address-control:placeholder-shown) + .next-address-label {
+  display: none;
+}
 ```
+
+The last two rules are for the phone field: the SDK wraps its input in the country-code picker, an `.iti` element, so the label follows that wrapper instead of the input.
 
 > **Watch out:** Style a field by its name, with `[data-next-address-field="postal"]`, never by its row number. Rows differ per country, so `data-next-address-row="4"` holds the city and postcode for one country and something else for the next.
 
