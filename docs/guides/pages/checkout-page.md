@@ -110,7 +110,7 @@ The SDK requires the first name, last name and email. The phone is optional unle
 
 The empty `<div>` becomes the address fields the selected country collects, in the order that country writes them: a Japanese address leads with the postcode, a US one ends with state and ZIP. When the shopper changes country, the fields are rebuilt and what they typed is kept.
 
-The block builds only the fields the form does not already have, so the name and phone above are not built twice. It never builds the email. The country list, the state options, validation, and hiding city, state and postcode until the street address is filled all work as they do for static fields below.
+The block builds only the fields the form does not already have, so the name and phone above are not built twice. It never builds the email. The checkout form still fills the country list with the countries the campaign ships to and the state list with the selected country's states, validates the fields, and keeps the city, state and postcode row hidden until the street address has a value.
 
 [Address block](../reference/data-attributes.md#address-block) lists its attributes, and [Styling the address block](#styling-the-address-block) below covers its markup.
 
@@ -186,7 +186,7 @@ Below is an example of the markup the block builds for a US address, cut down to
 | `.has-error` | On a control that failed validation |
 | `.next-error-label` | The error message under it |
 
-The label comes after its control so a stylesheet can reach it from the control's state, and every input has a placeholder, so a floating label needs no script. The SDK sets an inline `display` on the city, state and postcode row when it shows it (`flex`), and an inline `flex-grow` on wider fields such as the city, so lay the rows out with flex.
+The label comes after its control so a stylesheet can reach it from the control's state, and every input has a placeholder, so a floating label needs no script. The SDK sets an inline `display` on the city, state and postcode row when it shows it (`flex`), and an inline `flex-grow` on wider fields such as the city, so lay the rows out with flex, and never hide a row with an `!important` rule, or it stays hidden.
 
 Below is an example that puts each row on one line, narrows the postcode, holds space while the fields load, floats the labels, and marks failed fields.
 
@@ -215,54 +215,9 @@ Below is an example that puts each row on one line, narrows the postcode, holds 
 
 > **Watch out:** Style a field by its name, with `[data-next-address-field="postal"]`, never by its row number. Rows differ per country, so `data-next-address-row="4"` holds the city and postcode for one country and something else for the next.
 
-### Static address fields
+### Static address fields (deprecated)
 
-The alternative to the address block is writing the address inputs yourself, each named with `data-next-checkout-field`. They load with the page and need no request.
-
-> **Watch out:** Static fields are the same in every country, so a Japanese address still ends with its postcode. For a page that ships to more than one country, use the address block: it follows each country's rules and stays up to date without editing the page.
-
-Below is an example of the Shipping Information step written this way, in place of the address block above. The city, state and ZIP stay hidden until the street address is filled.
-
-```html
-<h2>Shipping Information</h2>
-<select data-next-checkout-field="country" autocomplete="country-name">
-  <option value="">Select Country</option>
-</select>
-<input
-  data-next-checkout-field="address1"
-  autocomplete="address-line1"
-  placeholder="Address*">
-<input
-  data-next-checkout-field="address2"
-  autocomplete="address-line2"
-  placeholder="Apartment, suite, etc. (optional)">
-<div data-next-component="location">
-  <input
-    data-next-checkout-field="city"
-    autocomplete="address-level2"
-    placeholder="City*">
-  <select data-next-checkout-field="province" autocomplete="address-level1">
-    <option value="">Select State</option>
-  </select>
-  <input
-    data-next-checkout-field="postal"
-    autocomplete="postal-code"
-    placeholder="ZIP Code*">
-</div>
-```
-
-The SDK still adjusts this markup for the selected country:
-
-| Part | Description |
-|---|---|
-| Country `<select>` | The campaign's shipping countries |
-| State `<select>` | Refilled per country, hidden if none |
-| State and postal labels | Reworded per country |
-| `location` group | Hidden until `address1` has a value |
-
-The SDK shows the `location` group once `address1` has a value, whether typed, autofilled or restored, and never hides it again. Leave the wrapper out to show the fields from the start.
-
-> **Watch out:** The SDK hides and shows the `location` wrapper with an inline `display` (`none`, then `flex`). A `display: grid` on the wrapper is overwritten, so put the grid on an element inside it. A stylesheet rule that hides the wrapper with `!important` keeps it hidden for good.
+> **Watch out:** Writing the address inputs yourself is deprecated. The starter template still does, so do not copy its country, address, city, state and postcode inputs: replace them with `<div data-next-address="shipping"></div>`. Static fields are the same in every country and miss every later fix to a country's address rules.
 
 ## Order bump
 

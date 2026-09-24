@@ -11,6 +11,10 @@
 
 - **Country lists, address rules, states, and the visitor's detected country and currency now come from `i18n-rules.nextcommerce.com`**, replacing the previous countries service. A page that sets a Content-Security-Policy must allow it in `connect-src`, or those requests are blocked.
 
+### Deprecated
+
+- **Writing the address inputs yourself is deprecated.** Replace the country, street, city, state and postcode inputs, and the `data-next-component="location"` wrapper around them, with `<div data-next-address="shipping"></div>`. Fields written by hand are the same in every country and miss later fixes to a country's address rules. They keep working in this release.
+
 ### Fixed
 
 - **A checkout form taken down while a decline is still being drawn no longer touches the page after it is gone.** The payment-error banner waits a moment before it writes and ten seconds before it hides, and neither timer was cancelled when the form was destroyed. On a page that removes the form mid-decline the late write ran against elements that were no longer there; in the test suite it was the intermittent `document is not defined` that turned a green `Build` run red.
@@ -19,9 +23,9 @@
 
 ### Documentation
 
-- **The checkout guide leads with the address block**, and says why static address fields suit a page that ships to one country.
+- **The checkout guide leads with the address block**, and no longer shows address inputs written by hand.
 - **`AddressConfig` says when each setting applies.** `defaultCountry`, `countries` and `showCountries` are read only when the campaign has no shipping countries (or, for `defaultCountry`, an empty list), so none of them picks the country a form opens on. US territories stay out of the state list whatever `dontShowStates` says. `enableAutocomplete` is documented for the first time.
-- **Corrected in the checkout guide:** the state list comes from the selected country, not the campaign. The `location` group needs no `next-hidden` class, because the SDK hides and shows it itself and sets `display: flex` when it does. The SDK rewrites the state and postal labels for each country. The phone example uses `autocomplete="tel"`.
+- **Corrected in the checkout guide:** the state list comes from the selected country, not the campaign, and the phone example uses `autocomplete="tel"`.
 
 ## [0.4.38] — 2026-08-27 — Address and Phone Fields, and Two Silent Failures
 

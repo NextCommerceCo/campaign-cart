@@ -359,11 +359,7 @@ One `<form>` owns everything: fields bind to the order by name, payment methods 
 ```html
 <form data-next-checkout="form">
   <input data-next-checkout-field="fname">
-  <select data-next-checkout-field="country"></select>
-  <input data-next-checkout-field="address1">
-  <div data-next-component="location">
-    <input data-next-checkout-field="city">
-  </div>
+  <div data-next-address="shipping"></div>
   <div data-next-checkout-field="cc-number"></div>
   <button type="submit">Complete Order</button>
 </form>
@@ -384,14 +380,12 @@ One `<form>` owns everything: fields bind to the order by name, payment methods 
 
 ### Example
 
-Below is an example that collects a name and a city, reveals the city group once the address is filled, mounts a hosted card field, injects the wallet buttons, takes a coupon, and submits step one of a multi-step flow.
+Below is an example that collects a name, builds the shipping address for the selected country, mounts a hosted card field, injects the wallet buttons, takes a coupon, and submits step one of a multi-step flow.
 
 ```html
 <form data-next-checkout="form">
   <input data-next-checkout-field="fname">
-  <div data-next-component="location">
-    <input data-next-checkout-field="city">
-  </div>
+  <div data-next-address="shipping"></div>
   <div data-next-payment-method="credit">
     <div data-next-payment-form="credit">
       <div data-next-checkout-field="cc-number"></div>
@@ -423,7 +417,7 @@ The SDK finds inputs by `data-next-checkout-field`, not by their `name` attribut
 | Card | `cc-number`, `cvv`, `exp-month`, `exp-year` |
 | Consent | `accepts_marketing` |
 
-`cc-number` and `cvv` are the exception to writing your own inputs. Leave them as empty `<div>`s and the SDK mounts hosted card fields into them, so no card number passes through your page.
+The address fields are built by the [address block](#address-block) under these names; writing them yourself is deprecated. `cc-number` and `cvv` are not inputs you write either: leave them as empty `<div>`s and the SDK mounts hosted card fields into them, so no card number passes through your page.
 
 ### Managed containers
 
@@ -433,14 +427,11 @@ Values `data-next-component` accepts.
 |---|---|
 | `shipping-form` | Where a billing copy is taken from |
 | `shipping-field-row` | One row the billing copy takes |
-| `location` | The city, state, and postal group |
 | `<method>-error` | Where one method's errors render |
 | `<method>-error-text` | The error message inside it |
 | `express-error` | Where express errors render |
 | `express-error-text` | The error message inside it |
 | `scroll-hint` | The scroll affordance |
-
-The SDK hides `location` when it boots and shows it once the street address has a value. It never hides it again, and needs no class to do this. [Customer and shipping fields](../pages/checkout-page.md#customer-and-shipping-fields) covers the layout it forces on the wrapper.
 
 ### Address block
 
