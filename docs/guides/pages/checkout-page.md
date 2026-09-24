@@ -118,6 +118,8 @@ If the layout request fails before any layout has loaded, the block builds a gen
 
 You write ordinary inputs and name each one with `data-next-checkout-field`. The fields load with the page and need no layout request.
 
+Hand-written fields are not recommended for a page that ships to more than one country. The SDK hides the state field where a country has no states and rewrites the state and postal wording, but the fields keep the order and the set you wrote: a Japanese address still ends with its postcode, and a country with no postcode still shows the field.
+
 Below is an example that collects the customer's name, email and phone, and a shipping address whose city, state and ZIP stay hidden until the street address is filled.
 
 ```html
