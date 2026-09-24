@@ -283,20 +283,12 @@ describe('validateForm', () => {
   });
 
   /**
-   * DEFECT (left as found) — whether the phone is required is read from
-   * `document.querySelector('[name="phone"]')`. Every other field in this SDK is located by
-   * `data-next-checkout-field` (or the legacy `os-checkout-field`) through `FieldFinder`,
-   * and a `name` attribute is not required for a field to work.
-   *
-   * Two consequences. A form whose phone input carries only the SDK attribute never has
-   * its phone treated as required, no matter what `required` says on it. And the query is
-   * on `document`, not the form, so on a page with a newsletter form above the checkout the
-   * *other* form's phone input decides the rule.
-   *
-   * What the shopper sees: they leave a phone field marked required blank and the order is
-   * accepted without one — so the merchant cannot reach them about the delivery.
+   * Whether the phone is required is decided by its input, found by
+   * `data-next-checkout-field` like every other field. `name="phone"` was once the only
+   * lookup: a phone input without it was never required, and another form's `name="phone"`
+   * input on the same page could decide the rule instead.
    */
-  it('DEFECT: a required phone marked only with the SDK attribute is never enforced', async () => {
+  it('enforces a required phone marked only with the SDK attribute', async () => {
     const sdkOnly = document.createElement('input');
     sdkOnly.setAttribute('data-next-checkout-field', 'phone');
     sdkOnly.setAttribute('required', '');
@@ -304,13 +296,26 @@ describe('validateForm', () => {
 
     const result = await validateForm(createContext(), completeForm(), configs);
 
-    expect(result.errors.phone).toBeUndefined();
-    expect(result.isValid).toBe(true);
+    expect(result.errors.phone).toBe('Phone number is required');
+    expect(result.isValid).toBe(false);
   });
 
-  it('does enforce it once the same input also carries name="phone"', async () => {
+  it("lets the checkout's phone input decide, not another form's", async () => {
+    const newsletter = document.createElement('input');
+    newsletter.setAttribute('name', 'phone');
+    newsletter.setAttribute('required', '');
+    document.body.appendChild(newsletter);
+    const checkoutPhone = document.createElement('input');
+    checkoutPhone.setAttribute('data-next-checkout-field', 'phone');
+    document.body.appendChild(checkoutPhone);
+
+    const result = await validateForm(createContext(), completeForm(), configs);
+
+    expect(result.errors.phone).toBeUndefined();
+  });
+
+  it('still enforces a required phone found only by name="phone"', async () => {
     const named = document.createElement('input');
-    named.setAttribute('data-next-checkout-field', 'phone');
     named.setAttribute('name', 'phone');
     named.setAttribute('required', '');
     document.body.appendChild(named);

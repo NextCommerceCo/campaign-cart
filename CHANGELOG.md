@@ -14,6 +14,7 @@
 ### Fixed
 
 - **A checkout form taken down while a decline is still being drawn no longer touches the page after it is gone.** The payment-error banner waits a moment before it writes and ten seconds before it hides, and neither timer was cancelled when the form was destroyed. On a page that removes the form mid-decline the late write ran against elements that were no longer there; in the test suite it was the intermittent `document is not defined` that turned a green `Build` run red.
+- **A phone input marked `required` is enforced without `name="phone"`.** The SDK found every checkout field by `data-next-checkout-field` except this one, which it looked up by `name`, so a required phone without that attribute was never required and the order went through with no number. On a page with another form's `name="phone"` input, that input decided the rule instead.
 - **Guide links from before 0.4.38 work again.** The twelve pages whose addresses changed in 0.4.38 now redirect to their new locations, so old bookmarks and search results no longer end on a 404.
 
 ### Documentation

@@ -96,7 +96,6 @@ Below is an example of both steps, with the shipping address built by the SDK.
   type="email">
 <input
   data-next-checkout-field="phone"
-  name="phone"
   autocomplete="tel"
   placeholder="Phone (Optional)"
   type="tel">
@@ -108,8 +107,6 @@ Below is an example of both steps, with the shipping address built by the SDK.
 ### Customer information
 
 The SDK requires the first name, last name and email. The phone is optional unless its input carries `required` or `data-next-required="true"`.
-
-> **Watch out:** `required` on the phone input only works when the input also has `name="phone"`. Without it the SDK never finds the input, and the form submits with no phone number.
 
 ### Address block
 
