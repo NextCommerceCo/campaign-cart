@@ -1,5 +1,0 @@
-<<<<<<<< HEAD:dist/chunks/base-cart-enhancer-B0FyTBAD.js
-import{B as t}from"./base-enhancer-CTLx5BdL.js";import{d as a}from"./state-Bv4QMYbU.js";class e extends t{setupCartSubscription(){this.subscribe(a,this.handleCartUpdate.bind(this)),this.cartState=a.getState()}isCartEmpty(){return this.cartState?.isEmpty??!0}getCartItem(t){return this.cartState?.items.find(a=>a.packageId===t)}getTotalQuantity(){return this.cartState?.totalQuantity??0}getCartItems(){return this.cartState?.items??[]}hasPackageInCart(t){return void 0!==this.getCartItem(t)}}export{e as B};
-========
-import{B as t}from"./base-enhancer-CTLx5BdL.js";import{d as a}from"./state-3nfM6CjJ.js";class e extends t{setupCartSubscription(){this.subscribe(a,this.handleCartUpdate.bind(this)),this.cartState=a.getState()}isCartEmpty(){return this.cartState?.isEmpty??!0}getCartItem(t){return this.cartState?.items.find(a=>a.packageId===t)}getTotalQuantity(){return this.cartState?.totalQuantity??0}getCartItems(){return this.cartState?.items??[]}hasPackageInCart(t){return void 0!==this.getCartItem(t)}}export{e as B};
->>>>>>>> 0198a6c37e6c76250b5268dcaad5d0ef81745da2:dist/chunks/base-cart-enhancer-CzIGzviD.js
