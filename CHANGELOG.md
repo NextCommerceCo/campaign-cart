@@ -14,6 +14,7 @@
 ### Deprecated
 
 - **Writing the address inputs yourself is deprecated.** Replace the country, street, city, state and postcode inputs, and the `data-next-component="location"` wrapper around them, with `<div data-next-address="shipping"></div>`. Fields written by hand are the same in every country and miss later fixes to a country's address rules. They keep working in this release.
+- **Copying the shipping fields into a billing address is deprecated.** `data-next-component="shipping-form"`, `shipping-field-row` and `billing-form` exist only for that copy. Put `<div data-next-address="billing"></div>` in the `different-billing-address` section instead. The copy keeps working in this release.
 
 ### Fixed
 

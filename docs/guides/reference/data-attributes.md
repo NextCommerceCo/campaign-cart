@@ -425,8 +425,7 @@ Values `data-next-component` accepts.
 
 | Value | Description |
 |---|---|
-| `shipping-form` | Where a billing copy is taken from |
-| `shipping-field-row` | One row the billing copy takes |
+| `different-billing-address` | The billing address section |
 | `<method>-error` | Where one method's errors render |
 | `<method>-error-text` | The error message inside it |
 | `express-error` | Where express errors render |
@@ -459,7 +458,21 @@ Below is an example that builds a shipping address with German labels, inside a 
 
 Without `data-next-address-lang` the labels follow `window.nextConfig.locale`, then English, never the browser's language. What the block builds, how to style it, and its limits are in [Address block](../pages/checkout-page.md#address-block).
 
-Use one billing address per page: a `billing` block, or the `data-next-component="billing-form"` container the SDK copies the shipping fields into. With both, the page can carry two sets of billing fields.
+A separate billing address goes in a `billing` block inside the `different-billing-address` section. A checkbox named `use_shipping_address` opens and closes that section: checked means billing matches shipping, and the SDK collapses the section.
+
+Below is an example that collects a billing address in its own section, which the checkbox closes when billing matches shipping.
+
+```html
+<label>
+  <input type="checkbox" name="use_shipping_address">
+  Use shipping address as billing address
+</label>
+<div data-next-component="different-billing-address">
+  <div data-next-address="billing"></div>
+</div>
+```
+
+> **Watch out:** Copying the shipping fields into a billing address is deprecated. The starter template still does it, with `data-next-component="shipping-form"` and `shipping-field-row` on the shipping fields and an empty `billing-form` container: do not copy those. Put `<div data-next-address="billing"></div>` in the billing section instead, and never keep both, or the page carries two sets of billing fields.
 
 ### Payment methods
 
