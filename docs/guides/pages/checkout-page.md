@@ -106,7 +106,7 @@ Below is an example of both steps, with the shipping address built by the SDK.
 
 The SDK requires the first name, last name and email. The phone is optional unless its input carries `required` or `data-next-required="true"`.
 
-The SDK shows the address country's flag inside the phone input and writes the number in that country's format as it is typed: `4155552671` reads `(415) 555-2671` in the US, and the order receives `+14155552671`. A number typed with `+` or `00` is kept as `+` and its digits. The SDK checks only that the number is a plausible length, and the order API validates it. A country without a phone rule, an Argentine number, and a number that starts with the calling code but no `+` are sent as typed, for the order API to convert.
+The SDK writes the phone number in the country's format as it is typed (`4155552671` reads `(415) 555-2671` in the US) and sends it to the order as `+14155552671`. It checks only that the number is a plausible length, and the order API validates it.
 
 ### Address block
 
@@ -265,36 +265,6 @@ Below is the playground example with this stylesheet, a US address filled in. Th
 ![Checkout form: customer fields, then a US shipping address built by the address block, with city, state and ZIP on one row](./images/address-block.png)
 
 > **Watch out:** Style a field by its name, with `[data-next-address-field="postal"]`, never by its row number. Rows differ per country, so `data-next-address-row="4"` holds the city and postcode for one country and something else for the next.
-
-The phone input, in the customer fields or in the block, is not moved or wrapped: the SDK puts the flag before it and places it with inline styles, so an `input + label` floating label still works. Below is an example of a US phone input once the SDK has set it up.
-
-```html
-<div class="next-phone-field">
-  <img
-    class="next-phone-flag"
-    src="https://i18n-rules.nextcommerce.com/v1/flags/us.svg"
-    alt=""
-    aria-hidden="true"
-    width="20"
-    height="15"
-  >
-  <input
-    class="next-phone-input"
-    data-next-checkout-field="phone"
-    data-next-phone-country="US"
-    autocomplete="tel"
-    placeholder="Phone (Optional)"
-    type="tel"
-  >
-</div>
-```
-
-| Selector | Description |
-|---|---|
-| `.next-phone-field` | The input's parent |
-| `.next-phone-flag` | The flag, before the input |
-| `.next-phone-input` | The phone input |
-| `[data-next-phone-country]` | The country shown, such as `US` |
 
 ### Billing address
 
