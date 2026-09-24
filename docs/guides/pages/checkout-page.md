@@ -266,6 +266,10 @@ select.next-address-control {
 
 The last two rules are for the phone field: the SDK wraps its input in the country-code picker, an `.iti` element, so the label follows that wrapper instead of the input.
 
+Below is the playground example with this stylesheet, a US address filled in. The hint under the ZIP code comes from the country's rules.
+
+![Checkout form: customer fields, then a US shipping address built by the address block, with city, state and ZIP on one row](./images/address-block.png)
+
 > **Watch out:** Style a field by its name, with `[data-next-address-field="postal"]`, never by its row number. Rows differ per country, so `data-next-address-row="4"` holds the city and postcode for one country and something else for the next.
 
 ### Billing address

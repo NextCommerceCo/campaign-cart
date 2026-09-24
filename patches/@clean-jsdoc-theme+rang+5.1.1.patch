@@ -1,0 +1,15 @@
+diff --git a/node_modules/@clean-jsdoc-theme/rang/dist/index.js b/node_modules/@clean-jsdoc-theme/rang/dist/index.js
+index f2d0793..e6ca260 100644
+--- a/node_modules/@clean-jsdoc-theme/rang/dist/index.js
++++ b/node_modules/@clean-jsdoc-theme/rang/dist/index.js
+@@ -3554,7 +3554,9 @@ function MdxImg({ src, alt, ...rest }) {
+     );
+   }
+   const isInternal = !!src && src.startsWith("/") && !src.startsWith("//");
+-  const resolvedSrc = isInternal ? withBase6(basePath, src) : src;
++  const base = (basePath ?? "/").replace(/\/+$/, "");
++  const alreadyBased = !!src && base !== "" && (src === base || src.startsWith(base + "/"));
++  const resolvedSrc = isInternal && !alreadyBased ? withBase6(basePath, src) : src;
+   return /* @__PURE__ */ jsx42(
+     "img",
+     {
