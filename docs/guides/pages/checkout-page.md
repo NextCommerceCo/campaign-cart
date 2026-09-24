@@ -107,7 +107,9 @@ Below is an example of both steps, with the shipping address built by the SDK.
 
 ### Customer information
 
-The SDK requires the first name, last name and email. The phone is optional unless its input carries `required` or `data-next-required="true"`. Keep `name="phone"` on the phone input: the SDK finds it by that name, and without it `required` has no effect.
+The SDK requires the first name, last name and email. The phone is optional unless its input carries `required` or `data-next-required="true"`.
+
+> **Watch out:** `required` on the phone input only works when the input also has `name="phone"`. Without it the SDK never finds the input, and the form submits with no phone number.
 
 ### Address block
 
@@ -170,7 +172,9 @@ The SDK still adjusts this markup for the selected country:
 | State and postal labels | Reworded per country |
 | `location` group | Hidden until `address1` has a value |
 
-The SDK shows the `location` group once `address1` has a value, whether typed, autofilled or restored, and never hides it again. It does this with an inline `display` (`none`, then `flex`), so put a grid layout on an element inside the wrapper, and never hide the wrapper with an `!important` rule, or it stays hidden. Leave the wrapper out to show the fields from the start.
+The SDK shows the `location` group once `address1` has a value, whether typed, autofilled or restored, and never hides it again. Leave the wrapper out to show the fields from the start.
+
+> **Watch out:** The SDK hides and shows the `location` wrapper with an inline `display` (`none`, then `flex`). A `display: grid` on the wrapper is overwritten, so put the grid on an element inside it. A stylesheet rule that hides the wrapper with `!important` keeps it hidden for good.
 
 ## Order bump
 
