@@ -131,7 +131,9 @@ If the fields cannot be loaded, the block shows a generic English address form i
 
 ### Static address fields
 
-The alternative to the address block is writing the address inputs yourself, each named with `data-next-checkout-field`. They load with the page, with no request, but keep the order and the set you wrote in every country: a Japanese address still ends with its postcode, and a country with no postcode still shows the field. Use them only on a page that ships to one country.
+The alternative to the address block is writing the address inputs yourself, each named with `data-next-checkout-field`. They load with the page and need no request.
+
+> **Watch out:** Static address fields are not recommended for a page that ships to more than one country. The fields keep the order and the set you wrote in every country: a Japanese address still ends with its postcode, and a country with no postcode still shows the field. Use the address block instead.
 
 Below is an example of the Shipping Information step written this way, in place of the address block above. The city, state and ZIP stay hidden until the street address is filled.
 
