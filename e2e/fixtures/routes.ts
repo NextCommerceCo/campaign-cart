@@ -15,6 +15,7 @@ import { resolve } from 'node:path';
 import type { Page } from '@playwright/test';
 import type { Campaign } from '../../src/types/campaign';
 import type { CartSummary, Order } from '../../src/types/api';
+import type { PhoneRules } from '../../src/core/country-service/country-service.phone';
 import { RICH_CAMPAIGN } from './campaign';
 import { TEST_ORDER } from './order';
 
@@ -109,42 +110,166 @@ export async function stubProspectCart(page: Page): Promise<void> {
 export const ADDRESS_SERVICE_ROUTE = '**/i18n-rules.*/**';
 
 /**
- * Stub the country/state data the checkout form's `CountryService` fetches from
- * the address-rules service.
- *
- * Two routes, two shapes — `/v1/bootstrap` carries the country list as well as the
- * detected country's rules, `/v1/layout/:country` carries one country's. A spec that
- * answers both with the bootstrap shape makes `updateFormLabels` throw. Every spec that
- * boots a checkout form needs this.
- *
- * `spec.layout` is what decides which fields a country collects; a spec whose layout
- * omits `state` produces a config with no state label however `spec.fields` reads, so
- * the layout here has to name every field the assertions expect.
+ * The phone rule each country's file carries on the address-rules service, served at
+ * the top level of its spec as `spec.phone`. Copied from those files (i18n-rules-v2
+ * `src/rules/{us,th,gb,ar}.ts`); Argentina's has no `callingCode` because its mobiles
+ * keep a `15` only the order API's conversion removes.
  */
-export async function stubCountryService(page: Page): Promise<void> {
-  const spec = {
-    country: 'US',
-    layout: [['country'], ['line1'], ['city', 'state', 'postcode']],
-    fields: {
-      state: { label: 'State', required: true },
-      postcode: { label: 'ZIP Code', required: true, example: '10001' },
-    },
+const PHONE_RULES: Record<string, PhoneRules> = {
+  US: {
+    callingCode: '1',
+    nationalPrefix: '1',
+    mask: '(###) ###-####',
+    pattern: '^[0-9]{10,11}$',
+    example: '(201) 555-0123',
+  },
+  TH: {
+    callingCode: '66',
+    nationalPrefix: '0',
+    mask: '### ### ####',
+    pattern: '^[0-9]{8,14}$',
+    example: '081 234 5678',
+  },
+  GB: {
+    callingCode: '44',
+    nationalPrefix: '0',
+    mask: '##### ######',
+    pattern: '^[0-9]{7,11}$',
+    example: '07400 123456',
+  },
+  AR: {
+    nationalPrefix: '0',
+    mask: '### ##-####-####',
+    pattern: '^[0-9]{10,13}$',
+    example: '011 15-2345-6789',
+  },
+};
+
+/**
+ * The countries `/v1/bootstrap` lists, in its order (by English name), each with the one
+ * subdivision the stub serves so a checkout can be completed in any of them.
+ */
+const COUNTRIES = [
+  { code: 'AR', name: 'Argentina', state: { code: 'B', name: 'Buenos Aires' } },
+  { code: 'TH', name: 'Thailand', state: { code: '10', name: 'Bangkok' } },
+  {
+    code: 'GB',
+    name: 'United Kingdom',
+    state: { code: 'LND', name: 'London' },
+  },
+  {
+    code: 'US',
+    name: 'United States',
+    state: { code: 'NY', name: 'New York' },
+  },
+];
+
+/** A 4:3 flag, the aspect the service's flag-icons SVGs have. */
+const FLAG_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="4" height="3" viewBox="0 0 4 3">' +
+  '<rect width="4" height="3" fill="#3c3b6e"/></svg>';
+
+export interface AddressServiceOptions {
+  /** The visitor's country, as `/v1/bootstrap` detects it. Defaults to `US`. */
+  country?: string;
+  /** `false` answers as a deployment with no phone data does: no `spec.phone` at all. */
+  phoneRules?: boolean;
+}
+
+/**
+ * Stub everything the checkout form fetches from the address-rules service: the
+ * country list, each country's rules and states, and the phone field's flags.
+ *
+ * Three routes, three shapes — `/v1/bootstrap` carries the country list as well as the
+ * detected country's rules, `/v1/layout/:country` carries one country's, and
+ * `/v1/flags/:code.svg` an image. A spec that answers the first two with the bootstrap
+ * shape makes `updateFormLabels` throw. Every spec that boots a checkout form needs this.
+ *
+ * The phone half is {@link PHONE_RULES}. `fields.phone_number` carries what the service's
+ * does apart from its localized hint, and nothing the SDK formats or checks with. The
+ * address half is the same US layout for
+ * every country, because no spec using this stub asserts on another country's address
+ * fields. `spec.layout` is what decides which fields a country collects; a layout that
+ * omits `state` produces a config with no state label however `spec.fields` reads, so it
+ * has to name every field the assertions expect.
+ *
+ * A flag is served for every listed country, and anything else is a `404`, as the
+ * service answers it.
+ */
+export async function stubCountryService(
+  page: Page,
+  { country = 'US', phoneRules: withPhone = true }: AddressServiceOptions = {}
+): Promise<void> {
+  const specFor = (code: string) => {
+    const phone = withPhone ? PHONE_RULES[code] : undefined;
+    return {
+      country: code,
+      layout: [['country'], ['line1'], ['city', 'state', 'postcode']],
+      fields: {
+        state: { label: 'State', required: true },
+        postcode: { label: 'ZIP Code', required: true, example: '10001' },
+        ...(phone
+          ? {
+              phone_number: {
+                autocomplete: 'tel',
+                callingCode: phone.callingCode,
+                example: phone.example,
+              },
+            }
+          : {}),
+      },
+      ...(phone ? { phone } : {}),
+    };
   };
+  const statesFor = (code: string) =>
+    COUNTRIES.filter(row => row.code === code).map(row => row.state);
+
   await page.route(ADDRESS_SERVICE_ROUTE, route => {
-    if (route.request().url().includes('/v1/layout/')) {
+    const { pathname } = new URL(route.request().url());
+
+    if (pathname.startsWith('/v1/flags/')) {
+      const flag = pathname.match(/^\/v1\/flags\/([a-z]{2})\.svg$/)?.[1];
+      return COUNTRIES.some(row => row.code.toLowerCase() === flag)
+        ? route.fulfill({ contentType: 'image/svg+xml', body: FLAG_SVG })
+        : route.fulfill({ status: 404, json: { error: 'not_found' } });
+    }
+
+    const layout = pathname.match(/^\/v1\/layout\/([A-Z]{2})$/)?.[1];
+    if (layout) {
       return route.fulfill({
-        json: { spec, states: [{ code: 'NY', name: 'New York' }] },
+        json: { spec: specFor(layout), states: statesFor(layout) },
       });
     }
+
     return route.fulfill({
       json: {
-        geo: { country: 'US' },
-        spec,
-        countries: [{ code: 'US', name: 'United States' }],
-        states: [{ code: 'NY', name: 'New York' }],
+        geo: { country },
+        spec: specFor(country),
+        countries: COUNTRIES.map(({ code, name }) => ({ code, name })),
+        states: statesFor(country),
       },
     });
   });
+}
+
+/**
+ * Aborts every request that is not for the dev server, and returns the URLs it
+ * aborted so a spec can assert the list is empty.
+ *
+ * Call it **before** any other stub. Playwright consults routes newest first, so this
+ * catch-all, registered first, only sees what no stub answered — which is exactly the
+ * request that would otherwise have reached a live server.
+ */
+export async function blockLiveNetwork(page: Page): Promise<string[]> {
+  const escaped: string[] = [];
+  await page.route(
+    url => url.hostname !== 'localhost',
+    route => {
+      escaped.push(route.request().url());
+      return route.abort('blockedbyclient');
+    }
+  );
+  return escaped;
 }
 
 /**
