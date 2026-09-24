@@ -75,32 +75,47 @@ The pieces that matter:
 
 ## Customer and shipping fields
 
-Every field reaches the order through its `data-next-checkout-field` name. For the shipping address, use the address block: the SDK builds the fields each country collects, in the order that country writes them. Write the address inputs yourself only on a page that ships to one country.
+Every field reaches the order through its `data-next-checkout-field` name. The starter template collects them in two steps, customer information and then the shipping address, both inside one `data-next-component="shipping-form"` container. For the address, use the address block: the SDK builds the fields each country collects, in the order that country writes them.
+
+Below is an example of both steps, with the shipping address built by the SDK.
+
+```html
+<div data-next-component="shipping-form">
+  <h2>Customer Information</h2>
+  <input
+    data-next-checkout-field="fname"
+    autocomplete="given-name"
+    placeholder="First Name*">
+  <input
+    data-next-checkout-field="lname"
+    autocomplete="family-name"
+    placeholder="Last Name*">
+  <input
+    data-next-checkout-field="email"
+    autocomplete="email"
+    placeholder="Email*"
+    type="email">
+  <input
+    data-next-checkout-field="phone"
+    name="phone"
+    autocomplete="tel"
+    placeholder="Phone (Optional)"
+    type="tel">
+
+  <h2>Shipping Information</h2>
+  <div data-next-address="shipping"></div>
+</div>
+```
+
+### Customer information
+
+The SDK requires the first name, last name and email. The phone is optional unless its input carries `required` or `data-next-required="true"`. The SDK finds that input by `name="phone"`, so keep the attribute: without it, `required` has no effect (`form-validation.ts › validateForm`).
 
 ### Address block
 
-Below is an example that collects the customer's email and name, then lets the SDK build the shipping address for the shopper's country.
-
-```html
-<input
-  data-next-checkout-field="email"
-  autocomplete="email"
-  placeholder="Email*"
-  type="email">
-<input
-  data-next-checkout-field="fname"
-  autocomplete="given-name"
-  placeholder="First Name*">
-<input
-  data-next-checkout-field="lname"
-  autocomplete="family-name"
-  placeholder="Last Name*">
-<div data-next-address="shipping"></div>
-```
-
 The empty `<div>` becomes the address fields the selected country collects, so a Japanese address leads with the postcode and a US one ends with state and ZIP. When the shopper changes country the block is rebuilt, and what they typed into text inputs is kept.
 
-The block builds the country, name, street, city, state, postcode and phone fields the country's layout includes, and skips any the form already collects outside it, such as the name above. It never builds the email. The country list, the state options, validation, and the city, state and postcode rows staying hidden until the street address is filled all work as they do for hand-written fields below.
+The block builds the country, name, street, city, state, postcode and phone fields the country's layout includes, and skips any the form already collects outside it, such as the name and phone above. It never builds the email. The country list, the state options, validation, and the city, state and postcode rows staying hidden until the street address is filled all work as they do for hand-written fields below.
 
 The SDK ships no styling for the block. Style it through the classes it sets: `next-address-row` on each row and `next-address-field` on each field, which also carries `data-next-address-field` with the field's name. While the layout loads, the block carries `data-next-address-state="loading"`, then `ready`. [Address block](../reference/data-attributes.md#address-block) lists its attributes.
 
@@ -114,60 +129,39 @@ Three limits to plan for:
 
 If the layout request fails before any layout has loaded, the block builds a generic layout in English instead: country, name, street, city, state, postcode and phone, with state and postcode optional (`address-form.api.ts › builtInAddressSpec`). A later failure leaves the fields on screen as they are.
 
-### Hand-written fields
+### Hand-written address fields
 
-You write ordinary inputs and name each one with `data-next-checkout-field`. The fields load with the page and need no layout request.
+You write the address inputs yourself and name each one with `data-next-checkout-field`. They load with the page and need no layout request.
 
-Hand-written fields are not recommended for a page that ships to more than one country. The SDK hides the state field where a country has no states and rewrites the state and postal wording, but the fields keep the order and the set you wrote: a Japanese address still ends with its postcode, and a country with no postcode still shows the field.
+Hand-written address fields are not recommended for a page that ships to more than one country. The SDK hides the state field where a country has no states and rewrites the state and postal wording, but the fields keep the order and the set you wrote: a Japanese address still ends with its postcode, and a country with no postcode still shows the field.
 
-Below is an example that collects the customer's name, email and phone, and a shipping address whose city, state and ZIP stay hidden until the street address is filled.
+Below is an example of the Shipping Information step written by hand, in place of the address block inside the `shipping-form` container above. The city, state and ZIP stay hidden until the street address is filled.
 
 ```html
-<div data-next-component="shipping-form">
+<h2>Shipping Information</h2>
+<select data-next-checkout-field="country" autocomplete="country-name">
+  <option value="">Select Country</option>
+</select>
+<input
+  data-next-checkout-field="address1"
+  autocomplete="address-line1"
+  placeholder="Address*">
+<input
+  data-next-checkout-field="address2"
+  autocomplete="address-line2"
+  placeholder="Apartment, suite, etc. (optional)">
+<div data-next-component="location">
   <input
-    data-next-checkout-field="fname"
-    autocomplete="given-name"
-    placeholder="First Name*"
-    type="text">
-  <input
-    data-next-checkout-field="lname"
-    autocomplete="family-name"
-    placeholder="Last Name*"
-    type="text">
-  <input
-    data-next-checkout-field="email"
-    autocomplete="email"
-    placeholder="Email*"
-    type="email">
-  <input
-    data-next-checkout-field="phone"
-    autocomplete="tel"
-    placeholder="Phone"
-    type="tel">
-  <select data-next-checkout-field="country" autocomplete="country-name">
-    <option value="">Select Country</option>
+    data-next-checkout-field="city"
+    autocomplete="address-level2"
+    placeholder="City*">
+  <select data-next-checkout-field="province" autocomplete="address-level1">
+    <option value="">Select State</option>
   </select>
   <input
-    data-next-checkout-field="address1"
-    autocomplete="address-line1"
-    placeholder="Address*">
-  <input
-    data-next-checkout-field="address2"
-    autocomplete="address-line2"
-    placeholder="Apartment, suite, etc. (optional)">
-  <div data-next-component="location">
-    <input
-      data-next-checkout-field="city"
-      autocomplete="address-level2"
-      placeholder="City*">
-    <select data-next-checkout-field="province" autocomplete="address-level1">
-      <option value="">Select State</option>
-    </select>
-    <input
-      data-next-checkout-field="postal"
-      autocomplete="postal-code"
-      placeholder="ZIP Code*">
-  </div>
+    data-next-checkout-field="postal"
+    autocomplete="postal-code"
+    placeholder="ZIP Code*">
 </div>
 ```
 
