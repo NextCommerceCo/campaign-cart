@@ -3,7 +3,11 @@ import { getSelectedLocale } from '@/core/currency-formatter';
 import { useCheckoutStore } from '@/state/checkout';
 import { useConfigStore } from '@/state/config';
 
-import { fetchAddressSpec, type AddressSpec } from './address-form.api';
+import {
+  builtInAddressSpec,
+  fetchAddressSpec,
+  type AddressSpec,
+} from './address-form.api';
 import { readRenderedValues, renderAddressSpec } from './address-form.renderer';
 
 const FALLBACK_COUNTRY = 'US';
@@ -41,7 +45,10 @@ export class AddressFormEnhancer extends BaseEnhancer {
 
   public override destroy(): void {
     super.destroy();
-    document.removeEventListener('next:locale-changed', this.handleLocaleChange);
+    document.removeEventListener(
+      'next:locale-changed',
+      this.handleLocaleChange
+    );
   }
 
   private readonly handleLocaleChange = (): void => this.update();
@@ -54,7 +61,9 @@ export class AddressFormEnhancer extends BaseEnhancer {
 
   private readConfiguration(): void {
     this.form =
-      this.getAttribute('data-next-address') === 'billing' ? 'billing' : 'shipping';
+      this.getAttribute('data-next-address') === 'billing'
+        ? 'billing'
+        : 'shipping';
     this.lang = this.getAttribute('data-next-address-lang') ?? undefined;
     this.baseUrl = this.getAttribute('data-next-address-api') ?? undefined;
   }
@@ -80,11 +89,8 @@ export class AddressFormEnhancer extends BaseEnhancer {
     return names;
   }
 
-  /**
-   * Says where the block is, so a stylesheet can hold space for fields that are coming
-   * without holding it for fields that never will.
-   */
-  private setState(state: 'loading' | 'ready' | 'failed'): void {
+  /** Says where the block is, so a stylesheet can hold space for fields on their way. */
+  private setState(state: 'loading' | 'ready'): void {
     this.element.setAttribute('data-next-address-state', state);
   }
 
@@ -94,12 +100,13 @@ export class AddressFormEnhancer extends BaseEnhancer {
    * relabel itself per visitor.
    */
   private resolveLang(): string | undefined {
-    return (
-      getSelectedLocale() ?? this.lang ?? useConfigStore.getState().locale
-    );
+    return getSelectedLocale() ?? this.lang ?? useConfigStore.getState().locale;
   }
 
-  /** A failure leaves what is on screen alone rather than emptying a half-typed form. */
+  /**
+   * A failure leaves what is on screen alone rather than emptying a half-typed form, and
+   * renders the built-in layout when nothing is on screen yet.
+   */
   private async renderCountry(countryCode: string): Promise<void> {
     this.requestedCountry = countryCode;
     const requestId = ++this.requestId;
@@ -113,13 +120,17 @@ export class AddressFormEnhancer extends BaseEnhancer {
         ...(lang ? { lang } : {}),
       });
     } catch (error) {
-      this.logger.error(`Failed to load the address layout for ${countryCode}:`, error);
-      if (requestId === this.requestId) {
+      this.logger.error(
+        `Failed to load the address layout for ${countryCode}:`,
+        error
+      );
+      if (requestId !== this.requestId) return;
+      if (this.renderedCountry) {
         // Forget the request, so choosing this country again is a change and retries it.
         this.requestedCountry = this.renderedCountry;
-        if (!this.renderedCountry) this.setState('failed');
+        return;
       }
-      return;
+      spec = builtInAddressSpec(countryCode);
     }
 
     // A later country or language was asked for while this layout was in flight.

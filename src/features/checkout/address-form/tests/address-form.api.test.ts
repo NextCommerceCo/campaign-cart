@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fetchAddressSpec } from '@/features/checkout/address-form/address-form.api';
+import {
+  builtInAddressSpec,
+  fetchAddressSpec,
+} from '@/features/checkout/address-form/address-form.api';
+import { renderAddressSpec } from '@/features/checkout/address-form/address-form.renderer';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -48,5 +52,25 @@ describe('fetchAddressSpec', () => {
     await expect(fetchAddressSpec('US', { baseUrl: 'https://addr.test' })).rejects.toThrow(
       'carried no layout'
     );
+  });
+});
+
+describe('builtInAddressSpec', () => {
+  it('renders every field of a full address under the country it was asked for', () => {
+    const container = document.createElement('div');
+    const spec = builtInAddressSpec('CA');
+
+    expect(spec.country).toBe('CA');
+    expect(renderAddressSpec(container, spec, { form: 'shipping' })).toEqual([
+      'country',
+      'fname',
+      'lname',
+      'address1',
+      'address2',
+      'city',
+      'province',
+      'postal',
+      'phone',
+    ]);
   });
 });

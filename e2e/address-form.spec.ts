@@ -391,7 +391,7 @@ test('a returning visitor sees the address they already gave', async ({ page }) 
   await expect(page.locator(FIELD('postal'))).toHaveValue('60448');
 });
 
-test('a failed layout lookup leaves the page usable, and holds no space', async ({
+test('a failed layout lookup still gives the shopper an address to fill', async ({
   page,
 }) => {
   await page.route(ADDRESS_SERVICE_ROUTE, route =>
@@ -403,14 +403,22 @@ test('a failed layout lookup leaves the page usable, and holds no space', async 
 
   await bootSdk(page, FIXTURE);
 
-  await expect(page.locator(FIELD('email'))).toBeVisible();
-  expect(errors).toEqual([]);
-
-  // A stylesheet holds space while the fields are coming. Nothing is coming.
+  await expect(page.locator(FIELD('address1'))).toBeVisible();
   await expect(page.locator('[data-next-address]')).toHaveAttribute(
     'data-next-address-state',
-    'failed'
+    'ready'
   );
+  // The fixture writes the name itself; the built-in layout must not build it again.
+  await expect(page.locator(FIELD('fname'))).toHaveCount(1);
+
+  // Revealing the city proves the checkout form bound the built-in fields, not only
+  // that they were drawn.
+  await expect(page.locator(FIELD('city'))).toBeHidden();
+  await page.locator(FIELD('address1')).fill('9292 Magnolia Ave');
+  await expect(page.locator(FIELD('city'))).toBeVisible();
+  await expect(page.locator(FIELD('postal'))).toBeVisible();
+
+  expect(errors).toEqual([]);
 });
 
 /**

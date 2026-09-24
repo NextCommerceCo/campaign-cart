@@ -22,6 +22,111 @@ export interface AddressSpec {
   fallback?: boolean;
 }
 
+/**
+ * What the block renders when the first layout cannot be fetched, because a block with no
+ * fields leaves the shopper nowhere to type an address. It is the service's own default
+ * layout (`zz` in i18n-rules `src/rules/default.ts`), in English. State and postcode are
+ * not required: the country's rules are unknown, and refusing a real address is worse
+ * than accepting an odd one.
+ */
+const BUILT_IN_SPEC: Omit<AddressSpec, 'country'> = {
+  layout: [
+    ['country'],
+    ['first_name', 'last_name'],
+    ['line1'],
+    ['line2'],
+    ['city', 'state', 'postcode'],
+    ['phone_number'],
+  ],
+  fields: {
+    country: {
+      name: 'country',
+      label: 'Country',
+      required: true,
+      autocomplete: 'country',
+      control: 'select',
+    },
+    first_name: {
+      name: 'first_name',
+      label: 'First name',
+      required: true,
+      autocomplete: 'given-name',
+      control: 'text',
+      maxLength: 255,
+      autoCapitalize: 'words',
+    },
+    last_name: {
+      name: 'last_name',
+      label: 'Last name',
+      required: true,
+      autocomplete: 'family-name',
+      control: 'text',
+      maxLength: 255,
+      autoCapitalize: 'words',
+    },
+    line1: {
+      name: 'line1',
+      label: 'Address',
+      required: true,
+      autocomplete: 'address-line1',
+      control: 'text',
+      maxLength: 255,
+      autoCapitalize: 'words',
+    },
+    line2: {
+      name: 'line2',
+      label: 'Apartment, suite, etc. (optional)',
+      required: false,
+      autocomplete: 'address-line2',
+      control: 'text',
+      maxLength: 255,
+      autoCapitalize: 'words',
+    },
+    city: {
+      name: 'city',
+      label: 'City',
+      required: true,
+      autocomplete: 'address-level2',
+      control: 'text',
+      maxLength: 255,
+      autoCapitalize: 'words',
+      span: 2,
+    },
+    state: {
+      name: 'state',
+      label: 'State/Province',
+      required: false,
+      autocomplete: 'address-level1',
+      control: 'text',
+      maxLength: 255,
+      autoCapitalize: 'words',
+    },
+    postcode: {
+      name: 'postcode',
+      label: 'Postal code',
+      required: false,
+      autocomplete: 'postal-code',
+      control: 'text',
+      maxLength: 64,
+      autoCapitalize: 'characters',
+    },
+    phone_number: {
+      name: 'phone_number',
+      label: 'Phone number',
+      required: false,
+      autocomplete: 'tel',
+      control: 'tel',
+      maxLength: 24,
+      inputMode: 'tel',
+    },
+  },
+  fallback: true,
+};
+
+export function builtInAddressSpec(countryCode: string): AddressSpec {
+  return { ...BUILT_IN_SPEC, country: countryCode };
+}
+
 const DEFAULT_BASE_URL = 'https://i18n-rules.nextcommerce.com';
 
 /** Omitting it falls back to `Accept-Language`, which would localise shipped pages. */

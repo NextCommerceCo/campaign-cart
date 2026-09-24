@@ -102,7 +102,7 @@ The empty `<div>` becomes the address fields the selected country collects, so a
 
 The block builds the country, name, street, city, state, postcode and phone fields the country's layout includes, and skips any the form already collects outside it, such as the name above. It never builds the email. The country list, the state options, validation, and the city, state and postcode rows staying hidden until the street address is filled all work as they do for hand-written fields below.
 
-The SDK ships no styling for the block. Style it through the classes it sets: `next-address-row` on each row and `next-address-field` on each field, which also carries `data-next-address-field` with the field's name. While the layout loads, the block carries `data-next-address-state="loading"`, then `ready` or `failed`. [Address block](../reference/data-attributes.md#address-block) lists its attributes.
+The SDK ships no styling for the block. Style it through the classes it sets: `next-address-row` on each row and `next-address-field` on each field, which also carries `data-next-address-field` with the field's name. While the layout loads, the block carries `data-next-address-state="loading"`, then `ready`. [Address block](../reference/data-attributes.md#address-block) lists its attributes.
 
 Three limits to plan for:
 
@@ -112,7 +112,7 @@ Three limits to plan for:
 | First layout | United States, until the country is known |
 | Third address line | Not collected; orders carry two |
 
-If the layout request fails before any layout has loaded, the block stays empty and `data-next-address-state` reads `failed`, so the page has no address fields to fill (`address-form.enhancer.ts › AddressFormEnhancer.renderCountry`).
+If the layout request fails before any layout has loaded, the block builds a generic layout in English instead: country, name, street, city, state, postcode and phone, with state and postcode optional (`address-form.api.ts › builtInAddressSpec`). A later failure leaves the fields on screen as they are.
 
 ### Hand-written fields
 

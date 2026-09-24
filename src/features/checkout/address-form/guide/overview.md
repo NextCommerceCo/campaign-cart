@@ -60,7 +60,9 @@ checkout store country ──► GET /v1/layout/{country}
 - A country with no rules of its own gets a generic layout under its own code, never an
   error. A visitor from an uncurated country still has to be able to check out.
 - A failed lookup leaves whatever is on screen alone. Losing a half-typed address to a
-  timed-out request is worse than an out-of-date layout.
+  timed-out request is worse than an out-of-date layout. When nothing is on screen yet,
+  the block builds a generic English layout instead, because a block with no fields
+  leaves the shopper nowhere to type an address.
 - `data-next-address="billing"` builds the same layout under `billing-` names. It is the
   alternative to the checkout form's own billing address, which copies the shipping
   fields into a `data-next-component="billing-form"` container. A page uses one or the
