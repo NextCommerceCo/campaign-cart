@@ -104,8 +104,6 @@ Below is an example of both steps, with the shipping address built by the SDK.
 <div data-next-address="shipping"></div>
 ```
 
-### Customer information
-
 The SDK requires the first name, last name and email. The phone is optional unless its input carries `required` or `data-next-required="true"`.
 
 ### Address block
