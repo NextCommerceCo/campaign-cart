@@ -219,7 +219,7 @@ Below is an example that puts each row on one line, narrows the postcode, holds 
 
 The alternative to the address block is writing the address inputs yourself, each named with `data-next-checkout-field`. They load with the page and need no request.
 
-> **Watch out:** Static address fields are not recommended for a page that ships to more than one country. The fields keep the order and the set you wrote in every country: a Japanese address still ends with its postcode, and a country with no postcode still shows the field. Use the address block instead.
+> **Watch out:** Static address fields are not recommended for a page that ships to more than one country. The fields keep the order and the set you wrote in every country: a Japanese address still ends with its postcode, and a country with no postcode still shows the field. Use the address block instead. It builds each country's fields from rules the SDK fetches while the page runs, so when a country's address format is corrected, every page picks up the change without an edit.
 
 Below is an example of the Shipping Information step written this way, in place of the address block above. The city, state and ZIP stay hidden until the street address is filled.
 
