@@ -20,6 +20,8 @@ interface Sample {
   national?: string;
   e164?: string;
   valid: boolean;
+  /** libphonenumber's as-you-type output after each digit of `typed`. */
+  asYouType: string[];
 }
 
 const countries = Object.entries(
@@ -82,6 +84,25 @@ describe('country-service.phone, against libphonenumber for every country', () =
       return field === sample.national ? null : `${code}: ${field}, not ${sample.national}`;
     });
     expect(wrong).toEqual([]);
+  });
+
+  /**
+   * A ratchet, not a contract: every whole number above ends on libphonenumber's national
+   * form, but on the way there this module picks a format by simpler rules than
+   * libphonenumber's as-you-type formatter (Afghanistan's `0701` shows as `0 701`, not
+   * `070 1`). Raise the floor when that gap closes; never lower it.
+   */
+  it('shows what libphonenumber shows at no fewer keystrokes than before', () => {
+    let matching = 0;
+    for (const [, { rules, samples }] of countries) {
+      for (const sample of samples) {
+        const digits = sample.typed.replace(/\D/g, '');
+        sample.asYouType.forEach((expected, i) => {
+          if (formatAsYouType(digits.slice(0, i + 1), rules) === expected) matching++;
+        });
+      }
+    }
+    expect(matching).toBeGreaterThanOrEqual(14062);
   });
 
   it('never drops a digit the shopper typed while the number is incomplete', () => {
