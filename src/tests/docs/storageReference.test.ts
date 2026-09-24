@@ -232,6 +232,9 @@ describe('storage key reference', () => {
 
   it('storage migration JSON matches source-derived keys and provenance', () => {
     const root = join(SRC, '..');
+    const keyFiles = new Set(
+      extracted.flatMap(key => key.where.map(site => site.split(' › ')[0]))
+    );
     const generationPaths = [
       'package.json',
       'src/docs/extract/extract-storage-keys.ts',
@@ -248,10 +251,12 @@ describe('storage key reference', () => {
       ).version,
       extracted,
       docs: STORAGE_KEYS_DOC,
+      // Hash only the files that write a key, so unrelated source edits leave the
+      // manifest stable; a new key in a new file still drifts the key list above.
       provenanceInputs: [
-        ...sources.map(
-          ([path, source]) => [`src/${path}`, source] as [string, string]
-        ),
+        ...sources
+          .filter(([path]) => keyFiles.has(path))
+          .map(([path, source]) => [`src/${path}`, source] as [string, string]),
         ...generationPaths.map(
           path =>
             [path, readFileSync(join(root, path), 'utf8')] as [string, string]
