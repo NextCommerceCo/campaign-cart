@@ -60,6 +60,10 @@ describe('formatPhone', () => {
     expect(formatPhone('+1 212-555-0123', US)).toBe('+12125550123');
   });
 
+  it('reads a leading 00 as +', () => {
+    expect(formatPhone('0066 81 234 5678', TH)).toBe('+66812345678');
+  });
+
   it('shows digits the mask has no room for as typed', () => {
     expect(formatPhone('415555267199', US)).toBe('415555267199');
   });
@@ -83,6 +87,10 @@ describe('isPlausiblePhone', () => {
     expect(isPlausiblePhone('+66 81', TH)).toBe(false);
   });
 
+  it('reads a leading 00 as + when checking', () => {
+    expect(isPlausiblePhone('0066 81 234 5678', TH)).toBe(true);
+  });
+
   it('only asks a + number with another code to be the length of E.164', () => {
     expect(isPlausiblePhone('+44 7400 123456', US)).toBe(true);
     expect(isPlausiblePhone('+44 74', US)).toBe(false);
@@ -100,8 +108,16 @@ describe('toE164', () => {
     expect(toE164('02 1234 5678', IT)).toBe('+390212345678');
   });
 
-  it('keeps a number typed with + as typed', () => {
+  it('keeps a number typed with + or 00 as typed', () => {
     expect(toE164('+44 7400 123456', US)).toBe('+447400123456');
+    expect(toE164('0066 81 234 5678', TH)).toBe('+66812345678');
+  });
+
+  it('does not add the calling code to digits that may already carry it', () => {
+    // Pasted without its +: adding +66 again would send +6666812345678.
+    expect(toE164('66812345678', TH)).toBe('');
+    // The US prefix is also its calling code, and is dropped as a prefix.
+    expect(toE164('14155552671', US)).toBe('+14155552671');
   });
 
   it('sends nothing to convert for a country without a calling code, or no digits', () => {

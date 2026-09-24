@@ -29,8 +29,15 @@ function digitsOf(text: string): string {
   return text.replace(/\D/g, '');
 }
 
-function isInternational(text: string): boolean {
-  return text.trimStart().startsWith('+');
+/**
+ * The digits after the calling code's `+`, or `null` for a number typed nationally. `00` is
+ * how most countries dial abroad, so `0066 81…` is read as `+66 81…`.
+ */
+function internationalDigits(text: string): string | null {
+  const typed = text.trimStart();
+  if (typed.startsWith('+')) return digitsOf(typed);
+  if (typed.startsWith('00')) return digitsOf(typed).slice(2);
+  return null;
 }
 
 function masked(digits: string, mask: string): string | null {
@@ -54,8 +61,9 @@ function masked(digits: string, mask: string): string | null {
  * `1 (415) 555-2671`.
  */
 export function formatPhone(text: string, rules?: PhoneRules): string {
+  const international = internationalDigits(text);
+  if (international !== null) return `+${international}`;
   const digits = digitsOf(text);
-  if (isInternational(text)) return `+${digits}`;
   const mask = rules?.mask;
   if (!mask || !digits) return digits;
 
@@ -80,9 +88,9 @@ export function formatPhone(text: string, rules?: PhoneRules): string {
  * code only has to be the length of an E.164 number.
  */
 export function isPlausiblePhone(text: string, rules: PhoneRules): boolean {
-  const digits = digitsOf(text);
   const pattern = new RegExp(rules.pattern);
-  if (!isInternational(text)) return pattern.test(digits);
+  const digits = internationalDigits(text);
+  if (digits === null) return pattern.test(digitsOf(text));
   if (rules.callingCode && digits.startsWith(rules.callingCode)) {
     return pattern.test(digits.slice(rules.callingCode.length));
   }
@@ -93,20 +101,25 @@ export function isPlausiblePhone(text: string, rules: PhoneRules): boolean {
 }
 
 /**
- * The number in E.164, or `''` when it must be sent as typed: no digits, or a country whose
- * rule carries no calling code (Argentina, whose mobiles keep a `15` inside the number that
- * only the order API's conversion removes).
+ * The number in E.164, or `''` when it is sent as typed and the order API converts it.
  *
- * `+{callingCode}` and the digits with one leading national prefix dropped — `081 234 5678`
- * in Thailand is `+66812345678`. A number typed with its own `+` is kept as typed.
+ * `+{callingCode}` and the digits with one leading national prefix dropped: `081 234 5678`
+ * in Thailand is `+66812345678`. A number typed with `+` or `00` keeps its own code.
+ *
+ * Sent as typed rather than guessed at: a country whose rule has no calling code
+ * (Argentina, whose mobiles keep a `15` inside the number), and digits that begin with the
+ * calling code but not the national prefix — `66812345678` in Thailand may be a number
+ * pasted without its `+`, and adding `+66` to it again would send a wrong one.
  */
 export function toE164(text: string, rules?: PhoneRules): string {
+  const international = internationalDigits(text);
+  if (international !== null) return international ? `+${international}` : '';
   const digits = digitsOf(text);
-  if (!digits) return '';
-  if (isInternational(text)) return `+${digits}`;
-  if (!rules?.callingCode) return '';
+  if (!digits || !rules?.callingCode) return '';
   const prefix = rules.nationalPrefix;
-  const national =
-    prefix && digits.startsWith(prefix) ? digits.slice(prefix.length) : digits;
-  return `+${rules.callingCode}${national}`;
+  if (prefix && digits.startsWith(prefix)) {
+    return `+${rules.callingCode}${digits.slice(prefix.length)}`;
+  }
+  if (digits.startsWith(rules.callingCode)) return '';
+  return `+${rules.callingCode}${digits}`;
 }
