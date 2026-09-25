@@ -17,6 +17,8 @@ import {
 } from '@/core/country-service/country-service.next-address';
 import { validatePostalCode } from '@/core/country-service/country-service.postal-code';
 import { Logger } from '@/core/logger';
+import { CountryService } from '@/core/country-service';
+import { useConfigStore } from '@/state/config';
 
 /** GB: a state-less country whose postcode pattern is written against the compact value. */
 const GB_SPEC = {
@@ -271,13 +273,11 @@ describe('fetchLocationData', () => {
   it('throws on a non-ok response so the caller can fall back', async () => {
     vi.stubGlobal(
       'fetch',
-      vi
-        .fn()
-        .mockResolvedValue({
-          ok: false,
-          status: 503,
-          statusText: 'Unavailable',
-        })
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 503,
+        statusText: 'Unavailable',
+      })
     );
     await expect(fetchLocationData('https://addr.test')).rejects.toThrow('503');
   });
@@ -311,5 +311,39 @@ describe('flagUrl', () => {
     expect(flagUrl('GB')).toBe(
       'https://i18n-rules.nextcommerce.com/v1/flags/gb.svg'
     );
+  });
+});
+
+describe('CountryService language', () => {
+  afterEach(() => {
+    localStorage.clear();
+    useConfigStore.setState({ locale: undefined });
+  });
+
+  it("asks in the page's locale, and keeps English where none is set", async () => {
+    const fetchMock = stubFetch({ spec: US_SPEC, states: [] });
+    const service = CountryService.getInstance();
+
+    await service.getCountryStates('US');
+    useConfigStore.setState({ locale: 'th-TH' });
+    await service.getCountryStates('US');
+
+    expect(fetchMock.mock.calls.map(call => call[0])).toEqual([
+      expect.stringContaining('/v1/layout/US?include=states&lang=en'),
+      expect.stringContaining('/v1/layout/US?include=states&lang=th-TH'),
+    ]);
+  });
+
+  it('refetches rather than serve a cached answer in another language', async () => {
+    const fetchMock = stubFetch({ spec: US_SPEC, states: [] });
+    const service = CountryService.getInstance();
+
+    await service.getCountryStates('US');
+    await service.getCountryStates('US');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    useConfigStore.setState({ locale: 'th' });
+    await service.getCountryStates('US');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

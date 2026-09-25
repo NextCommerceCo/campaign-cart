@@ -1,7 +1,6 @@
 import { BaseEnhancer } from '@/core/base/base-enhancer';
-import { getSelectedLocale } from '@/core/currency-formatter';
 import { useCheckoutStore } from '@/state/checkout';
-import { useConfigStore } from '@/state/config';
+import { addressLang } from '@/core/country-service';
 
 import {
   builtInAddressSpec,
@@ -94,13 +93,8 @@ export class AddressFormEnhancer extends BaseEnhancer {
     this.element.setAttribute('data-next-address-state', state);
   }
 
-  /**
-   * Picker > `data-next-address-lang` > `nextConfig.locale` > the API's `en` default.
-   * The browser's own language is deliberately not a tier: a shipped page would then
-   * relabel itself per visitor.
-   */
-  private resolveLang(): string | undefined {
-    return getSelectedLocale() ?? this.lang ?? useConfigStore.getState().locale;
+  private resolveLang(): string {
+    return addressLang(this.lang);
   }
 
   /**
@@ -117,7 +111,7 @@ export class AddressFormEnhancer extends BaseEnhancer {
     try {
       spec = await fetchAddressSpec(countryCode, {
         ...(this.baseUrl ? { baseUrl: this.baseUrl } : {}),
-        ...(lang ? { lang } : {}),
+        lang,
       });
     } catch (error) {
       this.logger.error(

@@ -4,7 +4,9 @@
  */
 
 import type { PhoneRules } from '@/core/country-service/country-service.phone';
+import { getSelectedLocale } from '@/core/currency-formatter';
 import { Logger } from '@/core/logger';
+import { useConfigStore } from '@/state/config';
 import type { AddressConfig } from '@/types/global';
 import * as postalCodeMethods from '@/core/country-service/country-service.postal-code';
 import * as filteringMethods from '@/core/country-service/country-service.filtering';
@@ -74,6 +76,17 @@ export interface CountryStatesData {
   countryConfig: CountryConfig;
   states: State[];
   messages?: Record<string, string>;
+}
+
+/**
+ * The language the address-rules service answers in: the debug picker's locale, then the
+ * page's own when the caller has one (`data-next-address-lang`), then `nextConfig.locale`,
+ * then English. Never the browser's, or a shipped page would relabel itself per visitor.
+ */
+export function addressLang(pageLang?: string): string {
+  return (
+    getSelectedLocale() ?? pageLang ?? useConfigStore.getState().locale ?? 'en'
+  );
 }
 
 export class CountryService {
@@ -161,7 +174,8 @@ export class CountryService {
    */
   public async getLocationData(): Promise<LocationData> {
     // Use localStorage for location data as countries list doesn't change often
-    const cached = this.getFromCache('location_data', true);
+    const lang = addressLang();
+    const cached = this.getFromCache('location_data', lang);
 
     if (cached) {
       this.keepMessages(cached);
@@ -169,10 +183,9 @@ export class CountryService {
     }
 
     try {
-      const data = await fetchLocationData();
+      const data = await fetchLocationData(undefined, lang);
       this.keepMessages(data);
-      // Store in localStorage for longer persistence
-      this.setCache('location_data', data, true);
+      this.setCache('location_data', data, lang);
 
       this.logger.debug('Location data fetched', {
         detectedCountry: data.detectedCountryCode,
@@ -193,8 +206,8 @@ export class CountryService {
     countryCode: string
   ): Promise<CountryStatesData> {
     const cacheKey = `states_${countryCode}`;
-    // Use localStorage for country states as they don't change often
-    const cached = this.getFromCache(cacheKey, true);
+    const lang = addressLang();
+    const cached = this.getFromCache(cacheKey, lang);
 
     if (cached) {
       this.keepMessages(cached);
@@ -209,10 +222,9 @@ export class CountryService {
     }
 
     try {
-      const data = await fetchCountryStates(countryCode);
+      const data = await fetchCountryStates(countryCode, undefined, lang);
       this.keepMessages(data);
-      // Store in localStorage for longer persistence
-      this.setCache(cacheKey, data, true);
+      this.setCache(cacheKey, data, lang);
 
       this.logger.debug(`States data fetched for ${countryCode}`, {
         statesCount: data.states?.length,
@@ -330,20 +342,24 @@ export class CountryService {
     }
   }
 
-  private getFromCache(key: string, useLocalStorage: boolean = false): any {
+  /**
+   * localStorage, because a country list does not change between sessions. An entry in
+   * another language is a miss; one written before entries carried a language was `en`.
+   */
+  private getFromCache(key: string, lang: string): any {
     try {
       const cacheKey = this.cachePrefix + key;
-      const storage = useLocalStorage ? localStorage : sessionStorage;
-      const cached = storage.getItem(cacheKey);
+      const cached = localStorage.getItem(cacheKey);
       if (!cached) return null;
 
-      const { data, timestamp } = JSON.parse(cached);
+      const { data, timestamp, lang: cachedLang = 'en' } = JSON.parse(cached);
       const now = Date.now();
 
       if (now - timestamp > this.cacheExpiry) {
-        storage.removeItem(cacheKey);
+        localStorage.removeItem(cacheKey);
         return null;
       }
+      if (cachedLang !== lang) return null;
 
       return data;
     } catch (error) {
@@ -352,19 +368,15 @@ export class CountryService {
     }
   }
 
-  private setCache(
-    key: string,
-    data: any,
-    useLocalStorage: boolean = false
-  ): void {
+  private setCache(key: string, data: any, lang: string): void {
     try {
       const cacheKey = this.cachePrefix + key;
       const cacheData = {
         data,
         timestamp: Date.now(),
+        lang,
       };
-      const storage = useLocalStorage ? localStorage : sessionStorage;
-      storage.setItem(cacheKey, JSON.stringify(cacheData));
+      localStorage.setItem(cacheKey, JSON.stringify(cacheData));
     } catch (error) {
       this.logger.warn('Failed to write to cache:', error);
       // Continue without caching if storage is unavailable

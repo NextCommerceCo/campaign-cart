@@ -8,7 +8,7 @@
   "provenance": {
     "extractor": "src/docs/extract/extract-storage-keys.ts",
     "registry": "src/docs/content/storage-keys.ts",
-    "inputSha256": "2a73f8d505cccc0a257693cb37e9fe611a3cf815d465c6053eba3c3c2633a143",
+    "inputSha256": "25519e520bddef07d5634ae3f206787d04af6352948329257314ad79184c3172",
     "inputs": [
       {
         "path": "package.json",
@@ -56,7 +56,7 @@
       },
       {
         "path": "src/core/country-service/country-service.ts",
-        "sha256": "d5138323a3f53d8154b1b6c8c9cc91978ba852c6771bbe5b78b29723c9e287b3"
+        "sha256": "6109eb542f05e887a9056f8f4326368fc5e223c3611b02b7fcbcf65c0c2cfb7f"
       },
       {
         "path": "src/core/currency-formatter.ts",
@@ -112,7 +112,7 @@
       },
       {
         "path": "src/docs/content/storage-keys.ts",
-        "sha256": "902ec523a3676adc0a212603b131d70a09006acf80eab3caf3342979def41a43"
+        "sha256": "cc6fad9053601010d7eed3ac63ebb0ea9ff95949052a6f354370e133e6363b27"
       },
       {
         "path": "src/docs/extract/extract-storage-keys.ts",
@@ -549,7 +549,6 @@
       "key": "next_country_{cacheKey}",
       "pattern": "next_country_{}",
       "areas": [
-        "sessionStorage",
         "localStorage"
       ],
       "scoped": false,

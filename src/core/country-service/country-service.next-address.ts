@@ -44,15 +44,11 @@ export function flagUrl(
 }
 
 /**
- * Pinned rather than left to `Accept-Language`.
- *
- * next-address localizes labels into twelve languages and falls back to the browser's
- * header when `?lang=` is absent, so omitting it would start showing a Thai shopper
- * "รหัสไปรษณีย์" where every shipped page says "Postcode" today. Switching the SDK to
- * localized labels is a change worth making on purpose, not one to arrive as a side
- * effect of changing data source.
+ * Always sent, never left to `Accept-Language`: without `?lang=` the service answers in
+ * the browser's language, and a shipped page would relabel itself per visitor. A name
+ * the service has no translation for comes back in English.
  */
-const LANG = 'en';
+const DEFAULT_LANG = 'en';
 
 /** The subset of next-address's `FieldSpec` this SDK reads. */
 interface FieldSpec {
@@ -204,10 +200,11 @@ async function getJson<T>(url: string): Promise<T> {
  * loaded first.
  */
 export async function fetchLocationData(
-  baseUrl: string = NEXT_ADDRESS_BASE_URL
+  baseUrl: string = NEXT_ADDRESS_BASE_URL,
+  lang: string = DEFAULT_LANG
 ): Promise<LocationData> {
   const data = await getJson<BootstrapResponse>(
-    `${baseUrl}/v1/bootstrap?lang=${LANG}`
+    `${baseUrl}/v1/bootstrap?lang=${encodeURIComponent(lang)}`
   );
 
   return {
@@ -229,10 +226,11 @@ export async function fetchLocationData(
  */
 export async function fetchCountryStates(
   countryCode: string,
-  baseUrl: string = NEXT_ADDRESS_BASE_URL
+  baseUrl: string = NEXT_ADDRESS_BASE_URL,
+  lang: string = DEFAULT_LANG
 ): Promise<CountryStatesData> {
   const data = await getJson<LayoutResponse>(
-    `${baseUrl}/v1/layout/${encodeURIComponent(countryCode)}?include=states&lang=${LANG}`
+    `${baseUrl}/v1/layout/${encodeURIComponent(countryCode)}?include=states&lang=${encodeURIComponent(lang)}`
   );
 
   // No currency: `/v1/layout` describes a country, not the visitor. The one the SDK
