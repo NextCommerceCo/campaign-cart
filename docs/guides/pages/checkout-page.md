@@ -73,89 +73,43 @@ The pieces that matter:
 - `data-next-bundle-display`: that card's calculated prices.
 - `data-next-await`: the template's loading gate. The SDK adds the `next-display-ready` class to `<html>` when its DOM scan finishes, and the template's `next-core.css` keeps anything under `data-next-await` invisible until then, so the visitor never sees `-` placeholders flash. The SDK only sets the class; without that stylesheet the attribute does nothing.
 
-## Customer and address fields
+## Customer information
 
-Every field reaches the order through its `data-next-checkout-field` name. The starter template collects them in two steps, customer information and then the shipping address. For the address, use the address block: the SDK builds the fields each country collects, in the order that country writes them.
+The customer's name, email and phone reach the order through their `data-next-checkout-field` names. An empty `<div data-next-contact></div>` becomes those fields, in the order the selected country writes a name: family name first in Japan and Korea, given name first elsewhere.
 
-Below is an example of both steps, with the shipping address built by the SDK.
+Below is an example that builds the customer step: the name, email and phone, or the email alone when a shipping block is on the same form.
 
 ```html
 <h2>Customer Information</h2>
-<input
-  data-next-checkout-field="fname"
-  autocomplete="given-name"
-  placeholder="First Name*">
-<input
-  data-next-checkout-field="lname"
-  autocomplete="family-name"
-  placeholder="Last Name*">
-<input
-  data-next-checkout-field="email"
-  autocomplete="email"
-  placeholder="Email*"
-  type="email">
-<input
-  data-next-checkout-field="phone"
-  autocomplete="tel"
-  placeholder="Phone (Optional)"
-  type="tel">
+<div data-next-contact></div>
+```
 
+The name and phone are part of an address too, so a shipping block on the same form builds them instead, and the contact block keeps the email. What the contact block builds depends on the blocks beside it:
+
+| Form has | Description |
+|---|---|
+| The contact block only | Name, email and phone |
+| A shipping block too | Email only |
+| A billing block only | Name, email and phone |
+
+A field the page writes itself is not built again. The SDK requires the first name, last name and email, and the phone is optional unless its input carries `required` or `data-next-required="true"`. No field accepts an emoji. [Contact block](../reference/data-attributes.md#contact-block) lists its attributes.
+
+## Shipping address
+
+The shipping address is built by an address block, an empty `<div data-next-address="shipping"></div>`.
+
+Below is an example that builds the shipping step, in the shape of the selected country's address.
+
+```html
 <h2>Shipping Information</h2>
 <div data-next-address="shipping"></div>
 ```
-
-The SDK requires the first name, last name and email. The phone is optional unless its input carries `required` or `data-next-required="true"`. No field accepts an emoji.
-
-The SDK writes the phone number in the country's format as it is typed (`4155552671` reads `(415) 555-2671` in the US) and sends it to the order as `+14155552671`. It checks only that the number is a plausible length, and the order API validates it.
-
-### Validation messages
-
-Validation messages are in the form's language: `window.nextConfig.locale`, or English when it is unset. To change the wording, set `translations` for that language. A key you leave out keeps the default.
-
-Below is an example that rewords the message for an empty field and renames the apartment line inside messages, on a Thai page.
-
-```html
-<script>
-  window.nextConfig = {
-    locale: "th-TH",
-    translations: {
-      th: {
-        "error.required": "กรุณาระบุ{label}",
-        "label.line2": "ห้อง/อาคาร",
-      },
-    },
-  };
-</script>
-```
-
-| Key | Description |
-|---|---|
-| `error.required` | An empty required field |
-| `error.pattern` | A value in the wrong format |
-| `error.pattern.example` | The same, with `{example}` |
-| `error.email` | An invalid email address |
-| `error.emoji` | A field holding an emoji |
-| `error.name` | A name with digits or symbols |
-| `label.<field>` | A field's name inside a message |
-| `field.optional` | A label's note: `{label} (optional)` |
-
-Keep `{label}` and `{example}` in the text: the SDK fills them in. The fields are named as the address service names them.
-
-| Field | Description |
-|---|---|
-| `first_name`, `last_name` | The name fields |
-| `email`, `phone_number` | The contact fields |
-| `line1`, `line2` | The street lines |
-| `city`, `state`, `postcode` | The locality fields |
-| `country` | The country select |
-
-For a language the address service does not have, give both the messages and the field names they use. A message missing either is shown in English.
 
 ### Address block
 
 The empty `<div>` becomes the address fields the selected country collects, in the order that country writes them: a Japanese address leads with the postcode, a US one ends with state and ZIP. When the shopper changes country, the fields are rebuilt and what they typed is kept.
 
-The block builds the whole address, the name and phone included, in the order the country writes a name. The email is the page's own field, or an empty `<div data-next-contact></div>`: beside a shipping block it builds the email alone, since the address already has the name and phone ([Contact block](../reference/data-attributes.md#contact-block)). A field the page writes itself is not built again. In a country with one city or postcode for every address, such as Vatican City, the block does not ask for it and the SDK sends it with the order. The checkout form still fills the country list with the countries the campaign ships to and the state list with the selected country's states, validates the fields, and keeps the city, state and postcode row hidden until the street address has a value.
+The block builds the whole address, the name and phone included, in the order the country writes a name. Beside a contact block it keeps them and the contact block builds the email alone ([Customer information](#customer-information)). A field the page writes itself is not built again. In a country with one city or postcode for every address, such as Vatican City, the block does not ask for it and the SDK sends it with the order. The checkout form still fills the country list with the countries the campaign ships to and the state list with the selected country's states, validates the fields, and keeps the city, state and postcode row hidden until the street address has a value.
 
 [Address block](../reference/data-attributes.md#address-block) lists its attributes, and [Styling the address block](#styling-the-address-block) below covers its markup.
 
@@ -322,6 +276,49 @@ Below is an example of a billing section that stays open while the box is untick
   <div data-next-address="billing"></div>
 </div>
 ```
+
+### Validation messages
+
+Validation messages are in the form's language: `window.nextConfig.locale`, or English when it is unset. To change the wording, set `translations` for that language. A key you leave out keeps the default.
+
+Below is an example that rewords the message for an empty field and renames the apartment line inside messages, on a Thai page.
+
+```html
+<script>
+  window.nextConfig = {
+    locale: "th-TH",
+    translations: {
+      th: {
+        "error.required": "กรุณาระบุ{label}",
+        "label.line2": "ห้อง/อาคาร",
+      },
+    },
+  };
+</script>
+```
+
+| Key | Description |
+|---|---|
+| `error.required` | An empty required field |
+| `error.pattern` | A value in the wrong format |
+| `error.pattern.example` | The same, with `{example}` |
+| `error.email` | An invalid email address |
+| `error.emoji` | A field holding an emoji |
+| `error.name` | A name with digits or symbols |
+| `label.<field>` | A field's name inside a message |
+| `field.optional` | A label's note: `{label} (optional)` |
+
+Keep `{label}` and `{example}` in the text: the SDK fills them in. The fields are named as the address service names them.
+
+| Field | Description |
+|---|---|
+| `first_name`, `last_name` | The name fields |
+| `email`, `phone_number` | The contact fields |
+| `line1`, `line2` | The street lines |
+| `city`, `state`, `postcode` | The locality fields |
+| `country` | The country select |
+
+For a language the address service does not have, give both the messages and the field names they use. A message missing either is shown in English.
 
 ### Static address fields (deprecated)
 
