@@ -93,6 +93,7 @@ export class AttributeScanner {
         '[data-next-hide]',
         'form[data-next-checkout]',
         '[data-next-address]',
+        '[data-next-contact]',
         '[data-next-express-checkout]',
         '[data-next-timer-display]',
         '[data-next-timer-expired]',

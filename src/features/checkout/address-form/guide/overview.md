@@ -66,6 +66,9 @@ checkout store country ──► GET /v1/countries/{country}
   timed-out request is worse than an out-of-date layout. When nothing is on screen yet,
   the block builds a generic English layout instead, because a block with no fields
   leaves the shopper nowhere to type an address.
+- `data-next-contact` builds the contact rows instead (name, email and phone, in the
+  order the country writes a name), with the same enhancer, classes and events;
+  `data-next-contact-lang` sets its labels' language as `data-next-address-lang` does.
 - `data-next-address="billing"` builds the same layout under `billing-` names. It is the
   alternative to the checkout form's own billing address, which copies the shipping
   fields into a `data-next-component="billing-form"` container. A page uses one or the

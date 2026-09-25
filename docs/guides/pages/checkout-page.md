@@ -155,7 +155,7 @@ For a language the address service does not have, give both the messages and the
 
 The empty `<div>` becomes the address fields the selected country collects, in the order that country writes them: a Japanese address leads with the postcode, a US one ends with state and ZIP. When the shopper changes country, the fields are rebuilt and what they typed is kept.
 
-The block builds the address only: the name, email and phone are the page's own fields above. In a country with one city or postcode for every address, such as Vatican City, the block does not ask for it and the SDK sends it with the order. The checkout form still fills the country list with the countries the campaign ships to and the state list with the selected country's states, validates the fields, and keeps the city, state and postcode row hidden until the street address has a value.
+The block builds the address only: the name, email and phone are the page's own fields above, or an empty `<div data-next-contact></div>` that the SDK fills with them in the order the country writes a name ([Contact block](../reference/data-attributes.md#contact-block)). In a country with one city or postcode for every address, such as Vatican City, the block does not ask for it and the SDK sends it with the order. The checkout form still fills the country list with the countries the campaign ships to and the state list with the selected country's states, validates the fields, and keeps the city, state and postcode row hidden until the street address has a value.
 
 [Address block](../reference/data-attributes.md#address-block) lists its attributes, and [Styling the address block](#styling-the-address-block) below covers its markup.
 
