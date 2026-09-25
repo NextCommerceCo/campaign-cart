@@ -8,6 +8,8 @@ import {
   captureEvents,
   ADDRESS_SERVICE_ROUTE,
   routeAddressService,
+  countryRules,
+  ruleField,
 } from './fixtures/routes';
 import { CHECKOUT_KEY } from './fixtures/storage-keys';
 
@@ -21,31 +23,33 @@ import { CHECKOUT_KEY } from './fixtures/storage-keys';
 
 const FIXTURE = '/e2e/fixtures/address-form.html';
 
-const US_SPEC = {
-  country: 'US',
-  layout: [['country'], ['first_name', 'last_name'], ['line1'], ['city', 'state', 'postcode']],
-  fields: {
-    country: { name: 'country', label: 'Country', required: true, autocomplete: 'country', control: 'select' },
-    first_name: { name: 'first_name', label: 'First name', required: true, autocomplete: 'given-name', control: 'text' },
-    last_name: { name: 'last_name', label: 'Last name', required: true, autocomplete: 'family-name', control: 'text' },
-    line1: { name: 'line1', label: 'Address', required: true, autocomplete: 'address-line1', control: 'text' },
-    city: { name: 'city', label: 'City', required: true, autocomplete: 'address-level2', control: 'text' },
-    state: { name: 'state', label: 'State', required: true, autocomplete: 'address-level1', control: 'select', optionsSource: 'states' },
-    postcode: { name: 'postcode', label: 'ZIP Code', required: true, autocomplete: 'postal-code', control: 'text' },
-  },
-};
+const US_SPEC = countryRules(
+  'US',
+  [['country'], ['line1'], ['city', 'state', 'postcode']],
+  {
+    country: ruleField('Country', 'country', { type: 'select', options: 'countries' }),
+    line1: ruleField('Address', 'address-line1'),
+    city: ruleField('City', 'address-level2'),
+    state: ruleField('State', 'address-level1', { type: 'select', options: 'states' }),
+    postcode: ruleField('ZIP Code', 'postal-code'),
+    first_name: ruleField('First name', 'given-name'),
+    last_name: ruleField('Last name', 'family-name'),
+    email: ruleField('Email', 'email', { type: 'email' }),
+  }
+);
 
-const JP_SPEC = {
-  country: 'JP',
-  layout: [['country'], ['postcode', 'state'], ['city'], ['line1']],
-  fields: {
-    country: { name: 'country', label: 'Country', required: true, autocomplete: 'country', control: 'select' },
-    postcode: { name: 'postcode', label: 'Postal code', required: true, autocomplete: 'postal-code', control: 'text' },
-    state: { name: 'state', label: 'Prefecture', required: true, autocomplete: 'address-level1', control: 'select' },
-    city: { name: 'city', label: 'City', required: true, autocomplete: 'address-level2', control: 'text' },
-    line1: { name: 'line1', label: 'Street', required: true, autocomplete: 'address-line1', control: 'text' },
+const JP_SPEC = countryRules(
+  'JP',
+  [['country'], ['postcode', 'state'], ['city'], ['line1']],
+  {
+    country: ruleField('Country', 'country', { type: 'select', options: 'countries' }),
+    postcode: ruleField('Postal code', 'postal-code'),
+    state: ruleField('Prefecture', 'address-level1', { type: 'select', options: 'states' }),
+    city: ruleField('City', 'address-level2'),
+    line1: ruleField('Street', 'address-line1'),
   },
-};
+  { contact: { layout: [['last_name', 'first_name'], ['email'], ['phone']] } }
+);
 
 /**
  * How long the block's layout request is held before it answers.
@@ -78,7 +82,7 @@ async function stubAddressService(page: Page): Promise<void> {
         await new Promise(resolve => setTimeout(resolve, LAYOUT_DELAY_MS));
       }
       return {
-        spec: country === 'JP' ? JP_SPEC : US_SPEC,
+        ...(country === 'JP' ? JP_SPEC : US_SPEC),
         states: [{ code: 'NY', name: 'New York' }],
       };
     },
@@ -431,7 +435,7 @@ test('a layout that arrives after a newer one is discarded', async ({ page }) =>
     rules: async country => {
       // JP is asked for first and answers last.
       await new Promise(r => setTimeout(r, country === 'JP' ? 900 : 100));
-      return { spec: country === 'JP' ? JP_SPEC : US_SPEC };
+      return country === 'JP' ? JP_SPEC : US_SPEC;
     },
   });
 

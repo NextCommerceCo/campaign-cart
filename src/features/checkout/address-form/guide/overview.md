@@ -46,9 +46,12 @@ checkout store country ──► GET /v1/countries/{country}
 
 - The country comes from the checkout store. Before the form has resolved one, the block
   opens on `US` so the page is never empty while a layout is in flight.
-- A field the surrounding form already collects elsewhere is not built again. The page's
-  own markup wins, so a checkout that collects the name in its own step keeps it and the
-  block builds only what is left.
+- The block builds the country's address rows (`address.layout` in the service's rules),
+  never the name, email or phone, which are the contact rows. A field the surrounding
+  form already collects elsewhere is not built again: the page's own markup wins.
+- A value the country fixes for every address (Vatican City's city and postcode) is not
+  asked for; the checkout form writes it into the address as the country is chosen and
+  takes it back out when the shopper moves on (`checkout-form/fixed-address-values.ts`).
 - The city, state and postcode rows that come after the street address start hidden and
   appear once `address1` has a value (typed, autofilled or restored), the same collapse a
   hand-written form gets from `data-next-component="location"`. A row carrying any other

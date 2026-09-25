@@ -75,6 +75,44 @@ describe('validateForm', () => {
     });
   });
 
+  it('does not ask for a postcode where the country has none', async () => {
+    const hk = new Map<string, CountryConfig>([
+      ['HK', countryConfig({ postcodeRequired: false })],
+    ]);
+    const form = { ...completeForm(), country: 'HK', postal: '' };
+
+    const result = await validateForm(createContext(), form, hk);
+
+    expect(result.errors).not.toHaveProperty('postal');
+    expect(result.isValid).toBe(true);
+  });
+
+  it('asks for a billing postcode only where the billing country has one', async () => {
+    const hk = new Map<string, CountryConfig>([
+      ['HK', countryConfig({ postcodeRequired: false })],
+    ]);
+    const billing = {
+      first_name: 'Ada',
+      last_name: 'Lovelace',
+      address1: '1 Queen’s Road',
+      city: 'Central',
+      country: 'HK',
+      postal: '',
+    };
+
+    const result = await validateForm(
+      createContext(),
+      { ...completeForm(), country: 'HK' },
+      hk,
+      undefined,
+      false,
+      billing,
+      false
+    );
+
+    expect(result.errors).not.toHaveProperty('billing-postal');
+  });
+
   it('accepts a complete form', async () => {
     const result = await validateForm(createContext(), completeForm(), configs);
 

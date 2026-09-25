@@ -16,6 +16,14 @@ import type { CountryConfig } from '@/core/country-service';
  */
 const FORMAT_SLOTS = new Set(['N', 'X', 'A', '#', '9']);
 
+/**
+ * Whether a country asks for a postcode. Hong Kong has none, and Vatican City's one is
+ * sent without asking; an unknown country is asked, as the service's default layout does.
+ */
+export function asksForPostcode(config: CountryConfig | undefined): boolean {
+  return config?.postcodeRequired !== false;
+}
+
 const compiledRegexes = new Map<string, RegExp | null>();
 
 function postcodeRegexOf(pattern: string): RegExp | null {

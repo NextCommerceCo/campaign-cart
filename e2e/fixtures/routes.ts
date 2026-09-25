@@ -183,11 +183,38 @@ const FLAG_SVG =
 const ADDRESS_STUBBED = new WeakSet<Page>();
 
 /** One country's rules, as geo's `rules` and `/v1/countries/:country` carry them. */
-export interface CountryAnswer {
-  lang?: string;
-  spec: unknown;
-  labels?: Record<string, string>;
-  states?: unknown[];
+export type CountryAnswer = Record<string, unknown> & { states?: unknown[] };
+
+/** One field of a country's rules, in the service's shape (`docs/http-api.md` there). */
+export function ruleField(
+  label: string,
+  autocomplete: string,
+  input: Record<string, unknown> = { type: 'text' },
+  extra: Record<string, unknown> = {}
+): Record<string, unknown> {
+  return { label, messageLabel: label, required: true, autocomplete, input, ...extra };
+}
+
+/**
+ * A country's rules in the service's shape: the `address` rows and the fields named, with
+ * the default contact rows. Only what a spec names is described, as the service does it.
+ */
+export function countryRules(
+  country: string,
+  address: string[][],
+  fields: Record<string, unknown>,
+  extra: Record<string, unknown> = {}
+): CountryAnswer {
+  return {
+    country,
+    lang: 'en',
+    curated: true,
+    version: 'e2e',
+    address: { layout: address, fixed: {} },
+    contact: { layout: [['first_name', 'last_name'], ['email'], ['phone']] },
+    fields,
+    ...extra,
+  };
 }
 
 /** What a spec's stand-in for the address-rules service answers, route by route. */
@@ -302,33 +329,38 @@ export async function stubCountryService(
   page: Page,
   { country = 'US', phoneRules: withPhone = true }: AddressServiceOptions = {}
 ): Promise<void> {
-  const specFor = (code: string) => {
+  const rulesFor = (code: string) => {
     const phone = withPhone ? PHONE_RULES[code] : undefined;
-    return {
-      country: code,
-      layout: [['country'], ['line1'], ['city', 'state', 'postcode']],
-      fields: {
-        state: { label: 'State', required: true },
-        postcode: { label: 'ZIP Code', required: true, example: '10001' },
+    return countryRules(
+      code,
+      [['country'], ['line1'], ['city', 'state', 'postcode']],
+      {
+        state: ruleField('State', 'address-level1', {
+          type: 'select',
+          options: 'states',
+        }),
+        postcode: ruleField('ZIP Code', 'postal-code', { type: 'text' }, {
+          format: { example: '10001' },
+        }),
         ...(phone
           ? {
-              phone_number: {
-                autocomplete: 'tel',
-                callingCode: phone.callingCode,
-                example: phone.example,
-              },
+              phone: ruleField(
+                'Phone number',
+                'tel',
+                { type: 'tel', inputMode: 'tel' },
+                { required: false, format: phone }
+              ),
             }
           : {}),
-      },
-      ...(phone ? { phone } : {}),
-    };
+      }
+    );
   };
 
   await routeAddressService(page, {
     detected: country,
     countries: COUNTRIES.map(({ code, name }) => ({ code, name })),
     rules: code => ({
-      spec: specFor(code),
+      ...rulesFor(code),
       states: COUNTRIES.filter(row => row.code === code).map(row => row.state),
     }),
   });

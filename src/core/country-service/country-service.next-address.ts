@@ -53,31 +53,50 @@ export function flagUrl(
  */
 const DEFAULT_LANG = 'en';
 
-/** The subset of next-address's `FieldSpec` this SDK reads. */
-interface FieldSpec {
-  label?: string;
-  required?: boolean;
-  pattern?: string;
-  example?: string;
-  maxLength?: number;
+/** A field of a country's rules, as the address-rules service describes it. */
+export interface RulesField {
+  /** On the form. */
+  label: string;
+  /** Inside a message, for `{label}`. */
+  messageLabel?: string;
+  required: boolean;
+  autocomplete: string;
+  input: {
+    type: 'text' | 'email' | 'tel' | 'select';
+    inputMode?: 'text' | 'numeric' | 'tel' | 'email';
+    autoCapitalize?: 'none' | 'words' | 'characters';
+    maxLength?: number;
+    placeholder?: string;
+    options?: 'countries' | 'states';
+    span?: number;
+  };
+  /** On `postcode` and `phone` only: see `docs/http-api.md` in the service's repo. */
+  format?: {
+    pattern?: string;
+    example?: string;
+    masks?: string[] | PhoneRules['masks'];
+    callingCode?: string;
+    nationalPrefix?: string;
+  };
 }
 
-/** The subset of next-address's `ResolvedCountrySpec` this SDK reads. */
-interface CountrySpec {
+/** Values every address in a country shares, sent without being asked for. */
+export type FixedValues = Partial<Record<'city' | 'state' | 'postcode', string>>;
+
+/**
+ * One country's rules: `GET /v1/countries/:country`, and `rules` in
+ * `GET /v1/geo?include=rules`. Field names are the service's (`first_name`, `postcode`).
+ */
+export interface CountryRules {
   country: string;
-  layout: string[][];
-  fields: Record<string, FieldSpec | undefined>;
-  /** `#` is one letter or digit; the SDK's postcode formats read it the same way. */
-  postcode?: { masks?: string[] };
-  phone?: PhoneRules;
-}
-
-/** `GET /v1/countries/:country`, and `rules` in `GET /v1/geo?include=rules`. */
-interface CountryResponse {
-  /** The language `labels` is in: the one asked for if the service has it, else `en`. */
+  /** The language `label` and `messageLabel` are in. */
   lang?: string;
-  spec: CountrySpec;
-  labels?: Record<string, string>;
+  /** `false` for a country the service serves the default layout. */
+  curated?: boolean;
+  address: { layout: string[][]; fixed?: FixedValues };
+  contact: { layout: string[][] };
+  /** Exactly the fields the two layouts name. */
+  fields: Record<string, RulesField | undefined>;
   states?: State[];
 }
 
@@ -90,27 +109,11 @@ interface CountryRow {
 interface GeoResponse {
   ip?: string | null;
   currency?: string | null;
-  rules?: CountryResponse;
+  rules?: CountryRules;
 }
 
 /**
- * Whether this country actually collects `field`.
- *
- * `spec.fields` describes all ten fields for every country; `spec.layout` is what says
- * which of them are rendered, required and validated. Reading `fields.state` alone would
- * report a state label for Germany, which collects none — next-address's own
- * `listCountries` makes the same check for the same reason.
- */
-function collects(spec: CountrySpec, field: string): boolean {
-  return spec.layout.some(row => row.includes(field));
-}
-
-function fieldOf(spec: CountrySpec, name: string): FieldSpec | undefined {
-  return collects(spec, name) ? spec.fields[name] : undefined;
-}
-
-/**
- * One country's spec as the `CountryConfig` the rest of the SDK already understands.
+ * One country's rules as the `CountryConfig` the rest of the SDK already understands.
  *
  * `postcodeCompact` is the one flag that has to travel with the value: next-address
  * matches `pattern` against the postcode *compacted* — uppercased, spaces and hyphens removed — so a
@@ -122,25 +125,33 @@ function fieldOf(spec: CountrySpec, name: string): FieldSpec | undefined {
  * shape check, and a length floor on top of it can only disagree with it.
  */
 export function toCountryConfig(
-  spec: CountrySpec,
+  rules: CountryRules,
   currencyCode?: string | null
 ): CountryConfig {
-  const state = fieldOf(spec, 'state');
-  const postcode = fieldOf(spec, 'postcode');
+  const state = rules.fields.state;
+  const postcode = rules.fields.postcode;
+  const postcodeFormat = postcode?.format;
+  const phone = rules.fields.phone?.format;
 
   return {
     stateLabel: state?.label ?? 'State',
     stateRequired: state?.required ?? false,
     postcodeLabel: postcode?.label ?? 'Postal Code',
-    postcodeRegex: postcode?.pattern ?? null,
-    postcodeCompact: Boolean(postcode?.pattern),
+    // A country that asks for no postcode (Hong Kong) cannot be refused for leaving one
+    // out, and one whose postcode is fixed (Vatican City) sends it without asking.
+    postcodeRequired: postcode?.required ?? false,
+    postcodeRegex: postcodeFormat?.pattern ?? null,
+    postcodeCompact: Boolean(postcodeFormat?.pattern),
     postcodeMinLength: 0,
-    postcodeMaxLength: postcode?.maxLength ?? Number.MAX_SAFE_INTEGER,
-    postcodeExample: postcode?.example ?? null,
-    postcodeFormat: spec.postcode?.masks ?? null,
-    // Read whether or not the layout collects a phone: the checkout collects one in its
-    // own step, outside any address layout.
-    ...(spec.phone ? { phone: spec.phone } : {}),
+    postcodeMaxLength: postcode?.input.maxLength ?? Number.MAX_SAFE_INTEGER,
+    postcodeExample: postcodeFormat?.example ?? null,
+    postcodeFormat: (postcodeFormat?.masks as string[] | undefined) ?? null,
+    // Only a rule with a pattern checks a number; a country with no file of its own sends
+    // just the calling code and an example.
+    ...(phone?.pattern ? { phone: phone as PhoneRules } : {}),
+    ...(rules.address.fixed && Object.keys(rules.address.fixed).length > 0
+      ? { fixed: rules.address.fixed }
+      : {}),
     currencyCode: currencyCode ?? '',
     currencySymbol: '',
   };
@@ -174,10 +185,10 @@ async function getJson<T>(url: string): Promise<T> {
  * TypeError from inside the mapping and tell the caller nothing about the cause.
  */
 function rulesIn(
-  rules: CountryResponse | undefined,
+  rules: CountryRules | undefined,
   url: string
-): CountryResponse {
-  if (!rules || !Array.isArray(rules.spec?.layout)) {
+): CountryRules {
+  if (!rules || !Array.isArray(rules.address?.layout) || !rules.fields) {
     throw new Error(`${url} carried no address layout`);
   }
   return rules;
@@ -202,12 +213,16 @@ async function fetchMessages(
   }
 }
 
-/** What {@link CountryResponse} gives the messages: the names in them, and their language. */
+/** What a country's rules give the messages: each field's name in them, and their language. */
 function namesOf(
-  rules: CountryResponse
+  rules: CountryRules
 ): Pick<LocationData, 'labels' | 'messagesLang'> {
+  const labels: Record<string, string> = {};
+  for (const [name, field] of Object.entries(rules.fields)) {
+    if (field) labels[name] = field.messageLabel ?? field.label;
+  }
   return {
-    ...(rules.labels ? { labels: rules.labels } : {}),
+    labels,
     ...(rules.lang ? { messagesLang: rules.lang } : {}),
   };
 }
@@ -239,8 +254,8 @@ export async function fetchLocationData(
   const rules = rulesIn(geo.rules, geoUrl);
 
   return {
-    detectedCountryCode: rules.spec.country,
-    detectedCountryConfig: toCountryConfig(rules.spec, geo.currency),
+    detectedCountryCode: rules.country,
+    detectedCountryConfig: toCountryConfig(rules, geo.currency),
     detectedStates: rules.states ?? [],
     countries: toCountries(countries),
     ...(geo.ip ? { detectedIp: geo.ip } : {}),
@@ -263,12 +278,12 @@ export async function fetchCountryStates(
   lang: string = DEFAULT_LANG
 ): Promise<CountryStatesData> {
   const url = `${baseUrl}/v1/countries/${encodeURIComponent(countryCode)}?include=states&lang=${encodeURIComponent(lang)}`;
-  const rules = rulesIn(await getJson<CountryResponse>(url), url);
+  const rules = rulesIn(await getJson<CountryRules>(url), url);
 
   // No currency: a country's rules describe a country, not the visitor. The one the SDK
   // prices in is read once, from geo, and held in the config store.
   return {
-    countryConfig: toCountryConfig(rules.spec),
+    countryConfig: toCountryConfig(rules),
     states: rules.states ?? [],
     ...namesOf(rules),
   };

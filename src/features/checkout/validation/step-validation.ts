@@ -12,7 +12,7 @@
  * its own, the fourth (`creditCardService`) is what step 3 passes through.
  */
 
-import type { CountryConfig } from '@/core/country-service';
+import { asksForPostcode, type CountryConfig } from '@/core/country-service';
 
 import type { FormValidationContext } from './form-validation';
 import { validateForm } from './form-validation';
@@ -75,17 +75,10 @@ export async function validateStep(
 
   if (step === 1) {
     // Step 1: Contact information and shipping address
-    requiredFields = [
-      'email',
-      'fname',
-      'lname',
-      'country',
-      'address1',
-      'city',
-      'postal',
-    ];
+    requiredFields = ['email', 'fname', 'lname', 'country', 'address1', 'city'];
 
     const countryConfig = countryConfigs.get(formData.country);
+    if (asksForPostcode(countryConfig)) requiredFields.push('postal');
     if (countryConfig?.stateRequired) {
       requiredFields.push('province');
     }
@@ -95,16 +88,9 @@ export async function validateStep(
     }
   } else if (step === 2) {
     // Step 2: Shipping method (already validated in step 1, just check if present)
-    requiredFields = [
-      'email',
-      'fname',
-      'lname',
-      'country',
-      'address1',
-      'city',
-      'postal',
-    ];
+    requiredFields = ['email', 'fname', 'lname', 'country', 'address1', 'city'];
     const countryConfig = countryConfigs.get(formData.country);
+    if (asksForPostcode(countryConfig)) requiredFields.push('postal');
     if (countryConfig?.stateRequired) {
       requiredFields.push('province');
     }

@@ -77,6 +77,7 @@ The feature carried on, but something in the markup or the data was not what it 
 | `Country {countryCode} from URL not in available countries` | `country-selection.ts › resolveShippingCountry` | — |
 | `Saved country {savedCountryOverride} not in available countries` | `country-selection.ts › resolveShippingCountry` | — |
 | `Submit button not found in checkout form` | `field-scanning.ts › scanAllFields` | — |
+| `Could not read the fixed address values of {country}` | `fixed-address-values.ts › applyFixedValues` | yes |
 | `Province {storedProvince} not found in options for country {storedCountry}` | `form-population.ts › populateFormData` | — |
 | `Payment method "{value}" is not one the SDK knows — sending it to the API as it stands` | `method-selection.ts › handlePaymentMethodChange` | — |
 | `Shipping method {methodId} is not one this campaign offers` | `method-selection.ts › handleShippingMethodChange` | yes |
@@ -192,6 +193,7 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 | `Updated user data storage:` | `contact-persistence.ts › persistContactField` | yes |
 | `Already shown warning for order` | `duplicate-purchase-warning.ts › handlePurchaseEvent` | yes |
 | `Found submit button:` | `field-scanning.ts › scanAllFields` | yes |
+| `Wrote the fixed {form} address values of {country ?? 'no country'}` | `fixed-address-values.ts › applyFixedValues` | yes |
 | `Restored province: {storedProvince}` | `form-population.ts › populateFormData` | — |
 | `Location fields shown` | `location-field-visibility.ts › showLocationFields` | — |
 | `Billing location fields shown` | `location-field-visibility.ts › showBillingLocationFields` | — |

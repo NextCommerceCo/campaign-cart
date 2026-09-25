@@ -143,7 +143,7 @@ Keep `{label}` and `{example}` in the text: the SDK fills them in. The fields ar
 | Field | Description |
 |---|---|
 | `first_name`, `last_name` | The name fields |
-| `email`, `phone_number` | The contact fields |
+| `email`, `phone` | The contact fields |
 | `line1`, `line2` | The street lines |
 | `city`, `state`, `postcode` | The locality fields |
 | `country` | The country select |
@@ -154,7 +154,7 @@ For a language the address service does not have, give both the messages and the
 
 The empty `<div>` becomes the address fields the selected country collects, in the order that country writes them: a Japanese address leads with the postcode, a US one ends with state and ZIP. When the shopper changes country, the fields are rebuilt and what they typed is kept.
 
-The block builds only the fields the form does not already have, so the name and phone above are not built twice. It never builds the email. The checkout form still fills the country list with the countries the campaign ships to and the state list with the selected country's states, validates the fields, and keeps the city, state and postcode row hidden until the street address has a value.
+The block builds the address only: the name, email and phone are the page's own fields above. In a country with one city or postcode for every address, such as Vatican City, the block does not ask for it and the SDK sends it with the order. The checkout form still fills the country list with the countries the campaign ships to and the state list with the selected country's states, validates the fields, and keeps the city, state and postcode row hidden until the street address has a value.
 
 [Address block](../reference/data-attributes.md#address-block) lists its attributes, and [Styling the address block](#styling-the-address-block) below covers its markup.
 

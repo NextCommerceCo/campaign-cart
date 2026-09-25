@@ -22,6 +22,8 @@ import type {
   CreditCardService,
 } from '../services/credit-card-service';
 
+import { asksForPostcode } from '@/core/country-service';
+
 import { validateBillingAddress } from './billing-address-validation';
 import { findFirstErrorFieldInDOM } from './first-error-field';
 import {
@@ -96,7 +98,8 @@ export async function validateForm(
     requiredFields.push('province');
   }
 
-  requiredFields.push('postal', 'country');
+  if (asksForPostcode(countryConfig)) requiredFields.push('postal');
+  requiredFields.push('country');
 
   // Validate each required field
   requiredFields.forEach(field => {

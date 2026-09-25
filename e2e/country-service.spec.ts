@@ -1,7 +1,15 @@
 import { test, expect } from '@playwright/test';
 import type { Campaign } from '../src/types/campaign';
 import { RICH_CAMPAIGN } from './fixtures/campaign';
-import { stubCampaign, stubCart, bootSdk, routeAddressService } from './fixtures/routes';
+import {
+  stubCampaign,
+  stubCart,
+  bootSdk,
+  routeAddressService,
+  countryRules,
+  ruleField,
+  type CountryAnswer,
+} from './fixtures/routes';
 import type { Page } from '@playwright/test';
 
 /**
@@ -56,75 +64,80 @@ const GB_CAMPAIGN: Campaign = {
 };
 
 /**
- * next-address spec shapes, as `docs/http-api.md` and `packages/data/src/types.ts`
- * describe them: `fields` carries every field, `layout` says which ones the country
- * actually collects, and a postcode pattern is written against the **compact** value.
+ * Each country's rules in the service's shape (`docs/http-api.md` there): the fields its
+ * layouts name, and a postcode pattern written against the **compact** value.
  */
-const US_SPEC = {
-  country: 'US',
-  layout: [['country'], ['line1'], ['city', 'state', 'postcode']],
-  fields: {
-    state: { label: 'State', required: true },
-    postcode: { label: 'ZIP Code', required: true, maxLength: 10 },
-  },
-};
+const stateSelect = (label: string) =>
+  ruleField(label, 'address-level1', { type: 'select', options: 'states' });
+
+const US_RULES = countryRules(
+  'US',
+  [['country'], ['line1'], ['city', 'state', 'postcode']],
+  {
+    state: stateSelect('State'),
+    postcode: ruleField('ZIP Code', 'postal-code', { type: 'text', maxLength: 10 }),
+  }
+);
 
 /**
  * Canada: fixed length, so its pattern fits from the start. Kept alongside GB so that
  * anchoring the pattern from the end cannot quietly break the case that already worked.
  * Its one mask is what the address-rules service sends for it.
  */
-const CA_SPEC = {
-  country: 'CA',
-  layout: [['country'], ['line1'], ['city', 'state', 'postcode']],
-  fields: {
-    state: { label: 'Province', required: true },
-    postcode: {
-      label: 'Postal Code',
-      required: true,
-      pattern: '^[A-Z]\\d[A-Z]\\d[A-Z]\\d$',
-      example: 'K1A 0B1',
-      maxLength: 6,
-    },
-  },
-  postcode: { masks: ['### ###'] },
-};
+const CA_RULES = countryRules(
+  'CA',
+  [['country'], ['line1'], ['city', 'state', 'postcode']],
+  {
+    state: stateSelect('Province'),
+    postcode: ruleField(
+      'Postal Code',
+      'postal-code',
+      { type: 'text', maxLength: 6 },
+      {
+        format: {
+          pattern: '^[A-Z]\\d[A-Z]\\d[A-Z]\\d$',
+          example: 'K1A 0B1',
+          masks: ['### ###'],
+        },
+      }
+    ),
+  }
+);
 
 /** GB: no state, and three postcode lengths, one mask each. */
-const GB_SPEC = {
-  country: 'GB',
-  layout: [['country'], ['line1'], ['city'], ['postcode']],
-  fields: {
-    state: { label: 'County', required: false },
-    postcode: {
-      label: 'Postcode',
-      required: true,
-      pattern: '^[A-Z]{1,2}\\d[A-Z\\d]?\\d[A-Z]{2}$',
-      example: 'SW1A 0AA',
-      maxLength: 7,
-    },
-  },
-  postcode: { masks: ['## ###', '### ###', '#### ###'] },
-};
+const GB_RULES = countryRules('GB', [['country'], ['line1'], ['city'], ['postcode']], {
+  postcode: ruleField(
+    'Postcode',
+    'postal-code',
+    { type: 'text', maxLength: 7 },
+    {
+      format: {
+        pattern: '^[A-Z]{1,2}\\d[A-Z\\d]?\\d[A-Z]{2}$',
+        example: 'SW1A 0AA',
+        masks: ['## ###', '### ###', '#### ###'],
+      },
+    }
+  ),
+});
 
 /** Each country's rules, as `/v1/countries/{CODE}` answers them. GB has no states. */
-const LAYOUTS: Record<string, { spec: unknown; states: unknown[] }> = {
+const LAYOUTS: Record<string, CountryAnswer> = {
   US: {
-    spec: US_SPEC,
+    ...US_RULES,
     states: [
       { code: 'CA', name: 'California' },
       { code: 'NY', name: 'New York' },
     ],
   },
   CA: {
-    spec: CA_SPEC,
+    ...CA_RULES,
     states: [
       { code: 'ON', name: 'Ontario' },
       { code: 'QC', name: 'Quebec' },
       { code: 'BC', name: 'British Columbia' },
     ],
   },
-  GB: { spec: GB_SPEC, states: [] },
+  GB: GB_RULES,
 };
 
 /** Stub next-address: each country's rules from {@link LAYOUTS}, the visitor in the US. */
@@ -135,7 +148,7 @@ async function stubCountriesCdn(page: Page): Promise<void> {
       { code: 'CA', name: 'Canada' },
       { code: 'GB', name: 'United Kingdom' },
     ],
-    rules: code => LAYOUTS[code] ?? LAYOUTS.US,
+    rules: code => LAYOUTS[code] ?? US_RULES,
   });
 }
 

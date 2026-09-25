@@ -78,6 +78,10 @@ import {
 } from './autofill-detection';
 import { setupEnterKeyNavigation } from './enter-key-navigation';
 import {
+  applyFixedValues,
+  type AppliedFixedValues,
+} from './fixed-address-values';
+import {
   updateFieldValidationDisplay,
   type FieldValidationContext,
 } from './field-validation-display';
@@ -295,6 +299,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
    */
   private stopAutofillDetection?: () => void;
   private stopEnterKeyNavigation?: () => void;
+  private readonly fixedValues: Record<
+    'shipping' | 'billing',
+    AppliedFixedValues
+  > = { shipping: {}, billing: {} };
   private hasTrackedBeginCheckout = false;
   /**
    * Handle for the `begin_checkout` delay, so a form destroyed inside that window
@@ -511,6 +519,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
    */
   private subscribeToStores(): void {
     this.subscribe(useCheckoutStore, this.handleCheckoutUpdate.bind(this));
+    this.syncFixedValues(useCheckoutStore.getState());
     this.subscribe(useCartStore, this.handleCartUpdate.bind(this));
     this.subscribe(useConfigStore, this.handleConfigUpdate.bind(this));
     // The campaign decides which payment methods this store can charge, and it
@@ -2497,8 +2506,34 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     };
   }
 
+  /** Writes the values the chosen countries fix, as either country changes. */
+  private syncFixedValues(
+    state: ReturnType<typeof useCheckoutStore.getState>
+  ): void {
+    const ctx = {
+      countryService: this.countryService,
+      logger: this.logger,
+      updateFormData: (data: Record<string, string>) =>
+        this.updateFormData(data),
+    };
+    const shipping = state.formData.country as string | undefined;
+    if (shipping !== this.fixedValues.shipping.country) {
+      void applyFixedValues(
+        ctx,
+        'shipping',
+        shipping,
+        this.fixedValues.shipping
+      );
+    }
+    const billing = state.billingAddress?.country;
+    if (billing !== this.fixedValues.billing.country) {
+      void applyFixedValues(ctx, 'billing', billing, this.fixedValues.billing);
+    }
+  }
+
   private handleCheckoutUpdate(state: any): void {
     handleCheckoutUpdate(this.checkoutUpdateContext(), state);
+    this.syncFixedValues(state);
   }
 
   private handleCartUpdate(cartState: CartState): void {

@@ -3,6 +3,7 @@
  * Handles fetching country and state data from the CDN API with caching
  */
 
+import type { FixedValues } from '@/core/country-service/country-service.next-address';
 import type { PhoneRules } from '@/core/country-service/country-service.phone';
 import { getSelectedLocale } from '@/core/currency-formatter';
 import { Logger } from '@/core/logger';
@@ -39,6 +40,14 @@ export interface CountryConfig {
    * pattern and `validatePostalCode` compacts before matching.
    */
   postcodeCompact?: boolean;
+  /**
+   * Whether the country asks for a postcode. `false` for one that has none (Hong Kong) and
+   * for one whose single postcode is {@link fixed}; absent where it is not known, which is
+   * read as required.
+   */
+  postcodeRequired?: boolean;
+  /** Values every address in the country shares, sent without being asked for. */
+  fixed?: FixedValues;
   /**
    * How the country's phone numbers are shown and checked: the address-rules service's
    * `spec.phone`. Absent for a country with no rules of its own, or from a deployment that

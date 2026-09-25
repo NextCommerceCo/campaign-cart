@@ -124,6 +124,7 @@ function createFieldWithContainer(): {
   const container = document.createElement('div');
   container.className = 'form-group';
   const field = document.createElement('select');
+  field.setAttribute('data-next-checkout-field', 'province');
   container.appendChild(field);
   return { field, container };
 }
@@ -175,6 +176,31 @@ describe('updateStateOptions', () => {
     expect(field.hasAttribute('required')).toBe(false);
     expect(ctx.updateFormData).toHaveBeenCalledWith({ province: '' });
     expect(ctx.clearError).toHaveBeenCalledWith('province');
+  });
+
+  it('hides only the field when its parent holds the rest of the form too', async () => {
+    // A select placed straight in the <form>: hiding its parent hid the whole checkout.
+    const form = document.createElement('form');
+    const email = document.createElement('input');
+    email.setAttribute('data-next-checkout-field', 'email');
+    const field = document.createElement('select');
+    field.setAttribute('data-next-checkout-field', 'province');
+    form.append(email, field);
+    const ctx = createShippingCtx({
+      countryService: createFakeCountryService(() =>
+        Promise.resolve(
+          createStatesData({
+            countryConfig: createCountryConfig({ stateRequired: false }),
+            states: [],
+          })
+        )
+      ).service,
+    });
+
+    await updateStateOptions(ctx, 'VA', field);
+
+    expect(form.style.display).toBe('');
+    expect(field.style.display).toBe('none');
   });
 
   it('renders states behind a disabled+hidden "Select {label}" prompt, marks required, and reveals a container hidden by a previous country', async () => {

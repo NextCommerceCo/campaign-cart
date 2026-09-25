@@ -2,9 +2,9 @@
  * The next-address adapter: what the Worker serves, as the `CountryConfig` the rest of
  * the SDK already reads.
  *
- * The shapes asserted here are taken from the next-address repo's `docs/http-api.md` and
- * its `packages/data/src/types.ts`, not invented — a spec describes all ten fields for
- * every country and uses `layout` to say which of them the country actually collects.
+ * The shapes asserted here are taken from the service repo's `docs/http-api.md`, not
+ * invented: a country's rules name the fields it asks for in `address` and `contact`, and
+ * describe exactly those in `fields`.
  */
 
 import { describe, expect, it, vi, afterEach } from 'vitest';
@@ -14,54 +14,64 @@ import {
   fetchLocationData,
   flagUrl,
   toCountryConfig,
+  type CountryRules,
+  type RulesField,
 } from '@/core/country-service/country-service.next-address';
 import { validatePostalCode } from '@/core/country-service/country-service.postal-code';
 import { Logger } from '@/core/logger';
 import { CountryService } from '@/core/country-service';
 import { useConfigStore } from '@/state/config';
 
+const field = (
+  label: string,
+  format?: RulesField['format'],
+  input: Partial<RulesField['input']> = {}
+): RulesField => ({
+  label,
+  required: true,
+  autocomplete: 'off',
+  input: { type: 'text', ...input },
+  ...(format ? { format } : {}),
+});
+
+const rules = (
+  country: string,
+  address: string[][],
+  fields: Record<string, RulesField>,
+  extra: Partial<CountryRules> = {}
+): CountryRules => ({
+  country,
+  lang: 'en',
+  address: { layout: address, fixed: {} },
+  contact: { layout: [['first_name', 'last_name'], ['email']] },
+  fields,
+  ...extra,
+});
+
 /** GB: a state-less country whose postcode pattern is written against the compact value. */
-const GB_SPEC = {
-  country: 'GB',
-  layout: [
-    ['country'],
-    ['first_name', 'last_name'],
-    ['line1'],
-    ['city'],
-    ['postcode'],
-  ],
-  fields: {
-    state: { label: 'County', required: true },
-    postcode: {
-      label: 'Postcode',
-      required: true,
+const GB = rules('GB', [['country'], ['line1'], ['city'], ['postcode']], {
+  postcode: field(
+    'Postcode',
+    {
       pattern: '^[A-Z]{1,2}\\d[A-Z\\d]?\\d[A-Z]{2}$',
       example: 'SW1A 1AA',
-      maxLength: 8,
+      masks: ['## ###', '### ###', '#### ###'],
     },
-  },
-};
+    { maxLength: 8 }
+  ),
+});
 
-/** DE collects no postcode rule of its own and no state at all. */
-const DE_SPEC = {
-  country: 'DE',
-  layout: [['country'], ['first_name', 'last_name'], ['line1'], ['city']],
-  fields: { state: { label: 'Bundesland', required: true } },
-};
+/** DE collects no state at all, and no postcode rule of its own. */
+const DE = rules('DE', [['country'], ['line1'], ['city']], {});
 
-const US_SPEC = {
-  country: 'US',
-  layout: [['country'], ['line1'], ['city', 'state', 'postcode']],
-  fields: {
-    state: { label: 'State', required: true },
-    postcode: {
-      label: 'ZIP Code',
-      required: true,
-      pattern: '^\\d{5}$',
-      maxLength: 5,
-    },
-  },
-};
+const US = rules(
+  'US',
+  [['country'], ['line1'], ['city', 'state', 'postcode']],
+  {
+    state: field('State', undefined, { type: 'select', options: 'states' }),
+    postcode: field('ZIP Code', { pattern: '^\\d{5}$' }, { maxLength: 5 }),
+  }
+);
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -69,42 +79,67 @@ afterEach(() => {
 });
 
 describe('toCountryConfig', () => {
-  it("carries the country's phone rule from spec.phone", () => {
+  it("carries the country's phone rule from the phone field", () => {
     const phone = {
       callingCode: '49',
       nationalPrefix: '0',
       pattern: '^[0-9]{5,15}$',
     };
-    expect(toCountryConfig({ ...DE_SPEC, phone }).phone).toEqual(phone);
+    const config = toCountryConfig({
+      ...DE,
+      fields: { phone: field('Phone', phone, { type: 'tel' }) },
+    });
+    expect(config.phone).toEqual(phone);
   });
 
-  it('leaves the phone rules out when the service sends none', () => {
-    expect(toCountryConfig(DE_SPEC).phone).toBeUndefined();
+  it('checks no number for a phone field with only a calling code and an example', () => {
+    const config = toCountryConfig({
+      ...DE,
+      fields: {
+        phone: field('Phone', { callingCode: '977', example: '984-1234567' }),
+      },
+    });
+    expect(config.phone).toBeUndefined();
   });
 
-  it('reads the state label only when the country collects a state', () => {
-    expect(toCountryConfig(US_SPEC).stateLabel).toBe('State');
-    expect(toCountryConfig(US_SPEC).stateRequired).toBe(true);
+  it('reads the state label and whether it is required', () => {
+    expect(toCountryConfig(US).stateLabel).toBe('State');
+    expect(toCountryConfig(US).stateRequired).toBe(true);
   });
 
-  /**
-   * `fields.state` is present for every country; `layout` is what says it is collected.
-   * Reading the field alone would put a "Bundesland" dropdown on a German address, which
-   * collects no state — the same check next-address's own `listCountries` makes.
-   */
-  it('ignores a state field the layout does not render', () => {
-    const config = toCountryConfig(DE_SPEC);
-    expect(config.stateLabel).toBe('State');
+  it('asks for no state and no postcode where the country names neither', () => {
+    const config = toCountryConfig(DE);
     expect(config.stateRequired).toBe(false);
+    expect(config.postcodeRequired).toBe(false);
+    expect(config.postcodeRegex).toBeNull();
+    expect(config.postcodeCompact).toBe(false);
   });
 
-  it('ignores a postcode field the layout does not render', () => {
-    expect(toCountryConfig(DE_SPEC).postcodeRegex).toBeNull();
-    expect(toCountryConfig(DE_SPEC).postcodeCompact).toBe(false);
+  it('asks for a postcode where the country names one', () => {
+    expect(toCountryConfig(US).postcodeRequired).toBe(true);
+  });
+
+  it('carries the values the country fixes, and none where it fixes nothing', () => {
+    const va = rules(
+      'VA',
+      [['country'], ['line1']],
+      {},
+      {
+        address: {
+          layout: [['country'], ['line1']],
+          fixed: { city: 'Vatican City', postcode: '00120' },
+        },
+      }
+    );
+    expect(toCountryConfig(va).fixed).toEqual({
+      city: 'Vatican City',
+      postcode: '00120',
+    });
+    expect(toCountryConfig(US).fixed).toBeUndefined();
   });
 
   it('marks a served pattern as compact-matching', () => {
-    expect(toCountryConfig(GB_SPEC).postcodeCompact).toBe(true);
+    expect(toCountryConfig(GB).postcodeCompact).toBe(true);
   });
 
   /**
@@ -112,15 +147,12 @@ describe('toCountryConfig', () => {
    * on top of it can only disagree with it.
    */
   it('sets no postcode minimum length', () => {
-    expect(toCountryConfig(GB_SPEC).postcodeMinLength).toBe(0);
+    expect(toCountryConfig(GB).postcodeMinLength).toBe(0);
+    expect(toCountryConfig(GB).postcodeMaxLength).toBe(8);
   });
 
   it("uses the country's masks as its postcode formats", () => {
-    const spec = {
-      ...GB_SPEC,
-      postcode: { masks: ['## ###', '### ###', '#### ###'] },
-    };
-    expect(toCountryConfig(spec).postcodeFormat).toEqual([
+    expect(toCountryConfig(GB).postcodeFormat).toEqual([
       '## ###',
       '### ###',
       '#### ###',
@@ -128,17 +160,17 @@ describe('toCountryConfig', () => {
   });
 
   it('has no postcode format for a country with no masks', () => {
-    expect(toCountryConfig(US_SPEC).postcodeFormat).toBeNull();
+    expect(toCountryConfig(US).postcodeFormat).toBeNull();
   });
 
   it('carries the currency it is given, and no symbol', () => {
-    expect(toCountryConfig(US_SPEC, 'USD').currencyCode).toBe('USD');
+    expect(toCountryConfig(US, 'USD').currencyCode).toBe('USD');
     // Intl derives the symbol from the code in `core/currency-formatter.ts`.
-    expect(toCountryConfig(US_SPEC, 'USD').currencySymbol).toBe('');
+    expect(toCountryConfig(US, 'USD').currencySymbol).toBe('');
   });
 
   it('leaves currency empty when the service names none', () => {
-    expect(toCountryConfig(US_SPEC, null).currencyCode).toBe('');
+    expect(toCountryConfig(US, null).currencyCode).toBe('');
   });
 });
 
@@ -150,7 +182,7 @@ describe('toCountryConfig', () => {
  */
 describe('a compact pattern against a postcode as typed', () => {
   const logger = new Logger('test');
-  const gb = toCountryConfig(GB_SPEC);
+  const gb = toCountryConfig(GB);
 
   it.each(['SW1A 1AA', 'sw1a 1aa', 'SW1A1AA', 'sw1a1aa'])(
     'accepts %s',
@@ -164,7 +196,7 @@ describe('a compact pattern against a postcode as typed', () => {
   });
 
   it('leaves a raw-matched country alone', () => {
-    const raw = { ...toCountryConfig(US_SPEC), postcodeCompact: false };
+    const raw = { ...toCountryConfig(US), postcodeCompact: false };
     expect(validatePostalCode(logger, '90210', 'US', raw)).toBe(true);
   });
 });
@@ -205,11 +237,7 @@ describe('fetchLocationData', () => {
     const fetchMock = stubService({
       geo: {
         country: 'GB',
-        rules: {
-          lang: 'en',
-          spec: GB_SPEC,
-          states: [{ code: 'ENG', name: 'England' }],
-        },
+        rules: { ...GB, states: [{ code: 'ENG', name: 'England' }] },
       },
       countries: [
         { code: 'GB', name: 'United Kingdom' },
@@ -236,7 +264,10 @@ describe('fetchLocationData', () => {
   it('goes on without messages when the service could not send them', async () => {
     stubService({
       geo: {
-        rules: { lang: 'en', spec: GB_SPEC, labels: { line1: 'Address' } },
+        rules: {
+          ...GB,
+          fields: { line1: { ...field('Address'), messageLabel: 'Address' } },
+        },
       },
       countries: [],
     });
@@ -252,7 +283,7 @@ describe('fetchLocationData', () => {
 
   /** A country with no subdivisions omits `states` entirely rather than sending `[]`. */
   it('reports no states when the response carries none', async () => {
-    stubService({ geo: { rules: { spec: DE_SPEC } }, countries: [] });
+    stubService({ geo: { rules: DE }, countries: [] });
     expect(
       (await fetchLocationData('https://addr.test')).detectedStates
     ).toEqual([]);
@@ -260,7 +291,7 @@ describe('fetchLocationData', () => {
 
   it('reads the visitor currency and IP the service reports with their country', async () => {
     stubService({
-      geo: { currency: 'GBP', ip: '203.0.113.7', rules: { spec: GB_SPEC } },
+      geo: { currency: 'GBP', ip: '203.0.113.7', rules: GB },
       countries: [],
     });
 
@@ -271,7 +302,7 @@ describe('fetchLocationData', () => {
   });
 
   it('reports no IP rather than an empty one when the edge resolved none', async () => {
-    stubService({ geo: { ip: null, rules: { spec: GB_SPEC } }, countries: [] });
+    stubService({ geo: { ip: null, rules: GB }, countries: [] });
     expect(await fetchLocationData('https://addr.test')).not.toHaveProperty(
       'detectedIp'
     );
@@ -279,7 +310,7 @@ describe('fetchLocationData', () => {
 
   it('rejects an answer whose layout is not a list of rows', async () => {
     stubService({
-      geo: { rules: { spec: { country: 'US', layout: {}, fields: {} } } },
+      geo: { rules: { ...US, address: { layout: {} } } },
       countries: [],
     });
     await expect(fetchLocationData('https://addr.test')).rejects.toThrow(
@@ -303,11 +334,7 @@ describe('fetchLocationData', () => {
 describe('fetchCountryStates', () => {
   it("asks for the country's rules with its states", async () => {
     const fetchMock = stubService({
-      country: {
-        lang: 'en',
-        spec: US_SPEC,
-        states: [{ code: 'NY', name: 'New York' }],
-      },
+      country: { ...US, states: [{ code: 'NY', name: 'New York' }] },
     });
 
     const data = await fetchCountryStates('US', 'https://addr.test');
@@ -321,7 +348,7 @@ describe('fetchCountryStates', () => {
   });
 
   it('escapes the country code rather than pasting it into the path', async () => {
-    const fetchMock = stubService({ country: { spec: US_SPEC } });
+    const fetchMock = stubService({ country: US });
     await fetchCountryStates('../v1/geo', 'https://addr.test');
     expect(urlsOf(fetchMock)[0]).toContain('%2F');
   });
@@ -342,7 +369,7 @@ describe('CountryService language', () => {
   });
 
   it("asks in the page's locale, and keeps English where none is set", async () => {
-    const fetchMock = stubService({ country: { spec: US_SPEC, states: [] } });
+    const fetchMock = stubService({ country: { ...US, states: [] } });
     const service = CountryService.getInstance();
 
     await service.getCountryStates('US');
@@ -358,11 +385,11 @@ describe('CountryService language', () => {
   it("keeps each country's names for its messages, and the last as the default", async () => {
     const service = CountryService.getInstance();
     stubService({
-      country: { spec: US_SPEC, labels: { postcode: 'ZIP Code' } },
+      country: US,
     });
     await service.getCountryStates('US');
     stubService({
-      country: { spec: GB_SPEC, labels: { postcode: 'Postcode' } },
+      country: GB,
     });
     await service.getCountryStates('GB');
 
@@ -372,7 +399,7 @@ describe('CountryService language', () => {
   });
 
   it('refetches rather than serve a cached answer in another language', async () => {
-    const fetchMock = stubService({ country: { spec: US_SPEC, states: [] } });
+    const fetchMock = stubService({ country: { ...US, states: [] } });
     const service = CountryService.getInstance();
 
     await service.getCountryStates('US');

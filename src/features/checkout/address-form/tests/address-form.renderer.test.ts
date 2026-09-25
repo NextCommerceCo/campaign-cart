@@ -1,70 +1,92 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import type { AddressSpec } from '../address-form.api';
+import type { RulesField } from '@/core/country-service';
+
 import {
   readRenderedValues,
-  renderAddressSpec,
+  renderLayout,
   sdkFieldName,
 } from '../address-form.renderer';
 
+/** One layout of a country's rules, with the fields it names. */
+interface Spec {
+  country: string;
+  layout: string[][];
+  fields: Record<string, RulesField | undefined>;
+}
+
+const render = (
+  target: HTMLElement,
+  spec: Spec,
+  ctx: Parameters<typeof renderLayout>[3]
+) => renderLayout(target, spec.layout, spec.fields, ctx);
+
 const text = (
-  name: string,
   label: string,
   autocomplete: string,
-  extra: Record<string, unknown> = {}
-) => ({ name, label, required: true, autocomplete, control: 'text' as const, ...extra });
+  input: Partial<RulesField['input']> = {}
+): RulesField => ({
+  label,
+  required: true,
+  autocomplete,
+  input: { type: 'text', ...input },
+});
 
-const US: AddressSpec = {
+const select = (
+  label: string,
+  autocomplete: string,
+  options: 'countries' | 'states'
+): RulesField => text(label, autocomplete, { type: 'select', options });
+
+const US: Spec = {
   country: 'US',
   layout: [['country'], ['line1'], ['city', 'state', 'postcode']],
   fields: {
-    country: {
-      ...text('country', 'Country', 'country'),
-      control: 'select',
-    },
-    line1: text('line1', 'Address', 'address-line1'),
-    city: text('city', 'City', 'address-level2'),
-    state: {
-      ...text('state', 'State', 'address-level1'),
-      control: 'select',
-      optionsSource: 'states',
-    },
-    postcode: text('postcode', 'ZIP Code', 'postal-code', { maxLength: 10 }),
+    country: select('Country', 'country', 'countries'),
+    line1: text('Address', 'address-line1'),
+    city: text('City', 'address-level2'),
+    state: select('State', 'address-level1', 'states'),
+    postcode: text('ZIP Code', 'postal-code', { maxLength: 10 }),
   },
 };
 
-const JP: AddressSpec = {
+const JP: Spec = {
   country: 'JP',
   layout: [['country'], ['postcode', 'state'], ['city'], ['line1']],
   fields: {
-    country: { ...text('country', 'Country', 'country'), control: 'select' },
-    postcode: text('postcode', '郵便番号', 'postal-code'),
-    state: { ...text('state', '都道府県', 'address-level1'), control: 'select' },
-    city: text('city', '市区町村', 'address-level2'),
-    line1: text('line1', '番地', 'address-line1'),
+    country: select('Country', 'country', 'countries'),
+    postcode: text('郵便番号', 'postal-code'),
+    state: select('都道府県', 'address-level1', 'states'),
+    city: text('市区町村', 'address-level2'),
+    line1: text('番地', 'address-line1'),
   },
 };
 
-const TH: AddressSpec = {
+const TH: Spec = {
   country: 'TH',
   layout: [['country'], ['line1'], ['line3'], ['city'], ['postcode']],
   fields: {
-    country: { ...text('country', 'Country', 'country'), control: 'select' },
-    line1: text('line1', 'Address', 'address-line1'),
-    line3: text('line3', 'Sub-district', 'address-level3'),
-    city: text('city', 'District', 'address-level2'),
-    postcode: text('postcode', 'Postcode', 'postal-code'),
+    country: select('Country', 'country', 'countries'),
+    line1: text('Address', 'address-line1'),
+    line3: text('Sub-district', 'address-level3'),
+    city: text('District', 'address-level2'),
+    postcode: text('Postcode', 'postal-code'),
   },
 };
 
 /** The same layout with the name row a page may collect in a step of its own. */
-const US_WITH_NAME: AddressSpec = {
+const US_WITH_NAME: Spec = {
   ...US,
-  layout: [['country'], ['first_name', 'last_name'], ['line1'], ['city', 'state', 'postcode']],
+  layout: [
+    ['country'],
+    ['first_name', 'last_name'],
+    ['line1'],
+    ['city', 'state', 'postcode'],
+  ],
   fields: {
     ...US.fields,
-    first_name: text('first_name', 'First name', 'given-name'),
-    last_name: text('last_name', 'Last name', 'family-name'),
+    first_name: text('First name', 'given-name'),
+    last_name: text('Last name', 'family-name'),
   },
 };
 
@@ -81,7 +103,8 @@ describe('sdkFieldName', () => {
     ['line2', 'address2'],
     ['state', 'province'],
     ['postcode', 'postal'],
-    ['phone_number', 'phone'],
+    ['phone', 'phone'],
+    ['email', 'email'],
     ['first_name', 'fname'],
   ])('maps %s to this SDK’s %s', (from, to) => {
     expect(sdkFieldName(from, 'shipping')).toBe(to);
@@ -91,41 +114,59 @@ describe('sdkFieldName', () => {
     expect(sdkFieldName('line1', 'billing')).toBe('billing-address1');
   });
 
-    it('maps line3 to nothing', () => {
+  it('maps line3 to nothing', () => {
     expect(sdkFieldName('line3', 'shipping')).toBeNull();
   });
 });
 
-describe('renderAddressSpec', () => {
+describe('renderLayout', () => {
   it('builds the fields the layout names, in layout order', () => {
-    const rendered = renderAddressSpec(container, US, { form: 'shipping' });
+    const rendered = render(container, US, { form: 'shipping' });
 
-    expect(rendered).toEqual(['country', 'address1', 'city', 'province', 'postal']);
+    expect(rendered).toEqual([
+      'country',
+      'address1',
+      'city',
+      'province',
+      'postal',
+    ]);
   });
 
   it('puts a country’s fields where that country writes them', () => {
-    const rendered = renderAddressSpec(container, JP, { form: 'shipping' });
+    const rendered = render(container, JP, { form: 'shipping' });
 
-    expect(rendered).toEqual(['country', 'postal', 'province', 'city', 'address1']);
+    expect(rendered).toEqual([
+      'country',
+      'postal',
+      'province',
+      'city',
+      'address1',
+    ]);
     const secondRow = container.querySelector('[data-next-address-row="1"]');
     expect(
-      [...(secondRow?.querySelectorAll('[data-next-address-field]') ?? [])].map(cell =>
-        cell.getAttribute('data-next-address-field')
+      [...(secondRow?.querySelectorAll('[data-next-address-field]') ?? [])].map(
+        cell => cell.getAttribute('data-next-address-field')
       )
     ).toEqual(['postal', 'province']);
   });
 
   it('marks every control as a checkout field', () => {
-    renderAddressSpec(container, US, { form: 'shipping' });
+    render(container, US, { form: 'shipping' });
 
-    const fields = [...container.querySelectorAll('[data-next-checkout-field]')].map(el =>
-      el.getAttribute('data-next-checkout-field')
-    );
-    expect(fields).toEqual(['country', 'address1', 'city', 'province', 'postal']);
+    const fields = [
+      ...container.querySelectorAll('[data-next-checkout-field]'),
+    ].map(el => el.getAttribute('data-next-checkout-field'));
+    expect(fields).toEqual([
+      'country',
+      'address1',
+      'city',
+      'province',
+      'postal',
+    ]);
   });
 
-    it('prefixes autocomplete with the form it belongs to', () => {
-    renderAddressSpec(container, US, { form: 'shipping' });
+  it('prefixes autocomplete with the form it belongs to', () => {
+    render(container, US, { form: 'shipping' });
 
     expect(
       container
@@ -135,49 +176,59 @@ describe('renderAddressSpec', () => {
   });
 
   it('builds a select for a field whose options another part of the SDK fills', () => {
-    renderAddressSpec(container, US, { form: 'shipping' });
+    render(container, US, { form: 'shipping' });
 
-    const province = container.querySelector('[data-next-checkout-field="province"]');
+    const province = container.querySelector(
+      '[data-next-checkout-field="province"]'
+    );
     expect(province?.tagName).toBe('SELECT');
     expect(province?.children).toHaveLength(0);
   });
 
   it('leaves out a field this SDK does not collect, and the rest of its row stands', () => {
-    const rendered = renderAddressSpec(container, TH, { form: 'shipping' });
+    const rendered = render(container, TH, { form: 'shipping' });
 
     expect(rendered).not.toContain('line3');
     expect(rendered).toEqual(['country', 'address1', 'city', 'postal']);
   });
 
   it('does not build a field the page already collects elsewhere', () => {
-    const rendered = renderAddressSpec(container, US_WITH_NAME, {
+    const rendered = render(container, US_WITH_NAME, {
       form: 'shipping',
       alreadyCollected: new Set(['fname', 'lname']),
     });
 
-    expect(rendered).toEqual(['country', 'address1', 'city', 'province', 'postal']);
-    expect(container.querySelector('[data-next-checkout-field="fname"]')).toBeNull();
+    expect(rendered).toEqual([
+      'country',
+      'address1',
+      'city',
+      'province',
+      'postal',
+    ]);
+    expect(
+      container.querySelector('[data-next-checkout-field="fname"]')
+    ).toBeNull();
   });
 
   it('drops the row entirely when every field on it is collected elsewhere', () => {
-    renderAddressSpec(container, US_WITH_NAME, {
+    render(container, US_WITH_NAME, {
       form: 'shipping',
       alreadyCollected: new Set(['fname', 'lname']),
     });
 
-    const rows = [...container.querySelectorAll('[data-next-address-row]')].map(r =>
-      r.getAttribute('data-next-address-row')
+    const rows = [...container.querySelectorAll('[data-next-address-row]')].map(
+      r => r.getAttribute('data-next-address-row')
     );
     expect(rows).not.toContain('1');
   });
 
   it('builds a field once even when the layout names it twice', () => {
-    const twice: AddressSpec = {
+    const twice: Spec = {
       ...US,
       layout: [['country'], ['line1'], ['line1'], ['city']],
     };
 
-    const rendered = renderAddressSpec(container, twice, { form: 'shipping' });
+    const rendered = render(container, twice, { form: 'shipping' });
 
     expect(rendered).toEqual(['country', 'address1', 'city']);
     expect(
@@ -186,29 +237,32 @@ describe('renderAddressSpec', () => {
   });
 
   it('replaces the previous country’s fields rather than adding to them', () => {
-    renderAddressSpec(container, US, { form: 'shipping' });
-    renderAddressSpec(container, JP, { form: 'shipping' });
+    render(container, US, { form: 'shipping' });
+    render(container, JP, { form: 'shipping' });
 
-    expect(container.querySelectorAll('[data-next-checkout-field]')).toHaveLength(5);
-    expect(container.querySelector('[data-next-address-row="2"]')?.textContent).toContain(
-      '市区町村'
-    );
+    expect(
+      container.querySelectorAll('[data-next-checkout-field]')
+    ).toHaveLength(5);
+    expect(
+      container.querySelector('[data-next-address-row="2"]')?.textContent
+    ).toContain('市区町村');
   });
 
   it('puts back what the shopper had typed', () => {
-    renderAddressSpec(container, US, {
+    render(container, US, {
       form: 'shipping',
       values: { address1: '1 Test Street', city: 'Testville' },
     });
 
     expect(
-      container.querySelector<HTMLInputElement>('[data-next-checkout-field="address1"]')
-        ?.value
+      container.querySelector<HTMLInputElement>(
+        '[data-next-checkout-field="address1"]'
+      )?.value
     ).toBe('1 Test Street');
   });
 
   it('wraps every field in .form-group, which the SDK queries for', () => {
-    renderAddressSpec(container, US, { form: 'shipping' });
+    render(container, US, { form: 'shipping' });
 
     expect(container.querySelectorAll('.form-group')).toHaveLength(5);
     expect(
@@ -219,7 +273,7 @@ describe('renderAddressSpec', () => {
   });
 
   it('builds billing-prefixed fields for a billing block', () => {
-    const rendered = renderAddressSpec(container, US, { form: 'billing' });
+    const rendered = render(container, US, { form: 'billing' });
 
     expect(rendered).toEqual([
       'billing-country',
@@ -236,16 +290,17 @@ describe('renderAddressSpec', () => {
   });
 
   it('falls the placeholder back to the label, so an empty box is never blank', () => {
-    renderAddressSpec(container, US, { form: 'shipping' });
+    render(container, US, { form: 'shipping' });
 
     expect(
-      container.querySelector<HTMLInputElement>('[data-next-checkout-field="city"]')
-        ?.placeholder
+      container.querySelector<HTMLInputElement>(
+        '[data-next-checkout-field="city"]'
+      )?.placeholder
     ).toBe('City');
   });
 
   it('labels every control, and the label points at it', () => {
-    renderAddressSpec(container, JP, { form: 'shipping' });
+    render(container, JP, { form: 'shipping' });
 
     const label = container.querySelector<HTMLLabelElement>('label');
     expect(label?.textContent).toBe('Country');
@@ -253,7 +308,7 @@ describe('renderAddressSpec', () => {
   });
 
   it('puts the label after its control, so CSS can reach it from the control', () => {
-    renderAddressSpec(container, US, { form: 'shipping' });
+    render(container, US, { form: 'shipping' });
 
     const cell = container.querySelector('[data-next-address-field="city"]');
     expect([...(cell?.children ?? [])].map(el => el.tagName)).toEqual([
@@ -263,13 +318,13 @@ describe('renderAddressSpec', () => {
   });
 });
 
-describe('renderAddressSpec: rows that wait for the street address', () => {
-  const US_WITH_LINE2: AddressSpec = {
+describe('renderLayout: rows that wait for the street address', () => {
+  const US_WITH_LINE2: Spec = {
     ...US,
     layout: [['country'], ['line1'], ['line2'], ['city', 'state', 'postcode']],
     fields: {
       ...US.fields,
-      line2: { ...text('line2', 'Apartment', 'address-line2'), required: false },
+      line2: { ...text('Apartment', 'address-line2'), required: false },
     },
   };
 
@@ -283,25 +338,25 @@ describe('renderAddressSpec: rows that wait for the street address', () => {
     );
 
   it('marks the city/state/postcode rows after line1, and nothing else', () => {
-    renderAddressSpec(container, US_WITH_LINE2, { form: 'shipping' });
+    render(container, US_WITH_LINE2, { form: 'shipping' });
 
     expect(locationRows('location')).toEqual([['city', 'province', 'postal']]);
   });
 
   it('marks each location row when a country splits them (TH)', () => {
-    renderAddressSpec(container, TH, { form: 'shipping' });
+    render(container, TH, { form: 'shipping' });
 
     expect(locationRows('location')).toEqual([['city'], ['postal']]);
   });
 
   it('marks nothing that comes before line1 (JP writes the postcode first)', () => {
-    renderAddressSpec(container, JP, { form: 'shipping' });
+    render(container, JP, { form: 'shipping' });
 
     expect(locationRows('location')).toEqual([]);
   });
 
   it('marks a billing block’s rows as billing-location', () => {
-    renderAddressSpec(container, US, { form: 'billing' });
+    render(container, US, { form: 'billing' });
 
     expect(locationRows('billing-location')).toEqual([
       ['billing-city', 'billing-province', 'billing-postal'],
@@ -312,7 +367,7 @@ describe('renderAddressSpec: rows that wait for the street address', () => {
 
 describe('readRenderedValues', () => {
   it('reads what is in the text inputs', () => {
-    renderAddressSpec(container, US, { form: 'shipping' });
+    render(container, US, { form: 'shipping' });
     container.querySelector<HTMLInputElement>(
       '[data-next-checkout-field="city"]'
     )!.value = 'Testville';
@@ -321,7 +376,7 @@ describe('readRenderedValues', () => {
   });
 
   it('does not carry a dropdown choice into another country', () => {
-    renderAddressSpec(container, US, { form: 'shipping' });
+    render(container, US, { form: 'shipping' });
     const province = container.querySelector<HTMLSelectElement>(
       '[data-next-checkout-field="province"]'
     )!;

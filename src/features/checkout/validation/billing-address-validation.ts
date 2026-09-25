@@ -10,7 +10,7 @@
  * from the validator ({@link BillingAddressValidationContext}).
  */
 
-import type { CountryConfig } from '@/core/country-service';
+import { asksForPostcode, type CountryConfig } from '@/core/country-service';
 
 import { isValidPhone, type PhoneNumberSource } from './phone-validation';
 import { emojiErrors, fieldMessage, postalMessage } from './field-messages';
@@ -64,7 +64,7 @@ export function validateBillingAddress(
     requiredBillingFields.push('province');
   }
 
-  requiredBillingFields.push('postal');
+  if (asksForPostcode(countryConfig)) requiredBillingFields.push('postal');
 
   const country = billingAddress?.country;
   const source = ctx.countryService;

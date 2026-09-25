@@ -5,6 +5,8 @@ import {
   stubCart,
   bootSdk,
   routeAddressService,
+  countryRules,
+  ruleField,
 } from './fixtures/routes';
 
 /**
@@ -45,14 +47,6 @@ async function configure(page: Page, config: object): Promise<void> {
 
 /** Stub the country/states CDN the checkout form's CountryService calls. */
 async function stubCountryService(page: Page): Promise<void> {
-  const spec = {
-    country: 'US',
-    layout: [['country'], ['line1'], ['city', 'state', 'postcode']],
-    fields: {
-      state: { label: 'State', required: true },
-      postcode: { label: 'ZIP Code', required: true },
-    },
-  };
   const answerIn = (lang: string) => (lang.startsWith('th') ? THAI : ENGLISH);
   await routeAddressService(page, {
     countries: [
@@ -61,7 +55,24 @@ async function stubCountryService(page: Page): Promise<void> {
     ],
     rules: (_, { lang }) => {
       const answer = answerIn(lang);
-      return { lang: answer.lang, spec, labels: answer.labels };
+      const named = (name: keyof typeof answer.labels, autocomplete: string) => ({
+        ...ruleField(answer.labels[name], autocomplete),
+        messageLabel: answer.labels[name],
+      });
+      return countryRules(
+        'US',
+        [['country'], ['line1'], ['city', 'state', 'postcode']],
+        {
+          state: ruleField('State', 'address-level1', {
+            type: 'select',
+            options: 'states',
+          }),
+          postcode: ruleField('ZIP Code', 'postal-code'),
+          first_name: named('first_name', 'given-name'),
+          email: named('email', 'email'),
+        },
+        { lang: answer.lang }
+      );
     },
     locale: lang => answerIn(lang).messages,
   });
