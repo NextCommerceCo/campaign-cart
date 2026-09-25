@@ -66,17 +66,21 @@ export interface LocationData {
   detectedStates: State[];
   countries: Country[];
   detectedIp?: string;
+  /** The address-rules service's `error.*` templates, keyed by message id. */
+  messages?: Record<string, string>;
 }
 
 export interface CountryStatesData {
   countryConfig: CountryConfig;
   states: State[];
+  messages?: Record<string, string>;
 }
 
 export class CountryService {
   private static instance: CountryService;
   private cachePrefix = 'next_country_';
   private cacheExpiry = 3600000; // 1 hour in milliseconds
+  private messages: Record<string, string> = {};
   private logger: Logger;
   private config: AddressConfig = {};
   private campaignShippingCountries: string[] | null = null;
@@ -140,6 +144,19 @@ export class CountryService {
   }
 
   /**
+   * The address-rules service's `error.*` templates from its last answer, such as
+   * `error.emoji`. Empty until it has answered; a caller falls back to its own
+   * wording.
+   */
+  public getMessages(): Readonly<Record<string, string>> {
+    return this.messages;
+  }
+
+  private keepMessages(data: { messages?: Record<string, string> }): void {
+    if (data.messages) this.messages = data.messages;
+  }
+
+  /**
    * Get location data with user's detected country and list of all countries
    */
   public async getLocationData(): Promise<LocationData> {
@@ -147,11 +164,13 @@ export class CountryService {
     const cached = this.getFromCache('location_data', true);
 
     if (cached) {
+      this.keepMessages(cached);
       return await this.applyCountryFiltering(cached);
     }
 
     try {
       const data = await fetchLocationData();
+      this.keepMessages(data);
       // Store in localStorage for longer persistence
       this.setCache('location_data', data, true);
 
@@ -178,6 +197,7 @@ export class CountryService {
     const cached = this.getFromCache(cacheKey, true);
 
     if (cached) {
+      this.keepMessages(cached);
       return {
         ...cached,
         countryConfig: postalCodeMethods.withPostcodeFormats(
@@ -190,6 +210,7 @@ export class CountryService {
 
     try {
       const data = await fetchCountryStates(countryCode);
+      this.keepMessages(data);
       // Store in localStorage for longer persistence
       this.setCache(cacheKey, data, true);
 

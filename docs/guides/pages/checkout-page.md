@@ -104,7 +104,7 @@ Below is an example of both steps, with the shipping address built by the SDK.
 <div data-next-address="shipping"></div>
 ```
 
-The SDK requires the first name, last name and email. The phone is optional unless its input carries `required` or `data-next-required="true"`.
+The SDK requires the first name, last name and email. The phone is optional unless its input carries `required` or `data-next-required="true"`. No field accepts an emoji.
 
 The SDK writes the phone number in the country's format as it is typed (`4155552671` reads `(415) 555-2671` in the US) and sends it to the order as `+14155552671`. It checks only that the number is a plausible length, and the order API validates it.
 

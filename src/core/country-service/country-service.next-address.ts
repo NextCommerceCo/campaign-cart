@@ -100,6 +100,7 @@ const POSTCODE_PATTERNS: Record<string, string> = {
 interface LayoutResponse {
   spec: CountrySpec;
   states?: State[];
+  messages?: Record<string, string>;
 }
 
 interface BootstrapResponse extends LayoutResponse {
@@ -215,6 +216,7 @@ export async function fetchLocationData(
     detectedStates: data.states ?? [],
     countries: toCountries(data.countries),
     ...(data.geo?.ip ? { detectedIp: data.geo.ip } : {}),
+    ...(data.messages ? { messages: data.messages } : {}),
   };
 }
 
@@ -238,5 +240,6 @@ export async function fetchCountryStates(
   return {
     countryConfig: toCountryConfig(data.spec),
     states: data.states ?? [],
+    ...(data.messages ? { messages: data.messages } : {}),
   };
 }

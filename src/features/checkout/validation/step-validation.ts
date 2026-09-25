@@ -18,7 +18,12 @@ import { formatFieldName } from './field-labels';
 import type { FormValidationContext } from './form-validation';
 import { validateForm } from './form-validation';
 import { isPhoneMarkedRequired, isValidPhone } from './phone-validation';
-import { isValidCity, isValidEmail, isValidName } from './validation-patterns';
+import {
+  emailError,
+  emojiErrors,
+  isValidCity,
+  isValidName,
+} from './validation-patterns';
 import type { FormValidationResult } from './validation.types';
 
 /**
@@ -153,8 +158,11 @@ export async function validateStep(
   }
 
   // Email validation
-  if (formData.email && !isValidEmail(formData.email)) {
-    errors.email = 'Please enter a valid email address';
+  const emailProblem = formData.email
+    ? emailError(formData.email, ctx.countryService?.getMessages?.())
+    : null;
+  if (emailProblem) {
+    errors.email = emailProblem;
     isValid = false;
     if (!firstErrorField) firstErrorField = 'email';
   }
@@ -190,6 +198,18 @@ export async function validateStep(
       isValid = false;
       if (!firstErrorField) firstErrorField = 'postal';
     }
+  }
+
+  // Last, so an emoji's message replaces the name or email one that says less.
+  const emojiProblems = emojiErrors(
+    formData,
+    ctx.countryService?.getMessages?.()
+  );
+  Object.assign(errors, emojiProblems);
+  const firstEmoji = Object.keys(emojiProblems)[0];
+  if (firstEmoji) {
+    isValid = false;
+    if (!firstErrorField) firstErrorField = firstEmoji;
   }
 
   return { isValid, firstErrorField, errors };

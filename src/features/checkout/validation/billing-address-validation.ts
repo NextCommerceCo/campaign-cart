@@ -14,11 +14,11 @@
 import type { CountryConfig } from '@/core/country-service';
 
 import { isValidPhone, type PhoneNumberSource } from './phone-validation';
-import { isValidName } from './validation-patterns';
+import { emojiErrors, isValidName } from './validation-patterns';
 
 /** What this module needs from `CheckoutValidator`. */
 export interface BillingAddressValidationContext {
-  /** Provides `validatePostalCode(value, countryCode, config)`. */
+  /** Provides `validatePostalCode(value, countryCode, config)` and `getMessages()`. */
   countryService: any;
   /** Set by the form once its phone fields exist, so the number is checked per country. */
   phoneSource?: (type: 'shipping' | 'billing') => PhoneNumberSource | undefined;
@@ -129,6 +129,13 @@ export function validateBillingAddress(
       isValid = false;
     }
   }
+
+  const emojiProblems = emojiErrors(
+    billingAddress,
+    ctx.countryService?.getMessages?.()
+  );
+  Object.assign(errors, emojiProblems);
+  if (Object.keys(emojiProblems).length) isValid = false;
 
   return { isValid, errors };
 }

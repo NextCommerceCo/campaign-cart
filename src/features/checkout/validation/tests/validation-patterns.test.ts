@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   VALIDATION_PATTERNS,
+  emailError,
+  emojiError,
+  emojiErrors,
   isValidCity,
   isValidEmail,
   isValidName,
@@ -101,5 +104,68 @@ describe('isValidCity', () => {
 
     expect(isValidCity("St. John's")).toBe(true); // U+0027
     expect(isValidCity('St. John’s')).toBe(true); // U+2019, what an iPhone types
+  });
+});
+
+describe('emojiError', () => {
+  it('refuses any emoji, however it is built', () => {
+    for (const value of ['Jane 😀', '🇹🇭', '👩‍💻', '👍🏽', '❤️', '1️⃣', '™️']) {
+      expect(emojiError(value), value).toBe('This field can’t contain emojis');
+    }
+  });
+
+  it('takes symbols and scripts that are text, not emojis', () => {
+    for (const value of [
+      'Acme™ Ltd',
+      '© ®',
+      'Unit 4 → rear',
+      'สมชาย ใจดี',
+      'क्‍ष',
+      'Straße 5',
+      '★',
+    ]) {
+      expect(emojiError(value), value).toBeNull();
+    }
+  });
+
+  it('ignores a value that is not text', () => {
+    expect(emojiError(undefined)).toBeNull();
+    expect(emojiError(true)).toBeNull();
+  });
+
+  it("uses the address-rules service's wording when it has sent it", () => {
+    expect(emojiError('😀', { 'error.emoji': 'ช่องนี้ต้องไม่มีอีโมจิ' })).toBe(
+      'ช่องนี้ต้องไม่มีอีโมจิ'
+    );
+  });
+});
+
+describe('emojiErrors', () => {
+  it('reports every field holding an emoji, and only those', () => {
+    expect(
+      emojiErrors({ fname: 'Jane', address2: 'Apt 4 🏠', city: '🌆' })
+    ).toEqual({
+      address2: 'This field can’t contain emojis',
+      city: 'This field can’t contain emojis',
+    });
+    expect(emojiErrors(undefined)).toEqual({});
+  });
+});
+
+describe('emailError', () => {
+  it('calls an address invalid when it is not an email', () => {
+    expect(emailError('shopper@gmail.c')).toBe(
+      'Please enter a valid email address'
+    );
+  });
+
+  it('finds nothing wrong with a valid address', () => {
+    expect(emailError('shopper@example.co')).toBeNull();
+  });
+
+  it("uses the address-rules service's wording when it has sent it", () => {
+    expect(emailError('a@b', { 'error.email': 'อีเมลไม่ถูกต้อง' })).toBe(
+      'อีเมลไม่ถูกต้อง'
+    );
   });
 });

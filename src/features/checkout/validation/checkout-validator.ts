@@ -40,7 +40,13 @@ import { focusFirstErrorField } from './first-error-field';
 import { validateForm, type FormValidationContext } from './form-validation';
 import { type PhoneNumberSource } from './phone-validation';
 import { validateStep } from './step-validation';
-import { isValidCity, isValidEmail, isValidName } from './validation-patterns';
+import {
+  emailError,
+  emojiError,
+  isValidCity,
+  isValidEmail,
+  isValidName,
+} from './validation-patterns';
 import type {
   FormValidationResult,
   ValidationResult,
@@ -146,6 +152,11 @@ export class CheckoutValidator {
     context?: any
   ): ValidationResult {
     const rules = this.rules.get(name) || [];
+    const emoji = emojiError(value, this.countryService?.getMessages?.());
+    if (emoji) {
+      this.setError(name, emoji);
+      return { isValid: false, message: emoji };
+    }
     let isValid = true;
     let message: string | undefined;
 
@@ -160,7 +171,11 @@ export class CheckoutValidator {
     for (const rule of rules) {
       if (!applyRule(ruleContext, rule, value, context)) {
         message =
-          rule.message || `${formatFieldName(name, context)} is invalid`;
+          (rule.type === 'email'
+            ? emailError(value, this.countryService?.getMessages?.())
+            : null) ||
+          rule.message ||
+          `${formatFieldName(name, context)} is invalid`;
         this.setError(name, message);
         isValid = false;
         break;

@@ -30,7 +30,12 @@ import {
   isValidPhone,
   type PhoneNumberSource,
 } from './phone-validation';
-import { isValidCity, isValidEmail, isValidName } from './validation-patterns';
+import {
+  emailError,
+  emojiErrors,
+  isValidCity,
+  isValidName,
+} from './validation-patterns';
 import type { FormValidationResult } from './validation.types';
 
 /** What form and step validation need from `CheckoutValidator`. */
@@ -126,8 +131,11 @@ export async function validateForm(
   }
 
   // Email validation
-  if (formData.email && !isValidEmail(formData.email)) {
-    errors.email = 'Please enter a valid email address';
+  const emailProblem = formData.email
+    ? emailError(formData.email, ctx.countryService?.getMessages?.())
+    : null;
+  if (emailProblem) {
+    errors.email = emailProblem;
     isValid = false;
   }
 
@@ -157,6 +165,14 @@ export async function validateForm(
       isValid = false;
     }
   }
+
+  // Last, so an emoji's message replaces the name or email one that says less.
+  const emojiProblems = emojiErrors(
+    formData,
+    ctx.countryService?.getMessages?.()
+  );
+  Object.assign(errors, emojiProblems);
+  if (Object.keys(emojiProblems).length) isValid = false;
 
   // Credit card validation
   if (includePayment) {

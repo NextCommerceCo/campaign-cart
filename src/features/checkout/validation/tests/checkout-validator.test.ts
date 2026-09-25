@@ -103,6 +103,18 @@ describe('validateField', () => {
     expect(validator.isValid()).toBe(true);
   });
 
+  it('refuses an emoji in any field, a field with no rules included', () => {
+    const { validator, countryService } = createValidator(['address2']);
+    Object.assign(countryService, {
+      getMessages: () => ({ 'error.emoji': 'ช่องนี้ต้องไม่มีอีโมจิ' }),
+    });
+
+    expect(validator.validateField('address2', 'Apt 4 🏠')).toEqual({
+      isValid: false,
+      message: 'ช่องนี้ต้องไม่มีอีโมจิ',
+    });
+  });
+
   /**
    * DEFECT (left as found) — a field with no entry in the rule table gets `[]` rules, so
    * the loop never runs and the verdict is valid. Nothing distinguishes "this value passed"

@@ -1,6 +1,11 @@
 import { test, expect, type Page } from '@playwright/test';
 import { MINIMAL_CAMPAIGN } from './fixtures/campaign';
-import { stubCampaign, stubCart, bootSdk, ADDRESS_SERVICE_ROUTE } from './fixtures/routes';
+import {
+  stubCampaign,
+  stubCart,
+  bootSdk,
+  ADDRESS_SERVICE_ROUTE,
+} from './fixtures/routes';
 
 /**
  * E2E for the checkout-form enhancer (`form[data-next-checkout]`).
@@ -15,6 +20,9 @@ import { stubCampaign, stubCart, bootSdk, ADDRESS_SERVICE_ROUTE } from './fixtur
  */
 
 const FIXTURE = '/e2e/fixtures/checkout-form.html';
+
+/** The service's own wording, in a language the SDK's fallback is not written in. */
+const EMOJI_MESSAGE = 'ช่องนี้ต้องไม่มีอีโมจิ';
 
 /** Stub the country/states CDN the checkout form's CountryService calls. */
 async function stubCountryService(page: Page): Promise<void> {
@@ -34,8 +42,11 @@ async function stubCountryService(page: Page): Promise<void> {
       json: {
         geo: { country: 'US' },
         spec,
-        countries: [{ code: 'US', name: 'United States' },
-          { code: 'CA', name: 'Canada' }],
+        messages: { 'error.emoji': EMOJI_MESSAGE },
+        countries: [
+          { code: 'US', name: 'United States' },
+          { code: 'CA', name: 'Canada' },
+        ],
       },
     });
   });
@@ -79,6 +90,39 @@ test('a valid email gets no-error on blur', async ({ page }) => {
 
   await expect(email).toHaveClass(/no-error/);
   await expect(email).not.toHaveClass(/has-error/);
+});
+
+test('an emoji in any field is refused on blur, in the service’s wording', async ({
+  page,
+}) => {
+  await bootSdk(page, FIXTURE);
+
+  for (const [field, value] of [
+    ['fname', 'Ada 😀'],
+    // The emoji's message, not the one an invalid address gets.
+    ['email', 'ada🎉@example.com'],
+  ]) {
+    const input = page.locator(`[data-next-checkout-field="${field}"]`);
+    await input.fill(value);
+    await input.blur();
+
+    await expect(input).toHaveClass(/has-error/);
+    await expect(
+      page.locator('.form-group', { has: input }).locator('.next-error-label')
+    ).toHaveText(EMOJI_MESSAGE);
+  }
+});
+
+/** The negative control: an accented letter is not an emoji. */
+test('a name with an accent is accepted on blur', async ({ page }) => {
+  await bootSdk(page, FIXTURE);
+
+  const lname = page.locator('[data-next-checkout-field="lname"]');
+  await lname.fill('du Pré');
+  await lname.blur();
+
+  await expect(lname).toHaveClass(/no-error/);
+  await expect(page.locator('.next-error-label')).toHaveCount(0);
 });
 
 test('submitting with empty required fields flags them', async ({ page }) => {

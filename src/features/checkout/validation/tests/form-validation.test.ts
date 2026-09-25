@@ -55,6 +55,26 @@ afterEach(() => {
 });
 
 describe('validateForm', () => {
+  it('names an emoji in any field, over the message a name or email gets', async () => {
+    const result = await validateForm(
+      createContext(),
+      {
+        ...completeForm(),
+        fname: 'Ada 😀',
+        email: 'ada🎉@example.com',
+        address2: '🏠',
+      },
+      configs
+    );
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors).toEqual({
+      fname: 'This field can’t contain emojis',
+      email: 'This field can’t contain emojis',
+      address2: 'This field can’t contain emojis',
+    });
+  });
+
   it('accepts a complete form', async () => {
     const result = await validateForm(createContext(), completeForm(), configs);
 

@@ -52,7 +52,12 @@ const US_SPEC = {
   layout: [['country'], ['line1'], ['city', 'state', 'postcode']],
   fields: {
     state: { label: 'State', required: true },
-    postcode: { label: 'ZIP Code', required: true, pattern: '^\\d{5}$', maxLength: 5 },
+    postcode: {
+      label: 'ZIP Code',
+      required: true,
+      pattern: '^\\d{5}$',
+      maxLength: 5,
+    },
   },
 };
 
@@ -73,8 +78,12 @@ afterEach(() => {
 });
 
 describe('toCountryConfig', () => {
-  it('carries the country\'s phone rule from spec.phone', () => {
-    const phone = { callingCode: '49', nationalPrefix: '0', pattern: '^[0-9]{5,15}$' };
+  it("carries the country's phone rule from spec.phone", () => {
+    const phone = {
+      callingCode: '49',
+      nationalPrefix: '0',
+      pattern: '^[0-9]{5,15}$',
+    };
     expect(toCountryConfig({ ...DE_SPEC, phone }).phone).toEqual(phone);
   });
 
@@ -191,17 +200,36 @@ describe('fetchLocationData', () => {
 
     const data = await fetchLocationData('https://addr.test');
 
-    expect(fetchMock).toHaveBeenCalledWith('https://addr.test/v1/bootstrap?lang=en');
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://addr.test/v1/bootstrap?lang=en'
+    );
     expect(data.detectedCountryCode).toBe('GB');
     expect(data.detectedCountryConfig.postcodeLabel).toBe('Postcode');
     expect(data.detectedStates).toEqual([{ code: 'ENG', name: 'England' }]);
     expect(data.countries.map(c => c.code)).toEqual(['GB', 'US']);
   });
 
+  it('carries the error messages the service sends with the answer', async () => {
+    stubFetch({
+      geo: { country: 'GB' },
+      spec: GB_SPEC,
+      countries: [],
+      messages: { 'error.emoji': 'This field can’t contain emojis' },
+    });
+
+    const data = await fetchLocationData('https://addr.test');
+
+    expect(data.messages?.['error.emoji']).toBe(
+      'This field can’t contain emojis'
+    );
+  });
+
   /** A country with no subdivisions omits `states` entirely rather than sending `[]`. */
   it('reports no states when the response carries none', async () => {
     stubFetch({ geo: { country: 'DE' }, spec: DE_SPEC, countries: [] });
-    expect((await fetchLocationData('https://addr.test')).detectedStates).toEqual([]);
+    expect(
+      (await fetchLocationData('https://addr.test')).detectedStates
+    ).toEqual([]);
   });
 
   it('reads the visitor currency and IP the service reports with their country', async () => {
@@ -224,11 +252,17 @@ describe('fetchLocationData', () => {
       countries: [],
     });
 
-    expect(await fetchLocationData('https://addr.test')).not.toHaveProperty('detectedIp');
+    expect(await fetchLocationData('https://addr.test')).not.toHaveProperty(
+      'detectedIp'
+    );
   });
 
   it('rejects a body whose layout is not a list of rows', async () => {
-    stubFetch({ geo: {}, spec: { country: 'US', layout: {}, fields: {} }, countries: [] });
+    stubFetch({
+      geo: {},
+      spec: { country: 'US', layout: {}, fields: {} },
+      countries: [],
+    });
     await expect(fetchLocationData('https://addr.test')).rejects.toThrow(
       'carried no address layout'
     );
@@ -237,7 +271,13 @@ describe('fetchLocationData', () => {
   it('throws on a non-ok response so the caller can fall back', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({ ok: false, status: 503, statusText: 'Unavailable' })
+      vi
+        .fn()
+        .mockResolvedValue({
+          ok: false,
+          status: 503,
+          statusText: 'Unavailable',
+        })
     );
     await expect(fetchLocationData('https://addr.test')).rejects.toThrow('503');
   });
@@ -245,7 +285,10 @@ describe('fetchLocationData', () => {
 
 describe('fetchCountryStates', () => {
   it('asks for the country layout with its states', async () => {
-    const fetchMock = stubFetch({ spec: US_SPEC, states: [{ code: 'NY', name: 'New York' }] });
+    const fetchMock = stubFetch({
+      spec: US_SPEC,
+      states: [{ code: 'NY', name: 'New York' }],
+    });
 
     const data = await fetchCountryStates('US', 'https://addr.test');
 
@@ -265,6 +308,8 @@ describe('fetchCountryStates', () => {
 
 describe('flagUrl', () => {
   it('asks the address-rules service for the lower-case code', () => {
-    expect(flagUrl('GB')).toBe('https://i18n-rules.nextcommerce.com/v1/flags/gb.svg');
+    expect(flagUrl('GB')).toBe(
+      'https://i18n-rules.nextcommerce.com/v1/flags/gb.svg'
+    );
   });
 });
