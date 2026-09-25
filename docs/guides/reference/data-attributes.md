@@ -434,7 +434,7 @@ Values `data-next-component` accepts.
 
 ### Address block
 
-`data-next-address` turns an empty element inside the checkout form into the address fields the selected country collects, in the order that country writes them. It rebuilds them when the country changes.
+`data-next-address` turns an empty element inside the checkout form into the address fields the selected country collects, the name and phone included, in the order that country writes them. It rebuilds them when the country changes, keeping what was typed, and builds no field the page already has.
 
 | Attribute | Description |
 |---|---|
@@ -456,7 +456,7 @@ Below is an example that builds a shipping address with German labels, inside a 
 </form>
 ```
 
-Without `data-next-address-lang` the labels follow `window.nextConfig.locale`, then English, never the browser's language. The state names and the checkout's validation messages always follow `window.nextConfig.locale`. A name with no translation is shown in English. What the block builds, how to style it, and its limits are in [Address block](../pages/checkout-page.md#address-block).
+Without `data-next-address-lang` the labels follow `window.nextConfig.locale`, then English, never the browser's language. The state names and the checkout's validation messages always follow `window.nextConfig.locale`. A name with no translation is shown in English. Its limits, and how to style it, are in [Shipping address](../pages/checkout-page.md#shipping-address).
 
 A separate billing address goes in a `billing` block inside the `different-billing-address` section. [Billing address](../pages/checkout-page.md#billing-address) shows the markup.
 

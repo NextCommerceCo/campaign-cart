@@ -75,41 +75,29 @@ The pieces that matter:
 
 ## Customer information
 
-The customer's name, email and phone reach the order through their `data-next-checkout-field` names. An empty `<div data-next-contact></div>` becomes those fields, in the order the selected country writes a name: family name first in Japan and Korea, given name first elsewhere.
+The customer step is an empty `<div data-next-contact></div>`, which the SDK turns into the name, email and phone fields.
 
-Below is an example that builds the customer step: the name, email and phone, or the email alone when a shipping block is on the same form.
+Below is an example that builds the customer step.
 
 ```html
 <h2>Customer Information</h2>
 <div data-next-contact></div>
 ```
 
-The name and phone are part of an address too, so a shipping block on the same form builds them instead, and the contact block keeps the email. What the contact block builds depends on the blocks beside it:
-
-| Form has | Description |
-|---|---|
-| The contact block only | Name, email and phone |
-| A shipping block too | Email only |
-| A billing block only | Name, email and phone |
-
-A field the page writes itself is not built again. The SDK requires the first name, last name and email, and the phone is optional unless its input carries `required` or `data-next-required="true"`. No field accepts an emoji. [Contact block](../reference/data-attributes.md#contact-block) lists its attributes.
+The SDK requires the first name, last name and email, and the phone is optional unless its input carries `required` or `data-next-required="true"`. No field accepts an emoji. [Contact block](../reference/data-attributes.md#contact-block) lists its attributes, and what it builds beside an address block.
 
 ## Shipping address
 
-The shipping address is built by an address block, an empty `<div data-next-address="shipping"></div>`.
+The shipping step is an empty `<div data-next-address="shipping"></div>`, which the SDK turns into the fields the selected country collects, in the order that country writes them.
 
-Below is an example that builds the shipping step, in the shape of the selected country's address.
+Below is an example that builds the shipping step.
 
 ```html
 <h2>Shipping Information</h2>
 <div data-next-address="shipping"></div>
 ```
 
-### Address block
-
-The empty `<div>` becomes the address fields the selected country collects, in the order that country writes them: a Japanese address leads with the postcode, a US one ends with state and ZIP. When the shopper changes country, the fields are rebuilt and what they typed is kept.
-
-The block builds the whole address, the name and phone included, in the order the country writes a name. Beside a contact block it keeps them and the contact block builds the email alone ([Customer information](#customer-information)). A field the page writes itself is not built again. In a country with one city or postcode for every address, such as Vatican City, the block does not ask for it and the SDK sends it with the order. The checkout form still fills the country list with the countries the campaign ships to and the state list with the selected country's states, validates the fields, and keeps the city, state and postcode row hidden until the street address has a value.
+In a country with one city or postcode for every address, such as Vatican City, the block does not ask for it and the SDK sends it with the order. The checkout form still fills the country list with the countries the campaign ships to and the state list with the selected country's states, validates the fields, and keeps the city, state and postcode row hidden until the street address has a value.
 
 [Address block](../reference/data-attributes.md#address-block) lists its attributes, and [Styling the address block](#styling-the-address-block) below covers its markup.
 
