@@ -170,62 +170,7 @@ export function isValidCity(city: string): boolean {
  */
 const EMOJI = /\p{Emoji_Presentation}|\p{Extended_Pictographic}\uFE0F|\u20E3/u;
 
-/** The wording used until the address-rules service has sent its own. */
-const FALLBACK_MESSAGES = {
-  'error.email': 'Please enter a valid email address',
-  'error.emoji': 'This field can’t contain emojis',
-} as const;
-
-/**
- * The address-rules service's `error.*` templates (`CountryService.getMessages()`), so a
- * message follows the service's language.
- */
-type Messages = Readonly<Record<string, string>>;
-
-/**
- * The message for a value with an emoji in it, or `null`. No field takes one: the order
- * API and the carriers downstream do not, and "not valid" gives a shopper who typed one no
- * clue what to change.
- *
- * @example
- * ```ts
- * emojiError('Jane 😀', messages); // → 'This field can’t contain emojis'
- * emojiError('Jane', messages);    // → null
- * ```
- */
-export function emojiError(
-  value: unknown,
-  messages: Messages = {}
-): string | null {
-  if (typeof value !== 'string' || !EMOJI.test(value)) return null;
-  return messages['error.emoji'] ?? FALLBACK_MESSAGES['error.emoji'];
-}
-
-/** {@link emojiError} for every field of a form, keyed by field name. */
-export function emojiErrors(
-  values: Readonly<Record<string, unknown>> | undefined,
-  messages: Messages = {}
-): Record<string, string> {
-  const errors: Record<string, string> = {};
-  for (const [field, value] of Object.entries(values ?? {})) {
-    const error = emojiError(value, messages);
-    if (error) errors[field] = error;
-  }
-  return errors;
-}
-
-/**
- * The message for an address that is not a plausible email, or `null`.
- *
- * @example
- * ```ts
- * emailError('shopper@gmail.c', messages); // → 'Please enter a valid email address'
- * ```
- */
-export function emailError(
-  email: string,
-  messages: Messages = {}
-): string | null {
-  if (isValidEmail(email)) return null;
-  return messages['error.email'] ?? FALLBACK_MESSAGES['error.email'];
+/** Whether a value holds an emoji. No field takes one: "invalid" alone gives no clue. */
+export function hasEmoji(value: unknown): boolean {
+  return typeof value === 'string' && EMOJI.test(value);
 }

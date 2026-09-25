@@ -334,6 +334,18 @@ describe('CountryService language', () => {
     ]);
   });
 
+  it("keeps each country's names for its messages, and the last as the default", async () => {
+    const service = CountryService.getInstance();
+    stubFetch({ spec: US_SPEC, states: [], labels: { postcode: 'ZIP Code' } });
+    await service.getCountryStates('US');
+    stubFetch({ spec: GB_SPEC, states: [], labels: { postcode: 'Postcode' } });
+    await service.getCountryStates('GB');
+
+    expect(service.getMessageLabels('US').postcode).toBe('ZIP Code');
+    expect(service.getMessageLabels('GB').postcode).toBe('Postcode');
+    expect(service.getMessageLabels().postcode).toBe('Postcode');
+  });
+
   it('refetches rather than serve a cached answer in another language', async () => {
     const fetchMock = stubFetch({ spec: US_SPEC, states: [] });
     const service = CountryService.getInstance();

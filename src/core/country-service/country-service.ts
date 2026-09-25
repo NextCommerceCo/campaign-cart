@@ -70,12 +70,15 @@ export interface LocationData {
   detectedIp?: string;
   /** The address-rules service's `error.*` templates, keyed by message id. */
   messages?: Record<string, string>;
+  /** What each field is called inside those messages, keyed by the service's field name. */
+  labels?: Record<string, string>;
 }
 
 export interface CountryStatesData {
   countryConfig: CountryConfig;
   states: State[];
   messages?: Record<string, string>;
+  labels?: Record<string, string>;
 }
 
 /**
@@ -94,6 +97,8 @@ export class CountryService {
   private cachePrefix = 'next_country_';
   private cacheExpiry = 3600000; // 1 hour in milliseconds
   private messages: Record<string, string> = {};
+  private messageLabels = new Map<string, Record<string, string>>();
+  private lastMessageLabels: Record<string, string> = {};
   private logger: Logger;
   private config: AddressConfig = {};
   private campaignShippingCountries: string[] | null = null;
@@ -165,8 +170,26 @@ export class CountryService {
     return this.messages;
   }
 
-  private keepMessages(data: { messages?: Record<string, string> }): void {
+  /**
+   * What each field is called inside {@link getMessages}' templates, in the same
+   * language: `{ postcode: 'ZIP Code', line2: 'Address line 2', email: 'Email', … }`.
+   * The country's own words when it has been fetched, else the last country's.
+   */
+  public getMessageLabels(country?: string): Readonly<Record<string, string>> {
+    return (
+      (country && this.messageLabels.get(country)) || this.lastMessageLabels
+    );
+  }
+
+  private keepMessages(
+    country: string,
+    data: Pick<LocationData, 'messages' | 'labels'>
+  ): void {
     if (data.messages) this.messages = data.messages;
+    if (data.labels) {
+      this.messageLabels.set(country, data.labels);
+      this.lastMessageLabels = data.labels;
+    }
   }
 
   /**
@@ -178,13 +201,13 @@ export class CountryService {
     const cached = this.getFromCache('location_data', lang);
 
     if (cached) {
-      this.keepMessages(cached);
+      this.keepMessages(cached.detectedCountryCode, cached);
       return await this.applyCountryFiltering(cached);
     }
 
     try {
       const data = await fetchLocationData(undefined, lang);
-      this.keepMessages(data);
+      this.keepMessages(data.detectedCountryCode, data);
       this.setCache('location_data', data, lang);
 
       this.logger.debug('Location data fetched', {
@@ -210,7 +233,7 @@ export class CountryService {
     const cached = this.getFromCache(cacheKey, lang);
 
     if (cached) {
-      this.keepMessages(cached);
+      this.keepMessages(countryCode, cached);
       return {
         ...cached,
         countryConfig: postalCodeMethods.withPostcodeFormats(
@@ -223,7 +246,7 @@ export class CountryService {
 
     try {
       const data = await fetchCountryStates(countryCode, undefined, lang);
-      this.keepMessages(data);
+      this.keepMessages(countryCode, data);
       this.setCache(cacheKey, data, lang);
 
       this.logger.debug(`States data fetched for ${countryCode}`, {

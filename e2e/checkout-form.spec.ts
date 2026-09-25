@@ -21,8 +21,9 @@ import {
 
 const FIXTURE = '/e2e/fixtures/checkout-form.html';
 
-/** The service's own wording, in a language the SDK's fallback is not written in. */
-const EMOJI_MESSAGE = 'ช่องนี้ต้องไม่มีอีโมจิ';
+/** The service's own wording and field names, in a language the SDK's fallback is not in. */
+const MESSAGES = { 'error.emoji': 'ห้ามใส่อีโมจิใน{label}' };
+const LABELS = { first_name: 'ชื่อ', email: 'อีเมล' };
 
 /** Stub the country/states CDN the checkout form's CountryService calls. */
 async function stubCountryService(page: Page): Promise<void> {
@@ -42,7 +43,8 @@ async function stubCountryService(page: Page): Promise<void> {
       json: {
         geo: { country: 'US' },
         spec,
-        messages: { 'error.emoji': EMOJI_MESSAGE },
+        messages: MESSAGES,
+        labels: LABELS,
         countries: [
           { code: 'US', name: 'United States' },
           { code: 'CA', name: 'Canada' },
@@ -97,10 +99,10 @@ test('an emoji in any field is refused on blur, in the service’s wording', asy
 }) => {
   await bootSdk(page, FIXTURE);
 
-  for (const [field, value] of [
-    ['fname', 'Ada 😀'],
+  for (const [field, value, message] of [
+    ['fname', 'Ada 😀', 'ห้ามใส่อีโมจิในชื่อ'],
     // The emoji's message, not the one an invalid address gets.
-    ['email', 'ada🎉@example.com'],
+    ['email', 'ada🎉@example.com', 'ห้ามใส่อีโมจิในอีเมล'],
   ]) {
     const input = page.locator(`[data-next-checkout-field="${field}"]`);
     await input.fill(value);
@@ -109,7 +111,7 @@ test('an emoji in any field is refused on blur, in the service’s wording', asy
     await expect(input).toHaveClass(/has-error/);
     await expect(
       page.locator('.form-group', { has: input }).locator('.next-error-label')
-    ).toHaveText(EMOJI_MESSAGE);
+    ).toHaveText(message);
   }
 });
 

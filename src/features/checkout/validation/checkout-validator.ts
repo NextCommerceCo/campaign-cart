@@ -35,14 +35,13 @@ import {
   type ErrorDisplayContext,
 } from './error-display';
 import { applyRule, createValidationRules } from './field-rules';
-import { formatFieldName } from './field-labels';
+import { fieldMessage, type MessageKey } from './field-messages';
 import { focusFirstErrorField } from './first-error-field';
 import { validateForm, type FormValidationContext } from './form-validation';
 import { type PhoneNumberSource } from './phone-validation';
 import { validateStep } from './step-validation';
 import {
-  emailError,
-  emojiError,
+  hasEmoji,
   isValidCity,
   isValidEmail,
   isValidName,
@@ -59,6 +58,17 @@ export type {
   ValidationResult,
   ValidationRule,
 } from './validation.types';
+
+/** The message each built-in rule shows when it fails. */
+const RULE_MESSAGE: Record<ValidationRule['type'], MessageKey> = {
+  required: 'error.required',
+  email: 'error.email',
+  name: 'error.name',
+  phone: 'error.pattern',
+  postal: 'error.pattern',
+  city: 'error.pattern',
+  custom: 'error.pattern',
+};
 
 export class CheckoutValidator {
   private logger: Logger;
@@ -152,8 +162,8 @@ export class CheckoutValidator {
     context?: any
   ): ValidationResult {
     const rules = this.rules.get(name) || [];
-    const emoji = emojiError(value, this.countryService?.getMessages?.());
-    if (emoji) {
+    if (hasEmoji(value)) {
+      const emoji = fieldMessage(this.countryService, 'error.emoji', name);
       this.setError(name, emoji);
       return { isValid: false, message: emoji };
     }
@@ -171,11 +181,8 @@ export class CheckoutValidator {
     for (const rule of rules) {
       if (!applyRule(ruleContext, rule, value, context)) {
         message =
-          (rule.type === 'email'
-            ? emailError(value, this.countryService?.getMessages?.())
-            : null) ||
-          rule.message ||
-          `${formatFieldName(name, context)} is invalid`;
+          (rule.type === 'custom' ? rule.message : undefined) ??
+          fieldMessage(this.countryService, RULE_MESSAGE[rule.type], name);
         this.setError(name, message);
         isValid = false;
         break;

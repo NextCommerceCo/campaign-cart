@@ -14,16 +14,11 @@
 
 import type { CountryConfig } from '@/core/country-service';
 
-import { formatFieldName } from './field-labels';
 import type { FormValidationContext } from './form-validation';
 import { validateForm } from './form-validation';
 import { isPhoneMarkedRequired, isValidPhone } from './phone-validation';
-import {
-  emailError,
-  emojiErrors,
-  isValidCity,
-  isValidName,
-} from './validation-patterns';
+import { emojiErrors, fieldMessage, postalMessage } from './field-messages';
+import { isValidCity, isValidEmail, isValidName } from './validation-patterns';
 import type { FormValidationResult } from './validation.types';
 
 /**
@@ -42,7 +37,8 @@ import type { FormValidationResult } from './validation.types';
  * @param step The 1-based step the shopper is trying to leave.
  * @param formData The collected form values.
  * @param countryConfigs Country code → rules (state required, postal format).
- * @param currentCountryConfig The shopper's country, used for the wording of messages.
+ * @param currentCountryConfig No longer read: messages take their wording from the address-rules service
+ * (`field-messages.ts`). Kept only because the arguments after it are positional.
  * @param billingAddress The separate billing address, when there is one. Used by step 3
  * only. Pass what the checkout store holds — a missing address with `sameAsShipping`
  * `false` is itself a failure, not a reason to skip the check.
@@ -128,8 +124,14 @@ export async function validateStep(
   // Validate each required field
   requiredFields.forEach(field => {
     if (!formData[field] || formData[field].trim() === '') {
-      errors[field] =
-        `${formatFieldName(field, currentCountryConfig)} is required`;
+      errors[field] = fieldMessage(
+        ctx.countryService,
+        'error.required',
+        field,
+        {
+          country: formData.country,
+        }
+      );
       isValid = false;
       if (!firstErrorField) firstErrorField = field;
     }
@@ -137,32 +139,29 @@ export async function validateStep(
 
   // Name validation
   if (formData.fname && formData.fname.trim() && !isValidName(formData.fname)) {
-    errors.fname =
-      'First name can only contain letters, spaces, hyphens, and apostrophes';
+    errors.fname = fieldMessage(ctx.countryService, 'error.name', 'fname');
     isValid = false;
     if (!firstErrorField) firstErrorField = 'fname';
   }
 
   if (formData.lname && formData.lname.trim() && !isValidName(formData.lname)) {
-    errors.lname =
-      'Last name can only contain letters, spaces, hyphens, and apostrophes';
+    errors.lname = fieldMessage(ctx.countryService, 'error.name', 'lname');
     isValid = false;
     if (!firstErrorField) firstErrorField = 'lname';
   }
 
   // City validation
   if (formData.city && formData.city.trim() && !isValidCity(formData.city)) {
-    errors.city = 'Please enter a valid city name';
+    errors.city = fieldMessage(ctx.countryService, 'error.pattern', 'city', {
+      country: formData.country,
+    });
     isValid = false;
     if (!firstErrorField) firstErrorField = 'city';
   }
 
   // Email validation
-  const emailProblem = formData.email
-    ? emailError(formData.email, ctx.countryService?.getMessages?.())
-    : null;
-  if (emailProblem) {
-    errors.email = emailProblem;
+  if (formData.email && !isValidEmail(formData.email)) {
+    errors.email = fieldMessage(ctx.countryService, 'error.email', 'email');
     isValid = false;
     if (!firstErrorField) firstErrorField = 'email';
   }
@@ -175,7 +174,7 @@ export async function validateStep(
     formData.phone &&
     !isValidPhone(formData.phone, ctx.phoneSource?.('shipping'))
   ) {
-    errors.phone = 'Please enter a valid phone number';
+    errors.phone = fieldMessage(ctx.countryService, 'error.pattern', 'phone');
     isValid = false;
     if (!firstErrorField) firstErrorField = 'phone';
   }
@@ -191,10 +190,12 @@ export async function validateStep(
         countryConfig
       )
     ) {
-      const errorMsg = countryConfig.postcodeExample
-        ? `Please enter a valid ${countryConfig.postcodeLabel.toLowerCase()} (e.g. ${countryConfig.postcodeExample})`
-        : `Please enter a valid ${countryConfig.postcodeLabel.toLowerCase()}`;
-      errors.postal = errorMsg;
+      errors.postal = postalMessage(
+        ctx.countryService,
+        'postal',
+        formData.country,
+        countryConfig
+      );
       isValid = false;
       if (!firstErrorField) firstErrorField = 'postal';
     }
@@ -202,8 +203,9 @@ export async function validateStep(
 
   // Last, so an emoji's message replaces the name or email one that says less.
   const emojiProblems = emojiErrors(
+    ctx.countryService,
     formData,
-    ctx.countryService?.getMessages?.()
+    formData.country
   );
   Object.assign(errors, emojiProblems);
   const firstEmoji = Object.keys(emojiProblems)[0];

@@ -2,10 +2,9 @@
  * Checking the separate billing address a shopper enters when it differs from shipping.
  *
  * It is deliberately its own module rather than a second pass of the shipping rules,
- * because the two disagree in ways that matter: the billing address arrives with API field
- * names (`first_name`, not `fname`), every message is prefixed "Billing …" so the shopper
- * can tell which of two identical-looking sections is wrong, and the labels are fixed
- * English rather than the country-specific wording used for shipping.
+ * because the billing address arrives with API field names (`first_name`, not `fname`).
+ * Its messages are the shipping ones (`field-messages.ts`): each shows under its own
+ * billing field, which already says which address it belongs to.
  *
  * Extracted verbatim from `CheckoutValidator.validateBillingAddress`. It needs two things
  * from the validator ({@link BillingAddressValidationContext}).
@@ -14,11 +13,12 @@
 import type { CountryConfig } from '@/core/country-service';
 
 import { isValidPhone, type PhoneNumberSource } from './phone-validation';
-import { emojiErrors, isValidName } from './validation-patterns';
+import { emojiErrors, fieldMessage, postalMessage } from './field-messages';
+import { isValidName } from './validation-patterns';
 
 /** What this module needs from `CheckoutValidator`. */
 export interface BillingAddressValidationContext {
-  /** Provides `validatePostalCode(value, countryCode, config)` and `getMessages()`. */
+  /** Provides `validatePostalCode(value, countryCode, config)` and the message wording. */
   countryService: any;
   /** Set by the form once its phone fields exist, so the number is checked per country. */
   phoneSource?: (type: 'shipping' | 'billing') => PhoneNumberSource | undefined;
@@ -66,40 +66,23 @@ export function validateBillingAddress(
 
   requiredBillingFields.push('postal');
 
+  const country = billingAddress?.country;
+  const source = ctx.countryService;
+
   requiredBillingFields.forEach(field => {
     const value = billingAddress?.[field];
 
     if (!value || value.trim() === '') {
-      const fieldDisplayName =
-        field === 'first_name'
-          ? 'First name'
-          : field === 'last_name'
-            ? 'Last name'
-            : field === 'address1'
-              ? 'Address'
-              : field === 'city'
-                ? 'City'
-                : field === 'province'
-                  ? 'State/Province'
-                  : field === 'postal'
-                    ? 'ZIP/Postal code'
-                    : field === 'country'
-                      ? 'Country'
-                      : field;
-
-      errors[field] = `Billing ${fieldDisplayName.toLowerCase()} is required`;
+      errors[field] = fieldMessage(source, 'error.required', field, {
+        country,
+      });
       isValid = false;
     } else if (
       (field === 'first_name' || field === 'last_name') &&
-      value.trim()
+      !isValidName(value)
     ) {
-      if (!isValidName(value)) {
-        const fieldDisplayName =
-          field === 'first_name' ? 'First name' : 'Last name';
-        errors[field] =
-          `Billing ${fieldDisplayName.toLowerCase()} can only contain letters, spaces, hyphens, and apostrophes`;
-        isValid = false;
-      }
+      errors[field] = fieldMessage(source, 'error.name', field);
+      isValid = false;
     }
   });
 
@@ -107,7 +90,7 @@ export function validateBillingAddress(
     billingAddress?.phone &&
     !isValidPhone(billingAddress.phone, ctx.phoneSource?.('billing'))
   ) {
-    errors.phone = 'Please enter a valid billing phone number';
+    errors.phone = fieldMessage(source, 'error.pattern', 'phone');
     isValid = false;
   }
 
@@ -122,18 +105,17 @@ export function validateBillingAddress(
         countryConfig
       )
     ) {
-      const errorMsg = countryConfig.postcodeExample
-        ? `Please enter a valid billing ${countryConfig.postcodeLabel.toLowerCase()} (e.g. ${countryConfig.postcodeExample})`
-        : `Please enter a valid billing ${countryConfig.postcodeLabel.toLowerCase()}`;
-      errors.postal = errorMsg;
+      errors.postal = postalMessage(
+        source,
+        'postal',
+        billingAddress.country,
+        countryConfig
+      );
       isValid = false;
     }
   }
 
-  const emojiProblems = emojiErrors(
-    billingAddress,
-    ctx.countryService?.getMessages?.()
-  );
+  const emojiProblems = emojiErrors(source, billingAddress, country);
   Object.assign(errors, emojiProblems);
   if (Object.keys(emojiProblems).length) isValid = false;
 

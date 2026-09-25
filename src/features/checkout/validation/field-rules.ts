@@ -60,26 +60,11 @@ function phoneTypeOf(fieldName?: string): 'shipping' | 'billing' {
 export function createValidationRules(): Map<string, ValidationRule[]> {
   const rules = new Map<string, ValidationRule[]>();
 
-  const requiredRule: ValidationRule = {
-    type: 'required',
-    message: 'This field is required',
-  };
-  const emailRule: ValidationRule = {
-    type: 'email',
-    message: 'Please enter a valid email address',
-  };
-  const phoneRule: ValidationRule = {
-    type: 'phone',
-    message: 'Please enter a valid phone number',
-  };
-  const nameRule: ValidationRule = {
-    type: 'name',
-    message: 'Name can only contain letters, spaces, hyphens, and apostrophes',
-  };
-  const cityRule: ValidationRule = {
-    type: 'city',
-    message: 'Please enter a valid city name',
-  };
+  const requiredRule: ValidationRule = { type: 'required' };
+  const emailRule: ValidationRule = { type: 'email' };
+  const phoneRule: ValidationRule = { type: 'phone' };
+  const nameRule: ValidationRule = { type: 'name' };
+  const cityRule: ValidationRule = { type: 'city' };
 
   rules.set('email', [requiredRule, emailRule]);
   rules.set('fname', [requiredRule, nameRule]);

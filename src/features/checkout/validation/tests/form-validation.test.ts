@@ -69,9 +69,9 @@ describe('validateForm', () => {
 
     expect(result.isValid).toBe(false);
     expect(result.errors).toEqual({
-      fname: 'This field can’t contain emojis',
-      email: 'This field can’t contain emojis',
-      address2: 'This field can’t contain emojis',
+      fname: 'First name can’t contain emojis',
+      email: 'Email can’t contain emojis',
+      address2: 'Address line 2 can’t contain emojis',
     });
   });
 
@@ -104,7 +104,19 @@ describe('validateForm', () => {
     ]);
     const form = { ...completeForm(), country: 'GB' };
 
-    const result = await validateForm(createContext(), form, gb, gb.get('GB'));
+    const result = await validateForm(
+      createContext({
+        countryService: {
+          validatePostalCode: vi.fn().mockReturnValue(true),
+          getMessages: () => ({ 'error.required': '{label} is required' }),
+          getMessageLabels: (country?: string) =>
+            country === 'GB' ? { state: 'County' } : {},
+        },
+      }),
+      form,
+      gb,
+      gb.get('GB')
+    );
 
     expect(result.errors.province).toBe('County is required');
   });
@@ -122,7 +134,7 @@ describe('validateForm', () => {
     );
 
     expect(result.errors.postal).toBe(
-      'Please enter a valid zip code (e.g. 90210)'
+      'Postal code isn’t valid, for example 90210'
     );
   });
 
@@ -201,12 +213,8 @@ describe('validateForm', () => {
       false
     );
 
-    expect(result.errors['billing-fname']).toBe(
-      'Billing first name is required'
-    );
-    expect(result.errors['billing-postal']).toBe(
-      'Billing zip/postal code is required'
-    );
+    expect(result.errors['billing-fname']).toBe('First name is required');
+    expect(result.errors['billing-postal']).toBe('Postal code is required');
   });
 
   it('checks the card when a card service is present', async () => {
@@ -294,12 +302,8 @@ describe('validateForm', () => {
     );
 
     expect(result.isValid).toBe(false);
-    expect(result.errors['billing-fname']).toBe(
-      'Billing first name is required'
-    );
-    expect(result.errors['billing-country']).toBe(
-      'Billing country is required'
-    );
+    expect(result.errors['billing-fname']).toBe('First name is required');
+    expect(result.errors['billing-country']).toBe('Country is required');
   });
 
   /**

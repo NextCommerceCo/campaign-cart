@@ -54,7 +54,7 @@ describe('validateBillingAddress', () => {
     });
   });
 
-  it('names every missing field, prefixed so the shopper knows which section', () => {
+  it('names every missing field', () => {
     const result = validateBillingAddress(
       createContext(),
       { country: 'US' },
@@ -63,12 +63,12 @@ describe('validateBillingAddress', () => {
 
     expect(result.isValid).toBe(false);
     expect(result.errors).toEqual({
-      first_name: 'Billing first name is required',
-      last_name: 'Billing last name is required',
-      address1: 'Billing address is required',
-      city: 'Billing city is required',
-      province: 'Billing state/province is required',
-      postal: 'Billing zip/postal code is required',
+      first_name: 'First name is required',
+      last_name: 'Last name is required',
+      address1: 'Address is required',
+      city: 'City is required',
+      province: 'State or province is required',
+      postal: 'Postal code is required',
     });
   });
 
@@ -101,7 +101,7 @@ describe('validateBillingAddress', () => {
     const result = validateBillingAddress(ctx, completeAddress, configs);
 
     expect(result.errors.postal).toBe(
-      'Please enter a valid billing zip code (e.g. 90210)'
+      'Postal code isn’t valid, for example 90210'
     );
   });
 

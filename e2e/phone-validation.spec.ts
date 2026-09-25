@@ -443,7 +443,7 @@ test('a number too short for its country is shown as wrong and never sent', asyn
 
   await expect(page.locator(`${PHONE}.next-error-field`)).toHaveCount(1);
   await expect(page.locator('.next-error-label')).toContainText(
-    'valid phone number'
+    'Phone number isn’t valid'
   );
   await expect(page).toHaveURL(new RegExp('card-purchase'));
   expect(posts).toHaveLength(0);

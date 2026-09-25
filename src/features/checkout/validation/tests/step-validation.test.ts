@@ -98,7 +98,14 @@ describe('validateStep — step 1', () => {
     ]);
 
     const result = await validateStep(
-      createContext(),
+      createContext({
+        countryService: {
+          validatePostalCode: vi.fn().mockReturnValue(true),
+          getMessages: () => ({ 'error.required': '{label} is required' }),
+          getMessageLabels: (country?: string) =>
+            country === 'GB' ? { state: 'County' } : {},
+        },
+      }),
       1,
       { ...completeForm(), country: 'GB' },
       gb,
@@ -116,8 +123,8 @@ describe('validateStep — step 1', () => {
       configs
     );
 
-    expect(result.errors.email).toBe('Please enter a valid email address');
-    expect(result.errors.city).toBe('Please enter a valid city name');
+    expect(result.errors.email).toBe('Enter a valid email address');
+    expect(result.errors.city).toBe('City isn’t valid');
   });
 });
 
@@ -165,16 +172,10 @@ describe('validateStep — step 3', () => {
     );
 
     expect(result.isValid).toBe(false);
-    expect(result.errors['billing-lname']).toBe(
-      'Billing last name is required'
-    );
-    expect(result.errors['billing-address1']).toBe(
-      'Billing address is required'
-    );
-    expect(result.errors['billing-city']).toBe('Billing city is required');
-    expect(result.errors['billing-postal']).toBe(
-      'Billing zip/postal code is required'
-    );
+    expect(result.errors['billing-lname']).toBe('Last name is required');
+    expect(result.errors['billing-address1']).toBe('Address is required');
+    expect(result.errors['billing-city']).toBe('City is required');
+    expect(result.errors['billing-postal']).toBe('Postal code is required');
   });
 
   it('accepts a complete separate billing address', async () => {
@@ -221,12 +222,8 @@ describe('validateStep — step 3', () => {
     );
 
     expect(result.isValid).toBe(false);
-    expect(result.errors['billing-fname']).toBe(
-      'Billing first name is required'
-    );
-    expect(result.errors['billing-country']).toBe(
-      'Billing country is required'
-    );
+    expect(result.errors['billing-fname']).toBe('First name is required');
+    expect(result.errors['billing-country']).toBe('Country is required');
   });
 
   it('ignores the billing address when it is the same as shipping', async () => {
@@ -333,8 +330,8 @@ describe('validateStep — the gaps between the steps', () => {
       configs
     );
 
-    expect(step1.errors.phone).toBe('Please enter a valid phone number');
-    expect(step2.errors.phone).toBe('Please enter a valid phone number');
+    expect(step1.errors.phone).toBe('Phone number isn’t valid');
+    expect(step2.errors.phone).toBe('Phone number isn’t valid');
   });
 
   it('enforces a required phone on step 1 marked only with the SDK attribute', async () => {

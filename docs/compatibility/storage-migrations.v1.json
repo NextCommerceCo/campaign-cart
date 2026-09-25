@@ -8,7 +8,7 @@
   "provenance": {
     "extractor": "src/docs/extract/extract-storage-keys.ts",
     "registry": "src/docs/content/storage-keys.ts",
-    "inputSha256": "25519e520bddef07d5634ae3f206787d04af6352948329257314ad79184c3172",
+    "inputSha256": "c8a0f27a8cc6dc8eab8cd01b2c7b702d01bdee538597e3dc22319d9ae3531cac",
     "inputs": [
       {
         "path": "package.json",
@@ -56,7 +56,7 @@
       },
       {
         "path": "src/core/country-service/country-service.ts",
-        "sha256": "6109eb542f05e887a9056f8f4326368fc5e223c3611b02b7fcbcf65c0c2cfb7f"
+        "sha256": "285066880136aef4da6ab5602cbf82193f2d8f3e1729dc1f3e5b25433ec34917"
       },
       {
         "path": "src/core/currency-formatter.ts",

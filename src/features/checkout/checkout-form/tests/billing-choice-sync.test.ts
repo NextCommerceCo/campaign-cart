@@ -148,7 +148,7 @@ describe('the billing choice a shopper carries between pages', () => {
     const errors = await validateStepThree();
 
     // Step 3 still fails — the shopper really has not entered a billing address.
-    expect(errors['billing-fname']).toBe('Billing first name is required');
+    expect(errors['billing-fname']).toBe('First name is required');
     // …but the field that message names is now on screen, so pressing "next" is no
     // longer a dead button.
     expect(section.style.height).toBe('auto');
