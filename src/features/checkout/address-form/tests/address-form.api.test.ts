@@ -3,7 +3,10 @@ import {
   builtInRules,
   fetchCountryRules,
 } from '@/features/checkout/address-form/address-form.api';
-import { renderLayout } from '@/features/checkout/address-form/address-form.renderer';
+import {
+  contactLayout,
+  renderLayout,
+} from '@/features/checkout/address-form/address-form.renderer';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -11,7 +14,7 @@ const ok = (body: unknown) => ({ ok: true, status: 200, statusText: 'OK', json: 
 
 describe('fetchCountryRules', () => {
   it('asks for the country layout in the pinned language', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(ok({ country: 'US', address: { layout: [['country']] }, contact: { layout: [] }, fields: {} }));
+    const fetchMock = vi.fn().mockResolvedValue(ok({ country: 'US', address: { layout: [['country']] }, fields: {} }));
     vi.stubGlobal('fetch', fetchMock);
 
     const spec = await fetchCountryRules('US', { baseUrl: 'https://addr.test' });
@@ -21,7 +24,7 @@ describe('fetchCountryRules', () => {
   });
 
   it('honours a language the page asked for', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(ok({ country: 'TH', address: { layout: [] }, contact: { layout: [] }, fields: {} }));
+    const fetchMock = vi.fn().mockResolvedValue(ok({ country: 'TH', address: { layout: [] }, fields: {} }));
     vi.stubGlobal('fetch', fetchMock);
 
     await fetchCountryRules('TH', { baseUrl: 'https://addr.test', lang: 'th' });
@@ -30,7 +33,7 @@ describe('fetchCountryRules', () => {
   });
 
   it('escapes the country code rather than pasting it into the path', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(ok({ country: 'US', address: { layout: [] }, contact: { layout: [] }, fields: {} }));
+    const fetchMock = vi.fn().mockResolvedValue(ok({ country: 'US', address: { layout: [] }, fields: {} }));
     vi.stubGlobal('fetch', fetchMock);
 
     await fetchCountryRules('../v1/geo', { baseUrl: 'https://addr.test' });
@@ -47,7 +50,7 @@ describe('fetchCountryRules', () => {
   });
 
   it('rejects a body whose layout is not a list of rows', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ok({ country: 'US', address: { layout: {} }, contact: { layout: [] }, fields: {} })));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ok({ country: 'US', address: { layout: {} }, fields: {} })));
 
     await expect(fetchCountryRules('US', { baseUrl: 'https://addr.test' })).rejects.toThrow(
       'carried no address layout'
@@ -75,7 +78,7 @@ describe('builtInRules', () => {
       'phone',
     ]);
     expect(
-      renderLayout(container, rules.contact.layout, rules.fields, { form: 'shipping' })
+      renderLayout(container, contactLayout(rules.address.layout, false), rules.fields, { form: 'shipping' })
     ).toEqual(['fname', 'lname', 'email', 'phone']);
   });
 });

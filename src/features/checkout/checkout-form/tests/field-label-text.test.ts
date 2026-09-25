@@ -16,7 +16,6 @@ const THAI: CountryRules = {
   country: 'TH',
   lang: 'th',
   address: { layout: [] },
-  contact: { layout: [] },
   fields: {
     first_name: field('ชื่อ'),
     email: field('อีเมล'),

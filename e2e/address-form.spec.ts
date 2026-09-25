@@ -65,8 +65,7 @@ const JP_SPEC = countryRules(
     last_name: ruleField('Last name', 'family-name'),
     email: ruleField('Email', 'email', { type: 'email' }),
     phone_number: ruleField('Phone number', 'tel', { type: 'tel' }, { required: false }),
-  },
-  { contact: { layout: [['last_name', 'first_name'], ['email'], ['phone_number']] } }
+  }
 );
 
 /**

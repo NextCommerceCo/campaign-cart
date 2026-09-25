@@ -202,8 +202,8 @@ function namedCountry(code: string): { code: string; name: string } {
 }
 
 /**
- * A country's rules in the service's shape: the `address` rows and the fields named, with
- * the default contact rows. Only what a spec names is described, as the service does it.
+ * A country's rules in the service's shape: the `address` rows and the fields named. Only
+ * what a spec names is described, as the service does it.
  */
 export function countryRules(
   country: string,
@@ -217,9 +217,6 @@ export function countryRules(
     curated: true,
     version: 'e2e',
     address: { layout: address, fixed: {} },
-    contact: {
-      layout: [['first_name', 'last_name'], ['email'], ['phone_number']],
-    },
     fields,
     ...extra,
   };

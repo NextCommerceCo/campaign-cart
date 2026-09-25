@@ -3,8 +3,8 @@
  * the SDK already reads.
  *
  * The shapes asserted here are taken from the service repo's `docs/http-api.md`, not
- * invented: a country's rules name the fields it asks for in `address` and `contact`, and
- * describe exactly those in `fields`.
+ * invented: a country's rules name the fields it asks for in `address`, and describe exactly
+ * those, and the email, in `fields`.
  */
 
 import { describe, expect, it, vi, afterEach } from 'vitest';
@@ -44,7 +44,6 @@ const rules = (
   country,
   lang: 'en',
   address: { layout: address, fixed: {} },
-  contact: { layout: [['first_name', 'last_name'], ['email']] },
   fields,
   ...extra,
 });
@@ -82,7 +81,6 @@ afterEach(() => {
 describe('readCountryRules', () => {
   const answer = {
     address: { layout: [['country']] },
-    contact: { layout: [['email']] },
     fields: {},
   };
 

@@ -94,8 +94,7 @@ export interface CountryRules {
   /** `false` for a country the service serves the default layout. */
   curated?: boolean;
   address: { layout: string[][]; fixed?: FixedValues };
-  contact: { layout: string[][] };
-  /** Exactly the fields the two layouts name. */
+  /** Every field the address layout names, and the email. */
   fields: Record<string, RulesField | undefined>;
   states?: State[];
 }
@@ -200,7 +199,6 @@ export function readCountryRules(body: unknown, url: string): CountryRules {
     !rules ||
     !code ||
     !Array.isArray(rules.address?.layout) ||
-    !Array.isArray(rules.contact?.layout) ||
     !rules.fields
   ) {
     throw new Error(`${url} carried no address layout`);

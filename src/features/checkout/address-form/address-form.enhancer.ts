@@ -9,9 +9,9 @@ import { optionalLabel } from '@/features/checkout/validation/field-messages';
 
 import { builtInRules, fetchCountryRules } from './address-form.api';
 import {
+  contactLayout,
   readRenderedValues,
   renderLayout,
-  sdkFieldName,
 } from './address-form.renderer';
 
 const FALLBACK_COUNTRY = 'US';
@@ -106,13 +106,8 @@ export class AddressFormEnhancer extends BaseEnhancer {
    *
    * Read fresh on every render: a country change replaces this block's own inputs, and
    * those must never count as already collected or the block would empty itself.
-   *
-   * The names and the phone are in both the address and the contact rows. Beside a
-   * shipping address the address builds them, and the contact rows keep what it has no
-   * place for (the email). Read from the rules, not from what is on the page: judged by
-   * the page, whichever block answered first would keep them.
    */
-  private collectedElsewhere(rules: CountryRules): ReadonlySet<string> {
+  private collectedElsewhere(): ReadonlySet<string> {
     const form = this.element.closest('form');
     if (!form) return new Set();
 
@@ -124,17 +119,21 @@ export class AddressFormEnhancer extends BaseEnhancer {
         const name = field.getAttribute('data-next-checkout-field');
         if (name) names.add(name);
       });
-
-    if (
-      this.block === 'contact' &&
-      form.querySelector(SHIPPING_BLOCK_SELECTOR)
-    ) {
-      for (const name of rules.address.layout.flat()) {
-        const field = sdkFieldName(name, 'shipping');
-        if (field) names.add(field);
-      }
-    }
     return names;
+  }
+
+  /**
+   * The rows this block builds. The contact rows' names and phone are part of an address
+   * too: beside a shipping address the address builds them. Decided from the page's
+   * blocks, not from which fields exist yet: judged by the fields, whichever block
+   * answered first would keep them.
+   */
+  private layoutOf(rules: CountryRules): string[][] {
+    if (this.block === 'address') return rules.address.layout;
+    const besideShipping = Boolean(
+      this.element.closest('form')?.querySelector(SHIPPING_BLOCK_SELECTOR)
+    );
+    return contactLayout(rules.address.layout, besideShipping);
   }
 
   /** Says where the block is, so a stylesheet can hold space for fields on their way. */
@@ -189,12 +188,12 @@ export class AddressFormEnhancer extends BaseEnhancer {
     const values = readRenderedValues(this.element);
     const fields = renderLayout(
       this.element,
-      rules[this.block].layout,
+      this.layoutOf(rules),
       rules.fields,
       {
         form: this.form,
         values,
-        alreadyCollected: this.collectedElsewhere(rules),
+        alreadyCollected: this.collectedElsewhere(),
         optionalLabel: label =>
           optionalLabel(
             CountryService.getInstance(),

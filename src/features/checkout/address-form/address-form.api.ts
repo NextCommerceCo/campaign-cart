@@ -35,9 +35,6 @@ const BUILT_IN_RULES: Omit<CountryRules, 'country'> = {
       ['phone_number'],
     ],
   },
-  contact: {
-    layout: [['first_name', 'last_name'], ['email'], ['phone_number']],
-  },
   fields: {
     country: {
       label: 'Country',

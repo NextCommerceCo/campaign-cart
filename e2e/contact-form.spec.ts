@@ -9,6 +9,7 @@ import {
   stubCampaign,
   stubCart,
 } from './fixtures/routes';
+import { CHECKOUT_KEY } from './fixtures/storage-keys';
 
 /**
  * `data-next-contact`: the name, email and phone rows a country asks for, built from its
@@ -52,12 +53,7 @@ const US = countryRules(
 const JP = countryRules(
   'JP',
   [['country'], ['last_name', 'first_name'], ['line1'], ['phone_number']],
-  { ...contactFields, ...addressFields },
-  {
-    contact: {
-      layout: [['last_name', 'first_name'], ['email'], ['phone_number']],
-    },
-  }
+  { ...contactFields, ...addressFields }
 );
 
 let escaped: string[] = [];
@@ -172,6 +168,28 @@ test('beside only a billing address the contact rows are whole', async ({
       'billing-address1',
       'billing-phone',
     ]);
+});
+
+/**
+ * The service serves no contact rows: they are read off the address layout, so a contact
+ * block alone writes the name as the country's address does.
+ */
+test('alone, writes the name in the order the country writes an address', async ({
+  page,
+}) => {
+  // No country select on this page: the form's country is the one it restored.
+  await page.addInitScript(key => {
+    sessionStorage.setItem(
+      key,
+      JSON.stringify({ state: { formData: { country: 'JP' } }, version: 0 })
+    );
+  }, CHECKOUT_KEY);
+  await replaceShippingBlock(page, '');
+  await bootSdk(page, FIXTURE);
+
+  await expect
+    .poll(() => fieldsIn(page, '[data-next-contact]'))
+    .toEqual(['lname', 'fname', 'email', 'phone']);
 });
 
 test('writes the family name first where the country does, and keeps what was typed', async ({
