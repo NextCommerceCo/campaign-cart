@@ -27,6 +27,11 @@ export async function stubCampaign(
   await page.route('**/api/v1/campaigns/**', route =>
     route.fulfill({ json: campaign })
   );
+  // Every page that loads a campaign also asks the address-rules service where the
+  // visitor is, at boot. Stubbed here, so a spec that never thinks about addresses still
+  // never reaches the live service. Only when nothing answers it yet: Playwright answers
+  // with the newest route, so this would replace a stub the spec registered first.
+  if (!ADDRESS_STUBBED.has(page)) await stubCountryService(page);
 }
 
 /**
@@ -151,7 +156,7 @@ const PHONE_RULES: Record<string, PhoneRules> = {
 };
 
 /**
- * The countries `/v1/bootstrap` lists, in its order (by English name), each with the one
+ * The countries `/v1/countries` lists, in its order (by English name), each with the one
  * subdivision the stub serves so a checkout can be completed in any of them.
  */
 const COUNTRIES = [
@@ -174,32 +179,124 @@ const FLAG_SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" width="4" height="3" viewBox="0 0 4 3">' +
   '<rect width="4" height="3" fill="#3c3b6e"/></svg>';
 
+/** Pages whose address-rules service is already answered, so {@link stubCampaign} leaves them be. */
+const ADDRESS_STUBBED = new WeakSet<Page>();
+
+/** One country's rules, as geo's `rules` and `/v1/countries/:country` carry them. */
+export interface CountryAnswer {
+  lang?: string;
+  spec: unknown;
+  labels?: Record<string, string>;
+  states?: unknown[];
+}
+
+/** What a spec's stand-in for the address-rules service answers, route by route. */
+export interface AddressServiceAnswers {
+  /** The visitor's country, as `/v1/geo` detects it. Defaults to `US`. */
+  detected?: string;
+  /** Whatever else `/v1/geo` reports: `currency`, `ip`. */
+  geo?: Record<string, unknown>;
+  /** `/v1/countries`. Each also gets a flag at `/v1/flags/:code.svg`. */
+  countries: Array<{ code: string; name: string }>;
+  /** A country's rules in the language asked for. May wait, to hold a response back. */
+  rules: (
+    country: string,
+    request: { lang: string; withStates: boolean }
+  ) => CountryAnswer | Promise<CountryAnswer>;
+  /** `/v1/locales/:lang`. Unset, or nothing for a language, answers `{}`: no templates. */
+  locale?: (lang: string) => Record<string, string> | undefined;
+}
+
+/**
+ * Stands in for the address-rules service on every route the SDK calls, so a spec says
+ * what the service knows and this says how it is served:
+ *
+ * | Route | Answer |
+ * |---|---|
+ * | `/v1/geo?include=rules,states` | the visitor, and `rules` for `?country=` or the detected one |
+ * | `/v1/countries` | `countries` |
+ * | `/v1/countries/:country?include=states` | `rules(country)` |
+ * | `/v1/locales/:lang` | `locale(lang)`, or `{}` |
+ * | `/v1/flags/:code.svg` | a flag for a listed country, or a `404` |
+ *
+ * `states` reaches the page only when the request asked for it, as the service does it.
+ * Anything else is a `404`, so a route the SDK should not be calling fails loudly.
+ */
+export async function routeAddressService(
+  page: Page,
+  answers: AddressServiceAnswers
+): Promise<void> {
+  ADDRESS_STUBBED.add(page);
+  const notFound = { status: 404, json: { error: 'not_found' } };
+
+  await page.route(ADDRESS_SERVICE_ROUTE, async route => {
+    const url = new URL(route.request().url());
+    const { pathname, searchParams } = url;
+    const lang = searchParams.get('lang') ?? 'en';
+    const include = (searchParams.get('include') ?? '').split(',');
+    const withStates = include.includes('states');
+    const rulesFor = async (country: string): Promise<CountryAnswer> => {
+      const { states, ...rest } = await answers.rules(country, {
+        lang,
+        withStates,
+      });
+      return withStates && states?.length ? { ...rest, states } : rest;
+    };
+
+    if (pathname.startsWith('/v1/flags/')) {
+      const flag = pathname.match(/^\/v1\/flags\/([a-z]{2})\.svg$/)?.[1];
+      return answers.countries.some(row => row.code.toLowerCase() === flag)
+        ? route.fulfill({ contentType: 'image/svg+xml', body: FLAG_SVG })
+        : route.fulfill(notFound);
+    }
+    if (pathname.startsWith('/v1/locales/')) {
+      const body = answers.locale?.(pathname.slice('/v1/locales/'.length));
+      return route.fulfill({ json: body ?? {} });
+    }
+    if (pathname === '/v1/countries') {
+      return route.fulfill({ json: answers.countries });
+    }
+    const country = pathname.match(/^\/v1\/countries\/([^/]+)$/)?.[1];
+    if (country) {
+      return route.fulfill({
+        json: await rulesFor(decodeURIComponent(country).toUpperCase()),
+      });
+    }
+    if (pathname === '/v1/geo') {
+      const detected = answers.detected ?? 'US';
+      const asked = searchParams.get('country')?.toUpperCase() ?? detected;
+      return route.fulfill({
+        json: {
+          country: detected,
+          ...answers.geo,
+          ...(include.includes('rules')
+            ? { rules: await rulesFor(asked) }
+            : {}),
+        },
+      });
+    }
+    return route.fulfill(notFound);
+  });
+}
+
 export interface AddressServiceOptions {
-  /** The visitor's country, as `/v1/bootstrap` detects it. Defaults to `US`. */
+  /** The visitor's country, as `/v1/geo` detects it. Defaults to `US`. */
   country?: string;
   /** `false` answers as a deployment with no phone data does: no `spec.phone` at all. */
   phoneRules?: boolean;
 }
 
 /**
- * Stub everything the checkout form fetches from the address-rules service: the
- * country list, each country's rules and states, and the phone field's flags.
- *
- * Three routes, three shapes — `/v1/bootstrap` carries the country list as well as the
- * detected country's rules, `/v1/layout/:country` carries one country's, and
- * `/v1/flags/:code.svg` an image. A spec that answers the first two with the bootstrap
- * shape makes `updateFormLabels` throw. Every spec that boots a checkout form needs this.
+ * Stub everything the checkout form fetches from the address-rules service, through
+ * {@link routeAddressService}: the country list, each country's rules and states, and the
+ * phone field's flags. Every spec that boots a checkout form needs this.
  *
  * The phone half is {@link PHONE_RULES}. `fields.phone_number` carries what the service's
  * does apart from its localized hint, and nothing the SDK formats or checks with. The
- * address half is the same US layout for
- * every country, because no spec using this stub asserts on another country's address
- * fields. `spec.layout` is what decides which fields a country collects; a layout that
- * omits `state` produces a config with no state label however `spec.fields` reads, so it
- * has to name every field the assertions expect.
- *
- * A flag is served for every listed country, and anything else is a `404`, as the
- * service answers it.
+ * address half is the same US layout for every country, because no spec using this stub
+ * asserts on another country's address fields. `spec.layout` is what decides which fields
+ * a country collects; a layout that omits `state` produces a config with no state label
+ * however `spec.fields` reads, so it has to name every field the assertions expect.
  */
 export async function stubCountryService(
   page: Page,
@@ -226,34 +323,14 @@ export async function stubCountryService(
       ...(phone ? { phone } : {}),
     };
   };
-  const statesFor = (code: string) =>
-    COUNTRIES.filter(row => row.code === code).map(row => row.state);
 
-  await page.route(ADDRESS_SERVICE_ROUTE, route => {
-    const { pathname } = new URL(route.request().url());
-
-    if (pathname.startsWith('/v1/flags/')) {
-      const flag = pathname.match(/^\/v1\/flags\/([a-z]{2})\.svg$/)?.[1];
-      return COUNTRIES.some(row => row.code.toLowerCase() === flag)
-        ? route.fulfill({ contentType: 'image/svg+xml', body: FLAG_SVG })
-        : route.fulfill({ status: 404, json: { error: 'not_found' } });
-    }
-
-    const layout = pathname.match(/^\/v1\/layout\/([A-Z]{2})$/)?.[1];
-    if (layout) {
-      return route.fulfill({
-        json: { spec: specFor(layout), states: statesFor(layout) },
-      });
-    }
-
-    return route.fulfill({
-      json: {
-        geo: { country },
-        spec: specFor(country),
-        countries: COUNTRIES.map(({ code, name }) => ({ code, name })),
-        states: statesFor(country),
-      },
-    });
+  await routeAddressService(page, {
+    detected: country,
+    countries: COUNTRIES.map(({ code, name }) => ({ code, name })),
+    rules: code => ({
+      spec: specFor(code),
+      states: COUNTRIES.filter(row => row.code === code).map(row => row.state),
+    }),
   });
 }
 

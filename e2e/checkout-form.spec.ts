@@ -4,7 +4,7 @@ import {
   stubCampaign,
   stubCart,
   bootSdk,
-  ADDRESS_SERVICE_ROUTE,
+  routeAddressService,
 } from './fixtures/routes';
 
 /**
@@ -53,25 +53,17 @@ async function stubCountryService(page: Page): Promise<void> {
       postcode: { label: 'ZIP Code', required: true },
     },
   };
-  await page.route(ADDRESS_SERVICE_ROUTE, route => {
-    const url = new URL(route.request().url());
-    const answer = url.searchParams.get('lang')?.startsWith('th')
-      ? THAI
-      : ENGLISH;
-    if (url.pathname.includes('/v1/layout/')) {
-      return route.fulfill({ json: { spec, states: [] } });
-    }
-    return route.fulfill({
-      json: {
-        geo: { country: 'US' },
-        spec,
-        ...answer,
-        countries: [
-          { code: 'US', name: 'United States' },
-          { code: 'CA', name: 'Canada' },
-        ],
-      },
-    });
+  const answerIn = (lang: string) => (lang.startsWith('th') ? THAI : ENGLISH);
+  await routeAddressService(page, {
+    countries: [
+      { code: 'US', name: 'United States' },
+      { code: 'CA', name: 'Canada' },
+    ],
+    rules: (_, { lang }) => {
+      const answer = answerIn(lang);
+      return { lang: answer.lang, spec, labels: answer.labels };
+    },
+    locale: lang => answerIn(lang).messages,
   });
 }
 

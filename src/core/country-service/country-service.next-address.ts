@@ -6,15 +6,18 @@
  * the postcode formatter — is unchanged: this module only fetches and translates.
  *
  * The API is public, `GET`-only and unauthenticated; see `docs/http-api.md` in the
- * next-address repo. Two routes carry everything this SDK asks for:
+ * next-address repo. Four routes carry everything this SDK asks for:
  *
  * | Route | Answers |
  * |---|---|
- * | `GET /v1/bootstrap` | the visitor's country, its rules, its states, and the country list, in one round trip |
- * | `GET /v1/layout/:country?include=states` | one country's rules and states |
+ * | `GET /v1/geo?include=rules,states` | the visitor, and the rules and states of the country they are in |
+ * | `GET /v1/countries` | the country list |
+ * | `GET /v1/countries/:country?include=states` | one country's rules and states |
+ * | `GET /v1/locales/:lang` | the message templates, in one language |
  *
- * `geo` carries the visitor's currency and IP alongside their country, so the whole of
- * `LocationData` comes from one request. The currency is a reading of where the visitor
+ * Only the first depends on the visitor, so the first three of `LocationData`'s requests
+ * go out together and two of them come from the edge cache. `geo` carries the visitor's
+ * currency and IP alongside their country. The currency is a reading of where the visitor
  * is, not an instruction about what to charge: the SDK uses it as the lowest-priority
  * default, under `?currency=` and the choice saved for the session.
  *
@@ -93,17 +96,25 @@ const POSTCODE_PATTERNS: Record<string, string> = {
   'nl-postal': 'NNNN NN',
 };
 
-interface LayoutResponse {
-  spec: CountrySpec;
-  states?: State[];
-  messages?: Record<string, string>;
-  labels?: Record<string, string>;
+/** `GET /v1/countries/:country`, and `rules` in `GET /v1/geo?include=rules`. */
+interface CountryResponse {
+  /** The language `labels` is in: the one asked for if the service has it, else `en`. */
   lang?: string;
+  spec: CountrySpec;
+  labels?: Record<string, string>;
+  states?: State[];
 }
 
-interface BootstrapResponse extends LayoutResponse {
-  countries: Array<{ code: string; name: string }>;
-  geo?: { ip?: string | null; currency?: string | null };
+/** A row of `GET /v1/countries`, as far as this SDK reads it. */
+interface CountryRow {
+  code: string;
+  name: string;
+}
+
+interface GeoResponse {
+  ip?: string | null;
+  currency?: string | null;
+  rules?: CountryResponse;
 }
 
 /**
@@ -164,7 +175,7 @@ export function toCountryConfig(
  * writes `''` for `phonecode` on every country it builds itself, and currency is read
  * through `LocationData.detectedCountryConfig`, never from a row of this list.
  */
-function toCountries(rows: BootstrapResponse['countries']): Country[] {
+function toCountries(rows: CountryRow[]): Country[] {
   return rows.map(row => ({
     code: row.code,
     name: row.name,
@@ -179,22 +190,59 @@ async function getJson<T>(url: string): Promise<T> {
   if (!response.ok) {
     throw new Error(`${url} responded ${response.status} ${response.statusText}`);
   }
-
-  const body = await response.json();
-  // Checked here rather than left to the first `layout.some(...)`, which would throw a
-  // TypeError from inside the mapping and tell the caller nothing about the cause.
-  if (!Array.isArray(body?.spec?.layout)) {
-    throw new Error(`${url} carried no address layout`);
-  }
-  return body as T;
+  return (await response.json()) as T;
 }
 
 /**
- * The visitor's country, its rules and states, and the country list — one request.
+ * Checked here rather than left to the first `layout.some(...)`, which would throw a
+ * TypeError from inside the mapping and tell the caller nothing about the cause.
+ */
+function rulesIn(
+  rules: CountryResponse | undefined,
+  url: string
+): CountryResponse {
+  if (!rules || !Array.isArray(rules.spec?.layout)) {
+    throw new Error(`${url} carried no address layout`);
+  }
+  return rules;
+}
+
+/**
+ * The message templates in `lang`, or `undefined` when the service could not answer: the
+ * messages are then the SDK's English, and the checkout goes on. A language the service
+ * has no file for comes back in English; `messagesLang` (the language `rules` came back
+ * in) is what stops those being used for a page in another language.
+ */
+async function fetchMessages(
+  baseUrl: string,
+  lang: string
+): Promise<Record<string, string> | undefined> {
+  try {
+    return await getJson<Record<string, string>>(
+      `${baseUrl}/v1/locales/${encodeURIComponent(lang)}`
+    );
+  } catch {
+    return undefined;
+  }
+}
+
+/** What {@link CountryResponse} gives the messages: the names in them, and their language. */
+function namesOf(
+  rules: CountryResponse
+): Pick<LocationData, 'labels' | 'messagesLang'> {
+  return {
+    ...(rules.labels ? { labels: rules.labels } : {}),
+    ...(rules.lang ? { messagesLang: rules.lang } : {}),
+  };
+}
+
+/**
+ * The visitor's country, its rules and states, the country list and the messages.
  *
- * `/v1/bootstrap` exists for exactly this: a form cannot know which country's rules to
- * ask for until geo has answered, so `/v1/geo` + `/v1/countries` + `/v1/layout` would be
- * two serial round trips on a checkout page's critical path.
+ * The three requests go out at once. Only geo depends on the visitor, and it carries the
+ * rules of the country it detected, because a form cannot know which country's rules to
+ * ask for until geo has answered: asking afterwards would be two round trips in a row on
+ * a checkout page's critical path.
  *
  * The country list is not narrowed with `?countries=` even though the route accepts it:
  * `applyCountryFiltering` already narrows it against the campaign and the page config,
@@ -205,24 +253,29 @@ export async function fetchLocationData(
   baseUrl: string = NEXT_ADDRESS_BASE_URL,
   lang: string = DEFAULT_LANG
 ): Promise<LocationData> {
-  const data = await getJson<BootstrapResponse>(
-    `${baseUrl}/v1/bootstrap?lang=${encodeURIComponent(lang)}`
-  );
+  const query = `lang=${encodeURIComponent(lang)}`;
+  const geoUrl = `${baseUrl}/v1/geo?include=rules,states&${query}`;
+  const [geo, countries, messages] = await Promise.all([
+    getJson<GeoResponse>(geoUrl),
+    getJson<CountryRow[]>(`${baseUrl}/v1/countries?${query}`),
+    fetchMessages(baseUrl, lang),
+  ]);
+  const rules = rulesIn(geo.rules, geoUrl);
 
   return {
-    detectedCountryCode: data.spec.country,
-    detectedCountryConfig: toCountryConfig(data.spec, data.geo?.currency),
-    detectedStates: data.states ?? [],
-    countries: toCountries(data.countries),
-    ...(data.geo?.ip ? { detectedIp: data.geo.ip } : {}),
-    ...(data.messages ? { messages: data.messages } : {}),
-    ...(data.labels ? { labels: data.labels } : {}),
-    ...(data.lang ? { messagesLang: data.lang } : {}),
+    detectedCountryCode: rules.spec.country,
+    detectedCountryConfig: toCountryConfig(rules.spec, geo.currency),
+    detectedStates: rules.states ?? [],
+    countries: toCountries(countries),
+    ...(geo.ip ? { detectedIp: geo.ip } : {}),
+    ...(messages ? { messages } : {}),
+    ...namesOf(rules),
   };
 }
 
 /**
- * One country's rules and its subdivisions.
+ * One country's rules and its subdivisions. The messages came with `LocationData` and
+ * do not change with the country; the names inside them do.
  *
  * An uncurated country is answered with the default layout under its own code rather
  * than a `404`, so there is no not-found branch here: a visitor from such a country
@@ -233,17 +286,14 @@ export async function fetchCountryStates(
   baseUrl: string = NEXT_ADDRESS_BASE_URL,
   lang: string = DEFAULT_LANG
 ): Promise<CountryStatesData> {
-  const data = await getJson<LayoutResponse>(
-    `${baseUrl}/v1/layout/${encodeURIComponent(countryCode)}?include=states&lang=${encodeURIComponent(lang)}`
-  );
+  const url = `${baseUrl}/v1/countries/${encodeURIComponent(countryCode)}?include=states&lang=${encodeURIComponent(lang)}`;
+  const rules = rulesIn(await getJson<CountryResponse>(url), url);
 
-  // No currency: `/v1/layout` describes a country, not the visitor. The one the SDK
-  // prices in is read once, from the bootstrap geo, and held in the config store.
+  // No currency: a country's rules describe a country, not the visitor. The one the SDK
+  // prices in is read once, from geo, and held in the config store.
   return {
-    countryConfig: toCountryConfig(data.spec),
-    states: data.states ?? [],
-    ...(data.messages ? { messages: data.messages } : {}),
-    ...(data.labels ? { labels: data.labels } : {}),
-    ...(data.lang ? { messagesLang: data.lang } : {}),
+    countryConfig: toCountryConfig(rules.spec),
+    states: rules.states ?? [],
+    ...namesOf(rules),
   };
 }

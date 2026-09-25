@@ -7,6 +7,7 @@ import {
   bootSdk,
   captureEvents,
   ADDRESS_SERVICE_ROUTE,
+  routeAddressService,
 } from './fixtures/routes';
 import { CHECKOUT_KEY } from './fixtures/storage-keys';
 
@@ -62,34 +63,25 @@ const LAYOUT_DELAY_MS = 300;
 
 /**
  * One stub for both callers: the checkout form's `CountryService` and this feature read
- * the same service, `/v1/bootstrap` for the country list and `/v1/layout/:country` for
- * one country's rules. The two are told apart by `include=states`, which only the form
- * asks for.
+ * the same service. The block's own request is the one that does not ask for states,
+ * and it is the one held back.
  */
 async function stubAddressService(page: Page): Promise<void> {
-  await page.route(ADDRESS_SERVICE_ROUTE, async route => {
-    const url = route.request().url();
-    const country = url.match(/\/v1\/layout\/([A-Z]{2})/)?.[1];
-    const spec = country === 'JP' ? JP_SPEC : US_SPEC;
-    const states = [{ code: 'NY', name: 'New York' }];
-
-    if (country) {
-      if (!url.includes('include=states')) {
+  await routeAddressService(page, {
+    geo: { currency: 'USD', ip: '203.0.113.7' },
+    countries: [
+      { code: 'US', name: 'United States' },
+      { code: 'JP', name: 'Japan' },
+    ],
+    rules: async (country, { withStates }) => {
+      if (!withStates) {
         await new Promise(resolve => setTimeout(resolve, LAYOUT_DELAY_MS));
       }
-      return route.fulfill({ json: { spec, states } });
-    }
-    return route.fulfill({
-      json: {
-        geo: { country: 'US', currency: 'USD', ip: '203.0.113.7' },
-        spec: US_SPEC,
-        countries: [
-          { code: 'US', name: 'United States' },
-          { code: 'JP', name: 'Japan' },
-        ],
-        states,
-      },
-    });
+      return {
+        spec: country === 'JP' ? JP_SPEC : US_SPEC,
+        states: [{ code: 'NY', name: 'New York' }],
+      };
+    },
   });
 }
 
@@ -431,14 +423,16 @@ test('a layout that arrives after a newer one is discarded', async ({ page }) =>
   await expect(page.locator(FIELD('address1'))).toBeVisible();
 
   await page.unroute(ADDRESS_SERVICE_ROUTE);
-  await page.route(ADDRESS_SERVICE_ROUTE, async route => {
-    const country = route.request().url().match(/\/v1\/layout\/([A-Z]{2})/)?.[1];
-    if (!country) return route.fulfill({ status: 500, json: {} });
-    // JP is asked for first and answers last.
-    await new Promise(r => setTimeout(r, country === 'JP' ? 900 : 100));
-    return route.fulfill({
-      json: { spec: country === 'JP' ? JP_SPEC : US_SPEC, states: [] },
-    });
+  await routeAddressService(page, {
+    countries: [
+      { code: 'US', name: 'United States' },
+      { code: 'JP', name: 'Japan' },
+    ],
+    rules: async country => {
+      // JP is asked for first and answers last.
+      await new Promise(r => setTimeout(r, country === 'JP' ? 900 : 100));
+      return { spec: country === 'JP' ? JP_SPEC : US_SPEC };
+    },
   });
 
   const rendered = await captureEvents(page, 'address:fields-rendered');
@@ -515,7 +509,11 @@ function recordLayoutLangs(page: Page): string[] {
   const langs: string[] = [];
   page.on('request', request => {
     const url = new URL(request.url());
-    if (/\/v1\/layout\//.test(url.pathname) && !url.searchParams.has('include')) {
+    // The block's own request: one country's rules, without the form's states.
+    if (
+      /^\/v1\/countries\/[^/]+$/.test(url.pathname) &&
+      !url.searchParams.has('include')
+    ) {
       langs.push(url.searchParams.get('lang') ?? '');
     }
   });

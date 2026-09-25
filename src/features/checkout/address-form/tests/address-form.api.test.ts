@@ -16,7 +16,7 @@ describe('fetchAddressSpec', () => {
 
     const spec = await fetchAddressSpec('US', { baseUrl: 'https://addr.test' });
 
-    expect(fetchMock).toHaveBeenCalledWith('https://addr.test/v1/layout/US?lang=en');
+    expect(fetchMock).toHaveBeenCalledWith('https://addr.test/v1/countries/US?lang=en');
     expect(spec.layout).toEqual([['country']]);
   });
 

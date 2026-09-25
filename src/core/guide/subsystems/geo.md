@@ -52,7 +52,8 @@ boot step 2   config read: currencyBehavior, addressConfig, ?country=, ?currency
                     │
 boot step 3   ┌─────────────────────────────────────────────────────┐
               │ CountryService.getLocationData()                    │
-              │   GET next-address…/v1/bootstrap                    │
+              │   GET next-address…/v1/geo?include=rules,states      │
+              │     + /v1/countries + /v1/locales/:lang, together   │
               │   cached 1 hour in localStorage (next_country_*)     │
               │   3-second budget → on timeout, US / USD hard-coded  │
               └─────────────────────────────────────────────────────┘
@@ -74,9 +75,11 @@ boot step 5   campaign fetched in that currency,         │
               postcode label, validation, and formatting
 ```
 
-One request answers both chains. `/v1/bootstrap` reports where the visitor is — country,
-currency and IP — alongside the rules and the country list, so the country chain and the
-currency chain are reading the same answer rather than two providers' separate guesses.
+One answer serves both chains. `/v1/geo?include=rules,states` reports where the visitor
+is (country, currency and IP) alongside the rules of that country, so the country chain
+and the currency chain are reading the same answer rather than two providers' separate
+guesses. The country list and the messages go out at the same time, because neither
+depends on the visitor, and both come from the edge cache.
 The currency it reports is a reading of where the visitor is, not an instruction about
 what to charge: it is the lowest rung of the chain below, under `?currency=` and the
 choice already saved for the session.

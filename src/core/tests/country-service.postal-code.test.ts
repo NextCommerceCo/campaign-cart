@@ -10,7 +10,7 @@ import type { Logger } from '@/core/logger';
 
 /**
  * Snapshot of every country the countries CDN
- * (`next-address…/v1/layout/{CODE}`) ships a
+ * (`next-address…/v1/countries/{CODE}`) ships a
  * `postcodeFormat` for, captured 2026-08-26. Frozen here so the domain pass runs
  * against the authority's own data without a network call.
  *

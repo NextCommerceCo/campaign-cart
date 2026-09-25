@@ -72,7 +72,7 @@ export interface LocationData {
   messages?: Record<string, string>;
   /** What each field is called inside those messages, keyed by the service's field name. */
   labels?: Record<string, string>;
-  /** The language both are in: the one asked for if the service has it, else `en`. */
+  /** The language the service answered in: the one asked for if it has it, else `en`. */
   messagesLang?: string;
 }
 
@@ -194,10 +194,8 @@ export class CountryService {
     country: string,
     data: Pick<LocationData, 'messages' | 'labels' | 'messagesLang'>
   ): void {
-    if (data.messages) {
-      this.messages = data.messages;
-      this.messagesLang = data.messagesLang;
-    }
+    if (data.messages) this.messages = data.messages;
+    if (data.messagesLang) this.messagesLang = data.messagesLang;
     if (data.labels) {
       this.messageLabels.set(country, data.labels);
       this.lastMessageLabels = data.labels;

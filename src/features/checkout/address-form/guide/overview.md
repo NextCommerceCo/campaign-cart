@@ -30,7 +30,7 @@ indistinguishable from one a page author typed. Country and province dropdowns a
 **empty** and the checkout form fills them, the same way it fills hand-written ones.
 
 ```
-checkout store country ──► GET /v1/layout/{country}
+checkout store country ──► GET /v1/countries/{country}
                                     │
                                     ▼
                       rows of field names + labels

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import type { Campaign } from '../src/types/campaign';
 import { RICH_CAMPAIGN } from './fixtures/campaign';
-import { stubCampaign, stubCart, bootSdk, ADDRESS_SERVICE_ROUTE } from './fixtures/routes';
+import { stubCampaign, stubCart, bootSdk, routeAddressService } from './fixtures/routes';
 import type { Page } from '@playwright/test';
 
 /**
@@ -26,8 +26,7 @@ import type { Page } from '@playwright/test';
  * types the fifth character into a field the fourth one already rewrote.
  *
  * the address-rules service (i18n-rules.nextcommerce.com) is stubbed here so the
- * test is deterministic. Routes: `/v1/bootstrap` and `/v1/layout/{CODE}`
- * (src/core/country-service/country-service.next-address.ts).
+ * test is deterministic, through `routeAddressService` in `fixtures/routes.ts`.
  */
 
 const FIXTURE = '/e2e/fixtures/country-service.html';
@@ -109,7 +108,7 @@ const GB_SPEC = {
   postcode: { formatter: 'gb-postcode' },
 };
 
-/** What `/v1/layout/{CODE}` answers, per country. GB has no states. */
+/** Each country's rules, as `/v1/countries/{CODE}` answers them. GB has no states. */
 const LAYOUTS: Record<string, { spec: unknown; states: unknown[] }> = {
   US: {
     spec: US_SPEC,
@@ -129,26 +128,15 @@ const LAYOUTS: Record<string, { spec: unknown; states: unknown[] }> = {
   GB: { spec: GB_SPEC, states: [] },
 };
 
-/** Stub next-address: bootstrap + per-country layout. */
+/** Stub next-address: each country's rules from {@link LAYOUTS}, the visitor in the US. */
 async function stubCountriesCdn(page: Page): Promise<void> {
-  await page.route(ADDRESS_SERVICE_ROUTE, route => {
-    const url = route.request().url();
-    const layout = url.match(/\/v1\/layout\/([A-Z]{2})/)?.[1];
-    if (layout) {
-      return route.fulfill({ json: LAYOUTS[layout] ?? LAYOUTS.US });
-    }
-    return route.fulfill({
-      json: {
-        geo: { country: 'US' },
-        spec: US_SPEC,
-        countries: [
-          { code: 'US', name: 'United States' },
-          { code: 'CA', name: 'Canada' },
-          { code: 'GB', name: 'United Kingdom' },
-        ],
-        states: [],
-      },
-    });
+  await routeAddressService(page, {
+    countries: [
+      { code: 'US', name: 'United States' },
+      { code: 'CA', name: 'Canada' },
+      { code: 'GB', name: 'United Kingdom' },
+    ],
+    rules: code => LAYOUTS[code] ?? LAYOUTS.US,
   });
 }
 

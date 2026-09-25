@@ -142,7 +142,7 @@ export async function fetchAddressSpec(
 ): Promise<AddressSpec> {
   const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
   const lang = options.lang ?? DEFAULT_LANG;
-  const url = `${baseUrl}/v1/layout/${encodeURIComponent(countryCode)}?lang=${encodeURIComponent(lang)}`;
+  const url = `${baseUrl}/v1/countries/${encodeURIComponent(countryCode)}?lang=${encodeURIComponent(lang)}`;
 
   const response = await fetch(url);
   if (!response.ok) {
