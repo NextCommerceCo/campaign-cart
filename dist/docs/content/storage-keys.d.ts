@@ -7,7 +7,23 @@ export interface StorageGroup {
     intro: string;
 }
 export declare const STORAGE_GROUPS: StorageGroup[];
+export interface StorageMigration {
+    since: string;
+    legacyKey: string;
+    releaseEvidence: {
+        commit: string;
+        tag: string;
+        previousTag: string;
+    };
+}
+export interface StorageReplacement {
+    kind: 'public-store';
+    export: string;
+    guide: string;
+}
 export interface StorageKeyDoc {
+    migration?: StorageMigration;
+    replacement?: StorageReplacement;
     key: string;
     examples?: string[];
     group: StorageGroupId;

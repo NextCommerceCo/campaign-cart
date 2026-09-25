@@ -1,9 +1,9 @@
 export interface PhoneNumberSource {
-    getNumber?(format?: number): string;
+    getNumber?(): string;
     isValidNumber?(): boolean | null;
 }
 export type PhoneVerdict = 'valid' | 'invalid' | 'unknown';
-export type PhoneReason = 'empty' | 'library-length' | 'digit-count' | 'utils-not-loaded' | 'no-instance';
+export type PhoneReason = 'empty' | 'rule' | 'digit-count' | 'rule-not-loaded' | 'no-instance';
 export interface PhoneCheck {
     verdict: PhoneVerdict;
     value: string;

@@ -1,7 +1,10 @@
 export interface PhoneRules {
     callingCode?: string;
     nationalPrefix?: string;
-    mask?: string;
+    masks?: {
+        start?: string;
+        mask: string;
+    }[];
     pattern: string;
     example?: string;
 }
