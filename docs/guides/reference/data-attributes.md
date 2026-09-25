@@ -481,6 +481,24 @@ Below is an example that builds the contact and address fields with Thai labels.
 
 The fields carry the same classes as the address block's, so one stylesheet styles both.
 
+### Field labels
+
+`data-next-label` on a field the page writes itself takes its label and placeholder from the selected country's rules, in the page's language, and writes them again when the country changes. A field the rules leave optional gets its note, `(optional)` in English.
+
+| Attribute | Description |
+|---|---|
+| `data-next-label` | Writes the field's label and placeholder |
+| `data-next-label-text` | The part of a label that is written |
+
+Below is an example that lets the SDK name the postcode field, a ZIP Code in the US and a Postcode in the UK, while the page keeps its own required marker.
+
+```html
+<input id="postal" data-next-checkout-field="postal" data-next-label>
+<label for="postal"><span data-next-label-text>Postal code</span> *</label>
+```
+
+The SDK writes a `<label>` paired with the field by `for` or by wrapping it. It replaces the text of a label that holds only text, or of its `data-next-label-text` element, and leaves any other label as written.
+
 ### Payment methods
 
 Values `data-next-payment-method` and `data-next-payment-form` both accept. Pair a section with a form body of the same value.

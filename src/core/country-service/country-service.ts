@@ -3,7 +3,10 @@
  * Handles fetching country and state data from the CDN API with caching
  */
 
-import type { FixedValues } from '@/core/country-service/country-service.next-address';
+import type {
+  CountryRules,
+  FixedValues,
+} from '@/core/country-service/country-service.next-address';
 import type { PhoneRules } from '@/core/country-service/country-service.phone';
 import { getSelectedLocale } from '@/core/currency-formatter';
 import { Logger } from '@/core/logger';
@@ -88,6 +91,8 @@ export interface LocationData {
 export interface CountryStatesData {
   countryConfig: CountryConfig;
   states: State[];
+  /** The country's rules as the service answered them, for a caller that needs its labels. */
+  rules?: CountryRules;
   messages?: Record<string, string>;
   labels?: Record<string, string>;
   messagesLang?: string;

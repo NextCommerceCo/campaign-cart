@@ -285,6 +285,7 @@ export async function fetchCountryStates(
   return {
     countryConfig: toCountryConfig(rules),
     states: rules.states ?? [],
+    rules,
     ...namesOf(rules),
   };
 }

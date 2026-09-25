@@ -58,6 +58,12 @@ const SERVICE_FIELD: Record<string, string> = {
   country: 'country',
 };
 
+/** The service's name for a checkout field: `fname` → `first_name`, `billing-postal` → `postcode`. */
+export function serviceFieldName(field: string): string {
+  const name = field.replace(/^billing-/, '');
+  return SERVICE_FIELD[name] ?? name;
+}
+
 function interpolate(template: string, vars: Record<string, string>): string {
   return template.replace(
     /\{(\w+)\}/g,
@@ -90,7 +96,7 @@ export function fieldMessage(
   { country, example }: { country?: string; example?: string } = {}
 ): string {
   const name = field.replace(/^billing-/, '');
-  const serviceName = SERVICE_FIELD[name] ?? name;
+  const serviceName = serviceFieldName(field);
   const lang = addressLang();
   const page = pageTexts(lang);
   // An answer from before the service named its language was in the one asked for.

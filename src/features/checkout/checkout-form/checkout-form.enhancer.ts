@@ -81,6 +81,8 @@ import {
   applyFixedValues,
   type AppliedFixedValues,
 } from './fixed-address-values';
+import { writeFieldLabels } from './field-label-text';
+import { optionalLabel } from '@/features/checkout/validation/field-messages';
 import {
   updateFieldValidationDisplay,
   type FieldValidationContext,
@@ -303,6 +305,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     'shipping' | 'billing',
     AppliedFixedValues
   > = { shipping: {}, billing: {} };
+  /** The country each address's `data-next-label` fields were written for. */
+  private readonly labelCountries: Record<
+    'shipping' | 'billing',
+    string | undefined
+  > = { shipping: undefined, billing: undefined };
   private hasTrackedBeginCheckout = false;
   /**
    * Handle for the `begin_checkout` delay, so a form destroyed inside that window
@@ -2529,6 +2536,37 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     if (billing !== this.fixedValues.billing.country) {
       void applyFixedValues(ctx, 'billing', billing, this.fixedValues.billing);
     }
+    this.syncFieldLabels('shipping', shipping);
+    this.syncFieldLabels('billing', billing);
+  }
+
+  /** Writes the `data-next-label` fields' text as an address's country changes. */
+  private syncFieldLabels(
+    form: 'shipping' | 'billing',
+    country: string | undefined
+  ): void {
+    if (!country || country === this.labelCountries[form]) return;
+    if (!this.form.querySelector('[data-next-label]')) return;
+    this.labelCountries[form] = country;
+    void this.countryService
+      .getCountryStates(country)
+      .then(({ rules }) => {
+        if (!rules || this.labelCountries[form] !== country) return;
+        writeFieldLabels(
+          this.form,
+          rules,
+          form,
+          label =>
+            optionalLabel(this.countryService, label, rules.lang ?? 'en'),
+          this.logger
+        );
+      })
+      .catch(error =>
+        this.logger.warn(
+          `Could not write the field labels for ${country}`,
+          error
+        )
+      );
   }
 
   private handleCheckoutUpdate(state: any): void {

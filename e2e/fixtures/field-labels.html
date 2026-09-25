@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Field labels</title>
+  </head>
+  <body>
+    <h1>Field labels fixture</h1>
+
+    <!-- No docs:example marker: data-next-label is the checkout form's, whose published
+         example is in checkout-form.html. The page writes every field itself and asks
+         the SDK for their text with data-next-label. -->
+    <form data-next-checkout>
+      <label for="email">Email</label>
+      <input id="email" data-next-checkout-field="email" data-next-label />
+
+      <input id="phone" data-next-checkout-field="phone" data-next-label />
+      <label for="phone">Phone</label>
+
+      <select id="country" data-next-checkout-field="country"></select>
+
+      <div class="form-group">
+        <input id="postal" data-next-checkout-field="postal" data-next-label />
+        <label for="postal"><span data-next-label-text>Postal code</span> *</label>
+      </div>
+
+      <button type="submit">Place order</button>
+    </form>
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>
