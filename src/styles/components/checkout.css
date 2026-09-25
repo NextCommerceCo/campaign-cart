@@ -389,6 +389,8 @@
 
 .next-phone-flag {
   position: absolute;
+  /* Above the input, which comes after it and is often positioned itself. */
+  z-index: 2;
   right: 12px;
   top: 50%;
   transform: translateY(-50%);

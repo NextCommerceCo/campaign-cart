@@ -32,6 +32,11 @@
       #phone {
         width: 100%;
         box-sizing: border-box;
+        /* Opaque and positioned, as templates draw a field (for a focus ring or a
+           floating label): positioned later in the page, it paints over the flag
+           unless the flag is stacked above it. */
+        position: relative;
+        background: #fff;
       }
       #phone-row label {
         position: absolute;

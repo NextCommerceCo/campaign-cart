@@ -124,6 +124,25 @@ async function flagInsideField(page: Page): Promise<boolean> {
   );
 }
 
+/**
+ * Whether the flag is drawn over the input rather than under it. The flag ignores the
+ * pointer, which hit-testing would skip, so it is let through for the one lookup.
+ */
+async function flagOnTop(page: Page): Promise<boolean> {
+  return page.locator(FLAG).evaluate(flag => {
+    const img = flag as HTMLImageElement;
+    const box = img.getBoundingClientRect();
+    const before = img.style.pointerEvents;
+    img.style.pointerEvents = 'auto';
+    const hit = document.elementFromPoint(
+      box.left + box.width / 2,
+      box.top + box.height / 2
+    );
+    img.style.pointerEvents = before;
+    return hit === img;
+  });
+}
+
 type PhonePost = {
   shipping_address: { phone_number: string };
   user: { phone_number: string };
@@ -174,6 +193,7 @@ test('the field keeps the page’s input and shows the shopper’s flag inside i
     )
     .toBe(true);
   await expect.poll(() => flagInsideField(page)).toBe(true);
+  await expect.poll(() => flagOnTop(page)).toBe(true);
 });
 
 /**
@@ -247,7 +267,9 @@ test('a Thai shopper’s number is written the Thai way and stored in E.164', as
   await expect.poll(() => storedPhone(page)).toBe('+66812345678');
 });
 
-test('a Bangkok landline is grouped differently from a mobile', async ({ page }) => {
+test('a Bangkok landline is grouped differently from a mobile', async ({
+  page,
+}) => {
   await stubCardCheckout(page, { country: 'TH' });
   await bootSdk(page, CHECKOUT);
   await expectCountry(page, 'TH');
