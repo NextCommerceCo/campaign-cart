@@ -225,6 +225,27 @@ async function fetchMessages(
   }
 }
 
+/**
+ * The service's texts in `lang`, and the language they are really in: one it has no file
+ * for is answered in English, and says so in `Content-Language` (a CORS-safelisted
+ * header). `undefined` when the service could not answer.
+ */
+export async function fetchTexts(
+  lang: string,
+  baseUrl: string = NEXT_ADDRESS_BASE_URL
+): Promise<{ texts: Record<string, string>; lang: string } | undefined> {
+  try {
+    const response = await fetch(
+      `${baseUrl}/v1/locales/${encodeURIComponent(lang)}`
+    );
+    if (!response.ok) return undefined;
+    const texts = (await response.json()) as Record<string, string>;
+    return { texts, lang: response.headers.get('content-language') ?? lang };
+  } catch {
+    return undefined;
+  }
+}
+
 /** What a country's rules give the messages: each field's name in them, and their language. */
 function namesOf(
   rules: CountryRules

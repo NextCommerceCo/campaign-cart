@@ -73,6 +73,29 @@ describe('writeFieldLabels', () => {
     expect($<HTMLInputElement>('#phone').placeholder).toBe('หมายเลขโทรศัพท์');
   });
 
+  it('keeps an aria-label the page gave in step with the label', () => {
+    document.body.innerHTML = `
+      <input data-next-checkout-field="fname" data-next-label aria-label="First name">
+      <input data-next-checkout-field="email" data-next-label>`;
+    writeFieldLabels(document.body, THAI, 'shipping', optional, logger);
+    expect(
+      $('[data-next-checkout-field="fname"]').getAttribute('aria-label')
+    ).toBe('ชื่อ');
+    expect(
+      $('[data-next-checkout-field="email"]').hasAttribute('aria-label')
+    ).toBe(false);
+  });
+
+  it('leaves a placeholder or aria-label that data-next-i18n translates', () => {
+    document.body.innerHTML = `
+      <input data-next-checkout-field="email" data-next-label placeholder="you@example.com"
+        aria-label="Email" data-next-i18n="[placeholder]checkout.email.example;[aria-label]a">`;
+    writeFieldLabels(document.body, THAI, 'shipping', optional, logger);
+    const input = $<HTMLInputElement>('[data-next-checkout-field="email"]');
+    expect(input.placeholder).toBe('you@example.com');
+    expect(input.getAttribute('aria-label')).toBe('Email');
+  });
+
   it('leaves a field the country does not ask for, and one that did not opt in', () => {
     expect($('label[for="city"]').textContent).toBe('City');
     expect(

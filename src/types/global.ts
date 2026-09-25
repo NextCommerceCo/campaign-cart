@@ -630,6 +630,11 @@ export interface EventMap {
     fields: string[];
   };
   /**
+   * The address-rules service's texts arrived, in `lang`, so a text translated before
+   * they did can be translated again.
+   */
+  'address:messages-loaded': { lang: string };
+  /**
    * The shipping address fields were revealed — the visitor moved past the
    * collapsed autocomplete input, so state, city, and postcode are now on screen.
    *

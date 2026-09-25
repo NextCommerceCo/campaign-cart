@@ -127,6 +127,11 @@ export class AttributeParser {
       types.push('address-form');
     }
 
+    // A translated text; on any element, beside whatever else it is.
+    if (element.hasAttribute('data-next-i18n')) {
+      types.push('i18n');
+    }
+
     // Check for express checkout enhancer
     if (element.hasAttribute('data-next-express-checkout')) {
       const checkoutType = element.getAttribute('data-next-express-checkout');

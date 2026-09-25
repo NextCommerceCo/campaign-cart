@@ -497,7 +497,58 @@ Below is an example that lets the SDK name the postcode field, a ZIP Code in the
 <label for="postal"><span data-next-label-text>Postal code</span> *</label>
 ```
 
-The SDK writes a `<label>` paired with the field by `for` or by wrapping it. It replaces the text of a label that holds only text, or of its `data-next-label-text` element, and leaves any other label as written.
+The SDK writes a `<label>` paired with the field by `for` or by wrapping it. It replaces the text of a label that holds only text, or of its `data-next-label-text` element, and leaves any other label as written. It also writes an `aria-label` the field already has, so a screen reader follows the country as the label does, and it leaves a placeholder or `aria-label` that the field's [`data-next-i18n`](#translated-text) translates.
+
+### Translated text
+
+`data-next-i18n` translates an element's text and attributes into the page's language, `window.nextConfig.locale`, by key. The syntax is i18next's: a key alone translates the text, `[attribute]key` translates an attribute, and `;` separates several.
+
+| Attribute | Description |
+|---|---|
+| `data-next-i18n` | The keys to translate by |
+
+| Value | Description |
+|---|---|
+| `key` | The element's text |
+| `[placeholder]key` | Its `placeholder` |
+| `[aria-label]key` | Its `aria-label` |
+| `[title]key` | Its `title` |
+| `[alt]key` | Its `alt` |
+
+Below is an example that translates a heading from a key the SDK ships and a button's text and tooltip from the page's own keys, on a Thai page.
+
+```html
+<h2 data-next-i18n="checkout.contact.title">Contact</h2>
+<button
+  title="Your payment is encrypted"
+  data-next-i18n="page.pay;[title]page.pay.hint"
+>
+  Pay now
+</button>
+
+<script>
+  window.nextConfig = {
+    locale: "th-TH",
+    translations: {
+      th: {
+        "page.pay": "ชำระเงิน",
+        "page.pay.hint": "การชำระเงินของคุณถูกเข้ารหัส",
+      },
+    },
+  };
+</script>
+```
+
+A key is looked up in the page's `translations` for its language first, then in the texts the SDK ships. The SDK ships these, in every language it supports:
+
+| Key | Description |
+|---|---|
+| `checkout.contact.title` | Contact |
+| `checkout.shipping.title` | Shipping address |
+| `checkout.billing.title` | Billing address |
+| `checkout.billing.same_as_shipping` | Use shipping address as billing address |
+
+A key neither has in the page's language leaves what the HTML says, never another language. The SDK writes text only, never markup, and does not replace the text of an element that has child elements: put the words in an element of their own. Any other attribute, such as `[href]`, is not written.
 
 ### Payment methods
 

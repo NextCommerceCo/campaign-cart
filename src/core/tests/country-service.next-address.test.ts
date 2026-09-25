@@ -19,6 +19,7 @@ import {
   type RulesField,
 } from '@/core/country-service/country-service.next-address';
 import { validatePostalCode } from '@/core/country-service/country-service.postal-code';
+import { EventBus } from '@/core/events';
 import { Logger } from '@/core/logger';
 import { CountryService } from '@/core/country-service';
 import { useConfigStore } from '@/state/config';
@@ -438,5 +439,40 @@ describe('CountryService language', () => {
     useConfigStore.setState({ locale: 'th' });
     await service.getCountryStates('US');
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('CountryService texts', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  const answer = (texts: Record<string, string>, lang: string) => ({
+    ok: true,
+    json: async () => texts,
+    headers: new Headers({ 'content-language': lang }),
+  });
+
+  it('loads a language once however many callers ask, and says when it lands', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(answer({ 'checkout.contact.title': 'Yhteystiedot' }, 'fi'));
+    vi.stubGlobal('fetch', fetchMock);
+    const service = CountryService.getInstance();
+    const loaded = vi.fn();
+    const off = EventBus.getInstance().on('address:messages-loaded', loaded);
+
+    await Promise.all([service.loadTexts('fi-FI'), service.loadTexts('fi')]);
+    off();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(service.getTexts('fi')?.['checkout.contact.title']).toBe('Yhteystiedot');
+    expect(loaded).toHaveBeenCalledWith({ lang: 'fi' });
+  });
+
+  it('keeps no answer the service gave in another language', async () => {
+    // A language it has no file for is answered in English.
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(answer({ 'checkout.contact.title': 'Contact' }, 'en')));
+    const service = CountryService.getInstance();
+
+    await service.loadTexts('sv');
+
+    expect(service.getTexts('sv')).toBeUndefined();
   });
 });

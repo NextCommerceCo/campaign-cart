@@ -9,6 +9,7 @@ import type {
 } from '@/core/country-service/country-service.next-address';
 import type { PhoneRules } from '@/core/country-service/country-service.phone';
 import { getSelectedLocale } from '@/core/currency-formatter';
+import { EventBus } from '@/core/events';
 import { Logger } from '@/core/logger';
 import { useConfigStore } from '@/state/config';
 import type { AddressConfig } from '@/types/global';
@@ -17,7 +18,9 @@ import * as filteringMethods from '@/core/country-service/country-service.filter
 import {
   fetchCountryStates,
   fetchLocationData,
+  fetchTexts,
 } from '@/core/country-service/country-service.next-address';
+import { baseLang } from '@/core/country-service/country-service.translations';
 
 export interface CountryConfig {
   stateLabel: string;
@@ -115,6 +118,9 @@ export class CountryService {
   private cacheExpiry = 3600000; // 1 hour in milliseconds
   private messages: Record<string, string> = {};
   private messagesLang: string | undefined;
+  /** The service's texts by language, for `data-next-i18n`; see {@link getTexts}. */
+  private texts = new Map<string, Readonly<Record<string, string>>>();
+  private textRequests = new Map<string, Promise<void>>();
   private messageLabels = new Map<string, Record<string, string>>();
   private lastMessageLabels: Record<string, string> = {};
   private logger: Logger;
@@ -198,6 +204,39 @@ export class CountryService {
     return this.messagesLang;
   }
 
+  /**
+   * The service's texts in `lang`, or `undefined` until they are loaded. Kept apart from
+   * {@link getMessages}: those go with the field names of one country's rules, in one
+   * language, and switching them alone would put a sentence in one language around a
+   * name in another.
+   */
+  public getTexts(lang: string): Readonly<Record<string, string>> | undefined {
+    return this.texts.get(baseLang(lang));
+  }
+
+  /**
+   * Loads the service's texts in `lang`, once however many elements ask, and says so
+   * with `address:messages-loaded`. An answer in another language is not kept: a page
+   * with no texts in its language keeps its own.
+   */
+  public loadTexts(lang: string): Promise<void> {
+    const base = baseLang(lang);
+    if (this.texts.has(base)) return Promise.resolve();
+    let request = this.textRequests.get(base);
+    if (!request) {
+      request = fetchTexts(lang).then(answer => {
+        if (answer && baseLang(answer.lang) === base) {
+          this.texts.set(base, answer.texts);
+          EventBus.getInstance().emit('address:messages-loaded', {
+            lang: base,
+          });
+        }
+      });
+      this.textRequests.set(base, request);
+    }
+    return request;
+  }
+
   public getMessageLabels(country?: string): Readonly<Record<string, string>> {
     return (
       (country && this.messageLabels.get(country)) || this.lastMessageLabels
@@ -210,6 +249,12 @@ export class CountryService {
   ): void {
     if (data.messages) this.messages = data.messages;
     if (data.messagesLang) this.messagesLang = data.messagesLang;
+    if (data.messages && data.messagesLang) {
+      this.texts.set(baseLang(data.messagesLang), data.messages);
+      EventBus.getInstance().emit('address:messages-loaded', {
+        lang: baseLang(data.messagesLang),
+      });
+    }
     if (data.labels) {
       this.messageLabels.set(country, data.labels);
       this.lastMessageLabels = data.labels;

@@ -77,23 +77,28 @@ The pieces that matter:
 
 The customer's contact details and addresses are built by the SDK from the selected country's rules: an empty element for each step becomes the fields that country asks for.
 
-Below is an example that builds the contact step, the shipping address, and a billing address that closes when the shopper ticks the box.
+Below is an example that builds the contact step, the shipping address, and a billing address that closes when the shopper ticks the box, with its headings in the page's language.
 
 ```html
-<h2>Contact</h2>
+<h2 data-next-i18n="checkout.contact.title">Contact</h2>
 <div data-next-contact></div>
 
-<h2>Shipping address</h2>
+<h2 data-next-i18n="checkout.shipping.title">Shipping address</h2>
 <div data-next-address="shipping"></div>
 
 <label>
   <input type="checkbox" name="use_shipping_address">
-  Use shipping address as billing address
+  <span data-next-i18n="checkout.billing.same_as_shipping">
+    Use shipping address as billing address
+  </span>
 </label>
 <div data-next-component="different-billing-address">
+  <h2 data-next-i18n="checkout.billing.title">Billing address</h2>
   <div data-next-address="billing"></div>
 </div>
 ```
+
+The SDK ships the four headings in every language it supports; [Translated text](../reference/data-attributes.md#translated-text) covers the rest of the page's words.
 
 ### Contact information
 

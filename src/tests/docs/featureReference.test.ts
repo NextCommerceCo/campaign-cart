@@ -58,6 +58,7 @@ const modules = import.meta.glob<{ default: FeatureManifest }>(
 // Features written without a manifest while the manifest system is being removed.
 const WITHOUT_MANIFEST = new Map([
   ['address-form', ['[data-next-address]', '[data-next-contact]']],
+  ['i18n', ['[data-next-i18n]']],
 ]);
 
 const eventDocs = extractEventDocs(join(SRC, 'types/global.ts'));

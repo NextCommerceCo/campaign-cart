@@ -8,20 +8,18 @@
  * whole sentence is English. Mixing them is how "รหัสไปรษณีย์ is required" happened.
  */
 
-import { addressLang } from '@/core/country-service';
-import { useConfigStore } from '@/state/config';
+import {
+  addressLang,
+  baseLang,
+  pageTranslations,
+  sourceIn,
+  type MessageSource,
+} from '@/core/country-service';
 
 import { formatFieldName } from './field-labels';
 import { hasEmoji } from './validation-patterns';
 
-type Messages = Readonly<Record<string, string>>;
-
-/** What this module needs from `CountryService`. */
-export interface MessageSource {
-  getMessages?: () => Messages;
-  getMessageLabels?: (country?: string) => Messages;
-  getMessagesLang?: () => string | undefined;
-}
+export type { MessageSource };
 
 export type MessageKey =
   | 'error.required'
@@ -71,17 +69,6 @@ function interpolate(template: string, vars: Record<string, string>): string {
   );
 }
 
-/** The page's own texts for the form's language: `th-TH`, else `th`. */
-function pageTexts(lang: string): Messages {
-  const translations = useConfigStore.getState().translations;
-  const code = lang.toLowerCase();
-  return translations?.[code] ?? translations?.[baseOf(code)] ?? {};
-}
-
-function baseOf(lang: string): string {
-  return lang.toLowerCase().split(/[-_]/)[0] ?? lang;
-}
-
 /**
  * The message `key` for `field`, e.g. `('error.required', 'postal')` → `ZIP Code is
  * required`, or `กรุณากรอกรหัสไปรษณีย์` when the service answered in Thai.
@@ -98,11 +85,8 @@ export function fieldMessage(
   const name = field.replace(/^billing-/, '');
   const serviceName = serviceFieldName(field);
   const lang = addressLang();
-  const page = pageTexts(lang);
-  // An answer from before the service named its language was in the one asked for.
-  const answered = source?.getMessagesLang?.();
-  const service =
-    answered === undefined || answered === baseOf(lang) ? source : undefined;
+  const page = pageTranslations(lang);
+  const service = sourceIn(source, lang);
 
   const template = page[key] ?? service?.getMessages?.()[key];
   const label =
@@ -125,13 +109,10 @@ export function optionalLabel(
   label: string,
   lang: string
 ): string {
-  const answered = source?.getMessagesLang?.();
-  const service =
-    answered === undefined || answered === baseOf(lang) ? source : undefined;
   const template =
-    pageTexts(lang)['field.optional'] ??
-    service?.getMessages?.()['field.optional'] ??
-    (baseOf(lang) === 'en' ? '{label} (optional)' : undefined);
+    pageTranslations(lang)['field.optional'] ??
+    sourceIn(source, lang)?.getMessages?.()['field.optional'] ??
+    (baseLang(lang) === 'en' ? '{label} (optional)' : undefined);
   return template ? interpolate(template, { label }) : label;
 }
 

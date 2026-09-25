@@ -93,6 +93,7 @@ export class AttributeScanner {
         '[data-next-hide]',
         'form[data-next-checkout]',
         '[data-next-address]',
+        '[data-next-i18n]',
         '[data-next-contact]',
         '[data-next-express-checkout]',
         '[data-next-timer-display]',
@@ -422,6 +423,10 @@ export class AttributeScanner {
         case 'address-form':
           const { AddressFormEnhancer } = await import('@/features/checkout/address-form');
           return new AddressFormEnhancer(element);
+
+        case 'i18n':
+          const { I18nEnhancer } = await import('@/features/display/i18n');
+          return new I18nEnhancer(element);
 
         case 'express-checkout-container':
           const { ExpressCheckoutContainerEnhancer } = await import('@/features/checkout/express-checkout-container');

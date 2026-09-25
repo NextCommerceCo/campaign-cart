@@ -1,9 +1,11 @@
 /**
  * `data-next-label`: a field the page writes itself takes its label and placeholder from
  * the country's rules, in the page's language, so a page need not be written once per
- * language. Opt-in per field, and only the two places a label lives are touched:
+ * language. Opt-in per field, and only the places a field's name lives are touched:
  *
- * - the control's `placeholder`;
+ * - the control's `placeholder`, unless its `data-next-i18n` translates one;
+ * - its `aria-label`, when the page gave it one: the name a screen reader reads, which
+ *   has to follow the country as the visible label does;
  * - each `<label>` the browser pairs with it (`control.labels`, by `for`/`id` or by
  *   nesting): the `[data-next-label-text]` inside it when there is one, else the label's
  *   text when the label holds nothing but text. Any other label is left alone, since its
@@ -13,6 +15,7 @@
 import type { CountryRules } from '@/core/country-service';
 import type { Logger } from '@/core/logger';
 import { serviceFieldName } from '@/features/checkout/validation/field-messages';
+import { translatesAttribute } from '@/utils/i18n-spec';
 
 type Control = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 
@@ -69,7 +72,18 @@ export function writeFieldLabels(
       field.required || pageRequires(control)
         ? field.label
         : optional(field.label);
-    if (!(control instanceof HTMLSelectElement)) control.placeholder = text;
+    if (
+      !(control instanceof HTMLSelectElement) &&
+      !translatesAttribute(control, 'placeholder')
+    ) {
+      control.placeholder = text;
+    }
+    if (
+      control.hasAttribute('aria-label') &&
+      !translatesAttribute(control, 'aria-label')
+    ) {
+      control.setAttribute('aria-label', text);
+    }
     for (const label of control.labels ?? []) {
       if (!writeLabel(label, text)) {
         logger.debug(
