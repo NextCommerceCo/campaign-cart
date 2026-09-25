@@ -1,6 +1,11 @@
 import { BaseEnhancer } from '@/core/base/base-enhancer';
 import { useCheckoutStore } from '@/state/checkout';
-import { addressLang, type CountryRules } from '@/core/country-service';
+import {
+  addressLang,
+  CountryService,
+  type CountryRules,
+} from '@/core/country-service';
+import { optionalLabel } from '@/features/checkout/validation/field-messages';
 
 import { builtInRules, fetchCountryRules } from './address-form.api';
 import { readRenderedValues, renderLayout } from './address-form.renderer';
@@ -142,6 +147,12 @@ export class AddressFormEnhancer extends BaseEnhancer {
         form: this.form,
         values,
         alreadyCollected: this.collectedElsewhere(),
+        optionalLabel: label =>
+          optionalLabel(
+            CountryService.getInstance(),
+            label,
+            rules.lang ?? 'en'
+          ),
       }
     );
     this.renderedCountry = countryCode;

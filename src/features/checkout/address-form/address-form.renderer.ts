@@ -31,6 +31,8 @@ export interface AddressRenderContext {
    * leave the order built from whichever was scanned last.
    */
   alreadyCollected?: ReadonlySet<string>;
+  /** The label a field shows when it is not required, with its optional note. */
+  optionalLabel?: (label: string) => string;
 }
 
 export function sdkFieldName(
@@ -42,16 +44,24 @@ export function sdkFieldName(
   return form === 'billing' ? `billing-${base}` : base;
 }
 
-function labelFor(field: RulesField, id: string): HTMLLabelElement {
+/** What a field is called on the form: its label, and its optional note if it has one. */
+function shownLabel(field: RulesField, ctx: AddressRenderContext): string {
+  return field.required || !ctx.optionalLabel
+    ? field.label
+    : ctx.optionalLabel(field.label);
+}
+
+function labelFor(text: string, id: string): HTMLLabelElement {
   const label = document.createElement('label');
   label.htmlFor = id;
   label.className = 'next-address-label';
-  label.textContent = field.label;
+  label.textContent = text;
   return label;
 }
 
 function controlFor(
   field: RulesField,
+  text: string,
   checkoutField: string,
   form: 'shipping' | 'billing',
   id: string
@@ -76,7 +86,7 @@ function controlFor(
     // for a scriptless floating label, and an empty box has to say what it wants — a
     // floating label is hidden until there is a value, so a blank placeholder leaves
     // nothing on screen at all.
-    control.placeholder = field.input.placeholder || field.label;
+    control.placeholder = field.input.placeholder || text;
     const { maxLength, inputMode, autoCapitalize } = field.input;
     if (maxLength) control.maxLength = maxLength;
     if (inputMode) control.inputMode = inputMode;
@@ -152,14 +162,15 @@ export function renderLayout(
       cell.setAttribute('data-next-address-field', checkoutField);
       if (field.input.span) cell.style.flexGrow = String(field.input.span);
 
-      const control = controlFor(field, checkoutField, ctx.form, id);
+      const text = shownLabel(field, ctx);
+      const control = controlFor(field, text, checkoutField, ctx.form, id);
       const value = ctx.values?.[checkoutField];
       if (value && control instanceof HTMLInputElement) control.value = value;
 
       // Control first, label second: a floating label is positioned over the control by
       // CSS, and `control + label` is the only way to reach it from the control's state.
       // `for`/`id` carries the pairing, so the reading order is unaffected.
-      cell.append(control, labelFor(field, id));
+      cell.append(control, labelFor(text, id));
 
       rowElement.append(cell);
       rendered.push(checkoutField);

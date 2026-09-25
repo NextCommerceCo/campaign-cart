@@ -107,6 +107,28 @@ export function fieldMessage(
   return interpolate(ENGLISH[key], { ...vars, label: formatFieldName(name) });
 }
 
+/**
+ * A field's label with its optional note, `{label} (optional)`, from `field.optional` in
+ * `lang`, the language the label is in. The same order as {@link fieldMessage}: the page's
+ * translation, then the service's when it answered in `lang`, then English for an English
+ * label. With no template in the label's language the label is left bare, which reads
+ * better than a note in another language.
+ */
+export function optionalLabel(
+  source: MessageSource | undefined,
+  label: string,
+  lang: string
+): string {
+  const answered = source?.getMessagesLang?.();
+  const service =
+    answered === undefined || answered === baseOf(lang) ? source : undefined;
+  const template =
+    pageTexts(lang)['field.optional'] ??
+    service?.getMessages?.()['field.optional'] ??
+    (baseOf(lang) === 'en' ? '{label} (optional)' : undefined);
+  return template ? interpolate(template, { label }) : label;
+}
+
 /** A postcode that fails its country's pattern, with the country's example when it has one. */
 export function postalMessage(
   source: MessageSource | undefined,

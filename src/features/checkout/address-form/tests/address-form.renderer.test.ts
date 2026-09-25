@@ -299,6 +299,35 @@ describe('renderLayout', () => {
     ).toBe('City');
   });
 
+  it('writes the optional note on a field that is not required, and only there', () => {
+    const withLine2: Spec = {
+      ...US,
+      layout: [['line1'], ['line2']],
+      fields: {
+        ...US.fields,
+        line2: {
+          ...text('Apartment, suite, etc.', 'address-line2'),
+          required: false,
+        },
+      },
+    };
+    render(container, withLine2, {
+      form: 'shipping',
+      optionalLabel: label => `${label} (optional)`,
+    });
+
+    const labelOf = (name: string) =>
+      container.querySelector(`[data-next-address-field="${name}"] label`)
+        ?.textContent;
+    expect(labelOf('address2')).toBe('Apartment, suite, etc. (optional)');
+    expect(labelOf('address1')).toBe('Address');
+    expect(
+      container.querySelector<HTMLInputElement>(
+        '[data-next-checkout-field="address2"]'
+      )?.placeholder
+    ).toBe('Apartment, suite, etc. (optional)');
+  });
+
   it('labels every control, and the label points at it', () => {
     render(container, JP, { form: 'shipping' });
 

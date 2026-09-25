@@ -5,6 +5,7 @@ import { useConfigStore } from '@/state/config';
 import {
   emojiErrors,
   fieldMessage,
+  optionalLabel,
   postalMessage,
   type MessageSource,
 } from '../field-messages';
@@ -169,6 +170,39 @@ describe("the page's own translations", () => {
     pageIn('de', {});
     expect(fieldMessage(THAI, 'error.required', 'address2')).toBe(
       'Address line 2 is required'
+    );
+  });
+});
+
+describe('optionalLabel', () => {
+  const thai: MessageSource = {
+    getMessagesLang: () => 'th',
+    getMessages: () => ({ 'field.optional': '{label} (ไม่บังคับ)' }),
+  };
+
+  it("writes the note from the service's template, in the label's language", () => {
+    expect(optionalLabel(thai, 'ห้อง / ชั้น / อาคาร', 'th')).toBe(
+      'ห้อง / ชั้น / อาคาร (ไม่บังคับ)'
+    );
+  });
+
+  it("prefers the page's own wording", () => {
+    useConfigStore.setState({
+      translations: { th: { 'field.optional': '{label} - ไม่ต้องกรอกก็ได้' } },
+    });
+    expect(optionalLabel(thai, 'ห้อง', 'th')).toBe('ห้อง - ไม่ต้องกรอกก็ได้');
+  });
+
+  it('writes the English note for an English label, service or not', () => {
+    expect(optionalLabel(undefined, 'Apartment, suite, etc.', 'en')).toBe(
+      'Apartment, suite, etc. (optional)'
+    );
+  });
+
+  it('leaves a label bare rather than put a note in another language on it', () => {
+    // The service answered in Thai; the label is German.
+    expect(optionalLabel(thai, 'Wohnung, Etage usw.', 'de')).toBe(
+      'Wohnung, Etage usw.'
     );
   });
 });

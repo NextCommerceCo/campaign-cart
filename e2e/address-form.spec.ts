@@ -387,6 +387,46 @@ test('a returning visitor sees the address they already gave', async ({ page }) 
   await expect(page.locator(FIELD('postal'))).toHaveValue('60448');
 });
 
+/**
+ * A field that is not required says so, in the language its label is in: the note comes
+ * from the service's `field.optional` template for that language, not from the label.
+ */
+test('an optional field carries its note in the page’s language', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    (window as any).nextConfig = { locale: 'th-TH' };
+  });
+  await routeAddressService(page, {
+    countries: [{ code: 'US', name: 'United States' }],
+    rules: () =>
+      countryRules(
+        'US',
+        [['country'], ['line1'], ['line2']],
+        {
+          country: ruleField('ประเทศ', 'country', { type: 'select', options: 'countries' }),
+          line1: ruleField('ที่อยู่', 'address-line1'),
+          line2: ruleField('ห้อง / ชั้น / อาคาร', 'address-line2', { type: 'text' }, {
+            required: false,
+          }),
+        },
+        { lang: 'th' }
+      ),
+    locale: lang =>
+      lang.startsWith('th') ? { 'field.optional': '{label} (ไม่บังคับ)' } : undefined,
+  });
+
+  await bootSdk(page, FIXTURE);
+
+  await expect(
+    page.locator('[data-next-address-field="address2"] .next-address-label')
+  ).toHaveText('ห้อง / ชั้น / อาคาร (ไม่บังคับ)');
+  // Required, so no note.
+  await expect(
+    page.locator('[data-next-address-field="address1"] .next-address-label')
+  ).toHaveText('ที่อยู่');
+});
+
 test('a failed layout lookup still gives the shopper an address to fill', async ({
   page,
 }) => {

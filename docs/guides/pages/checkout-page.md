@@ -137,6 +137,7 @@ Below is an example that rewords the message for an empty field and renames the 
 | `error.emoji` | A field holding an emoji |
 | `error.name` | A name with digits or symbols |
 | `label.<field>` | A field's name inside a message |
+| `field.optional` | A label's note: `{label} (optional)` |
 
 Keep `{label}` and `{example}` in the text: the SDK fills them in. The fields are named as the address service names them.
 
