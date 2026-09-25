@@ -40,6 +40,11 @@ the two can never drift apart.
 
 - **Only a real `<form>` activates.** The feature is registered against
   `form[data-next-checkout]`.
+- **Only the submit button submits.** Enter in a field moves focus to the next visible
+  field, or closes the keyboard on the last one, and the SDK sets `enterkeyhint` to
+  `next` or `done` to label the key, unless the page set its own. A browser would
+  otherwise submit on Enter, which from the first field starts express checkout
+  unvalidated or flags every empty field (`enter-key-navigation.ts`).
 - **Field names are fixed**, not free text — see the reference. An unrecognised
   name is not part of the order at all.
 - Some fields are optional by default. `data-next-required="true"` forces

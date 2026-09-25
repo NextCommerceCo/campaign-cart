@@ -418,7 +418,7 @@ The live summary renders the cart from a `<template>` using `{item.*}` tokens, w
 
 ## Create order
 
-The submit button is a plain `type="submit"` button inside the form. No `data-next-*` attribute is needed. On submit the SDK validates, tokenizes payment, creates the order once, then sends the visitor to `next-success-url` with `?ref_id=` appended so the next page can load the order (`checkout-form.enhancer.ts › CheckoutFormEnhancer`).
+The submit button is a plain `type="submit"` button inside the form. No `data-next-*` attribute is needed. On submit the SDK validates, tokenizes payment, creates the order once, then sends the visitor to `next-success-url` with `?ref_id=` appended so the next page can load the order (`checkout-form.enhancer.ts › CheckoutFormEnhancer`). The button is the only way to submit: Enter in a field moves to the next field, and the keyboard labels its Enter key to match (`checkout-form/enter-key-navigation.ts › setupEnterKeyNavigation`).
 
 ## Debugging
 

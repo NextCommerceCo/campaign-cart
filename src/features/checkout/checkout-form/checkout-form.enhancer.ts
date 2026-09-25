@@ -76,6 +76,7 @@ import {
   setupAutofillDetection,
   type AutofillDetectionContext,
 } from './autofill-detection';
+import { setupEnterKeyNavigation } from './enter-key-navigation';
 import {
   updateFieldValidationDisplay,
   type FieldValidationContext,
@@ -293,6 +294,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
    * Was an untyped `(this as any)` stash holding only the interval.
    */
   private stopAutofillDetection?: () => void;
+  private stopEnterKeyNavigation?: () => void;
   private hasTrackedBeginCheckout = false;
   /**
    * Handle for the `begin_checkout` delay, so a form destroyed inside that window
@@ -2328,6 +2330,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private setupEventHandlers(): void {
     this.submitHandler = this.handleFormSubmit.bind(this);
     this.form.addEventListener('submit', this.submitHandler);
+    this.stopEnterKeyNavigation = setupEnterKeyNavigation(this.form);
 
     this.changeHandler = this.handleFieldChange.bind(this);
     this.bindFieldListeners();
@@ -2578,6 +2581,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     if (this.stopAutofillDetection) {
       this.stopAutofillDetection();
     }
+    this.stopEnterKeyNavigation?.();
 
     if (this.paymentMethodChangeHandler) {
       const paymentRadios = this.form.querySelectorAll(

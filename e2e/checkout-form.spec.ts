@@ -159,6 +159,60 @@ test('a name with an accent is accepted on blur', async ({ page }) => {
   await expect(page.locator('.next-error-label')).toHaveCount(0);
 });
 
+/** Counts the form's submit events from here on. */
+async function countSubmits(page: Page): Promise<() => Promise<number>> {
+  await page.evaluate(() => {
+    (window as any).__submits = 0;
+    document
+      .querySelector('form[data-next-checkout]')
+      ?.addEventListener('submit', () => (window as any).__submits++);
+  });
+  return () => page.evaluate(() => (window as any).__submits as number);
+}
+
+/**
+ * On a phone the keyboard's Enter key is under the shopper's thumb, and a browser
+ * submits a form on Enter. Submitting a checkout from its first field starts express
+ * checkout unvalidated or marks every empty field as an error.
+ */
+test('Enter moves to the next field and never submits the form', async ({
+  page,
+}) => {
+  await bootSdk(page, FIXTURE);
+  const submits = await countSubmits(page);
+  const field = (name: string) =>
+    page.locator(`[data-next-checkout-field="${name}"]`);
+
+  await field('email').focus();
+  await expect(field('email')).toHaveAttribute('enterkeyhint', 'next');
+  await field('email').fill('ada@example.com');
+  await field('email').press('Enter');
+  await expect(field('fname')).toBeFocused();
+
+  await field('fname').fill('Ada');
+  await field('fname').press('Enter');
+  await expect(field('lname')).toBeFocused();
+
+  // The last field says so on the keyboard, and Enter there closes it.
+  await expect(field('lname')).toHaveAttribute('enterkeyhint', 'done');
+  await field('lname').press('Enter');
+  await expect(field('lname')).not.toBeFocused();
+
+  expect(await submits()).toBe(0);
+  // Nothing was validated as a submit would have: the empty last name is not flagged.
+  await expect(field('lname')).not.toHaveClass(/has-error/);
+});
+
+/** The negative control: the submit button still submits. */
+test('the submit button still submits the form', async ({ page }) => {
+  await bootSdk(page, FIXTURE);
+  const submits = await countSubmits(page);
+
+  await page.click('button[type="submit"]');
+
+  await expect.poll(submits).toBe(1);
+});
+
 test('submitting with empty required fields flags them', async ({ page }) => {
   await bootSdk(page, FIXTURE);
 
