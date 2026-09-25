@@ -73,33 +73,41 @@ The pieces that matter:
 - `data-next-bundle-display`: that card's calculated prices.
 - `data-next-await`: the template's loading gate. The SDK adds the `next-display-ready` class to `<html>` when its DOM scan finishes, and the template's `next-core.css` keeps anything under `data-next-await` invisible until then, so the visitor never sees `-` placeholders flash. The SDK only sets the class; without that stylesheet the attribute does nothing.
 
-## Customer information
+## Contact and address
 
-The customer step is an empty `<div data-next-contact></div>`, which the SDK turns into the name, email and phone fields.
+The customer's contact details and addresses are built by the SDK from the selected country's rules: an empty element for each step becomes the fields that country asks for.
 
-Below is an example that builds the customer step.
+Below is an example that builds the contact step, the shipping address, and a billing address that closes when the shopper ticks the box.
 
 ```html
-<h2>Customer Information</h2>
+<h2>Contact</h2>
 <div data-next-contact></div>
+
+<h2>Shipping address</h2>
+<div data-next-address="shipping"></div>
+
+<label>
+  <input type="checkbox" name="use_shipping_address">
+  Use shipping address as billing address
+</label>
+<div data-next-component="different-billing-address">
+  <div data-next-address="billing"></div>
+</div>
 ```
+
+### Contact information
+
+The contact step is an empty `<div data-next-contact></div>`, which the SDK turns into the name, email and phone fields.
 
 The SDK requires the first name, last name and email, and the phone is optional unless its input carries `required` or `data-next-required="true"`. No field accepts an emoji. [Contact block](../reference/data-attributes.md#contact-block) lists its attributes, and what it builds beside an address block.
 
-## Shipping address
+### Shipping address
 
 The shipping step is an empty `<div data-next-address="shipping"></div>`, which the SDK turns into the fields the selected country collects, in the order that country writes them.
 
-Below is an example that builds the shipping step.
-
-```html
-<h2>Shipping Information</h2>
-<div data-next-address="shipping"></div>
-```
-
 In a country with one city or postcode for every address, such as Vatican City, the block does not ask for it and the SDK sends it with the order. The checkout form still fills the country list with the countries the campaign ships to and the state list with the selected country's states, validates the fields, and keeps the city, state and postcode row hidden until the street address has a value.
 
-[Address block](../reference/data-attributes.md#address-block) lists its attributes, and [Styling the address block](#styling-the-address-block) below covers its markup.
+[Address block](../reference/data-attributes.md#address-block) lists its attributes, and [Styling](#styling) below covers its markup.
 
 Limits to plan for:
 
@@ -111,9 +119,58 @@ Limits to plan for:
 
 If the fields cannot be loaded, the block shows a generic English address form instead, with state and postcode optional, so the shopper can still check out.
 
-### Styling the address block
+> **Watch out:** Writing the address inputs yourself is deprecated, for the billing address as well as the shipping one. The starter template still does both, so do not copy its address inputs or its `shipping-form`, `shipping-field-row` and `billing-form` containers. Use `data-next-address="shipping"` and `data-next-address="billing"` instead: static fields are the same in every country and miss every later fix to a country's address rules.
 
-The SDK ships no styling for the block, and rules written against your own input classes do not reach it: the fields it builds carry their own classes. Style them through the classes and attributes it sets.
+### Billing address
+
+A separate billing address is a second address block, `data-next-address="billing"`, inside the `different-billing-address` section. It builds the same fields as the shipping block, named `billing-address1`, `billing-city` and so on. A checkbox named `use_shipping_address` opens and closes the section: checked means billing matches shipping, and the SDK collapses it.
+
+### Validation messages
+
+Validation messages are in the form's language: `window.nextConfig.locale`, or English when it is unset. To change the wording, set `translations` for that language. A key you leave out keeps the default.
+
+Below is an example that rewords the message for an empty field and renames the apartment line inside messages, on a Thai page.
+
+```html
+<script>
+  window.nextConfig = {
+    locale: "th-TH",
+    translations: {
+      th: {
+        "error.required": "กรุณาระบุ{label}",
+        "label.line2": "ห้อง/อาคาร",
+      },
+    },
+  };
+</script>
+```
+
+| Key | Description |
+|---|---|
+| `error.required` | An empty required field |
+| `error.pattern` | A value in the wrong format |
+| `error.pattern.example` | The same, with `{example}` |
+| `error.email` | An invalid email address |
+| `error.emoji` | A field holding an emoji |
+| `error.name` | A name with digits or symbols |
+| `label.<field>` | A field's name inside a message |
+| `field.optional` | A label's note: `{label} (optional)` |
+
+Keep `{label}` and `{example}` in the text: the SDK fills them in. The fields are named as the address service names them.
+
+| Field | Description |
+|---|---|
+| `first_name`, `last_name` | The name fields |
+| `email`, `phone_number` | The contact fields |
+| `line1`, `line2` | The street lines |
+| `city`, `state`, `postcode` | The locality fields |
+| `country` | The country select |
+
+For a language the address service does not have, give both the messages and the field names they use. A message missing either is shown in English.
+
+### Styling
+
+The SDK ships no styling for the block, and rules written against your own input classes do not reach it: the fields it builds carry their own classes. Style them through the classes and attributes it sets. The contact block's fields carry the same classes, so the class rules below style them too; the rules scoped to `[data-next-address]` do not reach them.
 
 Below is an example of the markup the block builds for a US address, cut down to the street and the city and ZIP row, with the attributes that do not matter for styling left out.
 
@@ -248,69 +305,6 @@ Below is the playground example with this stylesheet, a US address filled in.
 ![Checkout form: customer fields, then a US shipping address built by the address block, with city, state and ZIP on one row](./images/address-block.png)
 
 > **Watch out:** Style a field by its name, with `[data-next-address-field="postal"]`, never by its row number. Rows differ per country, so `data-next-address-row="4"` holds the city and postcode for one country and something else for the next.
-
-### Billing address
-
-A separate billing address is a second address block, `data-next-address="billing"`, inside the `different-billing-address` section. It builds the same fields as the shipping block, named `billing-address1`, `billing-city` and so on. A checkbox named `use_shipping_address` opens and closes the section: checked means billing matches shipping, and the SDK collapses it.
-
-Below is an example of a billing section that stays open while the box is unticked and closes when the shopper ticks it.
-
-```html
-<label>
-  <input type="checkbox" name="use_shipping_address">
-  Use shipping address as billing address
-</label>
-<div data-next-component="different-billing-address">
-  <div data-next-address="billing"></div>
-</div>
-```
-
-### Validation messages
-
-Validation messages are in the form's language: `window.nextConfig.locale`, or English when it is unset. To change the wording, set `translations` for that language. A key you leave out keeps the default.
-
-Below is an example that rewords the message for an empty field and renames the apartment line inside messages, on a Thai page.
-
-```html
-<script>
-  window.nextConfig = {
-    locale: "th-TH",
-    translations: {
-      th: {
-        "error.required": "กรุณาระบุ{label}",
-        "label.line2": "ห้อง/อาคาร",
-      },
-    },
-  };
-</script>
-```
-
-| Key | Description |
-|---|---|
-| `error.required` | An empty required field |
-| `error.pattern` | A value in the wrong format |
-| `error.pattern.example` | The same, with `{example}` |
-| `error.email` | An invalid email address |
-| `error.emoji` | A field holding an emoji |
-| `error.name` | A name with digits or symbols |
-| `label.<field>` | A field's name inside a message |
-| `field.optional` | A label's note: `{label} (optional)` |
-
-Keep `{label}` and `{example}` in the text: the SDK fills them in. The fields are named as the address service names them.
-
-| Field | Description |
-|---|---|
-| `first_name`, `last_name` | The name fields |
-| `email`, `phone_number` | The contact fields |
-| `line1`, `line2` | The street lines |
-| `city`, `state`, `postcode` | The locality fields |
-| `country` | The country select |
-
-For a language the address service does not have, give both the messages and the field names they use. A message missing either is shown in English.
-
-### Static address fields (deprecated)
-
-> **Watch out:** Writing the address inputs yourself is deprecated, for the billing address as well as the shipping one. The starter template still does both, so do not copy its address inputs or its `shipping-form`, `shipping-field-row` and `billing-form` containers. Use `data-next-address="shipping"` and `data-next-address="billing"` instead: static fields are the same in every country and miss every later fix to a country's address rules.
 
 ## Order bump
 
