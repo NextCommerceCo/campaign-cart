@@ -31,7 +31,7 @@ export interface CountryConfig {
   postcodeFormat: string | string[] | null;
   /**
    * True when {@link postcodeRegex} is written against the postcode **compacted** —
-   * uppercased, spaces removed — rather than against the string as typed.
+   * uppercased, spaces and hyphens removed — rather than against the string as typed.
    *
    * next-address defines every pattern that way so one pattern accepts every spacing a
    * shopper might use (`SW1A 1AA`, `sw1a1aa`). Testing such a pattern against the raw
@@ -246,10 +246,7 @@ export class CountryService {
       this.keepMessages(countryCode, cached);
       return {
         ...cached,
-        countryConfig: postalCodeMethods.withPostcodeFormats(
-          countryCode,
-          cached.countryConfig
-        ),
+        countryConfig: cached.countryConfig,
         states: this.applyStateFiltering(cached.states || []),
       };
     }
@@ -266,10 +263,7 @@ export class CountryService {
 
       return {
         ...data,
-        countryConfig: postalCodeMethods.withPostcodeFormats(
-          countryCode,
-          data.countryConfig
-        ),
+        countryConfig: data.countryConfig,
         states: this.applyStateFiltering(data.states || []),
       };
     } catch (error) {
@@ -289,10 +283,7 @@ export class CountryService {
     // First try to get from location data if it's the detected country
     const locationData = await this.getLocationData();
     if (locationData.detectedCountryCode === countryCode) {
-      return postalCodeMethods.withPostcodeFormats(
-        countryCode,
-        locationData.detectedCountryConfig
-      );
+      return locationData.detectedCountryConfig;
     }
 
     // Otherwise fetch states data which includes country config
@@ -417,10 +408,7 @@ export class CountryService {
   }
 
   private getDefaultCountryConfig(countryCode: string): CountryConfig {
-    return postalCodeMethods.withPostcodeFormats(
-      countryCode,
-      postalCodeMethods.getDefaultCountryConfig(countryCode)
-    );
+    return postalCodeMethods.getDefaultCountryConfig(countryCode);
   }
 
   private getFallbackLocationData(): LocationData {

@@ -115,27 +115,19 @@ describe('toCountryConfig', () => {
     expect(toCountryConfig(GB_SPEC).postcodeMinLength).toBe(0);
   });
 
-  /**
-   * next-address names the written form (`ca-postal`); this SDK describes it as a slot
-   * pattern. Without the translation Canadian postcodes stop being spaced at all, because
-   * `withPostcodeFormats` carries no built-in entry for CA.
-   */
-  it.each([
-    ['ca-postal', 'NNN NNN'],
-    ['jp-postal', 'NNN-NNNN'],
-    ['nl-postal', 'NNNN NN'],
-  ])('turns the %s formatter into %s', (formatter, pattern) => {
-    const spec = { ...US_SPEC, postcode: { formatter } };
-    expect(toCountryConfig(spec).postcodeFormat).toBe(pattern);
+  it("uses the country's masks as its postcode formats", () => {
+    const spec = {
+      ...GB_SPEC,
+      postcode: { masks: ['## ###', '### ###', '#### ###'] },
+    };
+    expect(toCountryConfig(spec).postcodeFormat).toEqual([
+      '## ###',
+      '### ###',
+      '#### ###',
+    ]);
   });
 
-  /** GB has three shapes by length, which `withPostcodeFormats` already owns. */
-  it('emits no pattern for gb-postcode', () => {
-    const spec = { ...GB_SPEC, postcode: { formatter: 'gb-postcode' } };
-    expect(toCountryConfig(spec).postcodeFormat).toBeNull();
-  });
-
-  it('emits no pattern for a country with no formatter', () => {
+  it('has no postcode format for a country with no masks', () => {
     expect(toCountryConfig(US_SPEC).postcodeFormat).toBeNull();
   });
 

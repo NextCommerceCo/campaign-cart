@@ -67,34 +67,10 @@ interface CountrySpec {
   country: string;
   layout: string[][];
   fields: Record<string, FieldSpec | undefined>;
-  postcode?: { formatter?: string };
+  /** `#` is one letter or digit; the SDK's postcode formats read it the same way. */
+  postcode?: { masks?: string[] };
   phone?: PhoneRules;
 }
-
-/**
- * next-address names a postcode's written form; this SDK describes it as a slot pattern.
- *
- * Every slot character in `country-service.postal-code.ts` accepts any character, so a
- * pattern only says **where the separators fall**. That makes each of the four named
- * formatters one pattern, read straight off its implementation in next-address's
- * `packages/core/src/normalize.ts`:
- *
- * | Formatter | Does | Pattern |
- * |---|---|---|
- * | `ca-postal` | `k1a0b1` → `K1A 0B1` | `NNN NNN` |
- * | `jp-postal` | `1000001` → `100-0001` | `NNN-NNNN` |
- * | `nl-postal` | `1012ab` → `1012 AB` | `NNNN NN` |
- *
- * `gb-postcode` is deliberately absent. It splits before the final three characters
- * whatever the length, which is three patterns rather than one, and
- * {@link withPostcodeFormats} already carries all three for GB. Emitting a single pattern
- * here would append a fourth, wrong-length shape behind them.
- */
-const POSTCODE_PATTERNS: Record<string, string> = {
-  'ca-postal': 'NNN NNN',
-  'jp-postal': 'NNN-NNNN',
-  'nl-postal': 'NNNN NN',
-};
 
 /** `GET /v1/countries/:country`, and `rules` in `GET /v1/geo?include=rules`. */
 interface CountryResponse {
@@ -137,7 +113,7 @@ function fieldOf(spec: CountrySpec, name: string): FieldSpec | undefined {
  * One country's spec as the `CountryConfig` the rest of the SDK already understands.
  *
  * `postcodeCompact` is the one flag that has to travel with the value: next-address
- * matches `pattern` against the postcode *compacted* — uppercased, spaces removed — so a
+ * matches `pattern` against the postcode *compacted* — uppercased, spaces and hyphens removed — so a
  * GB pattern accepts every spacing a shopper might type. Handing that pattern to a
  * validator that tests the raw string rejects `SW1A 1AA` and blocks the checkout, which
  * is why {@link CountryConfig.postcodeCompact} exists and `validatePostalCode` reads it.
@@ -161,7 +137,7 @@ export function toCountryConfig(
     postcodeMinLength: 0,
     postcodeMaxLength: postcode?.maxLength ?? Number.MAX_SAFE_INTEGER,
     postcodeExample: postcode?.example ?? null,
-    postcodeFormat: POSTCODE_PATTERNS[spec.postcode?.formatter ?? ''] ?? null,
+    postcodeFormat: spec.postcode?.masks ?? null,
     // Read whether or not the layout collects a phone: the checkout collects one in its
     // own step, outside any address layout.
     ...(spec.phone ? { phone: spec.phone } : {}),

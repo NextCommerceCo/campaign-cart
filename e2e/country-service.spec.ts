@@ -72,8 +72,7 @@ const US_SPEC = {
 /**
  * Canada: fixed length, so its pattern fits from the start. Kept alongside GB so that
  * anchoring the pattern from the end cannot quietly break the case that already worked.
- * `ca-postal` is the formatter name next-address serves; the adapter turns it into this
- * SDK's slot pattern.
+ * Its one mask is what the address-rules service sends for it.
  */
 const CA_SPEC = {
   country: 'CA',
@@ -88,10 +87,10 @@ const CA_SPEC = {
       maxLength: 6,
     },
   },
-  postcode: { formatter: 'ca-postal' },
+  postcode: { masks: ['### ###'] },
 };
 
-/** GB: no state, three postcode lengths, and `withPostcodeFormats` owns its shapes. */
+/** GB: no state, and three postcode lengths, one mask each. */
 const GB_SPEC = {
   country: 'GB',
   layout: [['country'], ['line1'], ['city'], ['postcode']],
@@ -105,7 +104,7 @@ const GB_SPEC = {
       maxLength: 7,
     },
   },
-  postcode: { formatter: 'gb-postcode' },
+  postcode: { masks: ['## ###', '### ###', '#### ###'] },
 };
 
 /** Each country's rules, as `/v1/countries/{CODE}` answers them. GB has no states. */

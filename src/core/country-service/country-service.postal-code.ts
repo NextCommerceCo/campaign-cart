@@ -16,52 +16,6 @@ import type { CountryConfig } from '@/core/country-service';
  */
 const FORMAT_SLOTS = new Set(['N', 'X', 'A', '#', '9']);
 
-/**
- * Postcode formats this SDK knows a country by, for the countries whose pattern
- * from the countries service cannot describe their real postcodes: the pattern
- * language has no escape, so a pattern's own letters (`IM`, `JE`, `GX`, `LT`)
- * are consumed as placeholders. Re-expressing them as placeholders is what lets
- * a code whose prefix the shopper already typed take its separator.
- *
- * IM `IM00AX` → `IM0 0AX`, LT `LT55798` → `LT-55798`, GI `GX111AA` → `GX11 1AA`
- *
- * {@link withPostcodeFormats} merges these ahead of the pattern the service
- * sent, whenever a config is read, so `formatPostalCode` knows nothing about
- * countries. When the service ships a list for a country, its entry here goes.
- *
- * GB is spelled out by length even though one pattern anchored from the end
- * derives the same three shapes, because the service sends a single pattern and
- * pages on released versions of this SDK are reading it today.
- */
-const POSTCODE_FORMATS: Record<string, string[]> = {
-  GB: ['AANN NAA', 'AAN NAA', 'AN NAA'],
-  GI: ['AANN NAA'],
-  IM: ['AAN NAA'],
-  JE: ['AAN NAA'],
-  LT: ['LT-NNNNN', 'AA-NNNNN'],
-};
-
-/**
- * The config as read, with this SDK's formats for `countryCode` in front of the
- * one the countries service sent. Returns the config untouched for a country
- * with no entry.
- */
-export function withPostcodeFormats(
-  countryCode: string,
-  countryConfig: CountryConfig
-): CountryConfig {
-  const known = POSTCODE_FORMATS[countryCode.toUpperCase()];
-  if (!known) return countryConfig;
-
-  const sent = countryConfig.postcodeFormat;
-  const asSent = sent === null ? [] : Array.isArray(sent) ? sent : [sent];
-
-  return {
-    ...countryConfig,
-    postcodeFormat: [...known, ...asSent.filter(f => !known.includes(f))],
-  };
-}
-
 const compiledRegexes = new Map<string, RegExp | null>();
 
 function postcodeRegexOf(pattern: string): RegExp | null {
@@ -83,9 +37,10 @@ function checkAgainstCountry(
   postalCode: string,
   countryConfig: CountryConfig
 ): boolean | null {
-  // GB `SW1A 1AA` -> `SW1A1AA`, so one pattern covers every spacing the shopper may use.
+  // GB `SW1A 1AA` -> `SW1A1AA`, JP `100-0001` -> `1000001`: the pattern matches the
+  // characters, and the separators are the mask's to place.
   const value = countryConfig.postcodeCompact
-    ? postalCode.toUpperCase().replace(/\s+/g, '')
+    ? postalCode.toUpperCase().replace(/[\s-]+/g, '')
     : postalCode;
 
   if (
@@ -251,7 +206,9 @@ export function getDefaultCountryConfig(countryCode: string): CountryConfig {
       postcodeMinLength: 5,
       postcodeMaxLength: 8,
       postcodeExample: 'SW1A 0AA',
-      postcodeFormat: null,
+      // The masks the service sends for GB, one per length, so a GB postcode is written
+      // the same way whether or not it answered.
+      postcodeFormat: ['## ###', '### ###', '#### ###'],
       currencyCode: 'GBP',
       currencySymbol: '£',
     },
