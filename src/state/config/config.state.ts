@@ -96,6 +96,26 @@ const initialState: ConfigState = {
   // Error monitoring removed - add externally via HTML/scripts
 };
 
+/**
+ * `{ lang: { key: text } }` with lower-cased language keys and only string texts, or
+ * `null` when it is not that shape at all.
+ */
+function readTranslations(
+  value: unknown
+): Record<string, Readonly<Record<string, string>>> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const translations: Record<string, Record<string, string>> = {};
+  for (const [lang, texts] of Object.entries(value)) {
+    if (!texts || typeof texts !== 'object') continue;
+    translations[lang.toLowerCase()] = Object.fromEntries(
+      Object.entries(texts).filter(
+        (entry): entry is [string, string] => typeof entry[1] === 'string'
+      )
+    );
+  }
+  return translations;
+}
+
 export const configStore = create<ConfigState & ConfigActions>((set, get) => ({
   ...(initialState as ConfigState),
 
@@ -269,6 +289,16 @@ export const configStore = create<ConfigState & ConfigActions>((set, get) => ({
         logger.warn(
           '[Config] Ignoring invalid locale, using the browser locale instead:',
           windowConfig.locale
+        );
+      }
+    }
+
+    if (windowConfig.translations !== undefined) {
+      const translations = readTranslations(windowConfig.translations);
+      if (translations) updates.translations = translations;
+      else {
+        logger.warn(
+          '[Config] Ignoring translations: expected { lang: { key: text } }'
         );
       }
     }

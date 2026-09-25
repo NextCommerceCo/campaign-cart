@@ -1,12 +1,15 @@
 /**
- * Every message a checkout field shows, built from the address-rules service's `messages`
- * templates and `labels` (what each field is called inside a message), in the language
- * the SDK asked it in.
+ * Every message a checkout field shows: a template (`error.*`) with the field's name
+ * (`label.<field>`) in it, in the form's language.
  *
- * A sentence and the field name inside it always come from the same place. If the
- * service has sent both, both are used; if either is missing, both are English. Mixing
- * them is how "รหัสไปรษณีย์ is required" happened.
+ * Each comes from the page's `nextConfig.translations` for that language, then the
+ * address-rules service's answer when it is in that language, then English. A sentence
+ * and the name inside it are always the same language: if either is missing in it, the
+ * whole sentence is English. Mixing them is how "รหัสไปรษณีย์ is required" happened.
  */
+
+import { addressLang } from '@/core/country-service';
+import { useConfigStore } from '@/state/config';
 
 import { formatFieldName } from './field-labels';
 import { hasEmoji } from './validation-patterns';
@@ -17,6 +20,7 @@ type Messages = Readonly<Record<string, string>>;
 export interface MessageSource {
   getMessages?: () => Messages;
   getMessageLabels?: (country?: string) => Messages;
+  getMessagesLang?: () => string | undefined;
 }
 
 export type MessageKey =
@@ -61,6 +65,17 @@ function interpolate(template: string, vars: Record<string, string>): string {
   );
 }
 
+/** The page's own texts for the form's language: `th-TH`, else `th`. */
+function pageTexts(lang: string): Messages {
+  const translations = useConfigStore.getState().translations;
+  const code = lang.toLowerCase();
+  return translations?.[code] ?? translations?.[baseOf(code)] ?? {};
+}
+
+function baseOf(lang: string): string {
+  return lang.toLowerCase().split(/[-_]/)[0] ?? lang;
+}
+
 /**
  * The message `key` for `field`, e.g. `('error.required', 'postal')` → `ZIP Code is
  * required`, or `กรุณากรอกรหัสไปรษณีย์` when the service answered in Thai.
@@ -75,9 +90,18 @@ export function fieldMessage(
   { country, example }: { country?: string; example?: string } = {}
 ): string {
   const name = field.replace(/^billing-/, '');
-  const template = source?.getMessages?.()[key];
+  const serviceName = SERVICE_FIELD[name] ?? name;
+  const lang = addressLang();
+  const page = pageTexts(lang);
+  // An answer from before the service named its language was in the one asked for.
+  const answered = source?.getMessagesLang?.();
+  const service =
+    answered === undefined || answered === baseOf(lang) ? source : undefined;
+
+  const template = page[key] ?? service?.getMessages?.()[key];
   const label =
-    source?.getMessageLabels?.(country)[SERVICE_FIELD[name] ?? name];
+    page[`label.${serviceName}`] ??
+    service?.getMessageLabels?.(country)[serviceName];
   const vars = { example: example ?? '' };
   if (template && label) return interpolate(template, { ...vars, label });
   return interpolate(ENGLISH[key], { ...vars, label: formatFieldName(name) });

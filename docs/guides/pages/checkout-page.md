@@ -108,6 +108,48 @@ The SDK requires the first name, last name and email. The phone is optional unle
 
 The SDK writes the phone number in the country's format as it is typed (`4155552671` reads `(415) 555-2671` in the US) and sends it to the order as `+14155552671`. It checks only that the number is a plausible length, and the order API validates it.
 
+### Validation messages
+
+Validation messages are in the form's language: `window.nextConfig.locale`, or English when it is unset. To change the wording, set `translations` for that language. A key you leave out keeps the default.
+
+Below is an example that rewords the message for an empty field and renames the apartment line inside messages, on a Thai page.
+
+```html
+<script>
+  window.nextConfig = {
+    locale: "th-TH",
+    translations: {
+      th: {
+        "error.required": "กรุณาระบุ{label}",
+        "label.line2": "ห้อง/อาคาร",
+      },
+    },
+  };
+</script>
+```
+
+| Key | Description |
+|---|---|
+| `error.required` | An empty required field |
+| `error.pattern` | A value in the wrong format |
+| `error.pattern.example` | The same, with `{example}` |
+| `error.email` | An invalid email address |
+| `error.emoji` | A field holding an emoji |
+| `error.name` | A name with digits or symbols |
+| `label.<field>` | A field's name inside a message |
+
+Keep `{label}` and `{example}` in the text: the SDK fills them in. The fields are named as the address service names them.
+
+| Field | Description |
+|---|---|
+| `first_name`, `last_name` | The name fields |
+| `email`, `phone_number` | The contact fields |
+| `line1`, `line2` | The street lines |
+| `city`, `state`, `postcode` | The locality fields |
+| `country` | The country select |
+
+For a language the address service does not have, give both the messages and the field names they use. A message missing either is shown in English.
+
 ### Address block
 
 The empty `<div>` becomes the address fields the selected country collects, in the order that country writes them: a Japanese address leads with the postcode, a US one ends with state and ZIP. When the shopper changes country, the fields are rebuilt and what they typed is kept.

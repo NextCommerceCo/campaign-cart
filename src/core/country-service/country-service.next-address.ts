@@ -98,6 +98,7 @@ interface LayoutResponse {
   states?: State[];
   messages?: Record<string, string>;
   labels?: Record<string, string>;
+  lang?: string;
 }
 
 interface BootstrapResponse extends LayoutResponse {
@@ -216,6 +217,7 @@ export async function fetchLocationData(
     ...(data.geo?.ip ? { detectedIp: data.geo.ip } : {}),
     ...(data.messages ? { messages: data.messages } : {}),
     ...(data.labels ? { labels: data.labels } : {}),
+    ...(data.lang ? { messagesLang: data.lang } : {}),
   };
 }
 
@@ -242,5 +244,6 @@ export async function fetchCountryStates(
     states: data.states ?? [],
     ...(data.messages ? { messages: data.messages } : {}),
     ...(data.labels ? { labels: data.labels } : {}),
+    ...(data.lang ? { messagesLang: data.lang } : {}),
   };
 }

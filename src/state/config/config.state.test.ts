@@ -68,3 +68,25 @@ describe('config store — locale', () => {
     expect(useConfigStore.getState().locale).toBeUndefined();
   });
 });
+
+describe('config store — translations', () => {
+  afterEach(() => useConfigStore.setState({ translations: undefined }));
+
+  it('keeps each language’s texts, by a lower-cased language key', () => {
+    setWindowConfig({
+      translations: {
+        'TH-th': { 'error.required': 'กรุณาระบุ{label}', bad: 3 },
+      },
+    });
+    useConfigStore.getState().loadFromWindow();
+    expect(useConfigStore.getState().translations).toEqual({
+      'th-th': { 'error.required': 'กรุณาระบุ{label}' },
+    });
+  });
+
+  it('ignores a value that is not { lang: { key: text } }', () => {
+    setWindowConfig({ translations: ['error.required'] });
+    useConfigStore.getState().loadFromWindow();
+    expect(useConfigStore.getState().translations).toBeUndefined();
+  });
+});

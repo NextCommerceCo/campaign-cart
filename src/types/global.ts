@@ -1550,10 +1550,34 @@ export interface ConfigState {
    * An unparseable tag (`"de_DE"` with an underscore is the common typo) is rejected with a
    * warning and the browser locale is used instead, so a bad value never breaks prices.
    *
+   * It also picks the language of the checkout form's labels and messages. Unset, that
+   * is English, not the browser's language.
+   *
    * @example "de-DE"
    * @default undefined (use the browser's locale)
    */
   locale?: string;
+
+  /**
+   * Your own wording for the checkout's validation messages, by language.
+   *
+   * Keys are the address-rules service's: `error.*` for a message and `label.<field>` for
+   * a field's name inside one (`label.line2`, `label.postcode`, `label.email`). Set only
+   * the keys you want to change; the rest come from the service, then English. A language
+   * the service does not serve works too, as long as you give it both the messages and
+   * the field names they use.
+   *
+   * The language is the one the form is in: `locale`, or English when it is unset.
+   *
+   * @example
+   * ```ts
+   * translations: {
+   *   th: { 'error.required': 'กรุณาระบุ{label}', 'label.line2': 'ห้อง/อาคาร' },
+   * }
+   * ```
+   * @default undefined (the service's wording)
+   */
+  translations?: Record<string, Readonly<Record<string, string>>>;
 
   // Additional configuration properties for complete type coverage
   autoInit: boolean | undefined;

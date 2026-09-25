@@ -72,6 +72,8 @@ export interface LocationData {
   messages?: Record<string, string>;
   /** What each field is called inside those messages, keyed by the service's field name. */
   labels?: Record<string, string>;
+  /** The language both are in: the one asked for if the service has it, else `en`. */
+  messagesLang?: string;
 }
 
 export interface CountryStatesData {
@@ -79,6 +81,7 @@ export interface CountryStatesData {
   states: State[];
   messages?: Record<string, string>;
   labels?: Record<string, string>;
+  messagesLang?: string;
 }
 
 /**
@@ -97,6 +100,7 @@ export class CountryService {
   private cachePrefix = 'next_country_';
   private cacheExpiry = 3600000; // 1 hour in milliseconds
   private messages: Record<string, string> = {};
+  private messagesLang: string | undefined;
   private messageLabels = new Map<string, Record<string, string>>();
   private lastMessageLabels: Record<string, string> = {};
   private logger: Logger;
@@ -175,6 +179,11 @@ export class CountryService {
    * language: `{ postcode: 'ZIP Code', line2: 'Address line 2', email: 'Email', … }`.
    * The country's own words when it has been fetched, else the last country's.
    */
+  /** The language {@link getMessages} is in, once the service has said. */
+  public getMessagesLang(): string | undefined {
+    return this.messagesLang;
+  }
+
   public getMessageLabels(country?: string): Readonly<Record<string, string>> {
     return (
       (country && this.messageLabels.get(country)) || this.lastMessageLabels
@@ -183,9 +192,12 @@ export class CountryService {
 
   private keepMessages(
     country: string,
-    data: Pick<LocationData, 'messages' | 'labels'>
+    data: Pick<LocationData, 'messages' | 'labels' | 'messagesLang'>
   ): void {
-    if (data.messages) this.messages = data.messages;
+    if (data.messages) {
+      this.messages = data.messages;
+      this.messagesLang = data.messagesLang;
+    }
     if (data.labels) {
       this.messageLabels.set(country, data.labels);
       this.lastMessageLabels = data.labels;

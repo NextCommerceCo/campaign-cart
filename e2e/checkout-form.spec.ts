@@ -21,9 +21,27 @@ import {
 
 const FIXTURE = '/e2e/fixtures/checkout-form.html';
 
-/** The service's own wording and field names, in a language the SDK's fallback is not in. */
-const MESSAGES = { 'error.emoji': 'ห้ามใส่อีโมจิใน{label}' };
-const LABELS = { first_name: 'ชื่อ', email: 'อีเมล' };
+/**
+ * The service's wording and field names in Thai, a language the SDK's fallback is not
+ * in. Any other `?lang=` is answered in English, as the service answers one it lacks.
+ */
+const THAI = {
+  lang: 'th',
+  messages: { 'error.emoji': 'ห้ามใส่อีโมจิใน{label}' },
+  labels: { first_name: 'ชื่อ', email: 'อีเมล' },
+};
+const ENGLISH = {
+  lang: 'en',
+  messages: { 'error.emoji': '{label} can’t contain emojis' },
+  labels: { first_name: 'First name', email: 'Email' },
+};
+
+/** Sets `window.nextConfig` before the SDK reads it. */
+async function configure(page: Page, config: object): Promise<void> {
+  await page.addInitScript(c => {
+    (window as any).nextConfig = c;
+  }, config);
+}
 
 /** Stub the country/states CDN the checkout form's CountryService calls. */
 async function stubCountryService(page: Page): Promise<void> {
@@ -36,15 +54,18 @@ async function stubCountryService(page: Page): Promise<void> {
     },
   };
   await page.route(ADDRESS_SERVICE_ROUTE, route => {
-    if (route.request().url().includes('/v1/layout/')) {
+    const url = new URL(route.request().url());
+    const answer = url.searchParams.get('lang')?.startsWith('th')
+      ? THAI
+      : ENGLISH;
+    if (url.pathname.includes('/v1/layout/')) {
       return route.fulfill({ json: { spec, states: [] } });
     }
     return route.fulfill({
       json: {
         geo: { country: 'US' },
         spec,
-        messages: MESSAGES,
-        labels: LABELS,
+        ...answer,
         countries: [
           { code: 'US', name: 'United States' },
           { code: 'CA', name: 'Canada' },
@@ -97,6 +118,7 @@ test('a valid email gets no-error on blur', async ({ page }) => {
 test('an emoji in any field is refused on blur, in the service’s wording', async ({
   page,
 }) => {
+  await configure(page, { locale: 'th-TH' });
   await bootSdk(page, FIXTURE);
 
   for (const [field, value, message] of [
@@ -113,6 +135,24 @@ test('an emoji in any field is refused on blur, in the service’s wording', asy
       page.locator('.form-group', { has: input }).locator('.next-error-label')
     ).toHaveText(message);
   }
+});
+
+test('a page’s own translation replaces the service’s wording', async ({
+  page,
+}) => {
+  await configure(page, {
+    locale: 'th-TH',
+    translations: { th: { 'error.emoji': 'อย่าใส่อีโมจิใน{label}' } },
+  });
+  await bootSdk(page, FIXTURE);
+
+  const fname = page.locator('[data-next-checkout-field="fname"]');
+  await fname.fill('Ada 😀');
+  await fname.blur();
+
+  await expect(
+    page.locator('.form-group', { has: fname }).locator('.next-error-label')
+  ).toHaveText('อย่าใส่อีโมจิในชื่อ');
 });
 
 /** The negative control: an accented letter is not an emoji. */
