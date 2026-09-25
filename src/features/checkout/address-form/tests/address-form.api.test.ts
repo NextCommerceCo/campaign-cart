@@ -50,7 +50,7 @@ describe('fetchCountryRules', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ok({ country: 'US', address: { layout: {} }, contact: { layout: [] }, fields: {} })));
 
     await expect(fetchCountryRules('US', { baseUrl: 'https://addr.test' })).rejects.toThrow(
-      'carried no layout'
+      'carried no address layout'
     );
   });
 });

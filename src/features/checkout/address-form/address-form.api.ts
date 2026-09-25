@@ -1,4 +1,8 @@
-import type { CountryRules, RulesField } from '@/core/country-service';
+import {
+  readCountryRules,
+  type CountryRules,
+  type RulesField,
+} from '@/core/country-service';
 
 const text = (
   label: string,
@@ -99,15 +103,7 @@ export async function fetchCountryRules(
     );
   }
 
-  const body = await response.json();
   // Checked for shape, not just presence: the caller guards the request, not the render,
   // so a `layout` that is not an array throws where nothing is listening.
-  if (
-    !Array.isArray(body?.address?.layout) ||
-    !Array.isArray(body?.contact?.layout) ||
-    !body?.fields
-  ) {
-    throw new Error(`Address layout for ${countryCode} carried no layout`);
-  }
-  return body as CountryRules;
+  return readCountryRules(await response.json(), url);
 }

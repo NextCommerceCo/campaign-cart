@@ -13,6 +13,7 @@ import {
   fetchCountryStates,
   fetchLocationData,
   flagUrl,
+  readCountryRules,
   toCountryConfig,
   type CountryRules,
   type RulesField,
@@ -76,6 +77,36 @@ const US = rules(
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+});
+
+describe('readCountryRules', () => {
+  const answer = {
+    address: { layout: [['country']] },
+    contact: { layout: [['email']] },
+    fields: {},
+  };
+
+  it('reads a named country down to its code', () => {
+    const rules = readCountryRules(
+      { ...answer, country: { code: 'NP', name: 'Nepal' } },
+      'u'
+    );
+    expect(rules.country).toBe('NP');
+  });
+
+  it('reads the bare code an older deployment answers', () => {
+    expect(readCountryRules({ ...answer, country: 'NP' }, 'u').country).toBe(
+      'NP'
+    );
+  });
+
+  it('refuses an answer with no country or no layout', () => {
+    expect(() => readCountryRules(answer, 'u')).toThrow('carried no address');
+    expect(() =>
+      readCountryRules({ country: 'NP', fields: {} }, 'u')
+    ).toThrow('carried no address');
+    expect(() => readCountryRules(undefined, 'u')).toThrow('carried no address');
+  });
 });
 
 describe('toCountryConfig', () => {

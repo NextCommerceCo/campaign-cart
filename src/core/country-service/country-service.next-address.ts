@@ -109,7 +109,7 @@ interface CountryRow {
 interface GeoResponse {
   ip?: string | null;
   currency?: string | null;
-  rules?: CountryRules;
+  rules?: unknown;
 }
 
 /**
@@ -181,17 +181,31 @@ async function getJson<T>(url: string): Promise<T> {
 }
 
 /**
- * Checked here rather than left to the first `layout.some(...)`, which would throw a
- * TypeError from inside the mapping and tell the caller nothing about the cause.
+ * A country's rules as the service answered them at `url`, with `country` read down to
+ * its code. The service answers `{ code, name }`; a deployment from before it named the
+ * country answers the bare code, and both are read.
+ *
+ * Checked for shape here rather than left to the first `layout.some(...)`, which would
+ * throw a TypeError from inside the mapping and tell the caller nothing about the cause.
  */
-function rulesIn(
-  rules: CountryRules | undefined,
-  url: string
-): CountryRules {
-  if (!rules || !Array.isArray(rules.address?.layout) || !rules.fields) {
+export function readCountryRules(body: unknown, url: string): CountryRules {
+  const rules = body as
+    | (Omit<CountryRules, 'country'> & {
+        country?: string | { code?: string };
+      })
+    | undefined;
+  const code =
+    typeof rules?.country === 'string' ? rules.country : rules?.country?.code;
+  if (
+    !rules ||
+    !code ||
+    !Array.isArray(rules.address?.layout) ||
+    !Array.isArray(rules.contact?.layout) ||
+    !rules.fields
+  ) {
     throw new Error(`${url} carried no address layout`);
   }
-  return rules;
+  return { ...rules, country: code };
 }
 
 /**
@@ -251,7 +265,7 @@ export async function fetchLocationData(
     getJson<CountryRow[]>(`${baseUrl}/v1/countries?${query}`),
     fetchMessages(baseUrl, lang),
   ]);
-  const rules = rulesIn(geo.rules, geoUrl);
+  const rules = readCountryRules(geo.rules, geoUrl);
 
   return {
     detectedCountryCode: rules.country,
@@ -278,7 +292,7 @@ export async function fetchCountryStates(
   lang: string = DEFAULT_LANG
 ): Promise<CountryStatesData> {
   const url = `${baseUrl}/v1/countries/${encodeURIComponent(countryCode)}?include=states&lang=${encodeURIComponent(lang)}`;
-  const rules = rulesIn(await getJson<CountryRules>(url), url);
+  const rules = readCountryRules(await getJson<unknown>(url), url);
 
   // No currency: a country's rules describe a country, not the visitor. The one the SDK
   // prices in is read once, from geo, and held in the config store.

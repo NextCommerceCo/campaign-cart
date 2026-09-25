@@ -195,6 +195,12 @@ export function ruleField(
   return { label, messageLabel: label, required: true, autocomplete, input, ...extra };
 }
 
+/** A country as the service answers it: its code, and its name in the answer's language. */
+function namedCountry(code: string): { code: string; name: string } {
+  const name = new Intl.DisplayNames(['en'], { type: 'region' }).of(code);
+  return { code, name: name ?? code };
+}
+
 /**
  * A country's rules in the service's shape: the `address` rows and the fields named, with
  * the default contact rows. Only what a spec names is described, as the service does it.
@@ -206,7 +212,7 @@ export function countryRules(
   extra: Record<string, unknown> = {}
 ): CountryAnswer {
   return {
-    country,
+    country: namedCountry(country),
     lang: 'en',
     curated: true,
     version: 'e2e',
@@ -296,7 +302,7 @@ export async function routeAddressService(
       const asked = searchParams.get('country')?.toUpperCase() ?? detected;
       return route.fulfill({
         json: {
-          country: detected,
+          country: namedCountry(detected),
           ...answers.geo,
           ...(include.includes('rules')
             ? { rules: await rulesFor(asked) }
