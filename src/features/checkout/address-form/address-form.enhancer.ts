@@ -8,7 +8,11 @@ import {
 import { optionalLabel } from '@/features/checkout/validation/field-messages';
 
 import { builtInRules, fetchCountryRules } from './address-form.api';
-import { readRenderedValues, renderLayout } from './address-form.renderer';
+import {
+  readRenderedValues,
+  renderLayout,
+  sdkFieldName,
+} from './address-form.renderer';
 
 const FALLBACK_COUNTRY = 'US';
 
@@ -25,6 +29,9 @@ const BLOCK_ATTRIBUTES = {
     state: 'data-next-contact-state',
   },
 } as const;
+
+const SHIPPING_BLOCK_SELECTOR =
+  '[data-next-address]:not([data-next-address="billing"])';
 
 /**
  * `data-next-address` and `data-next-contact`: the fields a country asks for, built from
@@ -95,12 +102,17 @@ export class AddressFormEnhancer extends BaseEnhancer {
   }
 
   /**
-   * Field names the surrounding form already collects outside this block.
+   * Field names the surrounding form collects outside this block, which it does not build.
    *
    * Read fresh on every render: a country change replaces this block's own inputs, and
    * those must never count as already collected or the block would empty itself.
+   *
+   * The names and the phone are in both the address and the contact rows. Beside a
+   * shipping address the address builds them, and the contact rows keep what it has no
+   * place for (the email). Read from the rules, not from what is on the page: judged by
+   * the page, whichever block answered first would keep them.
    */
-  private collectedElsewhere(): ReadonlySet<string> {
+  private collectedElsewhere(rules: CountryRules): ReadonlySet<string> {
     const form = this.element.closest('form');
     if (!form) return new Set();
 
@@ -112,6 +124,16 @@ export class AddressFormEnhancer extends BaseEnhancer {
         const name = field.getAttribute('data-next-checkout-field');
         if (name) names.add(name);
       });
+
+    if (
+      this.block === 'contact' &&
+      form.querySelector(SHIPPING_BLOCK_SELECTOR)
+    ) {
+      for (const name of rules.address.layout.flat()) {
+        const field = sdkFieldName(name, 'shipping');
+        if (field) names.add(field);
+      }
+    }
     return names;
   }
 
@@ -172,7 +194,7 @@ export class AddressFormEnhancer extends BaseEnhancer {
       {
         form: this.form,
         values,
-        alreadyCollected: this.collectedElsewhere(),
+        alreadyCollected: this.collectedElsewhere(rules),
         optionalLabel: label =>
           optionalLabel(
             CountryService.getInstance(),

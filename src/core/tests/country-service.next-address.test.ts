@@ -79,7 +79,7 @@ afterEach(() => {
 });
 
 describe('toCountryConfig', () => {
-  it("carries the country's phone rule from the phone field", () => {
+  it("carries the country's phone rule from the phone_number field", () => {
     const phone = {
       callingCode: '49',
       nationalPrefix: '0',
@@ -87,7 +87,7 @@ describe('toCountryConfig', () => {
     };
     const config = toCountryConfig({
       ...DE,
-      fields: { phone: field('Phone', phone, { type: 'tel' }) },
+      fields: { phone_number: field('Phone', phone, { type: 'tel' }) },
     });
     expect(config.phone).toEqual(phone);
   });
@@ -96,7 +96,7 @@ describe('toCountryConfig', () => {
     const config = toCountryConfig({
       ...DE,
       fields: {
-        phone: field('Phone', { callingCode: '977', example: '984-1234567' }),
+        phone_number: field('Phone', { callingCode: '977', example: '984-1234567' }),
       },
     });
     expect(config.phone).toBeUndefined();

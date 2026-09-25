@@ -103,7 +103,7 @@ describe('sdkFieldName', () => {
     ['line2', 'address2'],
     ['state', 'province'],
     ['postcode', 'postal'],
-    ['phone', 'phone'],
+    ['phone_number', 'phone'],
     ['email', 'email'],
     ['first_name', 'fname'],
   ])('maps %s to this SDK’s %s', (from, to) => {

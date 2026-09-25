@@ -20,7 +20,7 @@ const THAI: CountryRules = {
   fields: {
     first_name: field('ชื่อ'),
     email: field('อีเมล'),
-    phone: field('หมายเลขโทรศัพท์', false),
+    phone_number: field('หมายเลขโทรศัพท์', false),
     postcode: field('รหัสไปรษณีย์'),
   },
 };

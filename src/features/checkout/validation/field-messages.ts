@@ -49,7 +49,7 @@ const SERVICE_FIELD: Record<string, string> = {
   lname: 'last_name',
   last_name: 'last_name',
   email: 'email',
-  phone: 'phone',
+  phone: 'phone_number',
   address1: 'line1',
   address2: 'line2',
   city: 'city',

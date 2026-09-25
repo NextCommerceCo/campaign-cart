@@ -211,7 +211,9 @@ export function countryRules(
     curated: true,
     version: 'e2e',
     address: { layout: address, fixed: {} },
-    contact: { layout: [['first_name', 'last_name'], ['email'], ['phone']] },
+    contact: {
+      layout: [['first_name', 'last_name'], ['email'], ['phone_number']],
+    },
     fields,
     ...extra,
   };
@@ -344,7 +346,7 @@ export async function stubCountryService(
         }),
         ...(phone
           ? {
-              phone: ruleField(
+              phone_number: ruleField(
                 'Phone number',
                 'tel',
                 { type: 'tel', inputMode: 'tel' },

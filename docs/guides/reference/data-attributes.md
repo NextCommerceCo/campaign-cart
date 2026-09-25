@@ -462,14 +462,14 @@ A separate billing address goes in a `billing` block inside the `different-billi
 
 ### Contact block
 
-`data-next-contact` turns an empty element inside the checkout form into the name, email and phone fields, in the order the selected country writes a name. It rebuilds them when the country changes, and builds no field the page already has.
+`data-next-contact` turns an empty element inside the checkout form into the name, email and phone fields, in the order the selected country writes a name. It rebuilds them when the country changes, and builds no field the page already has. Beside a `shipping` address block it builds the email only: the address block builds the name and phone.
 
 | Attribute | Description |
 |---|---|
 | `data-next-contact` | Builds the contact fields |
 | `data-next-contact-lang` | The language of the field labels |
 
-Below is an example that builds the contact and address fields with Thai labels.
+Below is an example that builds the email, then the name, address and phone, with Thai labels.
 
 ```html
 <form data-next-checkout="form">

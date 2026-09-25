@@ -42,7 +42,7 @@ function rulesIn(lang: 'en' | 'th', country: 'US' | 'GB') {
       }),
       postcode: ruleField(postcode, 'postal-code'),
       email: ruleField(thai ? 'อีเมล' : 'Email', 'email', { type: 'email' }),
-      phone: ruleField(
+      phone_number: ruleField(
         thai ? 'หมายเลขโทรศัพท์' : 'Phone number',
         'tel',
         { type: 'tel' },

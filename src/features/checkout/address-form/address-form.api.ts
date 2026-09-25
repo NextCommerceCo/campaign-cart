@@ -22,9 +22,18 @@ const text = (
 const BUILT_IN_RULES: Omit<CountryRules, 'country'> = {
   curated: false,
   address: {
-    layout: [['country'], ['line1'], ['line2'], ['city', 'state', 'postcode']],
+    layout: [
+      ['country'],
+      ['first_name', 'last_name'],
+      ['line1'],
+      ['line2'],
+      ['city', 'state', 'postcode'],
+      ['phone_number'],
+    ],
   },
-  contact: { layout: [['first_name', 'last_name'], ['email'], ['phone']] },
+  contact: {
+    layout: [['first_name', 'last_name'], ['email'], ['phone_number']],
+  },
   fields: {
     country: {
       label: 'Country',
@@ -45,7 +54,7 @@ const BUILT_IN_RULES: Omit<CountryRules, 'country'> = {
         maxLength: 254,
       },
     },
-    phone: {
+    phone_number: {
       label: 'Phone number',
       required: false,
       autocomplete: 'tel',

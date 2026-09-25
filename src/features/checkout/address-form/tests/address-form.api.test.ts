@@ -63,7 +63,17 @@ describe('builtInRules', () => {
     expect(rules.country).toBe('CA');
     expect(
       renderLayout(container, rules.address.layout, rules.fields, { form: 'shipping' })
-    ).toEqual(['country', 'address1', 'address2', 'city', 'province', 'postal']);
+    ).toEqual([
+      'country',
+      'fname',
+      'lname',
+      'address1',
+      'address2',
+      'city',
+      'province',
+      'postal',
+      'phone',
+    ]);
     expect(
       renderLayout(container, rules.contact.layout, rules.fields, { form: 'shipping' })
     ).toEqual(['fname', 'lname', 'email', 'phone']);

@@ -7,7 +7,7 @@ category: "Address Form"
 # Address Form
 
 > Category: `checkout`
-> Last reviewed: 2026-09-24
+> Last reviewed: 2026-09-25
 > Owner: checkout
 
 An address form hard-coded as `address1 / city / state / zip` is correct in the United
@@ -46,9 +46,10 @@ checkout store country ──► GET /v1/countries/{country}
 
 - The country comes from the checkout store. Before the form has resolved one, the block
   opens on `US` so the page is never empty while a layout is in flight.
-- The block builds the country's address rows (`address.layout` in the service's rules),
-  never the name, email or phone, which are the contact rows. A field the surrounding
-  form already collects elsewhere is not built again: the page's own markup wins.
+- The block builds the country's address rows (`address.layout` in the service's rules):
+  the whole address, the name and phone included, because a billing address is one. A
+  field the surrounding form already collects elsewhere is not built again: the page's
+  own markup wins.
 - A value the country fixes for every address (Vatican City's city and postcode) is not
   asked for; the checkout form writes it into the address as the country is chosen and
   takes it back out when the shopper moves on (`checkout-form/fixed-address-values.ts`).
@@ -69,6 +70,9 @@ checkout store country ──► GET /v1/countries/{country}
 - `data-next-contact` builds the contact rows instead (name, email and phone, in the
   order the country writes a name), with the same enhancer, classes and events;
   `data-next-contact-lang` sets its labels' language as `data-next-address-lang` does.
+  Beside a shipping address block it leaves out every field the address layout names,
+  which leaves the email. The rule reads the rules, not the page, so the result does not
+  depend on which block's answer arrived first.
 - `data-next-address="billing"` builds the same layout under `billing-` names. It is the
   alternative to the checkout form's own billing address, which copies the shipping
   fields into a `data-next-component="billing-form"` container. A page uses one or the

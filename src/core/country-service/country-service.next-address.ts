@@ -70,7 +70,7 @@ export interface RulesField {
     options?: 'countries' | 'states';
     span?: number;
   };
-  /** On `postcode` and `phone` only: see `docs/http-api.md` in the service's repo. */
+  /** On `postcode` and `phone_number` only: see `docs/http-api.md` in the service's repo. */
   format?: {
     pattern?: string;
     example?: string;
@@ -131,7 +131,7 @@ export function toCountryConfig(
   const state = rules.fields.state;
   const postcode = rules.fields.postcode;
   const postcodeFormat = postcode?.format;
-  const phone = rules.fields.phone?.format;
+  const phone = rules.fields.phone_number?.format;
 
   return {
     stateLabel: state?.label ?? 'State',

@@ -144,7 +144,7 @@ Keep `{label}` and `{example}` in the text: the SDK fills them in. The fields ar
 | Field | Description |
 |---|---|
 | `first_name`, `last_name` | The name fields |
-| `email`, `phone` | The contact fields |
+| `email`, `phone_number` | The contact fields |
 | `line1`, `line2` | The street lines |
 | `city`, `state`, `postcode` | The locality fields |
 | `country` | The country select |
@@ -155,7 +155,7 @@ For a language the address service does not have, give both the messages and the
 
 The empty `<div>` becomes the address fields the selected country collects, in the order that country writes them: a Japanese address leads with the postcode, a US one ends with state and ZIP. When the shopper changes country, the fields are rebuilt and what they typed is kept.
 
-The block builds the address only: the name, email and phone are the page's own fields above, or an empty `<div data-next-contact></div>` that the SDK fills with them in the order the country writes a name ([Contact block](../reference/data-attributes.md#contact-block)). In a country with one city or postcode for every address, such as Vatican City, the block does not ask for it and the SDK sends it with the order. The checkout form still fills the country list with the countries the campaign ships to and the state list with the selected country's states, validates the fields, and keeps the city, state and postcode row hidden until the street address has a value.
+The block builds the whole address, the name and phone included, in the order the country writes a name. The email is the page's own field, or an empty `<div data-next-contact></div>`: beside a shipping block it builds the email alone, since the address already has the name and phone ([Contact block](../reference/data-attributes.md#contact-block)). A field the page writes itself is not built again. In a country with one city or postcode for every address, such as Vatican City, the block does not ask for it and the SDK sends it with the order. The checkout form still fills the country list with the countries the campaign ships to and the state list with the selected country's states, validates the fields, and keeps the city, state and postcode row hidden until the street address has a value.
 
 [Address block](../reference/data-attributes.md#address-block) lists its attributes, and [Styling the address block](#styling-the-address-block) below covers its markup.
 

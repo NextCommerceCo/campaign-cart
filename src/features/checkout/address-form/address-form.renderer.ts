@@ -12,7 +12,7 @@ const SDK_FIELD_NAMES: Record<string, string | null> = {
   state: 'province',
   postcode: 'postal',
   email: 'email',
-  phone: 'phone',
+  phone_number: 'phone',
 };
 
 /**

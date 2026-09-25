@@ -25,7 +25,13 @@ const FIXTURE = '/e2e/fixtures/address-form.html';
 
 const US_SPEC = countryRules(
   'US',
-  [['country'], ['line1'], ['city', 'state', 'postcode']],
+  [
+    ['country'],
+    ['first_name', 'last_name'],
+    ['line1'],
+    ['city', 'state', 'postcode'],
+    ['phone_number'],
+  ],
   {
     country: ruleField('Country', 'country', { type: 'select', options: 'countries' }),
     line1: ruleField('Address', 'address-line1'),
@@ -35,20 +41,32 @@ const US_SPEC = countryRules(
     first_name: ruleField('First name', 'given-name'),
     last_name: ruleField('Last name', 'family-name'),
     email: ruleField('Email', 'email', { type: 'email' }),
+    phone_number: ruleField('Phone number', 'tel', { type: 'tel' }, { required: false }),
   }
 );
 
 const JP_SPEC = countryRules(
   'JP',
-  [['country'], ['postcode', 'state'], ['city'], ['line1']],
+  [
+    ['country'],
+    ['last_name', 'first_name'],
+    ['postcode', 'state'],
+    ['city'],
+    ['line1'],
+    ['phone_number'],
+  ],
   {
     country: ruleField('Country', 'country', { type: 'select', options: 'countries' }),
     postcode: ruleField('Postal code', 'postal-code'),
     state: ruleField('Prefecture', 'address-level1', { type: 'select', options: 'states' }),
     city: ruleField('City', 'address-level2'),
     line1: ruleField('Street', 'address-line1'),
+    first_name: ruleField('First name', 'given-name'),
+    last_name: ruleField('Last name', 'family-name'),
+    email: ruleField('Email', 'email', { type: 'email' }),
+    phone_number: ruleField('Phone number', 'tel', { type: 'tel' }, { required: false }),
   },
-  { contact: { layout: [['last_name', 'first_name'], ['email'], ['phone']] } }
+  { contact: { layout: [['last_name', 'first_name'], ['email'], ['phone_number']] } }
 );
 
 /**
@@ -130,12 +148,14 @@ test('builds the fields the country collects, in the order it writes them', asyn
   await bootSdk(page, FIXTURE);
 
   const block = page.locator('[data-next-address]');
-  await expect(block.locator('[data-next-checkout-field]')).toHaveCount(5);
+  await expect(block.locator('[data-next-checkout-field]')).toHaveCount(6);
 
+  // The layout names the whole address; the page writes the name itself, so the block
+  // builds the rest, the phone included.
   const order = await block
     .locator('[data-next-checkout-field]')
     .evaluateAll(els => els.map(el => el.getAttribute('data-next-checkout-field')));
-  expect(order).toEqual(['country', 'address1', 'city', 'province', 'postal']);
+  expect(order).toEqual(['country', 'address1', 'city', 'province', 'postal', 'phone']);
 });
 
 test('city, state and ZIP wait until the street address is typed', async ({
@@ -218,7 +238,7 @@ test('choosing another country rebuilds the form in that country’s shape', asy
   page,
 }) => {
   await bootSdk(page, FIXTURE);
-  await expect(page.locator('[data-next-address] [data-next-checkout-field]')).toHaveCount(5);
+  await expect(page.locator('[data-next-address] [data-next-checkout-field]')).toHaveCount(6);
 
   await page.selectOption(FIELD('country'), 'JP');
 
@@ -228,7 +248,7 @@ test('choosing another country rebuilds the form in that country’s shape', asy
         .locator('[data-next-address] [data-next-checkout-field]')
         .evaluateAll(els => els.map(el => el.getAttribute('data-next-checkout-field')))
     )
-    .toEqual(['country', 'postal', 'province', 'city', 'address1']);
+    .toEqual(['country', 'postal', 'province', 'city', 'address1', 'phone']);
 });
 
 test('an address typed after a country change still reaches the store', async ({
@@ -500,7 +520,7 @@ test('a layout that arrives after a newer one is discarded', async ({ page }) =>
       .evaluateAll(els => els.map(el => el.getAttribute('data-next-checkout-field')));
 
   // No fname/lname: the page collects those itself, so the block leaves them alone.
-  const US_ORDER = ['country', 'address1', 'city', 'province', 'postal'];
+  const US_ORDER = ['country', 'address1', 'city', 'province', 'postal', 'phone'];
 
   await expect.poll(order, { timeout: 4000 }).toEqual(US_ORDER);
 
@@ -546,6 +566,36 @@ test('a returning visitor sees the billing address they already gave', async ({
     '14 Billing Way'
   );
   await expect(page.locator(FIELD('billing-city'))).toBeVisible();
+});
+
+/**
+ * A billing address is a whole address, so its block builds the names and the phone too,
+ * under their `billing-` names: the shipping block's are the shipping address's.
+ */
+test('a billing block builds the whole address, names and phone included', async ({
+  page,
+}) => {
+  await bootSdk(page, '/e2e/fixtures/address-form-billing.html');
+
+  await expect
+    .poll(() =>
+      page
+        .locator('[data-next-address="billing"] [data-next-checkout-field]')
+        .evaluateAll(els => els.map(el => el.getAttribute('data-next-checkout-field')))
+    )
+    .toEqual([
+      'billing-country',
+      'billing-fname',
+      'billing-lname',
+      'billing-address1',
+      'billing-city',
+      'billing-province',
+      'billing-postal',
+      'billing-phone',
+    ]);
+  await expect(
+    page.locator('[data-next-address="shipping"] [data-next-checkout-field]')
+  ).toHaveCount(8);
 });
 
 /** The `lang` of every layout request the block makes, in order. */
