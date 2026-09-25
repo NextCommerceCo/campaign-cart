@@ -12,26 +12,36 @@ import {
 const US: PhoneRules = {
   callingCode: '1',
   nationalPrefix: '1',
-  mask: '(###) ###-####',
+  masks: [{ mask: '(###) ###-####' }],
   pattern: '^[0-9]{10,11}$',
   example: '(201) 555-0123',
 };
 const TH: PhoneRules = {
   callingCode: '66',
   nationalPrefix: '0',
-  mask: '### ### ####',
+  masks: [
+    { start: '02', mask: '## ### ####' },
+    { start: '0[3-57]', mask: '### ### ###' },
+    { start: '1', mask: '#### ### ###' },
+    { mask: '### ### ####' },
+  ],
   pattern: '^[0-9]{8,14}$',
   example: '081 234 5678',
 };
 const IT: PhoneRules = {
   callingCode: '39',
-  mask: '### ### ####',
+  masks: [
+    { start: '02', mask: '## ### ####' },
+    { start: '0[3-57]', mask: '### ### ###' },
+    { start: '1', mask: '#### ### ###' },
+    { mask: '### ### ####' },
+  ],
   pattern: '^[0-9]{6,12}$',
   example: '312 345 6789',
 };
 const AR: PhoneRules = {
   nationalPrefix: '0',
-  mask: '### ##-####-####',
+  masks: [{ mask: '### ##-####-####' }],
   pattern: '^[0-9]{10,13}$',
   example: '011 15-2345-6789',
 };
@@ -50,6 +60,18 @@ describe('formatPhone', () => {
 
   it('shows a national prefix the mask has no place for before it', () => {
     expect(formatPhone('14155552671', US)).toBe('1 (415) 555-2671');
+  });
+
+  it('picks the mask by how the number starts', () => {
+    expect(formatPhone('020176091', TH)).toBe('02 017 6091');
+    expect(formatPhone('0831234567', TH)).toBe('083 123 4567');
+    expect(formatPhone('053123456', TH)).toBe('053 123 456');
+    expect(formatPhone('1800123456', TH)).toBe('1800 123 456');
+  });
+
+  it('uses the default mask until the digits reach a start', () => {
+    expect(formatPhone('0', TH)).toBe('0');
+    expect(formatPhone('0201', TH)).toBe('02 01');
   });
 
   it('keeps a prefix the mask already holds inside it', () => {

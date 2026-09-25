@@ -17,21 +17,26 @@ import {
 const US: PhoneRules = {
   callingCode: '1',
   nationalPrefix: '1',
-  mask: '(###) ###-####',
+  masks: [{ mask: '(###) ###-####' }],
   pattern: '^[0-9]{10,11}$',
   example: '(201) 555-0123',
 };
 const TH: PhoneRules = {
   callingCode: '66',
   nationalPrefix: '0',
-  mask: '### ### ####',
+  masks: [
+    { start: '02', mask: '## ### ####' },
+    { start: '0[3-57]', mask: '### ### ###' },
+    { start: '1', mask: '#### ### ###' },
+    { mask: '### ### ####' },
+  ],
   pattern: '^[0-9]{8,14}$',
   example: '081 234 5678',
 };
 const GB: PhoneRules = {
   callingCode: '44',
   nationalPrefix: '0',
-  mask: '##### ######',
+  masks: [{ mask: '##### ######' }],
   pattern: '^[0-9]{7,11}$',
   example: '07400 123456',
 };

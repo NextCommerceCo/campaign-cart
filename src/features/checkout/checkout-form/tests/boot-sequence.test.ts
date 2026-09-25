@@ -233,7 +233,7 @@ describe('initializePhoneInputs', () => {
           phone: {
             callingCode: '44',
             nationalPrefix: '0',
-            mask: '##### ######',
+            masks: [{ mask: '##### ######' }],
             pattern: '^[0-9]{7,11}$',
             example: '07400 123456',
           },

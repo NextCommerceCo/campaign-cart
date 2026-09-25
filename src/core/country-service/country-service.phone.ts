@@ -2,7 +2,7 @@
  * A phone number shown, checked and converted by one country's rule.
  *
  * The rule is the address-rules service's `spec.phone`, kept in each country's file there:
- * a display mask, a loose digit pattern, and what E.164 needs. Loose on purpose — the order
+ * display masks, a loose digit pattern, and what E.164 needs. Loose on purpose — the order
  * API validates the number, so the check here only catches what is clearly not a phone
  * number, and the service's tests fail if a pattern refuses any of libphonenumber's example
  * numbers for its country.
@@ -13,8 +13,12 @@ export interface PhoneRules {
   callingCode?: string;
   /** Dialled before a national number inside the country, and dropped from E.164. */
   nationalPrefix?: string;
-  /** `#` is one digit: `(###) ###-####`. */
-  mask?: string;
+  /**
+   * `#` is one digit: `(###) ###-####`. The first whose `start` matches the start of the
+   * digits is used — Thailand's `02` landlines and `08` mobiles group differently — and the
+   * last, without `start`, is the default.
+   */
+  masks?: { start?: string; mask: string }[];
   /** Matched against the digits typed nationally, with or without the national prefix. */
   pattern: string;
   /** A real number in national form. */
@@ -25,16 +29,27 @@ export interface PhoneRules {
 const MIN_INTERNATIONAL_DIGITS = 8;
 const MAX_INTERNATIONAL_DIGITS = 15;
 
-/** Compiled once per pattern: the check runs on every keystroke. */
+/** Compiled once per source: the check and the mask run on every keystroke. */
 const compiled = new Map<string, RegExp>();
 
-function patternOf(rules: PhoneRules): RegExp {
-  let pattern = compiled.get(rules.pattern);
-  if (!pattern) {
-    pattern = new RegExp(rules.pattern);
-    compiled.set(rules.pattern, pattern);
+function regex(source: string): RegExp {
+  let re = compiled.get(source);
+  if (!re) {
+    re = new RegExp(source);
+    compiled.set(source, re);
   }
-  return pattern;
+  return re;
+}
+
+function patternOf(rules: PhoneRules): RegExp {
+  return regex(rules.pattern);
+}
+
+/** The mask for these digits: the first whose `start` matches, else the default. */
+function maskFor(digits: string, rules?: PhoneRules): string | undefined {
+  return rules?.masks?.find(
+    entry => !entry.start || regex(`^(?:${entry.start})`).test(digits)
+  )?.mask;
 }
 
 function digitsOf(text: string): string {
@@ -66,8 +81,9 @@ function masked(digits: string, mask: string): string | null {
 
 /**
  * What the field shows: `+` and the digits for a number typed with a `+`, otherwise the
- * digits in the country's mask — cut after the last digit typed, so `41555` in the US shows
- * as `(415) 55`. Digits the mask has no room for, or a country with no mask, show as typed.
+ * digits in the country's mask for how the number starts — cut after the last digit typed,
+ * so `41555` in the US shows as `(415) 55`. Digits the mask has no room for, or a country
+ * with no mask, show as typed. Until the digits reach a mask's `start`, the default is used.
  *
  * A national prefix the mask does not hold (the US mask has no `1`) is shown before it:
  * `1 (415) 555-2671`.
@@ -76,8 +92,7 @@ export function formatPhone(text: string, rules?: PhoneRules): string {
   const international = internationalDigits(text);
   if (international !== null) return `+${international}`;
   const digits = digitsOf(text);
-  const mask = rules?.mask;
-  if (!mask || !digits) return digits;
+  if (!rules?.masks?.length || !digits) return digits;
 
   const prefix = rules.nationalPrefix;
   const maskHoldsPrefix =
@@ -88,10 +103,13 @@ export function formatPhone(text: string, rules?: PhoneRules): string {
     digits.startsWith(prefix) &&
     digits.length > prefix.length
   ) {
-    const rest = masked(digits.slice(prefix.length), mask);
+    const national = digits.slice(prefix.length);
+    const mask = maskFor(national, rules);
+    const rest = mask ? masked(national, mask) : null;
     if (rest !== null) return `${prefix} ${rest}`;
   }
-  return masked(digits, mask) ?? digits;
+  const mask = maskFor(digits, rules);
+  return (mask && masked(digits, mask)) ?? digits;
 }
 
 /**
