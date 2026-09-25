@@ -81,22 +81,6 @@ export default defineFeature({
     },
     {
       group: FIELDS,
-      name: 'data-next-label',
-      type: 'boolean (presence)',
-      required: false,
-      description:
-        "Takes the field's label and placeholder from the country's rules, in the page's language, and writes them again when the country changes. Sets the placeholder, and the text of each paired `<label>` that holds only text; a label with other markup is left as written unless it carries `data-next-label-text`.",
-    },
-    {
-      group: FIELDS,
-      name: 'data-next-label-text',
-      type: 'boolean (presence)',
-      required: false,
-      description:
-        'Inside a `<label>` of a `data-next-label` field: the element whose text is replaced, so the rest of the label (a required marker, an icon) stays.',
-    },
-    {
-      group: FIELDS,
       name: 'data-next-checkout-submit',
       type: 'boolean (presence)',
       required: false,

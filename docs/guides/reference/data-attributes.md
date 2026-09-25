@@ -460,24 +460,6 @@ Without `data-next-address-lang` the labels follow `window.nextConfig.locale`, t
 
 A separate billing address goes in a `billing` block inside the `different-billing-address` section. [Billing address](../pages/checkout-page.md#billing-address) shows the markup.
 
-### Field labels
-
-`data-next-label` on a field the page writes itself takes its label and placeholder from the selected country's rules, in the page's language, and writes them again when the country changes. A field the rules leave optional gets its note, `(optional)` in English.
-
-| Attribute | Description |
-|---|---|
-| `data-next-label` | Writes the field's label and placeholder |
-| `data-next-label-text` | The part of a label that is written |
-
-Below is an example that lets the SDK name the postcode field, a ZIP Code in the US and a Postcode in the UK, while the page keeps its own required marker.
-
-```html
-<input id="postal" data-next-checkout-field="postal" data-next-label>
-<label for="postal"><span data-next-label-text>Postal code</span> *</label>
-```
-
-The SDK writes a `<label>` paired with the field by `for` or by wrapping it. It replaces the text of a label that holds only text, or of its `data-next-label-text` element, and leaves any other label as written. It also writes an `aria-label` the field already has, so a screen reader follows the country as the label does, and it leaves a placeholder or `aria-label` that the field's [`data-next-i18n`](#translated-text) translates.
-
 ### Translated text
 
 `data-next-i18n` translates an element's text and attributes into the page's language, `window.nextConfig.locale`, by key. The syntax is i18next's: a key alone translates the text, `[attribute]key` translates an attribute, and `;` separates several.
@@ -518,7 +500,7 @@ Below is an example that translates a heading from a key the SDK ships and a but
 </script>
 ```
 
-A key is looked up in the page's `translations` for its language first, then in the texts the SDK ships. The SDK ships these, in every language it supports:
+A key is looked up in the page's `translations` for its language first, then in the texts the SDK ships. To reword one the SDK ships, give the same key in `translations`. The SDK ships these headings, in every language it supports:
 
 | Key | Description |
 |---|---|
@@ -526,6 +508,33 @@ A key is looked up in the page's `translations` for its language first, then in 
 | `checkout.shipping.title` | Shipping address |
 | `checkout.billing.title` | Billing address |
 | `checkout.billing.same_as_shipping` | Use shipping address as billing address |
+
+It also ships the labels of the fields a page writes itself:
+
+| Key | Description |
+|---|---|
+| `field.firstName` | First name |
+| `field.lastName` | Last name |
+| `field.email` | Email |
+| `field.phone` | Phone number |
+| `field.phone.optional` | Phone number (optional) |
+
+The first name, last name and email are always required, so they have no optional form.
+
+Below is an example of an email field labelled in the page's language, its label and its placeholder from one key.
+
+```html
+<label for="email" data-next-i18n="field.email">Email</label>
+<input
+  id="email"
+  type="email"
+  autocomplete="email"
+  required
+  placeholder="Email"
+  data-next-checkout-field="email"
+  data-next-i18n="[placeholder]field.email"
+>
+```
 
 A key neither has in the page's language leaves what the HTML says, never another language. The SDK writes text only, never markup, and does not replace the text of an element that has child elements: put the words in an element of their own. Any other attribute, such as `[href]`, is not written.
 

@@ -57,7 +57,7 @@ const SERVICE_FIELD: Record<string, string> = {
 };
 
 /** The service's name for a checkout field: `fname` → `first_name`, `billing-postal` → `postcode`. */
-export function serviceFieldName(field: string): string {
+function serviceFieldName(field: string): string {
   const name = field.replace(/^billing-/, '');
   return SERVICE_FIELD[name] ?? name;
 }

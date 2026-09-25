@@ -72,7 +72,6 @@ The feature carried on, but something in the markup or the data was not what it 
 | `Failed to track add_payment_info event for the redirect method:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.handleFormSubmit` | yes |
 | `Invalid {fieldName} detected on blur:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.validateContactFieldOnCommit` | yes |
 | `Failed to track add_shipping_info event:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.trackAddShippingInfoOnAddress` | yes |
-| `Could not write the field labels for {country}` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.syncFieldLabels` | yes |
 | `Failed to track begin_checkout event:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.trackBeginCheckout` | yes |
 | `Stored country {storedCountry} not in available countries` | `country-selection.ts › resolveShippingCountry` | — |
 | `Country {countryCode} from URL not in available countries` | `country-selection.ts › resolveShippingCountry` | — |
@@ -193,7 +192,6 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 | `begin_checkout already tracked, skipping duplicate` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.trackBeginCheckout` | — |
 | `Updated user data storage:` | `contact-persistence.ts › persistContactField` | yes |
 | `Already shown warning for order` | `duplicate-purchase-warning.ts › handlePurchaseEvent` | yes |
-| `Left the label of {name} as written: it holds markup and no [data-next-label-text]` | `field-label-text.ts › writeFieldLabels` | — |
 | `Found submit button:` | `field-scanning.ts › scanAllFields` | yes |
 | `Wrote the fixed {form} address values of {country ?? 'no country'}` | `fixed-address-values.ts › applyFixedValues` | yes |
 | `Restored province: {storedProvince}` | `form-population.ts › populateFormData` | — |

@@ -7,7 +7,7 @@ category: "I18n"
 # I18n
 
 > Category: `display`
-> Last reviewed: 2026-09-25
+> Last reviewed: 2026-09-26
 > Owner: Campaign Cart SDK
 
 `data-next-i18n` puts a page's words into the shopper's language without writing the
@@ -46,8 +46,6 @@ nextConfig.translations[lang][key]  ??  service texts in lang  ??  what the HTML
 - The texts for a language chosen after boot are fetched on first use
   (`CountryService.loadTexts`, one request per language), and every translated element
   repaints on `address:messages-loaded`.
-- `data-next-label` on a checkout field leaves a placeholder or `aria-label` this
-  translates.
 
 ## Decisions
 

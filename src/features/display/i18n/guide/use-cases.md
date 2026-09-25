@@ -37,12 +37,26 @@ missing translation shows as English rather than as a gap.
 
 ---
 
+## The label of a field the page writes
+
+> Effort: lightweight
+
+**When:** The page writes its own email field, or the name and phone outside the address.
+
+**Why this enhancer:** Those fields are named the same in every country, and the SDK
+ships their labels (`field.email`, `field.phone.optional` and the rest) in every language.
+
+**Watch out for:** The phone has two keys: `field.phone` when the page makes it required,
+`field.phone.optional` when it does not. The names and the email are always required.
+
+---
+
 ## When NOT to use this
 
-### The label of a checkout field
+### The address fields
 
-**Why not:** A field's name changes with the country (ZIP Code, Postcode), not only with
-the language, and a key cannot.
+**Why not:** An address field's name changes with the country (ZIP Code, Postcode), not
+only with the language, and a key cannot.
 
-**Use instead:** `data-next-label` — writes the field's label, placeholder and
-`aria-label` from the country's rules.
+**Use instead:** `data-next-address`, which builds the address fields with the country's
+own labels.

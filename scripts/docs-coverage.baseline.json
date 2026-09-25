@@ -1,7 +1,7 @@
 {
   "$comment": "Frozen documentation gaps (a ratchet). New gaps fail `npm run docs:coverage`; entries here are tolerated until closed. Regenerate: npm run docs:coverage:update",
   "generated": {
-    "attributes": "143/147",
+    "attributes": "141/145",
     "events": "74/74",
     "guides": "33/33",
     "manifests": "31/33",

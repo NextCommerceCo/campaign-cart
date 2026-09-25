@@ -45,14 +45,3 @@ export function parseI18n(value: string): {
   }
   return { targets, refused };
 }
-
-/** Whether `element`'s `data-next-i18n` translates `attribute`. */
-export function translatesAttribute(
-  element: Element,
-  attribute: TranslatableAttribute
-): boolean {
-  const value = element.getAttribute('data-next-i18n');
-  return value !== null
-    ? parseI18n(value).targets.some(target => target.attribute === attribute)
-    : false;
-}

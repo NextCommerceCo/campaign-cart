@@ -81,30 +81,6 @@ Forces validation on a field that is optional by default. Phone is the usual cas
 
 ---
 
-### `data-next-label`
-
-| | |
-|---|---|
-| Type | `boolean (presence)` |
-| Required | no |
-| Default | — |
-
-Takes the field's label and placeholder from the country's rules, in the page's language, and writes them again when the country changes. Sets the placeholder, and the text of each paired `<label>` that holds only text; a label with other markup is left as written unless it carries `data-next-label-text`.
-
----
-
-### `data-next-label-text`
-
-| | |
-|---|---|
-| Type | `boolean (presence)` |
-| Required | no |
-| Default | — |
-
-Inside a `<label>` of a `data-next-label` field: the element whose text is replaced, so the rest of the label (a required marker, an icon) stays.
-
----
-
 ### `data-next-checkout-submit`
 
 | | |

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseI18n, translatesAttribute } from '@/utils/i18n-spec';
+import { parseI18n } from '@/utils/i18n-spec';
 
 describe('parseI18n', () => {
   it('reads a bare key as the text, and [attribute]key as that attribute', () => {
@@ -34,15 +34,5 @@ describe('parseI18n', () => {
 
   it('skips an empty part and an attribute with no key', () => {
     expect(parseI18n(';;[title];').targets).toEqual([]);
-  });
-});
-
-describe('translatesAttribute', () => {
-  it('says whether data-next-i18n writes the attribute', () => {
-    const input = document.createElement('input');
-    expect(translatesAttribute(input, 'placeholder')).toBe(false);
-    input.setAttribute('data-next-i18n', '[placeholder]checkout.email.example');
-    expect(translatesAttribute(input, 'placeholder')).toBe(true);
-    expect(translatesAttribute(input, 'aria-label')).toBe(false);
   });
 });

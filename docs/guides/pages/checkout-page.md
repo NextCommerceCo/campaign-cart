@@ -81,14 +81,15 @@ Below is an example of the email field, the shipping address, and a billing addr
 
 ```html
 <h2 data-next-i18n="checkout.contact.title">Contact</h2>
-<label for="email">Email</label>
+<label for="email" data-next-i18n="field.email">Email</label>
 <input
   id="email"
   type="email"
   autocomplete="email"
   required
+  placeholder="Email"
   data-next-checkout-field="email"
-  data-next-label
+  data-next-i18n="[placeholder]field.email"
 >
 
 <h2 data-next-i18n="checkout.shipping.title">Shipping address</h2>
@@ -106,11 +107,11 @@ Below is an example of the email field, the shipping address, and a billing addr
 </div>
 ```
 
-The SDK ships the four headings in every language it supports; [Translated text](../reference/data-attributes.md#translated-text) covers the rest of the page's words.
+The SDK ships these headings and the email's label in every language it supports; [Translated text](../reference/data-attributes.md#translated-text) lists the keys and covers the rest of the page's words.
 
 ### Contact information
 
-The contact step is the email field, which the page writes. The name and phone are part of the shipping address, so the address block builds them. With `data-next-label` the field takes its label and placeholder in the page's language ([Field labels](../reference/data-attributes.md#field-labels)).
+The contact step is the email field, which the page writes. The name and phone are part of the shipping address, so the address block builds them. Its label and placeholder take the page's language from the `field.email` key ([Translated text](../reference/data-attributes.md#translated-text)).
 
 The SDK requires the first name, last name and email, and the phone is optional unless its input carries `required` or `data-next-required="true"`. No field accepts an emoji.
 
