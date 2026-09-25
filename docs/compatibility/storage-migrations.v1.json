@@ -8,11 +8,11 @@
   "provenance": {
     "extractor": "src/docs/extract/extract-storage-keys.ts",
     "registry": "src/docs/content/storage-keys.ts",
-    "inputSha256": "fa5116d1745491056c56e402579f2e355d7721098356685d80c0782c555cf845",
+    "inputSha256": "90cb3b9a690e8ae9490fbb7fb55955d5a0afbd5107b50a0ddc602e9d225c84b4",
     "inputs": [
       {
         "path": "package.json",
-        "sha256": "b0ed78eff66c3615229b038a49162471d0fce2fe31f9d692c00ed10cf283ed4e"
+        "sha256": "6c10df29094c823d2549d01e8c5f0a856aae8085cbc26e670128a31427b3536a"
       },
       {
         "path": "src/core/analytics/data-layer-manager.ts",
@@ -56,7 +56,7 @@
       },
       {
         "path": "src/core/country-service/country-service.ts",
-        "sha256": "ae57125d04c9437675940ea10e8b335ca8e726ead072ec87c4cbaa104a5c3a0b"
+        "sha256": "1d6cc2e09795d5a9b9e352d5dfcd3f6a8eacb157a9f9309b95c289ad9d2c5ee2"
       },
       {
         "path": "src/core/currency-formatter.ts",
@@ -132,7 +132,7 @@
       },
       {
         "path": "src/features/checkout/checkout-form/checkout-form.enhancer.ts",
-        "sha256": "043ce545d28db2feaf29143501e5724c7e2dcb53d3e51a1a4a8d90626bdd1dae"
+        "sha256": "1e972f2def77bad1332da53a2f95b5dcc8906ca1fc32e5801b17f2d82ae03ffa"
       },
       {
         "path": "src/features/checkout/checkout-form/country-selection.ts",
