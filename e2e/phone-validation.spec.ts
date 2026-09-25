@@ -247,6 +247,18 @@ test('a Thai shopper’s number is written the Thai way and stored in E.164', as
   await expect.poll(() => storedPhone(page)).toBe('+66812345678');
 });
 
+test('a Bangkok landline is grouped differently from a mobile', async ({ page }) => {
+  await stubCardCheckout(page, { country: 'TH' });
+  await bootSdk(page, CHECKOUT);
+  await expectCountry(page, 'TH');
+
+  const input = page.locator(PHONE);
+  await input.pressSequentially('020176091');
+
+  await expect(input).toHaveValue('02 017 6091');
+  await expect.poll(() => storedPhone(page)).toBe('+6620176091');
+});
+
 /** `00` is how most countries dial abroad, so it is the shopper's `+`. */
 test('a number dialled with 00 is read as +', async ({ page }) => {
   await stubCardCheckout(page, { country: 'TH' });
