@@ -8,38 +8,15 @@ import {
 import { optionalLabel } from '@/features/checkout/validation/field-messages';
 
 import { builtInRules, fetchCountryRules } from './address-form.api';
-import {
-  contactLayout,
-  readRenderedValues,
-  renderLayout,
-} from './address-form.renderer';
+import { readRenderedValues, renderLayout } from './address-form.renderer';
 
 const FALLBACK_COUNTRY = 'US';
 
-/** Each block's attributes, written out so a search finds them. */
-const BLOCK_ATTRIBUTES = {
-  address: {
-    lang: 'data-next-address-lang',
-    api: 'data-next-address-api',
-    state: 'data-next-address-state',
-  },
-  contact: {
-    lang: 'data-next-contact-lang',
-    api: 'data-next-contact-api',
-    state: 'data-next-contact-state',
-  },
-} as const;
-
-const SHIPPING_BLOCK_SELECTOR =
-  '[data-next-address]:not([data-next-address="billing"])';
-
 /**
- * `data-next-address` and `data-next-contact`: the fields a country asks for, built from
- * its rules, the address rows or the name, email and phone rows. One enhancer for both,
- * because everything but which rows it builds is the same.
+ * `data-next-address`: the address fields a country asks for, the name and phone
+ * included, built from its rules in the order that country writes them.
  */
 export class AddressFormEnhancer extends BaseEnhancer {
-  private block: 'address' | 'contact' = 'address';
   private form: 'shipping' | 'billing' = 'shipping';
   private lang?: string;
   private baseUrl?: string;
@@ -87,18 +64,12 @@ export class AddressFormEnhancer extends BaseEnhancer {
   }
 
   private readConfiguration(): void {
-    this.block = this.element.hasAttribute('data-next-contact')
-      ? 'contact'
-      : 'address';
-    // The contact rows are the customer's, which the order carries once.
     this.form =
-      this.block === 'address' &&
       this.getAttribute('data-next-address') === 'billing'
         ? 'billing'
         : 'shipping';
-    const attributes = BLOCK_ATTRIBUTES[this.block];
-    this.lang = this.getAttribute(attributes.lang) ?? undefined;
-    this.baseUrl = this.getAttribute(attributes.api) ?? undefined;
+    this.lang = this.getAttribute('data-next-address-lang') ?? undefined;
+    this.baseUrl = this.getAttribute('data-next-address-api') ?? undefined;
   }
 
   /**
@@ -122,23 +93,9 @@ export class AddressFormEnhancer extends BaseEnhancer {
     return names;
   }
 
-  /**
-   * The rows this block builds. The contact rows' names and phone are part of an address
-   * too: beside a shipping address the address builds them. Decided from the page's
-   * blocks, not from which fields exist yet: judged by the fields, whichever block
-   * answered first would keep them.
-   */
-  private layoutOf(rules: CountryRules): string[][] {
-    if (this.block === 'address') return rules.address.layout;
-    const besideShipping = Boolean(
-      this.element.closest('form')?.querySelector(SHIPPING_BLOCK_SELECTOR)
-    );
-    return contactLayout(rules.address.layout, besideShipping);
-  }
-
   /** Says where the block is, so a stylesheet can hold space for fields on their way. */
   private setState(state: 'loading' | 'ready'): void {
-    this.element.setAttribute(BLOCK_ATTRIBUTES[this.block].state, state);
+    this.element.setAttribute('data-next-address-state', state);
   }
 
   private resolveLang(): string {
@@ -188,7 +145,7 @@ export class AddressFormEnhancer extends BaseEnhancer {
     const values = readRenderedValues(this.element);
     const fields = renderLayout(
       this.element,
-      this.layoutOf(rules),
+      rules.address.layout,
       rules.fields,
       {
         form: this.form,
@@ -206,7 +163,7 @@ export class AddressFormEnhancer extends BaseEnhancer {
     this.setState('ready');
 
     this.logger.debug(
-      `Rendered ${fields.length} ${this.block} fields for ${countryCode}`,
+      `Rendered ${fields.length} address fields for ${countryCode}`,
       { fallbackLayout: rules.curated === false }
     );
 

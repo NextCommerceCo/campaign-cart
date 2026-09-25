@@ -75,13 +75,21 @@ The pieces that matter:
 
 ## Contact and address
 
-The customer's contact details and addresses are built by the SDK from the selected country's rules: an empty element for each step becomes the fields that country asks for.
+The page writes the email field itself, and the SDK builds each address from the selected country's rules, the customer's name and phone included.
 
-Below is an example that builds the contact step, the shipping address, and a billing address that closes when the shopper ticks the box, with its headings in the page's language.
+Below is an example of the email field, the shipping address, and a billing address that closes when the shopper ticks the box, with its labels and headings in the page's language.
 
 ```html
 <h2 data-next-i18n="checkout.contact.title">Contact</h2>
-<div data-next-contact></div>
+<label for="email">Email</label>
+<input
+  id="email"
+  type="email"
+  autocomplete="email"
+  required
+  data-next-checkout-field="email"
+  data-next-label
+>
 
 <h2 data-next-i18n="checkout.shipping.title">Shipping address</h2>
 <div data-next-address="shipping"></div>
@@ -102,9 +110,9 @@ The SDK ships the four headings in every language it supports; [Translated text]
 
 ### Contact information
 
-The contact step is an empty `<div data-next-contact></div>`, which the SDK turns into the name, email and phone fields.
+The contact step is the email field, which the page writes. The name and phone are part of the shipping address, so the address block builds them. With `data-next-label` the field takes its label and placeholder in the page's language ([Field labels](../reference/data-attributes.md#field-labels)).
 
-The SDK requires the first name, last name and email, and the phone is optional unless its input carries `required` or `data-next-required="true"`. No field accepts an emoji. [Contact block](../reference/data-attributes.md#contact-block) lists its attributes, and what it builds beside an address block.
+The SDK requires the first name, last name and email, and the phone is optional unless its input carries `required` or `data-next-required="true"`. No field accepts an emoji.
 
 ### Shipping address
 
@@ -175,7 +183,7 @@ For a language the address service does not have, give both the messages and the
 
 ### Styling
 
-The SDK ships no styling for the block, and rules written against your own input classes do not reach it: the fields it builds carry their own classes. Style them through the classes and attributes it sets. The contact block's fields carry the same classes, so the class rules below style them too; the rules scoped to `[data-next-address]` do not reach them.
+The SDK ships no styling for the block, and rules written against your own input classes do not reach it: the fields it builds carry their own classes. Style them through the classes and attributes it sets.
 
 Below is an example of the markup the block builds for a US address, cut down to the street and the city and ZIP row, with the attributes that do not matter for styling left out.
 

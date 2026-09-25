@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { RulesField } from '@/core/country-service';
 
 import {
-  contactLayout,
   readRenderedValues,
   renderLayout,
   sdkFieldName,
@@ -96,29 +95,6 @@ let container: HTMLElement;
 beforeEach(() => {
   container = document.createElement('div');
   document.body.append(container);
-});
-
-describe('contactLayout', () => {
-  it('writes the name as the address layout does, then the email and the phone', () => {
-    const jp = [['country'], ['last_name', 'first_name'], ['line1'], ['phone_number']];
-    expect(contactLayout(jp, false)).toEqual([
-      ['last_name', 'first_name'],
-      ['email'],
-      ['phone_number'],
-    ]);
-  });
-
-  it('keeps only the email beside a shipping address, which has the name and phone', () => {
-    const us = [['country'], ['first_name', 'last_name'], ['line1']];
-    expect(contactLayout(us, true)).toEqual([['email']]);
-  });
-
-  it('asks for the name even where the address layout has no name row', () => {
-    expect(contactLayout([['country'], ['line1']], false)[0]).toEqual([
-      'first_name',
-      'last_name',
-    ]);
-  });
 });
 
 describe('sdkFieldName', () => {

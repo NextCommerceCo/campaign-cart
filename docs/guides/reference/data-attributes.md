@@ -460,27 +460,6 @@ Without `data-next-address-lang` the labels follow `window.nextConfig.locale`, t
 
 A separate billing address goes in a `billing` block inside the `different-billing-address` section. [Billing address](../pages/checkout-page.md#billing-address) shows the markup.
 
-### Contact block
-
-`data-next-contact` turns an empty element inside the checkout form into the name, email and phone fields, in the order the selected country writes a name. It rebuilds them when the country changes, and builds no field the page already has. Beside a `shipping` address block it builds the email only: the address block builds the name and phone.
-
-| Attribute | Description |
-|---|---|
-| `data-next-contact` | Builds the contact fields |
-| `data-next-contact-lang` | The language of the field labels |
-
-Below is an example that builds the email, then the name, address and phone, with Thai labels.
-
-```html
-<form data-next-checkout="form">
-  <div data-next-contact data-next-contact-lang="th"></div>
-  <div data-next-address="shipping" data-next-address-lang="th"></div>
-  <button type="submit">Complete Order</button>
-</form>
-```
-
-The fields carry the same classes as the address block's, so one stylesheet styles both.
-
 ### Field labels
 
 `data-next-label` on a field the page writes itself takes its label and placeholder from the selected country's rules, in the page's language, and writes them again when the country changes. A field the rules leave optional gets its note, `(optional)` in English.

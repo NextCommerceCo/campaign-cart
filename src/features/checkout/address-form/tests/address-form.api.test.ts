@@ -3,10 +3,7 @@ import {
   builtInRules,
   fetchCountryRules,
 } from '@/features/checkout/address-form/address-form.api';
-import {
-  contactLayout,
-  renderLayout,
-} from '@/features/checkout/address-form/address-form.renderer';
+import { renderLayout } from '@/features/checkout/address-form/address-form.renderer';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -77,8 +74,5 @@ describe('builtInRules', () => {
       'postal',
       'phone',
     ]);
-    expect(
-      renderLayout(container, contactLayout(rules.address.layout, false), rules.fields, { form: 'shipping' })
-    ).toEqual(['fname', 'lname', 'email', 'phone']);
   });
 });

@@ -35,24 +35,6 @@ export interface AddressRenderContext {
   optionalLabel?: (label: string) => string;
 }
 
-/**
- * The contact rows, which the service does not serve: they are read off the address
- * layout. The name row as the country writes it (family name first in Japan), then the
- * email and the phone; beside a shipping address, which has the name and phone, the email
- * alone.
- */
-export function contactLayout(
-  addressLayout: readonly (readonly string[])[],
-  besideShipping: boolean
-): string[][] {
-  if (besideShipping) return [['email']];
-  const nameRow = addressLayout.find(row => row.includes('first_name'));
-  const names = (nameRow ?? ['first_name', 'last_name']).filter(
-    name => name === 'first_name' || name === 'last_name'
-  );
-  return [names, ['email'], ['phone_number']];
-}
-
 export function sdkFieldName(
   name: string,
   form: 'shipping' | 'billing'
@@ -115,8 +97,8 @@ function controlFor(
 }
 
 /**
- * Renders one layout of a country's rules, the address or the contact rows, into
- * `container`. Returns the checkout-field names it rendered, in layout order.
+ * Renders a country's address layout into `container`. Returns the checkout-field
+ * names it rendered, in layout order.
  */
 export function renderLayout(
   container: HTMLElement,

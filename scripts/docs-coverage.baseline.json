@@ -1,7 +1,7 @@
 {
   "$comment": "Frozen documentation gaps (a ratchet). New gaps fail `npm run docs:coverage`; entries here are tolerated until closed. Regenerate: npm run docs:coverage:update",
   "generated": {
-    "attributes": "145/151",
+    "attributes": "143/147",
     "events": "74/74",
     "guides": "33/33",
     "manifests": "31/33",
@@ -26,9 +26,7 @@
     "data-next-address-api",
     "data-next-address-field",
     "data-next-address-row",
-    "data-next-address-state",
-    "data-next-contact-api",
-    "data-next-contact-state"
+    "data-next-address-state"
   ],
   "undescribedEvents": [],
   "featuresWithoutGuide": [],
@@ -65,10 +63,6 @@
     "data-next-address-lang",
     "data-next-address-row",
     "data-next-address-state",
-    "data-next-contact",
-    "data-next-contact-api",
-    "data-next-contact-lang",
-    "data-next-contact-state",
     "data-next-i18n"
   ],
   "storesWithoutReference": [],

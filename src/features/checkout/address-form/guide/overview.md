@@ -7,7 +7,7 @@ category: "Address Form"
 # Address Form
 
 > Category: `checkout`
-> Last reviewed: 2026-09-25
+> Last reviewed: 2026-09-26
 > Owner: checkout
 
 An address form hard-coded as `address1 / city / state / zip` is correct in the United
@@ -67,14 +67,6 @@ checkout store country ──► GET /v1/countries/{country}
   timed-out request is worse than an out-of-date layout. When nothing is on screen yet,
   the block builds a generic English layout instead, because a block with no fields
   leaves the shopper nowhere to type an address.
-- `data-next-contact` builds the contact rows instead (name, email and phone, in the
-  order the country writes a name), with the same enhancer, classes and events;
-  `data-next-contact-lang` sets its labels' language as `data-next-address-lang` does.
-  The service serves no contact rows: the block reads them off the address layout
-  (`contactLayout` in `address-form.renderer.ts`), the name row as the address writes it,
-  then the email and the phone. Beside a shipping address block, which has the name and
-  phone, it builds the email alone. That is decided from the blocks on the page, not from
-  the fields already built, so it does not depend on which block's answer arrived first.
 - `data-next-address="billing"` builds the same layout under `billing-` names. It is the
   alternative to the checkout form's own billing address, which copies the shipping
   fields into a `data-next-component="billing-form"` container. A page uses one or the

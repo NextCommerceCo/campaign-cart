@@ -119,11 +119,8 @@ export class AttributeParser {
       types.push('checkout');
     }
     
-    // The country-driven address and contact blocks, one enhancer for both.
-    if (
-      element.hasAttribute('data-next-address') ||
-      element.hasAttribute('data-next-contact')
-    ) {
+    // The country-driven address block.
+    if (element.hasAttribute('data-next-address')) {
       types.push('address-form');
     }
 

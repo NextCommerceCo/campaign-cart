@@ -57,7 +57,7 @@ const modules = import.meta.glob<{ default: FeatureManifest }>(
 
 // Features written without a manifest while the manifest system is being removed.
 const WITHOUT_MANIFEST = new Map([
-  ['address-form', ['[data-next-address]', '[data-next-contact]']],
+  ['address-form', ['[data-next-address]']],
   ['i18n', ['[data-next-i18n]']],
 ]);
 
