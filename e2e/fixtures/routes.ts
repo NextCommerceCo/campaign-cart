@@ -292,7 +292,7 @@ export interface AddressServiceOptions {
  * phone field's flags. Every spec that boots a checkout form needs this.
  *
  * The phone half is {@link PHONE_RULES}. `fields.phone_number` carries what the service's
- * does apart from its localized hint, and nothing the SDK formats or checks with. The
+ * does, and nothing the SDK formats or checks with. The
  * address half is the same US layout for every country, because no spec using this stub
  * asserts on another country's address fields. `spec.layout` is what decides which fields
  * a country collects; a layout that omits `state` produces a config with no state label

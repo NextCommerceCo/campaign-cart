@@ -6,7 +6,6 @@ export interface AddressFieldSpec {
   control: 'text' | 'select' | 'tel';
   optionsSource?: 'states';
   placeholder?: string;
-  hint?: string;
   example?: string;
   maxLength?: number;
   inputMode?: 'text' | 'numeric' | 'tel';

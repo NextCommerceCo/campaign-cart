@@ -225,7 +225,6 @@ Below is an example of the markup the block builds for a US address, cut down to
 | `[data-next-address-field="postal"]` | One field, by its checkout name |
 | `.next-address-control` | The input or select |
 | `.next-address-label` | The label, after its control |
-| `.next-address-hint` | A hint under some fields |
 | `[data-next-address-state]` | `loading`, then `ready` |
 | `.has-error` | On a control that failed validation |
 | `.next-error-label` | The error message under it |
@@ -290,7 +289,6 @@ select.next-address-control {
 .next-address-control:placeholder-shown + .next-address-label {
   display: none;
 }
-.next-address-hint,
 [data-next-address] .next-error-label {
   display: block;
   margin-top: 4px;
@@ -302,7 +300,7 @@ select.next-address-control {
 }
 ```
 
-Below is the playground example with this stylesheet, a US address filled in. The hint under the ZIP code comes from the country's rules.
+Below is the playground example with this stylesheet, a US address filled in.
 
 ![Checkout form: customer fields, then a US shipping address built by the address block, with city, state and ZIP on one row](./images/address-block.png)
 

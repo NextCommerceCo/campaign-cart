@@ -156,13 +156,6 @@ export function renderAddressSpec(
       // `for`/`id` carries the pairing, so the reading order is unaffected.
       cell.append(control, labelFor(field, id));
 
-      if (field.hint) {
-        const hint = document.createElement('span');
-        hint.className = 'next-address-hint';
-        hint.textContent = field.hint;
-        cell.append(hint);
-      }
-
       rowElement.append(cell);
       rendered.push(checkoutField);
     });
