@@ -12,7 +12,7 @@ import {
   type PhoneInputContext,
 } from '../phone-input';
 
-// Copied from the address-rules service's country files (i18n-rules-v2 `src/rules/*.ts`),
+// Copied from the address-rules service's country files (i18n-rules `src/rules/*.json`),
 // as `src/core/tests/country-service.phone.test.ts` does.
 const US: PhoneRules = {
   callingCode: '1',

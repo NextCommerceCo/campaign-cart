@@ -7,7 +7,7 @@ import {
   type PhoneRules,
 } from '@/core/country-service/country-service.phone';
 
-// Copied from the address-rules service's country files (i18n-rules-v2 `src/rules/*.ts`),
+// Copied from the address-rules service's country files (i18n-rules `src/rules/*.json`),
 // where each is held to libphonenumber's example numbers for the country.
 const US: PhoneRules = {
   callingCode: '1',

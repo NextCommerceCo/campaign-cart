@@ -116,8 +116,8 @@ export const ADDRESS_SERVICE_ROUTE = '**/i18n-rules.*/**';
 
 /**
  * The phone rule each country's file carries on the address-rules service, served at
- * the top level of its spec as `spec.phone`. Copied from those files (i18n-rules-v2
- * `src/rules/{us,th,gb,ar}.ts`); Argentina's has no `callingCode` because its mobiles
+ * the top level of its spec as `spec.phone`. Copied from those files (i18n-rules
+ * `src/rules/{us,th,gb,ar}.json`); Argentina's has no `callingCode` because its mobiles
  * keep a `15` only the order API's conversion removes.
  */
 const PHONE_RULES: Record<string, PhoneRules> = {

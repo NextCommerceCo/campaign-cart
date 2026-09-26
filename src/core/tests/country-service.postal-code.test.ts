@@ -259,7 +259,7 @@ describe("formatPostalCode writes a postcode by the service's masks", () => {
     currencySymbol: '$',
   });
 
-  // Copied from the address-rules service's country files (i18n-rules-v2 `src/rules/*.json`).
+  // Copied from the address-rules service's country files (i18n-rules `src/rules/*.json`).
   const cases: [string, string, string, CountryConfig][] = [
     [
       'IM',
