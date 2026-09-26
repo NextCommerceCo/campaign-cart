@@ -158,14 +158,6 @@ In a country with one city or postcode for every address, such as Vatican City, 
 
 [Address block](../reference/data-attributes.md#address-block) lists its attributes, and [Styling](#styling) below covers its markup.
 
-Limits to plan for:
-
-| Limit | Description |
-|---|---|
-| Loading | Fields arrive after a network request |
-| Before the country is known | The block shows US fields |
-| Third address line | Not collected; orders carry two |
-
 If the fields cannot be loaded, the block shows a generic English address form instead, with state and postcode optional, so the shopper can still check out.
 
 > **Watch out:** Writing the address inputs yourself is deprecated, for the billing address as well as the shipping one. The starter template still does both, so do not copy its address inputs or its `shipping-form`, `shipping-field-row` and `billing-form` containers. Use `data-next-address="shipping"` and `data-next-address="billing"` instead: static fields are the same in every country and miss every later fix to a country's address rules.
