@@ -474,6 +474,11 @@ function buildRef({
       gitRevision,
       strict,
     });
+    // The ref compiles against this checkout's `node_modules`, not its own lockfile, so a
+    // package the ref imports and today's tree has dropped (`intl-tel-input` after
+    // v0.4.38) is a type error that cannot be fixed without rewriting the ref. Its types
+    // render as unresolved instead; `npm run type-check` is the gate on the working tree.
+    config.skipErrorChecking = true;
     runTypedoc({ cwd: worktree, optionsFile: writeOptions(worktree, config) });
   } finally {
     cleanupWorktree(worktree);
