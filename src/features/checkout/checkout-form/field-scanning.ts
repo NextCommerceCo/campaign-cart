@@ -141,7 +141,7 @@ export function scanAllFields(
           : 'os-checkout-field'
       );
       if (fieldName && element instanceof HTMLElement) {
-        ctx.fields.set(fieldName, element);
+        ctx.fields.set(sdkCheckoutFieldName(fieldName), element);
       }
     });
   });

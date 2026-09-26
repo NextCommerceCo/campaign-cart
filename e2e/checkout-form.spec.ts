@@ -265,6 +265,15 @@ test('a page writing first_name and last_name is checked and stored as fname and
     ).toBeVisible();
   }
 
+  // Checked as the shopper leaves it, not only on submit.
+  const lastName = page.locator('[data-next-checkout-field="last_name"]');
+  await lastName.fill('Lovelace2');
+  await lastName.blur();
+  await expect(lastName).toHaveClass(/has-error/);
+  await lastName.fill('Lovelace');
+  await lastName.blur();
+  await expect(lastName).toHaveClass(/no-error/);
+
   await page.fill('[data-next-checkout-field="first_name"]', 'Ada');
   await page.locator('[data-next-checkout-field="first_name"]').blur();
   await expect
