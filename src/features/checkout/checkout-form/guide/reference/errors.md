@@ -50,7 +50,7 @@ Every error `checkout-form` can raise, at the exact message, so a console line c
 | Type | Recoverable |
 | Cause | Submit was reached with email, first name, or last name still empty. |
 
-**Fix:** Normally validation stops the submit before this, so seeing it means a field is not wired: check each of `data-next-checkout-field="email"`, `"fname"`, and `"lname"` exists and is spelled exactly that way. A misspelled field name reads as empty no matter what the visitor typed.
+**Fix:** Normally validation stops the submit before this, so seeing it means a field is not wired: check each of `data-next-checkout-field="email"`, `"first_name"`, and `"last_name"` exists and is spelled exactly that way (`"fname"` and `"lname"`, the older names, count too). A misspelled field name reads as empty no matter what the visitor typed.
 
 ---
 

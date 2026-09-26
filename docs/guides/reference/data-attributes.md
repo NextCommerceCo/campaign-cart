@@ -358,7 +358,7 @@ One `<form>` owns everything: fields bind to the order by name, payment methods 
 
 ```html
 <form data-next-checkout="form">
-  <input data-next-checkout-field="fname">
+  <input data-next-checkout-field="first_name">
   <div data-next-address="shipping"></div>
   <div data-next-checkout-field="cc-number"></div>
   <button type="submit">Complete Order</button>
@@ -384,7 +384,7 @@ Below is an example that collects a name, builds the shipping address for the se
 
 ```html
 <form data-next-checkout="form">
-  <input data-next-checkout-field="fname">
+  <input data-next-checkout-field="first_name">
   <div data-next-address="shipping"></div>
   <div data-next-payment-method="credit">
     <div data-next-payment-form="credit">
@@ -412,10 +412,12 @@ The SDK finds inputs by `data-next-checkout-field`, not by their `name` attribut
 
 | Group | Names |
 |---|---|
-| Contact | `fname`, `lname`, `email`, `phone` |
+| Contact | `first_name`, `last_name`, `email`, `phone` |
 | Address | `country`, `address1`, `address2`, `city`, `province`, `postal` |
 | Card | `cc-number`, `cvv`, `exp-month`, `exp-year` |
 | Consent | `accepts_marketing` |
+
+> **Watch out:** The starter template writes `fname` and `lname`, the SDK's older names for the first and last name. They still work, but the orders API and the address service call these fields `first_name` and `last_name`, and new markup should too.
 
 The address fields are built by the [address block](#address-block) under these names; writing them yourself is deprecated. `cc-number` and `cvv` are not inputs you write either: leave them as empty `<div>`s and the SDK mounts hosted card fields into them, so no card number passes through your page.
 

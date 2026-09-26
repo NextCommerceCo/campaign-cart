@@ -120,14 +120,14 @@ Below is an example of a contact step that asks for the first name, last name an
 ```html
 <h2 data-next-i18n="checkout.contact.title">Contact</h2>
 <input
-  data-next-checkout-field="fname"
+  data-next-checkout-field="first_name"
   autocomplete="given-name"
   required
   placeholder="First name"
   data-next-i18n="[placeholder]fields.first_name.label"
 >
 <input
-  data-next-checkout-field="lname"
+  data-next-checkout-field="last_name"
   autocomplete="family-name"
   required
   placeholder="Last name"
@@ -455,5 +455,5 @@ Opening the debugger also puts the page in test mode, so pay with a test card wh
 ## Cautions
 
 - **The card field `<div>`s must stay empty.** The SDK mounts hosted fields into them; putting an `<input>` there means two competing fields and a checkout that cannot tokenize. Leave them as empty elements with the `data-next-checkout-field` name.
-- **An unrecognised field name is silently not part of the order.** The names are fixed (`fname`, not `firstName`; `postal`, not `zip`). If a value the visitor typed never reaches the order, check the spelling against the field names in this guide's examples.
+- **An unrecognised field name is silently not part of the order.** The names are fixed (`first_name`, not `firstName`; `postal`, not `zip`). If a value the visitor typed never reaches the order, check the spelling against the field names in this guide's examples.
 - **Wrap price-bearing sections in `data-next-await`.** Without it the visitor sees placeholder dashes until campaign prices load. The hiding is done by the template's `next-core.css`, keyed on the `next-display-ready` class the SDK adds to `<html>`. Keep that stylesheet on the page or the attribute does nothing.

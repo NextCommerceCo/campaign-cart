@@ -8,6 +8,7 @@ import {
   countryRules,
   ruleField,
 } from './fixtures/routes';
+import { CHECKOUT_KEY } from './fixtures/storage-keys';
 
 /**
  * E2E for the checkout-form enhancer (`form[data-next-checkout]`).
@@ -236,4 +237,42 @@ test('submitting with empty required fields flags them', async ({ page }) => {
     await expect(el).toHaveClass(/has-error/);
     await expect(el).toHaveClass(/next-error-field/);
   }
+});
+
+/**
+ * `first_name` and `last_name`, the names the orders API uses, are what a page should
+ * write; `fname` and `lname`, the SDK's older names, stay accepted (the fixture above
+ * writes those). A page on the new names is validated, messaged and stored the same.
+ */
+test('a page writing first_name and last_name is checked and stored as fname and lname', async ({
+  page,
+}) => {
+  await page.route('**/e2e/fixtures/checkout-form.html', async route => {
+    const response = await route.fetch();
+    const body = (await response.text())
+      .replace(/data-next-checkout-field="fname"/g, 'data-next-checkout-field="first_name"')
+      .replace(/data-next-checkout-field="lname"/g, 'data-next-checkout-field="last_name"');
+    await route.fulfill({ response, body });
+  });
+  await bootSdk(page, FIXTURE);
+
+  await page.click('button[type="submit"]');
+  for (const field of ['first_name', 'last_name']) {
+    const el = page.locator(`[data-next-checkout-field="${field}"]`);
+    await expect(el).toHaveClass(/has-error/);
+    await expect(
+      page.locator('.form-group', { has: el }).locator('.next-error-label')
+    ).toBeVisible();
+  }
+
+  await page.fill('[data-next-checkout-field="first_name"]', 'Ada');
+  await page.locator('[data-next-checkout-field="first_name"]').blur();
+  await expect
+    .poll(() =>
+      page.evaluate(key => {
+        const raw = sessionStorage.getItem(key);
+        return raw ? JSON.parse(raw)?.state?.formData?.fname : undefined;
+      }, CHECKOUT_KEY)
+    )
+    .toBe('Ada');
 });

@@ -4,6 +4,7 @@ import { addressLang, type CountryRules } from '@/core/country-service';
 
 import { builtInRules, fetchCountryRules } from './address-form.api';
 import { readRenderedValues, renderLayout } from './address-form.renderer';
+import { sdkCheckoutFieldName } from '@/utils/checkout-field-names';
 
 const FALLBACK_COUNTRY = 'US';
 
@@ -83,7 +84,7 @@ export class AddressFormEnhancer extends BaseEnhancer {
       .forEach(field => {
         if (this.element.contains(field)) return;
         const name = field.getAttribute('data-next-checkout-field');
-        if (name) names.add(name);
+        if (name) names.add(sdkCheckoutFieldName(name));
       });
     return names;
   }

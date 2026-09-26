@@ -201,8 +201,8 @@ these names are fixed rather than free text:
 | Name | Holds |
 |---|---|
 | `email` | Contact email |
-| `fname` | First name |
-| `lname` | Last name |
+| `first_name` | First name (`fname`, the older name, still works) |
+| `last_name` | Last name (`lname`, the older name, still works) |
 | `phone` | Phone number |
 | `address1` | Street address |
 | `address2` | Apartment, suite, unit |
@@ -224,8 +224,8 @@ SDK code — only the token from `payment:tokenized` does.
 ```html
 <form data-next-checkout>
   <input data-next-checkout-field="email" type="email">
-  <input data-next-checkout-field="fname">
-  <input data-next-checkout-field="lname">
+  <input data-next-checkout-field="first_name">
+  <input data-next-checkout-field="last_name">
   <input data-next-checkout-field="phone" type="tel" data-next-required="true">
 
   <div data-next-component="shipping-form">

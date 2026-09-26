@@ -20,6 +20,7 @@ import type { Logger } from '@/core/logger';
 import type { CreditCardService } from '../services/credit-card-service';
 import type { ErrorDisplayManager } from '../utils/error-display-utils';
 import { FieldFinder } from '../utils/field-finder-utils';
+import { sdkCheckoutFieldName } from '@/utils/checkout-field-names';
 
 /** What this module needs from `CheckoutValidator`. */
 export interface ErrorDisplayContext {
@@ -91,7 +92,7 @@ export function clearAllErrors(ctx: ErrorDisplayContext): void {
       field.getAttribute('os-checkout-field');
     if (fieldName) {
       // Use hideErrorOnly to avoid marking fields as valid
-      hideErrorOnly(ctx, fieldName);
+      hideErrorOnly(ctx, sdkCheckoutFieldName(fieldName));
     }
   });
 

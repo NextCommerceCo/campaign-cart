@@ -335,13 +335,13 @@ export class ProspectCartEnhancer extends BaseEnhancer {
     const firstName =
       (
         this.element.querySelector(
-          '[data-next-checkout-field="fname"], [os-checkout-field="fname"], input[name="first_name"]'
+          '[data-next-checkout-field="first_name"], [data-next-checkout-field="fname"], [os-checkout-field="fname"], input[name="first_name"]'
         ) as HTMLInputElement
       )?.value?.trim() || '';
     const lastName =
       (
         this.element.querySelector(
-          '[data-next-checkout-field="lname"], [os-checkout-field="lname"], input[name="last_name"]'
+          '[data-next-checkout-field="last_name"], [data-next-checkout-field="lname"], [os-checkout-field="lname"], input[name="last_name"]'
         ) as HTMLInputElement
       )?.value?.trim() || '';
     const phone = this.phoneField?.value?.trim() || '';

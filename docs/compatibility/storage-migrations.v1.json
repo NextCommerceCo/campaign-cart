@@ -8,7 +8,7 @@
   "provenance": {
     "extractor": "src/docs/extract/extract-storage-keys.ts",
     "registry": "src/docs/content/storage-keys.ts",
-    "inputSha256": "1898840a2d1952439e88c94d9fa979242b570241faec45112c5440b911d12a39",
+    "inputSha256": "c4393f3678b3e7b31b775e82401094464b6d3403f91584bdaaf93451781f4a60",
     "inputs": [
       {
         "path": "package.json",
@@ -48,7 +48,7 @@
       },
       {
         "path": "src/core/analytics/user-data-storage.ts",
-        "sha256": "b27b33bd27400085338420456bccd1cda1bf57a04fa5bd1fc6a6e03de5064e69"
+        "sha256": "edd40d9894f7fa88970bb89b277cfee9dcaa7cfd2f36d242dea479ca8bd715c2"
       },
       {
         "path": "src/core/attribution/attribution-collector.ts",
@@ -144,11 +144,11 @@
       },
       {
         "path": "src/features/checkout/prospect-cart/cart-creation.ts",
-        "sha256": "4350438ada4ccb6b7c0453f3273e54d4b06dab96662b7c19005e421b99420771"
+        "sha256": "51e1c9460727429cfd08714ac53707f847864011b7449e67d9d82d6beb66eb26"
       },
       {
         "path": "src/features/checkout/prospect-cart/prospect-cart.enhancer.ts",
-        "sha256": "83d04ba3ae1faf8ca9a2de9886eaff6d4a09c577bbc73e8d53f4a1934823a41a"
+        "sha256": "1ee39fca4125f31c6d03a633d505adb3a03a11606b28374c05a703256ef26e18"
       },
       {
         "path": "src/state/attribution/attribution.state.ts",

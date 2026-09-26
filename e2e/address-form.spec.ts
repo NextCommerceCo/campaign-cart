@@ -320,20 +320,22 @@ test('the dropdowns are filled even when the layout arrives after boot', async (
 /**
  * A country's layout describes a whole address form, name included, but this page
  * collects the name in a step of its own. Building it again would put two elements under
- * `fname` on the page, and the order is assembled from whichever the form scanned last —
+ * the first name on the page, and the order is assembled from whichever the form scanned last —
  * so what the shopper typed in the first step is dropped.
  */
 test('a field the page already collects is not built a second time', async ({ page }) => {
   await bootSdk(page, FIXTURE);
   await expect(page.locator(FIELD('address1'))).toBeVisible();
 
-  await expect(page.locator(FIELD('fname'))).toHaveCount(1);
+  // The page writes `first_name`, the name to write; the block's own would be `fname`,
+  // the SDK's older name for the same field, and it must see them as one.
+  await expect(page.locator(FIELD('first_name'))).toHaveCount(1);
   await expect(
     page.locator(`[data-next-address] ${FIELD('fname')}`)
   ).toHaveCount(0);
 
-  await page.fill(FIELD('fname'), 'Gwen');
-  await page.locator(FIELD('fname')).blur();
+  await page.fill(FIELD('first_name'), 'Gwen');
+  await page.locator(FIELD('first_name')).blur();
 
   await expect
     .poll(() =>
@@ -463,7 +465,8 @@ test('a failed layout lookup still gives the shopper an address to fill', async 
     'ready'
   );
   // The fixture writes the name itself; the built-in layout must not build it again.
-  await expect(page.locator(FIELD('fname'))).toHaveCount(1);
+  await expect(page.locator(FIELD('first_name'))).toHaveCount(1);
+  await expect(page.locator(`[data-next-address] ${FIELD('fname')}`)).toHaveCount(0);
 
   // Revealing the city proves the checkout form bound the built-in fields, not only
   // that they were drawn.
@@ -517,7 +520,7 @@ test('a layout that arrives after a newer one is discarded', async ({ page }) =>
       .locator('[data-next-address] [data-next-checkout-field]')
       .evaluateAll(els => els.map(el => el.getAttribute('data-next-checkout-field')));
 
-  // No fname/lname: the page collects those itself, so the block leaves them alone.
+  // No names: the page collects those itself, so the block leaves them alone.
   const US_ORDER = ['country', 'address1', 'city', 'province', 'postal', 'phone'];
 
   await expect.poll(order, { timeout: 4000 }).toEqual(US_ORDER);

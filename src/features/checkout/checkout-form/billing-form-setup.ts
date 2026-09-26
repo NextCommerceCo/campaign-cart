@@ -36,6 +36,7 @@ import {
   updateBillingStateOptions,
   type StateFieldsContext,
 } from './state-fields';
+import { sdkCheckoutFieldName } from '@/utils/checkout-field-names';
 
 /** Marks a cloned row so the shipping scan does not pick it up again. */
 const LOCATION_COMPONENT = '[data-next-component="location"]';
@@ -86,7 +87,7 @@ export function scanBillingFields(ctx: BillingFormSetupContext): void {
           ? legacyName
           : element.getAttribute('data-next-checkout-field');
       if (fieldName && element instanceof HTMLElement) {
-        ctx.billingFields.set(fieldName, element);
+        ctx.billingFields.set(sdkCheckoutFieldName(fieldName), element);
       }
     });
   });

@@ -4,6 +4,8 @@
  * Reduces code duplication for finding form fields and their wrappers
  */
 
+import { checkoutFieldNames } from '@/utils/checkout-field-names';
+
 export interface FieldSearchOptions {
   container?: HTMLElement;
   includeDisabled?: boolean;
@@ -23,7 +25,9 @@ export class FieldFinder {
     
     // Default selectors in priority order
     const defaultSelectors = [
-      `[data-next-checkout-field="${fieldName}"]`,
+      ...checkoutFieldNames(fieldName).map(
+        name => `[data-next-checkout-field="${name}"]`
+      ),
       `[os-checkout-field="${fieldName}"]`,
       `input[name="${fieldName}"]`,
       `select[name="${fieldName}"]`,
