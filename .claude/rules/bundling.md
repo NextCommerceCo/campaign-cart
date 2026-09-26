@@ -65,10 +65,10 @@ made it run early.
 
 ## 3. Adding or moving a `manualChunks` rule
 
-- **`core-services` stays a leaf.** It holds `core/{logger,storage,events}.ts` and
-  is the one chunk every other chunk calls while its own body is still running.
-  Adding an import from the rest of `src/` into any of those three files forfeits
-  the only guarantee in the build.
+- **`core-services` stays a leaf.** It holds `core/{logger,storage,events}.ts`,
+  plus `core/flatten-texts.ts`, which imports nothing, and is the one chunk every
+  other chunk calls while its own body is still running. Adding an import from the
+  rest of `src/` into any of those files forfeits the only guarantee in the build.
 - **Never route a `node_modules` package to a `src/` chunk.** A bundler puts shared
   CJS-interop helpers wherever the package lands, and that gives `vendor` an
   outgoing edge into `src/`. The size win is not worth it.

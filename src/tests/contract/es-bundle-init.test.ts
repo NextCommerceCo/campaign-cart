@@ -269,7 +269,7 @@ describe('ES bundle initialisation contract', () => {
       10
     );
 
-    // `core-services` holds `core/{logger,storage,events}.ts` and must stay a leaf:
+    // `core-services` holds `core/{logger,storage,events,flatten-texts}.ts` and must stay a leaf:
     // it is the chunk every other one calls at module-init time, and it is safe to
     // call only while it imports nothing back. See vite.config.ts › manualChunks.
     const leaf = chunks.find(f => f.startsWith('core-services-'));
