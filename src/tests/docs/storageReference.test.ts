@@ -235,8 +235,9 @@ describe('storage key reference', () => {
     const keyFiles = new Set(
       extracted.flatMap(key => key.where.map(site => site.split(' › ')[0]))
     );
+    // `package.json` is read for its version, which the manifest records as
+    // `sdkVersion`; hashing the whole file drifted it on every dependency or script edit.
     const generationPaths = [
-      'package.json',
       'src/docs/extract/extract-storage-keys.ts',
       'src/docs/extract/source-anchor.ts',
       'src/docs/content/storage-keys.ts',
