@@ -113,6 +113,41 @@ The SDK ships these headings and the email's label in every language it supports
 
 The contact step is the email field, which the page writes. The name and phone are part of the shipping address, so the address block builds them. Its label and placeholder take the page's language from the `fields.email.label` key ([Translated text](../reference/data-attributes.md#translated-text)).
 
+To ask for the name in the contact step instead, write the first and last name fields there as well. The address block builds no field the page already has, so the shipping address then starts at the country.
+
+Below is an example of a contact step that asks for the first name, last name and email, with the shipping address after it.
+
+```html
+<h2 data-next-i18n="checkout.contact.title">Contact</h2>
+<input
+  data-next-checkout-field="fname"
+  autocomplete="given-name"
+  required
+  placeholder="First name"
+  data-next-i18n="[placeholder]fields.first_name.label"
+>
+<input
+  data-next-checkout-field="lname"
+  autocomplete="family-name"
+  required
+  placeholder="Last name"
+  data-next-i18n="[placeholder]fields.last_name.label"
+>
+<input
+  data-next-checkout-field="email"
+  type="email"
+  autocomplete="email"
+  required
+  placeholder="Email"
+  data-next-i18n="[placeholder]fields.email.label"
+>
+
+<h2 data-next-i18n="checkout.shipping.title">Shipping address</h2>
+<div data-next-address="shipping"></div>
+```
+
+The phone works the same way: write a `data-next-checkout-field="phone"` input in the contact step, and the address block leaves it out. Two things change when the page writes the name. Its fields stay in the order the page wrote them, where the address block writes the family name first for Japan and Korea. And a billing address block still asks for a name of its own, since the name on a bill can differ from the one on the parcel.
+
 The SDK requires the first name, last name and email. The phone is optional; a page that writes its own phone input can require it with `required` or `data-next-required="true"`. No field accepts an emoji.
 
 ### Shipping address
@@ -152,7 +187,7 @@ Below is an example that rewords the message for an empty apartment line and for
     translations: {
       th: {
         "fields.line2.errors.blank": "กรุณาระบุห้องหรืออาคาร",
-        "fields.postcode.errors.invalid": "รหัสไปรษณีย์ไม่ถูกต้อง ลอง {{example}}",
+        "fields.postcode.errors.invalid": "รหัสไม่ถูกต้อง ลอง {{example}}",
       },
     },
   };
@@ -313,9 +348,9 @@ select.next-address-control {
 }
 ```
 
-Below is the playground example with this stylesheet, a US address filled in.
+Below is a checkout styled with this stylesheet: a contact step that asks for the name, email and phone, then a US shipping address built by the address block, with the messages the SDK shows for empty required fields and an emoji.
 
-![Checkout form: customer fields, then a US shipping address built by the address block, with city, state and ZIP on one row](./images/address-block.png)
+![Checkout form: name, email and phone in the contact step, then a US shipping address built by the address block with city, state and ZIP on one row, and field errors under the empty names and email and under an address line holding an emoji](./images/address-block.png)
 
 > **Watch out:** Style a field by its name, with `[data-next-address-field="postal"]`, never by its row number. Rows differ per country, so `data-next-address-row="4"` holds the city and postcode for one country and something else for the next.
 
