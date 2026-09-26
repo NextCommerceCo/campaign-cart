@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "sdkVersion": "0.4.38",
+  "sdkVersion": "0.4.39",
   "supportedSdkVersions": {
     "min": "0.4.38",
     "max": "0.4.38"
@@ -8,12 +8,8 @@
   "provenance": {
     "extractor": "src/docs/extract/extract-storage-keys.ts",
     "registry": "src/docs/content/storage-keys.ts",
-    "inputSha256": "c4393f3678b3e7b31b775e82401094464b6d3403f91584bdaaf93451781f4a60",
+    "inputSha256": "ea4998229969707123345690d3ec20ac2f01dd1d56569f36219f0a086051cbcf",
     "inputs": [
-      {
-        "path": "package.json",
-        "sha256": "6c10df29094c823d2549d01e8c5f0a856aae8085cbc26e670128a31427b3536a"
-      },
       {
         "path": "src/core/analytics/data-layer-manager.ts",
         "sha256": "62721eac992842bdfc71efc787b48232d41edaeeffea6d50877cabd866fa3503"
@@ -184,7 +180,7 @@
       },
       {
         "path": "src/tests/docs/storageReference.test.ts",
-        "sha256": "648fc7ca6a07df2ed625f6ede323aef53dbb066528648acd21abd4a450357381"
+        "sha256": "757e0c6ab1603b831c8985a9de31bf5474a1b70d589f344e4de2e6eb42f84723"
       }
     ]
   },
