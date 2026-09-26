@@ -83,10 +83,10 @@ export interface LocationData {
   detectedStates: State[];
   countries: Country[];
   detectedIp?: string;
-  /** The address-rules service's `error.*` templates, keyed by message id. */
+  /** The address-rules service's texts, flattened: `checkout.contact.title`. */
   messages?: Record<string, string>;
-  /** What each field is called inside those messages, keyed by the service's field name. */
-  labels?: Record<string, string>;
+  /** Each field's errors from the country's rules, keyed by the service's field name. */
+  fieldErrors?: Record<string, Readonly<Record<string, string>>>;
   /** The language the service answered in: the one asked for if it has it, else `en`. */
   messagesLang?: string;
 }
@@ -97,7 +97,7 @@ export interface CountryStatesData {
   /** The country's rules as the service answered them, for a caller that needs its labels. */
   rules?: CountryRules;
   messages?: Record<string, string>;
-  labels?: Record<string, string>;
+  fieldErrors?: Record<string, Readonly<Record<string, string>>>;
   messagesLang?: string;
 }
 
@@ -116,13 +116,17 @@ export class CountryService {
   private static instance: CountryService;
   private cachePrefix = 'next_country_';
   private cacheExpiry = 3600000; // 1 hour in milliseconds
-  private messages: Record<string, string> = {};
   private messagesLang: string | undefined;
   /** The service's texts by language, for `data-next-i18n`; see {@link getTexts}. */
   private texts = new Map<string, Readonly<Record<string, string>>>();
   private textRequests = new Map<string, Promise<void>>();
-  private messageLabels = new Map<string, Record<string, string>>();
-  private lastMessageLabels: Record<string, string> = {};
+  private fieldErrors = new Map<
+    string,
+    Readonly<Record<string, Readonly<Record<string, string>>>>
+  >();
+  private lastFieldErrors: Readonly<
+    Record<string, Readonly<Record<string, string>>>
+  > = {};
   private logger: Logger;
   private config: AddressConfig = {};
   private campaignShippingCountries: string[] | null = null;
@@ -185,30 +189,15 @@ export class CountryService {
     return this.campaignShippingCountries;
   }
 
-  /**
-   * The address-rules service's `error.*` templates from its last answer, such as
-   * `error.emoji`. Empty until it has answered; a caller falls back to its own
-   * wording.
-   */
-  public getMessages(): Readonly<Record<string, string>> {
-    return this.messages;
-  }
-
-  /**
-   * What each field is called inside {@link getMessages}' templates, in the same
-   * language: `{ postcode: 'ZIP Code', line2: 'Address line 2', email: 'Email', … }`.
-   * The country's own words when it has been fetched, else the last country's.
-   */
-  /** The language {@link getMessages} is in, once the service has said. */
+  /** The language {@link getFieldErrors} are in, once the service has said. */
   public getMessagesLang(): string | undefined {
     return this.messagesLang;
   }
 
   /**
    * The service's texts in `lang`, or `undefined` until they are loaded. Kept apart from
-   * {@link getMessages}: those go with the field names of one country's rules, in one
-   * language, and switching them alone would put a sentence in one language around a
-   * name in another.
+   * {@link getFieldErrors}, which come with one country's rules in one language: a page
+   * switching language reads new texts while the form's errors wait for new rules.
    */
   public getTexts(lang: string): Readonly<Record<string, string>> | undefined {
     return this.texts.get(baseLang(lang));
@@ -237,17 +226,21 @@ export class CountryService {
     return request;
   }
 
-  public getMessageLabels(country?: string): Readonly<Record<string, string>> {
-    return (
-      (country && this.messageLabels.get(country)) || this.lastMessageLabels
-    );
+  /**
+   * Each field's errors from the rules of `country`, whole sentences keyed by what is
+   * wrong: `{ postcode: { blank: 'Enter a ZIP Code', … } }`. The country's own when its
+   * rules have been fetched, else the last country's.
+   */
+  public getFieldErrors(
+    country?: string
+  ): Readonly<Record<string, Readonly<Record<string, string>>>> {
+    return (country && this.fieldErrors.get(country)) || this.lastFieldErrors;
   }
 
   private keepMessages(
     country: string,
-    data: Pick<LocationData, 'messages' | 'labels' | 'messagesLang'>
+    data: Pick<LocationData, 'messages' | 'fieldErrors' | 'messagesLang'>
   ): void {
-    if (data.messages) this.messages = data.messages;
     if (data.messagesLang) this.messagesLang = data.messagesLang;
     if (data.messages && data.messagesLang) {
       this.texts.set(baseLang(data.messagesLang), data.messages);
@@ -255,9 +248,9 @@ export class CountryService {
         lang: baseLang(data.messagesLang),
       });
     }
-    if (data.labels) {
-      this.messageLabels.set(country, data.labels);
-      this.lastMessageLabels = data.labels;
+    if (data.fieldErrors) {
+      this.fieldErrors.set(country, data.fieldErrors);
+      this.lastFieldErrors = data.fieldErrors;
     }
   }
 

@@ -73,7 +73,7 @@ export function validateBillingAddress(
     const value = billingAddress?.[field];
 
     if (!value || value.trim() === '') {
-      errors[field] = fieldMessage(source, 'error.required', field, {
+      errors[field] = fieldMessage(source, 'blank', field, {
         country,
       });
       isValid = false;
@@ -81,7 +81,7 @@ export function validateBillingAddress(
       (field === 'first_name' || field === 'last_name') &&
       !isValidName(value)
     ) {
-      errors[field] = fieldMessage(source, 'error.name', field);
+      errors[field] = fieldMessage(source, 'invalid_characters', field);
       isValid = false;
     }
   });
@@ -90,7 +90,7 @@ export function validateBillingAddress(
     billingAddress?.phone &&
     !isValidPhone(billingAddress.phone, ctx.phoneSource?.('billing'))
   ) {
-    errors.phone = fieldMessage(source, 'error.pattern', 'phone');
+    errors.phone = fieldMessage(source, 'invalid', 'phone');
     isValid = false;
   }
 

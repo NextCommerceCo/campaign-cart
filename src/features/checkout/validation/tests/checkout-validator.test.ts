@@ -106,13 +106,14 @@ describe('validateField', () => {
   it('refuses an emoji in any field, a field with no rules included', () => {
     const { validator, countryService } = createValidator(['address2']);
     Object.assign(countryService, {
-      getMessages: () => ({ 'error.emoji': 'ห้ามใส่อีโมจิใน{label}' }),
-      getMessageLabels: () => ({ line2: 'ที่อยู่บรรทัดที่ 2' }),
+      getFieldErrors: () => ({
+        line2: { contains_emoji: 'ที่อยู่บรรทัดที่ 2 ต้องไม่มีอีโมจิ' },
+      }),
     });
 
     expect(validator.validateField('address2', 'Apt 4 🏠')).toEqual({
       isValid: false,
-      message: 'ห้ามใส่อีโมจิในที่อยู่บรรทัดที่ 2',
+      message: 'ที่อยู่บรรทัดที่ 2 ต้องไม่มีอีโมจิ',
     });
   });
 

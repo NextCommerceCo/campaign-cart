@@ -101,9 +101,10 @@ describe('validateStep — step 1', () => {
       createContext({
         countryService: {
           validatePostalCode: vi.fn().mockReturnValue(true),
-          getMessages: () => ({ 'error.required': '{label} is required' }),
-          getMessageLabels: (country?: string) =>
-            country === 'GB' ? { state: 'County' } : {},
+          getFieldErrors: (country?: string) =>
+            country === 'GB'
+              ? { state: { not_selected: 'Select a county' } }
+              : {},
         },
       }),
       1,
@@ -112,7 +113,7 @@ describe('validateStep — step 1', () => {
       gb.get('GB')
     );
 
-    expect(result.errors.province).toBe('County is required');
+    expect(result.errors.province).toBe('Select a county');
   });
 
   it('checks the formats a required-only pass would miss', async () => {

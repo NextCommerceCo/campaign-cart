@@ -104,32 +104,35 @@ export async function validateForm(
   // Validate each required field
   requiredFields.forEach(field => {
     if (!formData[field] || formData[field].trim() === '') {
-      errors[field] = fieldMessage(
-        ctx.countryService,
-        'error.required',
-        field,
-        {
-          country: formData.country,
-        }
-      );
+      errors[field] = fieldMessage(ctx.countryService, 'blank', field, {
+        country: formData.country,
+      });
       isValid = false;
     }
   });
 
   // Name validation
   if (formData.fname && formData.fname.trim() && !isValidName(formData.fname)) {
-    errors.fname = fieldMessage(ctx.countryService, 'error.name', 'fname');
+    errors.fname = fieldMessage(
+      ctx.countryService,
+      'invalid_characters',
+      'fname'
+    );
     isValid = false;
   }
 
   if (formData.lname && formData.lname.trim() && !isValidName(formData.lname)) {
-    errors.lname = fieldMessage(ctx.countryService, 'error.name', 'lname');
+    errors.lname = fieldMessage(
+      ctx.countryService,
+      'invalid_characters',
+      'lname'
+    );
     isValid = false;
   }
 
   // City validation
   if (formData.city && formData.city.trim() && !isValidCity(formData.city)) {
-    errors.city = fieldMessage(ctx.countryService, 'error.pattern', 'city', {
+    errors.city = fieldMessage(ctx.countryService, 'invalid', 'city', {
       country: formData.country,
     });
     isValid = false;
@@ -137,7 +140,7 @@ export async function validateForm(
 
   // Email validation
   if (formData.email && !isValidEmail(formData.email)) {
-    errors.email = fieldMessage(ctx.countryService, 'error.email', 'email');
+    errors.email = fieldMessage(ctx.countryService, 'invalid', 'email');
     isValid = false;
   }
 
@@ -145,7 +148,7 @@ export async function validateForm(
     formData.phone &&
     !isValidPhone(formData.phone, ctx.phoneSource?.('shipping'))
   ) {
-    errors.phone = fieldMessage(ctx.countryService, 'error.pattern', 'phone');
+    errors.phone = fieldMessage(ctx.countryService, 'invalid', 'phone');
     isValid = false;
   }
 

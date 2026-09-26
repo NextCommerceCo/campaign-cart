@@ -2,6 +2,7 @@
  * Config Store - Zustand store for SDK configuration management
  */
 
+import { flattenTexts } from '@/utils/flatten-texts';
 import { create } from 'zustand';
 import { createLogger } from '@/core/logger';
 import type {
@@ -107,11 +108,7 @@ function readTranslations(
   const translations: Record<string, Record<string, string>> = {};
   for (const [lang, texts] of Object.entries(value)) {
     if (!texts || typeof texts !== 'object') continue;
-    translations[lang.toLowerCase()] = Object.fromEntries(
-      Object.entries(texts).filter(
-        (entry): entry is [string, string] => typeof entry[1] === 'string'
-      )
-    );
+    translations[lang.toLowerCase()] = flattenTexts(texts);
   }
   return translations;
 }

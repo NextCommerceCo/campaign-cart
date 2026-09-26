@@ -11,6 +11,7 @@ const text = (
   required = false
 ): RulesField => ({
   label,
+  labelOptional: `${label} (optional)`,
   required,
   autocomplete,
   input: { type: 'text', autoCapitalize: 'words', maxLength: 255, ...input },
@@ -38,6 +39,7 @@ const BUILT_IN_RULES: Omit<CountryRules, 'country'> = {
   fields: {
     country: {
       label: 'Country',
+      labelOptional: 'Country (optional)',
       required: true,
       autocomplete: 'country',
       input: { type: 'select', options: 'countries' },
@@ -46,6 +48,7 @@ const BUILT_IN_RULES: Omit<CountryRules, 'country'> = {
     last_name: text('Last name', 'family-name', {}, true),
     email: {
       label: 'Email',
+      labelOptional: 'Email (optional)',
       required: true,
       autocomplete: 'email',
       input: {
@@ -57,6 +60,7 @@ const BUILT_IN_RULES: Omit<CountryRules, 'country'> = {
     },
     phone_number: {
       label: 'Phone number',
+      labelOptional: 'Phone number (optional)',
       required: false,
       autocomplete: 'tel',
       input: { type: 'tel', inputMode: 'tel', maxLength: 24 },

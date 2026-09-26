@@ -146,9 +146,10 @@ describe('validateForm', () => {
       createContext({
         countryService: {
           validatePostalCode: vi.fn().mockReturnValue(true),
-          getMessages: () => ({ 'error.required': '{label} is required' }),
-          getMessageLabels: (country?: string) =>
-            country === 'GB' ? { state: 'County' } : {},
+          getFieldErrors: (country?: string) =>
+            country === 'GB'
+              ? { state: { not_selected: 'Select a county' } }
+              : {},
         },
       }),
       form,
@@ -156,7 +157,7 @@ describe('validateForm', () => {
       gb.get('GB')
     );
 
-    expect(result.errors.province).toBe('County is required');
+    expect(result.errors.province).toBe('Select a county');
   });
 
   it('checks the postal code against the country and quotes an example', async () => {

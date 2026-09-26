@@ -24,18 +24,18 @@ import {
 const FIXTURE = '/e2e/fixtures/checkout-form.html';
 
 /**
- * The service's wording and field names in Thai, a language the SDK's fallback is not
- * in. Any other `?lang=` is answered in English, as the service answers one it lacks.
+ * The service's labels and errors in Thai, a language the SDK's fallback is not in. Any
+ * other `?lang=` is answered in English, as the service answers one it lacks.
  */
 const THAI = {
   lang: 'th',
-  messages: { 'error.emoji': 'ห้ามใส่อีโมจิใน{label}' },
   labels: { first_name: 'ชื่อ', email: 'อีเมล' },
+  emoji: { first_name: 'ชื่อต้องไม่มีอีโมจิ', email: 'อีเมลต้องไม่มีอีโมจิ' },
 };
 const ENGLISH = {
   lang: 'en',
-  messages: { 'error.emoji': '{label} can’t contain emojis' },
   labels: { first_name: 'First name', email: 'Email' },
+  emoji: { first_name: "First name can't contain emojis", email: "Email can't contain emojis" },
 };
 
 /** Sets `window.nextConfig` before the SDK reads it. */
@@ -55,10 +55,10 @@ async function stubCountryService(page: Page): Promise<void> {
     ],
     rules: (_, { lang }) => {
       const answer = answerIn(lang);
-      const named = (name: keyof typeof answer.labels, autocomplete: string) => ({
-        ...ruleField(answer.labels[name], autocomplete),
-        messageLabel: answer.labels[name],
-      });
+      const named = (name: keyof typeof answer.labels, autocomplete: string) =>
+        ruleField(answer.labels[name], autocomplete, undefined, {
+          errors: { contains_emoji: answer.emoji[name] },
+        });
       return countryRules(
         'US',
         [['country'], ['line1'], ['city', 'state', 'postcode']],
@@ -74,7 +74,7 @@ async function stubCountryService(page: Page): Promise<void> {
         { lang: answer.lang }
       );
     },
-    locale: lang => answerIn(lang).messages,
+    locale: () => ({}),
   });
 }
 
@@ -125,9 +125,9 @@ test('an emoji in any field is refused on blur, in the service’s wording', asy
   await bootSdk(page, FIXTURE);
 
   for (const [field, value, message] of [
-    ['fname', 'Ada 😀', 'ห้ามใส่อีโมจิในชื่อ'],
+    ['fname', 'Ada 😀', 'ชื่อต้องไม่มีอีโมจิ'],
     // The emoji's message, not the one an invalid address gets.
-    ['email', 'ada🎉@example.com', 'ห้ามใส่อีโมจิในอีเมล'],
+    ['email', 'ada🎉@example.com', 'อีเมลต้องไม่มีอีโมจิ'],
   ]) {
     const input = page.locator(`[data-next-checkout-field="${field}"]`);
     await input.fill(value);
@@ -145,7 +145,7 @@ test('a page’s own translation replaces the service’s wording', async ({
 }) => {
   await configure(page, {
     locale: 'th-TH',
-    translations: { th: { 'error.emoji': 'อย่าใส่อีโมจิใน{label}' } },
+    translations: { th: { 'field.first_name.errors.contains_emoji': 'อย่าใส่อีโมจิในชื่อ' } },
   });
   await bootSdk(page, FIXTURE);
 

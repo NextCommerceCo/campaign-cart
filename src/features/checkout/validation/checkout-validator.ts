@@ -61,13 +61,13 @@ export type {
 
 /** The message each built-in rule shows when it fails. */
 const RULE_MESSAGE: Record<ValidationRule['type'], MessageKey> = {
-  required: 'error.required',
-  email: 'error.email',
-  name: 'error.name',
-  phone: 'error.pattern',
-  postal: 'error.pattern',
-  city: 'error.pattern',
-  custom: 'error.pattern',
+  required: 'blank',
+  email: 'invalid',
+  name: 'invalid_characters',
+  phone: 'invalid',
+  postal: 'invalid',
+  city: 'invalid',
+  custom: 'invalid',
 };
 
 export class CheckoutValidator {
@@ -163,7 +163,7 @@ export class CheckoutValidator {
   ): ValidationResult {
     const rules = this.rules.get(name) || [];
     if (hasEmoji(value)) {
-      const emoji = fieldMessage(this.countryService, 'error.emoji', name);
+      const emoji = fieldMessage(this.countryService, 'contains_emoji', name);
       this.setError(name, emoji);
       return { isValid: false, message: emoji };
     }

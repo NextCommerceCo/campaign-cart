@@ -192,7 +192,15 @@ export function ruleField(
   input: Record<string, unknown> = { type: 'text' },
   extra: Record<string, unknown> = {}
 ): Record<string, unknown> {
-  return { label, messageLabel: label, required: true, autocomplete, input, ...extra };
+  return {
+    label,
+    labelOptional: `${label} (optional)`,
+    required: true,
+    autocomplete,
+    input,
+    errors: {},
+    ...extra,
+  };
 }
 
 /** A country as the service answers it: its code, and its name in the answer's language. */

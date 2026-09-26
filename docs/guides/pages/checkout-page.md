@@ -81,7 +81,7 @@ Below is an example of the email field, the shipping address, and a billing addr
 
 ```html
 <h2 data-next-i18n="checkout.contact.title">Contact</h2>
-<label for="email" data-next-i18n="field.email">Email</label>
+<label for="email" data-next-i18n="field.email.label">Email</label>
 <input
   id="email"
   type="email"
@@ -89,7 +89,7 @@ Below is an example of the email field, the shipping address, and a billing addr
   required
   placeholder="Email"
   data-next-checkout-field="email"
-  data-next-i18n="[placeholder]field.email"
+  data-next-i18n="[placeholder]field.email.label"
 >
 
 <h2 data-next-i18n="checkout.shipping.title">Shipping address</h2>
@@ -111,7 +111,7 @@ The SDK ships these headings and the email's label in every language it supports
 
 ### Contact information
 
-The contact step is the email field, which the page writes. The name and phone are part of the shipping address, so the address block builds them. Its label and placeholder take the page's language from the `field.email` key ([Translated text](../reference/data-attributes.md#translated-text)).
+The contact step is the email field, which the page writes. The name and phone are part of the shipping address, so the address block builds them. Its label and placeholder take the page's language from the `field.email.label` key ([Translated text](../reference/data-attributes.md#translated-text)).
 
 The SDK requires the first name, last name and email, and the phone is optional unless its input carries `required` or `data-next-required="true"`. No field accepts an emoji.
 
@@ -141,9 +141,9 @@ A separate billing address is a second address block, `data-next-address="billin
 
 ### Validation messages
 
-Validation messages are in the form's language: `window.nextConfig.locale`, or English when it is unset. To change the wording, set `translations` for that language. A key you leave out keeps the default.
+Validation messages are whole sentences in the form's language, `window.nextConfig.locale`, or English when it is unset: `Enter a ZIP Code` in the US, `กรุณากรอกรหัสไปรษณีย์` on a Thai page. Each field has its own. To change one, set it in `translations` for that language, keyed by the field and what is wrong with it. A key you leave out keeps the default.
 
-Below is an example that rewords the message for an empty field and renames the apartment line inside messages, on a Thai page.
+Below is an example that rewords the message for an empty apartment line and for a postcode in the wrong format, on a Thai page.
 
 ```html
 <script>
@@ -151,26 +151,25 @@ Below is an example that rewords the message for an empty field and renames the 
     locale: "th-TH",
     translations: {
       th: {
-        "error.required": "กรุณาระบุ{label}",
-        "label.line2": "ห้อง/อาคาร",
+        "field.line2.errors.blank": "กรุณาระบุห้องหรืออาคาร",
+        "field.postcode.errors.invalid": "รหัสไปรษณีย์ไม่ถูกต้อง ลอง {{example}}",
       },
     },
   };
 </script>
 ```
 
-| Key | Description |
-|---|---|
-| `error.required` | An empty required field |
-| `error.pattern` | A value in the wrong format |
-| `error.pattern.example` | The same, with `{example}` |
-| `error.email` | An invalid email address |
-| `error.emoji` | A field holding an emoji |
-| `error.name` | A name with digits or symbols |
-| `label.<field>` | A field's name inside a message |
-| `field.optional` | A label's note: `{label} (optional)` |
+The key is `field.<field>.errors.<error>`. One key covers the field in every country, whatever the country calls it, and `{{example}}` becomes the country's example.
 
-Keep `{label}` and `{example}` in the text: the SDK fills them in. The fields are named as the address service names them.
+| Error | Description |
+|---|---|
+| `blank` | A required field left empty |
+| `not_selected` | Nothing chosen in a dropdown |
+| `invalid` | Wrong format, or not in the list |
+| `invalid_characters` | A name with digits or symbols |
+| `contains_emoji` | A field holding an emoji |
+
+The fields are named as the address service names them.
 
 | Field | Description |
 |---|---|
@@ -180,7 +179,7 @@ Keep `{label}` and `{example}` in the text: the SDK fills them in. The fields ar
 | `city`, `state`, `postcode` | The locality fields |
 | `country` | The country select |
 
-For a language the address service does not have, give both the messages and the field names they use. A message missing either is shown in English.
+In a language the address service does not have, a message you do not give is shown in English, as a whole sentence.
 
 ### Styling
 

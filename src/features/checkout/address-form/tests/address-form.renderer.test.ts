@@ -307,14 +307,12 @@ describe('renderLayout', () => {
         ...US.fields,
         line2: {
           ...text('Apartment, suite, etc.', 'address-line2'),
+          labelOptional: 'Apartment, suite, etc. (optional)',
           required: false,
         },
       },
     };
-    render(container, withLine2, {
-      form: 'shipping',
-      optionalLabel: label => `${label} (optional)`,
-    });
+    render(container, withLine2, { form: 'shipping' });
 
     const labelOf = (name: string) =>
       container.querySelector(`[data-next-address-field="${name}"] label`)

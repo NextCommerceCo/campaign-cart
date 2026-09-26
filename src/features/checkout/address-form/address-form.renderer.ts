@@ -31,8 +31,6 @@ export interface AddressRenderContext {
    * leave the order built from whichever was scanned last.
    */
   alreadyCollected?: ReadonlySet<string>;
-  /** The label a field shows when it is not required, with its optional note. */
-  optionalLabel?: (label: string) => string;
 }
 
 export function sdkFieldName(
@@ -44,11 +42,9 @@ export function sdkFieldName(
   return form === 'billing' ? `billing-${base}` : base;
 }
 
-/** What a field is called on the form: its label, and its optional note if it has one. */
-function shownLabel(field: RulesField, ctx: AddressRenderContext): string {
-  return field.required || !ctx.optionalLabel
-    ? field.label
-    : ctx.optionalLabel(field.label);
+/** What a field is called on the form: the rules' optional label when it is not required. */
+function shownLabel(field: RulesField): string {
+  return field.required ? field.label : (field.labelOptional ?? field.label);
 }
 
 function labelFor(text: string, id: string): HTMLLabelElement {
@@ -162,7 +158,7 @@ export function renderLayout(
       cell.setAttribute('data-next-address-field', checkoutField);
       if (field.input.span) cell.style.flexGrow = String(field.input.span);
 
-      const text = shownLabel(field, ctx);
+      const text = shownLabel(field);
       const control = controlFor(field, text, checkoutField, ctx.form, id);
       const value = ctx.values?.[checkoutField];
       if (value && control instanceof HTMLInputElement) control.value = value;

@@ -407,8 +407,8 @@ test('a returning visitor sees the address they already gave', async ({ page }) 
 });
 
 /**
- * A field that is not required says so, in the language its label is in: the note comes
- * from the service's `field.optional` template for that language, not from the label.
+ * A field that is not required says so, in the language its label is in: the rules carry
+ * its optional label, written whole in that language.
  */
 test('an optional field carries its note in the page’s language', async ({
   page,
@@ -427,12 +427,11 @@ test('an optional field carries its note in the page’s language', async ({
           line1: ruleField('ที่อยู่', 'address-line1'),
           line2: ruleField('ห้อง / ชั้น / อาคาร', 'address-line2', { type: 'text' }, {
             required: false,
+            labelOptional: 'ห้อง / ชั้น / อาคาร (ไม่บังคับ)',
           }),
         },
         { lang: 'th' }
       ),
-    locale: lang =>
-      lang.startsWith('th') ? { 'field.optional': '{label} (ไม่บังคับ)' } : undefined,
   });
 
   await bootSdk(page, FIXTURE);

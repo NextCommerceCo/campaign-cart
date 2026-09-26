@@ -1,16 +1,15 @@
 /**
- * Every message a checkout field shows: a template (`error.*`) with the field's name
- * (`label.<field>`) in it, in the form's language.
+ * Every message a checkout field shows, as a whole sentence in the form's language:
+ * `Enter a ZIP Code`, `กรุณาเลือกจังหวัด`.
  *
- * Each comes from the page's `nextConfig.translations` for that language, then the
- * address-rules service's answer when it is in that language, then English. A sentence
- * and the name inside it are always the same language: if either is missing in it, the
- * whole sentence is English. Mixing them is how "รหัสไปรษณีย์ is required" happened.
+ * Each comes from the page's `nextConfig.translations` for that language
+ * (`field.<field>.errors.<error>`), then the errors the address-rules service wrote into
+ * the country's rules when they are in that language, then English. A sentence is never
+ * assembled from parts in two languages: "รหัสไปรษณีย์ is required" is what that did.
  */
 
 import {
   addressLang,
-  baseLang,
   pageTranslations,
   sourceIn,
   type MessageSource,
@@ -21,23 +20,23 @@ import { hasEmoji } from './validation-patterns';
 
 export type { MessageSource };
 
+/**
+ * What is wrong with a value, in the service's words. `blank` is an empty field of either
+ * kind: the service serves a dropdown's as `not_selected`, and it is read from there.
+ */
 export type MessageKey =
-  | 'error.required'
-  | 'error.pattern'
-  | 'error.pattern.example'
-  | 'error.email'
-  | 'error.emoji'
-  | 'error.name';
+  | 'blank'
+  | 'invalid'
+  | 'invalid_characters'
+  | 'contains_emoji';
 
-/** The service's wording in English, for when it has not answered. */
+/** For when neither the page nor the service has the sentence in the form's language. */
 const ENGLISH: Record<MessageKey, string> = {
-  'error.required': '{label} is required',
-  'error.pattern': '{label} isn’t valid',
-  'error.pattern.example': '{label} isn’t valid, for example {example}',
-  'error.email': 'Enter a valid email address',
-  'error.emoji': '{label} can’t contain emojis',
-  'error.name':
-    '{label} can only contain letters, spaces, hyphens and apostrophes',
+  blank: '{{label}} is required',
+  invalid: '{{label}} isn’t valid',
+  invalid_characters:
+    '{{label}} can only contain letters, spaces, hyphens and apostrophes',
+  contains_emoji: '{{label}} can’t contain emojis',
 };
 
 /** Checkout field name → the service's. Billing fields drop their `billing-` prefix. */
@@ -64,17 +63,21 @@ function serviceFieldName(field: string): string {
 
 function interpolate(template: string, vars: Record<string, string>): string {
   return template.replace(
-    /\{(\w+)\}/g,
+    /\{\{\s*(\w+)\s*\}\}/g,
     (match, key: string) => vars[key] ?? match
   );
 }
 
+/** The keys a sentence is found under, most specific first: an empty dropdown's too. */
+const errorsFor = (key: MessageKey): string[] =>
+  key === 'blank' ? ['blank', 'not_selected'] : [key];
+
 /**
- * The message `key` for `field`, e.g. `('error.required', 'postal')` → `ZIP Code is
- * required`, or `กรุณากรอกรหัสไปรษณีย์` when the service answered in Thai.
+ * The message `key` for `field`: `('blank', 'postal')` → `Enter a ZIP Code`, or
+ * `กรุณากรอกรหัสไปรษณีย์` when the service answered in Thai.
  *
- * @param country The address's country, whose word for the field is used (`ZIP Code`).
- * @param example Filled into `error.pattern.example`.
+ * @param country The address's country, whose rules hold the sentence (`ZIP Code`).
+ * @param example Filled into the page's `{{example}}`, and into the English fallback.
  */
 export function fieldMessage(
   source: MessageSource | undefined,
@@ -82,38 +85,32 @@ export function fieldMessage(
   field: string,
   { country, example }: { country?: string; example?: string } = {}
 ): string {
-  const name = field.replace(/^billing-/, '');
   const serviceName = serviceFieldName(field);
   const lang = addressLang();
   const page = pageTranslations(lang);
-  const service = sourceIn(source, lang);
+  const service = sourceIn(source, lang)?.getFieldErrors?.(country)[
+    serviceName
+  ];
 
-  const template = page[key] ?? service?.getMessages?.()[key];
-  const label =
-    page[`label.${serviceName}`] ??
-    service?.getMessageLabels?.(country)[serviceName];
-  const vars = { example: example ?? '' };
-  if (template && label) return interpolate(template, { ...vars, label });
-  return interpolate(ENGLISH[key], { ...vars, label: formatFieldName(name) });
-}
+  for (const error of errorsFor(key)) {
+    const own = page[`field.${serviceName}.errors.${error}`];
+    if (own) return interpolate(own, { example: example ?? '' });
+  }
+  for (const error of errorsFor(key)) {
+    const served = service?.[error];
+    if (served) return served;
+  }
 
-/**
- * A field's label with its optional note, `{label} (optional)`, from `field.optional` in
- * `lang`, the language the label is in. The same order as {@link fieldMessage}: the page's
- * translation, then the service's when it answered in `lang`, then English for an English
- * label. With no template in the label's language the label is left bare, which reads
- * better than a note in another language.
- */
-export function optionalLabel(
-  source: MessageSource | undefined,
-  label: string,
-  lang: string
-): string {
-  const template =
-    pageTranslations(lang)['field.optional'] ??
-    sourceIn(source, lang)?.getMessages?.()['field.optional'] ??
-    (baseLang(lang) === 'en' ? '{label} (optional)' : undefined);
-  return template ? interpolate(template, { label }) : label;
+  const english =
+    key === 'invalid' && serviceName === 'email'
+      ? 'Enter a valid email address'
+      : key === 'invalid' && example
+        ? '{{label}} isn’t valid, for example {{example}}'
+        : ENGLISH[key];
+  return interpolate(english, {
+    label: formatFieldName(field.replace(/^billing-/, '')),
+    example: example ?? '',
+  });
 }
 
 /** A postcode that fails its country's pattern, with the country's example when it has one. */
@@ -123,15 +120,13 @@ export function postalMessage(
   country: string,
   config: { postcodeExample: string | null }
 ): string {
-  return config.postcodeExample
-    ? fieldMessage(source, 'error.pattern.example', field, {
-        country,
-        example: config.postcodeExample,
-      })
-    : fieldMessage(source, 'error.pattern', field, { country });
+  return fieldMessage(source, 'invalid', field, {
+    country,
+    ...(config.postcodeExample ? { example: config.postcodeExample } : {}),
+  });
 }
 
-/** `error.emoji` for every field of a form holding an emoji, keyed by field name. */
+/** `contains_emoji` for every field of a form holding an emoji, keyed by field name. */
 export function emojiErrors(
   source: MessageSource | undefined,
   values: Readonly<Record<string, unknown>> | undefined,
@@ -140,7 +135,7 @@ export function emojiErrors(
   const errors: Record<string, string> = {};
   for (const [field, value] of Object.entries(values ?? {})) {
     if (hasEmoji(value)) {
-      errors[field] = fieldMessage(source, 'error.emoji', field, {
+      errors[field] = fieldMessage(source, 'contains_emoji', field, {
         ...(country ? { country } : {}),
       });
     }

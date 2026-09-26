@@ -5,23 +5,25 @@ import { useConfigStore } from '@/state/config';
 import {
   emojiErrors,
   fieldMessage,
-  optionalLabel,
   postalMessage,
   type MessageSource,
 } from '../field-messages';
 
-/** What the address-rules service sends for a US address in Thai. */
+/** What the address-rules service sends for a US address in Thai: each field's errors. */
 const THAI: MessageSource = {
   getMessagesLang: () => 'th',
-  getMessages: () => ({
-    'error.required': 'กรุณากรอก{label}',
-    'error.pattern.example': '{label}ไม่ถูกต้อง เช่น {example}',
-    'error.emoji': 'ห้ามใส่อีโมจิใน{label}',
-  }),
-  getMessageLabels: () => ({
-    line2: 'ที่อยู่บรรทัดที่ 2',
-    postcode: 'รหัส ZIP',
-    first_name: 'ชื่อ',
+  getFieldErrors: () => ({
+    line2: {
+      blank: 'กรุณากรอกที่อยู่บรรทัดที่ 2',
+      contains_emoji: 'ที่อยู่บรรทัดที่ 2 ต้องไม่มีอีโมจิ',
+    },
+    postcode: {
+      blank: 'กรุณากรอกรหัส ZIP',
+      invalid: 'กรุณากรอกรหัส ZIP ให้ถูกต้อง เช่น 90210',
+      contains_emoji: 'รหัส ZIP ต้องไม่มีอีโมจิ',
+    },
+    first_name: { blank: 'กรุณากรอกชื่อ' },
+    state: { not_selected: 'กรุณาเลือกรัฐ' },
   }),
 };
 
@@ -35,51 +37,47 @@ afterEach(() => {
 });
 
 describe('fieldMessage', () => {
-  it("builds the sentence from the service's template and its name for the field", () => {
-    expect(fieldMessage(THAI, 'error.emoji', 'address2')).toBe(
-      'ห้ามใส่อีโมจิในที่อยู่บรรทัดที่ 2'
+  it('takes the whole sentence the service wrote for the field', () => {
+    expect(fieldMessage(THAI, 'contains_emoji', 'address2')).toBe(
+      'ที่อยู่บรรทัดที่ 2 ต้องไม่มีอีโมจิ'
     );
-    expect(fieldMessage(THAI, 'error.required', 'postal')).toBe(
-      'กรุณากรอกรหัส ZIP'
-    );
+    expect(fieldMessage(THAI, 'blank', 'postal')).toBe('กรุณากรอกรหัส ZIP');
+  });
+
+  it('asks an empty dropdown to be chosen from', () => {
+    // The service serves a dropdown's empty sentence as `not_selected`.
+    expect(fieldMessage(THAI, 'blank', 'province')).toBe('กรุณาเลือกรัฐ');
   });
 
   it('reads a billing field by the name the service knows it by', () => {
-    expect(fieldMessage(THAI, 'error.required', 'billing-address2')).toBe(
+    expect(fieldMessage(THAI, 'blank', 'billing-address2')).toBe(
       'กรุณากรอกที่อยู่บรรทัดที่ 2'
     );
-    expect(fieldMessage(THAI, 'error.required', 'first_name')).toBe(
-      'กรุณากรอกชื่อ'
-    );
+    expect(fieldMessage(THAI, 'blank', 'first_name')).toBe('กรุณากรอกชื่อ');
   });
 
-  it('is all English when the service sent no template for the sentence', () => {
+  it('is all English when the service has no sentence for it', () => {
     // A Thai name inside an English sentence is what this rule exists to prevent.
-    expect(fieldMessage(THAI, 'error.name', 'fname')).toBe(
+    expect(fieldMessage(THAI, 'invalid_characters', 'fname')).toBe(
       'First name can only contain letters, spaces, hyphens and apostrophes'
     );
-  });
-
-  it('is all English when the service has no name for the field', () => {
-    expect(fieldMessage(THAI, 'error.required', 'city')).toBe(
-      'City is required'
-    );
+    expect(fieldMessage(THAI, 'blank', 'city')).toBe('City is required');
   });
 
   it('is all English before the service has answered', () => {
-    expect(fieldMessage(undefined, 'error.emoji', 'address2')).toBe(
+    expect(fieldMessage(undefined, 'contains_emoji', 'address2')).toBe(
       'Address line 2 can’t contain emojis'
     );
-    expect(fieldMessage({}, 'error.email', 'email')).toBe(
+    expect(fieldMessage({}, 'invalid', 'email')).toBe(
       'Enter a valid email address'
     );
   });
 
-  it("asks for the address's country's names", () => {
+  it("asks for the address's country's sentences", () => {
     const asked: (string | undefined)[] = [];
     fieldMessage(
-      { ...THAI, getMessageLabels: country => (asked.push(country), {}) },
-      'error.required',
+      { ...THAI, getFieldErrors: country => (asked.push(country), {}) },
+      'blank',
       'postal',
       { country: 'US' }
     );
@@ -88,10 +86,13 @@ describe('fieldMessage', () => {
 });
 
 describe('postalMessage', () => {
-  it("quotes the country's example when it has one", () => {
+  it("takes the service's sentence, example and all, else quotes the example in English", () => {
     expect(
-      postalMessage(THAI, 'postal', 'US', { postcodeExample: '10001' })
-    ).toBe('รหัส ZIPไม่ถูกต้อง เช่น 10001');
+      postalMessage(THAI, 'postal', 'US', { postcodeExample: '90210' })
+    ).toBe('กรุณากรอกรหัส ZIP ให้ถูกต้อง เช่น 90210');
+    expect(
+      postalMessage(undefined, 'postal', 'US', { postcodeExample: '10001' })
+    ).toBe('Postal code isn’t valid, for example 10001');
     expect(
       postalMessage(undefined, 'postal', 'US', { postcodeExample: null })
     ).toBe('Postal code isn’t valid');
@@ -99,12 +100,12 @@ describe('postalMessage', () => {
 });
 
 describe('emojiErrors', () => {
-  it('reports every field holding an emoji, by its own name, and only those', () => {
+  it('reports every field holding an emoji, in its own sentence, and only those', () => {
     expect(
       emojiErrors(THAI, { fname: 'Jane', address2: 'Apt 4 🏠', postal: '🌆' })
     ).toEqual({
-      address2: 'ห้ามใส่อีโมจิในที่อยู่บรรทัดที่ 2',
-      postal: 'ห้ามใส่อีโมจิในรหัส ZIP',
+      address2: 'ที่อยู่บรรทัดที่ 2 ต้องไม่มีอีโมจิ',
+      postal: 'รหัส ZIP ต้องไม่มีอีโมจิ',
     });
     expect(emojiErrors(THAI, undefined)).toEqual({});
   });
@@ -118,91 +119,45 @@ describe("the page's own translations", () => {
     useConfigStore.setState({ locale, translations });
   }
 
-  it("wins over the service's wording, key by key", () => {
-    pageIn('th-TH', { th: { 'error.required': 'กรุณาระบุ{label}' } });
-    expect(fieldMessage(THAI, 'error.required', 'address2')).toBe(
-      'กรุณาระบุที่อยู่บรรทัดที่ 2'
+  it("wins over the service's sentence, by field and error, in every country", () => {
+    pageIn('th-TH', {
+      th: { 'field.line2.errors.blank': 'กรุณาระบุห้องหรืออาคาร' },
+    });
+    expect(fieldMessage(THAI, 'blank', 'address2')).toBe(
+      'กรุณาระบุห้องหรืออาคาร'
     );
     // Not overridden: still the service's.
-    expect(fieldMessage(THAI, 'error.emoji', 'address2')).toBe(
-      'ห้ามใส่อีโมจิในที่อยู่บรรทัดที่ 2'
+    expect(fieldMessage(THAI, 'contains_emoji', 'address2')).toBe(
+      'ที่อยู่บรรทัดที่ 2 ต้องไม่มีอีโมจิ'
     );
   });
 
-  it("renames a field inside the service's sentence", () => {
-    pageIn('th', { th: { 'label.line2': 'ห้อง/อาคาร' } });
-    expect(fieldMessage(THAI, 'error.emoji', 'address2')).toBe(
-      'ห้ามใส่อีโมจิในห้อง/อาคาร'
-    );
+  it('fills the example into its own sentence', () => {
+    pageIn('th', {
+      th: { 'field.postcode.errors.invalid': 'รหัสไม่ถูก ลอง {{example}}' },
+    });
+    expect(
+      postalMessage(THAI, 'postal', 'US', { postcodeExample: '90210' })
+    ).toBe('รหัสไม่ถูก ลอง 90210');
   });
 
-  it('serves a language the service does not, when the page names the fields too', () => {
+  it('serves a language the service does not', () => {
     const english: MessageSource = {
-      ...THAI,
       getMessagesLang: () => 'en',
-      getMessages: () => ({ 'error.required': '{label} is required' }),
-      getMessageLabels: () => ({ line2: 'Address line 2' }),
+      getFieldErrors: () => ({ line2: { blank: 'Enter address line 2' } }),
     };
     pageIn('vi', {
-      vi: {
-        'error.required': 'Vui lòng nhập {label}',
-        'label.line2': 'Địa chỉ 2',
-      },
+      vi: { 'field.line2.errors.blank': 'Vui lòng nhập địa chỉ 2' },
     });
-    expect(fieldMessage(english, 'error.required', 'address2')).toBe(
-      'Vui lòng nhập Địa chỉ 2'
-    );
-  });
-
-  it('never puts its sentence around a name in another language', () => {
-    const english: MessageSource = {
-      ...THAI,
-      getMessagesLang: () => 'en',
-      getMessageLabels: () => ({ line2: 'Address line 2' }),
-    };
-    pageIn('vi', { vi: { 'error.required': 'Vui lòng nhập {label}' } });
-    expect(fieldMessage(english, 'error.required', 'address2')).toBe(
-      'Address line 2 is required'
+    expect(fieldMessage(english, 'blank', 'address2')).toBe(
+      'Vui lòng nhập địa chỉ 2'
     );
   });
 
   it("ignores the service's answer in a language the form is not in", () => {
     pageIn('de', {});
-    expect(fieldMessage(THAI, 'error.required', 'address2')).toBe(
+    expect(fieldMessage(THAI, 'blank', 'address2')).toBe(
       'Address line 2 is required'
-    );
-  });
-});
-
-describe('optionalLabel', () => {
-  const thai: MessageSource = {
-    getMessagesLang: () => 'th',
-    getMessages: () => ({ 'field.optional': '{label} (ไม่บังคับ)' }),
-  };
-
-  it("writes the note from the service's template, in the label's language", () => {
-    expect(optionalLabel(thai, 'ห้อง / ชั้น / อาคาร', 'th')).toBe(
-      'ห้อง / ชั้น / อาคาร (ไม่บังคับ)'
-    );
-  });
-
-  it("prefers the page's own wording", () => {
-    useConfigStore.setState({
-      translations: { th: { 'field.optional': '{label} - ไม่ต้องกรอกก็ได้' } },
-    });
-    expect(optionalLabel(thai, 'ห้อง', 'th')).toBe('ห้อง - ไม่ต้องกรอกก็ได้');
-  });
-
-  it('writes the English note for an English label, service or not', () => {
-    expect(optionalLabel(undefined, 'Apartment, suite, etc.', 'en')).toBe(
-      'Apartment, suite, etc. (optional)'
-    );
-  });
-
-  it('leaves a label bare rather than put a note in another language on it', () => {
-    // The service answered in Thai; the label is German.
-    expect(optionalLabel(thai, 'Wohnung, Etage usw.', 'de')).toBe(
-      'Wohnung, Etage usw.'
     );
   });
 });

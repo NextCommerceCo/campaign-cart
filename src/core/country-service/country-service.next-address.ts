@@ -33,6 +33,7 @@ import type {
   LocationData,
   State,
 } from '@/core/country-service/country-service';
+import { flattenTexts } from '@/utils/flatten-texts';
 import type { PhoneRules } from '@/core/country-service/country-service.phone';
 
 const NEXT_ADDRESS_BASE_URL =
@@ -57,8 +58,13 @@ const DEFAULT_LANG = 'en';
 export interface RulesField {
   /** On the form. */
   label: string;
-  /** Inside a message, for `{label}`. */
-  messageLabel?: string;
+  /** The label when the field is not required, with the language's note. */
+  labelOptional?: string;
+  /**
+   * What the form says when a value is refused, by what is wrong (`blank`, `not_selected`,
+   * `invalid`, `invalid_characters`, `contains_emoji`, `too_long`), in `lang`.
+   */
+  errors?: Readonly<Record<string, string>>;
   required: boolean;
   autocomplete: string;
   input: {
@@ -89,7 +95,7 @@ export type FixedValues = Partial<Record<'city' | 'state' | 'postcode', string>>
  */
 export interface CountryRules {
   country: string;
-  /** The language `label` and `messageLabel` are in. */
+  /** The language `label`, `labelOptional` and `errors` are in. */
   lang?: string;
   /** `false` for a country the service serves the default layout. */
   curated?: boolean;
@@ -217,8 +223,8 @@ async function fetchMessages(
   lang: string
 ): Promise<Record<string, string> | undefined> {
   try {
-    return await getJson<Record<string, string>>(
-      `${baseUrl}/v1/locales/${encodeURIComponent(lang)}`
+    return flattenTexts(
+      await getJson<unknown>(`${baseUrl}/v1/locales/${encodeURIComponent(lang)}`)
     );
   } catch {
     return undefined;
@@ -239,23 +245,23 @@ export async function fetchTexts(
       `${baseUrl}/v1/locales/${encodeURIComponent(lang)}`
     );
     if (!response.ok) return undefined;
-    const texts = (await response.json()) as Record<string, string>;
+    const texts = flattenTexts(await response.json());
     return { texts, lang: response.headers.get('content-language') ?? lang };
   } catch {
     return undefined;
   }
 }
 
-/** What a country's rules give the messages: each field's name in them, and their language. */
-function namesOf(
+/** What a country's rules give the messages: each field's errors, and their language. */
+function errorsOf(
   rules: CountryRules
-): Pick<LocationData, 'labels' | 'messagesLang'> {
-  const labels: Record<string, string> = {};
+): Pick<LocationData, 'fieldErrors' | 'messagesLang'> {
+  const fieldErrors: Record<string, Readonly<Record<string, string>>> = {};
   for (const [name, field] of Object.entries(rules.fields)) {
-    if (field) labels[name] = field.messageLabel ?? field.label;
+    if (field?.errors) fieldErrors[name] = field.errors;
   }
   return {
-    labels,
+    fieldErrors,
     ...(rules.lang ? { messagesLang: rules.lang } : {}),
   };
 }
@@ -293,7 +299,7 @@ export async function fetchLocationData(
     countries: toCountries(countries),
     ...(geo.ip ? { detectedIp: geo.ip } : {}),
     ...(messages ? { messages } : {}),
-    ...namesOf(rules),
+    ...errorsOf(rules),
   };
 }
 
@@ -319,6 +325,6 @@ export async function fetchCountryStates(
     countryConfig: toCountryConfig(rules),
     states: rules.states ?? [],
     rules,
-    ...namesOf(rules),
+    ...errorsOf(rules),
   };
 }

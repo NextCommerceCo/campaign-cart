@@ -273,7 +273,8 @@ describe('fetchLocationData', () => {
         { code: 'GB', name: 'United Kingdom' },
         { code: 'US', name: 'United States' },
       ],
-      locale: { 'error.emoji': '{label} can’t contain emojis' },
+      // i18next JSON, nested, as /v1/locales serves it.
+      locale: { checkout: { contact: { title: 'Contact' } } },
     });
 
     const data = await fetchLocationData('https://addr.test');
@@ -287,7 +288,7 @@ describe('fetchLocationData', () => {
     expect(data.detectedCountryConfig.postcodeLabel).toBe('Postcode');
     expect(data.detectedStates).toEqual([{ code: 'ENG', name: 'England' }]);
     expect(data.countries.map(c => c.code)).toEqual(['GB', 'US']);
-    expect(data.messages?.['error.emoji']).toBe('{label} can’t contain emojis');
+    expect(data.messages?.['checkout.contact.title']).toBe('Contact');
     expect(data.messagesLang).toBe('en');
   });
 
@@ -296,7 +297,9 @@ describe('fetchLocationData', () => {
       geo: {
         rules: {
           ...GB,
-          fields: { line1: { ...field('Address'), messageLabel: 'Address' } },
+          fields: {
+            line1: { ...field('Address'), errors: { blank: 'Enter an address' } },
+          },
         },
       },
       countries: [],
@@ -305,10 +308,10 @@ describe('fetchLocationData', () => {
     const data = await fetchLocationData('https://addr.test', 'vi');
 
     expect(data.messages).toBeUndefined();
-    // The names came back in English, which is what stops a Vietnamese sentence
-    // being built around them.
+    // The errors came back in English, which is what stops a Vietnamese page showing
+    // them as if they were its own.
     expect(data.messagesLang).toBe('en');
-    expect(data.labels).toEqual({ line1: 'Address' });
+    expect(data.fieldErrors).toEqual({ line1: { blank: 'Enter an address' } });
   });
 
   /** A country with no subdivisions omits `states` entirely rather than sending `[]`. */
@@ -412,20 +415,23 @@ describe('CountryService language', () => {
     ]);
   });
 
-  it("keeps each country's names for its messages, and the last as the default", async () => {
+  it("keeps each country's field errors, and the last as the default", async () => {
     const service = CountryService.getInstance();
-    stubService({
-      country: US,
+    const withBlank = (answer: CountryRules, blank: string): CountryRules => ({
+      ...answer,
+      fields: {
+        ...answer.fields,
+        postcode: { ...(answer.fields.postcode as RulesField), errors: { blank } },
+      },
     });
+    stubService({ country: withBlank(US, 'Enter a ZIP Code') });
     await service.getCountryStates('US');
-    stubService({
-      country: GB,
-    });
+    stubService({ country: withBlank(GB, 'Enter a postcode') });
     await service.getCountryStates('GB');
 
-    expect(service.getMessageLabels('US').postcode).toBe('ZIP Code');
-    expect(service.getMessageLabels('GB').postcode).toBe('Postcode');
-    expect(service.getMessageLabels().postcode).toBe('Postcode');
+    expect(service.getFieldErrors('US').postcode?.blank).toBe('Enter a ZIP Code');
+    expect(service.getFieldErrors('GB').postcode?.blank).toBe('Enter a postcode');
+    expect(service.getFieldErrors().postcode?.blank).toBe('Enter a postcode');
   });
 
   it('refetches rather than serve a cached answer in another language', async () => {
