@@ -132,6 +132,26 @@ describe("the page's own translations", () => {
     );
   });
 
+  it('takes the variant key the service names before the plain field key', () => {
+    const province: MessageSource = {
+      ...THAI,
+      getFieldLabelIds: () => ({ state: 'fields.state.province' }),
+    };
+    pageIn('th', {
+      th: {
+        'fields.state.province.errors.not_selected': 'กรุณาเลือกจังหวัด',
+        'fields.state.errors.not_selected': 'กรุณาเลือกรัฐ/จังหวัด',
+      },
+    });
+    expect(fieldMessage(province, 'blank', 'province')).toBe(
+      'กรุณาเลือกจังหวัด'
+    );
+    // A country whose state has no variant falls to the plain key.
+    expect(fieldMessage(THAI, 'blank', 'province')).toBe(
+      'กรุณาเลือกรัฐ/จังหวัด'
+    );
+  });
+
   it('fills the example into its own sentence', () => {
     pageIn('th', {
       th: { 'fields.postcode.errors.invalid': 'รหัสไม่ถูก ลอง {{example}}' },

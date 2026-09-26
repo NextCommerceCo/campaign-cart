@@ -187,7 +187,7 @@ Below is an example of a billing section that closes when the shopper ticks the 
 
 ### Validation messages
 
-Validation messages are whole sentences in the form's language, `window.nextConfig.locale`, or English when it is unset: `Enter a ZIP Code` in the US, `กรุณากรอกรหัสไปรษณีย์` on a Thai page. Each field has its own. To change one, set `fields.<field>.errors.<error>` in `translations`; [Changing a text](../reference/data-attributes.md#changing-a-text) explains how `translations` works.
+Validation messages are whole sentences in the form's language, `window.nextConfig.locale`, or English when it is unset: `Enter a ZIP Code` in the US, `กรุณากรอกรหัสไปรษณีย์` on a Thai page. Each field has its own. To change one, set `fields.<field>.errors.<error>` in `translations` for every country, or the variant key the defaults list, such as `fields.postcode.zip_code.errors.invalid`, for one wording alone. [Changing a text](../reference/data-attributes.md#changing-a-text) explains how `translations` works.
 
 Below is an example that rewords the message for an empty apartment line and for a postcode in the wrong format, on a Thai page.
 

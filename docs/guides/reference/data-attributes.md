@@ -549,12 +549,14 @@ Every text the checkout shows has a default in each language the address service
 | Text | Description |
 |---|---|
 | A `data-next-i18n` key | The key itself, as the defaults list it |
+| A field's label | `fields.<field>.label` |
+| A field's label when optional | `fields.<field>.label_optional` |
 | A field's message | `fields.<field>.errors.<error>` |
 | The page's own text | Any key the page names |
 
-A field's message takes one key for every country, whatever the country calls the field: `fields.postcode.errors.invalid`, never the `fields.postcode.zip_code` variant the defaults list. [Validation messages](../pages/checkout-page.md#validation-messages) lists the fields and errors. The labels the address block writes come from the country's rules in the page's language, and `translations` does not change them.
+Any key the defaults list can be copied into `translations` as it is. Where a field has more than one wording, the defaults list each as a variant: `fields.state.province` for the countries that call it a province, `fields.state.county` for those that say county. A variant key changes that wording alone, in the countries that use it, and wins over the plain key there. The plain key, with no variant, changes the field in every country: `fields.state.label` renames the state field wherever the address block builds it. [Validation messages](../pages/checkout-page.md#validation-messages) lists the fields and errors. A field that is not required shows its `label_optional` text, so rename both where the field can be optional.
 
-Below is an example that rewords the contact heading and the message for an empty email, on a Thai page.
+Below is an example that rewords the contact heading, renames the province field and rewords the message for an empty email, on a Thai page.
 
 ```html
 <script>
@@ -563,6 +565,7 @@ Below is an example that rewords the contact heading and the message for an empt
     translations: {
       th: {
         "checkout.contact.title": "ติดต่อเรา",
+        "fields.state.province.label": "จังหวัด",
         "fields.email.errors.blank": "กรุณาใส่อีเมลของคุณ",
       },
     },

@@ -326,6 +326,35 @@ describe('renderLayout', () => {
     ).toBe('Apartment, suite, etc. (optional)');
   });
 
+  it("takes the page's own label, by the key the locale file shows before the field's", () => {
+    const province: Spec = {
+      ...US,
+      fields: {
+        ...US.fields,
+        state: {
+          ...select('Province', 'address-level1', 'states'),
+          label_id: 'fields.state.province',
+        },
+        city: { ...text('City', 'address-level2'), label_id: 'fields.city.default' },
+      },
+    };
+    render(container, province, {
+      form: 'shipping',
+      texts: {
+        'fields.state.province.label': 'จังหวัด',
+        'fields.state.label': 'รัฐ',
+        'fields.city.label': 'เมือง',
+      },
+    });
+
+    const labelOf = (name: string) =>
+      container.querySelector(`[data-next-address-field="${name}"] label`)
+        ?.textContent;
+    expect(labelOf('province')).toBe('จังหวัด');
+    expect(labelOf('city')).toBe('เมือง');
+    expect(labelOf('postal')).toBe('ZIP Code');
+  });
+
   it('labels every control, and the label points at it', () => {
     render(container, JP, { form: 'shipping' });
 

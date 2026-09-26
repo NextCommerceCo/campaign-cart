@@ -447,6 +447,68 @@ test('an optional field carries its note in the page’s language', async ({
   ).toHaveText('ที่อยู่');
 });
 
+/**
+ * A page's `translations` rename a built field by the key the Languages page shows: the
+ * field's `label_id` names the variant, and the plain `fields.<name>` key covers the rest.
+ */
+test('the page’s own translations rename a built field', async ({ page }) => {
+  await page.addInitScript(() => {
+    (window as any).nextConfig = {
+      locale: 'th-TH',
+      translations: {
+        th: {
+          'fields.state.province.label': 'จังหวัด',
+          'fields.city.label': 'อำเภอ',
+        },
+      },
+    };
+  });
+  await routeAddressService(page, {
+    countries: [{ code: 'US', name: 'United States' }],
+    rules: () =>
+      countryRules(
+        'US',
+        [['country'], ['line1'], ['city', 'state']],
+        {
+          country: ruleField('ประเทศ', 'country', {
+            type: 'select',
+            options: 'countries',
+          }),
+          line1: ruleField(
+            'ที่อยู่',
+            'address-line1',
+            { type: 'text' },
+            { label_id: 'fields.line1' }
+          ),
+          city: ruleField(
+            'เมือง',
+            'address-level2',
+            { type: 'text' },
+            { label_id: 'fields.city.default' }
+          ),
+          state: ruleField(
+            'รัฐ',
+            'address-level1',
+            { type: 'select', options: 'states' },
+            {
+              label_id: 'fields.state.province',
+            }
+          ),
+        },
+        { lang: 'th' }
+      ),
+  });
+
+  await bootSdk(page, FIXTURE);
+
+  const label = (field: string) =>
+    page.locator(`[data-next-address-field="${field}"] .next-address-label`);
+  await expect(label('province')).toHaveText('จังหวัด');
+  await expect(label('city')).toHaveText('อำเภอ');
+  // Not overridden: still the rules' own.
+  await expect(label('address1')).toHaveText('ที่อยู่');
+});
+
 test('a failed layout lookup still gives the shopper an address to fill', async ({
   page,
 }) => {

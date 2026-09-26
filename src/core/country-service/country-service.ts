@@ -87,6 +87,8 @@ export interface LocationData {
   messages?: Record<string, string>;
   /** Each field's errors from the country's rules, keyed by the service's field name. */
   fieldErrors?: Record<string, Readonly<Record<string, string>>>;
+  /** Where each field's texts are in the service's locale file: `fields.postcode.zip_code`. */
+  fieldLabelIds?: Record<string, string>;
   /** The language the service answered in: the one asked for if it has it, else `en`. */
   messagesLang?: string;
 }
@@ -98,6 +100,7 @@ export interface CountryStatesData {
   rules?: CountryRules;
   messages?: Record<string, string>;
   fieldErrors?: Record<string, Readonly<Record<string, string>>>;
+  fieldLabelIds?: Record<string, string>;
   messagesLang?: string;
 }
 
@@ -127,6 +130,8 @@ export class CountryService {
   private lastFieldErrors: Readonly<
     Record<string, Readonly<Record<string, string>>>
   > = {};
+  private fieldLabelIds = new Map<string, Readonly<Record<string, string>>>();
+  private lastFieldLabelIds: Readonly<Record<string, string>> = {};
   private logger: Logger;
   private config: AddressConfig = {};
   private campaignShippingCountries: string[] | null = null;
@@ -237,9 +242,23 @@ export class CountryService {
     return (country && this.fieldErrors.get(country)) || this.lastFieldErrors;
   }
 
+  /**
+   * Where each field's texts are in the service's locale file, for the rules of `country`:
+   * `{ postcode: 'fields.postcode.zip_code' }`. The country's own when its rules have been
+   * fetched, else the last country's.
+   */
+  public getFieldLabelIds(country?: string): Readonly<Record<string, string>> {
+    return (
+      (country && this.fieldLabelIds.get(country)) || this.lastFieldLabelIds
+    );
+  }
+
   private keepMessages(
     country: string,
-    data: Pick<LocationData, 'messages' | 'fieldErrors' | 'messagesLang'>
+    data: Pick<
+      LocationData,
+      'messages' | 'fieldErrors' | 'fieldLabelIds' | 'messagesLang'
+    >
   ): void {
     if (data.messagesLang) this.messagesLang = data.messagesLang;
     if (data.messages && data.messagesLang) {
@@ -251,6 +270,10 @@ export class CountryService {
     if (data.fieldErrors) {
       this.fieldErrors.set(country, data.fieldErrors);
       this.lastFieldErrors = data.fieldErrors;
+    }
+    if (data.fieldLabelIds) {
+      this.fieldLabelIds.set(country, data.fieldLabelIds);
+      this.lastFieldLabelIds = data.fieldLabelIds;
     }
   }
 

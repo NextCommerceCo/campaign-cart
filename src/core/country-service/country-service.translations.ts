@@ -12,6 +12,7 @@ type Texts = Readonly<Record<string, string>>;
 /** What a lookup needs from `CountryService`. */
 export interface MessageSource {
   getFieldErrors?: (country?: string) => Readonly<Record<string, Texts>>;
+  getFieldLabelIds?: (country?: string) => Texts;
   getMessagesLang?: () => string | undefined;
 }
 

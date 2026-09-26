@@ -108,6 +108,13 @@ export function populateBillingCountryDropdown(
   });
 }
 
+/** A field `data-next-address` built, which carries its own label. */
+const BUILT = '[data-next-address-field]';
+
+function unbuiltLabel(root: ParentNode, selector: string): Element | undefined {
+  return [...root.querySelectorAll(selector)].find(el => !el.closest(BUILT));
+}
+
 /**
  * Rewrites the shipping state and postcode labels for the selected country.
  *
@@ -116,12 +123,16 @@ export function populateBillingCountryDropdown(
  * still get relabelled. The postcode label always carries ` *` because a postcode is
  * required everywhere the SDK sells; the state label only does when the country's config
  * says so.
+ *
+ * A field `data-next-address` built is skipped: it was labelled from the same rules, with
+ * its optional note and the page's own translations, which this wording would overwrite.
  */
 export function updateFormLabels(
   ctx: CountryFieldsContext,
   countryConfig: CountryConfig
 ): void {
-  const stateLabel = ctx.form.querySelector(
+  const stateLabel = unbuiltLabel(
+    ctx.form,
     'label[for*="province"], label[for*="state"]'
   );
   if (stateLabel) {
@@ -129,7 +140,8 @@ export function updateFormLabels(
     stateLabel.textContent = countryConfig.stateLabel + isRequired;
   }
 
-  const postalLabel = ctx.form.querySelector(
+  const postalLabel = unbuiltLabel(
+    ctx.form,
     'label[for*="postal"], label[for*="zip"]'
   );
   if (postalLabel) {
@@ -137,7 +149,7 @@ export function updateFormLabels(
   }
 
   const postalField = ctx.fields.get('postal');
-  if (postalField instanceof HTMLInputElement) {
+  if (postalField instanceof HTMLInputElement && !postalField.closest(BUILT)) {
     postalField.placeholder = countryConfig.postcodeLabel;
   }
 }
@@ -156,7 +168,8 @@ export function updateBillingFormLabels(
   const billingContainer = document.querySelector(BILLING_CONTAINER);
   if (!billingContainer) return;
 
-  const billingStateLabel = billingContainer.querySelector(
+  const billingStateLabel = unbuiltLabel(
+    billingContainer,
     'label[for*="billing"][for*="province"], label[for*="billing"][for*="state"]'
   );
   if (billingStateLabel) {
@@ -164,7 +177,8 @@ export function updateBillingFormLabels(
     billingStateLabel.textContent = `Billing ${countryConfig.stateLabel}${isRequired}`;
   }
 
-  const billingPostalLabel = billingContainer.querySelector(
+  const billingPostalLabel = unbuiltLabel(
+    billingContainer,
     'label[for*="billing"][for*="postal"], label[for*="billing"][for*="zip"]'
   );
   if (billingPostalLabel) {
@@ -172,7 +186,10 @@ export function updateBillingFormLabels(
   }
 
   const billingPostalField = ctx.billingFields.get('billing-postal');
-  if (billingPostalField instanceof HTMLInputElement) {
+  if (
+    billingPostalField instanceof HTMLInputElement &&
+    !billingPostalField.closest(BUILT)
+  ) {
     billingPostalField.placeholder = `Billing ${countryConfig.postcodeLabel}`;
   }
 }
