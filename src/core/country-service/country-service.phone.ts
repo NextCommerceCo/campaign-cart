@@ -10,9 +10,9 @@
 
 export interface PhoneRules {
   /** ITU calling code without the `+`; absent where the number must be sent as typed. */
-  callingCode?: string;
+  calling_code?: string;
   /** Dialled before a national number inside the country, and dropped from E.164. */
-  nationalPrefix?: string;
+  national_prefix?: string;
   /**
    * `#` is one digit: `(###) ###-####`. The first whose `start` matches the start of the
    * digits is used — Thailand's `02` landlines and `08` mobiles group differently — and the
@@ -94,7 +94,7 @@ export function formatPhone(text: string, rules?: PhoneRules): string {
   const digits = digitsOf(text);
   if (!rules?.masks?.length || !digits) return digits;
 
-  const prefix = rules.nationalPrefix;
+  const prefix = rules.national_prefix;
   const maskHoldsPrefix =
     prefix !== undefined && digitsOf(rules.example ?? '').startsWith(prefix);
   if (
@@ -121,8 +121,8 @@ export function isPlausiblePhone(text: string, rules: PhoneRules): boolean {
   const pattern = patternOf(rules);
   const digits = internationalDigits(text);
   if (digits === null) return pattern.test(digitsOf(text));
-  if (rules.callingCode && digits.startsWith(rules.callingCode)) {
-    return pattern.test(digits.slice(rules.callingCode.length));
+  if (rules.calling_code && digits.startsWith(rules.calling_code)) {
+    return pattern.test(digits.slice(rules.calling_code.length));
   }
   return (
     digits.length >= MIN_INTERNATIONAL_DIGITS &&
@@ -133,7 +133,7 @@ export function isPlausiblePhone(text: string, rules: PhoneRules): boolean {
 /**
  * The number in E.164, or `''` when it is sent as typed and the order API converts it.
  *
- * `+{callingCode}` and the digits with one leading national prefix dropped: `081 234 5678`
+ * `+{calling_code}` and the digits with one leading national prefix dropped: `081 234 5678`
  * in Thailand is `+66812345678`. A number typed with `+` or `00` keeps its own code.
  *
  * Sent as typed rather than guessed at: a country whose rule has no calling code
@@ -145,11 +145,11 @@ export function toE164(text: string, rules?: PhoneRules): string {
   const international = internationalDigits(text);
   if (international !== null) return international ? `+${international}` : '';
   const digits = digitsOf(text);
-  if (!digits || !rules?.callingCode) return '';
-  const prefix = rules.nationalPrefix;
+  if (!digits || !rules?.calling_code) return '';
+  const prefix = rules.national_prefix;
   if (prefix && digits.startsWith(prefix)) {
-    return `+${rules.callingCode}${digits.slice(prefix.length)}`;
+    return `+${rules.calling_code}${digits.slice(prefix.length)}`;
   }
-  if (digits.startsWith(rules.callingCode)) return '';
-  return `+${rules.callingCode}${digits}`;
+  if (digits.startsWith(rules.calling_code)) return '';
+  return `+${rules.calling_code}${digits}`;
 }

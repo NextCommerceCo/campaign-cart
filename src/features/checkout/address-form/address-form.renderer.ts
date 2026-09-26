@@ -44,7 +44,7 @@ export function sdkFieldName(
 
 /** What a field is called on the form: the rules' optional label when it is not required. */
 function shownLabel(field: RulesField): string {
-  return field.required ? field.label : (field.labelOptional ?? field.label);
+  return field.required ? field.label : (field.label_optional ?? field.label);
 }
 
 function labelFor(text: string, id: string): HTMLLabelElement {
@@ -83,10 +83,10 @@ function controlFor(
     // floating label is hidden until there is a value, so a blank placeholder leaves
     // nothing on screen at all.
     control.placeholder = field.input.placeholder || text;
-    const { maxLength, inputMode, autoCapitalize } = field.input;
-    if (maxLength) control.maxLength = maxLength;
-    if (inputMode) control.inputMode = inputMode;
-    if (autoCapitalize) control.autocapitalize = autoCapitalize;
+    const { max_length, input_mode, auto_capitalize } = field.input;
+    if (max_length) control.maxLength = max_length;
+    if (input_mode) control.inputMode = input_mode;
+    if (auto_capitalize) control.autocapitalize = auto_capitalize;
   }
 
   return control;

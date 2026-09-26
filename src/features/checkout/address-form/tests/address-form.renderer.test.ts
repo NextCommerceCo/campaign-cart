@@ -46,7 +46,7 @@ const US: Spec = {
     line1: text('Address', 'address-line1'),
     city: text('City', 'address-level2'),
     state: select('State', 'address-level1', 'states'),
-    postcode: text('ZIP Code', 'postal-code', { maxLength: 10 }),
+    postcode: text('ZIP Code', 'postal-code', { max_length: 10 }),
   },
 };
 
@@ -307,7 +307,7 @@ describe('renderLayout', () => {
         ...US.fields,
         line2: {
           ...text('Apartment, suite, etc.', 'address-line2'),
-          labelOptional: 'Apartment, suite, etc. (optional)',
+          label_optional: 'Apartment, suite, etc. (optional)',
           required: false,
         },
       },

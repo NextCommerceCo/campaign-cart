@@ -11,10 +11,10 @@ const text = (
   required = false
 ): RulesField => ({
   label,
-  labelOptional: `${label} (optional)`,
+  label_optional: `${label} (optional)`,
   required,
   autocomplete,
-  input: { type: 'text', autoCapitalize: 'words', maxLength: 255, ...input },
+  input: { type: 'text', auto_capitalize: 'words', max_length: 255, ...input },
 });
 
 /**
@@ -39,7 +39,7 @@ const BUILT_IN_RULES: Omit<CountryRules, 'country'> = {
   fields: {
     country: {
       label: 'Country',
-      labelOptional: 'Country (optional)',
+      label_optional: 'Country (optional)',
       required: true,
       autocomplete: 'country',
       input: { type: 'select', options: 'countries' },
@@ -48,30 +48,30 @@ const BUILT_IN_RULES: Omit<CountryRules, 'country'> = {
     last_name: text('Last name', 'family-name', {}, true),
     email: {
       label: 'Email',
-      labelOptional: 'Email (optional)',
+      label_optional: 'Email (optional)',
       required: true,
       autocomplete: 'email',
       input: {
         type: 'email',
-        inputMode: 'email',
-        autoCapitalize: 'none',
-        maxLength: 254,
+        input_mode: 'email',
+        auto_capitalize: 'none',
+        max_length: 254,
       },
     },
     phone_number: {
       label: 'Phone number',
-      labelOptional: 'Phone number (optional)',
+      label_optional: 'Phone number (optional)',
       required: false,
       autocomplete: 'tel',
-      input: { type: 'tel', inputMode: 'tel', maxLength: 24 },
+      input: { type: 'tel', input_mode: 'tel', max_length: 24 },
     },
     line1: text('Address', 'address-line1', {}, true),
     line2: text('Apartment, suite, etc.', 'address-line2'),
     city: text('City', 'address-level2', { span: 2 }, true),
     state: text('State/Province', 'address-level1'),
     postcode: text('Postal code', 'postal-code', {
-      autoCapitalize: 'characters',
-      maxLength: 64,
+      auto_capitalize: 'characters',
+      max_length: 64,
     }),
   },
 };

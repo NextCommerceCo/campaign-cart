@@ -10,15 +10,15 @@ import {
 // Copied from the address-rules service's country files (i18n-rules `src/rules/*.json`),
 // where each is held to libphonenumber's example numbers for the country.
 const US: PhoneRules = {
-  callingCode: '1',
-  nationalPrefix: '1',
+  calling_code: '1',
+  national_prefix: '1',
   masks: [{ mask: '(###) ###-####' }],
   pattern: '^[0-9]{10,11}$',
   example: '(201) 555-0123',
 };
 const TH: PhoneRules = {
-  callingCode: '66',
-  nationalPrefix: '0',
+  calling_code: '66',
+  national_prefix: '0',
   masks: [
     { start: '02', mask: '## ### ####' },
     { start: '0[3-57]', mask: '### ### ###' },
@@ -29,7 +29,7 @@ const TH: PhoneRules = {
   example: '081 234 5678',
 };
 const IT: PhoneRules = {
-  callingCode: '39',
+  calling_code: '39',
   masks: [
     { start: '02', mask: '## ### ####' },
     { start: '0[3-57]', mask: '### ### ###' },
@@ -40,7 +40,7 @@ const IT: PhoneRules = {
   example: '312 345 6789',
 };
 const AR: PhoneRules = {
-  nationalPrefix: '0',
+  national_prefix: '0',
   masks: [{ mask: '### ##-####-####' }],
   pattern: '^[0-9]{10,13}$',
   example: '011 15-2345-6789',

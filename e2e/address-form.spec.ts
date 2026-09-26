@@ -429,7 +429,7 @@ test('an optional field carries its note in the page’s language', async ({
           line1: ruleField('ที่อยู่', 'address-line1'),
           line2: ruleField('ห้อง / ชั้น / อาคาร', 'address-line2', { type: 'text' }, {
             required: false,
-            labelOptional: 'ห้อง / ชั้น / อาคาร (ไม่บังคับ)',
+            label_optional: 'ห้อง / ชั้น / อาคาร (ไม่บังคับ)',
           }),
         },
         { lang: 'th' }

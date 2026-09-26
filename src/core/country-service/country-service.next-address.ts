@@ -59,7 +59,7 @@ export interface RulesField {
   /** On the form. */
   label: string;
   /** The label when the field is not required, with the language's note. */
-  labelOptional?: string;
+  label_optional?: string;
   /**
    * What the form says when a value is refused, by what is wrong (`blank`, `not_selected`,
    * `invalid`, `invalid_characters`, `contains_emoji`, `too_long`), in `lang`.
@@ -69,9 +69,9 @@ export interface RulesField {
   autocomplete: string;
   input: {
     type: 'text' | 'email' | 'tel' | 'select';
-    inputMode?: 'text' | 'numeric' | 'tel' | 'email';
-    autoCapitalize?: 'none' | 'words' | 'characters';
-    maxLength?: number;
+    input_mode?: 'text' | 'numeric' | 'tel' | 'email';
+    auto_capitalize?: 'none' | 'words' | 'characters';
+    max_length?: number;
     placeholder?: string;
     options?: 'countries' | 'states';
     span?: number;
@@ -81,8 +81,8 @@ export interface RulesField {
     pattern?: string;
     example?: string;
     masks?: string[] | PhoneRules['masks'];
-    callingCode?: string;
-    nationalPrefix?: string;
+    calling_code?: string;
+    national_prefix?: string;
   };
 }
 
@@ -95,7 +95,7 @@ export type FixedValues = Partial<Record<'city' | 'state' | 'postcode', string>>
  */
 export interface CountryRules {
   country: string;
-  /** The language `label`, `labelOptional` and `errors` are in. */
+  /** The language `label`, `label_optional` and `errors` are in. */
   lang?: string;
   /** `false` for a country the service serves the default layout. */
   curated?: boolean;
@@ -148,7 +148,7 @@ export function toCountryConfig(
     postcodeRegex: postcodeFormat?.pattern ?? null,
     postcodeCompact: Boolean(postcodeFormat?.pattern),
     postcodeMinLength: 0,
-    postcodeMaxLength: postcode?.input.maxLength ?? Number.MAX_SAFE_INTEGER,
+    postcodeMaxLength: postcode?.input.max_length ?? Number.MAX_SAFE_INTEGER,
     postcodeExample: postcodeFormat?.example ?? null,
     postcodeFormat: (postcodeFormat?.masks as string[] | undefined) ?? null,
     // Only a rule with a pattern checks a number; a country with no file of its own sends
