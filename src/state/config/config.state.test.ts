@@ -75,17 +75,29 @@ describe('config store — translations', () => {
   it('keeps each language’s texts, by a lower-cased language key', () => {
     setWindowConfig({
       translations: {
-        'TH-th': { 'error.required': 'กรุณาระบุ{label}', bad: 3 },
+        'TH-th': { 'fields.line2.errors.blank': 'กรุณาระบุห้องหรืออาคาร', bad: 3 },
       },
     });
     useConfigStore.getState().loadFromWindow();
     expect(useConfigStore.getState().translations).toEqual({
-      'th-th': { 'error.required': 'กรุณาระบุ{label}' },
+      'th-th': { 'fields.line2.errors.blank': 'กรุณาระบุห้องหรืออาคาร' },
+    });
+  });
+
+  it('reads nested texts as i18next does, one dotted key each', () => {
+    setWindowConfig({
+      translations: {
+        th: { fields: { line2: { errors: { blank: 'กรุณาระบุห้องหรืออาคาร' } } } },
+      },
+    });
+    useConfigStore.getState().loadFromWindow();
+    expect(useConfigStore.getState().translations).toEqual({
+      th: { 'fields.line2.errors.blank': 'กรุณาระบุห้องหรืออาคาร' },
     });
   });
 
   it('ignores a value that is not { lang: { key: text } }', () => {
-    setWindowConfig({ translations: ['error.required'] });
+    setWindowConfig({ translations: ['fields.line2.errors.blank'] });
     useConfigStore.getState().loadFromWindow();
     expect(useConfigStore.getState().translations).toBeUndefined();
   });
