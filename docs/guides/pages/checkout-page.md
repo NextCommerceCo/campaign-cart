@@ -154,6 +154,13 @@ The SDK requires the first name, last name and email. The phone is optional; a p
 
 The shipping step is an empty `<div data-next-address="shipping"></div>`, which the SDK turns into the fields the selected country collects, in the order that country writes them.
 
+Below is an example of a shipping step, its heading in the page's language.
+
+```html
+<h2 data-next-i18n="checkout.shipping.title">Shipping address</h2>
+<div data-next-address="shipping"></div>
+```
+
 In a country with one city or postcode for every address, such as Vatican City, the block does not ask for it and the SDK sends it with the order. The checkout form still fills the country list with the countries the campaign ships to and the state list with the selected country's states, validates the fields, and keeps the city, state and postcode row hidden until the street address has a value.
 
 [Address block](../reference/data-attributes.md#address-block) lists its attributes, and [Styling](#styling) below covers its markup.
