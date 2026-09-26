@@ -3,7 +3,7 @@
  * `Enter a ZIP Code`, `กรุณาเลือกจังหวัด`.
  *
  * Each comes from the page's `nextConfig.translations` for that language
- * (`field.<field>.errors.<error>`), then the errors the address-rules service wrote into
+ * (`fields.<field>.errors.<error>`), then the errors the address-rules service wrote into
  * the country's rules when they are in that language, then English. A sentence is never
  * assembled from parts in two languages: "รหัสไปรษณีย์ is required" is what that did.
  */
@@ -93,7 +93,7 @@ export function fieldMessage(
   ];
 
   for (const error of errorsFor(key)) {
-    const own = page[`field.${serviceName}.errors.${error}`];
+    const own = page[`fields.${serviceName}.errors.${error}`];
     if (own) return interpolate(own, { example: example ?? '' });
   }
   for (const error of errorsFor(key)) {

@@ -145,7 +145,7 @@ test('a page’s own translation replaces the service’s wording', async ({
 }) => {
   await configure(page, {
     locale: 'th-TH',
-    translations: { th: { 'field.first_name.errors.contains_emoji': 'อย่าใส่อีโมจิในชื่อ' } },
+    translations: { th: { 'fields.first_name.errors.contains_emoji': 'อย่าใส่อีโมจิในชื่อ' } },
   });
   await bootSdk(page, FIXTURE);
 

@@ -143,9 +143,9 @@ export default defineStore({
       name: 'translations',
       kind: 'transient',
       description:
-        "The page's own wording, by language: `{ th: { 'field.line2.errors.blank': 'กรุณาระบุห้องหรืออาคาร' } }`. Empty means the address-rules service's wording, which is the default.",
+        "The page's own wording, by language: `{ th: { 'fields.line2.errors.blank': 'กรุณาระบุห้องหรืออาคาร' } }`. Empty means the address-rules service's wording, which is the default.",
       notes:
-        "Keys are the service's: `field.<field>.errors.<error>` for a message, and any key `data-next-i18n` names. Nested objects are flattened to dotted keys at load, language keys are lower-cased, and anything that is not a string is dropped. `features/checkout/validation/field-messages.ts › fieldMessage` reads the form language's entry, then its base (`th-TH`, then `th`), before the service's answer; a message missing in that language is shown in English, a whole sentence at a time.",
+        "Keys are the service's: `fields.<field>.errors.<error>` for a message, and any key `data-next-i18n` names. Nested objects are flattened to dotted keys at load, language keys are lower-cased, and anything that is not a string is dropped. `features/checkout/validation/field-messages.ts › fieldMessage` reads the form language's entry, then its base (`th-TH`, then `th`), before the service's answer; a message missing in that language is shown in English, a whole sentence at a time.",
     },
     {
       name: 'storageScope',

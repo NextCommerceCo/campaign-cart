@@ -1566,8 +1566,8 @@ export interface ConfigState {
   /**
    * Your own wording for the checkout's validation messages, by language.
    *
-   * Keys are the address-rules service's: `field.<field>.errors.<error>` for a message
-   * (`field.postcode.errors.blank`), and any key `data-next-i18n` names. Nested objects
+   * Keys are the address-rules service's: `fields.<field>.errors.<error>` for a message
+   * (`fields.postcode.errors.blank`), and any key `data-next-i18n` names. Nested objects
    * are read as dotted keys, as i18next reads them. Set only the keys you want to change;
    * the rest come from the service, then English, a whole sentence at a time.
    *
@@ -1576,7 +1576,7 @@ export interface ConfigState {
    * @example
    * ```ts
    * translations: {
-   *   th: { 'field.line2.errors.blank': 'กรุณาระบุห้องหรืออาคาร' },
+   *   th: { 'fields.line2.errors.blank': 'กรุณาระบุห้องหรืออาคาร' },
    * }
    * ```
    * @default undefined (the service's wording)

@@ -1,6 +1,6 @@
 /**
  * i18next JSON, nested or already flat, as one text per dotted key:
- * `{ field: { email: { label: 'Email' } } }` → `{ 'field.email.label': 'Email' }`.
+ * `{ fields: { email: { label: 'Email' } } }` → `{ 'fields.email.label': 'Email' }`.
  * A value that is neither a string nor an object is dropped.
  */
 export function flattenTexts(

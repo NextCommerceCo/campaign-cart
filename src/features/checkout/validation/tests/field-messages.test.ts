@@ -121,7 +121,7 @@ describe("the page's own translations", () => {
 
   it("wins over the service's sentence, by field and error, in every country", () => {
     pageIn('th-TH', {
-      th: { 'field.line2.errors.blank': 'กรุณาระบุห้องหรืออาคาร' },
+      th: { 'fields.line2.errors.blank': 'กรุณาระบุห้องหรืออาคาร' },
     });
     expect(fieldMessage(THAI, 'blank', 'address2')).toBe(
       'กรุณาระบุห้องหรืออาคาร'
@@ -134,7 +134,7 @@ describe("the page's own translations", () => {
 
   it('fills the example into its own sentence', () => {
     pageIn('th', {
-      th: { 'field.postcode.errors.invalid': 'รหัสไม่ถูก ลอง {{example}}' },
+      th: { 'fields.postcode.errors.invalid': 'รหัสไม่ถูก ลอง {{example}}' },
     });
     expect(
       postalMessage(THAI, 'postal', 'US', { postcodeExample: '90210' })
@@ -147,7 +147,7 @@ describe("the page's own translations", () => {
       getFieldErrors: () => ({ line2: { blank: 'Enter address line 2' } }),
     };
     pageIn('vi', {
-      vi: { 'field.line2.errors.blank': 'Vui lòng nhập địa chỉ 2' },
+      vi: { 'fields.line2.errors.blank': 'Vui lòng nhập địa chỉ 2' },
     });
     expect(fieldMessage(english, 'blank', 'address2')).toBe(
       'Vui lòng nhập địa chỉ 2'

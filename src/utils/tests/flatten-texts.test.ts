@@ -6,21 +6,21 @@ describe('flattenTexts', () => {
   it('reads i18next JSON as one text per dotted key', () => {
     expect(
       flattenTexts({
-        field: {
+        fields: {
           email: { label: 'Email', errors: { blank: 'Enter an email' } },
         },
         checkout: { contact: { title: 'Contact' } },
       })
     ).toEqual({
-      'field.email.label': 'Email',
-      'field.email.errors.blank': 'Enter an email',
+      'fields.email.label': 'Email',
+      'fields.email.errors.blank': 'Enter an email',
       'checkout.contact.title': 'Contact',
     });
   });
 
   it('keeps keys that are already flat', () => {
-    expect(flattenTexts({ 'field.email.label': 'Email' })).toEqual({
-      'field.email.label': 'Email',
+    expect(flattenTexts({ 'fields.email.label': 'Email' })).toEqual({
+      'fields.email.label': 'Email',
     });
   });
 

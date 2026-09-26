@@ -81,7 +81,7 @@ Below is an example of the email field, the shipping address, and a billing addr
 
 ```html
 <h2 data-next-i18n="checkout.contact.title">Contact</h2>
-<label for="email" data-next-i18n="field.email.label">Email</label>
+<label for="email" data-next-i18n="fields.email.label">Email</label>
 <input
   id="email"
   type="email"
@@ -89,7 +89,7 @@ Below is an example of the email field, the shipping address, and a billing addr
   required
   placeholder="Email"
   data-next-checkout-field="email"
-  data-next-i18n="[placeholder]field.email.label"
+  data-next-i18n="[placeholder]fields.email.label"
 >
 
 <h2 data-next-i18n="checkout.shipping.title">Shipping address</h2>
@@ -111,7 +111,7 @@ The SDK ships these headings and the email's label in every language it supports
 
 ### Contact information
 
-The contact step is the email field, which the page writes. The name and phone are part of the shipping address, so the address block builds them. Its label and placeholder take the page's language from the `field.email.label` key ([Translated text](../reference/data-attributes.md#translated-text)).
+The contact step is the email field, which the page writes. The name and phone are part of the shipping address, so the address block builds them. Its label and placeholder take the page's language from the `fields.email.label` key ([Translated text](../reference/data-attributes.md#translated-text)).
 
 The SDK requires the first name, last name and email, and the phone is optional unless its input carries `required` or `data-next-required="true"`. No field accepts an emoji.
 
@@ -151,15 +151,15 @@ Below is an example that rewords the message for an empty apartment line and for
     locale: "th-TH",
     translations: {
       th: {
-        "field.line2.errors.blank": "กรุณาระบุห้องหรืออาคาร",
-        "field.postcode.errors.invalid": "รหัสไปรษณีย์ไม่ถูกต้อง ลอง {{example}}",
+        "fields.line2.errors.blank": "กรุณาระบุห้องหรืออาคาร",
+        "fields.postcode.errors.invalid": "รหัสไปรษณีย์ไม่ถูกต้อง ลอง {{example}}",
       },
     },
   };
 </script>
 ```
 
-The key is `field.<field>.errors.<error>`. One key covers the field in every country, whatever the country calls it, and `{{example}}` becomes the country's example.
+The key is `fields.<field>.errors.<error>`. One key covers the field in every country, whatever the country calls it, and `{{example}}` becomes the country's example.
 
 | Error | Description |
 |---|---|

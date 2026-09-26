@@ -44,11 +44,11 @@ missing translation shows as English rather than as a gap.
 **When:** The page writes its own email field, or the name and phone outside the address.
 
 **Why this enhancer:** Those fields are named the same in every country, and the SDK
-ships their labels (`field.email.label`, `field.phone_number.label_optional` and the rest)
+ships their labels (`fields.email.label`, `fields.phone_number.label_optional` and the rest)
 in every language.
 
-**Watch out for:** The phone has two keys: `field.phone_number.label` when the page makes it
-required, `field.phone_number.label_optional` when it does not. The names and the email are always required.
+**Watch out for:** The phone has two keys: `fields.phone_number.label` when the page makes it
+required, `fields.phone_number.label_optional` when it does not. The names and the email are always required.
 
 ---
 

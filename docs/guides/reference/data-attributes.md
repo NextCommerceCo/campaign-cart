@@ -513,18 +513,18 @@ It also ships the labels of the fields a page writes itself:
 
 | Key | Description |
 |---|---|
-| `field.first_name.label` | First name |
-| `field.last_name.label` | Last name |
-| `field.email.label` | Email |
-| `field.phone_number.label` | Phone number |
-| `field.phone_number.label_optional` | Phone number (optional) |
+| `fields.first_name.label` | First name |
+| `fields.last_name.label` | Last name |
+| `fields.email.label` | Email |
+| `fields.phone_number.label` | Phone number |
+| `fields.phone_number.label_optional` | Phone number (optional) |
 
 The first name, last name and email are always required, so they have no optional form.
 
 Below is an example of an email field labelled in the page's language, its label and its placeholder from one key.
 
 ```html
-<label for="email" data-next-i18n="field.email.label">Email</label>
+<label for="email" data-next-i18n="fields.email.label">Email</label>
 <input
   id="email"
   type="email"
@@ -532,7 +532,7 @@ Below is an example of an email field labelled in the page's language, its label
   required
   placeholder="Email"
   data-next-checkout-field="email"
-  data-next-i18n="[placeholder]field.email.label"
+  data-next-i18n="[placeholder]fields.email.label"
 >
 ```
 
