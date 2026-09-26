@@ -113,7 +113,7 @@ The SDK ships these headings and the email's label in every language it supports
 
 The contact step is the email field, which the page writes. The name and phone are part of the shipping address, so the address block builds them. Its label and placeholder take the page's language from the `fields.email.label` key ([Translated text](../reference/data-attributes.md#translated-text)).
 
-The SDK requires the first name, last name and email, and the phone is optional unless its input carries `required` or `data-next-required="true"`. No field accepts an emoji.
+The SDK requires the first name, last name and email. The phone is optional; a page that writes its own phone input can require it with `required` or `data-next-required="true"`. No field accepts an emoji.
 
 ### Shipping address
 
@@ -159,7 +159,7 @@ Below is an example that rewords the message for an empty apartment line and for
 </script>
 ```
 
-The key is `fields.<field>.errors.<error>`. One key covers the field in every country, whatever the country calls it, and `{{example}}` becomes the country's example.
+The key is `fields.<field>.errors.<error>`. One key covers the field in every country, whatever the country calls it. In the postcode's `invalid` message, `{{example}}` becomes the country's example.
 
 | Error | Description |
 |---|---|

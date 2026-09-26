@@ -519,7 +519,7 @@ It also ships the labels of the fields a page writes itself:
 | `fields.phone_number.label` | Phone number |
 | `fields.phone_number.label_optional` | Phone number (optional) |
 
-The first name, last name and email are always required, so they have no optional form.
+Every field also has a `label_optional`, such as `fields.email.label_optional`, for a field the page leaves optional. The SDK requires the first name, last name and email, so of these only the phone can be.
 
 Below is an example of an email field labelled in the page's language, its label and its placeholder from one key.
 
