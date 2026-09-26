@@ -22,6 +22,17 @@ describe('validateExpressFields', () => {
     expect(result.errors).toEqual({});
   });
 
+  it('reads a field named the orders API’s way from where the SDK keeps it', () => {
+    const result = validateExpressFields(
+      ctx(),
+      { fname: 'Ada', lname: '' },
+      ['first_name', 'last_name']
+    );
+
+    expect(result.errors).toEqual({ lname: 'Last Name is required' });
+    expect(result.firstErrorField).toBe('lname');
+  });
+
   it('reports a missing field by its shopper-facing label', () => {
     const result = validateExpressFields(ctx(), { email: '   ' }, ['email']);
 

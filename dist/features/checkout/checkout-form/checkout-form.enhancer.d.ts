@@ -41,6 +41,8 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private availablePaymentMethods;
     private hasTrackedRedirectPaymentInfo;
     private stopAutofillDetection?;
+    private stopEnterKeyNavigation?;
+    private readonly fixedValues;
     private hasTrackedBeginCheckout;
     private beginCheckoutTimer?;
     private paymentErrorTimers;
@@ -148,6 +150,7 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private checkoutUpdateContext;
     private cartUpdateContext;
     private configUpdateContext;
+    private syncFixedValues;
     private handleCheckoutUpdate;
     private handleCartUpdate;
     private handleConfigUpdate;

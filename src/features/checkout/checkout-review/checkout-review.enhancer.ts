@@ -5,6 +5,7 @@
 
 import { BaseEnhancer } from '@/core/base/base-enhancer';
 import { useCheckoutStore } from '@/state/checkout';
+import { sdkCheckoutFieldName } from '@/utils/checkout-field-names';
 
 interface CheckoutReviewConfig {
   element: HTMLElement;
@@ -57,7 +58,8 @@ export class CheckoutReviewEnhancer extends BaseEnhancer {
       if (field && el instanceof HTMLElement) {
         this.configs.push({
           element: el,
-          field,
+          // `first_name` reads the value the SDK keeps under `fname`.
+          field: sdkCheckoutFieldName(field),
           format,
           fallback,
         });

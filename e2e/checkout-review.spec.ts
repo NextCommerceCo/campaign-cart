@@ -62,3 +62,24 @@ test('renders persisted formData and flags empty fields', async ({ page }) => {
   await expect(city).toHaveText('');
   await expect(city).toHaveClass(/next-review-empty/);
 });
+
+/** The orders API's names, which a page should write, read what the SDK keeps under fname. */
+test('reads first_name and last_name from where the SDK keeps them', async ({
+  page,
+}) => {
+  await page.route('**/e2e/fixtures/checkout-review.html', async route => {
+    const response = await route.fetch();
+    const body = (await response.text())
+      .replace('data-next-checkout-review="fname"', 'data-next-checkout-review="first_name"')
+      .replace('data-next-checkout-review="lname"', 'data-next-checkout-review="last_name"');
+    await route.fulfill({ response, body });
+  });
+  await bootSdk(page, FIXTURE);
+
+  await expect(
+    page.locator('[data-next-checkout-review="first_name"]')
+  ).toHaveText('Ada');
+  await expect(
+    page.locator('[data-next-checkout-review="last_name"]')
+  ).toHaveText('Lovelace');
+});
