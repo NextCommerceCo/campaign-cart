@@ -33,7 +33,7 @@ import type {
   LocationData,
   State,
 } from '@/core/country-service/country-service';
-import { flattenTexts } from '@/utils/flatten-texts';
+import { flattenTexts } from '@/core/flatten-texts';
 import type { PhoneRules } from '@/core/country-service/country-service.phone';
 
 const NEXT_ADDRESS_BASE_URL =

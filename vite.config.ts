@@ -330,7 +330,12 @@ export default defineConfig({
           // cannot pass unnoticed. Adding an import from any of these three files
           // into the rest of `src/` gives this chunk an outgoing edge and forfeits
           // the guarantee.
-          if (/\/core\/(logger|storage|events)\.ts$/.test(id)) {
+          //
+          // `flatten-texts.ts` imports nothing, so it keeps the chunk a leaf. It is
+          // here because `CountryService` has no rule and lands in `debug`: from
+          // `utils` it would add a `debug → utils` edge and close a
+          // `utils → state → debug` cycle.
+          if (/\/core\/(logger|storage|events|flatten-texts)\.ts$/.test(id)) {
             return 'core-services';
           }
 

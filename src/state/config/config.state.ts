@@ -2,7 +2,7 @@
  * Config Store - Zustand store for SDK configuration management
  */
 
-import { flattenTexts } from '@/utils/flatten-texts';
+import { flattenTexts } from '@/core/flatten-texts';
 import { create } from 'zustand';
 import { createLogger } from '@/core/logger';
 import type {

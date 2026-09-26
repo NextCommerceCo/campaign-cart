@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { flattenTexts } from '@/utils/flatten-texts';
+import { flattenTexts } from '@/core/flatten-texts';
 
 describe('flattenTexts', () => {
   it('reads i18next JSON as one text per dotted key', () => {
